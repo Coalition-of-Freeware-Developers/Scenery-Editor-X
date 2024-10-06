@@ -1,19 +1,24 @@
 {
   "configurations": [
     {
-      "name": "Win32",
+      "name": "windows-msvc-x64",
       "includePath": [
-        "${workspaceFolder}/src/**",
-        "${workspaceFolder}/external/glfw/include",
-        "${workspaceFolder}/external/glad/include",
-        "${workspaceFolder}/external/glm",
-        "${workspaceFolder}/external/soil/include",
-        "${workspaceFolder}/external/freetype/include"
+        "${workspaceFolder}/**",
+        "K:/X-Plane 12 Development/XPSDK410/SDK/**",
+        "G:/Airplane Simulation Company/ED-DCS-SDK/trunk/**",
+        "G:/Airplane Simulation Company/ED-DCS-SDK/2.9/**",
+        "G:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/external/include/**",
+        "G:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/external/lib"
       ],
-      "defines": ["_DEBUG", "UNICODE", "_UNICODE"],
-      "cStandard": "c11",
-      "cppStandard": "c++17",
-      "intelliSenseMode": "gcc-x64"
+      "defines": [
+        "_DEBUG",
+        "UNICODE",
+        "_UNICODE"
+      ],
+      "cStandard": "c17",
+      "cppStandard": "c++20",
+      "intelliSenseMode": "windows-msvc-x64",
+      "compilerPath": "cl.exe"
     }
   ],
   "version": 4

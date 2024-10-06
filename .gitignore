@@ -1,2 +1,4 @@
 # Ignore content built with CMake
 build/
+/.vscode
+/.vs
