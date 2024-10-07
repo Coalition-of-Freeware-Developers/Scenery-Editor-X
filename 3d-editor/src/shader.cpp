@@ -47,7 +47,6 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile)
 	// Checks if Shader compiled succesfully
 	compileErrors(fragmentShader, "FRAGMENT");
 
-
 	// Create Shader Program Object and get its reference
 	ID = glCreateProgram();
 	// Attach the Vertex and Fragment Shaders to the Shader Program
