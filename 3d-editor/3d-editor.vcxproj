@@ -73,10 +73,22 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(SolutionDir)external\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
+    <IntDir>$(SolutionDir)out\debug-int\</IntDir>
+    <OutDir>$(SolutionDir)out\debug</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(SolutionDir)external\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)out\debug</OutDir>
+    <IntDir>$(SolutionDir)out\debug-int\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)out\build</OutDir>
+    <IntDir>$(SolutionDir)out\build-int\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)out\build</OutDir>
+    <IntDir>$(SolutionDir)out\build-int\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -143,6 +155,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\imgui\imgui.cpp" />
+    <ClCompile Include="src\imgui\imgui_demo.cpp" />
+    <ClCompile Include="src\imgui\imgui_draw.cpp" />
+    <ClCompile Include="src\imgui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="src\imgui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="src\imgui\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="src\imgui\imgui_tables.cpp" />
+    <ClCompile Include="src\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\model.cpp" />
+    <ClCompile Include="src\Mesh.cpp" />
+    <ClCompile Include="src\camera.cpp" />
     <ClCompile Include="src\EBO.cpp" />
     <ClCompile Include="src\shader.cpp" />
     <ClCompile Include="src\glad.c" />
@@ -155,10 +178,25 @@
   <ItemGroup>
     <None Include="resources\shaders\infinite_grid.fs" />
     <None Include="resources\shaders\infinite_grid.vs" />
-    <None Include="shaders\testing.vert" />
-    <None Include="shaders\testing2.frag" />
+    <None Include="shaders\default.vert" />
+    <None Include="shaders\default.frag" />
+    <None Include="shaders\light.frag" />
+    <None Include="shaders\light.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\imgui\imconfig.h" />
+    <ClInclude Include="src\imgui\imgui.h" />
+    <ClInclude Include="src\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="src\imgui\imgui_impl_metal.h" />
+    <ClInclude Include="src\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="src\imgui\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\imgui\imgui_internal.h" />
+    <ClInclude Include="src\imgui\imstb_rectpack.h" />
+    <ClInclude Include="src\imgui\imstb_textedit.h" />
+    <ClInclude Include="src\imgui\imstb_truetype.h" />
+    <ClInclude Include="src\model.h" />
+    <ClInclude Include="src\Mesh.h" />
+    <ClInclude Include="src\camera.h" />
     <ClInclude Include="src\EBO.h" />
     <ClInclude Include="src\shader.h" />
     <ClInclude Include="src\texture.h" />
@@ -178,7 +216,12 @@
     <Font Include="resources\fonts\opensans\OpenSans-SemiBoldItalic.ttf" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="backup.txt" />
     <Text Include="resources\fonts\opensans\LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\assets\textures\brick.png" />
+    <Image Include="..\assets\textures\pop_cat.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

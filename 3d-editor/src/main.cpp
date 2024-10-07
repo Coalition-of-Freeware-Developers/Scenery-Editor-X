@@ -1,20 +1,13 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-#include <iostream>
-#include <string>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <stb/stb_image.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 
-#include"texture.h"
-#include"shader.h"
-#include"VAO.h"
-#include"VBO.h"
-#include"EBO.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#include "Mesh.h"
 
 /*
 std::string GetCurrentProjectName() {
@@ -23,7 +16,7 @@ std::string GetCurrentProjectName() {
 }
 */
 const unsigned int width = 800;
-const unsigned int hight = 800;
+const unsigned int height = 800;
 
 /*
 // Get the current project's name
@@ -36,25 +29,52 @@ std::string windowTitle = "Scenery Editor X | " + projectName;
 
 
 // Vertices coordinates
-GLfloat vertices[] =
-{ //     COORDINATES     /        COLORS      /   TexCoord  //
-	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	0.0f, 0.0f,
-	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	5.0f, 0.0f,
-	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	0.0f, 0.0f,
-	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	5.0f, 0.0f,
-	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	2.5f, 5.0f
+Vertex vertices[] =
+{ //               COORDINATES           /            COLORS          /           NORMALS         /       TEXTURE COORDINATES    //
+	Vertex{glm::vec3(-1.0f, 0.0f,  1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)},
+	Vertex{glm::vec3(-1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 1.0f)},
+	Vertex{glm::vec3(1.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 1.0f)},
+	Vertex{glm::vec3(1.0f, 0.0f,  1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 0.0f)}
 };
 
 // Indices for vertices order
 GLuint indices[] =
 {
 	0, 1, 2,
-	0, 2, 3,
-	0, 1, 4,
-	1, 2, 4,
-	2, 3, 4,
-	3, 0, 4
+	0, 2, 3
 };
+
+Vertex lightVertices[] =
+{ //     COORDINATES     //
+	Vertex{glm::vec3(-0.1f, -0.1f,  0.1f)},
+	Vertex{glm::vec3(-0.1f, -0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f, -0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f, -0.1f,  0.1f)},
+	Vertex{glm::vec3(-0.1f,  0.1f,  0.1f)},
+	Vertex{glm::vec3(-0.1f,  0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f,  0.1f, -0.1f)},
+	Vertex{glm::vec3(0.1f,  0.1f,  0.1f)}
+};
+
+GLuint lightIndices[] =
+{
+	0, 1, 2,
+	0, 2, 3,
+	0, 4, 7,
+	0, 7, 3,
+	3, 7, 6,
+	3, 6, 2,
+	2, 6, 5,
+	2, 5, 1,
+	1, 5, 4,
+	1, 4, 0,
+	4, 5, 6,
+	4, 6, 7
+};
+
+
+
+
 
 int main()
 {
@@ -71,7 +91,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
-	GLFWwindow* window = glfwCreateWindow(width, hight, "Scenery Editor X | ", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(width, height, "Scenery Editor X | ", NULL, NULL);
 
 	// Error check if the window fails to create
 	if (window == NULL)
@@ -89,120 +109,131 @@ int main()
 
 	// Specify the viewport of OpenGL in the Window
 	// viewport goes from x = 0, y = 0, to x = 800, y = 800
-	glViewport(0, 0, width, hight);
+	glViewport(0, 0, width, height);
 
-	// Generates Shader object using shaders defualt.vert and default.frag
-	Shader shaderProgram("shaders/testing.vert", "shaders/testing2.frag");
-
-	// Generates Vertex Array Object and binds it
-	VAO VAO1;
-	VAO1.Bind();
-
-	// Generates Vertex Buffer Object and links it to vertices
-	VBO VBO1(vertices, sizeof(vertices));
-	// Generates Element Buffer Object and links it to indices
-	EBO EBO1(indices, sizeof(indices));
-
-	// Links VBO attributes such as coordinates and colors to VAO
-	VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 8 * sizeof(float), (void*)0);
-	VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	// Unbind all to prevent accidentally modifying them
-	VAO1.Unbind();
-	VBO1.Unbind();
-	EBO1.Unbind();
-
-	// Gets ID of uniform called "scale"
-	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "scale");
-
+	// Aquire relitive path for textures 
 	std::string parentDir = (fs::current_path().fs::path::parent_path()).string();
 	std::string texPath = "/assets/textures/";
 
-	// Texture
-	Texture popCat((parentDir + texPath + "pop_cat.png").c_str(), GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
-	popCat.texUnit(shaderProgram, "tex0", 0);
+	// Texture data
+	Texture textures[]
+	{
+		Texture((parentDir + texPath + "planks.png").c_str(), "diffuse", 0, GL_RGBA, GL_UNSIGNED_BYTE),
+		Texture((parentDir + texPath + "planksSpec.png").c_str(), "specular", 1, GL_RED, GL_UNSIGNED_BYTE)
+	};
 
-	// Main while loop
+
+	// Generates Shader object using shaders defualt.vert and default.frag
+	Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
+	// Store mesh data in vectors for the mesh
+	std::vector <Vertex> verts(vertices, vertices + sizeof(vertices) / sizeof(Vertex));
+	std::vector <GLuint> ind(indices, indices + sizeof(indices) / sizeof(GLuint));
+	std::vector <Texture> tex(textures, textures + sizeof(textures) / sizeof(Texture));
+	// Create floor mesh
+	Mesh floor(verts, ind, tex);
+
+
+
+	// Shader for light cube
+	Shader lightShader("shaders/light.vert", "shaders/light.frag");
+	// Store mesh data in vectors for the mesh
+	std::vector <Vertex> lightVerts(lightVertices, lightVertices + sizeof(lightVertices) / sizeof(Vertex));
+	std::vector <GLuint> lightInd(lightIndices, lightIndices + sizeof(lightIndices) / sizeof(GLuint));
+	// Create light mesh
+	Mesh light(lightVerts, lightInd, tex);
+
+	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
+	glm::mat4 lightModel = glm::mat4(1.0f);
+	lightModel = glm::translate(lightModel, lightPos);
+
+	glm::vec3 objectPos = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::mat4 objectModel = glm::mat4(1.0f);
+	objectModel = glm::translate(objectModel, objectPos);
+
+
+	lightShader.Activate();
+	glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
+	glUniform4f(glGetUniformLocation(lightShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	shaderProgram.Activate();
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgram.ID, "model"), 1, GL_FALSE, glm::value_ptr(objectModel));
+	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+
+	//Depth Buffer
+	glEnable(GL_DEPTH_TEST);
+
+	//Scene Camera creation
+	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
+
+	// Initialize ImGUI
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+
+	/*
+	##########################################################
+			MAIN WHILE LOOP RUNNING SHADER ENGINE
+	##########################################################
+	*/
 	while (!glfwWindowShouldClose(window))
 	{
 		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		// Clean the back buffer and assign the new color to it
-		glClear(GL_COLOR_BUFFER_BIT);
+		// Clean the back buffer and depth buffer
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		/*
-		##########################################################
-				OpenGL Shader Program Activation
-		##########################################################
-		*/
+		// Tell OpenGL a new frame is about to begin
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
-		shaderProgram.Activate();
+		// ImGUI window creation
+		ImGui::Begin("My name is window, ImGUI window");
+		// Text that appears in the window
+		ImGui::Text("Hello there adventurer!");
+		// Ends the window
+		ImGui::End();
 
-		/*
-		##########################################################
-					3D MODEL MATRIX IMPLIMENTATION
-		##########################################################
-		*/
+		// Handles camera inputs
+		camera.Inputs(window);
+		// Updates and exports the camera matrix to the Vertex Shader
+		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		glm::mat4 model = glm::mat4(1.0f);
-		glm::mat4 view  = glm::mat4(1.0f);
-		glm::mat4 proj  = glm::mat4(1.0f);
+		// Draws different meshes
+		floor.Draw(shaderProgram, camera);
+		light.Draw(lightShader, camera);
 
-		// Viewport Matrix
-		view = glm::translate(view, glm::vec3(0.0f, -0.5f, -2.0f));
-		
-		/*
-		##########################################################
-		TO DO: Fix this so that the camera has boundery detection and cannot clip into objects.
-		##########################################################
-		*/
-
-		// Perspective Matrix/ Clipping Plane 
-		proj = glm::perspective(glm::radians(45.0f), (float)(width / hight), 0.1f, 100.0f);
-
-		int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(proj));
-
-		/*
-		##########################################################
-		##########################################################
-		*/
-
-		// Assigns a value to the uniform; NOTE: Must always be done after activating the Shader Program
-		glUniform1f(uniID, 0.5f);
-
-		// Binds texture so that is appears in rendering
-		popCat.Bind();
-
-		// Bind the VAO so OpenGL knows to use it
-		VAO1.Bind();
-
-		// Draw primitives, number of indices, datatype of indices, index of indices
-		glDrawElements(GL_TRIANGLES, sizeof(indices)/sizeof(int), GL_UNSIGNED_INT, 0);
+		// Renders the ImGUI elements
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
-
 		// Take care of all GLFW events
 		glfwPollEvents();
+
+		/*
+		##########################################################
+		##########################################################
+		*/
 	}
 
-	// Delete all the objects we've created
-	VAO1.Delete();
-	VBO1.Delete();
-	EBO1.Delete();
-	popCat.Delete();
-	shaderProgram.Delete();
+	// Deletes all ImGUI instances
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
+
+	// Delete all the objects we've created
+	shaderProgram.Delete();
+	lightShader.Delete();
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
-
 	// Terminate GLFW before ending the program
 	glfwTerminate();
-
 	return 0;
 }
