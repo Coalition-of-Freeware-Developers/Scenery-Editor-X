@@ -36,7 +36,7 @@
 #*.wwaproj   merge=binary
 
 ###############################################################################
-# behavior for image files
+# Behavior for image files
 #
 # image files are treated as binary by default.
 ###############################################################################
@@ -45,6 +45,21 @@
 *.gif   binary
 *.dds   binary
 *.tiff  binary
+
+###############################################################################
+# Behavior for 3d model files
+#
+# image files are treated as binary by default.
+###############################################################################
+*.obj   binary
+*.fbx   binary
+*.lin   binary
+*.gltf  binary
+*.for   binary
+*.agp   binary
+*.agb   binary
+*.dsf   binary
+*.pol   binary
 
 ###############################################################################
 # diff behavior for common document formats

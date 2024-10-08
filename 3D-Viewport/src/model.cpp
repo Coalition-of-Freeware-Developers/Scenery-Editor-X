@@ -26,23 +26,23 @@ void Model::Draw(Shader& shader, Camera& camera)
 void Model::loadMesh(unsigned int indMesh)
 {
 	// Get all accessor indices
-	unsigned int posAccInd		= JSON["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
-	unsigned int normalAccInd	= JSON["meshes"][indMesh]["primitives"][0]["attributes"]["NORMAL"];
-	unsigned int texAccInd		= JSON["meshes"][indMesh]["primitives"][0]["attributes"]["TEXCOORD_0"];
-	unsigned int indAccInd		= JSON["meshes"][indMesh]["primitives"][0]["indices"];
+	unsigned int posAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
+	unsigned int normalAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["NORMAL"];
+	unsigned int texAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["TEXCOORD_0"];
+	unsigned int indAccInd = JSON["meshes"][indMesh]["primitives"][0]["indices"];
 
 	// Use accessor indices to get all vertices components
-	std::vector<float> posVec			= getFloats(JSON["accessors"][posAccInd]);
-	std::vector<glm::vec3> positions	= groupFloatsVec3(posVec);
-	std::vector<float> normalVec		= getFloats(JSON["accessors"][normalAccInd]);
-	std::vector<glm::vec3> normals		= groupFloatsVec3(normalVec);
-	std::vector<float> texVec			= getFloats(JSON["accessors"][texAccInd]);
-	std::vector<glm::vec2> texUVs		= groupFloatsVec2(texVec);
+	std::vector<float> posVec = getFloats(JSON["accessors"][posAccInd]);
+	std::vector<glm::vec3> positions = groupFloatsVec3(posVec);
+	std::vector<float> normalVec = getFloats(JSON["accessors"][normalAccInd]);
+	std::vector<glm::vec3> normals = groupFloatsVec3(normalVec);
+	std::vector<float> texVec = getFloats(JSON["accessors"][texAccInd]);
+	std::vector<glm::vec2> texUVs = groupFloatsVec2(texVec);
 
 	// Combine all the vertex components and also get the indices and textures
-	std::vector<Vertex> vertices		= assembleVertices(positions, normals, texUVs);
-	std::vector<GLuint> indices			= getIndices(JSON["accessors"][indAccInd]);
-	std::vector<Texture> textures		= getTextures();
+	std::vector<Vertex> vertices = assembleVertices(positions, normals, texUVs);
+	std::vector<GLuint> indices = getIndices(JSON["accessors"][indAccInd]);
+	std::vector<Texture> textures = getTextures();
 
 	// Combine the vertices, indices, and textures into a mesh
 	meshes.push_back(Mesh(vertices, indices, textures));
@@ -96,13 +96,13 @@ void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)
 
 	// Initialize matrices
 	glm::mat4 trans = glm::mat4(1.0f);
-	glm::mat4 rot	= glm::mat4(1.0f);
-	glm::mat4 sca	= glm::mat4(1.0f);
+	glm::mat4 rot = glm::mat4(1.0f);
+	glm::mat4 sca = glm::mat4(1.0f);
 
 	// Use translation, rotation, and scale to change the initialized matrices
-	trans	= glm::translate(trans, translation);
-	rot		= glm::mat4_cast(rotation);
-	sca		= glm::scale(sca, scale);
+	trans = glm::translate(trans, translation);
+	rot = glm::mat4_cast(rotation);
+	sca = glm::scale(sca, scale);
 
 	// Multiply all matrices together
 	glm::mat4 matNextNode = matrix * matNode * trans * rot * sca;
@@ -158,10 +158,10 @@ std::vector<float> Model::getFloats(json accessor)
 
 	// Interpret the type and store it into numPerVert
 	unsigned int numPerVert;
-	if		(type == "SCALAR")  numPerVert = 1;
-	else if (type == "VEC2")	numPerVert = 2;
-	else if (type == "VEC3")	numPerVert = 3;
-	else if (type == "VEC4")	numPerVert = 4;
+	if (type == "SCALAR") numPerVert = 1;
+	else if (type == "VEC2") numPerVert = 2;
+	else if (type == "VEC3") numPerVert = 3;
+	else if (type == "VEC4") numPerVert = 4;
 	else throw std::invalid_argument("Type is invalid (not SCALAR, VEC2, VEC3, or VEC4)");
 
 	// Go over all the bytes in the data at the correct place using the properties from above
@@ -183,10 +183,10 @@ std::vector<GLuint> Model::getIndices(json accessor)
 	std::vector<GLuint> indices;
 
 	// Get properties from the accessor
-	unsigned int buffViewInd	= accessor.value("bufferView", 0);
-	unsigned int count			= accessor["count"];
-	unsigned int accByteOffset	= accessor.value("byteOffset", 0);
-	unsigned int componentType	= accessor["componentType"];
+	unsigned int buffViewInd = accessor.value("bufferView", 0);
+	unsigned int count = accessor["count"];
+	unsigned int accByteOffset = accessor.value("byteOffset", 0);
+	unsigned int componentType = accessor["componentType"];
 
 	// Get properties from the bufferView
 	json bufferView = JSON["bufferViews"][buffViewInd];

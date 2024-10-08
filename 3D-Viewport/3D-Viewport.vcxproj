@@ -80,8 +80,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(SolutionDir)external\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
-    <OutDir>..\bin\Debug-windows-x86_64\3D-Viewport</OutDir>
-    <IntDir>..\bin-int\Debug-windows-x86_64\3D-Viewport</IntDir>
+    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\3D-Viewport</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\3D-Viewport</IntDir>
     <TargetName>3D-Viewport</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -134,11 +134,12 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir)resources\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -159,12 +160,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="resources\imgui\imgui.cpp" />
+    <ClCompile Include="resources\imgui\imgui_demo.cpp" />
+    <ClCompile Include="resources\imgui\imgui_draw.cpp" />
+    <ClCompile Include="resources\imgui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="resources\imgui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="resources\imgui\imgui_tables.cpp" />
+    <ClCompile Include="resources\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\model.cpp" />
     <ClCompile Include="src\mesh.cpp" />
     <ClCompile Include="src\camera.cpp" />
     <ClCompile Include="src\EBO.cpp" />
     <ClCompile Include="src\shader.cpp" />
-    <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\stb.cpp" />
     <ClCompile Include="src\texture.cpp" />
@@ -180,6 +188,15 @@
     <None Include="shaders\light.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resources\imgui\imconfig.h" />
+    <ClInclude Include="resources\imgui\imgui.h" />
+    <ClInclude Include="resources\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="resources\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="resources\imgui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="resources\imgui\imgui_internal.h" />
+    <ClInclude Include="resources\imgui\imstb_rectpack.h" />
+    <ClInclude Include="resources\imgui\imstb_textedit.h" />
+    <ClInclude Include="resources\imgui\imstb_truetype.h" />
     <ClInclude Include="src\model.h" />
     <ClInclude Include="src\mesh.h" />
     <ClInclude Include="src\camera.h" />
@@ -202,7 +219,6 @@
     <Font Include="resources\fonts\opensans\OpenSans-SemiBoldItalic.ttf" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="backup.txt" />
     <Text Include="resources\fonts\opensans\LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>

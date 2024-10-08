@@ -3,11 +3,13 @@ namespace fs = std::filesystem;
 
 #define GLM_ENABLE_EXPERIMENTAL
 
-//#include "imgui/imgui.h"
-//#include "imgui/imgui_impl_glfw.h"
-//#include "imgui/imgui_impl_opengl3.h"
-
 #include "model.h"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
+//#include "ImGuizmo/ImGuizmo.h"
 
 /*
 std::string GetCurrentProjectName() {
@@ -61,7 +63,6 @@ int main()
 	// viewport goes from x = 0, y = 0, to x = 800, y = 800
 	glViewport(0, 0, width, height);
 
-
 	// Generates Shader object using shaders defualt.vert and default.frag
 	Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
 
@@ -76,9 +77,6 @@ int main()
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 
-
-
-
 	// Enables the Depth Buffer
 	glEnable(GL_DEPTH_TEST);
 
@@ -86,6 +84,7 @@ int main()
 	//Scene Camera creation
 	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
+	//ImGuizmo::DrawGrid(cameraView, cameraProjection, identityMatrix, 100.f);
 	/*
 	* I'm doing this relative path thing in order to centralize all the resources into one folder and not
 	* duplicate them between tutorial folders. You can just copy paste the resources from the 'Resources'
@@ -93,18 +92,20 @@ int main()
 	* Also note that this requires C++17, so go to Project Properties, C/C++, Language, and select C++17
 	*/
 		std::string parentDir = (fs::current_path().fs::path::parent_path()).string();
-		std::string modelPath = "assets/models/bunny/scene.gltf";
+		std::string modelPath = "/assets/models/bunny/scene.gltf";
 
 	// Load in a model
 	Model model((parentDir + modelPath).c_str());
 
 	// Initialize ImGUI
-	//IMGUI_CHECKVERSION();
-	//ImGui::CreateContext();
-	//ImGuiIO& io = ImGui::GetIO(); (void)io;
-	//ImGui::StyleColorsDark();
-	//ImGui_ImplGlfw_InitForOpenGL(window, true);
-	//ImGui_ImplOpenGL3_Init("#version 330");
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+
+	// Setup Platform/Renderer bindings
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
 	/*
 	##########################################################
 			MAIN WHILE LOOP RUNNING SHADER ENGINE
@@ -151,6 +152,63 @@ int main()
 
 	}	*/
 	/*
+	void DrawGrid(const float* view, const float* projection, const float* matrix, const float gridSize)
+	{
+		matrix_t viewProjection = *(matrix_t*)view * *(matrix_t*)projection;
+		vec_t frustum[6];
+		ComputeFrustumPlanes(frustum, viewProjection.m16);
+		matrix_t res = *(matrix_t*)matrix * viewProjection;
+
+		for (float f = -gridSize; f <= gridSize; f += 1.f)
+		{
+			for (int dir = 0; dir < 2; dir++)
+			{
+				vec_t ptA = makeVect(dir ? -gridSize : f, 0.f, dir ? f : -gridSize);
+				vec_t ptB = makeVect(dir ? gridSize : f, 0.f, dir ? f : gridSize);
+				bool visible = true;
+				for (int i = 0; i < 6; i++)
+				{
+					float dA = DistanceToPlane(ptA, frustum[i]);
+					float dB = DistanceToPlane(ptB, frustum[i]);
+					if (dA < 0.f && dB < 0.f)
+					{
+						visible = false;
+						break;
+					}
+					if (dA > 0.f && dB > 0.f)
+					{
+						continue;
+					}
+					if (dA < 0.f)
+					{
+						float len = fabsf(dA - dB);
+						float t = fabsf(dA) / len;
+						ptA.Lerp(ptB, t);
+					}
+					if (dB < 0.f)
+					{
+						float len = fabsf(dB - dA);
+						float t = fabsf(dB) / len;
+						ptB.Lerp(ptA, t);
+					}
+				}
+				if (visible)
+				{
+					ImU32 col = 0xFF808080;
+					col = (fmodf(fabsf(f), 10.f) < FLT_EPSILON) ? 0xFF909090 : col;
+					col = (fabsf(f) < FLT_EPSILON) ? 0xFF404040 : col;
+
+					float thickness = 1.f;
+					thickness = (fmodf(fabsf(f), 10.f) < FLT_EPSILON) ? 1.5f : thickness;
+					thickness = (fabsf(f) < FLT_EPSILON) ? 2.3f : thickness;
+
+					gContext.mDrawList->AddLine(worldToPos(ptA, res), worldToPos(ptB, res), col, thickness);
+				}
+			}
+		}
+	}
+	*/
+	/*
 	##########################################################
 	##########################################################
 	*/
@@ -158,6 +216,18 @@ int main()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
+		// Start the ImGui frame
+    	ImGui_ImplOpenGL3_NewFrame();
+    	ImGui_ImplGlfw_NewFrame();
+    	ImGui::NewFrame();
+
+    	// Your code to create ImGui widgets goes here
+
+    	// Rendering
+    	ImGui::Render();
+    	int display_w, display_h;
+
+		
 		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
 		// Clean the back buffer and depth buffer
