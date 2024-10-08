@@ -36,7 +36,7 @@ void Mesh::Draw
 	// Bind shader to be able to access uniforms
 	shader.Activate();
 	VAO.Bind();
-	
+
 	// Keep track of how many of each type of textures we have
 	unsigned int numDiffuse = 0;
 	unsigned int numSpecular = 0;

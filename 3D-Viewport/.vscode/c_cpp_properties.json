@@ -1,0 +1,21 @@
+{
+  "configurations": [
+    {
+      "name": "windows-msvc-x64",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "K:/X-Plane 12 Development/XPSDK410/SDK/**",
+        "G:/Airplane Simulation Company/ED-DCS-SDK/trunk/**",
+        "G:/Airplane Simulation Company/ED-DCS-SDK/2.9/**"
+      ],
+      "compilerPath": "cl.exe",
+      "cStandard": "c17",
+      "cppStandard": "c++20",
+      "intelliSenseMode": "windows-msvc-x64",
+      "compilerArgs": [
+        ""
+      ]
+    }
+  ],
+  "version": 4
+}

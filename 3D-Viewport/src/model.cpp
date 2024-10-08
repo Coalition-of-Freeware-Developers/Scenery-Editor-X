@@ -1,5 +1,10 @@
 #include "model.h"
 
+/**
+ * Constructs a Model object from a file containing JSON data.
+ *
+ * @param file The path to the file containing the JSON data.
+ */
 Model::Model(const char* file)
 {
 	// Make a JSON object
@@ -14,6 +19,12 @@ Model::Model(const char* file)
 	traverseNode(0);
 }
 
+/**
+ * Draws all meshes in the model using a shader and a camera.
+ *
+ * @param shader The shader to use for rendering.
+ * @param camera The camera to use for rendering.
+ */
 void Model::Draw(Shader& shader, Camera& camera)
 {
 	// Go over all meshes and draw each one
@@ -25,13 +36,22 @@ void Model::Draw(Shader& shader, Camera& camera)
 
 void Model::loadMesh(unsigned int indMesh)
 {
+	/**
+	 * Load a mesh from the model's JSON data.
+	 *
+	 * @param indMesh The index of the mesh to load.
+	 */
 	// Get all accessor indices
 	unsigned int posAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["POSITION"];
 	unsigned int normalAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["NORMAL"];
 	unsigned int texAccInd = JSON["meshes"][indMesh]["primitives"][0]["attributes"]["TEXCOORD_0"];
 	unsigned int indAccInd = JSON["meshes"][indMesh]["primitives"][0]["indices"];
 
-	// Use accessor indices to get all vertices components
+	/**
+	 * Extracts the positions, normals, and texture coordinates for a mesh.
+	 * Use accessor indices to get all vertices components
+	 * @param indMesh The index of the mesh.
+	 */
 	std::vector<float> posVec = getFloats(JSON["accessors"][posAccInd]);
 	std::vector<glm::vec3> positions = groupFloatsVec3(posVec);
 	std::vector<float> normalVec = getFloats(JSON["accessors"][normalAccInd]);
@@ -62,6 +82,7 @@ void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)
 			transValues[i] = (node["translation"][i]);
 		translation = glm::make_vec3(transValues);
 	}
+
 	// Get quaternion if it exists
 	glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 	if (node.find("rotation") != node.end())
@@ -75,6 +96,7 @@ void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)
 		};
 		rotation = glm::make_quat(rotValues);
 	}
+
 	// Get scale if it exists
 	glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
 	if (node.find("scale") != node.end())
@@ -84,6 +106,7 @@ void Model::traverseNode(unsigned int nextNode, glm::mat4 matrix)
 			scaleValues[i] = (node["scale"][i]);
 		scale = glm::make_vec3(scaleValues);
 	}
+	
 	// Get matrix if it exists
 	glm::mat4 matNode = glm::mat4(1.0f);
 	if (node.find("matrix") != node.end())
@@ -257,7 +280,7 @@ std::vector<Texture> Model::getTextures()
 		if (!skip)
 		{
 			// Load diffuse texture
-			if (texPath.find("baseColor") != std::string::npos)
+			if (texPath.find("baseColor") != std::string::npos || texPath.find("diffuse") != std::string::npos)
 			{
 				Texture diffuse = Texture((fileDirectory + texPath).c_str(), "diffuse", loadedTex.size());
 				textures.push_back(diffuse);
@@ -265,7 +288,7 @@ std::vector<Texture> Model::getTextures()
 				loadedTexName.push_back(texPath);
 			}
 			// Load specular texture
-			else if (texPath.find("metallicRoughness") != std::string::npos)
+			else if (texPath.find("metallicRoughness") != std::string::npos || texPath.find("specular") != std::string::npos)
 			{
 				Texture specular = Texture((fileDirectory + texPath).c_str(), "specular", loadedTex.size());
 				textures.push_back(specular);
@@ -278,6 +301,14 @@ std::vector<Texture> Model::getTextures()
 	return textures;
 }
 
+/**
+ * Assembles a vector of vertices from given position, normal and texture UV data.
+ *
+ * @param positions A vector of glm::vec3 representing the vertex positions.
+ * @param normals A vector of glm::vec3 representing the vertex normals.
+ * @param texUVs A vector of glm::vec2 representing the vertex texture coordinates.
+ * @return A vector of Vertex objects assembled from the given data.
+ */
 std::vector<Vertex> Model::assembleVertices
 (
 	std::vector<glm::vec3> positions,
@@ -302,6 +333,12 @@ std::vector<Vertex> Model::assembleVertices
 	return vertices;
 }
 
+/**
+ * Groups a vector of floats into a vector of glm::vec2.
+ *
+ * @param floatVec A vector of floats representing the data to be grouped.
+ * @return A vector of glm::vec2 assembled from the given data.
+ */
 std::vector<glm::vec2> Model::groupFloatsVec2(std::vector<float> floatVec)
 {
 	std::vector<glm::vec2> vectors;

@@ -1,5 +1,13 @@
 #include "camera.h"
 
+
+/**
+* @brief Constructor for Camera class.
+*
+* @param width - The width of the camera view.
+* @param height - The height of the camera view.
+* @param position - The initial position of the camera.
+*/
 Camera::Camera(int width, int height, glm::vec3 position)
 {
 	Camera::width = width;
@@ -7,6 +15,13 @@ Camera::Camera(int width, int height, glm::vec3 position)
 	Position = position;
 }
 
+/**
+* @brief Updates the camera's projection and view matrix.
+*
+* @param FOVdeg - The field of view in degrees.
+* @param nearPlane - The distance to the near clipping plane.
+* @param farPlane - The distance to the far clipping plane.
+*/
 void Camera::updateMatrix(float FOVdeg, float nearPlane, float farPlane)
 {
 	// Initializes matrices since otherwise they will be the null matrix
@@ -16,18 +31,31 @@ void Camera::updateMatrix(float FOVdeg, float nearPlane, float farPlane)
 	// Makes camera look in the right direction from the right position
 	view = glm::lookAt(Position, Position + Orientation, Up);
 	// Adds perspective to the scene
-	projection = glm::perspective(glm::radians(FOVdeg), (float)width / height, nearPlane, farPlane);
+	projection = glm::perspective(glm::radians(FOVdeg), width / float(height), nearPlane, farPlane);
 
 	// Sets new camera matrix
 	cameraMatrix = projection * view;
 }
 
+/**
+* @brief Exports the camera's matrix to a shader program.
+*
+* @param shader - The Shader object that will receive the matrix.
+* @param uniform - The name of the uniform variable in the shader where the matrix will be stored.
+*/
 void Camera::Matrix(Shader& shader, const char* uniform)
 {
 	// Exports camera matrix
 	glUniformMatrix4fv(glGetUniformLocation(shader.ID, uniform), 1, GL_FALSE, glm::value_ptr(cameraMatrix));
 }
 
+
+
+/**
+* @brief Handles user inputs for the camera.
+*
+* @param window - The GLFWwindow object that represents the current window.
+*/
 void Camera::Inputs(GLFWwindow* window)
 {
 	// Handles key inputs

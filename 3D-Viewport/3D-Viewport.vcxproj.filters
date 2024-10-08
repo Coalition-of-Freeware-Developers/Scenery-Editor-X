@@ -110,6 +110,15 @@
     <None Include="shaders\light.vert">
       <Filter>Resource Files\shaders</Filter>
     </None>
+    <None Include="shaders\outlining.frag">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\outlining.vert">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\grass.frag">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\shader.h">

@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "console": "externalTerminal",
+      "cwd": "g:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/3D-Viewport",
+      "program": "g:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/3D-Viewport/build/Debug/outDebug"
+    }
+  ]
+}

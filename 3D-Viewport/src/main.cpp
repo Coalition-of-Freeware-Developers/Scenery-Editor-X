@@ -1,14 +1,13 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-#define GLM_ENABLE_EXPERIMENTAL
+//#define GLM_ENABLE_EXPERIMENTAL
 
 #include "model.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-
 //#include "ImGuizmo/ImGuizmo.h"
 
 /*
@@ -16,11 +15,7 @@ std::string GetCurrentProjectName() {
     // This should be replaced with actual logic to get the project name.
     return "New Project"; // Example for demonstration
 }
-*/
-const unsigned int width = 800;
-const unsigned int height = 800;
 
-/*
 // Get the current project's name
 std::string projectName = GetCurrentProjectName();
 // Construct the window title
@@ -28,25 +23,27 @@ std::string windowTitle = "Scenery Editor X | " + projectName;
 // Use `windowTitle` for setting the window title in your 3D editor
 */
 
+const unsigned int width = 800;
+const unsigned int height = 800;
+
+
+
 
 int main()
 {
 	// Initialize GLFW
 	glfwInit();
+    
 
-	// Tell GLFW what version of OpenGL we are using 
-	// In this case we are using OpenGL 3.3
+	// Tell GLFW the version of OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	// Tell GLFW we are using the CORE profile
-	// So that means we only have the modern functions
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	// Create a GLFWwindow object of 800 by 800 pixels, naming it "YoutubeOpenGL"
+	// Create a windowed mode window and its OpenGL context"
 	GLFWwindow* window = glfwCreateWindow(width, height, "Scenery Editor X | ", NULL, NULL);
-
-	// Error check if the window fails to create
-	if (window == NULL)
+	if (window == NULL) // Error check if the window fails to create
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
@@ -59,12 +56,13 @@ int main()
 	//Load GLAD so it configures OpenGL
 	gladLoadGL();
 
-	// Specify the viewport of OpenGL in the Window
-	// viewport goes from x = 0, y = 0, to x = 800, y = 800
+	// Viewport of OpenGL in the Window
+	// x = 0, y = 0, to x = 800, y = 800
 	glViewport(0, 0, width, height);
 
 	// Generates Shader object using shaders defualt.vert and default.frag
 	Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
+	Shader grassProgram("shaders/default.vert", "shaders/grass.frag");
 
 	// Take care of all the light related things
 	glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -75,29 +73,51 @@ int main()
 	shaderProgram.Activate();
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	grassProgram.Activate();
+	glUniform4f(glGetUniformLocation(grassProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(grassProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
-
-	// Enables the Depth Buffer
-	glEnable(GL_DEPTH_TEST);
-
+	
+    // Enables the Depth Buffer
+    glEnable(GL_DEPTH_TEST);
+    //Choses which depth function to use
+    glDepthFunc(GL_LESS);
+    // Enables Backface Culling
+    glEnable(GL_CULL_FACE);
+    // Specifys which face to keep in this case front faces
+    glCullFace(GL_FRONT);
+    // Uses counter clock-wise standard
+    glFrontFace(GL_CCW);
+	// Configures the blending function
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	//Scene Camera creation
 	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
 	//ImGuizmo::DrawGrid(cameraView, cameraProjection, identityMatrix, 100.f);
+
+
 	/*
-	* I'm doing this relative path thing in order to centralize all the resources into one folder and not
-	* duplicate them between tutorial folders. You can just copy paste the resources from the 'Resources'
-	* folder and then give a relative path from this folder to whatever resource you want to get to.
-	* Also note that this requires C++17, so go to Project Properties, C/C++, Language, and select C++17
+	* This is all subject to change from reletive paths to call from the main scene 
+	* project instead so it can dynamically load multiple assets and textures at a single time.
+	* This is just for testing uses.
 	*/
-		std::string parentDir = (fs::current_path().fs::path::parent_path()).string();
-		std::string modelPath = "/assets/models/bunny/scene.gltf";
+	std::string parentDir = (fs::current_path().fs::path::parent_path()).string();
+	std::string modelPath	= "/assets/models/statue/scene.gltf";
+	std::string groundPath	= "/assets/models/ground/scene.gltf";
+	std::string grassPath	= "/assets/models/grass/scene.gltf";
 
-	// Load in a model
-	Model model((parentDir + modelPath).c_str());
 
-	// Initialize ImGUI
+	// Load in models
+	Model ground((parentDir + groundPath).c_str());
+	Model grass((parentDir + grassPath).c_str());
+
+	/*
+	##########################################################
+				IMGUI INITIALIZATION
+	##########################################################
+	*/
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -106,6 +126,22 @@ int main()
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
+		
+	/*
+	##########################################################
+	##########################################################
+	*/
+
+    // Variables to create periodic event for FPS displaying
+    double prevTime = 0.0;
+    double crntTime = 0.0;
+    double timeDiff;
+    // Keeps track of the amount of frames in timeDiff
+    unsigned int counter = 0;
+	// Use this to disable VSync (not advized)
+	//glfwSwapInterval(0);
+
+
 	/*
 	##########################################################
 			MAIN WHILE LOOP RUNNING SHADER ENGINE
@@ -216,48 +252,124 @@ int main()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
-		// Start the ImGui frame
-    	ImGui_ImplOpenGL3_NewFrame();
-    	ImGui_ImplGlfw_NewFrame();
-    	ImGui::NewFrame();
+		/*
+		##########################################################
+					IMGUI PASS INCLUSION
+		##########################################################
+		*/
 
-    	// Your code to create ImGui widgets goes here
-
-    	// Rendering
-    	ImGui::Render();
-    	int display_w, display_h;
-
+		/*
+		##########################################################
+		##########################################################
+		*/
 		
 		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+		
+        // Start the ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+    	// Set the position and size of the FPS counter to the top-left corner
+    	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_FirstUseEver);
+    	ImGui::SetNextWindowSize(ImVec2(100.0f, 50.0f)); // Set a specific size
+
+        // Draw the FPS in an ImGui panel
+        {
+            static float fps = 0.0f;
+            static float lastTime = glfwGetTime();
+            static int frames = 0;
+
+            double currentTime = glfwGetTime();
+            float dt = currentTime - lastTime;
+            frames++;
+
+        	if (dt >= 1.0f)
+        	{
+        	    fps = frames / dt;
+        	    lastTime = currentTime;
+        	    frames = 0;
+        	}
+
+        	ImGui::Begin("FPS Counter", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove);
+        	ImGui::Text("FPS: %.2f", fps);
+        	ImGui::End();
+        }
+
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		
 		// Handles camera inputs
 		camera.Inputs(window);
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		// Draw a model
-		model.Draw(shaderProgram, camera);
+		// Draw the normal model
+		ground.Draw(shaderProgram, camera);
+
+		// Disable cull face so that grass and windows have both faces
+		glDisable(GL_CULL_FACE);
+		grass.Draw(grassProgram, camera);
+		// Enable blending for windows
+		glEnable(GL_BLEND);
+
+		glDisable(GL_BLEND);
+		glEnable(GL_CULL_FACE);
+
+        // Render ImGui
+        ImGui::Render();
+        //int display_w, display_h;
+        //glfwGetFramebufferSize(window, &display_w, &display_h);
+        //glViewport(0, 0, display_w, display_h);
+        
+		// Ensure that OpenGL state is reset to default before rendering ImGui
+    	glDisable(GL_DEPTH_TEST);
+    	glDisable(GL_CULL_FACE);
+
+		// Render ImGui draw data
+    	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
+		
+    	// Ensure that OpenGL state is reset to default after rendering ImGui
+    	glEnable(GL_DEPTH_TEST);
+    	glEnable(GL_CULL_FACE);
+
 		// Take care of all GLFW events
 		glfwPollEvents();
+
+		// Resize window if necessary
+        // Get the current framebuffer size
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+
+        // Check if the new size is different from the previous one
+        static int display_w = 0, display_h = 0;
+        if (width != display_w || height != display_h) {
+            // Set the viewport to the new size
+            glViewport(0, 0, width, height);
+            
+            // Update the variables with the new values
+			display_w = width;
+			display_h = height;
+        }
 	}
 
 	// Deletes all ImGUI instances
-	//ImGui_ImplOpenGL3_Shutdown();
-	//ImGui_ImplGlfw_Shutdown();
-	//ImGui::DestroyContext();
-
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	// Delete all the objects we've created
 	shaderProgram.Delete();
+	grassProgram.Delete();
 	// Delete window before ending the program
 	glfwDestroyWindow(window);
 	// Terminate GLFW before ending the program
 	glfwTerminate();
+	
 	return 0;
 }

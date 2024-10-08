@@ -184,8 +184,11 @@
     <None Include="resources\shaders\infinite_grid.vs" />
     <None Include="shaders\default.vert" />
     <None Include="shaders\default.frag" />
+    <None Include="shaders\grass.frag" />
     <None Include="shaders\light.frag" />
     <None Include="shaders\light.vert" />
+    <None Include="shaders\outlining.frag" />
+    <None Include="shaders\outlining.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resources\imgui\imconfig.h" />
