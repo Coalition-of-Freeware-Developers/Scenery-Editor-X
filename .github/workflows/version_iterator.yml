@@ -1,0 +1,104 @@
+name: Update Version
+
+on:
+  push:
+    branches:
+      - '**'  # This will trigger on any branch push
+
+jobs:
+  update-version:
+    name: Increment Version Number
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Git user for version commit
+      - name: Set up Git user
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      # Read the current version from version.md
+      - name: Get current version
+        id: get_version
+        run: |
+          if [ ! -f version.md ]; then
+            echo "v0.0.000" > version.md
+          fi
+          current_version=$(cat version.md | grep -oP 'v\d+\.\d+\.\d+(-beta|-stable)?')
+          echo "Current version is: $current_version"
+          echo "::set-output name=current_version::$current_version"
+
+      # Determine new version number
+      - name: Calculate new version
+        id: new_version
+        run: |
+          current_version="${{ steps.get_version.outputs.current_version }}"
+          major=$(echo $current_version | cut -d. -f1 | grep -oP '\d+')
+          minor=$(echo $current_version | cut -d. -f2)
+          patch=$(echo $current_version | cut -d. -f3 | cut -d'-' -f1)
+          tag=$(echo $current_version | grep -oP '(-beta|-stable)?')
+
+          # Increment patch version
+          new_patch=$((patch + 1))
+          new_version="v$major.$minor.$(printf "%03d" $new_patch)$tag"
+          echo "New version is: $new_version"
+          echo "::set-output name=new_version::$new_version"
+
+      # Update version.md file with the new version
+      - name: Update version.md
+        run: |
+          new_version="${{ steps.new_version.outputs.new_version }}"
+          echo "$new_version" > version.md
+
+      # Commit version update
+      - name: Commit updated version
+        run: |
+          git add version.md
+          git commit -m "Bump version to ${{ steps.new_version.outputs.new_version }}"
+          git push
+
+  # Add beta or stable tag based on push to specific branches
+  tag-version:
+    name: Tag version as beta or stable
+    runs-on: ubuntu-latest
+    needs: update-version
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Git user for tagging
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      # Tag as beta for any branch with "beta" in the name
+      - name: Check for beta or stable tag
+        id: set_tag
+        run: |
+          branch_name="${{ github.ref_name }}"
+          version="${{ steps.new_version.outputs.new_version }}"
+
+          if [[ $branch_name == *"beta"* ]]; then
+            new_version="${version%-*}-beta"
+          elif [[ $branch_name == "main" ]]; then
+            new_version="${version%-*}-stable"
+          else
+            new_version=$version
+          fi
+
+          echo "New version with tag is: $new_version"
+          echo "::set-output name=tagged_version::$new_version"
+
+      # Update version.md with the beta or stable tag
+      - name: Update version.md with tag
+        run: |
+          tagged_version="${{ steps.set_tag.outputs.tagged_version }}"
+          echo "$tagged_version" > version.md
+          git add version.md
+          git commit -m "Tag version as $tagged_version"
+          git push
