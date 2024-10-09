@@ -30,13 +30,13 @@ jobs:
           fi
           current_version=$(cat version.md | grep -oP 'v\d+\.\d+\.\d+(-alpha|-beta|-stable)?')
           echo "Current version is: $current_version"
-          echo "::set-output name=current_version::$current_version"
+          echo "current_version=$current_version" >> $GITHUB_ENV  # Use environment file
 
       # Determine new version number
       - name: Calculate new version
         id: new_version
         run: |
-          current_version="${{ steps.get_version.outputs.current_version }}"
+          current_version="${{ env.current_version }}"
           major=$(echo $current_version | cut -d. -f1 | grep -oP '\d+')
           minor=$(echo $current_version | cut -d. -f2)
           patch=$(echo $current_version | cut -d. -f3 | cut -d'-' -f1)
@@ -46,19 +46,19 @@ jobs:
           new_patch=$((patch + 1))
           new_version="v$major.$minor.$(printf "%03d" $new_patch)$tag"
           echo "New version is: $new_version"
-          echo "::set-output name=new_version::$new_version"
+          echo "new_version=$new_version" >> $GITHUB_ENV  # Use environment file
 
       # Update version.md file with the new version
       - name: Update version.md
         run: |
-          new_version="${{ steps.new_version.outputs.new_version }}"
+          new_version="${{ env.new_version }}"
           echo "$new_version" > version.md
 
       # Commit version update
       - name: Commit updated version
         run: |
           git add version.md
-          git commit -m "Bump version to ${{ steps.new_version.outputs.new_version }}"
+          git commit -m "Bump version to ${{ env.new_version }}"
           git push
 
   # Add alpha, beta, or stable tag based on push to specific branches
@@ -81,7 +81,7 @@ jobs:
         id: set_tag
         run: |
           branch_name="${{ github.ref_name }}"
-          version="${{ steps.new_version.outputs.new_version }}"
+          version="${{ env.new_version }}"
 
           if [[ $branch_name == *"alpha"* ]]; then
             new_version="${version%-*}-alpha"
@@ -93,13 +93,13 @@ jobs:
             new_version=$version
           fi
 
-          echo "New version with tag is: $new_version"
-          echo "::set-output name=tagged_version::$new_version"
+          echo "Tagged version is: $new_version"
+          echo "tagged_version=$new_version" >> $GITHUB_ENV  # Use environment file
 
       # Update version.md with the alpha, beta, or stable tag
       - name: Update version.md with tag
         run: |
-          tagged_version="${{ steps.set_tag.outputs.tagged_version }}"
+          tagged_version="${{ env.tagged_version }}"
           echo "$tagged_version" > version.md
           git add version.md
           git commit -m "Tag version as $tagged_version"
