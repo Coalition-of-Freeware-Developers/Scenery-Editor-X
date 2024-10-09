@@ -1,3 +1,34 @@
-              - name: C/C++ Linter
-                uses: cpp-linter/cpp-linter-action@v2.13.2
-            
+name: C++ Lint
+
+on:
+  push:
+    branches:
+      - '**'  # This will run on all branches when code is pushed
+  pull_request:
+    branches:
+      - '**'  # This will run on all branches when a PR is opened
+
+jobs:
+  lint:
+    name: Lint C++ code
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Run C++ Linter
+      - name: Run C++ Linter
+        uses: cpp-linter/cpp-linter-action@main
+        with:
+          args: '**/*.cpp'  # Lint all C++ files
+
+      # Optionally, if you want to upload artifacts (like logs)
+      - name: Upload lint logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-logs
+          path: logs/
+
