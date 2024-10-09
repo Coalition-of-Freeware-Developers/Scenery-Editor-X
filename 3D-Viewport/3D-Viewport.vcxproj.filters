@@ -90,18 +90,15 @@
     <ClCompile Include="src\glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\viewAxis.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\default.vert">
       <Filter>Resource Files\shaders</Filter>
     </None>
     <None Include="shaders\default.frag">
-      <Filter>Resource Files\shaders</Filter>
-    </None>
-    <None Include="resources\shaders\infinite_grid.fs">
-      <Filter>Resource Files\shaders</Filter>
-    </None>
-    <None Include="resources\shaders\infinite_grid.vs">
       <Filter>Resource Files\shaders</Filter>
     </None>
     <None Include="shaders\light.frag">
@@ -117,6 +114,39 @@
       <Filter>Resource Files\shaders</Filter>
     </None>
     <None Include="shaders\grass.frag">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\framebuffer.frag">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\xtextgrid.frag">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\infinite_grid.fs">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\default.geom">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\font.glsl">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\framebuffer.vert">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\grid.vert">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\infinite_grid.vs">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="shaders\grid.frag">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="skybox.vert">
+      <Filter>Resource Files\shaders</Filter>
+    </None>
+    <None Include="skybox.frag">
       <Filter>Resource Files\shaders</Filter>
     </None>
   </ItemGroup>
@@ -209,13 +239,5 @@
     <Text Include="resources\fonts\opensans\LICENSE.txt">
       <Filter>Resource Files\fonts\opensans</Filter>
     </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\assets\textures\brick.png">
-      <Filter>Resource Files\textures</Filter>
-    </Image>
-    <Image Include="..\assets\textures\pop_cat.png">
-      <Filter>Resource Files\textures</Filter>
-    </Image>
   </ItemGroup>
 </Project>

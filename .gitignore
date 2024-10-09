@@ -178,3 +178,6 @@ _pkginfo.txt
 *.msix
 *.msm
 *.msp
+SceneryEditorX/.vscode/c_cpp_properties.json
+SceneryEditorX/.vscode/launch.json
+SceneryEditorX/.vscode/settings.json

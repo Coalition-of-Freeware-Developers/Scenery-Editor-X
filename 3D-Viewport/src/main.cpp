@@ -1,15 +1,14 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-//#define GLM_ENABLE_EXPERIMENTAL
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include "model.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-//#include "ImGuizmo/ImGuizmo.h"
 
+//#include "ImGuizmo/ImGuizmo.h"
 /*
 std::string GetCurrentProjectName() {
     // This should be replaced with actual logic to get the project name.
@@ -23,12 +22,121 @@ std::string windowTitle = "Scenery Editor X | " + projectName;
 // Use `windowTitle` for setting the window title in your 3D editor
 */
 
-const unsigned int width = 800;
-const unsigned int height = 800;
+const unsigned int width = 1400;
+const unsigned int height = 810;
 
+struct Color {
+	float r, g, b;
+};
 
+// void Arrow(GLdouble x1, GLdouble y1, GLdouble z1, GLdouble x2, GLdouble y2, GLdouble z2, GLdouble D)
+// {
+// 	double dx = x2 - x1;
+// 	double dy = y2 - y1;
+// 	double dz = z2 - z1;
+// 	double len = sqrt(dx * dx + dy * dy + dz * dz);
 
+// 	gluQuadricObj* quadObj;
 
+// 	glPushMatrix();
+
+// 	glTranslated(x1, y1, z1);
+
+// 	if ((dx != 0.) || (dy != 0.)) {
+// 		glRotated(atan2(dy, dx) / RADPERDEG, 0., 0., 1.);
+// 		glRotated(atan2(sqrt(dx * dx + dy * dy), dz) / RADPERDEG, 0., 1., 0.);
+// 	}
+// 	else if (dz < 0) {
+// 		glRotated(180, 1., 0., 0.);
+// 	}
+
+// 	glTranslatef(0, 0, len - 4 * D);
+
+// 	quadObj = gluNewQuadric();
+// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
+// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
+// 	gluCylinder(quadObj, 2 * D, 0.0, 4 * D, 32, 1);
+// 	glDeleteQuadric(quadObj);
+
+// 	quadObj = gluNewQuadric();
+// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
+// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
+// 	gluDisk(quadObj, 0.0, 2 * D, 32, 1);
+// 	glDeleteQuadric(quadObj);
+
+// 	glTranslatef(0, 0, -len + 4 * D);
+
+// 	quadObj = gluNewQuadric();
+// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
+// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
+// 	gluCylinder(quadObj, D, D, len - 4 * D, 32, 1);
+// 	glDeleteQuadric(quadObj);
+
+// 	quadObj = gluNewQuadric();
+// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
+// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
+// 	gluDisk(quadObj, 0.0, D, 32, 1);
+// 	glDeleteQuadric(quadObj);
+
+// 	glPopMatrix();
+
+// }
+// void drawAxes(GLdouble length)
+// {
+//     const float arrowLength = length * 0.5f;
+//     const float arrowRadius = length * 0.05f;
+
+//     // X axis
+//     glPushMatrix();
+//     glTranslatef(-arrowLength, 0, 0);
+//     Arrow(0, 0, 0, 2 * arrowLength, 0, 0, arrowRadius);
+//     glPopMatrix();
+
+//     // Y axis
+//     glPushMatrix();
+//     glTranslatef(0, -arrowLength, 0);
+//     Arrow(0, 0, 0, 0, 2 * arrowLength, 0, arrowRadius);
+//     glPopMatrix();
+
+//     // Z axis
+//     glPushMatrix();
+//     glTranslatef(0, 0, -arrowLength);
+//     Arrow(0, 0, 0, 0, 0, 2 * arrowLength, arrowRadius);
+//     glPopMatrix();
+// }
+
+// void Arrow(GLdouble x1, GLdouble y1, GLdouble z1, GLdouble x2, GLdouble y2, GLdouble z2, GLdouble D);
+// void drawAxes(GLdouble length);
+//void drawGrid();
+
+// Function to render the viewport axis indicator
+void drawAxis(const Color &color, float length) {
+    glBegin(GL_LINES);
+    glColor3f(color.r, color.g, color.b);
+
+    glVertex2f(-length / 2.0f, 0);
+    glVertex2f(length / 2.0f, 0);
+
+    glEnd();
+}
+void drawAxes() {
+    Color xColor = {1.0f, 0.0f, 0.0f};
+    Color yColor = {0.0f, 1.0f, 0.0f};
+    Color zColor = {0.0f, 0.0f, 1.0f};
+
+    float axisLength = 100.0f;
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0.0f, width, 0.0f, height);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    drawAxis(xColor, axisLength);
+    drawAxis(yColor, axisLength);
+    drawAxis(zColor, axisLength);
+}
 int main()
 {
 	// Initialize GLFW
@@ -60,8 +168,21 @@ int main()
 	// x = 0, y = 0, to x = 800, y = 800
 	glViewport(0, 0, width, height);
 
-	// Generates Shader object using shaders defualt.vert and default.frag
+	// Vertex data for the axes indicator
+    // float axisVertices[] = {
+    //      0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+    //      1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+
+    //      0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+    //      0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+
+    //      0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+    //      0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f
+    // };
+
+	// Generates Shader object
 	Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
+	Shader gridProgram("shaders/default.vert", "shaders/grid.frag");
 	Shader grassProgram("shaders/default.vert", "shaders/grass.frag");
 
 	// Take care of all the light related things
@@ -70,6 +191,9 @@ int main()
 	glm::mat4 lightModel = glm::mat4(1.0f);
 	lightModel = glm::translate(lightModel, lightPos);
 
+	gridProgram.Activate();
+	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	shaderProgram.Activate();
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
@@ -140,53 +264,109 @@ int main()
     unsigned int counter = 0;
 	// Use this to disable VSync (not advized)
 	//glfwSwapInterval(0);
+	/*
+	///////////////////////////////////////////////////////////////////////////////
+	// draw a grid on XZ-plane
+	///////////////////////////////////////////////////////////////////////////////
+	void Model::drawGridXZ(float size, float step)
+	{
+		// disable lighting
+		glDisable(GL_LIGHTING);
+		//glDisable(GL_DEPTH_TEST);
+		glLineWidth(0.5f);
+
+		glBegin(GL_LINES);
+
+		glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+		for (float i = step; i <= size; i += step)
+		{
+			glVertex3f(-size, 0, i);   // lines parallel to X-axis
+			glVertex3f(size, 0, i);
+			glVertex3f(-size, 0, -i);   // lines parallel to X-axis
+			glVertex3f(size, 0, -i);
+
+			glVertex3f(i, 0, -size);   // lines parallel to Z-axis
+			glVertex3f(i, 0, size);
+			glVertex3f(-i, 0, -size);   // lines parallel to Z-axis
+			glVertex3f(-i, 0, size);
+		}
+
+		// x-axis
+		glColor4f(1, 0, 0, 0.5f);
+		glColor3f(1, 0, 0);
+		glVertex3f(-size, 0, 0);
+		glVertex3f(size, 0, 0);
+
+		// z-axis
+		glColor4f(0, 0, 1, 0.5f);
+		glVertex3f(0, 0, -size);
+		glVertex3f(0, 0, size);
+
+		glEnd();
+
+		// enable lighting back
+		glLineWidth(1.0f);
+		//glEnable(GL_DEPTH_TEST);
+		glEnable(GL_LIGHTING);
+	}
 
 
+
+	///////////////////////////////////////////////////////////////////////////////
+	// draw a grid on the xy plane
+	///////////////////////////////////////////////////////////////////////////////
+	void Model::drawGridXY(float size, float step)
+	{
+		glDisable(GL_LIGHTING);
+		//glDisable(GL_DEPTH_TEST);
+		glLineWidth(0.5f);
+
+		glBegin(GL_LINES);
+
+		glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+		for (float i = step; i <= size; i += step)
+		{
+			glVertex3f(-size, i, 0);   // lines parallel to X-axis
+			glVertex3f(size, i, 0);
+			glVertex3f(-size, -i, 0);   // lines parallel to X-axis
+			glVertex3f(size, -i, 0);
+
+			glVertex3f(i, -size, 0);   // lines parallel to Y-axis
+			glVertex3f(i, size, 0);
+			glVertex3f(-i, -size, 0);   // lines parallel to Y-axis
+			glVertex3f(-i, size, 0);
+		}
+
+		// x-axis
+		glColor4f(1.0f, 0, 0, 0.5f);
+		glVertex3f(-size, 0, 0);
+		glVertex3f(size, 0, 0);
+
+		// y-axis
+		glColor4f(0, 0, 1.0f, 0.5f);
+		glVertex3f(0, -size, 0);
+		glVertex3f(0, size, 0);
+
+		glEnd();
+
+		glLineWidth(1.0f);
+		//glEnable(GL_DEPTH_TEST);
+		glEnable(GL_LIGHTING);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// compute grid size and step
+	///////////////////////////////////////////////////////////////////////////////
+	void Model::setGridSize(float size)
+	{
+		gridSize = size;
+		gridStep = 1;
+	}
+	*/
 	/*
 	##########################################################
 			MAIN WHILE LOOP RUNNING SHADER ENGINE
 	##########################################################
-	*/
-	/*
-	while (!glfwWindowShouldClose(window))
-	{
-		// Specify the color of the background
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		// Clean the back buffer and depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Tell OpenGL a new frame is about to begin
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		// ImGUI window creation
-		ImGui::Begin("My name is window, ImGUI window");
-		// Text that appears in the window
-		ImGui::Text("Hello there adventurer!");
-		// Ends the window
-		ImGui::End();
-
-		// Handles camera inputs
-		camera.Inputs(window);
-		// Updates and exports the camera matrix to the Vertex Shader
-		camera.updateMatrix(45.0f, 0.1f, 100.0f);
-
-		// Draws different meshes
-		floor.Draw(shaderProgram, camera);
-		light.Draw(lightShader, camera);
-
-		// Renders the ImGUI elements
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		// Swap the back buffer with the front buffer
-		glfwSwapBuffers(window);
-		// Take care of all GLFW events
-		glfwPollEvents();
-
-
-	}	*/
 	/*
 	void DrawGrid(const float* view, const float* projection, const float* matrix, const float gridSize)
 	{
@@ -252,20 +432,15 @@ int main()
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
+		// Specify the color of the background
+		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+		
 		/*
 		##########################################################
 					IMGUI PASS INCLUSION
 		##########################################################
 		*/
 
-		/*
-		##########################################################
-		##########################################################
-		*/
-		
-		// Specify the color of the background
-		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		
         // Start the ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -297,6 +472,15 @@ int main()
         	ImGui::End();
         }
 
+		/*
+		##########################################################
+		##########################################################
+		*/
+
+		//RenderViewportAxes();
+		drawAxes();
+
+
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -306,14 +490,21 @@ int main()
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
+		// Draw ground plane grid
+		//grid.Draw(shaderProgram, camera);
+
 		// Draw the normal model
 		ground.Draw(shaderProgram, camera);
 
 		// Disable cull face so that grass and windows have both faces
 		glDisable(GL_CULL_FACE);
+
+
 		grass.Draw(grassProgram, camera);
 		// Enable blending for windows
 		glEnable(GL_BLEND);
+
+
 
 		glDisable(GL_BLEND);
 		glEnable(GL_CULL_FACE);
