@@ -19,7 +19,7 @@ namespace Tokenizer
 	/// <param name="inString">String to read from</param>
 	/// <param name="DelimitingChars">Delimiting chars (should not include \n)</param>
 	/// <param name="OutTokens">Pointer to vector of strings that will hold the tokens (not cleared before adding tokens)</param>
-	std::vector<std::string> TokenizeString(std::string& inString, std::string DelimitingChars);
+	std::vector<std::string> TokenizeString(std::string& InString, std::vector<char> DelimitingChars);
 
 #ifdef _DEBUG
 	void TestTokenizer();

@@ -21,19 +21,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Tokenizer.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="X-PlaneSceneryLibraryUtils.h">
-      <Filter>Headers</Filter>
+      <Filter>Utility Headers</Filter>
     </ClInclude>
     <ClInclude Include="X-PlaneSceneryLibraryParsers.h">
-      <Filter>Headers</Filter>
+      <Filter>Include Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="X-PlaneSceneryLibraryUtils.h">
+      <Filter>Include Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tokenizer.cpp">
       <Filter>Utility Source</Filter>
     </ClCompile>
-    <ClCompile Include="LibTestMain.cpp" />
   </ItemGroup>
 </Project>
