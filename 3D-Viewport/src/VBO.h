@@ -19,7 +19,8 @@ class VBO
 public:
 	// Reference ID of the Vertex Buffer Object
 	GLuint ID;
-	// Constructor that generates a Vertex Buffer Object and links it to vertices
+	// Constructor that generates a VBO from an array of positions (useful for grid)
+	VBO(const std::vector<glm::vec3>& positions);
 	VBO(std::vector<Vertex>& vertices);
 
 	// Binds the VBO

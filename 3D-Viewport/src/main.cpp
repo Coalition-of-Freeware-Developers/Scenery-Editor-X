@@ -29,114 +29,16 @@ struct Color {
 	float r, g, b;
 };
 
-// void Arrow(GLdouble x1, GLdouble y1, GLdouble z1, GLdouble x2, GLdouble y2, GLdouble z2, GLdouble D)
-// {
-// 	double dx = x2 - x1;
-// 	double dy = y2 - y1;
-// 	double dz = z2 - z1;
-// 	double len = sqrt(dx * dx + dy * dy + dz * dz);
+std::vector<glm::vec3> gridVertices = {
+    glm::vec3(-1000.0f, 0.0f, -1000.0f),
+    glm::vec3( 1000.0f, 0.0f, -1000.0f),
+    glm::vec3( 1000.0f, 0.0f,  1000.0f),
+    glm::vec3(-1000.0f, 0.0f,  1000.0f)
+};
 
-// 	gluQuadricObj* quadObj;
+float gridThickness = 1.0f;
+Color gridColor = { 0.5f, 0.5f, 0.5f };
 
-// 	glPushMatrix();
-
-// 	glTranslated(x1, y1, z1);
-
-// 	if ((dx != 0.) || (dy != 0.)) {
-// 		glRotated(atan2(dy, dx) / RADPERDEG, 0., 0., 1.);
-// 		glRotated(atan2(sqrt(dx * dx + dy * dy), dz) / RADPERDEG, 0., 1., 0.);
-// 	}
-// 	else if (dz < 0) {
-// 		glRotated(180, 1., 0., 0.);
-// 	}
-
-// 	glTranslatef(0, 0, len - 4 * D);
-
-// 	quadObj = gluNewQuadric();
-// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
-// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
-// 	gluCylinder(quadObj, 2 * D, 0.0, 4 * D, 32, 1);
-// 	glDeleteQuadric(quadObj);
-
-// 	quadObj = gluNewQuadric();
-// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
-// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
-// 	gluDisk(quadObj, 0.0, 2 * D, 32, 1);
-// 	glDeleteQuadric(quadObj);
-
-// 	glTranslatef(0, 0, -len + 4 * D);
-
-// 	quadObj = gluNewQuadric();
-// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
-// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
-// 	gluCylinder(quadObj, D, D, len - 4 * D, 32, 1);
-// 	glDeleteQuadric(quadObj);
-
-// 	quadObj = gluNewQuadric();
-// 	gluQuadricDrawStyle(quadObj, GLU_FILL);
-// 	gluQuadricNormals(quadObj, GLU_SMOOTH);
-// 	gluDisk(quadObj, 0.0, D, 32, 1);
-// 	glDeleteQuadric(quadObj);
-
-// 	glPopMatrix();
-
-// }
-// void drawAxes(GLdouble length)
-// {
-//     const float arrowLength = length * 0.5f;
-//     const float arrowRadius = length * 0.05f;
-
-//     // X axis
-//     glPushMatrix();
-//     glTranslatef(-arrowLength, 0, 0);
-//     Arrow(0, 0, 0, 2 * arrowLength, 0, 0, arrowRadius);
-//     glPopMatrix();
-
-//     // Y axis
-//     glPushMatrix();
-//     glTranslatef(0, -arrowLength, 0);
-//     Arrow(0, 0, 0, 0, 2 * arrowLength, 0, arrowRadius);
-//     glPopMatrix();
-
-//     // Z axis
-//     glPushMatrix();
-//     glTranslatef(0, 0, -arrowLength);
-//     Arrow(0, 0, 0, 0, 0, 2 * arrowLength, arrowRadius);
-//     glPopMatrix();
-// }
-
-// void Arrow(GLdouble x1, GLdouble y1, GLdouble z1, GLdouble x2, GLdouble y2, GLdouble z2, GLdouble D);
-// void drawAxes(GLdouble length);
-//void drawGrid();
-
-// Function to render the viewport axis indicator
-void drawAxis(const Color &color, float length) {
-    glBegin(GL_LINES);
-    glColor3f(color.r, color.g, color.b);
-
-    glVertex2f(-length / 2.0f, 0);
-    glVertex2f(length / 2.0f, 0);
-
-    glEnd();
-}
-void drawAxes() {
-    Color xColor = {1.0f, 0.0f, 0.0f};
-    Color yColor = {0.0f, 1.0f, 0.0f};
-    Color zColor = {0.0f, 0.0f, 1.0f};
-
-    float axisLength = 100.0f;
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0.0f, width, 0.0f, height);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    drawAxis(xColor, axisLength);
-    drawAxis(yColor, axisLength);
-    drawAxis(zColor, axisLength);
-}
 int main()
 {
 	// Initialize GLFW
@@ -164,6 +66,9 @@ int main()
 	//Load GLAD so it configures OpenGL
 	gladLoadGL();
 
+
+	bool showGrid = true; 
+
 	// Viewport of OpenGL in the Window
 	// x = 0, y = 0, to x = 800, y = 800
 	glViewport(0, 0, width, height);
@@ -182,7 +87,7 @@ int main()
 
 	// Generates Shader object
 	Shader shaderProgram("shaders/default.vert", "shaders/default.frag");
-	Shader gridProgram("shaders/default.vert", "shaders/grid.frag");
+	Shader gridShader("shaders/grid.vert", "shaders/grid.frag");
 	Shader grassProgram("shaders/default.vert", "shaders/grass.frag");
 
 	// Take care of all the light related things
@@ -191,9 +96,6 @@ int main()
 	glm::mat4 lightModel = glm::mat4(1.0f);
 	lightModel = glm::translate(lightModel, lightPos);
 
-	gridProgram.Activate();
-	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	shaderProgram.Activate();
 	glUniform4f(glGetUniformLocation(shaderProgram.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(shaderProgram.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
@@ -218,8 +120,23 @@ int main()
 	//Scene Camera creation
 	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
 
-	//ImGuizmo::DrawGrid(cameraView, cameraProjection, identityMatrix, 100.f);
+	// Create a VAO for the grid
+	VAO gridVAO;
 
+	// Create a VBO for the grid vertices
+	VBO gridVBO(gridVertices);
+
+	// Bind the VAO and set up the VBO linking
+	gridVAO.Bind();
+	gridVBO.Bind();
+
+	// Link the VBO with the VAO (using layout location 0, for position)
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// Unbind the VBO and VAO after linking
+	gridVBO.Unbind();
+	gridVAO.Unbind();
 
 	/*
 	* This is all subject to change from reletive paths to call from the main scene 
@@ -264,166 +181,7 @@ int main()
     unsigned int counter = 0;
 	// Use this to disable VSync (not advized)
 	//glfwSwapInterval(0);
-	/*
-	///////////////////////////////////////////////////////////////////////////////
-	// draw a grid on XZ-plane
-	///////////////////////////////////////////////////////////////////////////////
-	void Model::drawGridXZ(float size, float step)
-	{
-		// disable lighting
-		glDisable(GL_LIGHTING);
-		//glDisable(GL_DEPTH_TEST);
-		glLineWidth(0.5f);
 
-		glBegin(GL_LINES);
-
-		glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
-		for (float i = step; i <= size; i += step)
-		{
-			glVertex3f(-size, 0, i);   // lines parallel to X-axis
-			glVertex3f(size, 0, i);
-			glVertex3f(-size, 0, -i);   // lines parallel to X-axis
-			glVertex3f(size, 0, -i);
-
-			glVertex3f(i, 0, -size);   // lines parallel to Z-axis
-			glVertex3f(i, 0, size);
-			glVertex3f(-i, 0, -size);   // lines parallel to Z-axis
-			glVertex3f(-i, 0, size);
-		}
-
-		// x-axis
-		glColor4f(1, 0, 0, 0.5f);
-		glColor3f(1, 0, 0);
-		glVertex3f(-size, 0, 0);
-		glVertex3f(size, 0, 0);
-
-		// z-axis
-		glColor4f(0, 0, 1, 0.5f);
-		glVertex3f(0, 0, -size);
-		glVertex3f(0, 0, size);
-
-		glEnd();
-
-		// enable lighting back
-		glLineWidth(1.0f);
-		//glEnable(GL_DEPTH_TEST);
-		glEnable(GL_LIGHTING);
-	}
-
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	// draw a grid on the xy plane
-	///////////////////////////////////////////////////////////////////////////////
-	void Model::drawGridXY(float size, float step)
-	{
-		glDisable(GL_LIGHTING);
-		//glDisable(GL_DEPTH_TEST);
-		glLineWidth(0.5f);
-
-		glBegin(GL_LINES);
-
-		glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
-		for (float i = step; i <= size; i += step)
-		{
-			glVertex3f(-size, i, 0);   // lines parallel to X-axis
-			glVertex3f(size, i, 0);
-			glVertex3f(-size, -i, 0);   // lines parallel to X-axis
-			glVertex3f(size, -i, 0);
-
-			glVertex3f(i, -size, 0);   // lines parallel to Y-axis
-			glVertex3f(i, size, 0);
-			glVertex3f(-i, -size, 0);   // lines parallel to Y-axis
-			glVertex3f(-i, size, 0);
-		}
-
-		// x-axis
-		glColor4f(1.0f, 0, 0, 0.5f);
-		glVertex3f(-size, 0, 0);
-		glVertex3f(size, 0, 0);
-
-		// y-axis
-		glColor4f(0, 0, 1.0f, 0.5f);
-		glVertex3f(0, -size, 0);
-		glVertex3f(0, size, 0);
-
-		glEnd();
-
-		glLineWidth(1.0f);
-		//glEnable(GL_DEPTH_TEST);
-		glEnable(GL_LIGHTING);
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	// compute grid size and step
-	///////////////////////////////////////////////////////////////////////////////
-	void Model::setGridSize(float size)
-	{
-		gridSize = size;
-		gridStep = 1;
-	}
-	*/
-	/*
-	##########################################################
-			MAIN WHILE LOOP RUNNING SHADER ENGINE
-	##########################################################
-	/*
-	void DrawGrid(const float* view, const float* projection, const float* matrix, const float gridSize)
-	{
-		matrix_t viewProjection = *(matrix_t*)view * *(matrix_t*)projection;
-		vec_t frustum[6];
-		ComputeFrustumPlanes(frustum, viewProjection.m16);
-		matrix_t res = *(matrix_t*)matrix * viewProjection;
-
-		for (float f = -gridSize; f <= gridSize; f += 1.f)
-		{
-			for (int dir = 0; dir < 2; dir++)
-			{
-				vec_t ptA = makeVect(dir ? -gridSize : f, 0.f, dir ? f : -gridSize);
-				vec_t ptB = makeVect(dir ? gridSize : f, 0.f, dir ? f : gridSize);
-				bool visible = true;
-				for (int i = 0; i < 6; i++)
-				{
-					float dA = DistanceToPlane(ptA, frustum[i]);
-					float dB = DistanceToPlane(ptB, frustum[i]);
-					if (dA < 0.f && dB < 0.f)
-					{
-						visible = false;
-						break;
-					}
-					if (dA > 0.f && dB > 0.f)
-					{
-						continue;
-					}
-					if (dA < 0.f)
-					{
-						float len = fabsf(dA - dB);
-						float t = fabsf(dA) / len;
-						ptA.Lerp(ptB, t);
-					}
-					if (dB < 0.f)
-					{
-						float len = fabsf(dB - dA);
-						float t = fabsf(dB) / len;
-						ptB.Lerp(ptA, t);
-					}
-				}
-				if (visible)
-				{
-					ImU32 col = 0xFF808080;
-					col = (fmodf(fabsf(f), 10.f) < FLT_EPSILON) ? 0xFF909090 : col;
-					col = (fabsf(f) < FLT_EPSILON) ? 0xFF404040 : col;
-
-					float thickness = 1.f;
-					thickness = (fmodf(fabsf(f), 10.f) < FLT_EPSILON) ? 1.5f : thickness;
-					thickness = (fabsf(f) < FLT_EPSILON) ? 2.3f : thickness;
-
-					gContext.mDrawList->AddLine(worldToPos(ptA, res), worldToPos(ptB, res), col, thickness);
-				}
-			}
-		}
-	}
-	*/
 	/*
 	##########################################################
 	##########################################################
@@ -434,6 +192,9 @@ int main()
 	{
 		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+
+		// Clean the back buffer and depth buffer
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
 		/*
 		##########################################################
@@ -445,6 +206,13 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+		// Render ImGui Grid Settings
+		ImGui::Begin("Grid Settings");
+		ImGui::Checkbox("Show Grid", &showGrid);
+		ImGui::SliderFloat("Grid Thickness", &gridThickness, 0.1f, 5.0f, "%.1f");
+		ImGui::ColorEdit3("Grid Color", (float*)&gridColor);
+		ImGui::End();
 
     	// Set the position and size of the FPS counter to the top-left corner
     	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_FirstUseEver);
@@ -467,31 +235,71 @@ int main()
         	    frames = 0;
         	}
 
+			// Begin the ImGui window
         	ImGui::Begin("FPS Counter", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoMove);
+			// Display the FPS value
         	ImGui::Text("FPS: %.2f", fps);
+			// End the ImGui window
         	ImGui::End();
         }
+
+
+		/*
+		##########################################################
+					Viewport Camera 
+		##########################################################
+		*/
+
+		// Handles camera inputs
+
+		if (!ImGui::GetIO().WantCaptureMouse && !ImGui::GetIO().WantCaptureKeyboard) {
+			camera.Inputs(window);
+		}
+		// Updates and exports the camera matrix to the Vertex Shader
+		camera.updateMatrix(45.0f, 0.1f, 100.0f);
+
+		
+		/*
+		##########################################################
+					Viewport Orientation Axis
+		##########################################################
+		*/
+
+		//RenderViewportAxes();
+		//drawAxes();
+
+		/*
+		##########################################################
+					Viewport Grid
+		##########################################################
+		*/
+		// Draw ground plane grid
+		if (showGrid){
+    		// Activate grid shader and draw the grid
+    		gridShader.Activate();
+    		gridVAO.Bind();
+			camera.Matrix(gridShader, "uMVP");
+
+			// Pass camera position in the xz-plane
+			glm::vec3 camPos = camera.Position;
+			glUniform2f(glGetUniformLocation(gridShader.ID, "cameraPos"), camPos.x, camPos.z);
+
+			// Set grid color
+			glUniform3f(glGetUniformLocation(gridShader.ID, "gridColor"), gridColor.r, gridColor.g, gridColor.b);
+
+			// Set grid color
+			//glLineWidth(gridThickness);
+
+			// Draw the grid
+			glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+
+		}
 
 		/*
 		##########################################################
 		##########################################################
 		*/
-
-		//RenderViewportAxes();
-		drawAxes();
-
-
-		// Clean the back buffer and depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		
-		// Handles camera inputs
-		camera.Inputs(window);
-		// Updates and exports the camera matrix to the Vertex Shader
-		camera.updateMatrix(45.0f, 0.1f, 100.0f);
-
-		// Draw ground plane grid
-		//grid.Draw(shaderProgram, camera);
 
 		// Draw the normal model
 		ground.Draw(shaderProgram, camera);
@@ -499,21 +307,19 @@ int main()
 		// Disable cull face so that grass and windows have both faces
 		glDisable(GL_CULL_FACE);
 
-
 		grass.Draw(grassProgram, camera);
 		// Enable blending for windows
 		glEnable(GL_BLEND);
 
-
-
 		glDisable(GL_BLEND);
+
 		glEnable(GL_CULL_FACE);
 
         // Render ImGui
         ImGui::Render();
-        //int display_w, display_h;
-        //glfwGetFramebufferSize(window, &display_w, &display_h);
-        //glViewport(0, 0, display_w, display_h);
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
         
 		// Ensure that OpenGL state is reset to default before rendering ImGui
     	glDisable(GL_DEPTH_TEST);
@@ -538,7 +344,7 @@ int main()
         glfwGetFramebufferSize(window, &width, &height);
 
         // Check if the new size is different from the previous one
-        static int display_w = 0, display_h = 0;
+        //static int display_w = 0, display_h = 0;
         if (width != display_w || height != display_h) {
             // Set the viewport to the new size
             glViewport(0, 0, width, height);
@@ -556,6 +362,7 @@ int main()
 
 	// Delete all the objects we've created
 	shaderProgram.Delete();
+	gridShader.Delete();
 	grassProgram.Delete();
 	// Delete window before ending the program
 	glfwDestroyWindow(window);

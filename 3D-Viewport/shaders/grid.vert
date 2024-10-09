@@ -1,11 +1,10 @@
 #version 330 core
-layout (location = 1) in vec3 aPosition;
-out vec2 fragCoord;
 
-uniform mat4 transform;
+layout(location = 0) in vec3 aPos;
+
+uniform mat4 uMVP;
 
 void main()
 {
-	fragCoord = aPosition.xy;
-	gl_Position = transform * vec4(aPosition, 1.0);
+    gl_Position = uMVP * vec4(aPos, 1.0);
 }

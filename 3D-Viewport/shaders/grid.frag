@@ -1,48 +1,23 @@
-#version 130
+#version 330 core
 
-out vec4 color;
+uniform vec3 gridColor;      // Color of the grid lines
+uniform vec2 cameraPos;      // Camera position in the xz-plane
 
-in vec3 vertexPosition;
-in vec3 near;
-in vec3 far;
+out vec4 FragColor;
 
-uniform mat4 iProjection;
-uniform mat4 iModelView;
+void main()
+{
+    // Get the world coordinates of the fragment based on the screen position
+    vec2 worldPos = (gl_FragCoord.xy - cameraPos) * 0.1;  // Scale to adjust grid density
+    
+    // Determine how far the fragment is from the nearest grid line
+    float lineThickness = 0.05; // Thickness of the grid lines
+    float gridX = abs(fract(worldPos.x) - 0.5);
+    float gridY = abs(fract(worldPos.y) - 0.5);
 
-float checkerboard(vec2 R, float scale) {
-	return float((
-		int(floor(R.x / scale)) +
-		int(floor(R.y / scale))
-	) % 2);
-}
-
-float computeDepth(vec3 pos) {
-	vec4 clip_space_pos = iProjection * iModelView * vec4(pos.xyz, 1.0);
-	float clip_space_depth = clip_space_pos.z / clip_space_pos.w;
-
-	float far = gl_DepthRange.far;
-	float near = gl_DepthRange.near;
-
-	float depth = (((far-near) * clip_space_depth) + near + far) / 2.0;
-
-	return depth;
-}
-
-void main() {
-	float t = -near.y / (far.y-near.y);
-
-	vec3 R = near + t * (far-near);
-
-	float c =
-		checkerboard(R.xz, 1) * 0.3 +
-		checkerboard(R.xz, 10) * 0.2 +
-		checkerboard(R.xz, 100) * 0.1 +
-		0.1;
-	c = c * float(t > 0);
-
-	float spotlight = min(1.0, 1.5 - 0.02*length(R.xz));
-
-	color = vec4(vec3(c*spotlight), 1);
-
-	gl_FragDepth = computeDepth(R);
+    // If the fragment is within the threshold of a grid line, make it colored; otherwise, make it transparent
+    float line = step(min(gridX, gridY), lineThickness);
+    vec3 color = mix(vec3(1.0), gridColor, line);
+    
+    FragColor = vec4(color, 1.0);
 }
