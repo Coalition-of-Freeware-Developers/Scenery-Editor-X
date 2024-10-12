@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Tokenizer.h">
+    <ClInclude Include="TextUtils.h">
       <SubType>
       </SubType>
     </ClInclude>
@@ -23,12 +23,26 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="XPAsset.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="XPLayerGroups.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="XPObj.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Tokenizer.cpp">
+    <ClCompile Include="TextUtils.cpp">
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="XPLayerGroups.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="XPObj.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

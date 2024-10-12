@@ -1,13 +1,13 @@
 //Module:	Tokenizer
 //Author:	Connor Russell
 //Date:		10/8/2024 7:43:36 PM
-//Purpose:	Implements Tokenizer.h
+//Purpose:	Implements TextUtils.h
 
 //Compile once
 #pragma once
 
 //Include necessary headers
-#include "Tokenizer.h"
+#include "TextUtils.h"
 
 #include <sstream>
 #include <algorithm>
@@ -80,7 +80,7 @@ inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::v
 /// <param name="inString">String to read from</param>
 /// <param name="DelimitingChars">Delimiting chars (should not include \n)</param>
 /// <param name="OutTokens">Pointer to vector of strings that will hold the tokens (not cleared before adding tokens)</param>
-std::vector<std::string> Tokenizer::TokenizeString(std::string& InString, std::vector<char> DelimitingChars)
+std::vector<std::string> TextUtils::TokenizeString(std::string& InString, std::vector<char> DelimitingChars)
 {
     //Get the stream
     std::stringstream inStream(InString);
@@ -107,6 +107,37 @@ std::vector<std::string> Tokenizer::TokenizeString(std::string& InString, std::v
 
 	return OutTokens;
 }
+
+/// <summary>
+/// Trims whitespace from the beginning and end of a string. Does not modify the original string. Whitespace is ' ', '\t', '\n', '\r'
+/// </summary>
+/// <param name="InString">String to trim</param>
+/// <returns>Trimmed string</returns>
+std::string TextUtils::TrimWhitespace(const std::string& InString)
+{
+    //Find the start ane end
+    size_t idxStart = InString.find_first_not_of(" \t\n\r");
+    size_t idxEnd = InString.find_last_not_of(" \t\n\r");
+
+    //Trim appropriately
+    if (idxStart != std::string::npos && idxEnd != std::string::npos)
+    {
+        return InString.substr(idxStart, idxEnd - idxStart + 1);
+    }
+    else if (idxStart != std::string::npos)
+    {
+        return InString.substr(idxStart);
+    }
+    else if (idxEnd != std::string::npos)
+    {
+        return InString.substr(0, idxEnd + 1);
+    }
+    else
+    {
+        return InString;
+    }
+}
+
 
 #ifdef _DEBUG
 

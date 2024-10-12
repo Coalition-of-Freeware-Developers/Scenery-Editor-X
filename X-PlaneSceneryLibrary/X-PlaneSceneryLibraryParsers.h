@@ -6,6 +6,11 @@
 //Compile once
 #pragma once
 
-//Include necessary headers
+//Generic utilities
+#include "XPLayerGroups.h"
+
+//Asset parsers/data structures
+#include "XPAsset.h"
+#include "XPObj.h"
 
 
