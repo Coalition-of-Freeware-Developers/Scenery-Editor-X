@@ -5,6 +5,7 @@ build/
 bin/
 bin-int/
 /example
+/Vulkan
 
 # User-specific files
 *.rsuser

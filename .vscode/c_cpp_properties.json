@@ -5,10 +5,8 @@
       "includePath": [
         "${workspaceFolder}/**",
         "K:/X-Plane 12 Development/XPSDK410/SDK/**",
-        "G:/Airplane Simulation Company/ED-DCS-SDK/trunk/**",
-        "G:/Airplane Simulation Company/ED-DCS-SDK/2.9/**",
         "G:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/external/include/**",
-        "G:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/external/lib"
+        "G:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/external/lib/**"
       ],
       "defines": [
         "_DEBUG",

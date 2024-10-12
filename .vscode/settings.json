@@ -45,8 +45,8 @@
   "C_Cpp_Runner.linkerArgs": [],
   "C_Cpp_Runner.includePaths": [
     "K:/X-Plane 12 Development/XPSDK410/SDK/**",
-    "G:/Airplane Simulation Company/ED-DCS-SDK/trunk/**",
-    "G:/Airplane Simulation Company/ED-DCS-SDK/2.9/**"
+    "G:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/external/include/**",
+    "G:/ART_REPO-TRAY/X-Plane 12/Scenery Editor X/external/lib/**"
   ],
   "C_Cpp_Runner.includeSearch": [
     "*",
@@ -65,6 +65,19 @@
   "C_Cpp_Runner.useLeakSanitizer": false,
   "C_Cpp_Runner.showCompilationTime": false,
   "C_Cpp_Runner.useLinkTimeOptimization": false,
-  "C_Cpp_Runner.msvcSecureNoWarnings": false,
-  "compile-hero.disable-compile-files-on-did-save-code": false
+  "C_Cpp_Runner.msvcSecureNoWarnings": true,
+  "compile-hero.disable-compile-files-on-did-save-code": false,
+  "files.autoSave": "afterDelay",
+  "workbench.localHistory.maxFileSize": 2048,
+  "workbench.localHistory.mergeWindow": 25,
+  "C_Cpp.autocompleteAddParentheses": true,
+  "C_Cpp.default.cppStandard": "c++17",
+  "C_Cpp.default.cStandard": "c17",
+  "C_Cpp.default.includePath": [
+    ""
+  ],
+  "C_Cpp.default.intelliSenseMode": "windows-clang-x64",
+  "git.autofetch": true,
+  "git.enableCommitSigning": true,
+  "Lua.codeLens.enable": true
 }

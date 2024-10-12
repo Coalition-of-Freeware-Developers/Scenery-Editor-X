@@ -1,36 +1,111 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="src">
+      <UniqueIdentifier>{9641a360-92ae-4b2f-b7f0-079c8782ba76}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="inputs">
+      <UniqueIdentifier>{c89fa572-f996-4421-9dd4-d20cda1c8bbd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
+    <Filter Include="resources">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="resources\imgui">
+      <UniqueIdentifier>{641dd696-1dd5-4b6a-a9a5-d1babd828fd9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core">
+      <UniqueIdentifier>{41fdb154-6791-4ab4-912f-1e140ef02265}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\scene">
+      <UniqueIdentifier>{71b5d221-d4e7-4632-af25-7e52d30285e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="platform">
+      <UniqueIdentifier>{e58243dd-cd5f-4863-a30f-d50e00f02429}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\options">
+      <UniqueIdentifier>{38064756-9797-4310-b41f-7e4ddfe5ea8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\io">
+      <UniqueIdentifier>{7d011af8-d041-49fd-86b8-d16a1a425310}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\CfgLoader.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\external\include\imgui\imgui.cpp">
+      <Filter>resources\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\include\imgui\imgui_demo.cpp">
+      <Filter>resources\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\include\imgui\imgui_draw.cpp">
+      <Filter>resources\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\include\imgui\imgui_impl_glfw.cpp">
+      <Filter>resources\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp">
+      <Filter>resources\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\include\imgui\imgui_tables.cpp">
+      <Filter>resources\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp">
+      <Filter>resources\imgui</Filter>
     </ClCompile>
     <ClCompile Include="src\main.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src\core</Filter>
     </ClCompile>
     <ClCompile Include="src\settings.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src\options</Filter>
     </ClCompile>
-    <ClCompile Include="src\userConfig.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\CfgLoader.cpp">
+      <Filter>src\io</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\CfgLoader.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\external\include\imgui\imconfig.h">
+      <Filter>resources\imgui</Filter>
     </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imgui.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imgui_impl_glfw.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imgui_impl_opengl3.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imgui_impl_opengl3_loader.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imgui_internal.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imstb_rectpack.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imstb_textedit.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\external\include\imgui\imstb_truetype.h">
+      <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="systemdetection.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\settings.h">
+      <Filter>src\options</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CfgLoader.h">
+      <Filter>src\io</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pch.h" />
+    <ClInclude Include="src\filemanager.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="config\config.cfg" />
+    <None Include="config\user.ini" />
   </ItemGroup>
 </Project>
