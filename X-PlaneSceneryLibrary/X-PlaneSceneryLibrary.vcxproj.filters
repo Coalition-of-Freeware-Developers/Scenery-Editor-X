@@ -20,7 +20,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Tokenizer.h">
+    <ClInclude Include="TextUtils.h">
       <Filter>Utility Headers</Filter>
     </ClInclude>
     <ClInclude Include="X-PlaneSceneryLibraryParsers.h">
@@ -29,10 +29,25 @@
     <ClInclude Include="X-PlaneSceneryLibraryUtils.h">
       <Filter>Include Headers</Filter>
     </ClInclude>
+    <ClInclude Include="XPAsset.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="XPObj.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="XPLayerGroups.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Tokenizer.cpp">
+    <ClCompile Include="TextUtils.cpp">
       <Filter>Utility Source</Filter>
+    </ClCompile>
+    <ClCompile Include="XPObj.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="XPLayerGroups.cpp">
+      <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
