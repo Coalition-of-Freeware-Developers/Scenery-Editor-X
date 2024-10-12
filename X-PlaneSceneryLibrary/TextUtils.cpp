@@ -141,17 +141,17 @@ std::string TextUtils::TrimWhitespace(const std::string& InString)
 
 #ifdef _DEBUG
 
-void Tokenizer::TestTokenizer()
+void TextUtils::TestTokenizer()
 {
     //Test the tokenizer
     std::string testString = "This is a test,string\nhello;world";
-    std::string delimiter = " ,;\n";
+    std::vector<char> delimiter = {',', ';', '\n', '\r'};
 
     //Add some fake utf-8 characters
     testString[1] = 0b10000000;
     testString[2] = ' ';	//This is actually a delimiter but we want to test that it gets ignored because it's in a UTF-8 sequence
 
-    auto tokens = Tokenizer::TokenizeString(testString, delimiter);
+    auto tokens = TextUtils::TokenizeString(testString, delimiter);
 
     for (auto s : tokens)
     {
