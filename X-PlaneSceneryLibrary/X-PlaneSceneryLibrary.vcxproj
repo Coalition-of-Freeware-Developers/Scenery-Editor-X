@@ -31,6 +31,14 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="XPLibraryPath.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="XPLibrarySystem.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="XPObj.h" />
   </ItemGroup>
   <ItemGroup>
@@ -39,6 +47,10 @@
       </SubType>
     </ClCompile>
     <ClCompile Include="XPLayerGroups.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="XPLibrarySystem.cpp">
       <SubType>
       </SubType>
     </ClCompile>

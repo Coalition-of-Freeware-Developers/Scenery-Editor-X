@@ -38,6 +38,12 @@
     <ClInclude Include="XPLayerGroups.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="XPLibraryPath.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="XPLibrarySystem.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextUtils.cpp">
@@ -47,6 +53,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="XPLayerGroups.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="XPLibrarySystem.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
