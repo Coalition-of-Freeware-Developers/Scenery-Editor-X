@@ -29,15 +29,11 @@
     <ClCompile Include="src\pch.cpp" />
     <ClCompile Include="src\ui\ContentBrowser.cpp" />
     <ClCompile Include="src\ui\LayerStack.cpp" />
-    <ClCompile Include="src\core\MainWindow.cpp" />
     <ClCompile Include="src\ui\MenuBar.cpp" />
     <ClCompile Include="src\ui\Modals.cpp" />
     <ClCompile Include="src\ui\About.cpp" />
     <ClCompile Include="src\core\Main.cpp" />
     <ClCompile Include="src\io\CfgLoader.cpp" />
-    <ClCompile Include="src\options\Settings.cpp" />
-    <ClCompile Include="src\platform\windows\Window.cpp" />
-    <ClCompile Include="src\platform\windows\WindowProperties.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\include\imgui\imconfig.h" />
@@ -49,12 +45,11 @@
     <ClInclude Include="..\external\include\imgui\imstb_rectpack.h" />
     <ClInclude Include="..\external\include\imgui\imstb_textedit.h" />
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
+    <ClInclude Include="src\core\Base.h" />
     <ClInclude Include="src\platform\windows\PlatformUtils.h" />
     <ClInclude Include="src\core\SystemDetection.h" />
     <ClInclude Include="src\io\CfgLoader.h" />
-    <ClInclude Include="src\options\Settings.h" />
     <ClInclude Include="src\pch.h" />
-    <ClInclude Include="src\core\MainWindow.h" />
     <ClInclude Include="src\ui\UI.h" />
     <ClInclude Include="src\platform\windows\WindowProperties.h" />
     <ClInclude Include="src\platform\windows\Window.h" />

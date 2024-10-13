@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../src/core/Base.h"
 #include <sstream>
-#include <functional>
 
 namespace SceneryEditorX
 {
@@ -21,7 +21,7 @@ namespace SceneryEditorX
 	class Window
 	{
 	public:
-		using EventCallbackFn = std::function<void(Event&)>;
+		using EventCallbackFn = std::function<void()>;
 
 		virtual ~Window() {}
 
@@ -35,7 +35,5 @@ namespace SceneryEditorX
 		virtual bool IsVSync() const = 0;
 
 		virtual void* GetNativeWindow() const = 0;
-
-		static Scope<Window> Create(const WindowProperties& properties = WindowProperties());
 	};
 }

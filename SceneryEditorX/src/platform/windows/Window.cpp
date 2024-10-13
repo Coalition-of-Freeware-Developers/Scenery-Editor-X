@@ -2,7 +2,7 @@
 #include "../src/core/MainWindow.h"
 
 #ifdef SCENERYEDITORX_PLATFORM_WINDOWS
-	#include "../src/core/WindowProperties.h"
+	#include "WindowProperties.h"
 #endif
 
 namespace SceneryEditorX

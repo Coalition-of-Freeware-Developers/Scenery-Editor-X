@@ -1,3 +1,4 @@
+/*
 #include "imgui.h"
 #include <imgui_impl_glfw.cpp>
 #include <GLFW/glfw3.h>
@@ -6,7 +7,7 @@
 
 
 namespace SceneryEditorX::UI {
-    /*
+
     void ExitConfirmationModal()
     {
         if (showExitModal)
@@ -56,5 +57,5 @@ namespace SceneryEditorX::UI {
             }
         }
     }
-    */
 }
+*/

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Window.h"
-#include "../src/renderer/GraphicsContext.h"
 
 #include <GLFW/glfw3.h>
 
@@ -28,7 +27,6 @@ namespace SceneryEditorX
 		virtual void Shutdown();
 	private:
 		GLFWwindow* m_Window;
-		Scope<GraphicsContext> m_Contex;
 
 		struct WindowData
 		{
