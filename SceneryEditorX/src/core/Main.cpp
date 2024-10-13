@@ -11,6 +11,9 @@
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
+#include "../ui/UI.h"
+using namespace SceneryEditorX::UI;
+
 /*
 // User-defined structure that can be loaded to\from INI
 struct test_val
@@ -320,7 +323,17 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-// Main code
+void RenderMainMenu() 
+{
+	MainMenuBar();
+}
+
+//void RenderModals()
+//{
+//	ExitConfirmationModal();
+//	AboutModal();
+//}
+
 int main(int, char**)
 {
 	glfwSetErrorCallback(glfw_error_callback);
@@ -343,17 +356,18 @@ int main(int, char**)
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #else
 	// GL 3.0 + GLSL 130
-	const char* glsl_version = "#version 130";
+	const char* glsl_version = "#version 330";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
 
 	// Create window with graphics context
 	GLFWwindow* window = glfwCreateWindow(1280, 720, "Scenery Editor X", nullptr, nullptr);
 	if (window == nullptr)
 		return 1;
+
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1); // Enable vsync
 
@@ -363,7 +377,7 @@ int main(int, char**)
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	ImFont* font11 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Black.otf", 15.0f);
+	ImFont* font1 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Black.otf", 15.0f);
 	ImFont* font2 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BlackItalic.otf", 15.0f);
 	ImFont* font3 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Bold.otf", 15.0f);
 	ImFont* font4 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BoldItalic.otf", 15.0f);
@@ -373,7 +387,7 @@ int main(int, char**)
 	ImFont* font8 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-DemiItalic.otf", 15.0f);
 	ImFont* font9 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Light.otf", 15.0f);
 	ImFont* font10 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-LightItalic.otf", 15.0f);
-	ImFont* font1 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Medium.otf", 15.0f);
+	ImFont* font11 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Medium.otf", 15.0f);
 	ImFont* font12 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-MediumItalic.otf", 15.0f);
 	ImFont* font13 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Thin.otf", 15.0f);
 	ImFont* font14 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-ThinItalic.otf", 15.0f);
@@ -433,7 +447,6 @@ int main(int, char**)
 
 	ImVec4 clear_color = ImVec4(0.037f, 0.039f, 0.039f, 1.000f); // Background Window Color
 	static float padding = 16.0f;
-	bool showModalPopup = false;
 
 	// Main loop
 #ifdef __EMSCRIPTEN__
@@ -457,111 +470,19 @@ int main(int, char**)
 			continue;
 		}
 
-		// Start the Dear ImGui frame
+		// Start the ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		
+		// From UI.h
+		RenderMainMenu();
+		//RenderModals();
+
 
 		ImGui::Begin("3D Viewport");
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
 		ImGui::End();
-		// Create and show main menu bar
-	   	if (ImGui::BeginMainMenuBar())
-	   	{
-	   	    if (ImGui::BeginMenu("File"))
-	   	    {
-				if (ImGui::MenuItem("New", "Ctrl+N")) { /* Do something here */ }
-				ImGui::Separator();
-	   	        if (ImGui::MenuItem("Open", "Ctrl+O"))
-				{
-
-				}
-	   	        if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do something here */ }
-	   	        ImGui::Separator();
-	   	        if (ImGui::MenuItem("Exit", "Alt+F4")) 
-				{ 
-					showModalPopup = true; 
-				}
-	   	        ImGui::EndMenu();
-	   	    }
-	
-	   	    if (ImGui::BeginMenu("Edit"))
-	   	    {
-	   	        if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Do something here */ }
-	   	        if (ImGui::MenuItem("Redo", "Ctrl+Y")) { /* Do something here */ }
-	   	        ImGui::Separator();
-	   	        if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Do something here */ }
-	   	        if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Do something here */ }
-	   	        if (ImGui::MenuItem("Paste", "Ctrl+V")) { /* Do something here */ }
-	   	        ImGui::EndMenu();
-	   	    }
-	
-	   	    if (ImGui::BeginMenu("View"))
-	   	    {
-	   	        static bool showHelp = true;
-	   	        ImGui::MenuItem("Show Help", nullptr, &showHelp);
-	   	        ImGui::Separator();
-	
-	   	        // Add more menu items as needed
-	   	        ImGui::EndMenu();
-	   	    }
-
-			if (ImGui::BeginMenu("Options"))
-			{
-				if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Do something here */ }
-				if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do something here */ }
-				ImGui::Separator();
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("Settings"))
-			{
-				if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Do something here */ }
-				if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do something here */ }
-				ImGui::Separator();
-				ImGui::EndMenu();
-			}
-
-			if (ImGui::BeginMenu("About"))
-			{
-				if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Do something here */ }
-				if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do something here */ }
-				ImGui::Separator();
-				ImGui::EndMenu();
-			}
-
-			ImGui::EndMainMenuBar();
-	   	}
-
-		// Modal popup
-    	if (showModalPopup)
-		{
-			ImGui::OpenPopup("ExitConfirmation");
-
-			ImVec2 modalSize(460, 210);
-			ImGui::SetNextWindowSize(modalSize);
-
-			if (ImGui::BeginPopupModal("ExitConfirmation", &showModalPopup, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
-			{
-				ImGui::Text("Are you sure you want to exit?");
-				ImGui::Checkbox("Don't show this message again", &showModalPopup);
-				ImGui::Separator();
-
-        	    // Buttons
-        	    if (ImGui::Button("Yes", ImVec2(100.0f, 0.0f)))
-        	    {
-        	        glfwSetWindowShouldClose(window, true);
-        	        showModalPopup = false; // Close the modal
-        	    }
-        	    ImGui::SameLine();
-        	    if (ImGui::Button("No", ImVec2(100.0f, 0.0f)))
-        	    {
-        	        showModalPopup = false; // Close the modal without exiting
-        	    }
-
-        	    ImGui::EndPopup();
-        	}
-		}
 
 		ImGui::Begin("Layer Stack");
 

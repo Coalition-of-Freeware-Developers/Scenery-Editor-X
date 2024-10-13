@@ -1,5 +1,5 @@
-#include "pch.h"
-#include "filemanager.h"
+#include "../pch.h"
+#include "FileManager.h"
 #include "app.h"
 
 #include <commdlg.h>

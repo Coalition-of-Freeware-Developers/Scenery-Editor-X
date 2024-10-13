@@ -4,9 +4,6 @@
     <Filter Include="src">
       <UniqueIdentifier>{9641a360-92ae-4b2f-b7f0-079c8782ba76}</UniqueIdentifier>
     </Filter>
-    <Filter Include="inputs">
-      <UniqueIdentifier>{c89fa572-f996-4421-9dd4-d20cda1c8bbd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="resources">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -14,20 +11,29 @@
     <Filter Include="resources\imgui">
       <UniqueIdentifier>{641dd696-1dd5-4b6a-a9a5-d1babd828fd9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\core">
-      <UniqueIdentifier>{41fdb154-6791-4ab4-912f-1e140ef02265}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\scene">
-      <UniqueIdentifier>{71b5d221-d4e7-4632-af25-7e52d30285e9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="platform">
+    <Filter Include="src\Platform">
       <UniqueIdentifier>{e58243dd-cd5f-4863-a30f-d50e00f02429}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\options">
+    <Filter Include="src\IO">
+      <UniqueIdentifier>{7d011af8-d041-49fd-86b8-d16a1a425310}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Inputs">
+      <UniqueIdentifier>{c89fa572-f996-4421-9dd4-d20cda1c8bbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Core">
+      <UniqueIdentifier>{41fdb154-6791-4ab4-912f-1e140ef02265}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Platform\Windows">
+      <UniqueIdentifier>{fb989bb2-2dd2-46a6-ab81-c9a1a6a3f7ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\UI">
+      <UniqueIdentifier>{d3e4d94d-a0b9-4f5c-bcef-0eccaa3141b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Options">
       <UniqueIdentifier>{38064756-9797-4310-b41f-7e4ddfe5ea8b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\io">
-      <UniqueIdentifier>{7d011af8-d041-49fd-86b8-d16a1a425310}</UniqueIdentifier>
+    <Filter Include="src\Scene">
+      <UniqueIdentifier>{71b5d221-d4e7-4632-af25-7e52d30285e9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -52,14 +58,41 @@
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp">
       <Filter>resources\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="src\main.cpp">
-      <Filter>src\core</Filter>
+    <ClCompile Include="src\core\Main.cpp">
+      <Filter>src\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\settings.cpp">
-      <Filter>src\options</Filter>
+    <ClCompile Include="src\options\Settings.cpp">
+      <Filter>src\Options</Filter>
     </ClCompile>
-    <ClCompile Include="src\CfgLoader.cpp">
-      <Filter>src\io</Filter>
+    <ClCompile Include="src\io\CfgLoader.cpp">
+      <Filter>src\IO</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\About.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\Modals.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\MenuBar.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\LayerStack.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\MainWindow.cpp">
+      <Filter>src\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\ContentBrowser.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pch.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\platform\windows\WindowProperties.cpp">
+      <Filter>src\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\platform\windows\Window.cpp">
+      <Filter>src\Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -90,18 +123,32 @@
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h">
       <Filter>resources\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="systemdetection.h">
-      <Filter>src\core</Filter>
+    <ClInclude Include="src\core\SystemDetection.h">
+      <Filter>src\Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\settings.h">
-      <Filter>src\options</Filter>
+    <ClInclude Include="src\options\Settings.h">
+      <Filter>src\Options</Filter>
     </ClInclude>
-    <ClInclude Include="src\CfgLoader.h">
-      <Filter>src\io</Filter>
+    <ClInclude Include="src\io\CfgLoader.h">
+      <Filter>src\IO</Filter>
     </ClInclude>
-    <ClInclude Include="src\pch.h" />
-    <ClInclude Include="src\filemanager.h">
-      <Filter>src\core</Filter>
+    <ClInclude Include="src\ui\UI.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\platform\windows\WindowProperties.h">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\MainWindow.h">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pch.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\platform\windows\PlatformUtils.h">
+      <Filter>src\IO</Filter>
+    </ClInclude>
+    <ClInclude Include="src\platform\windows\Window.h">
+      <Filter>src\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

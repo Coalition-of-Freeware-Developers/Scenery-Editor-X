@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SceneryEditorX/src/systemdetection.h"
+#include "../src/core/SystemDetection.h"
 
 #ifdef SCENERYEDITORX_PLATFORM_WINDOWS
 	#ifndef NOMINMAX
