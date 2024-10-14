@@ -328,11 +328,11 @@ void RenderMainMenu()
 	MainMenuBar();
 }
 
-//void RenderModals()
-//{
-//	ExitConfirmationModal();
-//	AboutModal();
-//}
+void RenderModals()
+{
+	ExitConfirmationModal();
+	AboutModal();
+}
 
 int main(int, char**)
 {
@@ -465,7 +465,7 @@ int main(int, char**)
 		RenderMainMenu();
         ImGui::DockSpaceOverViewport(ImGui::GetID("CoreDockSpace"));
         
-		//RenderModals();
+		RenderModals();
         LayerStack();
 
 

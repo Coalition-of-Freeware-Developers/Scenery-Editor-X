@@ -6,8 +6,8 @@
 
 namespace SceneryEditorX::UI {
 
-	inline bool showExitModal = false;
-	inline bool showAboutModal = false;
+	extern bool showExitModal;
+    extern bool showAboutModal;
 
 	void MainMenuBar();
 
@@ -15,8 +15,8 @@ namespace SceneryEditorX::UI {
 
     //void Properties();
 
-	//void ExitConfirmationModal();
-	//void AboutModal();
+	void ExitConfirmationModal();
+	void AboutModal();
 }
 
 #endif 

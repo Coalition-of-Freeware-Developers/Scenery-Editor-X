@@ -26,6 +26,7 @@
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\platform\windows\FileManager.cpp" />
     <ClCompile Include="src\pch.cpp" />
     <ClCompile Include="src\ui\ContentBrowser.cpp" />
     <ClCompile Include="src\ui\LayerStack.cpp" />
@@ -47,7 +48,7 @@
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
     <ClInclude Include="Fonts.h" />
     <ClInclude Include="src\core\Base.h" />
-    <ClInclude Include="src\platform\windows\PlatformUtils.h" />
+    <ClInclude Include="src\platform\windows\FileManager.h" />
     <ClInclude Include="src\core\SystemDetection.h" />
     <ClInclude Include="src\io\CfgLoader.h" />
     <ClInclude Include="src\pch.h" />

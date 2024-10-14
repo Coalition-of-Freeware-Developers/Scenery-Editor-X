@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace SceneryEditorX {
+namespace SceneryEditorX::IO {
 
 	class FileDialogs
 	{

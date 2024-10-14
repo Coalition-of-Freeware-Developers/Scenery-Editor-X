@@ -1,3 +1,4 @@
+/*
 #pragma once
 
 #include <string>
@@ -19,3 +20,4 @@ namespace SceneryEditorX {
 	};
 
 }
+*/

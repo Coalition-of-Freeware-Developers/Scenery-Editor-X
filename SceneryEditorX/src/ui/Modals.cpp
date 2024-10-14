@@ -1,10 +1,11 @@
-/*
-#include "imgui.h"
-#include <imgui_impl_glfw.cpp>
-#include <GLFW/glfw3.h>
+// Modals.cpp
 
+#include "imgui.h"
 #include "UI.h"
 
+// Define showExitModal and showAboutModal variables
+bool SceneryEditorX::UI::showExitModal = false;
+bool SceneryEditorX::UI::showAboutModal = false;
 
 namespace SceneryEditorX::UI {
 
@@ -26,7 +27,7 @@ namespace SceneryEditorX::UI {
                 // Buttons
                 if (ImGui::Button("Yes", ImVec2(100.0f, 0.0f)))
                 {
-                    glfwSetWindowShouldClose(window, true);
+                    //glfwSetWindowShouldClose(window, true);
                     showExitModal = false; // Close the modal
                 }
                 ImGui::SameLine();
@@ -58,4 +59,3 @@ namespace SceneryEditorX::UI {
         }
     }
 }
-*/

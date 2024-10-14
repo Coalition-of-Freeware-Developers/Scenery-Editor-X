@@ -82,6 +82,9 @@
     <ClCompile Include="src\pch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\platform\windows\FileManager.cpp">
+      <Filter>src\Platform\Windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\include\imgui\imconfig.h">
@@ -120,14 +123,8 @@
     <ClInclude Include="src\ui\UI.h">
       <Filter>src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="src\platform\windows\WindowProperties.h">
-      <Filter>src\Core</Filter>
-    </ClInclude>
     <ClInclude Include="src\pch.h">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="src\platform\windows\PlatformUtils.h">
-      <Filter>src\IO</Filter>
     </ClInclude>
     <ClInclude Include="src\platform\windows\Window.h">
       <Filter>src\Core</Filter>
@@ -137,6 +134,12 @@
     </ClInclude>
     <ClInclude Include="Fonts.h">
       <Filter>src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\platform\windows\WindowProperties.h">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\platform\windows\FileManager.h">
+      <Filter>src\Platform\Windows</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
