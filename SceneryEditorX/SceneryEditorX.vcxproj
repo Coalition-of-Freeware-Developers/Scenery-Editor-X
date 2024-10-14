@@ -45,6 +45,7 @@
     <ClInclude Include="..\external\include\imgui\imstb_rectpack.h" />
     <ClInclude Include="..\external\include\imgui\imstb_textedit.h" />
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
+    <ClInclude Include="Fonts.h" />
     <ClInclude Include="src\core\Base.h" />
     <ClInclude Include="src\platform\windows\PlatformUtils.h" />
     <ClInclude Include="src\core\SystemDetection.h" />

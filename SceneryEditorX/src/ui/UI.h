@@ -11,6 +11,10 @@ namespace SceneryEditorX::UI {
 
 	void MainMenuBar();
 
+    void LayerStack();
+
+    //void Properties();
+
 	//void ExitConfirmationModal();
 	//void AboutModal();
 }

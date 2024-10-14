@@ -135,6 +135,9 @@
     <ClInclude Include="src\core\Base.h">
       <Filter>src\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Fonts.h">
+      <Filter>src\UI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\config.cfg" />
