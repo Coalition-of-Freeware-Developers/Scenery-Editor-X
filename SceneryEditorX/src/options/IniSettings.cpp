@@ -2,7 +2,7 @@
 #include "iniparser.hpp"
 
 int main(int argc, char** argv)
-{
+{W
 	int ival;
 	double dval;
 	// Creating ini file object
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 		// iterate over all entries in specific section
 		for (INI::Section::values_iter it2 = sect->ValuesBegin(); it2 != sect->ValuesEnd(); ++it2)
 			std::cout << "Entry name: " << it2->first << ", Entry value: " 
-					  << it2->second.AsString() << std::endl;
+       << it2->second.AsString() << std::endl;
 	}
 	// output to INI file
 	ft.Save("settings.ini");

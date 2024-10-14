@@ -1,243 +1,183 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
+    <Filter Include="src">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
+    <Filter Include="headers">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
+    <Filter Include="resources">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Resource Files\fonts">
+    <Filter Include="resources\fonts">
       <UniqueIdentifier>{345f701a-331a-4192-819c-d23e2d4e2675}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files\assets">
-      <UniqueIdentifier>{7fa5638d-e841-4071-b876-b6cae4fbfef8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Resource Files\fonts\opensans">
+    <Filter Include="resources\fonts\opensans">
       <UniqueIdentifier>{a68c6c74-f298-4a02-9155-ef5af371422f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files\textures">
+    <Filter Include="resources\assets">
+      <UniqueIdentifier>{7fa5638d-e841-4071-b876-b6cae4fbfef8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resources\textures">
       <UniqueIdentifier>{f040491e-a666-48e6-acd3-e5054d5dddaf}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files\shaders">
+    <Filter Include="resources\shaders">
       <UniqueIdentifier>{dc9fa3f1-d12f-4c60-a843-c08cc549a269}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\imgui">
-      <UniqueIdentifier>{8cf1332e-35ba-4753-95f8-ef6c67372d0a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\imgui">
-      <UniqueIdentifier>{e3b0b6df-cdf1-45ac-bb71-9e4b6d9531a5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\shader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\VBO.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\EBO.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\VAO.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\texture.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\stb.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\camera.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\model.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="resources\imgui\imgui.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="resources\imgui\imgui_demo.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="resources\imgui\imgui_draw.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="resources\imgui\imgui_impl_glfw.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="resources\imgui\imgui_impl_opengl3.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="resources\imgui\imgui_tables.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="resources\imgui\imgui_widgets.cpp">
-      <Filter>Source Files\imgui</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\glad.c">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\viewAxis.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\default.vert">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\default.frag">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\light.frag">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\light.vert">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\outlining.frag">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\outlining.vert">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\grass.frag">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\framebuffer.frag">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\xtextgrid.frag">
-      <Filter>Resource Files\shaders</Filter>
-    </None>
-    <None Include="shaders\infinite_grid.fs">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\default.geom">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\font.glsl">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\framebuffer.vert">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\grid.vert">
-      <Filter>Resource Files\shaders</Filter>
-    </None>
-    <None Include="shaders\infinite_grid.vs">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="shaders\grid.frag">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="skybox.vert">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
     <None Include="skybox.frag">
-      <Filter>Resource Files\shaders</Filter>
+      <Filter>resources\shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\shader.h">
-      <Filter>Header Files</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\VBO.h">
-      <Filter>Header Files</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\EBO.h">
-      <Filter>Header Files</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\VAO.h">
-      <Filter>Header Files</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\texture.h">
-      <Filter>Header Files</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\camera.h">
-      <Filter>Header Files</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\mesh.h">
-      <Filter>Header Files</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\model.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imconfig.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imgui.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imgui_impl_glfw.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imgui_impl_opengl3.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imgui_internal.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imstb_rectpack.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imstb_textedit.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imstb_truetype.h">
-      <Filter>Header Files\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="resources\imgui\imgui_impl_opengl3_loader.h">
-      <Filter>Header Files\imgui</Filter>
+      <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Font Include="resources\fonts\opensans\OpenSans-Bold.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-BoldItalic.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-ExtraBold.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-ExtraBoldItalic.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-Italic.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-Light.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-LightItalic.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-Regular.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-SemiBold.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
     <Font Include="resources\fonts\opensans\OpenSans-SemiBoldItalic.ttf">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Font>
   </ItemGroup>
   <ItemGroup>
     <Text Include="resources\fonts\opensans\LICENSE.txt">
-      <Filter>Resource Files\fonts\opensans</Filter>
+      <Filter>resources\fonts\opensans</Filter>
     </Text>
   </ItemGroup>
 </Project>

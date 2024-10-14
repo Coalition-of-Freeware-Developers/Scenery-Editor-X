@@ -134,7 +134,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>$(ProjectDir)resources\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.296.0\Include;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\glad;$(SolutionDir)external\include\GLFW;$(SolutionDir)external\include\glm;$(SolutionDir)external\include\ImGuizmo;$(SolutionDir)external\include\json;$(SolutionDir)external\include\KHR;$(SolutionDir)external\include\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -160,13 +160,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="resources\imgui\imgui.cpp" />
-    <ClCompile Include="resources\imgui\imgui_demo.cpp" />
-    <ClCompile Include="resources\imgui\imgui_draw.cpp" />
-    <ClCompile Include="resources\imgui\imgui_impl_glfw.cpp" />
-    <ClCompile Include="resources\imgui\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="resources\imgui\imgui_tables.cpp" />
-    <ClCompile Include="resources\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\model.cpp" />
     <ClCompile Include="src\mesh.cpp" />
@@ -191,8 +184,6 @@
     <None Include="shaders\grid.frag" />
     <None Include="shaders\xtextgrid.frag" />
     <None Include="shaders\grid.vert" />
-    <None Include="shaders\infinite_grid.fs" />
-    <None Include="shaders\infinite_grid.vs" />
     <None Include="shaders\light.frag" />
     <None Include="shaders\light.vert" />
     <None Include="shaders\outlining.frag" />
@@ -201,15 +192,6 @@
     <None Include="skybox.vert" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="resources\imgui\imconfig.h" />
-    <ClInclude Include="resources\imgui\imgui.h" />
-    <ClInclude Include="resources\imgui\imgui_impl_glfw.h" />
-    <ClInclude Include="resources\imgui\imgui_impl_opengl3.h" />
-    <ClInclude Include="resources\imgui\imgui_impl_opengl3_loader.h" />
-    <ClInclude Include="resources\imgui\imgui_internal.h" />
-    <ClInclude Include="resources\imgui\imstb_rectpack.h" />
-    <ClInclude Include="resources\imgui\imstb_textedit.h" />
-    <ClInclude Include="resources\imgui\imstb_truetype.h" />
     <ClInclude Include="src\model.h" />
     <ClInclude Include="src\mesh.h" />
     <ClInclude Include="src\camera.h" />

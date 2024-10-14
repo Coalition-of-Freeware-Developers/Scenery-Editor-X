@@ -29,13 +29,6 @@ struct Color {
 	float r, g, b;
 };
 
-std::vector<glm::vec3> gridVertices = {
-    glm::vec3(-1000.0f, 0.0f, -1000.0f),
-    glm::vec3( 1000.0f, 0.0f, -1000.0f),
-    glm::vec3( 1000.0f, 0.0f,  1000.0f),
-    glm::vec3(-1000.0f, 0.0f,  1000.0f)
-};
-
 float gridThickness = 1.0f;
 Color gridColor = { 0.5f, 0.5f, 0.5f };
 
@@ -124,7 +117,7 @@ int main()
 	VAO gridVAO;
 
 	// Create a VBO for the grid vertices
-	VBO gridVBO(gridVertices);
+	VBO gridVBO(gVP);
 
 	// Bind the VAO and set up the VBO linking
 	gridVAO.Bind();
@@ -278,11 +271,11 @@ int main()
     		// Activate grid shader and draw the grid
     		gridShader.Activate();
     		gridVAO.Bind();
-			camera.Matrix(gridShader, "uMVP");
+			camera.Matrix(gridShader, "gVP");
 
 			// Pass camera position in the xz-plane
 			glm::vec3 camPos = camera.Position;
-			glUniform2f(glGetUniformLocation(gridShader.ID, "cameraPos"), camPos.x, camPos.z);
+			glUniform2f(glGetUniformLocation(gridShader.ID, "camPos"), camPos.x, camPos.z);
 
 			// Set grid color
 			glUniform3f(glGetUniformLocation(gridShader.ID, "gridColor"), gridColor.r, gridColor.g, gridColor.b);
