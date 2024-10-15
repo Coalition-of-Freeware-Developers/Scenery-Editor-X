@@ -1,8 +1,9 @@
+/*
 #pragma once
 
 #include <string>
 
-namespace SceneryEditorX::IO {
+namespace SceneryEditorX {
 
 	class FileDialogs
 	{
@@ -19,3 +20,4 @@ namespace SceneryEditorX::IO {
 	};
 
 }
+*/

@@ -1,23 +1,23 @@
-/*
-#include "imgui.h"
-#include <imgui_impl_glfw.cpp>
-#include <GLFW/glfw3.h>
+// Modals.cpp
 
+#include "imgui.h"
 #include "UI.h"
 
+// Define showExitModal and showAboutModal variables
+bool SceneryEditorX::UI::showExitModal = false;
+bool SceneryEditorX::UI::showAboutModal = false;
 
 namespace SceneryEditorX::UI {
-
-    void ExitConfirmationModal()
+    void ExitConfirmationModal(GLFWwindow* window)
     {
         if (showExitModal)
         {
             ImGui::OpenPopup("ExitConfirmation");
 
-            ImVec2 modalSize(460, 210);
+            ImVec2 modalSize(226, 94);
             ImGui::SetNextWindowSize(modalSize);
 
-            if (ImGui::BeginPopupModal("ExitConfirmation", &showExitModal, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+            if (ImGui::BeginPopupModal("ExitConfirmation", &showExitModal, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
             {
                 ImGui::Text("Are you sure you want to exit?");
                 ImGui::Checkbox("Don't show this message again", &showExitModal);
@@ -26,8 +26,8 @@ namespace SceneryEditorX::UI {
                 // Buttons
                 if (ImGui::Button("Yes", ImVec2(100.0f, 0.0f)))
                 {
-                    glfwSetWindowShouldClose(window, true);
                     showExitModal = false; // Close the modal
+                    glfwSetWindowShouldClose(window, true);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("No", ImVec2(100.0f, 0.0f)))
@@ -54,8 +54,9 @@ namespace SceneryEditorX::UI {
                 ImGui::Text("Version 1.0.0");
                 ImGui::Text("Developed by: ");
                 ImGui::Text("Jared Bruni");
+
+
             }
         }
     }
 }
-*/

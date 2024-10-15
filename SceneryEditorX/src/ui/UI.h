@@ -6,17 +6,17 @@
 
 namespace SceneryEditorX::UI {
 
-	inline bool showExitModal = false;
-	inline bool showAboutModal = false;
+	extern bool showExitModal;
+    extern bool showAboutModal;
 
 	void MainMenuBar();
 
     void LayerStack();
-
+    void AssetBrowser();
     //void Properties();
 
-	//void ExitConfirmationModal();
-	//void AboutModal();
+	void ExitConfirmationModal(GLFWwindow *window);
+	void AboutModal();
 }
 
 #endif 
