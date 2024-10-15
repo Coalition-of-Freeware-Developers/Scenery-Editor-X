@@ -6,6 +6,11 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3D-Viewport", "3D-Viewport\3D-Viewport.vcxproj", "{2476120E-DA78-4AE1-82A9-8B5B762602FD}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SceneryEditorX", "SceneryEditorX\SceneryEditorX.vcxproj", "{45E34B00-2A6D-4CFE-BD93-2F2D55F6F247}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301} = {C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "X-PlaneSceneryLibrary", "X-PlaneSceneryLibrary\X-PlaneSceneryLibrary.vcxproj", "{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,6 +36,14 @@ Global
 		{45E34B00-2A6D-4CFE-BD93-2F2D55F6F247}.Release|x64.Build.0 = Release|x64
 		{45E34B00-2A6D-4CFE-BD93-2F2D55F6F247}.Release|x86.ActiveCfg = Release|Win32
 		{45E34B00-2A6D-4CFE-BD93-2F2D55F6F247}.Release|x86.Build.0 = Release|Win32
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Debug|x64.ActiveCfg = Debug|x64
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Debug|x64.Build.0 = Debug|x64
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Debug|x86.ActiveCfg = Debug|x64
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Debug|x86.Build.0 = Debug|x64
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Release|x64.ActiveCfg = Release|x64
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Release|x64.Build.0 = Release|x64
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Release|x86.ActiveCfg = Release|x64
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
