@@ -42,6 +42,10 @@
     <ClInclude Include="XPObj.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DebugMain.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="TextUtils.cpp">
       <SubType>
       </SubType>

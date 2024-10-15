@@ -34,11 +34,11 @@ namespace XPLibrary
 		//Relative path
 		std::filesystem::path pPath;
 
-		inline void SetPath(std::filesystem::path InBasePath, std::filesystem::path InRealPath)
+		inline void SetPath(std::filesystem::path InBasePath, std::filesystem::path InRelativePath)
 		{
 			pPackagePath = InBasePath;
-			pRealPath = InRealPath;
-			pPath = InRealPath.lexically_relative(InBasePath);
+			pRealPath = InBasePath / InRelativePath;
+			pPath = InRelativePath;
 		}
 
 		//Whether it's from a library. If false it's local to that package.

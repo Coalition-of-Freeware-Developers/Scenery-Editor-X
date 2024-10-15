@@ -58,5 +58,6 @@
     <ClCompile Include="XPLibrarySystem.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="DebugMain.cpp" />
   </ItemGroup>
 </Project>
