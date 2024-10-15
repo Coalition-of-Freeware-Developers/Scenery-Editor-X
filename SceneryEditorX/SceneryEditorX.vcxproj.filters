@@ -35,6 +35,9 @@
     <Filter Include="src\Scene">
       <UniqueIdentifier>{71b5d221-d4e7-4632-af25-7e52d30285e9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resources\imguizmo">
+      <UniqueIdentifier>{2e3a326a-dc9b-48e1-ae2a-b999573d5acc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\external\include\imgui\imgui.cpp">
@@ -64,9 +67,6 @@
     <ClCompile Include="src\io\CfgLoader.cpp">
       <Filter>src\IO</Filter>
     </ClCompile>
-    <ClCompile Include="src\ui\About.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
     <ClCompile Include="src\ui\Modals.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
@@ -84,6 +84,9 @@
     </ClCompile>
     <ClCompile Include="src\platform\windows\FileManager.cpp">
       <Filter>src\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingsPanel.cpp">
+      <Filter>src\UI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

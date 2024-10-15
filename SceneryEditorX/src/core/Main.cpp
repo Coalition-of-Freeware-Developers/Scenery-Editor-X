@@ -328,9 +328,14 @@ void RenderMainMenu()
 	MainMenuBar();
 }
 
+void RenderPanels()
+{
+    LayerStack();
+    AssetBrowser();
+}
+
 void RenderModals()
 {
-	ExitConfirmationModal();
 	AboutModal();
 }
 
@@ -338,7 +343,7 @@ int main(int, char**)
 {
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit())
-		return 1;
+		return -1;
 
 	// Decide GL+GLSL versions
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -366,7 +371,7 @@ int main(int, char**)
 	// Create window with graphics context
 	GLFWwindow* window = glfwCreateWindow(1280, 720, "Scenery Editor X", nullptr, nullptr);
 	if (window == nullptr)
-		return 1;
+		return -1;
 
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1); // Enable vsync
@@ -467,7 +472,10 @@ int main(int, char**)
         
 		RenderModals();
         LayerStack();
+        AssetBrowser();
 
+        // Call the exit confirmation modal
+        ExitConfirmationModal(window); // Pass the window pointer
 
 		ImGui::Begin("3D Viewport");
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();

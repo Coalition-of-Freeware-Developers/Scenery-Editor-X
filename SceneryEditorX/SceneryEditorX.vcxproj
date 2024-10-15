@@ -26,13 +26,13 @@
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="SettingsPanel.cpp" />
     <ClCompile Include="src\platform\windows\FileManager.cpp" />
     <ClCompile Include="src\pch.cpp" />
     <ClCompile Include="src\ui\ContentBrowser.cpp" />
     <ClCompile Include="src\ui\LayerStack.cpp" />
     <ClCompile Include="src\ui\MenuBar.cpp" />
     <ClCompile Include="src\ui\Modals.cpp" />
-    <ClCompile Include="src\ui\About.cpp" />
     <ClCompile Include="src\core\Main.cpp" />
     <ClCompile Include="src\io\CfgLoader.cpp" />
   </ItemGroup>
@@ -165,6 +165,8 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Version>
+      </Version>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

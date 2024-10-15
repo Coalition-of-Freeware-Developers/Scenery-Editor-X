@@ -12,10 +12,10 @@ namespace SceneryEditorX::UI {
 	void MainMenuBar();
 
     void LayerStack();
-
+    void AssetBrowser();
     //void Properties();
 
-	void ExitConfirmationModal();
+	void ExitConfirmationModal(GLFWwindow *window);
 	void AboutModal();
 }
 
