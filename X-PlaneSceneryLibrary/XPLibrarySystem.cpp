@@ -7,261 +7,477 @@
 #pragma once
 
 //Include necessary headers
+#include <algorithm>
+#include <fstream>
+#include <sstream>
 #include "XPLibrarySystem.h"
+#include "TextUtils.h"
+
+namespace fs = std::filesystem;	//I'm lazy, so less typing
 
 ///	<summary>
 ///	LoadFileSystem - Loads the files from the Library.txt and real paths into the vPaths vector
 ///	</summary>
 ///	<param name="InXpRootPath">The root path of the X-Plane installation</param>
 /// <param name="InCustomSceneryPacks">A vector of paths to custom scenery packs. These should be ordered based on the scenery_packs.ini, with the first element being the highest priority scenery</param>
-void LoadFileSystem(std::filesystem::path InXpRootPath, std::vector<std::filesystem::path> InCustomSceneryPacks);
+void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRootPath, std::filesystem::path InCurrentPackagePath, std::vector<std::filesystem::path> InCustomSceneryPacks)
 {
-	/*
-	//Define a vector of strings to hold the library.txt paths
-	std::vector<std::filesystem::path> vctLibPaths;
+	//Define our seasons
+	const std::string SUM = "sum";
+	const std::string WIN = "win";
+	const std::string SPR = "spr";
+	const std::string FAL = "fal";
 
-	//Recursively scan all files using std::filesystem. Add all files to vPath, and also add all Library.txt (case insensitive) files to our library vector
-	for (auto p : BasePaths)
+	//Define a list of acceptable extensions to add to the library.txt
+	std::vector<std::string> vctXPExtensions = { ".lin", ".pol", ".str", ".ter", ".net", ".obj", ".agb", ".ags", ".agp", ".bch" };
+	std::sort(vctXPExtensions.begin(), vctXPExtensions.end());
+
+	//We will first add a new region, region_all, which contains everything that is not regionalized.
+	XPLibrary::Region Region_All;
+	mRegions.insert(std::make_pair("region_all", Region_All));
+
+	//First load all the real files from the Current Package
+	for (auto p : fs::recursive_directory_iterator(InCurrentPackagePath))
 	{
-		for (const std::filesystem::path& p : recursive_directory_iterator(p))
+		if (std::binary_search(vctXPExtensions.begin(), vctXPExtensions.end(), p.path().extension().string()))
 		{
-			//Check if the file is a Library.txt file
-			if (p.filename().string() == "Library.txt" || p.filename().string() == "library.txt")
+			//Define a new DefinitionPath
+			DefinitionPath DefPath;
+			DefPath.SetPath(InCurrentPackagePath, p.path());
+
+			//Define a new DefinitionForRegion
+			XPLibrary::RegionalDefinitions RegionalDef;
+			RegionalDef.dDefault.AddOption(DefPath);
+			RegionalDef.strRegionName = "region_all";
+
+			//Define a new Definition
+			XPLibrary::Definition Def;
+			Def.vctRegionalDefs.push_back(RegionalDef);
+
+			//FINALLY save the definition
+			vctDefinitions.push_back(Def);
+		}
+	}
+
+	//Get a list of all library.txt files in the custom scenery packs, and in the resources directory (XpRoot/Resources/default scenery)
+	//First path is the package, second path is the library.txt
+	std::vector<std::pair<fs::path, fs::path>> vctLibs;
+
+	//Get the library.txts to process
+	{
+		for (auto& p : InCustomSceneryPacks)
+		{
+			for (auto& p2 : fs::recursive_directory_iterator(p))
 			{
-				//Add the path to the library vector
-				vctLibPaths.push_back(p);
+				if (p2.path().filename() == "library.txt")
+				{
+					vctLibs.push_back(std::make_pair(p, p2.path()));
+				}
 			}
-			else
+		}
+
+		for (auto& p : fs::recursive_directory_iterator(InXpRootPath / "Resources" / "default scenery"))
+		{
+			if (p.path().filename() == "library.txt")
 			{
-				//Add the path to the vPaths vector
-				vPaths.push_back(VirtualPath(p.string()));
+				vctLibs.push_back(std::make_pair(InXpRootPath / "Resources" / "default scenery", p.path()));
 			}
 		}
 	}
-	//Now sort the vPaths vector
-	std::sort(vPaths.begin(), vPaths.end());
-
-	//Define a binary tree to store our lib.txt paths. This allows us to rapidly find them without shifting data nonstop
-	BinaryTree<VirtualPath> btLibTxtPaths;
-
-	//Now we will read each Library.txt.
-	//Library.txts contain commands in the form of EXPORT <vPath> <realPath>
-	//vPaths may not have spaces, real paths can have spaces. So token 0 is export, token 1 is vPath, the rest of the line is realPath
-	for (std::vector<std::filesystem::path>::reverse_iterator i = vctLibPaths.rbegin(); i != vctLibPaths.rend(); i++)
+		
+	//Now we will process the library.txt files
+	for (auto& l : vctLibs)
 	{
 		//Open the file
-		std::ifstream file(i->wstring());
+		std::ifstream ifsLib(l.second);
 
-		//Check if the file is open
-		if (file.is_open())
-		{
-			//Define a string to hold the current line
-			std::string strLine;
-
-			//Read each line
-			while (std::getline(file, strLine))
+		//Lambda to get an iterator to a definition, or add it if it doesn't exist
+		auto GetIteratorToDefinition = [&](std::string InPath) -> std::vector<XPLibrary::Definition>::iterator
 			{
-				//Define a vector of strings to hold the tokens
-				stringstream sstrLine(strLine);
+				//TODO: Add sorting and switch to binary search
 
-				//Define strings to hold tokens
-				string strCmd;
-				string strVPath;
-				string strRealPath;
+				//Find the definition
+				auto itDef = std::find(vctDefinitions.begin(), vctDefinitions.end(), InPath);
 
-				//Read to first space
-				sstrLine >> strCmd;
-
-				//Just adds a new vPath entry, if one already exists, acts as EXPORT_EXTEND
-				if (strCmd == "EXPORT")
+				if (itDef != vctDefinitions.end())
 				{
-					//Read teh vPath
-					sstrLine >> strVPath;
-
-					//Read the real path
-					getline(sstrLine, strRealPath);
-
-					//Remove whitespace
-					strRealPath = RemoveWhitespaceFromEnds(strRealPath);
-					strVPath = RemoveWhitespaceFromEnds(strVPath);
-
-					//Adjust the real path to include this library.txt's folder, plus the real path
-					strRealPath = i->parent_path().string() + "\\" + strRealPath;
-
-					//Now adjust the real and virtual paths to have all /s replaced with \\s
-					strRealPath = ReplaceCharsInStr(strRealPath, '/', '\\');
-					strVPath = ReplaceCharsInStr(strVPath, '/', '\\');
-
-					//Try to find this vPath in the vPaths vector
-					std::vector<VirtualPath>* vExistingPath = btLibTxtPaths.GetPointer(VirtualPath(strVPath));
-
-					//If this path is present, add this real path. Otherwise insert it into the vector. We check if the index if < vPaths.size() cuz the index is unsigned, so we can't compare to -1
-					if (vExistingPath != nullptr)
-					{
-						vExistingPath->at(0).AddRealPath(strRealPath);
-					}
-					else
-					{
-						btLibTxtPaths.Insert(VirtualPath(strVPath, strRealPath));
-					}
+					return itDef;
 				}
 
-				//EXPORT_EXCLUDES override existing vPath entries
-				else if (strCmd == "EXPORT_EXCLUDE")
+				//Otherwise create a new definition by that name
+				XPLibrary::Definition Def;
+				Def.pVirtual = InPath;
+
+				//Add the definition
+				vctDefinitions.push_back(Def);
+
+				return vctDefinitions.end() - 1;
+			};
+
+		//Buffers
+		std::string strBuffer;
+		std::stringstream ssLineBuffer;
+		XPLibrary::Region CurrentRegion;
+		std::string strCurrentRegionDefName;
+		std::string strCurrentRegionName = "region_all";
+		bool bInPrivate = false;
+
+		//State buffers for multi-line commands
+		bool bThisCommandWasRegion = false;
+		bool bLastCommandWasRegion = false;
+
+		//Read lines
+		while (ifsLib.good())
+		{
+			//Get the line, put it into the stringstream, and tokenize
+			std::getline(ifsLib, strBuffer);
+			ssLineBuffer.str(strBuffer);
+			auto tokens = TextUtils::TokenizeString(strBuffer, { ' ', '\t', '\n', '\r' });
+
+			//Skip non-commands
+			if (strBuffer.starts_with("#")) { continue; }	//Comments
+			else if (tokens.size() == 0) { continue; }		//Empty lines
+
+			//Reset this command state
+			bThisCommandWasRegion = false;
+
+			//Check the command
+			if ((tokens[0] == "EXPORT" || tokens[0] == "EXPORT_EXTEND") && tokens.size() >= 3)	//EXPORT and EXPORT_EXTEND actually behave pretty much identically in sim, so we will save the complexity and treat them the same here.
+			{
+				//Create (or get) the definition for the virtual path
+				auto it = GetIteratorToDefinition(tokens[1]);
+				if (bInPrivate) { it->bIsPrivate = true; }	//Set the private flag if we are in a private block
+
+				//Get the index of the current RegionalDefinition in this definition
+				auto& RegionalDef = it->vctRegionalDefs[it->GetRegionalDefinitionIdx(strCurrentRegionName)];
+
+				//Now we need to get the real path. We do this by removing the first 2 tokens from the stream, then we can getline
+				ssLineBuffer >> strBuffer >> strBuffer;
+				std::getline(ssLineBuffer, strBuffer);
+
+				//Define our definition path
+				XPLibrary::DefinitionPath DefPath;
+				DefPath.SetPath(l.first, strBuffer);
+
+				//This is a default path, so now we just need to add it as an option to the default definition
+				RegionalDef.dDefault.AddOption(DefPath);
+			}
+			if (tokens[0] == "EXPORT_BACKUP" && tokens.size() >= 3)
+			{
+				//Create (or get) the definition for the virtual path
+				auto it = GetIteratorToDefinition(tokens[1]);
+				if (bInPrivate) { it->bIsPrivate = true; }	//Set the private flag if we are in a private block
+
+				//Get the index of the current RegionalDefinition in this definition
+				auto& RegionalDef = it->vctRegionalDefs[it->GetRegionalDefinitionIdx(strCurrentRegionName)];
+
+				//Now we need to get the real path. We do this by removing the first 2 tokens from the stream, then we can getline
+				ssLineBuffer >> strBuffer >> strBuffer;
+				std::getline(ssLineBuffer, strBuffer);
+
+				//Define our definition path
+				XPLibrary::DefinitionPath DefPath;
+				DefPath.SetPath(l.first, strBuffer);
+
+				//This is a backup path, so now we just need to add it as an option to the default definition
+				RegionalDef.dBackup.AddOption(DefPath);
+			}
+			else if (tokens[0] == "EXPORT_RATIO" && tokens.size() >= 4)
+			{
+				//Format: EXPORT_RATIO <ratio> <virtual path> <real path>
+				//Create (or get) the definition for the virtual path
+				auto it = GetIteratorToDefinition(tokens[2]);
+				if (bInPrivate) { it->bIsPrivate = true; }	//Set the private flag if we are in a private block
+
+				//Get the index of the current RegionalDefinition in this definition
+				auto& RegionalDef = it->vctRegionalDefs[it->GetRegionalDefinitionIdx(strCurrentRegionName)];
+
+				//Now we need to get the real path. We do this by removing the first 3 tokens from the stream, then we can getline
+				ssLineBuffer >> strBuffer >> strBuffer >> strBuffer;
+				std::getline(ssLineBuffer, strBuffer);
+
+				//Define our definition path
+				XPLibrary::DefinitionPath DefPath;
+				DefPath.SetPath(l.first, strBuffer);
+
+				//Get the ratio
+				double dblRatio = 1;
+				try
 				{
-					//Read teh vPath
-					sstrLine >> strVPath;
-
-					//Read the real path
-					getline(sstrLine, strRealPath);
-
-					//Remove whitespace
-					strRealPath = RemoveWhitespaceFromEnds(strRealPath);
-					strVPath = RemoveWhitespaceFromEnds(strVPath);
-
-					//Adjust the real path to include this library.txt's folder, plus the real path
-					strRealPath = i->parent_path().string() + "\\" + strRealPath;
-
-					//Now adjust the real and virtual paths to have all /s replaced with \\s
-					strRealPath = ReplaceCharsInStr(strRealPath, '/', '\\');
-					strVPath = ReplaceCharsInStr(strVPath, '/', '\\');
-
-					//Try to find this vPath in the vPaths vector
-					std::vector<VirtualPath>* vExistingPath = btLibTxtPaths.GetPointer(VirtualPath(strVPath));
-
-					//If this path is present, add this real path. Otherwise insert it into the vector. We check if the index if < vPaths.size() cuz the index is unsigned, so we can't compare to -1
-					if (vExistingPath != nullptr)
-					{
-						vExistingPath->at(0).ClearRealPaths();
-						vExistingPath->at(0).AddRealPath(strRealPath);
-					}
-					else
-					{
-						btLibTxtPaths.Insert(VirtualPath(strVPath, strRealPath));
-					}
+					dblRatio = std::stod(tokens[2]);
+				}
+				catch (...)
+				{
+					//TODO: Log something here
 				}
 
-				//Creates a new vPath entry but with the real path provided here as a backup path. That backup path will only be used in resolving if the primary path is not found. Future EXPORT_BACKUPs will override
-				else if (strCmd == "EXPORT_BACKUP")
+				//This is a default path, so now we just need to add it as an option to the default definition
+				RegionalDef.dBackup.AddOption(DefPath, dblRatio);
+			}
+			else if (tokens[0] == "EXPORT_EXCLUDE")
+			{
+				//Create (or get) the definition for the virtual path
+				auto it = GetIteratorToDefinition(tokens[1]);
+				if (bInPrivate) { it->bIsPrivate = true; }	//Set the private flag if we are in a private block
+
+				//Get the index of the current RegionalDefinition in this definition
+				auto& RegionalDef = it->vctRegionalDefs[it->GetRegionalDefinitionIdx(strCurrentRegionName)];
+
+				//Now we need to get the real path. We do this by removing the first 2 tokens from the stream, then we can getline
+				ssLineBuffer >> strBuffer >> strBuffer;
+				std::getline(ssLineBuffer, strBuffer);
+
+				//Define our definition path
+				XPLibrary::DefinitionPath DefPath;
+				DefPath.SetPath(l.first, strBuffer);
+
+				//Since this is an exclude, we need to reset the options first
+				RegionalDef.dDefault.ResetOptions();
+
+				//This is a default path, so now we just need to add it as an option to the default definition
+				RegionalDef.dDefault.AddOption(DefPath);
+			}
+			else if (tokens[0] == "REGION_DEFINE" && tokens.size() == 2)
+			{
+				CurrentRegion = XPLibrary::Region();	//Reset the region
+				strCurrentRegionDefName = tokens[1];
+
+				bLastCommandWasRegion = true;
+				bThisCommandWasRegion = true;
+			}
+			else if (tokens[0] == "REGION_ALL")
+			{
+				//Nothing to do here - we leave the region with the default no conditions
+
+				bLastCommandWasRegion = true;
+				bThisCommandWasRegion = true;
+			}
+			else if (tokens[0] == "REGION_RECT" && tokens.size() == 5)
+			{
+				//Params here are w s e n. Save these in the region
+				try
 				{
-					//Read teh vPath
-					sstrLine >> strVPath;
+					CurrentRegion.dblWest = std::stod(tokens[1]);
+					CurrentRegion.dblSouth = std::stod(tokens[2]);
+					CurrentRegion.dblEast = std::stod(tokens[3]);
+					CurrentRegion.dblNorth = std::stod(tokens[4]);
+				}
+				catch (...)
+				{
+					//TODO: Log something here
 
-					//Read the real path
-					getline(sstrLine, strRealPath);
-
-					//Remove whitespace
-					strRealPath = RemoveWhitespaceFromEnds(strRealPath);
-					strVPath = RemoveWhitespaceFromEnds(strVPath);
-
-					//Adjust the real path to include this library.txt's folder, plus the real path
-					strRealPath = i->parent_path().string() + "\\" + strRealPath;
-
-					//Now adjust the real and virtual paths to have all /s replaced with \\s
-					strRealPath = ReplaceCharsInStr(strRealPath, '/', '\\');
-					strVPath = ReplaceCharsInStr(strVPath, '/', '\\');
-
-					//Try to find this vPath in the vPaths vector
-					std::vector<VirtualPath>* vExistingPath = btLibTxtPaths.GetPointer(VirtualPath(strVPath));
-
-					//If this path is present, add this real path. Otherwise insert it into the vector. We check if the index if < vPaths.size() cuz the index is unsigned, so we can't compare to -1
-					if (vExistingPath != nullptr)
-					{
-						vExistingPath->at(0).AddBackupPath(strRealPath);
-					}
-					else
-					{
-						btLibTxtPaths.Insert(VirtualPath(strVPath, strRealPath));
-						std::vector<VirtualPath>* vExistingPath = btLibTxtPaths.GetPointer(VirtualPath(strVPath));
-						vExistingPath->at(0).ClearRealPaths();
-						vExistingPath->at(0).AddBackupPath(strRealPath);
-					}
 				}
 
-				//Same behavior as EXPORT, creates a new vPath entry, or extends it if it already exists
-				else if (strCmd == "EXPORT_SEASON")
+				bLastCommandWasRegion = true;
+				bThisCommandWasRegion = true;
+			}
+			else if (tokens[0] == "REGION_BITMAP" && tokens.size() >= 2)
+			{
+				//TODO: Implement a system that allows for REGION_BITMAPs to be used. We need to store the image data.
+
+				bLastCommandWasRegion = true;
+				bThisCommandWasRegion = true;
+			}
+			else if (tokens[0] == "REGION_DREF" && tokens.size() == 4)	//I don't *think* datarefs can have spaces? So there should be exactly 4 tokens
+			{
+				CurrentRegion.Conditions.push_back({ tokens[1], tokens[2], tokens[3] });	//The conditions are a tuple with 3 strings
+				bLastCommandWasRegion = true;
+				bThisCommandWasRegion = true;
+			}
+			else if (tokens[0] == "REGION" && tokens.size() == 2)
+			{
+				//Check if there is an un-added region (we can tell by the name not being empty). If so, add it
+				if (strCurrentRegionDefName != "")
 				{
-					//Read the season part
-					string strSeason;
-					sstrLine >> strSeason;
-
-					//Read teh vPath
-					sstrLine >> strVPath;
-
-					//Read the real path
-					getline(sstrLine, strRealPath);
-
-					//Remove whitespace
-					strRealPath = RemoveWhitespaceFromEnds(strRealPath);
-					strVPath = RemoveWhitespaceFromEnds(strVPath);
-
-					//Adjust the real path to include this library.txt's folder, plus the real path
-					strRealPath = i->parent_path().string() + "\\" + strRealPath;
-
-					//Now adjust the real and virtual paths to have all /s replaced with \\s
-					strRealPath = ReplaceCharsInStr(strRealPath, '/', '\\');
-					strVPath = ReplaceCharsInStr(strVPath, '/', '\\');
-
-					//Try to find this vPath in the vPaths vector
-					std::vector<VirtualPath>* vExistingPath = btLibTxtPaths.GetPointer(VirtualPath(strVPath));
-
-					//If this path is present, add this real path. Otherwise insert it into the vector. We check if the index if < vPaths.size() cuz the index is unsigned, so we can't compare to -1
-					if (vExistingPath != nullptr && strSeason == "sum")
-					{
-						vExistingPath->at(0).ClearRealPaths();
-						vExistingPath->at(0).AddRealPath(strRealPath);
-					}
-					else
-					{
-						btLibTxtPaths.Insert(VirtualPath(strVPath, strRealPath));
-					}
+					//Save the region and reset the name
+					mRegions.insert(std::make_pair(strCurrentRegionDefName, CurrentRegion));
+					strCurrentRegionDefName = "";
 				}
 
-				//Same behavior as EXPORT, creates a new vPath entry, or extends it if it already exists
-				else if (strCmd == "EXPORT_EXTEND")
+				//Set the current region
+				strCurrentRegionName = tokens[1];
+			}
+			else if ((tokens[0] == "EXPORT_SEASON" || tokens[0] == "EXPORT_EXTEND_SEASON") && tokens.size() >= 4)
+			{
+				//Format: EXPORT_SEASON <seasons (comma delimited)> <virtual path> <real path>
+				//Create (or get) the definition for the virtual path
+				auto it = GetIteratorToDefinition(tokens[2]);
+				if (bInPrivate) { it->bIsPrivate = true; }	//Set the private flag if we are in a private block
+
+				//Get the index of the current RegionalDefinition in this definition
+				auto& RegionalDef = it->vctRegionalDefs[it->GetRegionalDefinitionIdx(strCurrentRegionName)];
+
+				//Now we need to get the real path. We do this by removing the first 3 tokens from the stream, then we can getline
+				ssLineBuffer >> strBuffer >> strBuffer >> strBuffer;
+				std::getline(ssLineBuffer, strBuffer);
+
+				//Define our definition path
+				XPLibrary::DefinitionPath DefPath;
+				DefPath.SetPath(l.first, strBuffer);
+
+				//Add this path to the options for the appropriate seasons
+				if (tokens[1].find(SUM) != std::string::npos)
 				{
-					//Read teh vPath
-					sstrLine >> strVPath;
-
-					//Read the real path
-					getline(sstrLine, strRealPath);
-
-					//Remove whitespace
-					strRealPath = RemoveWhitespaceFromEnds(strRealPath);
-					strVPath = RemoveWhitespaceFromEnds(strVPath);
-
-					//Adjust the real path to include this library.txt's folder, plus the real path
-					strRealPath = i->parent_path().string() + "\\" + strRealPath;
-
-					//Now adjust the real and virtual paths to have all /s replaced with \\s
-					strRealPath = ReplaceCharsInStr(strRealPath, '/', '\\');
-					strVPath = ReplaceCharsInStr(strVPath, '/', '\\');
-
-					//Try to find this vPath in the vPaths vector
-					std::vector<VirtualPath>* vExistingPath = btLibTxtPaths.GetPointer(VirtualPath(strVPath));
-
-					//If this path is present, add this real path. Otherwise insert it into the vector. We check if the index if < vPaths.size() cuz the index is unsigned, so we can't compare to -1
-					if (vExistingPath != nullptr)
-					{
-						vExistingPath->at(0).AddRealPath(strRealPath);
-					}
-					else
-					{
-						btLibTxtPaths.Insert(VirtualPath(strVPath, strRealPath));
-					}
+					RegionalDef.dSummer.AddOption(DefPath);
+				}
+				if (tokens[1].find(WIN) != std::string::npos)
+				{
+					RegionalDef.dWinter.AddOption(DefPath);
+				}
+				if (tokens[1].find(SPR) != std::string::npos)
+				{
+					RegionalDef.dSpring.AddOption(DefPath);
+				}
+				if (tokens[1].find(FAL) != std::string::npos)
+				{
+					RegionalDef.dFall.AddOption(DefPath);
 				}
 			}
+			else if (tokens[0] == "EXPORT_RATIO_SEASON" && tokens.size() >= 5)
+			{
+				//Format: EXPORT_RATIO_SEASON <seasons (comma delimited)> <ratio> <virtual path> <real path>
+				//Create (or get) the definition for the virtual path
+				auto it = GetIteratorToDefinition(tokens[3]);
+				if (bInPrivate) { it->bIsPrivate = true; }	//Set the private flag if we are in a private block
+
+				//Get the index of the current RegionalDefinition in this definition
+				auto& RegionalDef = it->vctRegionalDefs[it->GetRegionalDefinitionIdx(strCurrentRegionName)];
+
+				//Now we need to get the real path. We do this by removing the first 4 tokens from the stream, then we can getline
+				ssLineBuffer >> strBuffer >> strBuffer >> strBuffer >> strBuffer;
+				std::getline(ssLineBuffer, strBuffer);
+
+				//Define our definition path
+				XPLibrary::DefinitionPath DefPath;
+				DefPath.SetPath(l.first, strBuffer);
+
+				//Get the ratio
+				double dblRatio = 1;
+				try
+				{
+					dblRatio = std::stod(tokens[2]);
+				}
+				catch (...)
+				{
+					//TODO: Log something here
+				}
+
+				//Add this path to the options for the appropriate seasons
+				if (tokens[1].find(SUM) != std::string::npos)
+				{
+					RegionalDef.dSummer.AddOption(DefPath);
+				}
+				if (tokens[1].find(WIN) != std::string::npos)
+				{
+					RegionalDef.dWinter.AddOption(DefPath);
+				}
+				if (tokens[1].find(SPR) != std::string::npos)
+				{
+					RegionalDef.dSpring.AddOption(DefPath);
+				}
+				if (tokens[1].find(FAL) != std::string::npos)
+				{
+					RegionalDef.dFall.AddOption(DefPath);
+				}
+			}
+			else if (tokens[0] == "EXPORT_EXCLUDE_SEASON")
+			{
+				//Format: EXPORT_EXCLUDE <seasons (comma delimited)> <virtual path> <real path>
+				//Create (or get) the definition for the virtual path
+				auto it = GetIteratorToDefinition(tokens[2]);
+				if (bInPrivate) { it->bIsPrivate = true; }	//Set the private flag if we are in a private block
+
+				//Get the index of the current RegionalDefinition in this definition
+				auto& RegionalDef = it->vctRegionalDefs[it->GetRegionalDefinitionIdx(strCurrentRegionName)];
+
+				//Now we need to get the real path. We do this by removing the first 3 tokens from the stream, then we can getline
+				ssLineBuffer >> strBuffer >> strBuffer >> strBuffer;
+				std::getline(ssLineBuffer, strBuffer);
+
+				//Define our definition path
+				XPLibrary::DefinitionPath DefPath;
+				DefPath.SetPath(l.first, strBuffer);
+
+				//Since this is an exclude, we need to reset the options first
+				RegionalDef.dDefault.ResetOptions();
+
+				//Add this path to the options for the appropriate seasons
+				if (tokens[1].find(SUM) != std::string::npos)
+				{
+					RegionalDef.dSummer.AddOption(DefPath);
+				}
+				if (tokens[1].find(WIN) != std::string::npos)
+				{
+					RegionalDef.dWinter.AddOption(DefPath);
+				}
+				if (tokens[1].find(SPR) != std::string::npos)
+				{
+					RegionalDef.dSpring.AddOption(DefPath);
+				}
+				if (tokens[1].find(FAL) != std::string::npos)
+				{
+					RegionalDef.dFall.AddOption(DefPath);
+				}
+			}
+			else if (tokens[0] == "PUBLIC")
+			{
+				bInPrivate = false;
+			}
+			else if (tokens[0] == "PRIVATE")
+			{
+				bInPrivate = true;
+			}
+
+			//Handle multi-line commands
+
+			//The end of a region command
+			if (bLastCommandWasRegion && !bThisCommandWasRegion)
+			{
+				//Save the region and reset the name
+				mRegions.insert(std::make_pair(strCurrentRegionDefName, CurrentRegion));
+				strCurrentRegionDefName = "";
+			}
+
+
+			//Peek to set flags
+			ifsLib.peek();
 		}
+
 	}
 
-	//Now get the data from the btree
-	auto vctBtData = btLibTxtPaths.GetAllData();
-	for (auto& v : vctBtData)
+	//Sort the definitions
+	std::sort(vctDefinitions.begin(), vctDefinitions.end());
+}
+
+///	<summary>
+///	GetDefinition - Returns the definition of a given path
+/// </summary>
+/// <param name="InPath">The path to get the definition of</param>
+/// <returns>The definition of the given path</returns>
+XPLibrary::Definition XPLibrary::VirtualFileSystem::GetDefinition(const std::string& InPath)
+{
+	//Find the definition
+	auto itDef = std::lower_bound(vctDefinitions.begin(), vctDefinitions.end(), InPath);
+
+	if (itDef->pVirtual == InPath)
 	{
-		vPaths.push_back(v);
+		return *itDef;
 	}
 
-	//Now sort the vPaths vector
-	std::sort(vPaths.begin(), vPaths.end());
-	*/
+	//Return an empty definition
+	return XPLibrary::Definition();
+}
+
+///	<summary>
+///	GetRegion - Returns the region of a given path
+/// </summary>
+/// <param name="InPath">The path to get the region of</param>
+/// <returns>Copy of the region of the given path. An empty region will be returned if the region does not exist</returns>
+XPLibrary::Region XPLibrary::VirtualFileSystem::GetRegion(const std::string& InPath)
+{
+	//Find the definition
+	auto itDef = mRegions.at(InPath);
+
+	//Return an empty region
+	return XPLibrary::Region();
 }
