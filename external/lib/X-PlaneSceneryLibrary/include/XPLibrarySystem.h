@@ -37,6 +37,13 @@ namespace XPLibrary
 		/// <param name="InPath">The path to get the definition of</param>
 		/// <returns>The definition of the given path</returns>
 		XPLibrary::Definition GetDefinition(const std::string& InPath);
+
+		///	<summary>
+		///	GetRegion - Returns the region of a given path
+		/// </summary>
+		/// <param name="InPath">The path to get the region of</param>
+		/// <returns>Copy of the region of the given path. An empty region will be returned if the region does not exist</returns>
+		XPLibrary::Region GetRegion(const std::string& InPath);
 	};
 
 

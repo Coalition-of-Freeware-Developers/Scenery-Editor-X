@@ -52,7 +52,7 @@ inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::v
         }
 
         //Otherwise check if this is not a delimeter (or is utf8 which automatically means it's not a delimeter). If that is the case, set that we've started token
-        else if (bInUtf8 || std::binary_search(Delimeters.begin(), Delimeters.end(), chrDelimeter))
+        else if (bInUtf8 || !std::binary_search(Delimeters.begin(), Delimeters.end(), chrDelimeter))
         {
             //Save this char, then set token started
             strTokenBuffer += chrDelimeter;
