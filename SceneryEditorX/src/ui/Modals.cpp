@@ -40,7 +40,6 @@ namespace SceneryEditorX::UI {
         }
     }
 
-
     //TODO: Impliment the ability to close the modal popup by clicking outside the Modal
     void AboutModal()
     {

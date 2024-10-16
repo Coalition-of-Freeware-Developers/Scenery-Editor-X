@@ -8,11 +8,15 @@ namespace SceneryEditorX::UI {
 
 	extern bool showExitModal;
     extern bool showAboutModal;
+    extern bool showSettingsPanel;
+
+    void SetDarkThemeColors();
 
 	void MainMenuBar();
 
     void LayerStack();
     void AssetBrowser();
+    void SettingsPanel();
     //void Properties();
 
 	void ExitConfirmationModal(GLFWwindow *window);
