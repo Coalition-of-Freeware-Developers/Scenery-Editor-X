@@ -1,26 +1,44 @@
-#include <fstream>
+
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
+#include <map>
 
-struct Asset
-{
-    std::string id;
-    double latitude;
-    double longitude;
-    double heading;
-    std::string properties; // Other properties as a string for simplicity
-};
+#include "../edX/edXProjectFile.h"
+#include "../X-PlaneSceneryLibrary/XPLibraryPath.h"
+
+using namespace ProjectFile;
 
 void writeEdxFile(const std::string &filename,
                   const std::string &sceneryName,
                   const std::string &editorVersion,
-                  const std::string &xPlaneVersion,
-                  const std::string &airportICAO,
+                  const std::string &XPVersion,
                   const std::string &airportName,
+                  const std::string &airportICAO,
+                  const std::string &airportIATA,
+                  const std::string &airportFAA,
+                  const std::string &airportCity,
+                  const std::string &airportState,
+                  const std::string &airportCountry,
+                  const std::string &airportRegion,
+                  const double airportLat,
+                  const double airportLon,
+                  const int airportTransAlt,
+                  const int airportTransLvl,
                   int airportElevation,
-                  const std::vector<std::string> &libraries,
-                  const std::vector<Asset> &assets)
+                  const int airportCTAF,
+                  const int airportATIS,
+                  const int airportTower,
+                  const int airportGround,
+                  const int airportApproach,
+                  const int airportDeparture,
+                  const int airportClearance,
+
+                  const std::vector<Airport> &airport,
+                  const std::vector<usedLibrary> &libraries,
+                  const std::vector<sceneAssets> &assets)
+
 {
     std::ofstream file(filename);
 
@@ -30,19 +48,23 @@ void writeEdxFile(const std::string &filename,
         return;
     }
 
-    // Write scenery section
+    /**
+     * @brief Write the scenery section to the edX file.
+     * 
+     * @param sceneryName The name of the scenery.
+     * @param editorVersion The version of the editor.
+     * @param XPVersion The version of X-Plane.
+     */
     file << "[Scenery]\n";
     file << "Name=" << sceneryName << "\n";
     file << "EditorVersion=" << editorVersion << "\n";
-    file << "XPVersion=" << xPlaneVersion << "\n\n";
+    file << "XPVersion=" << XPVersion << "\n\n";
 
-    // Write airport section
-    file << "[Airport]\n";
-    file << "ICAO=" << airportICAO << "\n";
-    file << "Name=" << airportName << "\n";
-    file << "Elevation=" << airportElevation << "\n\n";
-
-    // Write libraries section
+    /**
+     * @brief Write the libraries section to the edX file.
+     * 
+     * @param libraries The vector of library names.
+     */
     file << "[Libraries]\n";
     for (const auto &library : libraries)
     {
@@ -50,33 +72,149 @@ void writeEdxFile(const std::string &filename,
     }
     file << "\n";
 
-    // Write assets section
+
+    /**
+     * @brief Write the airport data to the edX file.
+     * 
+     * @param airportName The name of the airport.
+     * @param airportICAO The ICAO code of the airport.
+     * @param airportIATA The IATA code of the airport.
+     * @param airportFAA The FAA code of the airport.
+     * @param airportCity The city where the airport is located.
+     * @param airportState The state where the airport is located.
+     * @param airportCountry The country where the airport is located.
+     * @param airportRegion The region code of the airport.
+     * @param airportLat The latitude of the airport.
+     * @param airportLon The longitude of the airport.
+     * @param airportTransAlt The transition altitude of the airport.
+     * @param airportTransLvl The transition level of the airport.
+     * @param airportElevation The elevation of the airport.
+     * @param airportCTAF The CTAF frequency of the airport.
+     * @param airportATIS The ATIS frequency of the airport.
+     * @param airportTower The tower frequency of the airport.
+     * @param airportGround The ground frequency of the airport.
+     * @param airportApproach The approach frequency of the airport.
+     * @param airportDeparture The departure frequency of the airport.
+     * @param airportClearance The clearance frequency of the airport.
+     */
+    file << "[Airport]\n";
+    for (const auto &airportData : airport)
+    {
+        file << "Name=" << airportName << "\n";
+        file << "ICAO=" << airportICAO << "\n";
+        file << "IATA=" << airportIATA << "\n";
+        file << "FAA=" << airportFAA << "\n";
+        file << "City=" << airportCity << "\n";
+        file << "State=" << airportState << "\n";
+        file << "Country=" << airportCountry << "\n";
+        file << "RegionCode=" << airportRegion << "\n";
+        file << "DatumLat=" << airportLat << "\n";
+        file << "DatumLon=" << airportLon << "\n";
+        file << "TransitionAlt=" << airportTransAlt << "\n";
+        file << "TransitionLevel=" << airportTransLvl << "\n";
+        file << "Elevation=" << airportElevation << "\n";
+        file << "ATC=" << airportCTAF << "\n";
+        file << "ATIS=" << airportATIS << "\n";
+        file << "Tower=" << airportTower << "\n";
+        file << "Ground=" << airportGround << "\n";
+        file << "Approach=" << airportApproach << "\n";
+        file << "Departure=" << airportDeparture << "\n";
+        file << "Clearance=" << airportClearance << "\n\n";
+    }
+
+    /**
+     * @brief Write the assets section to the edX file.
+     * 
+     * @param assets The vector of scene assets.
+     * @param uniqueId The unique identifier of the asset.
+     * @param datum_lat The latitude of the asset.
+     * @param datum_lon The longitude of the asset.
+     * @param heading The heading of the asset.
+     * @param altitude The altitude of the asset.
+     * @param locked The locked status of the asset.
+     * @param hidden The hidden status of the asset.
+     * @param groupId The group ID of the asset its parented to in a layer.
+     * @param properties The properties of the asset.
+     */
     file << "[Assets]\n";
     for (const auto &asset : assets)
     {
-        file << asset.id << "=" << asset.latitude << ", " << asset.longitude << ", " << asset.heading << ", "
+        file << asset.id << "="
+             << asset.uniqueId << ", "
+             << asset.groupId << ", "
+             << asset.datum_lat << ", "
+             << asset.datum_lon << ", "
+             << asset.heading << ", "
+             << asset.altitude << ", "
+             << asset.locked << ", "
+             << asset.hidden << ", "
              << asset.properties << "\n";
     }
 
     file.close();
 }
 
-int main()
-{
-    std::vector<std::string> libraries = {"Laminar Research", "Custom Library"};
-    std::vector<Asset> assets = {{"Asset001", 37.618999, -122.375, 0.0, "Building_Type=Terminal"},
-                                 {"Asset002", 37.621, -122.379, 90.0, "Object_Type=Hangar"},
-                                 {"Asset003", 37.6185, -122.380, 45.0, "Object_Type=ControlTower"}};
+    int main()
+    {   
+        std::vector<ProjectFile::Airport> airportData = {
+            {"San Francisco International",
+             "KSFO",
+             "SFO",
+             "SFO",
+             "San Francisco",
+             "CA",
+             "USA",
+             "US-CA",
+             37.618999,
+             -122.375,
+             18000,
+             180,
+             13,
+             135.1, // ATIS
+             118.85, // Tower
+             118.85, // CTAF
+             121.8, // Ground
+             125.65, // Approach
+             123.75, // Departure
+             121.65 // Clearance
+            }
+        };
+        std::vector<ProjectFile::usedLibrary> libraries = {{"Library1", "path/to/library1", 1},
+                                                           {"Library2", "path/to/library2", 2}};
+        std::vector<ProjectFile::sceneAssets> assets = {
+            {"Asset001", 1, 37.618999, -122.375, 0.0, 0.0, false, false, 0, "Building_Type=Terminal"},
+            {"Asset002", 2, 37.621, -122.379, 90.0, 0.0, false, false, 0, "Object_Type=Hangar"},
+            {"Asset003", 3, 37.6185, -122.380, 45.0, 0.0, false, false, 0, "Object_Type=ControlTower"}};
+        std::vector<ProjectFile::sceneLayers> layers = {};
 
-    writeEdxFile("example.edX",
-                 "MySceneryProject",
-                 "1.0",
-                 "12.00",
-                 "KSFO",
-                 "San Francisco International Airport",
-                 13,
-                 libraries,
-                 assets);
+        writeEdxFile("test.edx",
+                     "San Francisco International",
+                     "1.0",
+                     "11.50",
+                     "San Francisco International",
+                     "KSFO",
+                     "SFO",
+                     "SFO",
+                     "San Francisco",
+                     "CA",
+                     "USA",
+                     "US-CA",
+                     37.618999,
+                     -122.375,
+                     18000,
+                     180,
+                     13,
+                     118.85,
+                     135.1,
+                     118.85,
+                     121.8,
+                     125.65,
+                     123.75,
+                     121.65,
+                     airportData,
+                     libraries,
+                     assets);
 
-    return 0;
-}
+        return 0;
+    }
+

@@ -9,17 +9,32 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
+    <Filter Include="Source Files\edX">
+      <UniqueIdentifier>{28118a57-df4b-4b59-a326-8d45d3604cf9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\edX-lib">
+      <UniqueIdentifier>{49bcd16f-e003-4c51-a046-bb90b36ae00f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="edXReader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\edX</Filter>
     </ClCompile>
     <ClCompile Include="edXWriter.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\edX</Filter>
+    </ClCompile>
+    <ClCompile Include="edXLibraryReader.cpp">
+      <Filter>Source Files\edX-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="edXLibraryWriter.cpp">
+      <Filter>Source Files\edX-lib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="edXProjectFile.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="edXLibraryFile.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
