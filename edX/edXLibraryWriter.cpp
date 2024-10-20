@@ -59,7 +59,7 @@ void writeEdxLibFile(const std::string &filename,
 
 }
 
-int main()
+int libraryMain()
 {
     std::vector<LibraryObject> objects = {
         {"object1", "", "type1", "properties1"},

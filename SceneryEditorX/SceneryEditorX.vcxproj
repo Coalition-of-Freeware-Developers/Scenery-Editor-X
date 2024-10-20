@@ -120,8 +120,8 @@
     <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\bin\Release-windows-x86_64\Scenery Editor X</OutDir>
-    <IntDir>..\bin-int\Release-windows-x86_64\Scenery Editor X</IntDir>
+    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X</IntDir>
     <TargetName>Scenery Editor X</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

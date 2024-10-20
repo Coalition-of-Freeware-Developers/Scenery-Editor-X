@@ -11,29 +11,36 @@
 
 namespace ProjectFile
 {
+    struct projectFile
+    {
+        std::string filename;
+        std::string sceneryName;
+        std::string editorVersion;
+        std::string XPVersion;
+    };
+
     struct Airport
     {
-        std::string airport_name;
-        std::string icao_code;
-        std::string iata_code;
-        std::string faa_code;
-        std::string city;
-        std::string state;
-        std::string country;
-        std::string region_code;
-        double datum_lat;
-        double datum_lon;
-        int transition_alt;  
-        int transition_level;
-        int elevation;
-
-        int atis;
-        int tower;
-        int ctaf;
-        int ground;
-        int approach;
-        int departure;
-        int clearance;
+        std::string airportName;
+        std::string airportICAO;
+        std::string airportIATA;
+        std::string airportFAA;
+        std::string airportCity;
+        std::string airportState;
+        std::string airportCountry;
+        std::string airportRegion;
+        double airportLat;
+        double airportLon;
+        int airportTransAlt;  
+        int airportTransLvl;
+        int airportElevation;
+        double airportCTAF;
+        double airportATIS;
+        double airportTower;
+        double airportGround;
+        double airportApproach;
+        double airportDeparture;
+        double airportClearance;
     };
     
     // Library structure: Lists librarys used and objects referenced in scenery project.
