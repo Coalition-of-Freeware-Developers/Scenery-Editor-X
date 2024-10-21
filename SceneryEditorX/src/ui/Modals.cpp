@@ -40,6 +40,7 @@ namespace SceneryEditorX::UI {
         }
     }
 
+    //TODO: Impliment the ability to close the modal popup by clicking outside the Modal
     void AboutModal()
     {
         if (showAboutModal)
@@ -53,9 +54,8 @@ namespace SceneryEditorX::UI {
                 ImGui::Text("Scenery Editor X");
                 ImGui::Text("Version 1.0.0");
                 ImGui::Text("Developed by: ");
-                ImGui::Text("Jared Bruni");
-
-
+                ImGui::Text("Some Random Guy");
+                ImGui::EndPopup();
             }
         }
     }

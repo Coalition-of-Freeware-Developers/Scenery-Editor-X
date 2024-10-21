@@ -143,7 +143,10 @@ namespace SceneryEditorX::UI {
     		ImGui::EndMenu();
     	}
     
-    	if (ImGui::MenuItem("Settings")) { /* showSettingPanel = true; */ }
+    	if (ImGui::MenuItem("Settings"))
+        {
+            showSettingsPanel = true;
+        }
     
     	if (ImGui::BeginMenu("Help")) {
             static bool showHelp = true;

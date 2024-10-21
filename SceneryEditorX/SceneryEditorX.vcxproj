@@ -26,7 +26,8 @@
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="SettingsPanel.cpp" />
+    <ClCompile Include="src\ui\LoadingRadial.cpp" />
+    <ClCompile Include="src\ui\SettingsPanel.cpp" />
     <ClCompile Include="src\platform\windows\FileManager.cpp" />
     <ClCompile Include="src\pch.cpp" />
     <ClCompile Include="src\ui\ContentBrowser.cpp" />
@@ -35,6 +36,7 @@
     <ClCompile Include="src\ui\Modals.cpp" />
     <ClCompile Include="src\core\Main.cpp" />
     <ClCompile Include="src\io\CfgLoader.cpp" />
+    <ClCompile Include="src\ui\Styles.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\include\imgui\imconfig.h" />

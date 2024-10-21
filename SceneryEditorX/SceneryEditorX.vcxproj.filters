@@ -85,7 +85,13 @@
     <ClCompile Include="src\platform\windows\FileManager.cpp">
       <Filter>src\Platform\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsPanel.cpp">
+    <ClCompile Include="src\ui\SettingsPanel.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\Styles.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\LoadingRadial.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
   </ItemGroup>
