@@ -1,4 +1,4 @@
-#include <iostream>
+#include "../xeditorPCH.h"
 //#include "iniparser.hpp"
 
 #include "imgui.h"
@@ -12,6 +12,7 @@
 #include <GLFW/glfw3.h> 
 
 #include "../ui/UI.h"
+
 using namespace SceneryEditorX::UI;
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
@@ -32,18 +33,23 @@ static void glfw_error_callback(int error, const char* description)
 void RenderMainMenu() 
 {
 	MainMenuBar();
+    spdlog::info("Main Menu Bar Rendered");
 }
 
 void RenderPanels()
 {
     LayerStack();
+    spdlog::info("Layer Stack Rendered");
     AssetBrowser();
+    spdlog::info("Asset Browser Panel Rendered");
     SettingsPanel();
+    spdlog::info("Settings Panel Rendered");
 }
 
 void RenderModals()
 {
-	AboutModal();
+    AboutModal();
+    spdlog::info("About Modal Rendered");
 }
 
 /*
@@ -102,22 +108,22 @@ int main(int, char**)
     */
 
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	ImFont* font1 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Black.otf", 15.0f);
-	ImFont* font2 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BlackItalic.otf", 15.0f);
-	ImFont* font3 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Bold.otf", 15.0f);
-	ImFont* font4 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BoldItalic.otf", 15.0f);
-	ImFont* font5 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Book.otf", 15.0f);
-	ImFont* font6 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BookItalic.otf", 15.0f);
+	//ImFont* font1 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Black.otf", 15.0f);
+	//ImFont* font2 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BlackItalic.otf", 15.0f);
+	//ImFont* font3 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Bold.otf", 15.0f);
+	//ImFont* font4 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BoldItalic.otf", 15.0f);
+	//ImFont* font5 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Book.otf", 15.0f);
+	//ImFont* font6 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-BookItalic.otf", 15.0f);
 	ImFont* font7 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Demi.otf", 15.0f);
-	ImFont* font8 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-DemiItalic.otf", 15.0f);
-	ImFont* font9 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Light.otf", 15.0f);
-	ImFont* font10 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-LightItalic.otf", 15.0f);
-	ImFont* font11 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Medium.otf", 15.0f);
-	ImFont* font12 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-MediumItalic.otf", 15.0f);
-	ImFont* font13 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Thin.otf", 15.0f);
-	ImFont* font14 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-ThinItalic.otf", 15.0f);
-	ImFont* font15 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Ultra.otf", 15.0f);
-	ImFont* font16 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-UltraItalic.otf", 15.0f);
+	//ImFont* font8 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-DemiItalic.otf", 15.0f);
+	//ImFont* font9 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Light.otf", 15.0f);
+	//ImFont* font10 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-LightItalic.otf", 15.0f);
+	//ImFont* font11 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Medium.otf", 15.0f);
+	//ImFont* font12 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-MediumItalic.otf", 15.0f);
+	//ImFont* font13 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Thin.otf", 15.0f);
+	//ImFont* font14 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-ThinItalic.otf", 15.0f);
+	//ImFont* font15 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-Ultra.otf", 15.0f);
+	//ImFont* font16 = io.Fonts->AddFontFromFileTTF("../assets/fonts/industry/Industry-UltraItalic.otf", 15.0f);
 
     /*
     ##########################################################

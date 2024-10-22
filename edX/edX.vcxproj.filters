@@ -37,5 +37,11 @@
     <ClInclude Include="edXLibraryFile.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="edX.rc" />
   </ItemGroup>
 </Project>

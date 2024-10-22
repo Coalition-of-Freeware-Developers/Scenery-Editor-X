@@ -7,9 +7,9 @@
 #pragma once
 
 //Include necessary headers
+#include "XPLayerGroups.h"
 #include <filesystem>
 #include <string>
-#include "XPLayerGroups.h"
 
 namespace XPAsset
 {

@@ -26,10 +26,11 @@
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="FileDialog.cpp" />
     <ClCompile Include="src\ui\LoadingRadial.cpp" />
     <ClCompile Include="src\ui\SettingsPanel.cpp" />
     <ClCompile Include="src\platform\windows\FileManager.cpp" />
-    <ClCompile Include="src\pch.cpp" />
+    <ClCompile Include="src\xeditorPCH.cpp" />
     <ClCompile Include="src\ui\ContentBrowser.cpp" />
     <ClCompile Include="src\ui\LayerStack.cpp" />
     <ClCompile Include="src\ui\MenuBar.cpp" />
@@ -48,19 +49,27 @@
     <ClInclude Include="..\external\include\imgui\imstb_rectpack.h" />
     <ClInclude Include="..\external\include\imgui\imstb_textedit.h" />
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
-    <ClInclude Include="Fonts.h" />
+    <ClInclude Include="..\external\portable-file-dialogs.h" />
+    <ClInclude Include="src\io\FileDialog.h" />
+    <ClInclude Include="src\ui\Fonts.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\core\Base.h" />
     <ClInclude Include="src\platform\windows\FileManager.h" />
     <ClInclude Include="src\core\SystemDetection.h" />
     <ClInclude Include="src\io\CfgLoader.h" />
-    <ClInclude Include="src\pch.h" />
+    <ClInclude Include="src\xeditorPCH.h" />
     <ClInclude Include="src\ui\UI.h" />
     <ClInclude Include="src\platform\windows\WindowProperties.h" />
     <ClInclude Include="src\platform\windows\Window.h" />
+    <ClInclude Include="src\version.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="config\config.cfg" />
     <None Include="config\user.ini" />
+    <None Include="version_increment.ps1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SceneryEditorX.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -91,7 +100,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
@@ -159,9 +168,14 @@
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>Default</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(SolutionDir)external\include;C:\VulkanSDK\1.3.296.0\Include;$(SolutionDir)external\include\imgui;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <EnableModules>true</EnableModules>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>xeditorPCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -180,6 +194,8 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>xeditorPCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

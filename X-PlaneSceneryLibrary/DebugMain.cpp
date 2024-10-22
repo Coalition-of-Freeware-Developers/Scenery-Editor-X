@@ -4,7 +4,7 @@
 //Purpose:	Simple main function for debugging purposes
 
 //Compile once
-#pragma once
+//#pragma once
 
 ////Include necessary headers
 //#include "XPLibrarySystem.h"

@@ -7,11 +7,11 @@
 #pragma once
 
 //Include necessary headers
-#include <string>
-#include <filesystem>
-#include <vector>
-#include <map>
 #include "XPLibraryPath.h"
+#include <filesystem>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace XPLibrary
 {
