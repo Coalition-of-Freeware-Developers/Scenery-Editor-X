@@ -26,11 +26,10 @@
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="FileDialog.cpp" />
     <ClCompile Include="src\ui\LoadingRadial.cpp" />
     <ClCompile Include="src\ui\SettingsPanel.cpp" />
     <ClCompile Include="src\platform\windows\FileManager.cpp" />
-    <ClCompile Include="src\xeditorPCH.cpp" />
+    <ClCompile Include="src\xpeditorpch.cpp" />
     <ClCompile Include="src\ui\ContentBrowser.cpp" />
     <ClCompile Include="src\ui\LayerStack.cpp" />
     <ClCompile Include="src\ui\MenuBar.cpp" />
@@ -50,14 +49,13 @@
     <ClInclude Include="..\external\include\imgui\imstb_textedit.h" />
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
     <ClInclude Include="..\external\portable-file-dialogs.h" />
-    <ClInclude Include="src\io\FileDialog.h" />
     <ClInclude Include="src\ui\Fonts.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\core\Base.h" />
     <ClInclude Include="src\platform\windows\FileManager.h" />
     <ClInclude Include="src\core\SystemDetection.h" />
     <ClInclude Include="src\io\CfgLoader.h" />
-    <ClInclude Include="src\xeditorPCH.h" />
+    <ClInclude Include="src\xpeditorpch.h" />
     <ClInclude Include="src\ui\UI.h" />
     <ClInclude Include="src\platform\windows\WindowProperties.h" />
     <ClInclude Include="src\platform\windows\Window.h" />
@@ -174,8 +172,8 @@
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableModules>true</EnableModules>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>xeditorPCH.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>xpeditorpch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

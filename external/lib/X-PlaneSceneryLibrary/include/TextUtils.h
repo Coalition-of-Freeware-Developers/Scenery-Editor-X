@@ -7,8 +7,8 @@
 #pragma once
 
 //Includes
-#include <iostream>
 #include <string>
+#include <iostream>
 #include <vector>
 
 namespace TextUtils

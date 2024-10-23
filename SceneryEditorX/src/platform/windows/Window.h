@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../src/core/Base.h"
-#include "../src/xeditorPCH.h"
+#include "../src/xpeditorpch.h"
 
 namespace SceneryEditorX
 {

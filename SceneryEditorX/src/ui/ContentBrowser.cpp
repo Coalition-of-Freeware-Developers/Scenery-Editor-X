@@ -1,5 +1,6 @@
-#include "imgui.h"
-#include "imgui_internal.h"
+#include "../xpeditorpch.h"
+#include <imgui.h>
+#include <imgui_internal.h>
 
 namespace SceneryEditorX::UI
 {

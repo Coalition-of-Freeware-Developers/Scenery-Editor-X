@@ -1,8 +1,8 @@
-/*
-#include "../src/xeditorPCH.h"
-#include "FileManager.h"
-//#include "app.h"
 
+#include "../src/xpeditorpch.h"
+//#include "FileManager.h"
+//#include "app.h"
+/*
 #include <commdlg.h>
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32

@@ -1,7 +1,8 @@
 // Modals.cpp
 
-#include "imgui.h"
+#include "../xpeditorpch.h"
 #include "UI.h"
+#include <imgui.h>
 
 // Define showExitModal and showAboutModal variables
 bool SceneryEditorX::UI::showExitModal = false;

@@ -16,6 +16,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spdlog", "external\include\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "edX", "edX\edX.vcxproj", "{A99B5836-EA23-4E7A-BEDE-FEC80845FE9E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{8199EF05-103E-4317-AC48-4700EAD16A07}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{5F9B881F-CEE9-4400-A5CF-EC7A99FB4399}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -95,6 +99,12 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{45E34B00-2A6D-4CFE-BD93-2F2D55F6F247} = {8199EF05-103E-4317-AC48-4700EAD16A07}
+		{C6BFB4BC-F8EE-41CB-B45A-7E8105EB8301} = {8199EF05-103E-4317-AC48-4700EAD16A07}
+		{BB637A9E-2DD9-35F0-9F91-A81559D338F7} = {5F9B881F-CEE9-4400-A5CF-EC7A99FB4399}
+		{A99B5836-EA23-4E7A-BEDE-FEC80845FE9E} = {8199EF05-103E-4317-AC48-4700EAD16A07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4CAC9913-9889-4A19-9F74-4AC8B645270C}

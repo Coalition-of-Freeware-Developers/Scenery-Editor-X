@@ -1,4 +1,4 @@
-#include "../xeditorPCH.h"
+#include "../xpeditorpch.h"
 //#include "iniparser.hpp"
 
 #include "imgui.h"
@@ -33,23 +33,19 @@ static void glfw_error_callback(int error, const char* description)
 void RenderMainMenu() 
 {
 	MainMenuBar();
-    spdlog::info("Main Menu Bar Rendered");
+    
 }
 
 void RenderPanels()
 {
     LayerStack();
-    spdlog::info("Layer Stack Rendered");
     AssetBrowser();
-    spdlog::info("Asset Browser Panel Rendered");
     SettingsPanel();
-    spdlog::info("Settings Panel Rendered");
 }
 
 void RenderModals()
 {
     AboutModal();
-    spdlog::info("About Modal Rendered");
 }
 
 /*
@@ -90,7 +86,9 @@ int main(int, char**)
 	// Create window with graphics context
 	GLFWwindow* window = glfwCreateWindow(1280, 720, "Scenery Editor X", nullptr, nullptr);
 	if (window == nullptr)
-		return -1;
+        return -1;
+
+    spdlog::info("Application Rendered");
 
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1); // Enable vsync
