@@ -18,7 +18,7 @@ namespace SceneryEditorX
         {
             dataBuffer buffer;
             buffer.dataAllocation(other.Size);
-            memoryCopySource(buffer.Data, other.Data, other.Size);
+            memcpy(buffer.Data, other.Data, other.Size);
             return buffer;
         }
 
@@ -26,7 +26,7 @@ namespace SceneryEditorX
         {
             dataBuffer buffer;
             buffer.dataAllocation(other.Size);
-            memoryCopySource(buffer.Data, data, size);
+            memcpy(buffer.Data, data, size);
             return buffer;
         }
 
@@ -71,14 +71,14 @@ namespace SceneryEditorX
         {
             SEDX_ASSERT(offset + size <= Size, "Buffer overflow!");
             byte* buffer = new byte[size];
-            memoryCopySource(buffer, (byte*)Data + offset, size);
+            memcpy(buffer, (byte*)Data + offset, size);
             return buffer;
         }
 
         void Write(const void* data, uint64_t size, uint64_t offset = 0)
         {
             SEDX_ASSERT(offset + size <= Size, "Buffer overflow!");
-            memoryCopySource((byte*)Data + offset, data, size);
+            memcpy((byte*)Data + offset, data, size);
         }
 
         operator bool() const

@@ -6,6 +6,7 @@
 
 namespace SceneryEditorX::UI {
 
+    extern bool showCreateProjectModal;
 	extern bool showExitModal;
     extern bool showAboutModal;
     extern bool showSettingsPanel;
@@ -19,6 +20,7 @@ namespace SceneryEditorX::UI {
     void SettingsPanel();
     //void Properties();
 
+    void CreateProjectModal(GLFWwindow *window);
 	void ExitConfirmationModal(GLFWwindow *window);
 	void AboutModal();
 }

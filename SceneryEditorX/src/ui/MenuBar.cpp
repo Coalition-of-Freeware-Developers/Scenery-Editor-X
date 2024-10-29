@@ -20,9 +20,7 @@ namespace SceneryEditorX::UI {
             {
                 if (ImGui::MenuItem("New", "Ctrl+N"))
                 {
-                   //char filePath[256] = "default/path";
-                   //char mode[256] = "read";
-                   //SceneryEditorX::IO::OpenFileDialog(filePath, mode, /* additional required arguments */);
+                    showCreateProjectModal = true;
                 }
 
                 if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Prompt the user to select a file from a file manager */ }

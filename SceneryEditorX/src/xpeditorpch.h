@@ -4,7 +4,8 @@
 
 // TODO: Impliment MAC and Linux detection
 #ifdef SEDX_PLATFORM_WINDOWS
-#include <Windows.h>
+    #include <Windows.h>
+    #include <fileapi.h>
 #endif
 
 

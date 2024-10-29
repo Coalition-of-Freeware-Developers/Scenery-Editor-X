@@ -26,6 +26,7 @@
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\io\LockFile.cpp" />
     <ClCompile Include="src\core\Memory.cpp" />
     <ClCompile Include="src\ui\LoadingRadial.cpp" />
     <ClCompile Include="src\ui\SettingsPanel.cpp" />

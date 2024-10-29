@@ -103,6 +103,9 @@
     <ClCompile Include="src\core\Memory.cpp">
       <Filter>src\Core</Filter>
     </ClCompile>
+    <ClCompile Include="src\io\LockFile.cpp">
+      <Filter>src\IO</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\include\imgui\imconfig.h">

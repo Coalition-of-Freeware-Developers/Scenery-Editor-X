@@ -47,6 +47,7 @@ void RenderPanels()
 
 void RenderModals()
 {
+    CreateProjectModal();
     AboutModal();
 }
 
@@ -223,6 +224,7 @@ int main(int, char**)
         
         // Call the exit confirmation modal
         ExitConfirmationModal(window); // Pass the window pointer
+        CreateProjectModal(window);
 
 		ImGui::Begin("3D Viewport");
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
