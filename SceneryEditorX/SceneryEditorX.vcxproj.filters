@@ -41,6 +41,9 @@
     <Filter Include="src\Log">
       <UniqueIdentifier>{4e0b8fb5-a167-45f1-af39-23e1e0c0de10}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resources\boost">
+      <UniqueIdentifier>{8f5654ed-19c8-464f-adc4-a9ef082f798b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\external\include\imgui\imgui.cpp">
@@ -96,6 +99,9 @@
     </ClCompile>
     <ClCompile Include="src\ui\LoadingRadial.cpp">
       <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Memory.cpp">
+      <Filter>src\Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -159,6 +165,18 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\version.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Buffer.h">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Assert.h">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Main.h">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Memory.h">
+      <Filter>src\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

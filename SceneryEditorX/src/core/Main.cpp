@@ -1,4 +1,6 @@
 #include "../xpeditorpch.h"
+#include "Main.h"
+
 //#include "iniparser.hpp"
 
 #include "imgui.h"

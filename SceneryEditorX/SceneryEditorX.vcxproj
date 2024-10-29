@@ -26,6 +26,7 @@
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\core\Memory.cpp" />
     <ClCompile Include="src\ui\LoadingRadial.cpp" />
     <ClCompile Include="src\ui\SettingsPanel.cpp" />
     <ClCompile Include="src\platform\windows\FileManager.cpp" />
@@ -49,6 +50,10 @@
     <ClInclude Include="..\external\include\imgui\imstb_textedit.h" />
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
     <ClInclude Include="..\external\portable-file-dialogs.h" />
+    <ClInclude Include="src\core\Memory.h" />
+    <ClInclude Include="src\core\Main.h" />
+    <ClInclude Include="src\core\Assert.h" />
+    <ClInclude Include="src\core\Buffer.h" />
     <ClInclude Include="src\ui\Fonts.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\core\Base.h" />
