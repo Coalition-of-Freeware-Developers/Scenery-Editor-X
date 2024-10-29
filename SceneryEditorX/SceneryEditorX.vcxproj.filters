@@ -156,9 +156,6 @@
     <ClInclude Include="src\ui\Fonts.h">
       <Filter>src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="src\platform\windows\WindowProperties.h">
-      <Filter>src\Core</Filter>
-    </ClInclude>
     <ClInclude Include="src\platform\windows\FileManager.h">
       <Filter>src\Platform\Windows</Filter>
     </ClInclude>

@@ -7,15 +7,11 @@ namespace SceneryEditorX
 {
 	struct WindowProperties
 	{
-		std::string Title;
-		unsigned int Width, Height;
-
-		WindowProperties(const std::string& title = "Scenery Editor X",
-			unsigned int width = 1280,
-			unsigned int height = 720)
-			: Title(title), Width(width), Height(height)
-		{
-		}
+        std::string Title = "Scenery Editor X";
+        uint32_t Width = 1280;
+        uint32_t Height = 720;
+        bool Fullscreen = false;
+        bool VSync = true;
 	};
 
 	class Window
@@ -23,17 +19,37 @@ namespace SceneryEditorX
 	public:
 		using EventCallbackFn = std::function<void()>;
 
-		virtual ~Window() {}
+        Window(const WindowProperties& properties);
+        virtual ~Window();
 
-		virtual void OnUpdate() = 0;
+        virtual void Initialize();
+        virtual void ProcessEvent();
+        virtual void SwapBuffers();
 
-		virtual unsigned int GetWidth() const = 0;
-		virtual unsigned int GetHeight() const = 0;
+		inline uint32_t GetWidth() const { return WinData.Width; }
+        inline uint32_t GetHeight() const { return WinData.Height; }
 
 		virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
 		virtual void SetVSync(bool enabled) = 0;
 		virtual bool IsVSync() const = 0;
 
 		virtual void* GetNativeWindow() const = 0;
+
+	private:
+        virtual void Shutdown();
+
+    private:
+        GLFWwindow *m_Window;
+        GLFWcursor *m_ImGuiMouseCursors[9] = {0};
+        WindowProperties m_Specification;
+        struct WindowData
+        {
+            std::string Title;
+            uint32_t Width, Height;
+
+            EventCallbackFn EventCallback;
+        };
+
+        WindowData WinData;
 	};
 }

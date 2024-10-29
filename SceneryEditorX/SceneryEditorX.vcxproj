@@ -63,7 +63,6 @@
     <ClInclude Include="src\io\CfgLoader.h" />
     <ClInclude Include="src\xpeditorpch.h" />
     <ClInclude Include="src\ui\UI.h" />
-    <ClInclude Include="src\platform\windows\WindowProperties.h" />
     <ClInclude Include="src\platform\windows\Window.h" />
     <ClInclude Include="src\version.h" />
   </ItemGroup>
