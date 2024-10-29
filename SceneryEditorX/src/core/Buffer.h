@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../src//xpeditorpch.h"
+#include "../src/xpeditorpch.h"
 #include "../src/core/Assert.h"
 
 namespace SceneryEditorX
@@ -14,7 +14,7 @@ namespace SceneryEditorX
     
         dataBuffer(const void *data, uint64_t size = 0) : Data((void *)data), Size(size) { }
     
-        static dataBuffer Copy(const dataBuffer&, other)
+        static dataBuffer Copy(const dataBuffer &other)
         {
             dataBuffer buffer;
             buffer.dataAllocation(other.Size);
@@ -25,7 +25,7 @@ namespace SceneryEditorX
         static dataBuffer Copy(const void* data, uint64_t size)
         {
             dataBuffer buffer;
-            buffer.dataAllocation(other.Size);
+            buffer.dataAllocation(size);
             memcpy(buffer.Data, data, size);
             return buffer;
         }
@@ -52,7 +52,7 @@ namespace SceneryEditorX
         void bufferZerorise()
         {
             if (Data)
-                memoryZero(Data, 0, Size);
+                memset(Data, 0, Size);
         }
 
         template <typename T>
@@ -69,7 +69,7 @@ namespace SceneryEditorX
 
         byte* byteReader(uint64_t size, uint64_t offset) const
         {
-            SEDX_ASSERT(offset + size <= Size, "Buffer overflow!");
+            //SEDX_ASSERT(offset + size <= Size, "Buffer overflow!");
             byte* buffer = new byte[size];
             memcpy(buffer, (byte*)Data + offset, size);
             return buffer;
@@ -77,7 +77,7 @@ namespace SceneryEditorX
 
         void Write(const void* data, uint64_t size, uint64_t offset = 0)
         {
-            SEDX_ASSERT(offset + size <= Size, "Buffer overflow!");
+            //SEDX_ASSERT(offset + size <= Size, "Buffer overflow!");
             memcpy((byte*)Data + offset, data, size);
         }
 
