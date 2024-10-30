@@ -24,10 +24,12 @@
     <ClCompile Include="..\external\include\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_impl_glfw.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\external\include\imgui\imgui_impl_vulkan.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\renderer\VulkanWrapper.cpp" />
     <ClCompile Include="src\io\LockFile.cpp" />
-    <ClCompile Include="src\core\Memory.cpp" />
+    <ClCompile Include="src\core\Window.cpp" />
     <ClCompile Include="src\ui\LoadingRadial.cpp" />
     <ClCompile Include="src\ui\SettingsPanel.cpp" />
     <ClCompile Include="src\platform\windows\FileManager.cpp" />
@@ -46,15 +48,15 @@
     <ClInclude Include="..\external\include\imgui\imgui_impl_glfw.h" />
     <ClInclude Include="..\external\include\imgui\imgui_impl_opengl3.h" />
     <ClInclude Include="..\external\include\imgui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="..\external\include\imgui\imgui_impl_vulkan.h" />
     <ClInclude Include="..\external\include\imgui\imgui_internal.h" />
     <ClInclude Include="..\external\include\imgui\imstb_rectpack.h" />
     <ClInclude Include="..\external\include\imgui\imstb_textedit.h" />
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
     <ClInclude Include="..\external\portable-file-dialogs.h" />
-    <ClInclude Include="src\core\Memory.h" />
-    <ClInclude Include="src\core\Main.h" />
     <ClInclude Include="src\core\Assert.h" />
     <ClInclude Include="src\core\Buffer.h" />
+    <ClInclude Include="src\renderer\VulkanWrapper.h" />
     <ClInclude Include="src\ui\Fonts.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\core\Base.h" />
@@ -63,7 +65,7 @@
     <ClInclude Include="src\io\CfgLoader.h" />
     <ClInclude Include="src\xpeditorpch.h" />
     <ClInclude Include="src\ui\UI.h" />
-    <ClInclude Include="src\platform\windows\Window.h" />
+    <ClInclude Include="src\core\Window.hpp" />
     <ClInclude Include="src\version.h" />
   </ItemGroup>
   <ItemGroup>
@@ -127,10 +129,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X</OutDir>
-    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X</IntDir>
+    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X\$(MSBuildProjectName)\</IntDir>
     <TargetName>Scenery Editor X</TargetName>
-    <IncludePath>$(SolutionDir)external\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -173,7 +175,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)external\include;C:\VulkanSDK\1.3.296.0\Include;$(SolutionDir)external\include\imgui;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(SolutionDir)external\include\imgui;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableModules>true</EnableModules>
@@ -183,7 +185,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(VULKAN_SDK)\Lib\vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>
       </Version>
     </Link>

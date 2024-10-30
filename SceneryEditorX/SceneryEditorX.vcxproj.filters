@@ -44,6 +44,9 @@
     <Filter Include="resources\boost">
       <UniqueIdentifier>{8f5654ed-19c8-464f-adc4-a9ef082f798b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Renderer">
+      <UniqueIdentifier>{471fed5e-3f1a-4a12-8347-817aa72bd085}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\external\include\imgui\imgui.cpp">
@@ -100,11 +103,17 @@
     <ClCompile Include="src\ui\LoadingRadial.cpp">
       <Filter>src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\Memory.cpp">
-      <Filter>src\Core</Filter>
-    </ClCompile>
     <ClCompile Include="src\io\LockFile.cpp">
       <Filter>src\IO</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Window.cpp">
+      <Filter>src\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\VulkanWrapper.cpp">
+      <Filter>src\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\include\imgui\imgui_impl_vulkan.cpp">
+      <Filter>resources\imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -147,7 +156,7 @@
     <ClInclude Include="src\xpeditorpch.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\platform\windows\Window.h">
+    <ClInclude Include="src\core\Window.hpp">
       <Filter>src\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\core\Base.h">
@@ -172,11 +181,11 @@
     <ClInclude Include="src\core\Assert.h">
       <Filter>src\Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\Main.h">
-      <Filter>src\Core</Filter>
+    <ClInclude Include="src\renderer\VulkanWrapper.h">
+      <Filter>src\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\Memory.h">
-      <Filter>src\Core</Filter>
+    <ClInclude Include="..\external\include\imgui\imgui_impl_vulkan.h">
+      <Filter>resources\imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

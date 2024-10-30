@@ -1,5 +1,5 @@
 #include "../xpeditorpch.h"
-#include "Main.h"
+//#include "Main.h"
 
 //#include "iniparser.hpp"
 
@@ -48,7 +48,7 @@ void RenderPanels()
 
 void RenderModals()
 {
-    CreateProjectModal("ProjectName", "ProjectPath");
+    //CreateProjectModal(window);
     AboutModal();
 }
 
@@ -151,6 +151,7 @@ int main(int, char**)
     ##########################################################
     */
 
+    CreateProjectModal(window);
 	bool show_demo_window = true;
 	bool show_another_window = false;
 
@@ -208,7 +209,7 @@ int main(int, char**)
         
         // Call the exit confirmation modal
         ExitConfirmationModal(window); // Pass the window pointer
-        CreateProjectModal(window);
+        //CreateProjectModal(window);
 
 		ImGui::Begin("3D Viewport");
 		ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();

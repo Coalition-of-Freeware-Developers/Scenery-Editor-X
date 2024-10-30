@@ -12,6 +12,10 @@ bool SceneryEditorX::UI::showCreateProjectModal = false;
 namespace SceneryEditorX::UI
 {
 
+// Define projectName and projectLocation variables
+char projectName[128];
+char projectLocation[2048];
+
 void ExitConfirmationModal(GLFWwindow *window)
     {
         if (showExitModal)
