@@ -4,7 +4,7 @@
 #define IMGUI_VULKAN_DEBUG_REPORT
 #endif
 
-#include "VulkanWrapper.h"
+#include "VK_Wrapper.h"
 
 #include "imgui/imgui_impl_vulkan.h"
 #include "imgui/imgui_impl_glfw.h"

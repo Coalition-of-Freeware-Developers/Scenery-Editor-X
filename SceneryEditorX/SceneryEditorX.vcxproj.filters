@@ -47,6 +47,18 @@
     <Filter Include="src\Renderer">
       <UniqueIdentifier>{471fed5e-3f1a-4a12-8347-817aa72bd085}</UniqueIdentifier>
     </Filter>
+    <Filter Include="assets">
+      <UniqueIdentifier>{adbafbbe-ca4e-47b5-8076-740926d3dcbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="assets\shaders">
+      <UniqueIdentifier>{f17d6df1-a699-4cab-a081-c0f6d97ff8c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="assets\fonts">
+      <UniqueIdentifier>{900b945f-099e-4dde-b2f6-6808df1cbee7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="assets\textures">
+      <UniqueIdentifier>{e5580171-cb2c-49f2-8ac9-4d3e2949e893}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\external\include\imgui\imgui.cpp">
@@ -70,7 +82,7 @@
     <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp">
       <Filter>resources\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\Main.cpp">
+    <ClCompile Include="src\core\XMain.cpp">
       <Filter>src\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\io\CfgLoader.cpp">
@@ -109,11 +121,29 @@
     <ClCompile Include="src\core\Window.cpp">
       <Filter>src\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\renderer\VulkanWrapper.cpp">
+    <ClCompile Include="src\renderer\VK_Wrapper.cpp">
       <Filter>src\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="..\external\include\imgui\imgui_impl_vulkan.cpp">
       <Filter>resources\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Renderer.cpp">
+      <Filter>src\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\RendererPBR.cpp">
+      <Filter>src\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\VK_Window.cpp">
+      <Filter>src\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Main.cpp">
+      <Filter>src\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Application.cpp">
+      <Filter>src\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\VK_Pipeline.cpp">
+      <Filter>src\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -181,21 +211,59 @@
     <ClInclude Include="src\core\Assert.h">
       <Filter>src\Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\renderer\VulkanWrapper.h">
+    <ClInclude Include="src\renderer\VK_Wrapper.h">
       <Filter>src\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="..\external\include\imgui\imgui_impl_vulkan.h">
       <Filter>resources\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Renderer.h">
+      <Filter>src\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\RendererPBR.h">
+      <Filter>src\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\VK_Window.hpp">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Application.hpp">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\VK_Pipeline.hpp">
+      <Filter>src\Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\config.cfg" />
     <None Include="config\user.ini" />
     <None Include="version_increment.ps1" />
+    <None Include="shaders\shader.frag">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="shaders\shader.vert">
+      <Filter>assets\shaders</Filter>
+    </None>
+    <None Include="src\vk_shader_compile.bat" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SceneryEditorX.rc">
       <Filter>resources</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="assets\fonts\industry\Industry-Demi.otf">
+      <Filter>assets\fonts</Filter>
+    </Font>
+    <Font Include="assets\fonts\industry\Industry-Book.otf">
+      <Filter>assets\fonts</Filter>
+    </Font>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\icon.ico">
+      <Filter>resources</Filter>
+    </Image>
+    <Image Include="assets\icon_m0v_icon.ico">
+      <Filter>resources</Filter>
+    </Image>
   </ItemGroup>
 </Project>
