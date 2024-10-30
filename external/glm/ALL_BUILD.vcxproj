@@ -1,0 +1,924 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ResolveNugetPackages>false</ResolveNugetPackages>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1BBB8705-AB37-3C53-9597-59CE4A8C0D25}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>ALL_BUILD</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" "-BG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" --check-stamp-file "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Program Files\CMake\share\cmake-3.30\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerSupport.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseLibraryArchitecture.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPack.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPackComponent.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CrayClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVHPC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OrangeC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TIClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Tasking-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.30\Modules\DartConfiguration.tcl.in;C:\Program Files\CMake\share\cmake-3.30\Modules\GNUInstallDirs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\CMakeDetermineLinkerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\WindowsPaths.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\WriteBasicConfigVersionFile.cmake;C:\Program Files\CMake\share\cmake-3.30\Templates\CPackConfig.cmake.in;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeCXXCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeRCCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeSystem.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\cmake\cmake_uninstall.cmake.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" "-BG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" --check-stamp-file "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Program Files\CMake\share\cmake-3.30\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerSupport.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseLibraryArchitecture.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPack.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPackComponent.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CrayClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVHPC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OrangeC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TIClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Tasking-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.30\Modules\DartConfiguration.tcl.in;C:\Program Files\CMake\share\cmake-3.30\Modules\GNUInstallDirs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\CMakeDetermineLinkerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\WindowsPaths.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\WriteBasicConfigVersionFile.cmake;C:\Program Files\CMake\share\cmake-3.30\Templates\CPackConfig.cmake.in;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeCXXCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeRCCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeSystem.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\cmake\cmake_uninstall.cmake.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" "-BG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" --check-stamp-file "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Program Files\CMake\share\cmake-3.30\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerSupport.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseLibraryArchitecture.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPack.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPackComponent.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CrayClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVHPC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OrangeC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TIClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Tasking-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.30\Modules\DartConfiguration.tcl.in;C:\Program Files\CMake\share\cmake-3.30\Modules\GNUInstallDirs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\CMakeDetermineLinkerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\WindowsPaths.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\WriteBasicConfigVersionFile.cmake;C:\Program Files\CMake\share\cmake-3.30\Templates\CPackConfig.cmake.in;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeCXXCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeRCCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeSystem.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\cmake\cmake_uninstall.cmake.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" "-BG:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm" --check-stamp-file "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/glm/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Program Files\CMake\share\cmake-3.30\Modules\BasicConfigVersion-AnyNewerVersion.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXCompilerABI.cpp;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCXXInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCommonLanguageInclude.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeCompilerIdDetection.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerABI.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineCompilerSupport.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeDetermineSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeFindBinUtils.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeGenericSystem.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeInitializeConfigs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeLanguageInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakePackageConfigHelpers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitIncludeInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseImplicitLinkInfo.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeParseLibraryArchitecture.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCCompiler.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeRCInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystem.cmake.in;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInformation.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeSystemSpecificInitialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCXXCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestCompilerCommon.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CMakeTestRCCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPack.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CPackComponent.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ADSP-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMCC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\ARMClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\AppleClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Borland-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CMakeCommonCompilerMacros.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Cray-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\CrayClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GHS-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IAR-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Intel-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVHPC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\OrangeC-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PGI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\PathScale-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SCO-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TI-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\TIClang-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Tasking-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\Watcom-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\CompilerId\VS-10.vcxproj.in;C:\Program Files\CMake\share\cmake-3.30\Modules\DartConfiguration.tcl.in;C:\Program Files\CMake\share\cmake-3.30\Modules\GNUInstallDirs.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\CMakeDetermineLinkerId.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Internal\FeatureTesting.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Determine-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-Initialize.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC-CXX.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows-MSVC.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\Windows.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\Platform\WindowsPaths.cmake;C:\Program Files\CMake\share\cmake-3.30\Modules\WriteBasicConfigVersionFile.cmake;C:\Program Files\CMake\share\cmake-3.30\Templates\CPackConfig.cmake.in;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeCXXCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeRCCompiler.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\3.30.5\CMakeSystem.cmake;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\cmake\cmake_uninstall.cmake.in;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\ZERO_CHECK.vcxproj">
+      <Project>{D910B631-7F5C-374C-8EDB-4C49EA3C7076}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\glm\glm.vcxproj">
+      <Project>{B41ADADA-45EB-38C1-B87C-AA29A46E5228}</Project>
+      <Name>glm</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\bug\test-bug_ms_vec_static.vcxproj">
+      <Project>{4A4E8032-8275-3E50-B2C9-B2789CB3DD3B}</Project>
+      <Name>test-bug_ms_vec_static</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_cpp_constexpr.vcxproj">
+      <Project>{3F25DD90-5518-3896-A2DE-EB4036223F44}</Project>
+      <Name>test-core_cpp_constexpr</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_cpp_defaulted_ctor.vcxproj">
+      <Project>{D885C99B-2736-3D24-B934-048DB5739E79}</Project>
+      <Name>test-core_cpp_defaulted_ctor</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_aligned_gentypes.vcxproj">
+      <Project>{8A838410-45B8-3095-9AC8-E2220C194E77}</Project>
+      <Name>test-core_force_aligned_gentypes</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_arch_unknown.vcxproj">
+      <Project>{8DB259C8-689E-3D9F-9170-136E20CEA1B4}</Project>
+      <Name>test-core_force_arch_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_compiler_unknown.vcxproj">
+      <Project>{5A8CCA55-868B-3D00-9C09-A36FB2461C32}</Project>
+      <Name>test-core_force_compiler_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_ctor_init.vcxproj">
+      <Project>{3E4EA418-777B-3283-BEEB-4E16D3E40E03}</Project>
+      <Name>test-core_force_ctor_init</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_explicit_ctor.vcxproj">
+      <Project>{E6DCAEBF-F8ED-3A43-9D89-EE1EC49EF798}</Project>
+      <Name>test-core_force_explicit_ctor</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_inline.vcxproj">
+      <Project>{DDE70110-597D-3820-B7DF-B8680E261B05}</Project>
+      <Name>test-core_force_inline</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_platform_unknown.vcxproj">
+      <Project>{D6BCE96E-A039-38B6-99FF-4CB3516BB3DD}</Project>
+      <Name>test-core_force_platform_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_pure.vcxproj">
+      <Project>{497E67C3-5D74-3EDF-9CAE-F643F20A051C}</Project>
+      <Name>test-core_force_pure</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_quat_wxyz.vcxproj">
+      <Project>{B8237D5B-F31F-32EA-AA23-183A52B03070}</Project>
+      <Name>test-core_force_quat_wxyz</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_unrestricted_gentype.vcxproj">
+      <Project>{479D1FE0-4506-33E5-BAA8-BBBD74DC654F}</Project>
+      <Name>test-core_force_unrestricted_gentype</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_force_xyzw_only.vcxproj">
+      <Project>{7F769416-8360-35FB-B634-4663FDC9539A}</Project>
+      <Name>test-core_force_xyzw_only</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_common.vcxproj">
+      <Project>{F0BAD6D4-9377-3AF7-9BCB-59D4747BAF82}</Project>
+      <Name>test-core_func_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_exponential.vcxproj">
+      <Project>{B223BBE8-39EF-3E3F-9606-57E3F5EB4325}</Project>
+      <Name>test-core_func_exponential</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_geometric.vcxproj">
+      <Project>{FB0D921A-9945-3DA1-9D4E-BB0C127C79CA}</Project>
+      <Name>test-core_func_geometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_integer.vcxproj">
+      <Project>{95AC75F3-2595-3145-86EE-C2E495658BBB}</Project>
+      <Name>test-core_func_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_integer_bit_count.vcxproj">
+      <Project>{82DFBAF2-BF8D-3651-835A-BA3B1D379AC2}</Project>
+      <Name>test-core_func_integer_bit_count</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_integer_find_lsb.vcxproj">
+      <Project>{0CE51226-6E1A-3A0D-B11B-ECCD30395322}</Project>
+      <Name>test-core_func_integer_find_lsb</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_integer_find_msb.vcxproj">
+      <Project>{82D311B2-D279-3AE3-A145-D1B5A8081057}</Project>
+      <Name>test-core_func_integer_find_msb</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_matrix.vcxproj">
+      <Project>{7199EDEE-DCDC-3576-935F-F77D89864E08}</Project>
+      <Name>test-core_func_matrix</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_noise.vcxproj">
+      <Project>{6654B9DA-F04C-3186-B0D3-F08DB97F9012}</Project>
+      <Name>test-core_func_noise</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_packing.vcxproj">
+      <Project>{6EEBE908-C0B8-3186-8AC3-7CCD0D6EA4C0}</Project>
+      <Name>test-core_func_packing</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_swizzle.vcxproj">
+      <Project>{ED49916A-2E30-37E4-865D-A5D2F3D18DA0}</Project>
+      <Name>test-core_func_swizzle</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_trigonometric.vcxproj">
+      <Project>{271578B2-3546-39DF-BBA4-93319C01DB44}</Project>
+      <Name>test-core_func_trigonometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_func_vector_relational.vcxproj">
+      <Project>{70416D0F-0CFA-3F05-A4CB-A174FBE7E739}</Project>
+      <Name>test-core_func_vector_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_setup_force_cxx03.vcxproj">
+      <Project>{B5F8E93F-B9A6-3374-A14E-42C893029B66}</Project>
+      <Name>test-core_setup_force_cxx03</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_setup_force_cxx98.vcxproj">
+      <Project>{AD13BC8C-7992-3153-88AA-D1BE9A3EF81B}</Project>
+      <Name>test-core_setup_force_cxx98</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_setup_force_cxx_unknown.vcxproj">
+      <Project>{5905F108-1DC1-3190-BD91-817CF347B198}</Project>
+      <Name>test-core_setup_force_cxx_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_setup_force_size_t_length.vcxproj">
+      <Project>{FDCB907A-02C4-346A-9561-639860AADCF3}</Project>
+      <Name>test-core_setup_force_size_t_length</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_setup_message.vcxproj">
+      <Project>{C8119476-8440-3CBE-A1DC-BDE2A3389EDB}</Project>
+      <Name>test-core_setup_message</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_setup_platform_unknown.vcxproj">
+      <Project>{E48D277A-39FA-36C5-956B-8FF9A1597027}</Project>
+      <Name>test-core_setup_platform_unknown</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_setup_precision.vcxproj">
+      <Project>{9EBB67E8-4D43-3FF5-AB63-426EA4621ACD}</Project>
+      <Name>test-core_setup_precision</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_aligned.vcxproj">
+      <Project>{A7A3208E-C424-33CF-B319-3E0E646ECE89}</Project>
+      <Name>test-core_type_aligned</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_cast.vcxproj">
+      <Project>{C8E2A127-79BD-36A3-9D9A-9CE768369BE8}</Project>
+      <Name>test-core_type_cast</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_ctor.vcxproj">
+      <Project>{8FE24183-C34A-3606-A765-4B66D45DDF4D}</Project>
+      <Name>test-core_type_ctor</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_int.vcxproj">
+      <Project>{258A5E77-235C-31E9-96F7-BC81260AF9A7}</Project>
+      <Name>test-core_type_int</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_length.vcxproj">
+      <Project>{0909AE5A-48A9-3772-80BC-A2FF3430572F}</Project>
+      <Name>test-core_type_length</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat2x2.vcxproj">
+      <Project>{41928C80-8E8F-37FA-8609-1FC787409101}</Project>
+      <Name>test-core_type_mat2x2</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat2x3.vcxproj">
+      <Project>{3D867818-913D-3DF7-907A-8258CCF6865B}</Project>
+      <Name>test-core_type_mat2x3</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat2x4.vcxproj">
+      <Project>{CE7AADBD-0A31-3AF8-A0F1-C0B8A11B09C5}</Project>
+      <Name>test-core_type_mat2x4</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat3x2.vcxproj">
+      <Project>{6760B961-3077-3181-AE86-EE08F59DD87A}</Project>
+      <Name>test-core_type_mat3x2</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat3x3.vcxproj">
+      <Project>{47A0DE72-1F40-3DA2-9817-1B265AE24202}</Project>
+      <Name>test-core_type_mat3x3</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat3x4.vcxproj">
+      <Project>{85F4EB13-6071-38A0-8100-161832EB6293}</Project>
+      <Name>test-core_type_mat3x4</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat4x2.vcxproj">
+      <Project>{B76AD5AB-1B21-3B97-A7B3-CF2E0FD22533}</Project>
+      <Name>test-core_type_mat4x2</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat4x3.vcxproj">
+      <Project>{AD7CA476-2B6F-3C94-A6B0-035A9955DB40}</Project>
+      <Name>test-core_type_mat4x3</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_mat4x4.vcxproj">
+      <Project>{8DD4A613-6D7A-335B-80B5-117CF13F5354}</Project>
+      <Name>test-core_type_mat4x4</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_vec1.vcxproj">
+      <Project>{3A07A76A-3561-3897-88B7-FB6B78425394}</Project>
+      <Name>test-core_type_vec1</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_vec2.vcxproj">
+      <Project>{00C33DFD-B529-3778-A3FF-AA891B10322E}</Project>
+      <Name>test-core_type_vec2</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_vec3.vcxproj">
+      <Project>{0C840100-062D-373B-9339-C8E22D618868}</Project>
+      <Name>test-core_type_vec3</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\core\test-core_type_vec4.vcxproj">
+      <Project>{AC70973B-6BB5-34DD-8A80-D5D0DADAB9A3}</Project>
+      <Name>test-core_type_vec4</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_common.vcxproj">
+      <Project>{02A9EDE3-DC8F-35B5-A3AB-1CFA313C2AAB}</Project>
+      <Name>test-ext_matrix_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int2x2_sized.vcxproj">
+      <Project>{6D79F98F-1C00-35A2-B56B-94FBEC0AE790}</Project>
+      <Name>test-ext_matrix_int2x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int2x3_sized.vcxproj">
+      <Project>{0B3F11BB-E6ED-39E7-A83B-0A4853B43BE0}</Project>
+      <Name>test-ext_matrix_int2x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int2x4_sized.vcxproj">
+      <Project>{2F043812-4F11-3EF0-9BC3-9650CD966811}</Project>
+      <Name>test-ext_matrix_int2x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int3x2_sized.vcxproj">
+      <Project>{F1A0B7D9-4224-31CA-BB65-BB43C51534DA}</Project>
+      <Name>test-ext_matrix_int3x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int3x3_sized.vcxproj">
+      <Project>{2A14A1F3-7509-3BA8-9D86-3B330352FA0D}</Project>
+      <Name>test-ext_matrix_int3x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int3x4_sized.vcxproj">
+      <Project>{0ED20150-6761-3C63-94E3-CB744F269848}</Project>
+      <Name>test-ext_matrix_int3x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int4x2_sized.vcxproj">
+      <Project>{0606F59D-A5E9-3924-AF39-8CEB54BB1BBA}</Project>
+      <Name>test-ext_matrix_int4x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int4x3_sized.vcxproj">
+      <Project>{58620310-FED7-31A4-BDDE-E425C63588DD}</Project>
+      <Name>test-ext_matrix_int4x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_int4x4_sized.vcxproj">
+      <Project>{64CD4799-731B-32F0-A9DC-0DFDEBCCA3D0}</Project>
+      <Name>test-ext_matrix_int4x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_integer.vcxproj">
+      <Project>{96BB4990-31BC-3953-812E-2284A93095B2}</Project>
+      <Name>test-ext_matrix_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_relational.vcxproj">
+      <Project>{075B12DD-67C4-3E27-BF95-1B51CA3BF601}</Project>
+      <Name>test-ext_matrix_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_transform.vcxproj">
+      <Project>{B87CF6D1-DF04-3922-BD8A-06B049C0C090}</Project>
+      <Name>test-ext_matrix_transform</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint2x2_sized.vcxproj">
+      <Project>{E4C72512-F532-3759-B8BA-E14ED4CCB24C}</Project>
+      <Name>test-ext_matrix_uint2x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint2x3_sized.vcxproj">
+      <Project>{51ED5E87-C0E9-30C6-967F-FA7FE1D92E88}</Project>
+      <Name>test-ext_matrix_uint2x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint2x4_sized.vcxproj">
+      <Project>{778DFB8C-F15E-30ED-BC44-E2E09C6B1B6B}</Project>
+      <Name>test-ext_matrix_uint2x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint3x2_sized.vcxproj">
+      <Project>{5FFDEBD2-95B4-381F-98C4-A94F926276FE}</Project>
+      <Name>test-ext_matrix_uint3x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint3x3_sized.vcxproj">
+      <Project>{75F0DBB3-3C25-39DE-85D4-9E2C7C521CF3}</Project>
+      <Name>test-ext_matrix_uint3x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint3x4_sized.vcxproj">
+      <Project>{6E85E189-74D3-30F1-9EB2-375B260838E2}</Project>
+      <Name>test-ext_matrix_uint3x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint4x2_sized.vcxproj">
+      <Project>{16E3CCD0-5C97-38CF-8D88-2691E636B37A}</Project>
+      <Name>test-ext_matrix_uint4x2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint4x3_sized.vcxproj">
+      <Project>{61A8FF87-C991-30AB-A754-4F20870715F4}</Project>
+      <Name>test-ext_matrix_uint4x3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_matrix_uint4x4_sized.vcxproj">
+      <Project>{26831B7C-E2DB-399D-9EA5-80226E74D1CA}</Project>
+      <Name>test-ext_matrix_uint4x4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_quaternion_common.vcxproj">
+      <Project>{5FC556CD-2941-3774-9245-C77915967477}</Project>
+      <Name>test-ext_quaternion_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_quaternion_exponential.vcxproj">
+      <Project>{5A3AD2DE-24CD-3C23-95C6-295A1BA0A003}</Project>
+      <Name>test-ext_quaternion_exponential</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_quaternion_geometric.vcxproj">
+      <Project>{C1BC4F17-91D4-3BE5-9146-13E7AF1B0F17}</Project>
+      <Name>test-ext_quaternion_geometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_quaternion_relational.vcxproj">
+      <Project>{1B2C3687-C1C2-393D-AC9B-321962676B7E}</Project>
+      <Name>test-ext_quaternion_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_quaternion_transform.vcxproj">
+      <Project>{C528E7EC-4BFC-397D-A5FF-1F6FF95EC9BB}</Project>
+      <Name>test-ext_quaternion_transform</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_quaternion_trigonometric.vcxproj">
+      <Project>{8711BD10-B08F-368F-AA54-1DD1003E06E7}</Project>
+      <Name>test-ext_quaternion_trigonometric</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_quaternion_type.vcxproj">
+      <Project>{8FD696B3-1976-3909-8C81-BEC309EF8DA7}</Project>
+      <Name>test-ext_quaternion_type</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_common.vcxproj">
+      <Project>{92E04A61-7496-3C30-8403-737FEDAF47DC}</Project>
+      <Name>test-ext_scalar_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_constants.vcxproj">
+      <Project>{BC67C1CC-97FD-3E56-ABC0-887B68FCB131}</Project>
+      <Name>test-ext_scalar_constants</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_int_sized.vcxproj">
+      <Project>{0BB480F5-ADC4-388F-9618-F80DF1532832}</Project>
+      <Name>test-ext_scalar_int_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_integer.vcxproj">
+      <Project>{770D8B35-A780-3FAA-9266-D794BB952122}</Project>
+      <Name>test-ext_scalar_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_reciprocal.vcxproj">
+      <Project>{8D523369-1AB9-3075-9AC7-59624901DCBD}</Project>
+      <Name>test-ext_scalar_reciprocal</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_relational.vcxproj">
+      <Project>{EBB8B592-FB21-3F7D-A506-66C590AAD4C8}</Project>
+      <Name>test-ext_scalar_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_uint_sized.vcxproj">
+      <Project>{4D3517B1-78E6-343F-89D0-124989F34BD7}</Project>
+      <Name>test-ext_scalar_uint_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_scalar_ulp.vcxproj">
+      <Project>{9D5406B8-0EFF-376F-BBAC-611295C51D90}</Project>
+      <Name>test-ext_scalar_ulp</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vec1.vcxproj">
+      <Project>{934D48AC-29F2-377C-A793-205400407E37}</Project>
+      <Name>test-ext_vec1</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_bool1.vcxproj">
+      <Project>{F62E8CA8-ACB4-38CD-9532-E810C46A269E}</Project>
+      <Name>test-ext_vector_bool1</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_common.vcxproj">
+      <Project>{679BA8BE-968F-37A9-8D17-297F65399E1E}</Project>
+      <Name>test-ext_vector_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_iec559.vcxproj">
+      <Project>{C5D809B0-CA04-3DE9-BFD2-8BA5F07AC1E3}</Project>
+      <Name>test-ext_vector_iec559</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_int1_sized.vcxproj">
+      <Project>{397A4AAE-6EE5-3710-AB94-30CC961A6663}</Project>
+      <Name>test-ext_vector_int1_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_int2_sized.vcxproj">
+      <Project>{869B2BEA-E712-3AFF-BC69-32D85BA735F9}</Project>
+      <Name>test-ext_vector_int2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_int3_sized.vcxproj">
+      <Project>{A33D96EC-9898-364E-8330-6E84BE066DDF}</Project>
+      <Name>test-ext_vector_int3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_int4_sized.vcxproj">
+      <Project>{70C61B1D-1124-330E-A6AD-27BE329FA65F}</Project>
+      <Name>test-ext_vector_int4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_integer.vcxproj">
+      <Project>{C0B62169-BD1E-3957-BC8F-D4BA549316EA}</Project>
+      <Name>test-ext_vector_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_integer_sized.vcxproj">
+      <Project>{4CEC7A1D-4354-3651-B376-DF3854B9BEE9}</Project>
+      <Name>test-ext_vector_integer_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_reciprocal.vcxproj">
+      <Project>{DCEA7280-4BEF-3ECB-A46C-5F20F12E235F}</Project>
+      <Name>test-ext_vector_reciprocal</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_relational.vcxproj">
+      <Project>{2CA9743D-4B00-3FF8-970D-36072C4E61E8}</Project>
+      <Name>test-ext_vector_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_uint1_sized.vcxproj">
+      <Project>{328C233C-FC12-3578-ADAF-047FA80986D2}</Project>
+      <Name>test-ext_vector_uint1_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_uint2_sized.vcxproj">
+      <Project>{1F8DFD41-DB0B-3F01-8F1E-BB9A1CC3B219}</Project>
+      <Name>test-ext_vector_uint2_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_uint3_sized.vcxproj">
+      <Project>{6B9911F1-7C4B-3DAF-8C92-B974974BDB73}</Project>
+      <Name>test-ext_vector_uint3_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_uint4_sized.vcxproj">
+      <Project>{5DBB25E7-8BC4-353D-BF9E-DF6D5B9AF018}</Project>
+      <Name>test-ext_vector_uint4_sized</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\ext\test-ext_vector_ulp.vcxproj">
+      <Project>{7832B640-C2B4-391F-922D-9DBAEFDE0D62}</Project>
+      <Name>test-ext_vector_ulp</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_bitfield.vcxproj">
+      <Project>{96AA56AF-DF89-3EDA-BE06-A5D66210D216}</Project>
+      <Name>test-gtc_bitfield</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_color_space.vcxproj">
+      <Project>{1781881F-64F4-32C3-A700-C0D3307AC720}</Project>
+      <Name>test-gtc_color_space</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_constants.vcxproj">
+      <Project>{7D7780D4-4E95-38F8-A404-3935C104A8BD}</Project>
+      <Name>test-gtc_constants</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_epsilon.vcxproj">
+      <Project>{6AC2BF85-1C93-3D99-BDA0-C4C1A0C07695}</Project>
+      <Name>test-gtc_epsilon</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_integer.vcxproj">
+      <Project>{3851A229-5D97-3835-BD94-13BD51323E81}</Project>
+      <Name>test-gtc_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_matrix_access.vcxproj">
+      <Project>{E9959D51-6303-3C30-ABFF-9600F7B3113D}</Project>
+      <Name>test-gtc_matrix_access</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_matrix_integer.vcxproj">
+      <Project>{8419A4B5-D31B-3985-AC14-5D573A60857A}</Project>
+      <Name>test-gtc_matrix_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_matrix_inverse.vcxproj">
+      <Project>{8020CC05-1DB0-3051-8EF4-73BD56531EDC}</Project>
+      <Name>test-gtc_matrix_inverse</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_matrix_transform.vcxproj">
+      <Project>{10393BBF-6F78-3A6E-8D86-28F530AD606B}</Project>
+      <Name>test-gtc_matrix_transform</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_noise.vcxproj">
+      <Project>{97F37CFE-340C-3C47-9A31-8F253D3B0A3C}</Project>
+      <Name>test-gtc_noise</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_packing.vcxproj">
+      <Project>{77700871-E160-3091-8CA7-9F88907E42F2}</Project>
+      <Name>test-gtc_packing</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_quaternion.vcxproj">
+      <Project>{BD956E00-CEFD-312D-9A1E-8EC38CA650E9}</Project>
+      <Name>test-gtc_quaternion</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_random.vcxproj">
+      <Project>{118B88DE-93D9-323A-9FA4-E2B0B15217CE}</Project>
+      <Name>test-gtc_random</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_reciprocal.vcxproj">
+      <Project>{4302EE88-E2E0-303A-907A-2BC3DC509017}</Project>
+      <Name>test-gtc_reciprocal</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_round.vcxproj">
+      <Project>{6C0A61E0-A388-39A3-BA5C-6DCCE85441DD}</Project>
+      <Name>test-gtc_round</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_type_aligned.vcxproj">
+      <Project>{F3561A78-4499-3B95-BF11-FCF6C10C18B1}</Project>
+      <Name>test-gtc_type_aligned</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_type_precision.vcxproj">
+      <Project>{2396ABF8-E1CC-3B3E-99C4-FF5619C9BD02}</Project>
+      <Name>test-gtc_type_precision</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_type_ptr.vcxproj">
+      <Project>{490734AC-3DCD-3C31-9349-88A45E2F9F35}</Project>
+      <Name>test-gtc_type_ptr</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_ulp.vcxproj">
+      <Project>{00A71ED3-E411-32D8-A2CE-5F93F404DBD7}</Project>
+      <Name>test-gtc_ulp</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtc\test-gtc_vec1.vcxproj">
+      <Project>{F89D7E08-B7D2-38C7-A308-F2093E890F53}</Project>
+      <Name>test-gtc_vec1</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx.vcxproj">
+      <Project>{A23912F8-AC64-3815-95DE-7451AC57131F}</Project>
+      <Name>test-gtx</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_associated_min_max.vcxproj">
+      <Project>{9CE70FA9-F873-3B3D-8E40-386F01732A92}</Project>
+      <Name>test-gtx_associated_min_max</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_closest_point.vcxproj">
+      <Project>{B91A521D-D2F6-30F7-8D62-CB8EFFB9F5D8}</Project>
+      <Name>test-gtx_closest_point</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_color_encoding.vcxproj">
+      <Project>{E6AFA59F-BA32-3CFA-AE8C-66F12FE61B4B}</Project>
+      <Name>test-gtx_color_encoding</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_color_space.vcxproj">
+      <Project>{72F9D656-002C-3CE5-9937-911DC5403516}</Project>
+      <Name>test-gtx_color_space</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_color_space_YCoCg.vcxproj">
+      <Project>{CC8CAFB4-1867-389E-B2AC-3529742AA83F}</Project>
+      <Name>test-gtx_color_space_YCoCg</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_common.vcxproj">
+      <Project>{52D8AEA6-8F55-34A8-8BFC-D03B6DC53F39}</Project>
+      <Name>test-gtx_common</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_compatibility.vcxproj">
+      <Project>{C57BB55A-AA0D-3402-9D4D-383CFD73065D}</Project>
+      <Name>test-gtx_compatibility</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_component_wise.vcxproj">
+      <Project>{4821E423-13A0-350B-8855-686BF7251879}</Project>
+      <Name>test-gtx_component_wise</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_dual_quaternion.vcxproj">
+      <Project>{1E73A4C8-7E9D-3F96-B5F1-28EB88F32DBB}</Project>
+      <Name>test-gtx_dual_quaternion</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_easing.vcxproj">
+      <Project>{389840E6-3745-3644-A520-C386CECB576E}</Project>
+      <Name>test-gtx_easing</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_euler_angle.vcxproj">
+      <Project>{6515B7DB-6464-3756-9CC1-60D7E7D21EE9}</Project>
+      <Name>test-gtx_euler_angle</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_extend.vcxproj">
+      <Project>{385F16D7-5747-3F5E-8BDA-1A9EF5C8C7A4}</Project>
+      <Name>test-gtx_extend</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_extended_min_max.vcxproj">
+      <Project>{9416CF26-D204-33D8-885B-676C6B550FD2}</Project>
+      <Name>test-gtx_extended_min_max</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_exterior_product.vcxproj">
+      <Project>{13B63403-EEB8-3C7B-B502-B1F3CF29EA48}</Project>
+      <Name>test-gtx_exterior_product</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_fast_exponential.vcxproj">
+      <Project>{29870020-EF80-36B6-BCA3-73C51A9E9A3E}</Project>
+      <Name>test-gtx_fast_exponential</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_fast_square_root.vcxproj">
+      <Project>{3E13845D-ECDC-363C-9A26-EDE302000ACF}</Project>
+      <Name>test-gtx_fast_square_root</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_fast_trigonometry.vcxproj">
+      <Project>{E18610EC-0A47-32C7-8A31-7C6D9F770772}</Project>
+      <Name>test-gtx_fast_trigonometry</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_functions.vcxproj">
+      <Project>{A74D56E0-39A8-3107-A72C-7F7A3B68492A}</Project>
+      <Name>test-gtx_functions</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_gradient_paint.vcxproj">
+      <Project>{67CFBB33-6C0F-34AA-9852-CAB6D25AECD5}</Project>
+      <Name>test-gtx_gradient_paint</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_handed_coordinate_space.vcxproj">
+      <Project>{FA386A75-7CA0-3FD9-9705-3477B6428258}</Project>
+      <Name>test-gtx_handed_coordinate_space</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_hash.vcxproj">
+      <Project>{853C86ED-AA87-3AD2-AD8C-DD241C185559}</Project>
+      <Name>test-gtx_hash</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_integer.vcxproj">
+      <Project>{9635687F-0412-37BD-8CD5-039269D489B6}</Project>
+      <Name>test-gtx_integer</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_intersect.vcxproj">
+      <Project>{CE1C99C1-64EE-352F-8B49-9E1357D749E2}</Project>
+      <Name>test-gtx_intersect</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_io.vcxproj">
+      <Project>{8C3E7452-CD40-3C36-BAA8-DA4DC92FE7C9}</Project>
+      <Name>test-gtx_io</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_load.vcxproj">
+      <Project>{22FF0F24-BD12-3182-ACB3-C54042AC0B7D}</Project>
+      <Name>test-gtx_load</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_log_base.vcxproj">
+      <Project>{3D82D6F4-591E-3703-9050-27021C24DD0D}</Project>
+      <Name>test-gtx_log_base</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_cross_product.vcxproj">
+      <Project>{A38DE439-3E62-387A-83B7-5EBAAC9727A8}</Project>
+      <Name>test-gtx_matrix_cross_product</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_decompose.vcxproj">
+      <Project>{7FB75889-E77A-3ACB-8923-B911BAC61F52}</Project>
+      <Name>test-gtx_matrix_decompose</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_factorisation.vcxproj">
+      <Project>{57DE2E96-9462-3977-B7B4-0F0A40A82966}</Project>
+      <Name>test-gtx_matrix_factorisation</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_interpolation.vcxproj">
+      <Project>{120F6D6C-4A2C-3255-AF31-61464D7D5A63}</Project>
+      <Name>test-gtx_matrix_interpolation</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_major_storage.vcxproj">
+      <Project>{133821C8-37CE-39F3-8623-E32D64E96459}</Project>
+      <Name>test-gtx_matrix_major_storage</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_operation.vcxproj">
+      <Project>{B50B317D-587D-3499-A989-2512E0EBD339}</Project>
+      <Name>test-gtx_matrix_operation</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_query.vcxproj">
+      <Project>{516C90ED-F1BB-3711-A15B-086740AE2D4F}</Project>
+      <Name>test-gtx_matrix_query</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_matrix_transform_2d.vcxproj">
+      <Project>{137D98C2-195C-3FD4-8E4D-CC9F47BD4789}</Project>
+      <Name>test-gtx_matrix_transform_2d</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_norm.vcxproj">
+      <Project>{BA267D5A-1A99-31CC-B87E-0810C879BF49}</Project>
+      <Name>test-gtx_norm</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_normal.vcxproj">
+      <Project>{D5094349-6114-34BA-8D24-8A334EC6D076}</Project>
+      <Name>test-gtx_normal</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_normalize_dot.vcxproj">
+      <Project>{110CFAA6-2285-32A9-AA47-B6B0D09D39AB}</Project>
+      <Name>test-gtx_normalize_dot</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_optimum_pow.vcxproj">
+      <Project>{033E9C90-26A2-3D92-A61D-CF05994CCBB9}</Project>
+      <Name>test-gtx_optimum_pow</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_orthonormalize.vcxproj">
+      <Project>{4014A517-B307-37DC-BC89-74F6E4D649D8}</Project>
+      <Name>test-gtx_orthonormalize</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_pca.vcxproj">
+      <Project>{5B1774CF-FA0B-3CF0-B012-39017C062FE3}</Project>
+      <Name>test-gtx_pca</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_perpendicular.vcxproj">
+      <Project>{C1261A1B-73E1-351F-8D05-13A80E6C64A0}</Project>
+      <Name>test-gtx_perpendicular</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_polar_coordinates.vcxproj">
+      <Project>{AD722861-758E-3308-9D99-ECDB0B0E9931}</Project>
+      <Name>test-gtx_polar_coordinates</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_projection.vcxproj">
+      <Project>{CC281E17-18E1-3C8E-9547-7A9BF309A0AF}</Project>
+      <Name>test-gtx_projection</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_quaternion.vcxproj">
+      <Project>{BC0391E8-C642-3709-BA82-4EF64591A93F}</Project>
+      <Name>test-gtx_quaternion</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_range.vcxproj">
+      <Project>{0F6E3DCD-EE8A-3AE1-BB82-17713931AACB}</Project>
+      <Name>test-gtx_range</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_rotate_normalized_axis.vcxproj">
+      <Project>{AAB42043-BA3B-38AA-8478-2A0135588002}</Project>
+      <Name>test-gtx_rotate_normalized_axis</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_rotate_vector.vcxproj">
+      <Project>{9A1D987A-D93A-3A31-9D2A-3E4F3438F691}</Project>
+      <Name>test-gtx_rotate_vector</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_scalar_multiplication.vcxproj">
+      <Project>{7BC97509-D3D8-3657-A93D-BD9E0735AF7E}</Project>
+      <Name>test-gtx_scalar_multiplication</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_scalar_relational.vcxproj">
+      <Project>{ADEDD002-3EAA-3E73-ABCA-1746C3942F15}</Project>
+      <Name>test-gtx_scalar_relational</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_spline.vcxproj">
+      <Project>{CCDE8187-984C-33AB-A26D-56B4D2642A16}</Project>
+      <Name>test-gtx_spline</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_string_cast.vcxproj">
+      <Project>{7CE7E334-1D52-3EA5-9747-A6261D881A93}</Project>
+      <Name>test-gtx_string_cast</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_texture.vcxproj">
+      <Project>{893BAB20-DD03-38BE-B155-F86212D4CD30}</Project>
+      <Name>test-gtx_texture</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_type_aligned.vcxproj">
+      <Project>{DC8ADA6D-2CF3-3EAA-85BD-99856E40F1C5}</Project>
+      <Name>test-gtx_type_aligned</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_type_trait.vcxproj">
+      <Project>{39862D03-14A4-3915-ADF6-F02E0280145E}</Project>
+      <Name>test-gtx_type_trait</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_vec_swizzle.vcxproj">
+      <Project>{0A692682-7EB1-3DB9-A054-9FC9DB0C539F}</Project>
+      <Name>test-gtx_vec_swizzle</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_vector_angle.vcxproj">
+      <Project>{A20D6DE5-FAA0-341A-96EC-B634E4A8ABA1}</Project>
+      <Name>test-gtx_vector_angle</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_vector_query.vcxproj">
+      <Project>{91CD708C-35AD-3A97-B86E-8019744731D4}</Project>
+      <Name>test-gtx_vector_query</Name>
+    </ProjectReference>
+    <ProjectReference Include="G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\glm\test\gtx\test-gtx_wrap.vcxproj">
+      <Project>{0E9EB207-93A9-344D-B795-9DF7364445E7}</Project>
+      <Name>test-gtx_wrap</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
