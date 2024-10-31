@@ -13,5 +13,19 @@ Scenery Editor X is a editor tool for use in creating, modifying, and building c
 * Plugin system to allow custom tools and features to be implemented to meet the users need. 
 * Ability to open and convert WED projects into Scenery Editor X projects.
 
+## Dependencies
+Inorder to compile and develop Scenery Editor X you will need:
 
+* [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows)
+* 
+
+## Build
+
+From command line to download this repository and all its submodules use command: 
+`git clone --recurse-submodules https://github.com/The3dVehicleguy/Scenery-Editor-X.git`
+
+
+
+### CMake:
+Cmake build is a work on progress.
 
