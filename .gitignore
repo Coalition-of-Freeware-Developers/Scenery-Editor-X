@@ -5,7 +5,7 @@ build/
 bin/
 bin-int/
 /example
-/Vulkan
+/VulkanInstallers
 
 # User-specific files
 *.rsuser
@@ -183,3 +183,5 @@ SceneryEditorX/.vscode/c_cpp_properties.json
 SceneryEditorX/.vscode/launch.json
 SceneryEditorX/.vscode/settings.json
 /docs
+/VulkanInstallers
+/Vulkan/.vs
