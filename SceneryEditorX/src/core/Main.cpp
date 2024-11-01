@@ -5,15 +5,25 @@ int main(int, char **)
 {
     SceneryEditorX::Application app;
 
-    try
-    {
-        app.run();
-    }
-    catch (const std::exception &e)
-    {
-        spdlog::error(e.what());
-        return EXIT_FAILURE;
-    }
+
+/*
+##########################################################
+			IMGUI UI PANEL RENDERING FUNCTIONS
+##########################################################
+*/
+
+void RenderMainMenu() 
+{
+	MainMenuBar();
+}
+
+void RenderPanels()
+{
+    LayerStack();
+    AssetBrowser();
+    SettingsPanel();
+}
+}
 
     return EXIT_SUCCESS;
 }

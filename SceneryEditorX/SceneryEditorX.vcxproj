@@ -207,7 +207,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(SolutionDir)external\include\imgui;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\GLFW\include\;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableModules>true</EnableModules>
