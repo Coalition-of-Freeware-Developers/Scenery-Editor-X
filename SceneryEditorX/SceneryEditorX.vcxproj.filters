@@ -189,13 +189,13 @@
     <ClInclude Include="src\core\Window.hpp">
       <Filter>src\Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\Base.h">
+    <ClInclude Include="src\core\Base.hpp">
       <Filter>src\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\ui\Fonts.h">
       <Filter>src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="src\platform\windows\FileManager.h">
+    <ClInclude Include="src\platform\windows\FileManager.hpp">
       <Filter>src\Platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="..\external\portable-file-dialogs.h">
@@ -230,6 +230,30 @@
       <Filter>src\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\renderer\VK_Pipeline.hpp">
+      <Filter>src\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\log\Logging.hpp">
+      <Filter>src\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="src\log\Profiler.hpp">
+      <Filter>src\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\AssetManager.hpp">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Transform.hpp">
+      <Filter>src\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Camera.hpp">
+      <Filter>src\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scene\Scene.hpp">
+      <Filter>src\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Common.h">
+      <Filter>src\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\DeferredRenderer.hpp">
       <Filter>src\Renderer</Filter>
     </ClInclude>
   </ItemGroup>

@@ -8,7 +8,6 @@
     #include <fileapi.h>
 #endif
 
-
 /*
 ##########################################################
 			         GENERAL INCLUDES
@@ -17,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdlib>
 #include <cstdarg>
@@ -40,16 +40,6 @@
 #include <iostream>
 #include <sstream>
 #include <unordered_set>
-
-/*
-##########################################################
-			         Project Includes
-##########################################################
-*/
-
-//#include <../src/core/Logger.h>
-#include <../src/core/Assert.h>
-//#include <../src/core/Main.h>
 
 /*
 ##########################################################
@@ -88,9 +78,21 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
+/*
+##########################################################
+			         Project Includes
+##########################################################
+*/
+
+#include <imgui/imgui.h>
+//#include <imgui/ImGuizmo.h>
+
+#include <../src/core/Assert.h>
+#include <../src/log/Logging.hpp>
+#include <../src/log/Profiler.hpp>
+#include <../src/core/Base.hpp>
 
 /*
 ##########################################################
 ##########################################################
 */
-

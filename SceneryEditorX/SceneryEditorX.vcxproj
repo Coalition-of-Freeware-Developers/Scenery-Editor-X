@@ -61,17 +61,25 @@
     <ClInclude Include="..\external\include\imgui\imstb_truetype.h" />
     <ClInclude Include="..\external\portable-file-dialogs.h" />
     <ClInclude Include="src\core\Application.hpp" />
+    <ClInclude Include="src\core\Common.h" />
     <ClInclude Include="src\core\VK_Window.hpp" />
+    <ClInclude Include="src\core\AssetManager.hpp" />
+    <ClInclude Include="src\log\Logging.hpp" />
+    <ClInclude Include="src\log\Profiler.hpp" />
+    <ClInclude Include="src\renderer\Camera.hpp" />
+    <ClInclude Include="src\renderer\DeferredRenderer.hpp" />
     <ClInclude Include="src\renderer\RendererPBR.h" />
     <ClInclude Include="src\renderer\Renderer.h" />
     <ClInclude Include="src\core\Assert.h" />
     <ClInclude Include="src\core\Buffer.h" />
+    <ClInclude Include="src\renderer\Transform.hpp" />
     <ClInclude Include="src\renderer\VK_Pipeline.hpp" />
     <ClInclude Include="src\renderer\VK_Wrapper.h" />
+    <ClInclude Include="src\scene\Scene.hpp" />
     <ClInclude Include="src\ui\Fonts.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="src\core\Base.h" />
-    <ClInclude Include="src\platform\windows\FileManager.h" />
+    <ClInclude Include="src\core\Base.hpp" />
+    <ClInclude Include="src\platform\windows\FileManager.hpp" />
     <ClInclude Include="src\core\SystemDetection.h" />
     <ClInclude Include="src\io\CfgLoader.h" />
     <ClInclude Include="src\xpeditorpch.h" />
@@ -207,7 +215,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\GLFW\include\;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(SolutionDir)external\include\stb;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\optick;$(SolutionDir)external\include\spdlog;$(SolutionDir)external\include\GLFW\include\;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableModules>true</EnableModules>

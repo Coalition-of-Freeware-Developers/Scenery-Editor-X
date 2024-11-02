@@ -1,8 +1,17 @@
-/*
+
 #pragma once
 
 #include <string>
+#include <vector>
 
+class FileManager
+{
+public:
+    static std::vector<char> ReadRawBytes(const std::string &filename);
+};
+
+
+/*
 namespace SceneryEditorX {
 
 	class FileDialogs

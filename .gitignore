@@ -185,3 +185,4 @@ SceneryEditorX/.vscode/settings.json
 /docs
 /VulkanInstallers
 /Vulkan/.vs
+/Vulkan/src/first_app.hpp
