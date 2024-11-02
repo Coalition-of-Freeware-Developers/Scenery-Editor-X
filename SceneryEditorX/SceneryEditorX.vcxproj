@@ -172,7 +172,7 @@
     <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X\$(MSBuildProjectName)\</IntDir>
     <TargetName>Scenery Editor X</TargetName>
-    <IncludePath>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)external\include;$(SolutionDir)external\include\imgui;$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

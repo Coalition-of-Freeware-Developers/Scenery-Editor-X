@@ -8,6 +8,14 @@
     #include <fileapi.h>
 #endif
 
+#ifdef SEDX_PLATFORM_LINUX
+    #include <unistd.h>
+#endif
+
+#ifdef SEDX_PLATFORM_MAC
+    #error "MAC is not supported!"
+#endif
+
 /*
 ##########################################################
 			         GENERAL INCLUDES
@@ -65,7 +73,7 @@
 ##########################################################
 */
 
-//#include "../portable-file-dialogs.h"
+#include "portable-file-dialogs.h"
 
 /*
 ##########################################################
@@ -85,7 +93,7 @@
 */
 
 #include <imgui/imgui.h>
-//#include <imgui/ImGuizmo.h>
+#include <imgui/ImGuizmo.h>
 
 #include <../src/core/Assert.h>
 #include <../src/log/Logging.hpp>
