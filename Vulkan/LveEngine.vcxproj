@@ -125,7 +125,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(IncludePath)</IncludePath>
-    <ExternalIncludePath>G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\GLFW\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\GLFW\include;G:\ART_REPO-TRAY\X-Plane 12\Scenery-Editor-X\external\include\tinyobjloader;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

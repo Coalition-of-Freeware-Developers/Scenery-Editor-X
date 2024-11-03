@@ -15,7 +15,8 @@
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imgui_stdlib.h>
 
-// #define GLFW_INCLUDE_VULKAN
+
+//#define GLFW_INCLUDE_VULKAN
 // glfw will include vulkan and its own definitions
 #include <GLFW/glfw3.h>
 
@@ -23,7 +24,7 @@
 #define IMGUI_VULKAN_DEBUG_REPORT
 #endif
 
-class SceneryEditorX::Application {
+class Application {
 public:
     void run()
     {
@@ -160,7 +161,7 @@ private:
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         //ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
-        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
 
         ImGui::ShowDemoWindow();
 
@@ -178,9 +179,9 @@ private:
         }
         ImGui::End();
 
-        if (ImGui::Begin("Luz Engine"))
+        if (ImGui::Begin("Scenery Editor X Engine"))
         {
-            if (ImGui::BeginTabBar("LuzEngineMainTab"))
+            if (ImGui::BeginTabBar("SceneryEditorX | MainTab"))
             {
                 if (ImGui::BeginTabItem("Configuration"))
                 {

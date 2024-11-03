@@ -1,7 +1,7 @@
-
 #include "../xpeditorpch.h"
-#include <imgui.h>
 #include "UI.h"
+
+#include <imgui.h>
 
 bool SceneryEditorX::UI::showSettingsPanel = false;
 

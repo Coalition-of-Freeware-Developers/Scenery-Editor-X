@@ -1,12 +1,11 @@
-
 #include "../xpeditorpch.h"
-#include <imgui.h>
+#include "UI.h"
+
 #include <GLFW/glfw3.h>
+#include <imgui.h>
 
 #include <string>
 #include <vector>
-
-#include "UI.h"
 
 namespace SceneryEditorX::UI
 {

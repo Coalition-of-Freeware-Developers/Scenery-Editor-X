@@ -1,7 +1,8 @@
 
-#include "../src/IO/FileDialog.h"
 #include "../xpeditorpch.h"
+#include "../src/IO/FileDialog.h"
 #include "UI.h"
+
 #include <cstring>
 #include <imgui.h>
 

@@ -75,7 +75,10 @@ void Renderer::BeginFrame()
 {
 }
 
-void Renderer::WaitAndRender(float deltaTime, Window *mainWindow, Scene *scene, glm::mat4 projectionMatrix)
+void Renderer::WaitAndRender(float deltaTime,
+                             SceneryEditorX::Window *mainWindow,
+                             Scene *scene,
+                             glm::mat4 projectionMatrix)
 {
     RendererBasic::UpdateProjectionMatrix(&projectionMatrix, scene);
 

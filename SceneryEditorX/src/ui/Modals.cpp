@@ -2,6 +2,7 @@
 
 #include "../xpeditorpch.h"
 #include "UI.h"
+
 #include <imgui.h>
 
 // Define showExitModal and showAboutModal variables

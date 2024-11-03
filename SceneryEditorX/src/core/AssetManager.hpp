@@ -29,16 +29,15 @@ struct MeshVertex
 
 namespace std
 {
-template <>
-struct hash<MeshVertex>
-{
-    size_t operator()(MeshVertex const &vertex) const
+    template <> struct hash<MeshVertex>
     {
-        return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
-               (hash<glm::vec2>()(vertex.texCoord) << 1);
-    }
-};
-} // namespace std
+        size_t operator()(MeshVertex const &vertex) const
+        {
+            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
+                   (hash<glm::vec2>()(vertex.texCoord) << 1);
+        }
+    };
+}
 
 struct MeshDesc
 {
@@ -88,14 +87,12 @@ class AssetManager
     static bool IsGLTF(std::filesystem::path path);
 
 public:
-    static inline RID nextMeshRID = 0;
 
-    static inline MeshDesc meshDescs[MAX_MESHES];
-    static inline MeshResource meshes[MAX_MESHES];
-
-    static inline TextureDesc textureDescs[MAX_TEXTURES];
-
-    static inline vkw::Image images[MAX_TEXTURES];
+    static inline RID           nextMeshRID = 0;
+    static inline MeshDesc      meshDescs[MAX_MESHES];
+    static inline MeshResource  meshes[MAX_MESHES];
+    static inline TextureDesc   textureDescs[MAX_TEXTURES];
+    static inline vkw::Image    images[MAX_TEXTURES];
 
     static void Setup();
     static void Create();

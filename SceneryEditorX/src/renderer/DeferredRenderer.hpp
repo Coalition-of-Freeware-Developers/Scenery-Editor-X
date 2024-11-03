@@ -38,4 +38,4 @@ void OnImgui(int numFrame);
 
 void ViewportOnImGui();
 
-} // namespace DeferredShading
+}

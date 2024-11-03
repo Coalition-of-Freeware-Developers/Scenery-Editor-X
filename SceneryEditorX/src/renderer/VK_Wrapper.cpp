@@ -1,18 +1,10 @@
 #include "../src/xpeditorpch.h"
 
-#ifdef _DEBUG
-#define IMGUI_VULKAN_DEBUG_REPORT
-#endif
-
 #include "VK_Wrapper.h"
 
 #include "../core/Common.h"
 #include "imgui/imgui_impl_vulkan.h"
 #include <GLFW/glfw3.h>
-
-#define VMA_IMPLEMENTATION
-#include <vma/vk_mem_alloc.h>
-
 
 static const char *VK_ERROR_STRING(VkResult result)
 {
@@ -266,7 +258,7 @@ struct ImageResource : Resource
     VkImageView view;
     VkDeviceMemory memory;
     bool fromSwapchain = false;
-    ImTextureID imguiRID = nullptr;
+    ImTextureID imguiRID = 0;
 
     virtual ~ImageResource()
     {
@@ -280,7 +272,7 @@ struct ImageResource : Resource
                 _ctx.availableImageRID.push_back(rid);
                 ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)imguiRID);
                 rid = -1;
-                imguiRID = nullptr;
+                imguiRID = 0;
             }
         }
     }
@@ -353,7 +345,7 @@ ImTextureID Image::ImGuiRID()
 {
     if (!resource || resource->rid == -1)
     {
-        return nullptr;
+        return (ImTextureID)nullptr;
     }
     return resource->imguiRID;
 }
@@ -382,7 +374,7 @@ void ImGuiCheckVulkanResult(VkResult res)
 
 void InitImGui()
 {
-    ImGui_ImplVulkan_InitInfo initInfo{};
+    ImGui_ImplVulkan_InitInfo initInfo = {};
     initInfo.Instance = _ctx.instance;
     initInfo.PhysicalDevice = _ctx.physicalDevice;
     initInfo.Device = _ctx.device;
@@ -396,8 +388,8 @@ void InitImGui()
     initInfo.Allocator = _ctx.allocator;
     initInfo.CheckVkResultFn = ImGuiCheckVulkanResult;
     initInfo.UseDynamicRendering = true;
-    initInfo.ColorAttachmentFormat = VK_FORMAT_B8G8R8A8_UNORM;
-    ImGui_ImplVulkan_Init(&initInfo, nullptr);
+    //initInfo.ColorAttachmentFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    ImGui_ImplVulkan_Init(&initInfo);
     ImGui_ImplVulkan_CreateFontsTexture();
 }
 
@@ -582,7 +574,8 @@ Image CreateImage(const ImageDesc &desc)
         {
             newLayout = Layout::DepthRead;
         }
-        res->imguiRID = ImGui_ImplVulkan_AddTexture(_ctx.genericSampler, res->view, (VkImageLayout)newLayout);
+        res->imguiRID = reinterpret_cast<ImTextureID>(ImGui_ImplVulkan_AddTexture(_ctx.genericSampler, res->view, (VkImageLayout)newLayout));
+
         res->rid = _ctx.availableImageRID.back();
         _ctx.availableImageRID.pop_back();
 

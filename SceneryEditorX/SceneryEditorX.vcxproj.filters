@@ -8,9 +8,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="resources\imgui">
-      <UniqueIdentifier>{641dd696-1dd5-4b6a-a9a5-d1babd828fd9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\Platform">
       <UniqueIdentifier>{e58243dd-cd5f-4863-a30f-d50e00f02429}</UniqueIdentifier>
     </Filter>
@@ -35,9 +32,6 @@
     <Filter Include="src\Scene">
       <UniqueIdentifier>{71b5d221-d4e7-4632-af25-7e52d30285e9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="resources\imguizmo">
-      <UniqueIdentifier>{2e3a326a-dc9b-48e1-ae2a-b999573d5acc}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\Log">
       <UniqueIdentifier>{4e0b8fb5-a167-45f1-af39-23e1e0c0de10}</UniqueIdentifier>
     </Filter>
@@ -56,35 +50,14 @@
     <Filter Include="assets\fonts">
       <UniqueIdentifier>{900b945f-099e-4dde-b2f6-6808df1cbee7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="assets\textures">
-      <UniqueIdentifier>{e5580171-cb2c-49f2-8ac9-4d3e2949e893}</UniqueIdentifier>
+    <Filter Include="assets\models">
+      <UniqueIdentifier>{83b2e52d-599d-42ac-a763-6ff02b5254f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resources\shaders">
+      <UniqueIdentifier>{f5f64e85-cfb5-449a-9609-2db079e23a72}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\external\include\imgui\imgui.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\include\imgui\imgui_demo.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\include\imgui\imgui_draw.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\include\imgui\imgui_impl_glfw.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\include\imgui\imgui_impl_opengl3.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\include\imgui\imgui_tables.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\core\XMain.cpp">
-      <Filter>src\Core</Filter>
-    </ClCompile>
     <ClCompile Include="src\io\CfgLoader.cpp">
       <Filter>src\IO</Filter>
     </ClCompile>
@@ -124,56 +97,32 @@
     <ClCompile Include="src\renderer\VK_Wrapper.cpp">
       <Filter>src\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="..\external\include\imgui\imgui_impl_vulkan.cpp">
-      <Filter>resources\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\renderer\Renderer.cpp">
-      <Filter>src\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\renderer\RendererPBR.cpp">
-      <Filter>src\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\core\VK_Window.cpp">
-      <Filter>src\Core</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\Main.cpp">
       <Filter>src\Core</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\Application.cpp">
+    <ClCompile Include="src\log\Logging.cpp">
+      <Filter>src\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\AssetManager.cpp">
       <Filter>src\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Camera.cpp">
+      <Filter>src\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\DeferredRenderer.cpp">
+      <Filter>src\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\Scene.cpp">
+      <Filter>src\Scene</Filter>
     </ClCompile>
     <ClCompile Include="src\renderer\VK_Pipeline.cpp">
       <Filter>src\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\VK_Window.cpp">
+      <Filter>src\Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\external\include\imgui\imconfig.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imgui.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imgui_impl_glfw.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imgui_impl_opengl3.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imgui_impl_opengl3_loader.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imgui_internal.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imstb_rectpack.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imstb_textedit.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imstb_truetype.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
     <ClInclude Include="src\core\SystemDetection.h">
       <Filter>src\Core</Filter>
     </ClInclude>
@@ -198,38 +147,14 @@
     <ClInclude Include="src\platform\windows\FileManager.hpp">
       <Filter>src\Platform\Windows</Filter>
     </ClInclude>
-    <ClInclude Include="..\external\portable-file-dialogs.h">
-      <Filter>resources</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\version.h">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\Buffer.h">
-      <Filter>src\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\core\Assert.h">
       <Filter>src\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\renderer\VK_Wrapper.h">
-      <Filter>src\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\include\imgui\imgui_impl_vulkan.h">
-      <Filter>resources\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\renderer\Renderer.h">
-      <Filter>src\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\renderer\RendererPBR.h">
-      <Filter>src\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\VK_Window.hpp">
-      <Filter>src\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\Application.hpp">
-      <Filter>src\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="src\renderer\VK_Pipeline.hpp">
       <Filter>src\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\log\Logging.hpp">
@@ -256,18 +181,57 @@
     <ClInclude Include="src\renderer\DeferredRenderer.hpp">
       <Filter>src\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\renderer\VK_Pipeline.hpp">
+      <Filter>src\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\VK_Window.hpp">
+      <Filter>src\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\config.cfg" />
     <None Include="config\user.ini" />
     <None Include="version_increment.ps1" />
-    <None Include="shaders\shader.frag">
-      <Filter>assets\shaders</Filter>
-    </None>
-    <None Include="shaders\shader.vert">
-      <Filter>assets\shaders</Filter>
-    </None>
     <None Include="src\vk_shader_compile.bat" />
+    <None Include="shaders\base.glsl">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\light.frag">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\light.vert">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\opaque.frag">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\opaque.vert">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\pbr.frag">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\pbr.vert">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\present.frag">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\present.vert">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\rt.rchit">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\rt.rgen">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\rt.rmiss">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="shaders\rtShadow.rmiss">
+      <Filter>resources\shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SceneryEditorX.rc">
@@ -284,9 +248,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="assets\icon.ico">
-      <Filter>resources</Filter>
-    </Image>
-    <Image Include="assets\icon_m0v_icon.ico">
       <Filter>resources</Filter>
     </Image>
   </ItemGroup>
