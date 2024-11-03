@@ -13,16 +13,31 @@
 // include <stb_image.h>
 #include <tiny_gltf.h>
 
+/**
+ * @brief Setup the AssetManager.
+ * 
+ * This function is used to perform any necessary setup operations for the AssetManager.
+ */
 void AssetManager::Setup()
 {
 }
 
+/**
+ * @brief Create and initialize resources in the AssetManager.
+ * 
+ * This function profiles the creation process and updates the resources managed by the AssetManager.
+ */
 void AssetManager::Create()
 {
     SEDX_PROFILE_FUNC();
     UpdateResources();
 }
 
+/**
+ * @brief Destroy all resources managed by the AssetManager.
+ * 
+ * This function locks the meshes and textures, clears their buffers, and marks them as uninitialized.
+ */
 void AssetManager::Destroy()
 {
     meshesLock.lock();
@@ -43,6 +58,12 @@ void AssetManager::Destroy()
     texturesLock.unlock();
 }
 
+/**
+ * @brief Finish the AssetManager operations.
+ * 
+ * This function clears all mesh and texture descriptions, resets the resource IDs,
+ * and releases any allocated memory for texture data.
+ */
 void AssetManager::Finish()
 {
     meshesLock.lock();
@@ -64,6 +85,14 @@ void AssetManager::Finish()
     texturesLock.unlock();
 }
 
+/**
+ * @brief Create a new mesh resource.
+ * 
+ * This function locks the mesh resources, increments the next available mesh resource ID,
+ * adds the new mesh ID to the list of uninitialized meshes, and then unlocks the mesh resources.
+ * 
+ * @return RID The resource ID of the newly created mesh.
+ */
 RID AssetManager::NewMesh()
 {
     meshesLock.lock();
@@ -73,6 +102,14 @@ RID AssetManager::NewMesh()
     return rid;
 }
 
+/**
+ * @brief Create a new texture resource.
+ * 
+ * This function locks the texture resources, increments the next available texture resource ID,
+ * adds the new texture ID to the list of uninitialized textures, and then unlocks the texture resources.
+ * 
+ * @return RID The resource ID of the newly created texture.
+ */
 RID AssetManager::NewTexture()
 {
     texturesLock.lock();
@@ -82,6 +119,12 @@ RID AssetManager::NewTexture()
     return rid;
 }
 
+/**
+ * @brief Update the resources managed by the AssetManager.
+ * 
+ * This function profiles the update process, adds new loaded models to the scene,
+ * initializes new meshes and textures, and builds the bottom-level acceleration structures (BLAS) for the meshes.
+ */
 void AssetManager::UpdateResources()
 {
     SEDX_PROFILE_FUNC();
@@ -127,6 +170,14 @@ void AssetManager::UpdateResources()
     }
 }
 
+/**
+ * @brief Initialize a mesh resource.
+ * 
+ * This function initializes a mesh resource by creating vertex and index buffers,
+ * copying the vertex and index data to the GPU, and setting the vertex and index counts.
+ * 
+ * @param rid The resource ID of the mesh to initialize.
+ */
 void AssetManager::InitializeMesh(RID rid)
 {
     MeshResource &res = meshes[rid];
@@ -148,6 +199,14 @@ void AssetManager::InitializeMesh(RID rid)
     vkw::WaitQueue(vkw::Queue::Transfer);
 }
 
+/**
+ * @brief Recenter the mesh vertices around the origin.
+ * 
+ * This function calculates the bounding box of the mesh, determines the center,
+ * and then shifts all vertices so that the mesh is centered around the origin.
+ * 
+ * @param rid The resource ID of the mesh to recenter.
+ */
 void AssetManager::RecenterMesh(RID rid)
 {
     MeshResource &res = meshes[rid];
@@ -197,6 +256,14 @@ void AssetManager::RecenterMesh(RID rid)
     }
 }
 
+/**
+ * @brief Initialize a texture resource.
+ * 
+ * This function initializes a texture resource by creating an image with the specified width, height, and format.
+ * It then copies the texture data to the GPU and sets the appropriate image layout for shader read access.
+ * 
+ * @param id The resource ID of the texture to initialize.
+ */
 void AssetManager::InitializeTexture(RID id)
 {
     TextureDesc &desc = textureDescs[id];
@@ -227,6 +294,14 @@ bool AssetManager::IsTexture(std::filesystem::path path)
     return extension == ".JPG" || extension == ".jpg" || extension == ".png" || extension == ".tga";
 }
 
+/**
+ * @brief Load an OBJ file and convert it to mesh resources.
+ * 
+ * This function loads an OBJ file from the specified path, converts the loaded data into mesh resources,
+ * and adds them to the scene. It also handles material conversion and mesh splitting based on material IDs.
+ * 
+ * @param path The filesystem path to the OBJ file to load.
+ */
 void AssetManager::LoadOBJ(std::filesystem::path path)
 {
     DEBUG_TRACE("Start loading mesh {}", path.string().c_str());
@@ -251,14 +326,14 @@ void AssetManager::LoadOBJ(std::filesystem::path path)
     std::vector<MaterialBlock> materialBlocks(materials.size());
     for (size_t i = 0; i < materials.size(); i++)
     {
-        materialBlocks[i].color = glm::vec4(glm::make_vec3(materials[i].diffuse), 1);
-        materialBlocks[i].emission = glm::make_vec3(materials[i].emission);
-        materialBlocks[i].metallic = materials[i].metallic;
-        if (materials[i].specular != 0)
+        materialBlocks[i].color = glm::vec4(glm::make_vec3(materials[i].diffuse), 1);   // Sets the color of the material
+        materialBlocks[i].emission = glm::make_vec3(materials[i].emission);             // Sets the emission of the material
+        materialBlocks[i].metallic = materials[i].metallic;                             // Sets the metallic value of the material
+        if (materials[i].specular != 0)                                                 // Sets the specular value of the material
         {
-            materialBlocks[i].roughness = 1.0f - avg(materials[i].specular);
+            materialBlocks[i].roughness = 1.0f - avg(materials[i].specular); 
         }
-        materialBlocks[i].roughness = materials[i].roughness;
+        materialBlocks[i].roughness = materials[i].roughness;                           // Sets the roughness value of the material
         // if (materials[i].diffuse_texname != "") {
         //     std::filesystem::path copyPath = parentPath;
         //     materialBlocks[i].colorMap = AssetManager::LoadTexture(copyPath.append(materials[i].diffuse_texname));
@@ -270,58 +345,58 @@ void AssetManager::LoadOBJ(std::filesystem::path path)
         LOG_WARN("Warning during load obj file {}: {}", path.string().c_str(), warn);
     }
 
-    Collection *collection = nullptr;
+    Collection *collection = nullptr;                                           // Create a collection for the shapes
     if (shapes.size() > 1)
     {
         collection = Scene::CreateCollection();
-        collection->name = path.stem().string();
+        collection->name = path.stem().string();                                // Set the name of the collection
     }
-    for (size_t i = 0; i < shapes.size(); i++)
+    for (size_t i = 0; i < shapes.size(); i++)                                  // Loop over shapes
     {
-        MeshDesc desc;
-        std::unordered_map<MeshVertex, uint32_t> uniqueVertices{};
-        int splittedShapeIndex = 0;
-        size_t j = 0;
-        size_t lastMaterialId = shapes[i].mesh.material_ids[0];
-        for (const auto &index : shapes[i].mesh.indices)
+        MeshDesc desc;                                                          // Create a mesh description
+        std::unordered_map<MeshVertex, uint32_t> uniqueVertices{};              // Create a map of unique vertices
+        int splittedShapeIndex = 0;                                             // Set the splitted shape index to 0
+        size_t j = 0;                                                           // Set the index to 0
+        size_t lastMaterialId = shapes[i].mesh.material_ids[0];                 // Set the last material ID to the first material ID
+        for (const auto &index : shapes[i].mesh.indices)                        // Loop over the indices
         {
-            MeshVertex vertex{};
+            MeshVertex vertex{};                                                // Create a mesh vertex
 
-            vertex.pos = {attrib.vertices[3 * index.vertex_index + 0],
+            vertex.pos = {attrib.vertices[3 * index.vertex_index + 0],          // Set the position of the vertex
                           attrib.vertices[3 * index.vertex_index + 1],
                           attrib.vertices[3 * index.vertex_index + 2]};
 
-            if (index.normal_index != -1)
+            if (index.normal_index != -1)                                       // If the normal index is not -1
             {
                 vertex.normal = {
-                    attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 0],                 // Set the normal of the vertex
                     attrib.normals[3 * index.normal_index + 1],
                     attrib.normals[3 * index.normal_index + 2],
                 };
             }
 
-            if (index.texcoord_index == -1)
+            if (index.texcoord_index == -1)                                     // If the texture coordinate index is not -1
             {
-                vertex.texCoord = {0, 0};
+                vertex.texCoord = {0, 0};                                       // Set the texture coordinate of the vertex
             }
             else
             {
                 vertex.texCoord = {attrib.texcoords[2 * index.texcoord_index + 0],
-                                   1.0f - attrib.texcoords[2 * index.texcoord_index + 1]};
+                                   1.0f - attrib.texcoords[2 * index.texcoord_index + 1]}; 
             }
 
-            if (uniqueVertices.count(vertex) == 0)
+            if (uniqueVertices.count(vertex) == 0)                              // If the vertex is not in the unique vertices
             {
-                uniqueVertices[vertex] = (uint32_t)(desc.vertices.size());
+                uniqueVertices[vertex] = (uint32_t)(desc.vertices.size());      // Add the vertex to the unique vertices
                 desc.vertices.push_back(vertex);
             }
 
-            desc.indices.push_back(uniqueVertices[vertex]);
+            desc.indices.push_back(uniqueVertices[vertex]);                     // Add the index to the indices
             j += 1;
 
-            if (j % 3 == 0)
+            if (j % 3 == 0)                                                     // If the index is a multiple of 3
             {
-                size_t faceId = j / 3;
+                size_t faceId = j / 3; 
                 if (faceId >= shapes[i].mesh.material_ids.size() ||
                     shapes[i].mesh.material_ids[faceId] != lastMaterialId)
                 {

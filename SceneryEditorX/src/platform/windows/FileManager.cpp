@@ -65,6 +65,17 @@ namespace SceneryEditorX {
 
 }
 */
+
+/**
+ * @brief Reads the raw bytes from a file.
+ * 
+ * This function opens a file in binary mode, reads its contents into a vector of bytes,
+ * and returns the vector. It uses the 'ate' flag to start reading at the end of the file
+ * to determine the file size, then reads the file from the beginning.
+ * 
+ * @param filename The name of the file to read.
+ * @return std::vector<char> A vector containing the raw bytes of the file.
+ */
 std::vector<char> FileManager::ReadRawBytes(const std::string &filename)
 {
     // 'ate' specify to start reading at the end of the file

@@ -1,6 +1,10 @@
 #include "../src/xpeditorpch.h"
 #include "VK_Pipeline.hpp"
 
+#ifndef ENGINE_DIR
+#define ENGINE_DIR "../"
+#endif
+
 namespace SceneryEditorX
 {
 VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fragFilepath)
@@ -14,6 +18,7 @@ VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fra
 
         if (!file.is_open())
         {
+            //throw std::runtime_error("Failed to open file: " + std::filesystem::absolute(filePath).string());
             throw std::runtime_error("Failed to open file: " + filePath);
         }
 
