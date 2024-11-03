@@ -23,18 +23,20 @@ namespace XPLayerGroups
 	extern const int LIGHT_OBJECTS;
 	extern const int CARS;
 
-	/// <summary>
-	/// Resolves a layer group to a vertical offset
-	/// </summary>
-	/// <param name="InGroup">Layer group</param>
-	/// <param name="InOffset">Offset from group</param>
-	/// <returns>Vertical offset for proper layering</returns>
-	int Resolve(std::string InGroup, int InOffset);
+	/**
+    * @brief Resolves a layer group to a vertical offset
+	*
+	* @param InGroup = Layer group
+	* @param InOffset = Offset from group
+	* @return Vertical offset for proper layering
+    */
+    int Resolve(std::string InGroup, int InOffset);
 
-	/// <summary>
-	/// Resolves a vertical offset to a layer group
-	/// </summary>
-	/// <param name="InOffset">Vertical offset</param>
-	/// <returns>Pair containing the layer group, and offset, respectively <group> <offset></returns>
-	std::pair<std::string, int> Resolve(int InOffset);
-}
+	/**
+    * @brief Resolves a vertical offset to a layer group
+	*
+	* @param InOffset = Vertical offset
+	* @return Pair containing the layer group, and offset, respectively <group> <offset>
+    */
+    std::pair<std::string, int> Resolve(int InOffset);
+    }
