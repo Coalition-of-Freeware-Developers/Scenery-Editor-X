@@ -3,20 +3,23 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 
-using u8  = uint8_t;
-using u16 = uint16_t;
-using u32 = uint32_t;
-using u32 = uint32_t;
-using u64 = uint64_t;
-using i8  = int8_t;
-using i16 = int16_t;
-using i32 = int32_t;
-using i64 = int64_t;
-using f32 = float;
-using f64 = double;
-using RID = u32;
+// Type aliases for fixed-width integer types
+using u8  = uint8_t;  // Unsigned 8-bit integer
+using u16 = uint16_t; // Unsigned 16-bit integer
+using u32 = uint32_t; // Unsigned 32-bit integer
+using u64 = uint64_t; // Unsigned 64-bit integer
+using i8  = int8_t;   // Signed 8-bit integer
+using i16 = int16_t;  // Signed 16-bit integer
+using i32 = int32_t;  // Signed 32-bit integer
+using i64 = int64_t;  // Signed 64-bit integer
+using f32 = float;    // 32-bit floating point
+using f64 = double;   // 64-bit floating point
+using RID = u32;      // Resource Identifier, alias for unsigned 32-bit integer
 
+// Macro to align a given size to the specified alignment
 #define ALIGN_AS(size, alignment) ((size) % (alignment) > 0 ? (size) + (alignment) - (size) % (alignment) : (size))
+
+// Macro to count the number of elements in an array
 #define COUNT_OF(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 #ifdef _WIN32

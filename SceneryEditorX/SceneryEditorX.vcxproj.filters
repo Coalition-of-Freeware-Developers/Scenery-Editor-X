@@ -53,8 +53,8 @@
     <Filter Include="assets\models">
       <UniqueIdentifier>{83b2e52d-599d-42ac-a763-6ff02b5254f4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="resources\shaders">
-      <UniqueIdentifier>{f5f64e85-cfb5-449a-9609-2db079e23a72}</UniqueIdentifier>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{638f8aa5-84d9-44c9-bb90-23b30c428c9b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -187,6 +187,9 @@
     <ClInclude Include="src\core\VK_Window.hpp">
       <Filter>src\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="shaders\common.h">
+      <Filter>shaders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\config.cfg" />
@@ -194,43 +197,43 @@
     <None Include="version_increment.ps1" />
     <None Include="src\vk_shader_compile.bat" />
     <None Include="shaders\base.glsl">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\light.frag">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\light.vert">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\opaque.frag">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\opaque.vert">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\pbr.frag">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\pbr.vert">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\present.frag">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\present.vert">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\rt.rchit">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\rt.rgen">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\rt.rmiss">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
     <None Include="shaders\rtShadow.rmiss">
-      <Filter>resources\shaders</Filter>
+      <Filter>shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

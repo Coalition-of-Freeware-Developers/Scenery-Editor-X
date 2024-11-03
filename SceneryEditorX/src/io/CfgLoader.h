@@ -3,7 +3,14 @@
 #include <map>
 #include <string>
 
+/**
+ * @brief Segment identifier for common configuration.
+ */
 #define	S_Segment_Common	"[Common]"
+
+/**
+ * @brief Segment identifier for logger configuration.
+ */
 #define S_Segment_Logger	"[Logger]"
 
 class CfgLoader

@@ -736,6 +736,18 @@ void AssetManager::LoadGLTF(std::filesystem::path path)
     }
 }
 
+/**
+ * @brief Create a new texture resource with the specified parameters.
+ * 
+ * This function creates a new texture resource, assigns the provided data, width, height, 
+ * and name to the texture description, and returns the resource ID of the newly created texture.
+ * 
+ * @param name The name or path of the texture.
+ * @param data A pointer to the texture data.
+ * @param width The width of the texture.
+ * @param height The height of the texture.
+ * @return RID The resource ID of the newly created texture.
+ */
 RID AssetManager::CreateTexture(std::string name, u8 *data, u32 width, u32 height)
 {
     RID rid = NewTexture();
@@ -747,6 +759,15 @@ RID AssetManager::CreateTexture(std::string name, u8 *data, u32 width, u32 heigh
     return rid;
 }
 
+/**
+ * @brief Load a texture from a file.
+ * 
+ * This function checks if the texture is already loaded. If not, it reads the texture file,
+ * creates a new texture resource, and stores the texture data in the texture descriptor.
+ * 
+ * @param path The file path of the texture to load.
+ * @return RID The resource ID of the loaded texture, or 0 if the texture failed to load.
+ */
 RID AssetManager::LoadTexture(std::filesystem::path path)
 {
     // check if texture is already loaded
@@ -792,6 +813,15 @@ RID AssetManager::LoadTexture(std::filesystem::path path)
     return rid;
 }
 
+/**
+ * @brief Load a model from a specified file path.
+ * 
+ * This function loads a model from the given file path and ensures that only one model is loaded.
+ * If more than one model is loaded, an assertion is triggered.
+ * 
+ * @param path The file path to load the model from.
+ * @return Model* A pointer to the loaded model.
+ */
 Model *AssetManager::LoadModel(std::filesystem::path path)
 {
     auto models = LoadModels(path);
@@ -799,6 +829,16 @@ Model *AssetManager::LoadModel(std::filesystem::path path)
     return models[0];
 }
 
+/**
+ * @brief Load models from a specified path.
+ * 
+ * This function loads models from the given filesystem path. It first checks if there are any models
+ * already loaded and logs a warning if there are. It then determines the file type (OBJ or GLTF) and
+ * loads the models accordingly.
+ * 
+ * @param path The filesystem path to load models from.
+ * @return std::vector<Model *> A vector of pointers to the loaded models.
+ */
 std::vector<Model *> AssetManager::LoadModels(std::filesystem::path path)
 {
     if (loadedModels.size() != 0)
@@ -816,6 +856,15 @@ std::vector<Model *> AssetManager::LoadModels(std::filesystem::path path)
     return GetLoadedModels();
 }
 
+/**
+ * @brief Retrieve and create new models from the loaded models.
+ * 
+ * This function locks the loaded models, moves them to a local vector, clears the loaded models,
+ * and then unlocks the loaded models. It creates new models in the scene from the moved models
+ * and returns a vector of pointers to the newly created models.
+ * 
+ * @return std::vector<Model *> A vector of pointers to the newly created models.
+ */
 std::vector<Model *> AssetManager::GetLoadedModels()
 {
     loadedModelsLock.lock();
@@ -830,16 +879,42 @@ std::vector<Model *> AssetManager::GetLoadedModels()
     return newModels;
 }
 
+/**
+ * @brief Check if the given file path has an OBJ extension.
+ * 
+ * This function checks if the file extension of the provided path is ".obj".
+ * 
+ * @param path The file path to check.
+ * @return true If the file extension is ".obj".
+ * @return false If the file extension is not ".obj".
+ */
 bool AssetManager::IsOBJ(std::filesystem::path path)
 {
     return path.extension() == ".obj";
 }
 
+/**
+ * @brief Check if the given file path has a GLTF extension.
+ * 
+ * This function checks if the file extension of the provided path is ".gltf" or ".glb".
+ * 
+ * @param path The file path to check.
+ * @return true If the file extension is ".gltf" or ".glb".
+ * @return false If the file extension is not ".gltf" or ".glb".
+ */
 bool AssetManager::IsGLTF(std::filesystem::path path)
 {
     return path.extension() == ".gltf" || path.extension() == ".glb";
 }
 
+/**
+ * @brief Asynchronously load models from the given file path.
+ * 
+ * This function checks the file extension of the provided path and starts a new thread
+ * to load the model asynchronously. It supports loading OBJ and GLTF models.
+ * 
+ * @param path The file path of the model to load.
+ */
 void AssetManager::AsyncLoadModels(std::filesystem::path path)
 {
     if (IsOBJ(path))
@@ -852,6 +927,15 @@ void AssetManager::AsyncLoadModels(std::filesystem::path path)
     }
 }
 
+/**
+ * @brief Recursively display directory contents in ImGui.
+ * 
+ * This function recursively traverses the given directory path and displays its contents
+ * using ImGui. It creates a tree structure for directories and allows files to be selectable.
+ * If a file is a model or texture, it sets up drag-and-drop functionality for the file.
+ * 
+ * @param path The directory path to display.
+ */
 void DirOnImgui(std::filesystem::path path)
 {
     if (ImGui::TreeNode(path.filename().string().c_str()))
@@ -895,6 +979,12 @@ void DirOnImgui(std::filesystem::path path)
     }
 }
 
+/**
+ * @brief Render the ImGui interface for the AssetManager.
+ * 
+ * This function displays the files, meshes, and textures managed by the AssetManager
+ * in the ImGui interface. It allows users to interact with and inspect these resources.
+ */
 void AssetManager::OnImgui()
 {
     const float totalWidth = ImGui::GetContentRegionAvail().x;

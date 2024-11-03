@@ -16,11 +16,12 @@
 
 namespace fs = std::filesystem;	//I'm lazy, so less typing
 
-///	<summary>
-///	LoadFileSystem - Loads the files from the Library.txt and real paths into the vPaths vector
-///	</summary>
-///	<param name="InXpRootPath">The root path of the X-Plane installation</param>
-/// <param name="InCustomSceneryPacks">A vector of paths to custom scenery packs. These should be ordered based on the scenery_packs.ini, with the first element being the highest priority scenery</param>
+/**
+* @brief LoadFileSystem - Loads the files from the Library.txt and real paths into the vPaths vector
+*
+* @param InXpRootPath = The root path of the X-Plane installation<
+* @param InCustomSceneryPacks = A vector of paths to custom scenery packs. These should be ordered based on the scenery_packs.ini, with the first element being the highest priority scenery
+*/
 void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRootPath, std::filesystem::path InCurrentPackagePath, std::vector<std::filesystem::path> InCustomSceneryPacks)
 {
 	//Define our seasons
@@ -460,11 +461,12 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
 	}
 }
 
-///	<summary>
-///	GetDefinition - Returns the definition of a given path
-/// </summary>
-/// <param name="InPath">The path to get the definition of</param>
-/// <returns>The definition of the given path</returns>
+/**
+* @brief GetDefinition - Returns the definition of a given path
+*
+* @param InPath = The path to get the definition of
+* @return The definition of the given path
+*/
 XPLibrary::Definition XPLibrary::VirtualFileSystem::GetDefinition(const std::string& InPath)
 {
 	//Find the definition
@@ -479,11 +481,12 @@ XPLibrary::Definition XPLibrary::VirtualFileSystem::GetDefinition(const std::str
 	return XPLibrary::Definition();
 }
 
-///	<summary>
-///	GetRegion - Returns the region of a given path
-/// </summary>
-/// <param name="InPath">The path to get the region of</param>
-/// <returns>Copy of the region of the given path. An empty region will be returned if the region does not exist</returns>
+/**
+* @brief GetRegion - Returns the region of a given path
+*
+* @param InPath = The path to get the region of
+* @return Copy of the region of the given path. An empty region will be returned if the region does not exist
+*/
 XPLibrary::Region XPLibrary::VirtualFileSystem::GetRegion(const std::string& InPath)
 {
 	//Find the definition

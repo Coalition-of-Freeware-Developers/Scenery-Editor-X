@@ -14,12 +14,14 @@
 
 namespace fs = std::filesystem;	//I'm lazy
 
-/// <summary>
-/// Loads the object
-/// </summary>
-/// <param name="InPath">Path to the obj</param>
-/// <returns>True on success, false on failure</returns>
-bool XPAsset::Obj::Load(const std::filesystem::path& InPath)
+
+/**
+* @brief Loads the object
+*
+* @Param InPath = Path to the obj
+* @return True on success, false on failure
+*/
+bool XPAsset::Obj::Load(const std::filesystem::path &InPath)
 {
 	try
 	{
@@ -206,37 +208,18 @@ bool XPAsset::Obj::Load(const std::filesystem::path& InPath)
 
 				//Set the normal texture
 				pDrapedNormalTex = strTexArgs[1];
-
-				//Set the normal scale ratio
-				dblNormalScale = stod(strTexArgs[0]);
-				bHasDrapedNormalTex = true;
-			}
-
-			//TEXTURE_NORMAL
-			else if (strCommand == "TEXTURE_NORMAL")
-			{
-				//Format: TEXTURE_NORMAL Tex
-				std::string strTexPath;
-				ssLine >> strTexPath;
-
-				//Set the normal texture
-				pNormalTex = strTexPath;
-				bHasNormalTex = true;
-			}
-
-			//SUPER_ROUGHNESS. Sets the super roughness flag
-			else if (strCommand == "SUPER_ROUGHNESS")
-			{
-				bSuperRoughness = true;
 			}
 		}
 
+		//Close the file
+		ObjFile.close();
+
+		//Success
 		return true;
 	}
 	catch (...)
 	{
+		//Failure
 		return false;
 	}
-
-	return false;
 }

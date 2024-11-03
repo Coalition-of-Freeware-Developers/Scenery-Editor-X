@@ -154,6 +154,14 @@ private:
         return screenSpace;
     }
 
+    /**
+     * @brief Draws the ImGui frame and handles ImGui windows and widgets.
+     * 
+     * This function sets up a new ImGui frame, creates various ImGui windows
+     * such as the demo window, viewport, configuration, assets, inspector, profiler,
+     * and scene windows. It also handles resizing of the viewport and updates the
+     * ImGui draw data.
+     */
     void imguiDrawFrame()
     {
         SEDX_PROFILE_FUNC();
@@ -232,6 +240,14 @@ private:
         imguiDrawData = ImGui::GetDrawData();
     }
 
+    /**
+     * @brief Updates the command buffer with the necessary commands for rendering.
+     * 
+     * This function begins a new command buffer, records commands to copy scene and model data,
+     * builds the top-level acceleration structure (TLAS) for ray tracing, and records commands
+     * for various rendering passes including opaque pass, light pass, and compose pass. It also
+     * handles ImGui rendering if the UI is enabled.
+     */
     void updateCommandBuffer()
     {
         SEDX_PROFILE_FUNC();
@@ -253,14 +269,15 @@ private:
             }
             vkw::CmdBuildTLAS(Scene::tlas, vkwInstances);
         });
-        vkw::CmdBarrier();
 
-        auto opaqueTS = vkw::CmdBeginTimeStamp("GPU::OpaquePass");
-        DeferredShading::BeginOpaquePass();
+        vkw::CmdBarrier(); // TLAS build is a write operation
+
+        auto opaqueTS = vkw::CmdBeginTimeStamp("GPU::OpaquePass"); // Opaque pass
+        DeferredShading::BeginOpaquePass(); 
 
         DeferredShading::OpaqueConstants constants;
         constants.sceneBufferIndex = Scene::sceneBuffer.RID();
-        constants.modelBufferIndex = Scene::modelsBuffer.RID();
+        constants.modelBufferIndex = Scene::modelsBuffer.RID(); 
 
         for (Model *model : Scene::modelEntities)
         {
@@ -304,6 +321,14 @@ private:
         vkw::CmdEndTimeStamp(totalTS);
     }
 
+    /**
+     * @brief Draws a single frame.
+     * 
+     * This function handles the drawing of a single frame. It first draws the ImGui frame,
+     * then acquires the next image from the swap chain. If the swap chain is dirty, it returns early.
+     * It then updates the uniform buffer and command buffer, and finally submits the command buffer
+     * and presents the image. The frame count is incremented at the end.
+     */
     void drawFrame()
     {
         SEDX_PROFILE_FUNC();
@@ -320,6 +345,14 @@ private:
         frameCount = (frameCount + 1) % (1 << 15);
     }
 
+    /**
+     * @brief Recreates frame resources when the viewport size changes or the framebuffer is resized.
+     * 
+     * This function handles the recreation of frame resources, ensuring that the application
+     * correctly handles changes in the viewport size or framebuffer size. It waits for the window
+     * to be restored from a minimized state, updates the framebuffer size, and recreates necessary
+     * Vulkan resources.
+     */
     void RecreateFrameResources()
     {
         SEDX_PROFILE_FUNC();
@@ -343,6 +376,15 @@ private:
         viewportResized = false;
     }
 
+    /**
+     * @brief Sets the extent of the camera's viewport.
+     * 
+     * This function updates the camera's viewport size to match the current
+     * viewport dimensions. It accounts for the fact that glm was designed for
+     * OpenGL, where the Y coordinate of the clip coordinates is inverted.
+     * 
+     * @note The easiest way to fix this is by flipping the scaling factor of the Y axis.
+     */
     void createUniformProjection()
     {
         // glm was designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
@@ -350,12 +392,26 @@ private:
         Scene::camera.SetExtent(viewportSize.x, viewportSize.y);
     }
 
+    /**
+     * @brief Updates the uniform buffer with the latest scene resources.
+     * 
+     * This function profiles the update process and calls the Scene::UpdateResources
+     * method to ensure that the uniform buffer contains the most recent data for rendering.
+     */
     void updateUniformBuffer()
     {
         SEDX_PROFILE_FUNC();
         Scene::UpdateResources();
     }
 
+    /**
+     * @brief Sets up the ImGui context and configures the ImGui style.
+     * 
+     * This function initializes the ImGui context, enables docking, and sets up
+     * the ImGui style with custom colors and settings. It defines a helper function
+     * to convert color values from bytes to ImVec4 and applies a custom style to
+     * various ImGui elements.
+     */
     void SetupImgui()
     {
         IMGUI_CHECKVERSION();
@@ -440,6 +496,12 @@ private:
         }
     }
 
+    /**
+     * @brief Initializes ImGui for Vulkan and GLFW.
+     * 
+     * This function sets up ImGui to work with Vulkan and GLFW by initializing
+     * the necessary ImGui implementations. It also profiles the initialization process.
+     */
     void CreateImgui()
     {
         SEDX_PROFILE_FUNC();
@@ -447,18 +509,41 @@ private:
         vkw::InitImGui();
     }
 
+    /**
+     * @brief Shuts down the ImGui context for Vulkan and GLFW.
+     * 
+     * This function cleans up and releases all resources allocated by ImGui
+     * for Vulkan and GLFW, ensuring a proper shutdown of the ImGui context.
+     */
     void DestroyImgui()
     {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
     }
 
+    /**
+     * @brief Destroys the ImGui context.
+     * 
+     * This function destroys the ImGui context, releasing all resources
+     * allocated by ImGui and ensuring a proper cleanup.
+     */
     void FinishImgui()
     {
         ImGui::DestroyContext();
     }
 };
 
+/**
+ * @brief The main entry point of the application.
+ * 
+ * This function initializes the logging system, creates an instance of the 
+ * SceneryEditorX::Application class, and runs the application. It also handles 
+ * any exceptions that might be thrown during the execution of the application 
+ * and prints the error message to the standard error output.
+ * 
+ * @return int Returns EXIT_SUCCESS on successful execution, or EXIT_FAILURE if 
+ * an exception is caught.
+ */
 int main()
 {
     Log::Init();

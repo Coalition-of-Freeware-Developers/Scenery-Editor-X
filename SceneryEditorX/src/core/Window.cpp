@@ -2,12 +2,32 @@
 #include "Window.hpp"
 
 
+/**
+ * @brief Callback function for handling scroll events.
+ * 
+ * This function is called whenever a scroll event occurs in the window.
+ * It updates the scroll and deltaScroll values based on the scroll input.
+ * 
+ * @param window The GLFW window where the event occurred.
+ * @param x The scroll offset along the x-axis.
+ * @param y The scroll offset along the y-axis.
+ */
 void Window::ScrollCallback(GLFWwindow *window, double x, double y)
 {
     Window::scroll += y;
     Window::deltaScroll += y;
 }
 
+/**
+ * @brief Callback function for handling framebuffer resize events.
+ * 
+ * This function is called whenever the framebuffer is resized.
+ * It updates the width and height of the window and sets the framebufferResized flag to true.
+ * 
+ * @param window The GLFW window where the event occurred.
+ * @param width The new width of the framebuffer.
+ * @param height The new height of the framebuffer.
+ */
 void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height)
 {
     Window::width = width;
@@ -15,17 +35,44 @@ void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height
     Window::framebufferResized = true;
 }
 
+/**
+ * @brief Callback function for handling window maximize events.
+ * 
+ * This function is called whenever the window is maximized or restored.
+ * It updates the maximized state of the window.
+ * 
+ * @param window The GLFW window where the event occurred.
+ * @param maximize The maximized state of the window (1 if maximized, 0 if restored).
+ */
 void Window::WindowMaximizeCallback(GLFWwindow *window, int maximize)
 {
     maximized = maximize;
 }
 
+/**
+ * @brief Callback function for handling window position change events.
+ * 
+ * This function is called whenever the window position is changed.
+ * It updates the posX and posY values based on the new window position.
+ * 
+ * @param window The GLFW window where the event occurred.
+ * @param x The new x-coordinate of the window.
+ * @param y The new y-coordinate of the window.
+ */
 void Window::WindowChangePosCallback(GLFWwindow *window, int x, int y)
 {
     Window::posX = x;
     Window::posY = y;
 }
 
+/**
+ * @brief Creates a new window and initializes GLFW.
+ * 
+ * This function initializes the GLFW library, sets the necessary window hints,
+ * retrieves the available monitors and video modes, creates a new window, and sets
+ * the window position and various callback functions. It also applies any pending
+ * changes to the window configuration.
+ */
 void Window::Create()
 {
     SEDX_PROFILE_FUNC();
@@ -35,15 +82,15 @@ void Window::Create()
     // glfw uses OpenGL context by default
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    monitors = glfwGetMonitors(&monitorCount);
+    monitors = glfwGetMonitors(&monitorCount); // get all monitors
 
     glfwGetVideoModes(monitors[monitorIndex], &videoModeIndex);
     videoModeIndex -= 1;
 
-    window = glfwCreateWindow(width, height, name.c_str(), nullptr, nullptr);
-    glfwSetWindowPos(window, posX, posY);
+    window = glfwCreateWindow(width, height, name.c_str(), nullptr, nullptr); // create window
+    glfwSetWindowPos(window, posX, posY);                                     // set window position
 
-    glfwSetFramebufferSizeCallback(window, Window::FramebufferResizeCallback);
+    glfwSetFramebufferSizeCallback(window, Window::FramebufferResizeCallback); // set framebuffer resize callback
     glfwSetScrollCallback(window, Window::ScrollCallback);
     glfwSetWindowMaximizeCallback(window, Window::WindowMaximizeCallback);
     glfwSetWindowPosCallback(window, Window::WindowChangePosCallback);
@@ -52,6 +99,13 @@ void Window::Create()
     Window::ApplyChanges();
 }
 
+/**
+ * @brief Applies changes to the window configuration.
+ * 
+ * This function retrieves the available monitors and video modes, validates the video mode index,
+ * and applies the necessary changes to the window based on the current mode (Windowed, Windowed FullScreen, or FullScreen).
+ * It updates the window's position, size, and attributes accordingly.
+ */
 void Window::ApplyChanges()
 {
     monitors = glfwGetMonitors(&monitorCount);
@@ -97,6 +151,12 @@ void Window::ApplyChanges()
     dirty = false;
 }
 
+/**
+ * @brief Destroys the window and terminates GLFW.
+ * 
+ * This function retrieves the current window position, destroys the window,
+ * and terminates the GLFW library.
+ */
 void Window::Destroy()
 {
     glfwGetWindowPos(window, &posX, &posY);
@@ -104,6 +164,14 @@ void Window::Destroy()
     glfwTerminate();
 }
 
+/**
+ * @brief Updates the window state.
+ * 
+ * This function updates the state of the window, including the key states,
+ * scroll delta, time delta, mouse position, and processes any pending events.
+ * It captures the current time to calculate the time delta since the last update,
+ * retrieves the current cursor position, and polls for any pending events.
+ */
 void Window::Update()
 {
     for (int i = 0; i < GLFW_KEY_LAST + 1; i++)
@@ -122,12 +190,28 @@ void Window::Update()
     glfwPollEvents();
 }
 
+/**
+ * @brief Generates a string representation of a video mode.
+ * 
+ * This function takes a GLFWvidmode structure and returns a string
+ * that describes the video mode in terms of its width, height, and refresh rate.
+ * 
+ * @param mode The GLFWvidmode structure containing the video mode information.
+ * @return A string representing the video mode in the format "widthxheight refreshRate Hz".
+ */
 std::string VideoModeText(GLFWvidmode mode)
 {
     return std::to_string(mode.width) + "x" + std::to_string(mode.height) + " " + std::to_string(mode.refreshRate) +
            " Hz";
 }
 
+/**
+ * @brief Renders the ImGui interface for the window settings.
+ * 
+ * This function creates an ImGui interface for configuring the window settings.
+ * It allows the user to change the window mode, monitor, resolution, and other
+ * window attributes such as maximized, decorated, and resizable.
+ */
 void Window::OnImgui()
 {
     const float totalWidth = ImGui::GetContentRegionAvail().x;
@@ -270,12 +354,27 @@ void Window::OnImgui()
     }
 }
 
+/**
+ * @brief Updates the framebuffer size.
+ * 
+ * This function resets the framebufferResized flag to false and retrieves the current
+ * framebuffer size, updating the width and height of the window accordingly.
+ */
 void Window::UpdateFramebufferSize()
 {
     framebufferResized = false;
     glfwGetFramebufferSize(window, &width, &height);
 }
 
+/**
+ * @brief Checks if a key is pressed.
+ * 
+ * This function checks if a specific key is currently pressed. It compares the last
+ * recorded state of the key with the current state to determine if the key was pressed.
+ * 
+ * @param keyCode The key code of the key to check.
+ * @return true if the key is pressed, false otherwise.
+ */
 bool Window::IsKeyPressed(uint16_t keyCode)
 {
     return lastKeyState[keyCode] && !glfwGetKey(window, keyCode);

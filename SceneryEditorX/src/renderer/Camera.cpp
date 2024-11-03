@@ -4,11 +4,23 @@
 #include "Transform.hpp"
 #include "../core/Window.hpp"
 
+/**
+ * @brief Constructs a Camera object and initializes the view matrix.
+ */
 Camera::Camera()
 {
     UpdateView();
 }
 
+/**
+ * @brief Updates the view matrix based on the current camera mode and parameters.
+ * 
+ * This function recalculates the view matrix depending on the camera's control mode (Orbit or Fly).
+ * It adjusts the camera's position and orientation based on the current rotation, zoom, and other parameters.
+ * 
+ * - In Orbit mode, the camera orbits around a center point.
+ * - In Fly mode, the camera moves freely in space.
+ */
 void Camera::UpdateView()
 {
     rotation.x = std::max(-179.9f, std::min(179.9f, rotation.x));
@@ -39,6 +51,17 @@ void Camera::UpdateView()
     }
 }
 
+/**
+ * @brief Updates the projection matrix based on the current camera type and parameters.
+ * 
+ * This function recalculates the projection matrix depending on the camera's projection type (Perspective or Orthographic).
+ * It adjusts the projection matrix based on the current field of view, aspect ratio, near and far clipping planes, and zoom level.
+ * 
+ * - In Perspective mode, the projection matrix is calculated using a perspective projection.
+ * - In Orthographic mode, the projection matrix is calculated using an orthographic projection.
+ * 
+ * Note: The Y coordinate of the clip coordinates is inverted to accommodate for OpenGL's coordinate system.
+ */
 void Camera::UpdateProj()
 {
     switch (type)
@@ -56,6 +79,15 @@ void Camera::UpdateProj()
     proj[1][1] *= -1;
 }
 
+/**
+ * @brief Updates the camera's view and projection matrices based on user input and selected transform.
+ * 
+ * This function handles user input to control the camera's movement and orientation. It supports two control modes:
+ * - Orbit: The camera orbits around a center point.
+ * - Fly: The camera moves freely in space.
+ * 
+ * @param selectedTransform Pointer to the currently selected transform. If not null, the camera can center on this transform.
+ */
 void Camera::Update(Transform *selectedTransform)
 {
     //if (!autoOrbit && ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
@@ -183,6 +215,14 @@ void Camera::Update(Transform *selectedTransform)
     }
 }
 
+/**
+ * @brief Sets the control mode of the camera.
+ * 
+ * This function changes the camera's control mode to either Orbit or Fly.
+ * When switching to Orbit mode, it recalculates the center position based on the current eye position and zoom level.
+ * 
+ * @param newControl The new control mode to set (Orbit or Fly).
+ */
 void Camera::SetControl(Camera::Control newControl)
 {
     mode = newControl;
@@ -192,6 +232,14 @@ void Camera::SetControl(Camera::Control newControl)
     }
 }
 
+/**
+ * @brief Renders the ImGui interface for the camera settings.
+ * 
+ * This function creates an ImGui interface that allows the user to modify various camera settings,
+ * such as projection type, control mode, field of view, near and far clipping planes, eye position,
+ * center position, rotation, zoom, and movement speeds. It also handles updating the view and 
+ * projection matrices when any of these settings are changed.
+ */
 void Camera::OnImgui()
 {
     float totalWidth = ImGui::GetContentRegionAvail().x;
@@ -334,6 +382,15 @@ void Camera::OnImgui()
     }
 }
 
+/**
+ * @brief Sets the extent (width and height) of the camera's viewport.
+ * 
+ * This function updates the camera's viewport dimensions and recalculates the projection matrix
+ * to accommodate the new extent.
+ * 
+ * @param width The new width of the viewport.
+ * @param height The new height of the viewport.
+ */
 void Camera::SetExtent(float width, float height)
 {
     extent.x = width;

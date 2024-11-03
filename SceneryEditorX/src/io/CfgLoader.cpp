@@ -2,6 +2,15 @@
 
 #include <fstream>
 
+/**
+ * @brief Trims leading and trailing whitespace characters from a given string.
+ * 
+ * This function removes any leading and trailing spaces, tabs, newlines, and carriage returns
+ * from the input string. If the string is empty, it returns the string as is.
+ * 
+ * @param s The string to be trimmed.
+ * @return std::string& A reference to the trimmed string.
+ */
 static std::string& trim(std::string& s)
 {
 	if (s.empty())
@@ -13,12 +22,31 @@ static std::string& trim(std::string& s)
 	return s;
 }
 
+/**
+ * @brief Gets the singleton instance of the CfgLoader.
+ * 
+ * This function returns a pointer to the singleton instance of the CfgLoader class.
+ * The instance is created on the first call to this function and reused on subsequent calls.
+ * 
+ * @return CfgLoader* A pointer to the singleton instance of the CfgLoader.
+ */
 CfgLoader * CfgLoader::instance()
 {
 	static CfgLoader ldr;
 	return &ldr;
 }
 
+/**
+ * @brief Initializes the configuration loader with the given configuration file path.
+ * 
+ * This function reads the configuration file specified by the cfgPath parameter.
+ * It parses the file line by line, ignoring empty lines and comments, and extracts
+ * key-value pairs. The key-value pairs are stored in the appropriate segment map
+ * (common or logger) based on the segment identifier found in the file.
+ * 
+ * @param cfgPath The path to the configuration file.
+ * @return int Returns 0 on success, -1 if the file could not be opened.
+ */
 int CfgLoader::init(std::string const & cfgPath)
 {
 	std::ifstream in(cfgPath.c_str(), std::ios::in | std::ios::binary);
@@ -91,18 +119,40 @@ int CfgLoader::init(std::string const & cfgPath)
 	return 0;
 }
 
+/**
+ * @brief Finalizes the configuration loader.
+ * 
+ * This function resets the configuration loader by clearing all stored configuration data.
+ * It is typically called when the configuration loader is no longer needed.
+ */
 void CfgLoader::fini()
 {
 	reset();
 	return ;
 }
 
+/**
+ * @brief Resets the configuration loader.
+ * 
+ * This function clears all stored configuration data from both the common and logger maps.
+ * It is typically called to reinitialize the configuration loader with new data.
+ */
 void CfgLoader::reset()
 {
 	m_commonMap.clear();
 	m_loggerMap.clear();
 }
 
+/**
+ * @brief Converts the configuration data to a string representation.
+ * 
+ * This function creates a string representation of the configuration data stored
+ * in the common and logger maps. It formats the data with section headers for
+ * "Common" and "Logger" segments, and lists each key-value pair under the respective
+ * section.
+ * 
+ * @return std::string A string representation of the configuration data.
+ */
 std::string CfgLoader::toString()
 {
 	std::string s = "";
@@ -122,6 +172,18 @@ std::string CfgLoader::toString()
 	return s;
 }
 
+/**
+ * @brief Retrieves a configuration value by name.
+ * 
+ * This function searches for a configuration value by its name in the specified segment.
+ * If the name is found, the corresponding value is assigned to the provided reference
+ * and the function returns 0. If the name is not found, the function returns -1.
+ * 
+ * @param value A reference to a string where the retrieved value will be stored.
+ * @param name The name of the configuration key to search for.
+ * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
+ * @return int Returns 0 if the configuration key is found, -1 otherwise.
+ */
 int CfgLoader::getCfgByName(std::string &value, std::string const & name, int segment)
 {
 	if (segment == Segment_COMMON)
@@ -145,6 +207,19 @@ int CfgLoader::getCfgByName(std::string &value, std::string const & name, int se
 	return -1;
 }
 
+/**
+ * @brief Retrieves a configuration value by name and converts it to an integer.
+ * 
+ * This function searches for a configuration value by its name in the specified segment.
+ * If the name is found, the corresponding value is converted to an integer and assigned
+ * to the provided reference. The function returns 0 on success. If the name is not found
+ * or the value cannot be converted to an integer, the function returns -1.
+ * 
+ * @param value A reference to an integer where the retrieved value will be stored.
+ * @param name The name of the configuration key to search for.
+ * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
+ * @return int Returns 0 if the configuration key is found and successfully converted, -1 otherwise.
+ */
 int CfgLoader::getCfgByName(int& value, std::string const & name, int segment)
 {
 	std::string s = "";
@@ -194,6 +269,19 @@ int CfgLoader::getCfgByName(int& value, std::string const & name, int segment)
 	return 0;
 }
 
+/**
+ * @brief Retrieves a configuration value by name and converts it to a boolean.
+ * 
+ * This function searches for a configuration value by its name in the specified segment.
+ * If the name is found, the corresponding value is converted to a boolean and assigned
+ * to the provided reference. The function returns 0 on success. If the name is not found
+ * or the value cannot be converted to a boolean, the function returns -1.
+ * 
+ * @param value A reference to a boolean where the retrieved value will be stored.
+ * @param name The name of the configuration key to search for.
+ * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
+ * @return int Returns 0 if the configuration key is found and successfully converted, -1 otherwise.
+ */
 int CfgLoader::getCfgByName(bool & value, std::string const & name, int segment)
 {
 	std::string s = "";

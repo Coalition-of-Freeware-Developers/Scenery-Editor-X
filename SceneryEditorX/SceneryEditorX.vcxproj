@@ -42,6 +42,7 @@
     <ClCompile Include="src\ui\Styles.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="shaders\common.h" />
     <ClInclude Include="src\core\Common.h" />
     <ClInclude Include="src\core\AssetManager.hpp" />
     <ClInclude Include="src\core\VK_Window.hpp" />
@@ -66,8 +67,12 @@
     <ClInclude Include="src\version.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="config\config.cfg" />
-    <None Include="config\user.ini" />
+    <None Include="config\config.cfg">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="config\user.ini">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="shaders\base.glsl" />
     <None Include="shaders\light.frag" />
     <None Include="shaders\light.vert" />
@@ -207,7 +212,7 @@
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;SEDX_DEBUG;GLSL_VALIDATOR="C:/VulkanSDK/1.3.296.0/Bin/glslangValidator.exe";SEDX_ENGINE</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)shaders;$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(SolutionDir)external\include\stb;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\optick;$(SolutionDir)external\include\spdlog;$(SolutionDir)external\include\GLFW\include;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\include;$(VULKAN_SDK)\Include;$(SolutionDir)external\include\stb;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\optick;$(SolutionDir)external\include\spdlog;$(SolutionDir)external\include\GLFW\include;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalIncludeDirectories>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <EnableModules>true</EnableModules>

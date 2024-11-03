@@ -21,9 +21,11 @@ namespace XPLibrary
 	static constexpr char SEASON_FALL = 'f';
 	static constexpr char SEASON_SPRING = 'p';
 
-	/// <summary>
-	/// DefinitionPaths are the individual paths that make up a definition. They consist of their relative path, and their base path (base path being the parent folder of the library.txt, or the scenery package they are from). Concat to get the absolute path
-	/// </summary>
+	/**
+    * @brief DefinitionPaths are the individual paths that make up a definition.
+    * They consist of their relative path, and their base path (base path being the parent folder of the library.txt, or the scenery package they are from).
+    * Concat to get the absolute path
+	*/
 	class DefinitionPath
 	{
 	public:
@@ -45,9 +47,10 @@ namespace XPLibrary
 		bool bFromLibrary{ false };
 	};
 
-	/// <summary>
-	/// DefinitionOptions is a container that holds all objects that are valid under certain circumstances, and would be randomly intermixed based on a weighted system.
-	/// </summary>
+	/**
+    * @brief DefinitionOptions is a container that holds all objects that are valid under certain circumstances,
+    * and would be randomly intermixed based on a weighted system.
+	*/
 	class DefinitionOptions
 	{
 		//The total ratio of all the options
@@ -56,20 +59,22 @@ namespace XPLibrary
 		//The options for the definition
 		std::vector<std::pair<double, XPLibrary::DefinitionPath>> vctOptions;
 	public:
-		/// <summary>
-		/// Adds an option to the definition
-		/// </summary>
-		/// <param name="InPath"></param>
-		/// <param name="InRatio"></param>
+
+        /**
+        * @brief Adds an option to the definition
+		*
+		* @param InPath
+		* @param InRatio
+        */
 		inline void AddOption(XPLibrary::DefinitionPath InPath, double InRatio = 1)
 		{
 			vctOptions.push_back(std::make_pair(InRatio, InPath));
 			dblTotalRatio += InRatio;
 		}
 
-		/// <summary>
-		/// Gets a random option based on the ratios
-		/// </summary>
+		/**
+        * @brief Gets a random option based on the ratios
+		*/
 		inline XPLibrary::DefinitionPath GetRandomOption()
 		{
 			if (vctOptions.empty())
@@ -91,35 +96,35 @@ namespace XPLibrary
 			return vctOptions[0].second;
 		}
 
-		/// <summary>
-		/// Resets the options. Useful for EXPORT_EXCLUDE where you're overwriting every other option
-		/// </summary>
+		/**
+        * @brief Resets the options. Useful for EXPORT_EXCLUDE where you're overwriting every other option
+		*/
 		inline void ResetOptions()
 		{
 			vctOptions.clear();
 			dblTotalRatio = 0;
 		}
 
-		/// <summary>
-		///	Gets the number of options
-		/// </summary>
+        /**
+        * @brief Gets the number of options
+		*/
 		inline size_t GetOptionCount() const
 		{
 			return vctOptions.size();
 		}
 
-		/// <summary>
-		/// Returns the options, along with their weights
-		/// </summary>
+		/**
+        * @brief Returns the options, along with their weights
+		*/
 		inline std::vector<std::pair<double, XPLibrary::DefinitionPath>>& GetOptions()
 		{
 			return vctOptions;
 		}
 	};
 
-	/// <summary>
-	/// Defines the region parameters. These are referenced by the definitions, and are used to determine if an object is compatible with a region. They have their own data structure so they can be shared. Should be used in an map with the name being the key
-	/// </summary>
+	/**
+    * @brief the region parameters. These are referenced by the definitions, and are used to determine if an object is compatible with a region. They have their own data structure so they can be shared. Should be used in an map with the name being the key
+	*/
 	class Region
 	{
 	public:
@@ -129,9 +134,9 @@ namespace XPLibrary
 		//Region coord bounds
 		double dblNorth{ 91 }, dblSouth{ -91 }, dblEast{ -181 }, dblWest{ 181 };
 
-		/// <summary>
-		/// Checks if the given latitude and longitude (and in the future, other conditions) are compatible with the region
-		/// </summary>
+		/**
+        * @brief Checks if the given latitude and longitude (and in the future, other conditions) are compatible with the region
+		*/
 		inline bool CompatibleWith(double InLat, double InLon) const
 		{
 			bool bIsCompatible = InLat < dblNorth && InLat > dblSouth && InLon > dblWest && InLon < dblEast;
@@ -140,9 +145,10 @@ namespace XPLibrary
 		}
 	};
 
-	/// <summary>
-	/// RegionDefinitions are the highest level of organization in the X-Plane library system. They contain conditions, and seasonalzied variants of objects.
-	/// </summary>
+	/**
+    * @brief RegionDefinitions are the highest level of organization in the X-Plane library system.
+    * They contain conditions, and seasonalzied variants of objects.
+	*/
 	class RegionalDefinitions
 	{
 	public:
@@ -156,9 +162,9 @@ namespace XPLibrary
 		XPLibrary::DefinitionOptions dDefault;
 		XPLibrary::DefinitionOptions dBackup;
 
-		/// <summary>
-		/// Returns the path for the given season. If the season is not found, the default path is returned.
-		/// </summary>
+		/**
+        * @brief Returns the path for the given season. If the season is not found, the default path is returned.
+		*/
 		inline XPLibrary::DefinitionPath GetVersion(char InSeason)
 		{
 			switch (InSeason)
@@ -195,14 +201,15 @@ namespace XPLibrary
 		//Whether this is a private asset. A single instance of it being private will make *all* variants private.
 		bool bIsPrivate{ false };
 
-		/// <summary>
-		/// Returns the path for the given season. If the season is not found, the default path is returned.
-		/// </summary>
-		/// <param name="InRegionDefinitions">The region definitions to use</param>
-		/// <param name="Inlat">The latitude of the object</param>
-		/// <param name="InLon">The longitude of the object</param>
-		/// <param name="InSeason">Optional, the season to get this asset for</param>
-		/// <returns>The absolute asset path</returns>
+		/**
+        * @brief Returns the path for the given season. If the season is not found, the default path is returned.
+		*
+		* @param InRegionDefinitions = The region definitions to use
+		* @param Inlat = The latitude of the object
+		* @param InLon = The longitude of the object
+		* @param InSeason = Optional, the season to get this asset for
+		* @returns The absolute asset path
+        */
 		inline std::filesystem::path GetPath(const std::map<std::string, XPLibrary::Region>& InRegionDefinitions, double Inlat, double InLon, char InSeason = XPLibrary::SEASON_DEFAULT)
 		{
 			if (vctRegionalDefs.empty())
@@ -226,9 +233,9 @@ namespace XPLibrary
 
 		}
 
-		/// <summary>
-		/// Gets the index for the RegionalDefinition. If it doesn't exist, it is added. Always returns a valid index
-		/// </summary>
+		/**
+        * @brief Gets the index for the RegionalDefinition. If it doesn't exist, it is added. Always returns a valid index
+		*/
 		inline size_t GetRegionalDefinitionIdx(std::string InRegionName)
 		{
 			//Attempt to find the region

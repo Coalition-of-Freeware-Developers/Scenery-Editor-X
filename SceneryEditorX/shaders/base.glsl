@@ -40,9 +40,9 @@ struct ModelBlock {
     int metallicRoughnessMap;
 };
 
-layout(set = 0, binding = LUZ_BINDING_TEXTURE) uniform sampler2D textures[];
+layout(set = 0, binding = SEDX_BINDING_TEXTURE) uniform sampler2D textures[];
 
-layout(set = 0, binding = LUZ_BINDING_BUFFER) readonly buffer SceneBlock {
+layout(set = 0, binding = SEDX_BINDING_BUFFER) readonly buffer SceneBlock {
     LightBlock lights[MAX_LIGHTS];
     vec3 ambientLightColor;
     float ambientLightIntensity;
@@ -65,11 +65,11 @@ layout(set = 0, binding = LUZ_BINDING_BUFFER) readonly buffer SceneBlock {
     int tlasRid; 
 } sceneBuffers[];
 
-layout(set = 0, binding = LUZ_BINDING_BUFFER) readonly buffer ModelBuffer {
+layout(set = 0, binding = SEDX_BINDING_BUFFER) readonly buffer ModelBuffer {
     ModelBlock models[MAX_MODELS];
 } modelsBuffers[];
 
-layout(set = 0, binding = LUZ_BINDING_TLAS) uniform accelerationStructureEXT tlasBuffer[];
+layout(set = 0, binding = SEDX_BINDING_TLAS) uniform accelerationStructureEXT tlasBuffer[];
 
 #define tlas tlasBuffer[scene.tlasRid]
 #define scene sceneBuffers[sceneBufferIndex]

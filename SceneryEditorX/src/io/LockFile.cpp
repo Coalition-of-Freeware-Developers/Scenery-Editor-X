@@ -2,6 +2,13 @@
 
 namespace SceneryEditorX
 {
+    /**
+     * @brief Locks or unlocks a file based on the provided file descriptor and lock flag.
+     * 
+     * @param nFileDescriptor The file descriptor of the file to be locked or unlocked.
+     * @param lockBool A boolean flag indicating whether to lock (true) or unlock (false) the file.
+     * @return int Returns 0 on success, -1 on failure.
+     */
     int FileLock(int nFileDescriptor, bool lockBool)
     {
         HANDLE hFile = (HANDLE)_get_osfhandle(nFileDescriptor);
@@ -37,6 +44,12 @@ namespace SceneryEditorX
         return 0;
     }
 
+    /**
+     * @brief Checks if the file is currently locked.
+     * 
+     * @param nFileDescriptor The file descriptor of the file to check.
+     * @return bool Returns true if the file is locked, false otherwise.
+     */
     bool lockCheck(int nFileDescriptor)
     {
         HANDLE hFile = (HANDLE)_get_osfhandle(nFileDescriptor);

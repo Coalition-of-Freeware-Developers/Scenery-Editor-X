@@ -12,9 +12,9 @@
 
 namespace XPAsset
 {
-	/// <summary>
-	/// Represents a draw call (TRIS) in an X-Plane obj8 file
-	/// </summary>
+    /**
+    * @brief Represents a draw call (TRIS) in an X-Plane obj8 file
+    */
 	class ObjDrawCall
 	{
 	public:
@@ -26,9 +26,9 @@ namespace XPAsset
 		//There theoretically could be other properties, but are not implemented here.
 	};
 
-	/// <summary>
-	/// Represents a vertex in an X-Plane obj8 file
-	/// </summary>
+	/**
+    * @brief Represents a vertex in an X-Plane obj8 file
+	*/
 	class Vertex
 	{
 	public:
@@ -42,9 +42,9 @@ namespace XPAsset
 		double V;
 	};
 
-	/// <summary>
-	/// Represents an X-Plane obj8 file
-	/// </summary>
+	/**
+    * @brief Represents an X-Plane obj8 file
+	*/
 	class Obj : public Asset
 	{
 	public:
@@ -62,11 +62,12 @@ namespace XPAsset
 
 		void* Refcon;	//A reference to an object that can be used to store additional data acociated with this object
 
-		/// <summary>
-		/// Loads the object
-		/// </summary>
-		/// <param name="InPath">Path to the obj</param>
-		/// <returns>True on success, false on failure</returns>
+		/**
+        * @brief Loads the object
+		*
+		* @param InPath = Path to the obj
+		* @returns True on success, false on failure
+        */
 		bool Load(const std::filesystem::path& InPath);
 	};
 }
