@@ -59,7 +59,7 @@ artifacts/
 *_h.h
 *.ilk
 *.meta
-*.obj
+# *.obj
 *.iobj
 *.pch
 *.pdb
@@ -74,7 +74,7 @@ artifacts/
 *.tmp
 *.tmp_proj
 *_wpftmp.csproj
-*.log
+# *.log
 *.tlog
 *.vspscc
 *.vssscc

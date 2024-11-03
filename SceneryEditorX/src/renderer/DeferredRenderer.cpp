@@ -1,5 +1,4 @@
 #include "../src/xpeditorpch.h"
-
 #include "../core/AssetManager.hpp"
 #include "DeferredRenderer.hpp"
 #include "VK_Wrapper.h"

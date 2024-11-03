@@ -56,6 +56,15 @@
     <Filter Include="shaders">
       <UniqueIdentifier>{638f8aa5-84d9-44c9-bb90-23b30c428c9b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Renderer\Shader Compiler">
+      <UniqueIdentifier>{2400d859-8d2f-49f4-9e29-f98eb3efc7a2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Platform\Linux">
+      <UniqueIdentifier>{5edc3ebe-2cfd-41d1-b64b-76e4a589c67a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Platform\Apple">
+      <UniqueIdentifier>{3b7477bd-9944-42a6-a8a0-deab6cff3256}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\io\CfgLoader.cpp">
@@ -189,6 +198,9 @@
     </ClInclude>
     <ClInclude Include="shaders\common.h">
       <Filter>shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="src\inputs\KeyCodes.h">
+      <Filter>src\Inputs</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

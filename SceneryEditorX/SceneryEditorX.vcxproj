@@ -46,6 +46,7 @@
     <ClInclude Include="src\core\Common.h" />
     <ClInclude Include="src\core\AssetManager.hpp" />
     <ClInclude Include="src\core\VK_Window.hpp" />
+    <ClInclude Include="src\inputs\KeyCodes.h" />
     <ClInclude Include="src\log\Logging.hpp" />
     <ClInclude Include="src\log\Profiler.hpp" />
     <ClInclude Include="src\renderer\Camera.hpp" />

@@ -13,10 +13,10 @@
 
 namespace SceneryEditorX
 {
-VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fragFilepath)
-{
-    createGraphicsPipeline(vertFilepath, fragFilepath);
-}
+    VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fragFilepath)
+    {
+        createGraphicsPipeline(vertFilepath, fragFilepath);
+    }
     
     /**
      * @brief Reads the contents of a file and returns it as a vector of characters.
