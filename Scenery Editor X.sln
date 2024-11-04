@@ -17,7 +17,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "X-PlaneSceneryLibrary", "X-
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spdlog", "external\include\spdlog.vcxproj", "{BB637A9E-2DD9-35F0-9F91-A81559D338F7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "edX", "edX\edX.vcxproj", "{A99B5836-EA23-4E7A-BEDE-FEC80845FE9E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "File Formats", "edX\edX.vcxproj", "{A99B5836-EA23-4E7A-BEDE-FEC80845FE9E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{8199EF05-103E-4317-AC48-4700EAD16A07}"
 EndProject
@@ -28,6 +28,11 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgui", "external\include\ImGui.vcxproj", "{D7D8DEF3-5E6C-48DC-A6D9-472F363BDBD0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glfw", "external\include\GLFW.vcxproj", "{4681E77C-649F-4444-85F5-69EAADDC4B94}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A607AD22-13AE-4ACC-BA28-833D10B1E195}"
+	ProjectSection(SolutionItems) = preProject
+		SceneryEditorX\src\vk_shader_compile.bat = SceneryEditorX\src\vk_shader_compile.bat
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

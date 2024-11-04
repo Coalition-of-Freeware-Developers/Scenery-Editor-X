@@ -207,7 +207,6 @@
     <None Include="config\config.cfg" />
     <None Include="config\user.ini" />
     <None Include="version_increment.ps1" />
-    <None Include="src\vk_shader_compile.bat" />
     <None Include="shaders\base.glsl">
       <Filter>shaders</Filter>
     </None>
@@ -265,5 +264,8 @@
     <Image Include="assets\icon.ico">
       <Filter>resources</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\vk_shader_compile.bat" />
   </ItemGroup>
 </Project>

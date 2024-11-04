@@ -94,8 +94,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X</OutDir>
-    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X</IntDir>
+    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X\</OutDir>
+    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X\$(MSBuildProjectName)\</IntDir>
     <TargetName>XPLibrary</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
