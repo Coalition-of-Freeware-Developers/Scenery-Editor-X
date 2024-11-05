@@ -1,6 +1,5 @@
 #include "../src/xpeditorpch.h"
 
-#include "Window.hpp"
 #include "../platform/windows/FileManager.hpp"
 #include "../renderer/DeferredRenderer.hpp"
 #include "../renderer/VK_Wrapper.h"
@@ -8,6 +7,8 @@
 #include "Application.hpp"
 #include "AssetManager.hpp"
 #include "DirectoryManager.hpp"
+#include "Window.hpp"
+#include "../log/Logging.hpp" 
 
 #include <boost/filesystem.hpp>
 #include <spdlog.h>
@@ -16,6 +17,10 @@
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imgui_stdlib.h>
+
+#include <iostream>
+#include <string>
+#include <sysinfoapi.h>
 
 
 //#define GLFW_INCLUDE_VULKAN
@@ -28,6 +33,7 @@
 
 class Application {
 public:
+
     void run()
     {
         Setup();
@@ -535,6 +541,7 @@ private:
     }
 };
 
+
 /**
  * @brief The main entry point of the application.
  * 
@@ -549,6 +556,7 @@ private:
 int main(int argc, char *argv[])
 {
     Log::Init();
+    Log::LogHeader();
     spdlog::info("Scenery Editor X Engine is starting...");
 
     // Initialize DirectoryInit instance and perform directory check

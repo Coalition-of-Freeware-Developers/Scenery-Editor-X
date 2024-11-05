@@ -9,11 +9,8 @@
 class DirectoryInit
 {
 public:
-    std::string absolutePath;
-    std::string relativePath;
-
-   // DirectoryInit();
-   // ~DirectoryInit();
+    static std::string absolutePath;
+    static std::string relativePath;
 
     int DirectoryCheck(int argc, char *argv[]);
 
@@ -24,11 +21,5 @@ public:
     * @param directories A vector of directory paths to check and create if necessary.
     */
     void ensureDirectoriesExist(const std::vector<std::string> &directories);
-
-    //std::string absolutePath;// Pointer for the absolute path
-
-private:
-    std::string absolutePath; // Absolute path
-    std::string relativePath; // Relative path
 };
 

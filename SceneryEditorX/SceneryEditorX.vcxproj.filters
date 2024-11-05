@@ -44,9 +44,6 @@
     <Filter Include="assets">
       <UniqueIdentifier>{adbafbbe-ca4e-47b5-8076-740926d3dcbb}</UniqueIdentifier>
     </Filter>
-    <Filter Include="assets\shaders">
-      <UniqueIdentifier>{f17d6df1-a699-4cab-a081-c0f6d97ff8c9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="assets\fonts">
       <UniqueIdentifier>{900b945f-099e-4dde-b2f6-6808df1cbee7}</UniqueIdentifier>
     </Filter>
@@ -130,8 +127,9 @@
     <ClCompile Include="src\core\VK_Window.cpp">
       <Filter>src\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\Application.cpp" />
     <ClCompile Include="src\core\DirectoryManager.cpp">
-      <Filter>src\Platform</Filter>
+      <Filter>src\Platform\Windows</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -205,8 +203,9 @@
     <ClInclude Include="src\inputs\KeyCodes.h">
       <Filter>src\Inputs</Filter>
     </ClInclude>
+    <ClInclude Include="src\core\Application.hpp" />
     <ClInclude Include="src\core\DirectoryManager.hpp">
-      <Filter>src\Platform</Filter>
+      <Filter>src\Platform\Windows</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -252,6 +251,7 @@
     <None Include="shaders\rtShadow.rmiss">
       <Filter>shaders</Filter>
     </None>
+    <None Include="cpp.hint" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SceneryEditorX.rc">

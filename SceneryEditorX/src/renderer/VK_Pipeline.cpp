@@ -2,18 +2,27 @@
 #include "../src/xpeditorpch.h"
 #include "VK_Pipeline.hpp"
 #include <spdlog/spdlog.h>
+#include <filesystem>
+#include <fstream>
 
 //#ifndef ENGINE_DIR
-//#define ENGINE_DIR "../" // This is the path to the engine directory
-#ifndef ENGINE_DIR
-#ifdef _DEBUG
-#define ENGINE_DIR "../" // This is the path to the engine directory
-#else
-#define ENGINE_DIR "../" // This is the path to the engine directory
-#endif
-#endif
+//#ifdef _DEBUG
+//#define ENGINE_DIR "./" // This is the path to the engine directory
+//#else
+//#define ENGINE_DIR "./" // This is the path to the engine directory
+//#endif
+//#endif
 
-namespace fs = boost::filesystem;
+/*
+* IMPORTANT NOTE:
+* ########################
+* IF YOU KEEP GETTING ERROR SHADERS NOT FOUND
+* CHECK THE PATHS BELOW AS WELL AS THE SHADER COMPILER PATHS
+* LOCATED IN THE "VK_Wrapper.cpp" FILE AS THE SHADERS ARE TO BE COMPILED
+* ########################
+*/
+
+namespace fs = std::filesystem;
 
 namespace SceneryEditorX
 {
@@ -21,17 +30,22 @@ namespace SceneryEditorX
     VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fragFilepath)
     {
         // Construct paths relative to the executable directory
-        DirectoryInit directoryInit;
-        fs::path exeDir = fs::path(directoryInit.absolutePath).parent_path();
-        fs::path shaderDir = exeDir / "resources/cache/shaders";
-    
+        fs::path exeDir = fs::path(DirectoryInit::absolutePath).parent_path();
+        fs::path shaderDir = exeDir / "resources" / "cache" / "shaders";
+
         // Combine with provided shader filenames
-        std::string vertexShaderPath = (shaderDir / vertFilepath).string();
-        std::string fragmentShaderPath = (shaderDir / fragFilepath).string();
-    
-        createGraphicsPipeline(vertexShaderPath, fragmentShaderPath);
+        fs::path vertexShaderPath = shaderDir / vertFilepath;
+        fs::path fragmentShaderPath = shaderDir / fragFilepath;
+
+        // Log paths for debugging
+        spdlog::info("Vertex Shader Path: {}", vertexShaderPath.string());
+        spdlog::info("Fragment Shader Path: {}", fragmentShaderPath.string());
+
+        // Create graphics pipeline with the specified shader paths
+        createGraphicsPipeline(vertexShaderPath.string(), fragmentShaderPath.string());
     }
-    
+
+
     
     /**
      * @brief Reads the contents of a file and returns it as a vector of characters.
@@ -52,17 +66,23 @@ namespace SceneryEditorX
         if (!file.is_open())
         {
             spdlog::error("Failed to open shader files: {}", filePath);
-            //throw std::runtime_error("Failed to open file: " + std::filesystem::absolute(filePath).string());
             throw std::runtime_error("Failed to open file: " + filePath);
         }
 
-        size_t fileSize = static_cast<size_t>(file.tellg());    // Get the size of the file
+        if (!fs::exists(filePath))
+        {
+            spdlog::error("Shader file does not exist: {}", filePath);
+            throw std::runtime_error("Shader file does not exist: " + filePath);
+        }
+
+        size_t fileSize = file.tellg();                         // Get the size of the file
+        //size_t fileSize = static_cast<size_t>(file.tellg());  // Get the size of the file
         std::vector<char> buffer(fileSize);                     // Create a buffer to store the file contents
 
         file.seekg(0);                                          // Move the file pointer to the beginning of the file
         file.read(buffer.data(), fileSize);                     // Read the file contents into the buffer
-
         file.close();                                           // Close the file
+
         return buffer;                                          // Return the buffer
     }
 
@@ -77,10 +97,7 @@ namespace SceneryEditorX
      */
     void VK_Pipeline::createGraphicsPipeline(const std::string &vertFilepath, const std::string &fragFilepath)
     {
-        std::filesystem::path shaderDir = ENGINE_DIR "shaders";
-        std::string vertexShaderPath = (shaderDir / vertFilepath).string();
-        std::string fragmentShaderPath = (shaderDir / fragFilepath).string();
-
+        // Read shader files
         std::vector<char> vertCode = VK_Pipeline::readFile(vertFilepath);
         std::vector<char> fragCode = VK_Pipeline::readFile(fragFilepath);
 

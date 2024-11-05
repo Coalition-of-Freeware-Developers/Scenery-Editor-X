@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource.h" />
     <ClInclude Include="TextUtils.h">
       <SubType>
       </SubType>
@@ -59,6 +60,9 @@
       </SubType>
     </ClCompile>
     <ClCompile Include="XPObj.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="X-PlaneSceneryLibrary.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -73,6 +73,7 @@
     <None Include="config\user.ini">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="cpp.hint" />
     <None Include="shaders\base.glsl" />
     <None Include="shaders\light.frag" />
     <None Include="shaders\light.vert" />

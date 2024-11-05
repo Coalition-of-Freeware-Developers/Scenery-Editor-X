@@ -44,6 +44,9 @@
     <ClInclude Include="XPLibrarySystem.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextUtils.cpp">
@@ -59,5 +62,8 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="DebugMain.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="X-PlaneSceneryLibrary.rc" />
   </ItemGroup>
 </Project>

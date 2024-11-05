@@ -1,9 +1,14 @@
 #include "../src/xpeditorpch.h"
-
 #include "VK_Wrapper.h"
-
+#include "../src/core/DirectoryManager.hpp"
 #include "../core/Common.h"
 #include "imgui/imgui_impl_vulkan.h"
+
+#include <spdlog/spdlog.h>
+#include <filesystem>
+#include <fstream>
+
+
 #include <GLFW/glfw3.h>
 
 /// <summary>
@@ -75,6 +80,7 @@ static const char *VK_ERROR_STRING(VkResult result)
     return "VK_<Unknown>";
 }
 
+namespace fs = std::filesystem;
 
 namespace vkw
 {
@@ -827,6 +833,7 @@ namespace vkw
         }
     }
 
+    // SHADER COMPILING SYSTEM (GLSL -> SPIRV)
     std::vector<char> Context::CompileShader(const std::filesystem::path &path)
     {
         char compile_string[1024];
@@ -858,7 +865,8 @@ namespace vkw
     
         return buffer;
     }
-    
+
+
     void Context::CreatePipeline(const PipelineDesc &desc, Pipeline &pipeline)
     {
         pipeline.point = desc.point;
