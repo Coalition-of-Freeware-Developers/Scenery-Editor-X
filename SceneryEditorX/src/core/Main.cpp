@@ -7,8 +7,10 @@
 #include "../scene/Scene.hpp"
 #include "Application.hpp"
 #include "AssetManager.hpp"
+#include "DirectoryManager.hpp"
 
-
+#include <boost/filesystem.hpp>
+#include <spdlog.h>
 #include <stb_image.h>
 
 #include <imgui/imgui_impl_glfw.h>
@@ -544,9 +546,19 @@ private:
  * @return int Returns EXIT_SUCCESS on successful execution, or EXIT_FAILURE if 
  * an exception is caught.
  */
-int main()
+int main(int argc, char *argv[])
 {
     Log::Init();
+    spdlog::info("Scenery Editor X Engine is starting...");
+
+    // Initialize DirectoryInit instance and perform directory check
+    DirectoryInit directoryInit;
+    if (directoryInit.DirectoryCheck(argc, argv) != 0)
+    {
+        spdlog::error("Directory check failed. Exiting the program.");
+        return EXIT_FAILURE;
+    }
+
     SceneryEditorX::Application app;
     try
     {
@@ -554,19 +566,14 @@ int main()
     }
     catch (const std::exception &e)
     {
+        spdlog::error("An exception occurred: {}", e.what());
         std::cerr << e.what() << '\n';
         return EXIT_FAILURE;
     }
 
+    spdlog::info("Scenery Editor X Engine is running.");
     return EXIT_SUCCESS;
 }
-
-
-/*
-int main(int, char **)
-{
-    SceneryEditorX::Application app;
-*/
 
 /*
 ##########################################################

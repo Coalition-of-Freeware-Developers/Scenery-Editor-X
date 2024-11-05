@@ -99,6 +99,7 @@
 #include <../src/log/Logging.hpp>
 #include <../src/log/Profiler.hpp>
 #include <../src/core/Base.hpp>
+#include <../src/core/DirectoryManager.hpp>
 
 /*
 ##########################################################

@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Resource Files\fonts">
+      <UniqueIdentifier>{14058720-45e6-4271-bca8-aaa284d6dac7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\fonts\industry">
+      <UniqueIdentifier>{f7e2db53-47a2-4bb6-96f8-033278db212f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\fonts\opensans">
+      <UniqueIdentifier>{046de7a2-d799-4f88-a919-49ae22a68856}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resources.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="bluenoise.dds" />
+    <Image Include="bluenoise.dds">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resources.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="fonts\industry\Industry-UltraItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Black.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-BlackItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Bold.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-BoldItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Book.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-BookItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Demi.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-DemiItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Light.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-LightItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Medium.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-MediumItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Thin.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-ThinItalic.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\industry\Industry-Ultra.otf">
+      <Filter>Resource Files\fonts\industry</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-Bold.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-BoldItalic.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-ExtraBold.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-ExtraBoldItalic.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-Italic.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-Light.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-LightItalic.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-Regular.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-SemiBold.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+    <Font Include="fonts\opensans\OpenSans-SemiBoldItalic.ttf">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Font>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="fonts\opensans\LICENSE.txt">
+      <Filter>Resource Files\fonts\opensans</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

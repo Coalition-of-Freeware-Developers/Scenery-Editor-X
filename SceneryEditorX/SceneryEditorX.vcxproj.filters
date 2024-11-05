@@ -130,6 +130,9 @@
     <ClCompile Include="src\core\VK_Window.cpp">
       <Filter>src\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\DirectoryManager.cpp">
+      <Filter>src\Platform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\SystemDetection.h">
@@ -201,6 +204,9 @@
     </ClInclude>
     <ClInclude Include="src\inputs\KeyCodes.h">
       <Filter>src\Inputs</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\DirectoryManager.hpp">
+      <Filter>src\Platform</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
