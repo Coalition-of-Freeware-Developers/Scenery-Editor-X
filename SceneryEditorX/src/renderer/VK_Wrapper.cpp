@@ -836,33 +836,59 @@ namespace vkw
     // SHADER COMPILING SYSTEM (GLSL -> SPIRV)
     std::vector<char> Context::CompileShader(const std::filesystem::path &path)
     {
+        // Construct paths for shader compilation
+        fs::path projectDir = fs::path(DirectoryInit::absolutePath).parent_path();
+        fs::path shaderSourceDir = projectDir / "shaders";                           // Path to uncompiled GLSL shaders
+        fs::path compiledShaderDir = projectDir / "resources" / "cache" / "shaders"; // Path for compiled SPIR-V shaders
+
+        // Construct input and output paths
+        fs::path inputShaderPath = shaderSourceDir / path;
+        fs::path outputShaderPath = compiledShaderDir / (path.stem().string() + ".spv");
+
+        // Log the paths for debugging
+        spdlog::info("Compiling shader from: {}", inputShaderPath.string());
+        spdlog::info("Output shader to: {}", outputShaderPath.string());
+
+        // Construct the command to compile the shader
         char compile_string[1024];
-        char inpath[256];
-        char outpath[256];
-        std::string cwd = std::filesystem::current_path().string();
-        sprintf(inpath, "%s/source/Shaders/%s", cwd.c_str(), path.string().c_str());
-        sprintf(outpath, "%s/bin/%s.spv", cwd.c_str(), path.filename().string().c_str());
-        sprintf(compile_string, "%s -V %s -o %s --target-env spirv1.4", GLSL_VALIDATOR, inpath, outpath);
+        sprintf(compile_string,
+                "%s -V %s -o %s --target-env spirv1.4",
+                GLSL_VALIDATOR,
+                inputShaderPath.string().c_str(),
+                outputShaderPath.string().c_str());
+        spdlog::info("[ShaderCompiler] Command: {}", compile_string);
+
+
+        //char inpath[256];
+        //char outpath[256];
+        //std::string cwd = std::filesystem::current_path().string();
+        //sprintf(inpath, "%s/source/Shaders/%s", cwd.c_str(), path.string().c_str());
+        //sprintf(outpath, "%s/bin/%s.spv", cwd.c_str(), path.filename().string().c_str());
+        //sprintf(compile_string, "%s -V %s -o %s --target-env spirv1.4", GLSL_VALIDATOR, inpath, outpath);
         DEBUG_TRACE("[ShaderCompiler] Command: {}", compile_string);
         DEBUG_TRACE("[ShaderCompiler] Output:");
+
+        // Execute the shader compilation command
         if (system(compile_string))
         {
-            LOG_ERROR("[ShaderCompiler] Error!");
+            spdlog::error("[ShaderCompiler] Error compiling shader: {}", inputShaderPath.string());
         }
-    
-        // 'ate' specify to start reading at the end of the file
-        // then we can use the read position to determine the size of the file
-        std::ifstream file(outpath, std::ios::ate | std::ios::binary);
+
+        // Open the compiled shader file
+        std::ifstream file(outputShaderPath, std::ios::ate | std::ios::binary);
         if (!file.is_open())
         {
-            LOG_CRITICAL("Failed to open file: '{}'", outpath);
+            spdlog::critical("Failed to open compiled shader file: '{}'", outputShaderPath.string());
+            throw std::runtime_error("Failed to open compiled shader file: " + outputShaderPath.string());
         }
-        size_t fileSize = (size_t)file.tellg();
+
+        // Read the contents of the compiled shader file
+        size_t fileSize = static_cast<size_t>(file.tellg());
         std::vector<char> buffer(fileSize);
         file.seekg(0);
         file.read(buffer.data(), fileSize);
         file.close();
-    
+
         return buffer;
     }
 

@@ -270,6 +270,9 @@
     <Image Include="assets\icon.ico">
       <Filter>resources</Filter>
     </Image>
+    <Image Include="assets\splash_screen.png">
+      <Filter>resources</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\vk_shader_compile.bat" />
