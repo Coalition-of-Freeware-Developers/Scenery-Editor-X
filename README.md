@@ -17,7 +17,23 @@ Scenery Editor X is a editor tool for use in creating, modifying, and building c
 Inorder to compile and develop Scenery Editor X you will need:
 
 * [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows)
-* 
+* [Boost C++ Library v1.86](https://www.boost.org/users/history/version_1_86_0.html)
+[NOTE] I have pondered with the idea of just building the boost library components into their respective `.dll` files and embeding them into the Scenery Editor X project to reduce the amount of dependencies needed.
+This has not been done at the time of me updating this read-me but I will do so when I cleanup this code.
+
+## Environment Variables 
+To be able to build this program you must have a few environment variables set in your system to be able to be referenced in the code base.
+Environment Variables:
+### User Variables
+* BOOST_INCLUDE - Path to the Boost C++ Librarys' folder.
+* BOOST_LIB - Path to the Boost C++ Library `stage\lib` folder.
+* XPLANE_12_SDK - Path to where your XPlane 12 SDK folder is.
+
+### System Variables
+* Add this to your "Path" veriable list: `C:\VulkanSDK\1.3.296.0\Bin`
+* VULKAN_SDK - C:\VulkanSDK\1.3.296.0\Bin
+
+[NOTE] Check to make sure this variable is set. Vulkan's installer will set this when installed but make sure it is there or else vulkan won't build.
 
 ## Build
 
