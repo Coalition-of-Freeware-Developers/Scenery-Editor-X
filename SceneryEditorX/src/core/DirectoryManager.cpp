@@ -69,19 +69,21 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
     }
 
     // Define the required directory structure
-    std::vector<std::string> requiredDirectories = {"assets",
-                                                    "assets/models",
-                                                    "assets/textures",
-                                                    "config",
-                                                    "export",
-                                                    "librarys",
-                                                    "librarys/custom",
-                                                    "logs",
-                                                    "plugins",
-                                                    "resources",
-                                                    "resources/cache",
-                                                    "resources/cache/shaders",
-                                                    "resources/cache/thumbnail"};
+    std::vector<std::string> requiredDirectories = {
+        "assets",
+        "assets/models",
+        "assets/textures",
+        "config",
+        "export",
+        "librarys",
+        "librarys/custom",
+        "logs",
+        "plugins",
+        "resources",
+        "resources/cache",
+        "resources/cache/shaders",
+        "resources/cache/thumbnail"
+    };
 
     // Ensure that the required directories exist
     ensureDirectoriesExist(requiredDirectories);
