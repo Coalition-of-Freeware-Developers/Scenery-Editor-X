@@ -62,6 +62,9 @@
     <Filter Include="src\Platform\Apple">
       <UniqueIdentifier>{3b7477bd-9944-42a6-a8a0-deab6cff3256}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Renderer\VK Refactor">
+      <UniqueIdentifier>{4cb12254-f246-4dea-aa43-13bea9a9ba20}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\io\CfgLoader.cpp">

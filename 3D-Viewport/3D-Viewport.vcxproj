@@ -22,9 +22,9 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{2476120e-da78-4ae1-82a9-8b5b762602fd}</ProjectGuid>
-    <RootNamespace>3dViewport</RootNamespace>
+    <RootNamespace>VulkanEngine</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>3D-Viewport</ProjectName>
+    <ProjectName>VulkanEngine</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -78,11 +78,12 @@
     <OutDir>$(SolutionDir)out\debug</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)external\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)external\include;$(ProjectDir)imgui;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)external\lib;$(SolutionDir)external\include\GLFW\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\3D-Viewport</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\3D-Viewport</IntDir>
     <TargetName>3D-Viewport</TargetName>
+    <ExternalIncludePath>$(SolutionDir)external\include;$(SolutionDir)external\include\GLFW\include;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)out\build</OutDir>
@@ -134,7 +135,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.296.0\Include;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\glad;$(SolutionDir)external\include\GLFW;$(SolutionDir)external\include\glm;$(SolutionDir)external\include\ImGuizmo;$(SolutionDir)external\include\json;$(SolutionDir)external\include\KHR;$(SolutionDir)external\include\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.3.296.0\Include;$(SolutionDir)external\include\imgui;$(SolutionDir)external\include\glad;$(SolutionDir)external\include\GLFW\include\GLFW;$(SolutionDir)external\include\glm;$(SolutionDir)external\include\ImGuizmo;$(SolutionDir)external\include\json;$(SolutionDir)external\include\KHR;$(SolutionDir)external\include\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

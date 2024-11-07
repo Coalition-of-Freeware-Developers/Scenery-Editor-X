@@ -50,12 +50,15 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
     if (argc > 0) // Used to be (argc > 1) but in debug mode it will not find the executable and fail)
     {
         // Set the absolute path to the executable's path
-        absolutePath = fs::absolute(fs::path(argv[0])).string();
+        char buffer[MAX_PATH];
+        GetModuleFileNameA(NULL, buffer, MAX_PATH);
+        size_t DirEndPos = std::string(buffer).find_last_of("\\/");
+        absolutePath = std::string(buffer).substr(0, DirEndPos);
         spdlog::info("============================================");
         spdlog::info("Absolute Path: {}", absolutePath);
 
         // Set the relative path to the current working directory relative to the executable
-        relativePath = fs::relative(fs::current_path(), fs::path(argv[0]).parent_path()).string();
+        relativePath = fs::relative(fs::current_path(), absolutePath).string();
         spdlog::info("Relative Path: {}", relativePath);
         spdlog::info("============================================");
     }
