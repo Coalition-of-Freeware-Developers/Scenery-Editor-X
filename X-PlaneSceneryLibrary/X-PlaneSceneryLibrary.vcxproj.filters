@@ -44,6 +44,21 @@
     <ClInclude Include="XPLibrarySystem.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="Node.h">
+      <Filter>Utility Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="BezeirResolver.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Geoutils.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemHeaders.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="XSLMacros.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextUtils.cpp">
@@ -59,5 +74,11 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="DebugMain.cpp" />
+    <ClCompile Include="BezeirResolver.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Geoutils.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

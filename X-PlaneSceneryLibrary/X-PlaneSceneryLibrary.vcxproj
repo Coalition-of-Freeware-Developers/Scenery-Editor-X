@@ -11,6 +11,22 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BezeirResolver.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="Geoutils.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="Node.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="SystemHeaders.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="TextUtils.h">
       <SubType>
       </SubType>
@@ -40,9 +56,21 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="XPObj.h" />
+    <ClInclude Include="XSLMacros.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BezeirResolver.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="DebugMain.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="Geoutils.cpp">
       <SubType>
       </SubType>
     </ClCompile>
