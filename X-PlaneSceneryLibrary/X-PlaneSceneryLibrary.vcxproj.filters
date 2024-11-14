@@ -59,6 +59,9 @@
     <ClInclude Include="XSLMacros.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="XPDSF.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextUtils.cpp">
@@ -79,6 +82,12 @@
     </ClCompile>
     <ClCompile Include="Geoutils.cpp">
       <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="XPDSF.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Node.cpp">
+      <Filter>Utility Source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

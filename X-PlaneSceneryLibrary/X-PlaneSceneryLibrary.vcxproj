@@ -43,6 +43,7 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="XPDSF.h" />
     <ClInclude Include="XPLayerGroups.h">
       <SubType>
       </SubType>
@@ -74,10 +75,15 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Node.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="TextUtils.cpp">
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="XPDSF.cpp" />
     <ClCompile Include="XPLayerGroups.cpp">
       <SubType>
       </SubType>

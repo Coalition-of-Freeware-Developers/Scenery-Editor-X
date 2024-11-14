@@ -9,6 +9,7 @@
 //Include necessary headers
 #include <vector>
 #include <string>
+#include <map>
 
 namespace XSLGeoutils
 {
@@ -25,6 +26,22 @@ namespace XSLGeoutils
 		std::map<std::string, std::string> Properties;
 		bool CurveStart{ false };
 		bool CurveEnd{ false };
+
+		//Default Constructor
+		inline Node() {}
+		inline Node(double InX, double InY) : X(InX), Y(InY) {}
+		inline Node(Node& InNode) : X(InNode.X), Y(InNode.Y), Z(InNode.Z), U(InNode.U), V(InNode.V) { Properties = InNode.Properties; }
+
+		inline Node operator=(const Node& InNode)
+		{
+			X = InNode.X;
+			Y = InNode.Y;
+			Z = InNode.Z;
+			U = InNode.U;
+			V = InNode.V;
+			Properties = InNode.Properties;
+			return *this;
+		}
 
 		inline bool SameAs(const Node& other) const
 		{
@@ -44,32 +61,47 @@ namespace XSLGeoutils
 	{
 		bool HasEntryControlPoint{ false };
 		bool HasExitControlPoint{ false };
-		Node Point;
-		Node Control1;	//Entry control point
-		Node Control2;	//Exit control point
+		double X{ 0 };
+		double Y{ 0 };
+		double Z{ 0 };
+		double XCtl1{ 0 };
+		double YCtl1{ 0 };
+		double XCtl2{ 0 };
+		double YCtl2{ 0 };
+		double U{ 0 };
+		double V{ 0 };
+		std::map<std::string, std::string> Properties;
 
 		inline BezeirNode() : HasEntryControlPoint(false), HasExitControlPoint(false) {}
-		inline BezeirNode(Node InPoint) : HasEntryControlPoint(false), HasExitControlPoint(false), Point(InPoint) {}
-		inline BezeirNode(Node InPoint, Node InControl1, Node InControl2) : HasEntryControlPoint(true), HasExitControlPoint(true), Point(InPoint), Control1(InControl1), Control2(InControl2) {}
-		inline BezeirNode(BezeirNode& InNode) : HasEntryControlPoint(InNode.HasEntryControlPoint), HasExitControlPoint(InNode.HasExitControlPoint), Point(InNode.Point), Control1(InNode.Control1), Control2(InNode.Control2) {}
+		inline BezeirNode(Node InPoint) : HasEntryControlPoint(false), HasExitControlPoint(false), X(InPoint.X), Y(InPoint.Y), Z(InPoint.Z), U(InPoint.U), V(InPoint.V) { Properties = InPoint.Properties; }
+		inline BezeirNode(Node InPoint, Node InControl1, Node InControl2) : HasEntryControlPoint(true), HasExitControlPoint(true), X(InPoint.X), Y(InPoint.Y), Z(InPoint.Z), XCtl1(InControl1.X), YCtl1(InControl1.Y), XCtl2(InControl2.X), YCtl2(InControl2.Y), U(InPoint.U), V(InPoint.V) { Properties = InPoint.Properties; }
+		inline BezeirNode(BezeirNode& InNode) : HasEntryControlPoint(InNode.HasEntryControlPoint), HasExitControlPoint(InNode.HasExitControlPoint), X(InNode.X), Y(InNode.Y), Z(InNode.Z), XCtl1(InNode.XCtl1), YCtl1(InNode.YCtl1), XCtl2(InNode.XCtl2), YCtl2(InNode.YCtl2), U(InNode.U), V(InNode.V) { Properties = InNode.Properties; }
 
 		BezeirNode operator=(const BezeirNode& InNode)
 		{
 			HasEntryControlPoint = InNode.HasEntryControlPoint;
 			HasExitControlPoint = InNode.HasExitControlPoint;
-			Point = InNode.Point;
-			Control1 = InNode.Control1;
-			Control2 = InNode.Control2;
+			X = InNode.X;
+			Y = InNode.Y;
+			Z = InNode.Z;
+			XCtl1 = InNode.XCtl1;
+			YCtl1 = InNode.YCtl1;
+			XCtl2 = InNode.XCtl2;
+			YCtl2 = InNode.YCtl2;
+			U = InNode.U;
+			V = InNode.V;
+			Properties = InNode.Properties;
+			
 			return *this;
 		}
 
-		//Constructor
-		inline BezeirNode() : HasEntryControlPoint(false), HasExitControlPoint(false) {}
+		//Default Constructor
+		inline BezeirNode() {}
 
 		//Colocated
 		inline bool Colocated(const BezeirNode& other) const
 		{
-			return Point.Colocated(other.Point) && Control1.Colocated(other.Control1) && Control2.Colocated(other.Control2);
+			return X == other.X && Y == other.Y && Z == other.Z && XCtl1 == other.XCtl1 && YCtl1 == other.YCtl1 && XCtl2 == other.XCtl2 && YCtl2 == other.YCtl2;
 		}
 	};
 
@@ -87,43 +119,20 @@ namespace XSLGeoutils
 		/// </summary>
 		/// <param name="InNodes">The nodes</param>
 		/// <param name="InClosed">Whether the winding is closed</param>
-		inline void LoadFromXPNodes(std::vector<Node>& InNodes, bool InClosed)
-		{
-			Nodes = VertsToBezeirNodes(InNodes, InClosed);
-			Closed = InClosed;
-		};
+		void LoadFromXPNodes(std::vector<Node>& InNodes, bool InClosed);
 
 		/// <summary>
 		/// Loads the nodes directly, without any accounting for curves.
 		/// </summary>
 		/// <param name="InNodes">Nodes to load</param>
 		/// <param name="InClosed">Whether the winding is closed</param>
-		inline void LoadFromStraightNodes(std::vector<Node>& InNodes, bool InClosed)
-		{
-			Nodes.clear();
-			for (auto& n : InNodes)
-			{
-				Nodes.push_back(BezeirNode(n));
-			}
-			Closed = InClosed;
-
-			if (Closed && Nodes.size() >= 2)
-			{
-				if (Nodes[0].Colocated(Nodes[Nodes.size() - 1]))
-				{
-					Nodes.pop_back();
-				}
-			}
-		};
+		void LoadFromStraightNodes(std::vector<Node>& InNodes, bool InClosed);
 
 		/// <summary>
 		/// Gets the nodes in the X-Plane format (bezeir curve format)
 		/// </summary>
 		/// <returns>The nodes in the X-Plane format (bezeir curve format)</returns>
-		inline std::vector<Node> GetXPNodes()
-		{
-			return BezeirNodesToXPVerts(Nodes, Closed);
-		};
+		std::vector<Node> GetXPNodes();
 
 		/// <summary>
 		/// Gets the nodes resolved into straight lines
@@ -131,10 +140,7 @@ namespace XSLGeoutils
 		/// <param name="CurveSubdivisions">Number of subdivisions for each curve</param>
 		/// <returns>The nodes resolved into straight lines</returns>
 		/// <remarks>CurveSubdivisions is the number of subdivisions for each curve. 10 is a good value for most cases.</remarks>
-		inline std::vector<Node> GetRealNodes(int CurveSubdivisions = 10)
-		{
-			return BezeirNodesToRealVerts(Nodes, Closed, CurveSubdivisions);
-		};
+		std::vector<Node> GetRealNodes(int CurveSubdivisions = 10);
 
 		/// <summary>
 		/// Determines if a face is clockwise or counter-clockwise
@@ -153,6 +159,5 @@ namespace XSLGeoutils
 			}
 			return sum > 0;
 		}
-
 	};
 }

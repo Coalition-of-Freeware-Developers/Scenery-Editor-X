@@ -26,37 +26,44 @@ namespace XSLGeoutils
         if (!startBP.HasExitControlPoint && !endBP.HasEntryControlPoint)
         {
             std::vector<Node> vertices;
-            vertices.push_back(startBP.Point);
-            vertices.push_back(endBP.Point);
+			Node n1(startBP.X, startBP.Y);
+			Node n2(endBP.X, endBP.Y);
+			n1.Properties = startBP.Properties;
+			n2.Properties = endBP.Properties;
+			vertices.push_back(n1);
+			vertices.push_back(n2);
             return vertices;
         }
 
-        //If the exit control of startBP is missing, replace it with the entry control of endBP
+        //If the exit control of startBP is missing, set the exit control  as the core (effectively no control but this simplifies the math)
         if (!startBP.HasExitControlPoint)
         {
-            startBP.Control2 = startBP.Point;
+            startBP.XCtl2 = startBP.X;
+			startBP.YCtl2 = startBP.Y;
             startBP.HasExitControlPoint = true;
         }
 
-        //If the entry control of endBP is missing, replace it with the exit control of startBP
+        //If the entry control of endBP is missing, set the entry control as the core (effectively no control but this simplifies the math)
         if (!endBP.HasEntryControlPoint)
         {
-            endBP.Control1 = endBP.Point;
+			endBP.XCtl1 = endBP.X;
+			endBP.YCtl1 = endBP.Y;
             endBP.HasEntryControlPoint = true;
         }
 
         std::vector<Node> vertices;
-        vertices.push_back(startBP.Point);
+        vertices.push_back(Node(startBP.X, startBP.Y));
 
         for (int i = 1; i <= numSegments; ++i) {
             double t = i / static_cast<double>(numSegments);
             double u = 1.0 - t;
 
             Node NodeOnCurve;
-            NodeOnCurve.X = std::pow(u, 3) * startBP.Point.X + 3 * std::pow(u, 2) * t * startBP.Control2.X + 3 * u * std::pow(t, 2) * endBP.Control1.X + std::pow(t, 3) * endBP.Point.X;
-            NodeOnCurve.Y = std::pow(u, 3) * startBP.Point.Y + 3 * std::pow(u, 2) * t * startBP.Control2.Y + 3 * u * std::pow(t, 2) * endBP.Control1.Y + std::pow(t, 3) * endBP.Point.Y;
-            NodeOnCurve.Z = std::pow(u, 3) * startBP.Point.Z + 3 * std::pow(u, 2) * t * startBP.Control2.Z + 3 * u * std::pow(t, 2) * endBP.Control1.Z + std::pow(t, 3) * endBP.Point.Z;
-            NodeOnCurve.Properties = startBP.Point.Properties;
+
+            NodeOnCurve.X = std::pow(u, 3) * startBP.X + 3 * std::pow(u, 2) * t * startBP.XCtl2 + 3 * u * std::pow(t, 2) * endBP.XCtl1 + std::pow(t, 3) * endBP.X;
+            NodeOnCurve.Y = std::pow(u, 3) * startBP.Y + 3 * std::pow(u, 2) * t * startBP.YCtl2 + 3 * u * std::pow(t, 2) * endBP.YCtl1 + std::pow(t, 3) * endBP.Y;
+            NodeOnCurve.Z = startBP.Z;
+            NodeOnCurve.Properties = startBP.Properties;
 
             vertices.push_back(NodeOnCurve);
         }
@@ -97,8 +104,7 @@ namespace XSLGeoutils
             Node vnn = InVerts[(i + 2) % InVerts.size()];
 
             //Define the bezeir point
-            BezeirNode bp;
-            bp.Point = v;
+            BezeirNode bp(v);
 
             //Check if the next 3 points are colocated. This is the case where there are two different handles
             if (v.Colocated(vn) && v.Colocated(vnn))
@@ -111,9 +117,12 @@ namespace XSLGeoutils
                 vnn.X = vnn.U;
                 vnn.Y = vnn.V;
                 RotatePoint(v.X, v.Y, vn.X, vn.Y, 180, &v.X, &v.Y);
-                bp.Control1 = v;
-                bp.Control2 = vnn;
-                bp.Point = vn;
+                bp.XCtl1 = v.X;
+				bp.YCtl1 = v.Y;
+				bp.XCtl2 = vnn.X;
+				bp.YCtl2 = vnn.Y;
+				bp.X = vn.X;
+				bp.Y = vn.Y;
 
                 //Skip the next two points, as they've been used
                 i += 2;
@@ -132,8 +141,10 @@ namespace XSLGeoutils
                     vn.X = vn.U;
                     vn.Y = vn.V;
                     bp.HasExitControlPoint = true;
-                    bp.Control2 = vn;
-                    bp.Point = v;
+					bp.XCtl2 = vn.X;
+					bp.YCtl2 = vn.Y;
+					bp.X = v.X;
+					bp.Y = v.Y;
                 }
 
                 //The next is the main, the current is the entry control, which are rotated 180 around the center
@@ -141,8 +152,10 @@ namespace XSLGeoutils
                 {
                     RotatePoint(v.U, v.V, v.X, v.Y, 180, &v.X, &v.Y);
                     bp.HasEntryControlPoint = true;
-                    bp.Control1 = v;
-                    bp.Point = vn;
+					bp.XCtl1 = v.X;
+					bp.YCtl1 = v.Y;
+					bp.X = vn.X;
+					bp.Y = vn.Y;
                 }
 
                 //Skip the next point, as it's been used
@@ -158,8 +171,10 @@ namespace XSLGeoutils
                 vExit.Y = v.V;
                 Node vEntry;
                 RotatePoint(v.U, v.V, v.X, v.Y, 180, &vEntry.X, &vEntry.Y);
-                bp.Control1 = vEntry;
-                bp.Control2 = vExit;
+				bp.XCtl1 = vEntry.X;
+				bp.YCtl1 = vEntry.Y;
+				bp.XCtl2 = vExit.X;
+				bp.YCtl2 = vExit.Y;
                 bp.HasEntryControlPoint = true;
                 bp.HasExitControlPoint = true;
             }
@@ -167,25 +182,11 @@ namespace XSLGeoutils
             //Otherwise there are no handles.
             else
             {
-                bp.Point = v;
+				bp.X = v.X;
+				bp.Y = v.Y;
             }
 
             vctBps.push_back(bp);
-        }
-
-        //Now we need to make sure the properties are in sync
-        for (auto& b : vctBps)
-        {
-            //The main point may be missing properties. We know this if it doesn't match those of a control (rmemeber these where all generated from the same point), and said control does have properties.
-            if (b.Point.Properties != b.Control1.Properties && b.Control1.Properties.size() > 0)
-            {
-                b.Point.Properties = b.Control1.Properties;
-            }
-
-            else if (b.Point.Properties != b.Control2.Properties && b.Control2.Properties.size() > 0)
-            {
-                b.Point.Properties = b.Control2.Properties;
-            }
         }
 
         return vctBps;
@@ -211,18 +212,18 @@ namespace XSLGeoutils
                 // first: x/y colocated with main, u/v are the entry control point rotated 180 around the main point
                 // second: x/y the main point, u/v is colocated with main
                 // third: x/y colocated with main, u/v are the exit control point
-                Node v1 = v.Point;
-                Node v2 = v.Point;
-                Node v3 = v.Point;
+                Node v1(v.X, v.Y);
+                Node v2(v.X, v.Y);
+                Node v3(v.X, v.Y);
 
                 //Set v1s control
-                v1.U = v.Control1.X;
-                v1.V = v.Control1.Y;
+                v1.U = v.XCtl1;
+                v1.V = v.YCtl1;
                 RotatePoint(v1.U, v1.V, v1.X, v1.Y, 180, &v1.U, &v1.V);
 
                 //Set v3s control
-                v3.U = v.Control2.X;
-                v3.V = v.Control2.Y;
+                v3.U = v.XCtl2;
+                v3.V = v.YCtl2;
 
                 //Add the verticies
                 verts.push_back(v1);
@@ -236,12 +237,12 @@ namespace XSLGeoutils
                 //In this case the points are:
                 // first: x/y are the main, u/v are the entry control point rotated 180 around the main point
                 // second: x/y are the main, u/v are colocated with main
-                Node v1 = v.Point;
-                Node v2 = v.Point;
+				Node v1(v.X, v.Y);
+                Node v2(v.X, v.Y);
 
                 //Set v1s control
-                v1.U = v.Control1.X;
-                v1.V = v.Control1.Y;
+				v1.U = v.XCtl1;
+                v1.V = v.YCtl1;
                 RotatePoint(v1.U, v1.V, v1.X, v1.Y, 180, &v1.U, &v1.V);
 
                 //Set v2s control
@@ -259,16 +260,16 @@ namespace XSLGeoutils
                 //In this case the points are:
                 // first: x/y are the main, u/v are colocated with main
                 // second: x/y are colocated with the main, u/v are exit control point
-                Node v1 = v.Point;
-                Node v2 = v.Point;
+                Node v1(v.X, v.Y);
+                Node v2(v.X, v.Y);
 
                 //Set v1s control
                 v1.U = v1.X;
                 v1.V = v1.Y;
 
                 //Set v2s control
-                v2.U = v.Control2.X;
-                v2.V = v.Control2.Y;
+                v2.U = v.XCtl2;
+                v2.V = v.YCtl2;
 
                 //Add the verticies
                 verts.push_back(v1);
@@ -279,7 +280,7 @@ namespace XSLGeoutils
             else
             {
                 //Simple. But remember we need to colocate the controls (u/v) with the main, just because of teh XP format
-                Node v1 = v.Point;
+				Node v1(v.X, v.Y);
                 v1.U = v1.X;
                 v1.V = v1.Y;
 
