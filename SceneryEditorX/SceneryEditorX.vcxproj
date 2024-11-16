@@ -170,8 +170,8 @@
     <InheritWinAppVersionFrom>None</InheritWinAppVersionFrom>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X\</OutDir>
-    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\bin\</OutDir>
+    <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <TargetName>Scenery Editor X</TargetName>
     <IncludePath>$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(BOOST_LIB);$(LibraryPath)</LibraryPath>

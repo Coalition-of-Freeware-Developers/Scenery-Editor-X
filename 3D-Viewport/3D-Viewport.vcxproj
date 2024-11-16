@@ -74,15 +74,16 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(SolutionDir)external\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
-    <IntDir>$(SolutionDir)out\debug-int\</IntDir>
-    <OutDir>$(SolutionDir)out\debug</OutDir>
+    <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\bin\</OutDir>
+    <TargetName>VulkanEngineTests</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(SolutionDir)external\include;$(ProjectDir)imgui;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)external\lib;$(SolutionDir)external\include\GLFW\lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\3D-Viewport</OutDir>
-    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\3D-Viewport</IntDir>
-    <TargetName>3D-Viewport</TargetName>
+    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\bin\</OutDir>
+    <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
+    <TargetName>VulkanEngineTests</TargetName>
     <ExternalIncludePath>$(SolutionDir)external\include;$(SolutionDir)external\include\GLFW\include;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
