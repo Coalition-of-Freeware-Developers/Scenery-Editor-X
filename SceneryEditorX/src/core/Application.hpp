@@ -17,7 +17,7 @@ namespace SceneryEditorX
 
     private:
         //void FileCheck(0, nullptr);
-        VK_Window VK_Window{Width, Height, Title};
+        VK_Window VK_Window{static_cast<int>(Width), static_cast<int>(Height), Title};
         VK_Pipeline VK_Pipeline{"../shaders/vert.spv", "../shaders/frag.spv"};
     };
 }
