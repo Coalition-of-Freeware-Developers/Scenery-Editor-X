@@ -74,7 +74,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>glfw3</TargetName>
-    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\bin\</OutDir>
+    <OutDir>$(SolutionDir)external\lib\</OutDir>
     <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <ExternalIncludePath>$(SolutionDir)external\include;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
@@ -86,7 +86,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <TargetName>glfw3</TargetName>
-    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\bin\</OutDir>
+    <OutDir>$(SolutionDir)external\lib\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

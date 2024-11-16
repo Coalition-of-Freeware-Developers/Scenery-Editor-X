@@ -85,7 +85,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>imgui</TargetName>
-    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\bin\</OutDir>
+    <OutDir>$(SolutionDir)external\lib\</OutDir>
     <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <IncludePath>$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
@@ -97,7 +97,7 @@
     <TargetName>imgui</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\bin\</OutDir>
+    <OutDir>$(SolutionDir)external\lib\</OutDir>
     <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <TargetName>imgui</TargetName>
   </PropertyGroup>
