@@ -1,4 +1,0 @@
-// Hint files help the Visual Studio IDE interpret Visual C++ identifiers
-// such as names of functions and macros.
-// For more information see https://go.microsoft.com/fwlink/?linkid=865984
-#define SEDX_VERSION SEDX_TO_VERSION(SEDX_VER_MAJOR, SEDX_VER_MINOR, SEDX_VER_PATCH)
