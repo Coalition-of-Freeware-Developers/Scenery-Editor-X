@@ -27,23 +27,23 @@ namespace fs = std::filesystem;
 namespace SceneryEditorX
 {
 
-    VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fragFilepath)
-    {
-        // Construct paths relative to the executable directory
-        fs::path exeDir = fs::path(DirectoryInit::absolutePath).parent_path();
-        fs::path shaderDir = exeDir / "resources" / "cache" / "shaders";
+VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fragFilepath)
+{
+    // Construct paths relative to the executable directory
+    fs::path exeDir = fs::path(DirectoryInit::absolutePath).parent_path();
+    fs::path shaderDir = exeDir / "resources" / "cache";
 
-        // Combine with provided shader filenames
-        fs::path vertexShaderPath = shaderDir / vertFilepath;
-        fs::path fragmentShaderPath = shaderDir / fragFilepath;
+    // Combine with provided shader filenames
+    fs::path vertexShaderPath = shaderDir / vertFilepath;
+    fs::path fragmentShaderPath = shaderDir / fragFilepath;
 
-        // Log paths for debugging
-        spdlog::info("Vertex Shader Path: {}", vertexShaderPath.string());
-        spdlog::info("Fragment Shader Path: {}", fragmentShaderPath.string());
+    // Log paths for debugging
+    spdlog::info("Vertex Shader Path: {}", vertexShaderPath.string());
+    spdlog::info("Fragment Shader Path: {}", fragmentShaderPath.string());
 
-        // Create graphics pipeline with the specified shader paths
-        createGraphicsPipeline(vertexShaderPath.string(), fragmentShaderPath.string());
-    }
+    // Create graphics pipeline with the specified shader paths
+    createGraphicsPipeline(vertexShaderPath.string(), fragmentShaderPath.string());
+}
 
 
     

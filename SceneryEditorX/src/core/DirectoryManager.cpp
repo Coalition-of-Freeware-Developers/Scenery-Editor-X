@@ -40,7 +40,6 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
         {
             spdlog::info("Directory already exists: {}", fullPath.string());
         }
-
     }
 }
 
@@ -50,10 +49,11 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
     if (argc > 0) // Used to be (argc > 1) but in debug mode it will not find the executable and fail)
     {
         // Set the absolute path to the executable's path
-        char buffer[MAX_PATH];
-        GetModuleFileNameA(NULL, buffer, MAX_PATH);
-        size_t DirEndPos = std::string(buffer).find_last_of("\\/");
-        absolutePath = std::string(buffer).substr(0, DirEndPos);
+        //char buffer[MAX_PATH];
+        //GetModuleFileNameA(NULL, buffer, MAX_PATH);
+        //size_t DirEndPos = std::string(buffer).find_last_of("\\/");
+        //absolutePath = std::string(buffer).substr(0, DirEndPos);
+        absolutePath = fs::absolute(fs::path(argv[0])).string();
         spdlog::info("============================================");
         spdlog::info("Absolute Path: {}", absolutePath);
 
@@ -69,21 +69,20 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
     }
 
     // Define the required directory structure
-    std::vector<std::string> requiredDirectories = {
-        "assets",
-        "assets/models",
-        "assets/textures",
-        "config",
-        "export",
-        "librarys",
-        "librarys/custom",
-        "logs",
-        "plugins",
-        "resources",
-        "resources/cache",
-        "resources/cache/shaders",
-        "resources/cache/thumbnail"
-    };
+    std::vector<std::string> requiredDirectories = {"assets",
+                                                    "assets/models",
+                                                    "assets/textures",
+                                                    "docs",
+                                                    "config",
+                                                    "export",
+                                                    "librarys",
+                                                    "librarys/custom",
+                                                    "logs",
+                                                    "plugins",
+                                                    "resources",
+                                                    "resources/cache",
+                                                    "resources/cache/shaders",
+                                                    "resources/cache/thumbnail"};
 
     // Ensure that the required directories exist
     ensureDirectoriesExist(requiredDirectories);
