@@ -22,16 +22,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{8199EF05-1
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{5F9B881F-CEE9-4400-A5CF-EC7A99FB4399}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GLFW", "external\include\GLFW\GLFW.vcxproj", "{4681E77C-649F-4444-85F5-69EAADDC4B94}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glfw", "external\include\GLFW\GLFW.vcxproj", "{4681E77C-649F-4444-85F5-69EAADDC4B94}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImGui", "external\ImGui\ImGui.vcxproj", "{D7D8DEF3-5E6C-48DC-A6D9-472F363BDBD0}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgui", "external\ImGui\ImGui.vcxproj", "{D7D8DEF3-5E6C-48DC-A6D9-472F363BDBD0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Format Testing", "edX\Format Testing.vcxproj", "{30AF7BC6-6165-465F-B11A-9B9BB306CB56}"
-	ProjectSection(ProjectDependencies) = postProject
-		{D7D8DEF3-5E6C-48DC-A6D9-472F363BDBD0} = {D7D8DEF3-5E6C-48DC-A6D9-472F363BDBD0}
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "File Formats", "File Formats", "{811BAE90-6712-4E13-AD86-206A9BECE850}"
+	ProjectSection(SolutionItems) = preProject
+		SceneryEditorX\src\vk_shader_compile.bat = SceneryEditorX\src\vk_shader_compile.bat
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

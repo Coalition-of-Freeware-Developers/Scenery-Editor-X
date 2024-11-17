@@ -24,6 +24,7 @@
     <ProjectGuid>{d7d8def3-5e6c-48dc-a6d9-472f363bdbd0}</ProjectGuid>
     <RootNamespace>ImGui</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>imgui</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -72,7 +73,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>imgui</TargetName>
-    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\Scenery Editor X\</OutDir>
+    <OutDir>$(SolutionDir)external\lib\</OutDir>
     <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <IncludePath>$(SolutionDir)external\;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
