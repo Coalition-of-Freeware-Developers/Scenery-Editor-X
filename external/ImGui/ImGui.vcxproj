@@ -71,9 +71,9 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetName>ImGui</TargetName>
-    <OutDir>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X\</OutDir>
-    <IntDir>$(SolutionDir)bin-int\$(Configuration)_$(Platform)\Scenery Editor X\</IntDir>
+    <TargetName>imgui</TargetName>
+    <OutDir>$(SolutionDir)$(Configuration)_$(Platform)\Scenery Editor X\</OutDir>
+    <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <IncludePath>$(SolutionDir)external\;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
