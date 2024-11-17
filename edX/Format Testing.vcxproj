@@ -86,7 +86,7 @@
     <IntDir>$(SolutionDir)$(Configuration)_$(Platform)\bin-int\$(MSBuildProjectName)\</IntDir>
     <ExternalIncludePath>$(ExternalIncludePath)</ExternalIncludePath>
     <IncludePath>$(SolutionDir)external\include\imgui;$(SolutionDir)external\GLFW\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)bin\$(Configuration)_$(Platform)\Scenery Editor X\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SolutionDir)external\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
@@ -108,7 +108,7 @@
     <ClCompile>
       <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
-      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;$(SolutionDir)external\ImGui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%VULKAN_SDK%\include;$(SolutionDir)external\include\imgui;</AdditionalIncludeDirectories>
       <MinimalRebuild>true</MinimalRebuild>
       <FloatingPointModel>Precise</FloatingPointModel>
     </ClCompile>
@@ -145,6 +145,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\external\include\imgui\imconfig.h" />
+    <ClInclude Include="..\external\include\imgui\imgui.h" />
+    <ClInclude Include="..\external\include\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="..\external\include\imgui\imgui_impl_vulkan.h" />
+    <ClInclude Include="..\external\include\imgui\imgui_internal.h" />
     <ClInclude Include="edXProjectFile.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
@@ -152,7 +157,15 @@
     <ResourceCompile Include="edX.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\external\include\imgui\imgui.cpp" />
+    <ClCompile Include="..\external\include\imgui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="..\external\include\imgui\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="..\external\include\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\external\include\imgui\imgui_widgets.cpp" />
     <ClCompile Include="testing\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="testing\imgui.ini" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
