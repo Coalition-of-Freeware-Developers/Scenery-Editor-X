@@ -1,3 +1,6 @@
 [submodule "Dependency/vcpkg"]
 	path = Dependency/vcpkg
 	url = git@github.com:microsoft/vcpkg.git
+[submodule "Dependency/optick"]
+	path = Dependency/optick
+	url = git@github.com:bombomby/optick.git
