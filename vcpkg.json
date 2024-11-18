@@ -3,7 +3,9 @@
       "glm",
       "portable-file-dialogs",
       "spdlog",
-      "imgui",
-      "imguizmo"
+      { "name": "imgui", "features": ["glfw-binding", "vulkan-binding", "docking-experimental"] },
+      "imguizmo",
+      "glfw3",
+      "stb"
     ]
   }

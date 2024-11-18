@@ -36,9 +36,9 @@ private:
     Type type = Type::Perspective;
     Control mode = Control::Orbit;
 
-    static inline float speed = 0.01;
-    static inline float zoomSpeed = 0.1;
-    static inline float rotationSpeed = 0.3;
+    static inline float speed = 0.01f;
+    static inline float zoomSpeed = 0.1f;
+    static inline float rotationSpeed = 0.3f;
     static inline bool autoOrbit = false;
 
     void UpdateView();

@@ -44,28 +44,29 @@ struct MeshVertex
      */
     bool operator==(const MeshVertex &other) const
     {
-        return pos == other.pos && normal == other.normal && texCoord == other.texCoord; 
+        return pos == other.pos && normal == other.normal && texCoord == other.texCoord;
     }
 };
 
 namespace std
 {
-    /**
+/**
      * @brief Hash function specialization for MeshVertex.
      * 
      * This specialization of the std::hash template provides a hash function
      * for MeshVertex objects. It combines the hashes of the position, normal,
      * and texture coordinates of the vertex to produce a unique hash value.
      */
-    template <> struct hash<MeshVertex>
+template <>
+struct hash<MeshVertex>
+{
+    size_t operator()(MeshVertex const &vertex) const
     {
-        size_t operator()(MeshVertex const &vertex) const
-        {
-            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
-                   (hash<glm::vec2>()(vertex.texCoord) << 1);
-        }
-    };
-}
+        return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
+               (hash<glm::vec2>()(vertex.texCoord) << 1);
+    }
+};
+} // namespace std
 
 /**
  * @brief Structure to describe a mesh.
@@ -75,10 +76,10 @@ namespace std
  */
 struct MeshDesc
 {
-    std::vector<MeshVertex> vertices; ///< The vertices of the mesh.
-    std::vector<uint32_t> indices;    ///< The indices of the mesh.
-    std::filesystem::path path;       ///< The file path to the mesh.
-    std::string name;                 ///< The name of the mesh.
+    std::vector<MeshVertex> vertices;      ///< The vertices of the mesh.
+    std::vector<uint32_t> indices;         ///< The indices of the mesh.
+    std::filesystem::path path;            ///< The file path to the mesh.
+    std::string name;                      ///< The name of the mesh.
     glm::vec3 center = glm::vec3(0, 0, 0); ///< The center position of the mesh.
 };
 
@@ -98,10 +99,10 @@ struct MeshResource
 };
 
 /// @brief Maximum number of meshes that can be managed.
-#define MAX_MESHES 2048 
+#define MAX_MESHES 2048
 
 /// @brief Maximum number of textures that can be managed.
-#define MAX_TEXTURES 2048
+// #define MAX_TEXTURES 2048
 
 class AssetManager
 {
@@ -247,7 +248,6 @@ class AssetManager
     static bool IsGLTF(std::filesystem::path path);
 
 public:
-
     /**
      * @brief The next available mesh resource ID.
      * 

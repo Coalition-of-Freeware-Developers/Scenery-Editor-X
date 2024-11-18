@@ -1,21 +1,18 @@
-#include "../log/Logging.hpp"
-#include "../platform/windows/FileManager.hpp"
-#include "../renderer/DeferredRenderer.hpp"
-#include "../renderer/VK_Wrapper.h"
-#include "../scene/Scene.hpp"
-#include "Application.hpp"
-#include "AssetManager.hpp"
-#include "DirectoryManager.hpp"
-#include "Window.hpp"
+#include <log/Logging.hpp>
+#include <platform/windows/FileManager.hpp>
+#include <renderer/DeferredRenderer.hpp>
+#include <renderer/VK_Wrapper.h>
+#include <scene/Scene.hpp>
+#include <core/Application.hpp>
+#include <core/AssetManager.hpp>
+#include "core/DirectoryManager.hpp"
+#include <core/Window.hpp>
 
-
-#include <boost/filesystem.hpp>
-#include <spdlog.h>
 #include <stb_image.h>
 
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_vulkan.h>
-#include <imgui/imgui_stdlib.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+#include <imgui_stdlib.h>
 
 #include <iostream>
 #include <string>

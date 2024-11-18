@@ -1,5 +1,4 @@
 #include "DirectoryManager.hpp"
-#include <spdlog.h>
 
 namespace fs = std::filesystem;
 

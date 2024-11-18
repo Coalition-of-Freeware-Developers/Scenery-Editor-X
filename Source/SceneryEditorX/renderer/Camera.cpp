@@ -1,5 +1,3 @@
-#include "../src/xpeditorpch.h"
-
 #include "Camera.hpp"
 #include "Transform.hpp"
 #include "../core/Window.hpp"
@@ -121,13 +119,11 @@ void Camera::Update(Transform *selectedTransform)
             viewDirty = true;
         }
     }
-    if (Window::IsMouseDown(GLFW_MOUSE_BUTTON_2) ||
-        Window::IsKeyDown(GLFW_KEY_LEFT_ALT))
+    if (Window::IsMouseDown(GLFW_MOUSE_BUTTON_2) || Window::IsKeyDown(GLFW_KEY_LEFT_ALT))
     {
         drag = -Window::GetDeltaMouse();
     }
-    if (Window::IsMouseDown(GLFW_MOUSE_BUTTON_3) ||
-        Window::IsKeyDown(GLFW_KEY_LEFT_SHIFT))
+    if (Window::IsMouseDown(GLFW_MOUSE_BUTTON_3) || Window::IsKeyDown(GLFW_KEY_LEFT_SHIFT))
     {
         move = -Window::GetDeltaMouse();
     }
@@ -186,8 +182,7 @@ void Camera::Update(Transform *selectedTransform)
             fpsMove = glm::normalize(fpsMove);
             glm::vec3 right = glm::vec3(view[0][0], view[1][0], view[2][0]);
             glm::vec3 front = glm::vec3(view[0][2], view[1][2], view[2][2]);
-            eye += (right * fpsMove.x - front * fpsMove.y) * 0.5f * speed * slowDown *
-                   Window::GetDeltaTime();
+            eye += (right * fpsMove.x - front * fpsMove.y) * 0.5f * speed * slowDown * Window::GetDeltaTime();
             viewDirty = true;
         }
         if (scroll != 0)

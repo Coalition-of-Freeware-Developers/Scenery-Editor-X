@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SystemDetection.h>
+#include <core/SystemDetection.h>
 
 // TODO: Impliment MAC and Linux detection
 #ifdef SEDX_PLATFORM_WINDOWS
@@ -96,11 +96,12 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 
-#include <Base.hpp>
-#include <DirectoryManager.hpp>
-#include <EdxAssert.h>
-#include <Logging.hpp>
-#include <Profiler.hpp>
+#include <core/Base.hpp>
+#include <core/DirectoryManager.hpp>
+#include <core/EdxAssert.h>
+
+#include <log/Logging.hpp>
+#include <log/Profiler.hpp>
 
 
 /*

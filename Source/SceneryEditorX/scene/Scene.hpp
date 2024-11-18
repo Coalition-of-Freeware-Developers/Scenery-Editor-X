@@ -2,11 +2,12 @@
 
 #include <string>
 
-#include "../renderer/Transform.hpp"
-#include "../renderer/VK_Wrapper.h"
-#include "../renderer/Camera.hpp"
+#include <renderer/Transform.hpp>
+#include <renderer/VK_Wrapper.h>
+#include <renderer/Camera.hpp>
 
 #define MAX_TEXTURES 4096
+
 #define MAX_MODELS 4096
 #define MAX_LIGHTS 16
 #define MAX_MESHES 2048
@@ -38,9 +39,9 @@ struct SceneBlock
     glm::vec3 camPos = glm::vec3(.0f, .0f, .0f);
     u32 numLights = 0;
 
-    float aoMin = 0.001;
-    float aoMax = 0.1;
-    float aoPower = 1.45;
+    float aoMin = 0.001f;
+    float aoMax = 0.1f;
+    float aoPower = 1.45f;
     u32 aoNumSamples = 1;
 
     u32 useBlueNoise = 0;
@@ -179,7 +180,7 @@ void RenderTransformGizmo(Transform &transform);
 inline void DrawTextureOnImgui(vkw::Image &img)
 {
     float hSpace = ImGui::GetContentRegionAvail().x / 2.5f;
-    f32 maxSize = std::max(img.width, img.height);
+    f32 maxSize = static_cast<float>(std::max(img.width, img.height));
     ImVec2 size = ImVec2((f32)img.width / maxSize, (f32)img.height / maxSize);
     size = ImVec2(size.x * hSpace, size.y * hSpace);
     ImGui::Image(img.ImGuiRID(), size);
