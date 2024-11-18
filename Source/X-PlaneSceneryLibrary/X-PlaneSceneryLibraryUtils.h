@@ -8,5 +8,3 @@
 
 //Include necessary headers
 #include "TextUtils.h"
-
-

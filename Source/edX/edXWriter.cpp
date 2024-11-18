@@ -1,42 +1,44 @@
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
-#include "../edX/edXProjectFile.h"
+
 #include "../X-PlaneSceneryLibrary/XPLibraryPath.h"
+#include "../edX/edXProjectFile.h"
+
 
 using namespace ProjectFile;
 
 void writeEdxFile(const std::string &filename, // Add filename parameter
-              const std::string &sceneryName,
-              const std::string &editorVersion,
-              const std::string &XPVersion,
-              const std::string &airportName,
-              const std::string &airportICAO,
-              const std::string &airportIATA,
-              const std::string &airportFAA,
-              const std::string &airportCity,
-              const std::string &airportState,
-              const std::string &airportCountry,
-              const std::string &airportRegion,
-              double airportLat,
-              double airportLon,
-              int airportTransAlt,
-              int airportTransLvl,
-              int airportElevation,
-              double airportCTAF,
-              double airportATIS,
-              double airportTower,
-              double airportGround,
-              double airportApproach,
-              double airportDeparture,
-              double airportClearance,
-              std::vector<ProjectFile::Airport> &airport,
-              std::vector<ProjectFile::usedLibrary> &libraries,
-              std::vector<ProjectFile::sceneAssets> &assets)
+                  const std::string &sceneryName,
+                  const std::string &editorVersion,
+                  const std::string &XPVersion,
+                  const std::string &airportName,
+                  const std::string &airportICAO,
+                  const std::string &airportIATA,
+                  const std::string &airportFAA,
+                  const std::string &airportCity,
+                  const std::string &airportState,
+                  const std::string &airportCountry,
+                  const std::string &airportRegion,
+                  double airportLat,
+                  double airportLon,
+                  int airportTransAlt,
+                  int airportTransLvl,
+                  int airportElevation,
+                  double airportCTAF,
+                  double airportATIS,
+                  double airportTower,
+                  double airportGround,
+                  double airportApproach,
+                  double airportDeparture,
+                  double airportClearance,
+                  std::vector<ProjectFile::Airport> &airport,
+                  std::vector<ProjectFile::usedLibrary> &libraries,
+                  std::vector<ProjectFile::sceneAssets> &assets)
 {
     std::ofstream file(filename); // Use filename parameter
 
@@ -45,7 +47,6 @@ void writeEdxFile(const std::string &filename, // Add filename parameter
         std::cerr << "Error opening file for writing." << std::endl;
         return;
     }
-
 
 
     /**
@@ -139,25 +140,18 @@ void writeEdxFile(const std::string &filename, // Add filename parameter
     file << "[Assets]\n";
     for (const auto &asset : assets)
     {
-        file << asset.id << "="
-             << asset.uniqueId << ", "
-             << asset.groupId << ", "
-             << asset.datum_lat << ", "
-             << asset.datum_lon << ", "
-             << asset.heading << ", "
-             << asset.altitude << ", "
-             << asset.locked << ", "
-             << asset.hidden << ", "
-             << asset.properties << "\n";
+        file << asset.id << "=" << asset.uniqueId << ", " << asset.groupId << ", " << asset.datum_lat << ", "
+             << asset.datum_lon << ", " << asset.heading << ", " << asset.altitude << ", " << asset.locked << ", "
+             << asset.hidden << ", " << asset.properties << "\n";
     }
 
     file.close();
 }
 
 int projectMain()
-{   
+{
     std::vector<ProjectFile::Airport> airportData = {};
-   
+
     std::vector<ProjectFile::usedLibrary> libraries = {{"Library1", "path/to/library1", 1},
                                                        {"Library2", "path/to/library2", 2}};
     std::vector<ProjectFile::sceneAssets> assets = {

@@ -12,5 +12,3 @@
 //Asset parsers/data structures
 #include "XPAsset.h"
 #include "XPObj.h"
-
-
