@@ -1,7 +1,5 @@
 #pragma once
 
-#include <boost/filesystem.hpp>
-
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -22,4 +20,3 @@ public:
     */
     void ensureDirectoriesExist(const std::vector<std::string> &directories);
 };
-

@@ -1,8 +1,7 @@
 #include "DirectoryManager.hpp"
-#include <boost/filesystem.hpp>
 #include <spdlog.h>
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 /*
 DirectoryInit::DirectoryInit()
@@ -15,6 +14,8 @@ DirectoryInit::~DirectoryInit()
     spdlog::info("Program folder directory checking complete");
 }
 */
+
+#include <filesystem>
 
 // Define the static members
 std::string DirectoryInit::absolutePath = "";
