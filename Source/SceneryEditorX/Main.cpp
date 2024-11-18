@@ -1,5 +1,4 @@
-#include "../src/xpeditorpch.h"
-
+#include "../log/Logging.hpp"
 #include "../platform/windows/FileManager.hpp"
 #include "../renderer/DeferredRenderer.hpp"
 #include "../renderer/VK_Wrapper.h"
@@ -8,7 +7,7 @@
 #include "AssetManager.hpp"
 #include "DirectoryManager.hpp"
 #include "Window.hpp"
-#include "../log/Logging.hpp" 
+
 
 #include <boost/filesystem.hpp>
 #include <spdlog.h>
@@ -31,9 +30,9 @@
 #define IMGUI_VULKAN_DEBUG_REPORT
 #endif
 
-class Application {
+class Application
+{
 public:
-
     void run()
     {
         Setup();
@@ -281,11 +280,11 @@ private:
         vkw::CmdBarrier(); // TLAS build is a write operation
 
         auto opaqueTS = vkw::CmdBeginTimeStamp("GPU::OpaquePass"); // Opaque pass
-        DeferredShading::BeginOpaquePass(); 
+        DeferredShading::BeginOpaquePass();
 
         DeferredShading::OpaqueConstants constants;
         constants.sceneBufferIndex = Scene::sceneBuffer.RID();
-        constants.modelBufferIndex = Scene::modelsBuffer.RID(); 
+        constants.modelBufferIndex = Scene::modelsBuffer.RID();
 
         for (Model *model : Scene::modelEntities)
         {

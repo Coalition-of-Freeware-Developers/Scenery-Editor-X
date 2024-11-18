@@ -1,0 +1,9 @@
+{
+    "dependencies": [
+      "glm",
+      "portable-file-dialogs",
+      "spdlog",
+      "imgui",
+      "imguizmo"
+    ]
+  }

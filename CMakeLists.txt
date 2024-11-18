@@ -7,12 +7,19 @@ set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependency/vcpkg/scripts/buildsyste
 
 project(SceneryEditorX VERSION 1.0)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Packages
 # --------------------------------
+
+find_package(glm      CONFIG REQUIRED)
+find_package(spdlog   CONFIG REQUIRED)
+find_package(imgui    CONFIG REQUIRED)
+find_package(imguizmo CONFIG REQUIRED)
+
+find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
 # EDX
 # --------------------------------
@@ -34,3 +41,27 @@ add_library(X-PlaneSceneryLibrary
     Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
     Source/X-PlaneSceneryLibrary/XPObj.cpp
 )
+
+# SceneryEditorX
+# --------------------------------
+
+add_executable(SceneryEditorX
+    Source/SceneryEditorX/Main.cpp
+)
+
+# Include
+target_include_directories(SceneryEditorX PRIVATE 
+    Source/SceneryEditorX/Include
+    ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+)
+
+# Link
+target_link_libraries(SceneryEditorX PRIVATE 
+    glm::glm-header-only
+    spdlog::spdlog_header_only
+    imgui::imgui
+    imguizmo::imguizmo
+)
+
+# Precompiled Header
+target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/Include/Precompiled.h)

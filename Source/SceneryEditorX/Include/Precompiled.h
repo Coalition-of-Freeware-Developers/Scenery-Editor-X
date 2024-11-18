@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../src/core/SystemDetection.h"
+#include <SystemDetection.h>
 
 // TODO: Impliment MAC and Linux detection
 #ifdef SEDX_PLATFORM_WINDOWS
@@ -73,7 +73,7 @@
 ##########################################################
 */
 
-#include "portable-file-dialogs.h"
+#include <portable-file-dialogs.h>
 
 /*
 ##########################################################
@@ -93,15 +93,14 @@
 ##########################################################
 */
 
-#include <imgui/ImGuizmo.h>
-#include <imgui/imgui.h>
+#include <ImGuizmo.h>
+#include <imgui.h>
 
-
-#include <../src/core/Assert.h>
-#include <../src/core/Base.hpp>
-#include <../src/core/DirectoryManager.hpp>
-#include <../src/log/Logging.hpp>
 #include <../src/log/Profiler.hpp>
+#include <Assert.h>
+#include <Base.hpp>
+#include <DirectoryManager.hpp>
+#include <Logging.hpp>
 
 
 /*
