@@ -1,4 +1,4 @@
-#include <log/Logging.hpp>
+#include <logging/Logging.hpp>
 #include <platform/windows/FileManager.hpp>
 #include <renderer/DeferredRenderer.hpp>
 #include <renderer/VK_Wrapper.h>

@@ -100,8 +100,8 @@
 #include <core/DirectoryManager.hpp>
 #include <core/EdxAssert.h>
 
-#include <log/Logging.hpp>
-#include <log/Profiler.hpp>
+#include <logging/Logging.hpp>
+#include <logging/Profiler.hpp>
 
 
 /*

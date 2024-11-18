@@ -56,7 +56,7 @@ add_executable(SceneryEditorX
     Source/SceneryEditorX/core/Application.cpp
     Source/SceneryEditorX/core/DirectoryManager.cpp
     Source/SceneryEditorX/core/VK_Window.cpp
-    Source/SceneryEditorX/log/Logging.cpp
+    Source/SceneryEditorX/logging/Logging.cpp
     Source/SceneryEditorX/renderer/Camera.cpp
     Source/SceneryEditorX/renderer/VK_Pipeline.cpp
 )
