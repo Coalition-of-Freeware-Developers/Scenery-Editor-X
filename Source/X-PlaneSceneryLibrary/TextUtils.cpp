@@ -9,8 +9,9 @@
 //Include necessary headers
 #include "TextUtils.h"
 
-#include <sstream>
 #include <algorithm>
+#include <sstream>
+
 
 /// <summary>
 /// Reads a string from a stream until a given character is reached. Returns the character that was read, or ASCII EOF (4) if the end of the file was reached
@@ -19,7 +20,7 @@
 /// <param name="OutString">Pointer to string object to hold the output</param>
 /// <param name="Delimeter">Delimetining chars to read to, and are thrown out at start. String must be sorted beforehand so we can do a binary search. Must be a standard ASCII character, no UTF-8</param>
 /// <returns>The delimiting character that ended the token</returns>
-inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::vector<char> Delimeters)
+inline char ReadNextToken(std::istream &inStream, std::string *OutString, std::vector<char> Delimeters)
 {
     //Define a token buffer
     std::string strTokenBuffer;
@@ -29,8 +30,8 @@ inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::v
 
     //Define flags
     bool bStartedToken = false; //Whether we've started the token
-	bool bNextIsUtf8 = false;   //Whether the next char is a UTF-8 sequence. We have two flags because when we cle
-	bool bInUtf8 = false;       //Whether we're in a UTF-8 sequence
+    bool bNextIsUtf8 = false;   //Whether the next char is a UTF-8 sequence. We have two flags because when we cle
+    bool bInUtf8 = false;       //Whether we're in a UTF-8 sequence
 
     //Read until we can't
     while (inStream.good())
@@ -40,7 +41,7 @@ inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::v
         //Check if we've started token
         if (bStartedToken)
         {
-			//Check if this is a delimeter, if we're not in a UTF-8 sequence
+            //Check if this is a delimeter, if we're not in a UTF-8 sequence
             if (!bInUtf8 && std::binary_search(Delimeters.begin(), Delimeters.end(), chrDelimeter))
             {
                 *OutString = strTokenBuffer;
@@ -60,8 +61,14 @@ inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::v
         }
 
         //Set whether we are in a utf-8 sequence. We can get away with not checking earlier because there will be no delimeter that matches.
-        if (chrDelimeter & 0b10000000) { bInUtf8 = true; }
-		else { bInUtf8 = false; }
+        if (chrDelimeter & 0b10000000)
+        {
+            bInUtf8 = true;
+        }
+        else
+        {
+            bInUtf8 = false;
+        }
 
         //Peek to set flags
         inStream.peek();
@@ -70,7 +77,7 @@ inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::v
     //We reached the end of the file. Return the token
     *OutString = strTokenBuffer;
 
-	//Return -1 to indicate EOF
+    //Return -1 to indicate EOF
     return -1;
 }
 
@@ -80,32 +87,38 @@ inline char ReadNextToken(std::istream& inStream, std::string* OutString, std::v
 /// <param name="inString">String to read from</param>
 /// <param name="DelimitingChars">Delimiting chars (should not include \n)</param>
 /// <param name="OutTokens">Pointer to vector of strings that will hold the tokens (not cleared before adding tokens)</param>
-std::vector<std::string> TextUtils::TokenizeString(std::string& InString, std::vector<char> DelimitingChars)
+std::vector<std::string> TextUtils::TokenizeString(std::string &InString, std::vector<char> DelimitingChars)
 {
     //Get the stream
     std::stringstream inStream(InString);
 
     //Buffers
     std::string strTokenBuffer;         //Current token
-	std::vector<std::string> OutTokens; //Output tokens
+    std::vector<std::string> OutTokens; //Output tokens
 
-	//Sort the delimiters
-	std::sort(DelimitingChars.begin(), DelimitingChars.end());
+    //Sort the delimiters
+    std::sort(DelimitingChars.begin(), DelimitingChars.end());
 
     //Read until the end of the stream
     while (ReadNextToken(inStream, &strTokenBuffer, DelimitingChars) != -1)
     {
-        if (strTokenBuffer.size() > 0) { OutTokens.push_back(strTokenBuffer); }
-		strTokenBuffer.clear();
+        if (strTokenBuffer.size() > 0)
+        {
+            OutTokens.push_back(strTokenBuffer);
+        }
+        strTokenBuffer.clear();
     }
 
     //Add the last token
-	if (strTokenBuffer.size() > 0) { OutTokens.push_back(strTokenBuffer); }
+    if (strTokenBuffer.size() > 0)
+    {
+        OutTokens.push_back(strTokenBuffer);
+    }
 
     //Peek to set flags
     inStream.peek();
 
-	return OutTokens;
+    return OutTokens;
 }
 
 /// <summary>
@@ -113,7 +126,7 @@ std::vector<std::string> TextUtils::TokenizeString(std::string& InString, std::v
 /// </summary>
 /// <param name="InString">String to trim</param>
 /// <returns>Trimmed string</returns>
-std::string TextUtils::TrimWhitespace(const std::string& InString)
+std::string TextUtils::TrimWhitespace(const std::string &InString)
 {
     //Find the start ane end
     size_t idxStart = InString.find_first_not_of(" \t\n\r");
@@ -148,8 +161,9 @@ void TextUtils::TestTokenizer()
     std::vector<char> delimiter = {',', ';', '\n', '\r'};
 
     //Add some fake utf-8 characters
-    testString[1] = 0b10000000;
-    testString[2] = ' ';	//This is actually a delimiter but we want to test that it gets ignored because it's in a UTF-8 sequence
+    testString[1] = static_cast<char>(0b10000000);
+    testString[2] =
+        ' '; //This is actually a delimiter but we want to test that it gets ignored because it's in a UTF-8 sequence
 
     auto tokens = TextUtils::TokenizeString(testString, delimiter);
 
