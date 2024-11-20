@@ -48,8 +48,8 @@ SSH: `git clone --recurse-submodules git@github.com:The3dVehicleguy/Scenery-Edit
 Please make sure you have CMake installed and added to your environment variable path.
 Once the repository is cloned go into the folder and run the following terminal commands:
 ```
-mkdir build
-cd build
+mkdir Build
+cd Build
 cmake .. -G Ninja
 ```
 
