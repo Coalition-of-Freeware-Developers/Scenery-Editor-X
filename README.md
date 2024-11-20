@@ -37,11 +37,19 @@ Environment Variables:
 
 ## Build
 
+This repository uses SSH keys for access. It helps to have the key as pulling the repository will also pull and update the submodules.
 From command line to download this repository and all its submodules use command: 
-`git clone --recurse-submodules https://github.com/The3dVehicleguy/Scenery-Editor-X.git`
 
-
+HTTP: `git clone --recurse-submodules https://github.com/The3dVehicleguy/Scenery-Editor-X.git`
+or
+SSH: `git clone --recurse-submodules git@github.com:The3dVehicleguy/Scenery-Editor-X.git`
 
 ### CMake:
-Cmake build is a work on progress.
+Please make sure you have CMake installed and added to your environment variable path.
+Once the repository is cloned go into the folder and run the following terminal commands:
+```
+mkdir build
+cd build
+cmake .. -G Ninja
+```
 
