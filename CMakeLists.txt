@@ -26,7 +26,36 @@ find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 # EDX
 # --------------------------------
 
-add_library(edX
+set(EDX_HEADER_FILES
+    Source/edX/edXLibraryFile.h
+    Source/edX/edXProjectFile.h
+    Source/edX/resource.h
+)
+
+set(EDX_SOURCE_FILES
+    Source/edX/edXWriter.cpp
+    Source/edX/edXReader.cpp
+    Source/edX/edXLibraryWriter.cpp
+    Source/edX/edXLibraryReader.cpp
+)
+
+source_group("Project Format" FILES
+    Source/edX/edXProjectFile.h
+    Source/edX/edXWriter.cpp
+    Source/edX/edXReader.cpp
+)
+
+source_group("Library Format" FILES
+    Source/edX/edXLibraryFile.h
+    Source/edX/edXLibraryWriter.cpp
+    Source/edX/edXLibraryReader.cpp
+)
+
+source_group("Resource" FILES
+    Source/edX/resource.h
+)
+
+add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     Source/edX/edXWriter.cpp
     Source/edX/edXReader.cpp
     Source/edX/edXLibraryWriter.cpp
@@ -36,7 +65,53 @@ add_library(edX
 # X-PlaneSceneryLibrary
 # --------------------------------
 
-add_library(X-PlaneSceneryLibrary
+set(XPLIB_HEADER_FILES
+    Source/X-PlaneSceneryLibrary/XPObj.h
+    Source/X-PlaneSceneryLibrary/XPLibrarySystem.h
+    Source/X-PlaneSceneryLibrary/XPLibraryPath.h
+    Source/X-PlaneSceneryLibrary/XPLayerGroups.h
+    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
+    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
+    Source/X-PlaneSceneryLibrary/XPAsset.h
+    Source/X-PlaneSceneryLibrary/TextUtils.h
+    Source/X-PlaneSceneryLibrary/resource.h
+)
+
+set(XPLIB_SOURCE_FILES
+    Source/X-PlaneSceneryLibrary/DebugMain.cpp
+    Source/X-PlaneSceneryLibrary/TextUtils.cpp
+    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
+    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
+    Source/X-PlaneSceneryLibrary/XPObj.cpp
+)
+
+source_group("Header Files" FILES
+    Source/X-PlaneSceneryLibrary/XPObj.h
+    Source/X-PlaneSceneryLibrary/XPLibrarySystem.h
+    Source/X-PlaneSceneryLibrary/XPLibraryPath.h
+    Source/X-PlaneSceneryLibrary/XPLayerGroups.h
+    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
+    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
+    Source/X-PlaneSceneryLibrary/XPAsset.h
+    Source/X-PlaneSceneryLibrary/TextUtils.h
+)
+
+source_group("Source Files" FILES
+    Source/X-PlaneSceneryLibrary/TextUtils.cpp
+    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
+    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
+    Source/X-PlaneSceneryLibrary/XPObj.cpp
+)
+
+source_group("Resource" FILES
+    Source/X-PlaneSceneryLibrary/resource.h
+)
+
+source_group("Tests" FILES
+    Source/X-PlaneSceneryLibrary/DebugMain.cpp
+)
+
+add_library(X-PlaneSceneryLibrary ${XPLIB_HEADER_FILES} ${XPLIB_SOURCE_FILES}
     Source/X-PlaneSceneryLibrary/DebugMain.cpp
     Source/X-PlaneSceneryLibrary/TextUtils.cpp
     Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
@@ -49,6 +124,7 @@ add_library(X-PlaneSceneryLibrary
 
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
+# file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
 
 add_executable(SceneryEditorX
     ${OPTICK_SOURCES}
@@ -59,10 +135,56 @@ add_executable(SceneryEditorX
     Source/SceneryEditorX/logging/Logging.cpp
     Source/SceneryEditorX/renderer/Camera.cpp
     Source/SceneryEditorX/renderer/VK_Pipeline.cpp
+    Source/SceneryEditorX/ui/About.cpp
+    Source/SceneryEditorX/ui/ContentBrowser.cpp
+    Source/SceneryEditorX/ui/Fonts.h
+    Source/SceneryEditorX/ui/LayerStack.cpp
+    Source/SceneryEditorX/ui/MenuBar.cpp
+    Source/SceneryEditorX/ui/Modals.cpp
+    Source/SceneryEditorX/ui/SettingsPanel.cpp
+    Source/SceneryEditorX/ui/Styles.cpp
+    Source/SceneryEditorX/ui/UI.h
+    Source/SceneryEditorX/options/Settings.cpp
+    Source/SceneryEditorX/options/IniSettings.cpp
+)
+
+source_group("External/Optick" FILES ${OPTICK_SOURCES})
+
+source_group("Core" FILES
+    Source/SceneryEditorX/Main.cpp
+    Source/SceneryEditorX/core/Application.cpp
+    Source/SceneryEditorX/core/DirectoryManager.cpp
+    Source/SceneryEditorX/core/VK_Window.cpp
+)
+
+source_group("Logger" FILES
+    Source/SceneryEditorX/logging/Logging.cpp
+)
+
+source_group("Renderer" FILES
+    Source/SceneryEditorX/renderer/Camera.cpp
+    Source/SceneryEditorX/renderer/VK_Pipeline.cpp
+)
+
+source_group("Settings" FILES
+    Source/SceneryEditorX/options/Settings.cpp
+    Source/SceneryEditorX/options/IniSettings.cpp
+)
+
+source_group("UI" FILES
+    Source/SceneryEditorX/ui/About.cpp
+    Source/SceneryEditorX/ui/ContentBrowser.cpp
+    Source/SceneryEditorX/ui/Fonts.h
+    Source/SceneryEditorX/ui/LayerStack.cpp
+    Source/SceneryEditorX/ui/MenuBar.cpp
+    Source/SceneryEditorX/ui/Modals.cpp
+    Source/SceneryEditorX/ui/SettingsPanel.cpp
+    Source/SceneryEditorX/ui/Styles.cpp
+    Source/SceneryEditorX/ui/UI.h
 )
 
 # Include
-target_include_directories(SceneryEditorX PRIVATE 
+target_include_directories(SceneryEditorX PRIVATE
     Source/SceneryEditorX/
     Dependency/optick/src/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
@@ -71,7 +193,7 @@ target_include_directories(SceneryEditorX PRIVATE
 )
 
 # Link
-target_link_libraries(SceneryEditorX PRIVATE 
+target_link_libraries(SceneryEditorX PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
     imgui::imgui
