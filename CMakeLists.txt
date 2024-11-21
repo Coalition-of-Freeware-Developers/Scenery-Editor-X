@@ -190,6 +190,7 @@ add_executable(SceneryEditorX
     Source/SceneryEditorX/options/Settings.cpp
     Source/SceneryEditorX/SceneryEditorX.rc
     Source/SceneryEditorX/resource.h
+    Source/SceneryEditorX/version.h
 )
 
 source_group("External/Optick" FILES ${OPTICK_SOURCES})
@@ -238,6 +239,7 @@ source_group("UI" FILES
 source_group("Resource" FILES
     ${ICON_FILES}
     Source/SceneryEditorX/resource.h
+    Source/SceneryEditorX/version.h
     Source/SceneryEditorX/SceneryEditorX.rc
 )
 
