@@ -75,6 +75,32 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     Source/edX/edX.rc
 )
 
+# File Format Tester
+# --------------------------------
+
+add_executable(FormatTester
+    Source/edX/testing/main.cpp
+    Source/edX/testing/FormatTester.rc
+    Source/edX/testing/resource.h
+    Source/edX/edXProjectFile.h
+)
+
+target_link_libraries(FormatTester PRIVATE
+    glm::glm-header-only
+    spdlog::spdlog_header_only
+    imgui::imgui
+    glfw
+    dxgi
+    d3d12
+)
+
+target_include_directories(FormatTester PRIVATE
+    Source/SceneryEditorX/
+    ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+    $ENV{VULKAN_SDK}/Include/
+)
+
+
 # X-PlaneSceneryLibrary
 # --------------------------------
 
@@ -276,6 +302,9 @@ target_link_directories(SceneryEditorX PRIVATE
 
 # Defines
 target_compile_definitions(SceneryEditorX PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(FormatTester PRIVATE WIN32_LEAN_AND_MEAN)
 
 # Precompiled Header
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
+
+
