@@ -1,4 +1,4 @@
-#include "../src/xpeditorpch.h"
+#include "core/xpeditor_pch.h"
 
 namespace SceneryEditorX
 {

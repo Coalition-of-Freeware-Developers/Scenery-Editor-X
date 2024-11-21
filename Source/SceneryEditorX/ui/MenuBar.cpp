@@ -1,6 +1,6 @@
 
-#include "../xpeditorpch.h"
-#include "../src/IO/FileDialog.h"
+#include "core/xpeditor_pch.h"
+#include "IO/FileDialog.h"
 #include "UI.h"
 
 #include <cstring>

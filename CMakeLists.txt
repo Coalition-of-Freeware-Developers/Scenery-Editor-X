@@ -1,9 +1,20 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22..)
+
 
 # Build System
 # --------------------------------
 
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependency/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
+
+# Boost Librarys
+# --------------------------------
+#set(Boost_USE_STATIC_LIBS ON)
+
+#set(Boost_INCLUDE_DIR ${_VCPKG_INSTALLED_DIR}/x64-windows-static/include)
+
+#find_package(boost  COMPONENTS array asio chrono filesystem geometry io iostream)
+
+#define  set(Boost_INCLUDE_DIR "path")
 
 project(SceneryEditorX VERSION 1.0)
 
@@ -132,6 +143,9 @@ add_executable(SceneryEditorX
     Source/SceneryEditorX/core/Application.cpp
     Source/SceneryEditorX/core/DirectoryManager.cpp
     Source/SceneryEditorX/core/VK_Window.cpp
+    Source/SceneryEditorX/io/FileDialog.cpp
+    Source/SceneryEditorX/io/FileDialog.h
+    Source/SceneryEditorX/io/LockFile.cpp
     Source/SceneryEditorX/logging/Logging.cpp
     Source/SceneryEditorX/renderer/Camera.cpp
     Source/SceneryEditorX/renderer/VK_Pipeline.cpp
@@ -145,7 +159,6 @@ add_executable(SceneryEditorX
     Source/SceneryEditorX/ui/Styles.cpp
     Source/SceneryEditorX/ui/UI.h
     Source/SceneryEditorX/options/Settings.cpp
-    Source/SceneryEditorX/options/IniSettings.cpp
 )
 
 source_group("External/Optick" FILES ${OPTICK_SOURCES})
@@ -155,6 +168,12 @@ source_group("Core" FILES
     Source/SceneryEditorX/core/Application.cpp
     Source/SceneryEditorX/core/DirectoryManager.cpp
     Source/SceneryEditorX/core/VK_Window.cpp
+)
+
+source_group("IO" FILES
+    Source/SceneryEditorX/io/FileDialog.cpp
+    Source/SceneryEditorX/io/FileDialog.h
+    Source/SceneryEditorX/io/LockFile.cpp
 )
 
 source_group("Logger" FILES
@@ -168,7 +187,6 @@ source_group("Renderer" FILES
 
 source_group("Settings" FILES
     Source/SceneryEditorX/options/Settings.cpp
-    Source/SceneryEditorX/options/IniSettings.cpp
 )
 
 source_group("UI" FILES
@@ -194,6 +212,13 @@ target_include_directories(SceneryEditorX PRIVATE
 
 # Link
 target_link_libraries(SceneryEditorX PRIVATE
+    #boost::array
+    #boost::asio 
+    #boost::chrono
+    #boost::filesystem
+    #boost::geometry
+    #boost::io
+    #boost::iostream
     glm::glm-header-only
     spdlog::spdlog_header_only
     imgui::imgui
@@ -211,4 +236,4 @@ target_link_directories(SceneryEditorX PRIVATE
 target_compile_definitions(SceneryEditorX PRIVATE WIN32_LEAN_AND_MEAN)
 
 # Precompiled Header
-target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/Precompiled.h)
+target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
