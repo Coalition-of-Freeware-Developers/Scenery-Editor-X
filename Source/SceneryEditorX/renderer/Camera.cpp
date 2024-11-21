@@ -1,6 +1,6 @@
 #include "Camera.hpp"
 #include "Transform.hpp"
-#include "../core/Window.hpp"
+#include "core/Window.hpp"
 
 /**
  * @brief Constructs a Camera object and initializes the view matrix.
