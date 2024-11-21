@@ -64,6 +64,7 @@ source_group("Library Format" FILES
 
 source_group("Resource" FILES
     Source/edX/resource.h
+    Source/edX/edX.rc
 )
 
 add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
@@ -71,6 +72,7 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     Source/edX/edXReader.cpp
     Source/edX/edXLibraryWriter.cpp
     Source/edX/edXLibraryReader.cpp
+    Source/edX/edX.rc
 )
 
 # X-PlaneSceneryLibrary
@@ -116,6 +118,7 @@ source_group("Source Files" FILES
 
 source_group("Resource" FILES
     Source/X-PlaneSceneryLibrary/resource.h
+    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
 )
 
 source_group("Tests" FILES
@@ -128,11 +131,35 @@ add_library(X-PlaneSceneryLibrary ${XPLIB_HEADER_FILES} ${XPLIB_SOURCE_FILES}
     Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
     Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
     Source/X-PlaneSceneryLibrary/XPObj.cpp
+    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
 )
 
 # SceneryEditorX
 # --------------------------------
 
+set(ICON_FILES
+    Assets/icon.ico
+    Assets/icon.png
+    Assets/splash_screen.png
+)
+
+set(FONT_FILES
+    Assets/Fonts/industry/Industry-Bold.ttf
+    Assets/Fonts/industry/Industry-Book.ttf
+    Assets/Fonts/industry/Industry-Medium.ttf
+    Assets/Fonts/industry/Industry-Thin.ttf
+    # --------------------------------
+    Assets/Fonts/opensans/OpenSans-Bold.ttf
+    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Italic.ttf
+    Assets/Fonts/opensans/OpenSans-Light.ttf
+    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Regular.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
+)
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 # file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
@@ -201,8 +228,18 @@ source_group("UI" FILES
     Source/SceneryEditorX/ui/UI.h
 )
 
+source_group("Assets/Icons" FILES
+    ${ICON_FILES}
+)
+
+source_group("Assets/Fonts" FILES
+    ${FONT_FILES}
+)
+
 # Include
 target_include_directories(SceneryEditorX PRIVATE
+    ${ICON_FILES}
+    ${FONT_FILES}
     Source/SceneryEditorX/
     Dependency/optick/src/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
@@ -213,7 +250,7 @@ target_include_directories(SceneryEditorX PRIVATE
 # Link
 target_link_libraries(SceneryEditorX PRIVATE
     #boost::array
-    #boost::asio 
+    #boost::asio
     #boost::chrono
     #boost::filesystem
     #boost::geometry
