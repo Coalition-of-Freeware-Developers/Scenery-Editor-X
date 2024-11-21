@@ -148,7 +148,6 @@ set(FONT_FILES
     Assets/Fonts/industry/Industry-Book.ttf
     Assets/Fonts/industry/Industry-Medium.ttf
     Assets/Fonts/industry/Industry-Thin.ttf
-    # --------------------------------
     Assets/Fonts/opensans/OpenSans-Bold.ttf
     Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
     Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
@@ -160,12 +159,15 @@ set(FONT_FILES
     Assets/Fonts/opensans/OpenSans-SemiBold.ttf
     Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
 )
+
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 # file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
 
 add_executable(SceneryEditorX
     ${OPTICK_SOURCES}
+    ${ICON_FILES}
+    # ${FONT_FILES}
     Source/SceneryEditorX/Main.cpp
     Source/SceneryEditorX/core/Application.cpp
     Source/SceneryEditorX/core/DirectoryManager.cpp
@@ -186,9 +188,14 @@ add_executable(SceneryEditorX
     Source/SceneryEditorX/ui/Styles.cpp
     Source/SceneryEditorX/ui/UI.h
     Source/SceneryEditorX/options/Settings.cpp
+    Source/SceneryEditorX/SceneryEditorX.rc
+    Source/SceneryEditorX/resource.h
 )
 
 source_group("External/Optick" FILES ${OPTICK_SOURCES})
+# source_group("External/Icons" FILES ${ICON_FILES})
+# source_group("External/Fonts" FILES ${FONT_FILES})
+
 
 source_group("Core" FILES
     Source/SceneryEditorX/Main.cpp
@@ -228,18 +235,14 @@ source_group("UI" FILES
     Source/SceneryEditorX/ui/UI.h
 )
 
-source_group("Assets/Icons" FILES
+source_group("Resource" FILES
     ${ICON_FILES}
-)
-
-source_group("Assets/Fonts" FILES
-    ${FONT_FILES}
+    Source/SceneryEditorX/resource.h
+    Source/SceneryEditorX/SceneryEditorX.rc
 )
 
 # Include
 target_include_directories(SceneryEditorX PRIVATE
-    ${ICON_FILES}
-    ${FONT_FILES}
     Source/SceneryEditorX/
     Dependency/optick/src/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
