@@ -45,6 +45,7 @@ static void glfw_error_callback(int error, const char *description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
+
 static void check_vk_result(VkResult err)
 {
     if (err == 0)
@@ -73,7 +74,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags,
     fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
     return VK_FALSE;
 }
-#endif // APP_USE_VULKAN_DEBUG_REPORT
+#endif
 
 static bool IsExtensionAvailable(const ImVector<VkExtensionProperties> &properties, const char *extension)
 {
@@ -246,8 +247,6 @@ static void SetupVulkan(ImVector<const char *> instance_extensions)
     }
 }
 
-// All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
-// Your real engine/app may not use them.
 static void SetupVulkanWindow(ImGui_ImplVulkanH_Window *wd, VkSurfaceKHR surface, int width, int height)
 {
     wd->Surface = surface;
@@ -429,7 +428,7 @@ int main(int, char **)
         return 1;
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Vulkan support
-    GLFWwindow* window = glfwCreateWindow(800, 600, "edX File Format Tester - Vulkan", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(800, 600, "Scenery Editor X | File Format Tester", nullptr, nullptr);
     if (!glfwVulkanSupported())
     {
         printf("GLFW: Vulkan Not Supported\n");
@@ -461,22 +460,14 @@ int main(int, char **)
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
-    //io.ConfigViewportsNoAutoMerge = true;
-    //io.ConfigViewportsNoTaskBarIcon = true;
+    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-    // 
+
+
     // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
     ImGuiStyle &style = ImGui::GetStyle();
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForVulkan(window, true);
@@ -576,8 +567,6 @@ int main(int, char **)
 
     return 0;
 }
-
-
 
 // Vulkan setup functions (simplified)
 void CheckVkResult(VkResult err)
@@ -689,7 +678,33 @@ void SetupVulkan(VkInstance &instance,
 }
 
 
+// Function to strip the file extension if it exists
+std::string StripExtension(const std::string &filename)
+{
+    size_t last_dot = filename.find_last_of(".");
+    if (last_dot == std::string::npos)
+        return filename;
+    return filename.substr(0, last_dot);
+}
+
 // File save/load implementations
+void SaveProject(const std::string &directory, const ProjectFile::projectFile &project)
+{
+    std::string filename = StripExtension(project.filename) + ".edX";
+    std::ofstream outFile(directory + "/" + filename);
+    if (!outFile)
+    {
+        std::cerr << "Failed to open file for writing!" << std::endl;
+        return;
+    }
+    outFile << "SceneryName: " << project.sceneryName << "\n";
+    outFile << "EditorVersion: " << project.editorVersion << "\n";
+    outFile << "XPVersion: " << project.XPVersion << "\n";
+    outFile.close();
+    std::cout << "File saved to " << directory + "/" + filename << std::endl;
+}
+
+/*
 void SaveProject(const std::string &directory, const ProjectFile::projectFile &project)
 {
     std::ofstream outFile(directory + "/" + project.filename + ".edX");
@@ -704,6 +719,7 @@ void SaveProject(const std::string &directory, const ProjectFile::projectFile &p
     outFile.close();
     std::cout << "File saved to " << directory + "/" + project.filename + ".edX" << std::endl;
 }
+*/
 
 void LoadProject(const std::string &filePath, ProjectFile::projectFile &project)
 {
