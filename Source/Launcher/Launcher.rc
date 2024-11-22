@@ -17,6 +17,7 @@
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -24,18 +25,18 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE
+1 TEXTINCLUDE 
 BEGIN
     "resource.h\0"
 END
 
-2 TEXTINCLUDE
+2 TEXTINCLUDE 
 BEGIN
     "#include ""winres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE
+3 TEXTINCLUDE 
 BEGIN
     "\r\n"
     "\0"
@@ -50,7 +51,7 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,0,0,02
+ FILEVERSION 0,0,0,2
  PRODUCTVERSION 0,0,2,26
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -85,20 +86,20 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// BMP
-//
-
-SEDX_SPLASH             BMP                     "G:\\ART_REPO-TRAY\\X-Plane 12\\Scenery-Editor-X\\Assets\\splash_screen.bmp"
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
 // Icon
 //
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_ICON1               ICON                    "G:\\ART_REPO-TRAY\\X-Plane 12\\Scenery-Editor-X\\Assets\\icon.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+SEDX_SPLASH             BITMAP                  "G:\\ART_REPO-TRAY\\X-Plane 12\\Scenery-Editor-X\\Assets\\splash_screen.bmp"
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

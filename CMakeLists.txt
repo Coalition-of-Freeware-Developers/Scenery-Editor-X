@@ -25,7 +25,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(ICON_FILES
     Assets/icon.ico
     Assets/icon.png
-    Assets/splash_screen.bmp
 )
 
 set(FONT_FILES
@@ -188,21 +187,27 @@ add_library(X-PlaneSceneryLibrary
 # SceneryEditorX | Launcher
 # --------------------------------
 
-source_group("Resources" FILES
+source_group("Resource" FILES
     ${ICON_FILES}
+    Assets/splash_screen.bmp
     Source/Launcher/resource.h
     Source/Launcher/Launcher.rc
 )
 
 source_group("Core" FILES
     Source/Launcher/Main.cpp
+    Source/SceneryEditorX/version.h
+    Source/Launcher/Logger.cpp
 )
 
 add_executable(Launcher
     ${ICON_FILES}
+    Assets/splash_screen.bmp
     Source/Launcher/Main.cpp
     Source/Launcher/resource.h
     Source/Launcher/Launcher.rc
+    Source/SceneryEditorX/version.h
+    Source/Launcher/Logger.cpp
 )
 
 target_link_libraries(Launcher PRIVATE
@@ -211,9 +216,12 @@ target_link_libraries(Launcher PRIVATE
     d3d12
 )
 
-target_include_directories(FormatTester PRIVATE
+target_include_directories(Launcher PRIVATE
+    Source/SceneryEditorX/logging
     Source/SceneryEditorX/
 )
+
+target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 
 # SceneryEditorX
 # --------------------------------
@@ -333,9 +341,9 @@ target_link_directories(SceneryEditorX PRIVATE
 )
 
 # Defines
-target_compile_definitions(SceneryEditorX PRIVATE WIN32_LEAN_AND_MEAN)
-target_compile_definitions(FormatTester PRIVATE WIN32_LEAN_AND_MEAN)
-target_compile_definitions(Launcher PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(SceneryEditorX   PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(FormatTester     PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
 
 # Precompiled Header
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)

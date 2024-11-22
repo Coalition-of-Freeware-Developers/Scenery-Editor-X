@@ -1,10 +1,15 @@
 #include <windows.h>
-#include <thread>
 #include <shellapi.h>
+#include <thread>
+
+#include "resource.h"
+#include <Logging.hpp>
+
 
 // Global Variables
 HBITMAP hSplashBitmap; // Handle for the splash screen image
 HWND hSplashWnd;       // Handle for the splash window
+
 
 // Function to create the splash screen window
 LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -13,6 +18,7 @@ LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     {
     case WM_PAINT:
     {
+        spdlog::info("Painting splash screen.");
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
         HDC hMemDC = CreateCompatibleDC(hdc);
@@ -25,6 +31,7 @@ LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
         return 0;
     }
     case WM_DESTROY:
+        spdlog::info("Destroying splash screen.");
         PostQuitMessage(0);
         return 0;
     }
@@ -35,10 +42,15 @@ LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 void PerformPreloading()
 {
     // Simulate preloading tasks (replace with actual functions)
-    Sleep(3000); // Simulating tasks taking 3 seconds
+    Sleep(8000);
+    spdlog::info("Preloading tasks completed.");
+
+    spdlog::info("Launching main program.");
     // After preloading, launch the main program
-    ShellExecute(nullptr, L"open", L"Scenery Editor X.exe", nullptr, nullptr, SW_SHOWDEFAULT);
+    ShellExecute(nullptr, "open", "SceneryEditorX.exe", nullptr, nullptr, SW_SHOWDEFAULT);
+
     // Close the splash screen
+    spdlog::info("Closing splash screen.");
     PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
 }
 
@@ -49,7 +61,8 @@ void ShowSplashScreen(HINSTANCE hInstance)
     hSplashBitmap = LoadBitmap(hInstance, MAKEINTRESOURCE(SEDX_SPLASH));
     if (!hSplashBitmap)
     {
-        MessageBox(nullptr, L"Failed to load splash screen image.", L"Error", MB_OK | MB_ICONERROR);
+        spdlog::error("Failed to load splash screen image.");
+        MessageBox(nullptr, "Failed to load splash screen image.", "Error", MB_OK | MB_ICONERROR);
         return;
     }
 
@@ -58,7 +71,7 @@ void ShowSplashScreen(HINSTANCE hInstance)
     wc.lpfnWndProc = SplashWndProc;
     wc.hInstance = hInstance;
     wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    wc.lpszClassName = L"SplashScreen";
+    wc.lpszClassName = "SplashScreen";
     RegisterClass(&wc);
 
     // Get bitmap dimensions
@@ -67,7 +80,7 @@ void ShowSplashScreen(HINSTANCE hInstance)
 
     // Create the splash window
     hSplashWnd = CreateWindowEx(0,
-                                L"SplashScreen",
+                                "SplashScreen",
                                 nullptr,
                                 WS_POPUP | WS_VISIBLE,
                                 (GetSystemMetrics(SM_CXSCREEN) - bitmap.bmWidth) / 2,
@@ -81,7 +94,8 @@ void ShowSplashScreen(HINSTANCE hInstance)
 
     if (!hSplashWnd)
     {
-        MessageBox(nullptr, L"Failed to create splash screen window.", L"Error", MB_OK | MB_ICONERROR);
+        spdlog::critical("Failed to create splash screen window.");
+        MessageBox(nullptr, "Failed to create splash screen window.", "Error", MB_OK | MB_ICONERROR);
         return;
     }
 
@@ -99,7 +113,10 @@ void ShowSplashScreen(HINSTANCE hInstance)
 }
 
 // Entry point
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int APIENTRY WinMain(_In_ HINSTANCE hInstance,
+                     _In_opt_ HINSTANCE hPrevInstance,
+                     _In_ LPSTR lpCmdLine,
+                     _In_ int nCmdShow)
 {
     ShowSplashScreen(hInstance);
     return 0;

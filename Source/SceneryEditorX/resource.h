@@ -9,7 +9,6 @@
 #define SEDX_VER_BUILD                  197
 #define SUBVERSION_MASK                 0x000000FF
 #define SPVERSION_MASK                  0x0000FF00
-#define SEDX_SPLASH                     65535
 
 // Next default values for new objects
 // 
