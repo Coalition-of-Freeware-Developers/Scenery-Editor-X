@@ -22,6 +22,29 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(ICON_FILES
+    Assets/icon.ico
+    Assets/icon.png
+    Assets/splash_screen.bmp
+)
+
+set(FONT_FILES
+    Assets/Fonts/industry/Industry-Bold.ttf
+    Assets/Fonts/industry/Industry-Book.ttf
+    Assets/Fonts/industry/Industry-Medium.ttf
+    Assets/Fonts/industry/Industry-Thin.ttf
+    Assets/Fonts/opensans/OpenSans-Bold.ttf
+    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Italic.ttf
+    Assets/Fonts/opensans/OpenSans-Light.ttf
+    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Regular.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
+)
+
 # Packages
 # --------------------------------
 
@@ -151,7 +174,9 @@ source_group("Tests" FILES
     Source/X-PlaneSceneryLibrary/DebugMain.cpp
 )
 
-add_library(X-PlaneSceneryLibrary ${XPLIB_HEADER_FILES} ${XPLIB_SOURCE_FILES}
+add_library(X-PlaneSceneryLibrary
+    ${XPLIB_HEADER_FILES}
+    ${XPLIB_SOURCE_FILES}
     Source/X-PlaneSceneryLibrary/DebugMain.cpp
     Source/X-PlaneSceneryLibrary/TextUtils.cpp
     Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
@@ -160,31 +185,38 @@ add_library(X-PlaneSceneryLibrary ${XPLIB_HEADER_FILES} ${XPLIB_SOURCE_FILES}
     Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
 )
 
-# SceneryEditorX
+# SceneryEditorX | Launcher
 # --------------------------------
 
-set(ICON_FILES
-    Assets/icon.ico
-    Assets/icon.png
-    Assets/splash_screen.png
+source_group("Resources" FILES
+    ${ICON_FILES}
+    Source/Launcher/resource.h
+    Source/Launcher/Launcher.rc
 )
 
-set(FONT_FILES
-    Assets/Fonts/industry/Industry-Bold.ttf
-    Assets/Fonts/industry/Industry-Book.ttf
-    Assets/Fonts/industry/Industry-Medium.ttf
-    Assets/Fonts/industry/Industry-Thin.ttf
-    Assets/Fonts/opensans/OpenSans-Bold.ttf
-    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Italic.ttf
-    Assets/Fonts/opensans/OpenSans-Light.ttf
-    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Regular.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
+source_group("Core" FILES
+    Source/Launcher/Main.cpp
 )
+
+add_executable(Launcher
+    ${ICON_FILES}
+    Source/Launcher/Main.cpp
+    Source/Launcher/resource.h
+    Source/Launcher/Launcher.rc
+)
+
+target_link_libraries(Launcher PRIVATE
+    spdlog::spdlog_header_only
+    dxgi
+    d3d12
+)
+
+target_include_directories(FormatTester PRIVATE
+    Source/SceneryEditorX/
+)
+
+# SceneryEditorX
+# --------------------------------
 
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
@@ -303,6 +335,7 @@ target_link_directories(SceneryEditorX PRIVATE
 # Defines
 target_compile_definitions(SceneryEditorX PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(FormatTester PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(Launcher PRIVATE WIN32_LEAN_AND_MEAN)
 
 # Precompiled Header
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
