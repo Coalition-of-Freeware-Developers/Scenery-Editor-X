@@ -20,6 +20,7 @@
 #endif
 
 #include "../edXProjectFile.h"
+#include "FileBrowser.hpp"
 
 //#define APP_USE_UNLIMITED_FRAME_RATE
 #ifdef _DEBUG
@@ -465,7 +466,6 @@ int main(int, char **)
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
 
-
     // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
     ImGuiStyle &style = ImGui::GetStyle();
 
@@ -514,10 +514,18 @@ int main(int, char **)
         ImGui::InputText("XP Version", project.XPVersion.data(), 256);
         ImGui::InputText("File Name", fileNameBuffer, 256);
 
+        // Todo - Add the returned directory to the project source from ShowDirectoryBrowser
         ImGui::Text("Current Directory: %s", directory.c_str());
         if (ImGui::Button("Select Directory"))
         {
-            std::cout << "Directory selection not implemented in this example." << std::endl;
+            ShowDirectoryBrowser();
+            /*
+            const char *selectedDirectory = ShowDirectoryBrowser();
+            if (selectedDirectory != nullptr)
+            {
+                directory = selectedDirectory;
+            }
+            */
         }
 
         if (ImGui::Button("Save File"))
@@ -528,6 +536,7 @@ int main(int, char **)
 
         if (ImGui::Button("Load File"))
         {
+            ShowFileBrowser();
             LoadProject(directory + "/" + fileNameBuffer, project);
         }
 
@@ -703,23 +712,6 @@ void SaveProject(const std::string &directory, const ProjectFile::projectFile &p
     outFile.close();
     std::cout << "File saved to " << directory + "/" + filename << std::endl;
 }
-
-/*
-void SaveProject(const std::string &directory, const ProjectFile::projectFile &project)
-{
-    std::ofstream outFile(directory + "/" + project.filename + ".edX");
-    if (!outFile)
-    {
-        std::cerr << "Failed to open file for writing!" << std::endl;
-        return;
-    }
-    outFile << "SceneryName: " << project.sceneryName << "\n";
-    outFile << "EditorVersion: " << project.editorVersion << "\n";
-    outFile << "XPVersion: " << project.XPVersion << "\n";
-    outFile.close();
-    std::cout << "File saved to " << directory + "/" + project.filename + ".edX" << std::endl;
-}
-*/
 
 void LoadProject(const std::string &filePath, ProjectFile::projectFile &project)
 {

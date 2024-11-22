@@ -80,6 +80,8 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
 
 add_executable(FormatTester
     Source/edX/testing/main.cpp
+    Source/edX/testing/FileBrowser.cpp
+    Source/edX/testing/FileBrowser.hpp
     Source/edX/testing/FormatTester.rc
     Source/edX/testing/resource.h
     Source/edX/edXProjectFile.h
