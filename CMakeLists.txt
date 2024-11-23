@@ -186,6 +186,7 @@ add_library(X-PlaneSceneryLibrary
 
 source_group("Resource" FILES
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     Assets/splash_screen.bmp
     Source/Launcher/resource.h
     Source/Launcher/Launcher.rc
@@ -195,16 +196,19 @@ source_group("Core" FILES
     Source/Launcher/Main.cpp
     Source/SceneryEditorX/version.h
     Source/Launcher/Logger.cpp
+    Source/Launcher/RegInit.h
 )
 
 add_executable(Launcher
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     Assets/splash_screen.bmp
     Source/Launcher/Main.cpp
     Source/Launcher/resource.h
     Source/Launcher/Launcher.rc
     Source/SceneryEditorX/version.h
     Source/Launcher/Logger.cpp
+    Source/Launcher/RegInit.h
 )
 
 target_link_libraries(Launcher PRIVATE

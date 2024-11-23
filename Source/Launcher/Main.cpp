@@ -4,12 +4,19 @@
 
 #include "resource.h"
 #include <Logging.hpp>
+#include "RegInit.h"
 
 
 // Global Variables
 HBITMAP hSplashBitmap; // Handle for the splash screen image
 HWND hSplashWnd;       // Handle for the splash window
 
+// Function to initialize the registry
+void initRegestry()
+{
+    RegisterEDXAssociation();
+    //RegisterLibraryAssociation();
+}
 
 // Function to create the splash screen window
 LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -42,6 +49,13 @@ LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 void PerformPreloading()
 {
     // Simulate preloading tasks (replace with actual functions)
+    Sleep(600);
+    spdlog::info("Preloading tasks started.");
+    Sleep(600);
+    spdlog::info("Loading resources.");
+    spdlog::info("Updating Registry");
+    initRegestry();
+    spdlog::info("Registry init complete");
     Sleep(8000);
     spdlog::info("Preloading tasks completed.");
 

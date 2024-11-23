@@ -8,6 +8,8 @@
 #define IDI_ICON1                       106
 #define SEDX_SPLASH                     108
 #define SEDX_VER_BUILD                  197
+#define IDR_REGISTRY_EDX_FORMAT         200
+#define IDR_REGISTRY_LIBRARY_FORMAT     201
 #define SUBVERSION_MASK                 0x000000FF
 #define SPVERSION_MASK                  0x0000FF00
 

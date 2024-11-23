@@ -101,9 +101,17 @@ IDI_ICON1               ICON                    "G:\\ART_REPO-TRAY\\X-Plane 12\\
 
 SEDX_SPLASH             BITMAP                  "G:\\ART_REPO-TRAY\\X-Plane 12\\Scenery-Editor-X\\Assets\\splash_screen.bmp"
 
-#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
+//
+// RGS
+//
 
+IDR_REGISTRY_EDX_FORMAT RGS "edXReg.rgs"
+
+IDR_REGISTRY_LIBRARY_FORMAT RGS "edXLibReg.rgs"
+
+#endif // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
 
 
 #ifndef APSTUDIO_INVOKED
@@ -114,5 +122,4 @@ SEDX_SPLASH             BITMAP                  "G:\\ART_REPO-TRAY\\X-Plane 12\\
 
 
 /////////////////////////////////////////////////////////////////////////////
-#endif    // not APSTUDIO_INVOKED
-
+#endif // not APSTUDIO_INVOKED
