@@ -1,8 +1,8 @@
-#include <core/DirectoryManager.hpp>
 #include "VK_Pipeline.hpp"
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
+#include <windows.h>
 
 //#ifndef ENGINE_DIR
 //#ifdef _DEBUG
@@ -26,10 +26,30 @@ namespace fs = std::filesystem;
 namespace SceneryEditorX
 {
 
+std::string getRegistryKeyPath()
+{
+    HKEY hKey;
+    char path[256];
+    DWORD pathLen = sizeof(path);
+    std::string registryPath = "SOFTWARE\\SceneryEditorX";
+
+    if (RegOpenKeyExA(HKEY_CURRENT_USER, registryPath.c_str(), 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+    {
+        if (RegQueryValueExA(hKey, "Location", NULL, NULL, (LPBYTE)path, &pathLen) == ERROR_SUCCESS)
+        {
+            RegCloseKey(hKey);
+            return std::string(path, pathLen - 1); // Remove the null terminator
+        }
+        RegCloseKey(hKey);
+    }
+    throw std::runtime_error("Failed to get registry key path");
+}
+
 VK_Pipeline::VK_Pipeline(const std::string &vertFilepath, const std::string &fragFilepath)
 {
-    // Construct paths relative to the executable directory
-    fs::path exeDir = fs::path(DirectoryInit::absolutePath).parent_path();
+    // Get the path from the registry
+    std::string absolutePath = getRegistryKeyPath();
+    fs::path exeDir = fs::path(absolutePath).parent_path();
     fs::path shaderDir = exeDir / "resources" / "cache";
 
     // Combine with provided shader filenames

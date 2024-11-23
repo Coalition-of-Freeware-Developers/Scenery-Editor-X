@@ -10,6 +10,7 @@
  * This class provides a static interface for initializing the logger and
  * accessing the logger instance. It uses the spdlog library for logging.
  */
+
 class Log
 {
 public:
