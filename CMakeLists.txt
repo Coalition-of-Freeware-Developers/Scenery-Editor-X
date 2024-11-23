@@ -102,6 +102,8 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
 
 add_executable(FormatTester
     Source/edX/testing/main.cpp
+    Source/edX/testing/FileBrowser.cpp
+    Source/edX/testing/FileBrowser.hpp
     Source/edX/testing/FormatTester.rc
     Source/edX/testing/resource.h
     Source/edX/edXProjectFile.h
@@ -226,6 +228,33 @@ target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 # SceneryEditorX
 # --------------------------------
 
+set(ICON_FILES
+    Assets/icon.ico
+    Assets/icon_edX.ico
+)
+
+set(FONT_FILES
+    Assets/Fonts/industry/Industry-Bold.ttf
+    Assets/Fonts/industry/Industry-Book.ttf
+    Assets/Fonts/industry/Industry-Medium.ttf
+    Assets/Fonts/industry/Industry-Thin.ttf
+    Assets/Fonts/opensans/OpenSans-Bold.ttf
+    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Italic.ttf
+    Assets/Fonts/opensans/OpenSans-Light.ttf
+    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Regular.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
+)
+
+set(REGISTRY_KEYS
+    Source/SceneryEditorX/edXLibReg.rgs
+    Source/SceneryEditorX/edXReg.rgs
+)
+
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 # file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
@@ -233,6 +262,7 @@ file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 add_executable(SceneryEditorX
     ${OPTICK_SOURCES}
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     # ${FONT_FILES}
     Source/SceneryEditorX/Main.cpp
     Source/SceneryEditorX/core/Application.cpp
@@ -304,6 +334,7 @@ source_group("UI" FILES
 
 source_group("Resource" FILES
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     Source/SceneryEditorX/resource.h
     Source/SceneryEditorX/version.h
     Source/SceneryEditorX/SceneryEditorX.rc
@@ -313,6 +344,7 @@ source_group("Resource" FILES
 target_include_directories(SceneryEditorX PRIVATE
     Source/SceneryEditorX/
     Dependency/optick/src/
+    ${REGISTRY_KEYS}
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
     ${Stb_INCLUDE_DIR}
@@ -347,5 +379,6 @@ target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
 
 # Precompiled Header
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
+
 
 

@@ -4,8 +4,7 @@ build/
 /.vs
 bin/
 bin-int/
-/example
-/VulkanInstallers
+shader_tests/
 
 # User-specific files
 *.rsuser
