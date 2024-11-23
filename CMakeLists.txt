@@ -167,8 +167,7 @@ add_library(X-PlaneSceneryLibrary ${XPLIB_HEADER_FILES} ${XPLIB_SOURCE_FILES}
 
 set(ICON_FILES
     Assets/icon.ico
-    Assets/icon.png
-    Assets/splash_screen.png
+    Assets/icon_edX.ico
 )
 
 set(FONT_FILES
@@ -188,6 +187,11 @@ set(FONT_FILES
     Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
 )
 
+set(REGISTRY_KEYS
+    Source/SceneryEditorX/edXLibReg.rgs
+    Source/SceneryEditorX/edXReg.rgs
+)
+
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 # file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
@@ -195,6 +199,7 @@ file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 add_executable(SceneryEditorX
     ${OPTICK_SOURCES}
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     # ${FONT_FILES}
     Source/SceneryEditorX/Main.cpp
     Source/SceneryEditorX/core/Application.cpp
@@ -266,6 +271,7 @@ source_group("UI" FILES
 
 source_group("Resource" FILES
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     Source/SceneryEditorX/resource.h
     Source/SceneryEditorX/version.h
     Source/SceneryEditorX/SceneryEditorX.rc
@@ -275,6 +281,7 @@ source_group("Resource" FILES
 target_include_directories(SceneryEditorX PRIVATE
     Source/SceneryEditorX/
     Dependency/optick/src/
+    ${REGISTRY_KEYS}
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
     ${Stb_INCLUDE_DIR}
