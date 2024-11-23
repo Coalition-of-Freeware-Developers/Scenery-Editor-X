@@ -39,6 +39,18 @@ set(FONT_FILES
     Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
 )
 
+set(REGISTRY_KEYS
+    Source/SceneryEditorX/edXLibReg.rgs
+    Source/SceneryEditorX/edXReg.rgs
+    Source/SceneryEditorX/ProgramReg.rgs
+)
+
+set(ICON_FILES
+    Assets/icon.ico
+    Assets/icon_edX.ico
+    Assets/icon_testing.ico
+)
+
 # Packages
 # --------------------------------
 
@@ -195,8 +207,15 @@ source_group("Resource" FILES
 source_group("Core" FILES
     Source/Launcher/Main.cpp
     Source/SceneryEditorX/version.h
-    Source/Launcher/Logger.cpp
+    Source/Launcher/Logging.cpp
+    Source/Launcher/Logging.hpp
+    Source/Launcher/DirectoryManager.cpp
+)
+
+source_group("Registry" FILES
     Source/Launcher/RegInit.h
+    Source/Launcher/RegistryCheck.h
+    Source/Launcher/ElevatePerms.h
 )
 
 add_executable(Launcher
@@ -206,9 +225,13 @@ add_executable(Launcher
     Source/Launcher/Main.cpp
     Source/Launcher/resource.h
     Source/Launcher/Launcher.rc
-    Source/SceneryEditorX/version.h
-    Source/Launcher/Logger.cpp
+    Source/Launcher/Logging.cpp
+    Source/Launcher/Logging.hpp
     Source/Launcher/RegInit.h
+    Source/Launcher/RegistryCheck.h
+    Source/Launcher/ElevatePerms.h
+    Source/Launcher/DirectoryManager.cpp
+    Source/SceneryEditorX/version.h
 )
 
 target_link_libraries(Launcher PRIVATE
@@ -227,34 +250,6 @@ target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 # SceneryEditorX
 # --------------------------------
 
-set(ICON_FILES
-    Assets/icon.ico
-    Assets/icon_edX.ico
-    Assets/icon_testing.ico
-)
-
-set(FONT_FILES
-    Assets/Fonts/industry/Industry-Bold.ttf
-    Assets/Fonts/industry/Industry-Book.ttf
-    Assets/Fonts/industry/Industry-Medium.ttf
-    Assets/Fonts/industry/Industry-Thin.ttf
-    Assets/Fonts/opensans/OpenSans-Bold.ttf
-    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Italic.ttf
-    Assets/Fonts/opensans/OpenSans-Light.ttf
-    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Regular.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
-)
-
-set(REGISTRY_KEYS
-    Source/SceneryEditorX/edXLibReg.rgs
-    Source/SceneryEditorX/edXReg.rgs
-)
-
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 # file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
@@ -266,7 +261,6 @@ add_executable(SceneryEditorX
     # ${FONT_FILES}
     Source/SceneryEditorX/Main.cpp
     Source/SceneryEditorX/core/Application.cpp
-    Source/SceneryEditorX/core/DirectoryManager.cpp
     Source/SceneryEditorX/core/VK_Window.cpp
     Source/SceneryEditorX/io/FileDialog.cpp
     Source/SceneryEditorX/io/FileDialog.h

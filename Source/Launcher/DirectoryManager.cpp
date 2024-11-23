@@ -2,19 +2,8 @@
 
 namespace fs = std::filesystem;
 
-/*
-DirectoryInit::DirectoryInit()
-{
-    spdlog::info("Program folder directory checking");
-}
-
-DirectoryInit::~DirectoryInit()
-{
-    spdlog::info("Program folder directory checking complete");
-}
-*/
-
 #include <filesystem>
+#include "Logging.hpp"
 
 // Define the static members
 std::string DirectoryInit::absolutePath = "";
@@ -79,6 +68,7 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
                                                     "librarys/custom",
                                                     "logs",
                                                     "plugins",
+                                                    "projects",
                                                     "resources",
                                                     "resources/cache",
                                                     "resources/cache/shaders",
