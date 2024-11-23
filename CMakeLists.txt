@@ -22,11 +22,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(ICON_FILES
-    Assets/icon.ico
-    Assets/icon.png
-)
-
 set(FONT_FILES
     Assets/Fonts/industry/Industry-Bold.ttf
     Assets/Fonts/industry/Industry-Book.ttf
@@ -231,6 +226,7 @@ target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 set(ICON_FILES
     Assets/icon.ico
     Assets/icon_edX.ico
+    Assets/icon_testing.ico
 )
 
 set(FONT_FILES
