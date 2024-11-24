@@ -9,11 +9,9 @@ set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependency/vcpkg/scripts/buildsyste
 # Boost Librarys
 # --------------------------------
 #set(Boost_USE_STATIC_LIBS ON)
-
 #set(Boost_INCLUDE_DIR ${_VCPKG_INSTALLED_DIR}/x64-windows-static/include)
 
 #find_package(boost  COMPONENTS array asio chrono filesystem geometry io iostream)
-
 #define  set(Boost_INCLUDE_DIR "path")
 
 project(SceneryEditorX VERSION 1.0)
@@ -60,6 +58,7 @@ find_package(spdlog   CONFIG REQUIRED)
 find_package(imgui    CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(Stb             REQUIRED)
+find_package(curl CONFIG REQUIRED)
 
 find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
@@ -130,7 +129,6 @@ target_include_directories(FormatTester PRIVATE
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
 )
-
 
 # X-PlaneSceneryLibrary
 # --------------------------------
@@ -208,14 +206,13 @@ source_group("Core" FILES
     Source/Launcher/Main.cpp
     Source/SceneryEditorX/version.h
     Source/Launcher/Logging.cpp
-    Source/Launcher/Logging.hpp
     Source/Launcher/DirectoryManager.cpp
-    Source/Launcher/SplashHandler.cpp
+    Source/Launcher/SplashHandler.h
 )
 
 source_group("Registry" FILES
     Source/Launcher/RegInit.h
-    Source/Launcher/RegistryCheck.h
+    Source/Launcher/RegCheck.h
     Source/Launcher/ElevatePerms.h
 )
 
@@ -227,12 +224,11 @@ add_executable(Launcher
     Source/Launcher/resource.h
     Source/Launcher/Launcher.rc
     Source/Launcher/Logging.cpp
-    Source/Launcher/Logging.hpp
     Source/Launcher/RegInit.h
-    Source/Launcher/RegistryCheck.h
+    Source/Launcher/RegCheck.h
     Source/Launcher/ElevatePerms.h
     Source/Launcher/DirectoryManager.cpp
-    Source/Launcher/SplashHandler.cpp
+    Source/Launcher/SplashHandler.h
     Source/SceneryEditorX/version.h
 )
 
@@ -240,6 +236,7 @@ target_link_libraries(Launcher PRIVATE
     spdlog::spdlog_header_only
     dxgi
     d3d12
+    curl
 )
 
 target_include_directories(Launcher PRIVATE
@@ -286,9 +283,6 @@ add_executable(SceneryEditorX
 )
 
 source_group("External/Optick" FILES ${OPTICK_SOURCES})
-# source_group("External/Icons" FILES ${ICON_FILES})
-# source_group("External/Fonts" FILES ${FONT_FILES})
-
 
 source_group("Core" FILES
     Source/SceneryEditorX/Main.cpp
@@ -348,17 +342,11 @@ target_include_directories(SceneryEditorX PRIVATE
 
 # Link
 target_link_libraries(SceneryEditorX PRIVATE
-    #boost::array
-    #boost::asio
-    #boost::chrono
-    #boost::filesystem
-    #boost::geometry
-    #boost::io
-    #boost::iostream
     glm::glm-header-only
     spdlog::spdlog_header_only
     imgui::imgui
     imguizmo::imguizmo
+    curl
     glfw
     dxgi
     d3d12
@@ -368,13 +356,18 @@ target_link_directories(SceneryEditorX PRIVATE
     $ENV{VULKAN_SDK}/Lib/
 )
 
+# Define SEDX_DEBUG for Debug builds using generator expressions
+target_compile_definitions(Launcher         PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG>)
+target_compile_definitions(SceneryEditorX   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG>)
+
+# --------------------------------
 # Defines
+# --------------------------------
 target_compile_definitions(SceneryEditorX   PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(FormatTester     PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
 
+# --------------------------------
 # Precompiled Header
+# --------------------------------
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
-
-
-
