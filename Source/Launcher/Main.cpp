@@ -23,121 +23,23 @@ namespace Launcher
             CreateSplash();
             Setup();
             MainLoop();
-            Finish();
+            CleanUp();
         }
 
-        void Setup()
-        {
-            OperationThreads();
-            PerformPreloading();
+        //void Setup()
+        //{
+        //    OperationThreads();
+        //    PerformPreloading();
+        //}
+
+
+
+    void CreateSplash()
+    {
+
         }
 
-        // Global Variables
-        HBITMAP hSplashBitmap; // Handle for the splash screen image
-        HWND hSplashWnd;       // Handle for the splash window
-    
-        static LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-        {
-            Loader *pThis = nullptr;
-            if (message == WM_NCCREATE)
-            {
-                CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
-                pThis = (Loader *)pCreate->lpCreateParams;
-                SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pThis);
-            }
-            else
-            {
-                pThis = (Loader *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-            }
-
-            if (pThis)
-            {
-                return pThis->RealSplashWndProc(hWnd, message, wParam, lParam);
-            }
-            return DefWindowProc(hWnd, message, wParam, lParam);
-        }
-
-        LRESULT RealSplashWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-        {
-            switch (message)
-            {
-            case WM_PAINT:
-            {
-                PAINTSTRUCT ps;
-                HDC hdc = BeginPaint(hWnd, &ps);
-                HDC hdcMem = CreateCompatibleDC(hdc);
-                HBITMAP hbmOld = (HBITMAP)SelectObject(hdcMem, hSplashBitmap);
-                BITMAP bitmap;
-                GetObject(hSplashBitmap, sizeof(bitmap), &bitmap);
-                BitBlt(hdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, hdcMem, 0, 0, SRCCOPY);
-                SelectObject(hdcMem, hbmOld);
-                DeleteDC(hdcMem);
-                EndPaint(hWnd, &ps);
-            }
-            break;
-            case WM_DESTROY:
-                PostQuitMessage(0);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-            return 0;
-        }
-    
-        void CreateSplash()
-        {
-            // Load the splash screen bitmap
-            hSplashBitmap = LoadBitmap(GetModuleHandle(nullptr), MAKEINTRESOURCE(SEDX_SPLASH));
-            if (!hSplashBitmap)
-            {
-                spdlog::error("Failed to load splash screen image.");
-                MessageBox(nullptr, "Failed to load splash screen image.", "Error", MB_OK | MB_ICONERROR);
-                return;
-            }
-    
-            // Register splash window class
-            WNDCLASS wc = {};
-            wc.lpfnWndProc = SplashWndProc;
-            wc.hInstance = GetModuleHandle(nullptr);
-            wc.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-            wc.lpszClassName = "SplashScreen";
-            RegisterClass(&wc);
-    
-            // Get bitmap dimensions
-            BITMAP bitmap;
-            GetObject(hSplashBitmap, sizeof(BITMAP), &bitmap);
-    
-            // Create the splash window
-            hSplashWnd = CreateWindowEx(0,
-                                        "SplashScreen",
-                                        nullptr,
-                                        WS_POPUP | WS_VISIBLE,
-                                        (GetSystemMetrics(SM_CXSCREEN) - bitmap.bmWidth) / 2,
-                                        (GetSystemMetrics(SM_CYSCREEN) - bitmap.bmHeight) / 2,
-                                        bitmap.bmWidth,
-                                        bitmap.bmHeight,
-                                        nullptr,
-                                        nullptr,
-                                        GetModuleHandle(nullptr),
-                                        nullptr);
-    
-            if (!hSplashWnd)
-            {
-                spdlog::critical("Failed to create splash screen window.");
-                MessageBox(nullptr, "Failed to create splash screen window.", "Error", MB_OK | MB_ICONERROR);
-                return;
-            }
-    
-            // Message loop for the splash screen
-            MSG msg;
-            while (GetMessage(&msg, nullptr, 0, 0))
-            {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
-        }
-
-        void OperationThreads()
+        inline void OperationThreads()
         {
             // Create a thread to perform the preloading tasks
             std::thread preloadThread(&Loader::PerformPreloading, this);
@@ -168,6 +70,24 @@ namespace Launcher
             spdlog::info("Preloading tasks completed.");
         }
 
+        /*
+        // Function to perform preloading tasks
+        void PerformPreloading()
+        {
+            // Simulate preloading tasks (replace with actual functions)
+            Sleep(8000);
+            spdlog::info("Preloading tasks completed.");
+
+            spdlog::info("Launching main program.");
+            // After preloading, launch the main program
+            ShellExecute(nullptr, "open", "SceneryEditorX.exe", nullptr, nullptr, SW_SHOWDEFAULT);
+
+            // Close the splash screen
+            spdlog::info("Closing splash screen.");
+            PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
+        }
+        */
+
         void MainLoop()
         {
             // Main loop
@@ -179,7 +99,7 @@ namespace Launcher
             }
         }
 
-        void Finish() const
+        void CleanUp() const
         {
 
             spdlog::info("Launching main program.");
