@@ -7,6 +7,6 @@
       "imguizmo",
       "glfw3",
       "stb",
-      { "name": "curl", "features": [ "http2", "idn", "ssl", "libssh2"] }
+      { "name": "curl", "features": [ "http2", "idn", "ssl"] }
     ]
   }

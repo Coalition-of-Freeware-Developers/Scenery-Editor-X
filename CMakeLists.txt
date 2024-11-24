@@ -208,6 +208,7 @@ source_group("Core" FILES
     Source/Launcher/Logging.cpp
     Source/Launcher/DirectoryManager.cpp
     Source/Launcher/SplashHandler.h
+    Source/Launcher/Updater.h
 )
 
 source_group("Registry" FILES
@@ -229,6 +230,7 @@ add_executable(Launcher
     Source/Launcher/ElevatePerms.h
     Source/Launcher/DirectoryManager.cpp
     Source/Launcher/SplashHandler.h
+    Source/Launcher/Updater.h
     Source/SceneryEditorX/version.h
 )
 
