@@ -1,6 +1,4 @@
 #include <windows.h>
-#include <shellapi.h>
-
 #include "resource.h"
 #include "Logging.hpp"
 
@@ -11,31 +9,49 @@ public:
     HBITMAP hSplashBitmap; // Handle for the splash screen image
     HWND hSplashWnd;       // Handle for the splash window
 
-private:
-    // Function to create the splash screen window
-    LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    // Static function to create the splash screen window
+    static LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
-        switch (uMsg)
+        SplashHandler *pThis = nullptr;
+
+        if (uMsg == WM_NCCREATE)
         {
-        case WM_PAINT:
+            CREATESTRUCT *pCreate = (CREATESTRUCT *)lParam;
+            pThis = (SplashHandler *)pCreate->lpCreateParams;
+            SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pThis);
+
+            pThis->hSplashWnd = hWnd;
+        }
+        else
         {
-            spdlog::info("Painting splash screen.");
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            HDC hMemDC = CreateCompatibleDC(hdc);
-            SelectObject(hMemDC, hSplashBitmap);
-            BITMAP bitmap;
-            GetObject(hSplashBitmap, sizeof(BITMAP), &bitmap);
-            BitBlt(hdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, hMemDC, 0, 0, SRCCOPY);
-            DeleteDC(hMemDC);
-            EndPaint(hWnd, &ps);
-            return 0;
+            pThis = (SplashHandler *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
         }
-        case WM_DESTROY:
-            spdlog::info("Destroying splash screen.");
-            PostQuitMessage(0);
-            return 0;
+
+        if (pThis)
+        {
+            switch (uMsg)
+            {
+            case WM_PAINT:
+            {
+                spdlog::info("Painting splash screen.");
+                PAINTSTRUCT ps;
+                HDC hdc = BeginPaint(hWnd, &ps);
+                HDC hMemDC = CreateCompatibleDC(hdc);
+                SelectObject(hMemDC, pThis->hSplashBitmap);
+                BITMAP bitmap;
+                GetObject(pThis->hSplashBitmap, sizeof(BITMAP), &bitmap);
+                BitBlt(hdc, 0, 0, bitmap.bmWidth, bitmap.bmHeight, hMemDC, 0, 0, SRCCOPY);
+                DeleteDC(hMemDC);
+                EndPaint(hWnd, &ps);
+                return 0;
+            }
+            case WM_DESTROY:
+                spdlog::info("Destroying splash screen.");
+                PostQuitMessage(0);
+                return 0;
+            }
         }
+
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
 
@@ -75,7 +91,7 @@ private:
                                     nullptr,
                                     nullptr,
                                     hInstance,
-                                    nullptr);
+                                    this);
 
         if (!hSplashWnd)
         {
@@ -92,4 +108,23 @@ private:
             DispatchMessage(&msg);
         }
     }
-}
+
+    // Function to create the splash screen
+    void CreateSplashScreen()
+    {
+        ShowSplashScreen(GetModuleHandle(nullptr));
+    }
+
+    // Function to close the splash screen
+    void DestroySplashScreen()
+    {
+        // Close the splash screen
+        spdlog::info("Closing splash screen.");
+
+        DestroyWindow(hSplashWnd);
+        DeleteObject(hSplashBitmap);
+
+        // Post a close message to the splash screen window
+        //PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
+    }
+};

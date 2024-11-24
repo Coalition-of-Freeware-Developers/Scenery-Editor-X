@@ -65,21 +65,21 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904b0"
+        BLOCK "040004b0"
         BEGIN
-            VALUE "CompanyName", "Coalition of Freeware Developers"
-            VALUE "FileDescription", "Scenery Editor X Launcher"
-            VALUE "FileVersion", "0.0.0.02"
-            VALUE "InternalName", "Launcher.exe"
+            VALUE "CompanyName", "TODO: <Company name>"
+            VALUE "FileDescription", "TODO: <File description>"
+            VALUE "FileVersion", "0.0.0.2"
+            VALUE "InternalName", "TODO: <Internal name>"
             VALUE "LegalCopyright", "Copyright (C) 2024"
-            VALUE "OriginalFilename", "Launcher.exe"
-            VALUE "ProductName", "Scenery Editor X"
+            VALUE "OriginalFilename", "TODO: <Original filename>"
+            VALUE "ProductName", "TODO: <Product name>"
             VALUE "ProductVersion", "0.0.2.26"
         END
     END
     BLOCK "VarFileInfo"
     BEGIN
-        VALUE "Translation", 0x409, 1200
+        VALUE "Translation", 0x400, 1200
     END
 END
 
@@ -101,17 +101,19 @@ IDI_ICON1               ICON                    "G:\\ART_REPO-TRAY\\X-Plane 12\\
 
 SEDX_SPLASH             BITMAP                  "G:\\ART_REPO-TRAY\\X-Plane 12\\Scenery-Editor-X\\Assets\\splash_screen.bmp"
 
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // RGS
 //
 
-IDR_REGISTRY_EDX_FORMAT RGS "edXReg.rgs"
+IDR_REGISTRY_EDX_FORMAT RGS                     "edXReg.rgs"
 
-IDR_REGISTRY_LIBRARY_FORMAT RGS "edXLibReg.rgs"
+IDR_REGISTRY_LIBRARY_FORMAT RGS                     "edXLibReg.rgs"
 
-#endif // English (United States) resources
+#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
+
 
 
 #ifndef APSTUDIO_INVOKED
@@ -122,4 +124,5 @@ IDR_REGISTRY_LIBRARY_FORMAT RGS "edXLibReg.rgs"
 
 
 /////////////////////////////////////////////////////////////////////////////
-#endif // not APSTUDIO_INVOKED
+#endif    // not APSTUDIO_INVOKED
+

@@ -2,7 +2,7 @@
 
 #include <windows.h>
 #include <shellapi.h>
-#include <iostream>
+#include <Logging.hpp>
 
 // Function to check if the application is running as administrator
 bool RunningAsAdmin()

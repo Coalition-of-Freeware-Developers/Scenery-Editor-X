@@ -1,13 +1,20 @@
 #include "Logging.hpp"
 #include <version.h>
 
-#include <iostream>
 #include <string>
 #include <sysinfoapi.h>
-#include <VersionHelpers.h>
 
+#include <memory>
+#include <minwinbase.h>
+#include <spdlog/common.h>
+#include <spdlog/logger.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/stdout_color_sinks-inl.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/spdlog-inl.h>
+#include <timezoneapi.h>
+#include <vector>
 
 /**
  * @brief Static member to hold the logger instance.
@@ -122,4 +129,10 @@ void Log::LogHeader()
     spdlog::info("Copyright (C) 2024");
     spdlog::info("============================================");
     spdlog::info("============================================");
+}
+
+void Log::Shutdown()
+{
+    spdlog::info("Shutting down logging system...");
+    spdlog::shutdown();
 }
