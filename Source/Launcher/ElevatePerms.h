@@ -40,32 +40,25 @@ void RelaunchAsAdmin()
         sei.cbSize = sizeof(SHELLEXECUTEINFO);
         sei.lpVerb = TEXT("runas"); // Request elevation
         sei.lpFile = szPath;        // Path to the current executable
-        sei.nShow = SW_SHOWNORMAL;
         sei.lpParameters = TEXT("--elevated"); // Pass an argument to detect elevated mode
+        sei.nShow = SW_SHOWNORMAL;
+
+        spdlog::info("Preparing to relaunch as administrator.");
+        Log::Shutdown(); // Shutdown logging before relaunch
 
         if (!ShellExecuteEx(&sei))
         {
             DWORD error = GetLastError();
-            if (error == ERROR_CANCELLED)
-            {
-                spdlog::error("User declined the UAC prompt. Elevation aborted.");
-                //CleanUp(); // Ensure proper cleanup
-            }
-            else
-            {
-                spdlog::error("Failed to elevate privileges. Error code: {}", error);
-            }
+            spdlog::error("Failed to elevate privileges. Error code: {}", error);
             return;
         }
 
-        spdlog::info("Successfully relaunched with administrator privileges. Terminating non-elevated process.");
-        TerminateProcess(GetCurrentProcess(), 0); // Forcefully terminate the non-elevated process
+        spdlog::info("Relaunched successfully. Terminating current process.");
+        TerminateProcess(GetCurrentProcess(), 0);
     }
     else
     {
-        DWORD error = GetLastError();
-        spdlog::error("Failed to get the module file name. Error code: {}", error);
-        return;
+        spdlog::error("Failed to get module file name.");
     }
 }
 

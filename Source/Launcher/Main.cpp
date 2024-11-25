@@ -81,9 +81,11 @@ namespace Launcher
 } // namespace Launcher
 
 // Entry point
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     Log::Init();
+    spdlog::info("Logger initialized. Starting application...");
+    spdlog::info("Current working directory: {}", std::filesystem::current_path().string());
     Log::LogHeader();
     spdlog::info("Launcher is starting...");
 
@@ -96,12 +98,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             return EXIT_SUCCESS; // Exit non-elevated instance
         }
     }
-
-    spdlog::info("Running as administrator. Proceeding with execution.");
     try
     {
-        Launcher::Loader splashScreen{};
-        splashScreen.run();
+        spdlog::info("Running as administrator. Proceeding with execution.");
+        Launcher::Loader loader{};
+        loader.run();
     }
     catch (const std::exception &e)
     {
