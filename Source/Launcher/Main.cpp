@@ -89,14 +89,14 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     Log::LogHeader();
     spdlog::info("Launcher is starting...");
 
-    if (strstr(lpCmdLine, "--elevated") == nullptr) // Check if elevated flag is present
+    // Check if the application is running with the "--elevated" argument
+    bool isElevated = strstr(lpCmdLine, "--elevated") != nullptr;
+
+    if (!isElevated && !RunningAsAdmin())
     {
-        if (!RunningAsAdmin())
-        {
-            spdlog::info("Not running as administrator. Attempting to relaunch...");
-            RelaunchAsAdmin();
-            return EXIT_SUCCESS; // Exit non-elevated instance
-        }
+        spdlog::info("Not running as administrator. Attempting to relaunch...");
+        RelaunchAsAdmin();
+        return EXIT_SUCCESS; // Exit non-elevated instance
     }
     try
     {
