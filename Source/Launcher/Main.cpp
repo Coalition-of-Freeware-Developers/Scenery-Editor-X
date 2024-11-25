@@ -1,26 +1,27 @@
-#include <windows.h>
-#include <shellapi.h>
-#include <thread>
-#include <iostream>
 
-#include "SplashHandler.h"
-#include "Logging.hpp"
+#include <windows.h>
+#include <iostream>
+#include <thread>
+
 #include "DirectoryManager.hpp"
+#include "ElevatePerms.h"
+#include "Logging.hpp"
 #include "RegCheck.h"
-#include <synchapi.h>
+#include "SplashHandler.h"
+#include "Updater.h"
 #include <cstdlib>
 #include <exception>
-#include <sal.h>
 #include <spdlog/spdlog.h>
+#include <synchapi.h>
 
 namespace Launcher
 {
     class Loader
     {
     public:
-
         void run()
         {
+            adminCheck();
             CreateSplash();
             MainLoop();
             CleanUp();
@@ -35,7 +36,8 @@ namespace Launcher
             // TODO: Add Check for app updates
             // TODO: Add Check for directory to X-Plane 12
             // This can be done by checking the registry for the X-Plane 12 directory
-            UpdateCheck();
+            Updater updater;
+            updater.UpdateCheck();
             Sleep(600);
             spdlog::info("Preloading tasks started.");
             RegistryCheck();
@@ -44,8 +46,7 @@ namespace Launcher
             spdlog::info("Directory check complete");
             Sleep(600);
             spdlog::info("Loading resources.");
-
-
+    
             spdlog::info("Preloading tasks completed.");
         }
     
@@ -56,6 +57,12 @@ namespace Launcher
             splashHandler.CreateSplashScreen();
         }
     
+        static void MainLoop()
+        {
+            // Perform the operations in separate threads
+            OperationThreads();
+        }
+    
         static void OperationThreads()
         {
             // Create a thread to perform the preloading tasks
@@ -63,52 +70,42 @@ namespace Launcher
             preloadThread.detach();
         }
     
-        static void MainLoop()
-        {
-            // Main loop
-            MSG msg;
-            while (GetMessage(&msg, nullptr, 0, 0))
-            {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
-            }
-        }
-    
         static void CleanUp()
         {
-            spdlog::info("Launching main program.");
-            // Clean up
-            spdlog::info("Launcher is shutting down...");
-            Log::Shutdown();
-            // After preloading, launch the main program
-            ShellExecute(nullptr, "open", "SceneryEditorX.exe", nullptr, nullptr, SW_SHOWDEFAULT);
-    
-            // Destroy the splash screen
+            spdlog::info("Cleaning up before relaunch.");
             SplashHandler splashHandler{};
-            splashHandler.DestroySplashScreen();
+            splashHandler.DestroySplashScreen(); // Close splash screen
+            Log::Shutdown();                     // Shut down logging system
         }
     };
-}
+} // namespace Launcher
 
 // Entry point
-int APIENTRY WinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPSTR lpCmdLine,
-                     _In_ int nCmdShow)
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     Log::Init();
     Log::LogHeader();
     spdlog::info("Launcher is starting...");
 
-    Launcher::Loader SplashScreen{};
+    if (strstr(lpCmdLine, "--elevated") == nullptr) // Check if elevated flag is present
+    {
+        if (!RunningAsAdmin())
+        {
+            spdlog::info("Not running as administrator. Attempting to relaunch...");
+            RelaunchAsAdmin();
+            return EXIT_SUCCESS; // Exit non-elevated instance
+        }
+    }
+
+    spdlog::info("Running as administrator. Proceeding with execution.");
     try
     {
-        SplashScreen.run();
+        Launcher::Loader splashScreen{};
+        splashScreen.run();
     }
     catch (const std::exception &e)
     {
         spdlog::error("An exception occurred: {}", e.what());
-        std::cerr << e.what() << '\n';
         return EXIT_FAILURE;
     }
 

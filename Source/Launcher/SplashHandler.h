@@ -1,15 +1,37 @@
 #include <windows.h>
-#include "resource.h"
 #include "Logging.hpp"
+#include "resource.h"
+#include <basetsd.h>
+#include <condition_variable>
+#include <libloaderapi.h>
+#include <mutex>
+#include <spdlog/spdlog.h>
+#include <thread>
+
 
 class SplashHandler
 {
 public:
     // Global Variables
-    HBITMAP hSplashBitmap; // Handle for the splash screen image
-    HWND hSplashWnd;       // Handle for the splash window
+    HBITMAP hSplashBitmap;          // Handle for the splash screen image
+    HWND hSplashWnd;                // Handle for the splash window
+    std::thread splashThread;       // Thread for the splash screen
+    std::mutex mtx;                 // Mutex for the splash screen
+    std::condition_variable cv;     // Condition variable for the splash screen
+    bool splashCreated = false;     // Flag to indicate if the splash screen has been created
 
-    // Static function to create the splash screen window
+    /**
+    * @brief Window procedure for the splash screen window.
+    * 
+    * This function handles messages sent to the splash screen window.
+    * It processes the WM_NCCREATE, WM_PAINT, and WM_DESTROY messages.
+    * 
+    * @param hWnd Handle to the window.
+    * @param uMsg Message identifier.
+    * @param wParam Additional message information.
+    * @param lParam Additional message information.
+    * @return LRESULT Result of the message processing.
+    */
     static LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
         SplashHandler *pThis = nullptr;
@@ -55,7 +77,14 @@ public:
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
 
-    // Function to create and display the splash screen
+    /**
+    * @brief Displays the splash screen.
+    * 
+    * This function loads the splash screen bitmap, registers the splash window class,
+    * creates the splash window, and enters the message loop to display the splash screen.
+    * 
+    * @param hInstance Handle to the instance of the application.
+    */
     void ShowSplashScreen(HINSTANCE hInstance)
     {
         // Load the splash screen bitmap
@@ -100,6 +129,13 @@ public:
             return;
         }
 
+        // Notify that the splash screen has been created
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            splashCreated = true;
+        }
+        cv.notify_one();
+
         // Message loop for the splash screen
         MSG msg;
         while (GetMessage(&msg, nullptr, 0, 0))
@@ -112,7 +148,11 @@ public:
     // Function to create the splash screen
     void CreateSplashScreen()
     {
-        ShowSplashScreen(GetModuleHandle(nullptr));
+        splashThread = std::thread(&SplashHandler::ShowSplashScreen, this, GetModuleHandle(nullptr));
+
+        // Wait until the splash screen is created
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [this] { return splashCreated; });
     }
 
     // Function to close the splash screen
@@ -121,10 +161,12 @@ public:
         // Close the splash screen
         spdlog::info("Closing splash screen.");
 
-        DestroyWindow(hSplashWnd);
-        DeleteObject(hSplashBitmap);
+        PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
+        if (splashThread.joinable())
+        {
+            splashThread.join();
+        }
 
-        // Post a close message to the splash screen window
-        //PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
+        DeleteObject(hSplashBitmap);
     }
 };

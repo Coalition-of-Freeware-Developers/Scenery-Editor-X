@@ -1,53 +1,52 @@
 #pragma once
-
-#include <version.h>
-#include <iostream>
 #include <string>
-#include <curl/curl.h>
 
-size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+
+class Updater
 {
-    ((std::string*)userp)->append((char*)contents, size * nmemb);
-    return size * nmemb;
-}
+public:
 
-void UpdateCheck()
-{
-    std::string currentVersion = SEDX_GET_VERSION();
-    std::string latestVersion;
-    CURL* curl;
-    CURLcode res;
-    std::string readBuffer;
+    bool isUpdate   = false;    ///< Flag indicating whether an update is available.
+    bool isLatest   = false;    ///< Flag indicating whether the user is using the latest version.
+    bool isBeta     = false;    ///< Flag indicating whether the user is using a beta version.
+    bool autoUpdate = false;    ///< Flag indicating whether the application will automatically update.
+    std::string currentVersion; ///< The current version of the application.
+    std::string latestVersion;  ///< The latest version available on GitHub.
 
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-    if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "https://api.github.com/repos/your-repo/your-project/releases/latest");
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-        res = curl_easy_perform(curl);
-        if(res != CURLE_OK) {
-            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-        } else {
-            // Parse the JSON response to get the latest version
-            auto versionPos = readBuffer.find("\"tag_name\":\"");
-            if (versionPos != std::string::npos) {
-                versionPos += 12; // Move past the "tag_name":" part
-                auto endPos = readBuffer.find("\"", versionPos);
-                if (endPos != std::string::npos) {
-                    latestVersion = readBuffer.substr(versionPos, endPos - versionPos);
-                }
-            }
-        }
-        curl_easy_cleanup(curl);
-    }
-    curl_global_cleanup();
+    
+    /**
+     * @brief Checks for updates by comparing the current version with the latest version available on GitHub.
+     *
+     * This function uses cURL to fetch the latest release information from the GitHub API.
+     * It then parses the JSON response to extract the latest version tag and compares it with the current version.
+     * If an update is available, it prints a message indicating the new version. Otherwise, it confirms that the user is using the latest version.
+     */
+    void UpdateCheck();
 
-    if (latestVersion.empty()) {
-        std::cerr << "Failed to get the latest version from GitHub." << std::endl;
-    } else if (currentVersion != latestVersion) {
-        std::cout << "Update available: " << latestVersion << " (current version: " << currentVersion << ")" << std::endl;
-    } else {
-        std::cout << "You are using the latest version: " << currentVersion << std::endl;
-    }
-}
+    void cleanInstall();
+
+private:
+
+    bool urlCheck();
+
+    void startUpdate();
+
+    void skipUpdate();
+
+    bool isFirstRun = false; ///< Flag indicating whether this is the first time the application is run.
+
+    /**
+     * @brief Callback function for handling data received from a cURL request.
+     *
+     * This function is called by cURL as soon as there is data received that needs to be saved.
+     * The data is appended to the string provided by the user through the userp parameter.
+     *
+     * @param contents Pointer to the delivered data.
+     * @param size Size of a single data element.
+     * @param nmemb Number of data elements.
+     * @param userp Pointer to the user-defined string where the data will be appended.
+     * @return The number of bytes actually taken care of.
+     */
+    static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
+
+};

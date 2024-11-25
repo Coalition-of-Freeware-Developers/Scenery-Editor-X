@@ -1,8 +1,11 @@
 #pragma once
 
-#include <windows.h>
-#include <shellapi.h>
+#define _WIN32_WINNT 0x0601
+
 #include <Logging.hpp>
+#include <shellapi.h>
+#include <spdlog/spdlog.h>
+#include <windows.h>
 
 // Function to check if the application is running as administrator
 bool RunningAsAdmin()
@@ -33,29 +36,41 @@ void RelaunchAsAdmin()
     TCHAR szPath[MAX_PATH];
     if (GetModuleFileName(NULL, szPath, MAX_PATH))
     {
-        // Use ShellExecute to relaunch with elevated privileges
-        SHELLEXECUTEINFO sei = { sizeof(SHELLEXECUTEINFO) };
-        sei.lpVerb = TEXT("runas");     // Request elevation
-        sei.lpFile = szPath;            // Path to the current executable
-        sei.hwnd = NULL;
-        sei.nShow = SW_NORMAL;
+        SHELLEXECUTEINFO sei{};
+        sei.cbSize = sizeof(SHELLEXECUTEINFO);
+        sei.lpVerb = TEXT("runas"); // Request elevation
+        sei.lpFile = szPath;        // Path to the current executable
+        sei.nShow = SW_SHOWNORMAL;
+        sei.lpParameters = TEXT("--elevated"); // Pass an argument to detect elevated mode
 
         if (!ShellExecuteEx(&sei))
         {
             DWORD error = GetLastError();
             if (error == ERROR_CANCELLED)
             {
-                spdlog::error("User declined the UAC prompt.");
+                spdlog::error("User declined the UAC prompt. Elevation aborted.");
+                //CleanUp(); // Ensure proper cleanup
             }
             else
             {
-                spdlog::error("Failed to elevate privileges. Error: {}", error);
+                spdlog::error("Failed to elevate privileges. Error code: {}", error);
             }
+            return;
         }
+
+        spdlog::info("Successfully relaunched with administrator privileges. Terminating non-elevated process.");
+        TerminateProcess(GetCurrentProcess(), 0); // Forcefully terminate the non-elevated process
+    }
+    else
+    {
+        DWORD error = GetLastError();
+        spdlog::error("Failed to get the module file name. Error code: {}", error);
+        return;
     }
 }
 
-int main()
+// Function to check for administrator privileges and relaunch if necessary
+int adminCheck()
 {
     if (!RunningAsAdmin())
     {
@@ -69,3 +84,4 @@ int main()
 
     return 0;
 }
+

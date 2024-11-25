@@ -1,18 +1,24 @@
 cmake_minimum_required(VERSION 3.22..)
 
-
+# --------------------------------
 # Build System
 # --------------------------------
 
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependency/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
 
+# --------------------------------
 # Boost Librarys
 # --------------------------------
+
 #set(Boost_USE_STATIC_LIBS ON)
 #set(Boost_INCLUDE_DIR ${_VCPKG_INSTALLED_DIR}/x64-windows-static/include)
 
 #find_package(boost  COMPONENTS array asio chrono filesystem geometry io iostream)
 #define  set(Boost_INCLUDE_DIR "path")
+
+# --------------------------------
+# Scenery Editor X Project Setup
+# --------------------------------
 
 project(SceneryEditorX VERSION 1.0)
 
@@ -49,6 +55,7 @@ set(ICON_FILES
     Assets/icon_testing.ico
 )
 
+# --------------------------------
 # Packages
 # --------------------------------
 
@@ -58,10 +65,11 @@ find_package(spdlog   CONFIG REQUIRED)
 find_package(imgui    CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(Stb             REQUIRED)
-find_package(curl CONFIG REQUIRED)
+find_package(CURL     CONFIG REQUIRED)
 
 find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
+# --------------------------------
 # EDX
 # --------------------------------
 
@@ -103,6 +111,7 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     Source/edX/edX.rc
 )
 
+# --------------------------------
 # File Format Tester
 # --------------------------------
 
@@ -130,6 +139,7 @@ target_include_directories(FormatTester PRIVATE
     $ENV{VULKAN_SDK}/Include/
 )
 
+# --------------------------------
 # X-PlaneSceneryLibrary
 # --------------------------------
 
@@ -191,6 +201,7 @@ add_library(X-PlaneSceneryLibrary
     Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
 )
 
+# --------------------------------
 # SceneryEditorX | Launcher
 # --------------------------------
 
@@ -209,6 +220,7 @@ source_group("Core" FILES
     Source/Launcher/DirectoryManager.cpp
     Source/Launcher/SplashHandler.h
     Source/Launcher/Updater.h
+    Source/Launcher/Updater.cpp
 )
 
 source_group("Registry" FILES
@@ -231,23 +243,28 @@ add_executable(Launcher
     Source/Launcher/DirectoryManager.cpp
     Source/Launcher/SplashHandler.h
     Source/Launcher/Updater.h
+    Source/Launcher/Updater.cpp
     Source/SceneryEditorX/version.h
 )
-
+target_link_libraries(Launcher PRIVATE Shell32.lib)
 target_link_libraries(Launcher PRIVATE
     spdlog::spdlog_header_only
     dxgi
     d3d12
-    curl
+    CURL::libcurl
 )
 
 target_include_directories(Launcher PRIVATE
     Source/SceneryEditorX/logging
     Source/SceneryEditorX/
+    ${CURL_INCLUDE_DIRS}
 )
+
+target_link_directories(Launcher PRIVATE ${CURL_LIBRARY_DIRS})
 
 target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 
+# --------------------------------
 # SceneryEditorX
 # --------------------------------
 
@@ -340,6 +357,7 @@ target_include_directories(SceneryEditorX PRIVATE
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
     ${Stb_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 
 # Link
@@ -348,15 +366,15 @@ target_link_libraries(SceneryEditorX PRIVATE
     spdlog::spdlog_header_only
     imgui::imgui
     imguizmo::imguizmo
-    curl
+    CURL::libcurl
     glfw
     dxgi
     d3d12
+    Shell32.lib
 )
 
-target_link_directories(SceneryEditorX PRIVATE
-    $ENV{VULKAN_SDK}/Lib/
-)
+target_link_directories(SceneryEditorX PRIVATE $ENV{VULKAN_SDK}/Lib/)
+target_link_directories(SceneryEditorX PRIVATE ${CURL_INCLUDE_DIRS})
 
 # Define SEDX_DEBUG for Debug builds using generator expressions
 target_compile_definitions(Launcher         PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG>)
@@ -365,6 +383,7 @@ target_compile_definitions(SceneryEditorX   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG
 # --------------------------------
 # Defines
 # --------------------------------
+
 target_compile_definitions(SceneryEditorX   PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(FormatTester     PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
@@ -372,4 +391,5 @@ target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
 # --------------------------------
 # Precompiled Header
 # --------------------------------
+
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
