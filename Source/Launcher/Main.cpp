@@ -28,7 +28,13 @@ namespace Launcher
         }
     
     private:
-        static void PerformPreloading()
+        SplashHandler *splashHandler{nullptr};
+
+        //Counter to make sure we wait for all threads to finish
+        std::mutex mtThreadCounter;
+        int intThreadCount{0};
+
+        void PerformPreloading()
         {
             // TODO: Add Scenery Gateway API pull and cache
             // Get All Airports (GET /apiv1/airports)
@@ -61,36 +67,56 @@ namespace Launcher
     
             spdlog::info("Preloading tasks completed.");
             std::cout << "Preloading tasks completed." << std::endl;
+
+            mtThreadCounter.lock();
+            intThreadCount--;
+            mtThreadCounter.unlock(); 
+
         }
     
-        static void CreateSplash()
+        void CreateSplash()
         {
             // Create the splash screen window
-            SplashHandler splashHandler{};
-            splashHandler.CreateSplashScreen();
+            splashHandler = new SplashHandler();
+            splashHandler->CreateSplashScreen();
         }
     
-        static void MainLoop()
+        void MainLoop()
         {
             // Perform the operations in separate threads
             OperationThreads();
+
+            while (true)
+            {
+                Sleep(1000);
+                mtThreadCounter.lock();
+                if (intThreadCount == 0)
+                {
+                    mtThreadCounter.unlock();
+                    break;
+                }
+                mtThreadCounter.unlock();
+            }
         }
     
-        static void OperationThreads()
+        void OperationThreads()
         {
             // Create a thread to perform the preloading tasks
-            std::thread preloadThread(&Launcher::Loader::PerformPreloading);
+            mtThreadCounter.lock();
+            intThreadCount++;
+            mtThreadCounter.unlock();
+            std::thread preloadThread(&Loader::PerformPreloading, this);
             preloadThread.detach();
         }
     
-        static void CleanUp()
+        void CleanUp()
         {
             spdlog::info("Cleaning up before relaunch.");
             std::cout << "Cleaning up before relaunch." << std::endl;
 
-            SplashHandler splashHandler{};
-            splashHandler.DestroySplashScreen(); // Close splash screen
-            Log::Shutdown();                     // Shut down logging system
+            splashHandler->DestroySplashScreen(); // Close splash screen
+            delete splashHandler;                 // Delete splash screen object
+            Log::Shutdown();                      // Shut down logging system
         }
     };
 } // namespace Launcher
