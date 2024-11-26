@@ -36,18 +36,31 @@ namespace Launcher
             // TODO: Add Check for app updates
             // TODO: Add Check for directory to X-Plane 12
             // This can be done by checking the registry for the X-Plane 12 directory
+            
             Updater updater;
             updater.UpdateCheck();
             Sleep(600);
+
             spdlog::info("Preloading tasks started.");
+            std::cout << "Preloading tasks started." << std::endl;
+
             RegistryCheck();
+
             spdlog::info("Registry check complete");
+            std::cout << "Registry check complete" << std::endl;
+
             DirectoryInit();
+
             spdlog::info("Directory check complete");
+            std::cout << "Directory check complete" << std::endl;
+
             Sleep(600);
+
             spdlog::info("Loading resources.");
+            std::cout << "Loading resources." << std::endl;
     
             spdlog::info("Preloading tasks completed.");
+            std::cout << "Preloading tasks completed." << std::endl;
         }
     
         static void CreateSplash()
@@ -73,6 +86,8 @@ namespace Launcher
         static void CleanUp()
         {
             spdlog::info("Cleaning up before relaunch.");
+            std::cout << "Cleaning up before relaunch." << std::endl;
+
             SplashHandler splashHandler{};
             splashHandler.DestroySplashScreen(); // Close splash screen
             Log::Shutdown();                     // Shut down logging system
@@ -81,32 +96,48 @@ namespace Launcher
 } // namespace Launcher
 
 // Entry point
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     Log::Init();
+
     spdlog::info("Logger initialized. Starting application...");
+    std::cout << "Logger initialized. Starting application..." << std::endl;
     spdlog::info("Current working directory: {}", std::filesystem::current_path().string());
+    std::cout << "Current working directory: " << std::filesystem::current_path().string() << std::endl;
+
     Log::LogHeader();
+
     spdlog::info("Launcher is starting...");
+    std::cout << "Launcher is starting..." << std::endl;
 
     // Check if the application is running with the "--elevated" argument
     bool isElevated = strstr(lpCmdLine, "--elevated") != nullptr;
+    spdlog::info("Command line: {}", lpCmdLine);
+    std::cout << "Command line: " << lpCmdLine << std::endl;
+    spdlog::info("Is elevated: {}", isElevated);
+    std::cout << "Is elevated: " << isElevated << std::endl;
 
     if (!isElevated && !RunningAsAdmin())
     {
         spdlog::info("Not running as administrator. Attempting to relaunch...");
+        std::cout << "Not running as administrator. Attempting to relaunch..." << std::endl;
+
         RelaunchAsAdmin();
         return EXIT_SUCCESS; // Exit non-elevated instance
     }
     try
     {
         spdlog::info("Running as administrator. Proceeding with execution.");
+        std::cout << "Running as administrator. Proceeding with execution." << std::endl;
+
         Launcher::Loader loader{};
         loader.run();
     }
     catch (const std::exception &e)
     {
         spdlog::error("An exception occurred: {}", e.what());
+        std::cout << "An exception occurred: " << e.what() << std::endl;
+        
         return EXIT_FAILURE;
     }
 

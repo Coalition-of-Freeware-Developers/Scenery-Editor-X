@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "DirectoryManager.hpp"
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -33,10 +34,13 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
         {
             exeDir = fs::path(std::string(absPathBuffer)).parent_path();
             spdlog::info("Using registry Absolute Path: {}", exeDir.string());
+            std::cerr << "Using registry Absolute Path: " << exeDir.string() << std::endl;
         }
         else
         {
             spdlog::critical("Failed to read AbsolutePath from registry.");
+            std::cerr << "Failed to read AbsolutePath from registry." << std::endl;
+
             RegCloseKey(hKey);
             return;
         }
@@ -47,6 +51,8 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
     else
     {
         spdlog::critical("Failed to open registry key.");
+        std::cerr << "Failed to open registry key." << std::endl;
+
         return;
     }
 #endif
@@ -60,11 +66,14 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
         if (!fs::exists(fullPath))
         {
             fs::create_directories(fullPath);
+
             spdlog::info("Created directory: {}", fullPath.string());
+            std::cerr << "Created directory: " << fullPath.string() << std::endl;
         }
         else
         {
             spdlog::info("Directory already exists: {}", fullPath.string());
+            std::cerr << "Directory already exists: " << fullPath.string() << std::endl;
         }
     }
 }
@@ -77,16 +86,22 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
         // Set the absolute path to the executable's path
         absolutePath = fs::absolute(fs::path(argv[0])).string();
         spdlog::info("============================================");
+        std::cerr << "============================================" << std::endl;
         spdlog::info("Absolute Path: {}", absolutePath);
+        std::cerr << "Absolute Path: " << absolutePath << std::endl;
 
         // Set the relative path to the current working directory relative to the executable
         relativePath = fs::relative(fs::current_path(), absolutePath).string();
         spdlog::info("Relative Path: {}", relativePath);
+        std::cerr << "Relative Path: " << relativePath << std::endl;
         spdlog::info("============================================");
+        std::cerr << "============================================" << std::endl;
     }
     else
     {
         spdlog::critical("No executable path found.");
+        std::cerr << "No executable path found." << std::endl;
+
         return -1;
     }
 #else
@@ -106,11 +121,14 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
         {
             absolutePath = std::string(absPathBuffer);
             spdlog::info("============================================");
+            std::cerr << "============================================" << std::endl;
             spdlog::info("Absolute Path: {}", absolutePath);
+            std::cerr << "Absolute Path: " << absolutePath << std::endl;
         }
         else
         {
             spdlog::critical("Failed to read AbsolutePath from registry.");
+            std::cerr << "Failed to read AbsolutePath from registry." << std::endl;
             RegCloseKey(hKey);
             return -1;
         }
@@ -121,11 +139,15 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
         {
             relativePath = std::string(relPathBuffer);
             spdlog::info("Relative Path: {}", relativePath);
+            std::cerr << "Relative Path: " << relativePath << std::endl;
             spdlog::info("============================================");
+            std::cerr << "============================================" << std::endl;
         }
         else
         {
             spdlog::critical("Failed to read RelativePath from registry.");
+            std::cerr << "Failed to read RelativePath from registry." << std::endl;
+
             RegCloseKey(hKey);
             return -1;
         }
@@ -136,6 +158,8 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
     else
     {
         spdlog::critical("Failed to open registry key.");
+        std::cerr << "Failed to open registry key." << std::endl;
+
         return -1;
     }
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#define _WIN32_WINNT 0x0601
+//#define _WIN32_WINNT 0x0601
 
 #include <Logging.hpp>
 #include <shellapi.h>
@@ -51,35 +51,32 @@ void RelaunchAsAdmin()
         sei.fMask = SEE_MASK_NOCLOSEPROCESS;                            // Ensure the process handle is not closed
 
         spdlog::info("Preparing to relaunch as administrator.");
+        std::cerr << "Preparing to relaunch as administrator." << std::endl;
         Log::Shutdown();                                                // Shutdown logging before relaunch
 
         // If ShellExecuteEx fails, log the error code and return from the function
         if (!ShellExecuteEx(&sei))                                      // Relaunch the application with elevated privileges
         {
             DWORD error = GetLastError();                               // Get the error code from the last operation
-            //spdlog::error("Failed to elevate privileges. Error code: {}", error);
+            spdlog::error("Failed to elevate privileges. Error code: {}", error);
             std::cerr << "Failed to elevate privileges. Error code: " << error << std::endl;
             return;                                                     // Return without terminating the current process
         }
         else                                                            // If ShellExecuteEx succeeds
         {
-            //spdlog::info("Relaunched successfully. Terminating current process.");
+            spdlog::info("Relaunched successfully. Terminating current process.");
             std::cerr << "Relaunched successfully. Terminating current process."  << std::endl;
 
             // Attach the debugger to the new elevated process if running in debug mode
 #ifdef _DEBUG
             if (IsDebuggerPresent())
             {
-                //spdlog::info("Debugger is present. Attaching to the new elevated process.");
+                spdlog::info("Debugger is present. Attaching to the new elevated process.");
                 std::cerr << "Debugger is present. Attaching to the new elevated process." << std::endl;
 
-                if (sei.hProcess != NULL)
+                if (sei.hProcess != NULL && !DebugActiveProcess(GetProcessId(sei.hProcess)))
                 {
-                    DebugActiveProcess(GetProcessId(sei.hProcess));
-                }
-                else
-                {
-                    //spdlog::error("Failed to attach debugger. Process handle is NULL.");
+                    spdlog::error("Failed to attach debugger. Process handle is NULL.");
                     std::cerr << "Failed to attach debugger. Process handle is NULL." << std::endl;
                 }
             }
@@ -90,7 +87,7 @@ void RelaunchAsAdmin()
     }
     else // If the path could not be retrieved
     {
-        //spdlog::error("Failed to get module file name.");
+        spdlog::error("Failed to get module file name.");
         std::cerr << "Failed to get module file name." << std::endl;
     }
 }
@@ -117,8 +114,10 @@ int adminCheck()
     {
 #ifdef _DEBUG
         spdlog::info("Running in debug mode. Skipping relaunch as admin.");
+        std::cerr << "Running in debug mode. Skipping relaunch as admin." << std::endl;
 #else
         spdlog::info("Administrator privileges are required. Relaunching as admin...");
+        std::cerr << "Administrator privileges are required. Relaunching as admin..." << std::endl;
         RelaunchAsAdmin();                                          // Relaunch the application with admin privileges
         return 0;                                                   // Exit the current process after relaunching
 #endif
@@ -126,6 +125,8 @@ int adminCheck()
 
     // Proceed with admin-required functions
     spdlog::info("Running with administrator privileges. Proceeding with tasks...");
+    std::cerr << "Running with administrator privileges. Proceeding with tasks..." << std::endl;
+
 
     return 0;
 }

@@ -64,7 +64,7 @@ void Log::Init()
     }
     catch (const spdlog::spdlog_ex &ex)
     {
-        std::cerr << "Logger initialization failed: " << ex.what() << std::endl;
+        std::cout << "Logger initialization failed: " << ex.what() << std::endl;
     }
 }
 
@@ -136,5 +136,6 @@ void Log::LogHeader()
 void Log::Shutdown()
 {
     spdlog::info("Shutting down logging system...");
+    std::cout << "Shutting down logging system..." << std::endl;
     spdlog::shutdown();
 }

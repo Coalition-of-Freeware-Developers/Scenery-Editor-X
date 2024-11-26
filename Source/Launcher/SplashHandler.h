@@ -55,7 +55,7 @@ public:
             {
             case WM_PAINT:
             {
-                spdlog::info("Painting splash screen.");
+                //spdlog::info("Painting splash screen.");
                 PAINTSTRUCT ps;
                 HDC hdc = BeginPaint(hWnd, &ps);
                 HDC hMemDC = CreateCompatibleDC(hdc);
@@ -68,7 +68,7 @@ public:
                 return 0;
             }
             case WM_DESTROY:
-                spdlog::info("Destroying splash screen.");
+                //spdlog::info("Destroying splash screen.");
                 PostQuitMessage(0);
                 return 0;
             }
@@ -91,7 +91,7 @@ public:
         hSplashBitmap = LoadBitmap(hInstance, MAKEINTRESOURCE(SEDX_SPLASH));
         if (!hSplashBitmap)
         {
-            spdlog::error("Failed to load splash screen image.");
+            //spdlog::error("Failed to load splash screen image.");
             MessageBox(nullptr, "Failed to load splash screen image.", "Error", MB_OK | MB_ICONERROR);
             return;
         }
@@ -124,7 +124,7 @@ public:
 
         if (!hSplashWnd)
         {
-            spdlog::critical("Failed to create splash screen window.");
+            //spdlog::critical("Failed to create splash screen window.");
             MessageBox(nullptr, "Failed to create splash screen window.", "Error", MB_OK | MB_ICONERROR);
             return;
         }
@@ -159,7 +159,7 @@ public:
     void DestroySplashScreen()
     {
         // Close the splash screen
-        spdlog::info("Closing splash screen.");
+        //spdlog::info("Closing splash screen.");
 
         PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
         if (splashThread.joinable())
