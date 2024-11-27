@@ -143,23 +143,23 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     spdlog::info("Is elevated: {}", isElevated);
     std::cout << "Is elevated: " << isElevated << std::endl;
 
-    if (!isElevated && !RunningAsAdmin())
+    if (!isElevated && !RunningAsAdmin())   // Check if the application is running as administrator
     {
         spdlog::info("Not running as administrator. Attempting to relaunch...");
         std::cout << "Not running as administrator. Attempting to relaunch..." << std::endl;
 
         RelaunchAsAdmin();
-        return EXIT_SUCCESS; // Exit non-elevated instance
+        return EXIT_SUCCESS;                // Exit non-elevated instance
     }
-    try
+    try                                     // Proceed with admin-required functions
     {
         spdlog::info("Running as administrator. Proceeding with execution.");
         std::cout << "Running as administrator. Proceeding with execution." << std::endl;
 
-        Launcher::Loader loader{};
-        loader.run();
+        Launcher::Loader loader{};          // Create the loader object
+        loader.run();                       // Run the loader
     }
-    catch (const std::exception &e)
+    catch (const std::exception &e)         
     {
         spdlog::error("An exception occurred: {}", e.what());
         std::cout << "An exception occurred: " << e.what() << std::endl;

@@ -10,8 +10,10 @@
 #include <minwinbase.h>
 #include <spdlog/common.h>
 #include <spdlog/logger.h>
+#include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/spdlog-inl.h>
 #include <timezoneapi.h>
@@ -38,6 +40,9 @@ void Log::Init()
     {
         if (!_logger) // Only initialize once
         {
+            // Create an asynchronous logger with a queue size of 8192
+            spdlog::init_thread_pool(8192, 1);
+
             std::vector<spdlog::sink_ptr> sinks;
 
             // Console sink with color output
@@ -50,8 +55,10 @@ void Log::Init()
             file_sink->set_pattern("[%Y-%m-%d %T] [%l] %n: %v");
             sinks.emplace_back(file_sink);
 
-            // Combine sinks into a logger
-            _logger = std::make_shared<spdlog::logger>("Launcher", sinks.begin(), sinks.end());
+            // Combine sinks into an asynchronous logger
+            _logger = std::make_shared<spdlog::async_logger>("Launcher",sinks.begin(),sinks.end()
+                ,spdlog::thread_pool(),
+                spdlog::async_overflow_policy::block);
             spdlog::register_logger(_logger);
 
             // Set global log level and flush policy
