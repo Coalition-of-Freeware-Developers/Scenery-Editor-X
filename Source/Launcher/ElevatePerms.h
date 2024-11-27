@@ -40,7 +40,7 @@ void RelaunchAsAdmin()
 {
     TCHAR szPath[MAX_PATH];                                             // Buffer to store the path
 
-    if (GetModuleFileName(NULL, szPath, MAX_PATH))                      // Get the path to the current executable
+    if (GetModuleFileName(NULL, szPath, MAX_PATH))                      // If the path could be retrieved successfully
     {
         SHELLEXECUTEINFO sei{};                                         // Shell execute information structure
         sei.cbSize = sizeof(SHELLEXECUTEINFO);                          // Size of the structure
@@ -52,7 +52,7 @@ void RelaunchAsAdmin()
 
         spdlog::info("Preparing to relaunch as administrator.");
         std::cerr << "Preparing to relaunch as administrator." << std::endl;
-        Log::Shutdown();                                                // Shutdown logging before relaunch
+        //Log::Shutdown(); // Shutdown logging before relaunch
 
         // If ShellExecuteEx fails, log the error code and return from the function
         if (!ShellExecuteEx(&sei))                                      // Relaunch the application with elevated privileges
@@ -67,8 +67,10 @@ void RelaunchAsAdmin()
             spdlog::info("Relaunched successfully. Terminating current process.");
             std::cerr << "Relaunched successfully. Terminating current process."  << std::endl;
 
-            // Attach the debugger to the new elevated process if running in debug mode
-#ifdef _DEBUG
+            //Log::Shutdown(); // Shutdown logging before relaunch
+
+
+#ifdef _DEBUG                               // Attach the debugger to the new elevated process if running in debug mode
             if (IsDebuggerPresent())
             {
                 spdlog::info("Debugger is present. Attaching to the new elevated process.");
@@ -89,6 +91,9 @@ void RelaunchAsAdmin()
     {
         spdlog::error("Failed to get module file name.");
         std::cerr << "Failed to get module file name." << std::endl;
+
+        Log::Shutdown();    // Shutdown logging
+        EXIT_FAILURE;       // Exit the application
     }
 }
 

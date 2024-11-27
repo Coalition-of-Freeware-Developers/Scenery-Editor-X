@@ -159,7 +159,7 @@ public:
     void DestroySplashScreen()
     {
         // Close the splash screen
-        //spdlog::info("Closing splash screen.");
+        spdlog::info("Closing splash screen.");
 
         PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
         if (splashThread.joinable())
