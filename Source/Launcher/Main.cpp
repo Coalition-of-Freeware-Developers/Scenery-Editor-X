@@ -21,7 +21,7 @@ namespace Launcher
     public:
         void run()
         {
-            adminCheck();
+            //adminCheck();
             CreateSplash();
             MainLoop();
             CleanUp();
@@ -64,6 +64,14 @@ namespace Launcher
 
             spdlog::info("Loading resources.");
             std::cout << "Loading resources." << std::endl;
+
+            //TODO: Add loading of resources here
+            // - Add Precompiled Shaders
+            // - Add Textures
+            // - Add Models
+            // - Config Files
+            // - Add Scenery Gateway Data
+            // - Add Default edX Scene files
     
             spdlog::info("Preloading tasks completed.");
             std::cout << "Preloading tasks completed." << std::endl;
@@ -116,6 +124,10 @@ namespace Launcher
 
             splashHandler->DestroySplashScreen(); // Close splash screen
             delete splashHandler;                 // Delete splash screen object
+
+            spdlog::info("Launcher has completed execution.");
+            std::cout << "Launcher has completed execution." << std::endl;
+
             Log::Shutdown();                      // Shut down logging system
         }
     };
@@ -148,24 +160,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         spdlog::info("Not running as administrator. Attempting to relaunch...");
         std::cout << "Not running as administrator. Attempting to relaunch..." << std::endl;
 
-        RelaunchAsAdmin();
-        return EXIT_SUCCESS;                // Exit non-elevated instance
+        RelaunchAsAdmin();                  // Relaunch the application as administrator
     }
-    try                                     // Proceed with admin-required functions
-    {
-        spdlog::info("Running as administrator. Proceeding with execution.");
-        std::cout << "Running as administrator. Proceeding with execution." << std::endl;
 
-        Launcher::Loader loader{};          // Create the loader object
-        loader.run();                       // Run the loader
-    }
-    catch (const std::exception &e)         
-    {
-        spdlog::error("An exception occurred: {}", e.what());
-        std::cout << "An exception occurred: " << e.what() << std::endl;
-        
-        return EXIT_FAILURE;
-    }
+    spdlog::info("Running as administrator. Proceeding with execution.");
+    std::cout << "Running as administrator. Proceeding with execution." << std::endl;
+
+    Launcher::Loader loader{};          // Create the loader object
+    loader.run();                       // Run the loader
 
     return 0;
 }

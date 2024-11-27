@@ -84,7 +84,8 @@ void RelaunchAsAdmin()
             }
 #endif
 
-            TerminateProcess(GetCurrentProcess(), 0); // Terminate the current process
+            //Log::Shutdown();                          // Shutdown logging
+            //TerminateProcess(GetCurrentProcess(), 0); // Terminate the current process
         }
     }
     else // If the path could not be retrieved
