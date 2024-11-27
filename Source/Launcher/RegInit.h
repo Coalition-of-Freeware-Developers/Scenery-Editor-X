@@ -76,7 +76,7 @@ void RegisterLibraryAssociation()
  */
 void RegisterEDXAssociation()
 {
-    //spdlog::info("Registering EDX file association.");
+    spdlog::info("Registering EDX file association.");
     HKEY hKey; // Handle to the registry key
 
     /**
@@ -93,17 +93,17 @@ void RegisterEDXAssociation()
         if (RegSetValue(hKey, nullptr, REG_SZ, "SceneryEditorX", static_cast<DWORD>(strlen("SceneryEditorX") + 1)) ==
             ERROR_SUCCESS)
         {
-            //spdlog::info("Associated .edx with SceneryEditorX.");
+            spdlog::info("Associated .edx with SceneryEditorX.");
         }
         else
         {
-            //spdlog::error("Failed to set value for .edx.");
+            spdlog::error("Failed to set value for .edx.");
         }
         RegCloseKey(hKey);
     }
     else
     {
-        //spdlog::error("Failed to create key for .edx.");
+        spdlog::error("Failed to create key for .edx.");
         return;
     }
 
@@ -122,17 +122,17 @@ void RegisterEDXAssociation()
         if (RegSetValue(hKey, nullptr, REG_SZ, description, static_cast<DWORD>(strlen(description) + 1)) ==
             ERROR_SUCCESS)
         {
-            //spdlog::info("Registered SceneryEditorX file description.");
+            spdlog::info("Registered SceneryEditorX file description.");
         }
         else
         {
-            //spdlog::error("Failed to set description for SceneryEditorX.");
+            spdlog::error("Failed to set description for SceneryEditorX.");
         }
         RegCloseKey(hKey);
     }
     else
     {
-        //spdlog::error("Failed to create key for SceneryEditorX.");
+        spdlog::error("Failed to create key for SceneryEditorX.");
         return;
     }
 
@@ -149,17 +149,17 @@ void RegisterEDXAssociation()
         const char *command = "\"C:\\Program Files\\Scenery Editor X\\SceneryEditorX.exe\" \"%1\"";
         if (RegSetValue(hKey, nullptr, REG_SZ, command, static_cast<DWORD>(strlen(command) + 1)) == ERROR_SUCCESS)
         {
-            //spdlog::info("Registered open command for SceneryEditorX.");
+            spdlog::info("Registered open command for SceneryEditorX.");
         }
         else
         {
-            //spdlog::error("Failed to set open command for SceneryEditorX.");
+            spdlog::error("Failed to set open command for SceneryEditorX.");
         }
         RegCloseKey(hKey);
     }
     else
     {
-        //spdlog::error("Failed to create key for open command.");
+        spdlog::error("Failed to create key for open command.");
     }
 }
 
@@ -172,7 +172,7 @@ void RegisterEDXAssociation()
  */
 void RegisterLibraryAssociation()
 {
-    //spdlog::info("Registering EDX Library file association.");
+    spdlog::info("Registering EDX Library file association.");
     HKEY hKey;
     if (RegCreateKey(HKEY_CLASSES_ROOT, ".edx.lib", &hKey) == ERROR_SUCCESS)
     {
@@ -200,7 +200,7 @@ void RegisterLibraryAssociation()
  */
 void RegisterApplication()
 {
-    //spdlog::info("Registering Scenery Editor X");
+    spdlog::info("Registering Scenery Editor X");
     HKEY hKey;
     if (RegCreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scenery Editor X", &hKey) == ERROR_SUCCESS)
     {
@@ -219,7 +219,7 @@ void RegisterApplication()
  */
 void RegisterAbsolutePath()
 {
-    //spdlog::info("Registering Absolute Path");
+    spdlog::info("Registering Absolute Path");
     HKEY hKey;
     if (RegCreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scenery Editor X", &hKey) == ERROR_SUCCESS)
     {
@@ -238,7 +238,7 @@ void RegisterAbsolutePath()
  */
 void RegisterRelativePath()
 {
-    //spdlog::info("Registering Relative Path");
+    spdlog::info("Registering Relative Path");
     HKEY hKey;
     if (RegCreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scenery Editor X", &hKey) == ERROR_SUCCESS)
     {

@@ -5,7 +5,7 @@
 
 #include "DirectoryManager.hpp"
 #include "ElevatePerms.h"
-#include "Logging.hpp"
+#include <Logging.hpp>
 #include "RegCheck.h"
 #include "SplashHandler.h"
 #include "Updater.h"
@@ -38,14 +38,15 @@ namespace Launcher
         {
             // TODO: Add Scenery Gateway API pull and cache
             // Get All Airports (GET /apiv1/airports)
-            //
+            // ------------------------------------------
             // TODO: Add Check for app updates
             // TODO: Add Check for directory to X-Plane 12
             // This can be done by checking the registry for the X-Plane 12 directory
             
             Updater updater;
             updater.UpdateCheck();
-            Sleep(600);
+
+            Sleep(6000);
 
             spdlog::info("Preloading tasks started.");
             std::cout << "Preloading tasks started." << std::endl;
@@ -60,7 +61,7 @@ namespace Launcher
             spdlog::info("Directory check complete");
             std::cout << "Directory check complete" << std::endl;
 
-            Sleep(600);
+            Sleep(6000);
 
             spdlog::info("Loading resources.");
             std::cout << "Loading resources." << std::endl;

@@ -85,28 +85,28 @@ void RegistryCheck()
         {
             if (RunningAsAdmin())
             {
-                //spdlog::info("{} registry key not found. Creating...", keyInfo.keyName);
+                spdlog::info("{} registry key not found. Creating...", keyInfo.keyName);
                 keyInfo.registerFunc();
                 // Verify if the key was created successfully
                 if (CheckRegistryKeyExists(keyInfo.hKeyRoot, keyInfo.subKey))
                 {
-                    //spdlog::info("{} registry key created successfully.", keyInfo.keyName);
+                    spdlog::info("{} registry key created successfully.", keyInfo.keyName);
                 }
                 else
                 {
-                    //spdlog::error("Failed to create {} registry key.", keyInfo.keyName);
+                    spdlog::error("Failed to create {} registry key.", keyInfo.keyName);
                 }
             }
             else
             {
-                //spdlog::error("{} registry key not found. Cannot create association without admin privileges.", keyInfo.keyName);
+                spdlog::error("{} registry key not found. Cannot create association without admin privileges.", keyInfo.keyName);
                 RelaunchAsAdmin();
                 return; // Exit the function to prevent further checks until admin privileges are obtained
             }
         }
         else
         {
-            //spdlog::info("{} registry key already exists.", keyInfo.keyName);
+            spdlog::info("{} registry key already exists.", keyInfo.keyName);
         }
     }
 }
