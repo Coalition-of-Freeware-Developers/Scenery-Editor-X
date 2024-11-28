@@ -21,6 +21,7 @@
 
 #include "../edXProjectFile.h"
 #include "FileBrowser.hpp"
+#include "UI_Lists.h"
 
 //#define APP_USE_UNLIMITED_FRAME_RATE
 #ifdef _DEBUG
@@ -429,7 +430,7 @@ int main(int, char **)
         return 1;
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Vulkan support
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Scenery Editor X | File Format Tester", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 940, "Scenery Editor X | File Format Tester", nullptr, nullptr);
     if (!glfwVulkanSupported())
     {
         printf("GLFW: Vulkan Not Supported\n");
@@ -519,26 +520,38 @@ int main(int, char **)
         if (ImGui::Button("Select Directory"))
         {
             ShowDirectoryBrowser();
-            /*
-            const char *selectedDirectory = ShowDirectoryBrowser();
-            if (selectedDirectory != nullptr)
-            {
-                directory = selectedDirectory;
-            }
-            */
         }
-
+        ImGui::SameLine();
         if (ImGui::Button("Save File"))
         {
             project.filename = fileNameBuffer;
             SaveProject(directory, project);
         }
-
+        ImGui::SameLine();
         if (ImGui::Button("Load File"))
         {
             ShowFileBrowser();
             LoadProject(directory + "/" + fileNameBuffer, project);
         }
+
+        ImGui::Separator();
+
+        ImGui::Text("Add Project Property");
+        ImGui::SameLine();
+        if (ImGui::Button("+", ImVec2(21, 21)))
+        {
+            assetDataList.push_back(AssetData());
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("-", ImVec2(20, 21)))
+        {
+            if (!assetDataList.empty())
+            {
+                assetDataList.pop_back();
+            }
+        }
+
+        FileListsStack();
 
         ImGui::End();
 
