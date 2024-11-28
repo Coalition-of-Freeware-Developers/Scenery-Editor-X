@@ -10,6 +10,7 @@
  * This class provides a static interface for initializing the logger and
  * accessing the logger instance. It uses the spdlog library for logging.
  */
+
 class Log
 {
 public:
@@ -40,6 +41,15 @@ public:
         return _logger;
     }
 
+    /**
+    * @brief Shuts down the logger instance.
+    *
+    * This function shuts down the logger instance and releases any resources
+    * associated with it. It should be called before the application exits to
+    * ensure that all log messages are properly flushed.
+    */
+    static void Shutdown();
+
 private:
     static std::shared_ptr<spdlog::logger> _logger; ///< The logger instance.
 };
@@ -47,9 +57,7 @@ private:
 #define LOG_INFO(...) Log::Get()->info(__VA_ARGS__)
 #define LOG_WARN(...) Log::Get()->warn(__VA_ARGS__)
 #define LOG_ERROR(...) Log::Get()->error(__VA_ARGS__)
-#define LOG_CRITICAL(...)                                                                                              \
-    Log::Get()->critical(__VA_ARGS__);                                                                                 \
-    abort();
+#define LOG_CRITICAL(...) Log::Get()->critical(__VA_ARGS__); \ abort();
 
 #ifdef SEDX_DEBUG
 #define DEBUG_TRACE(...) Log::Get()->trace(__VA_ARGS__)

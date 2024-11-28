@@ -5,7 +5,6 @@
 #include <scene/Scene.hpp>
 #include <core/Application.hpp>
 #include <core/AssetManager.hpp>
-#include "core/DirectoryManager.hpp"
 #include <core/Window.hpp>
 
 #include <stb_image.h>
@@ -554,14 +553,6 @@ int main(int argc, char *argv[])
     Log::Init();
     Log::LogHeader();
     spdlog::info("Scenery Editor X Engine is starting...");
-
-    // Initialize DirectoryInit instance and perform directory check
-    DirectoryInit directoryInit;
-    if (directoryInit.DirectoryCheck(argc, argv) != 0)
-    {
-        spdlog::error("Directory check failed. Exiting the program.");
-        return EXIT_FAILURE;
-    }
 
     SceneryEditorX::Application app;
     try
