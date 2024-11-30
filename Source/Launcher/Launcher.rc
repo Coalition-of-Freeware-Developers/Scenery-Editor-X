@@ -91,7 +91,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_ICON1               ICON                    "G:\\ART_REPO-TRAY\\X-Plane 12\\Scenery-Editor-X\\Assets\\icon.ico"
+IDI_ICON1               ICON                    "Scenery-Editor-X\\Assets\\icon.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -99,7 +99,7 @@ IDI_ICON1               ICON                    "G:\\ART_REPO-TRAY\\X-Plane 12\\
 // Bitmap
 //
 
-SEDX_SPLASH             BITMAP                  "G:\\ART_REPO-TRAY\\X-Plane 12\\Scenery-Editor-X\\Assets\\splash_screen.bmp"
+SEDX_SPLASH             BITMAP                  "Scenery-Editor-X\\Assets\\splash_screen.bmp"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -107,9 +107,9 @@ SEDX_SPLASH             BITMAP                  "G:\\ART_REPO-TRAY\\X-Plane 12\\
 // RGS
 //
 
-IDR_REGISTRY_EDX_FORMAT RGS                     "edXReg.rgs"
+IDR_REGISTRY_EDX_FORMAT RGS                         "Registry\\edXReg.rgs"
 
-IDR_REGISTRY_LIBRARY_FORMAT RGS                     "edXLibReg.rgs"
+IDR_REGISTRY_LIBRARY_FORMAT RGS                     "Registry\\edXLibReg.rgs"
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

@@ -23,7 +23,7 @@
 /**
  * @brief Static member to hold the logger instance.
  */
-std::shared_ptr<spdlog::logger> Log::_logger;
+std::shared_ptr<spdlog::logger> Log::_LauncherLogger;
 
 
 /**
@@ -38,7 +38,7 @@ void Log::Init()
 {
     try
     {
-        if (!_logger) // Only initialize once
+        if (!_LauncherLogger) // Only initialize once
         {
             // Create an asynchronous logger with a queue size of 8192
             spdlog::init_thread_pool(8192, 1);
@@ -56,14 +56,18 @@ void Log::Init()
             sinks.emplace_back(file_sink);
 
             // Combine sinks into an asynchronous logger
-            _logger = std::make_shared<spdlog::async_logger>("Launcher",sinks.begin(),sinks.end()
-                ,spdlog::thread_pool(),
+            _LauncherLogger = std::make_shared<spdlog::async_logger>(
+                "Launcher",
+                sinks.begin(),
+                sinks.end(),
+                spdlog::thread_pool(),
                 spdlog::async_overflow_policy::block);
-            spdlog::register_logger(_logger);
+
+            spdlog::register_logger(_LauncherLogger);
 
             // Set global log level and flush policy
-            _logger->set_level(spdlog::level::trace);
-            _logger->flush_on(spdlog::level::trace);
+            _LauncherLogger->set_level(spdlog::level::trace);
+            _LauncherLogger->flush_on(spdlog::level::trace);
 
             // Debug message to verify initialization
             std::cout << "Logger initialized successfully." << std::endl;

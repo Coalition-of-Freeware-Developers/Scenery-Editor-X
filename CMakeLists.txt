@@ -3,18 +3,29 @@ cmake_minimum_required(VERSION 3.22..)
 # --------------------------------
 # Build System
 # --------------------------------
-
+set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE)
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependency/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
 
 # --------------------------------
 # Boost Librarys
 # --------------------------------
 
-#set(Boost_USE_STATIC_LIBS ON)
-#set(Boost_INCLUDE_DIR ${_VCPKG_INSTALLED_DIR}/x64-windows-static/include)
+# set(Boost_USE_STATIC_LIBS ON)
+# set(Boost_INCLUDE_DIR ${_VCPKG_INSTALLED_DIR}/x64-windows-static/include)
 
-#find_package(boost  COMPONENTS array asio chrono filesystem geometry io iostream)
-#define  set(Boost_INCLUDE_DIR "path")
+# find_package(boost  COMPONENTS array asio chrono filesystem geometry io iostream)
+# define  set(Boost_INCLUDE_DIR "path")
+
+# set default build types
+if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
+endif()
+
+if(WIN32)
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+        add_compile_options("/MP")
+    endif()
+endif()
 
 # --------------------------------
 # Scenery Editor X Project Setup
@@ -265,6 +276,65 @@ target_link_directories(Launcher PRIVATE ${CURL_LIBRARY_DIRS})
 target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 
 # --------------------------------
+# VulkanRender
+# --------------------------------
+
+add_library(VulkanRenderer
+    Source/VulkanRenderer/benchmark.hpp
+    Source/VulkanRenderer/camera.hpp
+    Source/VulkanRenderer/CommandLineParser.hpp
+    Source/VulkanRenderer/Entrypoints.h
+    Source/VulkanRenderer/frustum.hpp
+    Source/VulkanRenderer/keycodes.hpp
+    Source/VulkanRenderer/main.cpp
+    Source/VulkanRenderer/threadpool.hpp
+    Source/VulkanRenderer/VulkanAndroid.cpp
+    Source/VulkanRenderer/VulkanAndroid.h
+    Source/VulkanRenderer/VulkanBuffer.cpp
+    Source/VulkanRenderer/VulkanBuffer.h
+    Source/VulkanRenderer/VulkanDebug.cpp
+    Source/VulkanRenderer/VulkanDebug.h
+    Source/VulkanRenderer/VulkanDevice.cpp
+    Source/VulkanRenderer/VulkanDevice.h
+    Source/VulkanRenderer/vulkanexamplebase.cpp
+    Source/VulkanRenderer/vulkanexamplebase.h
+    Source/VulkanRenderer/VulkanFrameBuffer.hpp
+    Source/VulkanRenderer/VulkanglTFModel.cpp
+    Source/VulkanRenderer/VulkanglTFModel.h
+    Source/VulkanRenderer/VulkanInitializers.hpp
+    Source/VulkanRenderer/VulkanRaytracingSample.cpp
+    Source/VulkanRenderer/VulkanRaytracingSample.h
+    Source/VulkanRenderer/VulkanSwapChain.cpp
+    Source/VulkanRenderer/VulkanSwapChain.h
+    Source/VulkanRenderer/VulkanTexture.cpp
+    Source/VulkanRenderer/VulkanTexture.h
+    Source/VulkanRenderer/VulkanTools.cpp
+    Source/VulkanRenderer/VulkanTools.h
+    Source/VulkanRenderer/VulkanUIOverlay.cpp
+    Source/VulkanRenderer/VulkanUIOverlay.h
+)
+
+target_link_libraries(VulkanRenderer PRIVATE
+    glm::glm-header-only
+    spdlog::spdlog_header_only
+    imgui::imgui
+    glfw
+    dxgi
+    d3d12
+    Shell32.lib
+)
+
+target_include_directories(VulkanRenderer PRIVATE
+    Source/VulkanRenderer/
+    Dependency/optick/src/
+    ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+    $ENV{VULKAN_SDK}/Include/
+    ${Stb_INCLUDE_DIR}
+)
+
+target_link_options(VulkanRenderer PRIVATE /SUBSYSTEM:WINDOWS)
+
+# --------------------------------
 # SceneryEditorX
 # --------------------------------
 
@@ -393,8 +463,9 @@ target_link_directories(SceneryEditorX PRIVATE $ENV{VULKAN_SDK}/Lib/)
 target_link_directories(SceneryEditorX PRIVATE ${CURL_INCLUDE_DIRS})
 
 # Define SEDX_DEBUG for Debug builds using generator expressions
-target_compile_definitions(Launcher         PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG>)
-target_compile_definitions(SceneryEditorX   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG>)
+target_compile_definitions(Launcher         PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG> $<$<CONFIG:Release>:SEDX_RELEASE>)
+target_compile_definitions(SceneryEditorX   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG> $<$<CONFIG:Release>:SEDX_RELEASE>)
+target_compile_definitions(VulkanRenderer   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG> $<$<CONFIG:Release>:SEDX_RELEASE>)
 
 # --------------------------------
 # Defines
@@ -403,6 +474,7 @@ target_compile_definitions(SceneryEditorX   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG
 target_compile_definitions(SceneryEditorX   PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(FormatTester     PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(VulkanRenderer   PRIVATE WIN32_LEAN_AND_MEAN)
 
 # --------------------------------
 # Precompiled Header
