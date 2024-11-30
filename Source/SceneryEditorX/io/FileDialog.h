@@ -1,5 +1,4 @@
 #pragma once
-#include "core/xpeditor_pch.h"
 
 #ifndef FILEDIALOG_H
 #define FILEDIALOG_H

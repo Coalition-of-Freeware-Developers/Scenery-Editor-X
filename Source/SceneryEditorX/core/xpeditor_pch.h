@@ -97,7 +97,6 @@
 #include <ImGuizmo.h>
 
 #include <core/Base.hpp>
-#include <core/DirectoryManager.hpp>
 #include <core/EdxAssert.h>
 
 #include <logging/Logging.hpp>

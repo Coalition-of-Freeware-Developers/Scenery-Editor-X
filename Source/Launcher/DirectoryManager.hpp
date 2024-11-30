@@ -7,9 +7,16 @@
 class DirectoryInit
 {
 public:
-    static std::string absolutePath;
-    static std::string relativePath;
+    static std::string absolutePath; // The absolute path to the executable
+    static std::string relativePath; // The relative path to the executable
 
+    /**
+    * Checks the directories based on the provided command-line arguments.
+    *
+    * @param argc The number of command-line arguments.
+    * @param argv An array of command-line argument strings.
+    * @return An integer indicating the result of the directory check.
+    */
     int DirectoryCheck(int argc, char *argv[]);
 
     /**

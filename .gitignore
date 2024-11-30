@@ -4,8 +4,7 @@ build/
 /.vs
 bin/
 bin-int/
-/example
-/VulkanInstallers
+shader_tests/
 
 # User-specific files
 *.rsuser
@@ -186,3 +185,4 @@ SceneryEditorX/.vscode/settings.json
 /VulkanInstallers
 /Vulkan/.vs
 /Vulkan/src/first_app.hpp
+*.psd

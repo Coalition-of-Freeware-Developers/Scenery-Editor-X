@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 3.22..)
 
-
+# --------------------------------
 # Build System
 # --------------------------------
 
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependency/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
 
+# --------------------------------
 # Boost Librarys
 # --------------------------------
-#set(Boost_USE_STATIC_LIBS ON)
 
+#set(Boost_USE_STATIC_LIBS ON)
 #set(Boost_INCLUDE_DIR ${_VCPKG_INSTALLED_DIR}/x64-windows-static/include)
 
 #find_package(boost  COMPONENTS array asio chrono filesystem geometry io iostream)
-
 #define  set(Boost_INCLUDE_DIR "path")
+
+# --------------------------------
+# Scenery Editor X Project Setup
+# --------------------------------
 
 project(SceneryEditorX VERSION 1.0)
 
@@ -22,6 +26,36 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(FONT_FILES
+    Assets/Fonts/industry/Industry-Bold.ttf
+    Assets/Fonts/industry/Industry-Book.ttf
+    Assets/Fonts/industry/Industry-Medium.ttf
+    Assets/Fonts/industry/Industry-Thin.ttf
+    Assets/Fonts/opensans/OpenSans-Bold.ttf
+    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
+    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Italic.ttf
+    Assets/Fonts/opensans/OpenSans-Light.ttf
+    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
+    Assets/Fonts/opensans/OpenSans-Regular.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
+    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
+)
+
+set(REGISTRY_KEYS
+    Source/SceneryEditorX/edXLibReg.rgs
+    Source/SceneryEditorX/edXReg.rgs
+    Source/SceneryEditorX/ProgramReg.rgs
+)
+
+set(ICON_FILES
+    Assets/icon.ico
+    Assets/icon_edX.ico
+    Assets/icon_testing.ico
+)
+
+# --------------------------------
 # Packages
 # --------------------------------
 
@@ -31,9 +65,11 @@ find_package(spdlog   CONFIG REQUIRED)
 find_package(imgui    CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(Stb             REQUIRED)
+find_package(CURL     CONFIG REQUIRED)
 
 find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
+# --------------------------------
 # EDX
 # --------------------------------
 
@@ -75,6 +111,35 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     Source/edX/edX.rc
 )
 
+# --------------------------------
+# File Format Tester
+# --------------------------------
+
+add_executable(FormatTester
+    Source/edX/testing/main.cpp
+    Source/edX/testing/FileBrowser.cpp
+    Source/edX/testing/FileBrowser.hpp
+    Source/edX/testing/FormatTester.rc
+    Source/edX/testing/resource.h
+    Source/edX/edXProjectFile.h
+)
+
+target_link_libraries(FormatTester PRIVATE
+    glm::glm-header-only
+    spdlog::spdlog_header_only
+    imgui::imgui
+    glfw
+    dxgi
+    d3d12
+)
+
+target_include_directories(FormatTester PRIVATE
+    Source/SceneryEditorX/
+    ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+    $ENV{VULKAN_SDK}/Include/
+)
+
+# --------------------------------
 # X-PlaneSceneryLibrary
 # --------------------------------
 
@@ -125,7 +190,9 @@ source_group("Tests" FILES
     Source/X-PlaneSceneryLibrary/DebugMain.cpp
 )
 
-add_library(X-PlaneSceneryLibrary ${XPLIB_HEADER_FILES} ${XPLIB_SOURCE_FILES}
+add_library(X-PlaneSceneryLibrary
+    ${XPLIB_HEADER_FILES}
+    ${XPLIB_SOURCE_FILES}
     Source/X-PlaneSceneryLibrary/DebugMain.cpp
     Source/X-PlaneSceneryLibrary/TextUtils.cpp
     Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
@@ -134,31 +201,72 @@ add_library(X-PlaneSceneryLibrary ${XPLIB_HEADER_FILES} ${XPLIB_SOURCE_FILES}
     Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
 )
 
-# SceneryEditorX
+# --------------------------------
+# SceneryEditorX | Launcher
 # --------------------------------
 
-set(ICON_FILES
-    Assets/icon.ico
-    Assets/icon.png
-    Assets/splash_screen.png
+source_group("Resource" FILES
+    ${ICON_FILES}
+    ${REGISTRY_KEYS}
+    Assets/splash_screen.bmp
+    Source/Launcher/resource.h
+    Source/Launcher/Launcher.rc
 )
 
-set(FONT_FILES
-    Assets/Fonts/industry/Industry-Bold.ttf
-    Assets/Fonts/industry/Industry-Book.ttf
-    Assets/Fonts/industry/Industry-Medium.ttf
-    Assets/Fonts/industry/Industry-Thin.ttf
-    Assets/Fonts/opensans/OpenSans-Bold.ttf
-    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Italic.ttf
-    Assets/Fonts/opensans/OpenSans-Light.ttf
-    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Regular.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
+source_group("Core" FILES
+    Source/Launcher/Main.cpp
+    Source/SceneryEditorX/version.h
+    Source/Launcher/Logging.cpp
+    Source/Launcher/DirectoryManager.cpp
+    Source/Launcher/SplashHandler.h
+    Source/Launcher/Updater.h
+    Source/Launcher/Updater.cpp
 )
+
+source_group("Registry" FILES
+    Source/Launcher/RegInit.h
+    Source/Launcher/RegCheck.h
+    Source/Launcher/ElevatePerms.h
+)
+
+add_executable(Launcher
+    ${ICON_FILES}
+    ${REGISTRY_KEYS}
+    Assets/splash_screen.bmp
+    Source/Launcher/Main.cpp
+    Source/Launcher/resource.h
+    Source/Launcher/Launcher.rc
+    Source/Launcher/Logging.cpp
+    Source/Launcher/RegInit.h
+    Source/Launcher/RegCheck.h
+    Source/Launcher/ElevatePerms.h
+    Source/Launcher/DirectoryManager.cpp
+    Source/Launcher/SplashHandler.h
+    Source/Launcher/Updater.h
+    Source/Launcher/Updater.cpp
+    Source/SceneryEditorX/version.h
+)
+target_link_libraries(Launcher PRIVATE Shell32.lib)
+target_link_libraries(Launcher PRIVATE
+    spdlog::spdlog_header_only
+    dxgi
+    d3d12
+    CURL::libcurl
+)
+
+target_include_directories(Launcher PRIVATE
+    Source/SceneryEditorX/logging
+    Source/SceneryEditorX/
+    ${CURL_INCLUDE_DIRS}
+)
+
+target_link_directories(Launcher PRIVATE ${CURL_LIBRARY_DIRS})
+
+target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
+
+# --------------------------------
+# SceneryEditorX
+# --------------------------------
 
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
@@ -167,10 +275,10 @@ file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
 add_executable(SceneryEditorX
     ${OPTICK_SOURCES}
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     # ${FONT_FILES}
     Source/SceneryEditorX/Main.cpp
     Source/SceneryEditorX/core/Application.cpp
-    Source/SceneryEditorX/core/DirectoryManager.cpp
     Source/SceneryEditorX/core/VK_Window.cpp
     Source/SceneryEditorX/io/FileDialog.cpp
     Source/SceneryEditorX/io/FileDialog.h
@@ -194,9 +302,6 @@ add_executable(SceneryEditorX
 )
 
 source_group("External/Optick" FILES ${OPTICK_SOURCES})
-# source_group("External/Icons" FILES ${ICON_FILES})
-# source_group("External/Fonts" FILES ${FONT_FILES})
-
 
 source_group("Core" FILES
     Source/SceneryEditorX/Main.cpp
@@ -238,6 +343,7 @@ source_group("UI" FILES
 
 source_group("Resource" FILES
     ${ICON_FILES}
+    ${REGISTRY_KEYS}
     Source/SceneryEditorX/resource.h
     Source/SceneryEditorX/version.h
     Source/SceneryEditorX/SceneryEditorX.rc
@@ -247,35 +353,43 @@ source_group("Resource" FILES
 target_include_directories(SceneryEditorX PRIVATE
     Source/SceneryEditorX/
     Dependency/optick/src/
+    ${REGISTRY_KEYS}
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
     ${Stb_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 
 # Link
 target_link_libraries(SceneryEditorX PRIVATE
-    #boost::array
-    #boost::asio
-    #boost::chrono
-    #boost::filesystem
-    #boost::geometry
-    #boost::io
-    #boost::iostream
     glm::glm-header-only
     spdlog::spdlog_header_only
     imgui::imgui
     imguizmo::imguizmo
+    CURL::libcurl
     glfw
     dxgi
     d3d12
+    Shell32.lib
 )
 
-target_link_directories(SceneryEditorX PRIVATE
-    $ENV{VULKAN_SDK}/Lib/
-)
+target_link_directories(SceneryEditorX PRIVATE $ENV{VULKAN_SDK}/Lib/)
+target_link_directories(SceneryEditorX PRIVATE ${CURL_INCLUDE_DIRS})
 
+# Define SEDX_DEBUG for Debug builds using generator expressions
+target_compile_definitions(Launcher         PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG>)
+target_compile_definitions(SceneryEditorX   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG>)
+
+# --------------------------------
 # Defines
-target_compile_definitions(SceneryEditorX PRIVATE WIN32_LEAN_AND_MEAN)
+# --------------------------------
 
+target_compile_definitions(SceneryEditorX   PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(FormatTester     PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
+
+# --------------------------------
 # Precompiled Header
+# --------------------------------
+
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
