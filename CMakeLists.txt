@@ -27,10 +27,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(FONT_FILES
-    Assets/Fonts/industry/Industry-Bold.ttf
-    Assets/Fonts/industry/Industry-Book.ttf
-    Assets/Fonts/industry/Industry-Medium.ttf
-    Assets/Fonts/industry/Industry-Thin.ttf
+    Assets/Fonts/industry/Industry-Bold.otf
+    Assets/Fonts/industry/Industry-Book.otf
+    Assets/Fonts/industry/Industry-Medium.otf
+    Assets/Fonts/industry/Industry-Thin.otf
     Assets/Fonts/opensans/OpenSans-Bold.ttf
     Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
     Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
@@ -44,9 +44,9 @@ set(FONT_FILES
 )
 
 set(REGISTRY_KEYS
-    Source/SceneryEditorX/edXLibReg.rgs
-    Source/SceneryEditorX/edXReg.rgs
-    Source/SceneryEditorX/ProgramReg.rgs
+    Source/SceneryEditorX/Registry/edXLibReg.rgs
+    Source/SceneryEditorX/Registry/edXReg.rgs
+    Source/SceneryEditorX/Registry/ProgramReg.rgs
 )
 
 set(ICON_FILES
@@ -255,7 +255,7 @@ target_link_libraries(Launcher PRIVATE
 )
 
 target_include_directories(Launcher PRIVATE
-    Source/SceneryEditorX/logging
+    Source/SceneryEditorX/Logging
     Source/SceneryEditorX/
     ${CURL_INCLUDE_DIRS}
 )
@@ -270,32 +270,34 @@ target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
-# file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
 
+# file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
 add_executable(SceneryEditorX
     ${OPTICK_SOURCES}
     ${ICON_FILES}
     ${REGISTRY_KEYS}
-    # ${FONT_FILES}
+    ${FONT_FILES}
+
     Source/SceneryEditorX/Main.cpp
-    Source/SceneryEditorX/core/Application.cpp
-    Source/SceneryEditorX/core/VK_Window.cpp
-    Source/SceneryEditorX/io/FileDialog.cpp
-    Source/SceneryEditorX/io/FileDialog.h
-    Source/SceneryEditorX/io/LockFile.cpp
-    Source/SceneryEditorX/logging/Logging.cpp
-    Source/SceneryEditorX/renderer/Camera.cpp
-    Source/SceneryEditorX/renderer/VK_Pipeline.cpp
-    Source/SceneryEditorX/ui/About.cpp
-    Source/SceneryEditorX/ui/ContentBrowser.cpp
-    Source/SceneryEditorX/ui/Fonts.h
-    Source/SceneryEditorX/ui/LayerStack.cpp
-    Source/SceneryEditorX/ui/MenuBar.cpp
-    Source/SceneryEditorX/ui/Modals.cpp
-    Source/SceneryEditorX/ui/SettingsPanel.cpp
-    Source/SceneryEditorX/ui/Styles.cpp
-    Source/SceneryEditorX/ui/UI.h
-    Source/SceneryEditorX/options/Settings.cpp
+    Source/SceneryEditorX/Core/Application.cpp
+    Source/SceneryEditorX/Core/Profiler.h
+    Source/SceneryEditorX/Core/VK_Window.cpp
+    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
+    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
+    Source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
+    Source/SceneryEditorX/Logging/Logging.cpp
+    Source/SceneryEditorX/Renderer/Camera.cpp
+    Source/SceneryEditorX/Renderer/VK_Pipeline.cpp
+    Source/SceneryEditorX/UI/About.cpp
+    Source/SceneryEditorX/UI/ContentBrowser.cpp
+    Source/SceneryEditorX/UI/Fonts.h
+    Source/SceneryEditorX/UI/LayerStack.cpp
+    Source/SceneryEditorX/UI/MenuBar.cpp
+    Source/SceneryEditorX/UI/Modals.cpp
+    Source/SceneryEditorX/UI/SettingsPanel.cpp
+    Source/SceneryEditorX/UI/Styles.cpp
+    Source/SceneryEditorX/UI/UI.h
+    Source/SceneryEditorX/Options/Settings.cpp
     Source/SceneryEditorX/SceneryEditorX.rc
     Source/SceneryEditorX/resource.h
     Source/SceneryEditorX/version.h
@@ -305,48 +307,62 @@ source_group("External/Optick" FILES ${OPTICK_SOURCES})
 
 source_group("Core" FILES
     Source/SceneryEditorX/Main.cpp
-    Source/SceneryEditorX/core/Application.cpp
-    Source/SceneryEditorX/core/DirectoryManager.cpp
-    Source/SceneryEditorX/core/VK_Window.cpp
+    Source/SceneryEditorX/Core/Application.cpp
+    Source/SceneryEditorX/Core/DirectoryManager.cpp
 )
 
-source_group("IO" FILES
-    Source/SceneryEditorX/io/FileDialog.cpp
-    Source/SceneryEditorX/io/FileDialog.h
-    Source/SceneryEditorX/io/LockFile.cpp
+source_group("Core/Platform/Windows" FILES
+    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
+    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
+    Source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
 )
 
-source_group("Logger" FILES
-    Source/SceneryEditorX/logging/Logging.cpp
+source_group("Core/Logger" FILES
+    Source/SceneryEditorX/Logging/Logging.cpp
 )
 
-source_group("Renderer" FILES
-    Source/SceneryEditorX/renderer/Camera.cpp
-    Source/SceneryEditorX/renderer/VK_Pipeline.cpp
+source_group("Core/Renderer" FILES
+    Source/SceneryEditorX/Renderer/Camera.cpp
+    Source/SceneryEditorX/Renderer/VK_Pipeline.cpp
+    Source/SceneryEditorX/Core/VK_Window.cpp
 )
 
-source_group("Settings" FILES
-    Source/SceneryEditorX/options/Settings.cpp
+source_group("Core/Profiler" FILES
+    Source/SceneryEditorX/Core/Profiler.h
 )
 
-source_group("UI" FILES
-    Source/SceneryEditorX/ui/About.cpp
-    Source/SceneryEditorX/ui/ContentBrowser.cpp
-    Source/SceneryEditorX/ui/Fonts.h
-    Source/SceneryEditorX/ui/LayerStack.cpp
-    Source/SceneryEditorX/ui/MenuBar.cpp
-    Source/SceneryEditorX/ui/Modals.cpp
-    Source/SceneryEditorX/ui/SettingsPanel.cpp
-    Source/SceneryEditorX/ui/Styles.cpp
-    Source/SceneryEditorX/ui/UI.h
+source_group("Core/Settings" FILES
+    Source/SceneryEditorX/Options/Settings.cpp
+)
+
+source_group("Core/UI" FILES
+    Source/SceneryEditorX/UI/About.cpp
+    Source/SceneryEditorX/UI/ContentBrowser.cpp
+    Source/SceneryEditorX/UI/Fonts.h
+    Source/SceneryEditorX/UI/LayerStack.cpp
+    Source/SceneryEditorX/UI/MenuBar.cpp
+    Source/SceneryEditorX/UI/Modals.cpp
+    Source/SceneryEditorX/UI/SettingsPanel.cpp
+    Source/SceneryEditorX/UI/Styles.cpp
+    Source/SceneryEditorX/UI/UI.h
 )
 
 source_group("Resource" FILES
-    ${ICON_FILES}
-    ${REGISTRY_KEYS}
     Source/SceneryEditorX/resource.h
     Source/SceneryEditorX/version.h
     Source/SceneryEditorX/SceneryEditorX.rc
+)
+
+source_group("Resource/Registry" FILES
+    ${REGISTRY_KEYS}
+)
+
+source_group("Resource/Icons" FILES
+    ${ICON_FILES}
+)
+
+source_group("Resource/Fonts" FILES
+    ${FONT_FILES}
 )
 
 # Include
@@ -392,4 +408,4 @@ target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
 # Precompiled Header
 # --------------------------------
 
-target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/core/xpeditor_pch.h)
+target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/xpeditor_pch.h)

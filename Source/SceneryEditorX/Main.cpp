@@ -17,9 +17,6 @@
 #include <string>
 #include <sysinfoapi.h>
 
-
-//#define GLFW_INCLUDE_VULKAN
-// glfw will include vulkan and its own definitions
 #include <GLFW/glfw3.h>
 
 #ifdef _DEBUG
@@ -332,19 +329,16 @@ private:
      * It then updates the uniform buffer and command buffer, and finally submits the command buffer
      * and presents the image. The frame count is incremented at the end.
      */
-    void drawFrame()
+    void DrawFrame()
     {
         SEDX_PROFILE_FUNC();
-        imguiDrawFrame();
-        vkw::AcquireImage();
+        DrawEditor();
+        RenderFrame();
         if (vkw::GetSwapChainDirty())
         {
             return;
         }
-        updateUniformBuffer();
-        updateCommandBuffer();
         vkw::SubmitAndPresent();
-
         frameCount = (frameCount + 1) % (1 << 15);
     }
 
