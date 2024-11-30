@@ -9,6 +9,8 @@
 namespace fs = std::filesystem;
 
 // Define the static members
+// TODO: When Registery is implemented, remove the static members and replace with registry HKEY Values
+
 std::string DirectoryInit::absolutePath = "";
 std::string DirectoryInit::relativePath = "";
 

@@ -76,10 +76,10 @@ void Updater::UpdateCheck()
 {
 
     // Check if the application is running in debug mode
-    #ifdef SEDX_DEBUG
-        std::cout << "Debug mode: Skipping update check. You are using the latest version." << std::endl;
-        return;
-    #endif
+#ifdef SEDX_DEBUG
+    std::cout << "Debug mode: Skipping update check. You are using the latest version." << std::endl;
+    return;
+#endif
 
     // Perform URL check before continuing
     if (!urlCheck())

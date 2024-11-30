@@ -75,6 +75,14 @@ void Log::Init()
     }
 }
 
+void Log::Shutdown()
+{
+    spdlog::info("Shutting down logging system...");
+    std::cout << "Shutting down logging system..." << std::endl;
+    spdlog::shutdown();
+}
+
+
 static std::string getOsName()
 {
 #ifdef _WIN32
@@ -138,11 +146,4 @@ void Log::LogHeader()
     spdlog::info("Copyright (C) 2024");
     spdlog::info("============================================");
     spdlog::info("============================================");
-}
-
-void Log::Shutdown()
-{
-    spdlog::info("Shutting down logging system...");
-    std::cout << "Shutting down logging system..." << std::endl;
-    spdlog::shutdown();
 }
