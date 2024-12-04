@@ -19,12 +19,9 @@
 #include <timezoneapi.h>
 #include <vector>
 #include <iostream>
+#include <filesystem>
 
-/**
- * @brief Static member to hold the logger instance.
- */
-std::shared_ptr<spdlog::logger> Log::_logger;
-
+std::atomic<bool> bWasInit = false;
 
 /**
 * @brief Initializes the logging system with console and file sinks.
@@ -38,8 +35,9 @@ void Log::Init()
 {
     try
     {
-        if (!_logger) // Only initialize once
+        if (!bWasInit) // Only initialize once
         {
+            bWasInit = true;
             // Create an asynchronous logger with a queue size of 8192
             spdlog::init_thread_pool(8192, 1);
 
@@ -50,23 +48,33 @@ void Log::Init()
             console_sink->set_pattern("%^[%T] %n: %v%$");
             sinks.emplace_back(console_sink);
 
+            //Get the path to write the file
+#ifdef _WIN32
+            char exePath[MAX_PATH]{0};
+            GetModuleFileNameA(NULL, exePath, MAX_PATH);
+            std::filesystem::path pLogPath = std::filesystem::path(exePath).parent_path() / "Launcher.log";
+#else
+            std::filesystem::path pLogPath = "Launcher.log";
+#endif
+
             // File sink for writing logs
-            auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("Launcher.log", true);
+            auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(pLogPath.string(), true);
             file_sink->set_pattern("[%Y-%m-%d %T] [%l] %n: %v");
             sinks.emplace_back(file_sink);
 
             // Combine sinks into an asynchronous logger
-            _logger = std::make_shared<spdlog::async_logger>("Launcher",sinks.begin(),sinks.end()
+            auto _logger = std::make_shared<spdlog::async_logger>("Launcher",sinks.begin(),sinks.end()
                 ,spdlog::thread_pool(),
                 spdlog::async_overflow_policy::block);
-            spdlog::register_logger(_logger);
 
             // Set global log level and flush policy
             _logger->set_level(spdlog::level::trace);
             _logger->flush_on(spdlog::level::trace);
+            spdlog::register_logger(_logger);
+            spdlog::set_default_logger(_logger);
 
             // Debug message to verify initialization
-            std::cout << "Logger initialized successfully." << std::endl;
+            spdlog::info("Logger initialized successfully.");
         }
     }
     catch (const spdlog::spdlog_ex &ex)
