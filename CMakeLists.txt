@@ -352,9 +352,11 @@ add_executable(SceneryEditorX
     Source/SceneryEditorX/Core/Application.cpp
     Source/SceneryEditorX/Core/Profiler.h
     Source/SceneryEditorX/Core/VK_Window.cpp
+    Source/SceneryEditorX/Core/Window.hpp
     Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
     Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
     Source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
+    Source/SceneryEditorX/Platform/Windows/EditorConfig.hpp
     Source/SceneryEditorX/Logging/Logging.cpp
     Source/SceneryEditorX/Renderer/Camera.cpp
     Source/SceneryEditorX/Renderer/VK_Pipeline.cpp
@@ -379,12 +381,14 @@ source_group("Core" FILES
     Source/SceneryEditorX/Main.cpp
     Source/SceneryEditorX/Core/Application.cpp
     Source/SceneryEditorX/Core/DirectoryManager.cpp
+    Source/SceneryEditorX/Core/Window.hpp
 )
 
 source_group("Core/Platform/Windows" FILES
     Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
     Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
     Source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
+    Source/SceneryEditorX/Platform/Windows/EditorConfig.hpp
 )
 
 source_group("Core/Logger" FILES
