@@ -2,7 +2,9 @@
 # Application Editor Framework
 # --------------------------------
 
-message(STATUS "Beginning project generation for Scenery Editor X | Application Framework")
+message(STATUS "=================================================")
+message(STATUS "Generating Application Framework")
+
 
 add_library(EditorFramework
     ${OPTICK_SOURCES}

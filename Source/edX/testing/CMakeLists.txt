@@ -2,7 +2,9 @@
 # File Format Tester
 # --------------------------------
 
-message(STATUS "Beginning project generation for Scenery Editor X | edX Format Tester")
+message(STATUS "=================================================")
+message(STATUS "Generating edX Format Tester")
+
 
 add_executable(FormatTester
     main.cpp
@@ -10,7 +12,7 @@ add_executable(FormatTester
     FileBrowser.hpp
     FormatTester.rc
     resource.h
-    ${CMAKE_SOURCE_DIR}/Source/edX/edXProjectFile.h
+    ${CMAKE_SOURCE_DIR}/source/edX/edXProjectFile.h
 )
 
 target_link_libraries(FormatTester PRIVATE
@@ -23,7 +25,7 @@ target_link_libraries(FormatTester PRIVATE
 )
 
 target_include_directories(FormatTester PRIVATE
-    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/
+    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
 )

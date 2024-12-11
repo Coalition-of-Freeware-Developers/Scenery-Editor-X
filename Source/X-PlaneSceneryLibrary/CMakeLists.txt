@@ -2,7 +2,9 @@
 # X-PlaneSceneryLibrary
 # --------------------------------
 
-message(STATUS "Beginning project generation for X-Plane Scenery Library")
+message(STATUS "=================================================")
+message(STATUS "Generating X-Plane Scenery Library Project")
+
 
 add_library(X-PlaneSceneryLibrary
     ${XPLIB_HEADER_FILES}

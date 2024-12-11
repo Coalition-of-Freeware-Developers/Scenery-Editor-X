@@ -187,3 +187,4 @@ SceneryEditorX/.vscode/settings.json
 
 # Other File Formats
 *.psd
+CMake_Gen.log

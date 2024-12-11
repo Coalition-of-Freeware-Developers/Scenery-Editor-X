@@ -1,8 +1,9 @@
 # --------------------------------
 # EDX
 # --------------------------------
+message(STATUS "=================================================")
+message(STATUS "Generating edX Project Format")
 
-message(STATUS "Beginning project generation for Scenery Editor X | edX Project Formats")
 
 add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     edXWriter.cpp
