@@ -1,0 +1,12 @@
+{
+    "dependencies": [
+      "glm",
+      "portable-file-dialogs",
+      "spdlog",
+      { "name": "imgui", "features": ["glfw-binding", "vulkan-binding", "docking-experimental"] },
+      "imguizmo",
+      "glfw3",
+      "stb",
+      { "name": "curl", "features": [ "http2", "idn", "ssl"] }
+    ]
+  }

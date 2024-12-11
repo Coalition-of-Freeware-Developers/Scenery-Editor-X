@@ -4,8 +4,7 @@ build/
 /.vs
 bin/
 bin-int/
-/example
-/VulkanInstallers
+shader_tests/
 
 # User-specific files
 *.rsuser
@@ -59,7 +58,7 @@ artifacts/
 *_h.h
 *.ilk
 *.meta
-*.obj
+# *.obj
 *.iobj
 *.pch
 *.pdb
@@ -74,7 +73,7 @@ artifacts/
 *.tmp
 *.tmp_proj
 *_wpftmp.csproj
-*.log
+# *.log
 *.tlog
 *.vspscc
 *.vssscc
@@ -182,6 +181,9 @@ _pkginfo.txt
 SceneryEditorX/.vscode/c_cpp_properties.json
 SceneryEditorX/.vscode/launch.json
 SceneryEditorX/.vscode/settings.json
-/docs
 /VulkanInstallers
 /Vulkan/.vs
+/Vulkan/src/first_app.hpp
+
+# Other File Formats
+*.psd
