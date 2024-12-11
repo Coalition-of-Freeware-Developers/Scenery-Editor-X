@@ -22,6 +22,7 @@ if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 
 if(WIN32)
+    set(CMAKE_SYSTEM_VERSION 10.0)
     if(CMAKE_GENERATOR MATCHES "Visual Studio")
         add_compile_options("/MP")
     endif()
@@ -32,6 +33,10 @@ endif()
 # --------------------------------
 
 project(SceneryEditorX VERSION 1.0)
+
+message(STATUS "=================================================")
+message(STATUS "Beginning project generation for Scenery Editor X")
+message(STATUS "=================================================")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -81,140 +86,36 @@ find_package(CURL     CONFIG REQUIRED)
 find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
 # --------------------------------
+# Scenery Editor X | Application Framework
+# --------------------------------
+
+add_subdirectory(Source/EditorFramework)
+
+# --------------------------------
 # EDX
 # --------------------------------
 
-set(EDX_HEADER_FILES
-    Source/edX/edXLibraryFile.h
-    Source/edX/edXProjectFile.h
-    Source/edX/resource.h
-)
-
-set(EDX_SOURCE_FILES
-    Source/edX/edXWriter.cpp
-    Source/edX/edXReader.cpp
-    Source/edX/edXLibraryWriter.cpp
-    Source/edX/edXLibraryReader.cpp
-)
-
-source_group("Project Format" FILES
-    Source/edX/edXProjectFile.h
-    Source/edX/edXWriter.cpp
-    Source/edX/edXReader.cpp
-)
-
-source_group("Library Format" FILES
-    Source/edX/edXLibraryFile.h
-    Source/edX/edXLibraryWriter.cpp
-    Source/edX/edXLibraryReader.cpp
-)
-
-source_group("Resource" FILES
-    Source/edX/resource.h
-    Source/edX/edX.rc
-)
-
-add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
-    Source/edX/edXWriter.cpp
-    Source/edX/edXReader.cpp
-    Source/edX/edXLibraryWriter.cpp
-    Source/edX/edXLibraryReader.cpp
-    Source/edX/edX.rc
-)
+add_subdirectory(Source/edX)
 
 # --------------------------------
 # File Format Tester
 # --------------------------------
 
-add_executable(FormatTester
-    Source/edX/testing/main.cpp
-    Source/edX/testing/FileBrowser.cpp
-    Source/edX/testing/FileBrowser.hpp
-    Source/edX/testing/FormatTester.rc
-    Source/edX/testing/resource.h
-    Source/edX/edXProjectFile.h
-)
-
-target_link_libraries(FormatTester PRIVATE
-    glm::glm-header-only
-    spdlog::spdlog_header_only
-    imgui::imgui
-    glfw
-    dxgi
-    d3d12
-)
-
-target_include_directories(FormatTester PRIVATE
-    Source/SceneryEditorX/
-    ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
-    $ENV{VULKAN_SDK}/Include/
-)
+add_subdirectory(Source/edX/testing)
 
 # --------------------------------
 # X-PlaneSceneryLibrary
 # --------------------------------
 
-set(XPLIB_HEADER_FILES
-    Source/X-PlaneSceneryLibrary/XPObj.h
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.h
-    Source/X-PlaneSceneryLibrary/XPLibraryPath.h
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
-    Source/X-PlaneSceneryLibrary/XPAsset.h
-    Source/X-PlaneSceneryLibrary/TextUtils.h
-    Source/X-PlaneSceneryLibrary/resource.h
-)
-
-set(XPLIB_SOURCE_FILES
-    Source/X-PlaneSceneryLibrary/DebugMain.cpp
-    Source/X-PlaneSceneryLibrary/TextUtils.cpp
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
-    Source/X-PlaneSceneryLibrary/XPObj.cpp
-)
-
-source_group("Header Files" FILES
-    Source/X-PlaneSceneryLibrary/XPObj.h
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.h
-    Source/X-PlaneSceneryLibrary/XPLibraryPath.h
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
-    Source/X-PlaneSceneryLibrary/XPAsset.h
-    Source/X-PlaneSceneryLibrary/TextUtils.h
-)
-
-source_group("Source Files" FILES
-    Source/X-PlaneSceneryLibrary/TextUtils.cpp
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
-    Source/X-PlaneSceneryLibrary/XPObj.cpp
-)
-
-source_group("Resource" FILES
-    Source/X-PlaneSceneryLibrary/resource.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
-)
-
-source_group("Tests" FILES
-    Source/X-PlaneSceneryLibrary/DebugMain.cpp
-)
-
-add_library(X-PlaneSceneryLibrary
-    ${XPLIB_HEADER_FILES}
-    ${XPLIB_SOURCE_FILES}
-    Source/X-PlaneSceneryLibrary/DebugMain.cpp
-    Source/X-PlaneSceneryLibrary/TextUtils.cpp
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
-    Source/X-PlaneSceneryLibrary/XPObj.cpp
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
-)
+add_subdirectory(Source/X-PlaneSceneryLibrary)
 
 # --------------------------------
 # SceneryEditorX | Launcher
 # --------------------------------
+
+message(STATUS "=================================================")
+message(STATUS "Beginning project generation for Scenery Editor X | Launcher")
+message(STATUS "=================================================")
 
 source_group("Resource" FILES
     ${ICON_FILES}
@@ -279,6 +180,10 @@ target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 # VulkanRender
 # --------------------------------
 
+message(STATUS "=================================================")
+message(STATUS "Beginning project generation for Vulkan Renderer")
+message(STATUS "=================================================")
+
 add_library(VulkanRenderer
     Source/VulkanRenderer/benchmark.hpp
     Source/VulkanRenderer/camera.hpp
@@ -338,8 +243,13 @@ target_link_options(VulkanRenderer PRIVATE /SUBSYSTEM:WINDOWS)
 # SceneryEditorX
 # --------------------------------
 
+message(STATUS "=================================================")
+message(STATUS "Beginning project generation for Scenery Editor X")
+message(STATUS "=================================================")
+
 # Glob the optick sources and compile the executable with them directly.
 file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
+message(STATUS "Optick Graphics Debugger location: Dependency/optick/src/")
 
 # file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
 add_executable(SceneryEditorX
@@ -476,12 +386,12 @@ target_compile_definitions(VulkanRenderer   PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG
 # --------------------------------
 
 target_compile_definitions(SceneryEditorX   PRIVATE WIN32_LEAN_AND_MEAN)
-target_compile_definitions(FormatTester     PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(Launcher         PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(VulkanRenderer   PRIVATE WIN32_LEAN_AND_MEAN)
 
 # --------------------------------
 # Precompiled Header
 # --------------------------------
-
+message(STATUS "=================================================")
+message(STATUS "Generating precompiled headers")
 target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/xpeditor_pch.h)
