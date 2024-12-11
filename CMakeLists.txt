@@ -4,17 +4,22 @@ cmake_minimum_required(VERSION 3.22..)
 # Build System
 # --------------------------------
 set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE)
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/Dependency/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
+set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "")
 
 # --------------------------------
-# Boost Librarys
+# Global Setup
 # --------------------------------
+# Require builds to be outside of source tree.
+file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
 
-# set(Boost_USE_STATIC_LIBS ON)
-# set(Boost_INCLUDE_DIR ${_VCPKG_INSTALLED_DIR}/x64-windows-static/include)
+if(EXISTS "${LOC_PATH}")
+    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please use a build directory instead.")
+endif()
 
-# find_package(boost  COMPONENTS array asio chrono filesystem geometry io iostream)
-# define  set(Boost_INCLUDE_DIR "path")
+# Enable folders (for Visual Studio).
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+# Sets all CMake default generated project targets to their own filter.
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets")
 
 # set default build types
 if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
@@ -38,32 +43,32 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(FONT_FILES
-    Assets/Fonts/industry/Industry-Bold.otf
-    Assets/Fonts/industry/Industry-Book.otf
-    Assets/Fonts/industry/Industry-Medium.otf
-    Assets/Fonts/industry/Industry-Thin.otf
-    Assets/Fonts/opensans/OpenSans-Bold.ttf
-    Assets/Fonts/opensans/OpenSans-BoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBold.ttf
-    Assets/Fonts/opensans/OpenSans-ExtraBoldItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Italic.ttf
-    Assets/Fonts/opensans/OpenSans-Light.ttf
-    Assets/Fonts/opensans/OpenSans-LightItalic.ttf
-    Assets/Fonts/opensans/OpenSans-Regular.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBold.ttf
-    Assets/Fonts/opensans/OpenSans-SemiBoldItalic.ttf
+    assets/fonts/industry/Industry-Bold.otf
+    assets/fonts/industry/Industry-Book.otf
+    assets/fonts/industry/Industry-Medium.otf
+    assets/fonts/industry/Industry-Thin.otf
+    assets/fonts/opensans/OpenSans-Bold.ttf
+    assets/fonts/opensans/OpenSans-BoldItalic.ttf
+    assets/fonts/opensans/OpenSans-ExtraBold.ttf
+    assets/fonts/opensans/OpenSans-ExtraBoldItalic.ttf
+    assets/fonts/opensans/OpenSans-Italic.ttf
+    assets/fonts/opensans/OpenSans-Light.ttf
+    assets/fonts/opensans/OpenSans-LightItalic.ttf
+    assets/fonts/opensans/OpenSans-Regular.ttf
+    assets/fonts/opensans/OpenSans-SemiBold.ttf
+    assets/fonts/opensans/OpenSans-SemiBoldItalic.ttf
 )
 
 set(REGISTRY_KEYS
-    Source/SceneryEditorX/Registry/edXLibReg.rgs
-    Source/SceneryEditorX/Registry/edXReg.rgs
-    Source/SceneryEditorX/Registry/ProgramReg.rgs
+    source/SceneryEditorX/Registry/edXLibReg.rgs
+    source/SceneryEditorX/Registry/edXReg.rgs
+    source/SceneryEditorX/Registry/ProgramReg.rgs
 )
 
 set(ICON_FILES
-    Assets/icon.ico
-    Assets/icon_edX.ico
-    Assets/icon_testing.ico
+    assets/icon.ico
+    assets/icon_edX.ico
+    assets/icon_testing.ico
 )
 
 # --------------------------------
@@ -85,41 +90,41 @@ find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 # --------------------------------
 
 set(EDX_HEADER_FILES
-    Source/edX/edXLibraryFile.h
-    Source/edX/edXProjectFile.h
-    Source/edX/resource.h
+    source/edX/edXLibraryFile.h
+    source/edX/edXProjectFile.h
+    source/edX/resource.h
 )
 
 set(EDX_SOURCE_FILES
-    Source/edX/edXWriter.cpp
-    Source/edX/edXReader.cpp
-    Source/edX/edXLibraryWriter.cpp
-    Source/edX/edXLibraryReader.cpp
+    source/edX/edXWriter.cpp
+    source/edX/edXReader.cpp
+    source/edX/edXLibraryWriter.cpp
+    source/edX/edXLibraryReader.cpp
 )
 
 source_group("Project Format" FILES
-    Source/edX/edXProjectFile.h
-    Source/edX/edXWriter.cpp
-    Source/edX/edXReader.cpp
+    source/edX/edXProjectFile.h
+    source/edX/edXWriter.cpp
+    source/edX/edXReader.cpp
 )
 
 source_group("Library Format" FILES
-    Source/edX/edXLibraryFile.h
-    Source/edX/edXLibraryWriter.cpp
-    Source/edX/edXLibraryReader.cpp
+    source/edX/edXLibraryFile.h
+    source/edX/edXLibraryWriter.cpp
+    source/edX/edXLibraryReader.cpp
 )
 
 source_group("Resource" FILES
-    Source/edX/resource.h
-    Source/edX/edX.rc
+    source/edX/resource.h
+    source/edX/edX.rc
 )
 
 add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
-    Source/edX/edXWriter.cpp
-    Source/edX/edXReader.cpp
-    Source/edX/edXLibraryWriter.cpp
-    Source/edX/edXLibraryReader.cpp
-    Source/edX/edX.rc
+    source/edX/edXWriter.cpp
+    source/edX/edXReader.cpp
+    source/edX/edXLibraryWriter.cpp
+    source/edX/edXLibraryReader.cpp
+    source/edX/edX.rc
 )
 
 # --------------------------------
@@ -127,12 +132,12 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
 # --------------------------------
 
 add_executable(FormatTester
-    Source/edX/testing/main.cpp
-    Source/edX/testing/FileBrowser.cpp
-    Source/edX/testing/FileBrowser.hpp
-    Source/edX/testing/FormatTester.rc
-    Source/edX/testing/resource.h
-    Source/edX/edXProjectFile.h
+    source/edX/testing/main.cpp
+    source/edX/testing/FileBrowser.cpp
+    source/edX/testing/FileBrowser.hpp
+    source/edX/testing/FormatTester.rc
+    source/edX/testing/resource.h
+    source/edX/edXProjectFile.h
 )
 
 target_link_libraries(FormatTester PRIVATE
@@ -145,7 +150,7 @@ target_link_libraries(FormatTester PRIVATE
 )
 
 target_include_directories(FormatTester PRIVATE
-    Source/SceneryEditorX/
+    source/SceneryEditorX/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
 )
@@ -155,61 +160,61 @@ target_include_directories(FormatTester PRIVATE
 # --------------------------------
 
 set(XPLIB_HEADER_FILES
-    Source/X-PlaneSceneryLibrary/XPObj.h
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.h
-    Source/X-PlaneSceneryLibrary/XPLibraryPath.h
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
-    Source/X-PlaneSceneryLibrary/XPAsset.h
-    Source/X-PlaneSceneryLibrary/TextUtils.h
-    Source/X-PlaneSceneryLibrary/resource.h
+    source/X-PlaneSceneryLibrary/XPObj.h
+    source/X-PlaneSceneryLibrary/XPLibrarySystem.h
+    source/X-PlaneSceneryLibrary/XPLibraryPath.h
+    source/X-PlaneSceneryLibrary/XPLayerGroups.h
+    source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
+    source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
+    source/X-PlaneSceneryLibrary/XPAsset.h
+    source/X-PlaneSceneryLibrary/TextUtils.h
+    source/X-PlaneSceneryLibrary/resource.h
 )
 
 set(XPLIB_SOURCE_FILES
-    Source/X-PlaneSceneryLibrary/DebugMain.cpp
-    Source/X-PlaneSceneryLibrary/TextUtils.cpp
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
-    Source/X-PlaneSceneryLibrary/XPObj.cpp
+    source/X-PlaneSceneryLibrary/DebugMain.cpp
+    source/X-PlaneSceneryLibrary/TextUtils.cpp
+    source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
+    source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
+    source/X-PlaneSceneryLibrary/XPObj.cpp
 )
 
 source_group("Header Files" FILES
-    Source/X-PlaneSceneryLibrary/XPObj.h
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.h
-    Source/X-PlaneSceneryLibrary/XPLibraryPath.h
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
-    Source/X-PlaneSceneryLibrary/XPAsset.h
-    Source/X-PlaneSceneryLibrary/TextUtils.h
+    source/X-PlaneSceneryLibrary/XPObj.h
+    source/X-PlaneSceneryLibrary/XPLibrarySystem.h
+    source/X-PlaneSceneryLibrary/XPLibraryPath.h
+    source/X-PlaneSceneryLibrary/XPLayerGroups.h
+    source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryUtils.h
+    source/X-PlaneSceneryLibrary/X-PlaneSceneryLibraryParsers.h
+    source/X-PlaneSceneryLibrary/XPAsset.h
+    source/X-PlaneSceneryLibrary/TextUtils.h
 )
 
 source_group("Source Files" FILES
-    Source/X-PlaneSceneryLibrary/TextUtils.cpp
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
-    Source/X-PlaneSceneryLibrary/XPObj.cpp
+    source/X-PlaneSceneryLibrary/TextUtils.cpp
+    source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
+    source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
+    source/X-PlaneSceneryLibrary/XPObj.cpp
 )
 
 source_group("Resource" FILES
-    Source/X-PlaneSceneryLibrary/resource.h
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
+    source/X-PlaneSceneryLibrary/resource.h
+    source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
 )
 
 source_group("Tests" FILES
-    Source/X-PlaneSceneryLibrary/DebugMain.cpp
+    source/X-PlaneSceneryLibrary/DebugMain.cpp
 )
 
 add_library(X-PlaneSceneryLibrary
     ${XPLIB_HEADER_FILES}
     ${XPLIB_SOURCE_FILES}
-    Source/X-PlaneSceneryLibrary/DebugMain.cpp
-    Source/X-PlaneSceneryLibrary/TextUtils.cpp
-    Source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
-    Source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
-    Source/X-PlaneSceneryLibrary/XPObj.cpp
-    Source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
+    source/X-PlaneSceneryLibrary/DebugMain.cpp
+    source/X-PlaneSceneryLibrary/TextUtils.cpp
+    source/X-PlaneSceneryLibrary/XPLayerGroups.cpp
+    source/X-PlaneSceneryLibrary/XPLibrarySystem.cpp
+    source/X-PlaneSceneryLibrary/XPObj.cpp
+    source/X-PlaneSceneryLibrary/X-PlaneSceneryLibrary.rc
 )
 
 # --------------------------------
@@ -219,55 +224,56 @@ add_library(X-PlaneSceneryLibrary
 source_group("Resource" FILES
     ${ICON_FILES}
     ${REGISTRY_KEYS}
-    Assets/splash_screen.bmp
-    Source/Launcher/resource.h
-    Source/Launcher/Launcher.rc
+    assets/splash_screen.bmp
+    source/Launcher/resource.h
+    source/Launcher/Launcher.rc
 )
 
 source_group("Core" FILES
-    Source/Launcher/Main.cpp
-    Source/SceneryEditorX/version.h
-    Source/Launcher/Logging.cpp
-    Source/Launcher/DirectoryManager.cpp
-    Source/Launcher/SplashHandler.h
-    Source/Launcher/Updater.h
-    Source/Launcher/Updater.cpp
+    source/Launcher/Main.cpp
+    source/SceneryEditorX/version.h
+    source/Launcher/Logging.cpp
+    source/Launcher/DirectoryManager.cpp
+    source/Launcher/SplashHandler.h
+    source/Launcher/Updater.h
+    source/Launcher/Updater.cpp
 )
 
 source_group("Registry" FILES
-    Source/Launcher/RegInit.h
-    Source/Launcher/RegCheck.h
-    Source/Launcher/ElevatePerms.h
+    source/Launcher/RegInit.h
+    source/Launcher/RegCheck.h
+    source/Launcher/ElevatePerms.h
 )
 
 add_executable(Launcher
     ${ICON_FILES}
     ${REGISTRY_KEYS}
-    Assets/splash_screen.bmp
-    Source/Launcher/Main.cpp
-    Source/Launcher/resource.h
-    Source/Launcher/Launcher.rc
-    Source/Launcher/Logging.cpp
-    Source/Launcher/RegInit.h
-    Source/Launcher/RegCheck.h
-    Source/Launcher/ElevatePerms.h
-    Source/Launcher/DirectoryManager.cpp
-    Source/Launcher/SplashHandler.h
-    Source/Launcher/Updater.h
-    Source/Launcher/Updater.cpp
-    Source/SceneryEditorX/version.h
+    assets/splash_screen.bmp
+    source/Launcher/Main.cpp
+    source/Launcher/resource.h
+    source/Launcher/Launcher.rc
+    source/Launcher/Logging.cpp
+    source/Launcher/RegInit.h
+    source/Launcher/RegCheck.h
+    source/Launcher/ElevatePerms.h
+    source/Launcher/DirectoryManager.cpp
+    source/Launcher/SplashHandler.h
+    source/Launcher/Updater.h
+    source/Launcher/Updater.cpp
+    source/SceneryEditorX/version.h
 )
-target_link_libraries(Launcher PRIVATE Shell32.lib)
+
 target_link_libraries(Launcher PRIVATE
     spdlog::spdlog_header_only
     dxgi
     d3d12
     CURL::libcurl
+    Shell32.lib
 )
 
 target_include_directories(Launcher PRIVATE
-    Source/SceneryEditorX/Logging
-    Source/SceneryEditorX/
+    source/SceneryEditorX/Logging
+    source/SceneryEditorX/
     ${CURL_INCLUDE_DIRS}
 )
 
@@ -280,38 +286,38 @@ target_link_options(Launcher PRIVATE /SUBSYSTEM:WINDOWS)
 # --------------------------------
 
 add_library(VulkanRenderer
-    Source/VulkanRenderer/benchmark.hpp
-    Source/VulkanRenderer/camera.hpp
-    Source/VulkanRenderer/CommandLineParser.hpp
-    Source/VulkanRenderer/Entrypoints.h
-    Source/VulkanRenderer/frustum.hpp
-    Source/VulkanRenderer/keycodes.hpp
-    Source/VulkanRenderer/main.cpp
-    Source/VulkanRenderer/threadpool.hpp
-    Source/VulkanRenderer/VulkanAndroid.cpp
-    Source/VulkanRenderer/VulkanAndroid.h
-    Source/VulkanRenderer/VulkanBuffer.cpp
-    Source/VulkanRenderer/VulkanBuffer.h
-    Source/VulkanRenderer/VulkanDebug.cpp
-    Source/VulkanRenderer/VulkanDebug.h
-    Source/VulkanRenderer/VulkanDevice.cpp
-    Source/VulkanRenderer/VulkanDevice.h
-    Source/VulkanRenderer/vulkanexamplebase.cpp
-    Source/VulkanRenderer/vulkanexamplebase.h
-    Source/VulkanRenderer/VulkanFrameBuffer.hpp
-    Source/VulkanRenderer/VulkanglTFModel.cpp
-    Source/VulkanRenderer/VulkanglTFModel.h
-    Source/VulkanRenderer/VulkanInitializers.hpp
-    Source/VulkanRenderer/VulkanRaytracingSample.cpp
-    Source/VulkanRenderer/VulkanRaytracingSample.h
-    Source/VulkanRenderer/VulkanSwapChain.cpp
-    Source/VulkanRenderer/VulkanSwapChain.h
-    Source/VulkanRenderer/VulkanTexture.cpp
-    Source/VulkanRenderer/VulkanTexture.h
-    Source/VulkanRenderer/VulkanTools.cpp
-    Source/VulkanRenderer/VulkanTools.h
-    Source/VulkanRenderer/VulkanUIOverlay.cpp
-    Source/VulkanRenderer/VulkanUIOverlay.h
+    source/VulkanRenderer/benchmark.hpp
+    source/VulkanRenderer/camera.hpp
+    source/VulkanRenderer/CommandLineParser.hpp
+    source/VulkanRenderer/Entrypoints.h
+    source/VulkanRenderer/frustum.hpp
+    source/VulkanRenderer/keycodes.hpp
+    source/VulkanRenderer/main.cpp
+    source/VulkanRenderer/threadpool.hpp
+    source/VulkanRenderer/VulkanAndroid.cpp
+    source/VulkanRenderer/VulkanAndroid.h
+    source/VulkanRenderer/VulkanBuffer.cpp
+    source/VulkanRenderer/VulkanBuffer.h
+    source/VulkanRenderer/VulkanDebug.cpp
+    source/VulkanRenderer/VulkanDebug.h
+    source/VulkanRenderer/VulkanDevice.cpp
+    source/VulkanRenderer/VulkanDevice.h
+    source/VulkanRenderer/vulkanexamplebase.cpp
+    source/VulkanRenderer/vulkanexamplebase.h
+    source/VulkanRenderer/VulkanFrameBuffer.hpp
+    source/VulkanRenderer/VulkanglTFModel.cpp
+    source/VulkanRenderer/VulkanglTFModel.h
+    source/VulkanRenderer/VulkanInitializers.hpp
+    source/VulkanRenderer/VulkanRaytracingSample.cpp
+    source/VulkanRenderer/VulkanRaytracingSample.h
+    source/VulkanRenderer/VulkanSwapChain.cpp
+    source/VulkanRenderer/VulkanSwapChain.h
+    source/VulkanRenderer/VulkanTexture.cpp
+    source/VulkanRenderer/VulkanTexture.h
+    source/VulkanRenderer/VulkanTools.cpp
+    source/VulkanRenderer/VulkanTools.h
+    source/VulkanRenderer/VulkanUIOverlay.cpp
+    source/VulkanRenderer/VulkanUIOverlay.h
 )
 
 target_link_libraries(VulkanRenderer PRIVATE
@@ -325,8 +331,8 @@ target_link_libraries(VulkanRenderer PRIVATE
 )
 
 target_include_directories(VulkanRenderer PRIVATE
-    Source/VulkanRenderer/
-    Dependency/optick/src/
+    source/VulkanRenderer/
+    dependency/optick/src/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
     ${Stb_INCLUDE_DIR}
@@ -339,7 +345,7 @@ target_link_options(VulkanRenderer PRIVATE /SUBSYSTEM:WINDOWS)
 # --------------------------------
 
 # Glob the optick sources and compile the executable with them directly.
-file(GLOB OPTICK_SOURCES Dependency/optick/src/*.cpp)
+file(GLOB OPTICK_SOURCES dependency/optick/src/*.cpp)
 
 # file(GLOB IMGUI_INCLUDES Dependency/optick/src/*.cpp)
 add_executable(SceneryEditorX
@@ -348,83 +354,83 @@ add_executable(SceneryEditorX
     ${REGISTRY_KEYS}
     ${FONT_FILES}
 
-    Source/SceneryEditorX/Main.cpp
-    Source/SceneryEditorX/Core/Application.cpp
-    Source/SceneryEditorX/Core/Profiler.h
-    Source/SceneryEditorX/Core/VK_Window.cpp
-    Source/SceneryEditorX/Core/Window.hpp
-    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
-    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
-    Source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
-    Source/SceneryEditorX/Platform/Windows/EditorConfig.hpp
-    Source/SceneryEditorX/Logging/Logging.cpp
-    Source/SceneryEditorX/Renderer/Camera.cpp
-    Source/SceneryEditorX/Renderer/VK_Pipeline.cpp
-    Source/SceneryEditorX/UI/About.cpp
-    Source/SceneryEditorX/UI/ContentBrowser.cpp
-    Source/SceneryEditorX/UI/Fonts.h
-    Source/SceneryEditorX/UI/LayerStack.cpp
-    Source/SceneryEditorX/UI/MenuBar.cpp
-    Source/SceneryEditorX/UI/Modals.cpp
-    Source/SceneryEditorX/UI/SettingsPanel.cpp
-    Source/SceneryEditorX/UI/Styles.cpp
-    Source/SceneryEditorX/UI/UI.h
-    Source/SceneryEditorX/Options/Settings.cpp
-    Source/SceneryEditorX/SceneryEditorX.rc
-    Source/SceneryEditorX/resource.h
-    Source/SceneryEditorX/version.h
+    source/SceneryEditorX/Main.cpp
+    source/SceneryEditorX/Core/Application.cpp
+    source/SceneryEditorX/Core/Profiler.h
+    source/SceneryEditorX/Core/VK_Window.cpp
+    source/SceneryEditorX/Core/Window.hpp
+    source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
+    source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
+    source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
+    source/SceneryEditorX/Platform/Windows/EditorConfig.hpp
+    source/SceneryEditorX/Logging/Logging.cpp
+    source/SceneryEditorX/Renderer/Camera.cpp
+    source/SceneryEditorX/Renderer/VK_Pipeline.cpp
+    source/SceneryEditorX/UI/About.cpp
+    source/SceneryEditorX/UI/ContentBrowser.cpp
+    source/SceneryEditorX/UI/Fonts.h
+    source/SceneryEditorX/UI/LayerStack.cpp
+    source/SceneryEditorX/UI/MenuBar.cpp
+    source/SceneryEditorX/UI/Modals.cpp
+    source/SceneryEditorX/UI/SettingsPanel.cpp
+    source/SceneryEditorX/UI/Styles.cpp
+    source/SceneryEditorX/UI/UI.h
+    source/SceneryEditorX/Options/Settings.cpp
+    source/SceneryEditorX/SceneryEditorX.rc
+    source/SceneryEditorX/resource.h
+    source/SceneryEditorX/version.h
 )
 
 source_group("External/Optick" FILES ${OPTICK_SOURCES})
 
 source_group("Core" FILES
-    Source/SceneryEditorX/Main.cpp
-    Source/SceneryEditorX/Core/Application.cpp
-    Source/SceneryEditorX/Core/DirectoryManager.cpp
-    Source/SceneryEditorX/Core/Window.hpp
+    source/SceneryEditorX/Main.cpp
+    source/SceneryEditorX/Core/Application.cpp
+    source/SceneryEditorX/Core/DirectoryManager.cpp
+    source/SceneryEditorX/Core/Window.hpp
 )
 
 source_group("Core/Platform/Windows" FILES
-    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
-    Source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
-    Source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
-    Source/SceneryEditorX/Platform/Windows/EditorConfig.hpp
+    source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.cpp
+    source/SceneryEditorX/Platform/Windows/FileManager/FileDialog.h
+    source/SceneryEditorX/Platform/Windows/FileManager/LockFile.cpp
+    source/SceneryEditorX/Platform/Windows/EditorConfig.hpp
 )
 
 source_group("Core/Logger" FILES
-    Source/SceneryEditorX/Logging/Logging.cpp
+    source/SceneryEditorX/Logging/Logging.cpp
 )
 
 source_group("Core/Renderer" FILES
-    Source/SceneryEditorX/Renderer/Camera.cpp
-    Source/SceneryEditorX/Renderer/VK_Pipeline.cpp
-    Source/SceneryEditorX/Core/VK_Window.cpp
+    source/SceneryEditorX/Renderer/Camera.cpp
+    source/SceneryEditorX/Renderer/VK_Pipeline.cpp
+    source/SceneryEditorX/Core/VK_Window.cpp
 )
 
 source_group("Core/Profiler" FILES
-    Source/SceneryEditorX/Core/Profiler.h
+    source/SceneryEditorX/Core/Profiler.h
 )
 
 source_group("Core/Settings" FILES
-    Source/SceneryEditorX/Options/Settings.cpp
+    source/SceneryEditorX/Options/Settings.cpp
 )
 
 source_group("Core/UI" FILES
-    Source/SceneryEditorX/UI/About.cpp
-    Source/SceneryEditorX/UI/ContentBrowser.cpp
-    Source/SceneryEditorX/UI/Fonts.h
-    Source/SceneryEditorX/UI/LayerStack.cpp
-    Source/SceneryEditorX/UI/MenuBar.cpp
-    Source/SceneryEditorX/UI/Modals.cpp
-    Source/SceneryEditorX/UI/SettingsPanel.cpp
-    Source/SceneryEditorX/UI/Styles.cpp
-    Source/SceneryEditorX/UI/UI.h
+    source/SceneryEditorX/UI/About.cpp
+    source/SceneryEditorX/UI/ContentBrowser.cpp
+    source/SceneryEditorX/UI/Fonts.h
+    source/SceneryEditorX/UI/LayerStack.cpp
+    source/SceneryEditorX/UI/MenuBar.cpp
+    source/SceneryEditorX/UI/Modals.cpp
+    source/SceneryEditorX/UI/SettingsPanel.cpp
+    source/SceneryEditorX/UI/Styles.cpp
+    source/SceneryEditorX/UI/UI.h
 )
 
 source_group("Resource" FILES
-    Source/SceneryEditorX/resource.h
-    Source/SceneryEditorX/version.h
-    Source/SceneryEditorX/SceneryEditorX.rc
+    source/SceneryEditorX/resource.h
+    source/SceneryEditorX/version.h
+    source/SceneryEditorX/SceneryEditorX.rc
 )
 
 source_group("Resource/Registry" FILES
@@ -441,8 +447,8 @@ source_group("Resource/Fonts" FILES
 
 # Include
 target_include_directories(SceneryEditorX PRIVATE
-    Source/SceneryEditorX/
-    Dependency/optick/src/
+    source/SceneryEditorX/
+    dependency/optick/src/
     ${REGISTRY_KEYS}
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
@@ -484,4 +490,12 @@ target_compile_definitions(VulkanRenderer   PRIVATE WIN32_LEAN_AND_MEAN)
 # Precompiled Header
 # --------------------------------
 
-target_precompile_headers(SceneryEditorX PRIVATE Source/SceneryEditorX/xpeditor_pch.h)
+target_precompile_headers(SceneryEditorX PRIVATE source/SceneryEditorX/xpeditor_pch.h)
+
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SceneryEditorX)
+
+set_property(TARGET Launcher PROPERTY FOLDER "Core")
+set_property(TARGET VulkanRenderer PROPERTY FOLDER "Core")
+set_property(TARGET FormatTester PROPERTY FOLDER "Tools")
+set_property(TARGET edX PROPERTY FOLDER "File Formats")
+set_property(TARGET X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
