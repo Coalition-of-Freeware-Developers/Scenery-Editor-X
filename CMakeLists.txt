@@ -86,12 +86,6 @@ find_package(CURL     CONFIG REQUIRED)
 find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
 # --------------------------------
-# Scenery Editor X | Application Framework
-# --------------------------------
-
-add_subdirectory(Source/EditorFramework)
-
-# --------------------------------
 # EDX
 # --------------------------------
 
