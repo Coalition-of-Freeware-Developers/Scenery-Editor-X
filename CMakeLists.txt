@@ -10,6 +10,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Option to enable or disable Doxygen documentation generation
+option(BUILD_DOXYGEN "Build Doxygen documentation" OFF)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SceneryEditorX)
 
 # Require builds to be outside of source tree.
@@ -90,6 +95,7 @@ find_package(imgui    CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(Stb             REQUIRED)
 find_package(CURL     CONFIG REQUIRED)
+find_package(Doxygen            QUIET)
 
 find_path(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
