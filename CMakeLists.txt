@@ -150,6 +150,8 @@ FIND_PACKAGE(Doxygen            QUIET)
 
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
+ADD_SUBDIRECTORY(dependency/lightweightvk)
+
 # --------------------------------
 # EDX
 # --------------------------------
@@ -174,6 +176,7 @@ ADD_SUBDIRECTORY(source/Launcher)
 # VULKANRENDER
 # --------------------------------
 ADD_SUBDIRECTORY(source/VulkanRenderer)
+
 
 # --------------------------------
 # SCENERY EDITOR X
