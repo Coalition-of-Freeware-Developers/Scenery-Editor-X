@@ -18,7 +18,6 @@ add_executable(FormatTester
 target_link_libraries(FormatTester PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
-    imgui::imgui
     glfw
     dxgi
     d3d12

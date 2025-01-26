@@ -44,7 +44,6 @@ add_library(VulkanRenderer
 target_link_libraries(VulkanRenderer PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
-    imgui::imgui
     glfw
     dxgi
     d3d12
@@ -53,7 +52,6 @@ target_link_libraries(VulkanRenderer PRIVATE
 
 target_include_directories(VulkanRenderer PRIVATE
     source/VulkanRenderer/
-    dependency/optick/src/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
     ${Stb_INCLUDE_DIR}

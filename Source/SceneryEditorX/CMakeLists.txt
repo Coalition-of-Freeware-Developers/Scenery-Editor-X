@@ -6,7 +6,6 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Scenery Editor X Project")
 
 ADD_EXECUTABLE(SceneryEditorX
-    ${OPTICK_SOURCES}
     ${ICON_FILES}
     ${REGISTRY_KEYS}
     ${FONT_FILES}
@@ -38,7 +37,6 @@ ADD_EXECUTABLE(SceneryEditorX
     resource.h
 )
 
-SOURCE_GROUP("External/Optick" FILES ${OPTICK_SOURCES})
 
 SOURCE_GROUP("Core" FILES
     core/Main.cpp
@@ -106,7 +104,6 @@ SOURCE_GROUP("Resource/Fonts" FILES
 TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/
-        ${CMAKE_SOURCE_DIR}/dependency/optick/src/
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
@@ -119,8 +116,6 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
     PRIVATE
         glm::glm-header-only
         spdlog::spdlog_header_only
-        imgui::imgui
-        imguizmo::imguizmo
         CURL::libcurl
         glfw
         dxgi

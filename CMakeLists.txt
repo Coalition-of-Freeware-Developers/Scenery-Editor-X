@@ -131,19 +131,12 @@ SET(ICON_FILES
     ${ASSET_DIR}/icon_testing.ico
 )
 
-# Glob the optick sources and compile the executable with them directly.
-FILE(GLOB OPTICK_SOURCES dependency/optick/src/*.cpp)
-MESSAGE(STATUS "Optick Graphics Debugger location: ${CMAKE_SOURCE_DIR}/dependency/optick/src/")
-
 # --------------------------------
 # PACKAGES
 # --------------------------------
 FIND_PACKAGE(Vulkan          REQUIRED)
 FIND_PACKAGE(glm      CONFIG REQUIRED)
-FIND_PACKAGE(glfw3    CONFIG REQUIRED)
 FIND_PACKAGE(spdlog   CONFIG REQUIRED)
-FIND_PACKAGE(imgui    CONFIG REQUIRED)
-FIND_PACKAGE(imguizmo CONFIG REQUIRED)
 FIND_PACKAGE(Stb             REQUIRED)
 FIND_PACKAGE(CURL     CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen            QUIET)
