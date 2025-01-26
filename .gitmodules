@@ -1,9 +1,0 @@
-[submodule "dependency/vcpkg"]
-	path = dependency/vcpkg
-	url = git@github.com:microsoft/vcpkg.git
-[submodule "dependency/optick"]
-	path = dependency/optick
-	url = git@github.com:bombomby/optick.git
-[submodule "dependency/lightweightvk"]
-	path = dependency/lightweightvk
-	url = https://github.com/corporateshark/lightweightvk.git
