@@ -16,6 +16,11 @@ SET_PROPERTY(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT S
 SET_PROPERTY(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMakePredefinedTargets")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+SET(BIN_DIR ${CMAKE_SOURCE_DIR}/bin/${CMAKE_CFG_INTDIR})
+SET(LIBS_DIR ${CMAKE_SOURCE_DIR}/lib/${CMAKE_CFG_INTDIR})
+SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/")
+
+
 # USE FINDVULKAN MODULE ADDED WITH CMAKE 3.7
 IF(NOT CMAKE_VERSION VERSION_LESS 3.7.0)
     MESSAGE(STATUS "Using module to find Vulkan")
@@ -120,9 +125,9 @@ SET(FONT_FILES
 )
 
 SET(REGISTRY_KEYS
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/Registry/edXLibReg.rgs
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/Registry/edXReg.rgs
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/Registry/ProgramReg.rgs
+    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/edXLibReg.rgs
+    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/edXReg.rgs
+    ${CMAKE_SOURCE_DIR}/source/Launcher/Registry/ProgramReg.rgs
 )
 
 SET(ICON_FILES
@@ -131,26 +136,22 @@ SET(ICON_FILES
     ${ASSET_DIR}/icon_testing.ico
 )
 
-# Glob the optick sources and compile the executable with them directly.
-FILE(GLOB OPTICK_SOURCES dependency/optick/src/*.cpp)
-MESSAGE(STATUS "Optick Graphics Debugger location: ${CMAKE_SOURCE_DIR}/dependency/optick/src/")
-
 # --------------------------------
 # PACKAGES
 # --------------------------------
 FIND_PACKAGE(Vulkan          REQUIRED)
 FIND_PACKAGE(glm      CONFIG REQUIRED)
-FIND_PACKAGE(glfw3    CONFIG REQUIRED)
 FIND_PACKAGE(spdlog   CONFIG REQUIRED)
-FIND_PACKAGE(imgui    CONFIG REQUIRED)
-FIND_PACKAGE(imguizmo CONFIG REQUIRED)
 FIND_PACKAGE(Stb             REQUIRED)
 FIND_PACKAGE(CURL     CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen            QUIET)
 
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
-ADD_SUBDIRECTORY(dependency/lightweightvk)
+# --------------------------------
+# GLFW
+# --------------------------------
+ADD_SUBDIRECTORY(dependency/glfw)
 
 # --------------------------------
 # EDX
@@ -177,7 +178,6 @@ ADD_SUBDIRECTORY(source/Launcher)
 # --------------------------------
 ADD_SUBDIRECTORY(source/VulkanRenderer)
 
-
 # --------------------------------
 # SCENERY EDITOR X
 # --------------------------------
@@ -197,8 +197,24 @@ ENDFOREACH()
 # --------------------------------
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating precompiled headers")
-TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE source/SceneryEditorX/xpeditor_pch.h)
+
+TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/xpeditor_pch.h)
 
 SET_PROPERTY(TARGET Launcher VulkanRenderer PROPERTY FOLDER "Core")
 SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
+
+FOREACH(TARGET IN ITEMS SceneryEditorX Launcher VulkanRenderer FormatTester edX X-PlaneSceneryLibrary glfw)
+    SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
+        LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
+    )
+ENDFOREACH()
+
+# --------------------------------
+FOREACH(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
+    SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/lib/${OUTPUTCONFIG})
+    SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/lib/${OUTPUTCONFIG})
+    SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/bin/${OUTPUTCONFIG})
+ENDFOREACH(OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES)

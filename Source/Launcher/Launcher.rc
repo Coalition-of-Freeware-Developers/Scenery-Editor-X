@@ -1,6 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "resource.h"
+#include "launcher-resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -67,13 +67,13 @@ BEGIN
     BEGIN
         BLOCK "040004b0"
         BEGIN
-            VALUE "CompanyName", "TODO: <Company name>"
-            VALUE "FileDescription", "TODO: <File description>"
-            VALUE "FileVersion", "0.0.0.2"
-            VALUE "InternalName", "TODO: <Internal name>"
+            VALUE "CompanyName", "Coalition of Freeware Developers"
+            VALUE "FileDescription", "3D airport and scenery editor for X-Plane 12 flight simulator."
+            VALUE "FileVersion", "0.0.2.26"
+            VALUE "InternalName", "Launcher.exe"
             VALUE "LegalCopyright", "Copyright (C) 2024"
-            VALUE "OriginalFilename", "TODO: <Original filename>"
-            VALUE "ProductName", "TODO: <Product name>"
+            VALUE "OriginalFilename", "Scenery Editor X.exe"
+            VALUE "ProductName", "Scenery Editor X"
             VALUE "ProductVersion", "0.0.2.26"
         END
     END
@@ -107,9 +107,8 @@ SEDX_SPLASH             BITMAP                  "..\\..\\Assets\\splash_screen.b
 // RGS
 //
 
-IDR_REGISTRY_EDX_FORMAT RGS                     "edXReg.rgs"
-
-IDR_REGISTRY_LIBRARY_FORMAT RGS                     "edXLibReg.rgs"
+IDR_REGISTRY_EDX_FORMAT RGS                         "registry\\edXReg.rgs"
+IDR_REGISTRY_LIBRARY_FORMAT RGS                     "registry\\edXLibReg.rgs"
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

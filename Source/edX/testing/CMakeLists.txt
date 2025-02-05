@@ -18,16 +18,21 @@ add_executable(FormatTester
 target_link_libraries(FormatTester PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
-    imgui::imgui
     glfw
     dxgi
     d3d12
+    Shell32.lib
 )
 
 target_include_directories(FormatTester PRIVATE
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/
+    ${CMAKE_SOURCE_DIR}/dependency/imgui
+    ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+    ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+    ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
+    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
+    ${Stb_INCLUDE_DIR}
 )
 
 # --------------------------------

@@ -9,11 +9,10 @@
 
 #include <stb_image.h>
 
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
-#include <imgui_stdlib.h>
-//#include <imgui/imgui_stdlib.h>
-//#include <imgui/ImGuizmo.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_vulkan.h>
+#include <misc/cpp/imgui_stdlib.h>
+#include <ImGuizmo.h>
 
 #include <iostream>
 #include <string>
@@ -49,7 +48,7 @@ private:
         auto t1 = std::chrono::high_resolution_clock::now();
         while (std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() < seconds * 1000.0f)
         {
-            SEDX_PROFILE_FRAME();
+            //SEDX_PROFILE_FRAME();
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             t1 = std::chrono::high_resolution_clock::now();
         }
@@ -57,7 +56,7 @@ private:
 
     void Setup()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         AssetManager::Setup();
         SetupImgui();
         Scene::Setup();
@@ -65,13 +64,13 @@ private:
 
     void Create()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         CreateVulkan();
     }
 
     void CreateVulkan()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         Window::Create();
         vkw::Init(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
         DEBUG_TRACE("Finish creating SwapChain.");
@@ -85,7 +84,7 @@ private:
 
     void Finish()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         DestroyVulkan();
         AssetManager::Finish();
         FinishImgui();
@@ -93,7 +92,7 @@ private:
 
     void DestroyVulkan()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         Scene::DestroyResources();
         DeferredShading::Destroy();
         AssetManager::Destroy();
@@ -106,7 +105,7 @@ private:
     {
         while (!Window::GetShouldClose())
         {
-            SEDX_PROFILE_FRAME();
+            //SEDX_PROFILE_FRAME();
             Window::Update();
             AssetManager::UpdateResources();
             Transform *selectedTransform = nullptr;
@@ -166,7 +165,7 @@ private:
      */
     void imguiDrawFrame()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -252,7 +251,7 @@ private:
      */
     void updateCommandBuffer()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         vkw::BeginCommandBuffer(vkw::Queue::Graphics);
         auto totalTS = vkw::CmdBeginTimeStamp("GPU::Total");
 
@@ -333,7 +332,7 @@ private:
      */
     void DrawFrame()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         DrawEditor();
         RenderFrame();
         if (vkw::GetSwapChainDirty())
@@ -354,7 +353,7 @@ private:
      */
     void RecreateFrameResources()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         // busy wait while the window is minimized
         while (Window::GetWidth() == 0 || Window::GetHeight() == 0)
         {
@@ -399,7 +398,7 @@ private:
      */
     void updateUniformBuffer()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         Scene::UpdateResources();
     }
 
@@ -503,7 +502,7 @@ private:
      */
     void CreateImgui()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         ImGui_ImplGlfw_InitForVulkan(Window::GetGLFWwindow(), true);
         vkw::InitImGui();
     }

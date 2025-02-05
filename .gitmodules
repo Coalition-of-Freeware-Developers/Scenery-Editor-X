@@ -1,9 +1,15 @@
 [submodule "dependency/vcpkg"]
 	path = dependency/vcpkg
 	url = git@github.com:microsoft/vcpkg.git
-[submodule "dependency/lightweightvk"]
-	path = dependency/lightweightvk
-	url = git@github.com:corporateshark/lightweightvk.git
 [submodule "dependency/tracy"]
 	path = dependency/tracy
 	url = git@github.com:wolfpld/tracy.git
+[submodule "dependency/imgui"]
+	path = dependency/imgui
+	url = git@github.com:ocornut/imgui.git
+[submodule "dependency/ImGuizmo"]
+	path = dependency/ImGuizmo
+	url = git@github.com:CedricGuillemet/ImGuizmo.git
+[submodule "dependency/glfw"]
+	path = dependency/glfw
+	url = git@github.com:glfw/glfw.git
