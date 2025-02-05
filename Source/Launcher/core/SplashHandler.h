@@ -1,13 +1,13 @@
 #include <windows.h>
+#include "../launcher-resource.h"
 #include "Logging.hpp"
-#include "resource.h"
+
 #include <basetsd.h>
 #include <condition_variable>
 #include <libloaderapi.h>
 #include <mutex>
 #include <spdlog/spdlog.h>
 #include <thread>
-
 
 class SplashHandler
 {

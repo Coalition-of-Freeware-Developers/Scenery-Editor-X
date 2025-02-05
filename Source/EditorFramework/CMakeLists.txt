@@ -59,8 +59,8 @@ target_link_libraries(EditorFramework PRIVATE
 )
 
 target_include_directories(EditorFramework PRIVATE
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/Logging
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/
+    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/Logging
+    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX
     ${CURL_INCLUDE_DIRS}
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/

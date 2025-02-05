@@ -11,7 +11,7 @@ ADD_EXECUTABLE(Launcher
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/core/version.h
     core/Main.cpp
-    resource.h
+    launcher-resource.h
     Launcher.rc
     core/Logging.cpp
     registry/RegInit.h
@@ -27,7 +27,7 @@ SOURCE_GROUP("Resource" FILES
     ${ICON_FILES}
     ${REGISTRY_KEYS}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
-    resource.h
+    launcher-resource.h
     Launcher.rc
 )
 
@@ -62,8 +62,12 @@ TARGET_LINK_LIBRARIES(Launcher PRIVATE
 )
 
 TARGET_INCLUDE_DIRECTORIES(Launcher PRIVATE
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/logging
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/
+    ${CMAKE_SOURCE_DIR}/dependency/imgui
+    ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+    ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+    ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
+    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX
+    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/logging
     ${CURL_INCLUDE_DIRS}
 )
 

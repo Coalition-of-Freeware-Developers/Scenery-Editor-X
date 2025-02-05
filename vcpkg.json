@@ -4,8 +4,6 @@
       "portable-file-dialogs",
       "spdlog",
       "stb",
-      { "name": "imgui", "features": ["glfw-binding", "vulkan-binding", "docking-experimental"] },
-      "imguizmo",
       { "name": "curl", "features": [ "http2", "idn", "ssl"] }
     ]
   }

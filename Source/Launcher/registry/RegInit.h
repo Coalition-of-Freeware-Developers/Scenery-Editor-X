@@ -2,7 +2,7 @@
 
 #include "atlbase.h"
 #include "Logging.hpp"
-#include "resource.h"
+#include "../launcher-resource.h"
 #include <cstring>
 #include <minwindef.h>
 #include <spdlog/spdlog.h>

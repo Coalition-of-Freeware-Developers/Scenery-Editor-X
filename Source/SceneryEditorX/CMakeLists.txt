@@ -20,6 +20,7 @@ ADD_EXECUTABLE(SceneryEditorX
     platform/Windows/FileManager/LockFile.cpp
     platform/Windows/EditorConfig.hpp
     logging/Logging.cpp
+    logging/Logging.hpp
     renderer/Camera.cpp
     renderer/VK_Pipeline.cpp
     UI/About.cpp
@@ -32,6 +33,7 @@ ADD_EXECUTABLE(SceneryEditorX
     UI/Styles.cpp
     UI/UI.h
     options/Settings.cpp
+
     SceneryEditorX.rc
     resource.h
 )
@@ -44,15 +46,21 @@ SOURCE_GROUP("Core" FILES
     core/Window.hpp
 )
 
-SOURCE_GROUP("Core/Platform/Windows" FILES
-    platform/Windows/FileManager/FileDialog.cpp
-    platform/Windows/FileManager/FileDialog.h
-    platform/Windows/FileManager/LockFile.cpp
-    platform/Windows/EditorConfig.hpp
+SOURCE_GROUP("Core/Platform/Windows/File Manager" FILES
+    platform/windows/FileManager/FileDialog.cpp
+    platform/windows/FileManager/FileDialog.h
+    platform/windows/FileManager/LockFile.cpp
+    platform/windows/EditorConfig.hpp
+    platform/windows/FileManager.cpp
+    platform/windows/FileManager.hpp
+    platform/windows/PlatformUtils.h
+    platform/windows/Window.cpp
+    platform/windows/WindowProperties.cpp
 )
 
 SOURCE_GROUP("Core/Logger" FILES
     logging/Logging.cpp
+    logging/Logging.hpp
 )
 
 SOURCE_GROUP("Core/Renderer" FILES
@@ -98,7 +106,11 @@ SOURCE_GROUP("Resource/Fonts" FILES
 # Include
 TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/
+        ${CMAKE_SOURCE_DIR}/dependency/imgui
+        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
+        ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
@@ -112,6 +124,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         glm::glm-header-only
         spdlog::spdlog_header_only
         CURL::libcurl
+        Vulkan
         glfw
         dxgi
         d3d12
