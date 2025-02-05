@@ -19,7 +19,7 @@
 /**
  * @brief Static member to hold the logger instance.
  */
-std::shared_ptr<spdlog::logger> Log::_logger;
+std::shared_ptr<spdlog::logger> Log::_EditorLogger;
 
 /**
  * @brief Initializes the logging system with console and file sinks.
@@ -31,9 +31,9 @@ std::shared_ptr<spdlog::logger> Log::_logger;
  */
 void Log::Init()
 {
-    if (!_logger)                                                                   // Only initialize the logger if it hasn't been initialized yet
+    if (!_EditorLogger) // Only initialize the logger if it hasn't been initialized yet
     {
-        _logger = spdlog::stdout_color_mt("Logger");                                // Create a console logger
+        _EditorLogger = spdlog::stdout_color_mt("Logger"); // Create a console logger
         spdlog::set_level(spdlog::level::trace);                                    // Set global log level to trace
     }
 
@@ -62,10 +62,12 @@ void Log::Init()
     sinks[0]->set_pattern("%^[%T] %n: %v%$");       // color coding
     sinks[1]->set_pattern("[%T] [%l] %n: %v");      // no color coding
 
-    _logger = std::make_shared<spdlog::logger>("SceneryEditorX", sinks.begin(), sinks.end());   // create a logger with the sinks
-    spdlog::register_logger(_logger);                                                           // register the logger with spdlog
-    _logger->set_level(spdlog::level::trace);                                                   // set the logging level to trace
-    _logger->flush_on(spdlog::level::trace);                                                    // flush the logger on trace level log entries
+    _EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX",
+                                                     sinks.begin(),
+                                                     sinks.end()); // create a logger with the sinks
+    spdlog::register_logger(_EditorLogger);                        // register the logger with spdlog
+    _EditorLogger->set_level(spdlog::level::trace);                                                   // set the logging level to trace
+    _EditorLogger->flush_on(spdlog::level::trace);                                                    // flush the logger on trace level log entries
 }
 
 std::string getOsName()

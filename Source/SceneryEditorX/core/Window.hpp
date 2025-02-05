@@ -45,14 +45,7 @@ private:
 
     static inline char lastKeyState[GLFW_KEY_LAST + 1];
 
-    enum class Mode
-    {
-        Windowed,
-        WindowedFullScreen,
-        FullScreen
-    };
-
-    static inline Mode mode = Mode::Windowed;
+    static inline WindowMode mode = WindowMode::Windowed;
     static inline bool dirty = true;
     static inline bool resizable = true;
     static inline bool decorated = true;
@@ -75,10 +68,6 @@ public:
     static inline GLFWwindow *GetGLFWwindow()
     {
         return window;
-    }
-    static inline bool IsDirty()
-    {
-        return dirty;
     }
     static inline void WaitEvents()
     {

@@ -61,20 +61,20 @@ PROJECT_BRIEF          =
 # pixels and the maximum width should not exceed 200 pixels. Doxygen will copy
 # the logo to the output directory.
 
-PROJECT_LOGO           = "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/SceneryEditorX/assets/icon.ico"
+PROJECT_LOGO           = ../assets/icon.png
 
 # With the PROJECT_ICON tag one can specify an icon that is included in the tabs
 # when the HTML document is shown. Doxygen will copy the logo to the output
 # directory.
 
-PROJECT_ICON           = "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/SceneryEditorX/assets/icon.ico"
+PROJECT_ICON           = ../assets/icon.png
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) path
 # into which the generated documentation will be written. If a relative path is
 # entered, it will be relative to the location where Doxygen was started. If
 # left blank the current directory will be used.
 
-OUTPUT_DIRECTORY       = "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/doxygen"
+OUTPUT_DIRECTORY       = ../docs/doxygen
 
 # If the CREATE_SUBDIRS tag is set to YES then Doxygen will create up to 4096
 # sub-directories (in 2 levels) under the output directory of each output format
@@ -171,7 +171,7 @@ ALWAYS_DETAILED_SEC    = NO
 # operators of the base classes will not be shown.
 # The default value is: NO.
 
-INLINE_INHERITED_MEMB  = NO
+INLINE_INHERITED_MEMB  = YES
 
 # If the FULL_PATH_NAMES tag is set to YES, Doxygen will prepend the full path
 # before files name in the file list and in the header files. If set to NO the
@@ -245,7 +245,7 @@ QT_AUTOBRIEF           = NO
 # not recognized any more.
 # The default value is: NO.
 
-MULTILINE_CPP_IS_BRIEF = NO
+MULTILINE_CPP_IS_BRIEF = YES
 
 # By default Python docstrings are displayed as preformatted text and Doxygen's
 # special commands cannot be used. By setting PYTHON_DOCSTRING to NO the
@@ -266,7 +266,7 @@ INHERIT_DOCS           = YES
 # of the file/class/namespace that contains it.
 # The default value is: NO.
 
-SEPARATE_MEMBER_PAGES  = NO
+SEPARATE_MEMBER_PAGES  = YES
 
 # The TAB_SIZE tag can be used to set the number of spaces in a tab. Doxygen
 # uses this value to replace tabs by spaces in code fragments.
@@ -396,7 +396,7 @@ AUTOLINK_SUPPORT       = YES
 # collaboration diagrams that involve STL classes more complete and accurate.
 # The default value is: NO.
 
-BUILTIN_STL_SUPPORT    = NO
+BUILTIN_STL_SUPPORT    = YES
 
 # If you use Microsoft's C++/CLI language, you should set this option to YES to
 # enable parsing support.
@@ -435,7 +435,7 @@ DISTRIBUTE_GROUP_DOC   = NO
 # is disabled and one has to add nested compounds explicitly via \ingroup.
 # The default value is: NO.
 
-GROUP_NESTED_COMPOUNDS = NO
+GROUP_NESTED_COMPOUNDS = YES
 
 # Set the SUBGROUPING tag to YES to allow class member groups of the same type
 # (for instance a group of public functions) to be put as a subgroup of that
@@ -455,7 +455,7 @@ SUBGROUPING            = YES
 # SEPARATE_MEMBER_PAGES.
 # The default value is: NO.
 
-INLINE_GROUPED_CLASSES = NO
+INLINE_GROUPED_CLASSES = YES
 
 # When the INLINE_SIMPLE_STRUCTS tag is set to YES, structs, classes, and unions
 # with only public data fields or simple typedef fields will be shown inline in
@@ -465,7 +465,7 @@ INLINE_GROUPED_CLASSES = NO
 # Man pages) or section (for LaTeX and RTF).
 # The default value is: NO.
 
-INLINE_SIMPLE_STRUCTS  = NO
+INLINE_SIMPLE_STRUCTS  = YES
 
 # When TYPEDEF_HIDES_STRUCT tag is enabled, a typedef of a struct, union, or
 # enum is documented as struct, union, or enum with the name of the typedef. So
@@ -489,7 +489,7 @@ TYPEDEF_HIDES_STRUCT   = NO
 # the optimal cache size from a speed point of view.
 # Minimum value: 0, maximum value: 9, default value: 0.
 
-LOOKUP_CACHE_SIZE      = 0
+LOOKUP_CACHE_SIZE      = 2
 
 # The NUM_PROC_THREADS specifies the number of threads Doxygen is allowed to use
 # during processing. When set to 0 Doxygen will based this on the number of
@@ -848,7 +848,8 @@ CITE_BIB_FILES         =
 # PATH=/Library/TeX/texbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 EXTERNAL_TOOL_PATH     = "K:/X-Plane 12 Development/XP SDK/SDK" \
-                         C:/VulkanSDK/1.3.296.0
+                         C:/VulkanSDK/1.3.296.0 \
+                         ../dependency/vcpkg
 
 #---------------------------------------------------------------------------
 # Configuration options related to warning and progress messages
@@ -966,12 +967,14 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/SceneryEditorX" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/X-PlaneSceneryLibrary" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/resources" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/edX" \
-                         edX \
-                         edX
+INPUT                  = ../source \
+                         ../source/EditorFramework \
+                         ../source/edX \
+                         ../source/Launcher \
+                         ../source/SceneryEditorX \
+                         ../source/VulkanRenderer \
+                         ../source/X-PlaneSceneryLibrary \
+                         ../dependency/optick
 
 # This tag can be used to specify the character encoding of the source files
 # that Doxygen parses. Internally Doxygen uses the UTF-8 encoding. Doxygen uses
@@ -1133,8 +1136,10 @@ EXAMPLE_RECURSIVE      = YES
 # that contain images that are to be included in the documentation (see the
 # \image command).
 
-IMAGE_PATH             = "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/SceneryEditorX/assets/textures" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/resources"
+IMAGE_PATH             = ../assets \
+                         ../assets/models \
+                         ../assets/shaders \
+                         ../assets/texture
 
 # The INPUT_FILTER tag can be used to specify a program that Doxygen should
 # invoke to filter for each input file. Doxygen will invoke the filter program
@@ -2358,7 +2363,7 @@ XML_NS_MEMB_FILE_SCOPE = YES
 # that can be used to generate PDF.
 # The default value is: NO.
 
-GENERATE_DOCBOOK       = NO
+GENERATE_DOCBOOK       = YES
 
 # The DOCBOOK_OUTPUT tag is used to specify where the Docbook pages will be put.
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be put in
@@ -2366,7 +2371,7 @@ GENERATE_DOCBOOK       = NO
 # The default directory is: docbook.
 # This tag requires that the tag GENERATE_DOCBOOK is set to YES.
 
-DOCBOOK_OUTPUT         = docbook
+DOCBOOK_OUTPUT         = ../docs
 
 #---------------------------------------------------------------------------
 # Configuration options for the AutoGen Definitions output
@@ -2484,19 +2489,17 @@ SEARCH_INCLUDES        = YES
 # RECURSIVE has no effect here.
 # This tag requires that the tag SEARCH_INCLUDES is set to YES.
 
-INCLUDE_PATH           = "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/vk_video" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/tinyobj" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/tinygltf" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/ktx" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/glad" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/GLFW" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/glm" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/imgui" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/imGuizmo" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/json" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/optick" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/spdlog" \
-                         "G:/ART_REPO-TRAY/X-Plane 12/Scenery-Editor-X/external/include/X-PlaneSceneryLibrary"
+INCLUDE_PATH           = ../assets \
+                         ../assets/shaders \
+                         ../assets/fonts \
+                         . \
+                         ../source \
+                         ../source/X-PlaneSceneryLibrary \
+                         ../source/VulkanRenderer \
+                         ../source/SceneryEditorX \
+                         ../source/Launcher \
+                         ../source/edX \
+                         ../source/EditorFramework
 
 # You can use the INCLUDE_FILE_PATTERNS tag to specify one or more wildcard
 # patterns (like *.h and *.hpp) to filter out the header-files in the
