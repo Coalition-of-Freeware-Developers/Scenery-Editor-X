@@ -139,11 +139,11 @@ FIND_PACKAGE(glm      CONFIG REQUIRED)
 FIND_PACKAGE(spdlog   CONFIG REQUIRED)
 FIND_PACKAGE(Stb             REQUIRED)
 FIND_PACKAGE(CURL     CONFIG REQUIRED)
+FIND_PACKAGE(imgui    CONFIG REQUIRED)
+FIND_PACKAGE(imguizmo CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen            QUIET)
 
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
-
-ADD_SUBDIRECTORY(dependency/lightweightvk)
 
 # --------------------------------
 # EDX

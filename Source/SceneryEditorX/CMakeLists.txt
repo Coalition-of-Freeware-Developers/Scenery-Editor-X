@@ -7,7 +7,6 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 
 ADD_EXECUTABLE(SceneryEditorX
     ${ICON_FILES}
-    ${REGISTRY_KEYS}
     ${FONT_FILES}
 
     core/Main.cpp
@@ -86,10 +85,6 @@ SOURCE_GROUP("Resource" FILES
     resource.h
     core/version.h
     SceneryEditorX.rc
-)
-
-SOURCE_GROUP("Resource/Registry" FILES
-    ${REGISTRY_KEYS}
 )
 
 SOURCE_GROUP("Resource/Icons" FILES

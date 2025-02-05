@@ -5,7 +5,7 @@
 #include <curl/curl.h>
 
 #include "Updater.h"
-#include <version.h>
+#include <core/version.h>
 
 
 /**

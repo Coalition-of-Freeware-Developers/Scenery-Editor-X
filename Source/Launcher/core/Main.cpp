@@ -6,7 +6,7 @@
 #include "DirectoryManager.hpp"
 #include "ElevatePerms.h"
 #include <Logging.hpp>
-#include "RegCheck.h"
+#include "../registry/RegCheck.h"
 #include "SplashHandler.h"
 #include "Updater.h"
 #include <cstdlib>
