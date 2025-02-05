@@ -1,5 +1,5 @@
 #include <Logging.hpp>
-#include <version.h>
+#include <core/version.h>
 
 #include <codecvt>
 #include <locale>

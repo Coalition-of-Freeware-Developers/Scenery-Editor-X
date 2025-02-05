@@ -1,5 +1,5 @@
 #include "Logging.hpp"
-#include <version.h>
+#include <core/version.h>
 
 #include <string>
 #include <sysinfoapi.h>
@@ -80,8 +80,6 @@ std::string getOsName()
     return "Mac OSX";
 #elif __linux__
     return "Linux";
-#elif __FreeBSD__
-    return "FreeBSD";
 #elif __unix || __unix__
     return "Unix";
 #else

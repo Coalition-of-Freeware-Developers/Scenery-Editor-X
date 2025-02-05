@@ -7,7 +7,6 @@ message(STATUS "Generating Application Framework")
 
 
 add_library(EditorFramework
-    ${OPTICK_SOURCES}
     Main.cpp
     Logging.cpp
 
@@ -52,12 +51,7 @@ source_group("Core/UI" FILES
 target_link_libraries(EditorFramework PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
-    imgui::imgui
-    imguizmo::imguizmo
     CURL::libcurl
-    glm::glm-header-only
-    spdlog::spdlog_header_only
-    imgui::imgui
     glfw
     dxgi
     d3d12
@@ -65,9 +59,8 @@ target_link_libraries(EditorFramework PRIVATE
 )
 
 target_include_directories(EditorFramework PRIVATE
-    ${OPTICK_SOURCES}
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/Logging
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/
+    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/Logging
+    ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX
     ${CURL_INCLUDE_DIRS}
     ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
     $ENV{VULKAN_SDK}/Include/
