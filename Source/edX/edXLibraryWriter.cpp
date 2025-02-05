@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-
 #include "../X-PlaneSceneryLibrary/XPLibraryPath.h"
 #include "../edX/edXLibraryFile.h"
 
@@ -55,15 +54,4 @@ void writeEdxLibFile(const std::string &filename,
              << "UniqueId=" << (object.uniqueId.empty() ? generateUniqueId() : object.uniqueId)
              << "AssetType=" << object.assetType << "Properties=" << object.properties << "\n";
     }
-}
-
-int libraryMain()
-{
-    std::vector<LibraryObject> objects = {{"object1", "", "type1", "properties1"},
-                                          {"object2", "", "type2", "properties2"},
-                                          {"object3", "", "type3", "properties3"}};
-
-    writeEdxLibFile("library.edx", "MyLibrary", "1.0", "John Doe", "https://github.com/mylibrary", objects);
-
-    return 0;
 }
