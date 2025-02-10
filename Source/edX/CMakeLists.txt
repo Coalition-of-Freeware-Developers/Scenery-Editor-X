@@ -1,23 +1,23 @@
 # --------------------------------
 # EDX
 # --------------------------------
-message(STATUS "=================================================")
-message(STATUS "Generating edX Project Format")
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating edX Project Format")
 
-set(EDX_HEADER_FILES
+SET(EDX_HEADER_FILES
     edXLibraryFile.h
     edXProjectFile.h
     resource.h
 )
 
-set(EDX_SOURCE_FILES
+SET(EDX_SOURCE_FILES
     edXWriter.cpp
     edXReader.cpp
     edXLibraryWriter.cpp
     edXLibraryReader.cpp
 )
 
-add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
+ADD_LIBRARY(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     edXWriter.cpp
     edXReader.cpp
     edXLibraryWriter.cpp
@@ -26,20 +26,20 @@ add_library(edX SHARED ${EDX_HEADER_FILES} ${EDX_SOURCE_FILES}
     edX.rc
 )
 
-source_group("Project Format" FILES
+SOURCE_GROUP("Project Format" FILES
     edXProjectFile.h
     edXWriter.cpp
     edXReader.cpp
     edXconfig.h
 )
 
-source_group("Library Format" FILES
+SOURCE_GROUP("Library Format" FILES
     edXLibraryFile.h
     edXLibraryWriter.cpp
     edXLibraryReader.cpp
 )
 
-source_group("Resource" FILES
+SOURCE_GROUP("Resource" FILES
     resource.h
     edX.rc
 )

@@ -9,6 +9,7 @@ SET(CMAKE_SYSTEM_NAME "Windows" CACHE STRING "")
 SET(CMAKE_SYSTEM_PROCESSOR "x64" CACHE STRING "")
 SET(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "")
 SET(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION "10.0" CACHE STRING "")
+SET(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP 1)
 SET(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "No dev warnings")
 SET(VCPKG_INSTALL_OPTIONS --no-print-usage)
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -25,7 +26,30 @@ SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "
 IF(NOT CMAKE_VERSION VERSION_LESS 3.7.0)
     MESSAGE(STATUS "Using module to find Vulkan")
     FIND_PACKAGE(Vulkan)
+    SET(VULKAN_VERS ${Vulkan_FOUND})
+    MESSAGE(STATUS "Using Vulkan SDK version: ${VULKAN_VERS}")
 ENDIF()
+
+IF(TARGET WIN32)
+    FILE(VULKAN_VALIDATOR "C:/VulkanSDK/${VULKAN_VERS}/Config/vk_layer_settings.txt")
+ELSEIF(TARGET UNIX)
+    FILE(VULKAN_VALIDATOR "$HOME/.local/share/vulkan/settings.d/vk_layer_settings.txt")
+ENDIF()
+
+# --------------------------------
+# CREATE BIN_DIR AND COPY VULKAN_VALIDATOR
+# --------------------------------
+FUNCTION(CREATE_BIN_DIR_AND_COPY_VALIDATOR)
+    FILE(MAKE_DIRECTORY ${BIN_DIR})
+    IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        ADD_CUSTOM_COMMAND(
+            TARGET SceneryEditorX POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${VULKAN_VALIDATOR} ${BIN_DIR}/Debug/vk_layer_settings.txt
+            COMMENT "Copying Vulkan validator settings to ${BIN_DIR}/Debug"
+        )
+        ADD_CUSTOM_TARGET(copy_vulkan_validator ALL DEPENDS ${BIN_DIR}/Debug/vk_layer_settings.txt)
+    ENDIF()
+ENDFUNCTION()
 
 # --------------------------------
 # DIRECTORIES
@@ -39,6 +63,8 @@ SET(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/assets/texture")
 # --------------------------------
 # BUILD SYSTEM
 # --------------------------------
+SET(CMAKE_C_STANDARD 11)
+SET(CMAKE_C_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED True)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -71,14 +97,10 @@ ENDIF()
 # --------------------------------
 IF(CMAKE_GENERATOR MATCHES "Visual Studio")
     ADD_COMPILE_OPTIONS(${COMMON_COMPILE_OPTIONS})
-    SET(COMPILE_FLAGS ${COMMON_COMPILE_FLAGS})
     SET(CMAKE_CXX_SCAN_FOR_MODULES OFF)
     SET(CMAKE_INCREMENTAL_LINKING ON)
     SET(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL")
-    ADD_COMPILE_DEFINITIONS(${COMMON_COMPILE_DEF})
-    MESSAGE("Added Compile Definitions: ${COMMON_COMPILE_DEF}")
 ENDIF()
-
 # --------------------------------
 # REQUIRE BUILDS TO BE OUTSIDE OF SOURCE TREE.
 # --------------------------------
@@ -99,7 +121,7 @@ ENDIF()
 PROJECT(SceneryEditorX
     VERSION 1.0.0
     DESCRIPTION "A 3d scenery editor for X-Plane 12 airports."
-    LANGUAGES CXX C
+    LANGUAGES C CXX
     HOMEPAGE_URL "https://github.com/The3dVehicleguy/Scenery-Editor-X"
 )
 
@@ -183,14 +205,14 @@ ADD_SUBDIRECTORY(source/VulkanRenderer)
 # --------------------------------
 ADD_SUBDIRECTORY(source/SceneryEditorX)
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX VulkanRenderer)
-    TARGET_COMPILE_DEFINITIONS(${TARGET}
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX VulkanRenderer
         PUBLIC
             $<$<CONFIG:Debug>:SEDX_DEBUG>
             $<$<CONFIG:Release>:SEDX_RELEASE>
             WIN32_LEAN_AND_MEAN
     )
 ENDFOREACH()
+
 
 # --------------------------------
 # PRECOMPILED HEADER

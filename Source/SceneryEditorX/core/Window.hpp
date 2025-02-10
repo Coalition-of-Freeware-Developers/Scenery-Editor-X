@@ -3,6 +3,7 @@
 #include <core/Base.hpp>
 
 #include <GLFW/glfw3.h>
+#include <string>
 
 enum class WindowMode
 {
@@ -55,6 +56,7 @@ private:
     static void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
     static void WindowMaximizeCallback(GLFWwindow *window, int maximized);
     static void WindowChangePosCallback(GLFWwindow *window, int x, int y);
+    static void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
 
 public:
     static void Create();

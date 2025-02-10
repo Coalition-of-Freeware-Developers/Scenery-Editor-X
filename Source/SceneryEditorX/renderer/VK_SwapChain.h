@@ -9,11 +9,11 @@
 #include <vulkan/vulkan.h>
 
 #ifdef __ANDROID__
-#include "VulkanAndroid.h"
+    #include "VulkanAndroid.h"
 #endif
 
 #ifdef __APPLE__
-#include <sys/utsname.h>
+    #include <sys/utsname.h>
 #endif
 
 typedef struct _SwapChainBuffers

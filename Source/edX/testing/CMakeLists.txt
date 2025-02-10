@@ -2,11 +2,11 @@
 # File Format Tester
 # --------------------------------
 
-message(STATUS "=================================================")
-message(STATUS "Generating edX Format Tester")
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating edX Format Tester")
 
 
-add_executable(FormatTester
+ADD_EXECUTABLE(FormatTester
     main.cpp
     FileBrowser.cpp
     FileBrowser.hpp
@@ -15,7 +15,7 @@ add_executable(FormatTester
     ${CMAKE_SOURCE_DIR}/source/edX/edXProjectFile.h
 )
 
-target_link_libraries(FormatTester PRIVATE
+TARGET_LINK_LIBRARIES(FormatTester PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
     glfw
@@ -24,7 +24,7 @@ target_link_libraries(FormatTester PRIVATE
     Shell32.lib
 )
 
-target_include_directories(FormatTester PRIVATE
+TARGET_INCLUDE_DIRECTORIES(FormatTester PRIVATE
     ${CMAKE_SOURCE_DIR}/dependency/imgui
     ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
     ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
@@ -39,4 +39,4 @@ target_include_directories(FormatTester PRIVATE
 # Defines
 # --------------------------------
 
-target_compile_definitions(FormatTester PRIVATE WIN32_LEAN_AND_MEAN)
+TARGET_COMPILE_DEFINITIONS(FormatTester PRIVATE WIN32_LEAN_AND_MEAN)

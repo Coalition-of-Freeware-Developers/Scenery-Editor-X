@@ -324,7 +324,7 @@ namespace VKEngine
             }
         #elif defined(__ANDROID__)
             LOGE("Fatal error: %s", message.c_str());
-            vks::android::showAlert(message.c_str());
+            VKEngine::android::showAlert(message.c_str());
         #endif
             std::cerr << message << "\n";
         #if !defined(__ANDROID__)

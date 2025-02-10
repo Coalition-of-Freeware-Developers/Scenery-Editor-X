@@ -64,12 +64,19 @@ void Log::Init()
 
     _EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX",
                                                      sinks.begin(),
-                                                     sinks.end()); // create a logger with the sinks
-    spdlog::register_logger(_EditorLogger);                        // register the logger with spdlog
-    _EditorLogger->set_level(spdlog::level::trace);                                                   // set the logging level to trace
-    _EditorLogger->flush_on(spdlog::level::trace);                                                    // flush the logger on trace level log entries
+                                                     sinks.end());                                        // create a logger with the sinks
+    spdlog::register_logger(_EditorLogger);                                                                     // register the logger with spdlog
+    _EditorLogger->set_level(spdlog::level::trace);                                                    // set the logging level to trace
+    _EditorLogger->flush_on(spdlog::level::trace);                                                     // flush the logger on trace level log entries
 }
 
+/**
+ * @brief Logs a message with the trace level.
+ * 
+ * This method logs a message with the trace level. The message is output to the console and the log file.
+ * 
+ * @param message The message to log.
+ */
 std::string getOsName()
 {
 #ifdef _WIN32

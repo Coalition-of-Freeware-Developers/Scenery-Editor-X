@@ -1,3 +1,4 @@
+#if (defined(_WIN) || defined(WIN32) || defined(_WINDOWS))
 
 namespace SceneryEditorX
 {
@@ -83,4 +84,6 @@ namespace SceneryEditorX
 
         return false;
     }
-}
+} // namespace SceneryEditorX
+
+#endif // _WIN || WIN32 || _WINDOWS

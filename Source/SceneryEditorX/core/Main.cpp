@@ -1,28 +1,32 @@
+#include <core/Application.hpp>
+#include <core/AssetManager.hpp>
+#include <core/Window.hpp>
 #include <logging/Logging.hpp>
 #include <platform/windows/FileManager.hpp>
 #include <renderer/DeferredRenderer.hpp>
 #include <renderer/VK_Wrapper.h>
 #include <scene/Scene.hpp>
-#include <core/Application.hpp>
-#include <core/AssetManager.hpp>
-#include <core/Window.hpp>
 
 #include <stb_image.h>
 
+#include <GLFW/glfw3.h>
+
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
-#include <misc/cpp/imgui_stdlib.h>
 #include <ImGuizmo.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 #include <iostream>
 #include <string>
 #include <sysinfoapi.h>
 
-#include <GLFW/glfw3.h>
-
 #ifdef _DEBUG
 #define IMGUI_VULKAN_DEBUG_REPORT
 #endif
+
+#ifndef EDITOR
+#define EDITOR
+#endif // !EDITOR
 
 class Application
 {

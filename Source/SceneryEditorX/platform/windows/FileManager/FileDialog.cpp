@@ -1,3 +1,4 @@
+#if (defined(_WIN) || defined(WIN32) || defined(_WINDOWS))
 
 #include "FileDialog.h"
 
@@ -64,4 +65,7 @@ namespace SceneryEditorX::IO
         // Do something with destination
         std::cout << "Selected folder: " << destination << "\n";
     }
-}
+} // namespace SceneryEditorX
+
+#endif // _WIN || WIN32 || _WINDOWS
+

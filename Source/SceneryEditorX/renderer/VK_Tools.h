@@ -36,7 +36,7 @@
         if (res != VK_SUCCESS)                                                                                         \
         {                                                                                                              \
             LOGE("Fatal : VkResult is \" %s \" in %s at line %d",                                                      \
-                 vks::tools::errorString(res).c_str(),                                                                 \
+                 VKEngine::tools::errorString(res).c_str(),                                                            \
                  __FILE__,                                                                                             \
                  __LINE__);                                                                                            \
             assert(res == VK_SUCCESS);                                                                                 \
@@ -48,8 +48,8 @@
         VkResult res = (f);                                                                                            \
         if (res != VK_SUCCESS)                                                                                         \
         {                                                                                                              \
-            std::cout << "Fatal : VkResult is \"" << vks::tools::errorString(res) << "\" in " << __FILE__              \
-                      << " at line " << __LINE__ << "\n";                                                              \
+            std::cout << "Fatal : VkResult is \"" << VKEngine::tools::errorString(res) << "\" in " << __FILE__         \
+                      << " at line " << __LINE__ << std::endl;                                                         \
             assert(res == VK_SUCCESS);                                                                                 \
         }                                                                                                              \
     }

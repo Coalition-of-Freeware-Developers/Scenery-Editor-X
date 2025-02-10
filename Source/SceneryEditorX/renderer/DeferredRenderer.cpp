@@ -1,4 +1,4 @@
-#include "../src/xpeditorpch.h"
+
 #include "../core/AssetManager.hpp"
 #include "DeferredRenderer.hpp"
 #include "VK_Wrapper.h"
@@ -51,7 +51,7 @@ namespace DeferredShading
     {
         if (ctx.albedo.format == 0)
         {
-            LOG_CRITICAL("CREATE IMAGES BEFORE SHADERS IN DEFERRED RENDERER");
+            EDITOR_LOG_CRITICAL("CREATE IMAGES BEFORE SHADERS IN DEFERRED RENDERER");
         }
 
         ctx.lightPipeline = vkw::CreatePipeline({

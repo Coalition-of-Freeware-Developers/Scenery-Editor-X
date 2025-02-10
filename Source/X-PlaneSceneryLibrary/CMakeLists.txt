@@ -2,11 +2,11 @@
 # X-PlaneSceneryLibrary
 # --------------------------------
 
-message(STATUS "=================================================")
-message(STATUS "Generating X-Plane Scenery Library Project")
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating X-Plane Scenery Library Project")
 
 
-add_library(X-PlaneSceneryLibrary
+ADD_LIBRARY(X-PlaneSceneryLibrary
     ${XPLIB_HEADER_FILES}
     ${XPLIB_SOURCE_FILES}
     DebugMain.cpp
@@ -17,7 +17,7 @@ add_library(X-PlaneSceneryLibrary
     X-PlaneSceneryLibrary.rc
 )
 
-set(XPLIB_HEADER_FILES
+SET(XPLIB_HEADER_FILES
     XPObj.h
     XPLibrarySystem.h
     XPLibraryPath.h
@@ -29,7 +29,7 @@ set(XPLIB_HEADER_FILES
     resource.h
 )
 
-set(XPLIB_SOURCE_FILES
+SET(XPLIB_SOURCE_FILES
     DebugMain.cpp
     TextUtils.cpp
     XPLayerGroups.cpp
@@ -37,7 +37,7 @@ set(XPLIB_SOURCE_FILES
     XPObj.cpp
 )
 
-source_group("Header Files" FILES
+SOURCE_GROUP("Header Files" FILES
     XPObj.h
     XPLibrarySystem.h
     XPLibraryPath.h
@@ -48,18 +48,18 @@ source_group("Header Files" FILES
     TextUtils.h
 )
 
-source_group("Source Files" FILES
+SOURCE_GROUP("Source Files" FILES
     TextUtils.cpp
     XPLayerGroups.cpp
     XPLibrarySystem.cpp
     XPObj.cpp
 )
 
-source_group("Resource" FILES
+SOURCE_GROUP("Resource" FILES
     resource.h
     X-PlaneSceneryLibrary.rc
 )
 
-source_group("Tests" FILES
+SOURCE_GROUP("Tests" FILES
     DebugMain.cpp
 )

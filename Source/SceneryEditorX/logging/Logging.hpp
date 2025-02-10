@@ -7,6 +7,30 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <iostream>
+
+#ifdef _WIN32
+    #ifndef _WIN64
+        #error "x86 not supported!"
+    #endif
+#define SEDX_PLATFORM_WINDOWS
+#endif
+
+#ifdef __linux__
+    #define SEDX_PLATFORM_LINUX
+#endif
+
+#ifdef SEDX_DEBUG
+    #ifdef SEDX_PLATFORM_WINDOWS
+        #define SEDX_DEBUGBREAK() __debugbreak()
+    #endif
+    #ifdef SEDX_PLATFORM_LINUX
+        #include <signal.h>
+        #define SEDX_DEBUGBREAK() raise(SIGTRAP)
+    #endif
+#else
+    #define SEDX_DEBUGBREAK()
+#endif
 
 /**
  * @class Log
@@ -79,21 +103,28 @@ public:
      *
      * This function returns a shared pointer to the logger instance.
      */
-    static std::shared_ptr<spdlog::logger>& GetEditorLogger()   { return _EditorLogger; }
-    static std::shared_ptr<spdlog::logger>& GetLauncherLogger() { return _LauncherLogger; }
+    static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return _EditorLogger; }
+    static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return _LauncherLogger; }
 
-private:
+    private:
+
     static std::shared_ptr<spdlog::logger> _EditorLogger; //< The logger instance.
     static std::shared_ptr<spdlog::logger> _LauncherLogger; //< The logger instance.
 };
 
-// Launcher Log Macros
-
-#define LAUNCHER_LOG_TRACE(...)         Log::Get()->trace(__VA_ARGS__)
-#define LAUNCHER_LOG_INFO(...)          Log::Get()->info(__VA_ARGS__)
-#define LAUNCHER_LOG_WARN(...)          Log::Get()->warn(__VA_ARGS__)
-#define LAUNCHER_LOG_ERROR(...)         Log::Get()->error(__VA_ARGS__)
-#define LAUNCHER_LOG_CRITICAL(...)      Log::Get()->critical(__VA_ARGS__);
+/**
+*
+* Launcher Log Macros
+* 
+* @brief A macro to log a message with the specified log level.
+*
+* This macro logs a message with the specified log level to the console and the log file.
+*/
+#define LAUNCHER_LOG_TRACE(...)         Log::GetLauncherLogger()->trace(__VA_ARGS__)
+#define LAUNCHER_LOG_INFO(...)          Log::GetLauncherLogger()->info(__VA_ARGS__)
+#define LAUNCHER_LOG_WARN(...)          Log::GetLauncherLogger()->warn(__VA_ARGS__)
+#define LAUNCHER_LOG_ERROR(...)         Log::GetLauncherLogger()->error(__VA_ARGS__)
+#define LAUNCHER_LOG_CRITICAL(...)      Log::GetLauncherLogger()->critical(__VA_ARGS__);
 #define LAUNCHER_ASSERT(x, ...)                                                                                        \
     if (!(x))                                                                                                          \
     {                                                                                                                  \
@@ -101,8 +132,64 @@ private:
         __debugbreak();                                                                                                \
     } __debugbreak(); \ abort();
 
+/*
+* 
+* Editor Log Macros
+*
+*/
+#define EDITOR_LOG_TRACE(...)           Log::GetEditorLogger()->trace(__VA_ARGS__)
+#define EDITOR_LOG_INFO(...)            Log::GetEditorLogger()->info(__VA_ARGS__)
+#define EDITOR_LOG_WARN(...)            Log::GetEditorLogger()->warn(__VA_ARGS__)
+#define EDITOR_LOG_ERROR(...)           Log::GetEditorLogger()->error(__VA_ARGS__)
+#define EDITOR_LOG_CRITICAL(...)        Log::GetEditorLogger()->critical(__VA_ARGS__);
+#define EDITOR_ASSERT(x, ...)                                                                                          \
+    if (!(x))                                                                                                          \
+    {                                                                                                                  \
+        EDITOR_LOG_CRITICAL("Assertion Failed: {0}", __VA_ARGS__);                                                     \
+        __debugbreak();                                                                                                \
+    }                                                                                                                  \
+    __debugbreak(); \ abort();
+
+/*
+*
+* @brief A macro to log a message with the specified log level.
+*
+* This macro logs a message with the specified log level to the console and the log file.
+*/
 #ifdef SEDX_DEBUG
-#define DEBUG_TRACE(...) Log::Get()->trace(__VA_ARGS__)
+    #ifdef EDITOR
+        #define DEBUG_ASSERT(condition, ...)                                                                                   \
+            {                                                                                                                  \
+                if (!(condition))                                                                                              \
+                {                                                                                                              \
+                    EDITOR_LOG_ERROR("[ASSERTION FAILED] {0}", __VA_ARGS__);                                                          \
+                    SEDX_DEBUGBREAK();                                                                                         \
+                }                                                                                                              \
+            }
+        #define ASSERT(condition, ...)                                                                                         \
+            {                                                                                                                  \
+                if (!(condition))                                                                                              \
+                {                                                                                                              \
+                    EDITOR_LOG_ERROR("[ASSERTION FAILED] {0}", __VA_ARGS__);                                                          \
+                    abort();                                                                                                   \
+                }                                                                                                              \
+            }
+        #define DEBUG_VK(res, ...)                                                                                             \
+            {                                                                                                                  \
+                if ((res) != VK_SUCCESS)                                                                                       \
+                {                                                                                                              \
+                    EDITOR_LOG_ERROR("[VULKAN ERROR = {0}] {1}", VK_ERROR_STRING((res)), __VA_ARGS__);                                \
+                    SEDX_DEBUGBREAK();                                                                                         \
+                }                                                                                                              \
+            }
+
+        #define DEBUG_TRACE(...) Log::GetEditorLogger()->trace(__VA_ARGS__)
+    #elif defined(LAUNCHER)
+        #define DEBUG_TRACE(...) Log::GetLauncherLogger()->trace(__VA_ARGS__)
+    #else
+        #define DEBUG_TRACE(...)
+    #endif
 #else
-#define DEBUG_TRACE(...)
+    #define DEBUG_ASSERT(condition, ...)
+    #define DEBUG_VK(res, ...)
 #endif

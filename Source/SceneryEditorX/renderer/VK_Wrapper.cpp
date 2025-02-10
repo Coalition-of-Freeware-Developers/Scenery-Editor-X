@@ -1,13 +1,12 @@
-#include "../src/xpeditorpch.h"
 #include "VK_Wrapper.h"
-#include "../src/core/DirectoryManager.hpp"
+#include "logging/Logging.hpp"
 #include "../core/Common.h"
-#include "imgui/imgui_impl_vulkan.h"
+#include <imgui_impl_vulkan.h>
 
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <fstream>
-
+#include <iostream>
 
 #include <GLFW/glfw3.h>
 
@@ -339,6 +338,7 @@ namespace vkw
         DEBUG_ASSERT(resource->rid != -1, "Invalid buffer rid");
         return uint32_t(resource->rid);
     }
+
     
     uint32_t TLAS::RID()
     {
@@ -819,7 +819,7 @@ namespace vkw
         res->buildInfo.dstAccelerationStructure = res->accel;             // Setting where the build lands
         res->buildInfo.scratchData.deviceAddress = _ctx.asScratchAddress; // All build are using the same scratch buffer
     
-        LOG_INFO("Created BLAS.");
+        EDITOR_LOG_INFO("Created BLAS.");
     
         return blas;
     }
@@ -837,7 +837,7 @@ namespace vkw
     std::vector<char> Context::CompileShader(const std::filesystem::path &path)
     {
         // Construct paths for shader compilation
-        fs::path projectDir = fs::path(DirectoryInit::absolutePath).parent_path();
+        fs::path projectDir = fs::path(absolutePath).parent_path();
         fs::path shaderSourceDir = projectDir / "shaders";                           // Path to uncompiled GLSL shaders
         fs::path compiledShaderDir = projectDir / "resources" / "cache" / "shaders"; // Path for compiled SPIR-V shaders
 
@@ -946,11 +946,15 @@ namespace vkw
             shaderStages[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shaderStages[i].stage = (VkShaderStageFlagBits)desc.stages[i].stage;
             shaderStages[i].module = shaderModules[i];
-            // function to invoke inside the shader module
-            // it's possible to combine multiple shaders into a single module
-            // using different entry points
-            shaderStages[i].pName = "main";
-            // this allow us to specify values for shader constants
+
+            /*
+            * function to invoke inside the shader module
+            * it's possible to combine multiple shaders into a single module
+            * using different entry points.
+            * This allow us to specify values for shader constants
+            */
+
+            shaderStages[i].pName = "main"; 
             shaderStages[i].pSpecializationInfo = nullptr;
         }
     
@@ -1165,7 +1169,7 @@ namespace vkw
                              0,
                              nullptr);
     
-        VkAccelerationStructureBuildRangeInfoKHR buildOffsetInfo = {instances.size(), 0, 0, 0};
+        VkAccelerationStructureBuildRangeInfoKHR buildOffsetInfo = {static_cast<uint32_t>(instances.size()), 0, 0, 0};
         const VkAccelerationStructureBuildRangeInfoKHR *pBuildOffsetInfo = &buildOffsetInfo;
         _ctx.vkCmdBuildAccelerationStructuresKHR(cmd.buffer, 1, &res->buildInfo, &pBuildOffsetInfo);
         // todo: hash and only update mode if nothing changed
@@ -1314,7 +1318,7 @@ namespace vkw
         int id = cmd.timeStamps.size();
         if (id >= _ctx.timeStampPerPool - 1)
         {
-            LOG_WARN("Maximum number of time stamp per pool exceeded. Ignoring Time stamp {}", name.c_str());
+            EDITOR_LOG_WARN("Maximum number of time stamp per pool exceeded. Ignoring Time stamp {}", name.c_str());
             return -1;
         }
         vkCmdWriteTimestamp(cmd.buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, cmd.queryPool, id);
@@ -1476,7 +1480,7 @@ namespace vkw
             // if (messageSeverity > VK_DEBUG_UTILS...)
             if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
             {
-                LOG_ERROR("[Validation Layer] {0}", pCallbackData->pMessage);
+                EDITOR_LOG_ERROR("[Validation Layer] {0}", pCallbackData->pMessage);
             }
             return VK_FALSE;
         }
@@ -1536,7 +1540,7 @@ namespace vkw
     
             if (enableValidationLayers && !khronosAvailable)
             {
-                LOG_ERROR("Default validation layer not available!");
+                EDITOR_LOG_ERROR("Default validation layer not available!");
             }
         }
     
@@ -1647,7 +1651,7 @@ namespace vkw
         DEBUG_VK(res, "Failed to create window surface!");
         DEBUG_TRACE("Created surface.");
     
-        LOG_INFO("Created VulkanInstance.");
+        EDITOR_LOG_INFO("Created VulkanInstance.");
     }
     
     void Context::DestroyInstance()
@@ -1664,12 +1668,12 @@ namespace vkw
         DEBUG_TRACE("Destroyed surface.");
         vkDestroyInstance(instance, allocator);
         DEBUG_TRACE("Destroyed instance.");
-        LOG_INFO("Destroyed VulkanInstance");
+        EDITOR_LOG_INFO("Destroyed VulkanInstance");
     }
 
     void Context::CreatePhysicalDevice()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         // get all devices with Vulkan support
         uint32_t count = 0;
         vkEnumeratePhysicalDevices(instance, &count, nullptr);
@@ -1783,7 +1787,7 @@ namespace vkw
 
     void Context::CreateDevice()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
     
     
         std::set<uint32_t> uniqueFamilies;
@@ -1834,8 +1838,8 @@ namespace vkw
             features.depthClamp = VK_TRUE;
         }
     
-        auto requiredExtensions = _ctx.requiredExtensions;
-        auto allExtensions = _ctx.availableExtensions;
+        auto& requiredExtensions = _ctx.requiredExtensions;
+        auto& allExtensions = _ctx.availableExtensions;
         for (auto req : requiredExtensions)
         {
             bool available = false;
@@ -1849,7 +1853,7 @@ namespace vkw
             }
             if (!available)
             {
-                LOG_ERROR("Required extension {0} not available!", req);
+                EDITOR_LOG_ERROR("Required extension {0} not available!", req);
             }
         }
     
@@ -2099,13 +2103,13 @@ namespace vkw
     
         if (!suitable)
         {
-            LOG_ERROR("selected device invalidated after surface update.");
+            EDITOR_LOG_ERROR("selected device invalidated after surface update.");
         }
     }
 
     void Context::CreateSwapChain(uint32_t width, uint32_t height)
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
     
         if (numSamples > maxSamples)
         {
@@ -2126,14 +2130,14 @@ namespace vkw
     
             if (imageCount < capabilities.minImageCount)
             {
-                LOG_WARN("Querying less images than the necessary!");
+                EDITOR_LOG_WARN("Querying less images than the necessary!");
                 imageCount = capabilities.minImageCount;
             }
     
             // prevent exceeding the max image count
             if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
             {
-                LOG_WARN("Querying more images than supported. imageCoun set to maxImageCount.");
+                EDITOR_LOG_WARN("Querying more images than supported. imageCoun set to maxImageCount.");
                 imageCount = capabilities.maxImageCount;
             }
     
@@ -2243,7 +2247,7 @@ namespace vkw
             }
         }
     
-        LOG_INFO("Create Swapchain");
+        EDITOR_LOG_INFO("Create Swapchain");
         swapChainCurrentFrame = 0;
         currentImageIndex = 0;
         swapChainDirty = false;
@@ -2340,7 +2344,7 @@ namespace vkw
 
     void AcquireImage()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
     
         uint32_t imageIndex;
         auto res = vkAcquireNextImageKHR(_ctx.device,
@@ -2374,7 +2378,7 @@ namespace vkw
     
     void SubmitAndPresent()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
     
         auto &cmd = _ctx.GetCurrentCommandResources();
     
@@ -2480,7 +2484,7 @@ namespace vkw
                 return availableFormat;
             }
         }
-        LOG_WARN("Preferred surface format not available!");
+        EDITOR_LOG_WARN("Preferred surface format not available!");
         return formats[0];
     }
 
@@ -2498,7 +2502,7 @@ namespace vkw
                 return mode;
             }
         }
-        LOG_WARN("Preferred present mode not available!");
+        EDITOR_LOG_WARN("Preferred present mode not available!");
         // FIFO is guaranteed to be available
         return VK_PRESENT_MODE_FIFO_KHR;
     }
@@ -2541,7 +2545,7 @@ namespace vkw
         CommandResources &cmd = queues[currentQueue].commands[currentImageIndex];
         if (stagingBufferSize - cmd.stagingOffset < size)
         {
-            LOG_ERROR("not enough size in staging buffer to copy");
+            EDITOR_LOG_ERROR("not enough size in staging buffer to copy");
             // todo: allocate additional buffer
             return;
         }
@@ -2573,7 +2577,7 @@ namespace vkw
         CommandResources &cmd = queues[currentQueue].commands[currentImageIndex];
         if (stagingBufferSize - cmd.stagingOffset < size)
         {
-            LOG_ERROR("not enough size in staging buffer to copy");
+            EDITOR_LOG_ERROR("not enough size in staging buffer to copy");
             // todo: allocate additional buffer
             return;
         }

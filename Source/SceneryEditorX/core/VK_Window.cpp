@@ -1,7 +1,40 @@
 #include "VK_Window.hpp"
+#include "Window.hpp"
 
 namespace SceneryEditorX
 {
+    void Window::ScrollCallback(GLFWwindow *window, double x, double y)
+    {
+        Window::scroll += y;
+        Window::deltaScroll += y;
+    }
+    
+    void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height)
+    {
+        Window::width = width;
+        Window::height = height;
+        Window::framebufferResized = true;
+    }
+    
+    void Window::WindowMaximizeCallback(GLFWwindow *window, int maximize)
+    {
+        maximized = maximize;
+    }
+    
+    void Window::WindowChangePosCallback(GLFWwindow *window, int x, int y)
+    {
+        Window::posX = x;
+        Window::posY = y;
+    }
+    
+    void Window::WindowDropCallback(GLFWwindow *window, int count, const char *paths[])
+    {
+        for (int i = 0; i < count; i++)
+        {
+            pathsDrop.push_back(paths[i]);
+        }
+    }
+
     /**
      * @brief Constructs a VK_Window object with specified width, height, and window name.
      *        Initializes the window by calling initWindow().

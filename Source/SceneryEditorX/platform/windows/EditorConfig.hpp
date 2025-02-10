@@ -1,3 +1,5 @@
+#if (defined(_WIN) || defined(WIN32) || defined(_WINDOWS))
+
 #include "stdint.h"
 #include "vulkan\vulkan_core.h"
 #include <string>
@@ -32,3 +34,5 @@ namespace SceneryEditorX
 
     };
 } // namespace SceneryEditorX
+
+#endif // _WIN || WIN32 || _WINDOWS

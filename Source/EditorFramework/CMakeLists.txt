@@ -2,11 +2,11 @@
 # Application Editor Framework
 # --------------------------------
 
-message(STATUS "=================================================")
-message(STATUS "Generating Application Framework")
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Application Framework")
 
 
-add_library(EditorFramework
+ADD_LIBRARY(EditorFramework
     Main.cpp
     Logging.cpp
 
@@ -23,20 +23,20 @@ add_library(EditorFramework
     ${CMAKE_SOURCE_DIR}/source/edX/edXProjectFile.h
 )
 
-source_group("Core" FILES
+SOURCE_GROUP("Core" FILES
     main.cpp
     ${CMAKE_SOURCE_DIR}/source/edX/edXProjectFile.h
 )
 
-source_group("Core/Logger" FILES
+SOURCE_GROUP("Core/Logger" FILES
     Logging.cpp
 )
 
-source_group("Core/Settings" FILES
+SOURCE_GROUP("Core/Settings" FILES
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/Options/Settings.cpp
 )
 
-source_group("Core/UI" FILES
+SOURCE_GROUP("Core/UI" FILES
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/UI/About.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/UI/ContentBrowser.cpp
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/UI/Fonts.h
@@ -48,7 +48,7 @@ source_group("Core/UI" FILES
     ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/UI/UI.h
 )
 
-target_link_libraries(EditorFramework PRIVATE
+TARGET_LINK_LIBRARIES(EditorFramework PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
     CURL::libcurl
@@ -58,7 +58,7 @@ target_link_libraries(EditorFramework PRIVATE
     Shell32.lib
 )
 
-target_include_directories(EditorFramework PRIVATE
+TARGET_INCLUDE_DIRECTORIES(EditorFramework PRIVATE
     ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/Logging
     ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX
     ${CURL_INCLUDE_DIRS}
@@ -66,13 +66,13 @@ target_include_directories(EditorFramework PRIVATE
     $ENV{VULKAN_SDK}/Include/
 )
 
-target_link_directories(EditorFramework PRIVATE $ENV{VULKAN_SDK}/Lib/)
-target_link_directories(EditorFramework PRIVATE ${CURL_INCLUDE_DIRS})
+TARGET_LINK_DIRECTORIES(EditorFramework PRIVATE $ENV{VULKAN_SDK}/Lib/)
+TARGET_LINK_DIRECTORIES(EditorFramework PRIVATE ${CURL_INCLUDE_DIRS})
 
 # --------------------------------
 # Defines
 # --------------------------------
 
-target_compile_definitions(EditorFramework PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG> $<$<CONFIG:Release>:SEDX_RELEASE>)
-target_compile_definitions(EditorFramework PRIVATE WIN32_LEAN_AND_MEAN)
+TARGET_COMPILE_DEFINITIONS(EditorFramework PRIVATE $<$<CONFIG:Debug>:SEDX_DEBUG> $<$<CONFIG:Release>:SEDX_RELEASE>)
+TARGET_COMPILE_DEFINITIONS(EditorFramework PRIVATE WIN32_LEAN_AND_MEAN)
 

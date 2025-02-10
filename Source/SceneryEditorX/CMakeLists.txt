@@ -5,9 +5,20 @@
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Scenery Editor X Project")
 
+FILE(GLOB RENDERER_FILES
+    renderer/*.cpp
+    renderer/*.h
+    renderer/*.hpp
+)
+FILE(GLOB SCENE_FILES
+    scene/*
+)
+
 ADD_EXECUTABLE(SceneryEditorX
     ${ICON_FILES}
     ${FONT_FILES}
+    ${RENDERER_FILES}
+    ${SCENE_FILES}
 
     core/Main.cpp
     core/Application.cpp
@@ -21,8 +32,6 @@ ADD_EXECUTABLE(SceneryEditorX
     platform/Windows/EditorConfig.hpp
     logging/Logging.cpp
     logging/Logging.hpp
-    renderer/Camera.cpp
-    renderer/VK_Pipeline.cpp
     UI/About.cpp
     UI/ContentBrowser.cpp
     UI/Fonts.h
@@ -64,9 +73,12 @@ SOURCE_GROUP("Core/Logger" FILES
 )
 
 SOURCE_GROUP("Core/Renderer" FILES
-    renderer/Camera.cpp
-    renderer/VK_Pipeline.cpp
+    ${RENDERER_FILES}
     core/VK_Window.cpp
+)
+
+SOURCE_GROUP("Core/Renderer/Scene" FILES
+    ${SCENE_FILES}
 )
 
 SOURCE_GROUP("Core/Profiler" FILES
@@ -135,5 +147,15 @@ TARGET_LINK_DIRECTORIES(SceneryEditorX
     PRIVATE
         $ENV{VULKAN_SDK}/Lib/
         ${CURL_INCLUDE_DIRS}
+)
+
+target_compile_definitions(SceneryEditorX
+    PRIVATE
+        $<$<CONFIG:Debug>:SEDX_DEBUG>
+        EDITOR
+        VK_USE_PLATFORM_WIN32_KHR
+        GLFW_INCLUDE_VULKAN
+        GLFW_EXPOSE_NATIVE_WIN32
+        CURL_STATICLIB
 )
 

@@ -1,10 +1,9 @@
-#include "../src/xpeditorpch.h"
 #include "../core/AssetManager.hpp"
 #include "../core/Window.hpp"
 #include "../renderer/VK_Wrapper.h"
 #include "../scene/Scene.hpp"
 
-#include <imgui/imgui_stdlib.h>
+//#include <imgui/imgui_stdlib.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 
@@ -16,7 +15,7 @@ namespace Scene
     
     void Setup()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         rootCollection = new Collection();
         rootCollection->entityType = EntityType::Collection;
         rootCollection->name = "Root";
@@ -59,7 +58,7 @@ namespace Scene
     
     void CreateResources()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         sceneBuffer = vkw::CreateBuffer(sizeof(Scene::scene), vkw::BufferUsage::Storage | vkw::BufferUsage::TransferDst);
         modelsBuffer = vkw::CreateBuffer(sizeof(Scene::models), vkw::BufferUsage::Storage | vkw::BufferUsage::TransferDst);
         u8 *whiteTextureData = new u8[4];
@@ -99,7 +98,7 @@ namespace Scene
 
     void UpdateResources()
     {
-        SEDX_PROFILE_FUNC();
+        //SEDX_PROFILE_FUNC();
         scene.whiteTexture = whiteTexture.RID();
         scene.blackTexture = blackTexture.RID();
         scene.numLights = 0;
@@ -571,7 +570,7 @@ namespace Scene
     
     void InspectEntity(Entity *entity)
     {
-        ImGui::InputText("Name", &entity->name);
+        ImGui::InputText("Name", &entity->name[0], entity->name.capacity() + 1);
         if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::DragFloat3("Position", glm::value_ptr(entity->transform.position));

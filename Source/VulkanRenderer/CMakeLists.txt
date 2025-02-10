@@ -2,46 +2,29 @@
 # VulkanRender
 # --------------------------------
 
-message(STATUS "=================================================")
-message(STATUS "Generating Vulkan Renderer")
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Vulkan Renderer")
 
+FILE(GLOB VULKANRENDERER_SOURCES
+    ${CMAKE_SOURCE_DIR}/Source/VulkanRenderer/Common/*.cpp
+    ${CMAKE_SOURCE_DIR}/Source/VulkanRenderer/Common/*.h
 
-add_library(VulkanRenderer
-    benchmark.hpp
-    camera.hpp
-    CommandLineParser.hpp
-    Entrypoints.h
-    frustum.hpp
-    keycodes.hpp
-    main.cpp
-    threadpool.hpp
-    VulkanAndroid.cpp
-    VulkanAndroid.h
-    VulkanBuffer.cpp
-    VulkanBuffer.h
-    VulkanDebug.cpp
-    VulkanDebug.h
-    VulkanDevice.cpp
-    VulkanDevice.h
-    vulkanexamplebase.cpp
-    vulkanexamplebase.h
-    VulkanFrameBuffer.hpp
-    VulkanglTFModel.cpp
-    VulkanglTFModel.h
-    VulkanInitializers.hpp
-    VulkanRaytracingSample.cpp
-    VulkanRaytracingSample.h
-    VulkanSwapChain.cpp
-    VulkanSwapChain.h
-    VulkanTexture.cpp
-    VulkanTexture.h
-    VulkanTools.cpp
-    VulkanTools.h
-    VulkanUIOverlay.cpp
-    VulkanUIOverlay.h
+    ${CMAKE_SOURCE_DIR}/Source/VulkanRenderer/Sources/*.cpp
+    ${CMAKE_SOURCE_DIR}/Source/VulkanRenderer/Sources/*.h
+)
+FILE(GLOB VULKANSHADER_SOURCES
+    ${CMAKE_SOURCE_DIR}/Source/VulkanRenderer/Shaders/*.vert
+    ${CMAKE_SOURCE_DIR}/Source/VulkanRenderer/Shaders/*.frag
 )
 
-target_link_libraries(VulkanRenderer PRIVATE
+SOURCE_GROUP("Shaders" FILES ${VULKANSHADER_SOURCES})
+
+ADD_LIBRARY(VulkanRenderer
+    ${VULKANRENDERER_SOURCES}
+    ${VULKANSHADER_SOURCES}
+)
+
+TARGET_LINK_LIBRARIES(VulkanRenderer PRIVATE
     glm::glm-header-only
     spdlog::spdlog_header_only
     glfw
@@ -50,7 +33,7 @@ target_link_libraries(VulkanRenderer PRIVATE
     Shell32.lib
 )
 
-target_include_directories(VulkanRenderer PRIVATE
+TARGET_INCLUDE_DIRECTORIES(VulkanRenderer PRIVATE
     ${CMAKE_SOURCE_DIR}/dependency/imgui
     ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
     ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
@@ -61,4 +44,4 @@ target_include_directories(VulkanRenderer PRIVATE
     ${Stb_INCLUDE_DIR}
 )
 
-target_link_options(VulkanRenderer PRIVATE /SUBSYSTEM:WINDOWS)
+TARGET_LINK_OPTIONS(VulkanRenderer PRIVATE /SUBSYSTEM:WINDOWS)

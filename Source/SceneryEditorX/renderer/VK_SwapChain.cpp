@@ -1,5 +1,5 @@
 #include "VK_SwapChain.h"
-
+#include "VK_Tools.h"
 
 /** @brief Creates the platform specific surface abstraction of the native platform window used for presentation */
 #if defined(VK_USE_PLATFORM_WIN32_KHR)

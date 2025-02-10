@@ -78,21 +78,21 @@ namespace VKEngine
     struct Framebuffer
     {
     private:
-        vks::VulkanDevice *vulkanDevice;
+        VKEngine::VulkanDevice *vulkanDevice;
     
     public:
         uint32_t width, height;
         VkFramebuffer framebuffer;
         VkRenderPass renderPass;
         VkSampler sampler;
-        std::vector<vks::FramebufferAttachment> attachments;
+        std::vector<VKEngine::FramebufferAttachment> attachments;
     
         /**
     	* Default constructor
     	*
     	* @param vulkanDevice Pointer to a valid VulkanDevice
     	*/
-        Framebuffer(vks::VulkanDevice *vulkanDevice)
+        Framebuffer(VKEngine::VulkanDevice *vulkanDevice)
         {
             assert(vulkanDevice);
             this->vulkanDevice = vulkanDevice;
@@ -104,7 +104,7 @@ namespace VKEngine
         ~Framebuffer()
         {
             assert(vulkanDevice);
-            for (auto attachment : attachments)
+            for (auto& attachment : attachments)
             {
                 vkDestroyImage(vulkanDevice->logicalDevice, attachment.image, nullptr);
                 vkDestroyImageView(vulkanDevice->logicalDevice, attachment.view, nullptr);
@@ -122,9 +122,9 @@ namespace VKEngine
     	*
     	* @return Index of the new attachment
     	*/
-        uint32_t addAttachment(vks::AttachmentCreateInfo createinfo)
+        uint32_t addAttachment(VKEngine::AttachmentCreateInfo createinfo)
         {
-            vks::FramebufferAttachment attachment;
+            VKEngine::FramebufferAttachment attachment;
     
             attachment.format = createinfo.format;
     
@@ -153,7 +153,7 @@ namespace VKEngine
     
             assert(aspectMask > 0);
     
-            VkImageCreateInfo image = vks::initializers::imageCreateInfo();
+            VkImageCreateInfo image = VKEngine::initializers::imageCreateInfo();
             image.imageType = VK_IMAGE_TYPE_2D;
             image.format = createinfo.format;
             image.extent.width = createinfo.width;
@@ -165,7 +165,7 @@ namespace VKEngine
             image.tiling = VK_IMAGE_TILING_OPTIMAL;
             image.usage = createinfo.usage;
     
-            VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+            VkMemoryAllocateInfo memAlloc = VKEngine::initializers::memoryAllocateInfo();
             VkMemoryRequirements memReqs;
     
             // Create image for this attachment
@@ -182,7 +182,7 @@ namespace VKEngine
             attachment.subresourceRange.levelCount = 1;
             attachment.subresourceRange.layerCount = createinfo.layerCount;
     
-            VkImageViewCreateInfo imageView = vks::initializers::imageViewCreateInfo();
+            VkImageViewCreateInfo imageView = VKEngine::initializers::imageViewCreateInfo();
             imageView.viewType = (createinfo.layerCount == 1) ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
             imageView.format = createinfo.format;
             imageView.subresourceRange = attachment.subresourceRange;
@@ -230,7 +230,7 @@ namespace VKEngine
     	*/
         VkResult createSampler(VkFilter magFilter, VkFilter minFilter, VkSamplerAddressMode adressMode)
         {
-            VkSamplerCreateInfo samplerInfo = vks::initializers::samplerCreateInfo();
+            VkSamplerCreateInfo samplerInfo = VKEngine::initializers::samplerCreateInfo();
             samplerInfo.magFilter = magFilter;
             samplerInfo.minFilter = minFilter;
             samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;

@@ -1,5 +1,7 @@
 #pragma once
 
+#if (defined(_WIN) || defined(WIN32) || defined(_WINDOWS))
+
 #ifndef FILEDIALOG_H
 #define FILEDIALOG_H
 
@@ -25,3 +27,4 @@ namespace SceneryEditorX::IO
 
 }
 #endif
+#endif // _WIN || WIN32 || _WINDOWS

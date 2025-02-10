@@ -1,4 +1,3 @@
-#include "../src/xpeditorpch.h"
 #include "Renderer.h"
 
 Renderer::Renderer()
@@ -76,7 +75,7 @@ void Renderer::BeginFrame()
 }
 
 void Renderer::WaitAndRender(float deltaTime,
-                             SceneryEditorX::Window *mainWindow,
+                             Window *mainWindow,
                              Scene *scene,
                              glm::mat4 projectionMatrix)
 {
