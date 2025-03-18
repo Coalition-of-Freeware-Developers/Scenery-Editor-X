@@ -1,9 +1,11 @@
 {
     "dependencies": [
-      "glm",
-      "portable-file-dialogs",
-      "spdlog",
-      "stb",
-      { "name": "curl", "features": [ "http2", "idn", "ssl"] }
+        "vulkan-memory-allocator",
+        "nlohmann-json",
+        "glm",
+        "portable-file-dialogs",
+        "spdlog",
+        "stb",
+        { "name": "curl", "features": [ "http2", "idn", "ssl"] }
     ]
   }

@@ -1,20 +1,23 @@
-#include "Logging.hpp"
-#include <core/version.h>
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* logging.cpp
+* -------------------------------------------------------
+* Created: 25/1/2025
+* -------------------------------------------------------
+*/
 
-#include <string>
-#include <sysinfoapi.h>
-
-#include <memory>
 #include <minwinbase.h>
-#include <spdlog/common.h>
-#include <spdlog/logger.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/stdout_color_sinks-inl.h>
-#include <spdlog/spdlog.h>
-#include <spdlog/spdlog-inl.h>
+#include <SceneryEditorX/core/version.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <sysinfoapi.h>
 #include <timezoneapi.h>
-#include <vector>
+
+// -------------------------------------------------------
 
 /**
  * @brief Static member to hold the logger instance.
@@ -115,10 +118,10 @@ void Log::LogHeader()
     spdlog::info("Processor Architecture: {}", sysInfo.wProcessorArchitecture);
     spdlog::info("Processor Cores: {}", sysInfo.dwNumberOfProcessors);
     spdlog::info("Page Size: {}", sysInfo.dwPageSize);
-    //spdlog::info("Processor Type: {}", sysInfo.dwProcessorType);
-    //spdlog::info("Minimum Application Address: {}", sysInfo.lpMinimumApplicationAddress);
-    //spdlog::info("Maximum Application Address: {}", sysInfo.lpMaximumApplicationAddress);
-    //spdlog::info("Active Processor Mask: {}", sysInfo.dwActiveProcessorMask);
+    spdlog::info("Processor Type: {}", sysInfo.dwProcessorType);
+    spdlog::info("Minimum Application Address: {}", sysInfo.lpMinimumApplicationAddress);
+    spdlog::info("Maximum Application Address: {}", sysInfo.lpMaximumApplicationAddress);
+    spdlog::info("Active Processor Mask: {}", sysInfo.dwActiveProcessorMask);
     spdlog::info("============================================");
     spdlog::info("============================================");
     spdlog::info("Scenery Editor X");
@@ -126,7 +129,7 @@ void Log::LogHeader()
     spdlog::info("Build Date: {}", __DATE__);
     spdlog::info("Build Time: {}", __TIME__);
     spdlog::info("Coalition of Freeware Developers");
-    spdlog::info("Copyright (C) 2024");
+    spdlog::info("Copyright (C) 2025");
     spdlog::info("============================================");
     spdlog::info("============================================");
 }

@@ -5,7 +5,8 @@
 #define SEDX_VER_MAJOR                  0
 #define SEDX_VER_MINOR                  2
 #define SEDX_VER_PATCH                  27
-#define IDI_ICON1                       106
+#define SEDX_SPLASH                     101
+#define IDI_ICON                        106
 #define IDI_ICON_EDX                    107
 #define SEDX_VER_BUILD                  197
 #define IDR_REGISTRY_EDX_FORMAT         200

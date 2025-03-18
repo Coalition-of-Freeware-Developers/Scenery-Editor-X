@@ -1,3 +1,17 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* LockFile.cpp
+* -------------------------------------------------------
+* Created: 5/2/2025
+* -------------------------------------------------------
+*/
+
+#if (defined(_WIN) || defined(WIN32) || defined(_WINDOWS))
 
 namespace SceneryEditorX
 {
@@ -83,4 +97,6 @@ namespace SceneryEditorX
 
         return false;
     }
-}
+} // namespace SceneryEditorX
+
+#endif // _WIN || WIN32 || _WINDOWS

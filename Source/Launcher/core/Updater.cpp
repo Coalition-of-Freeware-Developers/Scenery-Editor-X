@@ -1,11 +1,21 @@
-#include "Updater.h"
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* updater.cpp
+* -------------------------------------------------------
+* Created: 16/3/2025
+* -------------------------------------------------------
+*/
 
-#include <iostream>
-#include <string>
 #include <curl/curl.h>
+#include <Launcher/core/updater.h>
+#include <SceneryEditorX/core/version.h>
 
-#include <core/version.h>
-
+// -------------------------------------------------------
 
 /**
  * @brief Callback function for handling data received from a cURL request.
@@ -53,7 +63,8 @@ bool Updater::urlCheck()
             }
             else
             {
-                std::cerr << "Exiting application." << std::endl;
+				LAUNCHER_LOG_INFO("Exiting application.");
+                //std::cerr << "Exiting application." << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
@@ -76,14 +87,15 @@ void Updater::UpdateCheck()
 
     // Check if the application is running in debug mode
 #ifdef SEDX_DEBUG
-    std::cout << "Debug mode: Skipping update check. You are using the latest version." << std::endl;
+    LAUNCHER_LOG_INFO("Debug mode: Skipping update check. You are using the latest version.");
     return;
 #endif
 
     // Perform URL check before continuing
     if (!urlCheck())
     {
-        std::cerr << "Update URL is not reachable. Skipping update check." << std::endl;
+		LAUNCHER_LOG_INFO("Update URL is not reachable. Skipping update check.");
+        //std::cerr << "Update URL is not reachable. Skipping update check." << std::endl;
         return;
     }  
 
@@ -126,20 +138,21 @@ void Updater::UpdateCheck()
 
     if (latestVersion.empty())
     {
-        std::cerr << "Failed to get the latest version from GitHub." << std::endl;
+        LAUNCHER_LOG_ERROR("Failed to get the latest version from GitHub.");
     }
 
     else if (currentVersion != latestVersion)
     {
         if (autoUpdate)
         {
-            std::cout << "Auto-update is enabled. Updating to version: " << latestVersion << std::endl;
+            LAUNCHER_LOG_INFO("Auto-update is enabled. Updating to version: {}", latestVersion);
             startUpdate();
         }
         else
         {
-            std::cout << "Update available: " << latestVersion << " (current version: " << currentVersion
-                      << "). Would you like to update? (yes/no): ";
+            LAUNCHER_LOG_INFO("Update available! ");
+            LAUNCHER_LOG_INFO("Current version: ",currentVersion);
+            LAUNCHER_LOG_INFO("Would you like to update ? (yes / no)");
             std::string userInput;
             std::cin >> userInput;
             if (userInput == "yes")
@@ -155,23 +168,30 @@ void Updater::UpdateCheck()
 
     else
     {
-        std::cout << "You are using the latest version: " << currentVersion << std::endl;
+        LAUNCHER_LOG_INFO("You are using the latest version: ",currentVersion);
     }
 }
 
-
+/**
+ * @brief Starts the update process.
+ *
+ * This function simulates the update process by displaying a message indicating that the update process has started.
+ * The actual update logic should be implemented here.
+ */
 
 void Updater::startUpdate()
 {
     // Code to start the update process
-    std::cout << "Starting the update process..." << std::endl;
+	LAUNCHER_LOG_INFO("Starting the update process...");
+    //std::cout << "Starting the update process..." << std::endl;
     // Implement the update logic here
 }
 
 void Updater::skipUpdate()
 {
     // Code to bypass the update and continue with other functions
-    std::cout << "Bypassing the update. Continuing with other functions..." << std::endl;
+	LAUNCHER_LOG_INFO("Bypassing the update. Continuing with other functions...");
+    //std::cout << "Bypassing the update. Continuing with other functions..." << std::endl;
     // Implement the logic to continue with other functions here
 }
 

@@ -1,5 +1,21 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* FileDialog.cpp
+* -------------------------------------------------------
+* Created: 5/2/2025
+* -------------------------------------------------------
+*/
+
+#if (defined(_WIN) || defined(WIN32) || defined(_WINDOWS))
 
 #include "FileDialog.h"
+
+// -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
@@ -64,4 +80,7 @@ namespace SceneryEditorX::IO
         // Do something with destination
         std::cout << "Selected folder: " << destination << "\n";
     }
-}
+} // namespace SceneryEditorX
+
+#endif // _WIN || WIN32 || _WINDOWS
+

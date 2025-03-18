@@ -1,8 +1,33 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* xpeditor_pch.h
+* -------------------------------------------------------
+* Created: 5/2/2025
+* -------------------------------------------------------
+*/
+
 #pragma once
 
-#include <core/SystemDetection.h>
+#include <SceneryEditorX/platform/system_detection.h>
+
+// -------------------------------------------------------
+
+#if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
+#pragma comment(lib, "legacy_stdio_definitions")
+#endif
 
 // TODO: Impliment MAC and Linux detection
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS) || defined(WIN64)
+#ifndef SEDX_PLATFORM_WINDOWS
+#define SEDX_PLATFORM_WINDOWS
+#endif // !SEDX_PLATFORM_WINDOWS
+#endif
+
 #ifdef SEDX_PLATFORM_WINDOWS
 #include <Windows.h>
 #include <fileapi.h>
@@ -13,12 +38,12 @@
 #endif
 
 #ifdef SEDX_PLATFORM_MAC
-#error "MAC is not supported!"
+#error "MAC is not yet supported!"
 #endif
 
 /*
 ##########################################################
-			         GENERAL INCLUDES
+                     C++ 20 INCLUDES
 ##########################################################
 */
 
@@ -48,10 +73,19 @@
 #include <utility>
 #include <vector>
 
+/*
+##########################################################
+					 GLFW INCLUDES & DEFINES
+##########################################################
+*/
+
+#define VK_NO_PROTOTYPES
+#define GLFW_INCLUDE_VULKAN
+#define IMGUI_IMPL_VULKAN_USE_VOLK
 
 /*
 ##########################################################
-			            GLM LIBRARY
+                        GLM LIBRARY
 ##########################################################
 */
 
@@ -69,15 +103,16 @@
 
 /*
 ##########################################################
-			            CONFIG FILE 
+                        CONFIG FILE
 ##########################################################
 */
 
 #include <portable-file-dialogs.h>
+#include <nlohmann/json.hpp>
 
 /*
 ##########################################################
-			            SPDLOG LOGGER
+                        SPDLOG LOGGER
 ##########################################################
 */
 
@@ -86,24 +121,64 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-
 /*
 ##########################################################
-			         Project Includes
+                     Project Includes
 ##########################################################
 */
 
 #include <imgui.h>
 #include <ImGuizmo.h>
-
-#include <core/Base.hpp>
-#include <core/EdxAssert.h>
-
-#include <logging/Logging.hpp>
-#include <logging/Profiler.hpp>
-
+#include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/logging/profiler.hpp>
+#include <SceneryEditorX/resource.h>
 
 /*
 ##########################################################
 ##########################################################
 */
+
+#define INTERNAL static
+#define LOCAL_PERSIST static
+#define GLOBAL static
+
+// -------------------------------------------------------
+
+#if defined(_DEBUG) || defined(DEBUG)
+#ifndef SEDX_DEBUG
+#define SEDX_DEBUG
+#endif
+#define APP_USE_VULKAN_DEBUG_REPORT
+#endif // _DEBUG
+
+// -------------------------------------------------------
+
+#ifdef SEDX_PLATFORM_WINDOWS
+
+/**
+ * @brief - A macro to display an error message
+ * @tparam T 
+ * @param errorMessage 
+ */
+template <typename T>
+void ErrMsg(const T& errorMessage)
+{
+    // Use fmt::format to convert errorMessage to a string
+    std::string errorStr = fmt::format("{}",errorMessage);
+
+    std::wstring errorWStr(errorStr.begin(),errorStr.end());
+    MessageBoxW(nullptr,errorWStr.c_str(),TEXT("Error"),MB_OK | MB_ICONERROR);
+    throw std::runtime_error(errorStr);
+}
+
+#endif
+
+// -------------------------------------------------------
+
+/**
+ * @brief - A macro to check if a pointer is valid
+ * @tparam T 
+ */
+template<typename T>
+using Ref = std::shared_ptr<T>;

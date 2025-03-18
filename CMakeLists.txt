@@ -20,11 +20,19 @@ SET(BIN_DIR ${CMAKE_SOURCE_DIR}/bin/${CMAKE_CFG_INTDIR})
 SET(LIBS_DIR ${CMAKE_SOURCE_DIR}/lib/${CMAKE_CFG_INTDIR})
 SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/")
 
-
 # USE FINDVULKAN MODULE ADDED WITH CMAKE 3.7
 IF(NOT CMAKE_VERSION VERSION_LESS 3.7.0)
     MESSAGE(STATUS "Using module to find Vulkan")
     FIND_PACKAGE(Vulkan)
+    SET(VULKAN_VERS ${Vulkan_FOUND})
+    MESSAGE(STATUS "Using Vulkan SDK version: ${VULKAN_VERS}")
+ENDIF()
+
+IF(TARGET WIN32)
+    FILE(VULKAN_VALIDATOR "C:/VulkanSDK/${VULKAN_VERS}/Config/vk_layer_settings.txt")
+    SET(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+ELSEIF(TARGET UNIX)
+    FILE(VULKAN_VALIDATOR "$HOME/.local/share/vulkan/settings.d/vk_layer_settings.txt")
 ENDIF()
 
 # --------------------------------
@@ -34,7 +42,7 @@ SET(ASSET_DIR   "${CMAKE_SOURCE_DIR}/assets")
 SET(FONT_DIR    "${CMAKE_SOURCE_DIR}/assets/fonts")
 SET(MODEL_DIR   "${CMAKE_SOURCE_DIR}/assets/models")
 SET(SHADER_DIR  "${CMAKE_SOURCE_DIR}/assets/shaders")
-SET(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/assets/texture")
+SET(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/assets/textures")
 
 # --------------------------------
 # BUILD SYSTEM
@@ -54,19 +62,6 @@ ADD_DEFINITIONS(
     -DCMAKE_GENERATOR_PLATFORM=x64
 )
 MESSAGE(VCPKG_ROOT = " ${CMAKE_TOOLCHAIN_FILE} ")
-
-# --------------------------------
-# OPTION TO ENABLE OR DISABLE DOXYGEN DOCUMENTATION GENERATION
-# --------------------------------
-OPTION(BUILD_DOXYGEN "Build Doxygen documentation" OFF)
-
-# --------------------------------
-# BUILD DOXYGEN DOCUMENTATION
-# --------------------------------
-IF(BUILD_DOXYGEN)
-    MESSAGE("Building Doxygen Documentation")
-    INCLUDE(${CMAKE_SOURCE_DIR}/cmake/doxygen.cmake)
-ENDIF()
 
 # --------------------------------
 IF(CMAKE_GENERATOR MATCHES "Visual Studio")
@@ -132,21 +127,29 @@ SET(REGISTRY_KEYS
 
 SET(ICON_FILES
     ${ASSET_DIR}/icon.ico
+    ${ASSET_DIR}/icon.png
     ${ASSET_DIR}/icon_edX.ico
     ${ASSET_DIR}/icon_testing.ico
+    ${ASSET_DIR}/icon_testing.png
 )
 
 # --------------------------------
 # PACKAGES
 # --------------------------------
-FIND_PACKAGE(Vulkan          REQUIRED)
-FIND_PACKAGE(glm      CONFIG REQUIRED)
-FIND_PACKAGE(spdlog   CONFIG REQUIRED)
-FIND_PACKAGE(Stb             REQUIRED)
-FIND_PACKAGE(CURL     CONFIG REQUIRED)
-FIND_PACKAGE(Doxygen            QUIET)
+FIND_PACKAGE(Vulkan                        REQUIRED)
+FIND_PACKAGE(glm                    CONFIG REQUIRED)
+FIND_PACKAGE(spdlog                 CONFIG REQUIRED)
+FIND_PACKAGE(Stb                           REQUIRED)
+FIND_PACKAGE(CURL                   CONFIG REQUIRED)
+FIND_PACKAGE(Doxygen                          QUIET)
+FIND_PACKAGE(VulkanMemoryAllocator  CONFIG REQUIRED)
 
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
+
+# --------------------------------
+# VOLK
+# --------------------------------
+ADD_SUBDIRECTORY(dependency/volk)
 
 # --------------------------------
 # GLFW
@@ -171,24 +174,21 @@ ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
 # --------------------------------
 # SCENERY EDITOR X | LAUNCHER
 # --------------------------------
-ADD_SUBDIRECTORY(source/Launcher)
-
-# --------------------------------
-# VULKANRENDER
-# --------------------------------
-ADD_SUBDIRECTORY(source/VulkanRenderer)
+#ADD_SUBDIRECTORY(source/Launcher)
 
 # --------------------------------
 # SCENERY EDITOR X
 # --------------------------------
 ADD_SUBDIRECTORY(source/SceneryEditorX)
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX VulkanRenderer)
-    TARGET_COMPILE_DEFINITIONS(${TARGET}
+FOREACH(TARGET IN ITEMS SceneryEditorX
         PUBLIC
             $<$<CONFIG:Debug>:SEDX_DEBUG>
             $<$<CONFIG:Release>:SEDX_RELEASE>
-            WIN32_LEAN_AND_MEAN
+            UNICODE
+            _UNICODE
+            _CRT_SECURE_NO_WARNINGS
+            #WIN32_LEAN_AND_MEAN
     )
 ENDFOREACH()
 
@@ -200,11 +200,12 @@ MESSAGE(STATUS "Generating precompiled headers")
 
 TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/xpeditor_pch.h)
 
-SET_PROPERTY(TARGET Launcher VulkanRenderer PROPERTY FOLDER "Core")
 SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
+SET_PROPERTY(TARGET volk PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX Launcher VulkanRenderer FormatTester edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX volk FormatTester edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

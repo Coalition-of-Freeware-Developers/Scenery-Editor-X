@@ -22,11 +22,6 @@
 #include "../edXProjectFile.h"
 #include "FileBrowser.hpp"
 
-//#define APP_USE_UNLIMITED_FRAME_RATE
-#ifdef _DEBUG
-#define APP_USE_VULKAN_DEBUG_REPORT
-#endif
-
 // Data
 static VkAllocationCallbacks *g_Allocator = nullptr;
 static VkInstance g_Instance = VK_NULL_HANDLE;

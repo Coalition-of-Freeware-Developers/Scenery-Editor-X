@@ -1,17 +1,30 @@
-#pragma once
-#include <string>
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* updater.h
+* -------------------------------------------------------
+* Created: 16/3/2025
+* -------------------------------------------------------
+*/
 
+#pragma once
+
+// -------------------------------------------------------
 
 class Updater
 {
 public:
 
-    bool isUpdate   = false;    ///< Flag indicating whether an update is available.
-    bool isLatest   = false;    ///< Flag indicating whether the user is using the latest version.
-    bool isBeta     = false;    ///< Flag indicating whether the user is using a beta version.
-    bool autoUpdate = false;    ///< Flag indicating whether the application will automatically update.
-    std::string currentVersion; ///< The current version of the application.
-    std::string latestVersion;  ///< The latest version available on GitHub.
+    bool isUpdate   = false;    // Flag indicating whether an update is available.
+    bool isLatest   = false;    // Flag indicating whether the user is using the latest version.
+    bool isBeta     = false;    // Flag indicating whether the user is using a beta version.
+    bool autoUpdate = false;    // Flag indicating whether the application will automatically update.
+    std::string currentVersion; // The current version of the application.
+    std::string latestVersion;  // The latest version available on GitHub.
 
     
     /**
@@ -33,7 +46,7 @@ private:
 
     void skipUpdate();
 
-    bool isFirstRun = false; ///< Flag indicating whether this is the first time the application is run.
+    bool isFirstRun = false; // Flag indicating whether this is the first time the application is run.
 
     /**
      * @brief Callback function for handling data received from a cURL request.
