@@ -13,3 +13,6 @@
 [submodule "dependency/glfw"]
 	path = dependency/glfw
 	url = git@github.com:glfw/glfw.git
+[submodule "dependency/optick"]
+	path = dependency/optick
+	url = git@github.com:bombomby/optick.git
