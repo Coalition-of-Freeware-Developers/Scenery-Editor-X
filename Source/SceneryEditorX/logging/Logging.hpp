@@ -87,12 +87,12 @@ public:
      * This function returns a shared pointer to the logger instance.
      */
     static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return _EditorLogger; }
-    //static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return _LauncherLogger; }
+    static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return _LauncherLogger; }
 
     private:
 
     static std::shared_ptr<spdlog::logger> _EditorLogger; //< The logger instance.
-    //static std::shared_ptr<spdlog::logger> _LauncherLogger; //< The logger instance.
+    static std::shared_ptr<spdlog::logger> _LauncherLogger; //< The logger instance.
 };
 
 /**

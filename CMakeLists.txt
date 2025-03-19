@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.28)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
 
 # --------------------------------
 # Global Setup

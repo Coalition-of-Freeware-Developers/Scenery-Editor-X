@@ -23,6 +23,7 @@
  * @brief Static member to hold the logger instance.
  */
 std::shared_ptr<spdlog::logger> Log::_EditorLogger;
+std::shared_ptr<spdlog::logger> Log::_LauncherLogger;
 
 /**
  * @brief Initializes the logging system with console and file sinks.
@@ -37,12 +38,16 @@ void Log::Init()
     if (!_EditorLogger) // Only initialize the logger if it hasn't been initialized yet
     {
         _EditorLogger = spdlog::stdout_color_mt("Logger"); // Create a console logger
-        spdlog::set_level(spdlog::level::trace);                                    // Set global log level to trace
+        spdlog::set_level(spdlog::level::trace);            // Set global log level to trace
+    }
+    else if (!_LauncherLogger) // Only initialize the logger if it hasn't been initialized yet
+    {
+        _LauncherLogger = spdlog::stdout_color_mt("Logger"); // Create a console logger
+        spdlog::set_level(spdlog::level::trace);              // Set global log level to trace
     }
 
-    std::vector<spdlog::sink_ptr> sinks;                                            // create a vector of sink pointers
-
-    sinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());    // create a console sink
+    std::vector<spdlog::sink_ptr> sinks;                                              // create a vector of sink pointers
+    sinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>()); // create a console sink
 
     /**
     * @brief Adds a file sink to the logger.
@@ -65,10 +70,13 @@ void Log::Init()
     sinks[0]->set_pattern("%^[%T] %n: %v%$");       // color coding
     sinks[1]->set_pattern("[%T] [%l] %n: %v");      // no color coding
 
+     // Create a logger with the sinks
     _EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX",
                                                      sinks.begin(),
-                                                     sinks.end()); // create a logger with the sinks
-    spdlog::register_logger(_EditorLogger);                        // register the logger with spdlog
+                                                     sinks.end());
+
+    // Register the logger with spdlog
+    spdlog::register_logger(_EditorLogger);                        
     _EditorLogger->set_level(spdlog::level::trace);                                                   // set the logging level to trace
     _EditorLogger->flush_on(spdlog::level::trace);                                                    // flush the logger on trace level log entries
 }
@@ -92,17 +100,25 @@ std::string getOsName()
 
 void Log::LogHeader()
 {
+    // -------------------------------------------------------
+    // TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
     SYSTEM_INFO sysInfo;
     GetSystemInfo(&sysInfo);
 
+    // -------------------------------------------------------
+    // TODO:
     SYSTEMTIME systemTime;
     GetSystemTime(&systemTime);
 
+    // -------------------------------------------------------
+
+    // TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
     TIME_ZONE_INFORMATION timeZoneInfo;
     GetTimeZoneInformation(&timeZoneInfo);
-
     std::wstring timeZoneName =
         (timeZoneInfo.StandardName[0] != L'\0') ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
+
+    // -------------------------------------------------------
 
     spdlog::info("============================================");
     spdlog::info("System Information");

@@ -42,10 +42,10 @@ void Window::ScrollCallback(GLFWwindow* window,double x,double y)
  * @param width The new width of the framebuffer.
  * @param height The new height of the framebuffer.
  */
-void Window::FramebufferResizeCallback(GLFWwindow* window,int Width,int Height)
+void Window::FramebufferResizeCallback(GLFWwindow* window,int width,int height)
 {
-    WindowProps::Width = Width;
-    WindowProps::Height = Height;
+    Window::width = width;
+    Window::height = height;
     Window::framebufferResized = true;
 }
 
@@ -60,7 +60,7 @@ void Window::FramebufferResizeCallback(GLFWwindow* window,int Width,int Height)
  */
 void Window::WindowMaximizeCallback(GLFWwindow* window,int maximize)
 {
-    //maximized = maximize;
+    maximized = maximize;
 }
 
 /**
@@ -80,6 +80,24 @@ void Window::WindowChangePosCallback(GLFWwindow* window,int x,int y)
 }
 
 /**
+ * @brief Callback function for handling window drop events.
+ *
+ * This function is called whenever files are dropped onto the window.
+ * It stores the paths of the dropped files in a vector.
+ *
+ * @param window The GLFW window where the event occurred.
+ * @param count The number of files dropped.
+ * @param paths An array of C-strings containing the paths of the dropped files.
+ */
+void Window::WindowDropCallback(GLFWwindow *window, int count, const char *paths[])
+{
+    for (int i = 0; i < count; i++)
+    {
+        pathsDrop.push_back(paths[i]);
+    }
+}
+
+/**
  * @brief Creates a new window and initializes GLFW.
  *
  * This function initializes the GLFW library, sets the necessary window hints,
@@ -91,31 +109,32 @@ void Window::Create()
 {
     glfwInit();
 
-    glfwWindowHint(GLFW_CLIENT_API,GLFW_NO_API);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
     monitors = glfwGetMonitors(&monitorCount); // get all monitors
 
-    glfwGetVideoModes(monitors[monitorIndex],&videoModeIndex);
+    glfwGetVideoModes(monitors[monitorIndex], &videoModeIndex);
     videoModeIndex -= 1;
 
-    WindowProps props;
-    window = glfwCreateWindow(props.Width,props.Height,props.Title.c_str(),nullptr,nullptr); // create window
-    
+    window = glfwCreateWindow(width, height, title, nullptr, nullptr); // create window
+
     if (!window)
     {
         glfwTerminate();
-		EDITOR_LOG_ERROR("Failed to create GLFW window!");
+        EDITOR_LOG_ERROR("Failed to create GLFW window!");
         throw std::runtime_error("Failed to create GLFW window");
     }
 
-    glfwSetWindowPos(window,posX,posY);                                     // set window position
+    glfwMakeContextCurrent(window);       // make window current context
 
-    glfwSetFramebufferSizeCallback(window,Window::FramebufferResizeCallback); // set framebuffer resize callback
-    glfwSetScrollCallback(window,Window::ScrollCallback);
-    glfwSetWindowMaximizeCallback(window,Window::WindowMaximizeCallback);
-    glfwSetWindowPosCallback(window,Window::WindowChangePosCallback);
+    glfwSetWindowPos(window, posX, posY); // set window position
 
-    WindowIcon();
+    glfwSetFramebufferSizeCallback(window, Window::FramebufferResizeCallback); // set framebuffer resize callback
+    glfwSetScrollCallback(window, Window::ScrollCallback);
+    glfwSetWindowMaximizeCallback(window, Window::WindowMaximizeCallback);
+    glfwSetWindowPosCallback(window, Window::WindowChangePosCallback);
+
+    SetWindowIcon(window);
 
     dirty = false;
     Window::ApplyChanges();
@@ -147,14 +166,14 @@ void Window::ApplyChanges()
     {
         case WindowMode::Windowed:
         posY = std::max(posY,31);
-        glfwSetWindowMonitor(window,nullptr,posX,posY,WindowProps::Width,WindowProps::Height,GLFW_DONT_CARE);
-        if (WindowProps::maximized)
+        glfwSetWindowMonitor(window,nullptr,posX,posY,Window::width,Window::height,GLFW_DONT_CARE);
+        if (Window::maximized)
         {
             glfwMaximizeWindow(window);
         }
-        glfwSetWindowAttrib(window,GLFW_MAXIMIZED,WindowProps::maximized);
-        glfwSetWindowAttrib(window,GLFW_RESIZABLE,WindowProps::resizable);
-        glfwSetWindowAttrib(window,GLFW_DECORATED,WindowProps::decorated);
+        glfwSetWindowAttrib(window,GLFW_MAXIMIZED,Window::maximized);
+        glfwSetWindowAttrib(window,GLFW_RESIZABLE,Window::resizable);
+        glfwSetWindowAttrib(window,GLFW_DECORATED,Window::decorated);
         break;
         case WindowMode::WindowedFullScreen:
         glfwWindowHint(GLFW_RED_BITS,monitorMode->redBits);
@@ -234,6 +253,7 @@ std::string VideoModeText(GLFWvidmode mode)
  * It allows the user to change the window mode, monitor, resolution, and other
  * window attributes such as maximized, decorated, and resizable.
  */
+
 /*
 void Window::OnImgui()
 {
@@ -386,56 +406,15 @@ void Window::OnImgui()
  */
 void Window::UpdateFramebufferSize()
 {
-	WindowProps props;
     framebufferResized = false;
-    glfwGetFramebufferSize(window,&props.Width,&props.Height);
-}
-
-Window::Window(const std::string& Title,int Width,int Height)
-{
-    glfwInit();
-
-    glfwWindowHint(GLFW_CLIENT_API,GLFW_NO_API);
-
-    monitors = glfwGetMonitors(&monitorCount); // get all monitors
-
-    glfwGetVideoModes(monitors[monitorIndex],&videoModeIndex);
-    videoModeIndex -= 1;
-
-    window = glfwCreateWindow(Width,Height,Title.c_str(),nullptr,nullptr); // create window
-
-    if (!window)
-    {
-        glfwTerminate();
-        EDITOR_LOG_ERROR("Failed to create GLFW window!");
-        throw std::runtime_error("Failed to create GLFW window");
-    }
-
-    glfwSetWindowPos(window,posX,posY);                                     // set window position
-
-    glfwSetFramebufferSizeCallback(window,Window::FramebufferResizeCallback); // set framebuffer resize callback
-    glfwSetScrollCallback(window,Window::ScrollCallback);
-    glfwSetWindowMaximizeCallback(window,Window::WindowMaximizeCallback);
-    glfwSetWindowPosCallback(window,Window::WindowChangePosCallback);
-
-    WindowIcon();
-
-    dirty = false;
-    Window::ApplyChanges();
-}
-
-Window::~Window()
-{
-    glfwGetWindowPos(window,&posX,&posY);
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    glfwGetFramebufferSize(window,&width,&height);
 }
 
 /**
  * @brief Gets the window icon image.
  * 
  */
-void Window::WindowIcon()
+void Window::SetWindowIcon(GLFWwindow *window)
 {
     int width,height,channels;
 
@@ -495,15 +474,15 @@ bool Window::IsKeyPressed(uint16_t keyCode)
 int Window::get_width() 
 {
     window = glfwGetCurrentContext();
-	glfwGetWindowSize(window,&WindowProps::Width,&WindowProps::Height);
+	glfwGetWindowSize(window,&width,&height);
 
-	return WindowProps::Width;
+	return Window::width;
 }
 
 int Window::get_height()
 {
 	window = glfwGetCurrentContext();
-    glfwGetWindowSize(window,&WindowProps::Width,&WindowProps::Height);
+    glfwGetWindowSize(window,&width,&height);
 
-    return WindowProps::Height;
+    return Window::height;
 }

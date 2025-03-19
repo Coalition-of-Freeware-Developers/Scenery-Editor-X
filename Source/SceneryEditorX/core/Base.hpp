@@ -39,6 +39,10 @@ using Vec2 = glm::vec2; // 2D vector
 using Vec3 = glm::vec3; // 3D vector
 using Vec4 = glm::vec4; // 4D vector
 
+using Mat2 = glm::mat2; // 2x2 matrix
+using Mat3 = glm::mat3; // 3x3 matrix
+using Mat4 = glm::mat4; // 4x4 matrix
+
 // -------------------------------------------------------
 
 // Macro to align a given size to the specified alignment
@@ -52,25 +56,89 @@ using Vec4 = glm::vec4; // 4D vector
 #define BIT(x) (1 << x)
 #define SEDX_BIND_EVENT_FN(fn) [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
+// -------------------------------------------------------
 
-namespace SceneryEditorX
+/**
+ * @brief Alias template for a unique pointer to type T.
+ * @tparam T The type to manage.
+ */
+template <typename T>
+using Scope = std::unique_ptr<T>;
+
+/**
+ * @brief Creates a unique pointer to an object of type T.
+ * @tparam T The type to manage.
+ * @tparam Args The types of the arguments to pass to the constructor of T.
+ * @param args The arguments to pass to the constructor of T.
+ * @return A unique pointer to an object of type T.
+ */
+template <typename T, typename... Args>
+constexpr Scope<T> CreateScope(Args &&...args)
 {
-	// Type aliases for glm types
-    template <typename T>
-    using Scope = std::unique_ptr<T>;
-    template <typename T, typename... Args>
-    constexpr Scope<T> CreateScope(Args &&...args)
-    {
-        return std::make_unique<T>(std::forward<Args>(args)...);
-    }
-    
-	// Type aliases for glm types
-    template <typename T>
-    using Ref = std::shared_ptr<T>;
-    template <typename T, typename... Args>
-    constexpr Ref<T> CreateRef(Args &&...args)
-    {
-        return std::make_shared<T>(std::forward<Args>(args)...);
-    }
+    return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
+/**
+ * @brief Alias template for a shared pointer to type T.
+ * @tparam T The type to manage.
+ */
+template <typename T>
+using Ref = std::shared_ptr<T>;
+
+/**
+ * @brief Creates a shared pointer to an object of type T.
+ * @tparam T The type to manage.
+ * @tparam Args The types of the arguments to pass to the constructor of T.
+ * @param args The arguments to pass to the constructor of T.
+ * @return A shared pointer to an object of type T.
+ */
+template <typename T, typename... Args>
+constexpr Ref<T> CreateRef(Args &&...args)
+{
+    return std::make_shared<T>(std::forward<Args>(args)...);
+}
+
+/**
+ * @brief Template function to convert an input to char.
+ * @tparam T The type of the input.
+ * @param input The input to convert.
+ * @return The converted char.
+ */
+template <typename T>
+char ToChar(const T &input)
+{
+    std::stringstream ss;
+    ss << input;
+    std::string str = ss.str();
+    return !str.empty() ? str[0] : '\0';
+}
+
+/**
+ * @brief Template function to convert an input to const char.
+ * @tparam T The type of the input.
+ * @param input The input to convert.
+ * @return The converted const char.
+ */
+template <typename T>
+const char *ToConstChar(const T &input)
+{
+    static std::string str;
+    std::stringstream ss;
+    ss << input;
+    str = ss.str();
+    return str.c_str();
+}
+
+/**
+* @brief Convert a value to a string.
+* @tparam T The type of the value to convert.
+* @param value The value to convert.
+* @return The string representation of the value.
+*/
+template <typename T>
+std::string ToString(const T &value)
+{
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}

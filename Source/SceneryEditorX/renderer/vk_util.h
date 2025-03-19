@@ -15,6 +15,7 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <string>
 
 #define VK_FLAGS_NONE 0
 #define DEFAULT_FENCE_TIMEOUT 100000000000
@@ -74,21 +75,6 @@ enum class ShadingLanguage
 };
 
 // -------------------------------------------------------
-/**
-* @brief Convert a value to a string.
-* @tparam T The type of the value to convert.
-* @param value The value to convert.
-* @return The string representation of the value.
-*/
-template <typename T>
-std::string ToString(const T& value)
-{
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
-}
-
-// -------------------------------------------------------
 
 /**
  * @brief Get the string representation of a Vulkan debug message severity.
@@ -103,3 +89,15 @@ const char* getDebugSeverityStr(VkDebugUtilsMessageSeverityFlagBitsEXT severity)
  * @return The string representation of the type.
  */
 const char* getDebugType(VkDebugUtilsMessageTypeFlagsEXT type);
+
+// -------------------------------------------------------
+
+PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT;
+PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
+PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
+PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
+PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
+PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
+PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
+
+// -------------------------------------------------------

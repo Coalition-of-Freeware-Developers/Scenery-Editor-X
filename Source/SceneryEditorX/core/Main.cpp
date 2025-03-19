@@ -11,20 +11,40 @@
 * -------------------------------------------------------
 */
 
-#include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/renderer/vk_core.h>
-#include <SceneryEditorX/renderer/graphics_defs.h>
 #include <Launcher/core/launcher_main.h>
+#include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/graphics_checks.h>
+#include <SceneryEditorX/renderer/graphics_defs.h>
+#include <SceneryEditorX/renderer/vk_core.h>
+#include <SceneryEditorX/scene/asset_manager.h>
 
-// -------------------------------------------------------
+/*
+* -------------------------------------------------------
+* Application Global Variables
+* -------------------------------------------------------
+*/
 
-GLOBAL std::unique_ptr<Window> g_Window = {};
+GLOBAL Scope<Window> g_Window;
+
+/**
+ * -------------------------------------------------------
+ * FORWARD FUNCTION DECLARATIONS
+ * -------------------------------------------------------
+ */
+
+//INTERNAL void initVulkan(GraphicsEngine &vkRenderer);
+
 
 // -------------------------------------------------------
 
 class Application
 {
 public:
+    Application() : vkRenderer(nullptr)
+    {
+    }
+
+    ~Application() {}
 
 	void run()
 	{
@@ -35,7 +55,13 @@ public:
 	}
 
 private:
+    glm::ivec2 viewportSize = {64, 48};
+    glm::ivec2 newViewportSize = viewportSize;
 	bool viewportResized = false;
+    bool fullscreen = false;
+    //AssetManager assetManager;
+
+// -------------------------------------------------------
 
 	void Setup()
 	{    
@@ -45,18 +71,29 @@ private:
 		//Launcher::AdminCheck();
 		//Launcher::Loader loader{};
 		//loader.run();
+        //SceneryEditorX::ReadCache();
+        //assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+        //scene = assetManager.GetInitialScene();
+        //camera = assetManager.GetMainCamera(scene);
 
-		//SceneryEditorX::ReadCache();
 	}
 
 	void Create()
 	{
-		//window = new Window;
-		g_Window->Window::Create();
-		void initVulkan();
-		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-		//SceneryEditorX::Init(Window::GetGLFWwindow(),Window::GetWidth(),Window::GetHeight());
-		//SceneryEditorX::CreateEditor();
+        g_Window = CreateScope<Window>(); 
+        g_Window->Create();
+
+        //VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
+        //vulkanChecks.InitChecks({}, {});     // Initialize the Vulkan checks
+
+        //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
+        //SceneryEditorX::Init(Window::GetGLFWwindow(),Window::GetWidth(),Window::GetHeight());
+        //SceneryEditorX::CreateEditor();
+
+        vkRenderer = CreateRef<GraphicsEngine>(*Window::GetGLFWwindow());
+        vkRenderer->initEngine();
+
+        //camera->extent = {viewportSize.x, viewportSize.y};
 	}
 
 	void MainLoop()
@@ -93,26 +130,19 @@ private:
 	{
 		Window::Destroy();
 	}
+
+    Ref<GraphicsEngine> vkRenderer; //Vulkan renderer instance
+
+
 };
 
-INTERNAL void initVulkan()
+/*
+INTERNAL void initVulkan(GraphicsEngine &vkRenderer)
 {
-
 	GLFWwindow* window = Window::GetGLFWwindow();
-	GraphicsEngine graphicsEngine(*window);
-	graphicsEngine.initEngine();
-
-	/*
-	const SwapChainInfo swapChainInfo = {
-		.width = static_cast<uint32_t>(g_Window->get_width()),
-		.height = static_cast<uint32_t>(g_Window->get_height()),
-		.bufferCount = 3,
-		.format = VK_FORMAT_R8G8B8A8_UNORM,
-		.vsync = true
-	};
-	*/
+    vkRenderer.initEngine();
 }
-
+*/
 
 int main(const int argc,const char* argv[])
 {

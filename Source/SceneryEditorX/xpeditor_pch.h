@@ -79,9 +79,9 @@
 ##########################################################
 */
 
-#define VK_NO_PROTOTYPES
+//#define VK_NO_PROTOTYPES
 #define GLFW_INCLUDE_VULKAN
-#define IMGUI_IMPL_VULKAN_USE_VOLK
+//#define IMGUI_IMPL_VULKAN_USE_VOLK
 
 /*
 ##########################################################
@@ -154,7 +154,6 @@
 
 // -------------------------------------------------------
 
-#ifdef SEDX_PLATFORM_WINDOWS
 
 /**
  * @brief - A macro to display an error message
@@ -162,23 +161,22 @@
  * @param errorMessage 
  */
 template <typename T>
-void ErrMsg(const T& errorMessage)
+void ErrMsg(const T &errorMessage)
 {
     // Use fmt::format to convert errorMessage to a string
-    std::string errorStr = fmt::format("{}",errorMessage);
+    std::string errorStr = fmt::format("{}", errorMessage);
 
-    std::wstring errorWStr(errorStr.begin(),errorStr.end());
-    MessageBoxW(nullptr,errorWStr.c_str(),TEXT("Error"),MB_OK | MB_ICONERROR);
-    throw std::runtime_error(errorStr);
-}
-
+#ifdef SEDX_PLATFORM_WINDOWS
+    // Convert to wide string for Windows
+    std::wstring errorWStr(errorStr.begin(), errorStr.end());
+    MessageBoxW(nullptr, errorWStr.c_str(), L"Error", MB_OK | MB_ICONERROR);
+#else
+    // For other platforms, log to console and potentially show via GLFW
+    spdlog::error("Error: {}", errorStr);
+    // Note: If you have an active GLFW window, you could trigger a custom ImGui popup here
 #endif
+    throw std::runtime_error(errorStr);
+};
+
 
 // -------------------------------------------------------
-
-/**
- * @brief - A macro to check if a pointer is valid
- * @tparam T 
- */
-template<typename T>
-using Ref = std::shared_ptr<T>;

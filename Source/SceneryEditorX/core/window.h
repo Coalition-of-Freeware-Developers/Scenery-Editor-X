@@ -13,13 +13,12 @@
 
 #pragma once
 
+#include <chrono>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <SceneryEditorX/core/base.hpp>
-#include <string>
 
 // -------------------------------------------------------
-
-class Window;
 
 enum class WindowMode
 {
@@ -28,56 +27,38 @@ enum class WindowMode
     FullScreen
 };
 
-struct WindowProps
-{
-    std::string Title = "Scenery Editor X";
-    GLOBAL inline int Width = 1280;
-    GLOBAL inline int Height = 720;
-    GLOBAL inline bool resizable = true;
-    GLOBAL inline bool decorated = true;
-    GLOBAL inline bool maximized = true;
-    bool Fullscreen = false;
-    bool VSync = false;
-};
-
-struct WindowBase : public WindowProps
-{
-    GLFWwindow* window = nullptr;
-
-    //Window* window{nullptr};
-};
-
 class Window
 {
-public:
-    Window() : Window(WindowProps().Title, WindowProps().Width, WindowProps().Height) {}
-    Window(const std::string& Title, int Width, int Height);
-    ~Window();
-
 private:
-    GLOBAL inline GLFWwindow* window = nullptr;
-    GLOBAL inline GLFWmonitor** monitors = nullptr;
-    GLOBAL inline int posX = 0;
-    GLOBAL inline int posY = 30;
-    GLOBAL inline int monitorIndex = 0;
-    GLOBAL inline int monitorCount = 0;
-    GLOBAL inline int videoModeIndex = 0;
-    GLOBAL inline bool framebufferResized = false;
+    INTERNAL inline GLFWwindow *window              = nullptr;
+    INTERNAL inline GLFWmonitor **monitors          = nullptr;
+    INTERNAL inline const char *title               = "Scenery Editor X";
+    INTERNAL inline int         width               = 1280;
+    INTERNAL inline int         height              = 720;
+    INTERNAL inline int         posX                = 0;
+    INTERNAL inline int         posY                = 30;
+    INTERNAL inline int         monitorIndex        = 0;
+    INTERNAL inline int         monitorCount        = 0;
+    INTERNAL inline int         videoModeIndex      = 0;
+    INTERNAL inline bool        framebufferResized  = false;
 
-    GLOBAL inline std::chrono::high_resolution_clock::time_point lastTime;
-    GLOBAL inline float deltaTime = .0f;
+    INTERNAL inline std::chrono::high_resolution_clock::time_point lastTime;
+    INTERNAL inline std::vector<std::string> pathsDrop;
 
-    GLOBAL inline float scroll = .0f;
-    GLOBAL inline float deltaScroll = .0f;
-    GLOBAL inline Vec2 mousePos = Vec2(.0f,.0f);
-    GLOBAL inline Vec2 deltaMousePos = Vec2(.0f,.0f);
+    INTERNAL inline float       deltaTime           = .0f;
+    INTERNAL inline float       scroll              = .0f;
+    INTERNAL inline float       deltaScroll         = .0f;
+    INTERNAL inline Vec2        mousePos            = Vec2(.0f,.0f);
+    INTERNAL inline Vec2        deltaMousePos       = Vec2(.0f,.0f);
 
-    GLOBAL inline char lastKeyState[GLFW_KEY_LAST + 1];
+    INTERNAL inline char        lastKeyState[GLFW_KEY_LAST + 1];
+    INTERNAL inline WindowMode  mode                = WindowMode::Windowed;
+    INTERNAL inline bool        dirty               = true;
+    INTERNAL inline bool        resizable           = true;
+    INTERNAL inline bool        decorated           = true;
+    INTERNAL inline bool        maximized           = true;
 
-    GLOBAL inline WindowMode mode = WindowMode::Windowed;
-    GLOBAL inline bool dirty = true;
-
-    INTERNAL void WindowIcon();
+    INTERNAL void SetWindowIcon(GLFWwindow *window);
     INTERNAL void ScrollCallback(GLFWwindow* window,double x,double y);
     INTERNAL void FramebufferResizeCallback(GLFWwindow* window,int width,int height);
     INTERNAL void WindowMaximizeCallback(GLFWwindow* window,int maximized);
@@ -86,69 +67,29 @@ private:
 
 public:
 
-    static void Create();
-    static void Update();
-    static void OnImgui();
-    static void Destroy();
-    static void ApplyChanges();
-    static void UpdateFramebufferSize();
-    static bool IsKeyPressed(uint16_t keyCode);
+    GLOBAL void Create();
+    GLOBAL void Update();
+    GLOBAL void OnImgui();
+    GLOBAL void Destroy();
+    GLOBAL void ApplyChanges();
+    GLOBAL void UpdateFramebufferSize();
+    GLOBAL bool IsKeyPressed(uint16_t keyCode);
 
     int get_width();
 	int get_height();
 
-    static inline GLFWwindow* GetGLFWwindow()
-    {
-        HWND glfwGetWin32Window(GLFWwindow* window);
-    }
-    static inline void WaitEvents()
-    {
-        glfwWaitEvents();
-    }
-    static inline uint32_t GetWidth()
-    {
-        return Window::GetWindowProps().Width;
-    }
-    static inline uint32_t GetHeight()
-    {
-        return Window::GetWindowProps().Height;
-    }
-    static inline float GetDeltaTime()
-    {
-        return deltaTime;
-    }
-    static inline bool GetShouldClose()
-    {
-        return glfwWindowShouldClose(window);
-    }
-    static inline float GetDeltaScroll()
-    {
-        return deltaScroll;
-    }
-    static inline Vec2 GetDeltaMouse()
-    {
-        return deltaMousePos;
-    }
-    static inline bool GetFramebufferResized()
-    {
-        return framebufferResized;
-    }
-    static inline bool IsKeyDown(uint16_t keyCode)
-    {
-        return glfwGetKey(window,keyCode);
-    }
-    static inline bool IsMouseDown(uint16_t buttonCode)
-    {
-        return glfwGetMouseButton(window,buttonCode);
-    }
-    static inline void SetTitle(const std::string& title)
-    {
-        glfwSetWindowTitle(window,title.c_str());
-    }
-    static inline WindowProps& GetWindowProps()
-    {
-        GLOBAL WindowProps props;
-        return props;
-    }
+    GLOBAL inline GLFWwindow*   GetGLFWwindow()                     {return window;}
+    static inline bool          IsDirty()                           {return dirty;}
+    GLOBAL inline void          WaitEvents()                        {glfwWaitEvents();}
+    GLOBAL inline uint32_t      GetWidth()                          {return Window::width;}
+    GLOBAL inline uint32_t      GetHeight()                         {return Window::height;}
+    GLOBAL inline float         GetDeltaTime()                      {return deltaTime;}
+    GLOBAL inline bool          GetShouldClose()                    {return glfwWindowShouldClose(window);}
+    GLOBAL inline float         GetDeltaScroll()                    {return deltaScroll;}
+    GLOBAL inline Vec2          GetDeltaMouse()                     {return deltaMousePos;}
+    GLOBAL inline bool          GetFramebufferResized()             {return framebufferResized;}
+    GLOBAL inline bool          IsKeyDown(uint16_t keyCode)         {return glfwGetKey(window,keyCode);}
+    GLOBAL inline bool          IsMouseDown(uint16_t buttonCode)    {return glfwGetMouseButton(window,buttonCode);}
+    GLOBAL inline void          SetTitle(const std::string& title)  {glfwSetWindowTitle(window,title.c_str());}
 };
 

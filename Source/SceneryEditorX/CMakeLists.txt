@@ -15,6 +15,11 @@ FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
 
 SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
 
+ADD_EXECUTABLE(glslang::validator IMPORTED)
+FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQUIRED)
+SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
+
+
 # --------------------------------
 ADD_EXECUTABLE(SceneryEditorX
     ${ICON_FILES}
@@ -32,6 +37,10 @@ ADD_EXECUTABLE(SceneryEditorX
     core/version.h
     core/window.cpp
     core/window.h
+    # --------------------------------
+
+    scene/asset_manager.cpp
+    scene/asset_manager.h
 
     # --------------------------------
     platform/system_detection.h
@@ -46,6 +55,7 @@ ADD_EXECUTABLE(SceneryEditorX
     # --------------------------------
     # LAUNCHER FILES
     # --------------------------------
+
     #${LAUNCHER_DIR}/core/updater.h
     #${LAUNCHER_DIR}/core/updater.cpp
     #${LAUNCHER_DIR}/core/launcher_main.cpp
@@ -56,9 +66,12 @@ ADD_EXECUTABLE(SceneryEditorX
     #${LAUNCHER_DIR}/core/splash_handler.h
     #${LAUNCHER_DIR}/core/updater.h
     #${LAUNCHER_DIR}/core/updater.cpp
+
     # --------------------------------
+
     #${LAUNCHER_DIR}/registry/reg_init.h
     #${LAUNCHER_DIR}/registry/reg_check.h
+
     # --------------------------------
 )
 
@@ -95,10 +108,13 @@ SOURCE_GROUP("Core/Logger" FILES
     logging/logging.hpp
 )
 
-SOURCE_GROUP("Editor/Core/Renderer" FILES
+SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )
-
+SOURCE_GROUP("Editor/Scene" FILES
+    scene/asset_manager.cpp
+    scene/asset_manager.h
+)
 #SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
 #    ${SCENE_FILES}
 #)
@@ -192,25 +208,18 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         volk
-        vulkan-1.lib
+        Vulkan::Vulkan
+        #vulkan-1.lib
         glfw
         dxgi
         d3d12
         Shell32.lib
 )
 
-#TARGET_LINK_OPTIONS(SceneryEditorX 
-#    PRIVATE 
+#TARGET_LINK_OPTIONS(SceneryEditorX
+#    PRIVATE
 #        /SUBSYSTEM:WINDOWS
 #)
-
-# --------------------------------
-
-TARGET_LINK_DIRECTORIES(SceneryEditorX
-    PRIVATE
-        $ENV{VULKAN_SDK}/Lib/
-        ${CURL_LIBRARY_DIRS}
-)
 
 # --------------------------------
 

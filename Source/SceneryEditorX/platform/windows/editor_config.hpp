@@ -31,8 +31,8 @@ namespace SceneryEditorX
     {
         std::string Title = "Scenery Editor X";
 
-        //static inline uint32_t Width = 1280;
-        //static inline uint32_t Height = 720;
+        //static inline uint32_t width = 1280;
+        //static inline uint32_t height = 720;
         uint16_t width = 1280;
         uint16_t height = 720;
 
