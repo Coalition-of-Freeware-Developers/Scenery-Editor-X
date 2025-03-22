@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.8...4.0)
 
 # --------------------------------
 # Global Setup
@@ -170,11 +170,6 @@ ADD_SUBDIRECTORY(source/edX/testing)
 # X-PLANE SCENERY LIBRARY
 # --------------------------------
 ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
-
-# --------------------------------
-# SCENERY EDITOR X | LAUNCHER
-# --------------------------------
-#ADD_SUBDIRECTORY(source/Launcher)
 
 # --------------------------------
 # SCENERY EDITOR X

@@ -13,12 +13,12 @@
 
 // Platform detection using predefined macros
 #if defined(_WIN32) || defined(_WINDOWS) || defined(_MSC_VER)
-    /* Windows x64/x86 */
+	/* Windows x64/x86 */
 #ifdef _WIN64
-    /* Windows x64  */
+	/* Windows x64  */
 #define SEDX_PLATFORM_WINDOWS
 #else
-    /* Windows x86 */
+	/* Windows x86 */
 #error "x86 Builds are not supported!"
 #endif
 #elif defined(__APPLE__) || defined(__MACH__)
@@ -50,6 +50,6 @@
 #define SEDX_PLATFORM_LINUX
 #error "Linux is not supported!"
 #else
-    /* Unknown compiler/platform */
+	/* Unknown compiler/platform */
 #error "Unknown platform!"
 #endif // End of platform detection

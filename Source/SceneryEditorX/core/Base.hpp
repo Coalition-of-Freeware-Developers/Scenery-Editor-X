@@ -75,7 +75,7 @@ using Scope = std::unique_ptr<T>;
 template <typename T, typename... Args>
 constexpr Scope<T> CreateScope(Args &&...args)
 {
-    return std::make_unique<T>(std::forward<Args>(args)...);
+	return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 /**
@@ -95,7 +95,7 @@ using Ref = std::shared_ptr<T>;
 template <typename T, typename... Args>
 constexpr Ref<T> CreateRef(Args &&...args)
 {
-    return std::make_shared<T>(std::forward<Args>(args)...);
+	return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 /**
@@ -107,10 +107,10 @@ constexpr Ref<T> CreateRef(Args &&...args)
 template <typename T>
 char ToChar(const T &input)
 {
-    std::stringstream ss;
-    ss << input;
-    std::string str = ss.str();
-    return !str.empty() ? str[0] : '\0';
+	std::stringstream ss;
+	ss << input;
+	std::string str = ss.str();
+	return !str.empty() ? str[0] : '\0';
 }
 
 /**
@@ -122,11 +122,11 @@ char ToChar(const T &input)
 template <typename T>
 const char *ToConstChar(const T &input)
 {
-    static std::string str;
-    std::stringstream ss;
-    ss << input;
-    str = ss.str();
-    return str.c_str();
+	static std::string str;
+	std::stringstream ss;
+	ss << input;
+	str = ss.str();
+	return str.c_str();
 }
 
 /**
@@ -138,7 +138,40 @@ const char *ToConstChar(const T &input)
 template <typename T>
 std::string ToString(const T &value)
 {
-    std::ostringstream oss;
-    oss << value;
-    return oss.str();
+	std::ostringstream oss;
+	oss << value;
+	return oss.str();
 }
+
+/**
+ * @brief Convert a string to a value.
+ * @tparam T The type of the value to convert.
+ * @param str The string to convert.
+ * @return The value representation of the string.
+ */
+template <size_t N>
+std::vector<std::string> arrayToVector(const std::array<const char *, N> &arr)
+{
+	std::vector<std::string> vec;
+	for (const char *str : arr)
+	{
+		vec.emplace_back(str);
+	}
+	return vec;
+}
+
+/**
+ * @brief Convert a string to a value.
+ * @tparam T The type of the value to convert.
+ * @param str The string to convert.
+ * @return The value representation of the string.
+ */
+/*
+template <typename T>
+void CmdTimeStamp(const std::string &name, T callback)
+{
+	int id = CmdBeginTimeStamp(name);
+	callback();
+	CmdEndTimeStamp(id);
+}
+*/

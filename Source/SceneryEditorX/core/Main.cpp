@@ -13,18 +13,19 @@
 
 #include <Launcher/core/launcher_main.h>
 #include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/renderer/graphics_checks.h>
-#include <SceneryEditorX/renderer/graphics_defs.h>
+//#include <SceneryEditorX/renderer/graphics_checks.h>
+//#include <SceneryEditorX/renderer/graphics_defs.h>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/renderer/vk_checks.h>
 
 /*
 * -------------------------------------------------------
-* Application Global Variables
+* EditorApplication Global Variables
 * -------------------------------------------------------
 */
 
-GLOBAL Scope<Window> g_Window;
+//GLOBAL Scope<Window> g_Window;
 
 /**
  * -------------------------------------------------------
@@ -34,36 +35,32 @@ GLOBAL Scope<Window> g_Window;
 
 //INTERNAL void initVulkan(GraphicsEngine &vkRenderer);
 
-
 // -------------------------------------------------------
 
-class Application
+class EditorApplication
 {
 public:
-    Application() : vkRenderer(nullptr)
-    {
-    }
-
-    ~Application() {}
-
 	void run()
 	{
-		Setup();
-		Create();
-		MainLoop();
-		Shutdown();
+		initialize_editor();
+        vkRenderer.initEngine();
+		main_loop();
+		shut_down();
 	}
 
 private:
-    glm::ivec2 viewportSize = {64, 48};
-    glm::ivec2 newViewportSize = viewportSize;
+    GLFWwindow *window;
+    SceneryEditorX::GraphicsEngine vkRenderer;
+    uint32_t currentFrame = 0;
+	//glm::ivec2 viewportSize = {64, 48};
+	//glm::ivec2 newViewportSize = viewportSize;
 	bool viewportResized = false;
-    bool fullscreen = false;
-    //AssetManager assetManager;
+	bool fullscreen = false;
+	//AssetManager assetManager;
 
 // -------------------------------------------------------
 
-	void Setup()
+	void initialize_editor()
 	{    
 		Log::LogHeader();
 		EDITOR_LOG_INFO("Scenery Editor X Engine is starting...");
@@ -71,32 +68,34 @@ private:
 		//Launcher::AdminCheck();
 		//Launcher::Loader loader{};
 		//loader.run();
-        //SceneryEditorX::ReadCache();
-        //assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
-        //scene = assetManager.GetInitialScene();
-        //camera = assetManager.GetMainCamera(scene);
+		//SceneryEditorX::ReadCache();
+		//assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+		//scene = assetManager.GetInitialScene();
+		//camera = assetManager.GetMainCamera(scene);
+        Window::Create();
 
 	}
 
 	void Create()
 	{
-        g_Window = CreateScope<Window>(); 
-        g_Window->Create();
+		//g_Window = CreateScope<Window>(); 
+		//g_Window->Create();
 
-        //VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
-        //vulkanChecks.InitChecks({}, {});     // Initialize the Vulkan checks
+		//VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
+		//vulkanChecks.InitChecks({}, {});     // Initialize the Vulkan checks
 
-        //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-        //SceneryEditorX::Init(Window::GetGLFWwindow(),Window::GetWidth(),Window::GetHeight());
-        //SceneryEditorX::CreateEditor();
+		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
+		//SceneryEditorX::Init(Window::GetGLFWwindow(),Window::GetWidth(),Window::GetHeight());
+		//SceneryEditorX::CreateEditor();
+        
 
-        vkRenderer = CreateRef<GraphicsEngine>(*Window::GetGLFWwindow());
-        vkRenderer->initEngine();
+		//vkRenderer = CreateRef<GraphicsEngine>(*Window::GetGLFWwindow());
+		//vkRenderer->initEngine();
 
-        //camera->extent = {viewportSize.x, viewportSize.y};
+		//camera->extent = {viewportSize.x, viewportSize.y};
 	}
 
-	void MainLoop()
+	void main_loop()
 	{
 		while (!Window::GetShouldClose())
 		{
@@ -126,29 +125,22 @@ private:
 
 	}
 
-	void Shutdown()
+	void shut_down()
 	{
-		Window::Destroy();
+        vkRenderer.cleanup();
+        Window::Destroy();
 	}
 
-    Ref<GraphicsEngine> vkRenderer; //Vulkan renderer instance
+	//Ref<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
 
 
 };
-
-/*
-INTERNAL void initVulkan(GraphicsEngine &vkRenderer)
-{
-	GLFWwindow* window = Window::GetGLFWwindow();
-    vkRenderer.initEngine();
-}
-*/
 
 int main(const int argc,const char* argv[])
 {
 	Log::Init();
 
-	Application app;
+	EditorApplication app;
 	try
 	{
 		app.run();
@@ -159,6 +151,6 @@ int main(const int argc,const char* argv[])
 	}
 
 	EDITOR_LOG_INFO("Scenery Editor X Engine is shutting down...");
-	Log::Shutdown();
+	Log::shut_down();
 	return 0;
 }

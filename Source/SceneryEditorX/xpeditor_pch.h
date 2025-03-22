@@ -28,14 +28,35 @@
 #endif // !SEDX_PLATFORM_WINDOWS
 #endif
 
+// -------------------------------------------------------
+
 #ifdef SEDX_PLATFORM_WINDOWS
-#include <Windows.h>
-#include <fileapi.h>
+    #include <Windows.h>
+    #include <fileapi.h>
+
+    #if defined(_DEBUG) || defined(DEBUG)
+        #ifndef SEDX_DEBUG
+        #define SEDX_DEBUG
+        #endif
+    #define SEDX_DEBUGBREAK() __debugbreak()
+    #define APP_USE_VULKAN_DEBUG_REPORT
+    #endif
 #endif
 
+// -------------------------------------------------------
+
 #ifdef SEDX_PLATFORM_LINUX
-#include <unistd.h>
+    #include <unistd.h>
+    #include <csignal>
+    #if defined(_DEBUG) || defined(DEBUG)
+        #ifndef SEDX_DEBUG
+        #define SEDX_DEBUG
+        #endif
+    #define SEDX_DEBUGBREAK() raise(SIGTRAP)
+    #endif
 #endif
+
+// -------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_MAC
 #error "MAC is not yet supported!"
@@ -129,6 +150,9 @@
 
 #include <imgui.h>
 #include <ImGuizmo.h>
+
+// -------------------------------------------------------
+
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/profiler.hpp>
@@ -142,15 +166,6 @@
 #define INTERNAL static
 #define LOCAL_PERSIST static
 #define GLOBAL static
-
-// -------------------------------------------------------
-
-#if defined(_DEBUG) || defined(DEBUG)
-#ifndef SEDX_DEBUG
-#define SEDX_DEBUG
-#endif
-#define APP_USE_VULKAN_DEBUG_REPORT
-#endif // _DEBUG
 
 // -------------------------------------------------------
 

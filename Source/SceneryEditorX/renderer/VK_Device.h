@@ -2,71 +2,61 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_device.h
 * -------------------------------------------------------
-* Created: 17/3/2025
+* Created: 21/3/2025
 * -------------------------------------------------------
 */
 
 #pragma once
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
+#include <vector>
 
 // -------------------------------------------------------
 
-class GraphicsEngine; // Forward declaration
-
-// -------------------------------------------------------
-
-struct GPUDevice
+namespace SceneryEditorX
 {
-    VkPhysicalDevice m_PhysicalDevice;
-    VkPhysicalDeviceProperties DeviceInfo_;
-    std::vector<VkQueueFamilyProperties> QueueFamilyInfo_;
-    std::vector<VkBool32> QueueSupportPresent_;
-    std::vector<VkSurfaceFormatKHR> SurfaceFormats_;
-    VkSurfaceCapabilitiesKHR SurfaceCapabilities_;
-    VkPhysicalDeviceMemoryProperties MemoryInfo_;
-    std::vector<VkPresentModeKHR> PresentModes_;
-    VkPhysicalDeviceFeatures GFXFeatures_;
-    VkFormat DepthFormat_;
+	struct GPUDevice
+	{
+        VkPhysicalDevice physicalDevice;
+	    VkPhysicalDeviceProperties deviceInfo;
+	    std::vector<VkQueueFamilyProperties> queueFamilyInfo;
+	    std::vector<VkBool32> queueSupportPresent;
+	    std::vector<VkSurfaceFormatKHR> surfaceFormats;
+	    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+	    VkPhysicalDeviceMemoryProperties memoryInfo;
+	    std::vector<VkPresentModeKHR> presentModes;
+	    VkPhysicalDeviceFeatures GFXFeatures;
+	    VkFormat depthFormat;
+	
+	    GPUDevice()
+	        : physicalDevice(VK_NULL_HANDLE), deviceInfo({}), surfaceCapabilities({}), memoryInfo({}), GFXFeatures({}),
+	          depthFormat(VK_FORMAT_UNDEFINED)
+	    {
+	    }
+	};
 
-    GPUDevice() :
-        m_PhysicalDevice(VK_NULL_HANDLE),
-        DeviceInfo_({}),
-        SurfaceCapabilities_({}),
-        MemoryInfo_({}),
-        GFXFeatures_({}),
-        DepthFormat_(VK_FORMAT_UNDEFINED)
+	class VulkanPhysicalDevice
     {
-    }
-};
+    public:
+        VulkanPhysicalDevice();
+        ~VulkanPhysicalDevice();
 
-class VulkanDevice
-{
-public:
-    VulkanDevice();
-    ~VulkanDevice();
+        void Init(const VkInstance &instance, const VkSurfaceKHR &surface);
 
-	// -----------------------------------------
-    void initPhysicalDevice(const VkInstance &m_Instance, const VkSurfaceKHR &m_Surface);
-    uint32_t SelectDevice(VkQueueFlags QueueType, bool SupportPresent);
+        uint32_t SelectDevice(VkQueueFlags queueType, bool supportPresent);
 
-    const GPUDevice &Selected() const;
+        const GPUDevice &Selected() const;
 
-    void GetGPUProps(VkPhysicalDeviceProperties &GPUprops);
+    private:
+        std::vector<GPUDevice> devices;
 
-    bool isValidationLayersEnabled();
+        int deviceIndex = -1;
+    };
 
-    bool checkValidationLayerSupport();
+} // namespace SceneryEditorX
 
-    bool IsDeviceSuitable(VkPhysicalDevice device);
-
-private:
-    std::vector<GPUDevice> Devices_;
-    int DeviceIndex_ = -1;
-
-};
+// -------------------------------------------------------

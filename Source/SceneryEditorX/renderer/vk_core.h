@@ -7,117 +7,137 @@
 * -------------------------------------------------------
 * vk_core.h
 * -------------------------------------------------------
-* Created: 17/3/2025
+* Created: 21/3/2025
 * -------------------------------------------------------
 */
 
 #pragma once
 
-#define VMA_IMPLEMENTATION
-
 #include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
-#include <SceneryEditorX/renderer/vk_device.h>
-#include <SceneryEditorX/core/window.h>
-
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#include <optional>
+#include <vector>
 
 // -------------------------------------------------------
 
-class GraphicsEngine
+namespace SceneryEditorX
 {
-public:
-    GraphicsEngine(GLFWwindow &window);
-	~GraphicsEngine();
+	#ifdef SEDX_DEBUG
+	const bool enableValidationLayers = true;
+	#else
+	const bool enableValidationLayers = false;
+	#endif
 
-	// -----------------------------------------
+	struct QueueFamilyIndices
+	{
+		std::optional<uint32_t> graphicsFamily;
+		std::optional<uint32_t> presentFamily;
+	
+		bool isComplete()
+		{
+			return graphicsFamily.has_value() && presentFamily.has_value();
+		}
+	};
+	
+	struct SwapChainSupportDetails
+	{
+		VkSurfaceCapabilitiesKHR capabilities;
+		std::vector<VkSurfaceFormatKHR> formats;
+		std::vector<VkPresentModeKHR> presentModes;
+	};
+	
+// -------------------------------------------------------
+	
+	class GraphicsEngine
+	{
+	public:
+	
+		void initEngine();
+	    void cleanup();
+	
+		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	                                                        VkDebugUtilsMessageTypeFlagsEXT messageType,
+	                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+	                                                        void *pUserData)
+	    {
+	        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+	
+	        return VK_FALSE;
+	    }
+	
+	private:
+	
+		GLFWwindow *window;
+	
+		VkInstance instance = VK_NULL_HANDLE;
+	    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	    VkDevice device = VK_NULL_HANDLE;
+	    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
+	    uint32_t apiVersion;
+	
+		VkSampleCountFlagBits maxSamples = VK_SAMPLE_COUNT_1_BIT;
+	    VkSampleCountFlags sampleCounts;
+	
+	    VkSurfaceKHR surface;
+	    VkQueue graphicsQueue = VK_NULL_HANDLE;
+	    VkQueue presentQueue = VK_NULL_HANDLE;
+	
+		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+	    VkFormat swapChainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	    VkExtent2D swapChainExtent;
+	
+		std::vector<VkImage> swapChainImages;
+	    std::vector<VkImageView> swapChainImageViews;
+	
+	    std::vector<bool> activeLayers;
+	    std::vector<const char *> activeLayersNames;
+	    std::vector<VkLayerProperties> layers;
+	    std::vector<bool> activeExtensions;
+	    std::vector<const char *> activeExtensionsNames;
+	    std::vector<VkExtensionProperties> instanceExtensions;
+	
+		// -------------------------------------------------------
 
-    void initEngine();
+		std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+        std::vector<const char *> requiredExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+            VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
+        };
+        const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+		// -------------------------------------------------------
+
+	    VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
+	    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
+		void createDebugMessenger();
+		void createSurface();
+		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
+	    void createInstance();
+	    bool isDeviceCompatible(VkPhysicalDevice device);
+	    void pickPhysicalDevice();
+		void createLogicalDevice();
+		void createSwapChain();
+		void createImageViews();
+	    void createGraphicsPipeline();
+	    VkShaderModule createShaderModule(const std::vector<char> &code);
+	    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+	    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+	    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
+	    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+	    bool isDeviceSuitable(VkPhysicalDevice device);
+	    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+	    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+	    bool checkValidationLayerSupport();
+	};
+
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------
 
 
-private:
-    // -----------------------------------------
-    void create_instance(GLFWwindow *window);
-	void create_debug_callback();
-    void create_device();
-    void create_logic_device();
-	void create_destruction_handler();
-	void create_command_pool();
-	void create_sync_objects();
-	void create_descriptors();
 
-	// -----------------------------------------
-    void destroy_instance();
 
-    // -----------------------------------------
-
-	VkApplicationInfo m_AppInfo;
-	VkInstanceCreateInfo m_InstanceInfo;
-	VkDebugUtilsMessengerEXT m_DebugMessenger;
-
-    VkDevice g_Device = VK_NULL_HANDLE;
-
-	VkInstance m_Instance = VK_NULL_HANDLE;
-	VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-    //VulkanDevice m_PhysicalDevice;
-    VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
-	//VkDevice m_Device = VK_NULL_HANDLE;
-    VkSampleCountFlagBits maxSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkSampleCountFlags sampleCounts;
-
-    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
-    VmaAllocator vmaAllocator;
-    VkPhysicalDeviceMemoryProperties memoryProperties;
-
-    Scope<VkDevice> m_Device;
-    Scope<VkCommandPool> CmdBuffPool_;
-    Scope<VkCommandBuffer> CpyCmdBuff;
-
-    Ref<VulkanDevice> m_PhysicalDevice;
-    std::vector<Ref<VkImage>> Images;
-    std::vector<Ref<VkImageView>> ImageViews;
-
-    uint32_t apiVersion;
-    std::vector<bool> activeLayers;
-    std::vector<const char *> activeLayersNames;
-    std::vector<VkLayerProperties> layers;
-    std::vector<bool> activeExtensions;
-    std::vector<const char *> activeExtensionsNames;
-    std::vector<VkExtensionProperties> instanceExtensions;
-
-    bool enableValidationLayers = true;
-
-	uint32_t m_QueueFamily = 0;
-	VkSurfaceFormatKHR m_SurfaceFormat = {};
-    std::vector<int32_t> availableBufferRID;
-    std::vector<int32_t> availableImageRID;
-    std::vector<int32_t> availableTLASRID;
-    VkSampler genericSampler;
-
-	//std::vector<VkImage> Images;
-	//std::vector<VkImageView> ImageViews;
-
-	VkQueue m_GraphicsQueue;
-	VkQueue m_PresentQueue;
-
-    VkPhysicalDeviceFeatures physicalFeatures{};
-    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-    VkPhysicalDeviceProperties physicalProperties{};
-
-    std::vector<VkPresentModeKHR> availablePresentModes;
-    std::vector<VkSurfaceFormatKHR> availableSurfaceFormats;
-    std::vector<VkExtensionProperties> availableExtensions;
-    std::vector<VkQueueFamilyProperties> availableFamilies;
-
-	//VkCommandPool CmdBuffPool_ = VK_NULL_HANDLE;
-	//VkCommandBuffer CpyCmdBuff = VK_NULL_HANDLE;
-	//RenderQueue ImgQueue;
-
-	// -----------------------------------------
-
-protected:
-	GLFWwindow& m_Window;
-	uint32_t m_CurrentImageIndex = 0;
-	uint32_t m_CurrentFrame = 0;
-	uint64_t m_FrameCount = 0;
-    VkSampler CreateSampler(float maxLod);
-};

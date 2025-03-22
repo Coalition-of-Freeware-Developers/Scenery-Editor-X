@@ -21,15 +21,15 @@
 class FileManager
 {
 public:
-    /**
-     * @brief Reads raw bytes from a file.
-     * 
-     * This function opens the specified file and reads its contents into a vector of bytes.
-     * 
-     * @param filename The name of the file to read.
-     * @return A vector containing the raw bytes read from the file.
-     */
-    static std::vector<char> ReadRawBytes(const std::string &filename);
+	/**
+	 * @brief Reads raw bytes from a file.
+	 * 
+	 * This function opens the specified file and reads its contents into a vector of bytes.
+	 * 
+	 * @param filename The name of the file to read.
+	 * @return A vector containing the raw bytes read from the file.
+	 */
+	static std::vector<char> ReadRawBytes(const std::string &filename);
 };
 
 

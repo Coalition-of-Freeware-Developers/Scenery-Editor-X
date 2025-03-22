@@ -36,7 +36,7 @@ namespace SceneryEditorX {
 		CHAR currentDir[256] = { 0 };
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
-		//ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow());
+		//ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)EditorApplication::Get().GetWindow().GetNativeWindow());
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 		if (GetCurrentDirectoryA(256, currentDir))
@@ -59,7 +59,7 @@ namespace SceneryEditorX {
 		CHAR currentDir[256] = { 0 };
 		ZeroMemory(&ofn, sizeof(OPENFILENAME));
 		ofn.lStructSize = sizeof(OPENFILENAME);
-		//ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)Application::Get().GetWindow().GetNativeWindow());
+		//ofn.hwndOwner = glfwGetWin32Window((GLFWwindow*)EditorApplication::Get().GetWindow().GetNativeWindow());
 		ofn.lpstrFile = szFile;
 		ofn.nMaxFile = sizeof(szFile);
 		if (GetCurrentDirectoryA(256, currentDir))
@@ -92,21 +92,21 @@ namespace SceneryEditorX {
  */
 std::vector<char> FileManager::ReadRawBytes(const std::string &filename)
 {
-    // 'ate' specify to start reading at the end of the file
-    // then we can use the read position to determine the size of the file
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+	// 'ate' specify to start reading at the end of the file
+	// then we can use the read position to determine the size of the file
+	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-    if (!file.is_open())
-    {
+	if (!file.is_open())
+	{
 		EDITOR_LOG_CRITICAL("Failed to open file: '{}'", filename);
-    }
+	}
 
-    size_t fileSize = (size_t)file.tellg();
-    std::vector<char> buffer(fileSize);
+	size_t fileSize = (size_t)file.tellg();
+	std::vector<char> buffer(fileSize);
 
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
+	file.seekg(0);
+	file.read(buffer.data(), fileSize);
+	file.close();
 
-    return buffer;
+	return buffer;
 }

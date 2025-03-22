@@ -10,7 +10,12 @@
 * Created: 19/3/2025
 * -------------------------------------------------------
 */
+
 #pragma once
+
+#include <vulkan/vulkan_core.h>
+#include <vk_mem_alloc.h>
+#include <SceneryEditorX/renderer/vk_core.h>
 
 // -------------------------------------------------------
 
@@ -23,6 +28,7 @@ enum Memory
 };
 
 const uint32_t timeStampPerPool = 64;
+extern VkDevice g_Device;
 
 using MemoryFlags = Flags;
 using BufferUsageFlags = Flags;
@@ -70,10 +76,11 @@ struct BufferResource : Resource
 {
     VkBuffer buffer;
     VmaAllocation allocation;
+    VmaAllocator vmaAllocator;
 
     virtual ~BufferResource()
     {
-        //vmaDestroyBuffer(_ctx.vmaAllocator, buffer, allocation);
+        vmaDestroyBuffer(vmaAllocator, buffer, allocation);
     }
 };
 
@@ -86,4 +93,26 @@ struct Buffer
     uint32_t RID();
 };
 
+// -------------------------------------------------------
+
+const uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
+Buffer asScratchBuffer;
+VkDeviceAddress asScratchAddress;
+
+// -----------------------------------------
+
+VmaAllocator vmaAllocator;
+std::vector<int32_t> availableBufferRID;
+std::vector<int32_t> availableImageRID;
+std::vector<int32_t> availableTLASRID;
+VkSampler genericSampler;
+
+// -------------------------------------------------------
+
+VkDescriptorPool imguiDescriptorPool = VK_NULL_HANDLE;
+VkDescriptorSet bindlessDescriptorSet = VK_NULL_HANDLE;
+VkDescriptorPool bindlessDescriptorPool = VK_NULL_HANDLE;
+VkDescriptorSetLayout bindlessDescriptorLayout = VK_NULL_HANDLE;
+
+// -------------------------------------------------------
 

@@ -13,8 +13,13 @@
 
 #pragma once
 
-#include <vulkan/vulkan.h>
-#include "vk_core.h"
+#include <SceneryEditorX/renderer/vk_core.h>
+
+// -------------------------------------------------------
+
+extern VkDevice g_Device;
+
+// -------------------------------------------------------
 
 struct SwapChainInfo
 {

@@ -14,13 +14,7 @@
 #pragma once
 
 #define GLFW_INCLUDE_VULKAN
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <basetsd.h>
-#include <condition_variable>
 #include <GLFW/glfw3.h>
-#include <libloaderapi.h>
-#include <mutex>
-#include <thread>
 
 // -------------------------------------------------------
 

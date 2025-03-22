@@ -10,15 +10,18 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 FILE(GLOB MAC_PLATFORM platform/mac/*.cpp platform/mac/*.h platform/mac/*.hpp)
 FILE(GLOB LINUX_PLATFORM platform/linux/*.cpp platform/linux/*.h platform/linux/*.hpp)
 FILE(GLOB WIN_PLATFORM platform/windows/*.cpp platform/windows/*.h platform/windows/*.hpp)
-
 FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
 
 SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
+SET (PROJECT_CONFIG_FILES
+	${CMAKE_SOURCE_DIR}/.clang-format
+	${CMAKE_SOURCE_DIR}/.editorconfig
+	${CMAKE_SOURCE_DIR}/SceneryEditorX.licenseheader
+)
 
 ADD_EXECUTABLE(glslang::validator IMPORTED)
 FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQUIRED)
 SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
-
 
 # --------------------------------
 ADD_EXECUTABLE(SceneryEditorX
@@ -30,6 +33,7 @@ ADD_EXECUTABLE(SceneryEditorX
     ${LINUX_PLATFORM}
     ${WIN_PLATFORM}
     ${REGISTRY_KEYS}
+	${PROJECT_CONFIG_FILES}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
     core/base.hpp
@@ -38,10 +42,8 @@ ADD_EXECUTABLE(SceneryEditorX
     core/window.cpp
     core/window.h
     # --------------------------------
-
     scene/asset_manager.cpp
     scene/asset_manager.h
-
     # --------------------------------
     platform/system_detection.h
     platform/platform.h
