@@ -125,8 +125,6 @@ void Window::Create()
 		throw std::runtime_error("Failed to create GLFW window");
 	}
 
-	glfwMakeContextCurrent(window);       // make window current context
-
 	glfwSetWindowPos(window, posX, posY); // set window position
 
 	glfwSetFramebufferSizeCallback(window, Window::FramebufferResizeCallback); // set framebuffer resize callback

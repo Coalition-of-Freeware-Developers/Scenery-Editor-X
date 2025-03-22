@@ -43,13 +43,13 @@ public:
 	void run()
 	{
 		initialize_editor();
-        vkRenderer.initEngine();
+        create();
 		main_loop();
 		shut_down();
 	}
 
 private:
-    GLFWwindow *window;
+    GLFWwindow* window;
     SceneryEditorX::GraphicsEngine vkRenderer;
     uint32_t currentFrame = 0;
 	//glm::ivec2 viewportSize = {64, 48};
@@ -70,22 +70,25 @@ private:
 		//loader.run();
 		//SceneryEditorX::ReadCache();
 		//assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+
 		//scene = assetManager.GetInitialScene();
 		//camera = assetManager.GetMainCamera(scene);
         Window::Create();
 
 	}
 
-	void Create()
+	void create()
 	{
-		//g_Window = CreateScope<Window>(); 
+		//g_Window = CreateScope<Window>();
 		//g_Window->Create();
 
-		//VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
-		//vulkanChecks.InitChecks({}, {});     // Initialize the Vulkan checks
+		VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
+		vulkanChecks.InitChecks({}, {});     // Initialize the Vulkan checks
 
 		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-		//SceneryEditorX::Init(Window::GetGLFWwindow(),Window::GetWidth(),Window::GetHeight());
+        vkRenderer.initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
+
+
 		//SceneryEditorX::CreateEditor();
         
 

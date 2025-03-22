@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <optional>
+#include <SceneryEditorX/renderer/vk_device.h>
 #include <vector>
 
 // -------------------------------------------------------
@@ -53,7 +53,7 @@ namespace SceneryEditorX
 	{
 	public:
 	
-		void initEngine();
+		void initEngine(GLFWwindow *window, uint32_t width, uint32_t height);
 	    void cleanup();
 	
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -72,11 +72,21 @@ namespace SceneryEditorX
 	
 		VkInstance instance = VK_NULL_HANDLE;
 	    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	    VkDevice device = VK_NULL_HANDLE;
 	    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
 	    uint32_t apiVersion;
-	
+
+		// -------------------------------------------------------
+
+		VulkanPhysicalDevice physDeviceManager;
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkDevice device = VK_NULL_HANDLE;
+
+		VkPhysicalDeviceFeatures physicalFeatures{};
+        VkPhysicalDeviceProperties physicalProperties{};
+        VkPhysicalDeviceMemoryProperties memoryProperties{};
+
+		// -------------------------------------------------------
+
 		VkSampleCountFlagBits maxSamples = VK_SAMPLE_COUNT_1_BIT;
 	    VkSampleCountFlags sampleCounts;
 	
@@ -109,14 +119,19 @@ namespace SceneryEditorX
         };
         const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
+        std::vector<VkPresentModeKHR> availablePresentModes;
+        std::vector<VkSurfaceFormatKHR> availableSurfaceFormats;
+        std::vector<VkExtensionProperties> availableExtensions;
+        std::vector<VkQueueFamilyProperties> availableFamilies;
+
 		// -------------------------------------------------------
 
 	    VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
 	    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
+        void createInstance();
 		void createDebugMessenger();
-		void createSurface();
+        void createSurface(GLFWwindow *glfwWindow);
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
-	    void createInstance();
 	    bool isDeviceCompatible(VkPhysicalDevice device);
 	    void pickPhysicalDevice();
 		void createLogicalDevice();

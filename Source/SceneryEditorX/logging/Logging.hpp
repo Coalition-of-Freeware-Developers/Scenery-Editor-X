@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
 
@@ -73,15 +74,6 @@ public:
 	static void Init();
 
 	/**
-	* @brief Shuts down the logger instance.
-	*
-	* This function shuts down the logger instance and releases any resources
-	* associated with it. It should be called before the application exits to
-	* ensure that all log messages are properly flushed.
-	*/
-	static void shut_down();
-
-	/**
 	 * @brief Logs system information to the console.
 	 *
 	 * This function logs system information to the console. It logs the
@@ -89,6 +81,27 @@ public:
 	 * page size, and processor type.
 	 */
 	static void LogHeader();
+
+	/**
+	 * @brief Shuts down the logger instance.
+	 *
+	 * This function shuts down the logger instance and releases any resources
+	 * associated with it. It should be called before the application exits to
+	 * ensure that all log messages are properly flushed.
+	 */
+    static void shut_down();
+
+	/**
+	* @brief Logs a message with the specified vulkan log level.
+	*
+	* This function logs a message with the vulkan log level to the console and the log file.
+	*/
+	static void LogVulkanDebug(const std::string &message);
+
+    // Helper function for logging Vulkan API calls with result checking
+    static void LogVulkanResult(VkResult result, const std::string &operation);
+
+
 
 	/**
 	 * @brief Gets the logger instance.
@@ -99,10 +112,14 @@ public:
 	static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return _EditorLogger; }
 	static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return _LauncherLogger; }
 
-	private:
+private:
 
-	static std::shared_ptr<spdlog::logger> _EditorLogger; //< The logger instance.
-	static std::shared_ptr<spdlog::logger> _LauncherLogger; //< The logger instance.
+	/**
+	 * @brief The logger instances for the Editor Logger, launcher Logger, and Vulkan Debug Logger.
+	 */
+	static std::shared_ptr<spdlog::logger> _EditorLogger; 
+	static std::shared_ptr<spdlog::logger> _LauncherLogger;
+    static std::shared_ptr<spdlog::logger> _VulkanLogger;
 };
 
 

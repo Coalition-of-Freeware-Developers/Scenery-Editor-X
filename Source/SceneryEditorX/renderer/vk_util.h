@@ -12,7 +12,6 @@
 */
 
 #pragma once
-
 #include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
@@ -52,6 +51,80 @@
 			__debugbreak();                                                                                            \
 			return false;                                                                                              \
 		}
+
+// Add these to vk_util.h after your existing macros
+
+/**
+ * @brief Log Vulkan result and return false if operation fails
+ * 
+ * This macro logs the result of a Vulkan operation and returns false if it fails.
+ * Useful for functions that return a boolean success indicator.
+ */
+#define VK_LOG_RESULT(result, operation)                                                                               \
+    {                                                                                                                  \
+        Log::LogVulkanResult(result, operation);                                                                       \
+        if (result != VK_SUCCESS)                                                                                      \
+        {                                                                                                              \
+            return false;                                                                                              \
+        }                                                                                                              \
+    }
+
+/**
+ * @brief Log Vulkan result and throw exception if operation fails
+ * 
+ * This macro logs the result of a Vulkan operation and throws a runtime_error if it fails.
+ * Useful when you want to abort execution on failure.
+ */
+#define VK_LOG_RESULT_OR_THROW(result, operation)                                                                      \
+    {                                                                                                                  \
+        Log::LogVulkanResult(result, operation);                                                                       \
+        if (result != VK_SUCCESS)                                                                                      \
+        {                                                                                                              \
+            throw std::runtime_error(operation + " failed with " + VK_ERROR_STRING(result));                           \
+        }                                                                                                              \
+    }
+
+/**
+ * @brief Log Vulkan result without any control flow change
+ * 
+ * This macro logs the result of a Vulkan operation without affecting control flow.
+ * Useful for operations where you handle the result separately.
+ */
+#define VK_LOG_INFO(message)                                                                                           \
+    {                                                                                                                  \
+        if (Log::_VulkanLogger)                                                                                        \
+        {                                                                                                              \
+            Log::_VulkanLogger->info(message);                                                                         \
+            Log::_VulkanLogger->flush();                                                                               \
+        }                                                                                                              \
+    }
+
+#define VK_LOG_WARN(message)                                                                                           \
+    {                                                                                                                  \
+        if (Log::_VulkanLogger)                                                                                        \
+        {                                                                                                              \
+            Log::_VulkanLogger->warn(message);                                                                         \
+            Log::_VulkanLogger->flush();                                                                               \
+        }                                                                                                              \
+    }
+
+#define VK_LOG_ERROR(message)                                                                                          \
+    {                                                                                                                  \
+        if (Log::_VulkanLogger)                                                                                        \
+        {                                                                                                              \
+            Log::_VulkanLogger->error(message);                                                                        \
+            Log::_VulkanLogger->flush();                                                                               \
+        }                                                                                                              \
+    }
+
+#define VK_LOG_DEBUG(message)                                                                                          \
+    {                                                                                                                  \
+        if (Log::_VulkanLogger)                                                                                        \
+        {                                                                                                              \
+            Log::_VulkanLogger->debug(message);                                                                        \
+            Log::_VulkanLogger->flush();                                                                               \
+        }                                                                                                              \
+    }
 
 // -------------------------------------------------------
 

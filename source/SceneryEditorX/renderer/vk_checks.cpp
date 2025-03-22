@@ -13,7 +13,6 @@
 
 #include <SceneryEditorX/renderer/vk_checks.h>
 #include <vector>
-#include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
 
