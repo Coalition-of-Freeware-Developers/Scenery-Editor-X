@@ -209,9 +209,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
-        volk
         Vulkan::Vulkan
-        #vulkan-1.lib
         glfw
         dxgi
         d3d12

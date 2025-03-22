@@ -30,7 +30,7 @@ ENDIF()
 
 IF(TARGET WIN32)
     FILE(VULKAN_VALIDATOR "C:/VulkanSDK/${VULKAN_VERS}/Config/vk_layer_settings.txt")
-    SET(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+    SET(VK_USE_PLATFORM_WIN32_KHR)
 ELSEIF(TARGET UNIX)
     FILE(VULKAN_VALIDATOR "$HOME/.local/share/vulkan/settings.d/vk_layer_settings.txt")
 ENDIF()
@@ -147,11 +147,6 @@ FIND_PACKAGE(VulkanMemoryAllocator  CONFIG REQUIRED)
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
 # --------------------------------
-# VOLK
-# --------------------------------
-ADD_SUBDIRECTORY(dependency/volk)
-
-# --------------------------------
 # GLFW
 # --------------------------------
 ADD_SUBDIRECTORY(dependency/glfw)
@@ -197,10 +192,9 @@ TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Scen
 
 SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
-SET_PROPERTY(TARGET volk PROPERTY FOLDER "Dependency")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX volk FormatTester edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
