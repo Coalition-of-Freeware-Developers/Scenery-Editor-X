@@ -44,6 +44,7 @@ void Window::ScrollCallback(GLFWwindow* window,double x,double y)
  */
 void Window::FramebufferResizeCallback(GLFWwindow* window,int width,int height)
 {
+    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
 	Window::width = width;
 	Window::height = height;
 	Window::framebufferResized = true;
@@ -117,6 +118,7 @@ void Window::Create()
 	videoModeIndex -= 1;
 
 	window = glfwCreateWindow(width, height, title, nullptr, nullptr); // create window
+    //glfwSetWindowUserPointer(window, this);
 
 	if (!window)
 	{

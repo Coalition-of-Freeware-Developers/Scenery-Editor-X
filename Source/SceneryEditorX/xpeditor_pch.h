@@ -169,6 +169,12 @@
 
 // -------------------------------------------------------
 
+#ifdef SEDX_DEBUG
+std::filesystem::path workingDir = std::filesystem::current_path();
+#endif
+
+// -------------------------------------------------------
+
 
 /**
  * @brief - A macro to display an error message

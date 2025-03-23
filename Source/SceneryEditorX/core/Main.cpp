@@ -47,15 +47,19 @@ public:
 		main_loop();
 		shut_down();
 	}
+    //bool GetSwapChainDirty();
 
 private:
     GLFWwindow* window;
     SceneryEditorX::GraphicsEngine vkRenderer;
     uint32_t currentFrame = 0;
-	//glm::ivec2 viewportSize = {64, 48};
-	//glm::ivec2 newViewportSize = viewportSize;
+	glm::ivec2 viewportSize = {64, 48};
+	glm::ivec2 newViewportSize = viewportSize;
+    bool viewportHovered = false;
 	bool viewportResized = false;
 	bool fullscreen = false;
+    bool swapChainDirty = true;
+    uint32_t frameCount = 0;
 	//AssetManager assetManager;
 
 // -------------------------------------------------------
@@ -88,9 +92,7 @@ private:
 		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         vkRenderer.initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
 
-
 		//SceneryEditorX::CreateEditor();
-        
 
 		//vkRenderer = CreateRef<GraphicsEngine>(*Window::GetGLFWwindow());
 		//vkRenderer->initEngine();
@@ -102,15 +104,18 @@ private:
 	{
 		while (!Window::GetShouldClose())
 		{
-			Window::Update();
 			if (viewportResized)
 			{
 				//SceneryEditorX::ResizeViewport();
 				viewportResized = false;
 			}
+
+            DrawFrame();
+            bool ctrlPressed = Window::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) || Window::IsKeyDown(GLFW_KEY_LEFT_CONTROL);
+            Window::Update();
 		}
 
-		//SceneryEditorX::WaitIdle();
+		WaitIdle();
 	}
 
 	void setupImgui()
@@ -123,10 +128,84 @@ private:
 
 	}
 
-	void drawFrame()
-	{
+	void WaitIdle()
+    {
+        auto result = vkDeviceWaitIdle(vkRenderer.GetDevice());
+        if (result != VK_SUCCESS)
+        {
+            EDITOR_LOG_ERROR("Failed to wait for device to become idle: {}", ToString(result));
+        }
+    }
+
+    // -------------------------------------------------------
+
+	void OnSurfaceUpdate(uint32_t width, uint32_t height)
+    {
+        vkRenderer.DestroySwapChain();
+        vkRenderer.recreateSurfaceFormats();
+        //vkRenderer.createSwapChain();
+	}
+
+	void RecreateFrameResources()
+    {
+        while (Window::GetWidth() == 0 || Window::GetHeight() == 0)
+        {
+            Window::WaitEvents();
+        }
+        viewportSize = newViewportSize;
+        if (viewportSize.x == 0 || viewportSize.y == 0)
+        {
+            return;
+        }
+        WaitIdle();
+        if (Window::GetFramebufferResized() || Window::IsDirty())
+        {
+            if (Window::IsDirty())
+            {
+                Window::ApplyChanges();
+            }
+            Window::UpdateFramebufferSize();
+            OnSurfaceUpdate(Window::GetWidth(), Window::GetHeight());
+        }
 
 	}
+
+	/*
+    void DrawEditor()
+    {
+        //SceneryEditorX::DrawEditor();
+        if (!fullscreen)
+        {
+
+		}
+        else
+        {
+            newViewportSize = {Window::GetWidth(), Window::GetHeight()};
+            viewportHovered = true;
+        }
+    }
+	*/
+
+	void DrawFrame()
+	{
+        //DrawEditor();
+        vkRenderer.renderFrame();
+        /*
+        if (GetSwapChainDirty())
+        {
+            return;
+        }
+		*/
+        //SceneryEditorX::SubmitAndPresent();
+        frameCount = (frameCount + 1) % (1 << 15);
+	}
+
+	/*
+	void renderFrame()
+    {
+        //DrawFrame();
+    }
+	*/
 
 	void shut_down()
 	{
@@ -135,7 +214,12 @@ private:
 	}
 
 	//Ref<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
-
+    /*
+    bool GetSwapChainDirty()
+    {
+        return swapChainDirty;
+    }
+	*/
 
 };
 

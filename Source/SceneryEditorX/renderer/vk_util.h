@@ -209,4 +209,7 @@ const char* VK_QUEUE_FLAGS_STRING(VkQueueFlags flags);
  */
 const char* VK_MEMORY_PROPERTY_FLAGS_STRING(VkMemoryPropertyFlags flags);
 
+
+std::vector<char> CompileShader(const std::filesystem::path &path);
+
 // -------------------------------------------------------

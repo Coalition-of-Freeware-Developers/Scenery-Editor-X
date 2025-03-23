@@ -601,8 +601,8 @@ const char* VK_FORMAT_STRING(VkFormat format)
 	case VK_FORMAT_ASTC_10x10_SFLOAT_BLOCK:                                return "VK_FORMAT_ASTC_10x10_SFLOAT_BLOCK";
 	case VK_FORMAT_ASTC_12x10_SFLOAT_BLOCK:                                return "VK_FORMAT_ASTC_12x10_SFLOAT_BLOCK";
 	case VK_FORMAT_ASTC_12x12_SFLOAT_BLOCK:                                return "VK_FORMAT_ASTC_12x12_SFLOAT_BLOCK";
-	//case VK_FORMAT_A1B5G5R5_UNORM_PACK16:                                  return "VK_FORMAT_A1B5G5R5_UNORM_PACK16";
-	//case VK_FORMAT_A8_UNORM:                                               return "VK_FORMAT_A8_UNORM";
+	case VK_FORMAT_A1B5G5R5_UNORM_PACK16:                                  return "VK_FORMAT_A1B5G5R5_UNORM_PACK16";		//ONLY IN VULKAN 1.4+
+	case VK_FORMAT_A8_UNORM:                                               return "VK_FORMAT_A8_UNORM";						//ONLY IN VULKAN 1.4+
 	case VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG:                            return "VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG";
 	case VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG:                            return "VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG";
 	case VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG:                            return "VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG";
@@ -618,6 +618,38 @@ const char* VK_FORMAT_STRING(VkFormat format)
 	}
 }
 
+static std::vector<char> CompileShader(const std::filesystem::path &path)
+{
+    char compile_string[1024];
+    char inpath[256];
+    char outpath[256];
+    std::string cwd = std::filesystem::current_path().string();
+    sprintf(inpath, "%s/source/Shaders/%s", cwd.c_str(), path.string().c_str());
+    sprintf(outpath, "%s/bin/%s.spv", cwd.c_str(), path.filename().string().c_str());
+    sprintf(compile_string, "%s -V %s -o %s --target-env spirv1.4", GLSL_VALIDATOR, inpath, outpath);
+    DEBUG_TRACE("[ShaderCompiler] Command: {}", compile_string);
+    DEBUG_TRACE("[ShaderCompiler] Output:");
+    while (system(compile_string))
+    {
+        EDITOR_LOG_WARN("[ShaderCompiler] Error! Press something to Compile Again");
+        std::cin.get();
+    }
+
+    // 'ate' specify to start reading at the end of the file
+    // then we can use the read position to determine the size of the file
+    std::ifstream file(outpath, std::ios::ate | std::ios::binary);
+    if (!file.is_open())
+    {
+        EDITOR_LOG_CRITICAL("Failed to open file: '{}'", outpath);
+    }
+    size_t fileSize = (size_t)file.tellg();
+    std::vector<char> buffer(fileSize);
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+    file.close();
+
+    return buffer;
+}
 
 /**
  * @brief Get the number of bytes per pixel for a given format.
