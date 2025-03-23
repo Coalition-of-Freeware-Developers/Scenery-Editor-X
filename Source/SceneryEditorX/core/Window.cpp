@@ -10,7 +10,7 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-#define STB_IMAGE_IMPLEMENTATION
+
 #include <SceneryEditorX/core/window.h>
 #include <stb_image.h>
 
@@ -28,8 +28,9 @@
  */
 void Window::ScrollCallback(GLFWwindow* window,double x,double y)
 {
-	Window::scroll += y;
-	Window::deltaScroll += y;
+    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+    windowInstance->scroll += y;
+    windowInstance->deltaScroll += y;
 }
 
 /**
@@ -45,9 +46,9 @@ void Window::ScrollCallback(GLFWwindow* window,double x,double y)
 void Window::FramebufferResizeCallback(GLFWwindow* window,int width,int height)
 {
     Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-	Window::width = width;
-	Window::height = height;
-	Window::framebufferResized = true;
+    windowInstance->width = width;
+    windowInstance->height = height;
+    windowInstance->framebufferResized = true;
 }
 
 /**
@@ -61,7 +62,8 @@ void Window::FramebufferResizeCallback(GLFWwindow* window,int width,int height)
  */
 void Window::WindowMaximizeCallback(GLFWwindow* window,int maximize)
 {
-	maximized = maximize;
+    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+    windowInstance->maximized = maximize;
 }
 
 /**
@@ -76,8 +78,9 @@ void Window::WindowMaximizeCallback(GLFWwindow* window,int maximize)
  */
 void Window::WindowChangePosCallback(GLFWwindow* window,int x,int y)
 {
-	Window::posX = x;
-	Window::posY = y;
+    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+    windowInstance->posX = x;
+    windowInstance->posY = y;
 }
 
 /**
@@ -92,10 +95,11 @@ void Window::WindowChangePosCallback(GLFWwindow* window,int x,int y)
  */
 void Window::WindowDropCallback(GLFWwindow *window, int count, const char *paths[])
 {
-	for (int i = 0; i < count; i++)
-	{
-		pathsDrop.push_back(paths[i]);
-	}
+    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+    for (int i = 0; i < count; i++)
+    {
+        windowInstance->pathsDrop.push_back(paths[i]);
+    }
 }
 
 /**
@@ -118,7 +122,6 @@ void Window::Create()
 	videoModeIndex -= 1;
 
 	window = glfwCreateWindow(width, height, title, nullptr, nullptr); // create window
-    //glfwSetWindowUserPointer(window, this);
 
 	if (!window)
 	{
@@ -133,11 +136,12 @@ void Window::Create()
 	glfwSetScrollCallback(window, Window::ScrollCallback);
 	glfwSetWindowMaximizeCallback(window, Window::WindowMaximizeCallback);
 	glfwSetWindowPosCallback(window, Window::WindowChangePosCallback);
+    glfwSetDropCallback(window, Window::WindowDropCallback); 
 
 	SetWindowIcon(window);
 
 	dirty = false;
-	Window::ApplyChanges();
+	ApplyChanges();
 }
 
 /**

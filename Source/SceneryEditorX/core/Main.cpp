@@ -13,11 +13,9 @@
 
 #include <Launcher/core/launcher_main.h>
 #include <SceneryEditorX/core/window.h>
-//#include <SceneryEditorX/renderer/graphics_checks.h>
-//#include <SceneryEditorX/renderer/graphics_defs.h>
+#include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/scene/asset_manager.h>
-#include <SceneryEditorX/renderer/vk_checks.h>
 
 /*
 * -------------------------------------------------------
@@ -106,7 +104,7 @@ private:
 		{
 			if (viewportResized)
 			{
-				//SceneryEditorX::ResizeViewport();
+                vkRenderer.recreateSwapChain();
 				viewportResized = false;
 			}
 
@@ -140,10 +138,10 @@ private:
     // -------------------------------------------------------
 
 	void OnSurfaceUpdate(uint32_t width, uint32_t height)
-    {
-        vkRenderer.DestroySwapChain();
-        vkRenderer.recreateSurfaceFormats();
-        //vkRenderer.createSwapChain();
+	{
+	    vkRenderer.DestroySwapChain();
+	    vkRenderer.recreateSurfaceFormats();
+	    vkRenderer.createSwapChain();
 	}
 
 	void RecreateFrameResources()
@@ -152,12 +150,16 @@ private:
         {
             Window::WaitEvents();
         }
+
         viewportSize = newViewportSize;
+
         if (viewportSize.x == 0 || viewportSize.y == 0)
         {
             return;
         }
+
         WaitIdle();
+
         if (Window::GetFramebufferResized() || Window::IsDirty())
         {
             if (Window::IsDirty())
@@ -203,7 +205,7 @@ private:
 	/*
 	void renderFrame()
     {
-        //DrawFrame();
+
     }
 	*/
 
@@ -213,7 +215,6 @@ private:
         Window::Destroy();
 	}
 
-	//Ref<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
     /*
     bool GetSwapChainDirty()
     {
@@ -221,9 +222,11 @@ private:
     }
 	*/
 
+    //Ref<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
+
 };
 
-int main(const int argc,const char* argv[])
+int main(const int argc, const char *argv[])
 {
 	Log::Init();
 

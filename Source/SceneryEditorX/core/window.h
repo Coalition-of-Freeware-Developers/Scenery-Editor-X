@@ -58,12 +58,13 @@ private:
 	INTERNAL inline bool        decorated           = true;
 	INTERNAL inline bool        maximized           = true;
 
+	static void ScrollCallback(GLFWwindow *window, double x, double y);
+    static void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
+    static void WindowMaximizeCallback(GLFWwindow *window, int maximize);
+    static void WindowChangePosCallback(GLFWwindow *window, int x, int y);
+    static void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
+
 	INTERNAL void SetWindowIcon(GLFWwindow *window);
-	INTERNAL void ScrollCallback(GLFWwindow* window,double x,double y);
-	INTERNAL void FramebufferResizeCallback(GLFWwindow* window,int width,int height);
-	INTERNAL void WindowMaximizeCallback(GLFWwindow* window,int maximized);
-	INTERNAL void WindowChangePosCallback(GLFWwindow* window,int x,int y);
-	INTERNAL void WindowDropCallback(GLFWwindow* window,int count,const char* paths[]);
 
 public:
 
@@ -75,8 +76,8 @@ public:
 	GLOBAL void UpdateFramebufferSize();
 	GLOBAL bool IsKeyPressed(uint16_t keyCode);
 
-	int get_width();
-	int get_height();
+    static int get_width();
+    static int get_height();
 
 	GLOBAL inline GLFWwindow*   GetGLFWwindow()                     {return window;}
 	static inline bool          IsDirty()                           {return dirty;}

@@ -15,12 +15,6 @@
 
 #include <SceneryEditorX/platform/system_detection.h>
 
-
-
-// -------------------------------------------------------
-
-#include <vector>
-
 // -------------------------------------------------------
 
 namespace SceneryEditorX

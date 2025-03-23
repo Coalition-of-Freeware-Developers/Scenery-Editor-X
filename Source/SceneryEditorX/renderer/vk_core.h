@@ -46,6 +46,53 @@ namespace SceneryEditorX
 		std::vector<VkSurfaceFormatKHR> formats;
 		std::vector<VkPresentModeKHR> presentModes;
 	};
+
+	struct Vertex
+    {
+        glm::vec2 pos;
+        glm::vec3 color;
+
+        static VkVertexInputBindingDescription getBindingDescription()
+        {
+            VkVertexInputBindingDescription bindingDescription{};
+            bindingDescription.binding = 0;
+            bindingDescription.stride = sizeof(Vertex);
+            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            return bindingDescription;
+        }
+
+        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+        {
+            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].location = 0;
+            attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+            attributeDescriptions[1].binding = 0;
+            attributeDescriptions[1].location = 1;
+            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+            return attributeDescriptions;
+        }
+    };
+
+    struct UniformBufferObject
+    {
+        alignas(16) glm::mat4 model;
+        alignas(16) glm::mat4 view;
+        alignas(16) glm::mat4 proj;
+    };
+
+	const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+    const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 	
 // -------------------------------------------------------
 	
@@ -54,13 +101,37 @@ namespace SceneryEditorX
 	public:
 	
 		void initEngine(GLFWwindow *window, uint32_t width, uint32_t height);
+        void createSwapChain();
         void cleanup();
         void DestroySwapChain();
         void recreateSurfaceFormats();
+        void recreateSwapChain();
+        void renderFrame();
+        void updateUniformBuffer(uint32_t currentImage);
+        void createTextureImage();
+        void createTextureImageView();
+        void createTextureSampler();
+        void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+        void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
-		void renderFrame();
-
+        VkCommandBuffer beginSingleTimeCommands();
 	    VkDevice GetDevice() const { return device; }
+        VkImageView createImageView(VkImage image, VkFormat format);
+		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+        {
+            VkPhysicalDeviceMemoryProperties memProperties;
+            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+            for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+            {
+                if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+                {
+                    return i;
+                }
+            }
+
+            ErrMsg("Failed to find suitable memory type!");
+        }
 
 		// -------------------------------------------------------
 
@@ -128,10 +199,13 @@ namespace SceneryEditorX
 
         std::vector<VkImage> swapChainImages;
         std::vector<VkFence> inFlightFences;
+        std::vector<VkBuffer> uniformBuffers;
         std::vector<VkImageView> swapChainImageViews;
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;
         std::vector<VkFramebuffer> swapChainFramebuffers;
+        std::vector<VkDeviceMemory> uniformBuffersMemory;
+        std::vector<VkDescriptorSet> descriptorSets;
 		std::vector<VkCommandBuffer> commandBuffers;
         std::vector<VkPresentModeKHR> availablePresentModes;
         std::vector<VkLayerProperties> layers;
@@ -153,6 +227,18 @@ namespace SceneryEditorX
 		VkCommandPool commandPool;
         VkPipelineLayout pipelineLayout;
 
+		VkBuffer vertexBuffer;
+        VkBuffer indexBuffer;
+        VkDeviceMemory vertexBufferMemory;
+        VkDeviceMemory indexBufferMemory;
+        VkDescriptorSetLayout descriptorSetLayout;
+        VkDescriptorPool descriptorPool;
+
+		VkImage textureImage;
+        VkDeviceMemory textureImageMemory;
+        VkImageView textureImageView;
+        VkSampler textureSampler;
+
 		// -------------------------------------------------------
 
 	    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
@@ -161,19 +247,28 @@ namespace SceneryEditorX
         void createSurface(GLFWwindow *glfwWindow);
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	    bool isDeviceCompatible(VkPhysicalDevice device);
-        void createSwapChain();
 	    void pickPhysicalDevice();
 		void createLogicalDevice();
         void createImageViews();
+        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                         VkImage &image, VkDeviceMemory &imageMemory);
         void createRenderPass();
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                          VkBuffer &buffer, VkDeviceMemory &bufferMemory);
+        void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+        void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        void createVertexBuffer();
+        void createIndexBuffer();
+        void createUniformBuffers();
+        void createDescriptorPool();
+        void createDescriptorSetLayout();
+        void createDescriptorSets();
         void createGraphicsPipeline();
         void createFramebuffers();
         void createCommandPool();
         void createCommandBuffers();
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
         void createSyncObjects();
-        void recreateSwapChain();
-
 
 		// -------------------------------------------------------
 

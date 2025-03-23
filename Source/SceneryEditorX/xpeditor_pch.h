@@ -128,6 +128,7 @@
 ##########################################################
 */
 
+#include <stb_image.h> 
 #include <portable-file-dialogs.h>
 #include <nlohmann/json.hpp>
 
