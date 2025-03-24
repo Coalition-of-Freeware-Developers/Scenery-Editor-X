@@ -1102,7 +1102,7 @@ namespace SceneryEditorX
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
         rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
         rasterizer.depthBiasEnable = VK_FALSE;
 
         // Configure multisampling
@@ -1114,7 +1114,10 @@ namespace SceneryEditorX
         // Configure color blending
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
         colorBlendAttachment.colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+			VK_COLOR_COMPONENT_R_BIT |
+			VK_COLOR_COMPONENT_G_BIT |
+			VK_COLOR_COMPONENT_B_BIT |
+			VK_COLOR_COMPONENT_A_BIT;
         colorBlendAttachment.blendEnable = VK_FALSE;
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
