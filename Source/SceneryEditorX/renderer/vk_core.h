@@ -29,28 +29,29 @@ namespace SceneryEditorX
 	const bool enableValidationLayers = false;
 	#endif
 
-	struct QueueFamilyIndices
-	{
-		std::optional<uint32_t> graphicsFamily;
-		std::optional<uint32_t> presentFamily;
-	
-		bool isComplete()
-		{
-			return graphicsFamily.has_value() && presentFamily.has_value();
-		}
-	};
-	
-	struct SwapChainSupportDetails
-	{
-		VkSurfaceCapabilitiesKHR capabilities;
-		std::vector<VkSurfaceFormatKHR> formats;
-		std::vector<VkPresentModeKHR> presentModes;
-	};
+struct QueueFamilyIndices
+    {
+        std::optional<uint32_t> graphicsFamily;
+        std::optional<uint32_t> presentFamily;
 
-	struct Vertex
+        bool isComplete()
+        {
+            return graphicsFamily.has_value() && presentFamily.has_value();
+        }
+    };
+
+    struct SwapChainSupportDetails
+    {
+        VkSurfaceCapabilitiesKHR capabilities;
+        std::vector<VkSurfaceFormatKHR> formats;
+        std::vector<VkPresentModeKHR> presentModes;
+    };
+
+    struct Vertex
     {
         glm::vec2 pos;
         glm::vec3 color;
+        glm::vec2 texCoord;
 
         static VkVertexInputBindingDescription getBindingDescription()
         {
@@ -62,9 +63,9 @@ namespace SceneryEditorX
             return bindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
         {
-            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
@@ -75,6 +76,11 @@ namespace SceneryEditorX
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+            attributeDescriptions[2].binding = 0;
+            attributeDescriptions[2].location = 2;
+            attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
             return attributeDescriptions;
         }
@@ -87,10 +93,10 @@ namespace SceneryEditorX
         alignas(16) glm::mat4 proj;
     };
 
-	const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+    const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
 
     const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 	
@@ -104,7 +110,6 @@ namespace SceneryEditorX
         void createSwapChain();
         void cleanup();
         void DestroySwapChain();
-        void recreateSurfaceFormats();
         void recreateSwapChain();
         void renderFrame();
         void updateUniformBuffer(uint32_t currentImage);
@@ -113,32 +118,20 @@ namespace SceneryEditorX
         void createTextureSampler();
         void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+        void recreateSurfaceFormats();
+        LOCAL void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
         VkCommandBuffer beginSingleTimeCommands();
 	    VkDevice GetDevice() const { return device; }
         VkImageView createImageView(VkImage image, VkFormat format);
-		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-        {
-            VkPhysicalDeviceMemoryProperties memProperties;
-            vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-            for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-            {
-                if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-                {
-                    return i;
-                }
-            }
-
-            ErrMsg("Failed to find suitable memory type!");
-        }
+        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		// -------------------------------------------------------
 
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	                                                        VkDebugUtilsMessageTypeFlagsEXT messageType,
-	                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-	                                                        void *pUserData)
+															VkDebugUtilsMessageTypeFlagsEXT messageType,
+															const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+															void *pUserData)
 	    {
 	        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 	
@@ -148,19 +141,20 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 	private:
-	
 		GLFWwindow *window;
-	
 		VkInstance instance = VK_NULL_HANDLE;
 	    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 	    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
 	    uint32_t apiVersion;
+        bool framebufferResized = false;
 
 		// -------------------------------------------------------
 
 		VulkanPhysicalDevice physDeviceManager;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkDevice device = VK_NULL_HANDLE;
+
+		// -------------------------------------------------------
 
 		VkPhysicalDeviceFeatures physicalFeatures{};
         VkPhysicalDeviceProperties physicalProperties{};
@@ -171,10 +165,9 @@ namespace SceneryEditorX
 		VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT;
 	    VkSampleCountFlags sampleCounts;
 
-		bool framebufferResized = false;
 	    VkSurfaceKHR surface;
 	    VkQueue graphicsQueue = VK_NULL_HANDLE;
-	    VkQueue presentQueue = VK_NULL_HANDLE;
+	    VkQueue presentQueue  = VK_NULL_HANDLE;
 	
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
 	    VkFormat swapChainImageFormat;
@@ -188,10 +181,8 @@ namespace SceneryEditorX
         std::vector<const char *> activeExtensionsNames;
 		std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
         std::vector<const char *> requiredExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-            VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
         };
         const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 

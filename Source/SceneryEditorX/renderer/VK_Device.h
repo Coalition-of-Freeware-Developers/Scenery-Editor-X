@@ -21,20 +21,19 @@ namespace SceneryEditorX
 {
 	struct GPUDevice
 	{
+        VkFormat depthFormat;
         VkPhysicalDevice physicalDevice;
+        VkPhysicalDeviceFeatures GFXFeatures;
+        VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	    VkPhysicalDeviceProperties deviceInfo;
+        VkPhysicalDeviceMemoryProperties memoryInfo;
+
+        std::vector<VkBool32> queueSupportPresent;
+        std::vector<VkPresentModeKHR> presentModes;
+        std::vector<VkSurfaceFormatKHR> surfaceFormats;
 	    std::vector<VkQueueFamilyProperties> queueFamilyInfo;
-	    std::vector<VkBool32> queueSupportPresent;
-	    std::vector<VkSurfaceFormatKHR> surfaceFormats;
-	    VkSurfaceCapabilitiesKHR surfaceCapabilities;
-	    VkPhysicalDeviceMemoryProperties memoryInfo;
-	    std::vector<VkPresentModeKHR> presentModes;
-	    VkPhysicalDeviceFeatures GFXFeatures;
-	    VkFormat depthFormat;
-	
-	    GPUDevice()
-	        : physicalDevice(VK_NULL_HANDLE), deviceInfo({}), surfaceCapabilities({}), memoryInfo({}), GFXFeatures({}),
-	          depthFormat(VK_FORMAT_UNDEFINED)
+
+	    GPUDevice() : physicalDevice(VK_NULL_HANDLE), deviceInfo({}), surfaceCapabilities({}), memoryInfo({}), GFXFeatures({}), depthFormat(VK_FORMAT_UNDEFINED)
 	    {
 	    }
 	};
@@ -53,7 +52,6 @@ namespace SceneryEditorX
 
     private:
         std::vector<GPUDevice> devices;
-
         int deviceIndex = -1;
     };
 

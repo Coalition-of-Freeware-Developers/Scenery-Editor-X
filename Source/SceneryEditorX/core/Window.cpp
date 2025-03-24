@@ -43,12 +43,14 @@ void Window::ScrollCallback(GLFWwindow* window,double x,double y)
  * @param width The new width of the framebuffer.
  * @param height The new height of the framebuffer.
  */
-void Window::FramebufferResizeCallback(GLFWwindow* window,int width,int height)
+void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height)
 {
-    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-    windowInstance->width = width;
-    windowInstance->height = height;
-    windowInstance->framebufferResized = true;
+    // Store the new width and height directly in the Window class
+    Window::width = width;
+    Window::height = height;
+    Window::framebufferResized = true;
+
+    EDITOR_LOG_INFO("Window framebuffer resized to: {}x{}", width, height);
 }
 
 /**
@@ -475,18 +477,22 @@ bool Window::IsKeyPressed(uint16_t keyCode)
 	return lastKeyState[keyCode] && !glfwGetKey(window,keyCode);
 }
 
-int Window::get_width() 
+int Window::get_width()
 {
-	window = glfwGetCurrentContext();
-	glfwGetWindowSize(window,&width,&height);
-
-	return Window::width;
+    // If we have a window, get the actual size from it
+    if (window)
+    {
+        glfwGetWindowSize(window, &width, &height);
+    }
+    return width;
 }
 
 int Window::get_height()
 {
-	window = glfwGetCurrentContext();
-	glfwGetWindowSize(window,&width,&height);
-
-	return Window::height;
+    // If we have a window, get the actual size from it
+    if (window)
+    {
+        glfwGetWindowSize(window, &width, &height);
+    }
+    return height;
 }

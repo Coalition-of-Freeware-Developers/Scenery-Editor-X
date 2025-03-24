@@ -165,7 +165,7 @@
 */
 
 #define INTERNAL static
-#define LOCAL_PERSIST static
+#define LOCAL static
 #define GLOBAL static
 
 // -------------------------------------------------------

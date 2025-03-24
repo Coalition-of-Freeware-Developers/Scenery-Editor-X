@@ -80,6 +80,13 @@ namespace SceneryEditorX
     {
         this->window = window;
 
+        EDITOR_LOG_INFO("Initializing graphics engine with window size: {}x{}", width, height);
+
+        // Set the window user pointer to point to the Window singleton
+        glfwSetWindowUserPointer(window, Window::GetGLFWwindow());
+
+		// -------------------------------------------------------
+
         createInstance();
         createDebugMessenger();
         createSurface(window);
@@ -102,6 +109,8 @@ namespace SceneryEditorX
         createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
+
+		EDITOR_LOG_INFO("Graphics engine initialization complete");
     }
 
     void GraphicsEngine::cleanup() 
@@ -599,6 +608,26 @@ namespace SceneryEditorX
         return imageView;
     }
 
+    uint32_t GraphicsEngine::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    {
+        // Get memory properties from the physical device
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+        // Find a memory type that satisfies both the type filter and the property requirements
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                return i;
+            }
+        }
+
+        EDITOR_LOG_ERROR("Failed to find suitable memory type!");
+        ErrMsg("Failed to find suitable memory type!");
+        return 0; // Return a default value to avoid undefined behavior
+    }
+
 	void GraphicsEngine::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
@@ -661,11 +690,23 @@ namespace SceneryEditorX
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
 
-	void GraphicsEngine::recreateSurfaceFormats()
+    void GraphicsEngine::framebufferResizeCallback(GLFWwindow *window, int width, int height)
     {
-        //auto surface = _ctx.surface;
+        // Get the window instance that was set with glfwSetWindowUserPointer
+        auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
 
-	}
+        // Mark the framebuffer as resized
+        if (windowInstance)
+        {
+            windowInstance->setFramebufferResized(true);
+            EDITOR_LOG_INFO("Framebuffer resized: {}x{}", width, height);
+        }
+        else
+        {
+            // Fallback if Window pointer isn't set
+            EDITOR_LOG_WARN("Framebuffer resize detected but no Window instance found");
+        }
+    }
 
     static std::vector<char> readFile(const std::string &filename)
     {
@@ -749,7 +790,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	void GraphicsEngine::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory)
+	void GraphicsEngine::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
     {
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -762,8 +803,12 @@ namespace SceneryEditorX
             ErrMsg("failed to create buffer!");
         }
 
+		// -------------------------------------------------------
+
         VkMemoryRequirements memRequirements;
         vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+		// -------------------------------------------------------
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -803,8 +848,8 @@ namespace SceneryEditorX
 
         copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(device, stagingBuffer, allocator);
+        vkFreeMemory(device, stagingBufferMemory, allocator);
     }
 
     void GraphicsEngine::createIndexBuffer()
@@ -832,11 +877,9 @@ namespace SceneryEditorX
 
         copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
+        vkDestroyBuffer(device, stagingBuffer, allocator);
+        vkFreeMemory(device, stagingBufferMemory, allocator);
     }
-
-	// -------------------------------------------------------
 
     void GraphicsEngine::createUniformBuffers()
     {
@@ -855,16 +898,26 @@ namespace SceneryEditorX
         }
     }
 
+	// -------------------------------------------------------
+
 	void GraphicsEngine::createDescriptorPool()
     {
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = static_cast<uint32_t>(framesInFlight);
+        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+
+		// -------------------------------------------------------
+
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[0].descriptorCount = static_cast<uint32_t>(framesInFlight);
+        // -------------------------------------------------------
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[1].descriptorCount = static_cast<uint32_t>(framesInFlight);
+
+		// -------------------------------------------------------
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+        poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = static_cast<uint32_t>(framesInFlight);
 
         if (vkCreateDescriptorPool(device, &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
@@ -882,10 +935,18 @@ namespace SceneryEditorX
         uboLayoutBinding.pImmutableSamplers = nullptr;
         uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+        samplerLayoutBinding.binding = 1;
+        samplerLayoutBinding.descriptorCount = 1;
+        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding.pImmutableSamplers = nullptr;
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings = &uboLayoutBinding;
+        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+        layoutInfo.pBindings = bindings.data();
 
         if (vkCreateDescriptorSetLayout(device, &layoutInfo, allocator, &descriptorSetLayout) != VK_SUCCESS)
         {
@@ -896,6 +957,9 @@ namespace SceneryEditorX
 	void GraphicsEngine::createDescriptorSets()
     {
         std::vector<VkDescriptorSetLayout> layouts(framesInFlight, descriptorSetLayout);
+
+		// -------------------------------------------------------
+
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descriptorPool;
@@ -908,6 +972,8 @@ namespace SceneryEditorX
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
 
+		// -------------------------------------------------------
+
         for (size_t i = 0; i < framesInFlight; i++)
         {
             VkDescriptorBufferInfo bufferInfo{};
@@ -915,17 +981,42 @@ namespace SceneryEditorX
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
 
-            VkWriteDescriptorSet descriptorWrite{};
-            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite.dstSet = descriptorSets[i];
-            descriptorWrite.dstBinding = 0;
-            descriptorWrite.dstArrayElement = 0;
-            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrite.descriptorCount = 1;
-            descriptorWrite.pBufferInfo = &bufferInfo;
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfo.imageView = textureImageView;
+            imageInfo.sampler = textureSampler;
 
-            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+			// -------------------------------------------------------
+
+            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+			// -------------------------------------------------------
+
+            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[0].dstSet = descriptorSets[i];
+            descriptorWrites[0].dstBinding = 0;
+            descriptorWrites[0].dstArrayElement = 0;
+            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrites[0].descriptorCount = 1;
+            descriptorWrites[0].pBufferInfo = &bufferInfo;
+
+			// -------------------------------------------------------
+
+            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[1].dstSet = descriptorSets[i];
+            descriptorWrites[1].dstBinding = 1;
+            descriptorWrites[1].dstArrayElement = 0;
+            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            descriptorWrites[1].descriptorCount = 1;
+            descriptorWrites[1].pImageInfo = &imageInfo;
+
+			// -------------------------------------------------------
+
+            vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         }
+
+		// -------------------------------------------------------
+
     }
 
     void GraphicsEngine::createGraphicsPipeline()
@@ -973,8 +1064,8 @@ namespace SceneryEditorX
         auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
         vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
         vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
         vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 		// Configure input assembly
@@ -1138,6 +1229,8 @@ namespace SceneryEditorX
             ErrMsg("failed to begin recording command buffer!");
         }
 
+		// -------------------------------------------------------
+
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = renderPass;
@@ -1145,23 +1238,27 @@ namespace SceneryEditorX
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = swapChainExtent;
 
+		// -------------------------------------------------------
+
         VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
+		// -------------------------------------------------------
+
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-        VkBuffer vertexBuffers[] = {vertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+			VkBuffer vertexBuffers[] = {vertexBuffer};
+			VkDeviceSize offsets[] = {0};
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -1197,45 +1294,70 @@ namespace SceneryEditorX
 
 	void GraphicsEngine::recreateSwapChain()
     {
+        EDITOR_LOG_INFO("Beginning swap chain recreation");
+
         int width = 0, height = 0;
         glfwGetFramebufferSize(window, &width, &height);
+        EDITOR_LOG_INFO("Current framebuffer size: {}x{}", width, height);
+
         while (width == 0 || height == 0)
         {
+            EDITOR_LOG_INFO("Window minimized, waiting for restore");
             glfwGetFramebufferSize(window, &width, &height);
             glfwWaitEvents();
         }
 
+		EDITOR_LOG_INFO("Window class dimensions: {}x{}", Window::GetWidth(), Window::GetHeight());
+
+		EDITOR_LOG_INFO("Waiting for device to be idle");
         vkDeviceWaitIdle(device);
 
+        EDITOR_LOG_INFO("Destroying old swap chain");
         DestroySwapChain();
 
+		EDITOR_LOG_INFO("Creating new swap chain with updated dimensions");
         createSwapChain();
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
         createFramebuffers();
+
+		EDITOR_LOG_INFO("Swap chain recreation completed");
+
+		// Reset the framebuffer resized flag
+        framebufferResized = false;
     }
 
     void GraphicsEngine::renderFrame()
     {
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
-        uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(device,
-                                                swapChain,
-                                                UINT64_MAX,
-                                                imageAvailableSemaphores[currentFrame],
-                                                VK_NULL_HANDLE,
-                                                &imageIndex);
+		// -------------------------------------------------------
 
+        uint32_t imageIndex;
+        VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
+            EDITOR_LOG_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkAcquireNextImageKHR - recreating swap chain");
             recreateSwapChain();
             return;
         }
-        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+        else if (result == VK_SUBOPTIMAL_KHR)
         {
-            throw std::runtime_error("failed to acquire swap chain image!");
+            EDITOR_LOG_INFO("VK_SUBOPTIMAL_KHR returned from vkAcquireNextImageKHR - continuing with render");
+        }
+        else if (result != VK_SUCCESS)
+        {
+            EDITOR_LOG_ERROR("Failed to acquire swap chain image: {}", ToString(result));
+            ErrMsg("Failed to acquire swap chain image!");
+        }
+
+        // Check if a resize has been requested through the Window class
+        if (Window::GetFramebufferResized())
+        {
+            EDITOR_LOG_INFO("Framebuffer resize detected from Window class");
+            recreateSwapChain();
+            return;
         }
 
         updateUniformBuffer(currentFrame);
@@ -1245,6 +1367,8 @@ namespace SceneryEditorX
         vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
+		// -------------------------------------------------------
+
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -1253,7 +1377,6 @@ namespace SceneryEditorX
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
-
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
 
@@ -1263,35 +1386,54 @@ namespace SceneryEditorX
 
         if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
         {
+            EDITOR_LOG_ERROR("Failed to submit draw command buffer");
             throw std::runtime_error("failed to submit draw command buffer!");
         }
 
+		// -------------------------------------------------------
+
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
         VkSwapchainKHR swapChains[] = {swapChain};
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
-
         presentInfo.pImageIndices = &imageIndex;
+
+		// -------------------------------------------------------
 
         result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
+            EDITOR_LOG_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkQueuePresentKHR - recreating swap chain");
+            framebufferResized = false;
+            recreateSwapChain();
+        }
+        else if (result == VK_SUBOPTIMAL_KHR)
+        {
+            EDITOR_LOG_INFO("VK_SUBOPTIMAL_KHR returned from vkQueuePresentKHR - recreating swap chain");
+            framebufferResized = false;
+            recreateSwapChain();
+        }
+        else if (Window::GetFramebufferResized())
+        {
+            EDITOR_LOG_INFO("Window framebuffer resize flag set - recreating swap chain");
             framebufferResized = false;
             recreateSwapChain();
         }
         else if (result != VK_SUCCESS)
         {
+            EDITOR_LOG_ERROR("Failed to present swap chain image: {}", ToString(result));
             ErrMsg("Failed to present swap chain image!");
         }
 
         currentFrame = (currentFrame + 1) % framesInFlight;
     }
+
+	// -------------------------------------------------------
 
 	void GraphicsEngine::updateUniformBuffer(uint32_t currentImage)
     {
@@ -1302,9 +1444,8 @@ namespace SceneryEditorX
 
         UniformBufferObject ubo{};
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj =
-            glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+        ubo.view =  glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj =  glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
 
         void *data;
@@ -1312,6 +1453,49 @@ namespace SceneryEditorX
         memcpy(data, &ubo, sizeof(ubo));
         vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
     }
+
+	void GraphicsEngine::recreateSurfaceFormats()
+    {
+        // Get the surface capabilities, formats, and present modes for the current physical device
+        VkSurfaceCapabilitiesKHR capabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
+
+        // Query formats
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
+
+        if (formatCount != 0)
+        {
+            availableSurfaceFormats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, availableSurfaceFormats.data());
+
+            EDITOR_LOG_INFO("Recreated surface formats, found {} formats", formatCount);
+        }
+        else
+        {
+            EDITOR_LOG_ERROR("Failed to find any surface formats!");
+        }
+
+        // Query present modes
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+
+        if (presentModeCount != 0)
+        {
+            availablePresentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, availablePresentModes.data());
+
+            EDITOR_LOG_INFO("Recreated present modes, found {} modes", presentModeCount);
+        }
+        else
+        {
+            EDITOR_LOG_ERROR("Failed to find any present modes!");
+        }
+
+        // Store updated surface capabilities
+        surfaceCapabilities = capabilities;
+    }
+
 
 	// -------------------------------------------------------
 
@@ -1496,37 +1680,29 @@ namespace SceneryEditorX
 
     VkExtent2D GraphicsEngine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities)
     {
+        // If the current extent width is the max value, it means the window manager
+        // allows us to set dimensions other than the current window size
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
         {
+            EDITOR_LOG_INFO("Using surface extent: {}x{}", capabilities.currentExtent.width, capabilities.currentExtent.height);
             return capabilities.currentExtent;
         }
         else
         {
-            this->window = window;
+            // Get the actual framebuffer size from GLFW directly for consistency
             int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
 
-            // Check if the Window class has been properly initialized
-            if (Window::GetGLFWwindow() == nullptr)
-            {
-                // Fall back to using raw GLFW calls if Window isn't fully initialized
-                glfwGetFramebufferSize(this->window, &width, &height);
-                EDITOR_LOG_WARN("Using direct GLFW calls for framebuffer size as Window class isn't initialized");
-            }
-            else
-            {
-                // Use the Window class's functionality
-                Window::UpdateFramebufferSize();
-                width = Window::GetWidth();
-                height = Window::GetHeight();
-            }
+            EDITOR_LOG_INFO("Window framebuffer size: {}x{}", width, height);
 
+            // Create the extent using the retrieved dimensions
             VkExtent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 
-            actualExtent.width =
-                std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            actualExtent.height =
-                std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+            // Clamp to the allowed min/max extents from the surface capabilities
+            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
+            EDITOR_LOG_INFO("Using calculated extent: {}x{}", actualExtent.width, actualExtent.height);
             return actualExtent;
         }
     }
@@ -1538,7 +1714,7 @@ namespace SceneryEditorX
 
         // Copy the data that's already available
         details.capabilities = selectedDevice.surfaceCapabilities;
-        details.formats = selectedDevice.surfaceFormats;
+        details.formats      = selectedDevice.surfaceFormats;
         details.presentModes = selectedDevice.presentModes;
 
         return details;
@@ -1574,14 +1750,12 @@ namespace SceneryEditorX
         {
             EDITOR_LOG_INFO("  Required: {}", ToString(extension));
         }
-
         EDITOR_LOG_INFO("Available device extensions:");
         for (const auto &extension : availableExtensions)
         {
             EDITOR_LOG_INFO("  Available: {}", ToString(extension.extensionName));
             requiredExtensions.erase(extension.extensionName);
         }
-
         if (!requiredExtensions.empty())
         {
             EDITOR_LOG_ERROR("Missing extensions:");
@@ -1605,6 +1779,8 @@ namespace SceneryEditorX
         for (uint32_t i = 0; i < selectedDevice.queueFamilyInfo.size(); i++)
         {
             const VkQueueFamilyProperties &queueFamily = selectedDevice.queueFamilyInfo[i];
+            VkBool32 presentSupport = false;
+
 
             if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {

@@ -35,7 +35,7 @@ namespace SceneryEditorX
 	 */
     void VulkanPhysicalDevice::Init(const VkInstance &instance, const VkSurfaceKHR &surface)
     {
-        uint32_t GFXDevices = 0;     // Number of physical devices
+        uint32_t GFXDevices = 0;      // Number of physical devices
         VkResult result = VK_SUCCESS; // Vulkan result
         std::vector<VkPhysicalDevice> Device;
 
@@ -106,9 +106,7 @@ namespace SceneryEditorX
             devices[index].queueFamilyInfo.resize(numQueueFamilies);
             devices[index].queueSupportPresent.resize(numQueueFamilies);
 
-            vkGetPhysicalDeviceQueueFamilyProperties(physDevice,
-                                                     &numQueueFamilies,
-                                                     devices[index].queueFamilyInfo.data());
+            vkGetPhysicalDeviceQueueFamilyProperties(physDevice, &numQueueFamilies, devices[index].queueFamilyInfo.data());
             for (uint32_t queue = 0; queue < numQueueFamilies; queue++)
             {
                 const VkQueueFamilyProperties &queueFamilyInfo = devices[index].queueFamilyInfo[queue];
@@ -119,10 +117,7 @@ namespace SceneryEditorX
                 EDITOR_LOG_INFO("Queue Flags: {}", ToString(queueFamilyInfo.queueFlags));
                 EDITOR_LOG_INFO("============================================");
 
-                result = vkGetPhysicalDeviceSurfaceSupportKHR(physDevice,
-                                                              queue,
-                                                              surface,
-                                                              &devices[index].queueSupportPresent[queue]);
+                result = vkGetPhysicalDeviceSurfaceSupportKHR(physDevice, queue, surface, &devices[index].queueSupportPresent[queue]);
                 VK_CHECK_RESULT(result, "Vulkan Physical Device Surface Support");
             }
 
@@ -152,9 +147,7 @@ namespace SceneryEditorX
                 EDITOR_LOG_INFO("============================================");
             }
 
-            result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice,
-                                                               surface,
-                                                               &(devices[index].surfaceCapabilities));
+            result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice, surface, &(devices[index].surfaceCapabilities));
             //if (result == VK_ERROR_surfaceLOST_KHR)
             //{
             //    // Handle surface lost error
@@ -171,26 +164,16 @@ namespace SceneryEditorX
             EDITOR_LOG_INFO("============================================");
             EDITOR_LOG_INFO("Surface Capabilities");
             EDITOR_LOG_INFO("____________________________________________");
-            EDITOR_LOG_INFO("Min Image Count: {}",
-                                ToString(devices[index].surfaceCapabilities.minImageCount));
-            EDITOR_LOG_INFO("Max Image Count: {}",
-                                ToString(devices[index].surfaceCapabilities.maxImageCount));
-            EDITOR_LOG_INFO("Current Extent: {}",
-                                ToString(devices[index].surfaceCapabilities.currentExtent.width));
-            EDITOR_LOG_INFO("Min Image Extent: {}",
-                                ToString(devices[index].surfaceCapabilities.minImageExtent.width));
-            EDITOR_LOG_INFO("Max Image Extent: {}",
-                                ToString(devices[index].surfaceCapabilities.maxImageExtent.width));
-            EDITOR_LOG_INFO("Max Image Array Layers: {}",
-                                ToString(devices[index].surfaceCapabilities.maxImageArrayLayers));
-            EDITOR_LOG_INFO("Supported Transforms: {}",
-                                ToString(devices[index].surfaceCapabilities.supportedTransforms));
-            EDITOR_LOG_INFO("Current Transform: {}",
-                                ToString(devices[index].surfaceCapabilities.currentTransform));
-            EDITOR_LOG_INFO("Supported Composite Alpha: {}",
-                                ToString(devices[index].surfaceCapabilities.supportedCompositeAlpha));
-            EDITOR_LOG_INFO("Supported Usage Flags: {}",
-                                ToString(devices[index].surfaceCapabilities.supportedUsageFlags));
+            EDITOR_LOG_INFO("Min Image Count: {}", ToString(devices[index].surfaceCapabilities.minImageCount));
+            EDITOR_LOG_INFO("Max Image Count: {}", ToString(devices[index].surfaceCapabilities.maxImageCount));
+            EDITOR_LOG_INFO("Current Extent: {}", ToString(devices[index].surfaceCapabilities.currentExtent.width));
+            EDITOR_LOG_INFO("Min Image Extent: {}", ToString(devices[index].surfaceCapabilities.minImageExtent.width));
+            EDITOR_LOG_INFO("Max Image Extent: {}", ToString(devices[index].surfaceCapabilities.maxImageExtent.width));
+            EDITOR_LOG_INFO("Max Image Array Layers: {}", ToString(devices[index].surfaceCapabilities.maxImageArrayLayers));
+            EDITOR_LOG_INFO("Supported Transforms: {}", ToString(devices[index].surfaceCapabilities.supportedTransforms));
+            EDITOR_LOG_INFO("Current Transform: {}", ToString(devices[index].surfaceCapabilities.currentTransform));
+            EDITOR_LOG_INFO("Supported Composite Alpha: {}", ToString(devices[index].surfaceCapabilities.supportedCompositeAlpha));
+            EDITOR_LOG_INFO("Supported Usage Flags: {}", ToString(devices[index].surfaceCapabilities.supportedUsageFlags));
             EDITOR_LOG_INFO("============================================");
 
             // -------------------------------------------------------
@@ -201,10 +184,7 @@ namespace SceneryEditorX
 
             devices[index].presentModes.resize(numPresentModes);
 
-            result = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice,
-                                                               surface,
-                                                               &numPresentModes,
-                                                               devices[index].presentModes.data());
+            result = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice, surface, &numPresentModes, devices[index].presentModes.data());
             VK_CHECK_RESULT(result, "Vulkan Physical Device Surface Present Modes");
             EDITOR_LOG_INFO("Number of present modes: {}", ToString(numPresentModes));
 
@@ -212,8 +192,7 @@ namespace SceneryEditorX
 
             vkGetPhysicalDeviceMemoryProperties(physDevice, &(devices[index].memoryInfo));
 
-            EDITOR_LOG_INFO("Number of memory types: {}",
-                                ToString(devices[index].memoryInfo.memoryTypeCount));
+            EDITOR_LOG_INFO("Number of memory types: {}", ToString(devices[index].memoryInfo.memoryTypeCount));
 
             for (uint32_t mem = 0; mem < devices[index].memoryInfo.memoryTypeCount; mem++)
             {
@@ -225,8 +204,7 @@ namespace SceneryEditorX
                 EDITOR_LOG_INFO("============================================");
             }
 
-            EDITOR_LOG_INFO("Number of memory heaps: {}",
-                                ToString(devices[index].memoryInfo.memoryHeapCount));
+            EDITOR_LOG_INFO("Number of memory heaps: {}", ToString(devices[index].memoryInfo.memoryHeapCount));
 
             vkGetPhysicalDeviceFeatures(physDevice, &devices[index].GFXFeatures);
             //devices[index].DepthFormat_ = FindDepthFormat(physDevice);
@@ -246,8 +224,7 @@ namespace SceneryEditorX
             for (uint32_t queue = 0; queue < devices[index].queueFamilyInfo.size(); queue++)
             {
                 const VkQueueFamilyProperties &QueueFamily_ = devices[index].queueFamilyInfo[queue];
-                if ((QueueFamily_.queueFlags & queueType) &&
-                    ((bool)devices[index].queueSupportPresent[queue] == supportPresent))
+                if ((QueueFamily_.queueFlags & queueType) && ((bool)devices[index].queueSupportPresent[queue] == supportPresent))
                 {
                     deviceIndex = index;
                     int QueueFamily_ = queue;

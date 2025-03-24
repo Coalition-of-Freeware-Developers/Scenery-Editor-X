@@ -1,0 +1,391 @@
+[21:27:54] [info] SceneryEditorX: Scenery Editor X Engine is starting...
+[21:27:55] [error] SceneryEditorX: Failed to open icon file!
+[21:27:55] [info] SceneryEditorX: Window framebuffer resized to: 1920x1027
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Available extensions
+[21:27:56] [info] SceneryEditorX: ____________________________________________
+[21:27:56] [info] SceneryEditorX: VK_KHR_device_group_creation
+[21:27:56] [info] SceneryEditorX: VK_KHR_external_fence_capabilities
+[21:27:56] [info] SceneryEditorX: VK_KHR_external_memory_capabilities
+[21:27:56] [info] SceneryEditorX: VK_KHR_external_semaphore_capabilities
+[21:27:56] [info] SceneryEditorX: VK_KHR_get_physical_device_properties2
+[21:27:56] [info] SceneryEditorX: VK_KHR_get_surface_capabilities2
+[21:27:56] [info] SceneryEditorX: VK_KHR_surface
+[21:27:56] [info] SceneryEditorX: VK_KHR_surface_protected_capabilities
+[21:27:56] [info] SceneryEditorX: VK_KHR_win32_surface
+[21:27:56] [info] SceneryEditorX: VK_EXT_debug_report
+[21:27:56] [info] SceneryEditorX: VK_EXT_debug_utils
+[21:27:56] [info] SceneryEditorX: VK_EXT_surface_maintenance1
+[21:27:56] [info] SceneryEditorX: VK_EXT_swapchain_colorspace
+[21:27:56] [info] SceneryEditorX: VK_NV_external_memory_capabilities
+[21:27:56] [info] SceneryEditorX: VK_KHR_portability_enumeration
+[21:27:56] [info] SceneryEditorX: VK_LUNARG_direct_driver_loading
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Available layer/s
+[21:27:56] [info] SceneryEditorX: ____________________________________________
+[21:27:56] [info] SceneryEditorX: VK_LAYER_EOS_Overlay
+[21:27:56] [info] SceneryEditorX: VK_LAYER_OBS_HOOK
+[21:27:56] [info] SceneryEditorX: VK_LAYER_VALVE_steam_fossilize
+[21:27:56] [info] SceneryEditorX: VK_LAYER_VALVE_steam_overlay
+[21:27:56] [info] SceneryEditorX: VK_LAYER_NV_optimus
+[21:27:56] [info] SceneryEditorX: VK_LAYER_NV_gr2608
+[21:27:56] [info] SceneryEditorX: VK_LAYER_OBS_HOOK
+[21:27:56] [info] SceneryEditorX: VK_LAYER_EOS_Overlay
+[21:27:56] [info] SceneryEditorX: VK_LAYER_LUNARG_api_dump
+[21:27:56] [info] SceneryEditorX: VK_LAYER_LUNARG_crash_diagnostic
+[21:27:56] [info] SceneryEditorX: VK_LAYER_LUNARG_gfxreconstruct
+[21:27:56] [info] SceneryEditorX: VK_LAYER_LUNARG_monitor
+[21:27:56] [info] SceneryEditorX: VK_LAYER_LUNARG_screenshot
+[21:27:56] [info] SceneryEditorX: VK_LAYER_KHRONOS_validation
+[21:27:56] [info] SceneryEditorX: VK_LAYER_KHRONOS_profiles
+[21:27:56] [info] SceneryEditorX: VK_LAYER_KHRONOS_shader_object
+[21:27:56] [info] SceneryEditorX: VK_LAYER_KHRONOS_synchronization2
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Initializing graphics engine with window size: 1920x1027
+[21:27:56] [trace] SceneryEditorX: ============================================
+[21:27:56] [trace] SceneryEditorX: Device Name: NVIDIA GeForce RTX 3090
+[21:27:56] [trace] SceneryEditorX: Device Type: 2
+[21:27:56] [trace] SceneryEditorX: Device ID: 8708
+[21:27:56] [trace] SceneryEditorX: Driver Version: 2400501760
+[21:27:56] [trace] SceneryEditorX: API Version: 4210991
+[21:27:56] [trace] SceneryEditorX: Vendor ID: 4318
+[21:27:56] [trace] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Number of GPU device family queues: 6
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Queue Family Index: 0
+[21:27:56] [info] SceneryEditorX: Queue Count: 16
+[21:27:56] [info] SceneryEditorX: Queue Flags: 15
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Queue Family Index: 1
+[21:27:56] [info] SceneryEditorX: Queue Count: 2
+[21:27:56] [info] SceneryEditorX: Queue Flags: 12
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Queue Family Index: 2
+[21:27:56] [info] SceneryEditorX: Queue Count: 8
+[21:27:56] [info] SceneryEditorX: Queue Flags: 14
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Queue Family Index: 3
+[21:27:56] [info] SceneryEditorX: Queue Count: 1
+[21:27:56] [info] SceneryEditorX: Queue Flags: 44
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Queue Family Index: 4
+[21:27:56] [info] SceneryEditorX: Queue Count: 1
+[21:27:56] [info] SceneryEditorX: Queue Flags: 76
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Queue Family Index: 5
+[21:27:56] [info] SceneryEditorX: Queue Count: 1
+[21:27:56] [info] SceneryEditorX: Queue Flags: 268
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Number of surface formats: 5
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Surface Format: 44
+[21:27:56] [info] SceneryEditorX: Color Space: 0
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Surface Format: 50
+[21:27:56] [info] SceneryEditorX: Color Space: 0
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Surface Format: 37
+[21:27:56] [info] SceneryEditorX: Color Space: 0
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Surface Format: 43
+[21:27:56] [info] SceneryEditorX: Color Space: 0
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Surface Format: 64
+[21:27:56] [info] SceneryEditorX: Color Space: 0
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Surface Capabilities
+[21:27:56] [info] SceneryEditorX: ____________________________________________
+[21:27:56] [info] SceneryEditorX: Min Image Count: 2
+[21:27:56] [info] SceneryEditorX: Max Image Count: 8
+[21:27:56] [info] SceneryEditorX: Current Extent: 1920
+[21:27:56] [info] SceneryEditorX: Min Image Extent: 1920
+[21:27:56] [info] SceneryEditorX: Max Image Extent: 1920
+[21:27:56] [info] SceneryEditorX: Max Image Array Layers: 1
+[21:27:56] [info] SceneryEditorX: Supported Transforms: 1
+[21:27:56] [info] SceneryEditorX: Current Transform: 1
+[21:27:56] [info] SceneryEditorX: Supported Composite Alpha: 1
+[21:27:56] [info] SceneryEditorX: Supported Usage Flags: 159
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Number of present modes: 4
+[21:27:56] [info] SceneryEditorX: Number of memory types: 6
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Memory Type Index: 0
+[21:27:56] [info] SceneryEditorX: Memory Heap Index: 1
+[21:27:56] [info] SceneryEditorX: Memory Property Flags: 0
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Memory Type Index: 1
+[21:27:56] [info] SceneryEditorX: Memory Heap Index: 0
+[21:27:56] [info] SceneryEditorX: Memory Property Flags: 1
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Memory Type Index: 2
+[21:27:56] [info] SceneryEditorX: Memory Heap Index: 0
+[21:27:56] [info] SceneryEditorX: Memory Property Flags: 1
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Memory Type Index: 3
+[21:27:56] [info] SceneryEditorX: Memory Heap Index: 1
+[21:27:56] [info] SceneryEditorX: Memory Property Flags: 6
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Memory Type Index: 4
+[21:27:56] [info] SceneryEditorX: Memory Heap Index: 1
+[21:27:56] [info] SceneryEditorX: Memory Property Flags: 14
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Memory Type Index: 5
+[21:27:56] [info] SceneryEditorX: Memory Heap Index: 0
+[21:27:56] [info] SceneryEditorX: Memory Property Flags: 7
+[21:27:56] [info] SceneryEditorX: ============================================
+[21:27:56] [info] SceneryEditorX: Number of memory heaps: 2
+[21:27:56] [info] SceneryEditorX: Using graphics device: 0
+[21:27:56] [info] SceneryEditorX: Using queue family: 0
+[21:27:56] [info] SceneryEditorX: Selected physical device: NVIDIA GeForce RTX 3090
+[21:27:56] [info] SceneryEditorX: Checking for required device extensions:
+[21:27:56] [info] SceneryEditorX:   Required: VK_KHR_swapchain
+[21:27:56] [info] SceneryEditorX: Available device extensions:
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_16bit_storage
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_8bit_storage
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_acceleration_structure
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_bind_memory2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_buffer_device_address
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_calibrated_timestamps
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_compute_shader_derivatives
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_cooperative_matrix
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_copy_commands2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_create_renderpass2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_dedicated_allocation
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_deferred_host_operations
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_depth_stencil_resolve
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_descriptor_update_template
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_device_group
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_draw_indirect_count
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_driver_properties
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_dynamic_rendering
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_dynamic_rendering_local_read
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_external_fence
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_external_fence_win32
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_external_memory
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_external_memory_win32
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_external_semaphore
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_external_semaphore_win32
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_format_feature_flags2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_fragment_shader_barycentric
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_fragment_shading_rate
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_get_memory_requirements2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_global_priority
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_image_format_list
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_imageless_framebuffer
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_index_type_uint8
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_line_rasterization
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_load_store_op_none
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_maintenance1
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_maintenance2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_maintenance3
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_maintenance4
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_maintenance5
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_maintenance6
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_maintenance7
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_map_memory2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_multiview
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_pipeline_binary
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_pipeline_executable_properties
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_pipeline_library
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_present_id
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_present_wait
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_push_descriptor
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_ray_query
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_ray_tracing_maintenance1
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_ray_tracing_pipeline
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_ray_tracing_position_fetch
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_relaxed_block_layout
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_sampler_mirror_clamp_to_edge
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_sampler_ycbcr_conversion
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_separate_depth_stencil_layouts
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_atomic_int64
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_clock
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_draw_parameters
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_expect_assume
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_float16_int8
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_float_controls
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_float_controls2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_integer_dot_product
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_maximal_reconvergence
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_non_semantic_info
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_quad_control
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_relaxed_extended_instruction
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_subgroup_extended_types
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_subgroup_rotate
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_subgroup_uniform_control_flow
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_shader_terminate_invocation
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_spirv_1_4
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_storage_buffer_storage_class
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_swapchain
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_swapchain_mutable_format
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_synchronization2
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_timeline_semaphore
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_uniform_buffer_standard_layout
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_variable_pointers
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_vertex_attribute_divisor
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_decode_av1
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_decode_h264
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_decode_h265
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_decode_queue
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_encode_h264
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_encode_h265
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_encode_queue
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_maintenance1
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_video_queue
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_vulkan_memory_model
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_win32_keyed_mutex
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_workgroup_memory_explicit_layout
+[21:27:56] [info] SceneryEditorX:   Available: VK_KHR_zero_initialize_workgroup_memory
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_4444_formats
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_attachment_feedback_loop_dynamic_state
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_attachment_feedback_loop_layout
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_blend_operation_advanced
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_border_color_swizzle
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_buffer_device_address
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_calibrated_timestamps
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_color_write_enable
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_conditional_rendering
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_conservative_rasterization
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_custom_border_color
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_depth_bias_control
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_depth_clamp_control
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_depth_clamp_zero_one
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_depth_clip_control
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_depth_clip_enable
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_depth_range_unrestricted
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_descriptor_indexing
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_device_fault
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_device_generated_commands
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_discard_rectangles
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_dynamic_rendering_unused_attachments
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_extended_dynamic_state
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_extended_dynamic_state2
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_extended_dynamic_state3
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_external_memory_host
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_fragment_shader_interlock
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_full_screen_exclusive
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_graphics_pipeline_library
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_hdr_metadata
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_host_image_copy
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_host_query_reset
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_image_2d_view_of_3d
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_image_robustness
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_image_sliced_view_of_3d
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_image_view_min_lod
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_index_type_uint8
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_inline_uniform_block
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_legacy_vertex_attributes
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_line_rasterization
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_load_store_op_none
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_memory_budget
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_memory_priority
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_mesh_shader
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_multi_draw
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_mutable_descriptor_type
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_nested_command_buffer
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_non_seamless_cube_map
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_opacity_micromap
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_pageable_device_local_memory
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_pci_bus_info
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_pipeline_creation_cache_control
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_pipeline_creation_feedback
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_pipeline_library_group_handles
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_pipeline_robustness
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_post_depth_coverage
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_primitive_topology_list_restart
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_primitives_generated_query
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_private_data
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_provoking_vertex
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_queue_family_foreign
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_robustness2
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_sample_locations
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_sampler_filter_minmax
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_scalar_block_layout
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_separate_stencil_usage
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_atomic_float
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_demote_to_helper_invocation
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_image_atomic_int64
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_object
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_replicated_composites
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_subgroup_ballot
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_subgroup_vote
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_shader_viewport_index_layer
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_subgroup_size_control
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_swapchain_maintenance1
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_texel_buffer_alignment
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_tooling_info
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_transform_feedback
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_vertex_attribute_divisor
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_vertex_input_dynamic_state
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_ycbcr_2plane_444_formats
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_ycbcr_image_arrays
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_clip_space_w_scaling
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_compute_shader_derivatives
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_cooperative_matrix
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_cooperative_vector
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_corner_sampled_image
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_coverage_reduction_mode
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_dedicated_allocation
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_dedicated_allocation_image_aliasing
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_descriptor_pool_overallocation
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_device_diagnostic_checkpoints
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_device_diagnostics_config
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_device_generated_commands
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_device_generated_commands_compute
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_external_memory
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_external_memory_win32
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_fill_rectangle
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_fragment_coverage_to_color
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_fragment_shader_barycentric
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_fragment_shading_rate_enums
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_framebuffer_mixed_samples
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_geometry_shader_passthrough
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_inherited_viewport_scissor
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_linear_color_attachment
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_low_latency
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_mesh_shader
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_optical_flow
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_partitioned_acceleration_structure
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_present_metering
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_raw_access_chains
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_ray_tracing
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_ray_tracing_invocation_reorder
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_ray_tracing_motion_blur
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_representative_fragment_test
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_sample_mask_override_coverage
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_scissor_exclusive
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_shader_atomic_float16_vector
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_shader_image_footprint
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_shader_sm_builtins
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_shader_subgroup_partitioned
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_shading_rate_image
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_viewport_array2
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_viewport_swizzle
+[21:27:56] [info] SceneryEditorX:   Available: VK_NV_win32_keyed_mutex
+[21:27:56] [info] SceneryEditorX:   Available: VK_NVX_image_view_handle
+[21:27:56] [info] SceneryEditorX:   Available: VK_NVX_multiview_per_view_attributes
+[21:27:56] [info] SceneryEditorX:   Available: VK_AMD_buffer_marker
+[21:27:56] [info] SceneryEditorX:   Available: VK_GOOGLE_user_type
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_debug_marker
+[21:27:56] [info] SceneryEditorX:   Available: VK_ANDROID_frame_boundary
+[21:27:56] [info] SceneryEditorX:   Available: VK_EXT_frame_boundary
+[21:27:56] [info] SceneryEditorX: Using surface extent: 1920x1027
+[21:27:56] [info] SceneryEditorX: Swap chain created successfully with 3 images
+[21:27:56] [info] SceneryEditorX: Loading vertex shader from: ../../assets/shaders/vert.spv
+[21:27:56] [info] SceneryEditorX: Loading fragment shader from: ../../assets/shaders/frag.spv
+[21:27:56] [error] SceneryEditorX: Failed to open file: ../../assets/shaders/vert.spv

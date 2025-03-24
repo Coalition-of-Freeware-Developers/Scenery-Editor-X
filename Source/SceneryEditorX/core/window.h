@@ -58,16 +58,15 @@ private:
 	INTERNAL inline bool        decorated           = true;
 	INTERNAL inline bool        maximized           = true;
 
-	static void ScrollCallback(GLFWwindow *window, double x, double y);
-    static void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
-    static void WindowMaximizeCallback(GLFWwindow *window, int maximize);
-    static void WindowChangePosCallback(GLFWwindow *window, int x, int y);
-    static void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
+	GLOBAL void ScrollCallback(GLFWwindow *window, double x, double y);
+    GLOBAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
+    GLOBAL void WindowMaximizeCallback(GLFWwindow *window, int maximize);
+    GLOBAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);
+    GLOBAL void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
 
 	INTERNAL void SetWindowIcon(GLFWwindow *window);
 
 public:
-
 	GLOBAL void Create();
 	GLOBAL void Update();
 	GLOBAL void OnImgui();
@@ -75,12 +74,13 @@ public:
 	GLOBAL void ApplyChanges();
 	GLOBAL void UpdateFramebufferSize();
 	GLOBAL bool IsKeyPressed(uint16_t keyCode);
+	void setFramebufferResized(bool resized) { framebufferResized = resized; }
 
-    static int get_width();
-    static int get_height();
+    GLOBAL int get_width();
+    GLOBAL int get_height();
 
 	GLOBAL inline GLFWwindow*   GetGLFWwindow()                     {return window;}
-	static inline bool          IsDirty()                           {return dirty;}
+	GLOBAL inline bool          IsDirty()                           {return dirty;}
 	GLOBAL inline void          WaitEvents()                        {glfwWaitEvents();}
 	GLOBAL inline uint32_t      GetWidth()                          {return Window::width;}
 	GLOBAL inline uint32_t      GetHeight()                         {return Window::height;}

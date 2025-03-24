@@ -76,7 +76,6 @@ private:
 		//scene = assetManager.GetInitialScene();
 		//camera = assetManager.GetMainCamera(scene);
         Window::Create();
-
 	}
 
 	void create()
