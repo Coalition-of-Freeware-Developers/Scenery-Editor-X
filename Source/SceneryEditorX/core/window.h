@@ -92,5 +92,12 @@ public:
 	GLOBAL inline bool          IsKeyDown(uint16_t keyCode)         {return glfwGetKey(window,keyCode);}
 	GLOBAL inline bool          IsMouseDown(uint16_t buttonCode)    {return glfwGetMouseButton(window,buttonCode);}
 	GLOBAL inline void          SetTitle(const std::string& title)  {glfwSetWindowTitle(window,title.c_str());}
+    // Returns the current mouse position as a glm::vec2
+    static glm::vec2 GetMousePosition()
+    {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        return {static_cast<float>(xpos), static_cast<float>(ypos)};
+    }
 };
 

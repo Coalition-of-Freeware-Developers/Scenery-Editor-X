@@ -12,14 +12,15 @@
 */
 
 #pragma once
-
-#include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/scene/camera.h>
 #include <vector>
 
 // -------------------------------------------------------
 
 namespace AssetManager
 {
+
+/*
 
     struct Serializer;
     struct AssetManager;
@@ -133,163 +134,183 @@ namespace AssetManager
         //std::vector<Ref<Node>> AddAssetsToScene(Ref<SceneAsset> &scene, const std::vector<std::string> &paths);
         //void LoadProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
         //void SaveProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
-        //Ref<SceneAsset> GetInitialScene();
+        Ref<SceneAsset> GetInitialScene();
         //Ref<CameraNode> GetMainCamera(Ref<SceneAsset> &scene);
 
-        /*
-	template <typename T>
-	Ref<T> Get(UUID uuid)
-	{
-		return std::dynamic_pointer_cast<T>(assets[uuid]);
-	}
 
-	Ref<Asset> Get(UUID uuid)
-	{
-		return assets[uuid];
-	}
-
-	template <typename T>
-	std::vector<Ref<T>> GetAll(ObjectType type) const
-	{
-		std::vector<Ref<T>> all;
-		for (auto &pair : assets)
+		template <typename T>
+		Ref<T> Get(UUID uuid)
 		{
-			if (pair.second->type == type)
+			return std::dynamic_pointer_cast<T>(assets[uuid]);
+		}
+
+
+		Ref<Asset> Get(UUID uuid)
+		{
+			return assets[uuid];
+		}
+
+
+		template <typename T>
+		std::vector<Ref<T>> GetAll(ObjectType type) const
+		{
+			std::vector<Ref<T>> all;
+			for (auto &pair : assets)
 			{
-				all.emplace_back(std::dynamic_pointer_cast<T>(pair.second));
+				if (pair.second->type == type)
+				{
+					all.emplace_back(std::dynamic_pointer_cast<T>(pair.second));
+				}
+			}
+			return all;
+		}
+
+
+		std::vector<Ref<Asset>> GetAll() const
+		{
+			std::vector<Ref<Asset>> all;
+			for (auto &pair : assets)
+			{
+				all.emplace_back(std::dynamic_pointer_cast<Asset>(pair.second));
+			}
+			return all;
+		}
+
+
+
+		template <typename T>
+		static Ref<T> CreateObject(const std::string &name, UUID uuid = 0)
+		{
+			if (uuid == 0)
+			{
+				uuid = NewUUID();
+			}
+			Ref<T> a = std::make_shared<T>();
+			a->name = name;
+			a->uuid = uuid;
+			return a;
+		}
+
+
+
+		template <typename T>
+		Ref<T> CreateAsset(const std::string &name, UUID uuid = 0)
+		{
+			if (uuid == 0)
+			{
+				uuid = NewUUID();
+			}
+			Ref<T> a = std::make_shared<T>();
+			a->name = name;
+			a->uuid = uuid;
+			assets[a->uuid] = a;
+			if (a->type == ObjectType::SceneAsset && !initialScene)
+			{
+				initialScene = a->uuid;
+			}
+			return a;
+		}
+
+
+		Ref<Object> CreateObject(ObjectType type, const std::string &name, UUID uuid = 0)
+		{
+			switch (type)
+			{
+			case ObjectType::TextureAsset:
+				return CreateAsset<TextureAsset>(name, uuid);
+			case ObjectType::MaterialAsset:
+				return CreateAsset<MaterialAsset>(name, uuid);
+			case ObjectType::MeshAsset:
+				return CreateAsset<MeshAsset>(name, uuid);
+			case ObjectType::SceneAsset:
+				return CreateAsset<SceneAsset>(name, uuid);
+			case ObjectType::Node:
+				return CreateObject<Node>(name, uuid);
+			case ObjectType::MeshNode:
+				return CreateObject<MeshNode>(name, uuid);
+			case ObjectType::LightNode:
+				return CreateObject<LightNode>(name, uuid);
+			case ObjectType::CameraNode:
+				return CreateObject<CameraNode>(name, uuid);
+			default:
+				DEBUG_ASSERT(false, "Invalid object type {}.", type) return nullptr;
 			}
 		}
-		return all;
-	}
 
-	std::vector<Ref<Asset>> GetAll() const
-	{
-		std::vector<Ref<Asset>> all;
-		for (auto &pair : assets)
+
+
+		template <typename T>
+		Ref<T> CloneAsset(const Ref<Object> &rhs)
 		{
-			all.emplace_back(std::dynamic_pointer_cast<Asset>(pair.second));
+			Ref<T> asset = CreateAsset<T>(rhs->name, 0);
+			*asset = *std::dynamic_pointer_cast<T>(rhs);
+			return asset;
 		}
-		return all;
-	}
 
-	template <typename T>
-	static Ref<T> CreateObject(const std::string &name, UUID uuid = 0)
-	{
-		if (uuid == 0)
+
+
+		template <typename T>
+		static Ref<T> CloneObject(const Ref<Object> &rhs)
 		{
-			uuid = NewUUID();
+			Ref<T> object = CreateObject<T>(rhs->name, 0);
+			*object = *std::dynamic_pointer_cast<T>(rhs);
+			return object;
 		}
-		Ref<T> a = std::make_shared<T>();
-		a->name = name;
-		a->uuid = uuid;
-		return a;
-	}
 
-	template <typename T>
-	Ref<T> CreateAsset(const std::string &name, UUID uuid = 0)
-	{
-		if (uuid == 0)
+
+
+		Ref<Object> CloneAsset(ObjectType type, const Ref<Object> &rhs)
 		{
-			uuid = NewUUID();
+			switch (type)
+			{
+			case ObjectType::SceneAsset:
+				return CloneAsset<SceneAsset>(rhs);
+			default:
+				DEBUG_ASSERT(false, "Invalid asset type {}.", type) return nullptr;
+			}
 		}
-		Ref<T> a = std::make_shared<T>();
-		a->name = name;
-		a->uuid = uuid;
-		assets[a->uuid] = a;
-		if (a->type == ObjectType::SceneAsset && !initialScene)
+
+
+
+		static Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
 		{
-			initialScene = a->uuid;
+			switch (type)
+			{
+			case ObjectType::Node:
+				return CloneObject<Node>(rhs);
+              
+			case ObjectType::MeshNode:
+				return CloneObject<MeshNode>(rhs);
+			case ObjectType::LightNode:
+				return CloneObject<LightNode>(rhs);
+				
+			case ObjectType::CameraNode:
+				return CloneObject<CameraNode>(rhs);
+			
+			default:
+				DEBUG_ASSERT(false, "Invalid object type {}.", type) return nullptr;
+			}
 		}
-		return a;
-	}
 
-	Ref<Object> CreateObject(ObjectType type, const std::string &name, UUID uuid = 0)
-	{
-		switch (type)
-		{
-		case ObjectType::TextureAsset:
-			return CreateAsset<TextureAsset>(name, uuid);
-		case ObjectType::MaterialAsset:
-			return CreateAsset<MaterialAsset>(name, uuid);
-		case ObjectType::MeshAsset:
-			return CreateAsset<MeshAsset>(name, uuid);
-		case ObjectType::SceneAsset:
-			return CreateAsset<SceneAsset>(name, uuid);
-		case ObjectType::Node:
-			return CreateObject<Node>(name, uuid);
-		case ObjectType::MeshNode:
-			return CreateObject<MeshNode>(name, uuid);
-		case ObjectType::LightNode:
-			return CreateObject<LightNode>(name, uuid);
-		case ObjectType::CameraNode:
-			return CreateObject<CameraNode>(name, uuid);
-		default:
-			DEBUG_ASSERT(false, "Invalid object type {}.", type) return nullptr;
-		}
-	}
 
-	template <typename T>
-	Ref<T> CloneAsset(const Ref<Object> &rhs)
-	{
-		Ref<T> asset = CreateAsset<T>(rhs->name, 0);
-		*asset = *std::dynamic_pointer_cast<T>(rhs);
-		return asset;
-	}
+		bool HasLoadRequest() const;
+		void LoadRequestedProject();
+		void RequestLoadProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
 
-	template <typename T>
-	static Ref<T> CloneObject(const Ref<Object> &rhs)
-	{
-		Ref<T> object = CreateObject<T>(rhs->name, 0);
-		*object = *std::dynamic_pointer_cast<T>(rhs);
-		return object;
-	}
-
-	Ref<Object> CloneAsset(ObjectType type, const Ref<Object> &rhs)
-	{
-		switch (type)
-		{
-		case ObjectType::SceneAsset:
-			return CloneAsset<SceneAsset>(rhs);
-		default:
-			DEBUG_ASSERT(false, "Invalid asset type {}.", type) return nullptr;
-		}
-	}
-
-	static Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
-	{
-		switch (type)
-		{
-		case ObjectType::Node:
-			return CloneObject<Node>(rhs);
-		case ObjectType::MeshNode:
-			return CloneObject<MeshNode>(rhs);
-		case ObjectType::LightNode:
-			return CloneObject<LightNode>(rhs);
-		case ObjectType::CameraNode:
-			return CloneObject<CameraNode>(rhs);
-		default:
-			DEBUG_ASSERT(false, "Invalid object type {}.", type) return nullptr;
-		}
-	}
-
-	bool HasLoadRequest() const;
-	void LoadRequestedProject();
-	void RequestLoadProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
-*/
         std::string GetProjectName();
         std::filesystem::path GetCurrentProjectPath();
         std::filesystem::path GetCurrentBinPath();
 
     private:
-        struct AssetManagerImpl *impl;
+        //struct AssetManagerImpl *impl;
         //std::unordered_map<UUID, Ref<Asset>> assets;
-        static UUID NewUUID();
+        //static UUID NewUUID();
         //UUID initialScene = 0;
     };
 
     struct SceneAsset : Asset
     {
-        //std::vector<Ref<Node>> nodes;
+        std::vector<Ref<Node>> nodes;
         Vec3 ambientLightColor = Vec3(1);
         float ambientLight = 0.01f;
         int aoSamples = 4;
@@ -309,21 +330,154 @@ namespace AssetManager
         bool taaEnabled = true;
         bool taaReconstruct = true;
 
-        /*
-	template <typename T>
-	Ref<T> Add()
-	{
-		Ref<T> node = std::make_shared<T>();
-		nodes.push_back(node);
-		return node;
-	}
+		template <typename T>
+		Ref<T> Add()
+		{
+			Ref<T> node = std::make_shared<T>();
+			nodes.push_back(node);
+			return node;
+		}
 
-	void Add(const Ref<Node> &node)
-	{
-		nodes.push_back(node);
-	}
+		void Add(const Ref<Node> &node)
+		{
+			nodes.push_back(node);
+		}
 
-	void DeleteRecursive(const Ref<Node> &node);
-	*/
+		void DeleteRecursive(const Ref<Node> &node);
+
+		template <typename T>
+        Ref<T> Get(UUID id)
+        {
+            // todo: search recursively
+            for (auto &node : nodes)
+            {
+                if (node->uuid == id)
+                {
+                    return std::dynamic_pointer_cast<T>(node);
+                }
+            }
+            return {};
+        }
+
+        template <typename T>
+        void GetAll(ObjectType type, std::vector<Ref<T>> &all)
+        {
+            for (auto &node : nodes)
+            {
+                if (node->type == type)
+                {
+                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
+                }
+                node->GetAll(type, all);
+            }
+        }
+
+        template <typename T>
+        std::vector<Ref<T>> GetAll(ObjectType type)
+        {
+            std::vector<Ref<T>> all;
+            for (auto &node : nodes)
+            {
+                if (node->type == type)
+                {
+                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
+                }
+                node->GetAll(type, all);
+            }
+            return all;
+        }
+
+        void UpdateParents()
+        {
+            for (auto &node : nodes)
+            {
+                node->parent = {};
+                Node::UpdateChildrenParent(node);
+            }
+        }
+
+        SceneAsset();
+        virtual void Serialize(Serializer &s);
+
     };
+
+	struct Node : Object
+    {
+        Ref<Node> parent;
+        std::vector<Ref<Node>> children;
+        Vec3 position = Vec3(0.0f);
+        Vec3 rotation = Vec3(0.0f);
+        Vec3 scale    = Vec3(1.0f);
+
+        Node();
+        virtual void Serialize(Serializer &s);
+
+        template <typename T>
+        void GetAll(ObjectType type, std::vector<Ref<T>> &all)
+        {
+            for (auto &node : children)
+            {
+                if (node->type == type)
+                {
+                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
+                }
+                node->GetAll(type, all);
+            }
+        }
+
+        template <typename T>
+        std::vector<Ref<T>> GetAll(ObjectType type)
+        {
+            std::vector<Ref<T>> all;
+            for (auto &node : children)
+            {
+                if (node->type == type)
+                {
+                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
+                }
+                node->GetAll(type, all);
+            }
+            return all;
+        }
+
+		/*
+        static void SetParent(const Ref<Node> &child, const Ref<Node> &parent)
+        {
+            if (child->parent)
+            {
+                Ref<Node> oldParent = child->parent;
+                auto it = std::find_if(oldParent->children.begin(), oldParent->children.end(), [&](auto &n) {
+                    return child->uuid == n->uuid;
+                });
+                DEBUG_ASSERT(it != oldParent->children.end(), "Child not found in children vector");
+                oldParent->children.erase(it);
+            }
+            child->parent = parent;
+            parent->children.push_back(child);
+        }
+
+
+        static void UpdateChildrenParent(Ref<Node> &node)
+        {
+            for (auto &child : node->children)
+            {
+                child->parent = node;
+                UpdateChildrenParent(child);
+            }
+        }
+
+        static Ref<Node> Clone(Ref<Node> &node);
+
+        Mat4 GetLocalTransform();
+        Mat4 GetWorldTransform();
+        Vec3 GetWorldPosition();
+        Mat4 GetParentTransform();
+        Vec3 GetWorldFront();
+        static Mat4 ComposeTransform(const Vec3 &pos,
+                                     const Vec3 &rot,
+                                     const Vec3 &scl,
+                                     Mat4 parent = Mat4(1));
+    };
+    */
+
 } // namespace AssetManager
