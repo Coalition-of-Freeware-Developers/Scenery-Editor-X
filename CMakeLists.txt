@@ -143,7 +143,6 @@ FIND_PACKAGE(Stb                           REQUIRED)
 FIND_PACKAGE(CURL                   CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen                          QUIET)
 FIND_PACKAGE(VulkanMemoryAllocator  CONFIG REQUIRED)
-FIND_PACKAGE(nlohmann_json 			CONFIG REQUIRED)
 
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 

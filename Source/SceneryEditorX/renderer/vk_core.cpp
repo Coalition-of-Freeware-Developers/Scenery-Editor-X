@@ -200,8 +200,8 @@ namespace SceneryEditorX
         }
 		*/
 
-        //imageAvailableSemaphores.clear(); // These were the cause of swapchain resizing crashing at runtime
-        //renderFinishedSemaphores.clear(); // These were the cause of swapchain resizing crashing at runtime
+        imageAvailableSemaphores.clear();
+        renderFinishedSemaphores.clear();
         swapChainImageViews.clear();
         swapChainImages.clear();
         swapChain = VK_NULL_HANDLE;
@@ -1019,12 +1019,6 @@ namespace SceneryEditorX
 
     }
 
-	/*
-	void GraphicsEngine::bindViewport(const Viewport &viewport, const CommandList &cmdList)
-    {
-    }
-	*/
-
     void GraphicsEngine::createGraphicsPipeline()
     {
         // Get editor configuration
@@ -1369,7 +1363,7 @@ namespace SceneryEditorX
             return;
         }
 
-        updateUniformBuffer(currentFrame, ubo);
+        updateUniformBuffer(currentFrame);
 
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
@@ -1444,11 +1438,22 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-    void GraphicsEngine::updateUniformBuffer(uint32_t currentImage, const UniformBufferObject &inUbo)
+	void GraphicsEngine::updateUniformBuffer(uint32_t currentImage)
     {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        UniformBufferObject ubo{};
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view =  glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj =  glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+        ubo.proj[1][1] *= -1;
+
         void *data;
-        vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject), 0, &data);
-        memcpy(data, &inUbo, sizeof(UniformBufferObject));
+        vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+        memcpy(data, &ubo, sizeof(ubo));
         vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
     }
 

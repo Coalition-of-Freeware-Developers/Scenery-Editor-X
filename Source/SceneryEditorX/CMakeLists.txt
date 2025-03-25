@@ -11,7 +11,6 @@ FILE(GLOB MAC_PLATFORM platform/mac/*.cpp platform/mac/*.h platform/mac/*.hpp)
 FILE(GLOB LINUX_PLATFORM platform/linux/*.cpp platform/linux/*.h platform/linux/*.hpp)
 FILE(GLOB WIN_PLATFORM platform/windows/*.cpp platform/windows/*.h platform/windows/*.hpp)
 FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
-FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
 
 SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
 SET (PROJECT_CONFIG_FILES
@@ -42,6 +41,9 @@ ADD_EXECUTABLE(SceneryEditorX
     core/version.h
     core/window.cpp
     core/window.h
+    # --------------------------------
+    scene/asset_manager.cpp
+    scene/asset_manager.h
     # --------------------------------
     platform/system_detection.h
     platform/platform.h
@@ -112,8 +114,12 @@ SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )
 SOURCE_GROUP("Editor/Scene" FILES
-		${SCENE_FILES}
+    scene/asset_manager.cpp
+    scene/asset_manager.h
 )
+#SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
+#    ${SCENE_FILES}
+#)
 
 #SOURCE_GROUP("Core/Settings" FILES
 #    options/Settings.cpp
@@ -171,13 +177,13 @@ SOURCE_GROUP("Launcher/Registry/Keys" FILES
 # SHADERS
 # --------------------------------
 
-IF(WIN32)
+if(WIN32)
     cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
-ELSE()
+else()
     cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/bin/glslangValidator")
-ENDIF()
-MESSAGE("GLSL VALIDATOR ${GLSL_VALIDATOR}")
-ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
+endif()
+message("GLSL VALIDATOR ${GLSL_VALIDATOR}")
+add_compile_definitions(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
 
 # --------------------------------
 
@@ -202,7 +208,6 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         glm::glm-header-only
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator
-		nlohmann_json::nlohmann_json
         CURL::libcurl
         Vulkan::Vulkan
         glfw

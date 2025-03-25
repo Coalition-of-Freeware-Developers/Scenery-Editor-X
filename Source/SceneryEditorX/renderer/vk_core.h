@@ -49,9 +49,9 @@ struct QueueFamilyIndices
 
     struct Vertex
     {
-        Vec3 pos;
-        Vec3 color;
-        Vec2 texCoord;
+        glm::vec2 pos;
+        glm::vec3 color;
+        glm::vec2 texCoord;
 
         static VkVertexInputBindingDescription getBindingDescription()
         {
@@ -88,15 +88,15 @@ struct QueueFamilyIndices
 
     struct UniformBufferObject
     {
-        alignas(16) Mat4 model;
-        alignas(16) Mat4 view;
-        alignas(16) Mat4 proj;
+        alignas(16) glm::mat4 model;
+        alignas(16) glm::mat4 view;
+        alignas(16) glm::mat4 proj;
     };
 
-    const std::vector<Vertex> vertices = {{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-                                          {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-                                          {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-                                          {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
+    const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
 
     const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 	
@@ -112,7 +112,7 @@ struct QueueFamilyIndices
         void DestroySwapChain();
         void recreateSwapChain();
         void renderFrame();
-        void updateUniformBuffer(uint32_t currentImage, const UniformBufferObject &ubo);
+        void updateUniformBuffer(uint32_t currentImage);
         void createTextureImage();
         void createTextureImageView();
         void createTextureSampler();
@@ -125,7 +125,6 @@ struct QueueFamilyIndices
 	    VkDevice GetDevice() const { return device; }
         VkImageView createImageView(VkImage image, VkFormat format);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-		uint32_t getCurrentImageIndex() const { return currentFrame; }
 
 		// -------------------------------------------------------
 
@@ -207,7 +206,6 @@ struct QueueFamilyIndices
         std::vector<VkQueueFamilyProperties> availableFamilies;
 
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-        UniformBufferObject ubo = {};
 
 		// -------------------------------------------------------
 
