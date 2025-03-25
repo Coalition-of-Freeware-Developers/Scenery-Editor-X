@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_core.cpp
@@ -31,12 +31,12 @@ namespace SceneryEditorX
 	    // Build a rich debug message that includes severity and type info
 	    std::string severityStr = VK_DEBUG_SEVERITY_STRING(messageSeverity);
 	    std::string typeStr = VK_DEBUG_TYPE(messageType);
-	
+
 	    std::string formattedMessage = "[" + severityStr + "][" + typeStr + "] " + pCallbackData->pMessage;
-	
+
 	    // Log through our custom Vulkan logger
 	    Log::LogVulkanDebug(formattedMessage);
-	
+
 	    // Also log any objects that were involved in the message
 	    if (pCallbackData->objectCount > 0)
 	    {
@@ -45,16 +45,16 @@ namespace SceneryEditorX
 	            const auto &obj = pCallbackData->pObjects[i];
 	            std::string objInfo = "   Object[" + std::to_string(i) + "] - Type: ";
 	            objInfo += std::to_string(obj.objectType) + ", Handle: " + std::to_string((uint64_t)obj.objectHandle);
-	
+
 	            if (obj.pObjectName)
 	            {
 	                objInfo += ", Name: \"" + std::string(obj.pObjectName) + "\"";
 	            }
-	
+
 	            Log::LogVulkanDebug(objInfo);
 	        }
 	    }
-	
+
 	    return VK_FALSE; // Don't abort call
 	}
 
@@ -113,7 +113,7 @@ namespace SceneryEditorX
 		EDITOR_LOG_INFO("Graphics engine initialization complete");
     }
 
-    void GraphicsEngine::cleanup() 
+    void GraphicsEngine::cleanup()
     {
         DestroySwapChain();
 
@@ -341,7 +341,7 @@ namespace SceneryEditorX
 
     /**
 	 * @brief - Check if a device is suitable for rendering.
-	 * 
+	 *
 	 * @param device - The Vulkan physical device.
 	 * @return - bool True if the device is suitable, false otherwise.
 	 */
@@ -370,16 +370,16 @@ namespace SceneryEditorX
 	{
 	    // Initialize the physical device manager
 	    physDeviceManager.Init(instance, surface);
-	    
+
 	    // Select a device that supports graphics operations and presentation
 	    uint32_t queueFamilyIndex = physDeviceManager.SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
-	    
+
 	    // Get the selected device data
 	    const GPUDevice& selectedDevice = physDeviceManager.Selected();
-	    
+
 	    // Store the physical device handle
 	    physicalDevice = selectedDevice.physicalDevice;
-	    
+
 	    // The following properties are now available in selectedDevice:
 	    // - selectedDevice.deviceInfo       (VkPhysicalDeviceProperties)
 	    // - selectedDevice.GFXFeatures      (VkPhysicalDeviceFeatures)
@@ -389,15 +389,15 @@ namespace SceneryEditorX
 	    // - selectedDevice.presentModes     (std::vector<VkPresentModeKHR>)
 	    // - selectedDevice.surfaceFormats   (std::vector<VkSurfaceFormatKHR>)
 	    // - selectedDevice.surfaceCapabilities (VkSurfaceCapabilitiesKHR)
-	    
+
 	    EDITOR_LOG_INFO("Selected physical device: {}", ToString(selectedDevice.deviceInfo.deviceName));
-	    
+
 	    // Now we can use the data for other operations
 	    // For example, instead of directly calling these functions:
 	    // vkGetPhysicalDeviceFeatures(device, &physicalFeatures);
 	    // vkGetPhysicalDeviceProperties(device, &physicalProperties);
 	    // vkGetPhysicalDeviceMemoryProperties(device, &memoryProperties);
-	    
+
 	    // We can use the already collected data:
 	    physicalFeatures = selectedDevice.GFXFeatures;
 	    physicalProperties = selectedDevice.deviceInfo;
@@ -1017,6 +1017,12 @@ namespace SceneryEditorX
 
     }
 
+	/*
+	void GraphicsEngine::bindViewport(const Viewport &viewport, const CommandList &cmdList)
+    {
+    }
+	*/
+
     void GraphicsEngine::createGraphicsPipeline()
     {
         // Get editor configuration
@@ -1361,7 +1367,7 @@ namespace SceneryEditorX
             return;
         }
 
-        updateUniformBuffer(currentFrame);
+        updateUniformBuffer(currentFrame, ubo);
 
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
@@ -1436,22 +1442,11 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	void GraphicsEngine::updateUniformBuffer(uint32_t currentImage)
+    void GraphicsEngine::updateUniformBuffer(uint32_t currentImage, const UniformBufferObject &inUbo)
     {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-        UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view =  glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj =  glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
-
         void *data;
-        vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-        memcpy(data, &ubo, sizeof(ubo));
+        vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(UniformBufferObject), 0, &data);
+        memcpy(data, &inUbo, sizeof(UniformBufferObject));
         vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
     }
 
