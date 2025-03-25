@@ -61,7 +61,6 @@ private:
     uint32_t frameCount = 0;
 	//AssetManager assetManager;
 
-	Camera::PerspectiveCamera mainCamera{"MainCamera"};
     float lastFrameTime = 0.0f;
     float currentFrameTime = 0.0f;
 

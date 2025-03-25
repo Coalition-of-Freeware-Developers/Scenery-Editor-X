@@ -18,6 +18,7 @@
 
 namespace Camera
 {
+    /*
 	OrthographicCamera::OrthographicCamera(const std::string &name) : Camera{name}
 	{
 	}
@@ -98,5 +99,5 @@ namespace Camera
 	    // Note: Using reversed depth-buffer for increased precision, so Znear and Zfar are flipped
 	    return glm::ortho(get_left(), get_right(), get_bottom(), get_top(), get_far_plane(), get_near_plane());
 	}
-	
+	*/
 } // namespace Camera

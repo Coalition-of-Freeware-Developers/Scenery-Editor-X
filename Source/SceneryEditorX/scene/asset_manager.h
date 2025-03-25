@@ -20,8 +20,7 @@
 namespace AssetManager
 {
 
-/*
-
+    /*
     struct Serializer;
     struct AssetManager;
 

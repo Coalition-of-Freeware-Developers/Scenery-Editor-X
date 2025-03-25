@@ -14,49 +14,60 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <SceneryEditorX/core/node.h>
+#include <SceneryEditorX/scene/component.h>
 
 // -------------------------------------------------------
 
-/*
-struct TransformComponent
+namespace Scene
 {
-    glm::vec3 translation{};
-    glm::vec3 rotation{};
-    glm::vec3 scale{1.f, 1.f, 1.f};
+    //class Node;
+	//
+	//// -------------------------------------------------------
+	//
+    //class Transform : public Component
+    //{
+    //public:
+    //    Transform(Node &node);
+    //    virtual ~Transform() = default;
+	//
+    //    Node &get_node();
+	//
+    //    virtual std::type_index get_type() override;
+	//
+    //    void set_translation(const glm::vec3 &translation);
+    //    void set_rotation(const glm::quat &rotation);
+    //    void set_scale(const glm::vec3 &scale);
+	//
+    //    const glm::vec3 &get_translation() const;
+    //    const glm::quat &get_rotation() const;
+    //    const glm::vec3 &get_scale() const;
+	//
+    //    void set_matrix(const glm::mat4 &matrix);
+	//
+    //    glm::mat4 get_matrix() const;
+    //    glm::mat4 get_world_matrix();
+	//
+    //    /**
+	//	 * @brief Marks the world transform invalid if any of
+	//	 *        the local transform are changed or the parent
+	//	 *        world transform has changed.
+	//	 */
+    //    void invalidate_world_matrix();
+	//
+    //private:
+    //    Node &node;
+	//
+    //    glm::vec3 translation   = glm::vec3(0.0, 0.0, 0.0);
+    //    glm::quat rotation		= glm::quat(1.0, 0.0, 0.0, 0.0);
+    //    glm::vec3 scale			= glm::vec3(1.0, 1.0, 1.0);
+    //    glm::mat4 world_matrix  = glm::mat4(1.0);
+	//
+    //    bool update_world_matrix = false;
+	//
+    //    void update_world_transform();
+    //};
 
-    // Matrix corrsponds to Translate * Ry * Rx * Rz * Scale
-    // Rotation correspond to Tait-bryan angles of Y(1), X(2), Z(3)
-    // https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
+} // namespace Scene
 
-    glm::mat4 mat4()
-    {
-        const float c3 = glm::cos(rotation.z);
-        const float s3 = glm::sin(rotation.z);
-        const float c2 = glm::cos(rotation.x);
-        const float s2 = glm::sin(rotation.x);
-        const float c1 = glm::cos(rotation.y);
-        const float s1 = glm::sin(rotation.y);
-        return glm::mat4
-		{
-            scale.x * (c1 * c3 + s1 * s2 * s3),
-            scale.x * (c2 * s3),
-            scale.x * (c1 * s2 * s3 - c3 * s1),
-            0.f,
-        },
-        {
-            scale.y * (c3 * s1 * s2 - c1 * s3),
-            scale.y * (c2 * c3),
-            scale.y * (c1 * s3 + c3 * s1 * s2),
-            0.f,
-        },
-        {
-            scale.z * (c2 * s1),
-            scale.z * (-s2),
-            scale.z * (c1 * c2),
-            0.f,
-        },
-        {translation.x, traslation.y, translation.z, 1.0f};
-    };
-
-};
-*/
+// -------------------------------------------------------

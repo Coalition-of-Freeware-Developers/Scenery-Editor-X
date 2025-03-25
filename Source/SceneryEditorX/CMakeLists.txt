@@ -25,6 +25,7 @@ FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQ
 SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
 
 # --------------------------------
+
 ADD_EXECUTABLE(SceneryEditorX
     ${ICON_FILES}
     ${FONT_FILES}
@@ -42,6 +43,10 @@ ADD_EXECUTABLE(SceneryEditorX
     core/version.h
     core/window.cpp
     core/window.h
+	core/node.cpp
+	core/node.h
+	core/keycodes.h
+	core/keycodes.cpp
     # --------------------------------
     platform/system_detection.h
     platform/platform.h
@@ -83,6 +88,10 @@ SOURCE_GROUP("Editor/Core" FILES
     core/version.h
     core/window.cpp
     core/window.h
+	core/node.cpp
+	core/node.h
+	core/keycodes.h
+	core/keycodes.cpp
 )
 
 SOURCE_GROUP("Core/Platform" FILES
@@ -112,7 +121,7 @@ SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )
 SOURCE_GROUP("Editor/Scene" FILES
-		${SCENE_FILES}
+	${SCENE_FILES}
 )
 
 #SOURCE_GROUP("Core/Settings" FILES

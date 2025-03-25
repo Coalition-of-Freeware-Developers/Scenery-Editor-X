@@ -19,6 +19,7 @@
 
 namespace Camera
 {
+    /*
 	class OrthographicCamera : public Camera
 	{
 	public:
@@ -62,5 +63,5 @@ namespace Camera
 	    float near_plane{0.0f};
 	    float far_plane{1.0f};
 	};
-
+	*/
 } // namespace Camera

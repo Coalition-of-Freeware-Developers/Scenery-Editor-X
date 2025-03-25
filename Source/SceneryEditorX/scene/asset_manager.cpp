@@ -18,7 +18,6 @@
 
 namespace AssetManager
 {
-
 	/*
     Object::~Object()
     {

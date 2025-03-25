@@ -12,85 +12,47 @@
 */
 
 #pragma once
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/scene/serializer.h>
+#include <SceneryEditorX/scene/component.h>
 
 // -------------------------------------------------------
 
-enum CameraType
+namespace Scene::Camera
 {
-    LookAt,
-    FirstPerson
-};
-
-namespace Camera
-{
-    class Camera
+    // -------------------------------------------------------
+    class Camera : public Component
     {
     public:
-        void update(float deltaTime);
-        Camera(const std::string &name = "");
-        // Update camera passing separate axis data (gamepad)
-        // Returns true if view or position has been changed
-        bool update_gamepad(glm::vec2 axis_left, glm::vec2 axis_right, float delta_time);
+        void setOrthographicProjection(float left, float right, float top, float bottom, float near, float far);
+        void setPerspectiveProjection(float fovy, float aspect, float near, float far);
 
-		virtual glm::mat4 get_projection() = 0; 
+        void setViewDirection(glm::vec3 position, glm::vec3 direction, glm::vec3 up = glm::vec3{0.f, -1.f, 0.f});
+        void setViewTarget(glm::vec3 position, glm::vec3 target, glm::vec3 up = glm::vec3{0.f, -1.f, 0.f});
+        void setViewYXZ(glm::vec3 position, glm::vec3 rotation);
 
-        CameraType type = CameraType::LookAt;
-
-        glm::vec3 rotation = glm::vec3();
-        glm::vec3 position = glm::vec3();
-
-        float rotation_speed = 1.0f;
-        float translation_speed = 1.0f;
-
-        bool updated = false;
-
-        struct
+        const glm::mat4 &getProjection() const
         {
-            glm::mat4 perspective;
-            glm::mat4 view;
-        } matrices;
-
-        struct
+            return projectionMatrix;
+        }
+        const glm::mat4 &getView() const
         {
-            bool left = false;
-            bool right = false;
-            bool up = false;
-            bool down = false;
-        } keys;
-
-        bool moving();
-
-        float get_near_clip();
-
-        float get_far_clip();
-
-        void set_perspective(float fov, float aspect, float znear, float zfar);
-
-        void update_aspect_ratio(float aspect);
-
-        void set_position(const glm::vec3 &position);
-
-        void set_rotation(const glm::vec3 &rotation);
-
-        void rotate(const glm::vec3 &delta);
-
-        void set_translation(const glm::vec3 &translation);
-
-        void translate(const glm::vec3 &delta);
+            return viewMatrix;
+        }
+        const glm::mat4 &getInverseView() const
+        {
+            return inverseViewMatrix;
+        }
+        const glm::vec3 getPosition() const
+        {
+            return glm::vec3(inverseViewMatrix[3]);
+        }
 
     private:
-        float fov;
-        float znear, zfar;
-        std::string name;
-        void update_view_matrix();
+        glm::mat4 projectionMatrix{1.f};
+        glm::mat4 viewMatrix{1.f};
+        glm::mat4 inverseViewMatrix{1.f};
     };
 
-} // namespace Camera
+} // namespace Scene::Camera
 
 /*
 struct CameraController
@@ -159,6 +121,5 @@ namespace AssetManager
 	};
 } // namespace AssetManager
 */
-
 
 // -------------------------------------------------------
