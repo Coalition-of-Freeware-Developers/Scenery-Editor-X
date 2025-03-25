@@ -200,8 +200,6 @@ namespace SceneryEditorX
         }
 		*/
 
-        imageAvailableSemaphores.clear();
-        renderFinishedSemaphores.clear();
         swapChainImageViews.clear();
         swapChainImages.clear();
         swapChain = VK_NULL_HANDLE;
