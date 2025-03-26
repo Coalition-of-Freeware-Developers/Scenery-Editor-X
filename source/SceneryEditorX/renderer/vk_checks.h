@@ -21,7 +21,7 @@
 class VulkanChecks
 {
 public:
-    void initChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers);
+    void InitChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers);
 
     bool IsExtensionSupported(std::vector<VkExtensionProperties> const &availExtensions, char const *const extension);
 

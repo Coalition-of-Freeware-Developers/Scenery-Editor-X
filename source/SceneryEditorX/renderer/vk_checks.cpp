@@ -16,7 +16,7 @@
 
 // -------------------------------------------------------
 
-void VulkanChecks::initChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers)
+void VulkanChecks::InitChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers)
 {
     CheckExtensions(extensions);
     CheckLayers(layers);
