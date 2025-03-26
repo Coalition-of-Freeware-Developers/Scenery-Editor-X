@@ -16,3 +16,6 @@
 [submodule "dependency/vcpkg"]
 	path = dependency/vcpkg
 	url = git@github.com:microsoft/vcpkg.git
+[submodule "dependency/IconFontCppHeaders"]
+	path = dependency/IconFontCppHeaders
+	url = git@github.com:juliettef/IconFontCppHeaders.git
