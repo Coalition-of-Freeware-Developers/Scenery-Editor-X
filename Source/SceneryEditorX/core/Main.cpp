@@ -16,6 +16,7 @@
 #include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/ui/ui.h>
 
 /*
 * -------------------------------------------------------
@@ -50,6 +51,8 @@ public:
 private:
     GLFWwindow* window;
     SceneryEditorX::GraphicsEngine vkRenderer;
+    UI::GUI imgui;
+    ImDrawData *imguiDrawData = nullptr;
     uint32_t currentFrame = 0;
 	glm::ivec2 viewportSize = {64, 48};
 	glm::ivec2 newViewportSize = viewportSize;
@@ -72,10 +75,12 @@ private:
 		//loader.run();
 		//SceneryEditorX::ReadCache();
 		//assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+        setupImgui();
 
 		//scene = assetManager.GetInitialScene();
 		//camera = assetManager.GetMainCamera(scene);
         Window::Create();
+
 	}
 
 	void create()
@@ -84,11 +89,10 @@ private:
 		//g_Window->Create();
 
 		VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
-		vulkanChecks.InitChecks({}, {});     // Initialize the Vulkan checks
+		vulkanChecks.initChecks({}, {});     // Initialize the Vulkan checks
 
 		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         vkRenderer.initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
-
 		//SceneryEditorX::CreateEditor();
 
 		//vkRenderer = CreateRef<GraphicsEngine>(*Window::GetGLFWwindow());
@@ -117,6 +121,11 @@ private:
 
 	void setupImgui()
 	{
+        imgui.init();
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+
+
 
 	}
 

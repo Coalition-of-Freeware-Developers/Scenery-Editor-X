@@ -11,6 +11,7 @@ FILE(GLOB MAC_PLATFORM platform/mac/*.cpp platform/mac/*.h platform/mac/*.hpp)
 FILE(GLOB LINUX_PLATFORM platform/linux/*.cpp platform/linux/*.h platform/linux/*.hpp)
 FILE(GLOB WIN_PLATFORM platform/windows/*.cpp platform/windows/*.h platform/windows/*.hpp)
 FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
+FILE(GLOB UI_FILES ui/*.cpp ui/*.h ui/*.hpp)
 
 SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
 SET (PROJECT_CONFIG_FILES
@@ -32,6 +33,7 @@ ADD_EXECUTABLE(SceneryEditorX
     ${MAC_PLATFORM}
     ${LINUX_PLATFORM}
     ${WIN_PLATFORM}
+	${UI_FILES}
     ${REGISTRY_KEYS}
 	${PROJECT_CONFIG_FILES}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
@@ -41,6 +43,8 @@ ADD_EXECUTABLE(SceneryEditorX
     core/version.h
     core/window.cpp
     core/window.h
+	core/editor.cpp
+	core/editor.h
     # --------------------------------
     scene/asset_manager.cpp
     scene/asset_manager.h
@@ -85,31 +89,27 @@ SOURCE_GROUP("Editor/Core" FILES
     core/version.h
     core/window.cpp
     core/window.h
+	core/editor.cpp
+	core/editor.h
 )
-
 SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
     platform/platform.h
     core/version.h
 )
-
 SOURCE_GROUP("Core/Platform/Windows" FILES
     ${WIN_PLATFORM}
 )
-
 SOURCE_GROUP("Core/Platform/Linux" FILES
     ${LINUX_PLATFORM}
 )
-
 SOURCE_GROUP("Core/Platform/Mac" FILES
     ${MAC_PLATFORM}
 )
-
 SOURCE_GROUP("Core/Logger" FILES
     logging/logging.cpp
     logging/logging.hpp
 )
-
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )
@@ -117,14 +117,15 @@ SOURCE_GROUP("Editor/Scene" FILES
     scene/asset_manager.cpp
     scene/asset_manager.h
 )
+SOURCE_GROUP("Editor/UI" FILES
+	${UI_FILES}
+)
 #SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
 #    ${SCENE_FILES}
 #)
-
 #SOURCE_GROUP("Core/Settings" FILES
 #    options/Settings.cpp
 #)
-
 #SOURCE_GROUP("Core/UI" FILES
 #    UI/About.cpp
 #    UI/ContentBrowser.cpp
