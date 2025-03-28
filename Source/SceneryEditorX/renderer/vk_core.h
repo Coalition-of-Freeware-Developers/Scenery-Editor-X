@@ -92,6 +92,7 @@ namespace SceneryEditorX
 	        return pos == other.pos && color == other.color && texCoord == other.texCoord;
 	    }
 	};
+
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------
@@ -106,6 +107,7 @@ namespace std
 	        return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
 	    }
 	};
+
 } // namespace std
 
 // -------------------------------------------------------
@@ -136,14 +138,15 @@ namespace SceneryEditorX
         void createTextureImageView();
         void createTextureSampler();
         void loadModel();
-        void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+        void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
         void recreateSurfaceFormats();
+        void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
         LOCAL void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
         VkCommandBuffer beginSingleTimeCommands();
 	    VkDevice GetDevice() const { return device; }
-        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		// -------------------------------------------------------
@@ -230,6 +233,7 @@ namespace SceneryEditorX
 		uint32_t currentFrame = 0;
 		uint32_t additionalImages = 0;
         uint32_t framesInFlight = 3;
+        uint32_t mipLevels;
 
 		VkPipeline graphicsPipeline;
 		VkRenderPass renderPass;
@@ -271,7 +275,7 @@ namespace SceneryEditorX
 	    void pickPhysicalDevice();
 		void createLogicalDevice();
         void createImageViews();
-        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
+        void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
         void createRenderPass();
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);

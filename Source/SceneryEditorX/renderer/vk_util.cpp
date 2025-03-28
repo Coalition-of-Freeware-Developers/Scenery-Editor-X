@@ -618,6 +618,11 @@ const char* VK_FORMAT_STRING(VkFormat format)
 	}
 }
 
+/**
+ * @brief
+ * @param path 
+ * @return 
+ */
 static std::vector<char> CompileShader(const std::filesystem::path &path)
 {
     char compile_string[1024];
@@ -651,37 +656,3 @@ static std::vector<char> CompileShader(const std::filesystem::path &path)
     return buffer;
 }
 
-/**
- * @brief Get the number of bytes per pixel for a given format.
- *
- * This function returns the number of bytes per pixel for a given Vulkan format.
- *
- * @param format The Vulkan format.
- * @return uint32_t The number of bytes per pixel.
- */
-
-/*
-VkSurfaceFormatKHR setSurfaceFormat(VkPhysicalDevice gpu,
-									VkSurfaceKHR surface,
-									std::vector<VkFormat> const& preferredFormats)
-{
-	uint32_t surfaceFormatNum;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(gpu,surface,&surfaceFormatNum,nullptr);
-	assert(0 < surfaceFormatNum);
-	std::vector<VkSurfaceFormatKHR> supportedSurfaceFormats(surfaceFormatNum);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(gpu,surface,&surfaceFormatNum,supportedSurfaceFormats.data());
-
-	const auto it =
-		std::ranges::find_if(supportedSurfaceFormats,[&preferredFormats](VkSurfaceFormatKHR surfaceFormat)
-	{
-		return std::ranges::any_of(preferredFormats,
-								   [&surfaceFormat](VkFormat format)
-		{
-			return format == surfaceFormat.format;
-		});
-	});
-
-// We use the first supported format as a fallback in case none of the preferred formats is available
-	return it != supportedSurfaceFormats.end() ? *it : supportedSurfaceFormats[0];
-}
-*/
