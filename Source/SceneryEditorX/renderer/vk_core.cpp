@@ -11,13 +11,16 @@
 * -------------------------------------------------------
 */
 
+#define TINYOBJLOADER_IMPLEMENTATION
 #include <optional>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_util.h>
 #include <stb_image.h>
+#include <tiny_obj_loader.h>
 #include <vector>
+#include <unordered_map>
 
 // -------------------------------------------------------
 
@@ -103,6 +106,7 @@ namespace SceneryEditorX
         createTextureImage();
         createTextureImageView();
         createTextureSampler();
+        loadModel();
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
@@ -165,6 +169,10 @@ namespace SceneryEditorX
 
 	void GraphicsEngine::cleanupSwapChain()
     {
+        vkDestroyImageView(device, depthImageView, allocator);
+        vkDestroyImage(device, depthImage, allocator);
+        vkFreeMemory(device, depthImageMemory, allocator);
+
         for (auto framebuffer : swapChainFramebuffers)
         {
             vkDestroyFramebuffer(device, framebuffer, allocator);
@@ -226,12 +234,10 @@ namespace SceneryEditorX
         }
     }
 
-    void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance,
-                                                       VkDebugUtilsMessengerEXT debugMessenger,
+    void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
                                                        const VkAllocationCallbacks *pAllocator)
     {
-        auto func =
-            (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
         if (func != nullptr)
         {
             func(instance, debugMessenger, pAllocator);
@@ -657,21 +663,6 @@ namespace SceneryEditorX
         endSingleTimeCommands(commandBuffer);
     }
 
-    void GraphicsEngine::endSingleTimeCommands(VkCommandBuffer commandBuffer)
-    {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
-
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
-    }
-
     void GraphicsEngine::framebufferResizeCallback(GLFWwindow *window, int width, int height)
     {
         // Get the window instance that was set with glfwSetWindowUserPointer
@@ -932,7 +923,9 @@ namespace SceneryEditorX
 
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(framesInFlight);
+
         // -------------------------------------------------------
+
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(framesInFlight);
 
@@ -1391,6 +1384,8 @@ namespace SceneryEditorX
         framebufferResized = false;
     }
 
+	// -------------------------------------------------------
+
     void GraphicsEngine::renderFrame()
     {
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -1708,6 +1703,80 @@ namespace SceneryEditorX
         }
     }
 
+	void GraphicsEngine::loadModel()
+    {
+        // Get editor configuration
+        EditorConfig config;
+
+        // Construct the model path using the modelFolder from config
+        std::string modelPath = config.modelFolder + "/viking_room.obj";
+
+        EDITOR_LOG_INFO("Loading 3D model from: {}", modelPath);
+
+        tinyobj::attrib_t attrib;
+        std::vector<tinyobj::shape_t> shapes;
+        std::vector<tinyobj::material_t> materials;
+        std::string warn, err;
+
+        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath.c_str()))
+        {
+            EDITOR_LOG_ERROR("Failed to load model: {}", modelPath);
+            EDITOR_LOG_ERROR("Error details: {} {}", warn, err);
+            throw std::runtime_error(warn + err);
+        }
+
+    EDITOR_LOG_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
+
+        std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+        for (const auto &shape : shapes)
+        {
+            for (const auto &index : shape.mesh.indices)
+            {
+                Vertex vertex{};
+
+                vertex.pos = {attrib.vertices[3 * index.vertex_index + 0],
+                              attrib.vertices[3 * index.vertex_index + 1],
+                              attrib.vertices[3 * index.vertex_index + 2]};
+
+                // Check if the model has texture coordinates
+                if (index.texcoord_index >= 0)
+                {
+                    vertex.texCoord = {attrib.texcoords[2 * index.texcoord_index + 0],
+                                       1.0f - attrib.texcoords[2 * index.texcoord_index + 1]};
+                }
+                else
+                {
+                    vertex.texCoord = {0.0f, 0.0f};
+                    EDITOR_LOG_WARN("Model missing texture coordinates for some vertices");
+                }
+
+                // Check if the model has vertex colors
+                if (index.vertex_index < attrib.colors.size() / 3)
+                {
+                    vertex.color = {attrib.colors[3 * index.vertex_index + 0],
+                                    attrib.colors[3 * index.vertex_index + 1],
+                                    attrib.colors[3 * index.vertex_index + 2]};
+                }
+                else
+                {
+                    // Use white as default color if no vertex colors are specified
+                    vertex.color = {1.0f, 1.0f, 1.0f};
+                }
+
+                if (uniqueVertices.count(vertex) == 0)
+                {
+                    uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+                    vertices.push_back(vertex);
+                }
+
+                indices.push_back(uniqueVertices[vertex]);
+            }
+        }
+
+        EDITOR_LOG_INFO("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
+    }
+
 	// -------------------------------------------------------
 
     VkShaderModule GraphicsEngine::createShaderModule(const std::vector<char> &code)
@@ -1829,6 +1898,8 @@ namespace SceneryEditorX
         return indices;
     }
 
+	// -------------------------------------------------------
+
 	VkCommandBuffer GraphicsEngine::beginSingleTimeCommands()
     {
         VkCommandBufferAllocateInfo allocInfo{};
@@ -1849,7 +1920,42 @@ namespace SceneryEditorX
         return commandBuffer;
     }
 
+	void GraphicsEngine::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+    {
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphicsQueue);
+
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
 	// -------------------------------------------------------
+
+    uint32_t GraphicsEngine::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    {
+        // Get memory properties from the physical device
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+        // Find a memory type that satisfies both the type filter and the property requirements
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                return i;
+            }
+        }
+
+        EDITOR_LOG_ERROR("Failed to find suitable memory type!");
+        ErrMsg("Failed to find suitable memory type!");
+        return 0; // Return a default value to avoid undefined behavior
+    }
 
 	VkFormat GraphicsEngine::findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
     {
@@ -1882,26 +1988,6 @@ namespace SceneryEditorX
     }
 
 	// -------------------------------------------------------
-
-    uint32_t GraphicsEngine::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-    {
-        // Get memory properties from the physical device
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-        // Find a memory type that satisfies both the type filter and the property requirements
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
-                return i;
-            }
-        }
-
-        EDITOR_LOG_ERROR("Failed to find suitable memory type!");
-        ErrMsg("Failed to find suitable memory type!");
-        return 0; // Return a default value to avoid undefined behavior
-    }
 
     bool GraphicsEngine::isDeviceSuitable(VkPhysicalDevice device)
     {

@@ -33,7 +33,7 @@
 	if (result != VK_SUCCESS)                                                                                          \
 	{                                                                                                                  \
 		fprintf(stderr, "Error in %s:%d - %s, code %x\n", __FILE__, __LINE__, message, result);                        \
-		exit(1);                                                                                                 \
+		exit(1);                                                                                                       \
 	}
 
 /**
@@ -213,3 +213,4 @@ const char* VK_MEMORY_PROPERTY_FLAGS_STRING(VkMemoryPropertyFlags flags);
 std::vector<char> CompileShader(const std::filesystem::path &path);
 
 // -------------------------------------------------------
+

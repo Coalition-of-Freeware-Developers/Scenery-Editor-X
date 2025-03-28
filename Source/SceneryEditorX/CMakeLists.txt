@@ -190,6 +190,7 @@ add_compile_definitions(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
 TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
     PRIVATE
         ${CMAKE_SOURCE_DIR}/Source
+		${CMAKE_SOURCE_DIR}/dependency
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
