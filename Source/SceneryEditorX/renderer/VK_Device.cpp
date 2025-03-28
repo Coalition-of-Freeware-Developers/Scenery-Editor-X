@@ -132,10 +132,7 @@ namespace SceneryEditorX
 
             devices[index].surfaceFormats.resize(numSurfaceFormats);
 
-            result = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice,
-                                                          surface,
-                                                          &numSurfaceFormats,
-                                                          devices[index].surfaceFormats.data());
+            result = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &numSurfaceFormats, devices[index].surfaceFormats.data());
             VK_CHECK_RESULT(result, "Vulkan Physical Device Surface Formats");
 
             for (uint32_t format = 0; format < numSurfaceFormats; format++)

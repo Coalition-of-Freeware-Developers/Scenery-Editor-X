@@ -29,7 +29,7 @@ namespace SceneryEditorX
 	const bool enableValidationLayers = false;
 	#endif
 
-struct QueueFamilyIndices
+    struct QueueFamilyIndices
     {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
@@ -49,7 +49,7 @@ struct QueueFamilyIndices
 
     struct Vertex
     {
-        glm::vec2 pos;
+        glm::vec3 pos;
         glm::vec3 color;
         glm::vec2 texCoord;
 
@@ -63,26 +63,25 @@ struct QueueFamilyIndices
             return bindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
-        {
-            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
-            attributeDescriptions[0].binding = 0;
-            attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(Vertex, pos);
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
-            attributeDescriptions[1].binding = 0;
-            attributeDescriptions[1].location = 1;
-            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[1].offset = offsetof(Vertex, color);
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(Vertex, color);
 
-            attributeDescriptions[2].binding = 0;
-            attributeDescriptions[2].location = 2;
-            attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
-            return attributeDescriptions;
+			return attributeDescriptions;
         }
     };
 
@@ -93,12 +92,22 @@ struct QueueFamilyIndices
         alignas(16) glm::mat4 proj;
     };
 
-    const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
+    const std::vector<Vertex> vertices =
+	{
+		{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+	};
 
-    const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+    const std::vector<uint16_t> indices =
+	{
+		0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4
+	};
 	
 // -------------------------------------------------------
 	
@@ -109,7 +118,7 @@ struct QueueFamilyIndices
 		void initEngine(GLFWwindow *window, uint32_t width, uint32_t height);
         void createSwapChain();
         void cleanup();
-        void DestroySwapChain();
+        void cleanupSwapChain();
         void recreateSwapChain();
         void renderFrame();
         void updateUniformBuffer(uint32_t currentImage);
@@ -123,15 +132,12 @@ struct QueueFamilyIndices
 
         VkCommandBuffer beginSingleTimeCommands();
 	    VkDevice GetDevice() const { return device; }
-        VkImageView createImageView(VkImage image, VkFormat format);
+        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		// -------------------------------------------------------
 
-		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-															VkDebugUtilsMessageTypeFlagsEXT messageType,
-															const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-															void *pUserData)
+		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
 	    {
 	        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 	
@@ -143,16 +149,14 @@ struct QueueFamilyIndices
 	private:
 		GLFWwindow *window;
 		VkInstance instance = VK_NULL_HANDLE;
-	    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 	    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
-	    uint32_t apiVersion;
-        bool framebufferResized = false;
+        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
 		// -------------------------------------------------------
 
-		VulkanPhysicalDevice physDeviceManager;
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkDevice device = VK_NULL_HANDLE;
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+		VulkanPhysicalDevice physDeviceManager;
 
 		// -------------------------------------------------------
 
@@ -162,16 +166,14 @@ struct QueueFamilyIndices
 
 		// -------------------------------------------------------
 
-		VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT;
-	    VkSampleCountFlags sampleCounts;
-
+        VkFormat swapChainImageFormat;
+		VkQueue graphicsQueue = VK_NULL_HANDLE;
+        VkQueue presentQueue = VK_NULL_HANDLE;
+        VkExtent2D swapChainExtent;
 	    VkSurfaceKHR surface;
-	    VkQueue graphicsQueue = VK_NULL_HANDLE;
-	    VkQueue presentQueue  = VK_NULL_HANDLE;
-	
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-	    VkFormat swapChainImageFormat;
-	    VkExtent2D swapChainExtent;
+        VkSampleCountFlags sampleCounts;
+        VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		// -------------------------------------------------------
 
@@ -180,9 +182,12 @@ struct QueueFamilyIndices
 	    std::vector<const char *> activeLayersNames;
         std::vector<const char *> activeExtensionsNames;
 		std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-        std::vector<const char *> requiredExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME, VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
+        std::vector<const char *> requiredExtensions =
+		{
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+			VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+			VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
         };
         const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
@@ -208,7 +213,7 @@ struct QueueFamilyIndices
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
 
 		// -------------------------------------------------------
-
+        uint32_t apiVersion;
 		uint32_t currentFrame = 0;
 		uint32_t additionalImages = 0;
         uint32_t framesInFlight = 3;
@@ -218,17 +223,29 @@ struct QueueFamilyIndices
 		VkCommandPool commandPool;
         VkPipelineLayout pipelineLayout;
 
+		VkBuffer indexBuffer;
 		VkBuffer vertexBuffer;
-        VkBuffer indexBuffer;
-        VkDeviceMemory vertexBufferMemory;
         VkDeviceMemory indexBufferMemory;
-        VkDescriptorSetLayout descriptorSetLayout;
+        VkDeviceMemory vertexBufferMemory;
         VkDescriptorPool descriptorPool;
+        VkDescriptorSetLayout descriptorSetLayout;
 
 		VkImage textureImage;
-        VkDeviceMemory textureImageMemory;
-        VkImageView textureImageView;
         VkSampler textureSampler;
+        VkImageView textureImageView;
+        VkDeviceMemory textureImageMemory;
+
+		VkImage depthImage;
+        VkImageView depthImageView;
+        VkDeviceMemory depthImageMemory;
+
+		// -------------------------------------------------------
+
+        bool framebufferResized = false;
+        bool isDeviceSuitable(VkPhysicalDevice device);
+        bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+        bool checkValidationLayerSupport();
+        bool hasStencilComponent(VkFormat format);
 
 		// -------------------------------------------------------
 
@@ -241,14 +258,13 @@ struct QueueFamilyIndices
 	    void pickPhysicalDevice();
 		void createLogicalDevice();
         void createImageViews();
-        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-                         VkImage &image, VkDeviceMemory &imageMemory);
+        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
         void createRenderPass();
-        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
-                          VkBuffer &buffer, VkDeviceMemory &bufferMemory);
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
         void createVertexBuffer();
+        void createDepthResources();
         void createIndexBuffer();
         void createUniformBuffers();
         void createDescriptorPool();
@@ -273,9 +289,10 @@ struct QueueFamilyIndices
 
 		// -------------------------------------------------------
 
-	    bool isDeviceSuitable(VkPhysicalDevice device);
-	    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-        bool checkValidationLayerSupport();
+        VkFormat findDepthFormat();
+	    VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+
+		// -------------------------------------------------------
 
 	};
 

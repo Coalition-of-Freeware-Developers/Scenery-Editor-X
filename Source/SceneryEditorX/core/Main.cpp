@@ -138,7 +138,7 @@ private:
 
 	void OnSurfaceUpdate(uint32_t width, uint32_t height)
 	{
-	    vkRenderer.DestroySwapChain();
+	    vkRenderer.cleanupSwapChain();
 	    vkRenderer.recreateSurfaceFormats();
 	    vkRenderer.createSwapChain();
 	}

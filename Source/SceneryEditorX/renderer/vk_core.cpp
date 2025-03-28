@@ -97,8 +97,9 @@ namespace SceneryEditorX
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
-        createFramebuffers();
         createCommandPool();
+        createDepthResources();
+        createFramebuffers();
         createTextureImage();
         createTextureImageView();
         createTextureSampler();
@@ -115,7 +116,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::cleanup() 
     {
-        DestroySwapChain();
+        cleanupSwapChain();
 
 		for (size_t i = 0; i < framesInFlight; i++)
         {
@@ -162,7 +163,7 @@ namespace SceneryEditorX
         vkDestroyInstance(instance, allocator);
     }
 
-	void GraphicsEngine::DestroySwapChain()
+	void GraphicsEngine::cleanupSwapChain()
     {
         for (auto framebuffer : swapChainFramebuffers)
         {
@@ -545,13 +546,34 @@ namespace SceneryEditorX
 
         for (size_t i = 0; i < swapChainImages.size(); i++)
         {
-            swapChainImageViews[i] = GraphicsEngine::createImageView(swapChainImages[i], swapChainImageFormat);
+            swapChainImageViews[i] = GraphicsEngine::createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 
-	void GraphicsEngine::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-					 VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
-	{
+    VkImageView GraphicsEngine::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+    {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = aspectFlags;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        VkImageView imageView;
+        if (vkCreateImageView(device, &viewInfo, allocator, &imageView) != VK_SUCCESS)
+        {
+            ErrMsg("failed to create texture image view!");
+        }
+
+        return imageView;
+    }
+
+	void GraphicsEngine::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory)
+    {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -567,7 +589,8 @@ namespace SceneryEditorX
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+        if (vkCreateImage(device, &imageInfo, allocator, &image) != VK_SUCCESS)
+        {
             ErrMsg("failed to create image!");
         }
 
@@ -579,53 +602,12 @@ namespace SceneryEditorX
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+        if (vkAllocateMemory(device, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
+        {
             ErrMsg("failed to allocate image memory!");
         }
 
         vkBindImageMemory(device, image, imageMemory, 0);
-    }
-
-    VkImageView GraphicsEngine::createImageView(VkImage image, VkFormat format)
-    {
-        VkImageViewCreateInfo viewInfo{};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = image;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = format;
-        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
-        viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
-
-        VkImageView imageView;
-        if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
-        {
-            ErrMsg("failed to create texture image view!");
-        }
-
-        return imageView;
-    }
-
-    uint32_t GraphicsEngine::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-    {
-        // Get memory properties from the physical device
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-        // Find a memory type that satisfies both the type filter and the property requirements
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
-                return i;
-            }
-        }
-
-        EDITOR_LOG_ERROR("Failed to find suitable memory type!");
-        ErrMsg("Failed to find suitable memory type!");
-        return 0; // Return a default value to avoid undefined behavior
     }
 
 	void GraphicsEngine::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
@@ -746,6 +728,8 @@ namespace SceneryEditorX
 
 	void GraphicsEngine::createRenderPass()
     {
+        // -------------------------------------------------------
+
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = swapChainImageFormat;
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -756,27 +740,52 @@ namespace SceneryEditorX
         colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+		VkAttachmentDescription depthAttachment{};
+        depthAttachment.format = findDepthFormat();
+        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		// -------------------------------------------------------
+
         VkAttachmentReference colorAttachmentRef{};
         colorAttachmentRef.attachment = 0;
         colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference depthAttachmentRef{};
+        depthAttachmentRef.attachment = 1;
+        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+		// -------------------------------------------------------
 
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
+        subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+		// -------------------------------------------------------
 
         VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		// -------------------------------------------------------
+
+		std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
 
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
+        renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        renderPassInfo.pAttachments = attachments.data();
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
         renderPassInfo.dependencyCount = 1;
@@ -798,7 +807,7 @@ namespace SceneryEditorX
         bufferInfo.usage = usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+        if (vkCreateBuffer(device, &bufferInfo, allocator, &buffer) != VK_SUCCESS)
         {
             ErrMsg("failed to create buffer!");
         }
@@ -815,7 +824,7 @@ namespace SceneryEditorX
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(device, &allocInfo, allocator, &bufferMemory) != VK_SUCCESS)
         {
             ErrMsg("failed to allocate buffer memory!");
         }
@@ -850,6 +859,21 @@ namespace SceneryEditorX
 
         vkDestroyBuffer(device, stagingBuffer, allocator);
         vkFreeMemory(device, stagingBufferMemory, allocator);
+    }
+
+    void GraphicsEngine::createDepthResources()
+    {
+        VkFormat depthFormat = findDepthFormat();
+
+        createImage(swapChainExtent.width,
+                    swapChainExtent.height,
+                    depthFormat,
+                    VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    depthImage,
+                    depthImageMemory);
+        depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
     }
 
     void GraphicsEngine::createIndexBuffer()
@@ -928,6 +952,9 @@ namespace SceneryEditorX
 
 	void GraphicsEngine::createDescriptorSetLayout()
     {
+
+		// -------------------------------------------------------
+
         VkDescriptorSetLayoutBinding uboLayoutBinding{};
         uboLayoutBinding.binding = 0;
         uboLayoutBinding.descriptorCount = 1;
@@ -942,7 +969,12 @@ namespace SceneryEditorX
         samplerLayoutBinding.pImmutableSamplers = nullptr;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+		// -------------------------------------------------------
+
         std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+
+		// -------------------------------------------------------
+
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -1025,7 +1057,6 @@ namespace SceneryEditorX
         EditorConfig config;
 
 		std::string shaderPath(config.shaderFolder.data());
-
         std::string vertShaderPath = shaderPath + "/vert.spv";
         std::string fragShaderPath = shaderPath + "/frag.spv";
 
@@ -1054,7 +1085,11 @@ namespace SceneryEditorX
         fragShaderStageInfo.module = fragShaderModule;
         fragShaderStageInfo.pName = "main";
 
+		// -------------------------------------------------------
+
         VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+		// -------------------------------------------------------
 
 		// Configure vertex input
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -1064,9 +1099,11 @@ namespace SceneryEditorX
         auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
         vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
         vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+		// -------------------------------------------------------
 
 		// Configure input assembly
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -1074,6 +1111,7 @@ namespace SceneryEditorX
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
+		// -------------------------------------------------------
         // Configure viewport and scissor
         VkViewport viewport{};
         viewport.x = 0.0f;
@@ -1086,6 +1124,8 @@ namespace SceneryEditorX
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = swapChainExtent;
+
+		// -------------------------------------------------------
 
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -1105,11 +1145,25 @@ namespace SceneryEditorX
         rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
         rasterizer.depthBiasEnable = VK_FALSE;
 
+		// -------------------------------------------------------
+
         // Configure multisampling
         VkPipelineMultisampleStateCreateInfo multisampling{};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+		// -------------------------------------------------------
+
+		VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable = VK_TRUE;
+        depthStencil.depthWriteEnable = VK_TRUE;
+        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        depthStencil.depthBoundsTestEnable = VK_FALSE;
+        depthStencil.stencilTestEnable = VK_FALSE;
+
+		// -------------------------------------------------------
 
         // Configure color blending
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
@@ -1131,6 +1185,8 @@ namespace SceneryEditorX
         colorBlending.blendConstants[2] = 0.0f;
         colorBlending.blendConstants[3] = 0.0f;
 
+		// -------------------------------------------------------
+
         // Create the graphics pipeline
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1151,6 +1207,7 @@ namespace SceneryEditorX
         pipelineInfo.pViewportState = &viewportState;
         pipelineInfo.pRasterizationState = &rasterizer;
         pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.layout = pipelineLayout;
         pipelineInfo.renderPass = renderPass;
@@ -1173,13 +1230,13 @@ namespace SceneryEditorX
 
         for (size_t i = 0; i < swapChainImageViews.size(); i++)
         {
-            VkImageView attachments[] = {swapChainImageViews[i]};
+            std::array<VkImageView, 2> attachments = {swapChainImageViews[i], depthImageView};
 
             VkFramebufferCreateInfo framebufferInfo{};
             framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebufferInfo.renderPass = renderPass;
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+            framebufferInfo.pAttachments = attachments.data();
             framebufferInfo.width = swapChainExtent.width;
             framebufferInfo.height = swapChainExtent.height;
             framebufferInfo.layers = 1;
@@ -1243,9 +1300,12 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+        clearValues[1].depthStencil = {1.0f, 0};
+
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
 
 		// -------------------------------------------------------
 
@@ -1286,9 +1346,9 @@ namespace SceneryEditorX
 
         for (size_t i = 0; i < framesInFlight; i++)
         {
-            if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-                vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-                vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
+            if (vkCreateSemaphore(device, &semaphoreInfo, allocator, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+                vkCreateSemaphore(device, &semaphoreInfo, allocator, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+                vkCreateFence(device, &fenceInfo, allocator, &inFlightFences[i]) != VK_SUCCESS)
             {
                 ErrMsg("failed to create synchronization objects for a frame!");
             }
@@ -1316,7 +1376,7 @@ namespace SceneryEditorX
         vkDeviceWaitIdle(device);
 
         EDITOR_LOG_INFO("Destroying old swap chain");
-        DestroySwapChain();
+        cleanupSwapChain();
 
 		EDITOR_LOG_INFO("Creating new swap chain with updated dimensions");
         createSwapChain();
@@ -1438,6 +1498,20 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
+	/**
+	 * @brief Updates the uniform buffer for the current frame
+	 * 
+	 * This method updates the model-view-projection matrices for rendering.
+	 * It calculates:
+	 * 1. The model matrix with rotation based on elapsed time
+	 * 2. The view matrix (camera position/orientation)
+	 * 3. The projection matrix with aspect ratio correction
+	 * 
+	 * The updated matrices are uploaded to the GPU in the uniform buffer
+	 * corresponding to the current frame being rendered.
+	 * 
+	 * @param currentImage Index of the current frame's uniform buffer to update
+	 */
 	void GraphicsEngine::updateUniformBuffer(uint32_t currentImage)
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
@@ -1452,8 +1526,8 @@ namespace SceneryEditorX
         ubo.proj[1][1] *= -1;
 
         void *data;
-        vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-        memcpy(data, &ubo, sizeof(ubo));
+		vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+			memcpy(data, &ubo, sizeof(ubo));
         vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
     }
 
@@ -1498,7 +1572,6 @@ namespace SceneryEditorX
         // Store updated surface capabilities
         surfaceCapabilities = capabilities;
     }
-
 
 	// -------------------------------------------------------
 
@@ -1606,7 +1679,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::createTextureImageView()
     {
-        textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+        textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 
     void GraphicsEngine::createTextureSampler()
@@ -1629,7 +1702,7 @@ namespace SceneryEditorX
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-        if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
+        if (vkCreateSampler(device, &samplerInfo, allocator, &textureSampler) != VK_SUCCESS)
         {
             ErrMsg("failed to create texture sampler!");
         }
@@ -1723,55 +1796,6 @@ namespace SceneryEditorX
         return details;
     }
 
-    bool GraphicsEngine::isDeviceSuitable(VkPhysicalDevice device)
-    {
-        QueueFamilyIndices indices = findQueueFamilies(device);
-
-		bool extensionsSupported = checkDeviceExtensionSupport(device);
-        bool swapChainAdequate = false;
-        if (extensionsSupported)
-        {
-            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-        }
-
-        return indices.isComplete() && extensionsSupported && swapChainAdequate;
-    }
-
-    bool GraphicsEngine::checkDeviceExtensionSupport(VkPhysicalDevice device)
-    {
-        uint32_t extensionCount;
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-        EDITOR_LOG_INFO("Checking for required device extensions:");
-        for (const auto &extension : deviceExtensions)
-        {
-            EDITOR_LOG_INFO("  Required: {}", ToString(extension));
-        }
-        EDITOR_LOG_INFO("Available device extensions:");
-        for (const auto &extension : availableExtensions)
-        {
-            EDITOR_LOG_INFO("  Available: {}", ToString(extension.extensionName));
-            requiredExtensions.erase(extension.extensionName);
-        }
-        if (!requiredExtensions.empty())
-        {
-            EDITOR_LOG_ERROR("Missing extensions:");
-            for (const auto &ext : requiredExtensions)
-            {
-                EDITOR_LOG_ERROR("  Missing: {}", ToString(ext));
-            }
-            return false;
-        }
-
-        return true;
-    }
-
     QueueFamilyIndices GraphicsEngine::findQueueFamilies(VkPhysicalDevice device)
     {
         QueueFamilyIndices indices;
@@ -1825,7 +1849,113 @@ namespace SceneryEditorX
         return commandBuffer;
     }
 
-    bool GraphicsEngine::checkValidationLayerSupport()
+	// -------------------------------------------------------
+
+	VkFormat GraphicsEngine::findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+    {
+        for (VkFormat format : candidates)
+        {
+            VkFormatProperties props;
+            const GPUDevice &selectedDevice = physDeviceManager.Selected();
+
+
+            vkGetPhysicalDeviceFormatProperties(selectedDevice.physicalDevice, format, &props);
+
+            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+            {
+                return format;
+            }
+            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+            {
+                return format;
+            }
+        }
+
+        throw std::runtime_error("Failed to find supported format!");
+    }
+
+    VkFormat GraphicsEngine::findDepthFormat()
+    {
+        return findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+                                   VK_IMAGE_TILING_OPTIMAL,
+                                   VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    }
+
+	// -------------------------------------------------------
+
+    uint32_t GraphicsEngine::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    {
+        // Get memory properties from the physical device
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+        // Find a memory type that satisfies both the type filter and the property requirements
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                return i;
+            }
+        }
+
+        EDITOR_LOG_ERROR("Failed to find suitable memory type!");
+        ErrMsg("Failed to find suitable memory type!");
+        return 0; // Return a default value to avoid undefined behavior
+    }
+
+    bool GraphicsEngine::isDeviceSuitable(VkPhysicalDevice device)
+    {
+        QueueFamilyIndices indices = findQueueFamilies(device);
+
+        bool extensionsSupported = checkDeviceExtensionSupport(device);
+        bool swapChainAdequate = false;
+        if (extensionsSupported)
+        {
+            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        }
+
+		VkPhysicalDeviceFeatures supportedFeatures;
+        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+
+        return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+    }
+
+    bool GraphicsEngine::checkDeviceExtensionSupport(VkPhysicalDevice device)
+    {
+        uint32_t extensionCount;
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+        EDITOR_LOG_INFO("Checking for required device extensions:");
+        for (const auto &extension : deviceExtensions)
+        {
+            EDITOR_LOG_INFO("  Required: {}", ToString(extension));
+        }
+        EDITOR_LOG_INFO("Available device extensions:");
+        for (const auto &extension : availableExtensions)
+        {
+            EDITOR_LOG_INFO("  Available: {}", ToString(extension.extensionName));
+            requiredExtensions.erase(extension.extensionName);
+        }
+        if (!requiredExtensions.empty())
+        {
+            EDITOR_LOG_ERROR("Missing extensions:");
+            for (const auto &ext : requiredExtensions)
+            {
+                EDITOR_LOG_ERROR("  Missing: {}", ToString(ext));
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+	bool GraphicsEngine::checkValidationLayerSupport()
     {
         uint32_t layerCount;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -1854,6 +1984,12 @@ namespace SceneryEditorX
 
         return true;
     }
+
+	bool GraphicsEngine::hasStencilComponent(VkFormat format)
+    {
+        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+    }
+
 
 } // namespace SceneryEditorX
 
