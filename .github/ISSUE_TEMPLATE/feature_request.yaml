@@ -1,0 +1,38 @@
+name: Feature Request - Scenery Editor X
+description: File a feature request to be considered and implimented into future versions of Scenery Editor X.
+labels: ["FEATURE REQUEST"]
+body:
+- type: markdown
+  attributes:
+    value: "# Scenery Editor X Feature Request Form"
+- type: input
+  id: improvement
+  attributes:
+    label: Feature Request
+    description: A clear and short title for the feature request.
+    placeholder: ex. I would like to be able to view day and night cycles at my airport.
+  validations:
+    required: true
+- type: textarea
+  id: description
+  attributes:
+    label: Description
+    description: A clear and concise description of what you want to happen.
+  validations:
+    required: true
+- type: textarea
+  id: working
+  attributes:
+    label: How would this feature work?
+    description: If this feature was implemented, how would it work?
+    placeholder: ex. I can place pavement decals with a spline or custom texture masking.
+  validations:
+    required: false
+- type: input
+  id: discord
+  attributes:
+    label: Discord Username (optional)
+    description: You may optionally provide your discord username, so that we may contact you directly about the issue.
+    placeholder: ex. username
+  validations:
+    required: false
