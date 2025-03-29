@@ -15,8 +15,10 @@
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/renderer/vk_device.h>
+#include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/ui/ui.h>
+
 
 // -------------------------------------------------------
 
@@ -74,32 +76,107 @@ GUI::~GUI()
 {
 }
 
-void GUI::new_frame()
+void GUI::newFrame()
 {
+    if (!initialized || !renderer)
+    {
+        return;
+    }
+
+    // Start the ImGui frame
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    // Your ImGui UI code goes here
+    ImGui::ShowDemoWindow();
+
+    // Add more UI elements as needed
+
+    // Complete the ImGui frame
+    ImGui::Render();
+
+    // Render ImGui draw data if we have a valid command buffer
+    if (activeCommandBuffer != VK_NULL_HANDLE)
+    {
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
+    }
 }
 
-void GUI::init(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRenderer)
+void GUI::cleanUp()
 {
-    /*
+    if (renderer && initialized)
+    {
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+
+        if (imguiPool != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorPool(renderer->GetDevice(), imguiPool, nullptr);
+            imguiPool = VK_NULL_HANDLE;
+        }
+
+        ImGui::DestroyContext();
+        initialized = false;
+    }
+}
+
+void GUI::initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRenderer)
+{
+    // Store the engine reference
     this->renderer = &engineRenderer;
 
+    // Create separate descriptor pool for ImGui with FREE_DESCRIPTOR_SET_BIT
+    VkDescriptorPoolSize pool_sizes[] = {
+		{VK_DESCRIPTOR_TYPE_SAMPLER, 100},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100},
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100}
+	};
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets = 100;
+    pool_info.poolSizeCount = std::size(pool_sizes);
+    pool_info.pPoolSizes = pool_sizes;
+
+    VkDescriptorPool imguiPool;
+    if (vkCreateDescriptorPool(renderer->GetDevice(), &pool_info, nullptr, &imguiPool) != VK_SUCCESS)
+    {
+        EDITOR_LOG_ERROR("Failed to create ImGui descriptor pool!");
+        return;
+    }
+
+    SceneryEditorX::QueueFamilyIndices indices = renderer->GetQueueFamilyIndices();
+
+	ImGui::CreateContext();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
     ImGui_ImplGlfw_InitForVulkan(Window::GetGLFWwindow(), true);
+
     ImGui_ImplVulkan_InitInfo info{};
     info.ApiVersion = VK_API_VERSION_1_3;
     info.Instance = renderer->GetInstance();
     info.PhysicalDevice = renderer->GetPhysicalDevice();
     info.Device = renderer->GetDevice();
-    info.QueueFamily = renderer->GetQueueFamilyIndices().graphicsFamily.value();
+    //info.QueueFamily = renderer->GetQueueFamilyIndices().graphicsFamily.value();
     info.Queue = renderer->GetGraphicsQueue();
-    //info.PipelineCache        = g_PipelineCache;
-    info.DescriptorPool = renderer->GetDescriptorPool();
+    info.DescriptorPool = imguiPool;
     info.RenderPass = renderer->GetRenderPass();
-    info.Subpass = 0;
+    //info.Subpass = 0;
     info.MinImageCount = renderer->GetSwapChainImages().size();
     info.ImageCount = renderer->GetSwapChainImages().size();
-    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    info.Allocator = nullptr;
+    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;  // Replace when MSAA is implemented properly
+    //info.MSAASamples = renderer->msaaSamples;
+    //info.Allocator = nullptr;
     info.UseDynamicRendering = false;
     info.CheckVkResultFn = [](VkResult result) {
         if (result != VK_SUCCESS)
@@ -109,7 +186,19 @@ void GUI::init(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRendere
     };
 
     ImGui_ImplVulkan_Init(&info);
-	*/
+
+    // Upload fonts to GPU
+	VkCommandBuffer commandBuffer = renderer->beginSingleTimeCommands();
+    ImGui_ImplVulkan_CreateFontsTexture(); // Removed Nov 10, 2023 Commit #79a9e2f
+    renderer->endSingleTimeCommands(commandBuffer);
+
+	vkDeviceWaitIdle(renderer->GetDevice());// Wait for font upload to complete
+    //ImGui_ImplVulkan_DestroyFontUploadObjects(); // This is no longer needed in newer versions of ImGui
+
+	setStyle();
+
+	initialized = true;
+    EDITOR_LOG_INFO("ImGui initialized successfully");
 }
 
 void GUI::resize(const uint32_t width, const uint32_t height) const
@@ -120,13 +209,9 @@ void GUI::update(const float delta_time)
 {
 }
 
-bool GUI::update_buffers()
-{
-    return false;
-}
-
 void GUI::show_demo_window()
 {
+
 }
 
 void GUI::show_app_info(const std::string &app_name)

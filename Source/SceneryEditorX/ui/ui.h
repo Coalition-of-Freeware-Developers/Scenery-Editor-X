@@ -62,7 +62,14 @@ class GUI
 public:
     GUI();
     ~GUI();
-    void init(GLFWwindow *window, SceneryEditorX::GraphicsEngine &renderer);
+    void initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &renderer);
+
+	// Stores the active command buffer
+    VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
+
+	// Method to set the command buffer
+    // TODO: Refactor this later. This should be handled better
+	void setActiveCommandBuffer(VkCommandBuffer cmdBuffer) { activeCommandBuffer = cmdBuffer; }
 
     /**
 	 * @brief Handles resizing of the window
@@ -72,10 +79,14 @@ public:
     void resize(const uint32_t width, const uint32_t height) const;
 
     /**
-	 * @brief Starts a new ImGui frame
-	 *        to be called before drawing any window
+	 * @brief Starts a new ImGui frame to be called before drawing any window
 	 */
-    inline void new_frame();
+    void newFrame();
+
+    /**
+     * @brief Cleans up ImGui resources
+     */
+    void cleanUp();
 
     /**
 	 * @brief Updates the Gui
@@ -83,7 +94,10 @@ public:
 	 */
     void update(const float delta_time);
 
-    bool update_buffers();
+    /**
+     * @brief 
+     */
+    bool updateBuffers = false;
 
 	/**
 	 * @brief Shows an overlay top window with app info and maybe stats
@@ -123,6 +137,8 @@ public:
 
 private:
     SceneryEditorX::GraphicsEngine *renderer = nullptr;
+    VkDescriptorPool imguiPool = VK_NULL_HANDLE;
+    bool initialized = false;
     //const ImGuiWindowFlags common_flags  = ImGuiWindowFlags_NoCollapse;
     //const ImGuiWindowFlags options_flags = ImGuiWindowFlags_NoResize;
     //const ImGuiWindowFlags info_flags    = ImGuiWindowFlags_NoMove;

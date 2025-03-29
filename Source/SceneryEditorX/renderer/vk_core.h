@@ -129,7 +129,7 @@ namespace SceneryEditorX
 	
 		void initEngine(GLFWwindow *window, uint32_t width, uint32_t height);
         void createSwapChain();
-        void cleanup();
+        void cleanUp();
         void cleanupSwapChain();
         void recreateSwapChain();
         void renderFrame();
@@ -148,6 +148,45 @@ namespace SceneryEditorX
 	    VkDevice GetDevice() const { return device; }
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+		// -------------------------------------------------------
+        // GETTER FUNCTIONS
+        // -------------------------------------------------------
+
+		VkInstance GetInstance() const { return instance; }
+		VkPhysicalDevice GetPhysicalDevice() const { return physicalDevice; }
+		VkQueue GetGraphicsQueue() const { return graphicsQueue; }
+		VkQueue GetPresentQueue() const { return presentQueue; }
+		VkRenderPass GetRenderPass() const { return renderPass; }
+		VkDescriptorPool GetDescriptorPool() const { return descriptorPool; }
+		VkExtent2D GetSwapChainExtent() const { return swapChainExtent; }
+		VkSampleCountFlagBits GetNumSamples() const { return numSamples; }
+		VkFormat GetSwapChainImageFormat() const { return swapChainImageFormat; }
+		VkDeviceMemory GetTextureImageMemory() const { return textureImageMemory; }
+		VkImage GetTextureImage() const { return textureImage; }
+		VkImageView GetTextureImageView() const { return textureImageView; }
+		VkSampler GetTextureSampler() const { return textureSampler; }
+		VkDeviceMemory GetDepthImageMemory() const { return depthImageMemory; }
+		VkImageView GetDepthImageView() const { return depthImageView; }
+		VkImage GetDepthImage() const { return depthImage; }
+		VkDescriptorSetLayout GetDescriptorSetLayout() const { return descriptorSetLayout; }
+		VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }
+		VkPipeline GetGraphicsPipeline() const { return graphicsPipeline; }
+		VkCommandPool GetCommandPool() const { return commandPool; }
+		VkDeviceMemory GetIndexBufferMemory() const { return indexBufferMemory; }
+		VkBuffer GetIndexBuffer() const { return indexBuffer; }
+		VkDeviceMemory GetVertexBufferMemory() const { return vertexBufferMemory; }
+		VkBuffer GetVertexBuffer() const { return vertexBuffer; }
+		VkDeviceMemory GetUniformBufferMemory(size_t index) const { return uniformBuffersMemory[index]; }
+		VkBuffer GetUniformBuffer(size_t index) const { return uniformBuffers[index]; }
+		VkDescriptorSet GetDescriptorSet(size_t index) const { return descriptorSets[index]; }
+		VkFramebuffer GetSwapChainFramebuffer(size_t index) const { return swapChainFramebuffers[index]; }
+		VkImageView GetSwapChainImageView(size_t index) const { return swapChainImageViews[index]; }
+		VkSemaphore GetRenderFinishedSemaphore(size_t index) const { return renderFinishedSemaphores[index]; }
+		VkSemaphore GetImageAvailableSemaphore(size_t index) const { return imageAvailableSemaphores[index]; }
+        QueueFamilyIndices GetQueueFamilyIndices() const { return queueFamilyIndices; }
+		const std::vector<VkImage>& GetSwapChainImages() const { return swapChainImages; }
+
 
 		// -------------------------------------------------------
 
@@ -186,6 +225,7 @@ namespace SceneryEditorX
         VkExtent2D swapChainExtent;
 	    VkSurfaceKHR surface;
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+        QueueFamilyIndices queueFamilyIndices;
         VkSampleCountFlags sampleCounts;
         VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT;
 

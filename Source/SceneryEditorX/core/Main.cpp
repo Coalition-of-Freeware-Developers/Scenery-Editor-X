@@ -16,6 +16,7 @@
 #include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/ui/ui.h>
 
 /*
 * -------------------------------------------------------
@@ -34,9 +35,11 @@
 //INTERNAL void initVulkan(GraphicsEngine &vkRenderer);
 
 // -------------------------------------------------------
+using namespace SceneryEditorX;
 
 class EditorApplication
 {
+
 public:
 	void run()
 	{
@@ -49,7 +52,8 @@ public:
 
 private:
     GLFWwindow* window;
-    SceneryEditorX::GraphicsEngine vkRenderer;
+    GraphicsEngine vkRenderer;
+    GUI ui;
     uint32_t currentFrame = 0;
 	glm::ivec2 viewportSize = {64, 48};
 	glm::ivec2 newViewportSize = viewportSize;
@@ -88,6 +92,8 @@ private:
 
 		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         vkRenderer.initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
+
+		ui.initGUI(Window::GetGLFWwindow(), vkRenderer);
 
 		//SceneryEditorX::CreateEditor();
 
@@ -210,7 +216,7 @@ private:
 
 	void shut_down()
 	{
-        vkRenderer.cleanup();
+        vkRenderer.cleanUp();
         Window::Destroy();
 	}
 

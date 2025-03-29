@@ -21,6 +21,7 @@
 #include <tiny_obj_loader.h>
 #include <unordered_map>
 #include <vector>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -116,8 +117,11 @@ namespace SceneryEditorX
 		EDITOR_LOG_INFO("Graphics engine initialization complete");
     }
 
-    void GraphicsEngine::cleanup() 
+    void GraphicsEngine::cleanUp() 
     {
+        GUI guiInstance;
+        guiInstance.cleanUp();
+
         cleanupSwapChain();
 
 		for (size_t i = 0; i < framesInFlight; i++)
@@ -1284,6 +1288,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     {
+
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -1325,6 +1330,15 @@ namespace SceneryEditorX
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
 			vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+			// -------------------------------------------------------
+
+			// ImGui
+            GUI guiInstance;
+            guiInstance.setActiveCommandBuffer(commandBuffer);
+            guiInstance.newFrame();
+
+			// -------------------------------------------------------
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -1398,6 +1412,8 @@ namespace SceneryEditorX
 
     void GraphicsEngine::renderFrame()
     {
+        GUI guiInstance;
+
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 		// -------------------------------------------------------
