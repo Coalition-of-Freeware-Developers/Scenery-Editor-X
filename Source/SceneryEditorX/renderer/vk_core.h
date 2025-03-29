@@ -141,7 +141,12 @@ namespace SceneryEditorX
         void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
         void recreateSurfaceFormats();
-        void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+        void generateMipmaps(VkImage image,
+                             VkFormat imageFormat,
+                             int32_t texWidth,
+                             int32_t texHeight,
+                             uint32_t mipLevels);
+
         LOCAL void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
         VkCommandBuffer beginSingleTimeCommands();
@@ -160,7 +165,7 @@ namespace SceneryEditorX
 		VkRenderPass GetRenderPass() const { return renderPass; }
 		VkDescriptorPool GetDescriptorPool() const { return descriptorPool; }
 		VkExtent2D GetSwapChainExtent() const { return swapChainExtent; }
-		VkSampleCountFlagBits GetNumSamples() const { return numSamples; }
+		VkSampleCountFlagBits GetMsaaSamples() const { return msaaSamples; }
 		VkFormat GetSwapChainImageFormat() const { return swapChainImageFormat; }
 		VkDeviceMemory GetTextureImageMemory() const { return textureImageMemory; }
 		VkImage GetTextureImage() const { return textureImage; }
@@ -186,7 +191,6 @@ namespace SceneryEditorX
 		VkSemaphore GetImageAvailableSemaphore(size_t index) const { return imageAvailableSemaphores[index]; }
         QueueFamilyIndices GetQueueFamilyIndices() const { return queueFamilyIndices; }
 		const std::vector<VkImage>& GetSwapChainImages() const { return swapChainImages; }
-
 
 		// -------------------------------------------------------
 
@@ -227,7 +231,7 @@ namespace SceneryEditorX
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
         QueueFamilyIndices queueFamilyIndices;
         VkSampleCountFlags sampleCounts;
-        VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		// -------------------------------------------------------
 
@@ -287,14 +291,24 @@ namespace SceneryEditorX
         VkDescriptorPool descriptorPool;
         VkDescriptorSetLayout descriptorSetLayout;
 
+		// -------------------------------------------------------
+
 		VkImage textureImage;
         VkSampler textureSampler;
         VkImageView textureImageView;
         VkDeviceMemory textureImageMemory;
 
+		// -------------------------------------------------------
+
 		VkImage depthImage;
         VkImageView depthImageView;
         VkDeviceMemory depthImageMemory;
+
+        // -------------------------------------------------------
+
+		VkImage colorImage;
+        VkDeviceMemory colorImageMemory;
+        VkImageView colorImageView;
 
 		// -------------------------------------------------------
 
@@ -315,12 +329,14 @@ namespace SceneryEditorX
 	    void pickPhysicalDevice();
 		void createLogicalDevice();
         void createImageViews();
-        void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
+        void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format,  VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
         void createRenderPass();
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
         void createVertexBuffer();
+        void createColorResources();
+
         void createDepthResources();
         void createIndexBuffer();
         void createUniformBuffers();
@@ -343,6 +359,7 @@ namespace SceneryEditorX
 	    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 	    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+        VkSampleCountFlagBits getMaxUsableSampleCount();
 
 		// -------------------------------------------------------
 

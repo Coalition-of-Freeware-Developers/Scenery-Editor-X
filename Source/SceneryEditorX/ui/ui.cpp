@@ -13,10 +13,12 @@
 
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
+#include <imgui/imconfig.h>
 #include <imgui/imgui.h>
-#include <SceneryEditorX/renderer/vk_device.h>
-#include <SceneryEditorX/renderer/vk_core.h>
+#include <imgui/imgui_internal.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/vk_core.h>
+#include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/ui/ui.h>
 
 
@@ -96,11 +98,7 @@ void GUI::newFrame()
     // Complete the ImGui frame
     ImGui::Render();
 
-    // Render ImGui draw data if we have a valid command buffer
-    if (activeCommandBuffer != VK_NULL_HANDLE)
-    {
-        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
-    }
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
 }
 
 void GUI::cleanUp()

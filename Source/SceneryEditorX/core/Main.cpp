@@ -121,16 +121,6 @@ private:
 		WaitIdle();
 	}
 
-	void setupImgui()
-	{
-
-	}
-
-	void updateCommandBuffer()
-	{
-
-	}
-
 	void WaitIdle()
     {
         auto result = vkDeviceWaitIdle(vkRenderer.GetDevice());

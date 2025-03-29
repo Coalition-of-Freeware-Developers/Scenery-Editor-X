@@ -69,7 +69,7 @@ public:
 
 	// Method to set the command buffer
     // TODO: Refactor this later. This should be handled better
-	void setActiveCommandBuffer(VkCommandBuffer cmdBuffer) { activeCommandBuffer = cmdBuffer; }
+	//void setActiveCommandBuffer(VkCommandBuffer cmdBuffer) { activeCommandBuffer = cmdBuffer; }
 
     /**
 	 * @brief Handles resizing of the window
