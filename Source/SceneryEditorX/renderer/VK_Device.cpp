@@ -69,7 +69,6 @@ namespace SceneryEditorX
             EDITOR_LOG_ERROR("No physical devices found.");
             VK_CHECK_RESULT(result, "Vulkan Physical Devices");
             ErrMsg("No physical devices found.");
-            return;
         }
 
         // -------------------------------------------------------
@@ -204,7 +203,6 @@ namespace SceneryEditorX
             EDITOR_LOG_INFO("Number of memory heaps: {}", ToString(devices[index].memoryInfo.memoryHeapCount));
 
             vkGetPhysicalDeviceFeatures(physDevice, &devices[index].GFXFeatures);
-            //devices[index].DepthFormat_ = FindDepthFormat(physDevice);
         }
     }
 

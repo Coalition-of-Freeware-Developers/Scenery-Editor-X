@@ -249,6 +249,7 @@ namespace SceneryEditorX
 
         if (CreateDebugUtilsMessengerEXT(instance, &createInfo, allocator, &debugMessenger) != VK_SUCCESS)
         {
+            EDITOR_LOG_ERROR("Failed to set up debug messenger!");
             ErrMsg("Failed to set up debug messenger!");
         }
     }
@@ -257,6 +258,7 @@ namespace SceneryEditorX
     {
         if (glfwCreateWindowSurface(instance, glfwWindow, allocator, &surface) != VK_SUCCESS)
         {
+            EDITOR_LOG_ERROR("Failed to create window surface!");
             ErrMsg("Failed to create window surface!");
         }
     }
@@ -286,7 +288,8 @@ namespace SceneryEditorX
     {
         if (enableValidationLayers && !checkValidationLayerSupport())
         {
-            ErrMsg("validation layers requested, but not available!");
+            EDITOR_LOG_ERROR("Validation layers requested, but not available!");
+            ErrMsg("Validation layers requested, but not available!");
         }
 
         uint32_t layerCount = 0;
@@ -333,13 +336,13 @@ namespace SceneryEditorX
         else
         {
             createInfo.enabledLayerCount = 0;
-
             createInfo.pNext = nullptr;
         }
 
         if (vkCreateInstance(&createInfo, allocator, &instance) != VK_SUCCESS)
         {
-            ErrMsg("failed to create instance!");
+            EDITOR_LOG_ERROR("Failed to create instance!");
+            ErrMsg("Failed to create graphics instance!");
         }
     }
 
@@ -567,7 +570,8 @@ namespace SceneryEditorX
         VkImageView imageView;
         if (vkCreateImageView(device, &viewInfo, allocator, &imageView) != VK_SUCCESS)
         {
-            ErrMsg("failed to create texture image view!");
+            EDITOR_LOG_ERROR("Failed to create texture image view!");
+            ErrMsg("Failed to create texture image view!");
         }
 
         return imageView;
@@ -592,7 +596,8 @@ namespace SceneryEditorX
 
         if (vkCreateImage(device, &imageInfo, allocator, &image) != VK_SUCCESS)
         {
-            ErrMsg("failed to create image!");
+            EDITOR_LOG_ERROR("Failed to create image!");
+            ErrMsg("Failed to create image!");
         }
 
         VkMemoryRequirements memRequirements;
@@ -605,7 +610,8 @@ namespace SceneryEditorX
 
         if (vkAllocateMemory(device, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
         {
-            ErrMsg("failed to allocate image memory!");
+            EDITOR_LOG_ERROR("Failed to allocate image memory!");
+            ErrMsg("Failed to allocate image memory!");
         }
 
         vkBindImageMemory(device, image, imageMemory, 0);
@@ -650,7 +656,8 @@ namespace SceneryEditorX
         }
         else
         {
-            throw std::invalid_argument("unsupported layout transition!");
+            EDITOR_LOG_ERROR("Unsupported layout transition!");
+            ErrMsg("Unsupported layout transition!");
         }
 
         vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
@@ -682,15 +689,15 @@ namespace SceneryEditorX
 
         if (!file.is_open())
         {
-            EDITOR_LOG_ERROR("Failed to open file: {}", filename);
-            ErrMsg(std::string("Failed to open file: ") + filename);
+            EDITOR_LOG_ERROR("Failed to open file: {}", ToString(filename));
+            ErrMsg(std::string("Failed to open file: ") + ToString(filename));
             return {}; // Return empty vector on failure
         }
 
         size_t fileSize = static_cast<size_t>(file.tellg());
         if (fileSize == 0)
         {
-            EDITOR_LOG_ERROR("File is empty: {}", filename);
+            EDITOR_LOG_ERROR("File is empty: {}", ToString(filename));
             return {};
         }
 
@@ -701,8 +708,8 @@ namespace SceneryEditorX
 
         if (!file)
         {
-            EDITOR_LOG_ERROR("Failed to read entire file: {}", filename);
-            ErrMsg(std::string("Failed to read entire file: ") + filename);
+            EDITOR_LOG_ERROR("Failed to read entire file: {}", ToString(filename));
+            ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
             return {};
         }
 
@@ -779,6 +786,7 @@ namespace SceneryEditorX
 
         if (vkCreateRenderPass(device, &renderPassInfo, allocator, &renderPass) != VK_SUCCESS)
         {
+            EDITOR_LOG_ERROR("Failed to create render pass!");
             ErrMsg("failed to create render pass!");
         }
     }
@@ -795,7 +803,8 @@ namespace SceneryEditorX
 
         if (vkCreateBuffer(device, &bufferInfo, allocator, &buffer) != VK_SUCCESS)
         {
-            ErrMsg("failed to create buffer!");
+            EDITOR_LOG_ERROR("Failed to create buffer!");
+            ErrMsg("Failed to create buffer!");
         }
 
 		// -------------------------------------------------------
@@ -812,7 +821,8 @@ namespace SceneryEditorX
 
         if (vkAllocateMemory(device, &allocInfo, allocator, &bufferMemory) != VK_SUCCESS)
         {
-            ErrMsg("failed to allocate buffer memory!");
+            EDITOR_LOG_ERROR("Failed to allocate buffer memory!");
+            ErrMsg("Failed to allocate buffer memory!");
         }
 
         vkBindBufferMemory(device, buffer, bufferMemory, 0);
@@ -901,9 +911,7 @@ namespace SceneryEditorX
 
         for (size_t i = 0; i < framesInFlight; i++)
         {
-            createBuffer(bufferSize,
-                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                          uniformBuffers[i],
                          uniformBuffersMemory[i]);
         }
@@ -935,6 +943,7 @@ namespace SceneryEditorX
 
         if (vkCreateDescriptorPool(device, &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
         {
+            EDITOR_LOG_ERROR("Failed to create descriptor pool!");
             ErrMsg("failed to create descriptor pool!");
         }
     }
@@ -971,6 +980,7 @@ namespace SceneryEditorX
 
         if (vkCreateDescriptorSetLayout(device, &layoutInfo, allocator, &descriptorSetLayout) != VK_SUCCESS)
         {
+            EDITOR_LOG_ERROR("Failed to create descriptor set layout!");
             ErrMsg("failed to create descriptor set layout!");
         }
     }
@@ -990,7 +1000,8 @@ namespace SceneryEditorX
         descriptorSets.resize(framesInFlight);
         if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to allocate descriptor sets!");
+            EDITOR_LOG_ERROR("Failed to allocate descriptor sets!");
+            ErrMsg("Failed to allocate descriptor sets!");
         }
 
 		// -------------------------------------------------------
@@ -1184,7 +1195,8 @@ namespace SceneryEditorX
 
         if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, allocator, &pipelineLayout) != VK_SUCCESS)
         {
-            ErrMsg("failed to create pipeline layout!");
+            EDITOR_LOG_ERROR("Failed to create pipeline layout!");
+            ErrMsg("Failed to create pipeline layout!");
         }
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -1206,7 +1218,8 @@ namespace SceneryEditorX
         if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) !=
             VK_SUCCESS)
         {
-            ErrMsg("failed to create graphics pipeline!");
+            EDITOR_LOG_ERROR("Failed to create graphics pipeline!");
+            ErrMsg("Failed to create graphics pipeline!");
         }
 
         vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -1232,6 +1245,7 @@ namespace SceneryEditorX
 
             if (vkCreateFramebuffer(device, &framebufferInfo, allocator, &swapChainFramebuffers[i]) != VK_SUCCESS)
             {
+                EDITOR_LOG_ERROR("Failed to create framebuffer!");
                 ErrMsg("Failed to create framebuffer!");
             }
         }
