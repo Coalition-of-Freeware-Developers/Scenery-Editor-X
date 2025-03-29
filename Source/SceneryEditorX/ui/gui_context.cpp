@@ -20,7 +20,7 @@
 namespace SceneryEditorX
 {
 	GuiContext *GuiContext::Create()
-	{
+    {
         return nullptr;
 	}
 

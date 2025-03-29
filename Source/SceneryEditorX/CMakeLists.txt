@@ -11,6 +11,7 @@ FILE(GLOB MAC_PLATFORM platform/mac/*.cpp platform/mac/*.h platform/mac/*.hpp)
 FILE(GLOB LINUX_PLATFORM platform/linux/*.cpp platform/linux/*.h platform/linux/*.hpp)
 FILE(GLOB WIN_PLATFORM platform/windows/*.cpp platform/windows/*.h platform/windows/*.hpp)
 FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
+FILE(GLOB UI_FILES ui/*.cpp ui/*.h ui/*.hpp)
 
 SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
 SET (PROJECT_CONFIG_FILES
@@ -29,6 +30,7 @@ ADD_EXECUTABLE(SceneryEditorX
     ${FONT_FILES}
     ${RENDERER_FILES}
     ${SCENE_FILES}
+	${UI_FILES}
     ${MAC_PLATFORM}
     ${LINUX_PLATFORM}
     ${WIN_PLATFORM}
@@ -117,6 +119,9 @@ SOURCE_GROUP("Editor/Scene" FILES
     scene/asset_manager.cpp
     scene/asset_manager.h
 )
+SOURCE_GROUP("Editor/UI" FILES
+	${UI_FILES}
+)
 #SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
 #    ${SCENE_FILES}
 #)
@@ -125,16 +130,16 @@ SOURCE_GROUP("Editor/Scene" FILES
 #    options/Settings.cpp
 #)
 
-#SOURCE_GROUP("Core/UI" FILES
-#    UI/About.cpp
-#    UI/ContentBrowser.cpp
-#    UI/Fonts.h
-#    UI/LayerStack.cpp
-#    UI/MenuBar.cpp
-#    UI/Modals.cpp
-#    UI/SettingsPanel.cpp
-#    UI/Styles.cpp
-#    UI/UI.h
+#SOURCE_GROUP("Editor/UI/Panels" FILES
+#    ui/about.cpp
+#    ui/content_browser.cpp
+#    ui/fonts.h
+#    ui/layer_stack.cpp
+#    ui/menu_bar.cpp
+#    ui/Modals.cpp
+#    ui/settings_panel.cpp
+#    ui/styles.cpp
+#    ui/ui.h
 #)
 
 SOURCE_GROUP("Resource" FILES
@@ -211,6 +216,8 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
+		imgui
+		X-PlaneSceneryLibrary
         glfw
         dxgi
         d3d12

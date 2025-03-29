@@ -166,6 +166,30 @@ ADD_SUBDIRECTORY(source/edX/testing)
 # --------------------------------
 ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
 
+ADD_LIBRARY(imgui
+	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
+	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
+	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
+	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
+	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp
+	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
+	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_glfw.cpp
+	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
+)
+TARGET_INCLUDE_DIRECTORIES(imgui
+	PRIVATE
+		${CMAKE_SOURCE_DIR}/dependency/imgui
+		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+)
+TARGET_LINK_LIBRARIES(imgui
+	PRIVATE
+		glfw
+		Vulkan::Vulkan
+		glm::glm-header-only
+		GPUOpen::VulkanMemoryAllocator
+)
+
 # --------------------------------
 # SCENERY EDITOR X
 # --------------------------------
@@ -193,8 +217,9 @@ TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Scen
 SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
+SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester imgui edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
