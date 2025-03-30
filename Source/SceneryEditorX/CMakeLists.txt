@@ -30,7 +30,6 @@ ADD_EXECUTABLE(SceneryEditorX
     ${FONT_FILES}
     ${RENDERER_FILES}
     ${SCENE_FILES}
-	#${UI_FILES}
     ${MAC_PLATFORM}
     ${LINUX_PLATFORM}
     ${WIN_PLATFORM}
@@ -47,6 +46,10 @@ ADD_EXECUTABLE(SceneryEditorX
     # --------------------------------
     scene/asset_manager.cpp
     scene/asset_manager.h
+	scene/camera.cpp
+	scene/camera.h
+	scene/scene.cpp
+	scene/scene.h
     # --------------------------------
     platform/system_detection.h
     platform/platform.h
@@ -134,6 +137,10 @@ SOURCE_GROUP("Editor/Renderer" FILES
 SOURCE_GROUP("Editor/Scene" FILES
     scene/asset_manager.cpp
     scene/asset_manager.h
+	scene/camera.cpp
+	scene/camera.h
+	scene/scene.cpp
+	scene/scene.h
 )
 SOURCE_GROUP("Editor/UI" FILES
 	ui/colors.h
