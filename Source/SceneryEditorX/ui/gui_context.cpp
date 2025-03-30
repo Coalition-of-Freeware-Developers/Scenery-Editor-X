@@ -11,13 +11,13 @@
 * -------------------------------------------------------
 */
 
-#include <imgui.h>
+#include <imgui/imgui.h>
 #include <SceneryEditorX/ui/colors.h>
 #include <SceneryEditorX/ui/gui_context.h>
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX
+namespace UI
 {
 	GuiContext *GuiContext::Create()
     {
@@ -163,4 +163,4 @@ namespace SceneryEditorX
     }
 
 
-} // namespace SceneryEditorX
+} // namespace UI

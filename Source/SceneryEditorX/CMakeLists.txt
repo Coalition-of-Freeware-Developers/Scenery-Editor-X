@@ -30,7 +30,7 @@ ADD_EXECUTABLE(SceneryEditorX
     ${FONT_FILES}
     ${RENDERER_FILES}
     ${SCENE_FILES}
-	${UI_FILES}
+	#${UI_FILES}
     ${MAC_PLATFORM}
     ${LINUX_PLATFORM}
     ${WIN_PLATFORM}
@@ -52,6 +52,22 @@ ADD_EXECUTABLE(SceneryEditorX
     # --------------------------------
     logging/logging.cpp
     logging/logging.hpp
+	# --------------------------------
+	ui/colors.h
+	ui/fonts.h
+	ui/gui_context.cpp
+	ui/gui_context.h
+	ui/styles.cpp
+	ui/ui.cpp
+	ui/ui.h
+	ui/ui_manager.h
+	ui/panels/about.cpp
+	ui/panels/content_browser.cpp
+	ui/panels/layer_stack.cpp
+	ui/panels/loading_radial.cpp
+	ui/panels/menu_bar.cpp
+	ui/panels/settings_panel.cpp
+	ui/actions/modals.cpp
     # --------------------------------
     SceneryEditorX.rc
     resource.h
@@ -98,20 +114,16 @@ SOURCE_GROUP("Core/Platform" FILES
 SOURCE_GROUP("Core/Platform/Windows" FILES
     ${WIN_PLATFORM}
 )
-
 SOURCE_GROUP("Core/Platform/Linux" FILES
     ${LINUX_PLATFORM}
 )
-
 SOURCE_GROUP("Core/Platform/Mac" FILES
     ${MAC_PLATFORM}
 )
-
 SOURCE_GROUP("Core/Logger" FILES
     logging/logging.cpp
     logging/logging.hpp
 )
-
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )
@@ -120,7 +132,25 @@ SOURCE_GROUP("Editor/Scene" FILES
     scene/asset_manager.h
 )
 SOURCE_GROUP("Editor/UI" FILES
-	${UI_FILES}
+	ui/colors.h
+	ui/fonts.h
+	ui/gui_context.cpp
+	ui/gui_context.h
+	ui/styles.cpp
+	ui/ui.cpp
+	ui/ui.h
+	ui/ui_manager.h
+)
+SOURCE_GROUP("Editor/UI/Panels" FILES
+	ui/panels/about.cpp
+	ui/panels/content_browser.cpp
+	ui/panels/layer_stack.cpp
+	ui/panels/loading_radial.cpp
+	ui/panels/menu_bar.cpp
+	ui/panels/settings_panel.cpp
+)
+SOURCE_GROUP("Editor/UI/Actions" FILES
+	ui/actions/modals.cpp
 )
 #SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
 #    ${SCENE_FILES}
@@ -129,19 +159,6 @@ SOURCE_GROUP("Editor/UI" FILES
 #SOURCE_GROUP("Core/Settings" FILES
 #    options/Settings.cpp
 #)
-
-#SOURCE_GROUP("Editor/UI/Panels" FILES
-#    ui/about.cpp
-#    ui/content_browser.cpp
-#    ui/fonts.h
-#    ui/layer_stack.cpp
-#    ui/menu_bar.cpp
-#    ui/Modals.cpp
-#    ui/settings_panel.cpp
-#    ui/styles.cpp
-#    ui/ui.h
-#)
-
 SOURCE_GROUP("Resource" FILES
     resource.h
     SceneryEditorX.rc

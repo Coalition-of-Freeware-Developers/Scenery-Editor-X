@@ -13,9 +13,6 @@
 
 #pragma once
 
-#ifndef FILEDIALOG_H
-#define FILEDIALOG_H
-
 namespace SceneryEditorX::IO
 {
     class fileDialog
@@ -37,4 +34,3 @@ namespace SceneryEditorX::IO
     void SaveFolderDialog(char *folderName, char *title);
 
 }
-#endif

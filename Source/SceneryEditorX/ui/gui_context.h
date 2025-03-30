@@ -15,7 +15,7 @@
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX
+namespace UI
 {
 	class GuiContext : Layer
 	{
@@ -32,4 +32,4 @@ namespace SceneryEditorX
 	
 	};
 
-} // namespace SceneryEditorX
+} // namespace UI

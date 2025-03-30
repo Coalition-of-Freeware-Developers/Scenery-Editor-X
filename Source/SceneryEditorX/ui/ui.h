@@ -13,6 +13,7 @@
 #pragma once
 #include <IconsFontAwesome5.h>
 #include <SceneryEditorX/renderer/vk_core.h>
+#include <SceneryEditorX/ui/ui_manager.h>
 
 // -------------------------------------------------------
 

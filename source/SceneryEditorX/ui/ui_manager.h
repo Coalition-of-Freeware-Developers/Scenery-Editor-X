@@ -5,33 +5,36 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* layer.h
+* ui_manager.h
 * -------------------------------------------------------
-* Created: 28/3/2025
+* Created: 29/3/2025
 * -------------------------------------------------------
 */
 
 #pragma once
-#include <string>
+#include <GLFW/glfw3.h>
 
 // -------------------------------------------------------
 
 namespace UI
 {
-	class Layer
-	{
-	public:
-        Layer(const std::string &name = "Layer");
-		virtual ~Layer();
-		virtual void OnAttach() {}
-		virtual void OnDetach() {}
-		virtual void OnUpdate() {}
-		virtual void OnImGuiRender() {}
-		virtual void on_event() {}
+    extern bool showCreateProjectModal;
+	extern bool showExitModal;
+    extern bool showAboutModal;
+    extern bool showSettingsPanel;
 
-    protected:
+    void SetDarkThemeColors();
 
+	void MainMenuBar();
 
-	};
+    void LayerStack();
+    void AssetBrowser();
+    void SettingsPanel();
+    //void Properties();
 
-} // namespace SceneryEditorX
+    void CreateProjectModal(GLFWwindow *window);
+	void ExitConfirmationModal(GLFWwindow *window);
+	void AboutModal();
+
+} // namespace UI
+
