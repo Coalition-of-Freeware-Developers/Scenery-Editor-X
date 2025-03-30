@@ -40,9 +40,10 @@ ADD_EXECUTABLE(SceneryEditorX
     # --------------------------------
     core/base.hpp
     core/main.cpp
-    core/version.h
+    core/transforms.cpp
     core/window.cpp
     core/window.h
+	core/version.h
     # --------------------------------
     scene/asset_manager.cpp
     scene/asset_manager.h
@@ -105,13 +106,11 @@ SOURCE_GROUP("Editor/Core" FILES
     core/window.cpp
     core/window.h
 )
-
 SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
     platform/platform.h
     core/version.h
 )
-
 SOURCE_GROUP("Core/Platform/Windows" FILES
     ${WIN_PLATFORM}
 )
@@ -120,6 +119,10 @@ SOURCE_GROUP("Core/Platform/Linux" FILES
 )
 SOURCE_GROUP("Core/Platform/Mac" FILES
     ${MAC_PLATFORM}
+)
+SOURCE_GROUP("Core/Coordinates" FILES
+	core/transforms.cpp
+
 )
 SOURCE_GROUP("Core/Logger" FILES
     logging/logging.cpp
