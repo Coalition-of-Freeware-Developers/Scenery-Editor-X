@@ -19,6 +19,7 @@
 #include <iostream>
 #include <optional>
 #include <SceneryEditorX/renderer/vk_device.h>
+#include <SceneryEditorX/renderer/vk_extensions.h>
 #include <vector>
 
 // -------------------------------------------------------
@@ -190,6 +191,7 @@ namespace SceneryEditorX
 		VkSemaphore GetRenderFinishedSemaphore(size_t index) const { return renderFinishedSemaphores[index]; }
 		VkSemaphore GetImageAvailableSemaphore(size_t index) const { return imageAvailableSemaphores[index]; }
         QueueFamilyIndices GetQueueFamilyIndices() const { return queueFamilyIndices; }
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 		const std::vector<VkImage>& GetSwapChainImages() const { return swapChainImages; }
 
 		// -------------------------------------------------------
@@ -239,15 +241,6 @@ namespace SceneryEditorX
         std::vector<bool> activeExtensions;
 	    std::vector<const char *> activeLayersNames;
         std::vector<const char *> activeExtensionsNames;
-		std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-        std::vector<const char *> requiredExtensions =
-		{
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-			VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-			VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
-        };
-        const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
         // -------------------------------------------------------
 
@@ -313,7 +306,6 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
         bool framebufferResized = false;
-        bool isDeviceSuitable(VkPhysicalDevice device);
         bool checkDeviceExtensionSupport(VkPhysicalDevice device);
         bool checkValidationLayerSupport();
         bool hasStencilComponent(VkFormat format);
@@ -336,7 +328,6 @@ namespace SceneryEditorX
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
         void createVertexBuffer();
         void createColorResources();
-
         void createDepthResources();
         void createIndexBuffer();
         void createUniformBuffers();
@@ -357,7 +348,6 @@ namespace SceneryEditorX
 	    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 	    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
 	    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
-        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 	    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
         VkSampleCountFlagBits getMaxUsableSampleCount();
 

@@ -13,6 +13,7 @@
 
 #include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/renderer/vk_util.h>
+#include <SceneryEditorX/renderer/vk_core.h>
 
 // -------------------------------------------------------
 
@@ -254,6 +255,137 @@ namespace SceneryEditorX
         }
 
         return devices[deviceIndex];
+    }
+
+	bool VulkanPhysicalDevice::isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
+	{
+	    // Find the device in our device collection
+	    auto deviceIt = std::find_if(devices.begin(), devices.end(), [device](const GPUDevice &d)
+		{
+	        return d.physicalDevice == device;
+	    });
+	
+	    if (deviceIt == devices.end())
+	    {
+	        EDITOR_LOG_ERROR("Failed to find a physical device graphics in device installed");
+	        return false;
+	    }
+	
+	    // Get queue families for this device
+	    QueueFamilyIndices indices = findQueueFamilies(device, surface);
+	    if (!indices.isComplete())
+	    {
+	        EDITOR_LOG_WARN("Your Graphics Device doesn't have required queue families");
+	        return false;
+	    }
+	
+	    // Check for device extension support
+	    uint32_t extensionCount = 0;
+	    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+	    
+	    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+	    
+	    // Create a set of required extension names for easier searching
+	    std::set<std::string> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	    
+	    for (const auto& extension : availableExtensions)
+		{
+	        requiredExtensions.erase(extension.extensionName);
+	    }
+	    
+	    bool extensionsSupported = requiredExtensions.empty();
+	    if (!extensionsSupported)
+		{
+	        EDITOR_LOG_WARN("Your Graphics Device doesn't support required extensions");
+	        return false;
+	    }
+	
+	    // Check for swap chain support
+	    bool swapChainAdequate = false;
+	    if (extensionsSupported)
+	    {
+	        // Get the device data from our collection
+	        const GPUDevice &deviceData = *deviceIt;
+	        
+	        // Check if the device has sufficient swap chain support
+	        bool formatsAvailable = !deviceData.surfaceFormats.empty();
+	        bool presentModesAvailable = !deviceData.presentModes.empty();
+	        
+	        swapChainAdequate = formatsAvailable && presentModesAvailable;
+	        
+	        if (!swapChainAdequate)
+			{
+	            EDITOR_LOG_WARN("Your Graphics Device has insufficient swap chain support");
+	        }
+	    }
+	
+	    // Check for required features
+	    VkPhysicalDeviceFeatures supportedFeatures;
+	    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+	    
+	    bool hasRequiredFeatures = supportedFeatures.samplerAnisotropy;
+	    if (!hasRequiredFeatures)
+		{
+	        EDITOR_LOG_WARN("Your Graphics Device doesn't support required features (anisotropic sampling)");
+	    }
+	
+	    // Device is suitable if it has complete queue families, extension support,
+	    // adequate swap chain support, and required features
+	    return indices.isComplete() && extensionsSupported && swapChainAdequate && hasRequiredFeatures;
+	}
+
+    QueueFamilyIndices VulkanPhysicalDevice::findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) const
+    {
+        QueueFamilyIndices indices;
+
+		auto deviceIt = std::find_if(devices.begin(), devices.end(), [device](const GPUDevice &d)
+		{
+            return d.physicalDevice == device;
+        });
+
+        if (deviceIt == devices.end())
+        {
+            EDITOR_LOG_ERROR("Failed to find physical graphics device in device collection");
+            return indices; // Return incomplete indices
+        }
+
+        const GPUDevice &deviceData = *deviceIt;
+
+		for (uint32_t i = 0; i < deviceData.queueFamilyInfo.size(); i++)
+		{
+		    const VkQueueFamilyProperties& queueFamily = deviceData.queueFamilyInfo[i];
+		    
+		    // Check for graphics support
+		    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			{
+		        indices.graphicsFamily = i;
+		    }
+		    
+		    // Check presentation support - use cached data if available
+		    VkBool32 presentSupport = (i < deviceData.queueSupportPresent.size()) ? deviceData.queueSupportPresent[i] : VK_FALSE;
+		    
+		    if (presentSupport)
+			{
+		        indices.presentFamily = i;
+		    }
+		    
+		    // Break early if we have all required queue families
+		    if (indices.isComplete())
+			{
+		        EDITOR_LOG_INFO("Found complete queue families - Graphics: {}, Present: {}", 
+		            indices.graphicsFamily.value(), indices.presentFamily.value());
+		        break;
+		    }
+		}
+		
+		if (!indices.isComplete())
+		{
+		    EDITOR_LOG_WARN("Could not find complete queue families for your graphics device: {}", 
+		        ToString(deviceData.deviceInfo.deviceName));
+		}
+		
+		return indices;
     }
 
 } // namespace SceneryEditorX

@@ -12,18 +12,18 @@
 */
 
 #define TINYOBJLOADER_IMPLEMENTATION
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 #include <optional>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_util.h>
+#include <SceneryEditorX/ui/ui.h>
 #include <stb_image.h>
 #include <tiny_obj_loader.h>
 #include <unordered_map>
 #include <vector>
-#include <SceneryEditorX/ui/ui.h>
-#include <imgui_impl_vulkan.h>
-#include <imgui_impl_glfw.h>
 
 // -------------------------------------------------------
 
@@ -76,6 +76,11 @@ namespace SceneryEditorX
         }
 
         return extensions;
+    }
+
+	QueueFamilyIndices GraphicsEngine::findQueueFamilies(VkPhysicalDevice device)
+    {
+        return physDeviceManager.findQueueFamilies(device, surface);
     }
 
     // -------------------------------------------------------
@@ -334,6 +339,7 @@ namespace SceneryEditorX
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
         if (enableValidationLayers)
         {
+            const auto &validationLayers = VulkanExtensions::GetValidationLayers();
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
 
@@ -386,13 +392,13 @@ namespace SceneryEditorX
 	    physDeviceManager.Init(instance, surface);
 	    
 	    // Select a device that supports graphics operations and presentation
-	    uint32_t queueFamilyIndex = physDeviceManager.SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
+        uint32_t queueFamilyIndex = physDeviceManager.SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 	    
 	    // Get the selected device data
-	    const GPUDevice& selectedDevice = physDeviceManager.Selected();
-	    
-	    // Store the physical device handle
-	    physicalDevice = selectedDevice.physicalDevice;
+        const GPUDevice &selectedDevice = physDeviceManager.Selected();
+
+        // Store the physical device handle
+        physicalDevice = selectedDevice.physicalDevice;
 	    
 	    // The following properties are now available in selectedDevice:
 	    // - selectedDevice.deviceInfo       (VkPhysicalDeviceProperties)
@@ -416,11 +422,13 @@ namespace SceneryEditorX
 	    physicalFeatures = selectedDevice.GFXFeatures;
 	    physicalProperties = selectedDevice.deviceInfo;
 	    memoryProperties = selectedDevice.memoryInfo;
+        queueFamilyIndices = physDeviceManager.findQueueFamilies(physicalDevice, surface);
+
 	}
 
     void GraphicsEngine::createLogicalDevice()
     {
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices indices = queueFamilyIndices;
 
         // Handle potentially separate queues for graphics and presentation
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -453,11 +461,13 @@ namespace SceneryEditorX
         }
 
         // Enable swap chain extension
+        const auto &deviceExtensions = VulkanExtensions::GetDeviceExtensions();
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
         if (enableValidationLayers)
         {
+            const auto &validationLayers = VulkanExtensions::GetValidationLayers();
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
         }
@@ -2037,39 +2047,6 @@ namespace SceneryEditorX
         return details;
     }
 
-    QueueFamilyIndices GraphicsEngine::findQueueFamilies(VkPhysicalDevice device)
-    {
-        QueueFamilyIndices indices;
-
-        // Instead of querying again, use the data we already have
-        const GPUDevice &selectedDevice = physDeviceManager.Selected();
-
-        for (uint32_t i = 0; i < selectedDevice.queueFamilyInfo.size(); i++)
-        {
-            const VkQueueFamilyProperties &queueFamily = selectedDevice.queueFamilyInfo[i];
-            VkBool32 presentSupport = false;
-
-
-            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            {
-                indices.graphicsFamily = i;
-            }
-
-            // Check presentation support
-            if (selectedDevice.queueSupportPresent[i])
-            {
-                indices.presentFamily = i;
-            }
-
-            if (indices.isComplete())
-            {
-                break;
-            }
-        }
-
-        return indices;
-    }
-
 	// -------------------------------------------------------
 
 	VkCommandBuffer GraphicsEngine::beginSingleTimeCommands()
@@ -2161,24 +2138,6 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-    bool GraphicsEngine::isDeviceSuitable(VkPhysicalDevice device)
-    {
-        QueueFamilyIndices indices = findQueueFamilies(device);
-
-        bool extensionsSupported = checkDeviceExtensionSupport(device);
-        bool swapChainAdequate = false;
-        if (extensionsSupported)
-        {
-            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-        }
-
-		VkPhysicalDeviceFeatures supportedFeatures;
-        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-
-        return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
-    }
-
     bool GraphicsEngine::checkDeviceExtensionSupport(VkPhysicalDevice device)
     {
         uint32_t extensionCount;
@@ -2187,7 +2146,9 @@ namespace SceneryEditorX
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
+        const auto &deviceExtensions = VulkanExtensions::GetDeviceExtensions();
         std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
 
         EDITOR_LOG_INFO("Checking for required device extensions:");
         for (const auto &extension : deviceExtensions)
@@ -2220,6 +2181,8 @@ namespace SceneryEditorX
 
         std::vector<VkLayerProperties> availableLayers(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+		const auto &validationLayers = VulkanExtensions::GetValidationLayers();
 
         for (const char *layerName : validationLayers)
         {

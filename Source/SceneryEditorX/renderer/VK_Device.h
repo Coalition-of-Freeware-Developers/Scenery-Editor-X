@@ -19,6 +19,8 @@
 
 namespace SceneryEditorX
 {
+    struct QueueFamilyIndices;
+
 	struct GPUDevice
 	{
         VkFormat depthFormat;
@@ -41,6 +43,7 @@ namespace SceneryEditorX
 	class VulkanPhysicalDevice
     {
     public:
+
         VulkanPhysicalDevice();
         ~VulkanPhysicalDevice();
 
@@ -50,9 +53,13 @@ namespace SceneryEditorX
 
         const GPUDevice &Selected() const;
 
+        bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface);
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) const;
+
     private:
         std::vector<GPUDevice> devices;
         int deviceIndex = -1;
+
     };
 
 } // namespace SceneryEditorX

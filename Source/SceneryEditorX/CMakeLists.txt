@@ -125,7 +125,6 @@ SOURCE_GROUP("Core/Platform/Mac" FILES
 )
 SOURCE_GROUP("Core/Coordinates" FILES
 	core/transforms.cpp
-
 )
 SOURCE_GROUP("Core/Logger" FILES
     logging/logging.cpp
@@ -164,10 +163,6 @@ SOURCE_GROUP("Editor/UI/Actions" FILES
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
 )
-#SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
-#    ${SCENE_FILES}
-#)
-
 #SOURCE_GROUP("Core/Settings" FILES
 #    options/Settings.cpp
 #)
