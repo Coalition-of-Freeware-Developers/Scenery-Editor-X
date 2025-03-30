@@ -68,6 +68,7 @@ ADD_EXECUTABLE(SceneryEditorX
 	ui/panels/menu_bar.cpp
 	ui/panels/settings_panel.cpp
 	ui/actions/modals.cpp
+	ui/actions/viewports.cpp
     # --------------------------------
     SceneryEditorX.rc
     resource.h
@@ -151,6 +152,7 @@ SOURCE_GROUP("Editor/UI/Panels" FILES
 )
 SOURCE_GROUP("Editor/UI/Actions" FILES
 	ui/actions/modals.cpp
+	ui/actions/viewports.cpp
 )
 #SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
 #    ${SCENE_FILES}

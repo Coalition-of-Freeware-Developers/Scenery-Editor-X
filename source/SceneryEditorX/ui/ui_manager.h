@@ -12,6 +12,7 @@
 */
 
 #pragma once
+#include <SceneryEditorX/ui/ui.h>
 #include <GLFW/glfw3.h>
 
 // -------------------------------------------------------
