@@ -105,6 +105,8 @@ ADD_EXECUTABLE(SceneryEditorX
 SOURCE_GROUP("Editor/Core" FILES
     core/base.hpp
     core/main.cpp
+	core/layer.cpp
+	core/layer.h
     core/version.h
     core/window.cpp
     core/window.h

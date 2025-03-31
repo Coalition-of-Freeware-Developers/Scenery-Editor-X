@@ -26,11 +26,14 @@ if exist "build\assets" (
         rmdir /s /q "build\assets"
     )
 )
-
 echo Copying assets folder to Build directory.
 xcopy /E /I "assets" "build\assets"
 
 :cmake_generation
+echo -----------------------------------
+echo Starting CMake Project Generation
+echo -----------------------------------
+
 cd build
 (
     echo -----------------------------------
