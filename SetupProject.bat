@@ -24,6 +24,26 @@ if not exist "build" (
         echo Creating Build directory.
         mkdir build
 )
+else (
+		echo Build directory already exists.
+)
+
+if exist "build\assets" (
+    echo Assets folder already exists in Build directory.
+    choice /m "Do you want to overwrite the assets folder?"
+    if errorlevel 2 (
+        echo Skipping...
+        goto cmake_generation
+    ) else (
+        echo Overwriting assets folder.
+        rmdir /s /q "build\assets"
+    )
+)
+
+echo Copying assets folder to Build directory.
+xcopy /E /I "assets" "build\assets"
+
+:cmake_generation
 cd build
 (
     echo -----------------------------------
