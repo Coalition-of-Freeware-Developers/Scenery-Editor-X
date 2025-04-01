@@ -11,23 +11,18 @@
 * -------------------------------------------------------
 */
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <commdlg.h>
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 #include <SceneryEditorX/platform/windows/file_manager.hpp>
 
 // -------------------------------------------------------
 
-/*
-#include <commdlg.h>
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
+namespace SceneryEditorX
+{
 
-namespace SceneryEditorX {
-
-	float Time::GetTime()
-	{
-		return glfwGetTime();
-	}
-
+	float Time::GetTime() { return glfwGetTime(); }
 
 	std::string FileDialogs::OpenFile(const char* filter)
 	{
@@ -78,7 +73,7 @@ namespace SceneryEditorX {
 	}
 
 }
-*/
+
 
 /**
  * @brief Reads the raw bytes from a file.
@@ -110,3 +105,43 @@ std::vector<char> FileManager::ReadRawBytes(const std::string &filename)
 
 	return buffer;
 }
+
+// -------------------------------------------------------
+
+std::vector<char> FileManager::readShaderFile(const std::string &filename)
+{
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open())
+    {
+        EDITOR_LOG_ERROR("Failed to open file: {}", ToString(filename));
+        ErrMsg(std::string("Failed to open file: ") + ToString(filename));
+        return {}; // Return empty vector on failure
+    }
+
+    size_t fileSize = static_cast<size_t>(file.tellg());
+    if (fileSize == 0)
+    {
+        EDITOR_LOG_ERROR("File is empty: {}", ToString(filename));
+        return {};
+    }
+
+    std::vector<char> buffer(fileSize);
+
+    file.seekg(0);
+    file.read(buffer.data(), fileSize);
+
+    if (!file)
+    {
+        EDITOR_LOG_ERROR("Failed to read entire file: {}", ToString(filename));
+        ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
+        return {};
+    }
+
+    file.close();
+
+    EDITOR_LOG_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
+    return buffer;
+}
+
+// -------------------------------------------------------

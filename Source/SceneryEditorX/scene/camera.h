@@ -12,6 +12,9 @@
 */
 
 #pragma once
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
 #include <typeindex>
 
 // ---------------------------------------------------------
@@ -37,25 +40,7 @@ namespace SceneryEditorX
 	class Camera
 	{
 	public:
-	    void setOrthographic(float left, float right, float top, float bottom, float near, float far);
-	    void setPerspective(float fovy, float aspect, float near, float zFar);
 
-		const glm::mat4 &getProjection() const { return projectionMatrix; }
-
-	    //Camera(const std::string &name);
-	    //virtual ~Camera() = default;
-	
-	
-	    //virtual glm::mat4 get_projection() = 0;
-	    //glm::mat4 get_view();
-	    //const glm::mat4 get_pre_rotation();
-	    //void pollMouseWheel(float yOffset);
-	
-		//glm::vec3 rotation = glm::vec3();
-	    //glm::vec3 position = glm::vec3();
-	    //float rotation_speed = 1.0f;
-	    //float translation_speed = 1.0f;
-	
 		struct Matrices
 	    {
 	        glm::mat4 perspective;
@@ -69,32 +54,37 @@ namespace SceneryEditorX
 	        bool up = false;
 	        bool down = false;
 	    } keys;
-	
-		//bool moving();
-	    //bool updated = false;
-	
-	    //float get_near_clip();
-	    //float get_far_clip();
-	
-		//void update(float deltaTime);
-	    //bool update_gamepad(glm::vec2 axis_left, glm::vec2 axis_right, float delta_time);
-	    //void set_perspective(float fov, float aspect, float znear, float zfar);
-	    //void update_aspect_ratio(float aspect);
-	    //void set_position(const glm::vec3 &position);
-	    //void set_rotation(const glm::vec3 &rotation);
-	    //void rotate(const glm::vec3 &delta);
-	    //void set_translation(const glm::vec3 &translation);
-	    //void translate(const glm::vec3 &delta);
+
+		void setOrthographicProjection(float left, float right, float top, float bottom, float nearPlane, float farPlane);
+        void setPerspectiveProjection(float fovy, float aspect, float nearPlane, float farPlane);
+
+        void setViewDirection(glm::vec3 position, glm::vec3 direction, glm::vec3 up = glm::vec3{0.f, -1.f, 0.f});
+        void setViewTarget(glm::vec3 position, glm::vec3 target, glm::vec3 up = glm::vec3{0.f, -1.f, 0.f});
+        void setViewYXZ(glm::vec3 position, glm::vec3 rotation);
+
+        const glm::mat4 &getProjection() const
+        {
+            return projectionMatrix;
+        }
+        const glm::mat4 &getView() const
+        {
+            return viewMatrix;
+        }
+        const glm::mat4 &getInverseView() const
+        {
+            return inverseViewMatrix;
+        }
+        const glm::vec3 getPosition() const
+        {
+            return glm::vec3(inverseViewMatrix[3]);
+        }
+
 	
 	private:
-	    glm::mat4 projectionMatrix{1.f};
-	    glm::mat4 viewMatrix{1.f};
-	
-	    //glm::mat4 pre_rotation{1.0f};
-	    //float fov;
-	    //float znear, zfar;
-		//
-	    //void update_view_matrix();
+
+        glm::mat4 projectionMatrix{1.f};
+        glm::mat4 viewMatrix{1.f};
+        glm::mat4 inverseViewMatrix{1.f};
 	};
 } // namespace SceneryEditorX
 // ---------------------------------------------------------

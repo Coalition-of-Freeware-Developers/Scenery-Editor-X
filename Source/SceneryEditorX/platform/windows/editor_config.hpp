@@ -48,4 +48,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-
+// -------------------------------------------------------

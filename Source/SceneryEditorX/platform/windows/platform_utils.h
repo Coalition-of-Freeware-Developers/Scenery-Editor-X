@@ -32,4 +32,6 @@ namespace SceneryEditorX::IO {
 		static float GetTime();
 	};
 
-}
+} // namespace SceneryEditorX::IO
+
+// -------------------------------------------------------

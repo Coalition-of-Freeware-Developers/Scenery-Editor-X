@@ -5,29 +5,25 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* scene.h
+* frame_data.h
 * -------------------------------------------------------
-* Created: 30/3/2025
+* Created: 31/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
-#include <SceneryEditorX/renderer/frame_data.h>
+#include <SceneryEditorX/scene/camera.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Scene
-    {
-    public:
-        Scene();
-        ~Scene();
+	struct FrameInfo
+	{
+        Camera &camera;
+        float frameTime;
+        int frameIndex;
+	    int width;
+	    int height;
+	};
 
-        void renderEditorObjects(FrameInfo &frameInfo);
-
-    private:
-    };
-}
-
-// ---------------------------------------------------------
+} // namespace SceneryEditorX

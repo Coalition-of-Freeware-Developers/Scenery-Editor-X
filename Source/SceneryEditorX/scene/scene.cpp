@@ -14,14 +14,21 @@
 #include <SceneryEditorX/scene/scene.h>
 
 // ---------------------------------------------------------
-
-Scene::Scene()
+namespace SceneryEditorX
 {
-}
 
-Scene::~Scene()
-{
-}
+    Scene::Scene()
+    {
+    }
 
+    Scene::~Scene()
+    {
+    }
+
+    void Scene::renderEditorObjects(FrameInfo & frameInfo)
+    {
+
+    }
+}
 
 // ---------------------------------------------------------

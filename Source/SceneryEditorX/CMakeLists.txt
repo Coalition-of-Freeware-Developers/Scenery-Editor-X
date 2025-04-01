@@ -38,6 +38,7 @@ ADD_EXECUTABLE(SceneryEditorX
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
     core/base.hpp
+	core/input/key_codes.h
     core/main.cpp
     core/transforms.cpp
     core/window.cpp
@@ -115,6 +116,9 @@ SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
     platform/platform.h
     core/version.h
+)
+SOURCE_GROUP("Core/Input" FILES
+	core/input/key_codes.h
 )
 SOURCE_GROUP("Core/Platform/Windows" FILES
     ${WIN_PLATFORM}

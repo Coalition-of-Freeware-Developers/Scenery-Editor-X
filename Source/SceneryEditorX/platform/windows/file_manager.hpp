@@ -29,11 +29,12 @@ public:
 	 * @param filename The name of the file to read.
 	 * @return A vector containing the raw bytes read from the file.
 	 */
-	static std::vector<char> ReadRawBytes(const std::string &filename);
+    static std::vector<char> ReadRawBytes(const std::string &filename);
+    static std::vector<char> readShaderFile(const std::string &filename);
 };
 
+// -------------------------------------------------------
 
-/*
 namespace SceneryEditorX {
 
 	class FileDialogs
@@ -50,5 +51,7 @@ namespace SceneryEditorX {
 		static float GetTime();
 	};
 
-}
-*/
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------
+
