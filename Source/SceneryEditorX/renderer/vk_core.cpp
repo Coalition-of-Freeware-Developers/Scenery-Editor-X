@@ -18,6 +18,7 @@
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/renderer/vk_core.h>
+#include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/renderer/vk_util.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <stb_image.h>
@@ -29,6 +30,11 @@
 
 namespace SceneryEditorX
 {
+    vkPhysDevice physDevice;
+	GPUDevice gpuDevice;
+
+	// -------------------------------------------------------
+
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
 	                                                    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
 	{
@@ -70,7 +76,7 @@ namespace SceneryEditorX
 
         std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-        if (enableValidationLayers)
+        if (physDevice.enableValidationLayers)
         {
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
@@ -80,14 +86,22 @@ namespace SceneryEditorX
 
 	QueueFamilyIndices GraphicsEngine::findQueueFamilies(VkPhysicalDevice device)
     {
-        return physDeviceManager.findQueueFamilies(device, surface);
+        return physDeviceManager.findQueueFamilies(device, physDevice.GetSurface());
     }
 
     // -------------------------------------------------------
 
-    void GraphicsEngine::initEngine(GLFWwindow *window, uint32_t width, uint32_t height)
+	GraphicsEngine::GraphicsEngine(GLFWwindow *window)
     {
-        this->window = window;
+    }
+
+    GraphicsEngine::~GraphicsEngine()
+    {
+    }
+
+    void GraphicsEngine::initEngine(GLFWwindow *window, uint32_t width, uint32_t height)
+	{
+	    this->window = window;
 
         EDITOR_LOG_INFO("Initializing graphics engine with window size: {}x{}", width, height);
 
@@ -98,9 +112,31 @@ namespace SceneryEditorX
 
         createInstance();
         createDebugMessenger();
-        createSurface(window);
-        pickPhysicalDevice();
-        createLogicalDevice();
+
+		VkSurfaceKHR surface;
+        createSurface(window, surface);
+
+        //VkSurfaceKHR surface = VK_NULL_HANDLE;
+        //VkResult createSurface(GLFWwindow * window, VkSurfaceKHR & surface)
+        //{
+        //    return glfwCreateWindowSurface(instance, window, nullptr, &surface);
+        //};
+
+        // Initialize the physical device
+        physDeviceManager.Init(instance, surface);
+
+        // Select a device with graphics and presentation capabilities
+        physDeviceManager.SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
+
+        // Get the physical and logical devices
+        physicalDevice = physDeviceManager.GetPhysicalDevice();
+        device = physDeviceManager.GetDevice();
+        graphicsQueue = physDeviceManager.GetGraphicsQueue();
+        presentQueue = physDeviceManager.GetPresentQueue();
+
+        // Get queue family indices for later use
+        queueFamilyIndices = physDeviceManager.findQueueFamilies(physicalDevice, surface);
+    
         createSwapChain();
         createImageViews();
         createRenderPass();
@@ -125,12 +161,12 @@ namespace SceneryEditorX
 		EDITOR_LOG_INFO("Graphics engine initialization complete");
     }
 
-    void GraphicsEngine::cleanUp() 
+    void GraphicsEngine::cleanUp(VkDevice device, VkSurfaceKHR surface) 
     {
         GUI guiInstance;
         guiInstance.cleanUp();
 
-        cleanupSwapChain();
+        cleanupSwapChain(device, surface);
 
 		for (size_t i = 0; i < framesInFlight; i++)
         {
@@ -166,9 +202,10 @@ namespace SceneryEditorX
         }
 
         vkDestroySwapchainKHR(device, swapChain, allocator);
-        vkDestroyDevice(device, allocator);
 
-        if (enableValidationLayers)
+		physDevice.~vkPhysDevice();
+
+        if (physDevice.enableValidationLayers)
         {
             GraphicsEngine::DestroyDebugUtilsMessengerEXT(instance, debugMessenger, allocator);
         }
@@ -177,7 +214,7 @@ namespace SceneryEditorX
         vkDestroyInstance(instance, allocator);
     }
 
-	void GraphicsEngine::cleanupSwapChain()
+	void GraphicsEngine::cleanupSwapChain(VkDevice device, VkSurfaceKHR surface)
     {
         vkDestroyImageView(device, depthImageView, allocator);
         vkDestroyImage(device, depthImage, allocator);
@@ -253,7 +290,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::createDebugMessenger()
     {
-        if (!enableValidationLayers)
+        if (!physDevice.enableValidationLayers)
             return;
 
         VkDebugUtilsMessengerCreateInfoEXT createInfo;
@@ -266,7 +303,7 @@ namespace SceneryEditorX
         }
     }
 
-    void GraphicsEngine::createSurface(GLFWwindow *glfwWindow)
+    void GraphicsEngine::createSurface(GLFWwindow *glfwWindow, VkSurfaceKHR surface)
     {
         if (glfwCreateWindowSurface(instance, glfwWindow, allocator, &surface) != VK_SUCCESS)
         {
@@ -298,7 +335,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::createInstance()
     {
-        if (enableValidationLayers && !checkValidationLayerSupport())
+        if (physDevice.enableValidationLayers && !physDevice.checkValidationLayerSupport())
         {
             EDITOR_LOG_ERROR("Validation layers requested, but not available!");
             ErrMsg("Validation layers requested, but not available!");
@@ -307,17 +344,15 @@ namespace SceneryEditorX
         uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
         layers.resize(layerCount);
-        activeLayers.resize(layerCount);
+        physDevice.activeLayers.resize(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
 
         // get all available extensions
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, 0);
-        instanceExtensions.resize(extensionCount);
-        activeExtensions.resize(extensionCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, instanceExtensions.data());
-
-        // get api version
+        physDevice.instanceExtensions.resize(extensionCount);
+        physDevice.activeExtensions.resize(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, physDevice.instanceExtensions.data());
         vkEnumerateInstanceVersion(&apiVersion);
 
         VkApplicationInfo appInfo{};
@@ -337,7 +372,7 @@ namespace SceneryEditorX
         createInfo.ppEnabledExtensionNames = extensions.data();
 
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-        if (enableValidationLayers)
+        if (physDevice.enableValidationLayers)
         {
             const auto &validationLayers = VulkanExtensions::GetValidationLayers();
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -359,134 +394,6 @@ namespace SceneryEditorX
         }
     }
 
-    /**
-	 * @brief - Check if a device is suitable for rendering.
-	 * 
-	 * @param device - The Vulkan physical device.
-	 * @return - bool True if the device is suitable, false otherwise.
-	 */
-    bool GraphicsEngine::isDeviceCompatible(VkPhysicalDevice device)
-    {
-        VkPhysicalDeviceFeatures deviceFeatures;
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-        vkGetPhysicalDeviceProperties(device, &deviceProperties);
-
-        // Check for required features and properties
-        bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
-                          (deviceFeatures.geometryShader) && (deviceFeatures.tessellationShader);
-
-        if (!isSuitable)
-        {
-            EDITOR_LOG_ERROR("Vulkan: Device does not meet required features or is not discrete GPU");
-            ErrMsg("Vulkan: Device does not meet required features or is not discrete GPU");
-            return false;
-        }
-
-        return true;
-    }
-
-	void GraphicsEngine::pickPhysicalDevice()
-	{
-	    // Initialize the physical device manager
-	    physDeviceManager.Init(instance, surface);
-	    
-	    // Select a device that supports graphics operations and presentation
-        uint32_t queueFamilyIndex = physDeviceManager.SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
-	    
-	    // Get the selected device data
-        const GPUDevice &selectedDevice = physDeviceManager.Selected();
-
-        // Store the physical device handle
-        physicalDevice = selectedDevice.physicalDevice;
-	    
-	    // The following properties are now available in selectedDevice:
-	    // - selectedDevice.deviceInfo       (VkPhysicalDeviceProperties)
-	    // - selectedDevice.GFXFeatures      (VkPhysicalDeviceFeatures)
-	    // - selectedDevice.memoryInfo       (VkPhysicalDeviceMemoryProperties)
-	    // - selectedDevice.queueFamilyInfo  (std::vector<VkQueueFamilyProperties>)
-	    // - selectedDevice.queueSupportPresent (std::vector<VkBool32>)
-	    // - selectedDevice.presentModes     (std::vector<VkPresentModeKHR>)
-	    // - selectedDevice.surfaceFormats   (std::vector<VkSurfaceFormatKHR>)
-	    // - selectedDevice.surfaceCapabilities (VkSurfaceCapabilitiesKHR)
-	    
-	    EDITOR_LOG_INFO("Selected physical device: {}", ToString(selectedDevice.deviceInfo.deviceName));
-	    
-	    // Now we can use the data for other operations
-	    // For example, instead of directly calling these functions:
-	    // vkGetPhysicalDeviceFeatures(device, &physicalFeatures);
-	    // vkGetPhysicalDeviceProperties(device, &physicalProperties);
-	    // vkGetPhysicalDeviceMemoryProperties(device, &memoryProperties);
-	    
-	    // We can use the already collected data:
-	    physicalFeatures = selectedDevice.GFXFeatures;
-	    physicalProperties = selectedDevice.deviceInfo;
-	    memoryProperties = selectedDevice.memoryInfo;
-        queueFamilyIndices = physDeviceManager.findQueueFamilies(physicalDevice, surface);
-
-	}
-
-    void GraphicsEngine::createLogicalDevice()
-    {
-        QueueFamilyIndices indices = queueFamilyIndices;
-
-        // Handle potentially separate queues for graphics and presentation
-        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-
-        float queuePriority = 1.0f;
-        for (uint32_t queueFamily : uniqueQueueFamilies)
-        {
-            VkDeviceQueueCreateInfo queueCreateInfo{};
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.queueFamilyIndex = queueFamily;
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
-            queueCreateInfos.push_back(queueCreateInfo);
-        }
-
-        VkPhysicalDeviceFeatures deviceFeatures{};
-        deviceFeatures.samplerAnisotropy = VK_TRUE;
-
-        VkDeviceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos = queueCreateInfos.data();
-        createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-        createInfo.pEnabledFeatures = &deviceFeatures;
-
-		if (!checkDeviceExtensionSupport(physicalDevice))
-        {
-            EDITOR_LOG_ERROR("Required device extensions not supported!");
-            ErrMsg("Required device extensions not supported!");
-        }
-
-        // Enable swap chain extension
-        const auto &deviceExtensions = VulkanExtensions::GetDeviceExtensions();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-        createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-        if (enableValidationLayers)
-        {
-            const auto &validationLayers = VulkanExtensions::GetValidationLayers();
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-            createInfo.ppEnabledLayerNames = validationLayers.data();
-        }
-        else
-        {
-            createInfo.enabledLayerCount = 0;
-        }
-
-        if (vkCreateDevice(physicalDevice, &createInfo, allocator, &device) != VK_SUCCESS)
-        {
-            EDITOR_LOG_ERROR("Failed to create logical device!");
-            ErrMsg("Failed to create logical device!");
-        }
-
-        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-        // Get presentation queue
-        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
-    }
-
     void GraphicsEngine::createSwapChain()
     {
         // Get swap chain support details from the selected device
@@ -495,7 +402,7 @@ namespace SceneryEditorX
         // Create our swap chain using the capabilities from the selected device
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = surface;
+        createInfo.surface = physDevice.GetSurface();
 
         // Set minimum image count (usually min+1 for triple buffering)
         uint32_t imageCount = selectedDevice.surfaceCapabilities.minImageCount + 1;
@@ -700,42 +607,6 @@ namespace SceneryEditorX
         }
     }
 
-    static std::vector<char> readFile(const std::string &filename)
-    {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-        if (!file.is_open())
-        {
-            EDITOR_LOG_ERROR("Failed to open file: {}", ToString(filename));
-            ErrMsg(std::string("Failed to open file: ") + ToString(filename));
-            return {}; // Return empty vector on failure
-        }
-
-        size_t fileSize = static_cast<size_t>(file.tellg());
-        if (fileSize == 0)
-        {
-            EDITOR_LOG_ERROR("File is empty: {}", ToString(filename));
-            return {};
-        }
-
-        std::vector<char> buffer(fileSize);
-
-        file.seekg(0);
-        file.read(buffer.data(), fileSize);
-
-        if (!file)
-        {
-            EDITOR_LOG_ERROR("Failed to read entire file: {}", ToString(filename));
-            ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
-            return {};
-        }
-
-        file.close();
-
-        EDITOR_LOG_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
-        return buffer;
-    }
-
 	void GraphicsEngine::createRenderPass()
     {
         // -------------------------------------------------------
@@ -751,7 +622,7 @@ namespace SceneryEditorX
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 		VkAttachmentDescription depthAttachment{};
-        depthAttachment.format = findDepthFormat();
+        depthAttachment.format = physDeviceManager.findDepthFormat();
         depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
         depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -876,7 +747,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::createDepthResources()
     {
-        VkFormat depthFormat = findDepthFormat();
+        VkFormat depthFormat = physDeviceManager.findDepthFormat();
 
         createImage(swapChainExtent.width,
                     swapChainExtent.height,
@@ -1065,181 +936,6 @@ namespace SceneryEditorX
 
     }
 
-    void GraphicsEngine::createGraphicsPipeline()
-    {
-        // Get editor configuration
-        EditorConfig config;
-
-		std::string shaderPath(config.shaderFolder.data());
-        std::string vertShaderPath = shaderPath + "/vert.spv";
-        std::string fragShaderPath = shaderPath + "/frag.spv";
-
-        EDITOR_LOG_INFO("Loading vertex shader from: {}", vertShaderPath);
-        EDITOR_LOG_INFO("Loading fragment shader from: {}", fragShaderPath);
-
-		// -------------------------------------------------------
-
-        auto vertShaderCode = readFile(vertShaderPath);
-        auto fragShaderCode = readFile(fragShaderPath);
-
-		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
-
-		// -------------------------------------------------------
-
-        VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-        vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertShaderStageInfo.module = vertShaderModule;
-        vertShaderStageInfo.pName = "main";
-
-        VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-        fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragShaderStageInfo.module = fragShaderModule;
-        fragShaderStageInfo.pName = "main";
-
-		// -------------------------------------------------------
-
-        VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
-		// -------------------------------------------------------
-
-		// Configure vertex input
-		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-        auto bindingDescription = Vertex::getBindingDescription();
-        auto attributeDescriptions = Vertex::getAttributeDescriptions();
-
-        vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-		// -------------------------------------------------------
-
-		// Configure input assembly
-		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-		// -------------------------------------------------------
-        // Configure viewport and scissor
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float)swapChainExtent.width;
-        viewport.height = (float)swapChainExtent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = swapChainExtent;
-
-		// -------------------------------------------------------
-
-        VkPipelineViewportStateCreateInfo viewportState{};
-        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.viewportCount = 1;
-        viewportState.pViewports = &viewport;
-        viewportState.scissorCount = 1;
-        viewportState.pScissors = &scissor;
-
-        // Configure rasterization
-        VkPipelineRasterizationStateCreateInfo rasterizer{};
-        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterizer.depthClampEnable = VK_FALSE;
-        rasterizer.rasterizerDiscardEnable = VK_FALSE;
-        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
-        rasterizer.depthBiasEnable = VK_FALSE;
-
-		// -------------------------------------------------------
-
-        // Configure multisampling
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.sampleShadingEnable = VK_FALSE;
-        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-		// -------------------------------------------------------
-
-		VkPipelineDepthStencilStateCreateInfo depthStencil{};
-        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthStencil.depthTestEnable = VK_TRUE;
-        depthStencil.depthWriteEnable = VK_TRUE;
-        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-        depthStencil.depthBoundsTestEnable = VK_FALSE;
-        depthStencil.stencilTestEnable = VK_FALSE;
-
-		// -------------------------------------------------------
-
-        // Configure color blending
-        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-        colorBlendAttachment.colorWriteMask =
-			VK_COLOR_COMPONENT_R_BIT |
-			VK_COLOR_COMPONENT_G_BIT |
-			VK_COLOR_COMPONENT_B_BIT |
-			VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE;
-
-        VkPipelineColorBlendStateCreateInfo colorBlending{};
-        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.logicOpEnable = VK_FALSE;
-        colorBlending.logicOp = VK_LOGIC_OP_COPY;
-        colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments = &colorBlendAttachment;
-        colorBlending.blendConstants[0] = 0.0f;
-        colorBlending.blendConstants[1] = 0.0f;
-        colorBlending.blendConstants[2] = 0.0f;
-        colorBlending.blendConstants[3] = 0.0f;
-
-		// -------------------------------------------------------
-
-        // Create the graphics pipeline
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-
-        if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, allocator, &pipelineLayout) != VK_SUCCESS)
-        {
-            EDITOR_LOG_ERROR("Failed to create pipeline layout!");
-            ErrMsg("Failed to create pipeline layout!");
-        }
-
-        VkGraphicsPipelineCreateInfo pipelineInfo{};
-        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = shaderStages;
-        pipelineInfo.pVertexInputState = &vertexInputInfo;
-        pipelineInfo.pInputAssemblyState = &inputAssembly;
-        pipelineInfo.pViewportState = &viewportState;
-        pipelineInfo.pRasterizationState = &rasterizer;
-        pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pDepthStencilState = &depthStencil;
-        pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.layout = pipelineLayout;
-        pipelineInfo.renderPass = renderPass;
-        pipelineInfo.subpass = 0;
-        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) !=
-            VK_SUCCESS)
-        {
-            EDITOR_LOG_ERROR("Failed to create graphics pipeline!");
-            ErrMsg("Failed to create graphics pipeline!");
-        }
-
-        vkDestroyShaderModule(device, fragShaderModule, nullptr);
-        vkDestroyShaderModule(device, vertShaderModule, nullptr);
-    }
-
 	void GraphicsEngine::createFramebuffers()
     {
         swapChainFramebuffers.resize(swapChainImageViews.size());
@@ -1346,7 +1042,7 @@ namespace SceneryEditorX
 			// -------------------------------------------------------
 
 			// ImGui
-            //GUI guiInstance;
+            //UI guiInstance;
             //guiInstance.newFrame();
 
 			ImGui_ImplVulkan_NewFrame();
@@ -1414,7 +1110,7 @@ namespace SceneryEditorX
         vkDeviceWaitIdle(device);
 
         EDITOR_LOG_INFO("Destroying old swap chain");
-        cleanupSwapChain();
+        cleanupSwapChain(device, physDevice.GetSurface());
 
 		EDITOR_LOG_INFO("Creating new swap chain with updated dimensions");
         createSwapChain();
@@ -1427,6 +1123,121 @@ namespace SceneryEditorX
 
 		// Reset the framebuffer resized flag
         framebufferResized = false;
+    }
+
+	void GraphicsEngine::createGraphicsPipeline()
+    {
+        EDITOR_LOG_INFO("Creating graphics pipeline...");
+
+        // Set up pipeline configuration
+        PipelineConfigInfo pipelineConfig{};
+
+        // Configure dynamic states to allow viewport and scissors to be updated dynamically
+        pipelineConfig.dynamicStateEnables = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+
+        // Set up dynamic state info
+        pipelineConfig.dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        pipelineConfig.dynamicStateInfo.dynamicStateCount =
+            static_cast<uint32_t>(pipelineConfig.dynamicStateEnables.size());
+        pipelineConfig.dynamicStateInfo.pDynamicStates = pipelineConfig.dynamicStateEnables.data();
+        pipelineConfig.dynamicStateInfo.flags = 0;
+
+        // Configure viewport info
+        pipelineConfig.viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        pipelineConfig.viewportInfo.viewportCount = 1;
+        pipelineConfig.viewportInfo.pViewports = nullptr; // Dynamic state will set this
+        pipelineConfig.viewportInfo.scissorCount = 1;
+        pipelineConfig.viewportInfo.pScissors = nullptr; // Dynamic state will set this
+        pipelineConfig.viewportInfo.flags = 0;
+
+        // Configure rasterization info
+        pipelineConfig.rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        pipelineConfig.rasterizationInfo.depthClampEnable = VK_FALSE;
+        pipelineConfig.rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+        pipelineConfig.rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
+        pipelineConfig.rasterizationInfo.lineWidth = 1.0f;
+        pipelineConfig.rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+        pipelineConfig.rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        pipelineConfig.rasterizationInfo.depthBiasEnable = VK_FALSE;
+        pipelineConfig.rasterizationInfo.depthBiasConstantFactor = 0.0f;
+        pipelineConfig.rasterizationInfo.depthBiasClamp = 0.0f;
+        pipelineConfig.rasterizationInfo.depthBiasSlopeFactor = 0.0f;
+
+        // Configure multisampling
+        pipelineConfig.multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        pipelineConfig.multisampleInfo.sampleShadingEnable = VK_FALSE;
+        pipelineConfig.multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        pipelineConfig.multisampleInfo.minSampleShading = 1.0f;
+        pipelineConfig.multisampleInfo.pSampleMask = nullptr;
+        pipelineConfig.multisampleInfo.alphaToCoverageEnable = VK_FALSE;
+        pipelineConfig.multisampleInfo.alphaToOneEnable = VK_FALSE;
+
+        // Configure color blend attachment
+        pipelineConfig.colorBlendAttachment.colorWriteMask =
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        pipelineConfig.colorBlendAttachment.blendEnable = VK_FALSE;
+        pipelineConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        pipelineConfig.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        pipelineConfig.colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        pipelineConfig.colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        pipelineConfig.colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        pipelineConfig.colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        // Configure color blending
+        pipelineConfig.colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        pipelineConfig.colorBlendInfo.logicOpEnable = VK_FALSE;
+        pipelineConfig.colorBlendInfo.logicOp = VK_LOGIC_OP_COPY;
+        pipelineConfig.colorBlendInfo.attachmentCount = 1;
+        pipelineConfig.colorBlendInfo.pAttachments = &pipelineConfig.colorBlendAttachment;
+        pipelineConfig.colorBlendInfo.blendConstants[0] = 0.0f;
+        pipelineConfig.colorBlendInfo.blendConstants[1] = 0.0f;
+        pipelineConfig.colorBlendInfo.blendConstants[2] = 0.0f;
+        pipelineConfig.colorBlendInfo.blendConstants[3] = 0.0f;
+
+        // Configure depth-stencil state
+        pipelineConfig.depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        pipelineConfig.depthStencilInfo.depthTestEnable = VK_TRUE;
+        pipelineConfig.depthStencilInfo.depthWriteEnable = VK_TRUE;
+        pipelineConfig.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+        pipelineConfig.depthStencilInfo.depthBoundsTestEnable = VK_FALSE;
+        pipelineConfig.depthStencilInfo.minDepthBounds = 0.0f;
+        pipelineConfig.depthStencilInfo.maxDepthBounds = 1.0f;
+        pipelineConfig.depthStencilInfo.stencilTestEnable = VK_FALSE;
+
+        // Configure input assembly
+        pipelineConfig.inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        pipelineConfig.inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
+
+        // Set pipeline layout and render pass
+        pipelineConfig.pipelineLayout = pipelineLayout;
+        pipelineConfig.renderPass = renderPass;
+        pipelineConfig.subpass = 0;
+
+        // Path to shaders - using default shaders initially
+        EditorConfig config;
+        std::string shaderPath(config.shaderFolder.data());
+        std::string vertShaderPath = shaderPath + "/vert.spv";
+        std::string fragShaderPath = shaderPath + "/frag.spv";
+
+        EDITOR_LOG_INFO("Creating pipeline with shaders: {} and {}", vertShaderPath, fragShaderPath);
+
+        // Create pipeline using the GFXPipeline class
+        std::unique_ptr<GFXPipeline> pipeline =
+            std::make_unique<GFXPipeline>(physDeviceManager, vertShaderPath, fragShaderPath, pipelineConfig);
+
+        // Store the created graphics pipeline
+        graphicsPipeline = pipeline->GetGraphicsPipeline();
+
+        // Log success
+        if (graphicsPipeline != VK_NULL_HANDLE)
+        {
+            EDITOR_LOG_INFO("Graphics pipeline created successfully");
+        }
+        else
+        {
+            EDITOR_LOG_ERROR("Failed to create graphics pipeline - pipeline handle is null");
+        }
     }
 
 	// -------------------------------------------------------
@@ -1575,18 +1386,19 @@ namespace SceneryEditorX
 
 	void GraphicsEngine::recreateSurfaceFormats()
     {
+
         // Get the surface capabilities, formats, and present modes for the current physical device
         VkSurfaceCapabilitiesKHR capabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, physDeviceManager.GetSurface(), &capabilities);
 
         // Query formats
         uint32_t formatCount;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, physDeviceManager.GetSurface(), &formatCount, nullptr);
 
         if (formatCount != 0)
         {
             availableSurfaceFormats.resize(formatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, availableSurfaceFormats.data());
+            vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, physDeviceManager.GetSurface(), &formatCount, availableSurfaceFormats.data());
 
             EDITOR_LOG_INFO("Recreated surface formats, found {} formats", formatCount);
         }
@@ -1597,12 +1409,12 @@ namespace SceneryEditorX
 
         // Query present modes
         uint32_t presentModeCount;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, physDeviceManager.GetSurface(), &presentModeCount, nullptr);
 
         if (presentModeCount != 0)
         {
             availablePresentModes.resize(presentModeCount);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, availablePresentModes.data());
+            vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, physDeviceManager.GetSurface(), &presentModeCount, availablePresentModes.data());
 
             EDITOR_LOG_INFO("Recreated present modes, found {} modes", presentModeCount);
         }
@@ -1612,7 +1424,7 @@ namespace SceneryEditorX
         }
 
         // Store updated surface capabilities
-        surfaceCapabilities = capabilities;
+        gpuDevice.surfaceCapabilities = capabilities;
     }
 
 	void GraphicsEngine::generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
@@ -2106,105 +1918,7 @@ namespace SceneryEditorX
         return 0; // Return a default value to avoid undefined behavior
     }
 
-	VkFormat GraphicsEngine::findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-    {
-        for (VkFormat format : candidates)
-        {
-            VkFormatProperties props;
-            const GPUDevice &selectedDevice = physDeviceManager.Selected();
-
-
-            vkGetPhysicalDeviceFormatProperties(selectedDevice.physicalDevice, format, &props);
-
-            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-            {
-                return format;
-            }
-            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-            {
-                return format;
-            }
-        }
-
-        throw std::runtime_error("Failed to find supported format!");
-    }
-
-    VkFormat GraphicsEngine::findDepthFormat()
-    {
-        return findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-                                   VK_IMAGE_TILING_OPTIMAL,
-                                   VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    }
-
 	// -------------------------------------------------------
-
-    bool GraphicsEngine::checkDeviceExtensionSupport(VkPhysicalDevice device)
-    {
-        uint32_t extensionCount;
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-        const auto &deviceExtensions = VulkanExtensions::GetDeviceExtensions();
-        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-
-        EDITOR_LOG_INFO("Checking for required device extensions:");
-        for (const auto &extension : deviceExtensions)
-        {
-            EDITOR_LOG_INFO("  Required: {}", ToString(extension));
-        }
-        EDITOR_LOG_INFO("Available device extensions:");
-        for (const auto &extension : availableExtensions)
-        {
-            EDITOR_LOG_INFO("  Available: {}", ToString(extension.extensionName));
-            requiredExtensions.erase(extension.extensionName);
-        }
-        if (!requiredExtensions.empty())
-        {
-            EDITOR_LOG_ERROR("Missing extensions:");
-            for (const auto &ext : requiredExtensions)
-            {
-                EDITOR_LOG_ERROR("  Missing: {}", ToString(ext));
-            }
-            return false;
-        }
-
-        return true;
-    }
-
-	bool GraphicsEngine::checkValidationLayerSupport()
-    {
-        uint32_t layerCount;
-        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-        std::vector<VkLayerProperties> availableLayers(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-		const auto &validationLayers = VulkanExtensions::GetValidationLayers();
-
-        for (const char *layerName : validationLayers)
-        {
-            bool layerFound = false;
-
-            for (const auto &layerProperties : availableLayers)
-            {
-                if (strcmp(layerName, layerProperties.layerName) == 0)
-                {
-                    layerFound = true;
-                    break;
-                }
-            }
-
-            if (!layerFound)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
 	bool GraphicsEngine::hasStencilComponent(VkFormat format)
     {

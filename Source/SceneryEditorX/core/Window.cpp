@@ -260,7 +260,6 @@ std::string VideoModeText(GLFWvidmode mode)
  * window attributes such as maximized, decorated, and resizable.
  */
 
-/*
 void Window::OnImgui()
 {
 	const float totalWidth = ImGui::GetContentRegionAvail().x;
@@ -402,7 +401,6 @@ void Window::OnImgui()
 		}
 	}
 }
-*/
 
 /**
  * @brief Updates the framebuffer size.

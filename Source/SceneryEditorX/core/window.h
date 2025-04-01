@@ -58,13 +58,13 @@ private:
 	INTERNAL inline bool        decorated           = true;
 	INTERNAL inline bool        maximized           = true;
 
+    INTERNAL void SetWindowIcon(GLFWwindow *window);
+
 	GLOBAL void ScrollCallback(GLFWwindow *window, double x, double y);
     GLOBAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
     GLOBAL void WindowMaximizeCallback(GLFWwindow *window, int maximize);
     GLOBAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);
     GLOBAL void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
-
-	INTERNAL void SetWindowIcon(GLFWwindow *window);
 
 public:
 	GLOBAL void Create();
@@ -80,17 +80,21 @@ public:
     GLOBAL int get_height();
 
 	GLOBAL inline GLFWwindow*   GetGLFWwindow()                     {return window;}
-	GLOBAL inline bool          IsDirty()                           {return dirty;}
-	GLOBAL inline void          WaitEvents()                        {glfwWaitEvents();}
 	GLOBAL inline uint32_t      GetWidth()                          {return Window::width;}
 	GLOBAL inline uint32_t      GetHeight()                         {return Window::height;}
-	GLOBAL inline float         GetDeltaTime()                      {return deltaTime;}
-	GLOBAL inline bool          GetShouldClose()                    {return glfwWindowShouldClose(window);}
-	GLOBAL inline float         GetDeltaScroll()                    {return deltaScroll;}
 	GLOBAL inline Vec2          GetDeltaMouse()                     {return deltaMousePos;}
+
+	GLOBAL inline void          SetTitle(const std::string& title)  {glfwSetWindowTitle(window,title.c_str());}
+	GLOBAL inline void          WaitEvents()                        {glfwWaitEvents();}
+
+	GLOBAL inline bool          IsDirty()                           {return dirty;}
+	GLOBAL inline bool          GetShouldClose()                    {return glfwWindowShouldClose(window);}
 	GLOBAL inline bool          GetFramebufferResized()             {return framebufferResized;}
 	GLOBAL inline bool          IsKeyDown(uint16_t keyCode)         {return glfwGetKey(window,keyCode);}
 	GLOBAL inline bool          IsMouseDown(uint16_t buttonCode)    {return glfwGetMouseButton(window,buttonCode);}
-	GLOBAL inline void          SetTitle(const std::string& title)  {glfwSetWindowTitle(window,title.c_str());}
+
+	GLOBAL inline float         GetDeltaTime()                      {return deltaTime;}
+	GLOBAL inline float         GetDeltaScroll()                    {return deltaScroll;}
+
 };
 

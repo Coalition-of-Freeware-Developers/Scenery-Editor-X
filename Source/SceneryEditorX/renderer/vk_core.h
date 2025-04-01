@@ -26,30 +26,7 @@
 
 namespace SceneryEditorX
 {
-	#ifdef SEDX_DEBUG
-	const bool enableValidationLayers = true;
-	#else
-	const bool enableValidationLayers = false;
-	#endif
-	
-	struct QueueFamilyIndices
-	{
-	    std::optional<uint32_t> graphicsFamily;
-	    std::optional<uint32_t> presentFamily;
-	
-	    bool isComplete()
-	    {
-	        return graphicsFamily.has_value() && presentFamily.has_value();
-	    }
-	};
-	
-	struct SwapChainSupportDetails
-	{
-	    VkSurfaceCapabilitiesKHR capabilities;
-	    std::vector<VkSurfaceFormatKHR> formats;
-	    std::vector<VkPresentModeKHR> presentModes;
-	};
-	
+
 	struct Vertex
 	{
 	    glm::vec3 pos;
@@ -123,15 +100,20 @@ namespace SceneryEditorX
     };
 	
 // -------------------------------------------------------
-	
+    class GFXPipeline;
+
 	class GraphicsEngine
 	{
-	public:
+    public:
+        GraphicsEngine(GLFWwindow *window);
+        ~GraphicsEngine();
+
+        void run();
 	
 		void initEngine(GLFWwindow *window, uint32_t width, uint32_t height);
         void createSwapChain();
-        void cleanUp();
-        void cleanupSwapChain();
+        void cleanUp(VkDevice device, VkSurfaceKHR surface);
+        void cleanupSwapChain(VkDevice device, VkSurfaceKHR surface);
         void recreateSwapChain();
         void renderFrame();
         void updateUniformBuffer(uint32_t currentImage);
@@ -151,18 +133,16 @@ namespace SceneryEditorX
         LOCAL void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
         VkCommandBuffer beginSingleTimeCommands();
-	    VkDevice GetDevice() const { return device; }
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		// -------------------------------------------------------
         // GETTER FUNCTIONS
         // -------------------------------------------------------
-
+		VkDevice GetDevice() const { return physDeviceManager.GetDevice(); }
+		VkPhysicalDevice GetPhysicalDevice() const { return physDeviceManager.GetPhysicalDevice(); }
+		VkQueue GetGraphicsQueue() const { return physDeviceManager.GetGraphicsQueue(); }
 		VkInstance GetInstance() const { return instance; }
-		VkPhysicalDevice GetPhysicalDevice() const { return physicalDevice; }
-		VkQueue GetGraphicsQueue() const { return graphicsQueue; }
-		VkQueue GetPresentQueue() const { return presentQueue; }
 		VkRenderPass GetRenderPass() const { return renderPass; }
 		VkDescriptorPool GetDescriptorPool() const { return descriptorPool; }
 		VkExtent2D GetSwapChainExtent() const { return swapChainExtent; }
@@ -177,8 +157,6 @@ namespace SceneryEditorX
 		VkImage GetDepthImage() const { return depthImage; }
 		VkDescriptorSetLayout GetDescriptorSetLayout() const { return descriptorSetLayout; }
 		VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }
-		VkPipeline GetGraphicsPipeline() const { return graphicsPipeline; }
-		VkCommandPool GetCommandPool() const { return commandPool; }
 		VkDeviceMemory GetIndexBufferMemory() const { return indexBufferMemory; }
 		VkBuffer GetIndexBuffer() const { return indexBuffer; }
 		VkDeviceMemory GetVertexBufferMemory() const { return vertexBufferMemory; }
@@ -193,6 +171,12 @@ namespace SceneryEditorX
         QueueFamilyIndices GetQueueFamilyIndices() const { return queueFamilyIndices; }
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 		const std::vector<VkImage>& GetSwapChainImages() const { return swapChainImages; }
+
+		// In any methods that need the device or physical device
+        VkDevice device = physDeviceManager.GetDevice();
+        VkPhysicalDevice physicalDevice = physDeviceManager.GetPhysicalDevice();
+        VkQueue graphicsQueue = physDeviceManager.GetGraphicsQueue();
+        VkQueue presentQueue = physDeviceManager.GetPresentQueue();
 
 		// -------------------------------------------------------
 
@@ -213,9 +197,7 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        VkDevice device = VK_NULL_HANDLE;
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-		VulkanPhysicalDevice physDeviceManager;
+		vkPhysDevice physDeviceManager;
 
 		// -------------------------------------------------------
 
@@ -226,23 +208,13 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
         VkFormat swapChainImageFormat;
-		VkQueue graphicsQueue = VK_NULL_HANDLE;
-        VkQueue presentQueue = VK_NULL_HANDLE;
         VkExtent2D swapChainExtent;
-	    VkSurfaceKHR surface;
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
         QueueFamilyIndices queueFamilyIndices;
         VkSampleCountFlags sampleCounts;
         VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		// -------------------------------------------------------
-
-	    std::vector<bool> activeLayers;
-        std::vector<bool> activeExtensions;
-	    std::vector<const char *> activeLayersNames;
-        std::vector<const char *> activeExtensionsNames;
-
-        // -------------------------------------------------------
 
 		std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
@@ -259,11 +231,9 @@ namespace SceneryEditorX
         std::vector<VkPresentModeKHR> availablePresentModes;
         std::vector<VkLayerProperties> layers;
         std::vector<VkSurfaceFormatKHR> availableSurfaceFormats;
-        std::vector<VkExtensionProperties> availableExtensions;
-        std::vector<VkExtensionProperties> instanceExtensions;
         std::vector<VkQueueFamilyProperties> availableFamilies;
 
-        VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+        //VkSurfaceCapabilitiesKHR surfaceCapabilities{};
 
 		// -------------------------------------------------------
         uint32_t apiVersion;
@@ -306,8 +276,6 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
         bool framebufferResized = false;
-        bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-        bool checkValidationLayerSupport();
         bool hasStencilComponent(VkFormat format);
 
 		// -------------------------------------------------------
@@ -315,11 +283,8 @@ namespace SceneryEditorX
 	    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
         void createInstance();
 		void createDebugMessenger();
-        void createSurface(GLFWwindow *glfwWindow);
+        void createSurface(GLFWwindow *glfwWindow, VkSurfaceKHR surface);
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
-	    bool isDeviceCompatible(VkPhysicalDevice device);
-	    void pickPhysicalDevice();
-		void createLogicalDevice();
         void createImageViews();
         void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format,  VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
         void createRenderPass();
@@ -350,11 +315,6 @@ namespace SceneryEditorX
 	    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
 	    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
         VkSampleCountFlagBits getMaxUsableSampleCount();
-
-		// -------------------------------------------------------
-
-        VkFormat findDepthFormat();
-	    VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
 		// -------------------------------------------------------
 

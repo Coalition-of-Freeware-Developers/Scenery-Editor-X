@@ -13,17 +13,37 @@
 
 #include <Launcher/core/launcher_main.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/frame_data.h>
 #include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_core.h>
+#include <SceneryEditorX/renderer/vk_device.h>
+#include <SceneryEditorX/renderer/vk_pipeline.h>
 #include <SceneryEditorX/scene/asset_manager.h>
+//#include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <memory>
 
 /*
 * -------------------------------------------------------
-* EditorApplication Global Variables
+* Global Variables
 * -------------------------------------------------------
 */
 
+struct PerFrameData
+{
+    glm::mat4 projectionMatrix = {1.0f};
+    glm::mat4 viewMatrix = {1.0f};
+    glm::mat4 invViewProjection = {1.0f};
+    glm::vec3 cameraPosition = {0.0f, 0.0f, 0.0f};
+    uint32_t pad1 = 0;
+};
+
+//GLOBAL std::unique_ptr<Camera> g_Camera = {};
+//GLOBAL FrameInfo g_FrameInfo = {};
+GLOBAL uint64_t g_LastFrameCount = 0;
+GLOBAL uint64_t g_CurrentFPS = 0;
+GLOBAL std::chrono::high_resolution_clock::time_point g_FPSStartTime = {};
+//GLOBAL Scene *g_ActiveScene = nullptr;
 //GLOBAL Scope<Window> g_Window;
 
 /**
@@ -41,19 +61,35 @@ class EditorApplication
 {
 
 public:
+
+    EditorApplication()
+        : window(nullptr),
+          currentFrame(0),
+		  viewportSize({64, 48}),
+		  newViewportSize(viewportSize),
+		  viewportHovered(false),
+          viewportResized(false),
+		  fullscreen(false),
+		  swapChainDirty(true),
+		  frameCount(0)
+    {
+        // Any additional initialization can go here
+    }
+
 	void run()
 	{
 		initialize_editor();
         create();
-		main_loop();
+        main_loop();
 		shut_down();
 	}
     //bool GetSwapChainDirty();
 
 private:
-    GLFWwindow* window;
-    GraphicsEngine vkRenderer;
-    GUI ui;
+    GLFWwindow *window;
+    std::unique_ptr<GraphicsEngine> vkRenderer;
+    std::unique_ptr<vkPhysDevice> physDevice;
+    GUI ui{};
     uint32_t currentFrame = 0;
 	glm::ivec2 viewportSize = {64, 48};
 	glm::ivec2 newViewportSize = viewportSize;
@@ -91,9 +127,18 @@ private:
 		vulkanChecks.InitChecks({}, {});     // Initialize the Vulkan checks
 
 		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-        vkRenderer.initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
+        vkRenderer = std::make_unique<GraphicsEngine>(Window::GetGLFWwindow());
+        physDevice = std::make_unique<vkPhysDevice>();
 
-		ui.initGUI(Window::GetGLFWwindow(), vkRenderer);
+        vkRenderer->initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
+        ui.initGUI(Window::GetGLFWwindow(), *vkRenderer);
+
+        //g_Camera = std::make_unique<Camera>(glm::vec3(0.0f, 3.0f, -4.0f),
+        //                                    glm::angleAxis(glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
+        //                                    60.0f,
+        //                                    (float)Window::GetWidth() / Window::GetHeight(),
+        //                                    0.1f,
+        //                                    100.0f);
 
 		//SceneryEditorX::CreateEditor();
 
@@ -109,7 +154,7 @@ private:
 		{
 			if (viewportResized)
 			{
-                vkRenderer.recreateSwapChain();
+                vkRenderer->recreateSwapChain();
 				viewportResized = false;
 			}
 
@@ -123,7 +168,7 @@ private:
 
 	void WaitIdle()
     {
-        auto result = vkDeviceWaitIdle(vkRenderer.GetDevice());
+        auto result = vkDeviceWaitIdle(physDevice->GetDevice());
         if (result != VK_SUCCESS)
         {
             EDITOR_LOG_ERROR("Failed to wait for device to become idle: {}", ToString(result));
@@ -134,9 +179,9 @@ private:
 
 	void OnSurfaceUpdate(uint32_t width, uint32_t height)
 	{
-	    vkRenderer.cleanupSwapChain();
-	    vkRenderer.recreateSurfaceFormats();
-	    vkRenderer.createSwapChain();
+        vkRenderer->cleanupSwapChain(physDevice->GetDevice(), physDevice->GetSurface());
+	    vkRenderer->recreateSurfaceFormats();
+	    vkRenderer->createSwapChain();
 	}
 
 	void RecreateFrameResources()
@@ -186,7 +231,7 @@ private:
 	void DrawFrame()
 	{
         //DrawEditor();
-        vkRenderer.renderFrame();
+        vkRenderer->renderFrame();
         /*
         if (GetSwapChainDirty())
         {
@@ -206,7 +251,7 @@ private:
 
 	void shut_down()
 	{
-        vkRenderer.cleanUp();
+        vkRenderer->cleanUp(physDevice->GetDevice(), physDevice->GetSurface());
         Window::Destroy();
 	}
 
