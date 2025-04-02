@@ -15,21 +15,35 @@
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX :: UI
 {
+
 	class GuiContext : Layer
 	{
     public:
-        virtual void Begin() = 0;
-        virtual void End() = 0;
+        GuiContext();
+        GuiContext(const std::string& name);
+        virtual ~GuiContext();
+
+		virtual void Begin() override;
+        virtual void End() override;
+
+		virtual void OnAttach() override;
+        virtual void OnDetach() override;
+        virtual void OnRender() override;
 
         void SetDarkThemeColors();
         void SetDarkThemeV2Colors();
 
         void AllowInputEvents(bool allowEvents);
 
-        static GuiContext *Create();
+        static GuiContext* Create();
+
+    private:
+        SRef<RenderCommandBuffer> renderCommandBuffer;
 	
 	};
 
-} // namespace UI
+} // namespace SceneryEditorX :: UI
+
+// -------------------------------------------------------

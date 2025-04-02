@@ -116,11 +116,11 @@ namespace AssetManager
         Vec3 emission = Vec3(0.0f);
         float metallic = 0;
         float roughness = 0.5;
-        //Ref<TextureAsset> aoMap;
-        //Ref<TextureAsset> colorMap;
-        //Ref<TextureAsset> normalMap;
-        //Ref<TextureAsset> emissionMap;
-        //Ref<TextureAsset> metallicRoughnessMap;
+        //SRef<TextureAsset> aoMap;
+        //SRef<TextureAsset> colorMap;
+        //SRef<TextureAsset> normalMap;
+        //SRef<TextureAsset> emissionMap;
+        //SRef<TextureAsset> metallicRoughnessMap;
 
         MaterialAsset();
         virtual void Serialize(Serializer &s);
@@ -130,28 +130,28 @@ namespace AssetManager
     {
         AssetManager();
         ~AssetManager();
-        //std::vector<Ref<Node>> AddAssetsToScene(Ref<SceneAsset> &scene, const std::vector<std::string> &paths);
+        //std::vector<SRef<Node>> AddAssetsToScene(SRef<SceneAsset> &scene, const std::vector<std::string> &paths);
         //void LoadProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
         //void SaveProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
-        //Ref<SceneAsset> GetInitialScene();
-        //Ref<CameraNode> GetMainCamera(Ref<SceneAsset> &scene);
+        //SRef<SceneAsset> GetInitialScene();
+        //SRef<CameraNode> GetMainCamera(SRef<SceneAsset> &scene);
 
         /*
 	template <typename T>
-	Ref<T> Get(UUID uuid)
+	SRef<T> Get(UUID uuid)
 	{
 		return std::dynamic_pointer_cast<T>(assets[uuid]);
 	}
 
-	Ref<Asset> Get(UUID uuid)
+	SRef<Asset> Get(UUID uuid)
 	{
 		return assets[uuid];
 	}
 
 	template <typename T>
-	std::vector<Ref<T>> GetAll(ObjectType type) const
+	std::vector<SRef<T>> GetAll(ObjectType type) const
 	{
-		std::vector<Ref<T>> all;
+		std::vector<SRef<T>> all;
 		for (auto &pair : assets)
 		{
 			if (pair.second->type == type)
@@ -162,9 +162,9 @@ namespace AssetManager
 		return all;
 	}
 
-	std::vector<Ref<Asset>> GetAll() const
+	std::vector<SRef<Asset>> GetAll() const
 	{
-		std::vector<Ref<Asset>> all;
+		std::vector<SRef<Asset>> all;
 		for (auto &pair : assets)
 		{
 			all.emplace_back(std::dynamic_pointer_cast<Asset>(pair.second));
@@ -173,26 +173,26 @@ namespace AssetManager
 	}
 
 	template <typename T>
-	static Ref<T> CreateObject(const std::string &name, UUID uuid = 0)
+	static SRef<T> CreateObject(const std::string &name, UUID uuid = 0)
 	{
 		if (uuid == 0)
 		{
 			uuid = NewUUID();
 		}
-		Ref<T> a = std::make_shared<T>();
+		SRef<T> a = std::make_shared<T>();
 		a->name = name;
 		a->uuid = uuid;
 		return a;
 	}
 
 	template <typename T>
-	Ref<T> CreateAsset(const std::string &name, UUID uuid = 0)
+	SRef<T> CreateAsset(const std::string &name, UUID uuid = 0)
 	{
 		if (uuid == 0)
 		{
 			uuid = NewUUID();
 		}
-		Ref<T> a = std::make_shared<T>();
+		SRef<T> a = std::make_shared<T>();
 		a->name = name;
 		a->uuid = uuid;
 		assets[a->uuid] = a;
@@ -203,7 +203,7 @@ namespace AssetManager
 		return a;
 	}
 
-	Ref<Object> CreateObject(ObjectType type, const std::string &name, UUID uuid = 0)
+	SRef<Object> CreateObject(ObjectType type, const std::string &name, UUID uuid = 0)
 	{
 		switch (type)
 		{
@@ -229,22 +229,22 @@ namespace AssetManager
 	}
 
 	template <typename T>
-	Ref<T> CloneAsset(const Ref<Object> &rhs)
+	SRef<T> CloneAsset(const SRef<Object> &rhs)
 	{
-		Ref<T> asset = CreateAsset<T>(rhs->name, 0);
+		SRef<T> asset = CreateAsset<T>(rhs->name, 0);
 		*asset = *std::dynamic_pointer_cast<T>(rhs);
 		return asset;
 	}
 
 	template <typename T>
-	static Ref<T> CloneObject(const Ref<Object> &rhs)
+	static SRef<T> CloneObject(const SRef<Object> &rhs)
 	{
-		Ref<T> object = CreateObject<T>(rhs->name, 0);
+		SRef<T> object = CreateObject<T>(rhs->name, 0);
 		*object = *std::dynamic_pointer_cast<T>(rhs);
 		return object;
 	}
 
-	Ref<Object> CloneAsset(ObjectType type, const Ref<Object> &rhs)
+	SRef<Object> CloneAsset(ObjectType type, const SRef<Object> &rhs)
 	{
 		switch (type)
 		{
@@ -255,7 +255,7 @@ namespace AssetManager
 		}
 	}
 
-	static Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
+	static SRef<Object> CloneObject(ObjectType type, const SRef<Object> &rhs)
 	{
 		switch (type)
 		{
@@ -282,14 +282,14 @@ namespace AssetManager
 
     private:
         struct AssetManagerImpl *impl;
-        //std::unordered_map<UUID, Ref<Asset>> assets;
+        //std::unordered_map<UUID, SRef<Asset>> assets;
         static UUID NewUUID();
         //UUID initialScene = 0;
     };
 
     struct SceneAsset : Asset
     {
-        //std::vector<Ref<Node>> nodes;
+        //std::vector<SRef<Node>> nodes;
         Vec3 ambientLightColor = Vec3(1);
         float ambientLight = 0.01f;
         int aoSamples = 4;
@@ -304,26 +304,26 @@ namespace AssetManager
         float zoomSpeed = 1.0f;
         float rotationSpeed = 0.3f;
         bool autoOrbit = false;
-        //Ref<CameraNode> mainCamera;
+        //SRef<CameraNode> mainCamera;
 
         bool taaEnabled = true;
         bool taaReconstruct = true;
 
         /*
 	template <typename T>
-	Ref<T> Add()
+	SRef<T> Add()
 	{
-		Ref<T> node = std::make_shared<T>();
+		SRef<T> node = std::make_shared<T>();
 		nodes.push_back(node);
 		return node;
 	}
 
-	void Add(const Ref<Node> &node)
+	void Add(const SRef<Node> &node)
 	{
 		nodes.push_back(node);
 	}
 
-	void DeleteRecursive(const Ref<Node> &node);
+	void DeleteRecursive(const SRef<Node> &node);
 	*/
     };
 } // namespace AssetManager

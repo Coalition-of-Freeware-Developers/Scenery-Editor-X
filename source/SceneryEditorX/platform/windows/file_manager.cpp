@@ -23,7 +23,7 @@
 
 namespace SceneryEditorX {
 
-	float Time::GetTime()
+	float Timer::GetTime()
 	{
 		return glfwGetTime();
 	}

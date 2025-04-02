@@ -36,6 +36,7 @@
 
 // -------------------------------------------------------
 using namespace SceneryEditorX;
+using namespace SceneryEditorX::UI;
 
 class EditorApplication
 {
@@ -217,7 +218,7 @@ private:
     }
 	*/
 
-    //Ref<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
+    //SRef<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
 
 };
 

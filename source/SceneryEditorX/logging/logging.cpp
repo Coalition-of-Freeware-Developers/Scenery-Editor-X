@@ -229,7 +229,7 @@ void Log::LogHeader()
 				 systemTime.wDay,
 				 systemTime.wMonth,
 				 systemTime.wYear);
-	spdlog::info("Time Zone: {}", std::string(timeZoneName.begin(), timeZoneName.end()));
+	spdlog::info("Timer Zone: {}", std::string(timeZoneName.begin(), timeZoneName.end()));
 	spdlog::info("Processor Architecture: {}", sysInfo.wProcessorArchitecture);
 	spdlog::info("Processor Cores: {}", sysInfo.dwNumberOfProcessors);
 	spdlog::info("Page Size: {}", sysInfo.dwPageSize);
@@ -242,7 +242,7 @@ void Log::LogHeader()
 	spdlog::info("Scenery Editor X");
 	spdlog::info("Version: {}.{}.{}.{}", SEDX_VER_MAJOR, SEDX_VER_MINOR, SEDX_VER_PATCH, SEDX_VER_BUILD);
 	spdlog::info("Build Date: {}", __DATE__);
-	spdlog::info("Build Time: {}", __TIME__);
+	spdlog::info("Build Timer: {}", __TIME__);
 	spdlog::info("Coalition of Freeware Developers");
 	spdlog::info("Copyright (C) 2025");
 	spdlog::info("============================================");

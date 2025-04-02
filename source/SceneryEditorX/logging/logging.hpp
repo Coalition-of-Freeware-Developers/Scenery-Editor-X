@@ -14,7 +14,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
@@ -100,8 +99,6 @@ public:
 
     // Helper function for logging Vulkan API calls with result checking
     static void LogVulkanResult(VkResult result, const std::string &operation);
-
-
 
 	/**
 	 * @brief Gets the logger instance.

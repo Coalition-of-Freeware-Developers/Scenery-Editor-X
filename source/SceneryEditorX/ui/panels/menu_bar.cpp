@@ -12,7 +12,7 @@
 */
 
 #include <imgui/imgui.h>
-#include <SceneryEditorX/Platform/Windows/FileManager/FileDialog.h>
+#include <SceneryEditorX/Platform/Windows/file_manager/file_dialog.h>
 #include <SceneryEditorX/UI/ui.h>
 
 // -------------------------------------------------------

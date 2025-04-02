@@ -44,7 +44,7 @@ namespace SceneryEditorX {
 		static std::string SaveFile(const char* filter);
 	};
 
-	class Time
+	class Timer
 	{
 	public:
 		static float GetTime();

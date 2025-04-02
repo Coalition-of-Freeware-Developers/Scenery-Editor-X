@@ -53,7 +53,7 @@ using Mat4 = glm::mat4; // 4x4 matrix
 
 #define SEDX_EXPAND_MACRO(x) x
 #define SEDX_STRINGIFY_MACRO(x) #x
-#define BIT(x) (1 << x)
+#define BIT(x) (1u << x)
 #define SEDX_BIND_EVENT_FN(fn) [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
 // -------------------------------------------------------
@@ -83,7 +83,7 @@ constexpr Scope<T> CreateScope(Args &&...args)
  * @tparam T The type to manage.
  */
 template <typename T>
-using Ref = std::shared_ptr<T>;
+using SRef = std::shared_ptr<T>;
 
 /**
  * @brief Creates a shared pointer to an object of type T.
@@ -93,7 +93,7 @@ using Ref = std::shared_ptr<T>;
  * @return A shared pointer to an object of type T.
  */
 template <typename T, typename... Args>
-constexpr Ref<T> CreateRef(Args &&...args)
+constexpr SRef<T> CreateRef(Args &&...args)
 {
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }

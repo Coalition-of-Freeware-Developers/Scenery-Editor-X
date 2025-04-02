@@ -38,15 +38,33 @@ ADD_EXECUTABLE(SceneryEditorX
 	${PROJECT_CONFIG_FILES}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
+	core/application_events.h
     core/base.hpp
+	core/editor_events.h
+	core/events.h
+	core/key_codes.h
+	core/key_events.h
+	core/layer.cpp
+	core/layer.h
     core/main.cpp
+	core/mouse_events.h
+	core/scene_events.h
+	core/timer.cpp
+	core/timer.h
     core/transforms.cpp
+	core/version.h
     core/window.cpp
     core/window.h
-	core/version.h
     # --------------------------------
+	scene/asset/asset.h
+	scene/asset/asset_enums.h
+	# --------------------------------
     scene/asset_manager.cpp
     scene/asset_manager.h
+	scene/scene.cpp
+	scene/scene.h
+	scene/scene_ref.cpp
+	scene/scene_ref.h
     # --------------------------------
     platform/system_detection.h
     platform/platform.h
@@ -104,9 +122,15 @@ SOURCE_GROUP("Editor/Core" FILES
     core/main.cpp
 	core/layer.cpp
 	core/layer.h
+	core/timer.cpp
+	core/timer.h
     core/version.h
     core/window.cpp
     core/window.h
+)
+SOURCE_GROUP("Editor/Asset" FILES
+	scene/asset/asset.h
+	scene/asset/asset_enums.h
 )
 SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
@@ -124,7 +148,15 @@ SOURCE_GROUP("Core/Platform/Mac" FILES
 )
 SOURCE_GROUP("Core/Coordinates" FILES
 	core/transforms.cpp
-
+)
+SOURCE_GROUP("Core/Events" FILES
+	core/application_events.h
+	core/editor_events.h
+	core/events.h
+	core/key_codes.h
+	core/key_events.h
+	core/mouse_events.h
+	core/scene_events.h
 )
 SOURCE_GROUP("Core/Logger" FILES
     logging/logging.cpp
@@ -134,8 +166,12 @@ SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )
 SOURCE_GROUP("Editor/Scene" FILES
-    scene/asset_manager.cpp
-    scene/asset_manager.h
+	scene/asset_manager.cpp
+	scene/asset_manager.h
+	scene/scene.cpp
+	scene/scene.h
+	scene/scene_ref.cpp
+	scene/scene_ref.h
 )
 SOURCE_GROUP("Editor/UI" FILES
 	ui/colors.h

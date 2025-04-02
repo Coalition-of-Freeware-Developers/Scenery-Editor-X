@@ -176,7 +176,7 @@ AssetManager::~AssetManager()
 */
 
     /*
-Ref<SceneAsset> AssetManager::GetInitialScene()
+SRef<SceneAsset> AssetManager::GetInitialScene()
 {
 	if (!initialScene)
 	{
