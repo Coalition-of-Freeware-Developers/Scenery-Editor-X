@@ -125,7 +125,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::cleanUp() 
     {
-        GUI guiInstance;
+        EditorUI guiInstance;
         guiInstance.cleanUp();
 
         cleanupSwapChain();
@@ -1339,7 +1339,7 @@ namespace SceneryEditorX
 			// -------------------------------------------------------
 
 			// ImGui
-            //GUI guiInstance;
+            //EditorUI guiInstance;
             //guiInstance.newFrame();
 
 			ImGui_ImplVulkan_NewFrame();
@@ -1426,7 +1426,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::renderFrame()
     {
-        GUI guiInstance;
+        EditorUI guiInstance;
 
         vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 

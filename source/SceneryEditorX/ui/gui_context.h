@@ -12,38 +12,26 @@
 */
 #pragma once
 #include <SceneryEditorX/core/layer.h>
+#include <SceneryEditorX/options/settings.h>
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX :: UI
+namespace SceneryEditorX
 {
-
-	class GuiContext : Layer
+	class ContextHandler : public Layer
 	{
     public:
-        GuiContext();
-        GuiContext(const std::string& name);
-        virtual ~GuiContext();
-
-		virtual void Begin() override;
-        virtual void End() override;
-
-		virtual void OnAttach() override;
-        virtual void OnDetach() override;
-        virtual void OnRender() override;
+        virtual void Begin() = 0;
+        virtual void End() = 0;
 
         void SetDarkThemeColors();
         void SetDarkThemeV2Colors();
 
         void AllowInputEvents(bool allowEvents);
 
-        static GuiContext* Create();
-
-    private:
-        //Ref<RenderCommandBuffer> renderCommandBuffer;
-	
+        static ContextHandler* Create();
 	};
 
-} // namespace SceneryEditorX :: UI
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

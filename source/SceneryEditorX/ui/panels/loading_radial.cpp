@@ -18,7 +18,7 @@
 
 using namespace ImGui;
 
-namespace SceneryEditorX::UI  
+namespace UI  
 {  
    void LoadingIndicatorCircle(const char *label,
        const float indicator_radius,

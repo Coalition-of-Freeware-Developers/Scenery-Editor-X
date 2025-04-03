@@ -15,7 +15,7 @@
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX ::UI
+namespace SceneryEditorX
 {
 	Layer::Layer(const std::string &debugName) : DebugName_(debugName)
 	{
@@ -24,4 +24,4 @@ namespace SceneryEditorX ::UI
 	{
 	}
 
-} // namespace SceneryEditorX :: UI
+} // namespace SceneryEditorX

@@ -30,7 +30,13 @@ namespace SceneryEditorX
 	#else
 	const bool enableValidationLayers = false;
 	#endif
-	
+
+	enum class RendererType
+    {
+		None,
+        Vulkan
+    };
+
 	struct QueueFamilyIndices
 	{
 	    std::optional<uint32_t> graphicsFamily;
@@ -203,7 +209,12 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
+		static RendererType Current() {return CurrentRenderer_;}
+
 	private:
+        inline static RendererType CurrentRenderer_ = RendererType::Vulkan;
+		static void SetAPI(RendererType api) { CurrentRenderer_ = api; }
+
 		GLFWwindow *window;
 		VkInstance instance = VK_NULL_HANDLE;
 	    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;

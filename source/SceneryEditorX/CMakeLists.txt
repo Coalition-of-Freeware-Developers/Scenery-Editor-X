@@ -78,6 +78,7 @@ ADD_EXECUTABLE(SceneryEditorX
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
+	ui/icons.h
 	ui/gui_context.cpp
 	ui/gui_context.h
 	ui/styles.cpp
@@ -195,15 +196,16 @@ SOURCE_GROUP("Editor/Scene" FILES
 	scene/scene_ref.h
 )
 SOURCE_GROUP("Editor/UI" FILES
-	ui/colors.h
-	ui/fonts.h
 	ui/gui_context.cpp
 	ui/gui_context.h
-	ui/styles.cpp
 	ui/ui.cpp
 	ui/ui.h
 	ui/ui_manager.h
 )
+	SOURCE_GROUP("Editor/UI/Actions" FILES
+		ui/actions/modals.cpp
+		ui/actions/viewports.cpp
+	)
 	SOURCE_GROUP("Editor/UI/Panels" FILES
 		ui/panels/about.cpp
 		ui/panels/content_browser.cpp
@@ -212,10 +214,13 @@ SOURCE_GROUP("Editor/UI" FILES
 		ui/panels/menu_bar.cpp
 		ui/panels/settings_panel.cpp
 	)
-	SOURCE_GROUP("Editor/UI/Actions" FILES
-		ui/actions/modals.cpp
-		ui/actions/viewports.cpp
+		SOURCE_GROUP("Editor/UI/Elements" FILES
+		ui/colors.h
+		ui/fonts.h
+		ui/icons.h
+		ui/styles.cpp
 	)
+
 
 # --------------------------------
 # APPLICATION RESOURCE FILTERS

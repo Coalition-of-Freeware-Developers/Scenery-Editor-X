@@ -18,13 +18,17 @@
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX :: UI
+namespace SceneryEditorX
 {
 	class Layer
 	{
 	public:
+
         Layer(const std::string &name = "Layer");
 		virtual ~Layer();
+
+		virtual void Begin() = 0;
+        virtual void End() = 0;
 
 		virtual void OnAttach() {}
         virtual void OnDetach() {}
@@ -33,8 +37,11 @@ namespace SceneryEditorX :: UI
         virtual void OnEvent(Event& event) {}
 
 		inline const std::string& GetName() const { return DebugName_; }
+
     protected:
 		std::string DebugName_;
 	};
 
-} // namespace SceneryEditorX :: UI
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------

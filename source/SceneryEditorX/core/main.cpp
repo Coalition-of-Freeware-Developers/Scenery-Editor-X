@@ -35,8 +35,8 @@
 //INTERNAL void initVulkan(GraphicsEngine &vkRenderer);
 
 // -------------------------------------------------------
-using namespace SceneryEditorX;
-using namespace SceneryEditorX::UI;
+
+using namespace UI;
 
 class EditorApplication
 {
@@ -53,8 +53,8 @@ public:
 
 private:
     GLFWwindow* window;
-    GraphicsEngine vkRenderer;
-    GUI ui;
+    SceneryEditorX::GraphicsEngine vkRenderer;
+    SceneryEditorX::EditorUI ui;
     uint32_t currentFrame = 0;
 	glm::ivec2 viewportSize = {64, 48};
 	glm::ivec2 newViewportSize = viewportSize;
@@ -94,7 +94,7 @@ private:
 		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         vkRenderer.initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
 
-		ui.initGUI(Window::GetGLFWwindow(), vkRenderer);
+		ui.initUI(Window::GetGLFWwindow(), vkRenderer);
 
 		//SceneryEditorX::CreateEditor();
 

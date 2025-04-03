@@ -10,11 +10,47 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
+#pragma once
+#include <imgui/imgui.h>
 
-//#pragma once
+// ---------------------------------------------------------
+
+struct Font
+{
+    /**
+	 * @brief Constructor
+	 * @param name The name of the font file that exists within 'assets/fonts' (without extension)
+	 * @param size The font size, scaled by DPI
+	 */
+
+	/*
+    Font(const std::string &name, float size) : name{name}, data{SceneryEditorX::fs::read_asset("fonts/" + name + ".ttf")}, size{size}
+    {
+        // Keep ownership of the font data to avoid a double delete
+        ImFontConfig font_config{};
+        font_config.FontDataOwnedByAtlas = false;
+
+        if (size < 1.0f)
+        {
+            size = 20.0f;
+        }
+
+        ImGuiIO &io = ImGui::GetIO();
+        handle = io.Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), size, &font_config);
+    }
+
+    ImFont *handle{nullptr};
+
+    std::string name;
+
+    std::vector<uint8_t> data;
+
+    float size{};
+	*/
+};
 
 
-	// Load Fonts
+// Load Fonts
 /*
  - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
  - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
@@ -24,6 +60,9 @@
  - Read 'docs/FONTS.md' for more instructions and details.
  - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
  - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
+ */
+
+/*
 io.Fonts->AddFontDefault();
 io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
 io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
