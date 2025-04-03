@@ -105,12 +105,11 @@ namespace SceneryEditorX::UI
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Your ImGui UI code goes here
         ImGui::ShowDemoWindow();
 
         // Add more UI elements as needed
 
-        // Complete the ImGui frame
+
         ImGui::Render();
 
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
@@ -333,6 +332,8 @@ namespace SceneryEditorX::UI
         //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
         //IM_ASSERT(font != nullptr);
     }
+
+
 } // namespace SceneryEditorX :: UI
 
 // -------------------------------------------------------

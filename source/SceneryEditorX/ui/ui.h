@@ -157,37 +157,40 @@ struct Image
     ImTextureID ImGuiRID(uint32_t layer);
 };
 
-//struct Font
-//{
-//  /**
-//	 * @brief Constructor
-//	 * @param name The name of the font file that exists within 'assets/fonts' (without extension)
-//	 * @param size The font size, scaled by DPI
-//	 */
-//    Font(const std::string &name, float size)
-//        : name{name}, data{SceneryEditorX::fs::read_asset("fonts/" + name + ".ttf")}, size{size}
-//    {
-//        // Keep ownership of the font data to avoid a double delete
-//        ImFontConfig font_config{};
-//        font_config.FontDataOwnedByAtlas = false;
-//
-//        if (size < 1.0f)
-//        {
-//            size = 20.0f;
-//        }
-//
-//        ImGuiIO &io = ImGui::GetIO();
-//        handle = io.Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), size, &font_config);
-//    }
-//
-//    ImFont *handle{nullptr};
-//
-//    std::string name;
-//
-//    std::vector<uint8_t> data;
-//
-//    float size{};
-//};
+/*
+struct Font
+{
+    /**
+	 * @brief Constructor
+	 * @param name The name of the font file that exists within 'assets/fonts' (without extension)
+	 * @param size The font size, scaled by DPI
+	 */
+/*
+    Font(const std::string &name, float size)
+        : name{name}, data{SceneryEditorX::fs::read_asset("fonts/" + name + ".ttf")}, size{size}
+    {
+        // Keep ownership of the font data to avoid a double delete
+        ImFontConfig font_config{};
+        font_config.FontDataOwnedByAtlas = false;
+
+        if (size < 1.0f)
+        {
+            size = 20.0f;
+        }
+
+        ImGuiIO &io = ImGui::GetIO();
+        handle = io.Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), size, &font_config);
+    }
+
+    ImFont *handle{nullptr};
+
+    std::string name;
+
+    std::vector<uint8_t> data;
+
+    float size{};
+};
+*/
 
 // -------------------------------------------------------
 
@@ -231,7 +234,7 @@ namespace SceneryEditorX :: UI
 	
 	    /**
 		 * @brief Updates the Gui
-		 * @param delta_time Timer passed since last update
+		 * @param delta_time DeltaTime passed since last update
 		 */
 	    void update(const float delta_time);
 	

@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <SceneryEditorX/core/memory.h>
 #include <atomic>
 #include <cstddef>
 #include <type_traits>
@@ -35,10 +36,7 @@ namespace SceneryEditorX
 	        --RefCount_;
 	    }
 	
-	    uint32_t GetRefCount() const
-	    {
-	        return RefCount_.load();
-	    }
+	    uint32_t GetRefCount() const { return RefCount_.load(); }
 	
 	private:
 	    mutable std::atomic<uint32_t> RefCount_ = 0;
@@ -54,20 +52,20 @@ namespace SceneryEditorX
     } // namespace RefUtils
 
 	template<typename T>
-	class SRef
+	class Ref
 	{
 	public:
-		SRef()
+		Ref()
 			: InstancePtr_(nullptr)
 		{
 		}
 		
-		SRef(std::nullptr_t n)
+		Ref(std::nullptr_t n)
 			: InstancePtr_(nullptr)
 		{
 		}
 
-		SRef(T* instance)
+		Ref(T* instance)
 			: InstancePtr_(instance)
 		{
 			static_assert(std::is_base_of<RefCounted, T>::value, "Class is not RefCounted!");
@@ -77,45 +75,45 @@ namespace SceneryEditorX
 
 		template<typename T2>
 		requires(std::is_base_of_v<T2, T> || std::is_base_of_v<T, T2>)
-		SRef(const SRef<T2>& other)
+		Ref(const Ref<T2>& other)
 		{
 			InstancePtr_ = (T*)other.InstancePtr_;
 			IncRef();
 		}
 
 		template<typename T2>
-		SRef(SRef<T2>&& other)
+		Ref(Ref<T2>&& other)
 		{
 			InstancePtr_ = (T*)other.InstancePtr_;
 			other.InstancePtr_ = nullptr;
 		}
 
-		static SRef<T> CopyWithoutIncrement(const SRef<T>& other)
+		static Ref<T> CopyWithoutIncrement(const Ref<T>& other)
 		{
-			SRef<T> result = nullptr;
+			Ref<T> result = nullptr;
 			result->InstancePtr_ = other.InstancePtr_;
 			return result;
 		}
 
-		~SRef()
+		~Ref()
 		{
 			DecRef();
 		}
 
-		SRef(const SRef<T>& other)
+		Ref(const Ref<T>& other)
 			: InstancePtr_(other.InstancePtr_)
 		{
 			IncRef();
 		}
 
-		SRef& operator=(std::nullptr_t)
+		Ref& operator=(std::nullptr_t)
 		{
 			DecRef();
 			InstancePtr_ = nullptr;
 			return *this;
 		}
 
-		SRef& operator=(const SRef<T>& other)
+		Ref& operator=(const Ref<T>& other)
 		{
 			if (this == &other)
 				return *this;
@@ -128,7 +126,7 @@ namespace SceneryEditorX
 		}
 
 		template<typename T2>
-		SRef& operator=(const SRef<T2>& other)
+		Ref& operator=(const Ref<T2>& other)
 		{
 			other.IncRef();
 			DecRef();
@@ -138,7 +136,7 @@ namespace SceneryEditorX
 		}
 
 		template<typename T2>
-		SRef& operator=(SRef<T2>&& other)
+		Ref& operator=(Ref<T2>&& other)
 		{
 			DecRef();
 
@@ -167,28 +165,28 @@ namespace SceneryEditorX
 
 		template<typename T2>
 		requires(std::is_base_of_v<T2, T> || std::is_base_of_v<T, T2>)
-		SRef<T2> As() const
+		Ref<T2> As() const
 		{
-			return SRef<T2>(*this);
+			return Ref<T2>(*this);
 		}
 
 		template<typename... Args>
-		static SRef<T> Create(Args&&... args)
+		static Ref<T> Create(Args&&... args)
 		{
-			return SRef<T>(new T(std::forward<Args>(args)...));
+			return Ref<T>(new T(std::forward<Args>(args)...));
 		}
 
-		bool operator==(const SRef<T>& other) const
+		bool operator==(const Ref<T>& other) const
 		{
 			return InstancePtr_ == other.InstancePtr_;
 		}
 
-		bool operator!=(const SRef<T>& other) const
+		bool operator!=(const Ref<T>& other) const
 		{
 			return !(*this == other);
 		}
 
-		bool EqualsObject(const SRef<T>& other)
+		bool EqualsObject(const Ref<T>& other)
 		{
 			if (!InstancePtr_ || !other.InstancePtr_)
 				return false;
@@ -221,7 +219,7 @@ namespace SceneryEditorX
 		}
 
 		template<class T2>
-		friend class SRef;
+		friend class Ref;
 		mutable T* InstancePtr_;
 	};
 
@@ -233,7 +231,7 @@ namespace SceneryEditorX
 	public:
 		WeakRef() = default;
 
-		WeakRef(SRef<T> ref)
+		WeakRef(Ref<T> ref)
 		{
 			InstancePtr_ = ref.Raw();
 		}

@@ -41,16 +41,20 @@ ADD_EXECUTABLE(SceneryEditorX
 	core/application_events.h
     core/base.hpp
 	core/editor_events.h
+	core/delta_time.cpp
+	core/delta_time.h
 	core/events.h
 	core/key_codes.h
 	core/key_events.h
 	core/layer.cpp
 	core/layer.h
     core/main.cpp
+	core/memory.cpp
+	core/memory.h
 	core/mouse_events.h
 	core/scene_events.h
-	core/timer.cpp
-	core/timer.h
+	options/settings.cpp
+	options/settings.h
     core/transforms.cpp
 	core/version.h
     core/window.cpp
@@ -116,36 +120,9 @@ ADD_EXECUTABLE(SceneryEditorX
 )
 
 # --------------------------------
+# CORE FILTERS
+# --------------------------------
 
-SOURCE_GROUP("Editor/Core" FILES
-    core/base.hpp
-    core/main.cpp
-	core/layer.cpp
-	core/layer.h
-	core/timer.cpp
-	core/timer.h
-    core/version.h
-    core/window.cpp
-    core/window.h
-)
-SOURCE_GROUP("Editor/Asset" FILES
-	scene/asset/asset.h
-	scene/asset/asset_enums.h
-)
-SOURCE_GROUP("Core/Platform" FILES
-    platform/system_detection.h
-    platform/platform.h
-    core/version.h
-)
-SOURCE_GROUP("Core/Platform/Windows" FILES
-    ${WIN_PLATFORM}
-)
-SOURCE_GROUP("Core/Platform/Linux" FILES
-    ${LINUX_PLATFORM}
-)
-SOURCE_GROUP("Core/Platform/Mac" FILES
-    ${MAC_PLATFORM}
-)
 SOURCE_GROUP("Core/Coordinates" FILES
 	core/transforms.cpp
 )
@@ -161,6 +138,50 @@ SOURCE_GROUP("Core/Events" FILES
 SOURCE_GROUP("Core/Logger" FILES
     logging/logging.cpp
     logging/logging.hpp
+)
+SOURCE_GROUP("Core/Memory" FILES
+	core/memory.cpp
+	core/memory.h
+)
+SOURCE_GROUP("Core/Platform" FILES
+    platform/system_detection.h
+    platform/platform.h
+    core/version.h
+)
+	SOURCE_GROUP("Core/Platform/Windows" FILES
+	    ${WIN_PLATFORM}
+	)
+	SOURCE_GROUP("Core/Platform/Linux" FILES
+	    ${LINUX_PLATFORM}
+	)
+	SOURCE_GROUP("Core/Platform/Mac" FILES
+	    ${MAC_PLATFORM}
+	)
+SOURCE_GROUP("Core/Time" FILES
+	core/delta_time.cpp
+	core/delta_time.h
+)
+SOURCE_GROUP("Core/Settings" FILES
+    options/settings.cpp
+	options/settings.h
+)
+
+# --------------------------------
+# EDITOR FILTERS
+# --------------------------------
+
+SOURCE_GROUP("Editor/Asset" FILES
+	scene/asset/asset.h
+	scene/asset/asset_enums.h
+)
+SOURCE_GROUP("Editor/Core" FILES
+    core/base.hpp
+    core/main.cpp
+	core/layer.cpp
+	core/layer.h
+    core/version.h
+    core/window.cpp
+    core/window.h
 )
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
@@ -183,25 +204,23 @@ SOURCE_GROUP("Editor/UI" FILES
 	ui/ui.h
 	ui/ui_manager.h
 )
-SOURCE_GROUP("Editor/UI/Panels" FILES
-	ui/panels/about.cpp
-	ui/panels/content_browser.cpp
-	ui/panels/layer_stack.cpp
-	ui/panels/loading_radial.cpp
-	ui/panels/menu_bar.cpp
-	ui/panels/settings_panel.cpp
-)
-SOURCE_GROUP("Editor/UI/Actions" FILES
-	ui/actions/modals.cpp
-	ui/actions/viewports.cpp
-)
-#SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
-#    ${SCENE_FILES}
-#)
+	SOURCE_GROUP("Editor/UI/Panels" FILES
+		ui/panels/about.cpp
+		ui/panels/content_browser.cpp
+		ui/panels/layer_stack.cpp
+		ui/panels/loading_radial.cpp
+		ui/panels/menu_bar.cpp
+		ui/panels/settings_panel.cpp
+	)
+	SOURCE_GROUP("Editor/UI/Actions" FILES
+		ui/actions/modals.cpp
+		ui/actions/viewports.cpp
+	)
 
-#SOURCE_GROUP("Core/Settings" FILES
-#    options/Settings.cpp
-#)
+# --------------------------------
+# APPLICATION RESOURCE FILTERS
+# --------------------------------
+
 SOURCE_GROUP("Resource" FILES
     resource.h
     SceneryEditorX.rc
@@ -218,6 +237,11 @@ SOURCE_GROUP("Resource/Fonts" FILES
 SOURCE_GROUP("Resource/Registry" FILES
     ${REGISTRY_KEYS}
 )
+
+# --------------------------------
+# LAUNCHER FILTERS
+# --------------------------------
+
 SOURCE_GROUP("Launcher/Core" FILES
     ${LAUNCHER_DIR}/core/launcher_main.cpp
     ${LAUNCHER_DIR}/core/launcher_main.h

@@ -14,7 +14,7 @@
 #pragma once
 
 #include <SceneryEditorX/core/events.h>
-#include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/scene/asset/asset.h>
 
 // -------------------------------------------------------
 

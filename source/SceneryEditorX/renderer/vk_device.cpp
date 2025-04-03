@@ -256,4 +256,41 @@ namespace SceneryEditorX
         return devices[deviceIndex];
     }
 
+
+    RendererCapabilities &VulkanPhysicalDevice::GetCapabilities()
+    {
+        // Using a static instance to maintain the capabilities across calls
+        static RendererCapabilities capabilities;
+
+        // Don't use "this" as a separate variable - just use it directly
+        static VulkanPhysicalDevice instance;
+
+        if (instance.deviceIndex >= 0) // Only populate if we have a selected device
+        {
+            const GPUDevice &device = instance.devices[instance.deviceIndex];
+
+            // Set vendor information using VK_VENDER_ID_STRING utility function
+            capabilities.Vendor = VK_VENDER_ID_STRING(device.deviceInfo.vendorID);
+
+            // Set device name from physical device properties
+            capabilities.Device = device.deviceInfo.deviceName;
+
+            // Format the Vulkan API version
+            uint32_t apiVersion = device.deviceInfo.apiVersion;
+            uint32_t major = VK_VERSION_MAJOR(apiVersion);
+            uint32_t minor = VK_VERSION_MINOR(apiVersion);
+            uint32_t patch = VK_VERSION_PATCH(apiVersion);
+            capabilities.Version = std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
+
+            VkPhysicalDeviceLimits limits = device.deviceInfo.limits;
+            capabilities.MaxSamples = static_cast<int>(limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts);
+            capabilities.MaxAnisotropy = limits.maxSamplerAnisotropy;
+            capabilities.MaxTextureUnits = static_cast<int>(limits.maxPerStageDescriptorSamplers);
+        }
+
+        return capabilities;
+    }
+
+
+
 } // namespace SceneryEditorX

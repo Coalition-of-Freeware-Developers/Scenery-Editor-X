@@ -43,7 +43,7 @@ namespace SceneryEditorX::UI
        if (!ItemAdd(bb, id)) {
            return;
        }
-       const float t = g.Timer;
+       const float t = g.DeltaTime;
        const auto degree_offset = 2.0f * IM_PI / circle_count;
        for (int i = 0; i < circle_count; ++i) {
            const auto x = updated_indicator_radius * std::sin(degree_offset * i);

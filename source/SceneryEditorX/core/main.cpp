@@ -218,7 +218,7 @@ private:
     }
 	*/
 
-    //SRef<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
+    //Ref<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
 
 };
 

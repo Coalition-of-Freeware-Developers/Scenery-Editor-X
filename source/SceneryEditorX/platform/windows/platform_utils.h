@@ -26,7 +26,7 @@ namespace SceneryEditorX::IO {
 		static std::string SaveFile(const char* filter);
 	};
 
-	class Timer
+	class DeltaTime
 	{
 	public:
 		static float GetTime();

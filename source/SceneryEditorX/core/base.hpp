@@ -83,7 +83,7 @@ constexpr Scope<T> CreateScope(Args &&...args)
  * @tparam T The type to manage.
  */
 template <typename T>
-using SRef = std::shared_ptr<T>;
+using Ref = std::shared_ptr<T>;
 
 /**
  * @brief Creates a shared pointer to an object of type T.
@@ -93,7 +93,7 @@ using SRef = std::shared_ptr<T>;
  * @return A shared pointer to an object of type T.
  */
 template <typename T, typename... Args>
-constexpr SRef<T> CreateRef(Args &&...args)
+constexpr Ref<T> CreateRef(Args &&...args)
 {
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }

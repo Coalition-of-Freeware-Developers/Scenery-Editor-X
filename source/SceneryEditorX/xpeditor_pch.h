@@ -36,8 +36,9 @@
 
     #if defined(_DEBUG) || defined(DEBUG)
         #ifndef SEDX_DEBUG
-        #define SEDX_DEBUG
+		#define SEDX_DEBUG
         #endif
+    #define SEDX_TRACK_MEMORY
     #define SEDX_DEBUGBREAK() __debugbreak()
     #define APP_USE_VULKAN_DEBUG_REPORT
     #endif

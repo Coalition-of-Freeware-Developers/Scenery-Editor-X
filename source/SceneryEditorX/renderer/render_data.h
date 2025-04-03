@@ -5,43 +5,33 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* scene_ref.cpp
+* render_data.h
 * -------------------------------------------------------
 * Created: 2/4/2025
 * -------------------------------------------------------
 */
-
-#include <unordered_set>
+#pragma once
+#include <string>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	static std::unordered_set<void*> LiveRef_;
-	static std::mutex LiveRefMutex_;
-
-	namespace RefUtils
+	struct RendererCapabilities
 	{
-		void AddToLiveReferences(void* instance)
-		{
-			std::scoped_lock<std::mutex> lock(LiveRefMutex_);
-			LiveRef_.insert(instance);
-		}
+	    std::string Vendor;
+	    std::string Device;
+	    std::string Version;
+	
+	    int MaxSamples = 0;
+	    float MaxAnisotropy = 0.0f;
+	    int MaxTextureUnits = 0;
+	};
 
-		void RemoveFromLiveReferences(void* instance)
-		{
-			std::scoped_lock<std::mutex> lock(LiveRefMutex_);
-			LiveRef_.erase(instance);
-		}
+	struct RenderData
+    {
 
-		bool IsLive(void* instance)
-		{
-			return LiveRef_.find(instance) != LiveRef_.end();
-		}
-
-	} // namespace RefUtils
-
+    };
 
 } // namespace SceneryEditorX
 

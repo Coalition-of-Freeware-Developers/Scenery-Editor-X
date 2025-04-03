@@ -25,14 +25,14 @@ namespace SceneryEditorX
 	class SceneEvent : public Event
 	{
 	public:
-		const SRef<Scene>& GetScene() const { return Scene_; }
-		SRef<Scene> GetScene() { return Scene_; }
+		const Ref<Scene>& GetScene() const { return Scene_; }
+		Ref<Scene> GetScene() { return Scene_; }
 
 		EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryScene)
 	protected:
-		SceneEvent(const SRef<Scene>& scene) : Scene_(scene) {}
+		SceneEvent(const Ref<Scene>& scene) : Scene_(scene) {}
 
-		SRef<Scene> Scene_;
+		Ref<Scene> Scene_;
 	};
 
 	// -------------------------------------------------------
@@ -40,7 +40,7 @@ namespace SceneryEditorX
 	class ScenePreStartEvent : public SceneEvent
 	{
 	public:
-		ScenePreStartEvent(const SRef<Scene>& scene) : SceneEvent(scene) {}
+		ScenePreStartEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
 
 		EVENT_CLASS_TYPE(ScenePreStart)
 	};
@@ -50,7 +50,7 @@ namespace SceneryEditorX
 	class ScenePostStartEvent : public SceneEvent
 	{
 	public:
-		ScenePostStartEvent(const SRef<Scene>& scene) : SceneEvent(scene) {}
+		ScenePostStartEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
 
 		EVENT_CLASS_TYPE(ScenePostStart)
 	};
@@ -60,7 +60,7 @@ namespace SceneryEditorX
 	class ScenePreStopEvent : public SceneEvent
 	{
 	public:
-		ScenePreStopEvent(const SRef<Scene>& scene) : SceneEvent(scene) {}
+		ScenePreStopEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
 
 		EVENT_CLASS_TYPE(ScenePreStop)
 	};
@@ -70,7 +70,7 @@ namespace SceneryEditorX
 	class ScenePostStopEvent : public SceneEvent
 	{
 	public:
-		ScenePostStopEvent(const SRef<Scene>& scene) : SceneEvent(scene) {}
+		ScenePostStopEvent(const Ref<Scene>& scene) : SceneEvent(scene) {}
 
 		EVENT_CLASS_TYPE(ScenePostStop)
 	};

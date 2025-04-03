@@ -17,7 +17,7 @@
 
 namespace SceneryEditorX ::UI
 {
-	Layer::Layer(const std::string &debugName) : m_DebugName(debugName)
+	Layer::Layer(const std::string &debugName) : DebugName_(debugName)
 	{
 	}
 	Layer::~Layer()

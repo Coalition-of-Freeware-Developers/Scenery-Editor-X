@@ -12,8 +12,9 @@
 */
 
 #pragma once
-#include <vulkan/vulkan.h>
+#include <SceneryEditorX/renderer/render_data.h>
 #include <vector>
+#include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
 
@@ -49,6 +50,8 @@ namespace SceneryEditorX
         uint32_t SelectDevice(VkQueueFlags queueType, bool supportPresent);
 
         const GPUDevice &Selected() const;
+
+        static RendererCapabilities &GetCapabilities();
 
     private:
         std::vector<GPUDevice> devices;

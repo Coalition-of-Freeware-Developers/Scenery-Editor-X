@@ -40,7 +40,7 @@ namespace SceneryEditorX :: UI
         static GuiContext* Create();
 
     private:
-        SRef<RenderCommandBuffer> renderCommandBuffer;
+        //Ref<RenderCommandBuffer> renderCommandBuffer;
 	
 	};
 

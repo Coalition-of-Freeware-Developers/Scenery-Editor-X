@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <SceneryEditorX/core/timer.h>
+#include <SceneryEditorX/core/delta_time.h>
 #include <SceneryEditorX/core/events.h>
 
 // -------------------------------------------------------
@@ -28,13 +28,13 @@ namespace SceneryEditorX :: UI
 
 		virtual void OnAttach() {}
         virtual void OnDetach() {}
-        virtual void OnUpdate(Timer ts) {}
+        virtual void OnUpdate(DeltaTime ts) {}
         virtual void OnRender() {}
         virtual void OnEvent(Event& event) {}
 
-		inline const std::string& GetName() const { return m_DebugName; }
+		inline const std::string& GetName() const { return DebugName_; }
     protected:
-		std::string m_DebugName;
+		std::string DebugName_;
 	};
 
 } // namespace SceneryEditorX :: UI

@@ -17,7 +17,7 @@
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
     extern bool showCreateProjectModal;
 	extern bool showExitModal;
@@ -37,5 +37,5 @@ namespace UI
 	void ExitConfirmationModal(GLFWwindow *window);
 	void AboutModal();
 
-} // namespace UI
+} // namespace SceneryEditorX::UI
 

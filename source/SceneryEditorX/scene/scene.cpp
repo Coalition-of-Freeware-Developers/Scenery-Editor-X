@@ -30,15 +30,15 @@ namespace SceneryEditorX
 
 	void Scene::SetViewportBounds(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
     {
-        m_ViewportLeft = left;
-        m_ViewportTop = top;
-        m_ViewportRight = right;
-        m_ViewportBottom = bottom;
+        Viewport_Left = left;
+        Viewport_Top = top;
+        Viewport_Right = right;
+        Viewport_Bottom = bottom;
     }
 
-	SRef<Scene> Scene::CreateEmpty()
+	Ref<Scene> Scene::CreateEmpty()
     {
-        return SRef<Scene>::Create("Empty", false, false);
+        return Ref<Scene>::Create("Empty", false, false);
     }
 
 } // namespace SceneryEditorX

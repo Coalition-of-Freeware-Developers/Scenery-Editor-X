@@ -5,43 +5,25 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* scene_ref.cpp
+* settings.cpp
 * -------------------------------------------------------
 * Created: 2/4/2025
 * -------------------------------------------------------
 */
 
-#include <unordered_set>
+#include <SceneryEditorX/options/settings.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	static std::unordered_set<void*> LiveRef_;
-	static std::mutex LiveRefMutex_;
-
-	namespace RefUtils
+	Settings::Settings()
 	{
-		void AddToLiveReferences(void* instance)
-		{
-			std::scoped_lock<std::mutex> lock(LiveRefMutex_);
-			LiveRef_.insert(instance);
-		}
-
-		void RemoveFromLiveReferences(void* instance)
-		{
-			std::scoped_lock<std::mutex> lock(LiveRefMutex_);
-			LiveRef_.erase(instance);
-		}
-
-		bool IsLive(void* instance)
-		{
-			return LiveRef_.find(instance) != LiveRef_.end();
-		}
-
-	} // namespace RefUtils
-
+	}
+	Settings::~Settings()
+	{
+	}
 
 } // namespace SceneryEditorX
 
