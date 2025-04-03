@@ -12,26 +12,36 @@
 */
 
 #pragma once
-#include <string>
+
+#include <SceneryEditorX/core/delta_time.h>
+#include <SceneryEditorX/core/events.h>
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX
 {
 	class Layer
 	{
 	public:
+
         Layer(const std::string &name = "Layer");
 		virtual ~Layer();
+
+		virtual void Begin() = 0;
+        virtual void End() = 0;
+
 		virtual void OnAttach() {}
-		virtual void OnDetach() {}
-		virtual void OnUpdate() {}
-		virtual void OnImGuiRender() {}
-		virtual void on_event() {}
+        virtual void OnDetach() {}
+        virtual void OnUpdate(DeltaTime ts) {}
+        virtual void OnUIRender() {}
+        virtual void OnEvent(Event& event) {}
+
+		inline const std::string& GetName() const { return DebugName_; }
 
     protected:
-
-
+		std::string DebugName_;
 	};
 
 } // namespace SceneryEditorX
+
+// -------------------------------------------------------
