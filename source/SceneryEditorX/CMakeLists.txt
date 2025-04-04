@@ -40,9 +40,9 @@ ADD_EXECUTABLE(SceneryEditorX
     # --------------------------------
 	core/application_events.h
     core/base.hpp
-	core/editor_events.h
 	core/delta_time.cpp
 	core/delta_time.h
+	core/editor_events.h
 	core/events.h
 	core/key_codes.h
 	core/key_events.h
@@ -53,28 +53,34 @@ ADD_EXECUTABLE(SceneryEditorX
 	core/memory.h
 	core/mouse_events.h
 	core/scene_events.h
-	options/settings.cpp
-	options/settings.h
     core/transforms.cpp
 	core/version.h
     core/window.cpp
     core/window.h
+	# --------------------------------
+	platform/system_detection.h
+	platform/platform.h
+	# --------------------------------
+	logging/console/console_message.h
+	logging/console/editor_console_sink.h
+	logging/asserts.h
+	logging/log_formatter.h
+	logging/logging.cpp
+	logging/logging.hpp
+	logging/profiler.hpp
+	# --------------------------------
+	options/settings.cpp
+	options/settings.h
     # --------------------------------
 	scene/asset/asset.h
 	scene/asset/asset_enums.h
 	# --------------------------------
     scene/asset_manager.cpp
     scene/asset_manager.h
-	scene/scene.cpp
 	scene/scene.h
+	scene/scene.cpp
 	scene/scene_ref.cpp
 	scene/scene_ref.h
-    # --------------------------------
-    platform/system_detection.h
-    platform/platform.h
-    # --------------------------------
-    logging/logging.cpp
-    logging/logging.hpp
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
@@ -87,9 +93,11 @@ ADD_EXECUTABLE(SceneryEditorX
 	ui/ui_manager.h
 	ui/panels/about.cpp
 	ui/panels/content_browser.cpp
+	ui/panels/editor_console.cpp
 	ui/panels/layer_stack.cpp
 	ui/panels/loading_radial.cpp
 	ui/panels/menu_bar.cpp
+	ui/panels/panel_manager.h
 	ui/panels/settings_panel.cpp
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
@@ -137,9 +145,16 @@ SOURCE_GROUP("Core/Events" FILES
 	core/scene_events.h
 )
 SOURCE_GROUP("Core/Logger" FILES
-    logging/logging.cpp
-    logging/logging.hpp
+	logging/asserts.h
+	logging/log_formatter.h
+	logging/logging.cpp
+	logging/logging.hpp
+	logging/profiler.hpp
 )
+	SOURCE_GROUP("Core/Logger/Console" FILES
+		logging/console/console_message.h
+		logging/console/editor_console_sink.h
+	)
 SOURCE_GROUP("Core/Memory" FILES
 	core/memory.cpp
 	core/memory.h
@@ -209,6 +224,7 @@ SOURCE_GROUP("Editor/UI" FILES
 	SOURCE_GROUP("Editor/UI/Panels" FILES
 		ui/panels/about.cpp
 		ui/panels/content_browser.cpp
+		ui/panels/editor_console.cpp
 		ui/panels/layer_stack.cpp
 		ui/panels/loading_radial.cpp
 		ui/panels/menu_bar.cpp

@@ -730,7 +730,7 @@ GLOBAL const char *VK_VENDER_ID_STRING(uint32_t vendorID)
  * 
  * retrieves and logs the GPU information such as vendor, device, and version.
  */
-inline void GPUInfoDump()
+void GPUInfoDump()
 {
     auto &caps = SceneryEditorX::VulkanPhysicalDevice::GetCapabilities();
     EDITOR_LOG_TRACE("GPU Info:");

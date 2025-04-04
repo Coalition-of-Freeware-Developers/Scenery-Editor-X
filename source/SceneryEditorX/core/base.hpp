@@ -52,9 +52,12 @@ using Mat4 = glm::mat4; // 4x4 matrix
 #define COUNT_OF(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 #define SEDX_EXPAND_MACRO(x) x
-#define SEDX_STRINGIFY_MACRO(x) #x
+
 #define BIT(x) (1u << x)
 #define SEDX_BIND_EVENT_FN(fn) [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+
+#define SEDX_STRINGIFY_MACRO(x) #x
+#define SEDX_STRINGIFY(x) SEDX_STRINGIFY_MACRO(x)
 
 // -------------------------------------------------------
 

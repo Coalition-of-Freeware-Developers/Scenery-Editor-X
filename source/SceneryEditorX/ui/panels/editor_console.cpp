@@ -5,18 +5,19 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* profiler.hpp
+* editor_console.cpp
 * -------------------------------------------------------
-* Created: 3/4/2025
+* Created: 4/4/2025
 * -------------------------------------------------------
 */
-#pragma once
-//#include <optick.h>
+#include <SceneryEditorX/logging/console/console_message.h>
+#include <imgui/imgui_internal.h>
+#include <imgui/imgui.h>
+#include <format>
 
-// -------------------------------------------------------
+namespace UI
+{
 
-//#define SEDX_PROFILE_FRAME() OPTICK_FRAME("MainThread")
-//#define SEDX_PROFILE_FUNC() OPTICK_EVENT()
-//#define SEDX_PROFILE_THREAD(name) OPTICK_EVENT((name))
+} // namespace UI
 
 // -------------------------------------------------------

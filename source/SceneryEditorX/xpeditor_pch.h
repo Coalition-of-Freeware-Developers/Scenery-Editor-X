@@ -20,6 +20,7 @@
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
+// -------------------------------------------------------
 
 // TODO: Impliment MAC and Linux detection
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS) || defined(WIN64)
@@ -38,6 +39,7 @@
         #ifndef SEDX_DEBUG
 		#define SEDX_DEBUG
         #endif
+	#define ENABLE_ASSERTS
     #define SEDX_TRACK_MEMORY
     #define SEDX_DEBUGBREAK() __debugbreak()
     #define APP_USE_VULKAN_DEBUG_REPORT
@@ -129,6 +131,7 @@
 ##########################################################
 */
 
+#include <fmt/core.h>
 #include <stb_image.h> 
 #include <portable-file-dialogs.h>
 #include <nlohmann/json.hpp>

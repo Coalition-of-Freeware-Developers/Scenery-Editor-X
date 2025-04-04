@@ -29,7 +29,7 @@ namespace SceneryEditorX
 	    EditorUI(const std::string& name);
         virtual ~EditorUI();
 	
-	    void initUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &renderer);
+	    void initUI(GLFWwindow *window, GraphicsEngine &renderer);
 	
 		// Stores the active command buffer
 	    VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
@@ -40,8 +40,8 @@ namespace SceneryEditorX
         virtual void Begin() override;
         virtual void End() override;
 
-		virtual void OnAttach() override;
-        virtual void OnDetach() override;
+		virtual void OnAttach(); //override;
+        virtual void OnDetach(); //override;
         virtual void OnUIRender() override;
 
 	    /**

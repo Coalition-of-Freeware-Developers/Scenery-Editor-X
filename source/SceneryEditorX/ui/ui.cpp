@@ -20,6 +20,7 @@
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/renderer/vk_util.h>
 
 
 // -------------------------------------------------------
@@ -65,10 +66,6 @@ extern "C"
 
 namespace SceneryEditorX
 {
-
-namespace SceneryEditorX
-{
-
 	static std::vector<VkCommandBuffer> UICommandBuffers;
 
     EditorUI::EditorUI()
@@ -115,7 +112,7 @@ namespace SceneryEditorX
         style.Colors[ImGuiCol_WindowBg] = ImVec4(0.15f, 0.15f, 0.15f, style.Colors[ImGuiCol_WindowBg].w);
 
         ContextHandler *instance = this;
-        Renderer::Submit([instance]()
+        GraphicsEngine::Submit([instance]()
 		{
             Application &app = Application::Get();
             GLFWwindow *window = static_cast<GLFWwindow *>(app.GetWindow()->GetNativeWindow());
@@ -164,6 +161,7 @@ namespace SceneryEditorX
         ImGui::DestroyContext();
     }
 
+
 	void EditorUI::Begin()
     {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
@@ -171,14 +169,18 @@ namespace SceneryEditorX
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGuizmo::BeginFrame();
+        //ImGuizmo::BeginFrame();
+    }
+
+    void EditorUI::OnUIRender()
+    {
     }
 
     void EditorUI::End()
     {
         ImGui::Render();
 
-        VulkanSwapChain &swapChain = Application::Get().GetWindow()->GetSwapChain();
+        //VulkanSwapChain &swapChain = Application::Get().GetWindow()->GetSwapChain();
 
         VkClearValue clearValues[2];
         clearValues[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
@@ -196,7 +198,7 @@ namespace SceneryEditorX
 
         VkCommandBuffer drawCommandBuffer = swapChain.GetCurrentDrawCommandBuffer();
 
-        //VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &drawCmdBufInfo));
+        VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &drawCmdBufInfo));
 
         VkRenderPassBeginInfo renderPassBeginInfo = {};
         renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -222,7 +224,7 @@ namespace SceneryEditorX
         cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
         cmdBufInfo.pInheritanceInfo = &inheritanceInfo;
 
-        VK_CHECK_RESULT(vkBeginCommandBuffer(ImGuiCmdBuff[commandBufferIndex], &cmdBufInfo));
+        VK_CHECK_RESULT(vkBeginCommandBuffer(UICommandBuffers[commandBufferIndex], &cmdBufInfo));
 
         VkViewport viewport = {};
         viewport.x = 0.0f;
@@ -231,22 +233,22 @@ namespace SceneryEditorX
         viewport.width = (float)width;
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(ImGuiCmdBuff[commandBufferIndex], 0, 1, &viewport);
+        vkCmdSetViewport(UICommandBuffers[commandBufferIndex], 0, 1, &viewport);
 
         VkRect2D scissor = {};
         scissor.extent.width = width;
         scissor.extent.height = height;
         scissor.offset.x = 0;
         scissor.offset.y = 0;
-        vkCmdSetScissor(ImGuiCmdBuff[commandBufferIndex], 0, 1, &scissor);
+        vkCmdSetScissor(UICommandBuffers[commandBufferIndex], 0, 1, &scissor);
 
         ImDrawData *main_draw_data = ImGui::GetDrawData();
-        ImGui_ImplVulkan_RenderDrawData(main_draw_data, ImGuiCmdBuff[commandBufferIndex]);
+        ImGui_ImplVulkan_RenderDrawData(main_draw_data, UICommandBuffers[commandBufferIndex]);
 
-        VK_CHECK_RESULT(vkEndCommandBuffer(ImGuiCmdBuff[commandBufferIndex]));
+        VK_CHECK_RESULT(vkEndCommandBuffer(UICommandBuffers[commandBufferIndex]));
 
         std::vector<VkCommandBuffer> commandBuffers;
-        commandBuffers.push_back(ImGuiCmdBuff[commandBufferIndex]);
+        commandBuffers.push_back(UICommandBuffers[commandBufferIndex]);
 
         vkCmdExecuteCommands(drawCommandBuffer, uint32_t(commandBuffers.size()), commandBuffers.data());
 
@@ -304,7 +306,7 @@ namespace SceneryEditorX
         }
     }
 
-    void EditorUI::initUI(GLFWwindow * window, SceneryEditorX::GraphicsEngine & engineRenderer)
+    void EditorUI::initUI(GLFWwindow * window, GraphicsEngine & engineRenderer)
     {
         // Store the engine reference
         this->renderer = &engineRenderer;

@@ -24,7 +24,7 @@ namespace SceneryEditorX
 	class Asset : public RefCounted
 	{
 	public:
-        AssetHandle Handle = 0;
+        //AssetHandle Handle = 0;
         uint16_t Flags = (uint16_t)AssetFlag::None;
 
         virtual ~Asset()
@@ -34,15 +34,15 @@ namespace SceneryEditorX
         static AssetType GetStaticType() { return AssetType::None; }
         virtual AssetType GetAssetType() const { return AssetType::None; }
 
-		virtual bool operator==(const Asset& other) const
-		{
-			return Handle == other.Handle;
-		}
+		//virtual bool operator==(const Asset& other) const
+		//{
+		//	return Handle == other.Handle;
+		//}
 		
-		virtual bool operator!=(const Asset& other) const
-		{
-			return !(*this == other);
-		}
+		//virtual bool operator!=(const Asset& other) const
+		//{
+		//	return !(*this == other);
+		//}
 
 	private:
         //friend class EditorAssetManager;

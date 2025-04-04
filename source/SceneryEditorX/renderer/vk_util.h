@@ -34,10 +34,10 @@ namespace SceneryEditorX
  * 
  * retrieves and logs the GPU information such as vendor, device, and version.
  */
-
 void GPUInfoDump();
 
 // -------------------------------------------------------
+
 /**
  * @brief Get the string representation of a Vulkan debug message severity.
  * @param severity The Vulkan debug message severity.
@@ -94,7 +94,11 @@ const char *VK_QUEUE_FLAGS_STRING(VkQueueFlags flags);
  */
 const char *VK_MEMORY_PROPERTY_FLAGS_STRING(VkMemoryPropertyFlags flags);
 
-
+/**
+ * @brief Get the string representation of Vulkan memory heap flags.
+ * @param flags The Vulkan memory heap flags.
+ * @return The string representation of the memory heap flags.
+ */
 const char *VK_ERROR_STRING(VkResult result);
 
 /**
@@ -117,17 +121,18 @@ std::vector<char> CompileShader(const std::filesystem::path &path);
  *
  * @param result The result of the Vulkan operation.
  */
-inline void VulkanCheckResult(VkResult result)
+inline void VulkanCheckResult(VkResult result, const char *file, int line)
 {
     if (result != VK_SUCCESS)                                                                                          
     {
-        EDITOR_LOG_ERROR("VKResult: '{0}' ", VK_ERROR_STRING(result));
+        VULKAN_LOG_ERROR("VKResult: '{0}' in {1}:{2}", VK_ERROR_STRING(result), file, line);
         if (result == VK_ERROR_DEVICE_LOST)
         {
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(3s);
             GPUInfoDump();
         }
+
     }
 }
 
@@ -139,12 +144,12 @@ inline void VulkanCheckResult(VkResult result)
  * @param result The result of the Vulkan function.
  * @param msg The error message to print.
  */
-#define VK_CHECK_RESULT(result, message)                                                                               \
-	if (result != VK_SUCCESS)                                                                                          \
-	{                                                                                                                  \
-		fprintf(stderr, "Error in %s:%d - %s, code %x\n", __FILE__, __LINE__, message, result);                        \
-		exit(1);                                                                                                       \
-	}
+//#define VK_CHECK_RESULT(result, message)                                                                               \
+//	if (result != VK_SUCCESS)                                                                                          \
+//	{                                                                                                                  \
+//		fprintf(stderr, "Error in %s:%d - %s, code %x\n", __FILE__, __LINE__, message, result);                        \
+//		exit(1);                                                                                                       \
+//	}
 
 /**
  * @brief Macro to get the size of an array.
@@ -195,16 +200,16 @@ inline void VulkanCheckResult(VkResult result)
     }
 
 
-
+/**
+* @brief Check Vulkan result and assert if it fails
+ * 
+ * This macro checks the result of a Vulkan operation and asserts if it fails.
+ * Useful for debugging and ensuring that Vulkan operations succeed.
+ */
 #define VK_CHECK_RESULT(f)                                                                                             \
     {                                                                                                                  \
         VkResult res = (f);                                                                                            \
-        if (res != VK_SUCCESS)                                                                                         \
-        {                                                                                                              \
-            std::cerr << "Fatal : VkResult is \"" << res << "\" in " << __FILE__ << " at line " << __LINE__            \
-                      << std::endl;                                                                                    \
-            assert(res == VK_SUCCESS);                                                                                 \
-        }                                                                                                              \
+        ::VulkanCheckResult(res, __FILE__, __LINE__);                                                                  \
     }
 
 /**
@@ -215,37 +220,37 @@ inline void VulkanCheckResult(VkResult result)
  */
 #define VK_LOG_INFO(message)                                                                                           \
     {                                                                                                                  \
-        if (Log::_VulkanLogger)                                                                                        \
+        if (Log::VulkanLogger_)                                                                                        \
         {                                                                                                              \
-            Log::_VulkanLogger->info(message);                                                                         \
-            Log::_VulkanLogger->flush();                                                                               \
+            Log::VulkanLogger_->info(message);                                                                         \
+            Log::VulkanLogger_->flush();                                                                               \
         }                                                                                                              \
     }
 
 #define VK_LOG_WARN(message)                                                                                           \
     {                                                                                                                  \
-        if (Log::_VulkanLogger)                                                                                        \
+        if (Log::VulkanLogger_)                                                                                        \
         {                                                                                                              \
-            Log::_VulkanLogger->warn(message);                                                                         \
-            Log::_VulkanLogger->flush();                                                                               \
+            Log::VulkanLogger_->warn(message);                                                                         \
+            Log::VulkanLogger_->flush();                                                                               \
         }                                                                                                              \
     }
 
 #define VK_LOG_ERROR(message)                                                                                          \
     {                                                                                                                  \
-        if (Log::_VulkanLogger)                                                                                        \
+        if (Log::VulkanLogger_)                                                                                        \
         {                                                                                                              \
-            Log::_VulkanLogger->error(message);                                                                        \
-            Log::_VulkanLogger->flush();                                                                               \
+            Log::VulkanLogger_->error(message);                                                                        \
+            Log::VulkanLogger_->flush();                                                                               \
         }                                                                                                              \
     }
 
 #define VK_LOG_DEBUG(message)                                                                                          \
     {                                                                                                                  \
-        if (Log::_VulkanLogger)                                                                                        \
+        if (Log::VulkanLogger_)                                                                                        \
         {                                                                                                              \
-            Log::_VulkanLogger->debug(message);                                                                        \
-            Log::_VulkanLogger->flush();                                                                               \
+            Log::VulkanLogger_->debug(message);                                                                        \
+            Log::VulkanLogger_->flush();                                                                               \
         }                                                                                                              \
     }
 

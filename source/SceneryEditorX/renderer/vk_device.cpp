@@ -256,7 +256,10 @@ namespace SceneryEditorX
         return devices[deviceIndex];
     }
 
-
+    /**
+     * @brief Get the renderer capabilities.
+     * @return RendererCapabilities& - The renderer capabilities.
+     */
     RendererCapabilities &VulkanPhysicalDevice::GetCapabilities()
     {
         // Using a static instance to maintain the capabilities across calls
@@ -291,6 +294,6 @@ namespace SceneryEditorX
         return capabilities;
     }
 
-
-
 } // namespace SceneryEditorX
+
+// -------------------------------------------------------

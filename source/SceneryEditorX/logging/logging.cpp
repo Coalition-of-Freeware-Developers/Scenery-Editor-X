@@ -24,9 +24,41 @@
 /**
  * @brief Static member to hold the logger instance.
  */
-std::shared_ptr<spdlog::logger> Log::_EditorLogger;
-std::shared_ptr<spdlog::logger> Log::_LauncherLogger;
-std::shared_ptr<spdlog::logger> Log::_VulkanLogger;
+std::shared_ptr<spdlog::logger> Log::EditorLogger_;
+std::shared_ptr<spdlog::logger> Log::LauncherLogger_;
+std::shared_ptr<spdlog::logger> Log::VulkanLogger_;
+
+/**
+ * @brief Static member to hold the enabled tags.
+ */
+std::map<std::string, Log::TagDetails> Log::EnabledTags_ =
+{
+    {"Animation",			TagDetails{true, Level::Warn}},
+    {"Asset Pack",			TagDetails{true, Level::Warn}},
+    {"AssetManager",		TagDetails{true, Level::Info}},
+    {"LibraryManager",		TagDetails{true, Level::Info}},
+	{"AssetLoader",			TagDetails{true, Level::Warn}},
+	{"AssetLoaderGLTF",		TagDetails{true, Level::Warn}},
+	{"AssetLoaderOBJ",		TagDetails{true, Level::Warn}},
+	{"AssetLoaderFBX",		TagDetails{true, Level::Warn}},
+    {"AssetSystem",			TagDetails{true, Level::Info}},
+    {"Assimp",				TagDetails{true, Level::Error}},
+    {"Core",				TagDetails{true, Level::Trace}},
+    {"GLFW",				TagDetails{true, Level::Error}},
+    {"Memory",				TagDetails{true, Level::Error}},
+    {"Mesh",				TagDetails{true, Level::Warn}},
+    {"Project",				TagDetails{true, Level::Warn}},
+    {"Renderer",			TagDetails{true, Level::Info}},
+    {"Scene",				TagDetails{true, Level::Info}},
+    {"Scripting",			TagDetails{true, Level::Warn}},
+    {"Timer",				TagDetails{false, Level::Trace}},
+};
+
+
+void Log::SetDefaultTagSettings()
+{
+	EnabledTags_ = DefaultTagDetails_;
+}
 
 /**
  * @brief Initializes the logging system with console and file sinks.
@@ -38,40 +70,57 @@ std::shared_ptr<spdlog::logger> Log::_VulkanLogger;
  */
 void Log::Init()
 {
-    if (!_EditorLogger)
-    {
-        std::vector<spdlog::sink_ptr> editorSinks;
-        editorSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-        editorSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true));
 
-        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
-        editorSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
+    std::vector<spdlog::sink_ptr> editorSinks = {
+        std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true),
+        std::make_shared<spdlog::sinks::stdout_color_sink_mt>()
+	};
 
-        _EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
-        spdlog::register_logger(_EditorLogger);
-        _EditorLogger->set_level(spdlog::level::trace);
-        _EditorLogger->flush_on(spdlog::level::trace);
-    }
-    if (!_LauncherLogger)
-    {
-        _LauncherLogger = _EditorLogger; // Share the same logger for now, can be separated if needed
-    }
-    if (!_VulkanLogger)
-    {
-        std::vector<spdlog::sink_ptr> vulkanSinks;
-        vulkanSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-        vulkanSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("VulkanDebug.log", true));
+    std::vector<spdlog::sink_ptr> launcherSinks = {
+        std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
+        std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true)
+	};
 
-        vulkanSinks[0]->set_pattern("%^[%T] Vulkan: %v%$");  // color coding for console
-        vulkanSinks[1]->set_pattern("[%T] [%l] Vulkan: %v"); // no color coding for file
+    std::vector<spdlog::sink_ptr> vulkanSinks = {
+        std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
+        std::make_shared<spdlog::sinks::basic_file_sink_mt>("VulkanDebug.log", true)
+	};
 
-        _VulkanLogger = std::make_shared<spdlog::logger>("VulkanDebug", vulkanSinks.begin(), vulkanSinks.end());
-        spdlog::register_logger(_VulkanLogger);
-        _VulkanLogger->set_level(spdlog::level::trace);
-        _VulkanLogger->flush_on(spdlog::level::trace);
-    }
+    //editorSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true));
+    //editorSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+	// 
+    //vulkanSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+    //vulkanSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("VulkanDebug.log", true));
 
-	spdlog::set_level(spdlog::level::trace);
+    // -------------------------------------------------------
+
+    editorSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
+    editorSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
+
+    launcherSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
+    launcherSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
+
+    vulkanSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
+    vulkanSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
+
+    // -------------------------------------------------------
+
+    EditorLogger_ = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
+    EditorLogger_->set_level(spdlog::level::trace);
+
+    LauncherLogger_ = std::make_shared<spdlog::logger>("SceneryEditorX", launcherSinks.begin(), launcherSinks.end());
+    LauncherLogger_->set_level(spdlog::level::trace);
+
+    VulkanLogger_ = std::make_shared<spdlog::logger>("VulkanDebug", vulkanSinks.begin(), vulkanSinks.end());
+    VulkanLogger_->set_level(spdlog::level::trace);
+
+    // -------------------------------------------------------
+
+    //spdlog::register_logger(VulkanLogger_);
+
+    //VulkanLogger_->flush_on(spdlog::level::trace);
+
+	// -------------------------------------------------------
 
 //	std::vector<spdlog::sink_ptr> sinks;                                              // create a vector of sink pointers
 //	sinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>()); // create a console sink
@@ -97,62 +146,62 @@ void Log::Init()
 //	sinks[1]->set_pattern("[%T] [%l] %n: %v");      // no color coding
 
 	 // Create a logger with the sinks
-//	_EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX",
+//	EditorLogger_ = std::make_shared<spdlog::logger>("SceneryEditorX",
 //													 sinks.begin(),
 //													 sinks.end());
 
 	// Register the logger with spdlog
-//	spdlog::register_logger(_EditorLogger);                        
-//	_EditorLogger->set_level(spdlog::level::trace);                                                   // set the logging level to trace
-//	_EditorLogger->flush_on(spdlog::level::trace);                                                    // flush the logger on trace level log entries
+//	spdlog::register_logger(EditorLogger_);                        
+//	EditorLogger_->set_level(spdlog::level::trace);                                                   // set the logging level to trace
+//	EditorLogger_->flush_on(spdlog::level::trace);                                                    // flush the logger on trace level log entries
 }
 
 void Log::LogVulkanDebug(const std::string &message)
 {
-    if (_VulkanLogger)
+    if (VulkanLogger_)
     {
         // Parse severity from the formatted message
         if (message.find("[ERROR]") != std::string::npos)
         {
-            _VulkanLogger->error(message);
+            VulkanLogger_->error(message);
         }
         else if (message.find("[WARNING]") != std::string::npos)
         {
-            _VulkanLogger->warn(message);
+            VulkanLogger_->warn(message);
         }
         else if (message.find("[INFO]") != std::string::npos)
         {
-            _VulkanLogger->info(message);
+            VulkanLogger_->info(message);
         }
         else if (message.find("[VERBOSE]") != std::string::npos)
         {
-            _VulkanLogger->debug(message);
+            VulkanLogger_->debug(message);
         }
         else if (message.find("error") != std::string::npos || message.find("ERROR") != std::string::npos)
         {
-            _VulkanLogger->error(message);
+            VulkanLogger_->error(message);
         }
         else if (message.find("warning") != std::string::npos || message.find("WARNING") != std::string::npos)
         {
-            _VulkanLogger->warn(message);
+            VulkanLogger_->warn(message);
         }
         else if (message.find("performance") != std::string::npos || message.find("PERFORMANCE") != std::string::npos)
         {
-            _VulkanLogger->warn("PERFORMANCE: {}", message);
+            VulkanLogger_->warn("PERFORMANCE: {}", message);
         }
         else
         {
-            _VulkanLogger->trace(message);
+            VulkanLogger_->trace(message);
         }
 
         // Always flush to ensure messages are written immediately
-        _VulkanLogger->flush();
+        VulkanLogger_->flush();
     }
 }
 
 void Log::LogVulkanResult(VkResult result, const std::string &operation)
 {
-    if (_VulkanLogger)
+    if (VulkanLogger_)
     {
         if (result != VK_SUCCESS)
         {
@@ -161,24 +210,24 @@ void Log::LogVulkanResult(VkResult result, const std::string &operation)
 
             if (result < 0)
             { // Negative values are errors
-                _VulkanLogger->error("{}", message);
+                VulkanLogger_->error("{}", message);
             }
             else
             { // Non-zero positive values are warnings/info
-                _VulkanLogger->warn("{}", message);
+                VulkanLogger_->warn("{}", message);
             }
 
-            _VulkanLogger->flush();
+            VulkanLogger_->flush();
         }
         else
         {
             // Optionally log successful operations at trace level
-            _VulkanLogger->trace("Vulkan operation '{}' completed successfully", operation);
+            VulkanLogger_->trace("Vulkan operation '{}' completed successfully", operation);
         }
     }
 }
 
-
+// -------------------------------------------------------
 
 std::string getOsName()
 {
@@ -251,6 +300,10 @@ void Log::LogHeader()
 
 void Log::shut_down()
 {
-	spdlog::info("Shutting down logging system...");
+    spdlog::info("Shutting down logging system...");
+    EditorLogger_.reset();
+    LauncherLogger_.reset();
+    VulkanLogger_.reset();
+    spdlog::drop_all();
 	spdlog::shutdown();
 }
