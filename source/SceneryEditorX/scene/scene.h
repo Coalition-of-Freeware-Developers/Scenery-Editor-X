@@ -34,7 +34,7 @@ namespace SceneryEditorX
 		virtual void OnAttach() {}
 		virtual void OnDetach() {}
 		virtual void OnUpdate(DeltaTime ts) {}
-		virtual void OnRender() {}
+		virtual void OnUIRender() {}
 		virtual void OnImGuiRender() {}
 		virtual void OnEvent(Event& e) {}
 

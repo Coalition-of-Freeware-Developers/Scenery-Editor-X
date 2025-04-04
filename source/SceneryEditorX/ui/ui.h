@@ -26,7 +26,8 @@ namespace SceneryEditorX
 	{
 	public:
 	    EditorUI();
-        ~EditorUI();
+	    EditorUI(const std::string& name);
+        virtual ~EditorUI();
 	
 	    void initUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &renderer);
 	
@@ -41,7 +42,7 @@ namespace SceneryEditorX
 
 		virtual void OnAttach() override;
         virtual void OnDetach() override;
-        virtual void OnRender() override;
+        virtual void OnUIRender() override;
 
 	    /**
 		 * @brief Handles resizing of the window
@@ -90,13 +91,6 @@ namespace SceneryEditorX
 		 */
 	    void show_app_info(const std::string &app_name);
 	
-		/**
-		 * @brief 
-		 * @param input_event 
-		 * @return 
-		 */
-		//bool input_event(const InputEvent &input_event);
-	
 	    void setStyle();
 	    void setFonts();
 	
@@ -105,13 +99,12 @@ namespace SceneryEditorX
 	    // Used to show/hide the EditorUI
 	    static bool visible;
 	
-		//Font &get_font(const std::string &font_name = Gui::default_font);
-	
 	private:
 	    GraphicsEngine *renderer = nullptr;
 	    VkDescriptorPool imguiPool = VK_NULL_HANDLE;
-	    bool initialized = false;
+
         //Ref<RenderCommandBuffer> renderCommandBuffer;
+        bool initialized = false;
         float Time_ = 0.0f;
 	    //const ImGuiWindowFlags common_flags  = ImGuiWindowFlags_NoCollapse;
 	    //const ImGuiWindowFlags options_flags = ImGuiWindowFlags_NoResize;
@@ -124,8 +117,6 @@ namespace SceneryEditorX
 	    float dpi_factor{1.0f};
 	    //std::vector<Font> fonts;
 	};
-	
-	void initImGuiExtensions();
 
 } // namespace SceneryEditorX
 

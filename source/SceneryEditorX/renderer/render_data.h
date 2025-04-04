@@ -24,12 +24,17 @@ namespace SceneryEditorX
 	    std::string Version;
 	
 	    int MaxSamples = 0;
+        int MaxTextureUnits = 0;
 	    float MaxAnisotropy = 0.0f;
-	    int MaxTextureUnits = 0;
 	};
 
 	struct RenderData
     {
+        uint32_t width = 0;
+        uint32_t height = 0;
+        int viewports = 0;
+        int cameras = 0;
+        bool vsync = false;
 
     };
 

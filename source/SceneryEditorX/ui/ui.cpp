@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui.cpp
@@ -66,14 +66,16 @@ extern "C"
 namespace SceneryEditorX
 {
 
-    // Additional ImGui initialization functions can be placed here if needed
-    void initImGuiExtensions()
-    {
-        // This function can be called from main ImGui setup to initialize any extensions
-        // Currently empty, but could be expanded if more ImGui features need integration
-    }
+namespace SceneryEditorX
+{
+
+	static std::vector<VkCommandBuffer> UICommandBuffers;
 
     EditorUI::EditorUI()
+    {
+    }
+
+    EditorUI::EditorUI(const std::string &name)
     {
     }
 
@@ -93,6 +95,12 @@ namespace SceneryEditorX
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // Enable Docking
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport / Platform Windows
 
+		// ----------------------------------------------------------
+
+		// TODO: Add a font loader here
+
+		// ----------------------------------------------------------
+
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
         SetDarkThemeV2Colors();
@@ -107,21 +115,31 @@ namespace SceneryEditorX
         style.Colors[ImGuiCol_WindowBg] = ImVec4(0.15f, 0.15f, 0.15f, style.Colors[ImGuiCol_WindowBg].w);
 
         ContextHandler *instance = this;
-        Renderer::Submit([instance]() {
+        Renderer::Submit([instance]()
+		{
+            Application &app = Application::Get();
+            GLFWwindow *window = static_cast<GLFWwindow *>(app.GetWindow()->GetNativeWindow());
+
+            auto vulkanContext = VulkanContext::Get();
+            auto device = VulkanPhysicalDevice::GetCurrentDevice()->GetVulkanDevice();
+
             VkDescriptorPool descriptorPool;
 
             // Create Descriptor Pool
-            VkDescriptorPoolSize pool_sizes[] = {{VK_DESCRIPTOR_TYPE_SAMPLER, 100},
-                                                 {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
-                                                 {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100},
-                                                 {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100},
-                                                 {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100},
-                                                 {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100},
-                                                 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100},
-                                                 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100},
-                                                 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100},
-                                                 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100},
-                                                 {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100}};
+            VkDescriptorPoolSize pool_sizes[] = {
+				{VK_DESCRIPTOR_TYPE_SAMPLER, 100},
+                 {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
+                 {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100},
+                 {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100},
+                 {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100},
+                 {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100},
+                 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100},
+                 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100},
+                 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100},
+                 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100},
+                 {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100}
+			};
+
             VkDescriptorPoolCreateInfo pool_info = {};
             pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
@@ -245,7 +263,6 @@ namespace SceneryEditorX
             ImGui::RenderPlatformWindowsDefault();
         }
     }
-
 
     void EditorUI::newFrame()
     {
@@ -486,7 +503,6 @@ namespace SceneryEditorX
         //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
         //IM_ASSERT(font != nullptr);
     }
-
 
 } // namespace SceneryEditorX
 

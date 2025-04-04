@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * layer.h
@@ -33,7 +33,7 @@ namespace SceneryEditorX
 		virtual void OnAttach() {}
         virtual void OnDetach() {}
         virtual void OnUpdate(DeltaTime ts) {}
-        virtual void OnRender() {}
+        virtual void OnUIRender() {}
         virtual void OnEvent(Event& event) {}
 
 		inline const std::string& GetName() const { return DebugName_; }
