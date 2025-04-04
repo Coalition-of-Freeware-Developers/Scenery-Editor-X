@@ -178,8 +178,6 @@ void Log::LogVulkanResult(VkResult result, const std::string &operation)
     }
 }
 
-
-
 std::string getOsName()
 {
 #ifdef _WIN32
@@ -249,9 +247,9 @@ void Log::LogHeader()
 	spdlog::info("============================================");
 }
 
-void Log::shut_down()
+void Log::ShutDown()
 {
-	spdlog::info("Shutting down logging system...");
+    spdlog::drop_all(); // Drop all loggers
 	spdlog::shutdown();
 }
 

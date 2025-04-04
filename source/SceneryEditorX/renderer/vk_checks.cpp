@@ -16,6 +16,8 @@
 
 // -------------------------------------------------------
 
+using namespace SceneryEditorX;
+
 void VulkanChecks::InitChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers)
 {
     CheckExtensions(extensions);

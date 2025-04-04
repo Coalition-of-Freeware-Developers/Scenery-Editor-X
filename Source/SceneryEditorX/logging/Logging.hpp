@@ -89,7 +89,7 @@ public:
 	 * associated with it. It should be called before the application exits to
 	 * ensure that all log messages are properly flushed.
 	 */
-    static void shut_down();
+    static void ShutDown();
 
 	/**
 	* @brief Logs a message with the specified vulkan log level.

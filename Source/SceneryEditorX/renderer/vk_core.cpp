@@ -14,7 +14,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <optional>
 #include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/platform/windows/editor_config.hpp>
+#include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_util.h>
 #include <stb_image.h>

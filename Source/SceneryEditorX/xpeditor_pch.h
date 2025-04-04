@@ -21,11 +21,38 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
+#if defined(__GNUC__)
+	#if defined(__clang__)
+		#define SEDX_COMPILER_CLANG
+	#else
+		#define SEDX_COMPILER_GCC
+	#endif
+#elif defined(_MSC_VER)
+	#define SEDX_COMPILER_MSVC
+#endif
+
+#define SEDX_BIND_EVENT_FN(fn) std::bind(&fn, this, std::placeholders::_1)
+
+// -------------------------------------------------------
+
+#ifdef SEDX_COMPILER_MSVC
+	#define SEDX_FORCE_INLINE __forceinline
+	#define SEDX_EXPLICIT_STATIC static
+#elif defined(__GNUC__)
+	#define SEDX_FORCE_INLINE __attribute__((always_inline)) inline
+	#define SEDX_EXPLICIT_STATIC
+#else
+	#define SEDX_FORCE_INLINE inline
+	#define SEDX_EXPLICIT_STATIC
+#endif
+
+// -------------------------------------------------------
+
 // TODO: Impliment MAC and Linux detection
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS) || defined(WIN64)
-#ifndef SEDX_PLATFORM_WINDOWS
-#define SEDX_PLATFORM_WINDOWS
-#endif // !SEDX_PLATFORM_WINDOWS
+	#ifndef SEDX_PLATFORM_WINDOWS
+	#define SEDX_PLATFORM_WINDOWS
+	#endif // !SEDX_PLATFORM_WINDOWS
 #endif
 
 // -------------------------------------------------------
@@ -175,7 +202,6 @@ std::filesystem::path workingDir = std::filesystem::current_path();
 #endif
 
 // -------------------------------------------------------
-
 
 /**
  * @brief - A macro to display an error message

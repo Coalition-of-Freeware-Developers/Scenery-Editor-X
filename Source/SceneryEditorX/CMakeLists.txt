@@ -38,19 +38,36 @@ ADD_EXECUTABLE(SceneryEditorX
 	${PROJECT_CONFIG_FILES}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
+	core/application.cpp
+    core/application.h
     core/base.hpp
-    core/main.cpp
+	core/cmd_line.cpp
+	core/cmd_line.h
+	core/editor.h
+	core/editor.cpp
+    core/entry_point.h
+	core/layer.cpp
+	core/layer.h
     core/transforms.cpp
-    core/window.cpp
-    core/window.h
 	core/version.h
+	core/window.cpp
+    core/window.h
     # --------------------------------
     scene/asset_manager.cpp
     scene/asset_manager.h
     # --------------------------------
     platform/system_detection.h
-    platform/platform.h
+	platform/editor_config.hpp
+	platform/windows/file_manager.cpp
+	platform/windows/file_manager.hpp
+	platform/windows/platform_utils.h
+	platform/windows/FileManager/CfgLoader.h
+	platform/windows/FileManager/CfgLoader.cpp
+	platform/windows/FileManager/FileDialog.h
+	platform/windows/FileManager/FileDialog.cpp
+	platform/windows/FileManager/LockFile.cpp
     # --------------------------------
+	logging/profiler.hpp
     logging/logging.cpp
     logging/logging.hpp
 	# --------------------------------
@@ -99,18 +116,24 @@ ADD_EXECUTABLE(SceneryEditorX
 )
 
 # --------------------------------
-
+SOURCE_GROUP("Core" FILES
+	core/application.h
+	core/application.cpp
+	core/cmd_line.cpp
+	core/cmd_line.h
+	core/base.hpp
+	core/editor.h
+	core/editor.cpp
+	core/entry_point.h
+	core/version.h
+	xpeditor_pch.h
+)
 SOURCE_GROUP("Editor/Core" FILES
-    core/base.hpp
-    core/main.cpp
-    core/version.h
     core/window.cpp
     core/window.h
 )
 SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
-    platform/platform.h
-    core/version.h
 )
 SOURCE_GROUP("Core/Platform/Windows" FILES
     ${WIN_PLATFORM}
@@ -123,7 +146,6 @@ SOURCE_GROUP("Core/Platform/Mac" FILES
 )
 SOURCE_GROUP("Core/Coordinates" FILES
 	core/transforms.cpp
-
 )
 SOURCE_GROUP("Core/Logger" FILES
     logging/logging.cpp

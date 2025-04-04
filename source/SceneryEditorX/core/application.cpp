@@ -5,23 +5,33 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* layer.cpp
+* application.cpp
 * -------------------------------------------------------
-* Created: 28/3/2025
+* Created: 4/4/2025
 * -------------------------------------------------------
 */
 
-#include <SceneryEditorX/core/layer.h>
+#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/logging/Logging.hpp>
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX
 {
-	Layer::Layer(const std::string &name)
+
+#define BIND_EVENT_FN(fn) std::bind(&Application::##fn, this, std::placeholders::_1)
+
+	void InitializeCore()
 	{
-	}
-	Layer::~Layer()
-	{
+        Log::Init();
+        EDITOR_LOG_TRACE("Logger Initialized");
 	}
 
-} // namespace UI
+	void ShutdownCore()
+    {
+        EDITOR_LOG_TRACE("Shutting down logging system...");
+        Log::ShutDown();
+    }
+
+}
+
