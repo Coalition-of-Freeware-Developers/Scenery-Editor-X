@@ -190,3 +190,6 @@ SceneryEditorX/.vscode/settings.json
 CMake_Gen.log
 docs/doxygen
 docs/docs
+assets/shaders
+assets/MisterX_Library_2.0c
+docs/vulkanised_2023_setting_up_a_bindless_rendering_pipeline.pdf

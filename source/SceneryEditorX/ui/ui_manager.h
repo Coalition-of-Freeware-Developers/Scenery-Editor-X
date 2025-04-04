@@ -24,7 +24,11 @@ namespace UI
     extern bool showAboutModal;
     extern bool showSettingsPanel;
 
+	// -------------------------------------------------------
+
     void SetDarkThemeColors();
+
+	void EditorViewport();
 
 	void MainMenuBar();
 

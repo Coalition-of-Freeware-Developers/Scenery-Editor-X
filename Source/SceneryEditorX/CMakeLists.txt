@@ -68,6 +68,7 @@ ADD_EXECUTABLE(SceneryEditorX
 	ui/panels/loading_radial.cpp
 	ui/panels/menu_bar.cpp
 	ui/panels/settings_panel.cpp
+	ui/panels/viewport.cpp
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
     # --------------------------------
@@ -152,6 +153,7 @@ SOURCE_GROUP("Editor/UI/Panels" FILES
 	ui/panels/loading_radial.cpp
 	ui/panels/menu_bar.cpp
 	ui/panels/settings_panel.cpp
+	ui/panels/viewport.cpp
 )
 SOURCE_GROUP("Editor/UI/Actions" FILES
 	ui/actions/modals.cpp

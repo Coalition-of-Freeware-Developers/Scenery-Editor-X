@@ -20,7 +20,7 @@
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/ui/ui.h>
-
+#include <SceneryEditorX/ui/ui_manager.h>
 
 // -------------------------------------------------------
 
@@ -95,6 +95,9 @@ void GUI::newFrame()
 
     // Add more UI elements as needed
 
+    void UI::MainMenuBar();
+    void UI::EditorViewport();
+    void UI::LayerStack();
     // Complete the ImGui frame
     ImGui::Render();
 
