@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/layer.h>
+#include <SceneryEditorX/core/layer/layer.h>
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX
 {
 	class GuiContext : Layer
 	{
@@ -32,4 +32,6 @@ namespace UI
 	
 	};
 
-} // namespace UI
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------

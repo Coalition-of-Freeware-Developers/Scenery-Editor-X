@@ -12,8 +12,8 @@
 */
 
 #pragma once
-#include <SceneryEditorX/ui/ui.h>
 #include <GLFW/glfw3.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -24,7 +24,11 @@ namespace UI
     extern bool showAboutModal;
     extern bool showSettingsPanel;
 
+	// -------------------------------------------------------
+
     void SetDarkThemeColors();
+
+	void EditorViewport();
 
 	void MainMenuBar();
 

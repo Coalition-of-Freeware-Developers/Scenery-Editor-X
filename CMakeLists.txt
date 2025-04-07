@@ -152,6 +152,11 @@ FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 ADD_SUBDIRECTORY(dependency/glfw)
 
 # --------------------------------
+# NFD-Extended
+# --------------------------------
+ADD_SUBDIRECTORY(dependency/nfd-extended)
+
+# --------------------------------
 # EDX
 # --------------------------------
 ADD_SUBDIRECTORY(source/edX)
@@ -159,7 +164,7 @@ ADD_SUBDIRECTORY(source/edX)
 # --------------------------------
 # FILE FORMAT TESTER
 # --------------------------------
-ADD_SUBDIRECTORY(source/edX/testing)
+#ADD_SUBDIRECTORY(source/edX/testing)
 
 # --------------------------------
 # X-PLANE SCENERY LIBRARY
@@ -214,12 +219,12 @@ MESSAGE(STATUS "Generating precompiled headers")
 
 TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/xpeditor_pch.h)
 
-SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
+#SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET imgui nfd PROPERTY FOLDER "Dependency")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester imgui edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX nfd imgui edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
@@ -233,3 +238,4 @@ FOREACH(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/lib/${OUTPUTCONFIG})
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/bin/${OUTPUTCONFIG})
 ENDFOREACH(OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES)
+# --------------------------------

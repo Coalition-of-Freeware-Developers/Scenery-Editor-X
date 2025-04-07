@@ -2,24 +2,30 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* platform.h
+* viewport.cpp
 * -------------------------------------------------------
-* Created: 16/3/2025
+* Created: 4/4/2025
 * -------------------------------------------------------
 */
 
-#pragma once
-
-#include <memory>
+#include <SceneryEditorX/ui/ui.h>
+#include <imgui/imgui.h>
 
 // -------------------------------------------------------
 
-namespace SceneryEditorX
+namespace UI
 {
-	void InitializeEditor();
-	void ShutdownEditor();
-}
+	void EditorViewport()
+	{
+		ImGui::Begin("Viewport");
+        ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
+		ImGui::End();
+	}
+
+} // namespace UI
+
+// -------------------------------------------------------

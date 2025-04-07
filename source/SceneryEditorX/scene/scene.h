@@ -7,46 +7,33 @@
 * -------------------------------------------------------
 * scene.h
 * -------------------------------------------------------
-* Created: 2/4/2025
+* Created: 7/4/2025
 * -------------------------------------------------------
 */
 #pragma once
-
-#include <SceneryEditorX/core/delta_time.h>
-#include <SceneryEditorX/core/events.h>
-#include <SceneryEditorX/scene/asset_manager.h>
+#include <rpcdce.h>
+#include <SceneryEditorX/core/time/delta_time.h>
+#include <SceneryEditorX/core/templates/ref_templates.h>
+#include <string>
+#include <unordered_map>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class Scene : public Asset
+	class Scene
 	{
 	public:
-        Scene(const std::string &name = "NewAirport", bool isEditorScene = false, bool initalize = true);
-        ~Scene();
-
-        void SetViewportBounds(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
-
-       static Ref<Scene> CreateEmpty();
-
-
-		virtual void OnAttach() {}
-		virtual void OnDetach() {}
-		virtual void OnUpdate(DeltaTime ts) {}
-		virtual void OnUIRender() {}
-		virtual void OnImGuiRender() {}
-		virtual void OnEvent(Event& e) {}
-
+		Scene(const std::string &name);
+		~Scene();
+		void OnUpdate(Timestep ts);
+		// Other scene methods...
 	private:
-        std::string Name_;
-        bool isEditorScene_ = false;
-        uint32_t Viewport_Top = 0;
-        uint32_t Viewport_Left = 0;
-        uint32_t Viewport_Right = 0;
-        uint32_t Viewport_Bottom = 0;
+		std::string m_Name;
+		Ref<SceneRegistry> m_SceneRegistry;
+		std::unordered_map<UUID, Ref<Entity>> m_Entities;
 	};
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+// -----------------------------------------

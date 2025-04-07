@@ -190,4 +190,7 @@ Ref<SceneAsset> AssetManager::GetInitialScene()
     {
         return impl->currentProjectPath.stem().string();
     }
+
 } // namespace AssetManager
+
+// -------------------------------------------------------

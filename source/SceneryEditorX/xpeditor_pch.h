@@ -14,18 +14,15 @@
 #pragma once
 
 #include <SceneryEditorX/platform/system_detection.h>
+#include <SceneryEditorX/core/version.h>
 
 // -------------------------------------------------------
 
-#if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
-#pragma comment(lib, "legacy_stdio_definitions")
-#endif
-
 // TODO: Impliment MAC and Linux detection
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS) || defined(WIN64)
-#ifndef SEDX_PLATFORM_WINDOWS
-#define SEDX_PLATFORM_WINDOWS
-#endif // !SEDX_PLATFORM_WINDOWS
+	#ifndef SEDX_PLATFORM_WINDOWS
+	#define SEDX_PLATFORM_WINDOWS
+	#endif // !SEDX_PLATFORM_WINDOWS
 #endif
 
 // -------------------------------------------------------
@@ -34,26 +31,39 @@
     #include <Windows.h>
     #include <fileapi.h>
 
+	#ifdef _MSC_VER
+	#define SEDX_DEBUGBREAK() __debugbreak()
+	#endif
+
     #if defined(_DEBUG) || defined(DEBUG)
         #ifndef SEDX_DEBUG
         #define SEDX_DEBUG
         #endif
-    #define SEDX_DEBUGBREAK() __debugbreak()
-    #define APP_USE_VULKAN_DEBUG_REPORT
+        #include <SceneryEditorX/logging/asserts.h>
+
+		#define SEDX_ASSERTS
+		#define SEDX_ENABLE_VERIFY
+		#define APP_USE_VULKAN_DEBUG_REPORT
     #endif
+#elif defined(SEDX_COMPILER_CLANG)
+	#define SEDX_DEBUGBREAK __builtin_debugtrap()
+#else
+	#define SEDX_DEBUGBREAK
 #endif
+
+
 
 // -------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_LINUX
     #include <unistd.h>
     #include <csignal>
-    #if defined(_DEBUG) || defined(DEBUG)
-        #ifndef SEDX_DEBUG
-        #define SEDX_DEBUG
-        #endif
-    #define SEDX_DEBUGBREAK() raise(SIGTRAP)
-    #endif
+	#include <signal.h>
+	#if defined(SIGTRAP)
+		#define SEDX_DEBUGBREAK() raise(SIGTRAP)
+	#else
+		#define SEDX_DEBUGBREAK() raise(SIGABRT)
+	#endif
 #endif
 
 // -------------------------------------------------------
@@ -128,7 +138,7 @@
 ##########################################################
 */
 
-#include <stb_image.h> 
+#include <stb_image.h>
 #include <portable-file-dialogs.h>
 #include <nlohmann/json.hpp>
 
@@ -149,12 +159,12 @@
 ##########################################################
 */
 
-#include <imgui.h>
+#include <imgui/imgui.h>
 #include <ImGuizmo.h>
 
 // -------------------------------------------------------
 
-#include <SceneryEditorX/core/base.hpp>
+//#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/resource.h>
@@ -164,9 +174,45 @@
 ##########################################################
 */
 
-#define INTERNAL static
-#define LOCAL static
-#define GLOBAL static
+/*
+* Type aliases for fixed-width integer types
+*/
+using u8  = uint8_t;  // Unsigned 8-bit integer
+using u16 = uint16_t; // Unsigned 16-bit integer
+using u32 = uint32_t; // Unsigned 32-bit integer
+using u64 = uint64_t; // Unsigned 64-bit integer
+using i8  = int8_t;   // Signed 8-bit integer
+using i16 = int16_t;  // Signed 16-bit integer
+using i32 = int32_t;  // Signed 32-bit integer
+using i64 = int64_t;  // Signed 64-bit integer
+using f32 = float;    // 32-bit floating point
+using f64 = double;   // 64-bit floating point
+using RID = u32;      // Resource Identifier, alias for unsigned 32-bit integer
+using byte = uint8_t;
+
+// -------------------------------------------------------
+
+using Vec2 = glm::vec2; // 2D vector
+using Vec3 = glm::vec3; // 3D vector
+using Vec4 = glm::vec4; // 4D vector
+
+using Mat2 = glm::mat2; // 2x2 matrix
+using Mat3 = glm::mat3; // 3x3 matrix
+using Mat4 = glm::mat4; // 4x4 matrix
+
+// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	#define INTERNAL static
+	#define LOCAL static
+	#define GLOBAL static
+
+	inline std::string ToString(const char* str)
+    {
+        return str ? std::string(str) : std::string("null");
+    }
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------
 
@@ -176,11 +222,10 @@ std::filesystem::path workingDir = std::filesystem::current_path();
 
 // -------------------------------------------------------
 
-
 /**
  * @brief - A macro to display an error message
- * @tparam T 
- * @param errorMessage 
+ * @tparam T
+ * @param errorMessage
  */
 template <typename T>
 void ErrMsg(const T &errorMessage)

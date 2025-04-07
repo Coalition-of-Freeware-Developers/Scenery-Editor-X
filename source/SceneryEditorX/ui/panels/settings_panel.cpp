@@ -11,12 +11,14 @@
 * -------------------------------------------------------
 */
 
-#include <SceneryEditorX/UI/ui.h>
+#include <SceneryEditorX/ui/ui.h>
 #include <imgui/imgui.h>
 
 // -------------------------------------------------------
 
 bool UI::showSettingsPanel = false;
+
+// -------------------------------------------------------
 
 namespace UI
 {
@@ -39,4 +41,7 @@ namespace UI
         }
         ImGui::End();
     }
+
 } // namespace UI
+
+// -------------------------------------------------------

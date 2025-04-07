@@ -12,8 +12,8 @@
 */
 
 #include <imgui/imgui.h>
-#include <SceneryEditorX/Platform/Windows/FileManager/FileDialog.h>
-#include <SceneryEditorX/UI/ui.h>
+#include <SceneryEditorX/platform/windows/file_dialog.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -24,6 +24,8 @@
    // For example, using a library like tinyfiledialogs or native API calls
    // This is a placeholder implementation
 //}
+
+// -------------------------------------------------------
 
 namespace UI
 {
@@ -205,4 +207,7 @@ namespace UI
         ImGui::EndMainMenuBar();
         }
     }
+
 } // namespace UI
+
+// -------------------------------------------------------

@@ -15,6 +15,7 @@
 
 #include <SceneryEditorX/core/base.hpp>
 #include <vector>
+#include <string>
 
 // -------------------------------------------------------
 
@@ -326,4 +327,7 @@ namespace AssetManager
 	void DeleteRecursive(const Ref<Node> &node);
 	*/
     };
+
 } // namespace AssetManager
+
+// -------------------------------------------------------

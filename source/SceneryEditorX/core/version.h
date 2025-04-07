@@ -25,4 +25,30 @@
 #define SEDX_GET_VERSION() SEDX_VERSION
 
 #define SEDX_GET_VERSION_MAJOR() SEDX_VER_MAJOR
+
+//
+// Build Configuration
+//
+#if defined(SEDX_DEBUG)
+	#define SEDX_BUILD_CONFIG_NAME "Debug"
+#elif defined(SEDX_RELEASE)
+	#define SEDX_BUILD_CONFIG_NAME "Release"
+#else
+	#error Undefined configuration?
 #endif
+
+//
+// Build Platform
+//
+#if defined(SEDX_PLATFORM_WINDOWS)
+	#define SEDX_BUILD_PLATFORM_NAME "Windows x64"
+#elif defined(SEDX_PLATFORM_LINUX)
+	#define SEDX_BUILD_PLATFORM_NAME "Linux"
+#else
+	#define SEDX_BUILD_PLATFORM_NAME "Unknown"
+#endif
+
+#define SEDX_VERSION_LONG "Scenery Editor X " SEDX_VERSION " (" SEDX_BUILD_PLATFORM_NAME " " SEDX_BUILD_CONFIG_NAME ")"
+
+#endif
+

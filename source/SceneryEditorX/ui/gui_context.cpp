@@ -17,7 +17,7 @@
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX
 {
 	GuiContext *GuiContext::Create()
     {
@@ -158,9 +158,9 @@ namespace UI
         style.IndentSpacing = 11.0f;
     }
 
-    void GuiContext::AllowInputEvents(bool allowEvents)
-    {
-    }
+    void GuiContext::AllowInputEvents(bool allowEvents) {}
 
+} // namespace SceneryEditorX
 
-} // namespace UI
+// -------------------------------------------------------
+

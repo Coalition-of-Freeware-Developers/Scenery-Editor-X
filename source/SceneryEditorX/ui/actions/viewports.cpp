@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/renderer/vk_util.h>
-#include <SceneryEditorX/ui/ui_manager.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/ui/ui_manager.h>
 
 // -------------------------------------------------------
 

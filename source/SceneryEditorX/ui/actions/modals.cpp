@@ -12,7 +12,7 @@
 */
 
 #include <imgui/imgui.h>
-#include <SceneryEditorX/UI/ui.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -23,12 +23,12 @@ bool UI::showCreateProjectModal = false;
 
 namespace UI
 {
+	
+	// Define projectName and projectLocation variables
+	char projectName[128];
+	char projectLocation[2048];
 
-// Define projectName and projectLocation variables
-char projectName[128];
-char projectLocation[2048];
-
-void ExitConfirmationModal(GLFWwindow *window)
+    void ExitConfirmationModal(GLFWwindow *window)
     {
         if (showExitModal)
         {
@@ -115,4 +115,6 @@ void ExitConfirmationModal(GLFWwindow *window)
             }
         }
     }
+
+
 } // namespace UI

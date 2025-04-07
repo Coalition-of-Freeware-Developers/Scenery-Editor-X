@@ -40,4 +40,8 @@ namespace Colors
         constexpr auto propertyField    = IM_COL32(15, 15, 15, 255);
 
 	} // namespace Theme
+
+
 } // namespace Colors
+
+// -------------------------------------------------------

@@ -19,3 +19,9 @@
 [submodule "dependency/IconFontCppHeaders"]
 	path = dependency/IconFontCppHeaders
 	url = git@github.com:juliettef/IconFontCppHeaders.git
+[submodule "dependency/nfd-extended"]
+	path = dependency/nfd-extended
+	url = git@github.com:btzy/nativefiledialog-extended.git
+[submodule "dependency/choc"]
+	path = dependency/choc
+	url = git@github.com:Tracktion/choc.git

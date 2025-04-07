@@ -13,6 +13,7 @@
 
 #pragma once
 #include <vulkan/vulkan.h>
+#include <thread>
 
 // -------------------------------------------------------
 
@@ -20,6 +21,11 @@
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
 // -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	using RendererID = uint32_t;
+}
 
 /**
 * @brief Macro to check the result of a Vulkan function.
@@ -29,12 +35,35 @@
  * @param result The result of the Vulkan function.
  * @param msg The error message to print.
  */
-#define VK_CHECK_RESULT(result, message)                                                                               \
-	if (result != VK_SUCCESS)                                                                                          \
-	{                                                                                                                  \
-		fprintf(stderr, "Error in %s:%d - %s, code %x\n", __FILE__, __LINE__, message, result);                        \
-		exit(1);                                                                                                       \
-	}
+
+inline void VulkanCheckResult(VkResult result, const char *file, int line)
+{
+    if (result != VK_SUCCESS)
+    {
+        SEDX_CORE_ERROR("VkResult is '{0}' in {1}:{2}", ::SceneryEditorX::VK_ERROR_STRING(result), file, line);
+        if (result == VK_ERROR_DEVICE_LOST)
+        {
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(3s);
+            //Utils::RetrieveDiagnosticCheckpoints();
+            //SceneryEditorX::Utils::DumpGPUInfo();
+        }
+        //SEDX_CORE_ASSERT(result == VK_SUCCESS);
+    }
+}
+
+//#define VK_CHECK_RESULT(result, message)                                                                             \
+//	if (result != VK_SUCCESS)                                                                                          \
+//	{                                                                                                                  \
+//		fprintf(stderr, "Error in %s:%d - %s, code %x\n", __FILE__, __LINE__, message, result);                        \
+//		exit(1);                                                                                                       \
+//	}
+
+#define VK_CHECK_RESULT(f)                                                                                             \
+    {                                                                                                                  \
+        VkResult result = (f);                                                                                         \
+        ::SceneryEditorX::VK_ERROR_STRING(result, __FILE__, __LINE__);                                                 \
+    }
 
 /**
  * @brief Macro to get the size of an array.
@@ -128,89 +157,98 @@
 
 // -------------------------------------------------------
 
-/**
- * @brief Helper function to get the bits per pixel of a Vulkan format.
- * @param format Vulkan format to check.
- * @param BPP = Bits-Per-Pixel.
- * @return The bits per pixel of the given format, -1 for invalid formats.
- */
-extern int getBPP(VkFormat format);
-
-// -------------------------------------------------------
-
-enum class ShaderSourceLanguage
+namespace SceneryEditorX
 {
-	GLSL,
-	HLSL,
-	SPV,
-};
+	
+	/**
+	 * @brief Helper function to get the bits per pixel of a Vulkan format.
+	 * @param format Vulkan format to check.
+	 * @param BPP = Bits-Per-Pixel.
+	 * @return The bits per pixel of the given format, -1 for invalid formats.
+	 */
+	extern int getBPP(VkFormat format);
+	
+	// -------------------------------------------------------
+	
+	enum class ShaderSourceLanguage
+	{
+		GLSL,
+		HLSL,
+		SPV,
+	};
+	
+	enum class ShadingLanguage
+	{
+		GLSL,
+		HLSL,
+	};
+	
+	// -------------------------------------------------------
+	
+	/**
+	 * @brief Get the string representation of a Vulkan debug message severity.
+	 * @param severity The Vulkan debug message severity.
+	 * @return The string representation of the severity.
+	 */
+	const char* VK_DEBUG_SEVERITY_STRING(VkDebugUtilsMessageSeverityFlagBitsEXT severity);
+	
+	/**
+	 * @brief Get the string representation of a Vulkan debug message type.
+	 * @param type The Vulkan debug message type.
+	 * @return The string representation of the type.
+	 */
+	const char* VK_DEBUG_TYPE(VkDebugUtilsMessageTypeFlagsEXT type);
+	
+	/**
+	 * @brief Get the string representation of a Vulkan error code.
+	 * @param errorCode The Vulkan error code.
+	 * @return The string representation of the error code.
+	 */
+	const char* VK_ERROR_STRING(VkResult errorCode);
+	
+	/**
+	 * @brief Get the string representation of a Vulkan format.
+	 * @param format The Vulkan format.
+	 * @return The string representation of the format.
+	 */
+	const char* VK_FORMAT_STRING(VkFormat format);
+	
+	/**
+	 * @brief Get the string representation of a Vulkan device type.
+	 * @param type The Vulkan device type.
+	 * @return The string representation of the device type.
+	 */
+	const char* VK_DEVICE_TYPE_STRING(VkPhysicalDeviceType type);
+	
+	/**
+	 * @brief Get the string representation of a Vulkan color space.
+	 * @param colorSpace The Vulkan color space.
+	 * @return The string representation of the color space.
+	 */
+	const char* VK_COLOR_SPACE_STRING(VkColorSpaceKHR colorSpace);
 
-enum class ShadingLanguage
-{
-	GLSL,
-	HLSL,
-};
+	/**
+	 * @brief Get the string representation of a Vulkan vendor ID.
+	 * @param vendorID The Vulkan vendor ID.
+	 * @return The string representation of the vendor ID.
+	 */
+	const char* VK_VENDER_ID_STRING(uint32_t vendorID);
 
-// -------------------------------------------------------
-
-/**
- * @brief Get the string representation of a Vulkan debug message severity.
- * @param severity The Vulkan debug message severity.
- * @return The string representation of the severity.
- */
-const char* VK_DEBUG_SEVERITY_STRING(VkDebugUtilsMessageSeverityFlagBitsEXT severity);
-
-/**
- * @brief Get the string representation of a Vulkan debug message type.
- * @param type The Vulkan debug message type.
- * @return The string representation of the type.
- */
-const char* VK_DEBUG_TYPE(VkDebugUtilsMessageTypeFlagsEXT type);
-
-/**
- * @brief Get the string representation of a Vulkan error code.
- * @param errorCode The Vulkan error code.
- * @return The string representation of the error code.
- */
-const char* VK_ERROR_STRING(VkResult errorCode);
-
-/**
- * @brief Get the string representation of a Vulkan format.
- * @param format The Vulkan format.
- * @return The string representation of the format.
- */
-const char* VK_FORMAT_STRING(VkFormat format);
-
-/**
- * @brief Get the string representation of a Vulkan device type.
- * @param type The Vulkan device type.
- * @return The string representation of the device type.
- */
-const char* VK_DEVICE_TYPE_STRING(VkPhysicalDeviceType type);
-
-/**
- * @brief Get the string representation of a Vulkan color space.
- * @param colorSpace The Vulkan color space.
- * @return The string representation of the color space.
- */
-const char* VK_COLOR_SPACE_STRING(VkColorSpaceKHR colorSpace);
-
-/**
- * @brief Get the string representation of Vulkan queue flags.
- * @param flags The Vulkan queue flags.
- * @return The string representation of the queue flags.
- */
-const char* VK_QUEUE_FLAGS_STRING(VkQueueFlags flags);
-
-/**
- * @brief Get the string representation of Vulkan memory property flags.
- * @param flags The Vulkan memory property flags.
- * @return The string representation of the memory property flags.
- */
-const char* VK_MEMORY_PROPERTY_FLAGS_STRING(VkMemoryPropertyFlags flags);
-
-
-std::vector<char> CompileShader(const std::filesystem::path &path);
+	/**
+	 * @brief Get the string representation of Vulkan queue flags.
+	 * @param flags The Vulkan queue flags.
+	 * @return The string representation of the queue flags.
+	 */
+	const char* VK_QUEUE_FLAGS_STRING(VkQueueFlags flags);
+	
+	/**
+	 * @brief Get the string representation of Vulkan memory property flags.
+	 * @param flags The Vulkan memory property flags.
+	 * @return The string representation of the memory property flags.
+	 */
+	const char* VK_MEMORY_PROPERTY_FLAGS_STRING(VkMemoryPropertyFlags flags);
+	
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------
 
