@@ -18,7 +18,7 @@
 
 namespace UI
 {
-    void LayerStack()
+	void UIManager::LayerStack()
     {
 		ImGui::Begin("Layer Stack");
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{4, 4});
@@ -34,4 +34,8 @@ namespace UI
         ImGui::Spacing();
 		ImGui::End();
     }
-}
+
+} // namespace UI
+
+// -------------------------------------------------------
+

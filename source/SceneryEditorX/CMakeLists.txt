@@ -62,7 +62,7 @@ ADD_EXECUTABLE(SceneryEditorX
 	ui/ui.cpp
 	ui/ui.h
 	ui/ui_manager.h
-	ui/panels/about.cpp
+	ui/ui_globals.cpp
 	ui/panels/content_browser.cpp
 	ui/panels/layer_stack.cpp
 	ui/panels/loading_radial.cpp
@@ -146,6 +146,7 @@ SOURCE_GROUP("Editor/UI" FILES
 	ui/ui.cpp
 	ui/ui.h
 	ui/ui_manager.h
+	ui/ui_globals.cpp
 )
 SOURCE_GROUP("Editor/UI/Panels" FILES
 	ui/panels/about.cpp

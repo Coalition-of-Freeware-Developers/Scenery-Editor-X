@@ -157,7 +157,7 @@ void Log::LogVulkanResult(VkResult result, const std::string &operation)
         if (result != VK_SUCCESS)
         {
             const char *resultString = VK_ERROR_STRING(result);
-            std::string message = "Vulkan operation '" + operation + "' returned " + resultString;
+            std::string message = "Vulkan operation '" + operation + "' returned: " + resultString;
 
             if (result < 0)
             { // Negative values are errors

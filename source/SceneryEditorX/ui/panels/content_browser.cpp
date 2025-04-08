@@ -13,12 +13,13 @@
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
 namespace UI
 {
-    void AssetBrowser()
+	void UIManager::AssetBrowser()
     {
         ImGui::Begin("Asset Browser",
                      nullptr,

@@ -268,6 +268,7 @@ public:
 
 private:
     SceneryEditorX::GraphicsEngine *renderer = nullptr;
+    GLFWwindow *window = nullptr;
     VkDescriptorPool imguiPool = VK_NULL_HANDLE;
     bool initialized = false;
     //const ImGuiWindowFlags common_flags  = ImGuiWindowFlags_NoCollapse;

@@ -86,20 +86,21 @@ void GUI::newFrame()
     }
 
     // Start the ImGui frame
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    // Your ImGui UI code goes here
-    ImGui::ShowDemoWindow();
-
-    // Add more UI elements as needed
-
-    // Complete the ImGui frame
-    ImGui::Render();
-
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
+    //ImGui_ImplVulkan_NewFrame();
+    //ImGui_ImplGlfw_NewFrame();
+    //ImGui::NewFrame();
+	//
+    //// Your ImGui UI code goes here
+    //ImGui::ShowDemoWindow();
+	//
+	//
+	//
+    //// Complete the ImGui frame
+    //ImGui::Render();
+	//
+    //ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
 }
+
 
 void GUI::cleanUp()
 {
@@ -123,6 +124,7 @@ void GUI::initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRend
 {
     // Store the engine reference
     this->renderer = &engineRenderer;
+    this->window = window;
 
     // Create separate descriptor pool for ImGui with FREE_DESCRIPTOR_SET_BIT
     VkDescriptorPoolSize pool_sizes[] = {
@@ -156,7 +158,11 @@ void GUI::initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRend
     SceneryEditorX::QueueFamilyIndices indices = renderer->GetQueueFamilyIndices();
 
 	ImGui::CreateContext();
-    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;    // Enable multi-viewport / platform windows
+    io.ConfigDockingWithShift = false;                     // Don't require shift for docking
+    io.ConfigWindowsResizeFromEdges = true;                // Enable resizing windows from edges
 
     ImGui_ImplGlfw_InitForVulkan(Window::GetGLFWwindow(), true);
 

@@ -64,6 +64,12 @@ private:
     uint32_t frameCount = 0;
 	//AssetManager assetManager;
 
+	VkImage viewportImage = VK_NULL_HANDLE;
+    VkDeviceMemory viewportImageMemory = VK_NULL_HANDLE;
+    VkImageView viewportImageView = VK_NULL_HANDLE;
+    VkFramebuffer viewportFramebuffer = VK_NULL_HANDLE;
+    VkRenderPass viewportRenderPass = VK_NULL_HANDLE;
+
 // -------------------------------------------------------
 
 	void initialize_editor()
@@ -80,6 +86,7 @@ private:
 		//scene = assetManager.GetInitialScene();
 		//camera = assetManager.GetMainCamera(scene);
         Window::Create();
+        createViewportResources();
 	}
 
 	void create()
@@ -130,6 +137,105 @@ private:
         }
     }
 
+	void createViewportResources()
+    {
+        // Create image for the viewport
+        vkRenderer.createImage(
+            viewportSize.x, 
+            viewportSize.y,
+            1,
+            VK_SAMPLE_COUNT_1_BIT,
+            vkRenderer.GetSwapChainImageFormat(),
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            viewportImage,
+            viewportImageMemory
+        );
+
+        // Create image view for the viewport
+        viewportImageView = vkRenderer.createImageView(
+            viewportImage,
+            vkRenderer.GetSwapChainImageFormat(),
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            1
+        );
+
+        // Create render pass for the viewport
+        VkAttachmentDescription colorAttachment{};
+        colorAttachment.format = vkRenderer.GetSwapChainImageFormat();
+        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkAttachmentReference colorAttachmentRef{};
+        colorAttachmentRef.attachment = 0;
+        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorAttachmentRef;
+
+        VkRenderPassCreateInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount = 1;
+        renderPassInfo.pAttachments = &colorAttachment;
+        renderPassInfo.subpassCount = 1;
+        renderPassInfo.pSubpasses = &subpass;
+
+        if (vkCreateRenderPass(vkRenderer.GetDevice(), &renderPassInfo, nullptr, &viewportRenderPass) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create viewport render pass");
+        }
+
+        // Create framebuffer for the viewport
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = viewportRenderPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = &viewportImageView;
+        framebufferInfo.width = viewportSize.x;
+        framebufferInfo.height = viewportSize.y;
+        framebufferInfo.layers = 1;
+
+        if (vkCreateFramebuffer(vkRenderer.GetDevice(), &framebufferInfo, nullptr, &viewportFramebuffer) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to create viewport framebuffer");
+        }
+    }
+
+	void cleanupViewportResources()
+	{
+        VkDevice device = vkRenderer.GetDevice();
+        
+        if (viewportFramebuffer != VK_NULL_HANDLE) {
+            vkDestroyFramebuffer(device, viewportFramebuffer, nullptr);
+            viewportFramebuffer = VK_NULL_HANDLE;
+        }
+        
+        if (viewportRenderPass != VK_NULL_HANDLE) {
+            vkDestroyRenderPass(device, viewportRenderPass, nullptr);
+            viewportRenderPass = VK_NULL_HANDLE;
+        }
+        
+        if (viewportImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, viewportImageView, nullptr);
+            viewportImageView = VK_NULL_HANDLE;
+        }
+        
+        if (viewportImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, viewportImage, nullptr);
+            viewportImage = VK_NULL_HANDLE;
+        }
+        
+        if (viewportImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, viewportImageMemory, nullptr);
+            viewportImageMemory = VK_NULL_HANDLE;
+        }
+    }
     // -------------------------------------------------------
 
 	void OnSurfaceUpdate(uint32_t width, uint32_t height)
@@ -185,8 +291,22 @@ private:
 
 	void DrawFrame()
 	{
-        //DrawEditor();
+		if (viewportSize.x != newViewportSize.x || viewportSize.y != newViewportSize.y)
+		{
+            if (newViewportSize.x > 0 && newViewportSize.y > 0)
+			{
+                viewportSize = newViewportSize;
+                cleanupViewportResources();
+                createViewportResources();
+            }
+        }
+
+		static UI::UIManager uiManager;
+
         vkRenderer.renderFrame();
+
+		uiManager.ViewportWindow(newViewportSize, viewportHovered, viewportImageView);
+
         /*
         if (GetSwapChainDirty())
         {

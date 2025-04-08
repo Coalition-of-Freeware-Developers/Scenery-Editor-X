@@ -17,52 +17,56 @@
 // -------------------------------------------------------
 
 // Define showExitModal and showAboutModal variables
-bool UI::showExitModal = false;
-bool UI::showAboutModal = false;
-bool UI::showCreateProjectModal = false;
+//bool UI::showExitModal = false;
+//bool UI::showAboutModal = false;
+//bool UI::showCreateProjectModal = false;
 
 namespace UI
 {
 
-// Define projectName and projectLocation variables
-char projectName[128];
-char projectLocation[2048];
+	// Define projectName and projectLocation variables
+	char projectName[128];
+	char projectLocation[2048];
 
-void ExitConfirmationModal(GLFWwindow *window)
+	// ---------------------------------------------------------
+
+    void UIManager::ExitConfirmationModal(GLFWwindow *window)
     {
-        if (showExitModal)
+        ImGui::SetNextWindowSize(ImVec2(400, 150), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
+                                ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+        
+        if (ImGui::BeginPopupModal("Exit Confirmation", &showExitModal))
         {
-            ImGui::OpenPopup("ExitConfirmation");
-
-            ImVec2 modalSize(226, 94);
-            ImGui::SetNextWindowSize(modalSize);
-
-            if (ImGui::BeginPopupModal("ExitConfirmation", &showExitModal, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+            ImGui::Text("Are you sure you want to exit?");
+            ImGui::Text("Any unsaved changes will be lost.");
+            
+            ImGui::Separator();
+            
+            ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 180);
+            if (ImGui::Button("Exit", ImVec2(85, 0)))
             {
-                ImGui::Text("Are you sure you want to exit?");
-                ImGui::Checkbox("Don't show this message again", &showExitModal);
-                ImGui::Separator();
-
-                // Buttons
-                if (ImGui::Button("Yes", ImVec2(100.0f, 0.0f)))
-                {
-                    showExitModal = false; // Close the modal
-                    glfwSetWindowShouldClose(window, true);
-                }
-
-                ImGui::SameLine();
-
-                if (ImGui::Button("No", ImVec2(100.0f, 0.0f)))
-                {
-                    showExitModal = false; // Close the modal without exiting
-                }
-
-                ImGui::EndPopup();
+                // Exit application
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+                showExitModal = false;
             }
+            
+            ImGui::SameLine();
+            
+            if (ImGui::Button("Cancel", ImVec2(85, 0)))
+            {
+                showExitModal = false;
+            }
+            
+            ImGui::EndPopup();
+        }
+        else
+        {
+            ImGui::OpenPopup("Exit Confirmation");
         }
     }
 
-    void CreateProjectModal(GLFWwindow *window)
+    void UIManager::CreateProjectModal(GLFWwindow *window)
     {
         if (showCreateProjectModal)
         {
@@ -97,22 +101,38 @@ void ExitConfirmationModal(GLFWwindow *window)
     }
 
     //TODO: Impliment the ability to close the modal popup by clicking outside the Modal
-    void AboutModal()
+    void UIManager::AboutModal()
     {
-        if (showAboutModal)
+        ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
+                                ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+        
+        if (ImGui::BeginPopupModal("About Scenery Editor X", &showAboutModal))
         {
-            ImGui::OpenPopup("About");
-            ImVec2 modalSize(460, 210);
-            ImGui::SetNextWindowSize(modalSize);
-
-            if (ImGui::BeginPopupModal("About", &showAboutModal, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+            ImGui::Text("Scenery Editor X");
+            ImGui::Text("Version 1.0.0");
+            ImGui::Separator();
+            ImGui::Text("© 2025 Thomas Ray");
+            ImGui::Text("© 2025 Coalition of Freeware Developers");
+            ImGui::Separator();
+            ImGui::Text("Powered by Vulkan and Dear ImGui");
+            
+            ImGui::Separator();
+            
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 85) * 0.5f);
+            if (ImGui::Button("Close", ImVec2(85, 0)))
             {
-                ImGui::Text("Scenery Editor X");
-                ImGui::Text("Version 1.0.0");
-                ImGui::Text("Developed by: ");
-                ImGui::Text("Some Random Guy");
-                ImGui::EndPopup();
+                showAboutModal = false;
             }
+            
+            ImGui::EndPopup();
+        }
+        else
+        {
+            ImGui::OpenPopup("About Scenery Editor X");
         }
     }
+
 } // namespace UI
+
+// -------------------------------------------------------

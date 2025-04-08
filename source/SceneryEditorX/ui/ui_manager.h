@@ -19,23 +19,34 @@
 
 namespace UI
 {
+    extern bool showViewport;
     extern bool showCreateProjectModal;
-	extern bool showExitModal;
+    extern bool showExitModal;
     extern bool showAboutModal;
     extern bool showSettingsPanel;
 
     void SetDarkThemeColors();
 
-	void MainMenuBar();
+	class UIManager
+    {
+    public:
 
-    void LayerStack();
-    void AssetBrowser();
-    void SettingsPanel();
-    //void Properties();
+	    void SetupDockspace(bool* p_open = nullptr);
+        void MainMenuBar();
 
-    void CreateProjectModal(GLFWwindow *window);
-	void ExitConfirmationModal(GLFWwindow *window);
-	void AboutModal();
+        void LayerStack();
+        void AssetBrowser();
+        void SettingsPanel();
+        //void Properties();
+
+        void CreateProjectModal(GLFWwindow *window);
+        void ExitConfirmationModal(GLFWwindow *window);
+        void AboutModal();
+
+		void ViewportWindow(glm::ivec2& viewportSize, bool& viewportHovered, VkImageView imageView);
+    };
 
 } // namespace UI
+
+// -------------------------------------------------------
 
