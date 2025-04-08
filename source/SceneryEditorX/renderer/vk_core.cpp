@@ -12,19 +12,19 @@
 */
 
 #define TINYOBJLOADER_IMPLEMENTATION
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 #include <optional>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_util.h>
+#include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/ui/ui_manager.h>
 #include <stb_image.h>
 #include <tiny_obj_loader.h>
 #include <unordered_map>
 #include <vector>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/ui/ui_manager.h>
-#include <imgui_impl_vulkan.h>
-#include <imgui_impl_glfw.h>
 
 // -------------------------------------------------------
 

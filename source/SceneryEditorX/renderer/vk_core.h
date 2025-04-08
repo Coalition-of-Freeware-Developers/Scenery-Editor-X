@@ -12,7 +12,6 @@
 */
 
 #pragma once
-
 #define GLFW_INCLUDE_VULKAN
 #include <functional>
 #include <GLFW/glfw3.h>
@@ -218,6 +217,7 @@ namespace SceneryEditorX
 		VkInstance instance = VK_NULL_HANDLE;
 	    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+        //VmaAllocator vmaAllocator;
 
 		// -------------------------------------------------------
 
@@ -233,9 +233,9 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        VkFormat swapChainImageFormat;
 		VkQueue graphicsQueue = VK_NULL_HANDLE;
         VkQueue presentQueue = VK_NULL_HANDLE;
+        VkFormat swapChainImageFormat;
         VkExtent2D swapChainExtent;
 	    VkSurfaceKHR surface;
 		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
@@ -283,11 +283,13 @@ namespace SceneryEditorX
         VkSurfaceCapabilitiesKHR surfaceCapabilities{};
 
 		// -------------------------------------------------------
+
+		uint32_t mipLevels;
         uint32_t apiVersion;
 		uint32_t currentFrame = 0;
 		uint32_t additionalImages = 0;
         uint32_t framesInFlight = 3;
-        uint32_t mipLevels;
+        uint32_t swapChainCurrentFrame = 0;
 
 		VkPipeline graphicsPipeline;
 		VkRenderPass renderPass;

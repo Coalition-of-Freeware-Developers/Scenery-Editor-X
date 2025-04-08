@@ -86,7 +86,7 @@ private:
 		//scene = assetManager.GetInitialScene();
 		//camera = assetManager.GetMainCamera(scene);
         Window::Create();
-        createViewportResources();
+
 	}
 
 	void create()
@@ -99,6 +99,8 @@ private:
 
 		//Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         vkRenderer.initEngine(Window::GetGLFWwindow(), Window::GetWidth(), Window::GetHeight());
+
+        createViewportResources();
 
 		ui.initGUI(Window::GetGLFWwindow(), vkRenderer);
 

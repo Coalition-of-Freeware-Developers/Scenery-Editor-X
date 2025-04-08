@@ -18,6 +18,11 @@
 
 namespace SceneryEditorX
 {
+/*
+	inline CommandResources& GetCurrentCommandResources()
+	{
+        return queues[currentQueue].commands[swapChainCurrentFrame];
+    }
 
 	void BeginCmdBuffer(Queue queue)
 	{
@@ -41,7 +46,7 @@ namespace SceneryEditorX
 		    cmd.timeStampNames.clear();
 		}
 
-		Context::InternalQueue& iqueue = _ctx.queues[queue];
+		InternalQueue& iqueue = _ctx.queues[queue];
 		vkResetCommandPool(_ctx.device, cmd.pool, 0);
 		cmd.stagingOffset = 0;
 		VkCommandBufferBeginInfo beginInfo{};
@@ -77,10 +82,10 @@ namespace SceneryEditorX
 	void EndCommandBuffer()
     {
         _ctx.EndCommandBuffer({});
-        _ctx.currentQueue = vkw::Queue::Count;
+        _ctx.currentQueue = SceneryEditorX::Queue::Count;
         _ctx.currentPipeline = {};
     }
-
+	*/
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------
