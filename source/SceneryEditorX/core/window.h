@@ -17,19 +17,48 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/renderer/render_data.h>
 
 // -------------------------------------------------------
 
-enum class WindowMode
+enum class WindowMode : uint8_t
 {
 	Windowed,
 	WindowedFullScreen,
 	FullScreen
 };
 
+// -------------------------------------------------------
+
+struct IconData
+{
+    std::string path;                  // Path to the icon file
+    int width;                         // Icon width
+    int height;                        // Icon height
+    int channels;                      // Number of channels
+    std::vector<unsigned char> buffer; // Buffer for the icon data
+    mutable unsigned char* pixels;     // Pixel data after loading
+
+	IconData() :
+    path(R"(..\..\assets\icon.png)"),
+    width(0),
+    height(0),
+    channels(0),
+    pixels(nullptr) {}
+
+	~IconData() 
+    {
+        if (pixels) {
+            stbi_image_free(pixels);
+            pixels = nullptr;
+        }
+    }
+};
+
+// -------------------------------------------------------
+
 class Window
 {
-private:
 	INTERNAL inline GLFWwindow *window              = nullptr;
 	INTERNAL inline GLFWmonitor **monitors          = nullptr;
 	INTERNAL inline const char *title               = "Scenery Editor X";
@@ -58,39 +87,41 @@ private:
 	INTERNAL inline bool        decorated           = true;
 	INTERNAL inline bool        maximized           = true;
 
-	GLOBAL void ScrollCallback(GLFWwindow *window, double x, double y);
-    GLOBAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
-    GLOBAL void WindowMaximizeCallback(GLFWwindow *window, int maximize);
-    GLOBAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);
-    GLOBAL void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
+	LOCAL void ScrollCallback(GLFWwindow *window, double x, double y);
+    LOCAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
+    LOCAL void WindowMaximizeCallback(GLFWwindow *window, int maximize);
+    LOCAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);
+    LOCAL void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
 
 	INTERNAL void SetWindowIcon(GLFWwindow *window);
 
 public:
-	GLOBAL void Create();
+    Window();
+    ~Window();
+
+    SceneryEditorX::RenderData gfxData;
+
 	GLOBAL void Update();
-	GLOBAL void OnImgui();
-	GLOBAL void Destroy();
+	//GLOBAL void OnImgui();
 	GLOBAL void ApplyChanges();
 	GLOBAL void UpdateFramebufferSize();
 	GLOBAL bool IsKeyPressed(uint16_t keyCode);
-	void setFramebufferResized(bool resized) { framebufferResized = resized; }
+    GLOBAL void SetFramebufferResized(bool resized) { framebufferResized = resized; }
 
-    GLOBAL int get_width();
-    GLOBAL int get_height();
-
-	GLOBAL inline GLFWwindow*   GetGLFWwindow()                     {return window;}
-	GLOBAL inline bool          IsDirty()                           {return dirty;}
-	GLOBAL inline void          WaitEvents()                        {glfwWaitEvents();}
-	GLOBAL inline uint32_t      GetWidth()                          {return Window::width;}
-	GLOBAL inline uint32_t      GetHeight()                         {return Window::height;}
-	GLOBAL inline float         GetDeltaTime()                      {return deltaTime;}
-	GLOBAL inline bool          GetShouldClose()                    {return glfwWindowShouldClose(window);}
-	GLOBAL inline float         GetDeltaScroll()                    {return deltaScroll;}
-	GLOBAL inline Vec2          GetDeltaMouse()                     {return deltaMousePos;}
-	GLOBAL inline bool          GetFramebufferResized()             {return framebufferResized;}
-	GLOBAL inline bool          IsKeyDown(uint16_t keyCode)         {return glfwGetKey(window,keyCode);}
-	GLOBAL inline bool          IsMouseDown(uint16_t buttonCode)    {return glfwGetMouseButton(window,buttonCode);}
-	GLOBAL inline void          SetTitle(const std::string& title)  {glfwSetWindowTitle(window,title.c_str());}
+    GLOBAL GLFWwindow*   GetWindow()                         {return window;}
+	GLOBAL bool          IsDirty()                           {return dirty;}
+	GLOBAL void          WaitEvents()                        {glfwWaitEvents();}
+	GLOBAL uint32_t      GetWidth()                          {return width;}
+	GLOBAL uint32_t      GetHeight()                         {return height;}
+	GLOBAL float         GetDeltaTime()                      {return deltaTime;}
+	GLOBAL bool          GetShouldClose()                    {return glfwWindowShouldClose(window);}
+	GLOBAL float         GetDeltaScroll()                    {return deltaScroll;}
+	GLOBAL Vec2          GetDeltaMouse()                     {return deltaMousePos;}
+	GLOBAL bool          GetFramebufferResized()             {return framebufferResized;}
+	GLOBAL bool          IsKeyDown(uint16_t keyCode)         {return glfwGetKey(window,keyCode);}
+	GLOBAL bool          IsMouseDown(uint16_t buttonCode)    {return glfwGetMouseButton(window,buttonCode);}
+	GLOBAL void          SetTitle(const std::string& title)  {glfwSetWindowTitle(window,title.c_str());}
 };
+
+// -------------------------------------------------------
 

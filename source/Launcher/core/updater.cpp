@@ -29,31 +29,27 @@
  * @param userp Pointer to the user-defined string where the data will be appended.
  * @return The number of bytes actually taken care of.
  */
-size_t Updater::WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+size_t Updater::WriteCallback(void *contents, const size_t size, const size_t nmemb, void *userp)
 {
-    ((std::string *)userp)->append((char *)contents, size * nmemb);
+    static_cast<std::string *>(userp)->append(static_cast<char *>(contents), size * nmemb);
     return size * nmemb;
 }
 bool Updater::urlCheck()
 {
-    CURL *curl;
-    CURLcode res;
-    bool urlReachable = false;
+    auto urlReachable = false;
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-    if (curl)
+    if (CURL* curl = curl_easy_init())
     {
         curl_easy_setopt(curl, CURLOPT_URL, "https://api.github.com/The3dVehicleguy/Scenery-Editor-X/releases/latest");
         curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // We only need to check if the URL is reachable
-        res = curl_easy_perform(curl);
-        if (res == CURLE_OK)
+        if (const CURLcode res = curl_easy_perform(curl); res == CURLE_OK)
         {
             urlReachable = true;
         }
         else
         {
-            std::cerr << "Failed to reach the update URL: " << curl_easy_strerror(res) << std::endl;
+            std::cerr << "Failed to reach the update URL: " << curl_easy_strerror(res) << '\n';
             std::cout << "Do you want to skip the update? (yes/no): ";
             std::string userInput;
             std::cin >> userInput;
@@ -99,16 +95,16 @@ void Updater::UpdateCheck()
         return;
     }  
 
-    std::string currentVersion = std::to_string(SEDX_GET_VERSION());
+    std::string currentVersion = SEDX_VERSION_STRING();
     std::string latestVersion;
     CURL *curl;
-    CURLcode res;
     std::string readBuffer;
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
     curl = curl_easy_init();
     if (curl)
     {
+        CURLcode res;
         curl_easy_setopt(curl, CURLOPT_URL, "https://api.github.com/The3dVehicleguy/Scenery-Editor-X/releases/latest");
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);

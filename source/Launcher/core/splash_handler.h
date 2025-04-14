@@ -32,10 +32,9 @@ struct SplashScreen
 
 class SplashHandler
 {
-public: 
-
-    void CreateSplashScreen(GLFWwindow* splash);
-    void DestroySplashScreen();
+public:
+    static void CreateSplashScreen(GLFWwindow* splash);
+    static void DestroySplashScreen();
 
 };
 

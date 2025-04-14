@@ -16,7 +16,7 @@
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX
 {
 	class Layer
 	{
@@ -29,9 +29,8 @@ namespace UI
 		virtual void OnImGuiRender() {}
 		virtual void on_event() {}
 
-    protected:
-
-
-	};
+    };
 
 } // namespace SceneryEditorX
+
+// -------------------------------------------------------

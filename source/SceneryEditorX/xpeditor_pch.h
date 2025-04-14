@@ -45,6 +45,18 @@
 
 // -------------------------------------------------------
 
+#if defined(__GNUC__)
+	#if defined(__clang__)
+		#define SEDX_COMPILER_CLANG
+	#else
+		#define SEDX_COMPILER_GCC
+	#endif
+#elif defined(_MSC_VER)
+	#define SEDX_COMPILER_MSVC
+#endif
+
+// -------------------------------------------------------
+
 #ifdef SEDX_PLATFORM_LINUX
     #include <unistd.h>
     #include <csignal>
@@ -154,10 +166,11 @@
 
 // -------------------------------------------------------
 
+#include <SceneryEditorX/resource.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/resource.h>
+#include <SceneryEditorX/logging/asserts.h>
 
 /*
 ##########################################################

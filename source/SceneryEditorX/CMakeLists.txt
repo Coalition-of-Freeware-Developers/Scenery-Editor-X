@@ -39,20 +39,32 @@ ADD_EXECUTABLE(SceneryEditorX
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
     core/base.hpp
+	core/encoding.cpp
+    core/encoding.hpp
+	core/layer.cpp
+	core/layer.h
     core/main.cpp
+	core/memory.cpp
+	core/memory.h
+	core/ref.cpp
+	core/ref.h
+	core/serializer.hpp
     core/transforms.cpp
+	core/version.h
     core/window.cpp
     core/window.h
-	core/version.h
-    # --------------------------------
-    scene/asset_manager.cpp
-    scene/asset_manager.h
-    # --------------------------------
-    platform/system_detection.h
-    platform/platform.h
-    # --------------------------------
+	# --------------------------------
+	logging/asserts.h
+	logging/log_templates.h
     logging/logging.cpp
     logging/logging.hpp
+	logging/profiler.hpp
+    # --------------------------------
+	platform/platform.h
+    platform/system_detection.h
+	# --------------------------------
+	scene/asset_manager.cpp
+	scene/asset_manager.h
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
@@ -78,35 +90,46 @@ ADD_EXECUTABLE(SceneryEditorX
     # LAUNCHER FILES
     # --------------------------------
 
-    #${LAUNCHER_DIR}/core/updater.h
-    #${LAUNCHER_DIR}/core/updater.cpp
-    #${LAUNCHER_DIR}/core/launcher_main.cpp
-    #${LAUNCHER_DIR}/core/launcher_main.h
-    #${LAUNCHER_DIR}/core/elevate_perms.h
-    #${LAUNCHER_DIR}/core/directory_manager.cpp
-    #${LAUNCHER_DIR}/core/directory_manager.cpp
-    #${LAUNCHER_DIR}/core/splash_handler.h
-    #${LAUNCHER_DIR}/core/updater.h
-    #${LAUNCHER_DIR}/core/updater.cpp
+    ${LAUNCHER_DIR}/core/updater.h
+    ${LAUNCHER_DIR}/core/updater.cpp
+    ${LAUNCHER_DIR}/core/launcher_main.cpp
+    ${LAUNCHER_DIR}/core/launcher_main.h
+    ${LAUNCHER_DIR}/core/elevate_perms.h
+    ${LAUNCHER_DIR}/core/directory_manager.cpp
+    ${LAUNCHER_DIR}/core/directory_manager.cpp
+    ${LAUNCHER_DIR}/core/splash_handler.h
+    ${LAUNCHER_DIR}/core/updater.h
+    ${LAUNCHER_DIR}/core/updater.cpp
 
     # --------------------------------
 
-    #${LAUNCHER_DIR}/registry/reg_init.h
-    #${LAUNCHER_DIR}/registry/reg_check.h
+    ${LAUNCHER_DIR}/registry/reg_init.h
+    ${LAUNCHER_DIR}/registry/reg_check.h
 
     # --------------------------------
 )
 
 # --------------------------------
 
-SOURCE_GROUP("Editor/Core" FILES
-    core/base.hpp
-    core/main.cpp
+SOURCE_GROUP("Core" FILES
+	core/base.hpp
+	core/encoding.cpp
+	core/encoding.hpp
 	core/layer.cpp
 	core/layer.h
-    core/version.h
+	core/main.cpp
+	core/memory.cpp
+	core/memory.h
+	core/ref.cpp
+	core/ref.h
+	core/serializer.hpp
+	core/version.h
     core/window.cpp
     core/window.h
+)
+SOURCE_GROUP("Editor/Core" FILES
+
+
 )
 SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
@@ -124,11 +147,13 @@ SOURCE_GROUP("Core/Platform/Mac" FILES
 )
 SOURCE_GROUP("Core/Coordinates" FILES
 	core/transforms.cpp
-
 )
 SOURCE_GROUP("Core/Logger" FILES
-    logging/logging.cpp
-    logging/logging.hpp
+	logging/asserts.h
+	logging/log_templates.h
+	logging/logging.cpp
+	logging/logging.hpp
+	logging/profiler.hpp
 )
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
@@ -160,13 +185,6 @@ SOURCE_GROUP("Editor/UI/Actions" FILES
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
 )
-#SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
-#    ${SCENE_FILES}
-#)
-
-#SOURCE_GROUP("Core/Settings" FILES
-#    options/Settings.cpp
-#)
 SOURCE_GROUP("Resource" FILES
     resource.h
     SceneryEditorX.rc
@@ -262,6 +280,7 @@ TARGET_COMPILE_DEFINITIONS(SceneryEditorX
         LAUNCHER
         $<$<CONFIG:Debug>:SEDX_DEBUG>
         $<$<CONFIG:Release>:SEDX_RELEASE>
+		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
         GLFW_INCLUDE_VULKAN
         GLFW_EXPOSE_NATIVE_WIN32

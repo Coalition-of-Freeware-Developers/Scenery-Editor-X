@@ -5,18 +5,19 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* profiler.hpp
+* scene.cpp
 * -------------------------------------------------------
-* Created: 4/4/2025
+* Created: 11/4/2025
 * -------------------------------------------------------
 */
-#pragma once
-//#include <optick.h>
+#include <SceneryEditorX/scene/scene.h>
 
 // -------------------------------------------------------
 
-//#define SEDX_PROFILE_FRAME() OPTICK_FRAME("MainThread")
-//#define SEDX_PROFILE_FUNC() OPTICK_EVENT()
-//#define SEDX_PROFILE_THREAD(name) OPTICK_EVENT((name))
+namespace Scene
+{
 
-// -------------------------------------------------------
+
+} // namespace Scene
+
+// ---------------------------------------------------------

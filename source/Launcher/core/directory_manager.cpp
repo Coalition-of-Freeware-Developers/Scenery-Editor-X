@@ -18,10 +18,10 @@
 namespace fs = std::filesystem;
 
 // Define the static members
-// TODO: When Registery is implemented, remove the static members and replace with registry HKEY Values
+// TODO: When registry is implemented, remove the static members and replace with registry HKEY Values
 
-std::string DirectoryInit::absolutePath = "";
-std::string DirectoryInit::relativePath = "";
+std::string DirectoryInit::absolutePath;
+std::string DirectoryInit::relativePath;
 
 void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &directories)
 {
@@ -73,10 +73,8 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
     for (const auto &dir : directories)
     {
         // Construct the full path for each directory
-        fs::path fullPath = exeDir / dir;
-
         // Check if the directory exists, if not create it
-        if (!fs::exists(fullPath))
+        if (fs::path fullPath = exeDir / dir; !fs::exists(fullPath))
         {
             fs::create_directories(fullPath);
 
@@ -91,7 +89,7 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
     }
 }
 
-int DirectoryInit::DirectoryCheck(int argc, char *argv[])
+int DirectoryInit::DirectoryCheck(const int argc, char *argv[])
 {
 #ifdef SEDX_DEBUG
     if (argc > 0) // Used to be (argc > 1) but in debug mode it will not find the executable and fail)
@@ -175,7 +173,7 @@ int DirectoryInit::DirectoryCheck(int argc, char *argv[])
 #endif
 
     // Define the required directory structure
-    std::vector<std::string> requiredDirectories = {"assets",
+    const std::vector<std::string> requiredDirectories = {"assets",
                                                     "assets/models",
                                                     "assets/textures",
                                                     "docs",

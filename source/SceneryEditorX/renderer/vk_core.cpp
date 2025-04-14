@@ -19,6 +19,7 @@
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_util.h>
+#include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <stb_image.h>
@@ -30,17 +31,21 @@
 
 namespace SceneryEditorX
 {
+    extern SoftwareStats programStats;
+
+
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
 	                                                    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
 	{
 	    // Build a rich debug message that includes severity and type info
-	    std::string severityStr = VK_DEBUG_SEVERITY_STRING(messageSeverity);
-	    std::string typeStr = VK_DEBUG_TYPE(messageType);
-	
-	    std::string formattedMessage = "[" + severityStr + "][" + typeStr + "] " + pCallbackData->pMessage;
-	
+	    const std::string severityStr = vkDebugSeverityString(messageSeverity);
+	    const std::string typeStr = vkDebugType(messageType);
+	    const std::string formattedMessage = "[" + severityStr + "][" + typeStr + "] " + pCallbackData->pMessage;
+
+        const auto message = formattedMessage;
+
 	    // Log through our custom Vulkan logger
-	    Log::LogVulkanDebug(formattedMessage);
+	    Log::LogVulkanDebug(message);
 	
 	    // Also log any objects that were involved in the message
 	    if (pCallbackData->objectCount > 0)
@@ -56,20 +61,19 @@ namespace SceneryEditorX
 	                objInfo += ", Name: \"" + std::string(obj.pObjectName) + "\"";
 	            }
 	
-	            Log::LogVulkanDebug(objInfo);
+	            SceneryEditorX::Log::LogVulkanDebug(objInfo);
 	        }
 	    }
 	
 	    return VK_FALSE; // Don't abort call
 	}
 
-    std::vector<const char *> getRequiredExtensions()
+    static std::vector<const char *> getRequiredExtensions()
     {
         uint32_t glfwExtensionCount = 0;
-        const char **glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-        std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+        std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
         if (enableValidationLayers)
         {
@@ -81,22 +85,163 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    void GraphicsEngine::initEngine(GLFWwindow *window, uint32_t width, uint32_t height)
-    {
-        this->window = window;
+	GraphicsEngine::GraphicsEngine() {}
 
-        EDITOR_LOG_INFO("Initializing graphics engine with window size: {}x{}", width, height);
+    GraphicsEngine::~GraphicsEngine()
+    {
+        vkDestroyInstance(vulkanInstance, nullptr);
+        vulkanInstance = nullptr;
+    }
+
+
+    // -------------------------------------------------------
+
+    void GraphicsEngine::InitEngine(GLFWwindow *window, uint32_t width, uint32_t height)
+    {
+        const SoftwareStats stats;
+
+        SEDX_CORE_INFO("Initializing graphics engine with window size: {}x{}", width, height);
+
+		if (!checks->CheckAPIVersion(stats.minVulkanVersion))
+        {
+            SEDX_CORE_ERROR("Incompatible Vulkan driver version!");
+            ErrMsg("Incompatible Vulkan driver version!");
+        }
 
         // Set the window user pointer to point to the Window singleton
-        glfwSetWindowUserPointer(window, Window::GetGLFWwindow());
+        glfwSetWindowUserPointer(window, Window::GetWindow());
+
+	    // -------------------------------------------------------
+        const auto extensions = getRequiredExtensions();
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Extensions and Validation
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        if (checks->CheckValidationLayerSupport())
+        {
+            SEDX_CORE_ERROR("Validation layers requested, but not available!");
+            ErrMsg("Validation layers requested, but not available!");
+        }
+
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        layers.resize(layerCount);
+        activeLayers.resize(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+
+        // get all available extensions
+        uint32_t extensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+        instanceExtensions.resize(extensionCount);
+        activeExtensions.resize(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, instanceExtensions.data());
+
+        // get api version
+        vkEnumerateInstanceVersion(&apiVersion);
+
+		allocator = nullptr;
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Application Info
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	    VkApplicationInfo appInfo{};
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pApplicationName = stats.appName.c_str();
+        appInfo.applicationVersion = stats.version;
+        appInfo.pEngineName = stats.renderName.c_str();
+        appInfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
+        appInfo.apiVersion = stats.minVulkanVersion;
+
+        VkInstanceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        createInfo.pApplicationInfo = &appInfo;
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        createInfo.ppEnabledExtensionNames = extensions.data();
+
+        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+        if (enableValidationLayers)
+        {
+            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+
+            populateDebugMessengerCreateInfo(debugCreateInfo);
+            createInfo.pNext = &debugCreateInfo;
+        }
+        else
+        {
+            createInfo.enabledLayerCount = 0;
+            createInfo.pNext = nullptr;
+        }
+
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// Instance and Surface Creation
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+        if (vkCreateInstance(&createInfo, allocator, &vulkanInstance) != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR("Failed to create instance!");
+            ErrMsg("Failed to create graphics instance!");
+        }
+
+		if (enableValidationLayers)
+        {
+            VkDebugUtilsMessengerCreateInfoEXT debugUtilInfo{};
+            populateDebugMessengerCreateInfo(debugUtilInfo);
+            if (CreateDebugUtilsMessengerEXT(vulkanInstance, &debugUtilInfo, allocator, &debugMessenger) != VK_SUCCESS)
+            {
+                SEDX_CORE_ERROR("Failed to set up debug messenger!");
+                ErrMsg("Failed to set up debug messenger!");
+            }
+        }
+
+		PhysicalDevice_ = Ref<VulkanPhysicalDevice>::Create(vulkanInstance);
+
+		VkPhysicalDeviceFeatures enabledFeatures;
+        memset(&enabledFeatures, 0, sizeof(VkPhysicalDeviceFeatures));
+        enabledFeatures.samplerAnisotropy = true;
+        enabledFeatures.wideLines = true;
+        enabledFeatures.fillModeNonSolid = true;
+        enabledFeatures.independentBlend = true;
+        enabledFeatures.pipelineStatisticsQuery = true;
+        enabledFeatures.shaderStorageImageReadWithoutFormat = true;
+        enabledFeatures.fragmentStoresAndAtomics = true;
+
+		device = Ref<VulkanDevice>::Create(PhysicalDevice_, enabledFeatures);
+
+		MemoryAllocator::Init(device);
+
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Pipeline Cache Creation
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		VkPipelineCacheCreateInfo pipelineCacheInfo{};
+        pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+        pipelineCacheInfo.initialDataSize = 0;
+        pipelineCacheInfo.pInitialData = nullptr;
+        pipelineCacheInfo.flags = 0;
+        if (vkCreatePipelineCache(device->GetDevice(), &pipelineCacheInfo, allocator, &pipelineCache) != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR("Failed to create pipeline cache!");
+            ErrMsg("Failed to create pipeline cache!");
+        }
+    }
+
+    /*void GraphicsEngine::InitEngine(GLFWwindow *window, uint32_t width, uint32_t height)
+    {
+
+        SEDX_CORE_INFO("Initializing graphics engine with window size: {}x{}", width, height);
+
+        // Set the window user pointer to point to the Window singleton
+        //glfwSetWindowUserPointer(window, Window::GetWindow());
 
 		// -------------------------------------------------------
 
-        createInstance();
-        createDebugMessenger();
-        createSurface(window);
-        pickPhysicalDevice();
-        createLogicalDevice();
+        //createInstance();
+        CreateSurface(window);
+        //pickPhysicalDevice();
+        //createLogicalDevice();
         createSwapChain();
         createImageViews();
         createRenderPass();
@@ -118,10 +263,10 @@ namespace SceneryEditorX
         createCommandBuffers();
         createSyncObjects();
 
-		EDITOR_LOG_INFO("Graphics engine initialization complete");
-    }
+		SEDX_CORE_INFO("Graphics engine initialization complete");
+    }*/
 
-    void GraphicsEngine::cleanUp() 
+    /*void GraphicsEngine::cleanUp() 
     {
         GUI guiInstance;
         guiInstance.cleanUp();
@@ -171,9 +316,9 @@ namespace SceneryEditorX
 
         vkDestroySurfaceKHR(instance, surface, allocator);
         vkDestroyInstance(instance, allocator);
-    }
+    }*/
 
-	void GraphicsEngine::cleanupSwapChain()
+	/*void GraphicsEngine::cleanupSwapChain()
     {
         vkDestroyImageView(device, depthImageView, allocator);
         vkDestroyImage(device, depthImage, allocator);
@@ -213,22 +358,20 @@ namespace SceneryEditorX
                 vkDestroyQueryPool(device, queues[q].commands[i].queryPool, allocator);
             }
         }
-		*/
+		#1#
 
         imageAvailableSemaphores.clear();
         renderFinishedSemaphores.clear();
         swapChainImageViews.clear();
         swapChainImages.clear();
         swapChain = VK_NULL_HANDLE;
-	}
+	}*/
 
     // -------------------------------------------------------
 
-    VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,
-                                                          VkDebugUtilsMessengerEXT *pDebugMessenger)
+    static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger)
     {
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-        if (func != nullptr)
+        if (auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")); func != nullptr)
         {
             return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
         }
@@ -238,35 +381,19 @@ namespace SceneryEditorX
         }
     }
 
-    void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
+    void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance,VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr)
+        if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")); func != nullptr)
         {
             func(instance, debugMessenger, pAllocator);
         }
     }
 
-    void GraphicsEngine::createDebugMessenger()
+    void GraphicsEngine::CreateSurface(GLFWwindow *glfwWindow)
     {
-        if (!enableValidationLayers)
-            return;
-
-        VkDebugUtilsMessengerCreateInfoEXT createInfo;
-        populateDebugMessengerCreateInfo(createInfo);
-
-        if (CreateDebugUtilsMessengerEXT(instance, &createInfo, allocator, &debugMessenger) != VK_SUCCESS)
+        if (glfwCreateWindowSurface(vulkanInstance, glfwWindow, allocator, &surface) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to set up debug messenger!");
-            ErrMsg("Failed to set up debug messenger!");
-        }
-    }
-
-    void GraphicsEngine::createSurface(GLFWwindow *glfwWindow)
-    {
-        if (glfwCreateWindowSurface(instance, glfwWindow, allocator, &surface) != VK_SUCCESS)
-        {
-            EDITOR_LOG_ERROR("Failed to create window surface!");
+            SEDX_CORE_ERROR("Failed to create window surface!");
             ErrMsg("Failed to create window surface!");
         }
     }
@@ -292,11 +419,11 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    void GraphicsEngine::createInstance()
+    /*void GraphicsEngine::createInstance()
     {
-        if (enableValidationLayers && !checkValidationLayerSupport())
+        if (enableValidationLayers && !CheckValidationLayerSupport())
         {
-            EDITOR_LOG_ERROR("Validation layers requested, but not available!");
+            SEDX_CORE_ERROR("Validation layers requested, but not available!");
             ErrMsg("Validation layers requested, but not available!");
         }
 
@@ -349,39 +476,12 @@ namespace SceneryEditorX
 
         if (vkCreateInstance(&createInfo, allocator, &instance) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create instance!");
+            SEDX_CORE_ERROR("Failed to create instance!");
             ErrMsg("Failed to create graphics instance!");
         }
-    }
+    }*/
 
-    /**
-	 * @brief - Check if a device is suitable for rendering.
-	 * 
-	 * @param device - The Vulkan physical device.
-	 * @return - bool True if the device is suitable, false otherwise.
-	 */
-    bool GraphicsEngine::isDeviceCompatible(VkPhysicalDevice device)
-    {
-        VkPhysicalDeviceFeatures deviceFeatures;
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-        vkGetPhysicalDeviceProperties(device, &deviceProperties);
-
-        // Check for required features and properties
-        bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
-                          (deviceFeatures.geometryShader) && (deviceFeatures.tessellationShader);
-
-        if (!isSuitable)
-        {
-            EDITOR_LOG_ERROR("Vulkan: Device does not meet required features or is not discrete GPU");
-            ErrMsg("Vulkan: Device does not meet required features or is not discrete GPU");
-            return false;
-        }
-
-        return true;
-    }
-
-	void GraphicsEngine::pickPhysicalDevice()
+	/*void GraphicsEngine::pickPhysicalDevice()
 	{
 	    // Initialize the physical device manager
 	    physDeviceManager.Init(instance, surface);
@@ -405,7 +505,7 @@ namespace SceneryEditorX
 	    // - selectedDevice.surfaceFormats   (std::vector<VkSurfaceFormatKHR>)
 	    // - selectedDevice.surfaceCapabilities (VkSurfaceCapabilitiesKHR)
 	    
-	    EDITOR_LOG_INFO("Selected physical device: {}", ToString(selectedDevice.deviceInfo.deviceName));
+	    SEDX_CORE_INFO("Selected physical device: {}", ToString(selectedDevice.deviceInfo.deviceName));
 	    
 	    // Now we can use the data for other operations
 	    // For example, instead of directly calling these functions:
@@ -417,11 +517,11 @@ namespace SceneryEditorX
 	    physicalFeatures = selectedDevice.GFXFeatures;
 	    physicalProperties = selectedDevice.deviceInfo;
 	    memoryProperties = selectedDevice.memoryInfo;
-	}
+	}*/
 
-    void GraphicsEngine::createLogicalDevice()
+    /*void GraphicsEngine::createLogicalDevice()
     {
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices indices = FindQueueFamilies(physicalDevice);
 
         // Handle potentially separate queues for graphics and presentation
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -447,9 +547,9 @@ namespace SceneryEditorX
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pEnabledFeatures = &deviceFeatures;
 
-		if (!checkDeviceExtensionSupport(physicalDevice))
+		if (!CheckDeviceExtensionSupport(physicalDevice))
         {
-            EDITOR_LOG_ERROR("Required device extensions not supported!");
+            SEDX_CORE_ERROR("Required device extensions not supported!");
             ErrMsg("Required device extensions not supported!");
         }
 
@@ -469,16 +569,16 @@ namespace SceneryEditorX
 
         if (vkCreateDevice(physicalDevice, &createInfo, allocator, &device) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create logical device!");
+            SEDX_CORE_ERROR("Failed to create logical device!");
             ErrMsg("Failed to create logical device!");
         }
 
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
         // Get presentation queue
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
-    }
+    }*/
 
-    void GraphicsEngine::createSwapChain()
+    /*void GraphicsEngine::createSwapChain()
     {
         // Get swap chain support details from the selected device
         const GPUDevice &selectedDevice = physDeviceManager.Selected();
@@ -498,7 +598,7 @@ namespace SceneryEditorX
         createInfo.minImageCount = imageCount;
 
         // Select format
-        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(selectedDevice.surfaceFormats);
+        VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(selectedDevice.surfaceFormats);
         createInfo.imageFormat = surfaceFormat.format;
         createInfo.imageColorSpace = surfaceFormat.colorSpace;
 
@@ -511,7 +611,7 @@ namespace SceneryEditorX
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         // Handle queue families
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices indices = FindQueueFamilies(physicalDevice);
         uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
         if (indices.graphicsFamily != indices.presentFamily)
@@ -536,7 +636,7 @@ namespace SceneryEditorX
 
         if (vkCreateSwapchainKHR(device, &createInfo, allocator, &swapChain) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create swap chain!");
+            SEDX_CORE_ERROR("Failed to create swap chain!");
             ErrMsg("Failed to create swap chain!");
         }
 
@@ -549,8 +649,8 @@ namespace SceneryEditorX
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
 
-        EDITOR_LOG_INFO("Swap chain created successfully with {} images", imageCount);
-    }
+        SEDX_CORE_INFO("Swap chain created successfully with {} images", imageCount);
+    }*/
 
 	void GraphicsEngine::createImageViews()
     {
@@ -578,7 +678,7 @@ namespace SceneryEditorX
         VkImageView imageView;
         if (vkCreateImageView(device, &viewInfo, allocator, &imageView) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create texture image view!");
+            SEDX_CORE_ERROR("Failed to create texture image view!");
             ErrMsg("Failed to create texture image view!");
         }
 
@@ -604,7 +704,7 @@ namespace SceneryEditorX
 
         if (vkCreateImage(device, &imageInfo, allocator, &image) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create image!");
+            SEDX_CORE_ERROR("Failed to create image!");
             ErrMsg("Failed to create image!");
         }
 
@@ -618,7 +718,7 @@ namespace SceneryEditorX
 
         if (vkAllocateMemory(device, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to allocate image memory!");
+            SEDX_CORE_ERROR("Failed to allocate image memory!");
             ErrMsg("Failed to allocate image memory!");
         }
 
@@ -664,7 +764,7 @@ namespace SceneryEditorX
         }
         else
         {
-            EDITOR_LOG_ERROR("Unsupported layout transition!");
+            SEDX_CORE_ERROR("Unsupported layout transition!");
             ErrMsg("Unsupported layout transition!");
         }
 
@@ -681,8 +781,8 @@ namespace SceneryEditorX
         // Mark the framebuffer as resized
         if (windowInstance)
         {
-            windowInstance->setFramebufferResized(true);
-            EDITOR_LOG_INFO("Framebuffer resized: {}x{}", width, height);
+            windowInstance->SetFramebufferResized(true);
+            SEDX_CORE_INFO("Framebuffer resized: {}x{}", width, height);
         }
         else
         {
@@ -697,7 +797,7 @@ namespace SceneryEditorX
 
         if (!file.is_open())
         {
-            EDITOR_LOG_ERROR("Failed to open file: {}", ToString(filename));
+            SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
             ErrMsg(std::string("Failed to open file: ") + ToString(filename));
             return {}; // Return empty vector on failure
         }
@@ -705,7 +805,7 @@ namespace SceneryEditorX
         size_t fileSize = static_cast<size_t>(file.tellg());
         if (fileSize == 0)
         {
-            EDITOR_LOG_ERROR("File is empty: {}", ToString(filename));
+            SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
             return {};
         }
 
@@ -716,14 +816,14 @@ namespace SceneryEditorX
 
         if (!file)
         {
-            EDITOR_LOG_ERROR("Failed to read entire file: {}", ToString(filename));
+            SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
             ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
             return {};
         }
 
         file.close();
 
-        EDITOR_LOG_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
+        SEDX_CORE_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
         return buffer;
     }
 
@@ -794,7 +894,7 @@ namespace SceneryEditorX
 
         if (vkCreateRenderPass(device, &renderPassInfo, allocator, &renderPass) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create render pass!");
+            SEDX_CORE_ERROR("Failed to create render pass!");
             ErrMsg("failed to create render pass!");
         }
     }
@@ -811,7 +911,7 @@ namespace SceneryEditorX
 
         if (vkCreateBuffer(device, &bufferInfo, allocator, &buffer) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create buffer!");
+            SEDX_CORE_ERROR("Failed to create buffer!");
             ErrMsg("Failed to create buffer!");
         }
 
@@ -829,7 +929,7 @@ namespace SceneryEditorX
 
         if (vkAllocateMemory(device, &allocInfo, allocator, &bufferMemory) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to allocate buffer memory!");
+            SEDX_CORE_ERROR("Failed to allocate buffer memory!");
             ErrMsg("Failed to allocate buffer memory!");
         }
 
@@ -948,7 +1048,7 @@ namespace SceneryEditorX
 
         if (vkCreateDescriptorPool(device, &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create descriptor pool!");
+            SEDX_CORE_ERROR("Failed to create descriptor pool!");
             ErrMsg("failed to create descriptor pool!");
         }
     }
@@ -985,7 +1085,7 @@ namespace SceneryEditorX
 
         if (vkCreateDescriptorSetLayout(device, &layoutInfo, allocator, &descriptorSetLayout) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create descriptor set layout!");
+            SEDX_CORE_ERROR("Failed to create descriptor set layout!");
             ErrMsg("failed to create descriptor set layout!");
         }
     }
@@ -1005,7 +1105,7 @@ namespace SceneryEditorX
         descriptorSets.resize(framesInFlight);
         if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to allocate descriptor sets!");
+            SEDX_CORE_ERROR("Failed to allocate descriptor sets!");
             ErrMsg("Failed to allocate descriptor sets!");
         }
 
@@ -1065,8 +1165,8 @@ namespace SceneryEditorX
         std::string vertShaderPath = shaderPath + "/vert.spv";
         std::string fragShaderPath = shaderPath + "/frag.spv";
 
-        EDITOR_LOG_INFO("Loading vertex shader from: {}", vertShaderPath);
-        EDITOR_LOG_INFO("Loading fragment shader from: {}", fragShaderPath);
+        SEDX_CORE_INFO("Loading vertex shader from: {}", vertShaderPath);
+        SEDX_CORE_INFO("Loading fragment shader from: {}", fragShaderPath);
 
 		// -------------------------------------------------------
 
@@ -1200,7 +1300,7 @@ namespace SceneryEditorX
 
         if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, allocator, &pipelineLayout) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create pipeline layout!");
+            SEDX_CORE_ERROR("Failed to create pipeline layout!");
             ErrMsg("Failed to create pipeline layout!");
         }
 
@@ -1223,7 +1323,7 @@ namespace SceneryEditorX
         if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) !=
             VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create graphics pipeline!");
+            SEDX_CORE_ERROR("Failed to create graphics pipeline!");
             ErrMsg("Failed to create graphics pipeline!");
         }
 
@@ -1250,7 +1350,7 @@ namespace SceneryEditorX
 
             if (vkCreateFramebuffer(device, &framebufferInfo, allocator, &swapChainFramebuffers[i]) != VK_SUCCESS)
             {
-                EDITOR_LOG_ERROR("Failed to create framebuffer!");
+                SEDX_CORE_ERROR("Failed to create framebuffer!");
                 ErrMsg("Failed to create framebuffer!");
             }
         }
@@ -1258,7 +1358,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::createCommandPool()
     {
-        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
 
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1287,125 +1387,125 @@ namespace SceneryEditorX
         }
     }
 
-void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
-{
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-    {
-        ErrMsg("failed to begin recording command buffer!");
-    }
-
-    // -------------------------------------------------------
-
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = renderPass;
-    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-    renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = swapChainExtent;
-
-    // -------------------------------------------------------
-
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
-
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
-
-    // -------------------------------------------------------
-
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    {
-        // Render the 3D scene first
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-        VkBuffer vertexBuffers[] = {vertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-        // -------------------------------------------------------
-
-        // Set up ImGui for this frame
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        // Create a static UIManager instance to render all our UI panels
-        static UI::UIManager uiManager;
-
-		// Setup the main dockspace
-        uiManager.SetupDockspace();
-
-		// Render ImGui components
-        ImGui::Render();
-        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-
-		// Update and Render additional Platform Windows
-        ImGuiIO &io = ImGui::GetIO();
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-        }
-
-		// -------------------------------------------------------
-
-        // Render main menu bar - defined in menu_bar.cpp
-        //uiManager.MainMenuBar();
-        
-        // Render the content browser - defined in content_browser.cpp
-        //uiManager.AssetBrowser();
-        
-        // Render the layer stack - defined in layer_stack.cpp
-        //uiManager.LayerStack();
-        
-        // Render settings panel if enabled - defined in settings_panel.cpp
-        //if (UI::showSettingsPanel)
-        //{
-        //    uiManager.SettingsPanel();
-        //}
-        
-        // Handle modals
-        //if (UI::showCreateProjectModal)
-        //{
-        //    uiManager.CreateProjectModal(window);
-        //}
-        
-        //if (UI::showExitModal)
-        //{
-        //    uiManager.ExitConfirmationModal(window);
-        //}
-        
-        //if (UI::showAboutModal)
-        //{
-        //    uiManager.AboutModal();
-        //}
-
-        // Render ImGui components
-        //ImGui::Render();
-        //ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-
-        // -------------------------------------------------------
-    }
-
-    vkCmdEndRenderPass(commandBuffer);
-
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-    {
-        ErrMsg("failed to record command buffer!");
-    }
-}
+	void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+	{
+	    VkCommandBufferBeginInfo beginInfo{};
+	    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	
+	    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+	    {
+	        ErrMsg("failed to begin recording command buffer!");
+	    }
+	
+	    // -------------------------------------------------------
+	
+	    VkRenderPassBeginInfo renderPassInfo{};
+	    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	    renderPassInfo.renderPass = renderPass;
+	    renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+	    renderPassInfo.renderArea.offset = {0, 0};
+	    renderPassInfo.renderArea.extent = swapChainExtent;
+	
+	    // -------------------------------------------------------
+	
+	    std::array<VkClearValue, 2> clearValues{};
+	    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+	    clearValues[1].depthStencil = {1.0f, 0};
+	
+	    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	    renderPassInfo.pClearValues = clearValues.data();
+	
+	    // -------------------------------------------------------
+	
+	    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	
+	    {
+	        // Render the 3D scene first
+	        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+	
+	        VkBuffer vertexBuffers[] = {vertexBuffer};
+	        VkDeviceSize offsets[] = {};
+	        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+	
+	        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	
+	        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+	
+	        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	
+	        // -------------------------------------------------------
+	
+	        // Set up ImGui for this frame
+	        ImGui_ImplVulkan_NewFrame();
+	        ImGui_ImplGlfw_NewFrame();
+	        ImGui::NewFrame();
+	
+	        // Create a static UIManager instance to render all our UI panels
+	        static UI::UIManager uiManager;
+	
+			// Setup the main dockspace
+	        uiManager.SetupDockspace();
+	
+			// Render ImGui components
+	        ImGui::Render();
+	        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+	
+			// Update and Render additional Platform Windows
+	        ImGuiIO &io = ImGui::GetIO();
+	        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	        {
+	            ImGui::UpdatePlatformWindows();
+	            ImGui::RenderPlatformWindowsDefault();
+	        }
+	
+			// -------------------------------------------------------
+	
+	        // Render main menu bar - defined in menu_bar.cpp
+	        //uiManager.MainMenuBar();
+	        
+	        // Render the content browser - defined in content_browser.cpp
+	        //uiManager.AssetBrowser();
+	        
+	        // Render the layer stack - defined in layer_stack.cpp
+	        //uiManager.LayerStack();
+	        
+	        // Render settings panel if enabled - defined in settings_panel.cpp
+	        //if (UI::showSettingsPanel)
+	        //{
+	        //    uiManager.SettingsPanel();
+	        //}
+	        
+	        // Handle modals
+	        //if (UI::showCreateProjectModal)
+	        //{
+	        //    uiManager.CreateProjectModal(window);
+	        //}
+	        
+	        //if (UI::showExitModal)
+	        //{
+	        //    uiManager.ExitConfirmationModal(window);
+	        //}
+	        
+	        //if (UI::showAboutModal)
+	        //{
+	        //    uiManager.AboutModal();
+	        //}
+	
+	        // Render ImGui components
+	        //ImGui::Render();
+	        //ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+	
+	        // -------------------------------------------------------
+	    }
+	
+	    vkCmdEndRenderPass(commandBuffer);
+	
+	    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+	    {
+	        ErrMsg("failed to record command buffer!");
+	    }
+	}
 
     void GraphicsEngine::createSyncObjects()
     {
@@ -1433,35 +1533,35 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 
 	void GraphicsEngine::recreateSwapChain()
     {
-        EDITOR_LOG_INFO("Beginning swap chain recreation");
+        SEDX_CORE_INFO("Beginning swap chain recreation");
 
         int width = 0, height = 0;
         glfwGetFramebufferSize(window, &width, &height);
-        EDITOR_LOG_INFO("Current framebuffer size: {}x{}", width, height);
+        SEDX_CORE_INFO("Current framebuffer size: {}x{}", width, height);
 
         while (width == 0 || height == 0)
         {
-            EDITOR_LOG_INFO("Window minimized, waiting for restore");
+            SEDX_CORE_INFO("Window minimized, waiting for restore");
             glfwGetFramebufferSize(window, &width, &height);
             glfwWaitEvents();
         }
 
-		EDITOR_LOG_INFO("Window class dimensions: {}x{}", Window::GetWidth(), Window::GetHeight());
+		SEDX_CORE_INFO("Window class dimensions: {}x{}", Window::GetWidth(), Window::GetHeight());
 
-		EDITOR_LOG_INFO("Waiting for device to be idle");
+		SEDX_CORE_INFO("Waiting for device to be idle");
         vkDeviceWaitIdle(device);
 
-        EDITOR_LOG_INFO("Destroying old swap chain");
+        SEDX_CORE_INFO("Destroying old swap chain");
         cleanupSwapChain();
 
-		EDITOR_LOG_INFO("Creating new swap chain with updated dimensions");
+		SEDX_CORE_INFO("Creating new swap chain with updated dimensions");
         createSwapChain();
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
         createFramebuffers();
 
-		EDITOR_LOG_INFO("Swap chain recreation completed");
+		SEDX_CORE_INFO("Swap chain recreation completed");
 
 		// Reset the framebuffer resized flag
         framebufferResized = false;
@@ -1481,24 +1581,24 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            EDITOR_LOG_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkAcquireNextImageKHR - recreating swap chain");
+            SEDX_CORE_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkAcquireNextImageKHR - recreating swap chain");
             recreateSwapChain();
             return;
         }
         else if (result == VK_SUBOPTIMAL_KHR)
         {
-            EDITOR_LOG_INFO("VK_SUBOPTIMAL_KHR returned from vkAcquireNextImageKHR - continuing with render");
+            SEDX_CORE_INFO("VK_SUBOPTIMAL_KHR returned from vkAcquireNextImageKHR - continuing with render");
         }
         else if (result != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to acquire swap chain image: {}", ToString(result));
+            SEDX_CORE_ERROR("Failed to acquire swap chain image: {}", ToString(result));
             ErrMsg("Failed to acquire swap chain image!");
         }
 
         // Check if a resize has been requested through the Window class
         if (Window::GetFramebufferResized())
         {
-            EDITOR_LOG_INFO("Framebuffer resize detected from Window class");
+            SEDX_CORE_INFO("Framebuffer resize detected from Window class");
             recreateSwapChain();
             return;
         }
@@ -1529,7 +1629,7 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 
         if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to submit draw command buffer");
+            SEDX_CORE_ERROR("Failed to submit draw command buffer");
             throw std::runtime_error("failed to submit draw command buffer!");
         }
 
@@ -1551,25 +1651,25 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            EDITOR_LOG_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkQueuePresentKHR - recreating swap chain");
+            SEDX_CORE_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkQueuePresentKHR - recreating swap chain");
             framebufferResized = false;
             recreateSwapChain();
         }
         else if (result == VK_SUBOPTIMAL_KHR)
         {
-            EDITOR_LOG_INFO("VK_SUBOPTIMAL_KHR returned from vkQueuePresentKHR - recreating swap chain");
+            SEDX_CORE_INFO("VK_SUBOPTIMAL_KHR returned from vkQueuePresentKHR - recreating swap chain");
             framebufferResized = false;
             recreateSwapChain();
         }
         else if (Window::GetFramebufferResized())
         {
-            EDITOR_LOG_INFO("Window framebuffer resize flag set - recreating swap chain");
+            SEDX_CORE_INFO("Window framebuffer resize flag set - recreating swap chain");
             framebufferResized = false;
             recreateSwapChain();
         }
         else if (result != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to present swap chain image: {}", ToString(result));
+            SEDX_CORE_ERROR("Failed to present swap chain image: {}", ToString(result));
             ErrMsg("Failed to present swap chain image!");
         }
 
@@ -1626,11 +1726,11 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
             availableSurfaceFormats.resize(formatCount);
             vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, availableSurfaceFormats.data());
 
-            EDITOR_LOG_INFO("Recreated surface formats, found {} formats", formatCount);
+            SEDX_CORE_INFO("Recreated surface formats, found {} formats", formatCount);
         }
         else
         {
-            EDITOR_LOG_ERROR("Failed to find any surface formats!");
+            SEDX_CORE_ERROR("Failed to find any surface formats!");
         }
 
         // Query present modes
@@ -1642,11 +1742,11 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
             availablePresentModes.resize(presentModeCount);
             vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, availablePresentModes.data());
 
-            EDITOR_LOG_INFO("Recreated present modes, found {} modes", presentModeCount);
+            SEDX_CORE_INFO("Recreated present modes, found {} modes", presentModeCount);
         }
         else
         {
-            EDITOR_LOG_ERROR("Failed to find any present modes!");
+            SEDX_CORE_ERROR("Failed to find any present modes!");
         }
 
         // Store updated surface capabilities
@@ -1857,7 +1957,7 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 
 		std::string texturePath = config.textureFolder + "/texture.png";
 
-        EDITOR_LOG_INFO("Loading texture shader from: {}", texturePath);
+        SEDX_CORE_INFO("Loading texture shader from: {}", texturePath);
 
         int texWidth, texHeight, texChannels;
 
@@ -1946,7 +2046,7 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         // Construct the model path using the modelFolder from config
         std::string modelPath = config.modelFolder + "/viking_room.obj";
 
-        EDITOR_LOG_INFO("Loading 3D model from: {}", modelPath);
+        SEDX_CORE_INFO("Loading 3D model from: {}", modelPath);
 
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
@@ -1955,12 +2055,12 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 
         if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath.c_str()))
         {
-            EDITOR_LOG_ERROR("Failed to load model: {}", modelPath);
-            EDITOR_LOG_ERROR("Error details: {} {}", warn, err);
+            SEDX_CORE_ERROR("Failed to load model: {}", modelPath);
+            SEDX_CORE_ERROR("Error details: {} {}", warn, err);
             throw std::runtime_error(warn + err);
         }
 
-    EDITOR_LOG_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
+    SEDX_CORE_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
 
         std::unordered_map<Vertex, uint32_t> uniqueVertices{};
 
@@ -1994,7 +2094,7 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
             }
         }
 
-        EDITOR_LOG_INFO("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
+        SEDX_CORE_INFO("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
     }
 
 	// -------------------------------------------------------
@@ -2009,114 +2109,14 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
         VkShaderModule shaderModule;
         if (vkCreateShaderModule(device, &createInfo, allocator, &shaderModule) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create shader module!");
+            SEDX_CORE_ERROR("Failed to create shader module!");
             ErrMsg("failed to create shader module!");
         }
 
         return shaderModule;
     }
 
-    VkSurfaceFormatKHR GraphicsEngine::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
-    {
-        for (const auto &availableFormat : availableFormats)
-        {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
-                availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-            {
-                return availableFormat;
-            }
-        }
 
-        return availableFormats[0];
-    }
-
-    VkPresentModeKHR GraphicsEngine::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
-    {
-        for (const auto &availablePresentMode : availablePresentModes)
-        {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-            {
-                return availablePresentMode;
-            }
-        }
-
-        return VK_PRESENT_MODE_FIFO_KHR;
-    }
-
-    VkExtent2D GraphicsEngine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities)
-    {
-        // If the current extent width is the max value, it means the window manager
-        // allows us to set dimensions other than the current window size
-        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-        {
-            EDITOR_LOG_INFO("Using surface extent: {}x{}", capabilities.currentExtent.width, capabilities.currentExtent.height);
-            return capabilities.currentExtent;
-        }
-        else
-        {
-            // Get the actual framebuffer size from GLFW directly for consistency
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-
-            EDITOR_LOG_INFO("Window framebuffer size: {}x{}", width, height);
-
-            // Create the extent using the retrieved dimensions
-            VkExtent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
-
-            // Clamp to the allowed min/max extents from the surface capabilities
-            actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
-            EDITOR_LOG_INFO("Using calculated extent: {}x{}", actualExtent.width, actualExtent.height);
-            return actualExtent;
-        }
-    }
-
-    SwapChainSupportDetails GraphicsEngine::querySwapChainSupport(VkPhysicalDevice device)
-    {
-        SwapChainSupportDetails details;
-        const GPUDevice &selectedDevice = physDeviceManager.Selected();
-
-        // Copy the data that's already available
-        details.capabilities = selectedDevice.surfaceCapabilities;
-        details.formats      = selectedDevice.surfaceFormats;
-        details.presentModes = selectedDevice.presentModes;
-
-        return details;
-    }
-
-    QueueFamilyIndices GraphicsEngine::findQueueFamilies(VkPhysicalDevice device)
-    {
-        QueueFamilyIndices indices;
-
-        // Instead of querying again, use the data we already have
-        const GPUDevice &selectedDevice = physDeviceManager.Selected();
-
-        for (uint32_t i = 0; i < selectedDevice.queueFamilyInfo.size(); i++)
-        {
-            const VkQueueFamilyProperties &queueFamily = selectedDevice.queueFamilyInfo[i];
-            VkBool32 presentSupport = false;
-
-
-            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            {
-                indices.graphicsFamily = i;
-            }
-
-            // Check presentation support
-            if (selectedDevice.queueSupportPresent[i])
-            {
-                indices.presentFamily = i;
-            }
-
-            if (indices.isComplete())
-            {
-                break;
-            }
-        }
-
-        return indices;
-    }
 
 	// -------------------------------------------------------
 
@@ -2172,7 +2172,7 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
             }
         }
 
-        EDITOR_LOG_ERROR("Failed to find suitable memory type!");
+        SEDX_CORE_ERROR("Failed to find suitable memory type!");
         ErrMsg("Failed to find suitable memory type!");
         return 0; // Return a default value to avoid undefined behavior
     }
@@ -2208,88 +2208,6 @@ void GraphicsEngine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
     }
 
 	// -------------------------------------------------------
-
-    bool GraphicsEngine::isDeviceSuitable(VkPhysicalDevice device)
-    {
-        QueueFamilyIndices indices = findQueueFamilies(device);
-
-        bool extensionsSupported = checkDeviceExtensionSupport(device);
-        bool swapChainAdequate = false;
-        if (extensionsSupported)
-        {
-            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-        }
-
-		VkPhysicalDeviceFeatures supportedFeatures;
-        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-
-        return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
-    }
-
-    bool GraphicsEngine::checkDeviceExtensionSupport(VkPhysicalDevice device)
-    {
-        uint32_t extensionCount;
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-        EDITOR_LOG_INFO("Checking for required device extensions:");
-        for (const auto &extension : deviceExtensions)
-        {
-            EDITOR_LOG_INFO("  Required: {}", ToString(extension));
-        }
-        EDITOR_LOG_INFO("Available device extensions:");
-        for (const auto &extension : availableExtensions)
-        {
-            EDITOR_LOG_INFO("  Available: {}", ToString(extension.extensionName));
-            requiredExtensions.erase(extension.extensionName);
-        }
-        if (!requiredExtensions.empty())
-        {
-            EDITOR_LOG_ERROR("Missing extensions:");
-            for (const auto &ext : requiredExtensions)
-            {
-                EDITOR_LOG_ERROR("  Missing: {}", ToString(ext));
-            }
-            return false;
-        }
-
-        return true;
-    }
-
-	bool GraphicsEngine::checkValidationLayerSupport()
-    {
-        uint32_t layerCount;
-        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-        std::vector<VkLayerProperties> availableLayers(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-        for (const char *layerName : validationLayers)
-        {
-            bool layerFound = false;
-
-            for (const auto &layerProperties : availableLayers)
-            {
-                if (strcmp(layerName, layerProperties.layerName) == 0)
-                {
-                    layerFound = true;
-                    break;
-                }
-            }
-
-            if (!layerFound)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
 	bool GraphicsEngine::hasStencilComponent(VkFormat format)
     {

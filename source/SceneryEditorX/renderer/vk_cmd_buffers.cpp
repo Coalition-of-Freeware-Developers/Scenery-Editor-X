@@ -74,7 +74,7 @@ namespace SceneryEditorX
 		auto result = vkQueueSubmit(submitInfo.queue, 1, &submitInfo, VK_NULL_HANDLE, cmd.fence);
         if (result != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to submit command buffer: {}", ToString(result));
+            SEDX_CORE_ERROR("Failed to submit command buffer: {}", ToString(result));
             ErrMsg("Failed to submit command buffer!");
         }
 	}

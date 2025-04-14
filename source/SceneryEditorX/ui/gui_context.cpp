@@ -17,7 +17,7 @@
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
 	GuiContext *GuiContext::Create()
     {

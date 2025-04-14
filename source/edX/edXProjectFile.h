@@ -55,7 +55,7 @@ namespace ProjectFile
     };
     
     // Define the operator<< for usedLibrary
-    std::ostream &operator<<(std::ostream &os, const usedLibrary &lib)
+    inline std::ostream &operator<<(std::ostream &os, const usedLibrary &lib)
     {
         os << lib.library_name << ", " << lib.library_path << ", " << lib.library_version;
         return os;

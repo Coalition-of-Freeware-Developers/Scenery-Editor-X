@@ -24,7 +24,7 @@ namespace Launcher
     public:
         void run()
         {
-            //TODO: Impliment the admin check function
+            //TODO: Implement the admin check function
 
             //adminCheck();
             CreateSplash();
@@ -43,7 +43,7 @@ namespace Launcher
         void CreateSplash();
         void MainLoop();
         void OperationThreads();
-        void CleanUp();
+        void CleanUp() const;
     };
 
     //GLOBAL void AdminCheck();

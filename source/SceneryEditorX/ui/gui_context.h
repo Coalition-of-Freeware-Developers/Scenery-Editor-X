@@ -15,9 +15,9 @@
 
 // -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
-	class GuiContext : Layer
+	class GuiContext : public Layer
 	{
     public:
         virtual void Begin() = 0;
@@ -32,4 +32,4 @@ namespace UI
 	
 	};
 
-} // namespace UI
+} // namespace SceneryEditorX

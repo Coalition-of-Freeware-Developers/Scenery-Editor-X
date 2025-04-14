@@ -13,8 +13,17 @@
 
 #pragma once
 
+#include <SceneryEditorX/core/ref.h>
 #include <cstdint>
 #include <glm/glm.hpp>
+
+// -------------------------------------------------------
+
+#ifdef SEDX_DEBUG
+constexpr bool enableValidationLayers = true;
+#else
+constexpr bool enableValidationLayers = false;
+#endif
 
 // -------------------------------------------------------
 
@@ -52,11 +61,84 @@ using Mat4 = glm::mat4; // 4x4 matrix
 #define COUNT_OF(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 #define SEDX_EXPAND_MACRO(x) x
-#define SEDX_STRINGIFY_MACRO(x) #x
+
+#define SEDX_STRINGIFY_IMPL(x) #x
+#define SEDX_STRINGIFY(x) SEDX_STRINGIFY_IMPL(x)
+
 #define BIT(x) (1 << x)
 #define SEDX_BIND_EVENT_FN(fn) [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
 // -------------------------------------------------------
+
+#ifdef SEDX_COMPILER_MSVC
+	#define SEDX_FORCE_INLINE __forceinline
+	#define SEDX_EXPLICIT_STATIC static
+#elif defined(__GNUC__)
+	#define SEDX_FORCE_INLINE __attribute__((always_inline)) inline
+	#define SEDX_EXPLICIT_STATIC
+#else
+	#define SEDX_FORCE_INLINE inline
+	#define SEDX_EXPLICIT_STATIC
+#endif
+
+// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	template<typename T>
+	T RoundDown(T x, T fac) { return x / fac * fac; }
+
+	template<typename T>
+	T RoundUp(T x, T fac) { return RoundDown(x + fac - 1, fac); }
+
+	// Pointer wrappers
+	template<typename T>
+	using Scope = std::unique_ptr<T>;
+	template<typename T, typename ... Args>
+	constexpr Scope<T> CreateScope(Args&& ... args)
+	{
+		return std::make_unique<T>(std::forward<Args>(args)...);
+	}
+
+	using byte = uint8_t;
+
+	/** A simple wrapper for std::atomic_flag to avoid confusing
+		function names usage. The object owning it can still be
+		default copyable, but the copied flag is going to be reset.
+	*/
+	struct AtomicFlag
+	{
+		SEDX_FORCE_INLINE void SetDirty() { flag.clear(); }
+		SEDX_FORCE_INLINE bool CheckAndResetIfDirty() { return !flag.test_and_set(); }
+
+		explicit AtomicFlag() noexcept { flag.test_and_set(); }
+		AtomicFlag(const AtomicFlag&) noexcept {}
+		AtomicFlag& operator=(const AtomicFlag&) noexcept { return *this; }
+		AtomicFlag(AtomicFlag&&) noexcept {};
+		AtomicFlag& operator=(AtomicFlag&&) noexcept { return *this; }
+
+	private:
+		std::atomic_flag flag;
+	};
+
+	struct Flag
+	{
+		SEDX_FORCE_INLINE void SetDirty() noexcept { flag = true; }
+		SEDX_FORCE_INLINE bool CheckAndResetIfDirty() noexcept
+		{
+			if (flag)
+				return !((flag = !flag));
+			else
+				return false;
+		}
+
+		SEDX_FORCE_INLINE bool IsDirty() const noexcept { return flag; }
+
+	private:
+		bool flag = false;
+	};
+
+} // namespace SceneryEditorX
 
 /**
  * @brief Alias template for a unique pointer to type T.
@@ -146,6 +228,7 @@ std::string ToString(const T &value)
 /**
  * @brief Convert a string to a value.
  * @tparam T The type of the value to convert.
+ * @param arr
  * @param str The string to convert.
  * @return The value representation of the string.
  */

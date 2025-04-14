@@ -111,7 +111,7 @@ void GUI::cleanUp()
 
         if (imguiPool != VK_NULL_HANDLE)
         {
-            vkDestroyDescriptorPool(renderer->GetDevice(), imguiPool, nullptr);
+            vkDestroyDescriptorPool(device->GetDevice(), imguiPool, nullptr);
             imguiPool = VK_NULL_HANDLE;
         }
 
@@ -149,9 +149,9 @@ void GUI::initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRend
     pool_info.pPoolSizes = pool_sizes;
 
     VkDescriptorPool imguiPool;
-    if (vkCreateDescriptorPool(renderer->GetDevice(), &pool_info, nullptr, &imguiPool) != VK_SUCCESS)
+    if (vkCreateDescriptorPool(device->GetDevice(), &pool_info, nullptr, &imguiPool) != VK_SUCCESS)
     {
-        EDITOR_LOG_ERROR("Failed to create ImGui descriptor pool!");
+        SEDX_CORE_ERROR("Failed to create ImGui descriptor pool!");
         return;
     }
 
@@ -164,12 +164,12 @@ void GUI::initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRend
     io.ConfigDockingWithShift = false;                     // Don't require shift for docking
     io.ConfigWindowsResizeFromEdges = true;                // Enable resizing windows from edges
 
-    ImGui_ImplGlfw_InitForVulkan(Window::GetGLFWwindow(), true);
+    ImGui_ImplGlfw_InitForVulkan(Window::GetWindow(), true);
 
     ImGui_ImplVulkan_InitInfo info{};
     info.ApiVersion = VK_API_VERSION_1_3;
-    info.Instance = renderer->GetInstance();
-    info.PhysicalDevice = renderer->GetPhysicalDevice();
+    info.Instance = SceneryEditorX::GraphicsEngine::GetInstance();
+    info.PhysicalDevice = device->GetPhysicalDevice()->GetGPUDevice();
     info.Device = renderer->GetDevice();
     //info.QueueFamily = renderer->GetQueueFamilyIndices().graphicsFamily.value();
     info.Queue = renderer->GetGraphicsQueue();
@@ -178,14 +178,14 @@ void GUI::initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRend
     //info.Subpass = 0;
     info.MinImageCount = renderer->GetSwapChainImages().size();
     info.ImageCount = renderer->GetSwapChainImages().size();
-    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;  // Replace when MSAA is implemented properly
+    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;  /* TODO: Replace when MSAA is implemented properly. */
     //info.MSAASamples = renderer->msaaSamples;
     //info.Allocator = nullptr;
     info.UseDynamicRendering = false;
     info.CheckVkResultFn = [](VkResult result) {
         if (result != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("ImGui Vulkan Error: {}", ToString(result));
+            SEDX_CORE_ERROR("ImGui Vulkan Error: {}", ToString(result));
         }
     };
 
@@ -196,13 +196,13 @@ void GUI::initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &engineRend
     ImGui_ImplVulkan_CreateFontsTexture(); // Removed Nov 10, 2023 Commit #79a9e2f
     renderer->endSingleTimeCommands(commandBuffer);
 
-	vkDeviceWaitIdle(renderer->GetDevice());// Wait for font upload to complete
+	vkDeviceWaitIdle(device->GetDevice());// Wait for font upload to complete
     //ImGui_ImplVulkan_DestroyFontUploadObjects(); // This is no longer needed in newer versions of ImGui
 
 	setStyle();
 
 	initialized = true;
-    EDITOR_LOG_INFO("ImGui initialized successfully");
+    SEDX_CORE_INFO("ImGui initialized successfully");
 }
 
 void GUI::resize(const uint32_t width, const uint32_t height) const

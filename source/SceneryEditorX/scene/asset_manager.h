@@ -14,6 +14,7 @@
 #pragma once
 
 #include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/core/serializer.hpp>
 #include <vector>
 
 // -------------------------------------------------------
@@ -23,6 +24,8 @@ namespace AssetManager
 
     struct Serializer;
     struct AssetManager;
+
+	// -------------------------------------------------------
 
     enum class ObjectType
     {
@@ -75,8 +78,8 @@ namespace AssetManager
 
     struct Asset : Object
     {
-        virtual ~Asset();
-        virtual void Serialize(Serializer &s) = 0;
+        virtual ~Asset() override;
+        virtual void Serialize(Serializer &s) override = 0;
     };
 
     struct TextureAsset : Asset
@@ -87,7 +90,7 @@ namespace AssetManager
         int height = 0;
 
         TextureAsset();
-        virtual void Serialize(Serializer &s);
+        virtual void Serialize(Serializer &s) override;
     };
 
     struct MeshAsset : Asset
@@ -107,7 +110,7 @@ namespace AssetManager
         std::vector<uint32_t> indices;
 
         MeshAsset();
-        virtual void Serialize(Serializer &s);
+        virtual void Serialize(Serializer &s) override;
     };
 
     struct MaterialAsset : Asset
@@ -123,17 +126,17 @@ namespace AssetManager
         //Ref<TextureAsset> metallicRoughnessMap;
 
         MaterialAsset();
-        virtual void Serialize(Serializer &s);
+        virtual void Serialize(Serializer &s) override;
     };
 
-    struct AssetManager
+    /*struct AssetManager
     {
-        AssetManager();
-        ~AssetManager();
+        //AssetManager();
+        //~AssetManager();
         //std::vector<Ref<Node>> AddAssetsToScene(Ref<SceneAsset> &scene, const std::vector<std::string> &paths);
         //void LoadProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
         //void SaveProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
-        //Ref<SceneAsset> GetInitialScene();
+        //Ref<SceneryEditorX::SceneAsset> GetInitialScene();
         //Ref<CameraNode> GetMainCamera(Ref<SceneAsset> &scene);
 
         /*
@@ -275,7 +278,7 @@ namespace AssetManager
 	bool HasLoadRequest() const;
 	void LoadRequestedProject();
 	void RequestLoadProject(const std::filesystem::path &path, const std::filesystem::path &binPath);
-*/
+#1#
         std::string GetProjectName();
         std::filesystem::path GetCurrentProjectPath();
         std::filesystem::path GetCurrentBinPath();
@@ -285,7 +288,7 @@ namespace AssetManager
         //std::unordered_map<UUID, Ref<Asset>> assets;
         static UUID NewUUID();
         //UUID initialScene = 0;
-    };
+    };*/
 
     struct SceneAsset : Asset
     {
@@ -326,4 +329,7 @@ namespace AssetManager
 	void DeleteRecursive(const Ref<Node> &node);
 	*/
     };
+
 } // namespace AssetManager
+
+// -------------------------------------------------------

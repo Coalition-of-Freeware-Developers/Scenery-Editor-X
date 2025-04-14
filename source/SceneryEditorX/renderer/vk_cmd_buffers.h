@@ -12,6 +12,7 @@
 */
 
 #pragma once
+
 #include <SceneryEditorX/renderer/vk_util.h>
 
 // -------------------------------------------------------

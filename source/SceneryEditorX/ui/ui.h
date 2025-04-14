@@ -207,7 +207,7 @@ public:
 	 * @param width New width of the window
 	 * @param height New height of the window
 	 */
-    void resize(const uint32_t width, const uint32_t height) const;
+    void resize(uint32_t width, uint32_t height) const;
 
     /**
 	 * @brief Starts a new ImGui frame to be called before drawing any window
@@ -223,7 +223,7 @@ public:
 	 * @brief Updates the Gui
 	 * @param delta_time Time passed since last update
 	 */
-    void update(const float delta_time);
+    void update(float delta_time);
 
     /**
      * @brief 
@@ -268,6 +268,7 @@ public:
 
 private:
     SceneryEditorX::GraphicsEngine *renderer = nullptr;
+    SceneryEditorX::VulkanDevice *device = nullptr;
     GLFWwindow *window = nullptr;
     VkDescriptorPool imguiPool = VK_NULL_HANDLE;
     bool initialized = false;

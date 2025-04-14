@@ -20,30 +20,30 @@
 namespace SceneryEditorX
 {
 
-#ifdef SEDX_PLATFORM_WINDOWS
-
-	struct EditorConfig
-	{
-        std::string shaderFolder	=	"../../assets/shaders";
-        std::string textureFolder	=	"../../assets/textures";
-        std::string modelFolder		=	"../../assets/models";
-        std::string fontFolder		=	"../../assets/fonts";
-		
-	};
-
-#endif //SEDX_PLATFORM_WINDOWS
-
-#ifdef SEDX_PLATFORM_LINUX
-
-	struct EditorConfig
-    {
-        std::string shaderFolder	=	"../../assets/shaders";
-        std::string textureFolder	=	"../../assets/textures";
-        std::string modelFolder		=	"../../assets/models";
-        std::string fontFolder		=	"../../assets/fonts";
-    };
-
-#endif //SEDX_PLATFORM_LINUX
+	#ifdef SEDX_PLATFORM_WINDOWS
+	
+		struct EditorConfig
+		{
+	        std::string shaderFolder	=	"../../assets/shaders";
+	        std::string textureFolder	=	"../../assets/textures";
+	        std::string modelFolder		=	"../../assets/models";
+	        std::string fontFolder		=	"../../assets/fonts";
+			
+		};
+	
+	#endif //SEDX_PLATFORM_WINDOWS
+	
+	#ifdef SEDX_PLATFORM_LINUX
+	
+		struct EditorConfig
+	    {
+	        std::string shaderFolder	=	"../../assets/shaders";
+	        std::string textureFolder	=	"../../assets/textures";
+	        std::string modelFolder		=	"../../assets/models";
+	        std::string fontFolder		=	"../../assets/fonts";
+	    };
+	
+	#endif //SEDX_PLATFORM_LINUX
 
 
 } // namespace SceneryEditorX

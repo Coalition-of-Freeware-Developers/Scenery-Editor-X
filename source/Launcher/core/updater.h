@@ -36,15 +36,14 @@ public:
      */
     void UpdateCheck();
 
-    void cleanInstall();
+    static void cleanInstall();
 
 private:
+    static bool urlCheck();
 
-    bool urlCheck();
+    static void startUpdate();
 
-    void startUpdate();
-
-    void skipUpdate();
+    static void skipUpdate();
 
     bool isFirstRun = false; // Flag indicating whether this is the first time the application is run.
 

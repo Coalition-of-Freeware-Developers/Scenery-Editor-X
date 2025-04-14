@@ -60,7 +60,7 @@ inline char ReadNextToken(std::istream &inStream, std::string *OutString, std::v
             bStartedToken = true;
         }
 
-        //Set whether we are in a utf-8 sequence. We can get away with not checking earlier because there will be no delimeter that matches.
+        //Set whether we are in an utf-8 sequence. We can get away with not checking earlier because there will be no delimeter that matches.
         if (chrDelimeter & 0b10000000)
         {
             bInUtf8 = true;
@@ -163,7 +163,7 @@ void TextUtils::TestTokenizer()
     //Add some fake utf-8 characters
     testString[1] = static_cast<char>(0b10000000);
     testString[2] =
-        ' '; //This is actually a delimiter but we want to test that it gets ignored because it's in a UTF-8 sequence
+        ' '; //This is actually a delimiter, but we want to test that it gets ignored because it's in a UTF-8 sequence
 
     auto tokens = TextUtils::TokenizeString(testString, delimiter);
 

@@ -13,15 +13,14 @@
 
 #include <cstdlib>
 #include <exception>
+#include <GLFW/glfw3native.h>
 #include <Launcher/core/directory_manager.hpp>
-#include <Launcher/core/elevate_perms.h>
-#include <Launcher/core/splash_handler.h>
-#include <SceneryEditorX/core/window.h>
 #include <Launcher/core/launcher_main.h>
+#include <Launcher/core/splash_handler.h>
 #include <Launcher/core/updater.h>
 #include <Launcher/registry/reg_check.h>
+#include <SceneryEditorX/core/window.h>
 #include <synchapi.h>
-#include <GLFW/glfw3native.h>
 
 // -------------------------------------------------------
 
@@ -92,13 +91,15 @@ namespace Launcher
         LAUNCHER_LOG_INFO("Loading resources.");
         //std::cout << "Loading resources." << std::endl;
 
-        //TODO: Add loading of resources here
-        // - Add Precompiled Shaders
-        // - Add Textures
-        // - Add Models
-        // - Config Files
-        // - Add Scenery Gateway Data
-        // - Add Default edX Scene files
+		/*
+        TODO: Add loading of resources here
+         - Add Precompiled Shaders
+         - Add Textures
+         - Add Models
+         - Config Files
+         - Add Scenery Gateway Data
+         - Add Default edX Scene files
+		*/
 
         LAUNCHER_LOG_INFO("Preloading tasks completed.");
         //std::cout << "Preloading tasks completed." << std::endl;
@@ -114,7 +115,7 @@ namespace Launcher
         //Create the splash screen window
         splashHandler = new SplashHandler();
         GLFWwindow* splash = nullptr;
-        splashHandler->CreateSplashScreen(splash);
+        SplashHandler::CreateSplashScreen(splash);
     }
 
     void Loader::MainLoop()
@@ -145,7 +146,7 @@ namespace Launcher
         preloadThread.detach();
     }
 
-    void Loader::CleanUp()
+    void Loader::CleanUp() const
     {
         LAUNCHER_LOG_INFO("Cleaning up before relaunch.");
         //std::cout << "Cleaning up before relaunch." << std::endl;
@@ -180,11 +181,11 @@ void SplashHandler::CreateSplashScreen(GLFWwindow* splash)
     }
 }
 
-void SplashImg()
+static void SplashImg()
 {
     int width,height,channels;
 
-    std::ifstream file("..\\..\\assets\\splash_screen.png",std::ios::binary | std::ios::ate);
+    std::ifstream file(R"(..\..\assets\splash_screen.png)",std::ios::binary | std::ios::ate);
     if (!file.is_open())
     {
         LAUNCHER_LOG_ERROR("Failed to open splash screen image!");

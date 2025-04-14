@@ -21,6 +21,7 @@ namespace fs = std::filesystem; //I'm lazy, so less typing
 * @brief LoadFileSystem - Loads the files from the Library.txt and real paths into the vPaths vector
 *
 * @param InXpRootPath = The root path of the X-Plane installation<
+* @param InCurrentPackagePath
 * @param InCustomSceneryPacks = A vector of paths to custom scenery packs. These should be ordered based on the scenery_packs.ini, with the first element being the highest priority scenery
 */
 void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRootPath,

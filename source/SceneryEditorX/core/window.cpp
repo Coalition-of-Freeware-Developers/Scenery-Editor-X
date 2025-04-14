@@ -28,9 +28,9 @@
  */
 void Window::ScrollCallback(GLFWwindow* window,double x,double y)
 {
-    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-    windowInstance->scroll += y;
-    windowInstance->deltaScroll += y;
+    const Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+    auto instance = windowInstance;
+    scroll += y, deltaScroll += y;
 }
 
 /**
@@ -48,9 +48,9 @@ void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height
     // Store the new width and height directly in the Window class
     Window::width = width;
     Window::height = height;
-    Window::framebufferResized = true;
+    framebufferResized = true;
 
-    EDITOR_LOG_INFO("Window framebuffer resized to: {}x{}", width, height);
+    SEDX_CORE_INFO("Window framebuffer resized to: {}x{}", width, height);
 }
 
 /**
@@ -62,10 +62,10 @@ void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height
  * @param window The GLFW window where the event occurred.
  * @param maximize The maximized state of the window (1 if maximized, 0 if restored).
  */
-void Window::WindowMaximizeCallback(GLFWwindow* window,int maximize)
+void Window::WindowMaximizeCallback(GLFWwindow* window, const int maximize)
 {
-    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-    windowInstance->maximized = maximize;
+    static_cast<Window *>(glfwGetWindowUserPointer(window));
+    maximized = maximize;
 }
 
 /**
@@ -80,9 +80,8 @@ void Window::WindowMaximizeCallback(GLFWwindow* window,int maximize)
  */
 void Window::WindowChangePosCallback(GLFWwindow* window,int x,int y)
 {
-    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-    windowInstance->posX = x;
-    windowInstance->posY = y;
+    auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+    posX = x, posY = y;
 }
 
 /**
@@ -95,12 +94,12 @@ void Window::WindowChangePosCallback(GLFWwindow* window,int x,int y)
  * @param count The number of files dropped.
  * @param paths An array of C-strings containing the paths of the dropped files.
  */
-void Window::WindowDropCallback(GLFWwindow *window, int count, const char *paths[])
+void Window::WindowDropCallback(GLFWwindow *window, const int count, const char *paths[])
 {
-    Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-    for (int i = 0; i < count; i++)
+    auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+    for (auto i = 0; i < count; i++)
     {
-        windowInstance->pathsDrop.push_back(paths[i]);
+        pathsDrop.emplace_back(paths[i]);
     }
 }
 
@@ -112,7 +111,7 @@ void Window::WindowDropCallback(GLFWwindow *window, int count, const char *paths
  * the window position and various callback functions. It also applies any pending
  * changes to the window configuration.
  */
-void Window::Create()
+Window::Window()
 {
 	glfwInit();
 
@@ -128,17 +127,17 @@ void Window::Create()
 	if (!window)
 	{
 		glfwTerminate();
-		EDITOR_LOG_ERROR("Failed to create GLFW window!");
+		SEDX_CORE_ERROR("Failed to create GLFW window!");
 		throw std::runtime_error("Failed to create GLFW window");
 	}
 
 	glfwSetWindowPos(window, posX, posY); // set window position
 
-	glfwSetFramebufferSizeCallback(window, Window::FramebufferResizeCallback); // set framebuffer resize callback
-	glfwSetScrollCallback(window, Window::ScrollCallback);
-	glfwSetWindowMaximizeCallback(window, Window::WindowMaximizeCallback);
-	glfwSetWindowPosCallback(window, Window::WindowChangePosCallback);
-    glfwSetDropCallback(window, Window::WindowDropCallback); 
+	glfwSetFramebufferSizeCallback(window, FramebufferResizeCallback); // set framebuffer resize callback
+	glfwSetScrollCallback(window, ScrollCallback);
+	glfwSetWindowMaximizeCallback(window, WindowMaximizeCallback);
+	glfwSetWindowPosCallback(window, WindowChangePosCallback);
+    glfwSetDropCallback(window, WindowDropCallback); 
 
 	SetWindowIcon(window);
 
@@ -156,9 +155,9 @@ void Window::Create()
 void Window::ApplyChanges()
 {
 	monitors = glfwGetMonitors(&monitorCount);
-	// ASSERT(monitorIndex < monitorCount, "Invalid monitorIndex inside Window creation!");
-	auto monitor = monitors[monitorIndex];
-	auto monitorMode = glfwGetVideoMode(monitor);
+    //SEDX_CORE_ASSERT(monitorIndex < monitorCount, "Invalid monitorIndex inside Window creation!");
+	const auto monitor = monitors[monitorIndex];
+	const auto monitorMode = glfwGetVideoMode(monitor);
 
 	int modesCount;
 	const GLFWvidmode* videoModes = glfwGetVideoModes(monitors[monitorIndex],&modesCount);
@@ -172,14 +171,14 @@ void Window::ApplyChanges()
 	{
 		case WindowMode::Windowed:
 		posY = std::max(posY,31);
-		glfwSetWindowMonitor(window,nullptr,posX,posY,Window::width,Window::height,GLFW_DONT_CARE);
-		if (Window::maximized)
+		glfwSetWindowMonitor(window,nullptr,posX,posY,width,height,GLFW_DONT_CARE);
+		if (maximized)
 		{
 			glfwMaximizeWindow(window);
 		}
-		glfwSetWindowAttrib(window,GLFW_MAXIMIZED,Window::maximized);
-		glfwSetWindowAttrib(window,GLFW_RESIZABLE,Window::resizable);
-		glfwSetWindowAttrib(window,GLFW_DECORATED,Window::decorated);
+		glfwSetWindowAttrib(window,GLFW_MAXIMIZED,maximized);
+		glfwSetWindowAttrib(window,GLFW_RESIZABLE,resizable);
+		glfwSetWindowAttrib(window,GLFW_DECORATED,decorated);
 		break;
 		case WindowMode::WindowedFullScreen:
 		glfwWindowHint(GLFW_RED_BITS,monitorMode->redBits);
@@ -204,7 +203,7 @@ void Window::ApplyChanges()
  * This function retrieves the current window position, destroys the window,
  * and terminates the GLFW library.
  */
-void Window::Destroy()
+Window::~Window()
 {
 	glfwGetWindowPos(window,&posX,&posY);
 	glfwDestroyWindow(window);
@@ -221,7 +220,7 @@ void Window::Destroy()
  */
 void Window::Update()
 {
-	for (int i = 0; i < GLFW_KEY_LAST + 1; i++)
+	for (auto i = 0; i < GLFW_KEY_LAST + 1; i++)
 	{
 		lastKeyState[i] = glfwGetKey(window,i);
 	}
@@ -244,9 +243,9 @@ void Window::Update()
  * that describes the video mode in terms of its width, height, and refresh rate.
  *
  * @param mode The GLFWvidmode structure containing the video mode information.
- * @return A string representing the video mode in the format "widthxheight refreshRate Hz".
+ * @return A string representing the video mode in the format "width x height refreshRate Hz".
  */
-std::string VideoModeText(GLFWvidmode mode)
+static std::string VideoModeText(const GLFWvidmode &mode)
 {
 	return std::to_string(mode.width) + "x" + std::to_string(mode.height) + " " + std::to_string(mode.refreshRate) +
 		" Hz";
@@ -422,45 +421,45 @@ void Window::UpdateFramebufferSize()
  */
 void Window::SetWindowIcon(GLFWwindow *window)
 {
-	int width,height,channels;
 
-	std::ifstream file("..\\..\\assets\\icon.png",std::ios::binary | std::ios::ate);
-	if (!file.is_open())
-	{
-		EDITOR_LOG_ERROR("Failed to open icon file!");
-		return;
-	}
+    IconData iconData;
 
-	// Get file size and read the data
-	std::streamsize size = file.tellg();
-	file.seekg(0,std::ios::beg);
+    std::ifstream file(iconData.path, std::ios::binary | std::ios::ate);
+    if (!file.is_open())
+    {
+        SEDX_CORE_ERROR("Failed to open icon file!");
+        return;
+    }
 
-	std::vector<unsigned char> buffer(size);
-	if (!file.read(reinterpret_cast<char*>(buffer.data()),size))
-	{
-		EDITOR_LOG_ERROR("Failed to read icon file data!");
-		return;
-	}
+    // Get file size and read the data
+    const std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
 
-	unsigned char* data = stbi_load_from_memory(
-		buffer.data(),
-		static_cast<int>(size),
-		&width,
-		&height,
-		&channels,
-		4
-	);
+    iconData.buffer.resize(size);
+    if (!file.read(reinterpret_cast<char *>(iconData.buffer.data()), size))
+    {
+        SEDX_CORE_ERROR("Failed to read icon file data!");
+        return;
+    }
 
-	if (data)
-	{
-		GLFWimage icon = {width, height, data};
-		glfwSetWindowIcon(window,1,&icon);
-		stbi_image_free(data);
-	}
-	else
-	{
-		EDITOR_LOG_ERROR("Failed to load window icon!");
-	}
+    iconData.pixels = stbi_load_from_memory(iconData.buffer.data(),
+                                            static_cast<int>(size),
+                                            &iconData.width,
+                                            &iconData.height,
+                                            &iconData.channels,
+                                            4);
+
+    if (iconData.pixels)
+    {
+        const GLFWimage icon = {iconData.width, iconData.height, iconData.pixels};
+        glfwSetWindowIcon(window, 1, &icon);
+        stbi_image_free(iconData.pixels);
+        iconData.pixels = nullptr;
+    }
+    else
+    {
+        SEDX_CORE_ERROR("Failed to load window icon!");
+    }
 }
 
 /**
@@ -470,29 +469,11 @@ void Window::SetWindowIcon(GLFWwindow *window)
  * recorded state of the key with the current state to determine if the key was pressed.
  *
  * @param keyCode The key code of the key to check.
- * @return true if the key is pressed, false otherwise.
+ * @return True if the key is pressed, false otherwise.
  */
-bool Window::IsKeyPressed(uint16_t keyCode)
+bool Window::IsKeyPressed(const uint16_t keyCode)
 {
 	return lastKeyState[keyCode] && !glfwGetKey(window,keyCode);
 }
 
-int Window::get_width()
-{
-    // If we have a window, get the actual size from it
-    if (window)
-    {
-        glfwGetWindowSize(window, &width, &height);
-    }
-    return width;
-}
-
-int Window::get_height()
-{
-    // If we have a window, get the actual size from it
-    if (window)
-    {
-        glfwGetWindowSize(window, &width, &height);
-    }
-    return height;
-}
+// -------------------------------------------------------

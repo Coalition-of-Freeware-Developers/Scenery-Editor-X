@@ -1,6 +1,6 @@
+root = true
 # EditorConfig is awesome: http://EditorConfig.org
 
-root = true
 
 [*]
 indent_style = tab
@@ -8,6 +8,14 @@ indent_size = 4
 trim_trailing_whitespace = true
 insert_final_newline = true
 end_of_line = crlf
+
+# ReSharper properties
+resharper_csharp_indent_method_decl_pars = none
+resharper_csharp_max_line_length = 190
+resharper_csharp_wrap_lines = false
+resharper_indent_primary_constructor_decl_pars = none
+resharper_keep_existing_linebreaks = false
+resharper_use_continuous_indent_inside_parens = false
 
 [*.md]
 trim_trailing_whitespace = false
