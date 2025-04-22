@@ -18,10 +18,12 @@
 
 namespace SceneryEditorX
 {
-	static AllocationStats GlobalStats;
-	
-	static bool InInit_ = false;
-	
+
+	LOCAL AllocationStats GlobalStats;
+	LOCAL bool InInit_ = false;
+
+    // -------------------------------------------------------
+
 	void Allocator::Init()
 	{
 	    if (Data_)
@@ -30,13 +32,13 @@ namespace SceneryEditorX
         }
 	
 	    InInit_ = true;
-	    AllocatorData *data = (AllocatorData *)Allocator::AllocateRaw(sizeof(AllocatorData));
+	    AllocatorData *data = static_cast<AllocatorData *>(AllocateRaw(sizeof(AllocatorData)));
 	    new (data) AllocatorData();
 	    Data_ = data;
 	    InInit_ = false;
 	}
 	
-	void* Allocator::AllocateRaw(size_t size)
+	void* Allocator::AllocateRaw(const size_t size)
 	{
 	    return malloc(size);
 	}
@@ -80,7 +82,7 @@ namespace SceneryEditorX
 	
 	    void *memory = malloc(size);
 	    {
-	        std::scoped_lock<std::mutex> lock(Data_->Mutex_);
+	        std::scoped_lock lock(Data_->Mutex_);
             Allocation &alloc = Data_->AllocationMap[memory];
 	        alloc.Memory = memory;
 	        alloc.Size = size;
@@ -110,7 +112,7 @@ namespace SceneryEditorX
 	    void *memory = malloc(size);
 	
 	    {
-	        std::scoped_lock<std::mutex> lock(Data_->Mutex_);
+	        std::scoped_lock lock(Data_->Mutex_);
             Allocation &alloc = Data_->AllocationMap[memory];
 	        alloc.Memory = memory;
 	        alloc.Size = size;
@@ -137,7 +139,7 @@ namespace SceneryEditorX
 	    {
 	        bool found = false;
 	        {
-	            std::scoped_lock<std::mutex> lock(Data_->Mutex_);
+	            std::scoped_lock lock(Data_->Mutex_);
                 auto allocMapIt = Data_->AllocationMap.find(memory);
                 found = allocMapIt != Data_->AllocationMap.end();
 	            if (found)
@@ -185,75 +187,34 @@ namespace SceneryEditorX
 
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
-void* __CRTDECL operator new(size_t size)
-{
-    return Allocator::Allocate(size);
-}
+void* __CRTDECL operator new(size_t size) { return Allocator::Allocate(size); }
 
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
-void* __CRTDECL operator new[](size_t size)
-{
-    return Allocator::Allocate(size);
-}
+void* __CRTDECL operator new[](size_t size) {  return Allocator::Allocate(size); }
 
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
-void* __CRTDECL operator new(size_t size, const char *desc)
-{
-    return Allocator::Allocate(size, desc);
-}
+void* __CRTDECL operator new(size_t size, const char *desc) { return Allocator::Allocate(size, desc); }
 
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
-void* __CRTDECL operator new[](size_t size, const char *desc)
-{
-    return Allocator::Allocate(size, desc);
-}
+void* __CRTDECL operator new[](size_t size, const char *desc) { return Allocator::Allocate(size, desc); }
 
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
-void* __CRTDECL operator new(size_t size, const char *file, int line)
-{
-    return Allocator::Allocate(size, file, line);
-}
+void* __CRTDECL operator new(size_t size, const char *file, int line) { return Allocator::Allocate(size, file, line); }
 
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
-void* __CRTDECL operator new[](size_t size, const char *file, int line)
-{
-    return Allocator::Allocate(size, file, line);
-}
+void* __CRTDECL operator new[](size_t size, const char *file, int line) { return Allocator::Allocate(size, file, line); }
 
-void __CRTDECL operator delete(void *memory)
-{
-    return Allocator::Free(memory);
-}
-
-void __CRTDECL operator delete(void *memory, const char *desc)
-{
-    return Allocator::Free(memory);
-}
-
-void __CRTDECL operator delete(void *memory, const char *file, int line)
-{
-    return Allocator::Free(memory);
-}
-
-void __CRTDECL operator delete[](void *memory)
-{
-    return Allocator::Free(memory);
-}
-
-void __CRTDECL operator delete[](void *memory, const char *desc)
-{
-    return Allocator::Free(memory);
-}
-
-void __CRTDECL operator delete[](void *memory, const char *file, int line)
-{
-    return Allocator::Free(memory);
-}
+void __CRTDECL operator delete(void *memory) { return Allocator::Free(memory); }
+void __CRTDECL operator delete(void *memory, const char *desc) { return Allocator::Free(memory); }
+void __CRTDECL operator delete(void *memory, const char *file, int line) { eturn Allocator::Free(memory); }
+void __CRTDECL operator delete[](void *memory) { return Allocator::Free(memory); }
+void __CRTDECL operator delete[](void *memory, const char *desc) { return Allocator::Free(memory); }
+void __CRTDECL operator delete[](void *memory, const char *file, int line) { return Allocator::Free(memory); }
 
 #endif
 

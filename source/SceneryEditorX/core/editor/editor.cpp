@@ -14,15 +14,21 @@
 #include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/renderer/vk_core.h>
-#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/ui/ui_context.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/*
+	namespace UI
+	{
+	    class UIContextImpl;
+	}
+
+
+    /*
 	* -------------------------------------------------------
 	* EditorApplication Global Variables
 	* -------------------------------------------------------
@@ -63,18 +69,33 @@ namespace SceneryEditorX
 	
 	    VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
 	    vulkanChecks.InitChecks({}, {}, {}); // Initialize the Vulkan checks
-	
+
+		// Create and configure the physical vkDevice
+        auto physDevice = vkDevice->GetPhysicalDevice();
+        physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
+
+        // Set up the features we need
+        VkPhysicalDeviceFeatures deviceFeatures{};
+		deviceFeatures = vkDeviceFeatures.GetPhysicalDeviceFeatures();
+
+        // Update the vkDevice handle
+        device = vkDevice->GetDevice();
+
 	    //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-	    vkRenderer.InitEngine(Window::GetWindow(), Window::GetWidth(), Window::GetHeight());
+        Ref<Window> windowRef = CreateRef<Window>(); 
+        vkRenderer.CreateInstance(windowRef);
 	
-	    createViewportResources();
+	    //createViewportResources();
 	
-	    ui.initGUI(Window::GetWindow(), vkRenderer);
-	
+        // Initialize UI components
+        ui.InitGUI(Window::GetWindow(), vkRenderer);
+        uiContext = std::shared_ptr<UI::UIContext>(UI::UIContext::Create());
+        uiContext->SetGUI(&ui);
+
 	    //SceneryEditorX::CreateEditor();
 	
 	    //vkRenderer = CreateRef<GraphicsEngine>(*Window::GetWindow());
-	    //vkRenderer->InitEngine();
+	    //vkRenderer->CreateInstance();
 	
 	    //camera->extent = {viewportSize.x, viewportSize.y};
 	}
@@ -83,54 +104,39 @@ namespace SceneryEditorX
 	{
 	    while (!Window::GetShouldClose())
 	    {
-	        if (viewportResized)
+            if (viewportData.viewportResized)
 	        {
-	            vkRenderer.recreateSwapChain();
-	            viewportResized = false;
+                vkSwapChain->OnResize(viewportData.viewportSize.x, viewportData.viewportSize.y);
+                viewportData.viewportResized = false;
 	        }
 	
 	        DrawFrame();
 	        bool ctrlPressed = Window::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) || Window::IsKeyDown(GLFW_KEY_LEFT_CONTROL);
 	        Window::Update();
 	    }
-	
-	    WaitIdle();
+
+        vkDeviceWaitIdle(device);
 	}
-	
-	/*
-	void WaitIdle()
-	{
-	    vkDeviceWaitIdle(vkRenderer.GetDevice());
-	    if (result != VK_SUCCESS)
-	    {
-	        SEDX_CORE_ERROR("Failed to wait for device to become idle: {}", ToString(result));
-	    }
-	}
-	*/
 	
 	void EditorApplication::CreateViewportResources()
 	{
+
 	    // Create image for the viewport
-	    vkRenderer.createImage(viewportSize.x,
-	                           viewportSize.y,
-	                           1,
+        vkSwapChain->CreateImage(viewportData.viewportSize.x, viewportData.viewportSize.y, 1,
 	                           VK_SAMPLE_COUNT_1_BIT,
-	                           vkRenderer.GetSwapChainImageFormat(),
+	                           vkSwapChain->GetColorFormat(),
 	                           VK_IMAGE_TILING_OPTIMAL,
 	                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 	                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-	                           viewportImage,
-	                           viewportImageMemory);
+                               viewportData.viewportImage,
+                               viewportData.viewportImageMemory);
 	
 	    // Create image view for the viewport
-	    viewportImageView = vkRenderer.createImageView(viewportImage,
-	                                                   vkRenderer.GetSwapChainImageFormat(),
-	                                                   VK_IMAGE_ASPECT_COLOR_BIT,
-	                                                   1);
+        viewportData.viewportImageView = vkSwapChain->CreateImageView(viewportData.viewportImage, vkSwapChain->GetColorFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	
 	    // Create render pass for the viewport
 	    VkAttachmentDescription colorAttachment{};
-	    colorAttachment.format = vkRenderer.GetSwapChainImageFormat();
+        colorAttachment.format = vkSwapChain->GetColorFormat();
 	    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -155,22 +161,20 @@ namespace SceneryEditorX
 	    renderPassInfo.subpassCount = 1;
 	    renderPassInfo.pSubpasses = &subpass;
 	
-	    if (vkCreateRenderPass(vkRenderer.GetDevice(), &renderPassInfo, nullptr, &viewportRenderPass) != VK_SUCCESS)
-	    {
-	        throw std::runtime_error("Failed to create viewport render pass");
-	    }
-	
-	    // Create framebuffer for the viewport
+	    if (vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) != VK_SUCCESS)
+            throw std::runtime_error("Failed to create viewport render pass");
+
+        // Create framebuffer for the viewport
 	    VkFramebufferCreateInfo framebufferInfo{};
 	    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	    framebufferInfo.renderPass = viewportRenderPass;
+        framebufferInfo.renderPass = viewportData.viewportRenderPass;
 	    framebufferInfo.attachmentCount = 1;
-	    framebufferInfo.pAttachments = &viewportImageView;
-	    framebufferInfo.width = viewportSize.x;
-	    framebufferInfo.height = viewportSize.y;
+        framebufferInfo.pAttachments = &viewportData.viewportImageView;
+        framebufferInfo.width = viewportData.viewportSize.x;
+        framebufferInfo.height = viewportData.viewportSize.y;
 	    framebufferInfo.layers = 1;
 	
-	    if (vkCreateFramebuffer(vkRenderer.GetDevice(), &framebufferInfo, nullptr, &viewportFramebuffer) != VK_SUCCESS)
+	    if (vkCreateFramebuffer(vkDevice->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) != VK_SUCCESS)
 	    {
 	        throw std::runtime_error("Failed to create viewport framebuffer");
 	    }
@@ -178,45 +182,44 @@ namespace SceneryEditorX
 	
 	void EditorApplication::CleanupViewportResources()
 	{
-	    VkDevice device = vkRenderer.GetDevice();
 	
-	    if (viewportFramebuffer != VK_NULL_HANDLE)
+	    if (viewportData.viewportFramebuffer != VK_NULL_HANDLE)
 	    {
-	        vkDestroyFramebuffer(device, viewportFramebuffer, nullptr);
-	        viewportFramebuffer = VK_NULL_HANDLE;
+            vkDestroyFramebuffer(device, viewportData.viewportFramebuffer, nullptr);
+            viewportData.viewportFramebuffer = VK_NULL_HANDLE;
 	    }
 	
-	    if (viewportRenderPass != VK_NULL_HANDLE)
+	    if (viewportData.viewportRenderPass != VK_NULL_HANDLE)
 	    {
-	        vkDestroyRenderPass(device, viewportRenderPass, nullptr);
-	        viewportRenderPass = VK_NULL_HANDLE;
+            vkDestroyRenderPass(device, viewportData.viewportRenderPass, nullptr);
+            viewportData.viewportRenderPass = VK_NULL_HANDLE;
 	    }
 	
-	    if (viewportImageView != VK_NULL_HANDLE)
+	    if (viewportData.viewportImageView != VK_NULL_HANDLE)
 	    {
-	        vkDestroyImageView(device, viewportImageView, nullptr);
-	        viewportImageView = VK_NULL_HANDLE;
+            vkDestroyImageView(device, viewportData.viewportImageView, nullptr);
+            viewportData.viewportImageView = VK_NULL_HANDLE;
 	    }
 	
-	    if (viewportImage != VK_NULL_HANDLE)
+	    if (viewportData.viewportImage != VK_NULL_HANDLE)
 	    {
-	        vkDestroyImage(device, viewportImage, nullptr);
-	        viewportImage = VK_NULL_HANDLE;
+            vkDestroyImage(device, viewportData.viewportImage, nullptr);
+            viewportData.viewportImage = VK_NULL_HANDLE;
 	    }
 	
-	    if (viewportImageMemory != VK_NULL_HANDLE)
+	    if (viewportData.viewportImageMemory != VK_NULL_HANDLE)
 	    {
-	        vkFreeMemory(device, viewportImageMemory, nullptr);
-	        viewportImageMemory = VK_NULL_HANDLE;
+            vkFreeMemory(device, viewportData.viewportImageMemory, nullptr);
+            viewportData.viewportImageMemory = VK_NULL_HANDLE;
 	    }
 	}
+
 	// -------------------------------------------------------
 	
 	void EditorApplication::OnSurfaceUpdate(uint32_t width, uint32_t height)
 	{
-	    vkRenderer.cleanupSwapChain();
-	    vkRenderer.recreateSurfaceFormats();
-	    vkRenderer.createSwapChain();
+        vkSwapChain->OnResize(viewportData.viewportSize.x, viewportData.viewportSize.y);
+        viewportData.viewportResized = false;
 	}
 	
 	void EditorApplication::RecreateFrameResources()
@@ -226,18 +229,18 @@ namespace SceneryEditorX
 	        Window::WaitEvents();
 	    }
 	
-	    viewportSize = newViewportSize;
+	    viewportData.viewportSize = newViewportSize;
 	
-	    if (viewportSize.x == 0 || viewportSize.y == 0)
+	    if (viewportData.viewportSize.x == 0 || viewportData.viewportSize.y == 0)
 	    {
 	        return;
 	    }
 	
-	    WaitIdle();
+	    vkDeviceWaitIdle(device);
 	
-	    if (Window::GetFramebufferResized() || Window::IsDirty())
+	    if (Window::GetFramebufferResized() || WindowData::dirty == true)
 	    {
-	        if (Window::IsDirty())
+            if (WindowData::dirty == true)
 	        {
 	            Window::ApplyChanges();
 	        }
@@ -245,76 +248,52 @@ namespace SceneryEditorX
 	        OnSurfaceUpdate(Window::GetWidth(), Window::GetHeight());
 	    }
 	}
-	
-	/*
-	void DrawEditor()
-	{
-	    //SceneryEditorX::DrawEditor();
-	    if (!fullscreen)
-	    {
-	
-		}
-	    else
-	    {
-	        newViewportSize = {Window::GetWidth(), Window::GetHeight()};
-	        viewportHovered = true;
-	    }
-	}
-	*/
+
+    // -------------------------------------------------------
 	
 	void EditorApplication::DrawFrame()
 	{
-	    if (viewportSize.x != newViewportSize.x || viewportSize.y != newViewportSize.y)
+        if (viewportData.viewportSize.x != newViewportSize.x || viewportData.viewportSize.y != newViewportSize.y)
 	    {
 	        if (newViewportSize.x > 0 && newViewportSize.y > 0)
 	        {
-	            viewportSize = newViewportSize;
-	            cleanupViewportResources();
-	            createViewportResources();
+                viewportData.viewportSize = newViewportSize;
+	            CleanupViewportResources();
+	            CreateViewportResources();
 	        }
 	    }
-	
-	    static UI::UIManager uiManager;
-	
-	    vkRenderer.renderFrame();
-	
-	    uiManager.ViewportWindow(newViewportSize, viewportHovered, viewportImageView);
-	
-	    /*
-	    if (GetSwapChainDirty())
-	    {
-	        return;
-	    }
-		*/
-	    //SceneryEditorX::SubmitAndPresent();
-	    frameCount = (frameCount + 1) % (1 << 15);
-	}
-	
-	/*
-	void renderFrame()
-	{
-	
-	}
-	*/
 
-    EditorApplication::EditorApplication()
-    {
-    }
+        // Get a command buffer to render into
+        VkCommandBuffer commandBuffer = vkRenderer.BeginSingleTimeCommands();
 
-	EditorApplication::~EditorApplication()
+        // Set the command buffer for ImGui to render into
+        ui.SetActiveCommandBuffer(commandBuffer);
+
+        // Begin ImGui UI
+        if (uiContext)
+        {
+            uiContext->Begin();
+
+            // Draw your UI elements here
+            ui.ShowDemoWindow();
+
+            // Draw viewport if needed
+            ui.ViewportWindow(viewportData.viewportSize, viewportData.viewportHovered, viewportData.viewportImageView);
+
+            uiContext->End();
+        }
+
+        // End and submit the command buffer
+        vkRenderer.EndSingleTimeCommands(commandBuffer);
+
+        // Update frame counter
+        frameCount = (frameCount + 1) % (1 << 15);
+	}
+
+    EditorApplication::~EditorApplication()
 	{
 	    vkRenderer.~GraphicsEngine();
 	}
-	
-	/*
-	bool GetSwapChainDirty()
-	{
-	    return swapChainDirty;
-	}
-	*/
-	
-	//Ref<SceneryEditorX::GraphicsEngine> vkRenderer; //Vulkan renderer instance
-
 
 } // namespace SceneryEditorX
 

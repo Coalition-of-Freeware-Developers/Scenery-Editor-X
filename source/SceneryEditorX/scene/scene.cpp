@@ -14,7 +14,7 @@
 
 // -------------------------------------------------------
 
-namespace Scene
+namespace SceneryEditorX
 {
 
 

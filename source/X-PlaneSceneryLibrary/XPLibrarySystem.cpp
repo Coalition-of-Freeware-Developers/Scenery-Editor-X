@@ -125,9 +125,9 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
         //Read lines
         while (ifsLib.good())
         {
-            //Get the line, put it into the stringstream, and tokenize
+            //Get the line, put it into the string stream, and tokenize
             std::getline(ifsLib, strBuffer);
-            //std::replace(strBuffer.begin(), strBuffer.end(), '\t', ' ');	//Replace tabs with spaces so the stringstream properly delimits
+            //std::replace(strBuffer.begin(), strBuffer.end(), '\t', ' ');	//Replace tabs with spaces so the string stream properly delimits
             ssLineBuffer.clear();
             ssLineBuffer.str(strBuffer);
             auto tokens = TextUtils::TokenizeString(strBuffer, {' ', '\t', '\n', '\r'});
@@ -330,7 +330,7 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
             }
             else if ((tokens[0] == "EXPORT_SEASON" || tokens[0] == "EXPORT_EXTEND_SEASON") && tokens.size() >= 4)
             {
-                //Format: EXPORT_SEASON <seasons (comma delimited)> <virtual path> <real path>
+                //Format: EXPORT_SEASON <seasons (comma-delimited)> <virtual path> <real path>
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[2]);
                 if (bInPrivate)
@@ -425,7 +425,7 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
             }
             else if (tokens[0] == "EXPORT_EXCLUDE_SEASON" && tokens.size() >= 4)
             {
-                //Format: EXPORT_EXCLUDE <seasons (comma delimited)> <virtual path> <real path>
+                //Format: EXPORT_EXCLUDE <seasons (comma-delimited)> <virtual path> <real path>
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[2]);
                 if (bInPrivate)

@@ -12,8 +12,8 @@
 */
 
 #pragma once
-#include <SceneryEditorX/ui/ui.h>
 #include <GLFW/glfw3.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -25,25 +25,23 @@ namespace UI
     extern bool showAboutModal;
     extern bool showSettingsPanel;
 
+    // -------------------------------------------------------
+
     void SetDarkThemeColors();
 
 	class UIManager
     {
     public:
-
-	    void SetupDockspace(bool* p_open = nullptr);
-        void MainMenuBar();
-
-        void LayerStack();
-        void AssetBrowser();
-        void SettingsPanel();
+        GLOBAL void SetupDockspace(bool* p_open = nullptr);
+        GLOBAL void MainMenuBar();
+        GLOBAL void LayerStack();
+        GLOBAL void AssetBrowser();
+        GLOBAL void SettingsPanel();
         //void Properties();
-
-        void CreateProjectModal(GLFWwindow *window);
-        void ExitConfirmationModal(GLFWwindow *window);
-        void AboutModal();
-
-		void ViewportWindow(glm::ivec2& viewportSize, bool& viewportHovered, VkImageView imageView);
+        GLOBAL void CreateProjectModal(GLFWwindow *window);
+        GLOBAL void ExitConfirmationModal(GLFWwindow *window);
+        GLOBAL void AboutModal();
+        GLOBAL void ViewportWindow(glm::ivec2& viewportSize, bool& viewportHovered, VkImageView imageView);
     };
 
 } // namespace UI

@@ -11,13 +11,13 @@
 * -------------------------------------------------------
 */
 
-#include <SceneryEditorX/core/window.h>
 #include <Launcher/core/launcher_main.h>
 #include <SceneryEditorX/core/editor/editor.h>
+#include <SceneryEditorX/core/window.h>
 
 // -------------------------------------------------------
 
-int main(const int argc, const char *argv[])
+int main(const int argc, const char** argv[])
 {
     SceneryEditorX::Log::Init();
 

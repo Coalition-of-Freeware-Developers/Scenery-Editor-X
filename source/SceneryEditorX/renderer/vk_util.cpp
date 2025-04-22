@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 
-
 #include <cstdlib>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_util.h>

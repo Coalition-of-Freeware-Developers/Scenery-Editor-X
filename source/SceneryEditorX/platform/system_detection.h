@@ -12,6 +12,9 @@
 */
 
 // Platform detection using predefined macros
+#ifndef SYSTEM_DETECTION_H
+#define SYSTEM_DETECTION_H
+
 #if defined(_WIN32) || defined(_WINDOWS) || defined(_MSC_VER)
 	/* Windows x64/x86 */
 #ifdef _WIN64
@@ -53,3 +56,5 @@
 	/* Unknown compiler/platform */
 #error "Unknown platform!"
 #endif // End of platform detection
+
+#endif // SYSTEM_DETECTION_H

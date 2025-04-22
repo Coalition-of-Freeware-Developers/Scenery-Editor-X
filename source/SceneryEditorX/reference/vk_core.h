@@ -7,134 +7,373 @@
 * -------------------------------------------------------
 * vk_core.h
 * -------------------------------------------------------
-* Created: 17/3/2025
+* Created: 21/3/2025
 * -------------------------------------------------------
 */
 
 #pragma once
 
-#define VMA_IMPLEMENTATION
-
-#include <SceneryEditorX/core/window.h>
+#define GLFW_INCLUDE_VULKAN
+#include <functional>
+#include <GLFW/glfw3.h>
+#include <iostream>
+#include <optional>
 #include <SceneryEditorX/renderer/vk_device.h>
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
-
+#include <vector>
 
 // -------------------------------------------------------
 
-class GraphicsEngine
+namespace SceneryEditorX
 {
-public:
-    GraphicsEngine(GLFWwindow &window);
-	~GraphicsEngine();
+	#ifdef SEDX_DEBUG
+	const bool enableValidationLayers = true;
+	#else
+	const bool enableValidationLayers = false;
+	#endif
+	
+	struct QueueFamilyIndices
+	{
+	    std::optional<uint32_t> graphicsFamily;
+	    std::optional<uint32_t> presentFamily;
+	
+	    bool isComplete()
+	    {
+	        return graphicsFamily.has_value() && presentFamily.has_value();
+	    }
+	};
+	
+	struct SwapChainSupportDetails
+	{
+	    VkSurfaceCapabilitiesKHR capabilities;
+	    std::vector<VkSurfaceFormatKHR> formats;
+	    std::vector<VkPresentModeKHR> presentModes;
+	};
+	
+	struct Vertex
+	{
+	    glm::vec3 pos;
+	    glm::vec3 color;
+	    glm::vec2 texCoord;
+	
+	    static VkVertexInputBindingDescription getBindingDescription()
+	    {
+	        VkVertexInputBindingDescription bindingDescription{};
+	        bindingDescription.binding = 0;
+	        bindingDescription.stride = sizeof(Vertex);
+	        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	
+	        return bindingDescription;
+	    }
+	
+	    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
+	    {
+	        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+	
+	        attributeDescriptions[0].binding = 0;
+	        attributeDescriptions[0].location = 0;
+	        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+	
+	        attributeDescriptions[1].binding = 0;
+	        attributeDescriptions[1].location = 1;
+	        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	        attributeDescriptions[1].offset = offsetof(Vertex, color);
+	
+	        attributeDescriptions[2].binding = 0;
+	        attributeDescriptions[2].location = 2;
+	        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+	        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+	
+	        return attributeDescriptions;
+	    }
+	
+	    bool operator==(const Vertex &other) const
+	    {
+	        return pos == other.pos && color == other.color && texCoord == other.texCoord;
+	    }
+	};
 
-	// -----------------------------------------
+} // namespace SceneryEditorX
 
-    void initEngine();
+// -------------------------------------------------------
 
-    const VkPhysicalDeviceProperties &getPhysicalProperties() const;
-    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
+namespace std
+{
+	template <>
+	struct std::hash<SceneryEditorX::Vertex>
+	{
+	    size_t operator()(SceneryEditorX::Vertex const &vertex) const
+	    {
+	        return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+	    }
+	};
 
-    // -----------------------------------------
+} // namespace std
 
-private:
-    /*
-     * -------------------------------------------------------
-     * CREATORS
-     * -------------------------------------------------------
-     */
-    void create_instance(GLFWwindow *window);
-	void create_debug_callback();
-    void create_device();
-    void create_logic_device();
-	void create_destruction_handler();
-	void create_command_pool();
-	void create_sync_objects();
-	void create_descriptors();
+// -------------------------------------------------------
 
-    /*
-     * -------------------------------------------------------
-     * DESTRUCTORS
-     * -------------------------------------------------------
-     */
-    void destroy_instance();
-    void destroy_device();
-    void destroy_swap_chain();
+namespace SceneryEditorX
+{
+    struct UniformBufferObject
+    {
+        alignas(16) glm::mat4 model;
+        alignas(16) glm::mat4 view;
+        alignas(16) glm::mat4 proj;
+    };
+	
+// -------------------------------------------------------
+	
+	class GraphicsEngine
+	{
+	public:
+	
+		void initEngine(GLFWwindow *window, uint32_t width, uint32_t height);
+        void createSwapChain();
+        void cleanUp();
+        void cleanupSwapChain();
+        void recreateSwapChain();
+        void renderFrame();
+        void updateUniformBuffer(uint32_t currentImage);
+        void createTextureImage();
+        void createTextureImageView();
+        void createTextureSampler();
+        void loadModel();
+        void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+        void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+        void recreateSurfaceFormats();
+        void generateMipmaps(VkImage image,
+                             VkFormat imageFormat,
+                             int32_t texWidth,
+                             int32_t texHeight,
+                             uint32_t mipLevels);
 
-    // -----------------------------------------
+        LOCAL void framebufferResizeCallback(GLFWwindow *window, int width, int height);
 
-    bool enableValidationLayers = true;
-	VkApplicationInfo m_AppInfo;
-	VkInstanceCreateInfo m_InstanceInfo;
-	VkDebugUtilsMessengerEXT m_DebugMessenger;
+        VkCommandBuffer beginSingleTimeCommands();
+	    VkDevice GetDevice() const { return device; }
+        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
+        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
-    VkDevice g_Device = VK_NULL_HANDLE;
+		// -------------------------------------------------------
+        // GETTER FUNCTIONS
+        // -------------------------------------------------------
 
-	VkInstance m_Instance = VK_NULL_HANDLE;
-	VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-    //VulkanDevice m_PhysicalDevice;
-    VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
-	//VkDevice m_Device = VK_NULL_HANDLE;
-    VkSampleCountFlagBits maxSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkSampleCountFlags sampleCounts;
+		VkInstance GetInstance() const { return instance; }
+		VkPhysicalDevice GetPhysicalDevice() const { return physicalDevice; }
+		VkQueue GetGraphicsQueue() const { return graphicsQueue; }
+		VkQueue GetPresentQueue() const { return presentQueue; }
+		VkRenderPass GetRenderPass() const { return renderPass; }
+		VkDescriptorPool GetDescriptorPool() const { return descriptorPool; }
+		VkExtent2D GetSwapChainExtent() const { return swapChainExtent; }
+		VkSampleCountFlagBits GetMsaaSamples() const { return msaaSamples; }
+		VkFormat GetSwapChainImageFormat() const { return swapChainImageFormat; }
+		VkDeviceMemory GetTextureImageMemory() const { return textureImageMemory; }
+		VkImage GetTextureImage() const { return textureImage; }
+		VkImageView GetTextureImageView() const { return textureImageView; }
+		VkSampler GetTextureSampler() const { return textureSampler; }
+		VkDeviceMemory GetDepthImageMemory() const { return depthImageMemory; }
+		VkImageView GetDepthImageView() const { return depthImageView; }
+		VkImage GetDepthImage() const { return depthImage; }
+		VkDescriptorSetLayout GetDescriptorSetLayout() const { return descriptorSetLayout; }
+		VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }
+		VkPipeline GetGraphicsPipeline() const { return graphicsPipeline; }
+		VkCommandPool GetCommandPool() const { return commandPool; }
+		VkDeviceMemory GetIndexBufferMemory() const { return indexBufferMemory; }
+		VkBuffer GetIndexBuffer() const { return indexBuffer; }
+		VkDeviceMemory GetVertexBufferMemory() const { return vertexBufferMemory; }
+		VkBuffer GetVertexBuffer() const { return vertexBuffer; }
+		VkDeviceMemory GetUniformBufferMemory(size_t index) const { return uniformBuffersMemory[index]; }
+		VkBuffer GetUniformBuffer(size_t index) const { return uniformBuffers[index]; }
+		VkDescriptorSet GetDescriptorSet(size_t index) const { return descriptorSets[index]; }
+		VkFramebuffer GetSwapChainFramebuffer(size_t index) const { return swapChainFramebuffers[index]; }
+		VkImageView GetSwapChainImageView(size_t index) const { return swapChainImageViews[index]; }
+		VkSemaphore GetRenderFinishedSemaphore(size_t index) const { return renderFinishedSemaphores[index]; }
+		VkSemaphore GetImageAvailableSemaphore(size_t index) const { return imageAvailableSemaphores[index]; }
+        QueueFamilyIndices GetQueueFamilyIndices() const { return queueFamilyIndices; }
+		const std::vector<VkImage>& GetSwapChainImages() const { return swapChainImages; }
 
-    VkPhysicalDeviceMemoryProperties memoryProperties;
+		// -------------------------------------------------------
 
-    Scope<VkDevice> m_Device;
-    Scope<VkCommandPool> CmdBuffPool_;
-    Scope<VkCommandBuffer> CpyCmdBuff;
+		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
+	    {
+	        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+	
+	        return VK_FALSE;
+	    }
 
-    Ref<VulkanDevice> m_PhysicalDevice;
-    std::vector<Ref<VkImage>> Images;
-    std::vector<Ref<VkImageView>> ImageViews;
+		// -------------------------------------------------------
 
-    uint32_t apiVersion;
-    std::vector<bool> activeLayers;
-    std::vector<const char *> activeLayersNames;
-    std::vector<VkLayerProperties> layers;
-    std::vector<bool> activeExtensions;
-    std::vector<const char *> activeExtensionsNames;
-    std::vector<VkExtensionProperties> instanceExtensions;
+	private:
+		GLFWwindow *window;
+		VkInstance instance = VK_NULL_HANDLE;
+	    VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
+        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
-	uint32_t m_QueueFamily = 0;
-	VkSurfaceFormatKHR m_SurfaceFormat = {};
+		// -------------------------------------------------------
 
-    // preferred, warn if not available
-    VkFormat colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
-    VkColorSpaceKHR colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-    VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkDevice device = VK_NULL_HANDLE;
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+		VulkanPhysicalDevice physDeviceManager;
 
-    // -----------------------------------------
+		// -------------------------------------------------------
 
-	//std::vector<VkImage> Images;
-	//std::vector<VkImageView> ImageViews;
+		VkPhysicalDeviceFeatures physicalFeatures{};
+        VkPhysicalDeviceProperties physicalProperties{};
+        VkPhysicalDeviceMemoryProperties memoryProperties{};
 
-	VkQueue m_GraphicsQueue;
-	VkQueue m_PresentQueue;
+		// -------------------------------------------------------
 
-    VkPhysicalDeviceFeatures physicalFeatures{};
-    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-    VkPhysicalDeviceProperties physicalProperties{};
+        VkFormat swapChainImageFormat;
+		VkQueue graphicsQueue = VK_NULL_HANDLE;
+        VkQueue presentQueue = VK_NULL_HANDLE;
+        VkExtent2D swapChainExtent;
+	    VkSurfaceKHR surface;
+		VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+        QueueFamilyIndices queueFamilyIndices;
+        VkSampleCountFlags sampleCounts;
+        VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
-    std::vector<VkPresentModeKHR> availablePresentModes;
-    std::vector<VkSurfaceFormatKHR> availableSurfaceFormats;
-    std::vector<VkExtensionProperties> availableExtensions;
-    std::vector<VkQueueFamilyProperties> availableFamilies;
+		// -------------------------------------------------------
 
-    // -----------------------------------------
+	    std::vector<bool> activeLayers;
+        std::vector<bool> activeExtensions;
+	    std::vector<const char *> activeLayersNames;
+        std::vector<const char *> activeExtensionsNames;
+		std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+        std::vector<const char *> requiredExtensions =
+		{
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+			VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+			VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
+        };
+        const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-	//VkCommandPool CmdBuffPool_ = VK_NULL_HANDLE;
-	//VkCommandBuffer CpyCmdBuff = VK_NULL_HANDLE;
-	//RenderQueue ImgQueue;
+        // -------------------------------------------------------
 
-	// -----------------------------------------
+		std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+        std::vector<VkImage> swapChainImages;
+        std::vector<VkFence> inFlightFences;
+        std::vector<VkBuffer> uniformBuffers;
+        std::vector<VkImageView> swapChainImageViews;
+        std::vector<VkSemaphore> imageAvailableSemaphores;
+        std::vector<VkSemaphore> renderFinishedSemaphores;
+        std::vector<VkFramebuffer> swapChainFramebuffers;
+        std::vector<VkDeviceMemory> uniformBuffersMemory;
+        std::vector<VkDescriptorSet> descriptorSets;
+		std::vector<VkCommandBuffer> commandBuffers;
+        std::vector<VkPresentModeKHR> availablePresentModes;
+        std::vector<VkLayerProperties> layers;
+        std::vector<VkSurfaceFormatKHR> availableSurfaceFormats;
+        std::vector<VkExtensionProperties> availableExtensions;
+        std::vector<VkExtensionProperties> instanceExtensions;
+        std::vector<VkQueueFamilyProperties> availableFamilies;
 
-protected:
-	GLFWwindow& m_Window;
-	uint32_t m_CurrentImageIndex = 0;
-	uint32_t m_CurrentFrame = 0;
-	uint64_t m_FrameCount = 0;
-    VkSampler CreateSampler(float maxLod);
-};
+        VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+
+		// -------------------------------------------------------
+        uint32_t apiVersion;
+		uint32_t currentFrame = 0;
+		uint32_t additionalImages = 0;
+        uint32_t framesInFlight = 3;
+        uint32_t mipLevels;
+
+		VkPipeline graphicsPipeline;
+		VkRenderPass renderPass;
+		VkCommandPool commandPool;
+        VkPipelineLayout pipelineLayout;
+
+		VkBuffer indexBuffer;
+		VkBuffer vertexBuffer;
+        VkDeviceMemory indexBufferMemory;
+        VkDeviceMemory vertexBufferMemory;
+        VkDescriptorPool descriptorPool;
+        VkDescriptorSetLayout descriptorSetLayout;
+
+		// -------------------------------------------------------
+
+		VkImage textureImage;
+        VkSampler textureSampler;
+        VkImageView textureImageView;
+        VkDeviceMemory textureImageMemory;
+
+		// -------------------------------------------------------
+
+		VkImage depthImage;
+        VkImageView depthImageView;
+        VkDeviceMemory depthImageMemory;
+
+        // -------------------------------------------------------
+
+		VkImage colorImage;
+        VkDeviceMemory colorImageMemory;
+        VkImageView colorImageView;
+
+		// -------------------------------------------------------
+
+        bool framebufferResized = false;
+        bool isDeviceSuitable(VkPhysicalDevice device);
+        bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+        bool checkValidationLayerSupport();
+        bool hasStencilComponent(VkFormat format);
+
+		// -------------------------------------------------------
+
+	    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
+        void createInstance();
+		void createDebugMessenger();
+        void createSurface(GLFWwindow *glfwWindow);
+		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
+	    bool isDeviceCompatible(VkPhysicalDevice device);
+	    void pickPhysicalDevice();
+		void createLogicalDevice();
+        void createImageViews();
+        void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format,  VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
+        void createRenderPass();
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
+        void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+        void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        void createVertexBuffer();
+        void createColorResources();
+
+        void createDepthResources();
+        void createIndexBuffer();
+        void createUniformBuffers();
+        void createDescriptorPool();
+        void createDescriptorSetLayout();
+        void createDescriptorSets();
+        void createGraphicsPipeline();
+        void createFramebuffers();
+        void createCommandPool();
+        void createCommandBuffers();
+        void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+        void createSyncObjects();
+
+		// -------------------------------------------------------
+
+		VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
+        VkShaderModule createShaderModule(const std::vector<char> &code);
+	    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+	    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+	    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+	    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+        VkSampleCountFlagBits getMaxUsableSampleCount();
+
+		// -------------------------------------------------------
+
+        VkFormat findDepthFormat();
+	    VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+
+		// -------------------------------------------------------
+
+	};
+
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------
+
+
+
+

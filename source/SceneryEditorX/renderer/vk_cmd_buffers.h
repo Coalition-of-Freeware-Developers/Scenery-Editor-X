@@ -13,64 +13,54 @@
 
 #pragma once
 
+#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/renderer/vk_util.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	using BufferUsageFlags = Flags;
-	using MemoryFlags = Flags;
-
 	// -------------------------------------------------------
 
-	enum Queue
-    {
-        Graphics = 0,
-        Compute = 1,
-        Transfer = 2,
-        Count = 3,
-    };
-
-	struct Buffer
+	class CommandBuffer
 	{
-        uint32_t size;
-        BufferUsageFlags usage;
-        MemoryFlags memory;
+	public:
+        static CommandResources &GetCurrentCommandResources();
+        CommandBuffer(uint32_t count = 0);
+        CommandBuffer(bool swapchain);
+        ~CommandBuffer();
+
+        virtual void Begin();
+        virtual void End();
+        virtual void Submit();
+
+        void EndCmdBuffer(VkSubmitInfo submitInfo);
+
+        static void EndCommandBuffer();
+
+        VkCommandBuffer GetActiveCommandBuffer() const { return activeCmdBuffer; }
+
+        VkCommandBuffer GetCommandBuffer(uint32_t frameIndex) const
+        {
+            frameIndex = RenderData::frameIndex;
+            SEDX_CORE_ASSERT(frameIndex < cmdBuffers.size());
+            return cmdBuffers[frameIndex];
+        }
+
+	private:
+        VkCommandPool cmdPool = nullptr;
+        VkCommandBuffer activeCmdBuffer = nullptr;
+        Ref<VulkanDevice> device;
+        RenderData renderData;
+        std::vector<VkFence> waitFences;
+        std::vector<VkCommandBuffer> cmdBuffers;
 	};
 
-	struct CommandResources
-	{
-        uint8_t* stagingCpu = nullptr;
-        uint32_t stagingOffset = 0;
-        Buffer staging;
-        VkCommandPool pool = VK_NULL_HANDLE;
-        VkCommandBuffer buffer = VK_NULL_HANDLE;
-        VkFence fence = VK_NULL_HANDLE;
-        VkQueryPool queryPool;
-        std::vector<std::string> timeStampNames;
-        std::vector<uint64_t> timeStamps;
-    };
-
-	struct InternalQueue
-	{
-        VkQueue queue = VK_NULL_HANDLE;
-        int family = -1;
-        std::vector<CommandResources> commands;
-    };
+    inline InternalQueue queues[Count];
+    inline Queue currentQueue = Count;
 
 	// -------------------------------------------------------
-
-	InternalQueue queues[Queue::Count];
-    Queue currentQueue = Queue::Count;
-
-	// -------------------------------------------------------
-
-    void EndCmdBuffer(VkSubmitInfo submitInfo);
-
-	// -------------------------------------------------------
-
 
 } // namespace SceneryEditorX
 

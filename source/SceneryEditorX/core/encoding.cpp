@@ -17,11 +17,10 @@
 
 namespace SceneryEditorX
 {
-	uint64_t ID;
 
-	std::string const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const std::string base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	inline bool IsBase64(unsigned char c)
+	inline bool IsBase64(const unsigned char c)
     {
         return (c == 43 ||              // +
                 (c >= 47 && c <= 57) || // /-9
@@ -29,7 +28,7 @@ namespace SceneryEditorX
                 (c >= 97 && c <= 122)); // a-z
     }
 
-	std::string EncodeBase64(unsigned char const* input, size_t len)
+	std::string EncodeBase64(const unsigned char * input, size_t len)
 	{
 	    std::string ret;
 	    int i = 0;
@@ -82,7 +81,7 @@ namespace SceneryEditorX
 	    return ret;
 	}
 
-	std::vector<uint8_t> DecodeBase64(std::string const& input)
+    static std::vector<uint8_t> DecodeBase64(const std::string & input)
 	{
 	    size_t in_len = input.size();
 	    int i = 0;
@@ -132,18 +131,18 @@ namespace SceneryEditorX
 	
 	    return ret;
 	}
-	
-	uint32_t HashUUID(const std::vector<UUID>& invec)
-	{
-	    std::vector<UUID> vec = invec;
-	    std::sort(vec.begin(), vec.end());
-	    std::size_t seed = vec.size();
-	    for(auto& i : vec)
-	    {
-	        seed ^= i.ID + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-	    }
-	    return seed;
-	}
+
+    //uint32_t Encoding::HashUUID(const std::vector<uint32_t> &invec)
+    //{
+    //    std::vector<uint32_t> vec = invec;
+    //    std::ranges::sort(vec);
+    //    std::size_t seed = vec.size();
+    //    for (auto &i : vec)
+    //    {
+    //        seed ^= i.ID + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    //    }
+    //    return seed;
+    //}
 
 
 } // namespace SceneryEditorX

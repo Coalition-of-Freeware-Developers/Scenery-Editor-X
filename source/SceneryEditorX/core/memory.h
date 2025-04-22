@@ -32,9 +32,9 @@ namespace SceneryEditorX
 
 	struct Allocation
 	{
-		void* Memory = 0;
+		void* Memory = nullptr;
 		size_t Size = 0;
-		const char* Category = 0;
+		const char* Category = nullptr;
 	};
 
 	namespace Memory
@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	template <class T>
 	struct Mallocator
 	{
-		typedef T value_type;
+		using value_type = T;
 
 		Mallocator() = default;
 		template <class U> constexpr Mallocator(const Mallocator <U>&) noexcept {}
@@ -63,7 +63,7 @@ namespace SceneryEditorX
 			throw std::bad_alloc();
 		}
 
-		void deallocate(T* p, std::size_t n) noexcept {
+        static void deallocate(T* p, std::size_t n) noexcept {
 			std::free(p);
 		}
 	};

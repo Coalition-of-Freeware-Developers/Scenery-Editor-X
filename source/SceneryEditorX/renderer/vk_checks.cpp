@@ -12,7 +12,7 @@
 */
 
 #include <SceneryEditorX/renderer/vk_checks.h>
-#include <vector>
+#include <SceneryEditorX/renderer/vk_util.h>
 
 // -------------------------------------------------------
 
@@ -26,9 +26,10 @@ namespace SceneryEditorX
 	 */
 	void VulkanChecks::InitChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers, const VkPhysicalDevice &device)
 	{
-        CheckAPIVersion(programStats.minVulkanVersion);
+        CheckAPIVersion(SoftwareStats::minVulkanVersion);
 	    CheckExtensions(extensions);
 	    CheckLayers(layers);
+        CheckDeviceFeatures(device);
         IsDeviceCompatible(device);
 	}
 
@@ -39,7 +40,7 @@ namespace SceneryEditorX
 	 * @return True if the Vulkan API version is compatible.
 	 * @return False if the Vulkan API version is not compatible.
 	 */
-    bool VulkanChecks::CheckAPIVersion(uint32_t minVulkanVersion)
+    bool VulkanChecks::CheckAPIVersion(const uint32_t minVulkanVersion)
     {
         uint32_t instanceVersion;
 		vkEnumerateInstanceVersion(&instanceVersion);
@@ -90,18 +91,17 @@ namespace SceneryEditorX
 	 * @return True if the device has support for the required layers.
 	 * @return False if the device cannot support the required layers.
 	 */
-    bool VulkanChecks::CheckValidationLayerSupport() const
+    bool VulkanChecks::CheckValidationLayerSupport()
     {
-        uint32_t layerCount;
+        uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
         std::vector<VkLayerProperties> availableLayers(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-        for (const char *layerName : ValidationLayers)
+        for (const char *layerName : Layers::validationLayers)
         {
             auto layerFound = false;
-
             for (const auto &layerProperties : availableLayers)
             {
                 if (strcmp(layerName, layerProperties.layerName) == 0)
@@ -126,19 +126,18 @@ namespace SceneryEditorX
 	 * @return True if the device has support for the required extensions.
 	 * @return False if the device cannot support the required extensions.
 	 */
-	bool VulkanChecks::CheckDeviceExtensionSupport(const VkPhysicalDevice device) const
+	bool VulkanChecks::CheckDeviceExtensionSupport(const VkPhysicalDevice device)
     {
-
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-        std::set<std::string> requiredExtensions(DeviceExtensions.begin(), DeviceExtensions.end());
+        std::set<std::string> requiredExtensions(Extensions::requiredExtensions.begin(), Extensions::requiredExtensions.end());
 
 		SEDX_CORE_INFO("Checking for required device extensions:");
-        for (const auto &extension : DeviceExtensions)
+        for (const auto &extension : Extensions::requiredExtensions)
         {
             SEDX_CORE_INFO("Required: {}", ToString(extension));
         }
@@ -171,10 +170,11 @@ namespace SceneryEditorX
 	 */
 	void VulkanChecks::CheckExtensions(const std::vector<const char *> &extensions)
 	{
-	    vkEnumerateInstanceExtensionProperties(nullptr, &ExtensionCount, nullptr);
-	
-	    std::vector<VkExtensionProperties> availableExtensions(ExtensionCount);
-	    vkEnumerateInstanceExtensionProperties(nullptr, &ExtensionCount, availableExtensions.data());
+        uint32_t extensionCount;
+	    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
 	#ifdef SEDX_DEBUG
 	    SEDX_CORE_INFO("============================================");
 	    SEDX_CORE_INFO("Available extensions");
@@ -219,10 +219,10 @@ namespace SceneryEditorX
 	 */
 	void VulkanChecks::CheckLayers(const std::vector<const char *> &layers)
 	{
-	    vkEnumerateInstanceLayerProperties(&LayerCount, nullptr);
+	    vkEnumerateInstanceLayerProperties(&vkLayerData.layerCount, nullptr);
 	
-	    std::vector<VkLayerProperties> availableLayers(LayerCount);
-	    vkEnumerateInstanceLayerProperties(&LayerCount, availableLayers.data());
+	    std::vector<VkLayerProperties> availableLayers(vkLayerData.layerCount);
+	    vkEnumerateInstanceLayerProperties(&vkLayerData.layerCount, availableLayers.data());
 	#ifdef SEDX_DEBUG
 	    SEDX_CORE_INFO("Available layer/s");
 	    SEDX_CORE_INFO("____________________________________________");
@@ -259,23 +259,109 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief - Check if a device is suitable for rendering.
-	 * 
+	 * @brief Checks to see if the device has support for the required features.
 	 * @param device - The Vulkan physical device.
-	 * @return - bool True if the device is suitable, false otherwise.
+	 * @return True if the device has support for the required features.
+	 * @return False if the device cannot support the required features.
+	 */
+    bool VulkanChecks::CheckDeviceFeatures(const VkPhysicalDevice &device)
+    {
+	    VkPhysicalDeviceFeatures deviceFeatures;
+	    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+        constexpr VulkanDeviceFeatures requiredFeatures; // Create a temporary instance with default values
+	    
+	    // Check for all true features in our configuration if they're supported by the device
+	    bool missingFeatures = false;
+	    std::string missingFeaturesLog;
+	
+	    // Check all features that might be required by our application
+        CHECK_FEATURE(robustBufferAccess)
+        CHECK_FEATURE(fullDrawIndexUint32)
+        CHECK_FEATURE(imageCubeArray)
+        CHECK_FEATURE(independentBlend)
+        CHECK_FEATURE(geometryShader)
+        CHECK_FEATURE(tessellationShader)
+        CHECK_FEATURE(sampleRateShading)
+        CHECK_FEATURE(dualSrcBlend)
+        CHECK_FEATURE(logicOp)
+        CHECK_FEATURE(multiDrawIndirect)
+        CHECK_FEATURE(drawIndirectFirstInstance)
+        CHECK_FEATURE(depthClamp)
+        CHECK_FEATURE(depthBiasClamp)
+        CHECK_FEATURE(fillModeNonSolid)
+        CHECK_FEATURE(depthBounds)
+        CHECK_FEATURE(wideLines)
+        CHECK_FEATURE(largePoints)
+        CHECK_FEATURE(alphaToOne)
+        CHECK_FEATURE(multiViewport)
+        CHECK_FEATURE(samplerAnisotropy)
+        CHECK_FEATURE(textureCompressionETC2)
+        CHECK_FEATURE(textureCompressionASTC_LDR)
+        CHECK_FEATURE(textureCompressionBC)
+        CHECK_FEATURE(occlusionQueryPrecise)
+        CHECK_FEATURE(pipelineStatisticsQuery)
+        CHECK_FEATURE(vertexPipelineStoresAndAtomics)
+        CHECK_FEATURE(fragmentStoresAndAtomics)
+        CHECK_FEATURE(shaderTessellationAndGeometryPointSize)
+        CHECK_FEATURE(shaderImageGatherExtended)
+        CHECK_FEATURE(shaderStorageImageExtendedFormats)
+        CHECK_FEATURE(shaderStorageImageMultisample)
+        CHECK_FEATURE(shaderStorageImageReadWithoutFormat)
+        CHECK_FEATURE(shaderStorageImageWriteWithoutFormat)
+        CHECK_FEATURE(shaderUniformBufferArrayDynamicIndexing)
+        CHECK_FEATURE(shaderSampledImageArrayDynamicIndexing)
+        CHECK_FEATURE(shaderStorageBufferArrayDynamicIndexing)
+        CHECK_FEATURE(shaderStorageImageArrayDynamicIndexing)
+        CHECK_FEATURE(shaderClipDistance)
+	    CHECK_FEATURE(shaderCullDistance)
+	    CHECK_FEATURE(shaderFloat64)
+	    CHECK_FEATURE(shaderInt64)
+	    CHECK_FEATURE(shaderInt16)
+	    CHECK_FEATURE(shaderResourceResidency)
+	    CHECK_FEATURE(shaderResourceMinLod)
+	    CHECK_FEATURE(sparseBinding)
+        CHECK_FEATURE(sparseResidencyBuffer)
+        CHECK_FEATURE(sparseResidencyImage2D)
+        CHECK_FEATURE(sparseResidencyImage3D)
+        CHECK_FEATURE(sparseResidency2Samples)
+        CHECK_FEATURE(sparseResidency4Samples)
+        CHECK_FEATURE(sparseResidency8Samples)
+        CHECK_FEATURE(sparseResidency16Samples)
+        CHECK_FEATURE(sparseResidencyAliased)
+        CHECK_FEATURE(variableMultisampleRate)
+        CHECK_FEATURE(inheritedQueries)
+
+        if (missingFeatures > 0)
+	    {
+	        SEDX_CORE_ERROR("Vulkan: Device does not support all required features:");
+            //SEDX_CORE_ERROR("Missing features: {}", missingFeaturesLog);
+	        ErrMsg("Vulkan: Device does not support all required features");
+	        return false;
+	    }
+	
+	    SEDX_CORE_INFO("Vulkan: All required device features are supported");
+	    return true;
+    }
+
+	/**
+	 * @brief - Check if a device is suitable for rendering.
+	 * @param device - The Vulkan physical device.
+	 * @return True if the device is suitable.
+	 * @return False if the device is not suitable.
 	 */
     bool VulkanChecks::IsDeviceCompatible(const VkPhysicalDevice &device)
     {
-        VkPhysicalDeviceFeatures deviceFeatures;
         VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
         vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-        // Check for required features and properties
-        const bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
-                          (deviceFeatures.geometryShader) && (deviceFeatures.tessellationShader);
+        // Check for required device type (discrete GPU preferred)
+        if (const bool isDiscreteGPU = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU); !isDiscreteGPU)
+        {
+            SEDX_CORE_WARN("Vulkan: Device is not a discrete GPU. Performance might be affected.");
+        }
 
-        if (!isSuitable)
+        if (const bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (CheckDeviceFeatures(device) == true); !isSuitable)
         {
             SEDX_CORE_ERROR("Vulkan: Device does not meet required features or is not discrete GPU");
             ErrMsg("Vulkan: Device does not meet required features or is not discrete GPU");

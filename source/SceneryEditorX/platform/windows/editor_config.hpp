@@ -12,7 +12,6 @@
 */
 
 #pragma once
-
 #include <SceneryEditorX/platform/system_detection.h>
 
 // -------------------------------------------------------

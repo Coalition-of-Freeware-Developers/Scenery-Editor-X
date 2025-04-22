@@ -187,103 +187,153 @@ struct Image
 //};
 
 // -------------------------------------------------------
-
-class GUI
+namespace SceneryEditorX::UI
 {
-public:
-    GUI();
-    ~GUI();
-    void initGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &renderer);
-
-	// Stores the active command buffer
-    VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
-
-	// Method to set the command buffer
-    // TODO: Refactor this later. This should be handled better
-	//void setActiveCommandBuffer(VkCommandBuffer cmdBuffer) { activeCommandBuffer = cmdBuffer; }
-
     /**
-	 * @brief Handles resizing of the window
-	 * @param width New width of the window
-	 * @param height New height of the window
-	 */
-    void resize(uint32_t width, uint32_t height) const;
-
-    /**
-	 * @brief Starts a new ImGui frame to be called before drawing any window
-	 */
-    void newFrame();
-
-    /**
-     * @brief Cleans up ImGui resources
+     * @brief Main GUI class responsible for ImGui integration with Vulkan
+     * 
+     * This class manages the lifecycle of ImGui resources and provides
+     * utilities for common UI operations in the editor.
      */
-    void cleanUp();
+	class GUI
+	{
+	public:
+	    GUI();
+	    ~GUI();
+
+		/**
+         * @brief Initialize ImGui with the provided Vulkan renderer and window
+         * @param window GLFW window handle
+         * @param renderer Graphics engine reference
+         * @return True if initialization was successful
+         */
+        bool InitGUI(GLFWwindow *window, GraphicsEngine &renderer);
+	
+        /**
+         * @brief Set the command buffer for rendering ImGui
+         * @param cmdBuffer Vulkan command buffer to render into
+         */
+        void SetActiveCommandBuffer(const VkCommandBuffer cmdBuffer) { activeCommandBuffer = cmdBuffer; }
+        [[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() const { return activeCommandBuffer; }
+	
+	    /**
+	     * @brief Handles resizing of the window
+	     * @param width New width of the window
+	     * @param height New height of the window
+	     */
+	    void Resize(uint32_t width, uint32_t height);
+	
+        /**
+         * @brief Begin a new ImGui frame
+         * 
+         * This should be called at the start of each frame before any ImGui drawing
+         */
+        void BeginFrame() const;
+
+        /**
+         * @brief End the ImGui frame and render it to the active command buffer
+         * 
+         * This should be called after all ImGui drawing is complete
+         */
+        void EndFrame() const;
+	
+        /**
+         * @brief Clean up ImGui resources
+         * 
+         * This should be called during application shutdown
+         */
+        void CleanUp();
+
+        /**
+         * @brief Update the GUI state
+         * @param deltaTime Time elapsed since last update
+         */
+        void Update(float deltaTime) const;
+	
+        /**
+         * @brief Show the ImGui demo window
+         * @param open Pointer to boolean controlling window visibility
+         */
+        void ShowDemoWindow(bool *open = nullptr) const;
+
+        /**
+         * @brief Shows application info in an ImGui window
+         * @param appName Application name
+         */
+        void ShowAppInfo(const std::string &appName) const;
+
+        /**
+         * @brief Initialize a viewport window for rendering
+         * @param size Initial viewport size
+         * @param imageView Vulkan image view to render into
+         * @return True if initialization was successful
+         */
+        bool InitViewport(const glm::ivec2 &size, VkImageView imageView);
+
+        /**
+         * @brief Display the viewport window with the scene rendering
+         * @param size Reference that will be updated with new viewport size
+         * @param hovered Will be set to true if mouse is hovering the viewport
+         * @param imageView Vulkan image view containing the rendered scene
+         */
+        void ViewportWindow(glm::ivec2 &size, bool &hovered, VkImageView imageView);
+
+        /**
+         * @brief Set ImGui style (colors, sizes, etc.)
+         */
+        INTERNAL void SetStyle();
+
+        /**
+         * @brief Configure and load fonts for ImGui
+         */
+        void SetFonts() const;
+
+        /**
+         * @brief Get a descriptor set for an image to use in ImGui
+         * @param imageView Vulkan image view
+         * @param sampler Vulkan sampler
+         * @param layout Image layout
+         * @return ImTextureID that can be used with ImGui::Image functions
+         */
+        ImTextureID GetTextureID(VkImageView imageView, VkSampler sampler, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        GLOBAL bool visible;                 /// Used to show/hide the GUI
+        LOCAL const std::string defaultFont; /// Default font name
+
+	private:
+        /// Vulkan resources
+        //Window *window = nullptr;
+        GLFWwindow *window = nullptr;
+        SwapChain *swapchain = nullptr;
+        VulkanDevice *device = nullptr;
+        //VkDevice device = VK_NULL_HANDLE;
+        GraphicsEngine *renderer = nullptr;
+        VkDescriptorPool imguiPool = VK_NULL_HANDLE;
+        VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
+
+	    /// State tracking
+	    bool initialized = false;
+		float contentScaleFactor = 1.0f; ///  Scale factor to apply due to a difference between the window and GL pixel sizes
+        float dpiFactor = 1.0f;          /// Scale factor to apply to the size of gui elements (expressed in dp)
+        bool viewportInitialized = false;
+
+		/// ImGui window flags
+        const ImGuiWindowFlags commonFlags = ImGuiWindowFlags_NoCollapse;
+        const ImGuiWindowFlags optionsFlags = ImGuiWindowFlags_NoResize;
+        const ImGuiWindowFlags infoFlags = ImGuiWindowFlags_NoMove;
+
+        /// Helper methods
+        bool CreateDescriptorPool();
+        void UpdateDpiScale();
+
+	};
 
     /**
-	 * @brief Updates the Gui
-	 * @param delta_time Time passed since last update
-	 */
-    void update(float delta_time);
-
-    /**
-     * @brief 
+     * @brief Initialize custom ImGui extensions
      */
-    bool updateBuffers = false;
+	void initImGuiExtensions();
 
-	/**
-	 * @brief Shows an overlay top window with app info and maybe stats
-	 * @param app_name Application name
-	 * @param stats Statistics to show (can be null)
-	 * @param debug_info Debug info to show (can be null)
-	 */
-    //void show_top_window(const std::string &app_name, const Stats *stats = nullptr, DebugInfo *debug_info = nullptr);
+} // namespace SceneryEditorX::UI
 
-    /**
-	 * @brief Shows the ImGui Demo window
-	 */
-    void show_demo_window();
-
-    /**
-	 * @brief Shows an child with app info
-	 * @param app_name Application name
-	 */
-    void show_app_info(const std::string &app_name);
-
-	/**
-	 * @brief 
-	 * @param input_event 
-	 * @return 
-	 */
-	//bool input_event(const InputEvent &input_event);
-
-    void setStyle();
-    void setFonts();
-
-	// The name of the default font file to use
-    static const std::string default_font;
-    // Used to show/hide the GUI
-    static bool visible;
-
-	//Font &get_font(const std::string &font_name = Gui::default_font);
-
-private:
-    SceneryEditorX::GraphicsEngine *renderer = nullptr;
-    SceneryEditorX::VulkanDevice *device = nullptr;
-    GLFWwindow *window = nullptr;
-    VkDescriptorPool imguiPool = VK_NULL_HANDLE;
-    bool initialized = false;
-    //const ImGuiWindowFlags common_flags  = ImGuiWindowFlags_NoCollapse;
-    //const ImGuiWindowFlags options_flags = ImGuiWindowFlags_NoResize;
-    //const ImGuiWindowFlags info_flags    = ImGuiWindowFlags_NoMove;
-    size_t last_vertex_buffer_size;
-    size_t last_index_buffer_size;
-    //  Scale factor to apply due to a difference between the window and GL pixel sizes
-    float content_scale_factor{1.0f};
-    // Scale factor to apply to the size of gui elements (expressed in dp)
-    float dpi_factor{1.0f};
-    //std::vector<Font> fonts;
-};
-
-void initImGuiExtensions();
 
 // -------------------------------------------------------

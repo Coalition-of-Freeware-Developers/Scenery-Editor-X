@@ -20,13 +20,14 @@
 
 namespace SceneryEditorX
 {
-	using AssetManager = AssetManager::AssetManager;
-	using SceneAsset = AssetManager::SceneAsset;
+	//using AssetManager = AssetManager::AssetManager;
+	//using SceneAsset = AssetManager::SceneAsset;
 
 	using Json = nlohmann::json;
 
 	// -------------------------------------------------------
 
+    /*
 	inline void to_json(Json& j, const glm::vec3& v)
 	{
 	    j = Json{v.x, v.y, v.z};
@@ -57,7 +58,8 @@ namespace SceneryEditorX
 	        v.z = j[2];
 	    }
 	}
-	
+
+
 	struct BinaryStorage
 	{
 	    std::vector<uint8_t> data;
@@ -65,7 +67,7 @@ namespace SceneryEditorX
 	    uint32_t Push(void* ptr, uint32_t size)
 		{
 	        uint32_t offset = data.size();
-	        data.resize(data.size() + size);
+	        data.Resize(data.size() + size);
 	        memcpy(data.data() + offset, ptr, size);
 	        return offset;
 	    }
@@ -75,13 +77,14 @@ namespace SceneryEditorX
 	        return data.data() + offset;
 	    }
 	};
-	
+
+
 	struct Serializer
 	{
 	    Json& j;
 	    BinaryStorage& storage;
 	    AssetManager& manager;
-	    int dir = 0;
+	    int directory = 0;
 
 		// ----------------------------------
 
@@ -91,12 +94,12 @@ namespace SceneryEditorX
 
 		// ----------------------------------
 
-	    Serializer(Json& j, BinaryStorage& storage, int dir, AssetManager& manager) : j(j) , storage(storage) , manager(manager) , dir(dir) {}
+	    Serializer(Json& j, BinaryStorage& storage, int directory, AssetManager& manager) : j(j) , storage(storage) , manager(manager) , directory(directory) {}
 	
 	    template<typename T>
 	    void Serialize(Ref<T>& object)
 		{
-	        if (dir == LOAD)
+	        if (directory == LOAD)
 			{
                 if (!j.contains("type") || !j.contains("name") || !j.contains("uuid"))
                 {
@@ -104,18 +107,18 @@ namespace SceneryEditorX
                 }
                 ObjectType type = j["type"];
                 std::string name = j["name"];
-                UUID uuid = j["uuid"];
+                uint32_t uuid = j["uuid"];
                 object = std::dynamic_pointer_cast<T>(manager.CreateObject(type, name, uuid));
                 if (!object)
                 {
                     throw std::runtime_error("Failed to create object of requested type");
                 }
-                Serializer s(j, storage, dir, manager);
+                Serializer ser(j, storage, directory, manager);
                 object->Serialize(s);
             }
 			else
 			{
-	            Serializer s(j, storage, dir, manager);
+	            Serializer ser(j, storage, directory, manager);
 	            j["type"] = object->type;
 	            j["name"] = object->name;
 	            j["uuid"] = object->uuid;
@@ -126,7 +129,7 @@ namespace SceneryEditorX
 	    template<typename T>
 	    void operator()(const std::string& field, T& value)
 		{
-	        if (dir == SAVE)
+	        if (directory == SAVE)
 			{
 	            to_json(j[field], value);
 	        }
@@ -139,7 +142,7 @@ namespace SceneryEditorX
 	    template<typename T>
 	    void Vector(const std::string& field, std::vector<T>& v)
 		{
-	        if (dir == SAVE) {
+	        if (directory == SAVE) {
 	            uint32_t size = v.size() * sizeof(T);
 	            uint32_t offset = storage.Push(v.data(), size);
 	            j[field] = Json::object();
@@ -152,7 +155,7 @@ namespace SceneryEditorX
 	            uint32_t size = j[field]["size"];
 	            uint32_t offset = j[field]["offset"];
                 uint32_t count = j[field]["count"];
-                v.resize(count);
+                v.Resize(count);
                 memcpy(v.data(), storage.Get(offset), size);
 	        }
 	    }
@@ -160,12 +163,12 @@ namespace SceneryEditorX
 	    template<typename T>
 	    void VectorRef(const std::string& field, std::vector<T>& v)
 		{
-	         if (dir == SAVE)
+	         if (directory == SAVE)
 			 {
 	             Json childrenArray = Json::array();
 	             for (auto& x : v)
 				 {
-	                 Serializer childSerializer(childrenArray.emplace_back(), storage, dir, manager);
+	                 Serializer childSerializer(childrenArray.emplace_back(), storage, directory, manager);
 	                 childSerializer.Serialize(x);
 	             }
 	             j[field] = childrenArray;
@@ -178,8 +181,8 @@ namespace SceneryEditorX
                  {
                      ObjectType type = value["type"];
                      std::string name = value["name"];
-                     UUID uuid = value["uuid"];
-                     Serializer childSerializer(value, storage, dir, manager);
+                     uint32_t uuid = value["uuid"];
+                     Serializer childSerializer(value, storage, directory, manager);
                      auto &child = v.emplace_back();
                      childSerializer.Serialize(child);
                  }
@@ -189,7 +192,7 @@ namespace SceneryEditorX
 	    template <typename T>
 	    void Asset(const std::string& field, Ref<T>& object)
 		{
-	        if (dir == SAVE)
+	        if (directory == SAVE)
 			{
 	            if (object)
 				{
@@ -209,7 +212,7 @@ namespace SceneryEditorX
 	    template <typename T>
 	    void Node(const std::string& field, Ref<T>& node, SceneAsset* scene)
 		{
-	        if (dir == SAVE)
+	        if (directory == SAVE)
 			{
 	            if (node)
 				{
@@ -226,7 +229,7 @@ namespace SceneryEditorX
 	        }
 	    }
 	};
-
+		*/
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------

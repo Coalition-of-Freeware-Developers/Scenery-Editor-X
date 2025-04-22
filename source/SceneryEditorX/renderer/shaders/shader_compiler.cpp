@@ -10,7 +10,6 @@
 * Created: 8/4/2025
 * -------------------------------------------------------
 */
-
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -32,7 +31,7 @@ namespace SceneryEditorX
 	    char compile_string[1024];
 	    char inpath[256];
 	    char outpath[256];
-	    std::string cwd = std::filesystem::current_path().string();
+	    const std::string cwd = std::filesystem::current_path().string();
 	    sprintf(inpath, "%s/source/Shaders/%s", cwd.c_str(), path.string().c_str());
 	    sprintf(outpath, "%s/bin/%s.spv", cwd.c_str(), path.filename().string().c_str());
 	    sprintf(compile_string, "%s -V %s -o %s --target-env spirv1.4", GLSL_VALIDATOR, inpath, outpath);
@@ -51,7 +50,7 @@ namespace SceneryEditorX
 	    {
             EDITOR_LOG_ERROR("Failed to open file: '{}'", outpath);
 	    }
-	    size_t fileSize = (size_t)file.tellg();
+	    const size_t fileSize = file.tellg();
 	    std::vector<char> buffer(fileSize);
 	    file.seekg(0);
 	    file.read(buffer.data(), fileSize);

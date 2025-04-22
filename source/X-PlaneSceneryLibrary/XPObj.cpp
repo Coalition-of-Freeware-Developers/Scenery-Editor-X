@@ -110,7 +110,7 @@ bool XPAsset::Obj::Load(const std::filesystem::path &InPath)
                 ssLine >> strVertexArgs[0] >> strVertexArgs[1] >> strVertexArgs[2] >> strVertexArgs[3] >>
                     strVertexArgs[4] >> strVertexArgs[5] >> strVertexArgs[6] >> strVertexArgs[7];
 
-                //Create a vertex. Y is replaced with the current layer group. These don't have normals cuz they're auto calaculated by blender
+                //Create a vertex. Y is replaced with the current layer group. These don't have normals cuz they're auto calculated by blender
                 XPAsset::Vertex NewVertex;
                 NewVertex.X = stof(strVertexArgs[0]);
                 NewVertex.Y = intCurrentDrapedLayerGroup * 0.1;
@@ -125,11 +125,11 @@ bool XPAsset::Obj::Load(const std::filesystem::path &InPath)
                 Vertices.push_back(NewVertex);
             }
 
-            //IDX10 we add these 10 indicies
+            //IDX10 we add these 10 indices
             else if (strCommand == "IDX10")
             {
                 //Format: IDX10 i1 i2 i3 i4 i5 i6 i7 i8 i9 i10
-                //We just push them back into indicies vector in order
+                //We just push them back into indices vector in order
                 std::string strIndicies[10];
 
                 //Read the args
@@ -147,7 +147,7 @@ bool XPAsset::Obj::Load(const std::filesystem::path &InPath)
             else if (strCommand == "IDX")
             {
                 //Format: IDX i1
-                //Push it back into indicies vector
+                //Push it back into indices vector
                 std::string strIndex;
 
                 //Read the args
@@ -160,8 +160,8 @@ bool XPAsset::Obj::Load(const std::filesystem::path &InPath)
             //TRIS. This saves a draw call if in draped state
             else if (strCommand == "TRIS")
             {
-                //Format: TRIS StartIndex EndIndex. Inclusive (ie TRIS 0 6 means indicies 0 1 2 3 4 5 and 6).
-                //Indicies here are indicies in Indicies vector, which are indexes to Verticies. The index's position in the vector does not always match it's value!!!
+                //Format: TRIS StartIndex EndIndex. Inclusive (ie TRIS 0 6 means indices 0 1 2 3 4 5 and 6).
+                //Indices here are indices in Indices vector, which are indexes to Vertices. The index's position in the vector does not always match its value!!!
                 std::string strDrawCallArgs[2];
 
                 //Read the args

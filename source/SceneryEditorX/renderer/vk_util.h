@@ -10,16 +10,8 @@
 * Created: 18/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
 #include <vulkan/vulkan.h>
-
-// -------------------------------------------------------
-
-#define VK_FLAGS_NONE 0
-#define DEFAULT_FENCE_TIMEOUT 100000000000
-
-using Flags = uint32_t;
 
 // -------------------------------------------------------
 
@@ -93,6 +85,28 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
 	}
 */
 
+// -------------------------------------------------------
+
+/**
+ * @brief Macro to check Vulkan features.
+ *
+ * This macro checks if the required Vulkan features are supported by the device.
+ * If any required feature is not supported, it logs an error message.
+ *
+ * @param requiredFeatures The required Vulkan features.
+ * @param deviceFeatures The supported Vulkan features of the device.
+ */
+// Helper macro to check each feature
+#define CHECK_FEATURE(feature)                                                                                         \
+    if (requiredFeatures.feature && !deviceFeatures.feature)                                                           \
+    {                                                                                                                  \
+        missingFeatures = true;                                                                                        \
+		if (!missingFeaturesLog.empty()) missingFeaturesLog += ", ";                                                   \
+        missingFeaturesLog += #feature;                                                                                \
+        SEDX_CORE_ERROR("  Missing feature: {}", #feature);                                                            \
+    }
+
+// ----------------------------------------------------------
 
 /**
  * @brief Macro to get the size of an array.

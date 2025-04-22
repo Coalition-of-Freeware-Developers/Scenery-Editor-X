@@ -40,8 +40,8 @@ namespace UI
 	static bool cameraMomentum = true;
 	
 	// Paths settings
-    static char xplanePath[1024] = "C:/X-Plane 12"; // Temperary path
-	static char defaultProjectPath[1024] = "C:/Users/Documents/Scenery Editor X/Projects"; // Temperary path
+    static char xplanePath[1024] = "C:/X-Plane 12"; // Temporary path
+	static char defaultProjectPath[1024] = "C:/Users/Documents/Scenery Editor X/Projects"; // Temporary path
 	
 	// Editor settings
 	static bool showGrid = true;

@@ -108,7 +108,7 @@ namespace SceneryEditorX
 	    static void LogVulkanDebug(const std::string &message);
 	
 	    // Helper function for logging Vulkan API calls with result checking
-	    //static void LogVulkanResult(VkResult result, const std::string &operation);
+	    static void LogVulkanResult(VkResult result, const std::string &operation);
 	
 	    /**
 		 * @brief Gets the logger instance.
@@ -116,9 +116,9 @@ namespace SceneryEditorX
 		 *
 		 * This function returns a shared pointer to the logger instance.
 		 */
-	    inline static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return CoreLogger; }
-	    inline static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return EditorLogger; }
-	    inline static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return EditorConsoleLogger; }
+        static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return CoreLogger; }
+        static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return EditorLogger; }
+        static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return EditorConsoleLogger; }
 	
 	    // -------------------------------------------------------------
 	

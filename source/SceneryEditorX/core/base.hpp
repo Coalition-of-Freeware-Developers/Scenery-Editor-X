@@ -12,8 +12,6 @@
 */
 
 #pragma once
-
-#include <SceneryEditorX/core/ref.h>
 #include <cstdint>
 #include <glm/glm.hpp>
 
@@ -41,7 +39,6 @@ using i64 = int64_t;  // Signed 64-bit integer
 using f32 = float;    // 32-bit floating point
 using f64 = double;   // 64-bit floating point
 using RID = u32;      // Resource Identifier, alias for unsigned 32-bit integer
-
 // -------------------------------------------------------
 
 using Vec2 = glm::vec2; // 2D vector
@@ -121,6 +118,8 @@ namespace SceneryEditorX
 		std::atomic_flag flag;
 	};
 
+    // -------------------------------------------------------
+
 	struct Flag
 	{
 		SEDX_FORCE_INLINE void SetDirty() noexcept { flag = true; }
@@ -177,7 +176,7 @@ using Ref = std::shared_ptr<T>;
 template <typename T, typename... Args>
 constexpr Ref<T> CreateRef(Args &&...args)
 {
-	return std::make_shared<T>(std::forward<Args>(args)...);
+    return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 /**

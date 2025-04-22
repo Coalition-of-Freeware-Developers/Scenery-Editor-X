@@ -10,11 +10,11 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/vk_util.h>
-#include <SceneryEditorX/ui/ui_manager.h>
-#include <SceneryEditorX/ui/ui.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <SceneryEditorX/renderer/vk_util.h>
+#include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/ui/ui_manager.h>
 
 // -------------------------------------------------------
 
@@ -23,13 +23,14 @@ namespace ImGuizmo
 {
     // Simple stub implementation
     bool IsUsing() { return false; }
+
 }
 
 // -------------------------------------------------------
 
 namespace UI
 {
-	bool ViewportPanel(glm::ivec2& newViewportSize, bool& viewportHovered, VkImageView imageView)
+    static bool ViewportPanel(glm::ivec2& newViewportSize, bool& viewportHovered, VkImageView imageView)
 	{
 	    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
 	    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);

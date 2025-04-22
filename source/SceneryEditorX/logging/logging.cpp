@@ -13,11 +13,10 @@
 #include <minwinbase.h>
 #include <SceneryEditorX/core/version.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/renderer/vk_util.h>
 #include <sysinfoapi.h>
 #include <timezoneapi.h>
-
-#include <SceneryEditorX/renderer/render_data.h>
-
 #include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
@@ -187,8 +186,8 @@ namespace SceneryEditorX
 	            CoreLogger->trace("Vulkan operation '{}' completed successfully", operation);
 	        }
 	    }
-	}*/
-
+	}
+	*/
 
 
     /**

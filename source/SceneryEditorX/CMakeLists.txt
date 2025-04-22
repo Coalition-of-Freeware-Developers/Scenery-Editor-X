@@ -46,13 +46,14 @@ ADD_EXECUTABLE(SceneryEditorX
     core/main.cpp
 	core/memory.cpp
 	core/memory.h
-	core/ref.cpp
-	core/ref.h
 	core/serializer.hpp
     core/transforms.cpp
 	core/version.h
     core/window.cpp
     core/window.h
+	# --------------------------------
+	core/editor/editor.cpp
+	core/editor/editor.h
 	# --------------------------------
 	logging/asserts.h
 	logging/log_templates.h
@@ -62,14 +63,34 @@ ADD_EXECUTABLE(SceneryEditorX
     # --------------------------------
 	platform/platform.h
     platform/system_detection.h
+    # --------------------------------
+	renderer/shaders/shader.cpp
+	renderer/shaders/shader.h
+	renderer/shaders/shader_compiler.cpp
+	renderer/shaders/shader_compiler.h
 	# --------------------------------
+	scene/animation.cpp
+	scene/animation.h
+	scene/asset.cpp
+	scene/asset.h
 	scene/asset_manager.cpp
 	scene/asset_manager.h
+	scene/camera.h
+	scene/lights.h
+	scene/material.cpp
+	scene/material.h
+    scene/model.cpp
+	scene/model.h
+	scene/node.h
+	scene/scene.cpp
+	scene/scene.h
+	scene/texture.cpp
+	scene/texture.h
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
-	ui/gui_context.cpp
-	ui/gui_context.h
+	ui/ui_context.cpp
+	ui/ui_context.h
 	ui/styles.cpp
 	ui/ui.cpp
 	ui/ui.h
@@ -90,21 +111,21 @@ ADD_EXECUTABLE(SceneryEditorX
     # LAUNCHER FILES
     # --------------------------------
 
-    ${LAUNCHER_DIR}/core/updater.h
-    ${LAUNCHER_DIR}/core/updater.cpp
-    ${LAUNCHER_DIR}/core/launcher_main.cpp
-    ${LAUNCHER_DIR}/core/launcher_main.h
-    ${LAUNCHER_DIR}/core/elevate_perms.h
-    ${LAUNCHER_DIR}/core/directory_manager.cpp
-    ${LAUNCHER_DIR}/core/directory_manager.cpp
-    ${LAUNCHER_DIR}/core/splash_handler.h
-    ${LAUNCHER_DIR}/core/updater.h
-    ${LAUNCHER_DIR}/core/updater.cpp
+    #${LAUNCHER_DIR}/core/updater.h
+    #${LAUNCHER_DIR}/core/updater.cpp
+    #${LAUNCHER_DIR}/core/launcher_main.cpp
+    #${LAUNCHER_DIR}/core/launcher_main.h
+    #${LAUNCHER_DIR}/core/elevate_perms.h
+    #${LAUNCHER_DIR}/core/directory_manager.cpp
+    #${LAUNCHER_DIR}/core/directory_manager.cpp
+    #${LAUNCHER_DIR}/core/splash_handler.h
+    #${LAUNCHER_DIR}/core/updater.h
+    #${LAUNCHER_DIR}/core/updater.cpp
 
     # --------------------------------
 
-    ${LAUNCHER_DIR}/registry/reg_init.h
-    ${LAUNCHER_DIR}/registry/reg_check.h
+    #${LAUNCHER_DIR}/registry/reg_init.h
+    #${LAUNCHER_DIR}/registry/reg_check.h
 
     # --------------------------------
 )
@@ -120,16 +141,14 @@ SOURCE_GROUP("Core" FILES
 	core/main.cpp
 	core/memory.cpp
 	core/memory.h
-	core/ref.cpp
-	core/ref.h
 	core/serializer.hpp
 	core/version.h
     core/window.cpp
     core/window.h
 )
 SOURCE_GROUP("Editor/Core" FILES
-
-
+	core/editor/editor.cpp
+	core/editor/editor.h
 )
 SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
@@ -158,15 +177,36 @@ SOURCE_GROUP("Core/Logger" FILES
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )
+SOURCE_GROUP("Editor/Renderer/Shaders" FILES
+	renderer/shaders/shader.cpp
+	renderer/shaders/shader.h
+	renderer/shaders/shader_compiler.cpp
+	renderer/shaders/shader_compiler.h
+)
 SOURCE_GROUP("Editor/Scene" FILES
-    scene/asset_manager.cpp
-    scene/asset_manager.h
+	scene/animation.cpp
+	scene/animation.h
+	scene/asset.cpp
+	scene/asset.h
+	scene/asset_manager.cpp
+	scene/asset_manager.h
+	scene/camera.h
+	scene/lights.h
+	scene/material.cpp
+	scene/material.h
+	scene/model.cpp
+	scene/model.h
+	scene/node.h
+	scene/scene.cpp
+	scene/scene.h
+	scene/texture.cpp
+	scene/texture.h
 )
 SOURCE_GROUP("Editor/UI" FILES
 	ui/colors.h
 	ui/fonts.h
-	ui/gui_context.cpp
-	ui/gui_context.h
+	ui/ui_context.cpp
+	ui/ui_context.h
 	ui/styles.cpp
 	ui/ui.cpp
 	ui/ui.h

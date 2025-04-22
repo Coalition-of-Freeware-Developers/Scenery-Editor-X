@@ -12,7 +12,7 @@
 */
 
 #include <imgui/imgui.h>
-#include <SceneryEditorX/UI/ui.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -25,8 +25,8 @@ namespace UI
 {
 
 	// Define projectName and projectLocation variables
-	char projectName[128];
-	char projectLocation[2048];
+    INTERNAL char projectName[128];
+	INTERNAL char projectLocation[2048];
 
 	// ---------------------------------------------------------
 
@@ -71,7 +71,7 @@ namespace UI
         if (showCreateProjectModal)
         {
             ImGui::OpenPopup("NewProject");
-            ImVec2 modalSize(460, 210);
+            constexpr ImVec2 modalSize(460, 210);
             ImGui::SetNextWindowSize(modalSize);
 
             if (ImGui::BeginPopupModal("NewProject", &showCreateProjectModal, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
@@ -100,7 +100,7 @@ namespace UI
         }
     }
 
-    //TODO: Impliment the ability to close the modal popup by clicking outside the Modal
+    //TODO: Implement the ability to close the modal popup by clicking outside the Modal
     void UIManager::AboutModal()
     {
         ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
@@ -112,8 +112,8 @@ namespace UI
             ImGui::Text("Scenery Editor X");
             ImGui::Text("Version 1.0.0");
             ImGui::Separator();
-            ImGui::Text("© 2025 Thomas Ray");
-            ImGui::Text("© 2025 Coalition of Freeware Developers");
+            ImGui::Text(R"(© 2025 Thomas Ray)");
+            ImGui::Text(R"(© 2025 Coalition of Freeware Developers)");
             ImGui::Separator();
             ImGui::Text("Powered by Vulkan and Dear ImGui");
             

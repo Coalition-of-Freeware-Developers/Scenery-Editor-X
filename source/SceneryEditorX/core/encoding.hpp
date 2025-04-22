@@ -28,11 +28,11 @@ namespace SceneryEditorX
 	{
     public:
 	    // Function to encode a byte array to a base64 string
-	    std::string EncodeBase64(unsigned char const *input, size_t len);
+	    std::string EncodeBase64(const unsigned char *input, size_t len);
 	    // Function to decode a base64 string to a byte array
-	    std::vector<uint8_t> DecodeBase64(std::string const &input);
+	    std::vector<uint8_t> DecodeBase64(const std::string &input);
 
-		uint32_t HashUUID(const std::vector<UUID>& vec);
+		//static uint32_t HashUUID(const std::vector<uint32_t>& vec);
 
 		template <typename T>
         void HashCombine(uint32_t &h, const T &v)
@@ -41,11 +41,12 @@ namespace SceneryEditorX
             h ^= hash(v) + 0x9e3779b9 + (h << 6) + (h >> 2);
         }
 
-		inline void HashCombine(uint32_t &h, void *ptr, uint32_t size)
+        static void HashCombine(uint32_t &h, void *ptr, const uint32_t size)
         {
-            h = std::hash<std::string_view>()(std::string_view((char *)ptr, size));
+            h = std::hash<std::string_view>()(std::string_view(static_cast<char *>(ptr), size));
         }
 
+	    static uint64_t ID;
 
 	};
 

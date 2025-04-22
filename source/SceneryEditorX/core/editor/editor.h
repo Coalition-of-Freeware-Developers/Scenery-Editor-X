@@ -12,9 +12,11 @@
 */
 #pragma once
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/render_data.h>
 #include <SceneryEditorX/renderer/vk_core.h>
-#include <SceneryEditorX/scene/asset_manager.h>
+//#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/ui/ui_context.h>
 
 // ---------------------------------------------------------
 
@@ -23,7 +25,7 @@ namespace SceneryEditorX
 	class EditorApplication
 	{
 	public:
-        EditorApplication();
+        EditorApplication() = default;
         ~EditorApplication();
 
 	    void run()
@@ -32,33 +34,31 @@ namespace SceneryEditorX
 	        Create();
 	        MainLoop();
 	    }
-	    //bool GetSwapChainDirty();
+
+        GLOBAL Ref<Window> GetWindow() { return GraphicsEngine::GetWindow(); }
 	
 	private:
-	    GLFWwindow *window = nullptr;
-	    GraphicsEngine vkRenderer;
+        GraphicsEngine vkRenderer;
+        Ref<SwapChain> vkSwapChain;
+        Ref<VulkanDevice> vkDevice;
+
         //AssetManager assetManager;
-        GUI ui;
+        UI::GUI ui;
+        Ref<UI::UIContext> uiContext;
+
+        Viewport viewportData;
+        RenderData renderData;
+        VulkanDeviceFeatures vkDeviceFeatures;
+        uint32_t currentFrame = 0;
 
 		// ---------------------------------------------------------
 
-	    uint32_t currentFrame = 0;
-	    glm::ivec2 viewportSize = {64, 48};
-	    glm::ivec2 newViewportSize = viewportSize;
-	    bool viewportHovered = false;
-	    bool viewportResized = false;
-	    bool fullscreen = false;
-	    bool swapChainDirty = true;
+	    glm::ivec2 newViewportSize = viewportData.viewportSize;
 	    uint32_t frameCount = 0;
 
-	
-	    VkImage viewportImage = VK_NULL_HANDLE;
-	    VkDeviceMemory viewportImageMemory = VK_NULL_HANDLE;
-	    VkImageView viewportImageView = VK_NULL_HANDLE;
-	    VkFramebuffer viewportFramebuffer = VK_NULL_HANDLE;
-	    VkRenderPass viewportRenderPass = VK_NULL_HANDLE;
+	    VkDevice device = VK_NULL_HANDLE;
 
-        void InitEditor();
+        static void InitEditor();
         void Create();
         void MainLoop();
         void CreateViewportResources();
@@ -66,6 +66,7 @@ namespace SceneryEditorX
         void OnSurfaceUpdate(uint32_t width, uint32_t height);
         void RecreateFrameResources();
         void DrawFrame();
+
     };
 
 

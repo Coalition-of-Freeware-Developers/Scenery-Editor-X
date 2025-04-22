@@ -10,9 +10,7 @@
 * Created: 4/4/2025
 * -------------------------------------------------------
 */
-
 #pragma once
-
 #include <filesystem>
 #include <format>
 #include <glm/glm.hpp>
@@ -26,7 +24,7 @@ namespace std
 	struct formatter<filesystem::path> : formatter<string>
 	{
 	    template <typename FormatContext>
-	    FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
+        typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
 	    {
 	        return formatter<string>::format(path.string(), ctx);
 	    }
