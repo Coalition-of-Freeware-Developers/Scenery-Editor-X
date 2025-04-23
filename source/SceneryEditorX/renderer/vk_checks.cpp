@@ -29,7 +29,7 @@ namespace SceneryEditorX
         CheckAPIVersion(SoftwareStats::minVulkanVersion);
 	    CheckExtensions(extensions);
 	    CheckLayers(layers);
-        CheckDeviceFeatures(device);
+        //CheckDeviceFeatures(device);
         IsDeviceCompatible(device);
 	}
 
@@ -91,7 +91,7 @@ namespace SceneryEditorX
 	 * @return True if the device has support for the required layers.
 	 * @return False if the device cannot support the required layers.
 	 */
-    bool VulkanChecks::CheckValidationLayerSupport()
+    bool VulkanChecks::CheckValidationLayerSupport() const
     {
         uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -99,7 +99,7 @@ namespace SceneryEditorX
         std::vector<VkLayerProperties> availableLayers(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-        for (const char *layerName : Layers::validationLayers)
+        for (const char *layerName : vkLayers.validationLayers)
         {
             auto layerFound = false;
             for (const auto &layerProperties : availableLayers)
@@ -134,10 +134,11 @@ namespace SceneryEditorX
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-        std::set<std::string> requiredExtensions(Extensions::requiredExtensions.begin(), Extensions::requiredExtensions.end());
+        std::set<std::string> requiredExtensions(vkExtensions.requiredExtensions.begin(),
+                                                 vkExtensions.requiredExtensions.end());
 
 		SEDX_CORE_INFO("Checking for required device extensions:");
-        for (const auto &extension : Extensions::requiredExtensions)
+        for (const auto &extension : vkExtensions.requiredExtensions)
         {
             SEDX_CORE_INFO("Required: {}", ToString(extension));
         }
@@ -219,10 +220,10 @@ namespace SceneryEditorX
 	 */
 	void VulkanChecks::CheckLayers(const std::vector<const char *> &layers)
 	{
-	    vkEnumerateInstanceLayerProperties(&vkLayerData.layerCount, nullptr);
+	    vkEnumerateInstanceLayerProperties(&vkLayers.layerCount, nullptr);
 	
-	    std::vector<VkLayerProperties> availableLayers(vkLayerData.layerCount);
-	    vkEnumerateInstanceLayerProperties(&vkLayerData.layerCount, availableLayers.data());
+	    std::vector<VkLayerProperties> availableLayers(vkLayers.layerCount);
+	    vkEnumerateInstanceLayerProperties(&vkLayers.layerCount, availableLayers.data());
 	#ifdef SEDX_DEBUG
 	    SEDX_CORE_INFO("Available layer/s");
 	    SEDX_CORE_INFO("____________________________________________");
@@ -356,12 +357,12 @@ namespace SceneryEditorX
         vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
         // Check for required device type (discrete GPU preferred)
-        if (const bool isDiscreteGPU = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU); !isDiscreteGPU)
+        if (bool isDiscreteGPU = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU); !isDiscreteGPU)
         {
             SEDX_CORE_WARN("Vulkan: Device is not a discrete GPU. Performance might be affected.");
         }
 
-        if (const bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (CheckDeviceFeatures(device) == true); !isSuitable)
+        if (bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (CheckDeviceFeatures(device) == true); !isSuitable)
         {
             SEDX_CORE_ERROR("Vulkan: Device does not meet required features or is not discrete GPU");
             ErrMsg("Vulkan: Device does not meet required features or is not discrete GPU");

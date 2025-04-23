@@ -238,28 +238,28 @@ namespace SceneryEditorX
 
 	struct Extensions
 	{
-        GLOBAL std::vector<bool> activeExtensions;
-        GLOBAL std::vector<const char *> activeExtensionsNames;
-        GLOBAL inline std::vector<const char *> requiredExtensions = {
+	    std::vector<bool> activeExtensions;
+	    std::vector<const char *> activeExtensionsNames;
+	    std::vector<const char *> requiredExtensions = {
 				VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 				VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
 				VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
 				VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
-            };
-		INTERNAL std::vector<VkExtensionProperties> availableExtensions;
-        INTERNAL std::vector<VkExtensionProperties> instanceExtensions;
+	    };
+		std::vector<VkExtensionProperties> availableExtensions;
+	    std::vector<VkExtensionProperties> instanceExtensions;
 
 		uint32_t extensionCount = 0;
 	};
 
 	struct Layers
-    {
-		GLOBAL std::vector<bool> activeLayers;
-        GLOBAL inline std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-        GLOBAL std::vector<const char *> activeLayersNames;
-		GLOBAL std::vector<VkLayerProperties> layers;
+	{
+		std::vector<bool> activeLayers;
+	    std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+	    std::vector<const char *> activeLayersNames;
+		std::vector<VkLayerProperties> layers;
 
-        uint32_t layerCount = 0;
+	    uint32_t layerCount = 0;
 	};
 
     // -----------------------------------------------------------

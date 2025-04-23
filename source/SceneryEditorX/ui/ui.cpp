@@ -157,7 +157,7 @@ namespace SceneryEditorX::UI
         this->renderer = &renderer;
 
         device = GraphicsEngine::GetDevice().get();
-        swapchain = GraphicsEngine::GetSwapChain().get();
+        swapchain = renderer.GetSwapChain().get();
 
         if (initialized)
         {
@@ -167,7 +167,7 @@ namespace SceneryEditorX::UI
 
         /// Get essential Vulkan objects
         //device = GraphicsEngine::GetDevice()->GetDevice();
-        swapchain = GraphicsEngine::GetSwapChain().get();
+        swapchain = renderer.GetSwapChain().get();
 
         if (!device || !swapchain)
         {

@@ -29,8 +29,8 @@ namespace SceneryEditorX
 
         std::string shaderPath(config.shaderFolder);
 
-        Ref<Shader> vertShader = Shader::Create(shaderPath + "/vert.spv");
-        Ref<Shader> fragShader = Shader::Create(shaderPath + "/frag.spv");
+        Ref<Shader> vertShader = Shader::CreateFromString(shaderPath + "/vert.spv");
+        Ref<Shader> fragShader = Shader::CreateFromString(shaderPath + "/frag.spv");
 
         std::string vertShaderPath = vertShader->GetName();
         std::string fragShaderPath = fragShader->GetName();

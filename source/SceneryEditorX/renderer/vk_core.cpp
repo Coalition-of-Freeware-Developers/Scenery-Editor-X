@@ -71,8 +71,8 @@ namespace SceneryEditorX
 	    return VK_FALSE; // Don't abort call
 	}
 
-    static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
-                                                 VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger)
+    VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,
+        VkDebugUtilsMessengerEXT*pDebugMessenger)
     {
         if (auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
                 vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
@@ -95,6 +95,12 @@ namespace SceneryEditorX
         {
             func(instance, debugMessenger, pAllocator);
         }
+    }
+
+    void GraphicsEngine::glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer)
+    {
+        // Set the GLFWwindow user pointer to point to our Window instance
+        ::glfwSetWindowUserPointer(pointer, window.get());
     }
 
     // -------------------------------------------------------
@@ -153,27 +159,27 @@ namespace SceneryEditorX
 		// Get all available layers
         uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-        Layers::layers.resize(layerCount);
-        Layers::activeLayers.resize(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, Layers::layers.data());
+        vkLayers.layers.resize(layerCount);
+        vkLayers.activeLayers.resize(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, vkLayers.layers.data());
 
         // Get all available extensions
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-        Extensions::instanceExtensions.resize(extensionCount);
-        Extensions::activeExtensions.resize(extensionCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, Extensions::instanceExtensions.data());
+        vkExtensions.instanceExtensions.resize(extensionCount);
+        vkExtensions.activeExtensions.resize(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, vkExtensions.instanceExtensions.data());
 
         // Get Vulkan API version
         vkEnumerateInstanceVersion(&SoftwareStats::minVulkanVersion);
 
 		bool khronosAvailable = false;
-        for (size_t i = 0; i < Layers::layers.size(); i++)
+        for (size_t i = 0; i < vkLayers.layers.size(); i++)
         {
-            Layers::activeLayers[i] = false;
-            if (strcmp("VK_LAYER_KHRONOS_validation", Layers::layers[i].layerName) == 0)
+            vkLayers.activeLayers[i] = false;
+            if (strcmp("VK_LAYER_KHRONOS_validation", vkLayers.layers[i].layerName) == 0)
             {
-                Layers::activeLayers[i] = true;
+                vkLayers.activeLayers[i] = true;
                 khronosAvailable = true;
                 break;
             }
@@ -190,11 +196,11 @@ namespace SceneryEditorX
 		// Get the name of all layers if they are enabled
         if (enableValidationLayers)
         {
-            for (size_t i = 0; i < Layers::layers.size(); i++)
+            for (size_t i = 0; i < vkLayers.layers.size(); i++)
             {
-                if (Layers::activeLayers[i])
+                if (vkLayers.activeLayers[i])
                 {
-                    Layers::activeLayersNames.push_back(Layers::layers[i].layerName);
+                    vkLayers.activeLayersNames.push_back(vkLayers.layers[i].layerName);
                 }
             }
         }
@@ -222,30 +228,30 @@ namespace SceneryEditorX
         auto requiredExtensions = std::vector(glfwExtensions, glfwExtensions + glfwExtensionCount);
         if (enableValidationLayers)
         {
-            Extensions::requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            vkExtensions.requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
 		// ---------------------------------------------------------
 
-        Extensions::activeExtensionsNames.clear();
-        for (size_t i = 0; i < Extensions::instanceExtensions.size(); i++)
+        vkExtensions.activeExtensionsNames.clear();
+        for (size_t i = 0; i < vkExtensions.instanceExtensions.size(); i++)
         {
-            if (Extensions::activeExtensions[i])
+            if (vkExtensions.activeExtensions[i])
             {
-                Extensions::activeExtensionsNames.push_back(Extensions::instanceExtensions[i].extensionName);
+                vkExtensions.activeExtensionsNames.push_back(vkExtensions.instanceExtensions[i].extensionName);
             }
         }
 
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(Extensions::activeExtensionsNames.size());
-        createInfo.ppEnabledExtensionNames = Extensions::activeExtensionsNames.data();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.activeExtensionsNames.size());
+        createInfo.ppEnabledExtensionNames = vkExtensions.activeExtensionsNames.data();
 
 		// ---------------------------------------------------------
 
         VkDebugUtilsMessengerCreateInfoEXT vkDebugCreateInfo;
         if (enableValidationLayers)
         {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(Layers::validationLayers.size());
-            createInfo.ppEnabledLayerNames = Layers::validationLayers.data();
+            createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayers.size());
+            createInfo.ppEnabledLayerNames = vkLayers.validationLayers.data();
 
             PopulateDebugMsgCreateInfo(vkDebugCreateInfo);
             createInfo.pNext = &vkDebugCreateInfo;
@@ -282,7 +288,7 @@ namespace SceneryEditorX
 		Ref<VulkanPhysicalDevice> physDevice = nullptr;
         try
         {
-            physDevice = CreateRef<VulkanPhysicalDevice>();
+            physDevice = VulkanPhysicalDevice::GetInstance();
         }
         catch (const std::exception &e)
         {
@@ -296,12 +302,12 @@ namespace SceneryEditorX
         VulkanDeviceFeatures deviceFeatures;
         VkPhysicalDeviceFeatures vkFeatures = deviceFeatures.GetPhysicalDeviceFeatures();
 
-        Ref<VulkanDevice> device = CreateRef<VulkanDevice>(physDevice, vkFeatures);
+        Ref<VulkanDevice> device = VulkanDevice::GetInstance();
         vkPhysicalDevice = physDevice;
         vkDevice = device;
 
 		// Memory Allocator initialization.
-		MemoryAllocator::Init(vkDevice->GetDevice(), vkPhysDevice, vkInstance);
+        allocatorManager->Init(vkDevice->GetDevice(), vkPhysDevice, vkInstance);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Pipeline Cache Creation
@@ -637,20 +643,20 @@ namespace SceneryEditorX
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pEnabledFeatures = &deviceFeatures;
 
-		if (!VulkanChecks::CheckDeviceExtensionSupport(vkPhysicalDevice->GetGPUDevice()))
+		if (!checks->CheckDeviceExtensionSupport(vkPhysicalDevice->GetGPUDevice()))
         {
             SEDX_CORE_ERROR("Required device extensions not supported!");
             ErrMsg("Required device extensions not supported!");
         }
 
         // Enable swap chain extension
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(Extensions::activeExtensionsNames.size());
-        createInfo.ppEnabledExtensionNames = Extensions::activeExtensionsNames.data();
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.activeExtensionsNames.size());
+        createInfo.ppEnabledExtensionNames = vkExtensions.activeExtensionsNames.data();
 
         if (enableValidationLayers)
         {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(Layers::validationLayers.size());
-            createInfo.ppEnabledLayerNames = Layers::validationLayers.data();
+            createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayers.size());
+            createInfo.ppEnabledLayerNames = vkLayers.validationLayers.data();
         }
         else
         {
@@ -867,8 +873,6 @@ namespace SceneryEditorX
 
     void GraphicsEngine::FramebufferResizeCallback(GLFWwindow *window, int width, int height)
     {
-        // Get the window instance that was set with glfwSetWindowUserPointer
-
         // Mark the framebuffer as resized
         if (static_cast<Window *>(glfwGetWindowUserPointer(window)))
         {

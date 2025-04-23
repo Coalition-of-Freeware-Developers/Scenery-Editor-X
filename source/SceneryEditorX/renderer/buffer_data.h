@@ -60,14 +60,17 @@ namespace SceneryEditorX
     }
     using BufferUsageFlags = Flags;
 
-	// -------------------------------------------------------
+    // -------------------------------------------------------
 
     namespace VulkanMemoryUtils
     {
+
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
+
     }
 
     // -------------------------------------------------------
+
 
     struct Resource
     {

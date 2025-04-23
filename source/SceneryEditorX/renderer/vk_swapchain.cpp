@@ -269,7 +269,6 @@ namespace SceneryEditorX
 			}
 		}
 
-
 		return imageIndex;
 	}
 

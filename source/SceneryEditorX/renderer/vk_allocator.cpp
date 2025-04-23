@@ -14,25 +14,13 @@
 #include <SceneryEditorX/core/memory.h>
 #include <SceneryEditorX/renderer/vk_allocator.h>
 #include <SceneryEditorX/renderer/vk_core.h>
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    //VulkanAllocatorData *MemoryAllocator::memAllocatorData = nullptr;
-
-    namespace VulkanMemoryUtils
-	{
-        static void DestroyBuffer(const VkBuffer buffer, const VmaAllocation allocation)
-		{
-		    if (MemoryAllocator::memAllocatorData && buffer != VK_NULL_HANDLE && allocation != nullptr)
-		    {
-		        vmaDestroyBuffer(MemoryAllocator::memAllocatorData->Allocator, buffer, allocation);
-		    }
-		}
-	} // namespace VulkanMemoryUtils
-
 	// ---------------------------------------------------------
 
     MemoryAllocator::MemoryAllocator(std::string tag) : Tag_(std::move(tag)) {}
@@ -51,7 +39,7 @@ namespace SceneryEditorX
 	 */
     void MemoryAllocator::BeginDefragmentation(VmaDefragmentationFlags flags)
     {
-        std::lock_guard<std::mutex> lock(allocationMutex);
+        std::lock_guard<std::mutex> lock(this->allocationMutex);
 
         if (!memAllocatorData || !memAllocatorData->Allocator)
         {
@@ -146,7 +134,7 @@ namespace SceneryEditorX
 
         // Log results
         SEDX_CORE_INFO("Memory defragmentation completed:");
-        SEDX_CORE_INFO("  - Bytes moved: {} MB", defragStats.bytesMovedCount / (1024.0 * 1024.0));
+        SEDX_CORE_INFO("  - Bytes moved: {} MB", defragStats.bytesMoved / (1024.0 * 1024.0));
         SEDX_CORE_INFO("  - Bytes freed: {} MB", defragStats.bytesFreed / (1024.0 * 1024.0));
         SEDX_CORE_INFO("  - Allocations moved: {}", defragStats.allocationsMoved);
         SEDX_CORE_INFO("  - Device memory blocks freed: {}", defragStats.deviceMemoryBlocksFreed);
@@ -222,7 +210,6 @@ namespace SceneryEditorX
 
     // ---------------------------------------------------------
 
-
 	VmaAllocation MemoryAllocator::AllocateBuffer(const VkBufferCreateInfo &bufferCreateInfo, const VmaMemoryUsage usage, VkBuffer &outBuffer)
 	{
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -287,8 +274,6 @@ namespace SceneryEditorX
         return allocation;
 	}
 
-    // -------------------------------------------------
-
 	VmaAllocation MemoryAllocator::AllocateImage(const VkImageCreateInfo &imageCreateInfo, const VmaMemoryUsage usage, VkImage& outImage, VkDeviceSize* allocatedSize)
 	{
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -322,6 +307,8 @@ namespace SceneryEditorX
         return allocation;
 	}
 
+    // -------------------------------------------------
+
     void MemoryAllocator::Free(const VmaAllocation allocation)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -350,6 +337,41 @@ namespace SceneryEditorX
         vmaDestroyImage(memAllocatorData->Allocator, image, allocation);
     }
 
+    namespace VulkanMemoryUtils
+    {
+		void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+		{
+		    if (buffer != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
+		    {
+		        // Get the device and allocator from VulkanDevice singleton
+		        auto device = VulkanDevice::GetInstance();
+		        auto vmaAllocator = device->GetMemoryAllocator();
+
+		        // Destroy buffer with VMA
+		        vmaDestroyBuffer(vmaAllocator, buffer, allocation);
+		        SEDX_CORE_TRACE("Buffer destroyed successfully");
+		    }
+		}
+    } // namespace VulkanMemoryUtils
+
+    void MemoryAllocator::DestroyBuffer(const VkBuffer buffer, const VmaAllocation allocation)
+    {
+        std::lock_guard<std::mutex> lock(allocationMutex);
+
+        if (buffer != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
+        {
+            if (allocationMap.contains(allocation))
+            {
+                const auto &[AllocatedSize, Type] = allocationMap[allocation];
+                memAllocatorData->TotalAllocatedBytes -= AllocatedSize;
+                allocationMap.erase(allocation);
+            }
+
+            vmaDestroyBuffer(memAllocatorData->Allocator, buffer, allocation);
+        }
+    }
+
+    /*
     void MemoryAllocator::DestroyBuffer(const VkBuffer buffer, const VmaAllocation allocation)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -363,11 +385,14 @@ namespace SceneryEditorX
 
         vmaDestroyBuffer(memAllocatorData->Allocator, buffer, allocation);
     }
+    */
 
-	void MemoryAllocator::UnmapMemory(const VmaAllocation allocation)
-	{
+	void MemoryAllocator::UnmapMemory(const VmaAllocation allocation) const
+    {
 		vmaUnmapMemory(memAllocatorData->Allocator, allocation);
 	}
+
+    // ---------------------------------------------------------
 
     VmaPool MemoryAllocator::GetOrCreateBufferPool(VkDeviceSize size, const VmaMemoryUsage usage)
     {
@@ -454,7 +479,6 @@ namespace SceneryEditorX
 	 */
     bool MemoryAllocator::CheckMemoryBudget() const
     {
-        std::lock_guard<std::mutex> lock(allocationMutex);
 
         if (!memAllocatorData || !memAllocatorData->Allocator)
         {
@@ -557,7 +581,12 @@ namespace SceneryEditorX
         memAllocatorData = nullptr;
     }
 
-    inline VmaAllocator &MemoryAllocator::GetMemAllocator()
+    bool MemoryAllocator::ContainsAllocation(VmaAllocation allocation) const
+    {
+        return allocationMap.contains(allocation);
+    }
+
+    VmaAllocator MemoryAllocator::GetMemAllocator()
     {
         SEDX_ASSERT(memAllocatorData != nullptr, "Memory allocator data is null");
         return memAllocatorData->Allocator;
@@ -732,6 +761,8 @@ namespace SceneryEditorX
 
     void MemoryAllocator::ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo)
     {
+        //const_cast<const MemoryAllocator *>(this)->ApplyAllocationStrategy(createInfo);
+
         switch (currentStrategy)
         {
         case AllocationStrategy::SpeedOptimized:
@@ -754,9 +785,9 @@ namespace SceneryEditorX
         case AllocationStrategy::Default:
         default:
             // Let VMA decide the best strategy - don't set any specific strategy flags
-            createInfo.flags &=
-                ~(VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT | VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT |
-                  VMA_DEFRAGMENTATION_FLAG_ALGORITHM_MASK);
+            createInfo.flags &= ~(VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT |
+								  VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT |
+								  VMA_DEFRAGMENTATION_FLAG_ALGORITHM_MASK);
             break;
         }
     }
@@ -852,12 +883,8 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("VulkanAllocator", "Custom buffer alignment set to {} bytes", alignment);
     }
 
-    std::vector<MemoryAllocator::BatchBufferAllocation> MemoryAllocator::AllocateBufferBatch(
-        const std::vector<VkDeviceSize> &sizes,
-        const BufferUsageFlags usage,
-        const VmaMemoryUsage memoryUsage) const
+    std::vector<MemoryAllocator::BatchBufferAllocation> MemoryAllocator::AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, const BufferUsageFlags usage, const VmaMemoryUsage memoryUsage)
     {
-        std::lock_guard<std::mutex> lock(allocationMutex);
         std::vector<BatchBufferAllocation> allocations;
 
         if (sizes.empty())
@@ -930,8 +957,8 @@ namespace SceneryEditorX
             AllocInfo info;
             info.AllocatedSize = allocInfo.size;
             info.Type = AllocationType::Buffer;
-            allocationMap[allocation.allocation] = info;
-
+            //allocationMap[allocation.allocation] = info;
+            const_cast<MemoryAllocator *>(this)->allocationMap[allocation.allocation] = info;
             allocations.push_back(allocation);
         }
 
@@ -949,7 +976,6 @@ namespace SceneryEditorX
 
         return allocations;
     }
-
 
     void MemoryAllocator::FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations)
     {

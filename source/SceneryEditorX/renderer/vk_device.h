@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <map>
+#include <memory>
 #include <mutex>
 #include <SceneryEditorX/renderer/buffer_data.h>
 #include <SceneryEditorX/renderer/render_data.h>
@@ -57,8 +58,24 @@ namespace SceneryEditorX
 	class VulkanPhysicalDevice
     {
     public:
+
+        /// Static singleton accessor
+        static Ref<VulkanPhysicalDevice> GetInstance()
+        {
+            static Ref<VulkanPhysicalDevice> instance = CreateRef<VulkanPhysicalDevice>();
+            return instance;
+        }
+
         explicit VulkanPhysicalDevice();
         virtual ~VulkanPhysicalDevice();
+
+		/// Delete copy constructor and assignment operator
+        VulkanPhysicalDevice(const VulkanPhysicalDevice &) = delete;
+        VulkanPhysicalDevice &operator=(const VulkanPhysicalDevice &) = delete;
+
+        /// Allow move operations if needed
+        VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
+        VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
 
 		/**
          * @brief Select a physical device based on queue requirements
@@ -116,9 +133,24 @@ namespace SceneryEditorX
 
 	// ---------------------------------------------------------
 
-	class VulkanDevice
+	class VulkanDevice 
     {
     public:
+
+        /// Static singleton accessor
+        static Ref<VulkanDevice> GetInstance()
+        {
+            static Ref<VulkanDevice> instance;
+            if (!instance)
+            {
+                VkPhysicalDeviceFeatures features{};
+                // Set required features here...
+
+                instance = CreateRef<VulkanDevice>(VulkanPhysicalDevice::GetInstance(), features);
+            }
+            return instance;
+        }
+
         /**
          * @brief Create a logical device from a physical device
          * @param physDevice The physical device to use
@@ -126,6 +158,15 @@ namespace SceneryEditorX
          */
         VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures);
         virtual ~VulkanDevice();
+        VmaAllocator GetMemoryAllocator();
+
+        /// Delete copy constructor and assignment operator
+        VulkanDevice(const VulkanDevice &) = delete;
+        VulkanDevice &operator=(const VulkanDevice &) = delete;
+
+		/// Allow move operations if needed
+        VulkanDevice(VulkanDevice &&) noexcept = default;
+        VulkanDevice &operator=(VulkanDevice &&) noexcept = default;
 
         /**
          * @brief Clean up resources and destroy the logical device
@@ -199,6 +240,8 @@ namespace SceneryEditorX
 
     private:
         RenderData renderData;
+        Extensions vkExtensions;
+        Layers vkLayers;
         BindlessResources bindlessResources;
 
         Buffer scratchBuffer;

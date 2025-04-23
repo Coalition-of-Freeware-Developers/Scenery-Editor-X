@@ -20,8 +20,6 @@
 namespace SceneryEditorX
 {
 
-    //class SwapChain;
-
     // -------------------------------------------------------
 
 	/*
@@ -31,9 +29,11 @@ namespace SceneryEditorX
     }
     */
 
-    CommandBuffer::CommandBuffer(uint32_t count)
+	/*
+    CommandBuffer::CommandBuffer(uint32_t cmdBufferCount)
     {
     }
+	*/
 
     /*
     CommandBuffer::CommandBuffer(bool swapchain)
@@ -81,81 +81,39 @@ namespace SceneryEditorX
     }
     */
 
-    /*
+	/*
     CommandBuffer::~CommandBuffer()
     {
-        VkCommandPool commandPool = cmdPool;
-        this->device;
-        GraphicsEngine::SubmitResourceFree([commandPool, this]()
-		{
-            vkDestroyCommandPool(device->GetDevice(), commandPool, nullptr);
-        });
-    }
 
-    void CommandBuffer::Begin()
-    {
-		Ref instance = this;
-		GraphicsEngine::Submit([instance]() mutable
-		{
-			VkCommandBufferBeginInfo cmdBufInfo = {};
-			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			cmdBufInfo.pNext = nullptr;
-
-			VkCommandBuffer commandBuffer = nullptr;
-			if (instance->m_OwnedBySwapChain)
-			{
-                Ref<SwapChain> swapChain = GraphicsEngine::GetSwapChain();
-				commandBuffer = swapChain.GetDrawCommandBuffer(cmdBufferIndex);
-			}
-			else
-			{
-				cmdBufferIndex %= instance->cmdBuffers.size();
-				commandBuffer = instance->cmdBuffers[cmdBufferIndex];
-			}
-			instance->activeCmdBuffer = commandBuffer;
-			VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &cmdBufInfo));
-
-			// Timestamp query
-			vkCmdResetQueryPool(commandBuffer, instance->m_TimestampQueryPools[commandBufferIndex], 0, instance->m_TimestampQueryCount);
-			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->m_TimestampQueryPools[commandBufferIndex], 0);
-
-			// Pipeline stats query
-			vkCmdResetQueryPool(commandBuffer, instance->m_PipelineStatisticsQueryPools[cmdBufferIndex], 0, instance->pipelineQueryCount);
-			vkCmdBeginQuery(commandBuffer, instance->m_PipelineStatisticsQueryPools[cmdBufferIndex], 0, 0);
-		});
     }
     */
 
+    /*
+    void CommandBuffer::Begin()
+    {
+    }
+    */
+
+    /*
     void CommandBuffer::End()
     {
     }
+    */
 
+    /*
     void CommandBuffer::Submit()
     {
     }
+    */
 
     // -------------------------------------------------------
 
     /*
     void CommandBuffer::EndCmdBuffer(VkSubmitInfo submitInfo)
 	{
-        auto &cmd = GetCurrentCommandResources();
 
-		vkEndCommandBuffer(cmd.cmdBuffer);
-
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmd.buffer;
-
-        if (auto result = vkQueueSubmit(submitInfo.queue, 1, &submitInfo, VK_NULL_HANDLE, cmd.fence); result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to submit command buffer: {}", ToString(result));
-            ErrMsg("Failed to submit command buffer!");
-        }
 	}
-	*/
-
+    */
 
 } // namespace SceneryEditorX
 

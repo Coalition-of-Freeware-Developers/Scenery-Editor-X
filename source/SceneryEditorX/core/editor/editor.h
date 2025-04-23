@@ -35,7 +35,7 @@ namespace SceneryEditorX
 	        MainLoop();
 	    }
 
-        GLOBAL Ref<Window> GetWindow() { return GraphicsEngine::GetWindow(); }
+        Ref<Window> GetWindow() { return vkRenderer.GetWindow(); }
 	
 	private:
         GraphicsEngine vkRenderer;

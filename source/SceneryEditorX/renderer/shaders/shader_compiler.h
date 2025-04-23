@@ -12,11 +12,33 @@
 */
 #pragma once
 #include <filesystem>
-// -------------------------------------------------------
+
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	std::vector<char> CompileShader(const std::filesystem::path &path);
+    class ShaderCompiler
+    {
+    public:
+        /// -------------------------------------------------------
+        /// Path to the glslangValidator executable
+        /// -------------------------------------------------------
+
+        //static const std::string_view GLSL_VALIDATOR;
+
+
+        /// -------------------------------------------------------
+
+        /**
+         * @brief Compile the shader using glslangValidator
+         * @param path The path to the shader file
+         * @return A vector of characters containing the compiled shader code
+         */
+
+        static std::vector<char> CompileShader(const std::filesystem::path &path);
+
+
+    };
 
 } // namespace SceneryEditorX
 

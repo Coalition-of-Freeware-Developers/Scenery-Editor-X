@@ -63,14 +63,21 @@ namespace SceneryEditorX
 		//GLOBAL bool GetSwapChainDirty() { return swapChainDirty; }
 		uint32_t GetWidth() const { return renderData.width; }
 		uint32_t GetHeight() const { return renderData.height; }
+
         GLOBAL uint32_t GetImageIndex() { return RenderData::imageIndex; }
+
 		VkFormat GetColorFormat() const { return colorFormat; }
+		VkFormat GetDepthFormat() const { return colorFormat; }
+		VkRenderPass GetRenderPass() const { return renderPass; }
         VkExtent2D GetSwapExtent() const { return swapChainExtent; }
         std::vector<VkImage> GetSwapChainImages() const { return swapChainImages; }
 		void SetVSync(const bool enabled) { renderData.VSync = enabled; }
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
 		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
 						 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const;
+        VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
+        VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
+
 
 	private:
         RenderData renderData;
@@ -82,14 +89,13 @@ namespace SceneryEditorX
         void FindImageFormatAndColorSpace();
         LOCAL VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
         void CreateDepthResources();
-        VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) const;
         VkFormat FindDepthFormat();
         VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-        LOCAL VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, uint32_t width, uint32_t height);
+        VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) const;
+	    LOCAL VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, uint32_t width, uint32_t height);
         LOCAL SwapChainDetails QuerySwapChainSupport(const VulkanDevice &device);
         uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-
-		VkDevice vkDevice = device->GetDevice();
+	    VkDevice vkDevice = device->GetDevice();
         VkPhysicalDevice vkPhysDevice = device->GetPhysicalDevice()->GetGPUDevice();
 
 		// -------------------------------------------------------
@@ -103,6 +109,7 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
         VkFormat colorFormat;
+        VkFormat depthFormat;
         VkFormat swapChainImageFormat;
         VkExtent2D swapChainExtent;
         VkRenderPass renderPass = nullptr;
@@ -111,6 +118,8 @@ namespace SceneryEditorX
         VkColorSpaceKHR colorSpace;
         VkSampleCountFlags sampleCounts;
         VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
+        VkAttachmentDescription colorAttachment{};
+        VkAttachmentDescription depthAttachment{};
 
 		// -------------------------------------------------------
         //GraphicsEngine;

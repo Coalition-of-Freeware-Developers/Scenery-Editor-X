@@ -49,7 +49,6 @@ namespace SceneryEditorX
 	class SwapChain;
 	struct SwapChainDetails;
 
-
     struct UniformBufferObject
     {
         alignas(16) glm::mat4 model;
@@ -68,37 +67,37 @@ namespace SceneryEditorX
         virtual void Init(const Ref<Window> &window);
         virtual void CreateInstance(const Ref<Window> &window);
         VkRenderPass GetRenderPass() const { return renderPass;}
-        GLOBAL Ref<Window> GetWindow() { return editorWindow; }
-		GLOBAL Ref<SwapChain> GetSwapChain() { return vkSwapChain; }
-		GLOBAL Ref<VulkanDevice> GetDevice() { return vkDevice; }
-		GLOBAL VkInstance GetInstance() { return vkInstance; }
-        GLOBAL VkSampler CreateSampler(float maxLod);
-        GLOBAL VkSampler GetSampler() { return vkDevice->GetSampler(); }
-        GLOBAL void WaitIdle(const Ref<VulkanDevice> &device);
+        Ref<Window> GetWindow() { return editorWindow; }
+		Ref<SwapChain> GetSwapChain() { return vkSwapChain; }
+        LOCAL Ref<VulkanDevice> GetDevice() { return VulkanDevice::GetInstance(); }
+		LOCAL VkInstance GetInstance() { return vkInstance; }
+        VkSampler CreateSampler(float maxLod);
+        VkSampler GetSampler() { return vkDevice->GetSampler(); }
+        void WaitIdle(const Ref<VulkanDevice> &device);
 
-        //static Ref<ShaderLibrary> GetShaderLibrary();
-
-		//static void WaitAndRender(RenderThread *renderThread);
-        //static void SwapQueues();
+        //INTERNAL Ref<ShaderLibrary> GetShaderLibrary();
+		//INTERNAL void WaitAndRender(RenderThread *renderThread);
+        //INTERNAL void SwapQueues();
 
 		// -------------------------------------------------------
 
-		GLOBAL uint32_t GetRenderQueueIndex();
-        GLOBAL uint32_t GetRenderQueueSubmissionIndex();
-        GLOBAL uint32_t GetCurrentFrameIndex();
+		uint32_t GetRenderQueueIndex();
+        uint32_t GetRenderQueueSubmissionIndex();
+        uint32_t GetCurrentFrameIndex();
 
         VkCommandBuffer BeginSingleTimeCommands() const;
         void EndSingleTimeCommands(VkCommandBuffer commandBuffer) const;
-
+        void Submit();
 
 		// -------------------------------------------------------
+
 		//static void BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
 		//static void EndRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer);
 
 		// -------------------------------------------------------
 
-	    GLOBAL void BeginFrame();
-		GLOBAL void EndFrame();
+	    void BeginFrame();
+		void EndFrame();
 
 		// -------------------------------------------------------
 
@@ -112,17 +111,19 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
 	private:
-        GLOBAL Ref<Window> editorWindow;
-        GLOBAL Ref<SwapChain> vkSwapChain;
-        GLOBAL Ref<VulkanDevice> vkDevice;
-        inline static VkInstance vkInstance;
+        Ref<Window> editorWindow;
+        Ref<SwapChain> vkSwapChain;
+        Ref<VulkanDevice> vkDevice;
+        LOCAL inline VkInstance vkInstance;
 
 	    VkAllocationCallbacks *allocator = nullptr;
         VkDebugUtilsMessengerEXT debugMessenger = nullptr;
         VkPipelineCache pipelineCache = nullptr;
 
+		Layers vkLayers;
 		Viewport viewportData;
         RenderData renderData;
+        Extensions vkExtensions;
         VulkanDeviceFeatures vkEnabledFeatures;
 
         Ref<VulkanChecks> checks;
@@ -130,6 +131,7 @@ namespace SceneryEditorX
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
 
         void glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer);
+
 		// -------------------------------------------------------
 
 		VkDevice device = nullptr;
@@ -197,8 +199,7 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
-
+        INTERNAL void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
         void CreateSurface(GLFWwindow *glfwWindow);
         void CreateLogicalDevice();
         void CreateSwapChain();
@@ -208,7 +209,7 @@ namespace SceneryEditorX
                          VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
                          VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
         void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
-        static void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
+        GLOBAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
         void CreateRenderPass();
         void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory) const;
         void CreateVertexBuffer();
@@ -248,7 +249,7 @@ namespace SceneryEditorX
         VkFormat FindDepthFormat() const;
         void CleanUp();
         void CleanupSwapChain();
-        static void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
+        INTERNAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 
 		// -------------------------------------------------------
 

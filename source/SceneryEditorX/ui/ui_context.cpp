@@ -82,6 +82,11 @@ namespace SceneryEditorX::UI
         return new UIContextImpl();
     }
 
+    UIContextImpl::UIContextImpl()
+    {
+        // Initialize any necessary members here
+    }
+
 	void UIContext::SetDarkThemeColors()
     {
         auto &colors = ImGui::GetStyle().Colors;

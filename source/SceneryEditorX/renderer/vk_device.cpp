@@ -400,7 +400,7 @@ namespace SceneryEditorX
 		// ---------------------------------------------------------
 
         /// Verify extension support
-        const auto &deviceExtensions = Extensions::requiredExtensions;
+        const auto &deviceExtensions = vkExtensions.requiredExtensions;
         if (!checks.CheckDeviceExtensionSupport(vkPhysDevice->GetGPUDevice()))
         {
             SEDX_CORE_ERROR("Required device extensions not supported!");
@@ -483,7 +483,7 @@ namespace SceneryEditorX
     void VulkanDevice::InitializeMemoryAllocator()
     {
         memoryAllocator = CreateRef<MemoryAllocator>("VulkanDevice");
-        MemoryAllocator::Init(device, vkPhysDevice->GetGPUDevice(), GraphicsEngine::GetInstance());
+        memoryAllocator->Init(device, vkPhysDevice->GetGPUDevice(), GraphicsEngine::GetInstance());
     }
 
     void VulkanDevice::InitializeBindlessResources()
@@ -623,7 +623,7 @@ namespace SceneryEditorX
         /// Shutdown memory allocator
         if (memoryAllocator)
         {
-            MemoryAllocator::Shutdown();
+            memoryAllocator->Shutdown();
             memoryAllocator = nullptr;
         }
 
@@ -634,6 +634,19 @@ namespace SceneryEditorX
             device = VK_NULL_HANDLE;
         }
     }
+
+    VmaAllocator VulkanDevice::GetMemoryAllocator()
+    {
+        if (memoryAllocator)
+        {
+            return memoryAllocator->GetMemAllocator();
+        }
+
+        SEDX_CORE_ERROR("Memory allocator not initialized.");
+        ErrMsg("Memory allocator not initialized.");
+        return nullptr;
+    }
+
 
     void VulkanDevice::Destroy()
     {
@@ -769,8 +782,8 @@ namespace SceneryEditorX
             return it->second;
         }
 
-        /// Create a new command pool for this thread
-        Ref<CommandPool> commandPool = CreateRef<CommandPool>(CreateRef<VulkanDevice>(this));
+        /// Create a new command pool for this thread pass reference to current instance.
+        Ref<CommandPool> commandPool = CreateRef<CommandPool>(GetInstance());
         CmdPools[threadID] = commandPool;
 
         SEDX_CORE_INFO("Created new command pool for thread {}", std::hash<std::thread::id>{}(threadID));
@@ -1135,7 +1148,7 @@ namespace SceneryEditorX
         /// For large buffers, mark for potential defragmentation
         if (size > 16 * 1024 * 1024)
         {
-            MemoryAllocator::MarkForDefragmentation(resource->allocation);
+            memoryAllocator->MarkForDefragmentation(resource->allocation);
         }
 
         /// Create buffer object

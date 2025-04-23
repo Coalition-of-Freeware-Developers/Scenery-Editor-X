@@ -17,6 +17,7 @@
 namespace SceneryEditorX
 {
 	Asset::~Asset() = default;
+    Object::~Object() = default;
 
 } // namespace SceneryEditorX
 

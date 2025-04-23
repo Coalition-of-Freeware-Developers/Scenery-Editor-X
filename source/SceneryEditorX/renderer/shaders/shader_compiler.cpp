@@ -26,7 +26,7 @@ namespace SceneryEditorX
 	 * @param path The path to the shader file
 	 * @return A vector of characters containing the compiled shader code
 	 */
-	static std::vector<char> CompileShader(const std::filesystem::path &path)
+	std::vector<char> ShaderCompiler::CompileShader(const std::filesystem::path &path)
 	{
 	    char compile_string[1024];
 	    char inpath[256];
@@ -58,6 +58,10 @@ namespace SceneryEditorX
 	
 	    return buffer;
 	}
+
+    // ---------------------------------------------------------
+
+    //const std::string_view ShaderCompiler::GLSL_VALIDATOR = R"(glslangValidator)";
 
 } // namespace SceneryEditorX
 
