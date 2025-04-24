@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-
 #include <cstdint>
 #include <fmt/core.h>
 #include <SceneryEditorX/logging/log_templates.h>

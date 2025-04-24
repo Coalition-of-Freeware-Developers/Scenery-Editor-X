@@ -14,6 +14,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
+#include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/renderer/render_data.h>

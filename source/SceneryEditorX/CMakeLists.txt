@@ -30,7 +30,6 @@ ADD_EXECUTABLE(SceneryEditorX
     ${FONT_FILES}
     ${RENDERER_FILES}
     ${SCENE_FILES}
-	#${UI_FILES}
     ${MAC_PLATFORM}
     ${LINUX_PLATFORM}
     ${WIN_PLATFORM}
@@ -38,6 +37,9 @@ ADD_EXECUTABLE(SceneryEditorX
 	${PROJECT_CONFIG_FILES}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
+	core/application_data.h
+	core/application.cpp
+	core/application.h
     core/base.hpp
 	core/encoding.cpp
     core/encoding.hpp
@@ -61,8 +63,11 @@ ADD_EXECUTABLE(SceneryEditorX
     logging/logging.hpp
 	logging/profiler.hpp
     # --------------------------------
-	platform/platform.h
     platform/system_detection.h
+	platform/time.cpp
+	platform/time.h
+	platform/settings.cpp
+	platform/settings.h
     # --------------------------------
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
@@ -133,6 +138,9 @@ ADD_EXECUTABLE(SceneryEditorX
 # --------------------------------
 
 SOURCE_GROUP("Core" FILES
+	core/application_data.h
+	core/application.cpp
+	core/application.h
 	core/base.hpp
 	core/encoding.cpp
 	core/encoding.hpp
@@ -149,11 +157,14 @@ SOURCE_GROUP("Core" FILES
 SOURCE_GROUP("Editor/Core" FILES
 	core/editor/editor.cpp
 	core/editor/editor.h
+	core/version.h
 )
 SOURCE_GROUP("Core/Platform" FILES
     platform/system_detection.h
-    platform/platform.h
-    core/version.h
+	platform/time.cpp
+	platform/time.h
+	platform/settings.cpp
+	platform/settings.h
 )
 SOURCE_GROUP("Core/Platform/Windows" FILES
     ${WIN_PLATFORM}
@@ -277,7 +288,7 @@ add_compile_definitions(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
 
 TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/Source
+        ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
@@ -300,6 +311,8 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         CURL::libcurl
         Vulkan::Vulkan
 		imgui
+		libconfig
+		libconfig++
 		X-PlaneSceneryLibrary
         glfw
         dxgi

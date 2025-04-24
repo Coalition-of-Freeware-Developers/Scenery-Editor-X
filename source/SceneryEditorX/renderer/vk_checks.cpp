@@ -10,7 +10,7 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
-
+#include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_util.h>
 
@@ -30,7 +30,7 @@ namespace SceneryEditorX
 	    CheckExtensions(extensions);
 	    CheckLayers(layers);
         //CheckDeviceFeatures(device);
-        IsDeviceCompatible(device);
+        //IsDeviceCompatible(device);
 	}
 
 	/**

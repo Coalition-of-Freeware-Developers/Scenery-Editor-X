@@ -10,11 +10,11 @@
 * Created: 8/4/2025
 * -------------------------------------------------------
 */
-
+#define VMA_IMPLEMENTATION
+#include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/memory.h>
 #include <SceneryEditorX/renderer/vk_allocator.h>
 #include <SceneryEditorX/renderer/vk_core.h>
-#define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------

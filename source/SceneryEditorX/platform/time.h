@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * time.h
@@ -19,6 +19,12 @@
 
 namespace SceneryEditorX
 {
+
+    /// Forward declarations
+    class DeltaTime;
+
+	// ------------------------------------------------
+
 	/**
 	 * @brief Time management class for tracking delta time, FPS, and providing timers.
 	 *
@@ -29,11 +35,24 @@ namespace SceneryEditorX
 	class Time
 	{
 	public:
+
 	    /**
 	     * @brief Gets the current time in seconds since GLFW initialization.
 	     * @return float The current system time in seconds.
 	     */
-	    static float GetTime();
+	    float GetTime();
+
+		/**
+		 * @brief Gets the current date and time as a 64-bit unsigned integer.
+		 * @return uint64_t The current date and time in microseconds since epoch.
+		 */
+		static uint64_t GetCurrentDateTimeU64();
+
+		/**
+		 * @brief Gets the current date and time as a formatted string.
+		 * @return std::string The current date and time in "YYYY-MM-DD HH:MM:SS" format.
+		 */
+		static std::string GetCurrentDateTimeString();
 
         /**
          * @brief Logs the time taken for a specific operation.
@@ -82,65 +101,53 @@ namespace SceneryEditorX
 	     * @brief Initializes the Time system.
 	     * Should be called at application startup.
 	     */
-	    static void Initialize();
-	
+	    void Init();
+
 	    /**
 	     * @brief Updates the time-related variables each frame.
 	     * Should be called once per frame.
 	     */
-	    static void Update();
-	
-	    /**
-	     * @brief Get the time elapsed since the last frame in seconds.
-	     * @return float Delta time in seconds.
-	     */
-	    static float GetDeltaTime();
-	
-	    /**
-	     * @brief Get the time elapsed since the last frame in milliseconds.
-	     * @return float Delta time in milliseconds.
-	     */
-	    static float GetDeltaTimeMs();
-	
+        void Update(DeltaTime dt);
+
 	    /**
 	     * @brief Get the time elapsed since application start in seconds.
 	     * @return float Application runtime in seconds.
 	     */
-	    static float GetApplicationTime();
-	
+	    float GetApplicationTime();
+
 	    /**
 	     * @brief Get the time elapsed since application start in milliseconds.
 	     * @return float Application runtime in milliseconds.
 	     */
-	    static float GetApplicationTimeMs();
-	
+	    float GetApplicationTimeMs();
+
 	    /**
 	     * @brief Get the current frames per second.
 	     * @return float Current FPS value.
 	     */
-	    static float GetFPS();
-	
+	    float GetFPS();
+
 	    /**
 	     * @brief Create a new timer with a specific duration.
 	     * @param durationSeconds Timer duration in seconds.
 	     * @return uint32_t Timer ID that can be used to check the timer's status.
 	     */
-	    static uint32_t CreateTimer(float durationSeconds);
-	
+	    uint32_t CreateTimer(float durationSeconds);
+
 	    /**
 	     * @brief Check if a timer has completed.
 	     * @param timerID ID of the timer to check.
 	     * @return bool True if timer has completed, false otherwise.
 	     */
-	    static bool IsTimerComplete(uint32_t timerID);
-	
+	    bool IsTimerComplete(uint32_t timerID);
+
 	    /**
 	     * @brief Reset an existing timer.
 	     * @param timerID ID of the timer to reset.
 	     * @param newDurationSeconds Optional new duration in seconds.
 	     */
-	    static void ResetTimer(uint32_t timerID, float newDurationSeconds = -1.0f);
-	
+	    void ResetTimer(uint32_t timerID, float newDurationSeconds = -1.0f);
+
 	private:
 	    struct Timer
 	    {
@@ -148,21 +155,52 @@ namespace SceneryEditorX
 	        float startTime;
 	        bool isActive;
 	    };
-	
+
 	    // Time tracking
-	    static inline float s_DeltaTime = 0.0f;
 	    static inline float s_LastFrameTime = 0.0f;
 	    static inline float s_ApplicationStartTime = 0.0f;
-	
+
 	    // FPS tracking
 	    static inline std::deque<float> s_FrameTimes;
 	    static inline float s_CurrentFPS = 0.0f;
 	    static constexpr size_t s_MaxFrameTimesSamples = 60;
-	
+
 	    // Timer system
 	    static inline std::vector<Timer> s_Timers;
 	    static inline uint32_t s_NextTimerID = 1;
     };
+
+    // -------------------------------------------------------
+
+	class DeltaTime
+	{
+	public:
+        DeltaTime() = default;
+        explicit DeltaTime(float time);
+
+		/**
+	     * @brief Get the time elapsed since the last frame in seconds.
+	     * @return float Delta time in seconds.
+	     */
+		inline float GetSeconds() const { return dt; }
+
+        /**
+		 * @brief Get the time elapsed since the last frame in milliseconds.
+		 * @return float Delta time in milliseconds.
+		 */
+		inline float GetMilliseconds() const { return dt * 1000.0f; }
+
+		/**
+		 * @brief Get the time elapsed since the last frame in microseconds.
+		 * @return float Delta time in microseconds.
+		 */
+		operator float() const { return dt; }
+
+	private:
+        float dt = 0.0f;
+
+		friend class Time;
+	};
 
 } // namespace SceneryEditorX
 

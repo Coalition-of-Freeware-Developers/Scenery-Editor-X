@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #include <mutex>
-#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/core/memory.h>
 
 // -------------------------------------------------------

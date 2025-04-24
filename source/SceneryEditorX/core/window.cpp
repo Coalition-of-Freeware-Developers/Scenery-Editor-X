@@ -10,7 +10,6 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/core/window.h>
 #include <stb_image.h>
 

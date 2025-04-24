@@ -154,6 +154,16 @@ FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 ADD_SUBDIRECTORY(dependency/glfw)
 
 # --------------------------------
+# libconfig
+# --------------------------------
+# Override libconfig options before adding the subdirectory
+OPTION(BUILD_EXAMPLES "Enable examples" OFF)
+OPTION(BUILD_SHARED_LIBS "Enable shared library" ON)
+OPTION(BUILD_TESTS "Enable tests" OFF)
+OPTION(BUILD_FUZZERS "Enable fuzzers" OFF)
+ADD_SUBDIRECTORY(dependency/libconfig)
+
+# --------------------------------
 # EDX
 # --------------------------------
 ADD_SUBDIRECTORY(source/edX)
@@ -217,11 +227,11 @@ MESSAGE(STATUS "Generating precompiled headers")
 TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/xpeditor_pch.h)
 
 SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
-SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
+SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary libconfig libconfig++ PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester imgui edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
