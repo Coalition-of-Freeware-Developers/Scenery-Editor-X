@@ -35,6 +35,8 @@ namespace SceneryEditorX::UI
         virtual void Begin() = 0;
         virtual void End() = 0;
 
+        static Ref<UIContext> CreateRef();
+
 	    virtual void SetGUI(GUI *guiInstance) = 0;
 
         GLOBAL void SetDarkThemeColors();

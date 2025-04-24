@@ -29,7 +29,7 @@ namespace SceneryEditorX
 	class ApplicationSettings
 	{
 	public:
-	    ApplicationSettings(std::filesystem::path filepath);
+        ApplicationSettings(std::filesystem::path filepath);
 	
 		bool ReadSettings();
         void WriteSettings();

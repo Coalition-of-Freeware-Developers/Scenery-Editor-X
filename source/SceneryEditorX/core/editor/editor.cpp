@@ -13,6 +13,7 @@
 
 #include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/platform/settings.h>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
@@ -56,21 +57,24 @@ namespace SceneryEditorX
 	    //loader.run();
 	    //SceneryEditorX::ReadCache();
 	    //assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
-	
+        ApplicationSettings settings("settings.cfg");
+        settings.ReadSettings();
+
+        ImGui::CreateContext();
 	    //scene = assetManager.GetInitialScene();
 	    //camera = assetManager.GetMainCamera(scene);
-	    Window();
 	}
 	
 	void EditorApplication::Create()
 	{
-	    //g_Window = CreateScope<Window>();
-	    //g_Window->Create();
-	
-	    VulkanChecks vulkanChecks;           // Create a new instance of the VulkanChecks class
-	    vulkanChecks.InitChecks({}, {}, {}); // Initialize the Vulkan checks
+        Ref<Window> editorWindow = CreateRef<Window>();
 
-		// Create and configure the physical vkDevice
+        vkRenderer.Init(editorWindow);
+	
+        Ref<VulkanChecks> vulkanChecks = CreateRef<VulkanChecks>();
+        vulkanChecks->InitChecks({}, {}, {});
+
+        vkDevice = VulkanDevice::GetInstance();
         auto physDevice = vkDevice->GetPhysicalDevice();
         physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
@@ -82,15 +86,12 @@ namespace SceneryEditorX
         device = vkDevice->GetDevice();
 
 	    //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-        Ref<Window> windowRef = CreateRef<Window>(); 
-        vkRenderer.CreateInstance(windowRef);
+        vkRenderer.CreateInstance(editorWindow);
 	
 	    //createViewportResources();
 	
         // Initialize UI components
         ui.InitGUI(Window::GetWindow(), vkRenderer);
-        uiContext = std::shared_ptr<UI::UIContext>(UI::UIContext::Create());
-        uiContext->SetGUI(&ui);
 
 	    //SceneryEditorX::CreateEditor();
 	

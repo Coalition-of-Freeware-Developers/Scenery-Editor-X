@@ -158,7 +158,7 @@ ADD_SUBDIRECTORY(dependency/glfw)
 # --------------------------------
 # Override libconfig options before adding the subdirectory
 OPTION(BUILD_EXAMPLES "Enable examples" OFF)
-OPTION(BUILD_SHARED_LIBS "Enable shared library" ON)
+OPTION(BUILD_SHARED_LIBS "Enable shared library" OFF)
 OPTION(BUILD_TESTS "Enable tests" OFF)
 OPTION(BUILD_FUZZERS "Enable fuzzers" OFF)
 ADD_SUBDIRECTORY(dependency/libconfig)

@@ -39,45 +39,11 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
-	{
-	    // Build a rich debug message that includes severity and type info
-	    std::string severityStr = VK_DEBUG_SEVERITY_STRING(messageSeverity);
-	    std::string typeStr = VK_DEBUG_TYPE(messageType);
-	
-	    std::string formattedMessage = "[" + severityStr + "][" + typeStr + "] " + pCallbackData->pMessage;
-	
-	    // Log through our custom Vulkan logger
-	    Log::LogVulkanDebug(formattedMessage);
-	
-	    // Also log any objects that were involved in the message
-	    if (pCallbackData->objectCount > 0)
-	    {
-	        for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
-	        {
-	            const auto &obj = pCallbackData->pObjects[i];
-	            std::string objInfo = "   Object[" + std::to_string(i) + "] - Type: ";
-	            objInfo += std::to_string(obj.objectType) + ", Handle: " + std::to_string((uint64_t)obj.objectHandle);
-	
-	            if (obj.pObjectName)
-	            {
-	                objInfo += ", Name: \"" + std::string(obj.pObjectName) + "\"";
-	            }
-	
-	            Log::LogVulkanDebug(objInfo);
-	        }
-	    }
-	
-	    return VK_FALSE; // Don't abort call
-	}
-
     VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,
         VkDebugUtilsMessengerEXT*pDebugMessenger)
     {
-        if (auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-                vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
-            func != nullptr)
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func != nullptr)
         {
             return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
         }
@@ -86,6 +52,86 @@ namespace SceneryEditorX
             return VK_ERROR_EXTENSION_NOT_PRESENT;
         }
     }
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                        VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+                                                        void *pUserData)
+    {
+        // Build a rich debug message that includes severity and type info
+        std::string severityStr = VK_DEBUG_SEVERITY_STRING(messageSeverity);
+        std::string typeStr = VK_DEBUG_TYPE(messageType);
+
+        std::string formattedMessage = "[" + severityStr + "][" + typeStr + "] " + pCallbackData->pMessage;
+
+        // Log through our custom Vulkan logger
+        Log::LogVulkanDebug(formattedMessage);
+
+        // Also log any objects that were involved in the message
+        if (pCallbackData->objectCount > 0)
+        {
+            for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
+            {
+                const auto &obj = pCallbackData->pObjects[i];
+                std::string objInfo = "   Object[" + std::to_string(i) + "] - Type: ";
+                objInfo += std::to_string(obj.objectType) + ", Handle: " + std::to_string((uint64_t)obj.objectHandle);
+
+                if (obj.pObjectName)
+                {
+                    objInfo += ", Name: \"" + std::string(obj.pObjectName) + "\"";
+                }
+
+                Log::LogVulkanDebug(objInfo);
+            }
+        }
+
+        return VK_FALSE; // Don't abort call
+    }
+
+    std::string SceneryEditorX::VK_DEBUG_SEVERITY_STRING(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity)
+    {
+        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+        {
+            return "VERBOSE";
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        {
+            return "INFO";
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        {
+            return "WARNING";
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        {
+            return "ERROR";
+        }
+        else
+        {
+            return "UNKNOWN";
+        }
+    }
+
+    std::string SceneryEditorX::VK_DEBUG_TYPE(VkFlags messageType)
+    {
+        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+        {
+            return "GENERAL";
+        }
+        else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+        {
+            return "VALIDATION";
+        }
+        else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+        {
+            return "PERFORMANCE";
+        }
+        else
+        {
+            return "UNKNOWN";
+        }
+    }
+
 
     void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
                                                        const VkAllocationCallbacks *pAllocator)
@@ -110,9 +156,18 @@ namespace SceneryEditorX
 
     GraphicsEngine::~GraphicsEngine()
     {
-        DestroyDebugUtilsMessengerEXT(vkInstance, debugMessenger, allocator);
-        vkDestroySurfaceKHR(vkInstance, surface, allocator);
-        vkDestroyInstance(vkInstance, allocator);
+        if (debugMessenger != VK_NULL_HANDLE)
+        {
+            DestroyDebugUtilsMessengerEXT(vkInstance, debugMessenger, allocator);
+        }
+        if (surface != VK_NULL_HANDLE)
+        {
+            vkDestroySurfaceKHR(vkInstance, surface, allocator);
+        }
+        if (vkInstance != VK_NULL_HANDLE)
+        {
+            vkDestroyInstance(vkInstance, allocator);
+        }
         vkInstance = nullptr;
     }
 
@@ -151,11 +206,11 @@ namespace SceneryEditorX
         /// Extensions and Validation
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        if (checks->CheckValidationLayerSupport())
-        {
-            SEDX_CORE_ERROR("Validation layers requested, but not available!");
-            ErrMsg("Validation layers requested, but not available!");
-        }
+        //if (checks->CheckValidationLayerSupport())
+        //{
+        //    SEDX_CORE_ERROR("Validation layers requested, but not available!");
+        //    ErrMsg("Validation layers requested, but not available!");
+        //}
 
 		// Get all available layers
         uint32_t layerCount = 0;
@@ -495,12 +550,12 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    void GraphicsEngine::PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT & createInfo)
+    void GraphicsEngine::PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
     {
         createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 
-		    // Include all severity levels for comprehensive logging
+        // Include all severity levels for comprehensive logging
         createInfo.messageSeverity =
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -510,7 +565,8 @@ namespace SceneryEditorX
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
-        createInfo.pfnUserCallback = DebugCallback;
+        // Replace this line - use the correct callback function name
+        createInfo.pfnUserCallback = debugCallback; // lowercase 'd' to match the implementation
         createInfo.pUserData = nullptr;
     }
 

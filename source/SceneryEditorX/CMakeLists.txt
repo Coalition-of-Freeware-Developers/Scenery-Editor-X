@@ -38,8 +38,6 @@ ADD_EXECUTABLE(SceneryEditorX
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
 	core/application_data.h
-	core/application.cpp
-	core/application.h
     core/base.hpp
 	core/encoding.cpp
     core/encoding.hpp
@@ -139,8 +137,6 @@ ADD_EXECUTABLE(SceneryEditorX
 
 SOURCE_GROUP("Core" FILES
 	core/application_data.h
-	core/application.cpp
-	core/application.h
 	core/base.hpp
 	core/encoding.cpp
 	core/encoding.hpp

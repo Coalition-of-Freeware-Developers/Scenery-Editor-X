@@ -93,27 +93,31 @@ namespace SceneryEditorX
 	 */
     bool VulkanChecks::CheckValidationLayerSupport() const
     {
-        uint32_t layerCount = 0;
-        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-        std::vector<VkLayerProperties> availableLayers(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-        for (const char *layerName : vkLayers.validationLayers)
+        if (!vkLayers.validationLayers.empty())
         {
-            auto layerFound = false;
-            for (const auto &layerProperties : availableLayers)
-            {
-                if (strcmp(layerName, layerProperties.layerName) == 0)
-                {
-                    layerFound = true;
-                    break;
-                }
-            }
+            // Add validation
+            uint32_t layerCount = 0;
+            vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
-            if (!layerFound)
+            std::vector<VkLayerProperties> availableLayers(layerCount);
+            vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+            for (const char *layerName : vkLayers.validationLayers)
             {
-                return false;
+                auto layerFound = false;
+                for (const auto &layerProperties : availableLayers)
+                {
+                    if (strcmp(layerName, layerProperties.layerName) == 0)
+                    {
+                        layerFound = true;
+                        break;
+                    }
+                }
+
+                if (!layerFound)
+                {
+                    return false;
+                }
             }
         }
 
