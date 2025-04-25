@@ -5,7 +5,7 @@
 * Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* systemdetection.h
+* system_detection.h
 * -------------------------------------------------------
 * Created: 16/3/2025
 * -------------------------------------------------------

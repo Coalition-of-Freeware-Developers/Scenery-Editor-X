@@ -10,13 +10,13 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
 #include <chrono>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/renderer/render_data.h>
+#include <stb_image.h>
 
 // -------------------------------------------------------
 

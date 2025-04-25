@@ -10,7 +10,6 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/ui/ui.h>

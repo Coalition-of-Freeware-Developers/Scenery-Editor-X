@@ -10,7 +10,6 @@
 * Created: 7/4/2025
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/renderer/vk_cmd_buffers.h>
 #include <vulkan/vulkan.h>

@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-
 #include <SceneryEditorX/renderer/render_data.h>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_device.h>

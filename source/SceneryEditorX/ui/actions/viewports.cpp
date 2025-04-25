@@ -10,8 +10,8 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui.h>
-#include <imgui_internal.h>
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <SceneryEditorX/renderer/vk_util.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_manager.h>

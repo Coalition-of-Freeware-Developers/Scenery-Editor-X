@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/renderer/render_data.h> 
 #include <SceneryEditorX/renderer/vk_cmd_buffers.h>

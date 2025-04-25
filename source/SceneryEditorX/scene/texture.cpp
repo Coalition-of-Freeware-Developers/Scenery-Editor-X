@@ -10,7 +10,6 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/renderer/render_data.h>
 #include <SceneryEditorX/scene/texture.h>

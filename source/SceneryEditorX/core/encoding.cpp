@@ -10,8 +10,8 @@
 * Created: 9/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/encoding.hpp>
 #include <algorithm>
+#include <SceneryEditorX/core/encoding.hpp>
 
 // -------------------------------------------------------
 

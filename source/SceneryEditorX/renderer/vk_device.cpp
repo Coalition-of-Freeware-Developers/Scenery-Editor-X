@@ -10,7 +10,6 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/renderer/vk_allocator.h>
 #include <SceneryEditorX/renderer/vk_checks.h>

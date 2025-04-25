@@ -14,6 +14,9 @@
 #include <cstdint>
 #include <fmt/core.h>
 #include <SceneryEditorX/logging/log_templates.h>
+#include <spdlog/logger.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.h>
 

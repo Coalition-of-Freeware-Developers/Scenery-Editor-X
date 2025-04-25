@@ -10,7 +10,6 @@
 * Created: 25/3/2025
 * -------------------------------------------------------
 */
-
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imconfig.h>
@@ -20,7 +19,6 @@
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/ui/ui.h>
-
 
 // -------------------------------------------------------
 

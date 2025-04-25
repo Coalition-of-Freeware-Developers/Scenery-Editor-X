@@ -10,7 +10,6 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
 #include <SceneryEditorX/platform/windows/file_manager.hpp>
 #include <SceneryEditorX/renderer/vk_core.h>

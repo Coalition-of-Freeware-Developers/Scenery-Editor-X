@@ -10,7 +10,6 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
-
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
@@ -25,7 +24,6 @@
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <stb_image.h>
 #include <tiny_obj_loader.h>
-#include <unordered_map>
 
 // -------------------------------------------------------
 
@@ -39,8 +37,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-    VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,
-        VkDebugUtilsMessengerEXT*pDebugMessenger)
+    VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT( VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT*pDebugMessenger)
     {
         auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
         if (func != nullptr)
@@ -53,21 +50,18 @@ namespace SceneryEditorX
         }
     }
 
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                        VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                                                        void *pUserData)
+    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
     {
-        // Build a rich debug message that includes severity and type info
+        /// Build a rich debug message that includes severity and type info
         std::string severityStr = VK_DEBUG_SEVERITY_STRING(messageSeverity);
         std::string typeStr = VK_DEBUG_TYPE(messageType);
 
         std::string formattedMessage = "[" + severityStr + "][" + typeStr + "] " + pCallbackData->pMessage;
 
-        // Log through our custom Vulkan logger
+        /// Log through our custom Vulkan logger
         Log::LogVulkanDebug(formattedMessage);
 
-        // Also log any objects that were involved in the message
+        /// Also log any objects that were involved in the message
         if (pCallbackData->objectCount > 0)
         {
             for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
@@ -133,11 +127,9 @@ namespace SceneryEditorX
     }
 
 
-    void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
-                                                       const VkAllocationCallbacks *pAllocator)
+    void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
-        if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-                vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
+        if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
             func != nullptr)
         {
             func(instance, debugMessenger, pAllocator);
@@ -146,7 +138,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer)
     {
-        // Set the GLFWwindow user pointer to point to our Window instance
+        /// Set the GLFWwindow user pointer to point to our Window instance
         ::glfwSetWindowUserPointer(pointer, window.get());
     }
 
@@ -566,7 +558,7 @@ namespace SceneryEditorX
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
         // Replace this line - use the correct callback function name
-        createInfo.pfnUserCallback = debugCallback; // lowercase 'd' to match the implementation
+        createInfo.pfnUserCallback = DebugCallback; // lowercase 'd' to match the implementation
         createInfo.pUserData = nullptr;
     }
 

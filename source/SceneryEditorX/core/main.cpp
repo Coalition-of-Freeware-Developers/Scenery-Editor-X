@@ -10,7 +10,6 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-
 #include <Launcher/core/launcher_main.h>
 #include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/core/window.h>

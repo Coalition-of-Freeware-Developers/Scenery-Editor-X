@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 
 // -------------------------------------------------------

@@ -10,7 +10,6 @@
 * Created: 5/2/2025
 * -------------------------------------------------------
 */
-
 #pragma once
 #include <SceneryEditorX/platform/system_detection.h>
 

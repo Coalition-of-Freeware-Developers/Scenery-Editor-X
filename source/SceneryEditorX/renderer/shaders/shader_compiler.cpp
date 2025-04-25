@@ -10,12 +10,8 @@
 * Created: 8/4/2025
 * -------------------------------------------------------
 */
-#include <cstdlib>
-#include <filesystem>
-#include <iostream>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/shaders/shader_compiler.h>
-#include <string>
 
 // ---------------------------------------------------------
 

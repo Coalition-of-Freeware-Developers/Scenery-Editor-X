@@ -21,7 +21,7 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
-// TODO: Impliment MAC and Linux detection
+// TODO: Implement MAC and Linux detection
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS) || defined(WIN64)
 #ifndef SEDX_PLATFORM_WINDOWS
 #define SEDX_PLATFORM_WINDOWS
@@ -150,10 +150,10 @@
 ##########################################################
 */
 
-#include <spdlog/logger.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
+//#include <spdlog/logger.h>
+//#include <spdlog/sinks/basic_file_sink.h>
+//#include <spdlog/sinks/stdout_color_sinks.h>
+//#include <spdlog/spdlog.h>
 
 /*
 ##########################################################
@@ -161,34 +161,23 @@
 ##########################################################
 */
 
-#include <imgui.h>
-#include <ImGuizmo.h>
-
-// -------------------------------------------------------
-
 #include <SceneryEditorX/resource.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/logging/asserts.h>
+#include <SceneryEditorX/platform/platform_states.h>
 
 /*
 ##########################################################
 ##########################################################
 */
 
-#define INTERNAL static
-#define LOCAL static
-#define GLOBAL static
-
-// -------------------------------------------------------
-
 #ifdef SEDX_DEBUG
 std::filesystem::path workingDir = std::filesystem::current_path();
 #endif
 
 // -------------------------------------------------------
-
 
 /**
  * @brief - A macro to display an error message
@@ -212,6 +201,5 @@ void ErrMsg(const T &errorMessage)
 #endif
     throw std::runtime_error(errorStr);
 };
-
 
 // -------------------------------------------------------

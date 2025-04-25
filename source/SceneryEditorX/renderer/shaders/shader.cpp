@@ -12,7 +12,6 @@
 */
 #include <SceneryEditorX/platform/windows/file_manager.hpp>
 #include <SceneryEditorX/renderer/shaders/shader.h>
-#include <string>
 
 // -----------------------------------------
 

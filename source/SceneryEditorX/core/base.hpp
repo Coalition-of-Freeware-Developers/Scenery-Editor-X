@@ -10,7 +10,6 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -51,14 +50,13 @@ using Mat4 = glm::mat4; // 4x4 matrix
 
 // -------------------------------------------------------
 
-// Macro to align a given size to the specified alignment
+/// Macro to align a given size to the specified alignment
 #define ALIGN_AS(size, alignment) ((size) % (alignment) > 0 ? (size) + (alignment) - (size) % (alignment) : (size))
 
-// Macro to count the number of elements in an array
+/// Macro to count the number of elements in an array
 #define COUNT_OF(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 #define SEDX_EXPAND_MACRO(x) x
-
 #define SEDX_STRINGIFY_IMPL(x) #x
 #define SEDX_STRINGIFY(x) SEDX_STRINGIFY_IMPL(x)
 

@@ -10,10 +10,7 @@
 * Created: 19/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
-
-#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/renderer/render_data.h>
 #include <SceneryEditorX/scene/asset.h>
 #include <SceneryEditorX/scene/camera.h>

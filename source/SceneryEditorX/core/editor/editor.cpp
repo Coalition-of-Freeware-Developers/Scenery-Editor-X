@@ -10,7 +10,6 @@
 * Created: 13/4/2025
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/settings.h>

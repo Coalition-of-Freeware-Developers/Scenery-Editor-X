@@ -11,10 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-
 #include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/scene/asset.h>
-#include <vector>
 
 // -------------------------------------------------------
 

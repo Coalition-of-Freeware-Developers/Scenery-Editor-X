@@ -10,7 +10,6 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
 #include <SceneryEditorX/renderer/render_data.h>
 #include <vulkan/vulkan.h>

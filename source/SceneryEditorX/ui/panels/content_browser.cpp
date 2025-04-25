@@ -10,7 +10,6 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/ui/ui.h>

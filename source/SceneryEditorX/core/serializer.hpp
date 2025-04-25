@@ -11,10 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <json.hpp>
 #include <SceneryEditorX/core/base.hpp>
+#include <nlohmann/json.hpp>
 #include <SceneryEditorX/scene/asset_manager.h>
-
 
 // -------------------------------------------------------
 
