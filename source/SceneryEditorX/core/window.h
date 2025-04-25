@@ -14,6 +14,7 @@
 #include <chrono>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <imgui/imgui.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/renderer/render_data.h>
 #include <stb_image.h>

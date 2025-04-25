@@ -156,11 +156,11 @@ SOURCE_GROUP("Editor/Core" FILES
 	core/version.h
 )
 SOURCE_GROUP("Core/Platform" FILES
-    platform/system_detection.h
-	platform/time.cpp
-	platform/time.h
 	platform/settings.cpp
 	platform/settings.h
+	platform/system_detection.h
+	platform/time.cpp
+	platform/time.h
 )
 SOURCE_GROUP("Core/Platform/Windows" FILES
     ${WIN_PLATFORM}

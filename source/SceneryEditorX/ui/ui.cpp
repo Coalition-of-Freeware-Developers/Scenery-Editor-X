@@ -78,10 +78,7 @@ namespace SceneryEditorX::UI
 	    // Currently empty, but could be expanded if more ImGui features need integration
 	}
 	
-    GUI::GUI()
-    {
-        SEDX_CORE_INFO("GUI constructor called");
-    }
+    GUI::GUI() = default;
 
     GUI::~GUI()
     {

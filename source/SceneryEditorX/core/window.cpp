@@ -10,6 +10,7 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
+#include <imgui/imgui.h>
 #include <SceneryEditorX/core/window.h>
 #include <stb_image.h>
 

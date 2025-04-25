@@ -35,23 +35,14 @@ namespace SceneryEditorX
     std::string VK_DEBUG_SEVERITY_STRING(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity);
     std::string VK_DEBUG_TYPE(VkFlags uint32);
 
-	// -------------------------------------------------------
-
-    VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT( VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT*pDebugMessenger)
+    uint32_t RendererCapabilities::apiVersion = 0;
+    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                        VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+                                                        void *pUserData)
     {
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-        if (func != nullptr)
-        {
-            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-        }
-        else
-        {
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-        }
-    }
-
-    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
-    {
+        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+        /*
         /// Build a rich debug message that includes severity and type info
         std::string severityStr = VK_DEBUG_SEVERITY_STRING(messageSeverity);
         std::string typeStr = VK_DEBUG_TYPE(messageType);
@@ -78,6 +69,7 @@ namespace SceneryEditorX
                 Log::LogVulkanDebug(objInfo);
             }
         }
+        */
 
         return VK_FALSE; // Don't abort call
     }
@@ -126,11 +118,10 @@ namespace SceneryEditorX
         }
     }
 
-
     void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
-        if (const auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
-            func != nullptr)
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr)
         {
             func(instance, debugMessenger, pAllocator);
         }
@@ -170,6 +161,12 @@ namespace SceneryEditorX
         // Store the window reference
         editorWindow = window;
 
+        if (!checks->CheckAPIVersion(SoftwareStats::minVulkanVersion))
+        {
+            SEDX_CORE_ERROR("Incompatible Vulkan driver version!");
+            ErrMsg("Incompatible Vulkan driver version!");
+        }
+
         CreateInstance(window);
 
 		// Use width and height from WindowData
@@ -180,16 +177,24 @@ namespace SceneryEditorX
 
     }
 
+    Extensions GetRequiredExtensions(Extensions vkExtensions)
+    {
+        uint32_t glfwExtensionCount = 0;
+        const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        auto requiredExtensions = std::vector(glfwExtensions, glfwExtensions + glfwExtensionCount);
+        if (enableValidationLayers)
+        {
+            vkExtensions.requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
+
+        return vkExtensions;
+    }
+
     // -------------------------------------------------------
 
     void GraphicsEngine::CreateInstance(const Ref<Window> &window)
     {
-
-		if (!checks->CheckAPIVersion(SoftwareStats::minVulkanVersion))
-        {
-            SEDX_CORE_ERROR("Incompatible Vulkan driver version!");
-            ErrMsg("Incompatible Vulkan driver version!");
-        }
 
         // Set the window user pointer to point to the Window singleton
         glfwSetWindowUserPointer(window, Window::GetWindow());
@@ -197,12 +202,6 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Extensions and Validation
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        //if (checks->CheckValidationLayerSupport())
-        //{
-        //    SEDX_CORE_ERROR("Validation layers requested, but not available!");
-        //    ErrMsg("Validation layers requested, but not available!");
-        //}
 
 		// Get all available layers
         uint32_t layerCount = 0;
@@ -224,6 +223,10 @@ namespace SceneryEditorX
 		bool khronosAvailable = false;
         for (size_t i = 0; i < vkLayers.layers.size(); i++)
         {
+            #ifdef SEDX_DEBUG
+                SEDX_CORE_INFO("Number of Active Layers: {}", i);
+            #endif
+
             vkLayers.activeLayers[i] = false;
             if (strcmp("VK_LAYER_KHRONOS_validation", vkLayers.layers[i].layerName) == 0)
             {
@@ -239,13 +242,16 @@ namespace SceneryEditorX
             ErrMsg("Khronos validation layer not available!");
         }
 
-		allocator = nullptr;
+		//allocator = nullptr;
 
 		// Get the name of all layers if they are enabled
         if (enableValidationLayers)
         {
             for (size_t i = 0; i < vkLayers.layers.size(); i++)
             {
+            #ifdef SEDX_DEBUG
+                SEDX_CORE_INFO("Number of Layers: {}", i);
+            #endif
                 if (vkLayers.activeLayers[i])
                 {
                     vkLayers.activeLayersNames.push_back(vkLayers.layers[i].layerName);
@@ -263,27 +269,26 @@ namespace SceneryEditorX
         appInfo.applicationVersion = SoftwareStats::version;
         appInfo.pEngineName = SoftwareStats::renderName.c_str();
         appInfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
-        appInfo.apiVersion = SoftwareStats::minVulkanVersion;
+        appInfo.apiVersion = SoftwareStats::maxVulkanVersion;
 
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
 
 		// ---------------------------------------------------------
-
-		uint32_t glfwExtensionCount = 0;
-        const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        auto requiredExtensions = std::vector(glfwExtensions, glfwExtensions + glfwExtensionCount);
-        if (enableValidationLayers)
-        {
-            vkExtensions.requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
+        auto extensions = GetRequiredExtensions(vkExtensions);
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.activeExtensionsNames.size());
+        createInfo.ppEnabledExtensionNames = extensions.activeExtensionsNames.data();
 
 		// ---------------------------------------------------------
 
         vkExtensions.activeExtensionsNames.clear();
         for (size_t i = 0; i < vkExtensions.instanceExtensions.size(); i++)
         {
+        #ifdef SEDX_DEBUG
+            SEDX_CORE_INFO("Number of ActiveExtensions: {}", i);
+        #endif
+
             if (vkExtensions.activeExtensions[i])
             {
                 vkExtensions.activeExtensionsNames.push_back(vkExtensions.instanceExtensions[i].extensionName);
@@ -552,13 +557,13 @@ namespace SceneryEditorX
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 
-        // Include all message types
+        /// Include all message types
         createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
-        // Replace this line - use the correct callback function name
-        createInfo.pfnUserCallback = DebugCallback; // lowercase 'd' to match the implementation
+        /// Replace this line - use the correct callback function name
+        createInfo.pfnUserCallback = DebugCallback;
         createInfo.pUserData = nullptr;
     }
 

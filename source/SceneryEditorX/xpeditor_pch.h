@@ -33,7 +33,7 @@
 #ifdef SEDX_PLATFORM_WINDOWS
     #include <Windows.h>
     #include <fileapi.h>
-
+    constexpr char dirSeparator = '\\';
     #if defined(_DEBUG) || defined(DEBUG)
         #ifndef SEDX_DEBUG
         #define SEDX_DEBUG
@@ -60,6 +60,10 @@
 #ifdef SEDX_PLATFORM_LINUX
     #include <unistd.h>
     #include <csignal>
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <pwd.h>
+    const char dirSeparator = '/';
     #if defined(_DEBUG) || defined(DEBUG)
         #ifndef SEDX_DEBUG
         #define SEDX_DEBUG
@@ -71,6 +75,9 @@
 // -------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_MAC
+	#include <unistd.h>
+	#include <sys/types.h>
+	#include <pwd.h>
 #error "MAC is not yet supported!"
 #endif
 
@@ -174,8 +181,10 @@
 */
 
 #ifdef SEDX_DEBUG
-std::filesystem::path workingDir = std::filesystem::current_path();
+	std::filesystem::path workingDir = std::filesystem::current_path();
 #endif
+
+namespace fs = std::filesystem;
 
 // -------------------------------------------------------
 

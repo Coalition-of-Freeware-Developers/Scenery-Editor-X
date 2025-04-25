@@ -32,6 +32,7 @@ namespace SceneryEditorX
 	    std::string Vendor;
 	    std::string Device;
 	    std::string Version;
+        GLOBAL uint32_t apiVersion;
 	};
 
     // Identical to Vulkan's VkAccessFlagBits
@@ -224,6 +225,7 @@ namespace SceneryEditorX
 				VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
 				VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
 	    };
+		const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 		std::vector<VkExtensionProperties> availableExtensions;
 	    std::vector<VkExtensionProperties> instanceExtensions;
 
