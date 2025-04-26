@@ -138,11 +138,11 @@ namespace SceneryEditorX
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-        std::set<std::string> requiredExtensions(vkExtensions.requiredExtensions.begin(),
-                                                 vkExtensions.requiredExtensions.end());
+        std::set<std::string> requiredExtensions(vkExtensions.deviceExtensions.begin(),
+                                                 vkExtensions.deviceExtensions.end());
 
 		SEDX_CORE_INFO("Checking for required device extensions:");
-        for (const auto &extension : vkExtensions.requiredExtensions)
+        for (const auto &extension : vkExtensions.deviceExtensions)
         {
             SEDX_CORE_INFO("Required: {}", ToString(extension));
         }
@@ -357,10 +357,12 @@ namespace SceneryEditorX
 	 */
     bool VulkanChecks::IsDeviceCompatible(const VkPhysicalDevice &device)
     {
+        VkPhysicalDeviceFeatures deviceFeatures;
         VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
         vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-        // Check for required device type (discrete GPU preferred)
+        /// Check for required device type (discrete GPU preferred)
         if (bool isDiscreteGPU = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU); !isDiscreteGPU)
         {
             SEDX_CORE_WARN("Vulkan: Device is not a discrete GPU. Performance might be affected.");

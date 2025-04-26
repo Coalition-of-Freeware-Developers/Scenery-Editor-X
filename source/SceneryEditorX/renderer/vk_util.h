@@ -117,14 +117,12 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
  * @return The number of elements in the array.
  */
 #define VK_CHECK(result)                                                                                               \
-		if (result != VK_SUCCESS)                                                                                      \
+		if ((result) != VK_SUCCESS)                                                                                    \
 		{                                                                                                              \
-			std::cout << "Vulkan Error: " << result << std::endl;                                                      \
+			SEDX_CORE_ERROR("Vulkan Error: {}", (result));                                                             \
 			__debugbreak();                                                                                            \
 			return false;                                                                                              \
 		}
-
-// Add these to vk_util.h after your existing macros
 
 /**
  * @brief Log Vulkan result and return false if operation fails
@@ -135,7 +133,7 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
 #define VK_LOG_RESULT(result, operation)                                                                               \
     {                                                                                                                  \
         ::SceneryEditorX::Log::LogVulkanResult(result, operation);                                                     \
-        if (result != VK_SUCCESS)                                                                                      \
+        if ((result) != VK_SUCCESS)                                                                                    \
         {                                                                                                              \
             return false;                                                                                              \
         }                                                                                                              \
@@ -150,9 +148,9 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
 #define VK_LOG_RESULT_OR_THROW(result, operation)                                                                      \
     {                                                                                                                  \
         ::SceneryEditorX::Log::LogVulkanResult(result, operation);                                                     \
-        if (result != VK_SUCCESS)                                                                                      \
+        if ((result) != VK_SUCCESS)                                                                                    \
         {                                                                                                              \
-            throw std::runtime_error(operation + " failed with " + VK_ERROR_STRING(result));                           \
+            throw std::runtime_error((operation) + " failed with " + VK_ERROR_STRING(result));                         \
         }                                                                                                              \
     }
 
@@ -210,14 +208,14 @@ extern int getBPP(VkFormat format);
 
 // -------------------------------------------------------
 
-enum class ShaderSourceLanguage
+enum class ShaderSourceLanguage : uint8_t
 {
 	GLSL,
 	HLSL,
 	SPV,
 };
 
-enum class ShadingLanguage
+enum class ShadingLanguage : uint8_t
 {
 	GLSL,
 	HLSL,
@@ -319,5 +317,15 @@ static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType ob
 
 	VK_CHECK_RESULT(fpSetDebugUtilsObjectNameEXT(device, &nameInfo))
 }
+
+
+/**
+ * @brief Get the string representation of a Vulkan object type.
+ * @param objectType The Vulkan object type.
+ * @return The string representation of the object type.
+ */
+const char *VkObjectTypeToString(VkObjectType objectType);
+
+
 
 // -------------------------------------------------------

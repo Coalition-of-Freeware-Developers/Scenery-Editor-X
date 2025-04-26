@@ -101,12 +101,14 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
+		/*
 		static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
 	    {
 	        std::cerr << "validation layer: " << pCallbackData->pMessage << '\n';
 	
 	        return VK_FALSE;
 	    }
+		*/
 
 		// -------------------------------------------------------
 

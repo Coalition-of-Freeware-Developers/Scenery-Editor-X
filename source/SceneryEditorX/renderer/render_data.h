@@ -227,7 +227,7 @@ namespace SceneryEditorX
 	    };
 		const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 		std::vector<VkExtensionProperties> availableExtensions;
-	    std::vector<VkExtensionProperties> instanceExtensions;
+        std::vector<VkExtensionProperties> instanceExtensions;
 
 		uint32_t extensionCount = 0;
 	};

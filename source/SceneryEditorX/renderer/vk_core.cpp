@@ -30,51 +30,9 @@
 namespace SceneryEditorX
 {
 
-	// -------------------------------------------------------
-
-    std::string VK_DEBUG_SEVERITY_STRING(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity);
-    std::string VK_DEBUG_TYPE(VkFlags uint32);
-
     uint32_t RendererCapabilities::apiVersion = 0;
-    static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                        VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                                                        void *pUserData)
-    {
-        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-        /*
-        /// Build a rich debug message that includes severity and type info
-        std::string severityStr = VK_DEBUG_SEVERITY_STRING(messageSeverity);
-        std::string typeStr = VK_DEBUG_TYPE(messageType);
 
-        std::string formattedMessage = "[" + severityStr + "][" + typeStr + "] " + pCallbackData->pMessage;
-
-        /// Log through our custom Vulkan logger
-        Log::LogVulkanDebug(formattedMessage);
-
-        /// Also log any objects that were involved in the message
-        if (pCallbackData->objectCount > 0)
-        {
-            for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
-            {
-                const auto &obj = pCallbackData->pObjects[i];
-                std::string objInfo = "   Object[" + std::to_string(i) + "] - Type: ";
-                objInfo += std::to_string(obj.objectType) + ", Handle: " + std::to_string((uint64_t)obj.objectHandle);
-
-                if (obj.pObjectName)
-                {
-                    objInfo += ", Name: \"" + std::string(obj.pObjectName) + "\"";
-                }
-
-                Log::LogVulkanDebug(objInfo);
-            }
-        }
-        */
-
-        return VK_FALSE; // Don't abort call
-    }
-
-    std::string SceneryEditorX::VK_DEBUG_SEVERITY_STRING(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity)
+    std::string VK_DEBUG_SEVERITY(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity)
     {
         if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
         {
@@ -98,7 +56,7 @@ namespace SceneryEditorX
         }
     }
 
-    std::string SceneryEditorX::VK_DEBUG_TYPE(VkFlags messageType)
+    std::string VK_DEBUG_TYPE(VkFlags messageType)
     {
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
         {
@@ -115,6 +73,77 @@ namespace SceneryEditorX
         else
         {
             return "UNKNOWN";
+        }
+    }
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMsgCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
+    {
+        (void)pUserData; //Unused argument
+
+        std::string labels, objects;
+        if (constexpr bool performanceWarnings = false; !performanceWarnings)
+        {
+            if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+                return VK_FALSE;
+        }
+
+        if (pCallbackData->cmdBufLabelCount)
+        {
+            labels = std::format("\tLabels({}): \n", pCallbackData->cmdBufLabelCount);
+            for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
+            {
+                const auto &label = pCallbackData->pCmdBufLabels[i];
+                const std::string colorStr = std::format("[ {}, {}, {}, {} ]", label.color[0], label.color[1], label.color[2], label.color[3]);
+                labels.append(std::format("\t\t- Command Buffer Label[{0}]: name: {1}, color: {2}\n",i, label.pLabelName ? label.pLabelName : "NULL", colorStr));
+            }
+        }
+
+        /*
+        /// Also log any objects that were involved in the message
+        if (pCallbackData->objectCount > 0)
+        {
+            for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
+            {
+                const auto &obj = pCallbackData->pObjects[i];
+                std::string objInfo = "   Object[" + std::to_string(i) + "] - Type: ";
+                objInfo += std::to_string(obj.objectType) + ", Handle: " + std::to_string((uint64_t)obj.objectHandle);
+
+                if (obj.pObjectName)
+                {
+                    objInfo += ", Name: \"" + std::string(obj.pObjectName) + "\"";
+                }
+
+                Log::LogVulkanDebug(objInfo);
+            }
+        }
+        */
+
+        if (pCallbackData->objectCount)
+        {
+            objects = std::format("\tObjects({}): \n", pCallbackData->objectCount);
+            for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
+            {
+                const auto &object = pCallbackData->pObjects[i];
+                objects.append(std::format("\t\t- Object[{0}] name: {1}, type: {2}, handle: {3:#x}\n",i, object.pObjectName ? object.pObjectName : "NULL", VkObjectTypeToString(object.objectType), object.objectHandle));
+            }
+        }
+
+		SEDX_CORE_WARN("{0} {1} message: \n\t{2}\n {3} {4}", VK_DEBUG_TYPE(messageType), VK_DEBUG_SEVERITY(messageSeverity), pCallbackData->pMessage, labels, objects);
+        return VK_FALSE; // Don't abort call
+    }
+
+	// -------------------------------------------------------
+
+    VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT( VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT*pDebugMessenger)
+    {
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func != nullptr)
+        {
+            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+        }
+        else
+        {
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
         }
     }
 
@@ -223,10 +252,6 @@ namespace SceneryEditorX
 		bool khronosAvailable = false;
         for (size_t i = 0; i < vkLayers.layers.size(); i++)
         {
-            #ifdef SEDX_DEBUG
-                SEDX_CORE_INFO("Number of Active Layers: {}", i);
-            #endif
-
             vkLayers.activeLayers[i] = false;
             if (strcmp("VK_LAYER_KHRONOS_validation", vkLayers.layers[i].layerName) == 0)
             {
@@ -242,21 +267,27 @@ namespace SceneryEditorX
             ErrMsg("Khronos validation layer not available!");
         }
 
-		//allocator = nullptr;
-
-		// Get the name of all layers if they are enabled
+		/// Get the name of all layers if they are enabled
         if (enableValidationLayers)
         {
             for (size_t i = 0; i < vkLayers.layers.size(); i++)
             {
-            #ifdef SEDX_DEBUG
-                SEDX_CORE_INFO("Number of Layers: {}", i);
-            #endif
                 if (vkLayers.activeLayers[i])
                 {
                     vkLayers.activeLayersNames.push_back(vkLayers.layers[i].layerName);
                 }
+            #ifdef SEDX_DEBUG
+                SEDX_CORE_INFO("Active Layers: {} Layer Names: {}", i, vkLayers.layers[i].layerName);
+            #endif
             }
+        }
+
+        std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+        instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        if (enableValidationLayers)
+        {
+            instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+            instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -276,23 +307,23 @@ namespace SceneryEditorX
         createInfo.pApplicationInfo = &appInfo;
 
 		// ---------------------------------------------------------
+
         auto extensions = GetRequiredExtensions(vkExtensions);
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.activeExtensionsNames.size());
-        createInfo.ppEnabledExtensionNames = extensions.activeExtensionsNames.data();
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
+        createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
 		// ---------------------------------------------------------
 
         vkExtensions.activeExtensionsNames.clear();
         for (size_t i = 0; i < vkExtensions.instanceExtensions.size(); i++)
         {
-        #ifdef SEDX_DEBUG
-            SEDX_CORE_INFO("Number of ActiveExtensions: {}", i);
-        #endif
-
             if (vkExtensions.activeExtensions[i])
             {
                 vkExtensions.activeExtensionsNames.push_back(vkExtensions.instanceExtensions[i].extensionName);
             }
+        #ifdef SEDX_DEBUG
+            SEDX_CORE_INFO("Active Extensions: {} Active Extensions Names: {}", i, vkExtensions.instanceExtensions[i].extensionName);
+        #endif
         }
 
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.activeExtensionsNames.size());
@@ -307,7 +338,7 @@ namespace SceneryEditorX
             createInfo.ppEnabledLayerNames = vkLayers.validationLayers.data();
 
             PopulateDebugMsgCreateInfo(vkDebugCreateInfo);
-            createInfo.pNext = &vkDebugCreateInfo;
+            createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&vkDebugCreateInfo;
         }
         else
         {
@@ -318,18 +349,54 @@ namespace SceneryEditorX
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Instance and Surface Creation
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
+
+        if (vkLayers.validationLayers.empty() && enableValidationLayers)
+        {
+            SEDX_CORE_ERROR("Validation layers enabled but none available!");
+            return;
+        }
+
         if (vkCreateInstance(&createInfo, allocator, &vkInstance) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create instance!");
             ErrMsg("Failed to create graphics instance!");
         }
+        VulkanLoadDebugUtilsExtensions(vkInstance);
 
 		if (enableValidationLayers)
         {
-            VkDebugUtilsMessengerCreateInfoEXT vkDebugMsgInfo;
-            PopulateDebugMsgCreateInfo(vkDebugMsgInfo);
-            if (CreateDebugUtilsMessengerEXT(vkInstance, &vkDebugMsgInfo, allocator, &debugMessenger) != VK_SUCCESS)
+            auto vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance,"vkCreateDebugUtilsMessengerEXT");
+            //SEDX_CORE_ASSERT(vkCreateDebugUtilsMessengerEXT != NULL, "");
+            VkDebugUtilsMessengerCreateInfoEXT debugUtilsCreateInfo{};
+            debugUtilsCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            debugUtilsCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                               VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                               VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            debugUtilsCreateInfo.pfnUserCallback = VulkanDebugMsgCallback;
+            debugUtilsCreateInfo.messageSeverity =
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT /*  |
+		        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT*/;
+
+            VK_CHECK_RESULT(vkCreateDebugUtilsMessengerEXT(vkInstance, &debugUtilsCreateInfo, nullptr, &debugMessenger))
+        }
+
+		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
+        {
+            EDITOR_LOG_ERROR("Failed to create window surface!");
+            ErrMsg("Failed to create window surface!");
+        }
+
+		/*
+		if (enableValidationLayers)
+        {
+			auto vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance, "vkCreateDebugUtilsMessengerEXT");
+            //SEDX_ASSERT(vkCreateDebugUtilsMessengerEXT != nullptr, "");
+
+            VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+            PopulateDebugMsgCreateInfo(createInfo);
+            if (CreateDebugUtilsMessengerEXT(vkInstance, &createInfo, allocator, &debugMessenger) != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR("Failed to set up debug messenger!");
                 ErrMsg("Failed to set up debug messenger!");
@@ -337,6 +404,7 @@ namespace SceneryEditorX
 
 			SEDX_CORE_TRACE("Vulkan Debug messenger initialized.");
         }
+        */
 
 		Ref<VulkanPhysicalDevice> physDevice = nullptr;
         try
@@ -549,10 +617,10 @@ namespace SceneryEditorX
 
     void GraphicsEngine::PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
     {
-        createInfo = {};
+        memset(&createInfo, 0, sizeof(VkDebugUtilsMessengerCreateInfoEXT));
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 
-        // Include all severity levels for comprehensive logging
+        /// Include all severity levels for comprehensive logging
         createInfo.messageSeverity =
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -563,7 +631,7 @@ namespace SceneryEditorX
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
         /// Replace this line - use the correct callback function name
-        createInfo.pfnUserCallback = DebugCallback;
+        createInfo.pfnUserCallback = VulkanDebugMsgCallback;
         createInfo.pUserData = nullptr;
     }
 
