@@ -31,10 +31,10 @@ namespace SceneryEditorX
 	
 	struct XPlaneStats
 	{
-	    std::string xPlaneVersion = "X-Plane 12.06b1";
-	    std::string xPlanePath = "C:/X-Plane 12";
-	    std::string xPlaneBinPath = "C:/X-Plane 12/bin";
-	    std::string xPlaneResourcesPath = "C:/X-Plane 12/Resources";
+	    std::string xPlaneVersion = "X-Plane 12.2.0-b1-0f62ac46";
+	    std::string xPlanePath;
+	    std::string xPlaneBinPath;
+	    std::string xPlaneResourcesPath;
 	    bool isSteam = false;
 	};
 	

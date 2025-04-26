@@ -183,6 +183,13 @@ namespace SceneryEditorX
 	        return Level::Trace;
 	    }
 	
+	    // Add this method to manually flush all loggers
+        static void FlushAll()
+        {
+            if (CoreLogger) CoreLogger->flush();
+            if (EditorLogger) EditorLogger->flush();
+            if (EditorConsoleLogger) EditorConsoleLogger->flush();
+        }
 	
 	private:
 	    /**

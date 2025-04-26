@@ -65,47 +65,61 @@ namespace SceneryEditorX
 	 */
 	void Log::Init()
 	{
+	    try 
+	    {
+	        std::vector<spdlog::sink_ptr> coreSinks = {
+	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true),
+	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>()};
 	
-	    std::vector<spdlog::sink_ptr> coreSinks = {
-	        std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true),
-	        std::make_shared<spdlog::sinks::stdout_color_sink_mt>()};
+	        std::vector<spdlog::sink_ptr> editorSinks = {
+	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
+	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true)};
 	
-	    std::vector<spdlog::sink_ptr> editorSinks = {
-	        std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-	        std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true)};
+	        std::vector<spdlog::sink_ptr> editorConsoleSinks = {
+	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
+	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("EditorCore.log", true)};
 	
-	    std::vector<spdlog::sink_ptr> editorConsoleSinks = {
-	        std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-	        std::make_shared<spdlog::sinks::basic_file_sink_mt>("EditorCore.log", true)};
+	        // -------------------------------------------------------
 	
-	    //coreSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true));
-	    //coreSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-	    //
-	    //editorConsoleSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-	    //editorConsoleSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("VulkanDebug.log", true));
+	        // Pattern for console sinks
+	        coreSinks[1]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
+	        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
 	
-	    // -------------------------------------------------------
+	        // Pattern for file sinks - note the correct indices
+	        coreSinks[0]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
+	        editorSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
+	        
+	        for (const auto& sink : editorConsoleSinks) 
+	            sink->set_pattern("%^%v%$");
 	
-	    coreSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
-	    editorSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
+	        // -------------------------------------------------------
 	
-	    coreSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
-	    editorSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
-		for (const auto sink : editorConsoleSinks) sink->set_pattern("%^%v%$");
+	        CoreLogger = std::make_shared<spdlog::logger>("SceneryEditorX", coreSinks.begin(), coreSinks.end());
+	        CoreLogger->set_level(spdlog::level::trace);
+	        CoreLogger->flush_on(spdlog::level::info); // Flush on info level and above
 	
-	    // -------------------------------------------------------
+	        EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
+	        EditorLogger->set_level(spdlog::level::trace);
+	        EditorLogger->flush_on(spdlog::level::info); // Flush on info level and above
 	
-	    CoreLogger = std::make_shared<spdlog::logger>("SceneryEditorX", coreSinks.begin(), coreSinks.end());
-	    CoreLogger->set_level(spdlog::level::trace);
+	        EditorConsoleLogger = std::make_shared<spdlog::logger>("VulkanDebug", editorConsoleSinks.begin(), editorConsoleSinks.end());
+	        EditorConsoleLogger->set_level(spdlog::level::trace);
+	        EditorConsoleLogger->flush_on(spdlog::level::info); // Flush on info level and above
 	
-	    EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
-	    EditorLogger->set_level(spdlog::level::trace);
+	        // Register loggers with spdlog
+	        spdlog::register_logger(CoreLogger);
+	        spdlog::register_logger(EditorLogger);
+	        spdlog::register_logger(EditorConsoleLogger);
 	
-	    EditorConsoleLogger = std::make_shared<spdlog::logger>("VulkanDebug", editorConsoleSinks.begin(), editorConsoleSinks.end());
-	    EditorConsoleLogger->set_level(spdlog::level::trace);
+	        SetDefaultTagSettings();
 	
-		SetDefaultTagSettings();
-	
+	        CoreLogger->info("Log system initialized successfully");
+	        CoreLogger->flush();
+	    }
+	    catch (const spdlog::spdlog_ex& ex)
+	    {
+	        std::cerr << "Log initialization failed: " << ex.what() << std::endl;
+	    }
 	    // -------------------------------------------------------
 	}
 
@@ -266,11 +280,26 @@ namespace SceneryEditorX
 	
 	void Log::ShutDown()
 	{
-	    EditorConsoleLogger.reset();
-	    EditorLogger.reset();
-	    CoreLogger.reset();
+	    if (CoreLogger)
+	    {
+	        CoreLogger->flush();
+	        CoreLogger.reset();
+	    }
+	    
+	    if (EditorLogger)
+	    {
+	        EditorLogger->flush();
+	        EditorLogger.reset();
+	    }
+	    
+	    if (EditorConsoleLogger)
+	    {
+	        EditorConsoleLogger->flush();
+	        EditorConsoleLogger.reset();
+	    }
+	    
 	    spdlog::drop_all(); // Drop all loggers
-		spdlog::shutdown();
+	    spdlog::shutdown();
 	}
 	
 	// -------------------------------------------------------

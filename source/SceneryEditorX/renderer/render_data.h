@@ -27,13 +27,15 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
+    /*
 	struct RendererCapabilities
 	{
 	    std::string Vendor;
 	    std::string Device;
 	    std::string Version;
-        GLOBAL uint32_t apiVersion;
+        uint32_t apiVersion;
 	};
+    */
 
     // Identical to Vulkan's VkAccessFlagBits
     // Note: this is a bitfield
@@ -360,6 +362,11 @@ namespace SceneryEditorX
         GLOBAL const uint32_t framesInFlight = 3;
         uint32_t additionalImages = 0;
         uint32_t swapChainCurrentFrame = 0;
+
+        std::string Vendor;
+        std::string Device;
+        std::string Version;
+        uint32_t apiVersion;
 
 		[[nodiscard]] bool GetSwapChainDirty() const {return swapChainDirty;}
 

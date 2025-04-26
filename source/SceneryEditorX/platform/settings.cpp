@@ -13,8 +13,6 @@
 
 #include <SceneryEditorX/platform/settings.h>
 #include <libconfig.h++>
-#include <fstream>
-#include <iostream>
 #include <filesystem>
 #include <regex>
 
@@ -86,11 +84,11 @@ namespace SceneryEditorX
             /// Try to detect X-Plane installation
             if (DetectXPlanePath())
             {
-                SEDX_CORE_INFO("X-Plane 12 detected and paths configured");
+                SEDX_CORE_TRACE_TAG("SETTINGS", "X-Plane 12 detected and paths configured");
             }
             else
             {
-                SEDX_CORE_WARN("X-Plane 12 installation not found");
+                SEDX_CORE_WARN_TAG("SETTINGS", "X-Plane 12 installation not found");
             }
             
             /// Save the initial configuration
@@ -101,10 +99,10 @@ namespace SceneryEditorX
             /// Validate X-Plane paths from loaded configuration
             if (!ValidateXPlanePaths())
             {
-                SEDX_CORE_WARN("X-Plane paths in configuration are invalid, attempting detection");
+                SEDX_CORE_WARN_TAG("SETTINGS", "X-Plane paths in configuration are invalid, attempting detection");
                 if (DetectXPlanePath())
                 {
-                    SEDX_CORE_INFO("X-Plane 12 detected and paths updated");
+                    SEDX_CORE_TRACE_TAG("SETTINGS", "X-Plane 12 detected and paths updated");
                     WriteSettings();
                 }
             }
@@ -117,13 +115,13 @@ namespace SceneryEditorX
         {
             if (!fs::exists(filePath))
             {
-                SEDX_CORE_INFO("Config file not found: {}", filePath.string());
+                SEDX_CORE_TRACE_TAG("SETTINGS", "Config file not found: {}", filePath.string());
                 return false;
             }
             
             cfg.readFile(filePath.string().c_str());
-            SEDX_CORE_INFO("Found application config file.");
-            SEDX_CORE_INFO("Reading settings from: {}", filePath.string());
+            SEDX_CORE_TRACE_TAG("SETTINGS", "Found application config file.");
+            SEDX_CORE_TRACE_TAG("SETTINGS", "Reading settings from: {}", filePath.string());
             
             /// Load X-Plane stats
             if (cfg.exists("x_plane"))
@@ -149,7 +147,7 @@ namespace SceneryEditorX
             /// Load Application stats
             if (cfg.exists("application"))
             {
-                SEDX_CORE_INFO("Loading SceneryEditorX settings");
+                SEDX_CORE_INFO_TAG("SETTINGS", "Loading SceneryEditorX settings");
                 if (const Setting &app = cfg.lookup("application");
                     app.exists("no_titlebar"))
                     app.lookupValue("no_titlebar", appStats.NoTitlebar);
@@ -163,17 +161,17 @@ namespace SceneryEditorX
         }
         catch (const FileIOException &fioex)
         {
-            SEDX_CORE_ERROR("Error trying to read application settings: {}", filePath.string());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error trying to read application settings: {}", filePath.string());
             return false;
         }
         catch (const ParseException &pex)
         {
-            SEDX_CORE_ERROR("Parse error at {}:{} - {}", pex.getFile(), pex.getLine(), pex.getError());
+            SEDX_CORE_ERROR_TAG("SETTINGS","Parse error at {}:{} - {}", pex.getFile(), pex.getLine(), pex.getError());
             return false;
         }
         catch (const ConfigException &confex)
         {
-            SEDX_CORE_ERROR("Config error while reading file: {}", confex.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Config error while reading file: {}", confex.what());
             return false;
         }
     }
@@ -182,27 +180,26 @@ namespace SceneryEditorX
     {
         try
         {
-            /// Ensure all required sections exist before writing
+            /// Ensure all required sections exist before writing.
             EnsureRequiredSections();
             
-            /// Update the config from our data structures
+            /// Update the config from our data structures.
             UpdateConfigFromData();
 
-            /// Write config to file, creating parent directories if needed
-            fs::create_directories(filePath.parent_path());
+            /// Write config to file.
             cfg.writeFile(filePath.string().c_str());
-            SEDX_CORE_INFO("Settings successfully written to: {}", filePath.string());
+            SEDX_CORE_INFO_TAG("SETTINGS", "Settings successfully written to: {}", filePath.string());
             
             /// Update the settings map
             LoadSettingsToMap();
         }
         catch (const FileIOException &fioex)
         {
-            SEDX_CORE_ERROR("Error writing settings to file: {}", filePath.string());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error writing settings to file: {}", filePath.string());
         }
         catch (const ConfigException &confex)
         {
-            SEDX_CORE_ERROR("Config error while writing file: {}", confex.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Config error while writing file: {}", confex.what());
         }
     }
 
@@ -272,10 +269,10 @@ namespace SceneryEditorX
     {
         settings.erase(key);
 
-        /// Try to remove from the config directly
+        /// Try to remove from the config directly.
         try
         {
-            /// Split the key by dots to navigate the config hierarchy
+            /// Split the key by dots to navigate the config hierarchy.
             std::string section = key;
             std::string name = key;
 
@@ -338,7 +335,7 @@ namespace SceneryEditorX
         }
         catch (const SettingException &e)
         {
-            SEDX_CORE_ERROR("Error setting int option {}: {}", path, e.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error setting int option {}: {}", path, e.what());
             CreateSettingPath(path, value);
         }
     }
@@ -376,7 +373,7 @@ namespace SceneryEditorX
         }
         catch (const SettingException &e)
         {
-            SEDX_CORE_ERROR("Error setting float option {}: {}", path, e.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error setting float option {}: {}", path, e.what());
             CreateSettingPath(path, value);
         }
     }
@@ -554,7 +551,7 @@ namespace SceneryEditorX
 		{
             if (SteamGameFinder::validateXPlanePath(path))
 			{
-                SEDX_CORE_INFO("Found X-Plane 12 at common path: {}", path);
+                SEDX_CORE_TRACE("Found X-Plane 12 at common path: {}", path);
                 return SetXPlanePath(path);
             }
         }
@@ -568,7 +565,7 @@ namespace SceneryEditorX
     {
         if (!SteamGameFinder::validateXPlanePath(path))
 		{
-            SEDX_CORE_ERROR("Invalid X-Plane 12 path: {}", path);
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Invalid X-Plane 12 path: {}", path);
             return false;
         }
 
@@ -610,7 +607,7 @@ namespace SceneryEditorX
         }
         catch (const ConfigException &e)
 		{
-            SEDX_CORE_ERROR("Error setting X-Plane path in config: {}", e.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error setting X-Plane path in config: {}", e.what());
             return false;
         }
     }
@@ -681,11 +678,11 @@ namespace SceneryEditorX
             /// Load settings into the map
             LoadSettingsToMap();
             
-            SEDX_CORE_INFO("Minimal configuration initialized");
+            SEDX_CORE_TRACE_TAG("SETTINGS", "Minimal configuration initialized");
         }
         catch (const ConfigException &e)
         {
-            SEDX_CORE_ERROR("Error initializing minimal config: {}", e.what());
+            SEDX_CORE_WARN_TAG("SETTINGS", "Error initializing minimal config: {}", e.what());
         }
     }
 
@@ -807,7 +804,7 @@ namespace SceneryEditorX
         }
         catch (const SettingNotFoundException &e)
         {
-            SEDX_CORE_ERROR("X-Plane section not found: {}", e.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "X-Plane section not found: {}", e.what());
             EnsureRequiredSections();
         }
 
@@ -826,7 +823,7 @@ namespace SceneryEditorX
         }
         catch (const SettingNotFoundException &e)
         {
-            SEDX_CORE_ERROR("Application section not found: {}", e.what());
+            SEDX_CORE_WARN_TAG("SETTINGS", "Application section not found: {}", e.what());
             EnsureRequiredSections();
         }
     }
@@ -948,7 +945,7 @@ namespace SceneryEditorX
         const std::string steamDir = getSteamDirectory();
         if (steamDir.empty())
         {
-            SEDX_CORE_WARN("Steam directory not found!");
+            SEDX_CORE_WARN_TAG("SETTINGS", "Steam directory not found!");
             return std::nullopt;
         }
 
@@ -1196,12 +1193,12 @@ namespace SceneryEditorX
         }
         catch (const FileIOException &ex)
         {
-            SEDX_CORE_ERROR("Error reading config file: {}", ex.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error reading config file: {}", ex.what());
             /// File doesn't exist, we'll create a new one
         }
         catch (const ParseException &ex)
         {
-            SEDX_CORE_ERROR("Parse error in config file at line: {} : {}", ex.getLine(), ex.getError());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Parse error in config file at line: {} : {}", ex.getLine(), ex.getError());
             return false;
         }
 
@@ -1231,12 +1228,12 @@ namespace SceneryEditorX
         }
         catch (const SettingException &ex)
         {
-            SEDX_CORE_ERROR("Error in config setting: {}", ex.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error in config setting: {}", ex.what());
             return false;
         }
         catch (const FileIOException &ex)
         {
-            SEDX_CORE_ERROR("Error writing config file: {}",ex.what());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Error writing config file: {}", ex.what());
             return false;
         }
 

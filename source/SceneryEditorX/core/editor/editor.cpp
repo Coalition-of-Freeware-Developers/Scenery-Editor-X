@@ -49,7 +49,6 @@ namespace SceneryEditorX
 
 	void EditorApplication::InitEditor()
 	{
-	    Log::LogHeader();
 	    SEDX_CORE_INFO("Scenery Editor X Engine is starting...");
 	
 	    //Launcher::AdminCheck();
@@ -162,8 +161,8 @@ namespace SceneryEditorX
 	    renderPassInfo.subpassCount = 1;
 	    renderPassInfo.pSubpasses = &subpass;
 	
-	    if (vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) != VK_SUCCESS)
-            throw std::runtime_error("Failed to create viewport render pass");
+	    SEDX_CORE_ASSERT(vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
+            //throw std::runtime_error("Failed to create viewport render pass");
 
         // Create framebuffer for the viewport
 	    VkFramebufferCreateInfo framebufferInfo{};
@@ -175,10 +174,9 @@ namespace SceneryEditorX
         framebufferInfo.height = viewportData.viewportSize.y;
 	    framebufferInfo.layers = 1;
 	
-	    if (vkCreateFramebuffer(vkDevice->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) != VK_SUCCESS)
-	    {
-	        throw std::runtime_error("Failed to create viewport framebuffer");
-	    }
+	    SEDX_CORE_ASSERT(vkCreateFramebuffer(vkDevice->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
+	        //throw std::runtime_error("Failed to create viewport framebuffer");
+
 	}
 	
 	void EditorApplication::CleanupViewportResources()

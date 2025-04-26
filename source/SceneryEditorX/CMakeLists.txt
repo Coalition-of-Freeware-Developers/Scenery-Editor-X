@@ -54,6 +54,8 @@ ADD_EXECUTABLE(SceneryEditorX
 	# --------------------------------
 	core/editor/editor.cpp
 	core/editor/editor.h
+	core/editor/scenery_gateway.cpp
+	core/editor/scenery_gateway.h
 	# --------------------------------
 	logging/asserts.h
 	logging/log_templates.h
@@ -153,7 +155,8 @@ SOURCE_GROUP("Core" FILES
 SOURCE_GROUP("Editor/Core" FILES
 	core/editor/editor.cpp
 	core/editor/editor.h
-	core/version.h
+	core/editor/scenery_gateway.cpp
+	core/editor/scenery_gateway.h
 )
 SOURCE_GROUP("Core/Platform" FILES
 	platform/settings.cpp

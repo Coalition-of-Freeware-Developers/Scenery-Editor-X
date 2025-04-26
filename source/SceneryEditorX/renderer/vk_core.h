@@ -14,7 +14,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <functional>
 #include <GLFW/glfw3.h>
-#include <iostream>
 #include <optional>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/renderer/render_data.h>
@@ -251,11 +250,11 @@ namespace SceneryEditorX
         VkFormat FindDepthFormat() const;
         void CleanUp();
         void CleanupSwapChain();
-        INTERNAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
+        //INTERNAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 
 		// -------------------------------------------------------
 
-		VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
+		//VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
         VkShaderModule createShaderModule(const std::vector<char> &code);
         VkSampleCountFlagBits GetMaxUsableSampleCount();
 

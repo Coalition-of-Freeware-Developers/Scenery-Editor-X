@@ -30,9 +30,17 @@
 namespace SceneryEditorX
 {
 
-    uint32_t RendererCapabilities::apiVersion = 0;
+    // -------------------------------------------------------
 
-    std::string VK_DEBUG_SEVERITY(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity)
+	PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT;
+	PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
+	PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
+	PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
+	PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
+	PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
+	PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
+
+    INTERNAL std::string VK_DEBUG_SEVERITY(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity)
     {
         if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
         {
@@ -56,7 +64,7 @@ namespace SceneryEditorX
         }
     }
 
-    std::string VK_DEBUG_TYPE(VkFlags messageType)
+    INTERNAL std::string VK_DEBUG_TYPE(VkFlags messageType)
     {
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
         {
@@ -76,6 +84,7 @@ namespace SceneryEditorX
         }
     }
 
+    /*
     static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMsgCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
     {
         (void)pUserData; //Unused argument
@@ -116,7 +125,7 @@ namespace SceneryEditorX
                 Log::LogVulkanDebug(objInfo);
             }
         }
-        */
+        #1#
 
         if (pCallbackData->objectCount)
         {
@@ -131,9 +140,60 @@ namespace SceneryEditorX
 		SEDX_CORE_WARN("{0} {1} message: \n\t{2}\n {3} {4}", VK_DEBUG_TYPE(messageType), VK_DEBUG_SEVERITY(messageSeverity), pCallbackData->pMessage, labels, objects);
         return VK_FALSE; // Don't abort call
     }
+    */
 
-	// -------------------------------------------------------
+    // DebugUtilsMessenger utility functions
+    LOCAL VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
+    {
+        // search for the requested function and return null if unable find
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func != nullptr)
+        {
+            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+        }
+        else
+        {
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        }
+    }
 
+    LOCAL void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
+    {
+        // search for the requested function and return null if unable find
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr)
+        {
+            func(instance, debugMessenger, pAllocator);
+        }
+    }
+
+    LOCAL VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMsgCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
+    {
+        // log the message
+        // here we can set a minimum severity to log the message
+        // if (messageSeverity > VK_DEBUG_UTILS...)
+        if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        {
+            SEDX_CORE_WARN("[Validation Layer] {0}", pCallbackData->pMessage);
+        }
+        return VK_FALSE;
+    }
+
+    LOCAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
+    {
+        createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+        createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+        createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+        createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+        createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = VulkanDebugMsgCallback;
+        createInfo.pUserData = nullptr;
+    }
+
+    /*
     VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT( VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT*pDebugMessenger)
     {
         auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -146,6 +206,9 @@ namespace SceneryEditorX
             return VK_ERROR_EXTENSION_NOT_PRESENT;
         }
     }
+    */
+
+    // -------------------------------------------------------
 
     void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
@@ -192,8 +255,8 @@ namespace SceneryEditorX
 
         if (!checks->CheckAPIVersion(SoftwareStats::minVulkanVersion))
         {
-            SEDX_CORE_ERROR("Incompatible Vulkan driver version!");
-            ErrMsg("Incompatible Vulkan driver version!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Incompatible Vulkan driver version!");
+            //ErrMsg("Incompatible Vulkan driver version!");
         }
 
         CreateInstance(window);
@@ -206,11 +269,10 @@ namespace SceneryEditorX
 
     }
 
-    Extensions GetRequiredExtensions(Extensions vkExtensions)
+    static Extensions GetRequiredExtensions(Extensions vkExtensions)
     {
         uint32_t glfwExtensionCount = 0;
-        const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
         auto requiredExtensions = std::vector(glfwExtensions, glfwExtensions + glfwExtensionCount);
         if (enableValidationLayers)
         {
@@ -224,6 +286,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::CreateInstance(const Ref<Window> &window)
     {
+        SEDX_CORE_TRACE_TAG("Graphics Engine", "Creating Vulkan Instance");
 
         // Set the window user pointer to point to the Window singleton
         glfwSetWindowUserPointer(window, Window::GetWindow());
@@ -247,7 +310,8 @@ namespace SceneryEditorX
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, vkExtensions.instanceExtensions.data());
 
         // Get Vulkan API version
-        vkEnumerateInstanceVersion(&SoftwareStats::minVulkanVersion);
+        vkEnumerateInstanceVersion(&renderData.apiVersion);
+        SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance API Version: {}", renderData.apiVersion);
 
 		bool khronosAvailable = false;
         for (size_t i = 0; i < vkLayers.layers.size(); i++)
@@ -263,8 +327,8 @@ namespace SceneryEditorX
 
         if (enableValidationLayers && !khronosAvailable)
         {
-            SEDX_CORE_ERROR("Khronos validation layer not available!");
-            ErrMsg("Khronos validation layer not available!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer not available!");
+            //ErrMsg("Khronos validation layer not available!");
         }
 
 		/// Get the name of all layers if they are enabled
@@ -277,17 +341,9 @@ namespace SceneryEditorX
                     vkLayers.activeLayersNames.push_back(vkLayers.layers[i].layerName);
                 }
             #ifdef SEDX_DEBUG
-                SEDX_CORE_INFO("Active Layers: {} Layer Names: {}", i, vkLayers.layers[i].layerName);
+                SEDX_CORE_TRACE_TAG("Graphics Engine","Active Layers: {} Layer Names: {}", i, vkLayers.layers[i].layerName);
             #endif
             }
-        }
-
-        std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
-        instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        if (enableValidationLayers)
-        {
-            instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-            instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -308,6 +364,14 @@ namespace SceneryEditorX
 
 		// ---------------------------------------------------------
 
+        std::vector<const char *> instanceExtensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+        instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        if (enableValidationLayers)
+        {
+            instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+            instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+        }
+
         auto extensions = GetRequiredExtensions(vkExtensions);
         createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
         createInfo.ppEnabledExtensionNames = instanceExtensions.data();
@@ -322,10 +386,11 @@ namespace SceneryEditorX
                 vkExtensions.activeExtensionsNames.push_back(vkExtensions.instanceExtensions[i].extensionName);
             }
         #ifdef SEDX_DEBUG
-            SEDX_CORE_INFO("Active Extensions: {} Active Extensions Names: {}", i, vkExtensions.instanceExtensions[i].extensionName);
+            SEDX_CORE_TRACE_TAG("Graphics Engine","Active Extensions: {} Active Extensions Names: {}", i, vkExtensions.instanceExtensions[i].extensionName);
         #endif
         }
 
+        /// Get and set all required extensions
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.activeExtensionsNames.size());
         createInfo.ppEnabledExtensionNames = vkExtensions.activeExtensionsNames.data();
 
@@ -336,9 +401,9 @@ namespace SceneryEditorX
         {
             createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayers.size());
             createInfo.ppEnabledLayerNames = vkLayers.validationLayers.data();
-
+            /// We need to set up a separate logger just for the instance creation/destruction because our "default" logger is created after
             PopulateDebugMsgCreateInfo(vkDebugCreateInfo);
-            createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&vkDebugCreateInfo;
+            // createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
         }
         else
         {
@@ -352,40 +417,37 @@ namespace SceneryEditorX
 
         if (vkLayers.validationLayers.empty() && enableValidationLayers)
         {
-            SEDX_CORE_ERROR("Validation layers enabled but none available!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Validation layers enabled but none available!");
             return;
         }
 
         if (vkCreateInstance(&createInfo, allocator, &vkInstance) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create instance!");
-            ErrMsg("Failed to create graphics instance!");
+            //ErrMsg("Failed to create graphics instance!");
         }
+
+		SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created.");
+
         VulkanLoadDebugUtilsExtensions(vkInstance);
+
+		// ---------------------------------------------------------
 
 		if (enableValidationLayers)
         {
-            auto vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance,"vkCreateDebugUtilsMessengerEXT");
-            //SEDX_CORE_ASSERT(vkCreateDebugUtilsMessengerEXT != NULL, "");
-            VkDebugUtilsMessengerCreateInfoEXT debugUtilsCreateInfo{};
-            debugUtilsCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-            debugUtilsCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                               VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                               VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            debugUtilsCreateInfo.pfnUserCallback = VulkanDebugMsgCallback;
-            debugUtilsCreateInfo.messageSeverity =
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT /*  |
-		        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
-				VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT*/;
+            VkDebugUtilsMessengerCreateInfoEXT messengerInfo;
+            PopulateDebugMsgCreateInfo(messengerInfo);
 
-            VK_CHECK_RESULT(vkCreateDebugUtilsMessengerEXT(vkInstance, &debugUtilsCreateInfo, nullptr, &debugMessenger))
+			SEDX_ASSERT(CreateDebugUtilsMessengerEXT(vkInstance, &messengerInfo, allocator, &debugMessenger) == VK_SUCCESS);
+
         }
+
+		// ---------------------------------------------------------
 
 		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
         {
             EDITOR_LOG_ERROR("Failed to create window surface!");
-            ErrMsg("Failed to create window surface!");
+            //ErrMsg("Failed to create window surface!");
         }
 
 		/*
@@ -398,36 +460,37 @@ namespace SceneryEditorX
             PopulateDebugMsgCreateInfo(createInfo);
             if (CreateDebugUtilsMessengerEXT(vkInstance, &createInfo, allocator, &debugMessenger) != VK_SUCCESS)
             {
-                SEDX_CORE_ERROR("Failed to set up debug messenger!");
-                ErrMsg("Failed to set up debug messenger!");
+                SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to set up debug messenger!");
+                //ErrMsg("Failed to set up debug messenger!");
             }
 
-			SEDX_CORE_TRACE("Vulkan Debug messenger initialized.");
+			SEDX_CORE_TRACE_TAG("Graphics Engine","Vulkan Debug messenger initialized.");
         }
         */
 
 		Ref<VulkanPhysicalDevice> physDevice = nullptr;
+
         try
         {
             physDevice = VulkanPhysicalDevice::GetInstance();
         }
         catch (const std::exception &e)
         {
-            SEDX_CORE_ERROR("Failed to create physical device: {}", e.what());
-            ErrMsg("Failed to create physical device!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create physical device: {}", e.what());
+            //ErrMsg("Failed to create physical device!");
             return;
         }
 
         physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
         VulkanDeviceFeatures deviceFeatures;
-        VkPhysicalDeviceFeatures vkFeatures = deviceFeatures.GetPhysicalDeviceFeatures();
+        deviceFeatures.GetPhysicalDeviceFeatures();
 
         Ref<VulkanDevice> device = VulkanDevice::GetInstance();
         vkPhysicalDevice = physDevice;
         vkDevice = device;
 
-		// Memory Allocator initialization.
+		/// Memory Allocator initialization.
         allocatorManager->Init(vkDevice->GetDevice(), vkPhysDevice, vkInstance);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -441,8 +504,8 @@ namespace SceneryEditorX
         pipelineCacheInfo.flags = 0;
         if (vkCreatePipelineCache(vkDevice->GetDevice(), &pipelineCacheInfo, allocator, &pipelineCache) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create pipeline cache!");
-            ErrMsg("Failed to create pipeline cache!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline cache!");
+            //ErrMsg("Failed to create pipeline cache!");
         }
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -451,8 +514,8 @@ namespace SceneryEditorX
 
 		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create window surface!");
-            ErrMsg("Failed to create window surface!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create window surface!");
+            //ErrMsg("Failed to create window surface!");
         }
 
 		SEDX_CORE_INFO("Vulkan Instance Created.");
@@ -615,34 +678,12 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    void GraphicsEngine::PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
-    {
-        memset(&createInfo, 0, sizeof(VkDebugUtilsMessengerCreateInfoEXT));
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-
-        /// Include all severity levels for comprehensive logging
-        createInfo.messageSeverity =
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-
-        /// Include all message types
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
-        /// Replace this line - use the correct callback function name
-        createInfo.pfnUserCallback = VulkanDebugMsgCallback;
-        createInfo.pUserData = nullptr;
-    }
-
-    // -------------------------------------------------------
-
     /*void GraphicsEngine::createInstance()
     {
         if (enableValidationLayers && !CheckValidationLayerSupport())
         {
-            SEDX_CORE_ERROR("Validation layers requested, but not available!");
-            ErrMsg("Validation layers requested, but not available!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine","Validation layers requested, but not available!");
+            //ErrMsg("Validation layers requested, but not available!");
         }
 
         uint32_t layerCount = 0;
@@ -694,8 +735,8 @@ namespace SceneryEditorX
 
         if (vkCreateInstance(&createInfo, allocator, &instance) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create instance!");
-            ErrMsg("Failed to create graphics instance!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to create instance!");
+            //ErrMsg("Failed to create graphics instance!");
         }
     }*/
 
@@ -767,8 +808,8 @@ namespace SceneryEditorX
 
 		if (!checks->CheckDeviceExtensionSupport(vkPhysicalDevice->GetGPUDevice()))
         {
-            SEDX_CORE_ERROR("Required device extensions not supported!");
-            ErrMsg("Required device extensions not supported!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
+            //ErrMsg("Required device extensions not supported!");
         }
 
         // Enable swap chain extension
@@ -787,8 +828,8 @@ namespace SceneryEditorX
 
         if (vkCreateDevice(vkPhysicalDevice->GetGPUDevice(), &createInfo, allocator, &device) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create logical device!");
-            ErrMsg("Failed to create logical device!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device!");
+            //ErrMsg("Failed to create logical device!");
         }
 
         vkGetDeviceQueue(vkDevice->GetDevice(), indices.graphicsFamily.value(), 0, &graphicsQueue);
@@ -853,8 +894,8 @@ namespace SceneryEditorX
 
         if (vkCreateSwapchainKHR(vkDevice->GetDevice(), &createInfo, allocator, &vkSwapChain->swapChain) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create swap chain!");
-            ErrMsg("Failed to create swap chain!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create swap chain!");
+            //ErrMsg("Failed to create swap chain!");
         }
 
         // Get swap chain images
@@ -898,8 +939,8 @@ namespace SceneryEditorX
         VkImageView imageView;
         if (vkCreateImageView(vkDevice->GetDevice(), &viewInfo, allocator, &imageView) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create texture image view!");
-            ErrMsg("Failed to create texture image view!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create texture image view!");
+            //ErrMsg("Failed to create texture image view!");
         }
 
         return imageView;
@@ -924,8 +965,8 @@ namespace SceneryEditorX
 
         if (vkCreateImage(vkDevice->GetDevice(), &imageInfo, allocator, &image) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create image!");
-            ErrMsg("Failed to create image!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create image!");
+            //ErrMsg("Failed to create image!");
         }
 
         VkMemoryRequirements memRequirements;
@@ -938,8 +979,8 @@ namespace SceneryEditorX
 
         if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to allocate image memory!");
-            ErrMsg("Failed to allocate image memory!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate image memory!");
+            //ErrMsg("Failed to allocate image memory!");
         }
 
         vkBindImageMemory(vkDevice->GetDevice(), image, imageMemory, 0);
@@ -984,8 +1025,8 @@ namespace SceneryEditorX
         }
         else
         {
-            SEDX_CORE_ERROR("Unsupported layout transition!");
-            ErrMsg("Unsupported layout transition!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Unsupported layout transition!");
+            //ErrMsg("Unsupported layout transition!");
         }
 
         vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
@@ -1014,15 +1055,15 @@ namespace SceneryEditorX
 
         if (!file.is_open())
         {
-            SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
-            ErrMsg(std::string("Failed to open file: ") + ToString(filename));
+            SEDX_CORE_ERROR_TAG("File Manager", "Failed to open file: {}", ToString(filename));
+            //ErrMsg(std::string("Failed to open file: ") + ToString(filename));
             return {}; // Return empty vector on failure
         }
 
         size_t fileSize = static_cast<size_t>(file.tellg());
         if (fileSize == 0)
         {
-            SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
+            SEDX_CORE_ERROR_TAG("File Manager", "File is empty: {}", ToString(filename));
             return {};
         }
 
@@ -1033,8 +1074,8 @@ namespace SceneryEditorX
 
         if (!file)
         {
-            SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
-            ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
+            SEDX_CORE_ERROR_TAG("File Manager", "Failed to read entire file: {}", ToString(filename));
+            //ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
             return {};
         }
 
@@ -1110,8 +1151,8 @@ namespace SceneryEditorX
 
         if (vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, allocator, &vkSwapChain->renderPass) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create render pass!");
-            ErrMsg("failed to create render pass!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create render pass!");
+            //ErrMsg("failed to create render pass!");
         }
     }
 
@@ -1127,8 +1168,8 @@ namespace SceneryEditorX
 
         if (vkCreateBuffer(vkDevice->GetDevice(), &bufferInfo, allocator, &buffer) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create buffer!");
-            ErrMsg("Failed to create buffer!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
+            //ErrMsg("Failed to create buffer!");
         }
 
 		// -------------------------------------------------------
@@ -1145,8 +1186,8 @@ namespace SceneryEditorX
 
         if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, allocator, &bufferMemory) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to allocate buffer memory!");
-            ErrMsg("Failed to allocate buffer memory!");
+            SEDX_CORE_ERROR_TAG("Memory Allocator", "Failed to allocate buffer memory!");
+            //ErrMsg("Failed to allocate buffer memory!");
         }
 
         vkBindBufferMemory(vkDevice->GetDevice(), buffer, bufferMemory, 0);
@@ -1256,8 +1297,8 @@ namespace SceneryEditorX
 
         if (vkCreateDescriptorPool(vkDevice->GetDevice(), &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create descriptor pool!");
-            ErrMsg("failed to create descriptor pool!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor pool!");
+            //ErrMsg("failed to create descriptor pool!");
         }
     }
 
@@ -1292,8 +1333,8 @@ namespace SceneryEditorX
 
         if (vkCreateDescriptorSetLayout(vkDevice->GetDevice(), &layoutInfo, allocator, &descriptorSetLayout) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create descriptor set layout!");
-            ErrMsg("failed to create descriptor set layout!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor set layout!");
+            //ErrMsg("failed to create descriptor set layout!");
         }
     }
 
@@ -1312,8 +1353,8 @@ namespace SceneryEditorX
         descriptorSets.resize(RenderData::framesInFlight);
         if (vkAllocateDescriptorSets(vkDevice->GetDevice(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to allocate descriptor sets!");
-            ErrMsg("Failed to allocate descriptor sets!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate descriptor sets!");
+            //ErrMsg("Failed to allocate descriptor sets!");
         }
 
 		// -------------------------------------------------------
@@ -1507,8 +1548,8 @@ namespace SceneryEditorX
 
         if (vkCreatePipelineLayout(vkDevice->GetDevice(), &pipelineLayoutInfo, allocator, &pipelineLayout) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create pipeline layout!");
-            ErrMsg("Failed to create pipeline layout!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline layout!");
+            //ErrMsg("Failed to create pipeline layout!");
         }
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -1530,8 +1571,8 @@ namespace SceneryEditorX
         if (vkCreateGraphicsPipelines(vkDevice->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) !=
             VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create graphics pipeline!");
-            ErrMsg("Failed to create graphics pipeline!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create graphics pipeline!");
+            //ErrMsg("Failed to create graphics pipeline!");
         }
 
         vkDestroyShaderModule(vkDevice->GetDevice(), fragShaderModule, nullptr);
@@ -1557,8 +1598,8 @@ namespace SceneryEditorX
 
             if (vkCreateFramebuffer(vkDevice->GetDevice(), &framebufferInfo, allocator, &swapChainFramebuffers[i]) != VK_SUCCESS)
             {
-                SEDX_CORE_ERROR("Failed to create framebuffer!");
-                ErrMsg("Failed to create framebuffer!");
+                SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create framebuffer!");
+                //ErrMsg("Failed to create framebuffer!");
             }
         }
     }
@@ -1574,7 +1615,7 @@ namespace SceneryEditorX
 
         if (vkCreateCommandPool(vkDevice->GetDevice(), &poolInfo, allocator, &cmdPool) != VK_SUCCESS)
         {
-            ErrMsg("Failed to create command pool!");
+            //ErrMsg("Failed to create command pool!");
         }
     }
 
@@ -1590,7 +1631,7 @@ namespace SceneryEditorX
 
         if (vkAllocateCommandBuffers(vkDevice->GetDevice(), &allocInfo, commandBuffers.data()) != VK_SUCCESS)
         {
-            ErrMsg("failed to allocate command buffers!");
+            //ErrMsg("failed to allocate command buffers!");
         }
     }
 
@@ -1602,7 +1643,7 @@ namespace SceneryEditorX
 	
 	    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
 	    {
-	        ErrMsg("failed to begin recording command buffer!");
+	        //ErrMsg("failed to begin recording command buffer!");
 	    }
 	
 	    // -------------------------------------------------------
@@ -1706,7 +1747,7 @@ namespace SceneryEditorX
 	
 	    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	    {
-	        ErrMsg("failed to record command buffer!");
+	        //ErrMsg("failed to record command buffer!");
 	    }
 	}
 
@@ -1729,7 +1770,7 @@ namespace SceneryEditorX
                 vkCreateSemaphore(vkDevice->GetDevice(), &semaphoreInfo, allocator, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
                 vkCreateFence(vkDevice->GetDevice(), &fenceInfo, allocator, &inFlightFences[i]) != VK_SUCCESS)
             {
-                ErrMsg("failed to create synchronization objects for a frame!");
+                //ErrMsg("failed to create synchronization objects for a frame!");
             }
         }
     }
@@ -1794,8 +1835,8 @@ namespace SceneryEditorX
         }
         else if (result != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to acquire swap chain image: {}", ToString(result));
-            ErrMsg("Failed to acquire swap chain image!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to acquire swap chain image: {}", ToString(result));
+            //ErrMsg("Failed to acquire swap chain image!");
         }
 
         // Check if a Resize has been requested through the Window class
@@ -1832,7 +1873,7 @@ namespace SceneryEditorX
 
         if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[renderData.currentFrame]) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to submit draw command buffer");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to submit draw command buffer");
             throw std::runtime_error("failed to submit draw command buffer!");
         }
 
@@ -1872,8 +1913,8 @@ namespace SceneryEditorX
         }
         else if (result != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to present swap chain image: {}", ToString(result));
-            ErrMsg("Failed to present swap chain image!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to present swap chain image: {}", ToString(result));
+            //ErrMsg("Failed to present swap chain image!");
         }
 
         renderData.currentFrame = (renderData.currentFrame + 1) % RenderData::framesInFlight;
@@ -1934,7 +1975,7 @@ namespace SceneryEditorX
         }
         else
         {
-            SEDX_CORE_ERROR("Failed to find any surface formats!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find any surface formats!");
         }
 
         // Query present modes
@@ -1950,7 +1991,7 @@ namespace SceneryEditorX
         }
         else
         {
-            SEDX_CORE_ERROR("Failed to find any present modes!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find any present modes!");
         }
 
         // Store updated surface capabilities
@@ -2225,7 +2266,7 @@ namespace SceneryEditorX
 
         if (!pixels)
         {
-            ErrMsg("Failed to load texture image!");
+            //ErrMsg("Failed to load texture image!");
         }
 
         VkBuffer stagingBuffer;
@@ -2245,7 +2286,7 @@ namespace SceneryEditorX
         }
         else
         {
-            ErrMsg("Failed to load texture image: pixels is null");
+            //ErrMsg("Failed to load texture image: pixels is null");
         }
 
         vkUnmapMemory(vkDevice->GetDevice(), stagingBufferMemory);
@@ -2347,7 +2388,7 @@ namespace SceneryEditorX
 
         if (vkCreateSampler(vkDevice->GetDevice(), &samplerInfo, allocator, &textureSampler) != VK_SUCCESS)
         {
-            ErrMsg("failed to create texture sampler!");
+            //ErrMsg("failed to create texture sampler!");
         }
     }
 
@@ -2361,8 +2402,8 @@ namespace SceneryEditorX
         VkShaderModule shaderModule;
         if (vkCreateShaderModule(vkDevice->GetDevice(), &createInfo, allocator, &shaderModule) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create shader module!");
-            ErrMsg("failed to create shader module!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create shader module!");
+            //ErrMsg("failed to create shader module!");
         }
 
         return shaderModule;
@@ -2468,8 +2509,8 @@ namespace SceneryEditorX
             }
         }
 
-        SEDX_CORE_ERROR("Failed to find suitable memory type!");
-        ErrMsg("Failed to find suitable memory type!");
+        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find suitable memory type!");
+        //ErrMsg("Failed to find suitable memory type!");
         return 0; // Return a default value to avoid undefined behavior
     }
 

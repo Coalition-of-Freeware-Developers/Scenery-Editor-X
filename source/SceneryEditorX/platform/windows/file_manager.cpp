@@ -200,6 +200,7 @@ namespace SceneryEditorX::IO
 	 * @param filename The name of the file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the file.
 	*/
+
     std::vector<uint8_t> FileManager::ReadRawBytes(const std::filesystem::path &path)
 	{
         std::ifstream input(path, std::ios::binary);
@@ -300,7 +301,21 @@ namespace SceneryEditorX::IO
 	    return buffer;
 	}
 
-	/*
+    void FileManager::GetAppData()
+    {
+        if (const char *appDataPath = getenv("APPDATA"))
+        {
+            std::string appDataDir(appDataPath);
+            appDataDir += "\\SceneryEditorX";
+            std::filesystem::create_directories(appDataDir);
+        }
+        else
+        {
+            SEDX_CORE_ERROR_TAG("FILE MANAGER", "Failed to get APPDATA environment variable");
+        }
+    }
+
+    /*
 	uint64_t FileDialogs::ImportGLTF(const std::filesystem::path &path, AssetManager &manager)
     {
 	    tinygltf::Model model;
@@ -791,6 +806,9 @@ namespace SceneryEditorX::IO
 	    return scene->uuid;
 	}
 	*/
+
+    // -------------------------------------------------------
+
 
 } // namespace SceneryEditorX::IO
 

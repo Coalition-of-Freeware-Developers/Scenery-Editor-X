@@ -21,7 +21,6 @@
 
 namespace SceneryEditorX::IO
 {
-	
 
 	class FileManager
 	{
@@ -52,6 +51,12 @@ namespace SceneryEditorX::IO
          * @return std::vector<char> A vector containing the raw bytes of the file.
          */
         static std::vector<char> ReadFile(const std::string &filename);
+
+        /**
+         * @brief
+         */
+        static void GetAppData();
+
 	};
 
     // -------------------------------------------------------
