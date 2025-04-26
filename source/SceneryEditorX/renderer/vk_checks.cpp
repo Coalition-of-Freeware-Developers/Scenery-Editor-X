@@ -93,7 +93,7 @@ namespace SceneryEditorX
 	 */
     bool VulkanChecks::CheckValidationLayerSupport() const
     {
-        if (!vkLayers.validationLayers.empty())
+        if (!vkLayers.validationLayer.empty())
         {
             // Add validation
             uint32_t layerCount = 0;
@@ -102,7 +102,7 @@ namespace SceneryEditorX
             std::vector<VkLayerProperties> availableLayers(layerCount);
             vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-            for (const char *layerName : vkLayers.validationLayers)
+            for (const char *layerName : vkLayers.validationLayer)
             {
                 auto layerFound = false;
                 for (const auto &layerProperties : availableLayers)

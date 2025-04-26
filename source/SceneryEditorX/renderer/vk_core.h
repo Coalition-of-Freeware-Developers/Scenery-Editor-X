@@ -200,7 +200,7 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        INTERNAL void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
+        //INTERNAL void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
         void CreateSurface(GLFWwindow *glfwWindow);
         void CreateLogicalDevice();
         void CreateSwapChain();

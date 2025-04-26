@@ -248,34 +248,34 @@ namespace SceneryEditorX
 	
 		// -------------------------------------------------------
 	
-		spdlog::info("============================================");
-		spdlog::info("System Information");
-		spdlog::info("Operating System: {}", getOsName());
-		spdlog::info("{:02}:{:02}:{:02} {:02}/{:02}/{:04}",
+		SEDX_CORE_INFO("============================================");
+		SEDX_CORE_INFO("System Information");
+		SEDX_CORE_INFO("Operating System: {}", getOsName());
+		SEDX_CORE_INFO("{:02}:{:02}:{:02} {:02}/{:02}/{:04}",
 					 systemTime.wHour,
 					 systemTime.wMinute,
 					 systemTime.wSecond,
 					 systemTime.wDay,
 					 systemTime.wMonth,
 					 systemTime.wYear);
-		spdlog::info("Time Zone: {}", std::string(timeZoneName.begin(), timeZoneName.end()));
-		spdlog::info("Processor Architecture: {}", sysInfo.wProcessorArchitecture);
-		spdlog::info("Processor Cores: {}", sysInfo.dwNumberOfProcessors);
-		spdlog::info("Page Size: {}", sysInfo.dwPageSize);
-		spdlog::info("Processor Type: {}", sysInfo.dwProcessorType);
-		spdlog::info("Minimum EditorApplication Address: {}", sysInfo.lpMinimumApplicationAddress);
-		spdlog::info("Maximum EditorApplication Address: {}", sysInfo.lpMaximumApplicationAddress);
-		spdlog::info("Active Processor Mask: {}", sysInfo.dwActiveProcessorMask);
-		spdlog::info("============================================");
-		spdlog::info("============================================");
-		spdlog::info("Scenery Editor X");
-        spdlog::info("Version: {}", SEDX_VERSION_STRING);
-		spdlog::info("Build Date: {}", __DATE__);
-		spdlog::info("Build Time: {}", __TIME__);
-		spdlog::info("Coalition of Freeware Developers");
-		spdlog::info("Copyright (C) 2025");
-		spdlog::info("============================================");
-		spdlog::info("============================================");
+		SEDX_CORE_INFO("Time Zone: {}", std::string(timeZoneName.begin(), timeZoneName.end()));
+		SEDX_CORE_INFO("Processor Architecture: {}", sysInfo.wProcessorArchitecture);
+		SEDX_CORE_INFO("Processor Cores: {}", sysInfo.dwNumberOfProcessors);
+		SEDX_CORE_INFO("Page Size: {}", sysInfo.dwPageSize);
+		SEDX_CORE_INFO("Processor Type: {}", sysInfo.dwProcessorType);
+		SEDX_CORE_INFO("Minimum EditorApplication Address: {}", sysInfo.lpMinimumApplicationAddress);
+		SEDX_CORE_INFO("Maximum EditorApplication Address: {}", sysInfo.lpMaximumApplicationAddress);
+		SEDX_CORE_INFO("Active Processor Mask: {}", sysInfo.dwActiveProcessorMask);
+		SEDX_CORE_INFO("============================================");
+		SEDX_CORE_INFO("============================================");
+		SEDX_CORE_INFO("Scenery Editor X");
+        SEDX_CORE_INFO("Version: {}", SEDX_VERSION_STRING);
+		SEDX_CORE_INFO("Build Date: {}", __DATE__);
+		SEDX_CORE_INFO("Build Time: {}", __TIME__);
+		SEDX_CORE_INFO("Coalition of Freeware Developers");
+		SEDX_CORE_INFO("Copyright (C) 2025");
+		SEDX_CORE_INFO("============================================");
+		SEDX_CORE_INFO("============================================");
 	}
 	
 	void Log::ShutDown()

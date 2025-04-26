@@ -237,7 +237,7 @@ namespace SceneryEditorX
 	struct Layers
 	{
 		std::vector<bool> activeLayers;
-	    std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+	    std::vector<const char *> validationLayer = {"VK_LAYER_KHRONOS_validation"};
 	    std::vector<const char *> activeLayersNames;
 		std::vector<VkLayerProperties> layers;
 

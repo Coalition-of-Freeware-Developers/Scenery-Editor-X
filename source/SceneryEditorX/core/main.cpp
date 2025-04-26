@@ -19,10 +19,6 @@
 int main(const int argc, const char** argv[])
 {
     SceneryEditorX::Log::Init();
-    
-    // Log header information immediately after init and flush to ensure it's written
-    SceneryEditorX::Log::LogHeader();
-    SceneryEditorX::Log::FlushAll();
 
     try
     {

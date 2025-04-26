@@ -48,7 +48,10 @@ namespace SceneryEditorX
 	// -------------------------------------------------------
 
 	void EditorApplication::InitEditor()
-	{
+    {
+	    /// Log header information immediately after init and flush to ensure it's written
+        Log::LogHeader();
+        //Log::FlushAll();
 	    SEDX_CORE_INFO("Scenery Editor X Engine is starting...");
 	
 	    //Launcher::AdminCheck();

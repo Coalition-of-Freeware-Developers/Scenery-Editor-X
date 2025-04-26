@@ -142,10 +142,10 @@ namespace SceneryEditorX
     }
     */
 
-    // DebugUtilsMessenger utility functions
+    /// DebugUtilsMessenger utility functions
     LOCAL VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
     {
-        // search for the requested function and return null if unable find
+        /// search for the requested function and return null if unable find
         auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
         if (func != nullptr)
         {
@@ -210,6 +210,7 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
+    /*
     void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
@@ -218,6 +219,7 @@ namespace SceneryEditorX
             func(instance, debugMessenger, pAllocator);
         }
     }
+	*/
 
     void GraphicsEngine::glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer)
     {
@@ -273,7 +275,7 @@ namespace SceneryEditorX
     {
         uint32_t glfwExtensionCount = 0;
         const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        auto requiredExtensions = std::vector(glfwExtensions, glfwExtensions + glfwExtensionCount);
+        vkExtensions.requiredExtensions = std::vector(glfwExtensions, glfwExtensions + glfwExtensionCount);
         if (enableValidationLayers)
         {
             vkExtensions.requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -326,10 +328,8 @@ namespace SceneryEditorX
         }
 
         if (enableValidationLayers && !khronosAvailable)
-        {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer not available!");
-            //ErrMsg("Khronos validation layer not available!");
-        }
+        
 
 		/// Get the name of all layers if they are enabled
         if (enableValidationLayers)
@@ -423,11 +423,10 @@ namespace SceneryEditorX
 
         if (vkCreateInstance(&createInfo, allocator, &vkInstance) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create instance!");
-            //ErrMsg("Failed to create graphics instance!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to create instance!");
         }
 
-		SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created.");
+		SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created");
 
         VulkanLoadDebugUtilsExtensions(vkInstance);
 
@@ -446,8 +445,7 @@ namespace SceneryEditorX
 
 		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
         {
-            EDITOR_LOG_ERROR("Failed to create window surface!");
-            //ErrMsg("Failed to create window surface!");
+            SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to create window surface!");
         }
 
 		/*
@@ -477,7 +475,6 @@ namespace SceneryEditorX
         catch (const std::exception &e)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create physical device: {}", e.what());
-            //ErrMsg("Failed to create physical device!");
             return;
         }
 
@@ -505,7 +502,6 @@ namespace SceneryEditorX
         if (vkCreatePipelineCache(vkDevice->GetDevice(), &pipelineCacheInfo, allocator, &pipelineCache) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline cache!");
-            //ErrMsg("Failed to create pipeline cache!");
         }
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -515,10 +511,9 @@ namespace SceneryEditorX
 		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create window surface!");
-            //ErrMsg("Failed to create window surface!");
         }
 
-		SEDX_CORE_INFO("Vulkan Instance Created.");
+		SEDX_CORE_TRACE_TAG("Graphics Engine","Vulkan Instance Created");
     }
 
     VkSampler GraphicsEngine::CreateSampler(float maxLod)
