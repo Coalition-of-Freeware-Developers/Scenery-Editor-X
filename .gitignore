@@ -5,6 +5,8 @@ build/
 bin/
 bin-int/
 shader_tests/
+source/_archive/
+source/SceneryEditorX/reference/
 
 # User-specific files
 *.rsuser
