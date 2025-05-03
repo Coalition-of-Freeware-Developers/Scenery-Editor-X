@@ -17,6 +17,7 @@
 
 namespace SceneryEditorX
 {
+	// -------------------------------------------------------
 
 	#ifdef SEDX_PLATFORM_WINDOWS
 	
@@ -26,12 +27,10 @@ namespace SceneryEditorX
 	        std::string textureFolder	=	"../../assets/textures";
 	        std::string modelFolder		=	"../../assets/models";
 	        std::string fontFolder		=	"../../assets/fonts";
-			
+            const char *defaultFontPath =	"C:\\Windows\\Fonts\\arial.ttf";
 		};
-	
-	#endif //SEDX_PLATFORM_WINDOWS
-	
-	#ifdef SEDX_PLATFORM_LINUX
+
+	#elif SEDX_PLATFORM_LINUX
 	
 		struct EditorConfig
 	    {
@@ -39,11 +38,27 @@ namespace SceneryEditorX
 	        std::string textureFolder	=	"../../assets/textures";
 	        std::string modelFolder		=	"../../assets/models";
 	        std::string fontFolder		=	"../../assets/fonts";
+            const char *defaultFontPath =	"/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf";
 	    };
-	
-	#endif //SEDX_PLATFORM_LINUX
 
+    #elif SEDX_PLATFORM_MACOS
+
+        struct EditorConfig
+        {
+            std::string shaderFolder = "../../assets/shaders";
+            std::string textureFolder = "../../assets/textures";
+            std::string modelFolder = "../../assets/models";
+            std::string fontFolder = "../../assets/fonts";
+            const char *defaultFontPath = "/Library/Fonts/Arial Unicode.ttf";
+        };
+    #else
+        #error "Unsupported platform!"
+    #endif
+
+    // -------------------------------------------------------
 
 } // namespace SceneryEditorX
+
+// -------------------------------------------------------
 
 

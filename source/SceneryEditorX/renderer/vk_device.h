@@ -15,7 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <SceneryEditorX/renderer/buffer_data.h>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/renderer/image_data.h>
 #include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
@@ -30,7 +30,7 @@ namespace SceneryEditorX
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkPhysicalDeviceFeatures GFXFeatures = {};
         VkPhysicalDeviceLimits GFXLimits = {};
-        VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
+        VkSurfaceCapabilitiesKHR surfaceCapabilities;
         VkPhysicalDeviceFeatures deviceInfo = {};
         VkPhysicalDeviceProperties deviceProperties = {};
         VkPhysicalDeviceMemoryProperties memoryInfo = {};
@@ -39,16 +39,17 @@ namespace SceneryEditorX
         std::vector<VkPresentModeKHR> presentModes;
         std::vector<VkSurfaceFormatKHR> surfaceFormats;
 	    std::vector<VkQueueFamilyProperties> queueFamilyInfo;
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
 	    GPUDevice() :
 			depthFormat(VK_FORMAT_UNDEFINED),
 			physicalDevice(VK_NULL_HANDLE),
 			GFXFeatures({}),
 	        GFXLimits({}),
-			surfaceCapabilities({}),
-			deviceInfo({}),
-            deviceProperties({}),
-			memoryInfo({})
+			surfaceCapabilities(),
+	        deviceInfo({}),
+	        deviceProperties({}),
+	        memoryInfo({})
 	    {
 	    }
 	};
@@ -58,16 +59,30 @@ namespace SceneryEditorX
 	class VulkanPhysicalDevice
     {
     public:
-
-        /// Static singleton accessor
-        static Ref<VulkanPhysicalDevice> GetInstance()
+        struct QueueFamilyIndices
         {
-            static Ref<VulkanPhysicalDevice> instance = CreateRef<VulkanPhysicalDevice>();
-            return instance;
-        }
+            uint32_t Graphics = UINT32_MAX;
+            uint32_t Compute = UINT32_MAX;
+            uint32_t Transfer = UINT32_MAX;
+            
+            [[nodiscard]] bool IsComplete() const
+            {
+                return Graphics != UINT32_MAX; /// At minimum, we need a graphics queue
+            }
+            
+            [[nodiscard]] bool HasDedicatedCompute() const
+            {
+                return Compute != UINT32_MAX && Compute != Graphics;
+            }
+            
+            [[nodiscard]] bool HasDedicatedTransfer() const
+            {
+                return Transfer != UINT32_MAX && Transfer != Graphics && Transfer != Compute;
+            }
+        };
 
-        explicit VulkanPhysicalDevice();
-        virtual ~VulkanPhysicalDevice();
+        VulkanPhysicalDevice();
+        ~VulkanPhysicalDevice();
 
 		/// Delete copy constructor and assignment operator
         VulkanPhysicalDevice(const VulkanPhysicalDevice &) = delete;
@@ -76,6 +91,8 @@ namespace SceneryEditorX
         /// Allow move operations if needed
         VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
         VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
+
+	    static Ref<VulkanPhysicalDevice> Select();
 
 		/**
          * @brief Select a physical device based on queue requirements
@@ -98,7 +115,12 @@ namespace SceneryEditorX
         [[nodiscard]] const VkPhysicalDeviceMemoryProperties& GetMemoryProperties() const { return devices.at(deviceIndex).memoryInfo; }
 		[[nodiscard]] VkFormat GetDepthFormat() const { return devices.at(deviceIndex).depthFormat; }
 		[[nodiscard]] VkPhysicalDevice GetGPUDevice() const { return devices.at(deviceIndex).physicalDevice; }
-		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceProperties() const { return devices.at(deviceIndex).deviceInfo; }
+		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceInfo; }
+        [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
+		[[nodiscard]] const std::vector<VkSurfaceFormatKHR>& GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
+		[[nodiscard]] const std::vector<VkPresentModeKHR>& GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
+		[[nodiscard]] const std::vector<VkQueueFamilyProperties>& GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
+
         /**
          * @brief Find queue families that meet specified criteria in the physical device
          * @param device The physical device to examine
@@ -108,7 +130,7 @@ namespace SceneryEditorX
 
     private:
         std::vector<GPUDevice> devices;
-        std::vector<VkQueueFamilyProperties> QFamilyProperties;
+        std::unordered_set<std::string> supportedExtensions;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkInstance instance = VK_NULL_HANDLE;
         QueueFamilyIndices QFamilyIndices;
@@ -119,7 +141,7 @@ namespace SceneryEditorX
          * @param qFlags The queue flags to search for
          * @return Queue family indices for different queue types
          */
-        [[nodiscard]] QueueFamilyIndices GetQueueFamilyIndices(int qFlags) const;
+        [[nodiscard]] QueueFamilyIndices GetQueueFamilyIndices(VkQueueFlags qFlags) const;
 
 		/**
          * @brief Enumerate and populate device information
@@ -137,20 +159,6 @@ namespace SceneryEditorX
     {
     public:
 
-        /// Static singleton accessor
-        static Ref<VulkanDevice> GetInstance()
-        {
-            static Ref<VulkanDevice> instance;
-            if (!instance)
-            {
-                VkPhysicalDeviceFeatures features{};
-                // Set required features here...
-
-                instance = CreateRef<VulkanDevice>(VulkanPhysicalDevice::GetInstance(), features);
-            }
-            return instance;
-        }
-
         /**
          * @brief Create a logical device from a physical device
          * @param physDevice The physical device to use
@@ -165,8 +173,8 @@ namespace SceneryEditorX
         VulkanDevice &operator=(const VulkanDevice &) = delete;
 
 		/// Allow move operations if needed
-        VulkanDevice(VulkanDevice &&) noexcept = default;
-        VulkanDevice &operator=(VulkanDevice &&) noexcept = default;
+        //VulkanDevice(VulkanDevice &&) noexcept;
+        //VulkanDevice &operator=(VulkanDevice &&) noexcept;
 
         /**
          * @brief Clean up resources and destroy the logical device
@@ -176,7 +184,8 @@ namespace SceneryEditorX
 		/// Accessor methods
         [[nodiscard]] const VkDevice &Selected() const;
         [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
-        [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
+        [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
+        //[[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
 		[[nodiscard]] VkDevice GetDevice() const {return device;}
 		[[nodiscard]] const Ref<VulkanPhysicalDevice>& GetPhysicalDevice() const {return vkPhysDevice;}
 
@@ -240,6 +249,7 @@ namespace SceneryEditorX
 
     private:
         RenderData renderData;
+        ImageID textureImageID;
         Extensions vkExtensions;
         Layers vkLayers;
         BindlessResources bindlessResources;
@@ -266,11 +276,11 @@ namespace SceneryEditorX
         PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR = nullptr;
         PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
 
-
 		// -------------------------------------------------------
 
         VkQueue GraphicsQueue = VK_NULL_HANDLE;
-        VkQueue PresentQueue = VK_NULL_HANDLE;
+        VkQueue ComputeQueue = VK_NULL_HANDLE;
+        //VkQueue PresentQueue = VK_NULL_HANDLE;
         std::mutex GraphicsQueueMutex;
         std::mutex ComputeQueueMutex;
 
@@ -279,7 +289,7 @@ namespace SceneryEditorX
         /// Command pool management
         std::map<std::thread::id, Ref<CommandPool>> CmdPools;
         Ref<CommandPool> GetThreadLocalCmdPool();
-        Ref<CommandPool> GetOrCreateThreadLocalCmdPool();
+        //Ref<CommandPool> GetOrCreateThreadLocalCmdPool();
 
         /**
          * @brief Create Vulkan 1.2+ features structure and load device extensions
@@ -343,7 +353,7 @@ namespace SceneryEditorX
          */
         void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
 
-        // Accessor methods
+        /// Accessor methods
         [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
         [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
         [[nodiscard]] Ref<VulkanDevice> GetDevice() const { return device; }

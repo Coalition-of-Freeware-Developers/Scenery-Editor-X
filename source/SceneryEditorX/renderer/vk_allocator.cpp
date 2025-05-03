@@ -21,12 +21,75 @@
 
 namespace SceneryEditorX
 {
+
+    // ---------------------------------------------------------
+
+	struct VulkanAllocatorData
+	{
+	    VmaAllocator Allocator;
+        uint64_t BytesAllocated = 0; // all heaps
+        uint64_t BytesFreed = 0;
+        uint64_t CurrentAllocations = 0;
+        uint64_t PeakMemoryUsage = 0;
+	};
+
+    std::array<VulkanAllocatorData, VK_MAX_MEMORY_TYPES> memoryTypeStats;
+
+	static VulkanAllocatorData *memAllocatorData = nullptr;
+	enum class AllocationType : uint8_t
+	{
+	    None = 0,
+	    Buffer = 1,
+	    Image = 2
+	};
+	
+	struct AllocInfo
+	{
+	    uint64_t AllocatedSize = 0;
+	    AllocationType Type = AllocationType::None;
+	};
+	
+	static std::map<VmaAllocation, AllocInfo> AllocationMap;
+
 	// ---------------------------------------------------------
 
     MemoryAllocator::MemoryAllocator(std::string tag) : Tag_(std::move(tag)) {}
     MemoryAllocator::~MemoryAllocator() = default;
 
     // ---------------------------------------------------------
+    void VulkanDevice::InitializeMemoryAllocator()
+    {
+        SEDX_CORE_TRACE_TAG("Vulkan Device", "Initializing Vulkan Memory Allocator");
+
+        // Create VMA (Vulkan Memory Allocator) instance
+        VmaAllocatorCreateInfo allocatorCreateInfo = {};
+        allocatorCreateInfo.physicalDevice = vkPhysDevice->GetGPUDevice();
+        allocatorCreateInfo.device = device;
+        allocatorCreateInfo.instance = vkInstance;
+
+        // Set up flags
+        allocatorCreateInfo.flags = 0;
+
+        // Enable buffer device address if available
+        if (vkGetBufferDeviceAddressKHR != nullptr)
+        {
+            allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        }
+
+        // Use a descriptor pool for memory allocation if needed
+        // allocatorCreateInfo.pAllocationCallbacks = allocator;
+
+        // Create VMA allocator
+        VmaVulkanFunctions vulkanFunctions = {};
+        vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+        vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+        allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+        // Create the memory allocator
+        memoryAllocator = CreateRef<MemoryAllocator>();
+
+        SEDX_CORE_TRACE_TAG("Vulkan Device", "Vulkan Memory Allocator initialized successfully");
+    }
 
 	/**
 	 * @brief Begins a defragmentation process for GPU memory
@@ -145,7 +208,7 @@ namespace SceneryEditorX
 
         // Update peak memory usage stats after defragmentation
         const AllocationStats currentStats = GetStats();
-        memAllocatorData->peakMemoryUsage = currentStats.usedBytes;
+        memAllocatorData->PeakMemoryUsage = currentStats.usedBytes;
     }
 
 	/**
@@ -173,7 +236,7 @@ namespace SceneryEditorX
         }
 
         // Check if allocation is valid and in our tracking map
-        if (!allocationMap.contains(allocation))
+        if (!AllocationMap.contains(allocation))
         {
             SEDX_CORE_WARN("Attempted to mark unknown allocation for defragmentation");
             return;
@@ -198,7 +261,7 @@ namespace SceneryEditorX
         // Log only occasionally to prevent spam
         if (defragmentationCandidates.size() % 100 == 1 || defragmentationCandidates.size() < 5)
         {
-            const auto &[allocatedSize, allocType] = allocationMap[allocation];
+            const auto &[allocatedSize, allocType] = AllocationMap[allocation];
             const char *typeStr = allocType == AllocationType::Buffer ? "buffer" : "image";
 
             SEDX_CORE_INFO("Marked {} allocation of size {} KB for defragmentation ({} total marked)",
@@ -241,7 +304,7 @@ namespace SceneryEditorX
 
         // ---------------------------------------------------------
 
-        // Create the allocation
+        /// Create the allocation
         VmaAllocation allocation;
         VmaAllocationInfo allocInfo{};
 
@@ -253,23 +316,23 @@ namespace SceneryEditorX
         }
 
         // Update statistics
-        memAllocatorData->TotalAllocatedBytes += allocInfo.size;
-        memAllocatorData->totalAllocations++;
-        memAllocatorData->activeAllocations++;
+        memAllocatorData->BytesAllocated += allocInfo.size;
+        memAllocatorData->BytesAllocated++;
+        memAllocatorData->CurrentAllocations++;
 
         uint32_t memoryTypeIndex = allocInfo.memoryType;
-        memAllocatorData->memoryTypeStats[memoryTypeIndex].bytesAllocated += allocInfo.size;
-        memAllocatorData->memoryTypeStats[memoryTypeIndex].currentAllocations++;
-        memAllocatorData->memoryTypeStats[memoryTypeIndex].totalAllocations++;
+        memoryTypeStats[memoryTypeIndex].BytesAllocated += allocInfo.size;
+        memoryTypeStats[memoryTypeIndex].CurrentAllocations++;
+        memoryTypeStats[memoryTypeIndex].BytesAllocated++;
 
         // Update peak memory usage
-        memAllocatorData->peakMemoryUsage = std::max(memAllocatorData->peakMemoryUsage, memAllocatorData->TotalAllocatedBytes);
+        memAllocatorData->PeakMemoryUsage = std::max(memAllocatorData->PeakMemoryUsage, memAllocatorData->BytesAllocated);
 
         // Store allocation tracking information
         AllocInfo info;
         info.AllocatedSize = allocInfo.size;
         info.Type = AllocationType::Buffer;
-        allocationMap[allocation] = info;
+        AllocationMap[allocation] = info;
 
         return allocation;
 	}
@@ -296,13 +359,13 @@ namespace SceneryEditorX
 			*allocatedSize = allocInfo.size;
         }
 
-	    memAllocatorData->TotalAllocatedBytes += allocInfo.size;
+	    memAllocatorData->BytesAllocated += allocInfo.size;
 
         // Store allocation tracking information
         AllocInfo info;
         info.AllocatedSize = allocInfo.size;
         info.Type = AllocationType::Image;
-        allocationMap[allocation] = info;
+        AllocationMap[allocation] = info;
 
         return allocation;
 	}
@@ -313,11 +376,11 @@ namespace SceneryEditorX
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
 
-        if (allocationMap.contains(allocation))
+        if (AllocationMap.contains(allocation))
         {
-            auto &[AllocatedSize, Type] = allocationMap[allocation];
-            memAllocatorData->TotalAllocatedBytes -= AllocatedSize;
-            allocationMap.erase(allocation);
+            auto &[AllocatedSize, Type] = AllocationMap[allocation];
+            memAllocatorData->BytesAllocated -= AllocatedSize;
+            AllocationMap.erase(allocation);
         }
 
         vmaFreeMemory(memAllocatorData->Allocator, allocation);
@@ -327,11 +390,11 @@ namespace SceneryEditorX
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
 
-        if (allocationMap.contains(allocation))
+        if (AllocationMap.contains(allocation))
         {
-            const auto &[AllocatedSize, Type] = allocationMap[allocation];
-            memAllocatorData->TotalAllocatedBytes -= AllocatedSize;
-            allocationMap.erase(allocation);
+            const auto &[AllocatedSize, Type] = AllocationMap[allocation];
+            memAllocatorData->BytesAllocated -= AllocatedSize;
+            AllocationMap.erase(allocation);
         }
 
         vmaDestroyImage(memAllocatorData->Allocator, image, allocation);
@@ -343,12 +406,8 @@ namespace SceneryEditorX
 		{
 		    if (buffer != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
 		    {
-		        // Get the device and allocator from VulkanDevice singleton
-		        auto device = VulkanDevice::GetInstance();
-		        auto vmaAllocator = device->GetMemoryAllocator();
-
 		        // Destroy buffer with VMA
-		        vmaDestroyBuffer(vmaAllocator, buffer, allocation);
+                vmaDestroyBuffer(memAllocatorData->Allocator, buffer, allocation);
 		        SEDX_CORE_TRACE("Buffer destroyed successfully");
 		    }
 		}
@@ -360,11 +419,11 @@ namespace SceneryEditorX
 
         if (buffer != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
         {
-            if (allocationMap.contains(allocation))
+            if (AllocationMap.contains(allocation))
             {
-                const auto &[AllocatedSize, Type] = allocationMap[allocation];
-                memAllocatorData->TotalAllocatedBytes -= AllocatedSize;
-                allocationMap.erase(allocation);
+                const auto &[AllocatedSize, Type] = AllocationMap[allocation];
+                memAllocatorData->BytesAllocated -= AllocatedSize;
+                AllocationMap.erase(allocation);
             }
 
             vmaDestroyBuffer(memAllocatorData->Allocator, buffer, allocation);
@@ -376,18 +435,18 @@ namespace SceneryEditorX
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
 
-        if (allocationMap.contains(allocation))
+        if (AllocationMap.contains(allocation))
         {
-            const auto &[AllocatedSize, Type] = allocationMap[allocation];
-            memAllocatorData->TotalAllocatedBytes -= AllocatedSize;
-            allocationMap.erase(allocation);
+            const auto &[AllocatedSize, Type] = AllocationMap[allocation];
+            memAllocatorData->BytesAllocated -= AllocatedSize;
+            AllocationMap.erase(allocation);
         }
 
         vmaDestroyBuffer(memAllocatorData->Allocator, buffer, allocation);
     }
     */
 
-	void MemoryAllocator::UnmapMemory(const VmaAllocation allocation) const
+	void MemoryAllocator::UnmapMemory(const VmaAllocation allocation)
     {
 		vmaUnmapMemory(memAllocatorData->Allocator, allocation);
 	}
@@ -492,7 +551,7 @@ namespace SceneryEditorX
 
         // Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
 
         uint64_t totalAllocation = 0;
         uint64_t totalBudget = 0;
@@ -561,15 +620,15 @@ namespace SceneryEditorX
 
     // ---------------------------------------------------------
 
-	void MemoryAllocator::Init(VkDevice device, VkPhysicalDevice physicalDevice, VkInstance instance)
+	void MemoryAllocator::Init(Ref<VulkanDevice> device)
     {
         memAllocatorData = hnew VulkanAllocatorData();
 
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.vulkanApiVersion = SoftwareStats::minVulkanVersion;
-        allocatorInfo.physicalDevice = physicalDevice;
-        allocatorInfo.device = device;
-        allocatorInfo.instance = instance;
+        allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevice();
+        allocatorInfo.device = device->Selected();
+        allocatorInfo.instance = GraphicsEngine::GetInstance();
 
         vmaCreateAllocator(&allocatorInfo, &memAllocatorData->Allocator);
 	}
@@ -583,7 +642,7 @@ namespace SceneryEditorX
 
     bool MemoryAllocator::ContainsAllocation(VmaAllocation allocation) const
     {
-        return allocationMap.contains(allocation);
+        return AllocationMap.contains(allocation);
     }
 
     VmaAllocator MemoryAllocator::GetMemAllocator()
@@ -662,7 +721,7 @@ namespace SceneryEditorX
 
         // Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
 
         SEDX_CORE_INFO("----------- VULKAN MEMORY ALLOCATION STATS -----------");
         SEDX_CORE_INFO("Tag: {}", Tag_);
@@ -687,7 +746,7 @@ namespace SceneryEditorX
         for (uint32_t i = 0; i < memProps.memoryTypeCount; i++)
         {
             // Skip if no memory is allocated from this type
-            if (memAllocatorData->memoryTypeStats[i].bytesAllocated == 0) continue;
+            if (memoryTypeStats[i].BytesAllocated == 0) continue;
 
             // Determine memory type properties string
             std::string propertyStr;
@@ -701,11 +760,11 @@ namespace SceneryEditorX
 
             SEDX_CORE_INFO("Type {}: Heap {}, Properties: {}", i, memProps.memoryTypes[i].heapIndex, propertyStr);
             SEDX_CORE_INFO("  Allocated: {} MB, Active allocations: {}",
-                           (memAllocatorData->memoryTypeStats[i].bytesAllocated - memAllocatorData->memoryTypeStats[i].bytesFreed) / (1024 * 1024),
-                           memAllocatorData->memoryTypeStats[i].currentAllocations);
+                           (memoryTypeStats[i].BytesAllocated - memoryTypeStats[i].BytesFreed) / (1024 * 1024),
+                           memoryTypeStats[i].CurrentAllocations);
         }
 
-        SEDX_CORE_INFO("Peak memory usage: {} MB", memAllocatorData->peakMemoryUsage / (1024 * 1024));
+        SEDX_CORE_INFO("Peak memory usage: {} MB", memAllocatorData->PeakMemoryUsage / (1024 * 1024));
         SEDX_CORE_INFO("--------------------------------------------------------");
     }
 
@@ -726,19 +785,20 @@ namespace SceneryEditorX
         }
 
         // Reset our allocation tracking statistics
-        for (auto &[bytesAllocated, bytesFreed, currentAllocations, totalAllocations] : memAllocatorData->memoryTypeStats)
+        for (auto &[Allocator, BytesAllocated, BytesFreed, CurrentAllocations, PeakMemoryUsage] :
+             memoryTypeStats)
         {
             // Keep track of current allocations, but reset historical tracking
-            const uint32_t currentAllocCount = currentAllocations;
-            const uint64_t currentBytes = bytesAllocated - bytesFreed;
+            const uint32_t currentAllocCount = CurrentAllocations;
+            const uint64_t currentBytes = CurrentAllocations - BytesFreed;
 
-            bytesAllocated = currentBytes;
-            bytesFreed = 0;
-            totalAllocations = currentAllocCount;
+            BytesAllocated = currentBytes;
+            BytesFreed = 0;
+            BytesAllocated = currentAllocCount;
         }
 
         // Reset peak memory usage to current usage
-        memAllocatorData->peakMemoryUsage = memAllocatorData->TotalAllocatedBytes;
+        memAllocatorData->PeakMemoryUsage = memAllocatorData->BytesAllocated;
 
         SEDX_CORE_INFO("Memory allocation statistics have been reset");
     }
@@ -818,7 +878,7 @@ namespace SceneryEditorX
 
         // Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
 
         uint64_t totalBudget = 0;
         uint64_t totalUsage = 0;
@@ -943,28 +1003,27 @@ namespace SceneryEditorX
 
             // Update allocation tracking
             totalAllocation += allocInfo.size;
-            memAllocatorData->TotalAllocatedBytes += allocInfo.size;
-            memAllocatorData->totalAllocations++;
-            memAllocatorData->activeAllocations++;
+            memAllocatorData->BytesAllocated += allocInfo.size;
+            memAllocatorData->BytesAllocated++;
+            memAllocatorData->CurrentAllocations++;
 
             // Update per-memory-type statistics
             uint32_t memoryTypeIndex = allocInfo.memoryType;
-            memAllocatorData->memoryTypeStats[memoryTypeIndex].bytesAllocated += allocInfo.size;
-            memAllocatorData->memoryTypeStats[memoryTypeIndex].currentAllocations++;
-            memAllocatorData->memoryTypeStats[memoryTypeIndex].totalAllocations++;
+            memoryTypeStats[memoryTypeIndex].BytesAllocated += allocInfo.size;
+            memoryTypeStats[memoryTypeIndex].CurrentAllocations++;
+            memoryTypeStats[memoryTypeIndex].BytesAllocated++;
 
             // Store allocation info
             AllocInfo info;
             info.AllocatedSize = allocInfo.size;
             info.Type = AllocationType::Buffer;
-            //allocationMap[allocation.allocation] = info;
-            const_cast<MemoryAllocator *>(this)->allocationMap[allocation.allocation] = info;
+            AllocationMap[allocation.allocation] = info;
             allocations.push_back(allocation);
         }
 
         // Update peak memory usage
-        memAllocatorData->peakMemoryUsage =
-            std::max(memAllocatorData->peakMemoryUsage, memAllocatorData->TotalAllocatedBytes);
+        memAllocatorData->PeakMemoryUsage =
+            std::max(memAllocatorData->PeakMemoryUsage, memAllocatorData->BytesAllocated);
 
         if (!allocations.empty())
         {
@@ -999,12 +1058,12 @@ namespace SceneryEditorX
                 continue;
 
             // Track total memory being freed
-            if (allocationMap.contains(allocation.allocation))
+            if (AllocationMap.contains(allocation.allocation))
             {
-                const auto &[AllocatedSize, Type] = allocationMap[allocation.allocation];
+                const auto &[AllocatedSize, Type] = AllocationMap[allocation.allocation];
                 totalFreed += AllocatedSize;
-                memAllocatorData->TotalAllocatedBytes -= AllocatedSize;
-                allocationMap.erase(allocation.allocation);
+                memAllocatorData->BytesAllocated -= AllocatedSize;
+                AllocationMap.erase(allocation.allocation);
             }
 
             // Destroy the buffer

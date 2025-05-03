@@ -151,7 +151,7 @@ namespace SceneryEditorX::UI
         this->window = window;
         this->renderer = &renderer;
 
-        device = GraphicsEngine::GetDevice().get();
+        device = GraphicsEngine::GetCurrentDevice().get();
         swapchain = renderer.GetSwapChain().get();
 
         if (initialized)
@@ -192,20 +192,19 @@ namespace SceneryEditorX::UI
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         /// Get queue family info
-        const VulkanDevice *vkDevice = GraphicsEngine::GetDevice().get();
-        const QueueFamilyIndices indices = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
+        const VulkanDevice *vkDevice = GraphicsEngine::GetCurrentDevice().get();
+        //const QueueFamilyIndices indices = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
 
         /// Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
         info.Instance = GraphicsEngine::GetInstance();
         info.PhysicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevice();
         info.Device = device->GetDevice();
-        info.QueueFamily = indices.graphicsFamily.value();
-        info.Queue = vkDevice->GetGraphicsQueue();
+        info.QueueFamily = reinterpret_cast<uint32_t>(info.Queue = vkDevice->GetGraphicsQueue());
         info.DescriptorPool = imguiPool;
         info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;
-        info.ImageCount = swapchain->GetSwapChainImages().size();
+        info.ImageCount = swapchain->GetImageIndex();
         info.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
         info.Allocator = nullptr;
         info.CheckVkResultFn = [](const VkResult result) {

@@ -40,7 +40,6 @@ namespace SceneryEditorX
 	private:
         GraphicsEngine vkRenderer;
         Ref<SwapChain> vkSwapChain;
-        Ref<VulkanDevice> vkDevice;
 
         //AssetManager assetManager;
         UI::GUI ui;

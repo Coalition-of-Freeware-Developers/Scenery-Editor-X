@@ -24,7 +24,8 @@ namespace SceneryEditorX
     {
     public:
         void InitChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers, const VkPhysicalDevice &device);
-        bool IsExtensionSupported(const std::vector<VkExtensionProperties> &availExtensions, const char * extension); // Function to check if an extension is supported
+        bool IsRequiredExtensionSupported(const std::vector<VkExtensionProperties> &availExtensions, const char *extension); // Function to check if a required extension is supported
+        bool IsExtensionSupported(const char *extension);                                                             // Function to check if an extension is supported
         bool CheckAPIVersion(uint32_t minVulkanVersion);                                                              // Function to check if Vulkan API version is compatible
         bool CheckValidationLayerSupport() const;                                                                     // Function to check if validation layers are supported
         bool CheckDeviceExtensionSupport(VkPhysicalDevice device);                                                    // Function to check if required device extensions are available

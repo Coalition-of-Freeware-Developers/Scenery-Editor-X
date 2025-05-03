@@ -38,40 +38,6 @@ namespace SceneryEditorX
         }
     };
 
-    struct VulkanAllocatorData
-    {
-        struct MemoryTypeStats
-        {
-            uint64_t bytesAllocated = 0;
-            uint64_t bytesFreed = 0;
-            uint32_t currentAllocations = 0;
-            uint32_t totalAllocations = 0;
-        };
-
-        VmaAllocator Allocator;
-        uint64_t TotalAllocatedBytes = 0;
-        uint64_t MemoryUsage = 0; // all heaps
-        std::array<MemoryTypeStats, VK_MAX_MEMORY_TYPES> memoryTypeStats;
-        uint64_t totalAllocations = 0;
-        uint64_t activeAllocations = 0;
-        uint64_t peakMemoryUsage = 0;
-    };
-
-    // ---------------------------------------------------------
-
-    enum class AllocationType : uint8_t
-    {
-        None = 0,
-        Buffer = 1,
-        Image = 2
-    };
-
-    struct AllocInfo
-    {
-        uint64_t AllocatedSize = 0;
-        AllocationType Type = AllocationType::None;
-    };
-
     // ---------------------------------------------------------
 
     /// Constants for common sizes
@@ -88,11 +54,11 @@ namespace SceneryEditorX
         explicit MemoryAllocator(std::string tag);
         ~MemoryAllocator();
 
-        // Defragmentation methods
+        /// Defragmentation methods
         void BeginDefragmentation(VmaDefragmentationFlags flags = 0);
         void EndDefragmentation();
 
-        // Method to mark an allocation as defragmentable
+        /// Method to mark an allocation as defragmentable
         void MarkForDefragmentation(VmaAllocation allocation);
 
 		// ---------------------------------------------------------
@@ -111,9 +77,9 @@ namespace SceneryEditorX
 
         enum class AllocationStrategy : uint8_t
         {
-            Default,        // Let VMA decide
-            SpeedOptimized, // Optimize for fast allocation
-            MemoryOptimized // Optimize for minimal memory usage
+            Default,        /// Let VMA decide
+            SpeedOptimized, /// Optimize for fast allocation
+            MemoryOptimized /// Optimize for minimal memory usage
         };
 
         void SetAllocationStrategy(AllocationStrategy strategy);
@@ -148,15 +114,13 @@ namespace SceneryEditorX
             VkDeviceSize size;
         };
 
-        // Batch allocation methods
+        /// Batch allocation methods
         [[nodiscard]] std::vector<BatchBufferAllocation> AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, BufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO);
 
         void FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations);
 
 		// ---------------------------------------------------------
 
-        VulkanAllocatorData *memAllocatorData = nullptr;
-        mutable std::map<VmaAllocation, AllocInfo> allocationMap;
         VmaAllocation AllocateBuffer(const VkBufferCreateInfo &bufferCreateInfo, VmaMemoryUsage usage, VkBuffer &outBuffer);
         VmaAllocation AllocateImage(const VkImageCreateInfo &imageCreateInfo, VmaMemoryUsage usage, VkImage &outImage, VkDeviceSize* allocatedSize = nullptr);
 
@@ -175,11 +139,11 @@ namespace SceneryEditorX
 
 		// ---------------------------------------------------------
 
-        void UnmapMemory(VmaAllocation allocation) const;
-        VmaAllocator GetMemAllocator();
+        void UnmapMemory(VmaAllocation allocation);
+        GLOBAL VmaAllocator GetMemAllocator();
 
-		void Init(VkDevice device, VkPhysicalDevice physicalDevice, VkInstance instance);
-		void Shutdown();
+		GLOBAL void Init(Ref<VulkanDevice> device);
+		GLOBAL void Shutdown();
 
 		// ---------------------------------------------------------
 
@@ -189,24 +153,24 @@ namespace SceneryEditorX
         VmaDefragmentationContext defragmentationContext;
         AllocationStrategy currentStrategy;
 
-        // Fixed-size pools for common allocation sizes
+        /// Fixed-size pools for common allocation sizes
         std::unordered_map<VkDeviceSize, MemoryPool> bufferPools;
         std::unordered_map<VkDeviceSize, MemoryPool> imagePools;
 
-        // Helper methods for pool creation and retrieval
+        /// Helper methods for pool creation and retrieval
         VmaPool GetOrCreateBufferPool(VkDeviceSize size, VmaMemoryUsage usage);
         VmaPool GetOrCreateImagePool(VkDeviceSize size, VmaMemoryUsage usage);
 
-        // For thread safety
+        /// For thread safety
         std::mutex allocationMutex;
         std::mutex poolMutex;
 
-        float memoryWarningThreshold = 0.9f; // 90% usage generates warnings
+        float memoryWarningThreshold = 0.9f; /// 90% usage generates warnings
         [[nodiscard]] bool CheckMemoryBudget() const;
 
         VkDeviceSize customBufferAlignment = 0;
 
-        // Helper function to align buffer sizes for better caching
+        /// Helper function to align buffer sizes for better caching
         [[nodiscard]] VkDeviceSize AlignBufferSize(VkDeviceSize size) const;
 
     };

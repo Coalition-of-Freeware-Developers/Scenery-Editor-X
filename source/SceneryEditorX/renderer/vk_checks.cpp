@@ -12,6 +12,7 @@
 */
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/renderer/vk_checks.h>
+#include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/renderer/vk_util.h>
 
 // -------------------------------------------------------
@@ -73,8 +74,9 @@ namespace SceneryEditorX
 	 * @return True if the device has support for the required extensions.
 	 * @return False if the device cannot support the required extensions.
 	 */
-	bool VulkanChecks::IsExtensionSupported(const std::vector<VkExtensionProperties> &availExtensions, const char *const extension)
+	bool VulkanChecks::IsRequiredExtensionSupported(const std::vector<VkExtensionProperties> &availExtensions, const char *const extension)
 	{
+	    
 	    for (const auto &[extensionName, specVersion] : availExtensions)
 	    {
 	        if (strstr(extensionName, extension))
@@ -82,8 +84,38 @@ namespace SceneryEditorX
 	            return true;
 	        }
 	    }
-	
-	    return false;
+	    
+        return false;
+    }
+
+    /**
+     * @brief Checks to see if the device has support for the required extensions.
+     * @param extension The extension name to check for.
+     * @return True if the device has support for the required extensions.
+     * @return False if the device cannot support the required extensions.
+     */
+    bool VulkanChecks::IsExtensionSupported(const char *extension)
+    {
+        uint32_t extensionCount = 0;
+
+        std::unordered_set<std::string> supportedExtension;
+        supportedExtension.clear();
+
+        vkEnumerateDeviceExtensionProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->physicalDevice, nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+        for (const auto &ext: availableExtensions)
+        {
+            supportedExtension.emplace(ext.extensionName);
+        }
+
+		if (supportedExtension.contains(extension))
+        {
+            SEDX_CORE_INFO("Extension supported: {}", ToString(extension));
+            return true;
+        }
+
+        return false;
     }
 
 	/**

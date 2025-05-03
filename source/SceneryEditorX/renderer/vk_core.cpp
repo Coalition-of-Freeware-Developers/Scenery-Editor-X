@@ -236,34 +236,33 @@ namespace SceneryEditorX
         if (debugMessenger != VK_NULL_HANDLE)
         {
             DestroyDebugUtilsMessengerEXT(vkInstance, debugMessenger, allocator);
-        }
-        if (surface != VK_NULL_HANDLE)
-        {
-            vkDestroySurfaceKHR(vkInstance, surface, allocator);
+            SEDX_CORE_TRACE_TAG("Graphics Engine", "Destroyed vulkan debugger.");
         }
         if (vkInstance != VK_NULL_HANDLE)
         {
             vkDestroyInstance(vkInstance, allocator);
+            SEDX_CORE_TRACE_TAG("Graphics Engine", "Destroyed Graphics Engine instance destroyed.");
         }
         vkInstance = nullptr;
+
+
     }
 
     // -------------------------------------------------------
 
     void GraphicsEngine::Init(const Ref<Window> &window)
     {
-        // Store the window reference
+        /// Store the window reference
         editorWindow = window;
 
         if (!checks->CheckAPIVersion(SoftwareStats::minVulkanVersion))
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Incompatible Vulkan driver version!");
-            //ErrMsg("Incompatible Vulkan driver version!");
         }
 
         CreateInstance(window);
 
-		// Use width and height from WindowData
+		/// Use width and height from WindowData
         renderData.width = WindowData::width;
         renderData.height = WindowData::height;
 
@@ -290,28 +289,28 @@ namespace SceneryEditorX
     {
         SEDX_CORE_TRACE_TAG("Graphics Engine", "Creating Vulkan Instance");
 
-        // Set the window user pointer to point to the Window singleton
+        /// Set the window user pointer to point to the Window singleton
         glfwSetWindowUserPointer(window, Window::GetWindow());
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Extensions and Validation
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		// Get all available layers
+		/// Get all available layers
         uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
         vkLayers.layers.resize(layerCount);
         vkLayers.activeLayers.resize(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, vkLayers.layers.data());
 
-        // Get all available extensions
+        /// Get all available extensions
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
         vkExtensions.instanceExtensions.resize(extensionCount);
         vkExtensions.activeExtensions.resize(extensionCount);
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, vkExtensions.instanceExtensions.data());
 
-        // Get Vulkan API version
+        /// Get Vulkan API version
         vkEnumerateInstanceVersion(&renderData.apiVersion);
         SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance API Version: {}", renderData.apiVersion);
 
@@ -364,6 +363,7 @@ namespace SceneryEditorX
 
 		// ---------------------------------------------------------
 
+
         std::vector<const char *> instanceExtensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
         instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         if (enableValidationLayers)
@@ -376,14 +376,16 @@ namespace SceneryEditorX
         createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
         createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
+
 		// ---------------------------------------------------------
 
-        vkExtensions.activeExtensionsNames.clear();
+        /*
+        vkExtensions.requiredExtensions.clear();
         for (size_t i = 0; i < vkExtensions.instanceExtensions.size(); i++)
         {
             if (vkExtensions.activeExtensions[i])
             {
-                vkExtensions.activeExtensionsNames.push_back(vkExtensions.instanceExtensions[i].extensionName);
+                vkExtensions.requiredExtensions.push_back(vkExtensions.instanceExtensions[i].extensionName);
             }
         #ifdef SEDX_DEBUG
             SEDX_CORE_TRACE_TAG("Graphics Engine","Active Extensions: {} Active Extensions Names: {}", i, vkExtensions.instanceExtensions[i].extensionName);
@@ -391,16 +393,17 @@ namespace SceneryEditorX
         }
 
         /// Get and set all required extensions
-		createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.activeExtensionsNames.size());
-        createInfo.ppEnabledExtensionNames = vkExtensions.activeExtensionsNames.data();
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.requiredExtensions.size());
+        createInfo.ppEnabledExtensionNames = vkExtensions.requiredExtensions.data();
+        */
 
 		// ---------------------------------------------------------
 
         VkDebugUtilsMessengerCreateInfoEXT vkDebugCreateInfo;
         if (enableValidationLayers)
         {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayers.size());
-            createInfo.ppEnabledLayerNames = vkLayers.validationLayers.data();
+            createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayer.size());
+            createInfo.ppEnabledLayerNames = vkLayers.validationLayer.data();
             /// We need to set up a separate logger just for the instance creation/destruction because our "default" logger is created after
             PopulateDebugMsgCreateInfo(vkDebugCreateInfo);
             // createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
@@ -415,7 +418,7 @@ namespace SceneryEditorX
 		/// Instance and Surface Creation
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        if (vkLayers.validationLayers.empty() && enableValidationLayers)
+        if (vkLayers.validationLayer.empty() && enableValidationLayers)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Validation layers enabled but none available!");
             return;
@@ -443,6 +446,7 @@ namespace SceneryEditorX
 
 		// ---------------------------------------------------------
 
+		//TODO: Move this to the swapchain creation
 		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to create window surface!");
@@ -466,8 +470,13 @@ namespace SceneryEditorX
         }
         */
 
-		Ref<VulkanPhysicalDevice> physDevice = nullptr;
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Initalize the Vulkan Physical Device & Vulkan Device
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        vkPhysicalDevice = VulkanPhysicalDevice::Select();
+
+        /*
         try
         {
             physDevice = VulkanPhysicalDevice::GetInstance();
@@ -479,16 +488,17 @@ namespace SceneryEditorX
         }
 
         physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
+        */
 
         VulkanDeviceFeatures deviceFeatures;
         deviceFeatures.GetPhysicalDeviceFeatures();
 
-        Ref<VulkanDevice> device = VulkanDevice::GetInstance();
-        vkPhysicalDevice = physDevice;
-        vkDevice = device;
+        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, deviceFeatures.GetPhysicalDeviceFeatures());
 
 		/// Memory Allocator initialization.
-        allocatorManager->Init(vkDevice->GetDevice(), vkPhysDevice, vkInstance);
+        MemoryAllocator::Init(vkDevice);
+
+        //allocatorManager->Init(vkDevice->GetDevice(), vkPhysDevice, vkInstance);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Pipeline Cache Creation
@@ -673,7 +683,8 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    /*void GraphicsEngine::createInstance()
+    /*
+    void GraphicsEngine::createInstance()
     {
         if (enableValidationLayers && !CheckValidationLayerSupport())
         {
@@ -733,9 +744,11 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to create instance!");
             //ErrMsg("Failed to create graphics instance!");
         }
-    }*/
+    }
+    */
 
-	/*void GraphicsEngine::pickPhysicalDevice()
+	/*
+	void GraphicsEngine::pickPhysicalDevice()
 	{
 	    // Initialize the physical device manager
 	    physDeviceManager.Init(instance, surface);
@@ -771,8 +784,10 @@ namespace SceneryEditorX
 	    physicalFeatures = selectedDevice.GFXFeatures;
 	    physicalProperties = selectedDevice.deviceInfo;
 	    memoryProperties = selectedDevice.memoryInfo;
-	}*/
+	}
+	*/
 
+    /*
     void GraphicsEngine::CreateLogicalDevice()
     {
         QueueFamilyIndices indices = FindQueueFamilies(vkPhysicalDevice->GetGPUDevice());
@@ -804,17 +819,16 @@ namespace SceneryEditorX
 		if (!checks->CheckDeviceExtensionSupport(vkPhysicalDevice->GetGPUDevice()))
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
-            //ErrMsg("Required device extensions not supported!");
         }
 
-        // Enable swap chain extension
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.activeExtensionsNames.size());
-        createInfo.ppEnabledExtensionNames = vkExtensions.activeExtensionsNames.data();
+        /// Enable swap chain extension
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(vkExtensions.requiredExtensions.size());
+        createInfo.ppEnabledExtensionNames = vkExtensions.requiredExtensions.data();
 
         if (enableValidationLayers)
         {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayers.size());
-            createInfo.ppEnabledLayerNames = vkLayers.validationLayers.data();
+            createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayer.size());
+            createInfo.ppEnabledLayerNames = vkLayers.validationLayer.data();
         }
         else
         {
@@ -824,24 +838,24 @@ namespace SceneryEditorX
         if (vkCreateDevice(vkPhysicalDevice->GetGPUDevice(), &createInfo, allocator, &device) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device!");
-            //ErrMsg("Failed to create logical device!");
         }
 
         vkGetDeviceQueue(vkDevice->GetDevice(), indices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(vkDevice->GetDevice(), indices.presentFamily.value(), 0, &presentQueue);
     }
+    */
 
     void GraphicsEngine::CreateSwapChain()
     {
-        // Get swap chain support details from the selected device
+        /// Get swap chain support details from the selected device
         const GPUDevice &selectedDevice = vkPhysicalDevice->Selected();
 
-        // Create our swap chain using the capabilities from the selected device
+        /// Create our swap chain using the capabilities from the selected device
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.surface = surface;
 
-        // Set minimum image count (usually min+1 for triple buffering)
+        /// Set minimum image count (usually min+1 for triple buffering)
         uint32_t imageCount = selectedDevice.surfaceCapabilities.minImageCount + 1;
         if (selectedDevice.surfaceCapabilities.maxImageCount > 0 &&
             imageCount > selectedDevice.surfaceCapabilities.maxImageCount)
@@ -850,20 +864,21 @@ namespace SceneryEditorX
         }
         createInfo.minImageCount = imageCount;
 
-        // Select format
+        /// Select format
         VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(selectedDevice.surfaceFormats);
         createInfo.imageFormat = surfaceFormat.format;
         createInfo.imageColorSpace = surfaceFormat.colorSpace;
 
-        // Select extent
+        /// Select extent
         VkExtent2D extent = ChooseSwapExtent(selectedDevice.surfaceCapabilities);
         createInfo.imageExtent = extent;
 
-        // Additional settings
+        /// Additional settings
         createInfo.imageArrayLayers = 1;
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-        // Handle queue families
+        /*
+        /// Handle queue families
         QueueFamilyIndices indices = FindQueueFamilies(vkPhysicalDevice->GetGPUDevice());
         uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
@@ -879,6 +894,7 @@ namespace SceneryEditorX
             createInfo.queueFamilyIndexCount = 0;
             createInfo.pQueueFamilyIndices = nullptr;
         }
+        */
 
         createInfo.preTransform = selectedDevice.surfaceCapabilities.currentTransform;
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -890,19 +906,21 @@ namespace SceneryEditorX
         if (vkCreateSwapchainKHR(vkDevice->GetDevice(), &createInfo, allocator, &vkSwapChain->swapChain) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create swap chain!");
-            //ErrMsg("Failed to create swap chain!");
         }
 
-        // Get swap chain images
+
+        /*
+        /// Get swap chain images
         vkGetSwapchainImagesKHR(vkDevice->GetDevice(), vkSwapChain->swapChain, &imageCount, nullptr);
         vkSwapChain->swapImages.resize(imageCount);
         vkGetSwapchainImagesKHR(vkDevice->GetDevice(), vkSwapChain->swapChain, &imageCount, vkSwapChain->swapChainImages.data());
 
-        // Store format and extent for later use
+        /// Store format and extent for later use
         vkSwapChain->swapChainImageFormat = surfaceFormat.format;
         vkSwapChain->swapChainExtent = extent;
 
         SEDX_CORE_INFO("Swap chain created successfully with {} images", imageCount);
+		*/
     }
 
 	void GraphicsEngine::CreateImageViews()
@@ -911,10 +929,7 @@ namespace SceneryEditorX
 
         for (size_t i = 0; i < vkSwapChain->swapChainImages.size(); i++)
         {
-            swapChainImageViews[i] = GraphicsEngine::CreateImageView(vkSwapChain->swapChainImages[i],
-                                                                     vkSwapChain->swapChainImageFormat,
-                                                                     VK_IMAGE_ASPECT_COLOR_BIT,
-                                                                     1);
+            swapChainImageViews[i] = CreateImageView(vkSwapChain->swapChainImages[i].resource->image,static_cast<VkFormat>(vkSwapChain->swapChainImages[i].format),VK_IMAGE_ASPECT_COLOR_BIT,1);
         }
     }
 
@@ -935,7 +950,6 @@ namespace SceneryEditorX
         if (vkCreateImageView(vkDevice->GetDevice(), &viewInfo, allocator, &imageView) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create texture image view!");
-            //ErrMsg("Failed to create texture image view!");
         }
 
         return imageView;
@@ -961,7 +975,6 @@ namespace SceneryEditorX
         if (vkCreateImage(vkDevice->GetDevice(), &imageInfo, allocator, &image) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create image!");
-            //ErrMsg("Failed to create image!");
         }
 
         VkMemoryRequirements memRequirements;
@@ -975,7 +988,6 @@ namespace SceneryEditorX
         if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate image memory!");
-            //ErrMsg("Failed to allocate image memory!");
         }
 
         vkBindImageMemory(vkDevice->GetDevice(), image, imageMemory, 0);
@@ -1009,8 +1021,7 @@ namespace SceneryEditorX
             sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
             destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         }
-        else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-                 newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+        else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
         {
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -1021,7 +1032,6 @@ namespace SceneryEditorX
         else
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Unsupported layout transition!");
-            //ErrMsg("Unsupported layout transition!");
         }
 
         vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
@@ -1031,7 +1041,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::FramebufferResizeCallback(GLFWwindow *window, int width, int height)
     {
-        // Mark the framebuffer as resized
+        /// Mark the framebuffer as resized
         if (static_cast<Window *>(glfwGetWindowUserPointer(window)))
         {
             Window::SetFramebufferResized(true);
@@ -1039,7 +1049,7 @@ namespace SceneryEditorX
         }
         else
         {
-            // Fallback if Window pointer isn't set
+            /// Fallback if Window pointer isn't set
             EDITOR_LOG_WARN("Framebuffer Resize detected but no Window instance found");
         }
     }
@@ -1051,8 +1061,7 @@ namespace SceneryEditorX
         if (!file.is_open())
         {
             SEDX_CORE_ERROR_TAG("File Manager", "Failed to open file: {}", ToString(filename));
-            //ErrMsg(std::string("Failed to open file: ") + ToString(filename));
-            return {}; // Return empty vector on failure
+            return {}; /// Return empty vector on failure
         }
 
         size_t fileSize = static_cast<size_t>(file.tellg());
@@ -1070,7 +1079,6 @@ namespace SceneryEditorX
         if (!file)
         {
             SEDX_CORE_ERROR_TAG("File Manager", "Failed to read entire file: {}", ToString(filename));
-            //ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
             return {};
         }
 
@@ -1147,7 +1155,6 @@ namespace SceneryEditorX
         if (vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, allocator, &vkSwapChain->renderPass) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create render pass!");
-            //ErrMsg("failed to create render pass!");
         }
     }
 
@@ -1164,7 +1171,6 @@ namespace SceneryEditorX
         if (vkCreateBuffer(vkDevice->GetDevice(), &bufferInfo, allocator, &buffer) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
-            //ErrMsg("Failed to create buffer!");
         }
 
 		// -------------------------------------------------------
@@ -1182,7 +1188,6 @@ namespace SceneryEditorX
         if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, allocator, &bufferMemory) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Memory Allocator", "Failed to allocate buffer memory!");
-            //ErrMsg("Failed to allocate buffer memory!");
         }
 
         vkBindBufferMemory(vkDevice->GetDevice(), buffer, bufferMemory, 0);
@@ -1293,7 +1298,6 @@ namespace SceneryEditorX
         if (vkCreateDescriptorPool(vkDevice->GetDevice(), &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor pool!");
-            //ErrMsg("failed to create descriptor pool!");
         }
     }
 
@@ -1329,7 +1333,6 @@ namespace SceneryEditorX
         if (vkCreateDescriptorSetLayout(vkDevice->GetDevice(), &layoutInfo, allocator, &descriptorSetLayout) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor set layout!");
-            //ErrMsg("failed to create descriptor set layout!");
         }
     }
 
@@ -1349,7 +1352,6 @@ namespace SceneryEditorX
         if (vkAllocateDescriptorSets(vkDevice->GetDevice(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate descriptor sets!");
-            //ErrMsg("Failed to allocate descriptor sets!");
         }
 
 		// -------------------------------------------------------
@@ -1401,7 +1403,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::CreateGraphicsPipeline()
     {
-        // Get editor configuration
+        /// Get editor configuration
         EditorConfig config;
 
 		std::string shaderPath(config.shaderFolder);
@@ -1439,7 +1441,7 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-		// Configure vertex input
+		/// Configure vertex input
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -1453,14 +1455,15 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-		// Configure input assembly
+		/// Configure input assembly
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 		// -------------------------------------------------------
-        // Configure viewport and scissor
+
+        /// Configure viewport and scissor
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -1490,12 +1493,12 @@ namespace SceneryEditorX
         rasterize.polygonMode = VK_POLYGON_MODE_FILL;
         rasterize.lineWidth = 1.0f;
         rasterize.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
+        rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; /// Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
         rasterize.depthBiasEnable = VK_FALSE;
 
 		// -------------------------------------------------------
 
-        // Configure multisampling
+        /// Configure multisampling
         VkPipelineMultisampleStateCreateInfo multisampling{};
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_FALSE;
@@ -1513,7 +1516,7 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        // Configure color blending
+        /// Configure color blending
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
         colorBlendAttachment.colorWriteMask =
 			VK_COLOR_COMPONENT_R_BIT |
@@ -1535,7 +1538,7 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        // Create the graphics pipeline
+        /// Create the graphics pipeline
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
@@ -1544,7 +1547,6 @@ namespace SceneryEditorX
         if (vkCreatePipelineLayout(vkDevice->GetDevice(), &pipelineLayoutInfo, allocator, &pipelineLayout) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline layout!");
-            //ErrMsg("Failed to create pipeline layout!");
         }
 
         VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -1563,11 +1565,9 @@ namespace SceneryEditorX
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-        if (vkCreateGraphicsPipelines(vkDevice->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) !=
-            VK_SUCCESS)
+        if (vkCreateGraphicsPipelines(vkDevice->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) !=VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create graphics pipeline!");
-            //ErrMsg("Failed to create graphics pipeline!");
         }
 
         vkDestroyShaderModule(vkDevice->GetDevice(), fragShaderModule, nullptr);
@@ -1594,11 +1594,11 @@ namespace SceneryEditorX
             if (vkCreateFramebuffer(vkDevice->GetDevice(), &framebufferInfo, allocator, &swapChainFramebuffers[i]) != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create framebuffer!");
-                //ErrMsg("Failed to create framebuffer!");
             }
         }
     }
 
+    /*
     void GraphicsEngine::CreateCommandPool()
     {
         QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(vkPhysDevice);
@@ -1610,9 +1610,10 @@ namespace SceneryEditorX
 
         if (vkCreateCommandPool(vkDevice->GetDevice(), &poolInfo, allocator, &cmdPool) != VK_SUCCESS)
         {
-            //ErrMsg("Failed to create command pool!");
+            ErrMsg("Failed to create command pool!");
         }
     }
+    */
 
     void GraphicsEngine::CreateCommandBuffers()
     {
@@ -1626,7 +1627,7 @@ namespace SceneryEditorX
 
         if (vkAllocateCommandBuffers(vkDevice->GetDevice(), &allocInfo, commandBuffers.data()) != VK_SUCCESS)
         {
-            //ErrMsg("failed to allocate command buffers!");
+            ErrMsg("failed to allocate command buffers!");
         }
     }
 
@@ -1638,7 +1639,7 @@ namespace SceneryEditorX
 	
 	    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
 	    {
-	        //ErrMsg("failed to begin recording command buffer!");
+	        ErrMsg("failed to begin recording command buffer!");
 	    }
 	
 	    // -------------------------------------------------------
@@ -1664,7 +1665,7 @@ namespace SceneryEditorX
 	    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 	
 	    {
-	        // Render the 3D scene first
+	        /// Render the 3D scene first
 	        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 	
 	        VkBuffer vertexBuffers[] = {vertexBuffer};
@@ -1676,22 +1677,22 @@ namespace SceneryEditorX
 	
 	        // -------------------------------------------------------
 	
-	        // Set up ImGui for this frame
+	        /// Set up ImGui for this frame
 	        ImGui_ImplVulkan_NewFrame();
 	        ImGui_ImplGlfw_NewFrame();
 	        ImGui::NewFrame();
 	
-	        // Create a static UIManager instance to render all our UI panels
+	        /// Create a static UIManager instance to render all our UI panels
 	        static ::UI::UIManager uiManager;
 	
-			// Setup the main dockspace
+			/// Setup the main dockspace
 	        uiManager.SetupDockspace();
 	
-			// Render ImGui components
+			/// Render ImGui components
 	        ImGui::Render();
 	        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 	
-			// Update and Render additional Platform Windows
+			/// Update and Render additional Platform Windows
             if (const ImGuiIO &io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	        {
 	            ImGui::UpdatePlatformWindows();
@@ -1742,7 +1743,7 @@ namespace SceneryEditorX
 	
 	    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
 	    {
-	        //ErrMsg("failed to record command buffer!");
+	        ErrMsg("failed to record command buffer!");
 	    }
 	}
 
@@ -1765,7 +1766,7 @@ namespace SceneryEditorX
                 vkCreateSemaphore(vkDevice->GetDevice(), &semaphoreInfo, allocator, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
                 vkCreateFence(vkDevice->GetDevice(), &fenceInfo, allocator, &inFlightFences[i]) != VK_SUCCESS)
             {
-                //ErrMsg("failed to create synchronization objects for a frame!");
+                ErrMsg("failed to create synchronization objects for a frame!");
             }
         }
     }
@@ -1794,7 +1795,7 @@ namespace SceneryEditorX
         CleanupSwapChain();
 
 		SEDX_CORE_INFO("Creating new swap chain with updated dimensions");
-        CreateSwapChain();
+        //CreateSwapChain();
         CreateImageViews();
         CreateRenderPass();
         CreateGraphicsPipeline();
@@ -1802,7 +1803,7 @@ namespace SceneryEditorX
 
 		SEDX_CORE_INFO("Swap chain recreation completed");
 
-		// Reset the framebuffer resized flag
+		/// Reset the framebuffer resized flag
         renderData.framebufferResized = false;
     }
 
@@ -1831,10 +1832,9 @@ namespace SceneryEditorX
         else if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to acquire swap chain image: {}", ToString(result));
-            //ErrMsg("Failed to acquire swap chain image!");
         }
 
-        // Check if a Resize has been requested through the Window class
+        /// Check if a Resize has been requested through the Window class
         if (Window::GetFramebufferResized())
         {
             SEDX_CORE_INFO("Framebuffer Resize detected from Window class");
@@ -1909,7 +1909,6 @@ namespace SceneryEditorX
         else if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to present swap chain image: {}", ToString(result));
-            //ErrMsg("Failed to present swap chain image!");
         }
 
         renderData.currentFrame = (renderData.currentFrame + 1) % RenderData::framesInFlight;
@@ -1947,17 +1946,18 @@ namespace SceneryEditorX
 
         void *data;
 		vkMapMemory(vkDevice->GetDevice(), uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-			memcpy(data, &ubo, sizeof(ubo));
+		memcpy(data, &ubo, sizeof(ubo));
         vkUnmapMemory(vkDevice->GetDevice(), uniformBuffersMemory[currentImage]);
     }
 
+	/*
 	void GraphicsEngine::RecreateSurfaceFormats()
     {
-        // Get the surface capabilities, formats, and present modes for the current physical device
+        /// Get the surface capabilities, formats, and present modes for the current physical device
         VkSurfaceCapabilitiesKHR capabilities;
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysDevice, surface, &capabilities);
 
-        // Query formats
+        /// Query formats
         uint32_t formatCount;
         vkGetPhysicalDeviceSurfaceFormatsKHR(vkPhysDevice, surface, &formatCount, nullptr);
 
@@ -1965,7 +1965,6 @@ namespace SceneryEditorX
         {
             availableSurfaceFormats.resize(formatCount);
             vkGetPhysicalDeviceSurfaceFormatsKHR(vkPhysDevice, surface, &formatCount, availableSurfaceFormats.data());
-
             SEDX_CORE_INFO("Recreated surface formats, found {} formats", formatCount);
         }
         else
@@ -1973,7 +1972,7 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find any surface formats!");
         }
 
-        // Query present modes
+        /// Query present modes
         uint32_t presentModeCount;
         vkGetPhysicalDeviceSurfacePresentModesKHR(vkPhysDevice, surface, &presentModeCount, nullptr);
 
@@ -1989,13 +1988,14 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find any present modes!");
         }
 
-        // Store updated surface capabilities
+        /// Store updated surface capabilities
         vkSwapChain->swapChainDetails->capabilities = capabilities;
     }
+    */
 
 	void GraphicsEngine::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
     {
-        // Check if image format supports linear blitting
+        /// Check if image format supports linear blitting
         VkFormatProperties formatProperties;
         vkGetPhysicalDeviceFormatProperties(vkPhysDevice, imageFormat, &formatProperties);
 
@@ -2103,6 +2103,7 @@ namespace SceneryEditorX
         EndSingleTimeCommands(commandBuffer);
     }
 
+	/*
 	void GraphicsEngine::CreateColorResources()
     {
         VkFormat colorFormat = vkSwapChain->swapChainImageFormat;
@@ -2119,6 +2120,7 @@ namespace SceneryEditorX
                     colorImageMemory);
         colorImageView = CreateImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
+    */
 
 	// -------------------------------------------------------
     VkSampleCountFlagBits GraphicsEngine::GetMaxUsableSampleCount()
@@ -2191,10 +2193,10 @@ namespace SceneryEditorX
 
 	void GraphicsEngine::LoadModel()
     {
-        // Get editor configuration
+        /// Get editor configuration
         EditorConfig config;
 
-        // Construct the model path using the modelFolder from config
+        /// Construct the model path using the modelFolder from config
         std::string modelPath = config.modelFolder + "/viking_room.obj";
 
         EDITOR_LOG_INFO("Loading 3D model from: {}", modelPath);
@@ -2225,13 +2227,13 @@ namespace SceneryEditorX
                               attrib.vertices[3 * index.vertex_index + 1],
                               attrib.vertices[3 * index.vertex_index + 2]};
 
-                // Check if the model has texture coordinates
+                /// Check if the model has texture coordinates
                 vertex.texCoord = {attrib.texcoords[2 * index.texcoord_index + 0],
                                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]};
 
                 vertex.color = {1.0f, 1.0f, 1.0f};
 
-                if (uniqueVertices.count(vertex) == 0)
+                if (!uniqueVertices.contains(vertex))
                 {
                     uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
                     vertices.push_back(vertex);
@@ -2281,7 +2283,7 @@ namespace SceneryEditorX
         }
         else
         {
-            //ErrMsg("Failed to load texture image: pixels is null");
+            ErrMsg("Failed to load texture image: pixels is null");
         }
 
         vkUnmapMemory(vkDevice->GetDevice(), stagingBufferMemory);
@@ -2330,8 +2332,8 @@ namespace SceneryEditorX
 
     VkExtent2D GraphicsEngine::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities)
     {
-        // If the current extent width is the max value, it means the window manager
-        // allows us to set dimensions other than the current window size
+        /// If the current extent width is the max value, it means the window manager
+        /// allows us to set dimensions other than the current window size
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
         {
             EDITOR_LOG_INFO("Using surface extent: {}x{}", capabilities.currentExtent.width, capabilities.currentExtent.height);
@@ -2339,15 +2341,15 @@ namespace SceneryEditorX
         }
         else
         {
-            // Get the actual framebuffer size from GLFW directly for consistency
+            /// Get the actual framebuffer size from GLFW directly for consistency
             glfwGetFramebufferSize(Window::GetWindow(), &WindowData::width, &WindowData::height);
 
             EDITOR_LOG_INFO("Window framebuffer size: {}x{}", WindowData::width, WindowData::height);
-
-            // Create the extent using the retrieved dimensions
+			
+            /// Create the extent using the retrieved dimensions
             VkExtent2D actualExtent = {reinterpret_cast<uint32_t>(&WindowData::width), reinterpret_cast<uint32_t>(&WindowData::height)};
 
-            // Clamp to the allowed min/max extents from the surface capabilities
+            /// Clamp to the allowed min/max extents from the surface capabilities
             actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
             actualExtent.height =  std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
@@ -2383,7 +2385,7 @@ namespace SceneryEditorX
 
         if (vkCreateSampler(vkDevice->GetDevice(), &samplerInfo, allocator, &textureSampler) != VK_SUCCESS)
         {
-            //ErrMsg("failed to create texture sampler!");
+            ErrMsg("failed to create texture sampler!");
         }
     }
 
@@ -2398,7 +2400,7 @@ namespace SceneryEditorX
         if (vkCreateShaderModule(vkDevice->GetDevice(), &createInfo, allocator, &shaderModule) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create shader module!");
-            //ErrMsg("failed to create shader module!");
+            ErrMsg("failed to create shader module!");
         }
 
         return shaderModule;
@@ -2409,7 +2411,7 @@ namespace SceneryEditorX
         SwapChainDetails details;
         const GPUDevice &selectedDevice = vkPhysicalDevice->Selected();
 
-        // Copy the data that's already available
+        /// Copy the data that's already available
         details.capabilities = selectedDevice.surfaceCapabilities;
         details.formats = selectedDevice.surfaceFormats;
         details.presentModes = selectedDevice.presentModes;
@@ -2417,11 +2419,12 @@ namespace SceneryEditorX
         return details;
     }
 
+    /*
     QueueFamilyIndices GraphicsEngine::FindQueueFamilies(VkPhysicalDevice device)
     {
         QueueFamilyIndices indices;
 
-        // Instead of querying again, use the data we already have
+        /// Instead of querying again, use the data we already have
         const GPUDevice &selectedDevice = vkPhysicalDevice->Selected();
 
         for (uint32_t i = 0; i < selectedDevice.queueFamilyInfo.size(); i++)
@@ -2435,7 +2438,7 @@ namespace SceneryEditorX
                 indices.graphicsFamily = i;
             }
 
-            // Check presentation support
+            /// Check presentation support
             if (selectedDevice.queueSupportPresent[i])
             {
                 indices.presentFamily = i;
@@ -2449,6 +2452,7 @@ namespace SceneryEditorX
 
         return indices;
     }
+    */
 
 	// -------------------------------------------------------
 
@@ -2491,11 +2495,11 @@ namespace SceneryEditorX
 
     uint32_t GraphicsEngine::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
     {
-        // Get memory properties from the physical vkDevice
+        /// Get memory properties from the physical vkDevice
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(vkPhysDevice, &memProperties);
 
-        // Find a memory type that satisfies both the type filter and the property requirements
+        /// Find a memory type that satisfies both the type filter and the property requirements
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
         {
             if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
@@ -2505,8 +2509,7 @@ namespace SceneryEditorX
         }
 
         SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find suitable memory type!");
-        //ErrMsg("Failed to find suitable memory type!");
-        return 0; // Return a default value to avoid undefined behavior
+        return 0; /// Return a default value to avoid undefined behavior
     }
 
 	VkFormat GraphicsEngine::FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const

@@ -18,12 +18,18 @@
 
 int main(const int argc, const char** argv[])
 {
+    /// Initialize the application
     SceneryEditorX::Log::Init();
-
     try
     {
         SceneryEditorX::EditorApplication app;
         app.run();
+    }
+    catch (const std::runtime_error &error)
+    {
+        SEDX_CORE_ERROR_TAG("Core", "Runtime error: {}", error.what());
+        SceneryEditorX::Log::FlushAll();
+        return -1;
     }
     catch (std::exception error)
     {
@@ -33,7 +39,7 @@ int main(const int argc, const char** argv[])
     }
 
     SEDX_CORE_INFO("Scenery Editor X Engine is shutting down...");
-    SceneryEditorX::Log::FlushAll(); // Make sure to flush logs before shutdown
+    SceneryEditorX::Log::FlushAll(); /// Make sure to flush logs before shutdown
     SceneryEditorX::Log::ShutDown();
 
     return 0;

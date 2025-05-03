@@ -14,6 +14,7 @@
 #include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/settings.h>
+#include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
@@ -44,7 +45,7 @@ namespace SceneryEditorX
 	 */
 	
 	//INTERNAL void initVulkan(GraphicsEngine &vkRenderer);
-	
+
 	// -------------------------------------------------------
 
 	void EditorApplication::InitEditor()
@@ -62,7 +63,8 @@ namespace SceneryEditorX
         ApplicationSettings settings("settings.cfg");
         settings.ReadSettings();
 
-        ImGui::CreateContext();
+        ImGui::CreateContext(); //TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
+
 	    //scene = assetManager.GetInitialScene();
 	    //camera = assetManager.GetMainCamera(scene);
 	}
@@ -76,19 +78,18 @@ namespace SceneryEditorX
         Ref<VulkanChecks> vulkanChecks = CreateRef<VulkanChecks>();
         vulkanChecks->InitChecks({}, {}, {});
 
-        vkDevice = VulkanDevice::GetInstance();
-        auto physDevice = vkDevice->GetPhysicalDevice();
-        physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
+        //auto physDevice = vkDevice->GetPhysicalDevice();
+        //physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
         // Set up the features we need
-        VkPhysicalDeviceFeatures deviceFeatures{};
-		deviceFeatures = vkDeviceFeatures.GetPhysicalDeviceFeatures();
+        //VkPhysicalDeviceFeatures deviceFeatures{};
+		//deviceFeatures = vkDeviceFeatures.GetPhysicalDeviceFeatures();
 
         // Update the vkDevice handle
-        device = vkDevice->GetDevice();
+        //device = vkDevice->GetDevice();
 
 	    //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-        vkRenderer.CreateInstance(editorWindow);
+        //vkRenderer.CreateInstance(editorWindow);
 	
 	    //createViewportResources();
 	
@@ -164,7 +165,7 @@ namespace SceneryEditorX
 	    renderPassInfo.subpassCount = 1;
 	    renderPassInfo.pSubpasses = &subpass;
 	
-	    SEDX_CORE_ASSERT(vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
+	    SEDX_CORE_ASSERT(vkCreateRenderPass(vkRenderer.GetLogicDevice()->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
             //throw std::runtime_error("Failed to create viewport render pass");
 
         // Create framebuffer for the viewport
@@ -177,7 +178,7 @@ namespace SceneryEditorX
         framebufferInfo.height = viewportData.viewportSize.y;
 	    framebufferInfo.layers = 1;
 	
-	    SEDX_CORE_ASSERT(vkCreateFramebuffer(vkDevice->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
+	    SEDX_CORE_ASSERT(vkCreateFramebuffer(vkRenderer.GetLogicDevice()->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
 	        //throw std::runtime_error("Failed to create viewport framebuffer");
 
 	}

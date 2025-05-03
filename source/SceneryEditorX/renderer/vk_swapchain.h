@@ -38,119 +38,142 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-    struct Command
+	struct SwapchainCommandBuffer
     {
-        void *stagingCpu;
-        VkFence fence;
-        VkBuffer staging;
-        VkQueryPool queryPool;
-        VkCommandPool pool;
-        std::vector<Command> commands;
+        VkCommandPool CommandPool = nullptr;
+        VkCommandBuffer CommandBuffer = nullptr;
     };
+    // -------------------------------------------------------
 
 	class SwapChain
 	{
     public:
         SwapChain() = default;
+        ~SwapChain() = default;
 
+		/// Initialization methods
 		void Init(VkInstance instance, const Ref<VulkanDevice> &device);
         void InitSurface(const Ref<Window> &window);
         void Create(uint32_t width, uint32_t height, bool vsync);
+		void OnResize(uint32_t width, uint32_t height);
         void Destroy();
 
-		void OnResize(uint32_t width, uint32_t height);
-		//GLOBAL bool GetSwapChainDirty() { return swapChainDirty; }
+		/// Getter methods
 		uint32_t GetWidth() const { return renderData.width; }
 		uint32_t GetHeight() const { return renderData.height; }
-
         GLOBAL uint32_t GetImageIndex() { return RenderData::imageIndex; }
-
 		VkFormat GetColorFormat() const { return colorFormat; }
-		VkFormat GetDepthFormat() const { return colorFormat; }
+		VkFormat GetDepthFormat() const { return depthFormat; }
 		VkRenderPass GetRenderPass() const { return renderPass; }
         VkExtent2D GetSwapExtent() const { return swapChainExtent; }
-        std::vector<VkImage> GetSwapChainImages() const { return swapChainImages; }
+		VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
+        VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
+
+		/// Setter methods
 		void SetVSync(const bool enabled) { renderData.VSync = enabled; }
+
+		/// Image/view utility methods
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
 		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
 						 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const;
-        VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
-        VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
+
 
 
 	private:
         RenderData renderData;
         Viewport viewportData;
+        VkInstance instance = nullptr;
+        Ref<VulkanDevice> device;
         Ref<Pipeline> pipeline;
-        Ref<SwapChainDetails> swapChainDetails;
+        //Ref<SwapChainDetails> swapChainDetails;
+
+		/// Helper methods
         uint32_t AcquireNextImage();
         void CreateImageViews();
         void FindImageFormatAndColorSpace();
-        LOCAL VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
         void CreateDepthResources();
-        VkFormat FindDepthFormat();
-        VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-        VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes) const;
+        uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+		VkFormat FindDepthFormat() const;
+        VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+
+		/// Selection methods
+        LOCAL VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+        VkPresentModeKHR ChooseSwapPresentMode(uint32_t presentModeCount) const;
 	    LOCAL VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, uint32_t width, uint32_t height);
         LOCAL SwapChainDetails QuerySwapChainSupport(const VulkanDevice &device);
-        uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-	    VkDevice vkDevice = device->GetDevice();
-        VkPhysicalDevice vkPhysDevice = device->GetPhysicalDevice()->GetGPUDevice();
+
+		/// Vulkan resources - derived after device is initialized
+	    //VkDevice vkDevice = device->GetDevice();
+        //VkPhysicalDevice vkPhysDevice = device->GetPhysicalDevice()->GetGPUDevice();
+        VkDevice vkDevice = nullptr;
+        VkPhysicalDevice vkPhysDevice = nullptr;
+        uint32_t queueIndex = UINT32_MAX;
+        uint32_t swapChainImageCount = 0;
 
 		// -------------------------------------------------------
 
+		// Swapped to the 'image_data.h' file Image Struct.
+
+		/*
 		struct SwapchainImage
 		{
 			VkImage Image = nullptr;
 			VkImageView ImageView = nullptr;
 		};
+		*/
 
 		// -------------------------------------------------------
 
+        /// Format and attachment data
         VkFormat colorFormat;
         VkFormat depthFormat;
-        VkFormat swapChainImageFormat;
         VkExtent2D swapChainExtent;
-        VkRenderPass renderPass = nullptr;
-        VkSurfaceKHR surface;
-        VkSwapchainKHR swapChain = nullptr;
         VkColorSpaceKHR colorSpace;
         VkSampleCountFlags sampleCounts;
-        VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
         VkAttachmentDescription colorAttachment{};
         VkAttachmentDescription depthAttachment{};
 
 		// -------------------------------------------------------
-        //GraphicsEngine;
-        Ref<VulkanDevice> device;
-        std::vector<VkImage> images;
-        std::vector<VkImage> swapChainImages;
-        std::vector<VkImage> swapImgResources;
-        std::vector<VkFence> waitFences;
+
+		/// Core swapchain objects
+        VkSurfaceKHR surface = nullptr;
+        VkSwapchainKHR swapChain = nullptr;
+        VkRenderPass renderPass = nullptr;
+        VkAllocationCallbacks *allocator = nullptr;
+
+		/// Image resources
+
+        std::vector<Image> swapChainImages;
+        std::vector<VkImage> swapChainImageResources;
         std::vector<VkImageView> swapChainViews;
-        std::vector<SwapchainImage> swapImages;
         std::vector<VkFramebuffer> swapChainFramebuffers;
+        std::vector<SwapchainCommandBuffer> cmdBuffers;
+
+	    /// Semaphores to signal that images are available for rendering and that rendering has finished (one pair for each frame in flight)
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;
 
+        /// Fences to signal that command buffers are ready to be reused (one for each frame in flight)
+		std::vector<VkFence> waitFences;
+
 		// -------------------------------------------------------
 
-        VkImage textureImage;
-        VkSampler textureSampler;
-        VkImageView textureImageView;
-        VkDeviceMemory textureImageMemory;
+        VkImage textureImage = nullptr;
+        VkSampler textureSampler = nullptr;
+        VkImageView textureImageView = nullptr;
+        VkDeviceMemory textureImageMemory = nullptr;
 
         // -------------------------------------------------------
 
-        VkImage depthImage;
-        VkImageView depthImageView;
-        VkDeviceMemory depthImageMemory;
+        VkImage depthImage = nullptr;
+        VkImageView depthImageView = nullptr;
+        VkDeviceMemory depthImageMemory = nullptr;
 
         // -------------------------------------------------------
 
-        VkImage colorImage;
-        VkDeviceMemory colorImageMemory;
-        VkImageView colorImageView;
+        VkImage colorImage = nullptr;
+        VkDeviceMemory colorImageMemory = nullptr;
+        VkImageView colorImageView = nullptr;
 
         // -------------------------------------------------------
 

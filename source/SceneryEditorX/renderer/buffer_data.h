@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/render_data.h>
 #include <vma/vk_mem_alloc.h>
 
 // -----------------------------------------
@@ -70,14 +71,6 @@ namespace SceneryEditorX
     }
 
     // -------------------------------------------------------
-
-
-    struct Resource
-    {
-        std::string name;
-        int32_t resourceID = -1;
-        virtual ~Resource() = default;
-    };
 
     struct BufferResource : Resource
     {

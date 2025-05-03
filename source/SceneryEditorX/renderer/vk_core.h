@@ -18,7 +18,6 @@
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/renderer/render_data.h>
 #include <SceneryEditorX/renderer/vk_allocator.h>
-#include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/renderer/vk_swapchain.h>
 #include <SceneryEditorX/scene/model.h>
@@ -55,21 +54,25 @@ namespace SceneryEditorX
         alignas(16) glm::mat4 proj;
     };
 	
-// -------------------------------------------------------
+    // -------------------------------------------------------
 	
 	class GraphicsEngine
     {
 	public:
         GraphicsEngine();
         virtual ~GraphicsEngine();
-
         virtual void Init(const Ref<Window> &window);
         virtual void CreateInstance(const Ref<Window> &window);
+
         VkRenderPass GetRenderPass() const { return renderPass;}
         Ref<Window> GetWindow() { return editorWindow; }
 		Ref<SwapChain> GetSwapChain() { return vkSwapChain; }
-        LOCAL Ref<VulkanDevice> GetDevice() { return VulkanDevice::GetInstance(); }
+
+		Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
+		LOCAL Ref<GraphicsEngine> Get() { return Ref<GraphicsEngine>(); }
+		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice();}
 		LOCAL VkInstance GetInstance() { return vkInstance; }
+
         VkSampler CreateSampler(float maxLod);
         VkSampler GetSampler() { return vkDevice->GetSampler(); }
         void WaitIdle(const Ref<VulkanDevice> &device);
@@ -100,21 +103,12 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-		/*
-		static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
-	    {
-	        std::cerr << "validation layer: " << pCallbackData->pMessage << '\n';
-	
-	        return VK_FALSE;
-	    }
-		*/
-
-		// -------------------------------------------------------
-
 	private:
         Ref<Window> editorWindow;
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> vkDevice;
+        Ref<VulkanPhysicalDevice> vkPhysicalDevice;
+
         LOCAL inline VkInstance vkInstance;
 
 	    VkAllocationCallbacks *allocator = nullptr;
@@ -129,22 +123,21 @@ namespace SceneryEditorX
 
         Ref<VulkanChecks> checks;
         Ref<MemoryAllocator> allocatorManager;
-        Ref<VulkanPhysicalDevice> vkPhysicalDevice;
 
         void glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer);
+
+	    friend struct ImageResource;
 
 		// -------------------------------------------------------
 
 		VkDevice device = nullptr;
-        VkPhysicalDevice vkPhysDevice = nullptr;
+        VkPhysicalDevice vkPhysDevice;
         
 		// -------------------------------------------------------
 
 		VkQueue graphicsQueue = nullptr;
         VkQueue presentQueue = nullptr;
-
 	    VkSurfaceKHR surface;
-        QueueFamilyIndices queueFamilyIndices;
 
         // -------------------------------------------------------
 
@@ -200,7 +193,6 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        //INTERNAL void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator);
         void CreateSurface(GLFWwindow *glfwWindow);
         void CreateLogicalDevice();
         void CreateSwapChain();
@@ -244,22 +236,19 @@ namespace SceneryEditorX
         void CreateTextureSampler();
         VkShaderModule CreateShaderModule(const std::vector<char> &code);
         SwapChainDetails QuerySwapChainSupport(VkPhysicalDevice device);
-        QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
+        //QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
         uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
         VkFormat FindDepthFormat() const;
         void CleanUp();
         void CleanupSwapChain();
-        //INTERNAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 
 		// -------------------------------------------------------
 
-		//VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
-        VkShaderModule createShaderModule(const std::vector<char> &code);
+	    VkShaderModule createShaderModule(const std::vector<char> &code);
         VkSampleCountFlagBits GetMaxUsableSampleCount();
 
 		// -------------------------------------------------------
-
 	};
 
 } // namespace SceneryEditorX

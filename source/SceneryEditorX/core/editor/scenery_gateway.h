@@ -13,11 +13,8 @@
 #pragma once
 #include <curl/curl.h>
 #include <json.hpp>
-#include <string>
 #include <vector>
 #include <functional>
-#include <memory>
-#include <optional>
 
 // -----------------------------------------
 

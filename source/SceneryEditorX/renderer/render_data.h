@@ -27,18 +27,8 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    /*
-	struct RendererCapabilities
-	{
-	    std::string Vendor;
-	    std::string Device;
-	    std::string Version;
-        uint32_t apiVersion;
-	};
-    */
-
-    // Identical to Vulkan's VkAccessFlagBits
-    // Note: this is a bitfield
+    /// Identical to Vulkan's VkAccessFlagBits
+    /// [Note:] this is a bitfield!
     enum class ResourceAccessFlags
     {
         None = 0,
@@ -61,8 +51,8 @@ namespace SceneryEditorX
         MemoryWrite = 0x00010000,
     };
 
-    // Identical to Vulkan's VkPipelineStageFlagBits
-    // Note: this is a bitfield
+    /// Identical to Vulkan's VkPipelineStageFlagBits
+    /// [Note:] This is a bitfield!
     enum class PipelineStage
     {
         None = 0,
@@ -220,7 +210,6 @@ namespace SceneryEditorX
 	struct Extensions
 	{
 	    std::vector<bool> activeExtensions;
-	    std::vector<const char *> activeExtensionsNames;
 	    std::vector<const char *> requiredExtensions = {
 				VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 				VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
@@ -246,6 +235,13 @@ namespace SceneryEditorX
 
     // -----------------------------------------------------------
 
+    struct Resource
+    {
+        std::string name;
+        int32_t resourceID = -1;
+        virtual ~Resource() = default;
+    };
+
     struct BindlessResources
     {
         enum BindlessType : uint8_t
@@ -264,9 +260,6 @@ namespace SceneryEditorX
         const uint32_t MAX_STORAGE = 8192;
         const uint32_t MAX_SAMPLED_IMAGES = 8192;
         const uint32_t MAX_STORAGE_IMAGES = 8192;
-
-        std::vector<int32_t> availBufferRID;
-        std::vector<int32_t> availImageRID;
     };
 
     // -----------------------------------------------------------
@@ -282,30 +275,15 @@ namespace SceneryEditorX
     struct CommandResources
     {
         //Buffer staging;
-        VkFence fence = nullptr;
-        uint32_t stagingOffset = 0;
-        uint8_t *stagingCpu = nullptr;
-        VkQueryPool queryPool;
-        VkCommandPool pool = nullptr;
-        VkCommandBuffer buffer = nullptr;
+        //VkFence fence = nullptr;
+        //uint32_t stagingOffset = 0;
+        //uint8_t *stagingCpu = nullptr;
+        //VkQueryPool queryPool;
+        //VkCommandPool pool = nullptr;
+        //VkCommandBuffer buffer = nullptr;
 
         std::vector<uint64_t> timeStamps;
         std::vector<std::string> timeStampNames;
-    };
-
-	struct QueueFamilyIndices
-    {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
-
-        int32_t Graphics = -1;
-        int32_t Compute = -1;
-        int32_t Transfer = -1;
-
-        [[nodiscard]] bool IsComplete() const
-        {
-            return graphicsFamily.has_value() && presentFamily.has_value();
-        }
     };
 
     struct InternalQueue
@@ -346,7 +324,6 @@ namespace SceneryEditorX
         int numLights = 0;
         int shadowMapSize = 1024;
         int shadowMapSamples = 4;
-
 	};
 
     // -------------------------------------------------------
@@ -360,6 +337,7 @@ namespace SceneryEditorX
         GLOBAL const uint32_t imageIndex = 0;
         GLOBAL const uint32_t frameIndex = 0;
         GLOBAL const uint32_t framesInFlight = 3;
+		uint32_t maxImageCount;
         uint32_t additionalImages = 0;
         uint32_t swapChainCurrentFrame = 0;
 
@@ -374,19 +352,27 @@ namespace SceneryEditorX
         bool framebufferResized = true;
 
 		VkFormat swapChainImageFormat;
+		VkSampler baseSampler;
         VkExtent2D swapChainExtent;
-        VkSampler baseSampler;
         VkSampleCountFlags sampleCounts;
         VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
         VkSampleCountFlagBits maxSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
 
+        std::optional<uint32_t> graphicsFamily;
+        std::optional<uint32_t> presentFamily;
+
 		int cameras = 0;
 	    int viewports = 0;
         bool VSync = false;
         bool taaEnabled = false;
         bool taaReconstruct = false;
+
+        [[nodiscard]] bool IsComplete() const
+        {
+            return graphicsFamily.has_value() && presentFamily.has_value();
+        }
 
         GLOBAL bool HasStencilComponent(const VkFormat format)
         {
