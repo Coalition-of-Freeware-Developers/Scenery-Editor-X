@@ -73,7 +73,7 @@ namespace SceneryEditorX
 	{
 	public:
         virtual ~Asset() override;
-        virtual void Serialize(Serializer &ser) = 0;
+        virtual void Serialize(Serializer &ser) override = 0;
 
         //virtual void Load(const std::string &path) = 0;
         //virtual void Unload() = 0;

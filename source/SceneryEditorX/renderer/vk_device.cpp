@@ -208,21 +208,35 @@ namespace SceneryEditorX
                 }
             }
 
-            devices[index].depthFormat = GetDepthFormat();
+			// -----------------------------------------------
+
+            FindDepthFormat(devices[index]);
         }
 	}
 
-    VkFormat FindDepthFormat(VkPhysicalDevice device)
+    VkFormat VulkanPhysicalDevice::FindDepthFormat(const GPUDevice &device)
     {
-        std::vector<VkFormat> candidates = { VK_FORMAT_D32_SFLOAT,
-											 VK_FORMAT_D32_SFLOAT_S8_UINT,
-											 VK_FORMAT_D24_UNORM_S8_UINT };
+        std::vector candidates = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
 
-        VkFormat depthFormat = FindSupportedFormat(Device, Candidates,
-                                                   VK_IMAGE_TILING_OPTIMAL,
-                                                   VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        VkFormat depthFormat = FindSupportedFormat(device.physicalDevice, candidates, VK_IMAGE_TILING_OPTIMAL,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
         return depthFormat;
+    }
+
+    VkFormat VulkanPhysicalDevice::FindSupportedFormat(const VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+    {
+        for (VkFormat format : candidates)
+        {
+            VkFormatProperties props;
+            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+                return format;
+            if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+                return format;
+        }
+
+		SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find a supported format!");
     }
 
     // -------------------------------------------------------
@@ -466,7 +480,7 @@ namespace SceneryEditorX
     }
 
     ///////////////////////////////////////////////////////////
-    /// Vulkan Device Implementation
+    /// Vulkan Device Implementation                        ///
     ///////////////////////////////////////////////////////////
 
 	/**
@@ -774,14 +788,12 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    VmaAllocator VulkanDevice::GetMemoryAllocator()
+    VmaAllocator VulkanDevice::GetMemoryAllocator() const
     {
         if (memoryAllocator)
-        {
             return memoryAllocator->GetMemAllocator();
-        }
 
-        SEDX_CORE_ERROR_TAG("Graphics Engine","Memory allocator not initialized.");
+        SEDX_CORE_ERROR_TAG("Graphics Engine", "Memory allocator not initialized.");
         return nullptr;
     }
 
@@ -802,25 +814,17 @@ namespace SceneryEditorX
     void VulkanDevice::LockQueue(const bool compute)
     {
         if (compute)
-        {
             ComputeQueueMutex.lock();
-        }
         else
-        {
             GraphicsQueueMutex.lock();
-        }
     }
 
     void VulkanDevice::UnlockQueue(const bool compute)
     {
         if (compute)
-        {
             ComputeQueueMutex.unlock();
-        }
         else
-        {
             GraphicsQueueMutex.unlock();
-        }
     }
 
     /**
@@ -1221,18 +1225,14 @@ namespace SceneryEditorX
     */
 
     /// Create a buffer with the specified size, usage, and memory type
-    Buffer VulkanDevice::CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
+    Buffer VulkanDevice::CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name) const
     {
         /// Adjust buffer usage flags based on usage requirements
         if (usage & BufferUsage::Vertex)
-        {
             usage |= BufferUsage::TransferDst;
-        }
 
         if (usage & BufferUsage::Index)
-        {
             usage |= BufferUsage::TransferDst;
-        }
 
         if (usage & BufferUsage::Storage)
         {
@@ -1244,9 +1244,7 @@ namespace SceneryEditorX
         }
 
         if (usage & BufferUsage::AccelerationStructureInput)
-        {
             usage |= BufferUsage::Address | BufferUsage::TransferDst;
-        }
 
         if (usage & BufferUsage::AccelerationStructure)
         {
@@ -1262,7 +1260,7 @@ namespace SceneryEditorX
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.size = size;
-        bufferInfo.usage = static_cast<VkBufferUsageFlags>(usage);
+        bufferInfo.usage = usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         /// Determine allocation strategy based on memory type
@@ -1296,7 +1294,12 @@ namespace SceneryEditorX
         }
 
         /// Create buffer object
-        Buffer buffer = {.resource = resource, .size = size, .usage = usage, .memory = memory};
+        Buffer buffer = {
+            .resource = resource,
+            .size = size,
+            .usage = usage,
+            .memory = memory
+        };
 
         /// Set up storage buffer binding if needed
         if ((usage & BufferUsage::Storage) && !ImageID::availBufferRID.empty())

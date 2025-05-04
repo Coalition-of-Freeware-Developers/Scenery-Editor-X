@@ -82,17 +82,19 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    class MeshAsset : public Asset
+    class Model : public Asset
 	{
 	public:
-        MeshAsset();
+        Model();
+        virtual ~Model() override;
+
         virtual void Serialize(Serializer &ser) override;
 
         std::vector<MeshVertex> vertices;
         std::vector<uint32_t> indices;
         // -------------------------------------------------------
 
-        //virtual void Load(const std::string &path) override;
+        virtual void Load(const std::string &path);
         //virtual void Unload() override;
         //virtual void SetName(const std::string &name) override;
         //[[nodiscard]] virtual bool IsLoaded() const override;
@@ -105,7 +107,7 @@ namespace SceneryEditorX
 
     struct MeshNode : Node
     {
-        Ref<MeshAsset> mesh;
+        Ref<Model> mesh;
         //Ref<MaterialAsset> material;
 
         MeshNode();

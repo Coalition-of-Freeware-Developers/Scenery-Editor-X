@@ -11,32 +11,58 @@
 * -------------------------------------------------------
 */
 
-//#include <SceneryEditorX/platform/windows/editor_config.hpp>
-//#include <SceneryEditorX/scene/model.h>
-//#include <string>
-//#include <tiny_obj_loader.h>
+#include <glm/glm.hpp>
+#include <SceneryEditorX/platform/windows/editor_config.hpp>
+#include <SceneryEditorX/scene/model.h>
+#include <tiny_gltf.h>
+#include <tiny_obj_loader.h>
 
 // -------------------------------------------------------
 
+/*
+namespace std
+{
+	template <>
+	struct hash<glm::vec2>
+	{
+	    size_t operator()(const glm::vec2 &v) const noexcept
+	    {
+	        return ((hash<float>()(v.x) ^ (hash<float>()(v.y) << 1)) >> 1);
+	    }
+	};
+	
+	template <>
+	struct hash<glm::vec3>
+	{
+	    size_t operator()(const glm::vec3 &v) const noexcept
+	    {
+	        return ((hash<float>()(v.x) ^ (hash<float>()(v.y) << 1)) >> 1) ^ (hash<float>()(v.z) << 1);
+	    }
+	};
+
+} // namespace std
+*/
+
 namespace SceneryEditorX
 {
-	/*
-	Mesh::Mesh()
+
+	Model::Model()
 	{
-		// Constructor implementation
+	    /// Initialize the model with default values
+	    vertices.clear();
+	    indices.clear();
 	}
 
-	Mesh::~Mesh()
-	{
-		// Destructor implementation
-	}
+    Model::~Model() = default;
 
-	void Mesh::Load(const std::string& path)
+    // -------------------------------------------------------
+
+	void Model::Load(const std::string &path)
 	{
-        // Get editor configuration
+        /// Get editor configuration
         EditorConfig config;
 
-        // Construct the model path using the modelFolder from config
+        /// Construct the model path using the modelFolder from config
         std::string modelPath = config.modelFolder + "/viking_room.obj";
 
         SEDX_CORE_INFO("Loading 3D model from: {}", modelPath);
@@ -50,7 +76,6 @@ namespace SceneryEditorX
         {
             SEDX_CORE_ERROR("Failed to load model: {}", modelPath);
             SEDX_CORE_ERROR("Error details: {} {}", warn, err);
-            throw std::runtime_error(warn + err);
         }
 
         SEDX_CORE_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
@@ -62,19 +87,18 @@ namespace SceneryEditorX
             for (const auto &index : shape.mesh.indices)
             {
                 Vertex vertex{};
+                vertex.pos = {
+                    attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]
+                };
 
-                vertex.pos = {attrib.vertices[3 * index.vertex_index + 0],
-                                attrib.vertices[3 * index.vertex_index + 1],
-                                attrib.vertices[3 * index.vertex_index + 2]};
-
-                // Check if the model has texture coordinates
+                /// Check if the model has texture coordinates
                 vertex.texCoord = {attrib.texcoords[2 * index.texcoord_index + 0], 1.0f - attrib.texcoords[2 * index.texcoord_index + 1]};
-
                 vertex.color = {1.0f, 1.0f, 1.0f};
-
                 if (!uniqueVertices.contains(vertex))
                 {
-                    // Convert Vertex to MeshVertex
+                    /// Convert Vertex to MeshVertex
                     MeshVertex meshVertex{};
                     meshVertex.position = {vertex.pos.x, vertex.pos.y, vertex.pos.z};
                     meshVertex.texCoord = {vertex.texCoord.x, vertex.texCoord.y};
@@ -82,14 +106,12 @@ namespace SceneryEditorX
 
                     vertices.push_back(meshVertex);
                 }
-
                 indices.push_back(uniqueVertices[vertex]);
             }
         }
 
         SEDX_CORE_INFO("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
 	}
-	*/
 
 } // namespace SceneryEditorX
 

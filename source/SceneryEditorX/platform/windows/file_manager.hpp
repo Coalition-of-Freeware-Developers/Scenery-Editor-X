@@ -33,7 +33,7 @@ namespace SceneryEditorX::IO
 		 * @param path
 		 * @return A vector containing the raw bytes read from the file.
          */
-		static std::vector<uint8_t> ReadRawBytes(const std::filesystem::path& path);
+        static std::vector<uint8_t> ReadRawBytes(const std::filesystem::path &path);
 
         /**
 		 * @brief Reads shader code from a file.
@@ -56,6 +56,7 @@ namespace SceneryEditorX::IO
          * @brief
          */
         static void GetAppData();
+
 
 	};
 

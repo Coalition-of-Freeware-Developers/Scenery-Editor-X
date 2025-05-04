@@ -30,11 +30,11 @@ namespace SceneryEditorX
         bool CheckValidationLayerSupport() const;                                                                     // Function to check if validation layers are supported
         bool CheckDeviceExtensionSupport(VkPhysicalDevice device);                                                    // Function to check if required device extensions are available
         INTERNAL bool CheckDeviceFeatures(const VkPhysicalDevice &device);                                            // Function to check the supported device features and if they are compatible.
+        INTERNAL bool IsDeviceCompatible(const VkPhysicalDevice &device);                                             // Function to check if a device is compatible
 
     private:
         INTERNAL void CheckExtensions(const std::vector<const char *> &extensions);      // Function to check if required extensions are available
         void CheckLayers(const std::vector<const char *> &layers);						 // Function to check if required layers are available
-        INTERNAL bool IsDeviceCompatible(const VkPhysicalDevice &device);				 // Function to check if a device is compatible
 		
 		Layers vkLayers;
         Extensions vkExtensions;

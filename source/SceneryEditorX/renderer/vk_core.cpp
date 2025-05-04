@@ -16,6 +16,7 @@
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/windows/editor_config.hpp>
+#include <SceneryEditorX/platform/windows/file_manager.hpp>
 #include <SceneryEditorX/renderer/render_data.h>
 #include <SceneryEditorX/renderer/vk_checks.h>
 #include <SceneryEditorX/renderer/vk_core.h>
@@ -1054,40 +1055,6 @@ namespace SceneryEditorX
         }
     }
 
-    static std::vector<char> readFile(const std::string &filename)
-    {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-        if (!file.is_open())
-        {
-            SEDX_CORE_ERROR_TAG("File Manager", "Failed to open file: {}", ToString(filename));
-            return {}; /// Return empty vector on failure
-        }
-
-        size_t fileSize = static_cast<size_t>(file.tellg());
-        if (fileSize == 0)
-        {
-            SEDX_CORE_ERROR_TAG("File Manager", "File is empty: {}", ToString(filename));
-            return {};
-        }
-
-        std::vector<char> buffer(fileSize);
-
-        file.seekg(0);
-        file.read(buffer.data(), fileSize);
-
-        if (!file)
-        {
-            SEDX_CORE_ERROR_TAG("File Manager", "Failed to read entire file: {}", ToString(filename));
-            return {};
-        }
-
-        file.close();
-
-        SEDX_CORE_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
-        return buffer;
-    }
-
 	void GraphicsEngine::CreateRenderPass()
     {
 
@@ -1415,8 +1382,8 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        auto vertShaderCode = readFile(vertShaderPath);
-        auto fragShaderCode = readFile(fragShaderPath);
+        auto vertShaderCode = IO::FileManager::ReadFile(vertShaderPath);
+        auto fragShaderCode = IO::FileManager::ReadFile(fragShaderPath);
 
 		VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
@@ -1663,7 +1630,6 @@ namespace SceneryEditorX
 	    // -------------------------------------------------------
 	
 	    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-	
 	    {
 	        /// Render the 3D scene first
 	        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -1993,7 +1959,7 @@ namespace SceneryEditorX
     }
     */
 
-	void GraphicsEngine::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
+	void GraphicsEngine::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const
     {
         /// Check if image format supports linear blitting
         VkFormatProperties formatProperties;
@@ -2001,7 +1967,7 @@ namespace SceneryEditorX
 
         if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
         {
-            throw std::runtime_error("Texture image format does not support linear blitting!");
+            SEDX_CORE_ERROR_TAG("Texture","Texture image format does not support linear blitting!");
         }
 
         VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
@@ -2158,7 +2124,7 @@ namespace SceneryEditorX
         return VK_SAMPLE_COUNT_1_BIT;
     }
 
-	void GraphicsEngine::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+	void GraphicsEngine::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const
     {
         VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -2178,7 +2144,7 @@ namespace SceneryEditorX
         EndSingleTimeCommands(commandBuffer);
     }
 
-	void GraphicsEngine::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+	void GraphicsEngine::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const
     {
         VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -2190,61 +2156,6 @@ namespace SceneryEditorX
     }
 
 	// -------------------------------------------------------
-
-	void GraphicsEngine::LoadModel()
-    {
-        /// Get editor configuration
-        EditorConfig config;
-
-        /// Construct the model path using the modelFolder from config
-        std::string modelPath = config.modelFolder + "/viking_room.obj";
-
-        EDITOR_LOG_INFO("Loading 3D model from: {}", modelPath);
-
-        tinyobj::attrib_t attrib;
-        std::vector<tinyobj::shape_t> shapes;
-        std::vector<tinyobj::material_t> materials;
-        std::string warn, err;
-
-        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath.c_str()))
-        {
-            EDITOR_LOG_ERROR("Failed to load model: {}", modelPath);
-            EDITOR_LOG_ERROR("Error details: {} {}", warn, err);
-            throw std::runtime_error(warn + err);
-        }
-
-        EDITOR_LOG_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
-
-        std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-
-        for (const auto &shape : shapes)
-        {
-            for (const auto &index : shape.mesh.indices)
-            {
-                Vertex vertex{};
-
-                vertex.pos = {attrib.vertices[3 * index.vertex_index + 0],
-                              attrib.vertices[3 * index.vertex_index + 1],
-                              attrib.vertices[3 * index.vertex_index + 2]};
-
-                /// Check if the model has texture coordinates
-                vertex.texCoord = {attrib.texcoords[2 * index.texcoord_index + 0],
-                                   1.0f - attrib.texcoords[2 * index.texcoord_index + 1]};
-
-                vertex.color = {1.0f, 1.0f, 1.0f};
-
-                if (!uniqueVertices.contains(vertex))
-                {
-                    uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-                    vertices.push_back(vertex);
-                }
-
-                indices.push_back(uniqueVertices[vertex]);
-            }
-        }
-
-        EDITOR_LOG_INFO("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
-    }
 
 	void GraphicsEngine::CreateTextureImage()
     {
@@ -2389,7 +2300,7 @@ namespace SceneryEditorX
         }
     }
 
-    VkShaderModule GraphicsEngine::CreateShaderModule(const std::vector<char> &code)
+    VkShaderModule GraphicsEngine::CreateShaderModule(const std::vector<char> &code) const
     {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -2406,7 +2317,7 @@ namespace SceneryEditorX
         return shaderModule;
     }
 
-    SwapChainDetails GraphicsEngine::QuerySwapChainSupport(VkPhysicalDevice device)
+    SwapChainDetails GraphicsEngine::QuerySwapChainSupport(VkPhysicalDevice device) const
     {
         SwapChainDetails details;
         const GPUDevice &selectedDevice = vkPhysicalDevice->Selected();

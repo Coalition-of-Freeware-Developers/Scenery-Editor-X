@@ -22,6 +22,8 @@
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
 
+#include "editor_config.hpp"
+
 // -------------------------------------------------------
 
 namespace SceneryEditorX::IO
@@ -208,7 +210,7 @@ namespace SceneryEditorX::IO
         input.close();
         return bytes;
 	}
-	
+
 	/**
 	 * @brief Reads the shader code from a file.
 	 * 

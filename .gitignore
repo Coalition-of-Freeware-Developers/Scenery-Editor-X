@@ -198,3 +198,4 @@ docs/vulkanised_2023_setting_up_a_bindless_rendering_pipeline.pdf
 source/usage_example.cpp
 source/steam_game_finder.h
 source/steam_game_finder.cpp
+docs/tracy.pdf

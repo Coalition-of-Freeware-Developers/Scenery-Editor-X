@@ -26,7 +26,10 @@ namespace SceneryEditorX
 	
 	struct GPUDevice
 	{
-        VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+        VkFormat depthFormat;
+        VkFormat tilingFormat;
+        VkFormatProperties formatProperties;
+
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkPhysicalDeviceFeatures GFXFeatures = {};
         VkPhysicalDeviceLimits GFXLimits = {};
@@ -42,7 +45,9 @@ namespace SceneryEditorX
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
 	    GPUDevice() :
-			depthFormat(VK_FORMAT_UNDEFINED),
+			depthFormat(),
+            tilingFormat(),
+            formatProperties(),
 			physicalDevice(VK_NULL_HANDLE),
 			GFXFeatures({}),
 	        GFXLimits({}),
@@ -69,12 +74,10 @@ namespace SceneryEditorX
             {
                 return Graphics != UINT32_MAX; /// At minimum, we need a graphics queue
             }
-            
             [[nodiscard]] bool HasDedicatedCompute() const
             {
                 return Compute != UINT32_MAX && Compute != Graphics;
             }
-            
             [[nodiscard]] bool HasDedicatedTransfer() const
             {
                 return Transfer != UINT32_MAX && Transfer != Graphics && Transfer != Compute;
@@ -92,6 +95,11 @@ namespace SceneryEditorX
         VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
         VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
 
+		/**
+		 * @brief Select a physical device based on the best available options
+		 * @return A reference to the selected physical device
+		 * @throws Error if no suitable device is found
+		 */
 	    static Ref<VulkanPhysicalDevice> Select();
 
 		/**
@@ -110,15 +118,15 @@ namespace SceneryEditorX
         [[nodiscard]] const GPUDevice& Selected() const;
 
         /// Accessor methods
-		[[nodiscard]] const QueueFamilyIndices& GetQueueFamilyIndices() const { return QFamilyIndices; }
-		[[nodiscard]] const VkPhysicalDeviceLimits& GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
-        [[nodiscard]] const VkPhysicalDeviceMemoryProperties& GetMemoryProperties() const { return devices.at(deviceIndex).memoryInfo; }
+		[[nodiscard]] const QueueFamilyIndices &GetQueueFamilyIndices() const { return QFamilyIndices; }
+		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
+        [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryInfo; }
 		[[nodiscard]] VkFormat GetDepthFormat() const { return devices.at(deviceIndex).depthFormat; }
 		[[nodiscard]] VkPhysicalDevice GetGPUDevice() const { return devices.at(deviceIndex).physicalDevice; }
 		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceInfo; }
         [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
-		[[nodiscard]] const std::vector<VkSurfaceFormatKHR>& GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
-		[[nodiscard]] const std::vector<VkPresentModeKHR>& GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
+		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
+		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
 		[[nodiscard]] const std::vector<VkQueueFamilyProperties>& GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
 
         /**
@@ -136,7 +144,10 @@ namespace SceneryEditorX
         QueueFamilyIndices QFamilyIndices;
         int deviceIndex = -1;
 
-		/**
+		INTERNAL VkFormat FindDepthFormat(const GPUDevice& device);
+		INTERNAL VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);  
+
+	    /**
          * @brief Find queue families that match specified queue flags
          * @param qFlags The queue flags to search for
          * @return Queue family indices for different queue types
@@ -145,6 +156,7 @@ namespace SceneryEditorX
 
 		/**
          * @brief Enumerate and populate device information
+         * @param instance The Vulkan instance to use
          */
         void EnumerateDevices();
 
@@ -166,7 +178,8 @@ namespace SceneryEditorX
          */
         VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures);
         virtual ~VulkanDevice();
-        VmaAllocator GetMemoryAllocator();
+        Ref<MemoryAllocator> GetValue() const;
+        VmaAllocator GetMemoryAllocator() const;
 
         /// Delete copy constructor and assignment operator
         VulkanDevice(const VulkanDevice &) = delete;
@@ -197,7 +210,7 @@ namespace SceneryEditorX
          * @param name Debug name for the buffer
          * @return Buffer object
          */
-        Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory = MemoryType::GPU, const std::string& name = "");
+        Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory = MemoryType::GPU, const std::string& name = "") const;
 
 		/**
          * @brief Create a staging buffer for data transfer
@@ -318,6 +331,11 @@ namespace SceneryEditorX
          */
         void LoadExtensionFunctions();
 
+        VkPhysicalDevice vkPhysicalDevice = VK_NULL_HANDLE;
+        VkDevice vkDevice = VK_NULL_HANDLE;
+	    VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
+	    VkQueue vkQueue = VK_NULL_HANDLE;
+	    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
     };
 
 	// ---------------------------------------------------------

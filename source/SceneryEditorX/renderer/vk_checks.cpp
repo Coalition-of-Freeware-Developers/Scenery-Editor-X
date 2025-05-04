@@ -30,8 +30,6 @@ namespace SceneryEditorX
         CheckAPIVersion(SoftwareStats::minVulkanVersion);
 	    CheckExtensions(extensions);
 	    CheckLayers(layers);
-        //CheckDeviceFeatures(device);
-        //IsDeviceCompatible(device);
 	}
 
 	/**
