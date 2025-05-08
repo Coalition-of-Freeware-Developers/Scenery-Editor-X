@@ -81,7 +81,6 @@ namespace SceneryEditorX
         INTERNAL inline float deltaScroll		= .0f;
         INTERNAL inline Vec2 mousePos			= Vec2(.0f, .0f);
         INTERNAL inline Vec2 deltaMousePos		= Vec2(.0f, .0f);
-	
 	};
 	
 	// -------------------------------------------------------
@@ -96,6 +95,7 @@ namespace SceneryEditorX
         void (*framebufferResizeCallback)(GLFWwindow *window, int width, int height) = nullptr;
 	    void (*windowMaximizeCallback)(GLFWwindow *window, int maximize) = nullptr;
 	    void (*windowChangePosCallback)(GLFWwindow *window, int x, int y) = nullptr;
+        void (*mousePositionCallback)(GLFWwindow *window, double x, double y) = nullptr;
 	    void (*windowDropCallback)(GLFWwindow *window, int count, const char *paths[]) = nullptr;
         void (*windowCloseCallback)(GLFWwindow *window) = nullptr;
         void (*windowFocusCallback)(GLFWwindow *window, int focused) = nullptr;
@@ -105,21 +105,6 @@ namespace SceneryEditorX
 	
 	class Window
 	{
-        WindowCallbacks windowCallbacks;
-        //GLOBAL Ref<SwapChain> vkSwapChain;
-		INTERNAL inline std::chrono::high_resolution_clock::time_point lastTime;
-		INTERNAL inline std::vector<std::string> pathsDrop;
-		INTERNAL inline float       deltaTime           = .0f;
-		INTERNAL inline char        lastKeyState[GLFW_KEY_LAST + 1];
-		INTERNAL inline WindowMode  mode = WindowMode::Windowed;
-
-        INTERNAL void ScrollCallback(GLFWwindow *window, double x, double y);
-        INTERNAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
-        INTERNAL void WindowMaximizeCallback(GLFWwindow *window, int maximize);
-        INTERNAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);
-        INTERNAL void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
-		INTERNAL void SetWindowIcon(GLFWwindow *window);
-	
 	public:
 	    Window();
 	    ~Window();
@@ -145,6 +130,32 @@ namespace SceneryEditorX
 		GLOBAL bool			GetFramebufferResized()             {return WindowData::framebufferResized;}
 		GLOBAL bool			IsKeyDown(uint16_t keyCode)         {return glfwGetKey(WindowData::window,keyCode);}
 		GLOBAL bool			IsMouseDown(uint16_t buttonCode)    {return glfwGetMouseButton(WindowData::window,buttonCode);}
+        GLOBAL bool         IsDirty()                           {return WindowData::dirty;}
+
+	private:
+        WindowCallbacks windowCallbacks;
+        WindowData windowData;
+        bool captureMovement;
+        bool mousePressed;
+        bool initState;
+
+        //GLOBAL Ref<SwapChain> vkSwapChain;
+        INTERNAL inline std::chrono::high_resolution_clock::time_point lastTime;
+        INTERNAL inline std::vector<std::string> pathsDrop;
+        INTERNAL inline float deltaTime = .0f;
+        INTERNAL inline char lastKeyState[GLFW_KEY_LAST + 1];
+        INTERNAL inline WindowMode mode = WindowMode::Windowed;
+
+        INTERNAL void ScrollCallback(GLFWwindow *window, double x, double y);
+        INTERNAL void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
+        INTERNAL void MouseClickCallback(GLFWwindow *window, int button, int action, int mod);
+        INTERNAL void MousePositionCallback(GLFWwindow *window, WindowData *data, double x, double y);
+        INTERNAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
+        INTERNAL void WindowMaximizeCallback(GLFWwindow *window, int maximize);
+        INTERNAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);
+        INTERNAL void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
+        INTERNAL void SetWindowIcon(GLFWwindow *window);
+	
 	};
 	
 } // namespace SceneryEditorX

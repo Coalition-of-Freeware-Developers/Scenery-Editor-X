@@ -7,10 +7,11 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 
 # --------------------------------
 
-FILE(GLOB MAC_PLATFORM platform/mac/*.cpp platform/mac/*.h platform/mac/*.hpp)
-FILE(GLOB LINUX_PLATFORM platform/linux/*.cpp platform/linux/*.h platform/linux/*.hpp)
-FILE(GLOB WIN_PLATFORM platform/windows/*.cpp platform/windows/*.h platform/windows/*.hpp)
+FILE(GLOB LOGGER logging/*.cpp logging//*.h logging//*.hpp)
+FILE(GLOB PLATFORM platform/*.cpp platform/*.h platform/*.hpp)
 FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
+FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
+FILE(GLOB VULKAN_FILES vulkan/*.cpp vulkan/*.h vulkan/*.hpp)
 FILE(GLOB UI_FILES ui/*.cpp ui/*.h ui/*.hpp)
 
 SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
@@ -29,10 +30,10 @@ ADD_EXECUTABLE(SceneryEditorX
     ${ICON_FILES}
     ${FONT_FILES}
     ${RENDERER_FILES}
+	${VULKAN_FILES}
     ${SCENE_FILES}
-    ${MAC_PLATFORM}
-    ${LINUX_PLATFORM}
-    ${WIN_PLATFORM}
+	${LOGGER}
+    ${PLATFORM}
     ${REGISTRY_KEYS}
 	${PROJECT_CONFIG_FILES}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
@@ -56,41 +57,11 @@ ADD_EXECUTABLE(SceneryEditorX
 	core/editor/editor.h
 	core/editor/scenery_gateway.cpp
 	core/editor/scenery_gateway.h
-	# --------------------------------
-	logging/asserts.h
-	logging/log_templates.h
-    logging/logging.cpp
-    logging/logging.hpp
-	logging/profiler.hpp
-    # --------------------------------
-    platform/system_detection.h
-	platform/time.cpp
-	platform/time.h
-	platform/settings.cpp
-	platform/settings.h
     # --------------------------------
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
-	# --------------------------------
-	scene/animation.cpp
-	scene/animation.h
-	scene/asset.cpp
-	scene/asset.h
-	scene/asset_manager.cpp
-	scene/asset_manager.h
-	scene/camera.h
-	scene/lights.h
-	scene/material.cpp
-	scene/material.h
-    scene/model.cpp
-	scene/model.h
-	scene/node.h
-	scene/scene.cpp
-	scene/scene.h
-	scene/texture.cpp
-	scene/texture.h
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
@@ -159,30 +130,16 @@ SOURCE_GROUP("Editor/Core" FILES
 	core/editor/scenery_gateway.h
 )
 SOURCE_GROUP("Core/Platform" FILES
-	platform/settings.cpp
-	platform/settings.h
-	platform/system_detection.h
-	platform/time.cpp
-	platform/time.h
-)
-SOURCE_GROUP("Core/Platform/Windows" FILES
-    ${WIN_PLATFORM}
-)
-SOURCE_GROUP("Core/Platform/Linux" FILES
-    ${LINUX_PLATFORM}
-)
-SOURCE_GROUP("Core/Platform/Mac" FILES
-    ${MAC_PLATFORM}
+	${PLATFORM}
 )
 SOURCE_GROUP("Core/Coordinates" FILES
 	core/transforms.cpp
 )
 SOURCE_GROUP("Core/Logger" FILES
-	logging/asserts.h
-	logging/log_templates.h
-	logging/logging.cpp
-	logging/logging.hpp
-	logging/profiler.hpp
+	${LOGGER}
+)
+SOURCE_GROUP("Core/Vulkan" FILES
+	${VULKAN_FILES}
 )
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
@@ -194,23 +151,7 @@ SOURCE_GROUP("Editor/Renderer/Shaders" FILES
 	renderer/shaders/shader_compiler.h
 )
 SOURCE_GROUP("Editor/Scene" FILES
-	scene/animation.cpp
-	scene/animation.h
-	scene/asset.cpp
-	scene/asset.h
-	scene/asset_manager.cpp
-	scene/asset_manager.h
-	scene/camera.h
-	scene/lights.h
-	scene/material.cpp
-	scene/material.h
-	scene/model.cpp
-	scene/model.h
-	scene/node.h
-	scene/scene.cpp
-	scene/scene.h
-	scene/texture.cpp
-	scene/texture.h
+	${SCENE_FILES}
 )
 SOURCE_GROUP("Editor/UI" FILES
 	ui/colors.h

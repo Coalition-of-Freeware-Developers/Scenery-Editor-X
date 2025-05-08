@@ -18,6 +18,68 @@
 
 namespace SceneryEditorX
 {
+    /**
+	 * @brief Creates a new window and initializes GLFW.
+	 *
+	 * This function initializes the GLFW library, sets the necessary window hints,
+	 * retrieves the available monitors and video modes, creates a new window, and sets
+	 * the window position and various callback functions. It also applies any pending
+	 * changes to the window configuration.
+	 */
+	Window::Window() : renderData()
+	{
+	    glfwInit();
+	    glfwSetErrorCallback([](int error, const char *description) {
+	        SEDX_CORE_ERROR_TAG("Window", "GLFW Error ({0}): {1}", error, description);
+	    });
+	    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	
+	    WindowData::monitors = glfwGetMonitors(&WindowData::monitorCount); // get all monitors
+	
+	    glfwGetVideoModes(WindowData::monitors[WindowData::monitorIndex], &WindowData::videoModeIndex);
+	    WindowData::videoModeIndex -= 1;
+	
+	    WindowData::window =
+	        glfwCreateWindow(WindowData::width, WindowData::height, WindowData::title, nullptr, nullptr); // create window
+	
+	    if (!WindowData::window)
+	    {
+	        glfwTerminate();
+	        SEDX_CORE_ERROR("Failed to create GLFW window!");
+	    }
+	
+	    glfwSetFramebufferSizeCallback(WindowData::window, windowCallbacks.framebufferResizeCallback);
+	    glfwSetWindowPos(WindowData::window, WindowData::posX, WindowData::posY);
+	    glfwSetWindowUserPointer(WindowData::window, this);
+	
+	    glfwSetCursorPosCallback(WindowData::window, windowCallbacks.cursorPosCallback);
+	    glfwSetKeyCallback(WindowData::window, windowCallbacks.keyCallback);
+	    glfwSetMouseButtonCallback(WindowData::window, windowCallbacks.mouseButtonCallback);
+	    glfwSetScrollCallback(WindowData::window, windowCallbacks.scrollCallback);
+	
+	    glfwSetWindowMaximizeCallback(WindowData::window, windowCallbacks.windowMaximizeCallback);
+	    glfwSetWindowPosCallback(WindowData::window, windowCallbacks.windowChangePosCallback);
+	    glfwSetDropCallback(WindowData::window, windowCallbacks.windowDropCallback);
+	
+	    SetWindowIcon(WindowData::window);
+	
+	    WindowData::dirty = false;
+	    ApplyChanges();
+	}
+
+    /**
+	 * @brief Destroys the window and terminates GLFW.
+	 *
+	 * This function retrieves the current window position, destroys the window,
+	 * and terminates the GLFW library.
+	 */
+	Window::~Window()
+	{
+	    glfwGetWindowPos(WindowData::window, &WindowData::posX, &WindowData::posY);
+	    glfwDestroyWindow(WindowData::window);
+	    glfwTerminate();
+	}
 
 	/**
 	 * @brief Callback function for handling scroll events.
@@ -31,11 +93,80 @@ namespace SceneryEditorX
 	 */
 	void Window::ScrollCallback(GLFWwindow* window,double x,double y)
 	{
-	    const Window *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-	    auto instance = windowInstance;
-        WindowData::scroll += x, WindowData::deltaScroll += y;
+        auto *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+        if (windowInstance->windowCallbacks.scrollCallback)
+        {
+            //windowInstance->cameraMovement.zoomValue = 4.0f * (float)y;
+            WindowData::dirty = true;
+        }
+
+        //WindowData::scroll += x, WindowData::deltaScroll += y;
 	}
-	
+    /**
+	 * @brief Callback function for handling mouse button events.
+	 *
+	 * This function is called whenever a mouse button is pressed or released.
+	 * It updates the captureMovement flag based on the button state.
+	 *
+	 * @param window The GLFW window where the event occurred.
+	 * @param button The mouse button that was pressed or released.
+	 * @param action The action (press, release).
+	 * @param mods The modifier keys (Shift, Control, Alt).
+	 */
+    void Window::MouseClickCallback(GLFWwindow *window, int button, int action, int mods)
+    {
+        auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+        if (windowInstance->captureMovement)
+        {
+            GLFWcursor *hand = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+            GLFWcursor *cursor = glfwCreateStandardCursor(GLFW_CURSOR_NORMAL);
+
+			if (button == GLFW_MOUSE_BUTTON_RIGHT)
+            {
+                if (action == GLFW_PRESS)
+                {
+                    windowInstance->mousePressed = true;
+                    glfwSetCursor(GetWindow(), hand);
+                }
+                else if (action == GLFW_RELEASE)
+                {
+                    windowInstance->mousePressed = false;
+                    glfwSetCursor(GetWindow(), cursor);
+                }
+            }
+        }
+    }
+
+    void Window::MousePositionCallback(GLFWwindow *window, WindowData *data, double x, double y)
+    {
+        auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+        if (windowInstance->captureMovement)
+        {
+            WindowData::mousePos.x = static_cast<float>(x);
+            WindowData::mousePos.y = static_cast<float>(y);
+
+			auto pointerX = (float)x;
+            auto pointerY = (float)y;
+            if (windowInstance->initState)
+            {
+                WindowData::deltaMousePos.x = pointerX;
+                WindowData::deltaMousePos.y = pointerY;
+                windowInstance->initState = false;
+            }
+
+			float xOffset = x - pointerX - WindowData::deltaMousePos.x;
+            float yOffset = WindowData::deltaMousePos.y - pointerY; /// Invert the sign here
+
+			WindowData::deltaMousePos.x = pointerX;
+            WindowData::deltaMousePos.y = pointerY;
+
+			xOffset *= 0.01;
+            yOffset *= 0.01;
+
+			//TODO: Finish rest of mouse position callback when camera is implemented
+        }
+    }
+
 	/**
 	 * @brief Callback function for handling framebuffer resize events.
 	 *
@@ -48,7 +179,8 @@ namespace SceneryEditorX
 	 */
 	void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height)
 	{
-	    // Store the new width and height directly in the Window class
+	    /// Store the new width and height directly in the Window class
+        auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
         WindowData::width = width;
         WindowData::height = height;
         WindowData::framebufferResized = true;
@@ -67,10 +199,42 @@ namespace SceneryEditorX
 	 */
 	void Window::WindowMaximizeCallback(GLFWwindow* window, const int maximize)
 	{
-	    static_cast<Window *>(glfwGetWindowUserPointer(window));
+	    auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
         WindowData::maximized = maximize;
 	}
-	
+
+	/**
+	 * @brief Callback function for handling key events.
+	 *
+	 * This function is called whenever a key is pressed or released.
+	 * It updates the key state and captures movement if necessary.
+	 *
+	 * @param window The GLFW window where the event occurred.
+	 * @param key The key that was pressed or released.
+	 * @param scancode The scancode of the key.
+	 * @param action The action (press, release, repeat).
+	 * @param mods The modifier keys (Shift, Control, Alt).
+	 */
+    void Window::KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+    {
+        auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+        if (windowInstance->captureMovement)
+        {
+            WindowData::dirty = true;
+
+			const float movementSpeed = 2.5f;
+
+			//if (key == GLFW_KEY_LEFT_ALT && action == GLFW_PRESS)
+            //    windowInstance->leftAlt = true;
+            //if (key == GLFW_KEY_LEFT_ALT && action == GLFW_RELEASE)
+            //    windowInstance->leftAlt = false;
+
+            //windowInstance->windowCallbacks.keyCallback(window, key, scancode, action, mods);
+
+        }
+        
+    }
+
 	/**
 	 * @brief Callback function for handling window position change events.
 	 *
@@ -81,10 +245,11 @@ namespace SceneryEditorX
 	 * @param x The new x-coordinate of the window.
 	 * @param y The new y-coordinate of the window.
 	 */
-	void Window::WindowChangePosCallback(GLFWwindow* window,int x,int y)
+	void Window::WindowChangePosCallback(GLFWwindow* window, const int x, const int y)
 	{
 	    auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
-        WindowData::posX = x, WindowData::posY = y;
+        WindowData::posX = x;
+        WindowData::posY = y;
 	}
 	
 	/**
@@ -105,51 +270,7 @@ namespace SceneryEditorX
 	        pathsDrop.emplace_back(paths[i]);
 	    }
 	}
-	
-	/**
-	 * @brief Creates a new window and initializes GLFW.
-	 *
-	 * This function initializes the GLFW library, sets the necessary window hints,
-	 * retrieves the available monitors and video modes, creates a new window, and sets
-	 * the window position and various callback functions. It also applies any pending
-	 * changes to the window configuration.
-	 */
-	Window::Window() : renderData()
-	{
-	    glfwInit();
-		glfwSetErrorCallback([](int error, const char* description) {
-			SEDX_CORE_ERROR_TAG("Window","GLFW Error ({0}): {1}", error, description);
-		});
-	    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	
-	    WindowData::monitors = glfwGetMonitors(&WindowData::monitorCount); // get all monitors
-	
-	    glfwGetVideoModes(WindowData::monitors[WindowData::monitorIndex], &WindowData::videoModeIndex);
-        WindowData::videoModeIndex -= 1;
-	
-	    WindowData::window = glfwCreateWindow(WindowData::width, WindowData::height, WindowData::title, nullptr, nullptr); // create window
-	
-	    if (!WindowData::window)
-	    {
-	        glfwTerminate();
-	        SEDX_CORE_ERROR("Failed to create GLFW window!");
-	        throw std::runtime_error("Failed to create GLFW window");
-	    }
-	
-	    glfwSetWindowPos(WindowData::window, WindowData::posX, WindowData::posY); // set window position
-        glfwSetWindowUserPointer(WindowData::window, this);                       // set user pointer to window instance
-	    glfwSetFramebufferSizeCallback(WindowData::window, windowCallbacks.framebufferResizeCallback); // set framebuffer resize callback
-        glfwSetScrollCallback(WindowData::window, windowCallbacks.scrollCallback);
-        glfwSetWindowMaximizeCallback(WindowData::window, windowCallbacks.windowMaximizeCallback);
-        glfwSetWindowPosCallback(WindowData::window, windowCallbacks.windowChangePosCallback);
-        glfwSetDropCallback(WindowData::window, windowCallbacks.windowDropCallback);
-	
-	    SetWindowIcon(WindowData::window);
-	
-	    WindowData::dirty = false;
-	    ApplyChanges();
-	}
-	
+
 	/**
 	 * @brief Applies changes to the window configuration.
 	 *
@@ -171,7 +292,7 @@ namespace SceneryEditorX
             WindowData::videoModeIndex = modesCount - 1;
 		}
 	
-		// Window Creation
+		/// Window Creation
 		switch (mode)
 		{
 			case WindowMode::Windowed:
@@ -201,20 +322,7 @@ namespace SceneryEditorX
 		WindowData::framebufferResized = false;
 		WindowData::dirty = false;
 	}
-	
-	/**
-	 * @brief Destroys the window and terminates GLFW.
-	 *
-	 * This function retrieves the current window position, destroys the window,
-	 * and terminates the GLFW library.
-	 */
-	Window::~Window()
-	{
-        glfwGetWindowPos(WindowData::window, &WindowData::posX, &WindowData::posY);
-        glfwDestroyWindow(WindowData::window);
-		glfwTerminate();
-	}
-	
+
 	/**
 	 * @brief Updates the window state.
 	 *
@@ -256,22 +364,20 @@ namespace SceneryEditorX
 		return std::to_string(mode.width) + "x" + std::to_string(mode.height) + " " + std::to_string(mode.refreshRate) +
 			" Hz";
 	}
-	
-	/**
+
+    /**
 	 * @brief Renders the ImGui interface for the window settings.
 	 *
 	 * This function creates an ImGui interface for configuring the window settings.
 	 * It allows the user to change the window mode, monitor, resolution, and other
 	 * window attributes such as maximized, decorated, and resizable.
 	 */
-	
-
 	void Window::OnImgui()
 	{
 		const float totalWidth = ImGui::GetContentRegionAvail().x;
 		if (ImGui::CollapsingHeader("Window"))
 		{
-			// mode
+			/// mode
 			{
 				const char* modeNames[] = {"Windowed", "Windowed FullScreen", "FullScreen"};
 				ImGui::Text("Mode");
@@ -299,7 +405,7 @@ namespace SceneryEditorX
 			}
 			if (mode != WindowMode::Windowed)
 			{
-				// monitor
+				/// monitor
 				{
 					ImGui::Text("Monitor");
 					ImGui::SameLine(totalWidth / 2.0f);
@@ -327,7 +433,7 @@ namespace SceneryEditorX
 					ImGui::PopID();
 				}
 			}
-			// resolution
+			/// resolution
 			{
 				if (mode == WindowMode::FullScreen)
 				{
@@ -363,11 +469,12 @@ namespace SceneryEditorX
 					ImGui::PopID();
 				}
 			}
-			// windowed only
+
+			/// windowed only
 			{
 				if (mode == WindowMode::Windowed)
 				{
-					// maximized
+					/// maximized
 					{
 						ImGui::Text("Maximized");
 						ImGui::SameLine(totalWidth / 2.0f);
@@ -379,7 +486,7 @@ namespace SceneryEditorX
 						}
 						ImGui::PopID();
 					}
-					// decorated
+					/// decorated
 					{
 						ImGui::Text("Decorated");
 						ImGui::SameLine(totalWidth / 2.0f);
@@ -391,7 +498,7 @@ namespace SceneryEditorX
 						}
 						ImGui::PopID();
 					}
-					// resizable
+					/// resizable
 					{
 						ImGui::Text("Resizable");
 						ImGui::SameLine(totalWidth / 2.0f);
@@ -407,7 +514,6 @@ namespace SceneryEditorX
 			}
 		}
 	}
-
 	
 	/**
 	 * @brief Updates the framebuffer size.

@@ -18,6 +18,7 @@
 // -------------------------------------------------------
 namespace SceneryEditorX
 {
+
 	// UUID structure
 	struct UUID
 	{
@@ -27,9 +28,9 @@ namespace SceneryEditorX
 	class Encoding
 	{
     public:
-	    // Function to encode a byte array to a base64 string
+	    /// Function to encode a byte array to a base64 string
 	    std::string EncodeBase64(const unsigned char *input, size_t len);
-	    // Function to decode a base64 string to a byte array
+	    /// Function to decode a base64 string to a byte array
 	    std::vector<uint8_t> DecodeBase64(const std::string &input);
 
 		//static uint32_t HashUUID(const std::vector<uint32_t>& vec);

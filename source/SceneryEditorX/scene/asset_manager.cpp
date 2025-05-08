@@ -12,8 +12,8 @@
 */
 #include <SceneryEditorX/core/encoding.hpp>
 #include <SceneryEditorX/core/serializer.hpp>
+#include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/platform/time.h>
-#include <SceneryEditorX/platform/windows/file_manager.hpp>
 #include <SceneryEditorX/scene/asset.h>
 #include <SceneryEditorX/scene/asset_manager.h>
 

@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/renderer/render_data.h>
-#include <SceneryEditorX/renderer/vk_core.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
 //#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
@@ -25,15 +25,15 @@ namespace SceneryEditorX
 	class EditorApplication
 	{
 	public:
-        EditorApplication() = default;
+        EditorApplication();
         ~EditorApplication();
 
-	    void run()
-	    {
-	        InitEditor();
-	        Create();
-	        MainLoop();
-	    }
+        void InitEditor();
+		void Run();
+        void Update();
+        void DrawFrame();
+        void Create();
+        void MainLoop();
 
         Ref<Window> GetWindow() { return vkRenderer.GetWindow(); }
 	
@@ -57,15 +57,10 @@ namespace SceneryEditorX
 
 	    VkDevice device = VK_NULL_HANDLE;
 
-        static void InitEditor();
-        void Create();
-        void MainLoop();
         void CreateViewportResources();
         void CleanupViewportResources();
         void OnSurfaceUpdate(uint32_t width, uint32_t height);
         void RecreateFrameResources();
-        void DrawFrame();
-
     };
 
 

@@ -12,36 +12,28 @@
 */
 
 #include <glm/glm.hpp>
-#include <SceneryEditorX/platform/windows/editor_config.hpp>
+#include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/scene/model.h>
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
 
 // -------------------------------------------------------
 
-/*
-namespace std
-{
-	template <>
-	struct hash<glm::vec2>
-	{
-	    size_t operator()(const glm::vec2 &v) const noexcept
-	    {
-	        return ((hash<float>()(v.x) ^ (hash<float>()(v.y) << 1)) >> 1);
-	    }
-	};
-	
-	template <>
-	struct hash<glm::vec3>
-	{
-	    size_t operator()(const glm::vec3 &v) const noexcept
-	    {
-	        return ((hash<float>()(v.x) ^ (hash<float>()(v.y) << 1)) >> 1) ^ (hash<float>()(v.z) << 1);
-	    }
-	};
 
-} // namespace std
-*/
+
+template <>
+struct std::hash<SceneryEditorX::Vertex>
+{
+    size_t operator()(const SceneryEditorX::Vertex &vertex) const noexcept
+    {
+        size_t h1 = hash<glm::vec3>()(vertex.pos);
+        size_t h2 = hash<glm::vec3>()(vertex.color);
+        size_t h3 = hash<glm::vec2>()(vertex.texCoord);
+        return h1 ^ (h2 << 1) ^ (h3 << 2); // Combine the hashes
+    }
+};
+
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {

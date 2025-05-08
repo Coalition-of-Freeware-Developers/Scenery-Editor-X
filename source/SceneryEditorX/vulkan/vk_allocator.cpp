@@ -13,8 +13,8 @@
 #define VMA_IMPLEMENTATION
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/memory.h>
-#include <SceneryEditorX/renderer/vk_allocator.h>
-#include <SceneryEditorX/renderer/vk_core.h>
+#include <SceneryEditorX/vulkan/vk_allocator.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------

@@ -18,10 +18,10 @@
 #include <iostream>
 #include <libconfig.h++>
 #include <map>
+#include <optional>
 #include <SceneryEditorX/core/application_data.h>
 #include <string>
 #include <vector>
-#include <optional>
 
 // -------------------------------------------------------
 

@@ -10,7 +10,7 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/platform/windows/file_manager.hpp>
+#include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 
 // -----------------------------------------

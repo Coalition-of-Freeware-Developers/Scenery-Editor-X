@@ -14,10 +14,10 @@
 #include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/settings.h>
-#include <SceneryEditorX/renderer/vk_checks.h>
-#include <SceneryEditorX/renderer/vk_core.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
+#include <SceneryEditorX/vulkan/vk_checks.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
 
 // ---------------------------------------------------------
 
@@ -48,7 +48,27 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	void EditorApplication::InitEditor()
+    EditorApplication::EditorApplication() = default;
+
+    EditorApplication::~EditorApplication()
+    {
+        vkRenderer.~GraphicsEngine();
+    }
+
+    void EditorApplication::Run()
+    {
+        const auto start = std::chrono::high_resolution_clock::now();
+
+		InitEditor();
+
+		const auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+		MainLoop();
+
+    }
+
+    void EditorApplication::InitEditor()
     {
 	    /// Log header information immediately after init and flush to ensure it's written
         Log::LogHeader();
@@ -71,7 +91,7 @@ namespace SceneryEditorX
 	
 	void EditorApplication::Create()
 	{
-        Ref<Window> editorWindow = CreateRef<Window>();
+        const Ref<Window> editorWindow = CreateRef<Window>();
 
         vkRenderer.Init(editorWindow);
 	
@@ -81,11 +101,11 @@ namespace SceneryEditorX
         //auto physDevice = vkDevice->GetPhysicalDevice();
         //physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
-        // Set up the features we need
+        /// Set up the features we need
         //VkPhysicalDeviceFeatures deviceFeatures{};
 		//deviceFeatures = vkDeviceFeatures.GetPhysicalDeviceFeatures();
 
-        // Update the vkDevice handle
+        /// Update the vkDevice handle
         //device = vkDevice->GetDevice();
 
 	    //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
@@ -93,7 +113,7 @@ namespace SceneryEditorX
 	
 	    //createViewportResources();
 	
-        // Initialize UI components
+        /// Initialize UI components
         ui.InitGUI(Window::GetWindow(), vkRenderer);
 
 	    //SceneryEditorX::CreateEditor();
@@ -113,7 +133,8 @@ namespace SceneryEditorX
                 vkSwapChain->OnResize(viewportData.viewportSize.x, viewportData.viewportSize.y);
                 viewportData.viewportResized = false;
 	        }
-	
+
+			//Update();
 	        DrawFrame();
 	        bool ctrlPressed = Window::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) || Window::IsKeyDown(GLFW_KEY_LEFT_CONTROL);
 	        Window::Update();
@@ -217,6 +238,19 @@ namespace SceneryEditorX
 	    }
 	}
 
+    void EditorApplication::Update()
+    {
+        // Update the viewport size if it has changed
+        if (viewportData.viewportResized)
+        {
+            RecreateFrameResources();
+        }
+        // Update the UI context
+        //if (uiContext)
+        //{
+        //    uiContext->Update();
+        //}
+    }
 	// -------------------------------------------------------
 	
 	void EditorApplication::OnSurfaceUpdate(uint32_t width, uint32_t height)
@@ -291,11 +325,6 @@ namespace SceneryEditorX
 
         // Update frame counter
         frameCount = (frameCount + 1) % (1 << 15);
-	}
-
-    EditorApplication::~EditorApplication()
-	{
-	    vkRenderer.~GraphicsEngine();
 	}
 
 } // namespace SceneryEditorX

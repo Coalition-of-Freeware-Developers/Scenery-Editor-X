@@ -28,6 +28,8 @@ public:
 
 /**
     * @brief Represents a vertex in an X-Plane obj8 file
+    *
+    * @
 	*/
 class Vertex
 {

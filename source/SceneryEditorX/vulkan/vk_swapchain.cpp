@@ -13,10 +13,10 @@
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/renderer/render_data.h>
-#include <SceneryEditorX/renderer/vk_cmd_buffers.h>
-#include <SceneryEditorX/renderer/vk_device.h>
-#include <SceneryEditorX/renderer/vk_swapchain.h>
-#include <SceneryEditorX/renderer/vk_util.h>
+#include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
+#include <SceneryEditorX/vulkan/vk_device.h>
+#include <SceneryEditorX/vulkan/vk_swapchain.h>
+#include <SceneryEditorX/vulkan/vk_util.h>
 #include <utility>
 
 // -------------------------------------------------------

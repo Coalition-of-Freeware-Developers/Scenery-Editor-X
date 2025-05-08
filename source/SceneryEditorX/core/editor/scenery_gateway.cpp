@@ -9,11 +9,11 @@
 * -------------------------------------------------------
 * Created: 26/4/2025
 */
-#include <SceneryEditorX/core/editor/scenery_gateway.h>
-#include <fstream>
-#include <sstream>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <SceneryEditorX/core/editor/scenery_gateway.h>
+#include <sstream>
 
 // -------------------------------------------------------
 

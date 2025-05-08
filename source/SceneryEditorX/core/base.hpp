@@ -136,6 +136,9 @@ namespace SceneryEditorX
 	};
 
 } // namespace SceneryEditorX
+////////////////////////////////////////////////////////////
+///				Pointer Templates & Alias				 ///
+////////////////////////////////////////////////////////////
 
 /**
  * @brief Alias template for a unique pointer to type T.
@@ -176,6 +179,28 @@ constexpr Ref<T> CreateRef(Args&&...args)
 {
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
+
+/**
+ * @brief Alias template for a weak pointer to type T.
+ * @tparam T The type to manage.
+ */
+template <typename T>
+using WeakRef = std::weak_ptr<T>;
+
+/**
+ * @brief Creates a weak pointer to an object of type T.
+ * @tparam T The type to manage.
+ * @tparam Args The types of the arguments to pass to the constructor of T.
+ * @param args The arguments to pass to the constructor of T.
+ * @return A weak pointer to an object of type T.
+ */
+template <typename T, typename... Args>
+constexpr WeakRef<T> CreateWeakRef(Args &&...args)
+{
+    return std::weak_ptr<T>(CreateRef<T>(std::forward<Args>(args)...));
+}
+
+/// -------------------------------------------------------------
 
 /**
  * @brief Template function to convert an input to char.

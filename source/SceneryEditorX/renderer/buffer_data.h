@@ -72,12 +72,21 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
+    /*
+    struct UniformBuffer
+    {
+        alignas(16) glm::mat4 model;
+        alignas(16) glm::mat4 view;
+        alignas(16) glm::mat4 proj;
+    };
+	*/
+
     struct BufferResource : Resource
     {
         VkBuffer buffer;
         VmaAllocation allocation;
 
-        virtual ~BufferResource()
+        virtual ~BufferResource() override
         {
             VulkanMemoryUtils::DestroyBuffer(buffer, allocation);
         }
@@ -95,7 +104,7 @@ namespace SceneryEditorX
     inline uint32_t Buffer::ResourceID() const
     {
         SEDX_ASSERT(resource->resourceID != -1, "Invalid buffer rid");
-        return uint32_t(resource->resourceID);
+        return static_cast<uint32_t>(resource->resourceID);
     }
 
 }  // namespace SceneryEditorX

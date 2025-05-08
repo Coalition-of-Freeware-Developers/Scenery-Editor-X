@@ -264,12 +264,12 @@ namespace SceneryEditorX
 
     // -----------------------------------------------------------
 
-    enum Queue : uint8_t
+    enum QueueType : uint8_t
     {
         Graphics = 0,
-        Compute = 1,
-        Transfer = 2,
-        Count = 3,
+        Compute,
+        Transfer,
+        Present,
     };
 
     struct CommandResources
@@ -357,8 +357,6 @@ namespace SceneryEditorX
         VkSampleCountFlags sampleCounts;
         VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
         VkSampleCountFlagBits maxSamples = VK_SAMPLE_COUNT_1_BIT;
-
-		VkAllocationCallbacks *allocator = VK_NULL_HANDLE;
 
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;

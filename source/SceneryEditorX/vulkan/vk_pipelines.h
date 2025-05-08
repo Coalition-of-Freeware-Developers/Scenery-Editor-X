@@ -11,6 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/platform/editor_config.hpp>
+#include <SceneryEditorX/platform/file_manager.hpp>
+#include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 
 // -------------------------------------------------------
@@ -35,8 +39,8 @@ namespace SceneryEditorX
 
 	private:
         Viewport *vkViewport = nullptr;
-        Ref<SwapChain> vkSwapChain;
         Ref<Shader> vkShaderPtr;
+        Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> device;
 
         VkPipeline pipeline = nullptr;

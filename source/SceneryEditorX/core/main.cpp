@@ -23,7 +23,7 @@ int main(const int argc, const char** argv[])
     try
     {
         SceneryEditorX::EditorApplication app;
-        app.run();
+        app.Run();
     }
     catch (const std::runtime_error &error)
     {

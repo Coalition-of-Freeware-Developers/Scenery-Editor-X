@@ -10,11 +10,10 @@
 * Created: 23/4/2025
 * -------------------------------------------------------
 */
-
-#include <SceneryEditorX/platform/settings.h>
-#include <libconfig.h++>
 #include <filesystem>
+#include <libconfig.h++>
 #include <regex>
+#include <SceneryEditorX/platform/settings.h>
 
 // -------------------------------------------------------
 

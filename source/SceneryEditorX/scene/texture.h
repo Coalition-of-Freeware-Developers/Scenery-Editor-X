@@ -11,8 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vk_device.h>
+#include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/vulkan/vk_device.h>
 
 // -------------------------------------------------------
 
@@ -26,14 +27,14 @@ namespace SceneryEditorX
     {
     public:
         TextureAsset();
-        virtual void Serialize(Serializer &ser);
+        virtual void Serialize(Serializer &ser) override;
 
         // -------------------------------------------------------
 
-        //virtual void Load(const std::string &path) override;
-        //virtual void Unload() override;
+        virtual void Load(const std::string &path) override;
+        virtual void Unload() override;
         //[[nodiscard]] virtual bool IsLoaded() const override;
-        //[[nodiscard]] virtual const std::string &GetPath() const override;
+        [[nodiscard]] virtual const std::string &GetPath() const;
         //[[nodiscard]] virtual const std::string &GetName() const override;
         virtual void SetName(const std::string &name);
 
@@ -43,21 +44,17 @@ namespace SceneryEditorX
         int height = 0;
 
 	private:
-        void CreateTextureSampler();
-        VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int i);
-        void CreateTextureImageView();
         void CreateTextureImage();
+        void CreateTextureImageView();
+        void CreateTextureSampler();
+		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int i);
 
-		RenderData renderData;
-        //EditorConfig config;
-		Ref<VulkanDevice> device;
-
+		WeakRef<RenderData> renderData;
+        WeakRef<EditorConfig> config;
+        Ref<VulkanDevice> vkDevice = nullptr;
+        Ref<VulkanPhysicalDevice> vkPhysDevice = nullptr;
+        Ref<MemoryAllocator> allocator;
 		// -------------------------------------------------------
-
-        VkDevice vkDevice = device->GetDevice();
-        VkPhysicalDevice vkPhysDevice = device->GetPhysicalDevice()->GetGPUDevice();
-
-        // -------------------------------------------------------
 
 		VkImage textureImage;
         VkSampler textureSampler;

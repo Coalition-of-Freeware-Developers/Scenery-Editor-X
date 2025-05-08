@@ -16,9 +16,9 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/renderer/vk_core.h>
-#include <SceneryEditorX/renderer/vk_device.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
+#include <SceneryEditorX/vulkan/vk_device.h>
 
 // -------------------------------------------------------
 

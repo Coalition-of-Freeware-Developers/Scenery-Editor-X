@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/render_data.h>
-#include <SceneryEditorX/renderer/vk_core.h>
-#include <SceneryEditorX/renderer/vk_device.h>
-#include <SceneryEditorX/renderer/vk_pipelines.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
+#include <SceneryEditorX/vulkan/vk_device.h>
+#include <SceneryEditorX/vulkan/vk_pipelines.h>
 
 // -------------------------------------------------------
 

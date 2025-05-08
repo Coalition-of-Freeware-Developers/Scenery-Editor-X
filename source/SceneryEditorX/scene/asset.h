@@ -20,7 +20,7 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-	enum class ObjectType
+	enum class ObjectType : uint8_t
 	{
 	    Invalid,
 	    TextureAsset,
@@ -54,7 +54,7 @@ namespace SceneryEditorX
 	    std::string name = "Uninitialized";
 	    uint32_t uuid = 0;
 	    ObjectType type = ObjectType::Invalid;
-	    // todo: rethink this gpu dirty flag...
+	    //TODO: rethink this gpu dirty flag...
 	    bool gpuDirty = true;
 
         Object &operator=(const Object &rhs)
@@ -74,9 +74,8 @@ namespace SceneryEditorX
 	public:
         virtual ~Asset() override;
         virtual void Serialize(Serializer &ser) override = 0;
-
-        //virtual void Load(const std::string &path) = 0;
-        //virtual void Unload() = 0;
+        virtual void Load(const std::string &path) = 0;
+        virtual void Unload() = 0;
         //virtual void SetName(const std::string &name) = 0;
     };
 

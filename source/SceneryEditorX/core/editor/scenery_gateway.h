@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <curl/curl.h>
+#include <functional>
 #include <json.hpp>
 #include <vector>
-#include <functional>
 
 // -----------------------------------------
 

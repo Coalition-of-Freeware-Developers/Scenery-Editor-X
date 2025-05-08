@@ -3,7 +3,6 @@
 //Date:		10/11/2024 7:11:58 PM
 //Purpose:	Implements XPObj.h
 
-//Compile once
 #pragma once
 
 //Include necessary headers
@@ -12,8 +11,7 @@
 #include <fstream>
 #include <sstream>
 
-namespace fs = std::filesystem; //I'm lazy
-
+//-------------------------------------------------------
 
 /**
 * @brief Loads the object
@@ -21,6 +19,7 @@ namespace fs = std::filesystem; //I'm lazy
 * @Param InPath = Path to the obj
 * @return True on success, false on failure
 */
+
 bool XPAsset::Obj::Load(const std::filesystem::path &InPath)
 {
     try
@@ -225,3 +224,5 @@ bool XPAsset::Obj::Load(const std::filesystem::path &InPath)
         return false;
     }
 }
+
+//-------------------------------------------------------

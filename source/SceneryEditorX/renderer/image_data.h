@@ -21,7 +21,6 @@ namespace SceneryEditorX
 
     class GraphicsEngine;
 
-
 	namespace ImageUsage
 	{
 		enum

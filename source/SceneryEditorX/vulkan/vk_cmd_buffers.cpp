@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/editor/editor.h>
-#include <SceneryEditorX/renderer/vk_cmd_buffers.h>
+#include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
 #include <vulkan/vulkan.h>
 
 // -------------------------------------------------------

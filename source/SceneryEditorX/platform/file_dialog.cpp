@@ -10,7 +10,7 @@
 * Created: 5/2/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/platform/windows/file_dialog.h>
+#include <SceneryEditorX/platform/file_dialog.h>
 
 // -------------------------------------------------------
 
