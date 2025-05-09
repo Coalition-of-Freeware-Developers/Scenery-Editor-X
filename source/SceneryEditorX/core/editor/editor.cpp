@@ -44,7 +44,7 @@ namespace SceneryEditorX
 	 * -------------------------------------------------------
 	 */
 	
-	//INTERNAL void initVulkan(GraphicsEngine &vkRenderer);
+	//INTERNAL void initVulkan(GraphicsEngine &gfxEngine);
 
 	// -------------------------------------------------------
 
@@ -52,7 +52,7 @@ namespace SceneryEditorX
 
     EditorApplication::~EditorApplication()
     {
-        vkRenderer.~GraphicsEngine();
+        gfxEngine.~GraphicsEngine();
     }
 
     void EditorApplication::Run()
@@ -93,7 +93,7 @@ namespace SceneryEditorX
 	{
         const Ref<Window> editorWindow = CreateRef<Window>();
 
-        vkRenderer.Init(editorWindow);
+        gfxEngine.Init(editorWindow);
 	
         Ref<VulkanChecks> vulkanChecks = CreateRef<VulkanChecks>();
         vulkanChecks->InitChecks({}, {}, {});
@@ -109,17 +109,17 @@ namespace SceneryEditorX
         //device = vkDevice->GetDevice();
 
 	    //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
-        //vkRenderer.CreateInstance(editorWindow);
+        //gfxEngine.CreateInstance(editorWindow);
 	
 	    //createViewportResources();
 	
         /// Initialize UI components
-        ui.InitGUI(Window::GetWindow(), vkRenderer);
+        ui.InitGUI(Window::GetWindow(), gfxEngine);
 
 	    //SceneryEditorX::CreateEditor();
 	
-	    //vkRenderer = CreateRef<GraphicsEngine>(*Window::GetWindow());
-	    //vkRenderer->CreateInstance();
+	    //gfxEngine = CreateRef<GraphicsEngine>(*Window::GetWindow());
+	    //gfxEngine->CreateInstance();
 	
 	    //camera->extent = {viewportSize.x, viewportSize.y};
 	}
@@ -186,7 +186,7 @@ namespace SceneryEditorX
 	    renderPassInfo.subpassCount = 1;
 	    renderPassInfo.pSubpasses = &subpass;
 	
-	    SEDX_CORE_ASSERT(vkCreateRenderPass(vkRenderer.GetLogicDevice()->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
+	    SEDX_CORE_ASSERT(vkCreateRenderPass(gfxEngine.GetLogicDevice()->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
             //throw std::runtime_error("Failed to create viewport render pass");
 
         // Create framebuffer for the viewport
@@ -199,7 +199,7 @@ namespace SceneryEditorX
         framebufferInfo.height = viewportData.viewportSize.y;
 	    framebufferInfo.layers = 1;
 	
-	    SEDX_CORE_ASSERT(vkCreateFramebuffer(vkRenderer.GetLogicDevice()->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
+	    SEDX_CORE_ASSERT(vkCreateFramebuffer(gfxEngine.GetLogicDevice()->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
 	        //throw std::runtime_error("Failed to create viewport framebuffer");
 
 	}
@@ -301,7 +301,7 @@ namespace SceneryEditorX
 	    }
 
         // Get a command buffer to render into
-        VkCommandBuffer commandBuffer = vkRenderer.BeginSingleTimeCommands();
+        VkCommandBuffer commandBuffer = gfxEngine.BeginSingleTimeCommands();
 
         // Set the command buffer for ImGui to render into
         ui.SetActiveCommandBuffer(commandBuffer);
@@ -321,7 +321,7 @@ namespace SceneryEditorX
         }
 
         // End and submit the command buffer
-        vkRenderer.EndSingleTimeCommands(commandBuffer);
+        gfxEngine.EndSingleTimeCommands(commandBuffer);
 
         // Update frame counter
         frameCount = (frameCount + 1) % (1 << 15);

@@ -13,6 +13,7 @@
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/vulkan/vk_render_pass.h>
+#include <SceneryEditorX/vulkan/vk_buffers.h>
 
 // -------------------------------------------------------
 
@@ -31,7 +32,7 @@ namespace SceneryEditorX
 
 	    if (renderPass != VK_NULL_HANDLE)
 	    {
-	        vkDestroyRenderPass(vkDevice->GetDevice(), renderPass, allocator);
+	        vkDestroyRenderPass(vkDevice->GetDevice(), renderPass, gfxEngine->GetAllocatorCallback());
 	        renderPass = VK_NULL_HANDLE;
 	    }
 	}
@@ -105,7 +106,7 @@ namespace SceneryEditorX
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
 
-        if (vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, allocator, &renderPass) != VK_SUCCESS)
+        if (vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, gfxEngine->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create render pass!");
             ErrMsg("failed to create render pass!");
@@ -304,7 +305,7 @@ namespace SceneryEditorX
         imageInfo.samples = numSamples;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateImage(vkDevice->GetDevice(), &imageInfo, allocator, &image) != VK_SUCCESS)
+        if (vkCreateImage(vkDevice->GetDevice(), &imageInfo, gfxEngine->GetAllocatorCallback(), &image) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create image!");
         }
@@ -317,7 +318,7 @@ namespace SceneryEditorX
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = vkDevice->FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, gfxEngine->GetAllocatorCallback(), &imageMemory) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate image memory!");
         }

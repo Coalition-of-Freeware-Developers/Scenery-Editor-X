@@ -13,21 +13,48 @@
 #include <SceneryEditorX/renderer/render_data.h>
 #include <SceneryEditorX/scene/texture.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
+#include <SceneryEditorX/vulkan/vk_buffers.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+	TextureAsset::TextureAsset(const std::string &path)
+	{
+	    Load(path);
+	}
+	
+	TextureAsset::~TextureAsset()
+	{
+	    Unload();
+	}
+
 	void TextureAsset::Load(const std::string &path)
 	{
-
+        // Load texture data from the given path
+        // This is a placeholder implementation
+        // Actual implementation will depend on the specific requirements and libraries used
 	}
 
     void TextureAsset::Unload()
     {
         vkDestroyImage(vkDevice->GetDevice(), textureImage, nullptr);
         vkFreeMemory(vkDevice->GetDevice(), textureImageMemory, nullptr);
+    }
+
+    void TextureAsset::LoadWithAllocator()
+    {
+        // Load texture using the memory allocator
+        // This is a placeholder implementation
+        // Actual implementation will depend on the specific requirements and libraries used
+    }
+
+    void TextureAsset::UnloadWithAllocator()
+    {
+        // Unload texture using the memory allocator
+        // This is a placeholder implementation
+        // Actual implementation will depend on the specific requirements and libraries used
     }
 
     /*

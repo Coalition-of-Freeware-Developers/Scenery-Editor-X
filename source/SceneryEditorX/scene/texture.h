@@ -26,13 +26,17 @@ namespace SceneryEditorX
 	class TextureAsset : public Asset
     {
     public:
-        TextureAsset();
+        explicit TextureAsset(const std::string &path);
+        virtual ~TextureAsset() override;
         virtual void Serialize(Serializer &ser) override;
 
         // -------------------------------------------------------
 
         virtual void Load(const std::string &path) override;
         virtual void Unload() override;
+
+	    void LoadWithAllocator();
+        void UnloadWithAllocator();
         //[[nodiscard]] virtual bool IsLoaded() const override;
         [[nodiscard]] virtual const std::string &GetPath() const;
         //[[nodiscard]] virtual const std::string &GetName() const override;

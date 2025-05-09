@@ -35,10 +35,10 @@ namespace SceneryEditorX
         void Create();
         void MainLoop();
 
-        Ref<Window> GetWindow() { return vkRenderer.GetWindow(); }
+        Ref<Window> GetWindow() { return gfxEngine.GetWindow(); }
 	
 	private:
-        GraphicsEngine vkRenderer;
+        GraphicsEngine gfxEngine;
         Ref<SwapChain> vkSwapChain;
 
         //AssetManager assetManager;

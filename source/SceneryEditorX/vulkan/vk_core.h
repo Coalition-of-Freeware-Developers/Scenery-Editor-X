@@ -64,7 +64,6 @@ namespace SceneryEditorX
         VkRenderPass GetRenderPass() const { return renderPass;}
         Ref<Window> GetWindow() { return editorWindow; }
 		Ref<SwapChain> GetSwapChain() { return vkSwapChain; }
-
 		Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
 		LOCAL Ref<GraphicsEngine> Get() { return {}; }
 		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice();}
@@ -74,7 +73,7 @@ namespace SceneryEditorX
         VkSampler GetSampler() { return vkDevice->GetSampler(); }
         void WaitIdle(const Ref<VulkanDevice> &device);
 
-	    VkAllocationCallbacks *GetAllocatorCallback() const { return allocator; }
+        [[nodiscard]] const VkAllocationCallbacks *GetAllocatorCallback() const { return allocator; }
 
         //INTERNAL Ref<ShaderLibrary> GetShaderLibrary();
 		//INTERNAL void WaitAndRender(RenderThread *renderThread);

@@ -173,42 +173,43 @@ namespace SceneryEditorX
             {
                 VkDeviceQueueCreateInfo queueCreateInfo{};
                 queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueCreateInfo.queueFamilyIndex = QFamilyIndices.Graphics;
+                queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetGraphicsFamily();
                 queueCreateInfo.queueCount = 1;
                 queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
                 devices[index].queueCreateInfos.push_back(queueCreateInfo);
             }
 
-            // -----------------------------------------------
+            /// -----------------------------------------------
 
             /// Dedicated Compute Queue
             if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
             {
                 VkDeviceQueueCreateInfo queueCreateInfo{};
                 queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueCreateInfo.queueFamilyIndex = QFamilyIndices.Compute;
+                queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetComputeFamily();
                 queueCreateInfo.queueCount = 1;
                 queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
                 devices[index].queueCreateInfos.push_back(queueCreateInfo);
             }
 
-            // -----------------------------------------------
+            /// -----------------------------------------------
 
             /// Dedicated Transfer Queue
             if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
             {
-                if ((QFamilyIndices.Transfer != QFamilyIndices.Graphics) && (QFamilyIndices.Transfer != QFamilyIndices.Compute))
-                {
+                if ((QFamilyIndices.GetTransferFamily() != QFamilyIndices.GetGraphicsFamily()) &&
+                    (QFamilyIndices.GetTransferFamily() != QFamilyIndices.GetComputeFamily()))
+				{
                     VkDeviceQueueCreateInfo queueCreateInfo{};
                     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                    queueCreateInfo.queueFamilyIndex = QFamilyIndices.Transfer;
+                    queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetTransferFamily();
                     queueCreateInfo.queueCount = 1;
                     queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
                     devices[index].queueCreateInfos.push_back(queueCreateInfo);
                 }
             }
 
-			// -----------------------------------------------
+			/// -----------------------------------------------
 
             FindDepthFormat(devices[index]);
         }
@@ -225,7 +226,7 @@ namespace SceneryEditorX
 
     VkFormat VulkanPhysicalDevice::FindSupportedFormat(const VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
     {
-        for (VkFormat format : candidates)
+        for (const VkFormat format : candidates)
         {
             VkFormatProperties props;
             vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
@@ -365,7 +366,7 @@ namespace SceneryEditorX
      * @param qFlags - The queue flags to check for.
      * @return - The queue family indices.
      */
-    VulkanPhysicalDevice::QueueFamilyIndices VulkanPhysicalDevice::GetQueueFamilyIndices(VkQueueFlags qFlags) const
+    QueueFamilyIndices VulkanPhysicalDevice::GetQueueFamilyIndices(VkQueueFlags qFlags) const
     {
         QueueFamilyIndices indices;
         
@@ -406,8 +407,9 @@ namespace SceneryEditorX
                 const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
                 const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
                 
-                if (supportsCompute && !supportsGraphics) {
-                    indices.Compute = queueIdx;
+                if (supportsCompute && !supportsGraphics)
+                {
+                    indices.computeFamily = std::make_optional(std::make_pair(QueueFamilyType::Compute, queueIdx));
                     break;
                 }
             }
@@ -422,7 +424,7 @@ namespace SceneryEditorX
                 const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
                 
                 if (supportsTransfer && !supportsGraphics && !supportsCompute) {
-                    indices.Transfer = queueIdx;
+                    indices.transferFamily = std::make_optional(std::make_pair(QueueFamilyType::Transfer, queueIdx));
                     break;
                 }
             }
@@ -431,20 +433,26 @@ namespace SceneryEditorX
         /// Second pass: set any remaining indices to general-purpose queues
         for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
             const auto &props = queueFamilyProperties[queueIdx];
-            
+            const bool supportsTransfer = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
+            const bool supportsGraphics = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
+            const bool supportsCompute = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
+
             /// Set graphics queue
-            if ((qFlags & VK_QUEUE_GRAPHICS_BIT) && (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-                indices.Graphics = queueIdx;
+            if (supportsTransfer && !supportsGraphics && !supportsCompute)
+            {
+                indices.transferFamily = std::make_optional(std::make_pair(QueueFamilyType::Transfer, queueIdx));
+                break;
             }
             
             /// Set compute queue if not already set
-            if ((qFlags & VK_QUEUE_COMPUTE_BIT) && indices.Compute == UINT32_MAX && (props.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
-                indices.Compute = queueIdx;
+            if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !indices.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
+            {
+                indices.computeFamily = std::make_optional(std::make_pair(QueueFamilyType::Compute, queueIdx));
             }
             
             /// Set transfer queue if not already set
-            if ((qFlags & VK_QUEUE_TRANSFER_BIT) && indices.Transfer == UINT32_MAX && (props.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
-                indices.Transfer = queueIdx;
+            if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !indices.transferFamily.has_value() && (props.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
+                indices.transferFamily = std::make_optional(std::make_pair(QueueFamilyType::Transfer, queueIdx));
             }
         }
         
@@ -471,9 +479,9 @@ namespace SceneryEditorX
         */
         SEDX_CORE_INFO("============================================");
         SEDX_CORE_INFO("Selected Queue Families:");
-        SEDX_CORE_INFO("Graphics: {}", indices.Graphics != UINT32_MAX ? ToString(indices.Graphics) : "Not Available");
-        SEDX_CORE_INFO("Compute: {}", indices.Compute != UINT32_MAX ? ToString(indices.Compute) : "Not Available");
-        SEDX_CORE_INFO("Transfer: {}", indices.Transfer != UINT32_MAX ? ToString(indices.Transfer) : "Not Available");
+        SEDX_CORE_INFO("Graphics: {}", indices.graphicsFamily.has_value() ? ToString(indices.graphicsFamily.value().second) : "Not Available");
+        SEDX_CORE_INFO("Compute: {}", indices.computeFamily.has_value() ? ToString(indices.computeFamily.value().second) : "Not Available");
+        SEDX_CORE_INFO("Transfer: {}", indices.transferFamily.has_value() ? ToString(indices.transferFamily.value().second) : "Not Available");
         SEDX_CORE_INFO("============================================");
 
         return indices;
@@ -580,8 +588,8 @@ namespace SceneryEditorX
         }
 
         /// Get device queues
-        vkGetDeviceQueue(device, physDevice->QFamilyIndices.Graphics, 0, &GraphicsQueue);
-        vkGetDeviceQueue(device, physDevice->QFamilyIndices.Compute, 0, &ComputeQueue);
+        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
+        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
 
         /// Load device extension function pointers
         LoadExtensionFunctions();
@@ -1417,7 +1425,7 @@ namespace SceneryEditorX
         /// Create graphics command pool
         VkCommandPoolCreateInfo cmdPoolInfo{};
         cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmdPoolInfo.queueFamilyIndex = queueIndices.Graphics;
+        cmdPoolInfo.queueFamilyIndex = queueIndices.GetGraphicsFamily();
         cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
         VkResult result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &GraphicsCmdPool);
@@ -1427,9 +1435,9 @@ namespace SceneryEditorX
         }
 
         /// Create compute command pool if compute queue is available
-        if (queueIndices.Compute >= 0)
+        if (queueIndices.GetComputeFamily() >= 0)
         {
-            cmdPoolInfo.queueFamilyIndex = queueIndices.Compute;
+            cmdPoolInfo.queueFamilyIndex = queueIndices.GetComputeFamily();
             result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &ComputeCmdPool);
 
             if (result != VK_SUCCESS)

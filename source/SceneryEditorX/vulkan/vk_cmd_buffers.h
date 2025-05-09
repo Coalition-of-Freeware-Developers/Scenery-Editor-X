@@ -69,7 +69,7 @@ namespace SceneryEditorX
 	};
 
     inline InternalQueue queues[Present];
-    inline QueueType currentQueue = Present;
+    inline QueueFamilyType currentQueue = Present;
 
 
 } // namespace SceneryEditorX

@@ -38,14 +38,14 @@ namespace SceneryEditorX
         }
     };
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
     /// Constants for common sizes
     constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;       // 256KB
     constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024; // 1MB
     constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024; // 16MB
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
     class MemoryAllocator
     {
@@ -61,7 +61,7 @@ namespace SceneryEditorX
         /// Method to mark an allocation as defragmentable
         void MarkForDefragmentation(VmaAllocation allocation);
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
         struct AllocationStats
         {
@@ -88,7 +88,7 @@ namespace SceneryEditorX
         bool ContainsAllocation(VmaAllocation allocation) const;
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
 
-        // ---------------------------------------------------------
+        /// ---------------------------------------------------------
 
 		struct MemoryBudget
         {
@@ -101,11 +101,11 @@ namespace SceneryEditorX
         [[nodiscard]] MemoryBudget GetMemoryBudget() const;
         void SetMemoryUsageWarningThreshold(float percentage);
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
         void SetBufferAlignment(VkDeviceSize alignment);
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
         struct BatchBufferAllocation
         {
@@ -119,7 +119,7 @@ namespace SceneryEditorX
 
         void FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations);
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
         VmaAllocation AllocateBuffer(const VkBufferCreateInfo &bufferCreateInfo, VmaMemoryUsage usage, VkBuffer &outBuffer);
         VmaAllocation AllocateImage(const VkImageCreateInfo &imageCreateInfo, VmaMemoryUsage usage, VkImage &outImage, VkDeviceSize* allocatedSize = nullptr);
@@ -127,7 +127,7 @@ namespace SceneryEditorX
         void Free(VmaAllocation allocation);
         void DestroyImage(VkImage image, VmaAllocation allocation);
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
 		template<typename T>
 		T* MapMemory(const VmaAllocation allocation)
@@ -137,7 +137,7 @@ namespace SceneryEditorX
 			return mappedMemory;
 		}
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
         void UnmapMemory(VmaAllocation allocation);
         GLOBAL VmaAllocator GetMemAllocator();
@@ -145,7 +145,7 @@ namespace SceneryEditorX
 		GLOBAL void Init(Ref<VulkanDevice> device);
 		GLOBAL void Shutdown();
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
     private:
         std::string Tag_;

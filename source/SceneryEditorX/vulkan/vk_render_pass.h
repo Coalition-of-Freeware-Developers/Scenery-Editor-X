@@ -33,13 +33,13 @@ namespace SceneryEditorX
         [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
 
 	private:
-        GraphicsEngine *renderer;
+        GraphicsEngine *gfxEngine;
         Ref<VulkanDevice> vkDevice;
         Ref<SwapChain> vkSwapChain;
-        //Ref<MemoryAllocator> allocator;
+        Ref<MemoryAllocator> allocator;
         RenderData renderData;
 	    VkRenderPass renderPass = nullptr;
-        VkAllocationCallbacks *allocator = nullptr;
+        //VkAllocationCallbacks *allocator = nullptr;
 
 		// ----------------------------------
 

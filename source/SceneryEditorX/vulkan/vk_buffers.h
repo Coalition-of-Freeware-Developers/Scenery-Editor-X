@@ -14,6 +14,7 @@
 #include <SceneryEditorX/renderer/buffer_data.h>
 #include <SceneryEditorX/renderer/image_data.h>
 #include <SceneryEditorX/vulkan/vk_device.h>
+#include "vk_swapchain.h"
 
 // --------------------------------------------
 
@@ -49,8 +50,9 @@ namespace SceneryEditorX
         void UpdateUniformBuffer(uint32_t currentImage) const;
 
     private:
-        Ref<GraphicsEngine> *renderer;
+        Ref<GraphicsEngine> *gfxEngine;
         Ref<VulkanDevice> vkDevice;
+        //Ref<SwapChain> vkSwapChain;
         Ref<MemoryAllocator> allocator;
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -102,7 +104,7 @@ namespace SceneryEditorX
 
 		        return attributeDescriptions;
 		    }
-0-
+
 		    bool operator==(const Vertex &other) const
 		    {
 		        return pos == other.pos && color == other.color && texCoord == other.texCoord;
@@ -112,7 +114,7 @@ namespace SceneryEditorX
         void CreateVertexBuffer();
 
     private:
-        Ref<GraphicsEngine> *renderer;
+        Ref<GraphicsEngine> *gfxEngine;
         Ref<VulkanDevice> vkDevice;
         Ref<MemoryAllocator> allocator;
         std::vector<Vertex> vertices;
@@ -132,9 +134,10 @@ namespace SceneryEditorX
         void CreateIndexBuffer();
 
     private:
-        Ref<GraphicsEngine> *renderer;
+        Ref<GraphicsEngine> *gfxEngine;
         Ref<VulkanDevice> vkDevice;
         Ref<MemoryAllocator> allocator;
+        
         std::vector<uint32_t> indices;
 
         VkBuffer indexBuffer;

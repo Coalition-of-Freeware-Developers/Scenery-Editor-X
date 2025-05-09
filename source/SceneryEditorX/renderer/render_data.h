@@ -264,7 +264,7 @@ namespace SceneryEditorX
 
     // -----------------------------------------------------------
 
-    enum QueueType : uint8_t
+    enum QueueFamilyType : uint8_t
     {
         Graphics = 0,
         Compute,

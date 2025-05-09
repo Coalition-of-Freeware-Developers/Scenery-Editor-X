@@ -14,6 +14,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <SceneryEditorX/renderer/buffer_data.h>
 #include <SceneryEditorX/renderer/image_data.h>
 #include <vulkan/vulkan.h>
@@ -63,10 +64,10 @@ namespace SceneryEditorX
 
     struct QueueFamilyIndices
     {
-		uint32_t Graphics = UINT32_MAX;
-		uint32_t Compute = UINT32_MAX;
-		uint32_t Transfer = UINT32_MAX;
-		uint32_t Present = UINT32_MAX;
+        std::optional<std::pair<QueueFamilyType, uint32_t>> graphicsFamily;
+        std::optional<std::pair<QueueFamilyType, uint32_t>> presentFamily;
+        std::optional<std::pair<QueueFamilyType, uint32_t>> computeFamily;
+        std::optional<std::pair<QueueFamilyType, uint32_t>> transferFamily;
 
         [[nodiscard]] bool isComplete() const
         {
@@ -148,6 +149,7 @@ namespace SceneryEditorX
          */
         QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
 
+
     private:
         std::vector<GPUDevice> devices;
         std::unordered_set<std::string> supportedExtensions;
@@ -165,7 +167,6 @@ namespace SceneryEditorX
          * @return Queue family indices for different queue types
          */
         [[nodiscard]] QueueFamilyIndices GetQueueFamilyIndices(VkQueueFlags qFlags) const;
-
 
 		/**
          * @brief Enumerate and populate device information
@@ -292,18 +293,18 @@ namespace SceneryEditorX
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
         const uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
 
-		// -------------------------------------------------------
-
+		/// -------------------------------------------------------
         /// Function pointers for Vulkan extensions
-        PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
-        PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR = nullptr;
-        PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
+        ///
         PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
-        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR = nullptr;
-        PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
+        PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
         PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
+        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR = nullptr;
+        PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR = nullptr;
+        PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR = nullptr;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         VkQueue GraphicsQueue = VK_NULL_HANDLE;
         VkQueue ComputeQueue = VK_NULL_HANDLE;
@@ -311,7 +312,7 @@ namespace SceneryEditorX
         std::mutex GraphicsQueueMutex;
         std::mutex ComputeQueueMutex;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         /// Command pool management
         std::map<std::thread::id, Ref<CommandPool>> CmdPools;
@@ -345,14 +346,14 @@ namespace SceneryEditorX
          */
         void LoadExtensionFunctions();
 
-        VkPhysicalDevice vkPhysicalDevice = VK_NULL_HANDLE;
-        VkDevice vkDevice = VK_NULL_HANDLE;
-	    VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
 	    VkQueue vkQueue = VK_NULL_HANDLE;
+        VkDevice vkDevice = VK_NULL_HANDLE;
 	    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
+        VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
+        VkPhysicalDevice vkPhysicalDevice = VK_NULL_HANDLE;
     };
 
-	// ---------------------------------------------------------
+	/// ---------------------------------------------------------
 
 	class CommandPool
     {
@@ -396,7 +397,7 @@ namespace SceneryEditorX
         VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
 	};
 
-	// ---------------------------------------------------------
+	/// ---------------------------------------------------------
 
 } // namespace SceneryEditorX
 

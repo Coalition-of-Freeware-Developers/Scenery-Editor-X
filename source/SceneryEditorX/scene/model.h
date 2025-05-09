@@ -54,12 +54,12 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
 
-        virtual void Load(const std::string &path);
-        //virtual void Unload() override;
+        virtual void Load(const std::string &path) override;
+        virtual void Unload() override;
         //virtual void SetName(const std::string &name) override;
         //[[nodiscard]] virtual bool IsLoaded() const override;
-        //[[nodiscard]] virtual const std::string &GetPath() const override;
-        //[[nodiscard]] virtual const std::string &GetName() const override;
+        [[nodiscard]] virtual const std::string &GetPath() const;
+        [[nodiscard]] virtual const std::string &GetName() const;
 
     private:
         friend class AssetManager;

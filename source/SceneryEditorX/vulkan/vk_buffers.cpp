@@ -13,6 +13,7 @@
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_data.h>
 
 // ----------------------------------------------------------
 
@@ -22,8 +23,8 @@ namespace SceneryEditorX
     {
 		for (size_t i = 0; i < RenderData::framesInFlight; i++)
 		{
-		    vkDestroyBuffer(vkDevice->GetDevice(), uniformBuffers[i], renderer->GetAllocatorCallback());
-            vkFreeMemory(vkDevice->GetDevice(), uniformBuffersMemory[i], renderer->GetAllocatorCallback());
+            vkDestroyBuffer(vkDevice->GetDevice(), uniformBuffers[i], nullptr);
+            vkFreeMemory(vkDevice->GetDevice(), uniformBuffersMemory[i], nullptr);
 		}
 	}
 
@@ -46,18 +47,18 @@ namespace SceneryEditorX
         static auto startTime = std::chrono::high_resolution_clock::now();
 
         auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+        float time = std::chrono::duration<float>(currentTime - startTime).count();
 
-        UniformBuffer ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f),vkSwapChain->GetSwapExtent().width / static_cast<float>(vkSwapChain->GetSwapExtent().height),0.1f,10.0f);
-        ubo.proj[1][1] *= -1;
+        UBO uniformBuff;
+        uniformBuff.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        uniformBuff.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        uniformBuff.proj = glm::perspective(glm::radians(45.0f),vkSwapChain->GetSwapExtent().width / static_cast<float>(vkSwapChain->GetSwapExtent().height),0.1f,10.0f);
+        uniformBuff.proj[1][1] *= -1;
 
         void *data;
 
-        vkMapMemory(vkDevice->GetDevice(), uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-        memcpy(data, &ubo, sizeof(ubo));
+        vkMapMemory(vkDevice->GetDevice(), uniformBuffersMemory[currentImage], 0, sizeof(uniformBuff), 0, &data);
+        memcpy(data, &uniformBuff, sizeof(uniformBuff));
         vkUnmapMemory(vkDevice->GetDevice(), uniformBuffersMemory[currentImage]);
     }
 
@@ -87,7 +88,7 @@ namespace SceneryEditorX
         bufferInfo.usage = usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateBuffer(vkDevice->GetDevice(), &bufferInfo, renderer->GetAllocatorCallback(), &buffer) != VK_SUCCESS)
+        if (vkCreateBuffer(vkDevice->GetDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
         }
@@ -102,9 +103,9 @@ namespace SceneryEditorX
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = vkDevice->FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, renderer->GetAllocatorCallback(), &bufferMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Memory Allocator", "Failed to allocate buffer memory!");
         }
@@ -118,8 +119,8 @@ namespace SceneryEditorX
     {
 		for (size_t i = 0; i < RenderData::framesInFlight; i++)
 		{
-            vkDestroyBuffer(vkDevice->GetDevice(), indexBuffer, renderer->GetAllocatorCallback());
-            vkFreeMemory(vkDevice->GetDevice(), indexBufferMemory, renderer->GetAllocatorCallback());
+            vkDestroyBuffer(vkDevice->GetDevice(), indexBuffer, nullptr);
+            vkFreeMemory(vkDevice->GetDevice(), indexBufferMemory, nullptr);
 		}
     }
 
@@ -146,8 +147,8 @@ namespace SceneryEditorX
 
         CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
-        vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, renderer->GetAllocatorCallback());
-        vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, renderer->GetAllocatorCallback());
+        vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
+        vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
     }
 
     // ----------------------------------------------------------
@@ -156,8 +157,8 @@ namespace SceneryEditorX
     {
 		for (size_t i = 0; i < RenderData::framesInFlight; i++)
 		{
-            vkDestroyBuffer(vkDevice->GetDevice(), vertexBuffer, renderer->GetAllocatorCallback());
-            vkFreeMemory(vkDevice->GetDevice(), vertexBufferMemory, renderer->GetAllocatorCallback());
+            vkDestroyBuffer(vkDevice->GetDevice(), vertexBuffer, nullptr);
+            vkFreeMemory(vkDevice->GetDevice(), vertexBufferMemory, nullptr);
 		}
     }
 
@@ -186,8 +187,8 @@ namespace SceneryEditorX
 
         CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
-        vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, renderer->GetAllocatorCallback());
-        vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, renderer->GetAllocatorCallback());
+        vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
+        vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
     }
 
 /*
@@ -260,7 +261,9 @@ namespace SceneryEditorX
 
     Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
     {
-        VkPhysicalDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice();
+        VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
+
+		// ---------------------------------------------------------
 
 		if (usage & BufferUsage::Vertex)
             usage |= BufferUsage::TransferDst;
@@ -271,9 +274,7 @@ namespace SceneryEditorX
         if (usage & BufferUsage::Storage)
 		{
 		    usage |= BufferUsage::Address;
-            size += size % GraphicsEngine::GetCurrentDevice()
-                               ->GetPhysicalDevice()
-                               ->Selected().deviceProperties.limits.minStorageBufferOffsetAlignment;
+            size += size % GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->Selected().deviceProperties.limits.minStorageBufferOffsetAlignment;
 		}
 
 		if (usage & BufferUsage::AccelerationStructureInput)
@@ -310,21 +311,24 @@ namespace SceneryEditorX
 
         if (usage & BufferUsage::Storage)
         {
+            BindlessResources::bindlessDescriptorSet = bindlessDescript;
+
             resource->resourceID = ImageID::availBufferRID.back();
             ImageID::availBufferRID.pop_back();
+
             VkDescriptorBufferInfo descriptorInfo = {};
             VkWriteDescriptorSet write = {};
             descriptorInfo.buffer = resource->buffer;
             descriptorInfo.offset = 0;
             descriptorInfo.range = size;
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = bindlessDescriptorSet;
+            write.dstSet = BindlessResources::bindlessDescriptorSet;
             write.dstBinding = 1;
             write.dstArrayElement = buffer.ResourceID();
             write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             write.descriptorCount = 1;
             write.pBufferInfo = &descriptorInfo;
-            vkUpdateDescriptorSets(vkDevice->GetDevice(), 1, &write, 0, nullptr);
+            vkUpdateDescriptorSets(GraphicsEngine::GetCurrentDevice()->GetDevice(), 1, &write, 0, nullptr);
         }
 
         return buffer;

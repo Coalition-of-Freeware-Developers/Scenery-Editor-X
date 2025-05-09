@@ -10,7 +10,7 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-
+#include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <SceneryEditorX/vulkan/vk_pipelines.h>
 
 /// -------------------------------------------------------
@@ -66,8 +66,8 @@ namespace SceneryEditorX
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-        auto bindingDescription = Vertex::getBindingDescription();
-        auto attributeDescriptions = Vertex::getAttributeDescriptions();
+        auto bindingDescription = VertexBuffer::Vertex::getBindingDescription();
+        auto attributeDescriptions = VertexBuffer::Vertex::getAttributeDescriptions();
 
         vertexInputInfo.vertexBindingDescriptionCount = 1;
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -201,7 +201,7 @@ namespace SceneryEditorX
         pipeline = VK_NULL_HANDLE;
         pipelineLayout = VK_NULL_HANDLE;
     }
-	+
+
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------

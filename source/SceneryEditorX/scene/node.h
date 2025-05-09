@@ -100,7 +100,8 @@ namespace SceneryEditorX
 	    glm::vec3 GetWorldFront();
 	    static glm::mat4 ComposeTransform(const glm::vec3 &pos,
 	                                      const glm::vec3 &rot,
-	                                      const glm::vec3 &scl, const glm::mat4 &parent = glm::mat4(1));
+	                                      const glm::vec3 &scl,
+										  const glm::mat4 &parent = glm::mat4(1));
 
 	private:
 

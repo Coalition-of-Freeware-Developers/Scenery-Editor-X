@@ -22,11 +22,11 @@
 
 
 template <>
-struct std::hash<SceneryEditorX::Vertex>
+struct std::hash<SceneryEditorX::MeshVertex>
 {
-    size_t operator()(const SceneryEditorX::Vertex &vertex) const noexcept
+    size_t operator()(const SceneryEditorX::MeshVertex &vertex) const noexcept
     {
-        size_t h1 = hash<glm::vec3>()(vertex.pos);
+        size_t h1 = hash<glm::vec3>()(vertex.position);
         size_t h2 = hash<glm::vec3>()(vertex.color);
         size_t h3 = hash<glm::vec2>()(vertex.texCoord);
         return h1 ^ (h2 << 1) ^ (h3 << 2); // Combine the hashes
@@ -54,6 +54,9 @@ namespace SceneryEditorX
         /// Get editor configuration
         EditorConfig config;
 
+		//TODO: Setup the model loading process to use the editor config and EDX format
+        //TODO: Add loading X-Plane models dynamically from X-Plane 12 librarys
+
         /// Construct the model path using the modelFolder from config
         std::string modelPath = config.modelFolder + "/viking_room.obj";
 
@@ -72,14 +75,14 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
 
-        std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+        std::unordered_map<MeshVertex, uint32_t> uniqueVertices{};
 
         for (const auto &shape : shapes)
         {
             for (const auto &index : shape.mesh.indices)
             {
-                Vertex vertex{};
-                vertex.pos = {
+                MeshVertex vertex{};
+                vertex.position = {
                     attrib.vertices[3 * index.vertex_index + 0],
                     attrib.vertices[3 * index.vertex_index + 1],
                     attrib.vertices[3 * index.vertex_index + 2]
@@ -92,7 +95,7 @@ namespace SceneryEditorX
                 {
                     /// Convert Vertex to MeshVertex
                     MeshVertex meshVertex{};
-                    meshVertex.position = {vertex.pos.x, vertex.pos.y, vertex.pos.z};
+                    meshVertex.position = {vertex.position.x, vertex.position.y, vertex.position.z};
                     meshVertex.texCoord = {vertex.texCoord.x, vertex.texCoord.y};
                     meshVertex.color = {vertex.color.x, vertex.color.y, vertex.color.z};
 
