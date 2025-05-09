@@ -22,74 +22,185 @@
 namespace SceneryEditorX
 {
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
+	/**
+	 * @struct VulkanAllocatorData
+	 * @brief Stores data about Vulkan memory allocations and usage statistics.
+	 * 
+	 * This structure maintains the main VMA allocator object and tracks memory usage metrics
+	 * including allocated bytes, freed bytes, allocation counts, and peak memory usage.
+	 * It serves as the primary interface to the Vulkan Memory Allocator (VMA) library.
+	 */
 	struct VulkanAllocatorData
 	{
+	    /** @brief VMA allocator instance used for all memory operations */
 	    VmaAllocator Allocator;
-        uint64_t BytesAllocated = 0; // all heaps
-        uint64_t BytesFreed = 0;
-        uint64_t CurrentAllocations = 0;
-        uint64_t PeakMemoryUsage = 0;
+	
+	    /** @brief Total bytes allocated across all memory heaps */
+	    uint64_t BytesAllocated = 0;
+	
+	    /** @brief Total bytes freed since allocator creation */
+	    uint64_t BytesFreed = 0;
+	
+	    /** @brief Number of currently active allocations */
+	    uint64_t CurrentAllocations = 0;
+	
+	    /** @brief Highest recorded memory usage in bytes */
+	    uint64_t PeakMemoryUsage = 0;
 	};
 
+    /**
+     * @brief Per memory type statistics tracking array.
+     * 
+     * This array stores memory allocation statistics for each Vulkan memory type.
+     * Each element corresponds to a specific memory type index (up to VK_MAX_MEMORY_TYPES)
+     * and tracks metrics like bytes allocated, bytes freed, and allocation counts
+     * for that specific memory type.
+     * 
+     * This data is used for detailed reporting, memory usage optimization, 
+     * and identifying which memory types are under the most pressure.
+     */
     std::array<VulkanAllocatorData, VK_MAX_MEMORY_TYPES> memoryTypeStats;
 
+	/**
+	 * @brief Static global instance of the Vulkan memory allocator data.
+	 * 
+	 * This pointer holds the singleton instance of VulkanAllocatorData that contains
+	 * the VMA allocator and related memory statistics. It's initialized in the 
+	 * MemoryAllocator::Init() method and destroyed in MemoryAllocator::Shutdown().
+	 * 
+	 * The singleton pattern allows multiple components to access the same allocator
+	 * instance throughout the application without having to pass it explicitly.
+	 * This is particularly important for utility functions like those in the
+	 * VulkanMemoryUtils namespace.
+	 */
 	static VulkanAllocatorData *memAllocatorData = nullptr;
-	enum class AllocationType : uint8_t
-	{
-	    None = 0,
-	    Buffer = 1,
-	    Image = 2
-	};
+
+
+	/**
+	 * @enum AllocationType
+	 * @brief Categorizes the type of Vulkan memory allocation.
+	 * 
+	 * This enumeration distinguishes between different types of GPU allocations,
+	 * which affects how they're tracked and managed by the memory allocator.
+	 * Different allocation types may have different memory requirements,
+	 * defragmentation characteristics, and usage patterns.
+	 */
+    enum class AllocationType : uint8_t
+    {
+        None = 0,   /** @brief No allocation type specified */
+        Buffer = 1, /** @brief Buffer allocation (uniform buffers, vertex buffers, etc.) */
+        Image = 2   /** @brief Image allocation (textures, render targets, etc.) */
+    };
 	
+	/**
+	 * @struct AllocInfo
+	 * @brief Tracks information about a Vulkan memory allocation.
+	 * 
+	 * This structure is used internally by the memory allocator to keep track of
+	 * metadata about each allocation, including its size and type (buffer or image).
+	 * This information is necessary for memory statistics, defragmentation decisions,
+	 * and proper cleanup when allocations are freed.
+	 */
 	struct AllocInfo
 	{
-	    uint64_t AllocatedSize = 0;
-	    AllocationType Type = AllocationType::None;
+        uint64_t AllocatedSize = 0;                 /** @brief Size of the allocation in bytes */
+	    AllocationType Type = AllocationType::None; /** @brief Type of the allocation (buffer, image, etc.) */
 	};
-	
+
+	/**
+	 * @brief Global map tracking information about all active allocations.
+	 * 
+	 * This map maintains a record of all current allocations managed by the VulkanMemoryAllocator.
+	 * Each entry maps a VmaAllocation handle to its corresponding AllocInfo structure,
+	 * which contains metadata about the allocation such as its size and type.
+	 * 
+	 * The map is used for:
+	 * - Tracking memory usage statistics
+	 * - Properly cleaning up resources during deallocation
+	 * - Identifying candidate allocations for defragmentation
+	 * - Supporting debug and profiling operations
+	 * 
+	 * This is a global static instance shared across all memory allocation operations.
+	 */
 	static std::map<VmaAllocation, AllocInfo> AllocationMap;
 
-	// ---------------------------------------------------------
+	/// ---------------------------------------------------------
 
+    /**
+     * @brief Constructs a memory allocator with the given tag.
+     * 
+     * Creates a new memory allocator instance with a specified tag name
+     * for identification and logging purposes. The tag helps track
+     * allocations from different systems within the application.
+     * 
+     * @param tag A string identifier for this allocator instance
+     */
     MemoryAllocator::MemoryAllocator(std::string tag) : Tag_(std::move(tag)) {}
+
+    /**
+     * @brief Destroys the memory allocator instance.
+     * 
+     * Virtual destructor that ensures proper cleanup of derived allocator types.
+     * The actual Vulkan memory cleanup happens in the Shutdown() method, which
+     * must be called explicitly before destruction.
+     */
     MemoryAllocator::~MemoryAllocator() = default;
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
+
+    /**
+     * @brief Initializes the Vulkan memory allocator for efficient GPU memory management.
+     * 
+     * This function creates and configures the Vulkan Memory Allocator (VMA) instance
+     * that will handle all memory allocations for buffers, images, and other GPU resources.
+     * VMA provides efficient memory management, minimizes fragmentation, and optimizes 
+     * allocation strategies based on usage patterns.
+     * 
+     * The function:
+     * 1. Sets up the core allocator configuration with the physical device, logical device, and instance
+     * 2. Configures optional features like buffer device address support when available
+     * 3. Provides function pointers for dynamic Vulkan function loading
+     * 4. Creates the memory allocator instance
+     * 
+     * Once initialized, all Vulkan memory allocations should be handled through this allocator
+     * rather than directly through vkAllocateMemory for optimal performance and resource management.
+     */
     void VulkanDevice::InitializeMemoryAllocator()
     {
         SEDX_CORE_TRACE_TAG("Vulkan Device", "Initializing Vulkan Memory Allocator");
 
-        // Create VMA (Vulkan Memory Allocator) instance
+        /// Create VMA (Vulkan Memory Allocator) instance
         VmaAllocatorCreateInfo allocatorCreateInfo = {};
         allocatorCreateInfo.physicalDevice = vkPhysDevice->GetGPUDevice();
         allocatorCreateInfo.device = device;
         allocatorCreateInfo.instance = vkInstance;
 
-        // Set up flags
+        /// Set up flags
         allocatorCreateInfo.flags = 0;
 
-        // Enable buffer device address if available
+        /// Enable buffer device address if available
         if (vkGetBufferDeviceAddressKHR != nullptr)
         {
             allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
         }
 
-        // Use a descriptor pool for memory allocation if needed
-        // allocatorCreateInfo.pAllocationCallbacks = allocator;
+        /// Use a descriptor pool for memory allocation if needed
+        /// allocatorCreateInfo.pAllocationCallbacks = allocator;
 
-        // Create VMA allocator
+        /// Create VMA allocator
         VmaVulkanFunctions vulkanFunctions = {};
         vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
         vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
         allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
 
-        // Create the memory allocator
+        /// Create the memory allocator
         memoryAllocator = CreateRef<MemoryAllocator>();
 
         SEDX_CORE_TRACE_TAG("Vulkan Device", "Vulkan Memory Allocator initialized successfully");
     }
+
 
 	/**
 	 * @brief Begins a defragmentation process for GPU memory

@@ -10,7 +10,12 @@
 * Created: 8/4/2025
 * -------------------------------------------------------
 */
+// ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
+#include <glm/vec2.hpp>
+#include <SceneryEditorX/platform/platform_states.h>
+#include <vector>
+#include <vulkan/vulkan_core.h>
 
 // -------------------------------------------------------
 
@@ -207,70 +212,173 @@ namespace SceneryEditorX
 
     // -----------------------------------------------------------
 
-	struct Extensions
-	{
-	    std::vector<bool> activeExtensions;
-	    std::vector<const char *> requiredExtensions = {
-				VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-				VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-				VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-				VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
-	    };
-		const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-		std::vector<VkExtensionProperties> availableExtensions;
+	/**
+	* @brief Manages Vulkan extension requirements and availability
+	* 
+	* This structure contains information about required and available Vulkan extensions.
+	* It tracks which extensions are active, which ones are required for the application,
+	* and maintains lists of extensions available on the system.
+	*/
+    struct Extensions
+    {
+        /** @brief Indicates which extensions are active (true) or inactive (false) */
+        std::vector<bool> activeExtensions;
+
+        /** @brief List of extension names that are required by the application
+	     *
+	     * These extensions are considered essential for the application to function properly:
+	     * - VK_KHR_SWAPCHAIN_EXTENSION_NAME: Required for presenting rendered images to display
+	     * - VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME: Required for ray tracing acceleration structures
+	     * - VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME: Required for asynchronous operations
+	     * - VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME: Required for atomic operations on floating-point values
+	     */
+        std::vector<const char *> requiredExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                                                        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+                                                        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+                                                        VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME};
+
+        /** @brief List of device extensions that must be supported
+	     *
+	     * At minimum, the swapchain extension is required for rendering to the screen
+	     */
+        const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+        /** @brief List of extensions available on the physical device */
+        std::vector<VkExtensionProperties> availableExtensions;
+
+        /** @brief List of extensions available at the instance level */
         std::vector<VkExtensionProperties> instanceExtensions;
 
-		uint32_t extensionCount = 0;
-	};
+        /** @brief Count of available extensions */
+        uint32_t extensionCount = 0;
+    };
 
-	struct Layers
-	{
-		std::vector<bool> activeLayers;
-	    std::vector<const char *> validationLayer = {"VK_LAYER_KHRONOS_validation"};
-	    std::vector<const char *> activeLayersNames;
-		std::vector<VkLayerProperties> layers;
 
-	    uint32_t layerCount = 0;
-	};
+	/**
+	 * @brief Manages Vulkan validation layers for debugging and validation purposes
+	 * 
+	 * This structure contains information about available and active Vulkan validation layers.
+	 * Validation layers provide debug information, error checking, and validation during
+	 * development to help catch API usage errors and performance issues.
+	 */
+    struct Layers
+    {
+        /** @brief Tracks which validation layers are active (true) or inactive (false) */
+        std::vector<bool> activeLayers;
+
+        /** @brief Standard validation layer for Vulkan debugging
+		 *  
+		 * Includes the Khronos validation layer which contains most validation functionality:
+		 * - Parameter validation
+		 * - Object lifetime tracking
+		 * - Thread safety validation
+		 * - API state validation
+		 * - Shader validation
+		 */
+        std::vector<const char *> validationLayer = {"VK_LAYER_KHRONOS_validation"};
+
+        /** @brief Names of layers that are currently activated in the application */
+        std::vector<const char *> activeLayersNames;
+
+        /** @brief Properties of all available Vulkan validation layers on the system */
+        std::vector<VkLayerProperties> layers;
+
+        /** @brief Count of available validation layers */
+        uint32_t layerCount = 0;
+    };
+
 
     // -----------------------------------------------------------
 
+    /**
+     * @brief Base class for all render-able resources in the graphics system.
+     *
+     * The Resource class serves as a foundation for all resources that can be 
+     * tracked and managed by the rendering system. It provides basic identification
+     * through a name and a unique resource ID.
+     *
+     * Resources include objects such as textures, buffers, shaders, and other
+     * GPU-related assets that need to be managed throughout their lifecycle.
+     */
     struct Resource
     {
+        /** @brief Descriptive name of the resource for debugging and tracking */
         std::string name;
+
+        /** @brief Unique identifier for the resource (-1 indicates unassigned) */
         int32_t resourceID = -1;
+
+        /** @brief Virtual destructor to ensure proper cleanup of derived resources */
         virtual ~Resource() = default;
     };
 
+
+    /**
+     * @brief Manages bindless resource descriptors for efficient GPU resource access
+     * 
+     * Bindless resources allow the GPU to access a large number of resources (textures, buffers, etc.)
+     * without rebinding descriptor sets between draw calls. This enables more efficient rendering
+     * by reducing API overhead and state changes.
+     * 
+     * This structure maintains the Vulkan descriptor sets and pools required for bindless
+     * resource access, as well as defines the maximum number of resources that can be
+     * referenced in shaders without rebinding.
+     */
     struct BindlessResources
     {
+        /**
+         * @brief Defines the types of resources that can be accessed in a bindless fashion
+         * 
+         * Used to categorize different resource types that require different descriptor bindings.
+         */
         enum BindlessType : uint8_t
         {
-            TEXTURE,
-            BUFFER,
-            TLAS,
-            STORAGE_IMAGE
+            TEXTURE,      ///< Regular texture resources (sampled images)
+            BUFFER,       ///< Storage or uniform buffer resources
+            TLAS,         ///< Top Level Acceleration Structure for ray tracing
+            STORAGE_IMAGE ///< Images that support read/write operations in shaders
         };
 
+        /** @brief Descriptor pool used for ImGui interface elements */
         VkDescriptorPool imguiDescriptorPool = VK_NULL_HANDLE;
+
+        /** @brief The descriptor set containing all bindless resources */
         VkDescriptorSet bindlessDescriptorSet = VK_NULL_HANDLE;
+
+        /** @brief Descriptor pool from which the bindless descriptor set is allocated */
         VkDescriptorPool bindlessDescriptorPool = VK_NULL_HANDLE;
+
+        /** @brief Layout defining the organization of descriptors within the bindless set */
         VkDescriptorSetLayout bindlessDescriptorLayout = VK_NULL_HANDLE;
 
+        /** @brief Maximum number of storage buffers or storage texel buffers that can be accessed */
         const uint32_t MAX_STORAGE = 8192;
+
+        /** @brief Maximum number of sampled images (textures) that can be accessed */
         const uint32_t MAX_SAMPLED_IMAGES = 8192;
+
+        /** @brief Maximum number of storage images that can be accessed for read/write operations */
         const uint32_t MAX_STORAGE_IMAGES = 8192;
     };
 
+
     // -----------------------------------------------------------
 
+    /**
+     * @brief Enumeration of Vulkan queue family types used in the rendering system
+     * 
+     * Vulkan uses different queue families to execute different types of operations.
+     * This enum provides a type-safe way to identify and reference these queue families
+     * throughout the rendering system.
+     */
     enum QueueFamilyType : uint8_t
     {
-        Graphics = 0,
-        Compute,
-        Transfer,
-        Present,
+        Graphics = 0, ///< Graphics queue family for rendering operations and drawing commands
+        Compute,      ///< Compute queue family for compute shader and general computation operations
+        Transfer,     ///< Transfer queue family dedicated to memory transfer operations
+        Present,      ///< Present queue family for presenting rendered images to the display surface
     };
+
 
     struct CommandResources
     {
@@ -286,97 +394,251 @@ namespace SceneryEditorX
         std::vector<std::string> timeStampNames;
     };
 
+    /**
+     * @brief Represents a Vulkan queue and its associated command resources.
+     * 
+     * InternalQueue encapsulates a Vulkan queue along with its family index and a collection
+     * of associated command resources. It provides the foundation for managing Vulkan command
+     * execution across different queue types (graphics, compute, transfer, etc.).
+     * 
+     * Each queue can have multiple associated command resources allowing for parallel command
+     * buffer recording and submission, which is particularly useful when implementing 
+     * multithreaded rendering operations.
+     */
     struct InternalQueue
     {
+        /** @brief Queue family index to which this queue belongs (-1 indicates uninitialized) */
         int family = -1;
+
+        /** @brief Handle to the Vulkan queue object */
         VkQueue queue = nullptr;
+
+        /**
+         * @brief Collection of command resources associated with this queue.
+         * 
+         * Each CommandResources instance can contain command pools, buffers, and synchronization
+         * primitives required for command execution on this queue. Multiple command resources
+         * enable parallel command recording from different threads.
+         */
         std::vector<CommandResources> commands;
     };
 
+
     // -----------------------------------------------------------
 
-	struct Viewport
-	{
+	/**
+	 * @brief Represents a viewport for rendering in the scene editor.
+	 * 
+	 * The Viewport structure encapsulates all data related to a rendering viewport, including 
+	 * its dimensions, position, aspect ratio, and associated Vulkan resources. This structure
+	 * is used to configure and manage separate viewports for scene editing, allowing multiple 
+	 * views into the same scene with different perspectives or visualization modes.
+	 */
+    struct Viewport
+    {
+        /** @brief Dimensions of the viewport in integer vector format */
         glm::ivec2 viewportSize = {64, 64};
 
-	    [[nodiscard]] glm::ivec2 GetViewportSize() const {return viewportSize;}
+        /** 
+	     * @brief Retrieves the current viewport dimensions
+	     * @return The width and height of the viewport as a glm::ivec2
+	     */
+        [[nodiscard]] glm::ivec2 GetViewportSize() const
+        {
+            return viewportSize;
+        }
 
+        /** @brief X-coordinate of the viewport's top-left corner in pixels */
         uint32_t x = 0;
+
+        /** @brief Y-coordinate of the viewport's top-left corner in pixels */
         uint32_t y = 0;
+
+        /** @brief Width of the viewport in pixels */
         uint32_t width = 0;
+
+        /** @brief Height of the viewport in pixels */
         uint32_t height = 0;
+
+        /** @brief Aspect ratio of the viewport (width/height) for camera projection */
         float aspectRatio = 0.0f;
 
+        /** @brief Vulkan image resource for rendering the viewport contents */
         VkImage viewportImage = VK_NULL_HANDLE;
+
+        /** @brief View into the viewport image resource for shader access */
         VkImageView viewportImageView = VK_NULL_HANDLE;
+
+        /** @brief Vulkan render pass for rendering to this viewport */
         VkRenderPass viewportRenderPass = VK_NULL_HANDLE;
+
+        /** @brief Framebuffer associated with this viewport for rendering */
         VkFramebuffer viewportFramebuffer = VK_NULL_HANDLE;
+
+        /** @brief Device memory allocation for the viewport image */
         VkDeviceMemory viewportImageMemory = VK_NULL_HANDLE;
 
+        /** @brief Flag indicating whether the mouse is currently hovering over the viewport */
         bool viewportHovered = false;
+
+        /** @brief Flag indicating whether the viewport has been resized and needs updating */
         bool viewportResized = false;
-	};
+    };
+
 
     // -------------------------------------------------------
 
-	struct LightingData
-	{
+    /**
+     * @brief Stores lighting configuration data for the renderer.
+     * 
+     * The LightingData structure maintains settings related to scene lighting
+     * and shadow rendering. It controls how many light sources are active in the scene
+     * and the quality settings for shadow maps.
+     */
+    struct LightingData
+    {
+        /** @brief Number of active lights in the scene */
         int numLights = 0;
+
+        /** @brief Dimension of shadow maps in pixels (both width and height) */
         int shadowMapSize = 1024;
+
+        /** @brief Number of samples used for shadow map filtering/anti-aliasing */
         int shadowMapSamples = 4;
-	};
+    };
+
 
     // -------------------------------------------------------
 
-	struct RenderData
-	{
-	    uint32_t width = 0;
-	    uint32_t height = 0;
+    /**
+	 * @brief Core rendering configuration and state information for the renderer.
+	 * 
+	 * The RenderData structure serves as a central repository for renderer state, configuration,
+	 * and capabilities. It maintains information about the rendering surface dimensions,
+	 * swap chain configuration, frame timing, hardware capabilities, and various rendering
+	 * settings used throughout the rendering pipeline.
+	 * 
+	 * This structure is shared across different components of the renderer to ensure
+	 * consistent access to rendering parameters and state.
+	 */
+    struct RenderData
+    {
+        /** @brief Current width of the rendering surface in pixels */
+        uint32_t width = 0;
+
+        /** @brief Current height of the rendering surface in pixels */
+        uint32_t height = 0;
+
+        /** @brief Number of mipmap levels for textures in the rendering pipeline */
         uint32_t mipLevels = 0;
+
+        /** @brief Index of the current frame being rendered in the application's main loop */
         uint32_t currentFrame = 0;
+
+        /** @brief Global constant for the current swap chain image being rendered to */
         GLOBAL const uint32_t imageIndex = 0;
+
+        /** @brief Global constant for the current frame index in the frame cycle */
         GLOBAL const uint32_t frameIndex = 0;
+
+        /** @brief Maximum number of frames that can be processed simultaneously (triple buffering) */
         GLOBAL const uint32_t framesInFlight = 3;
-		uint32_t maxImageCount;
+
+        /** @brief Maximum number of images that can be used in the swap chain */
+        uint32_t maxImageCount;
+
+        /** @brief Number of additional images beyond the minimum required by the swap chain */
         uint32_t additionalImages = 0;
+
+        /** @brief Index of the current frame within the swap chain's cycle */
         uint32_t swapChainCurrentFrame = 0;
 
+        /** @brief Hardware vendor name of the GPU device */
         std::string Vendor;
+
+        /** @brief Name of the GPU device being used */
         std::string Device;
+
+        /** @brief Driver version information */
         std::string Version;
+
+        /** @brief Vulkan API version supported by the device */
         uint32_t apiVersion;
 
-		[[nodiscard]] bool GetSwapChainDirty() const {return swapChainDirty;}
+        /**
+		 * @brief Check if the swap chain needs to be recreated
+		 * @return True if the swap chain is marked as dirty and needs rebuilding
+		 */
+        [[nodiscard]] bool GetSwapChainDirty() const
+        {
+            return swapChainDirty;
+        }
 
-		bool swapChainDirty = false;
+        /** @brief Flag indicating if the swap chain needs to be recreated (e.g., after window resize) */
+        bool swapChainDirty = false;
+
+        /** @brief Flag indicating if the framebuffer has been resized and needs updating */
         bool framebufferResized = true;
 
-		VkFormat swapChainImageFormat;
-		VkSampler baseSampler;
+        /** @brief Format of the swap chain images (e.g., VK_FORMAT_B8G8R8A8_UNORM) */
+        VkFormat swapChainImageFormat;
+
+        /** @brief Default sampler used for texture sampling */
+        VkSampler baseSampler;
+
+        /** @brief Current dimensions of the swap chain surface */
         VkExtent2D swapChainExtent;
+
+        /** @brief Supported sample counts for multisampling */
         VkSampleCountFlags sampleCounts;
+
+        /** @brief Current MSAA sample count for rendering */
         VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        /** @brief Maximum MSAA sample count supported by the hardware */
         VkSampleCountFlagBits maxSamples = VK_SAMPLE_COUNT_1_BIT;
 
+        /** @brief Optional index of the graphics queue family */
         std::optional<uint32_t> graphicsFamily;
+
+        /** @brief Optional index of the presentation queue family */
         std::optional<uint32_t> presentFamily;
 
-		int cameras = 0;
-	    int viewports = 0;
+        /** @brief Number of active cameras in the scene */
+        int cameras = 0;
+
+        /** @brief Number of active viewports for rendering */
+        int viewports = 0;
+
+        /** @brief Flag indicating if vertical synchronization is enabled */
         bool VSync = false;
+
+        /** @brief Flag indicating if temporal anti-aliasing is enabled */
         bool taaEnabled = false;
+
+        /** @brief Flag indicating if temporal anti-aliasing should use reconstruction */
         bool taaReconstruct = false;
 
+        /**
+		 * @brief Check if the renderer has all required queue families
+		 * @return True if both graphics and present queue families are available
+		 */
         [[nodiscard]] bool IsComplete() const
         {
             return graphicsFamily.has_value() && presentFamily.has_value();
         }
 
+        /**
+		 * @brief Check if a given format includes a stencil component
+		 * @param format The Vulkan format to check
+		 * @return True if the format includes a stencil component
+		 */
         GLOBAL bool HasStencilComponent(const VkFormat format)
         {
             return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
         }
-	};
+    };
+
 
 } // namespace SceneryEditorX
 

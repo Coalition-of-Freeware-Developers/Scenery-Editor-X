@@ -19,14 +19,148 @@
 
 namespace SceneryEditorX
 {
+
+	/**
+	 * @brief Creates a Vulkan buffer with specified parameters
+	 * 
+	 * This function handles the creation of a Vulkan buffer with appropriate memory allocation using VMA.
+	 * It automatically applies usage flags based on the buffer's intended purpose and handles memory
+	 * alignment requirements for different buffer types.
+	 * 
+	 * The function performs the following:
+	 * 1. Adjusts usage flags based on the provided buffer usage type
+	 * 2. Adds transfer destination flags for vertex and index buffers
+	 * 3. Handles special requirements for storage buffers and acceleration structures
+	 * 4. Creates the buffer with VMA memory allocation
+	 * 5. Sets up descriptor updates for storage buffers
+	 * 
+	 * @param size   Size of the buffer in bytes
+	 * @param usage  Flags specifying how the buffer will be used
+	 * @param memory Memory property flags for the buffer allocation
+	 * @param name   Optional name for the buffer (for debugging purposes)
+	 * 
+	 * @return       A Buffer structure containing the created buffer and its metadata
+	 */
+	Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
+	{
+	    /// Get the allocator from the current device
+	    VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
+	
+	    // ---------------------------------------------------------
+	    
+	    /// Add transfer destination flag for vertex buffers
+	    if (usage & BufferUsage::Vertex)
+	        usage |= BufferUsage::TransferDst;
+	    
+	    /// Add transfer destination flag for index buffers
+	    if (usage & BufferUsage::Index)
+	        usage |= BufferUsage::TransferDst;
+	    
+	    /// Handle storage buffers - add address flag and align size
+	    if (usage & BufferUsage::Storage)
+	    {
+	        usage |= BufferUsage::Address;
+	        /// Align storage buffer size to minimum required alignment
+	        size += size % GraphicsEngine::GetCurrentDevice()
+	                           ->GetPhysicalDevice()
+	                           ->Selected()
+	                           .deviceProperties.limits.minStorageBufferOffsetAlignment;
+	    }
+	    
+	    /// Handle acceleration structure input buffers
+	    if (usage & BufferUsage::AccelerationStructureInput)
+	    {
+	        usage |= BufferUsage::Address;
+	        usage |= BufferUsage::TransferDst;
+	    }
+	    
+	    /// Handle acceleration structure buffers
+	    if (usage & BufferUsage::AccelerationStructure)
+	        usage |= BufferUsage::Address;
+	    
+	    /// Create buffer resource
+	    Ref<BufferResource> resource = CreateRef<BufferResource>();
+	    
+	    /// Configure buffer creation info
+	    VkBufferCreateInfo bufferInfo{};
+	    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	    bufferInfo.size = size;
+	    bufferInfo.usage = static_cast<VkBufferUsageFlagBits>(usage);
+	    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	    
+	    /// Configure memory allocation info
+	    VmaAllocationCreateInfo allocInfo = {};
+	    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	    /// Enable memory mapping for CPU-accessible buffers
+	    if (memory & CPU)
+	        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+	    
+	    /// Create the buffer with VMA
+	    SEDX_ASSERT(
+	        vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, &resource->buffer, &resource->allocation, nullptr));
+	    
+	    /// Create and populate the buffer wrapper
+	    Buffer buffer = {
+	        .bufferResource = resource,
+	        .size = size,
+	        .usage = usage,
+	        .memory = memory,
+	    };
+	    
+	    /// Handle storage buffer descriptors for bindless access
+	    if (usage & BufferUsage::Storage)
+	    {
+	        BindlessResources bindlessDescript;
+	        
+	        /// Get a resource ID from the available pool
+	        resource->resourceID = ImageID::availBufferRID.back();
+	        ImageID::availBufferRID.pop_back();
+	        
+	        /// Set up descriptor info for the storage buffer
+	        VkDescriptorBufferInfo descriptorInfo;
+	        VkWriteDescriptorSet write = {};
+	        descriptorInfo.buffer = resource->buffer;
+	        descriptorInfo.offset = 0;
+	        descriptorInfo.range = size;
+	        
+	        /// Configure descriptor write operation
+	        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	        write.dstSet = bindlessDescript.bindlessDescriptorSet;
+	        write.dstBinding = 1;
+	        write.dstArrayElement = buffer.ResourceID();
+	        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	        write.descriptorCount = 1;
+	        write.pBufferInfo = &descriptorInfo;
+	        
+	        /// Update descriptor set with buffer info
+	        vkUpdateDescriptorSets(GraphicsEngine::GetCurrentDevice()->GetDevice(), 1, &write, 0, nullptr);
+	    }
+	    
+	    return buffer;
+	}
+
+    // ----------------------------------------------------------
+
+	/**
+	 * @brief Destroys uniform buffer resources
+	 * 
+	 * This destructor properly cleans up Vulkan resources allocated for uniform buffers:
+	 * 1. Iterates through all buffers created for each frame in flight
+	 * 2. Destroys each VkBuffer handle
+	 * 3. Frees the associated device memory allocation
+	 * 
+	 * This ensures proper resource cleanup and prevents memory leaks when the
+	 * UniformBuffer object is destroyed.
+	 */
 	UniformBuffer::~UniformBuffer()
     {
-		for (size_t i = 0; i < RenderData::framesInFlight; i++)
+		for (size_t i = 0; i < data.framesInFlight; i++)
 		{
             vkDestroyBuffer(vkDevice->GetDevice(), uniformBuffers[i], nullptr);
             vkFreeMemory(vkDevice->GetDevice(), uniformBuffersMemory[i], nullptr);
 		}
 	}
+
 
 	/**
 	 * @brief Updates the uniform buffer for the current frame
@@ -52,7 +186,7 @@ namespace SceneryEditorX
         UBO uniformBuff;
         uniformBuff.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         uniformBuff.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        uniformBuff.proj = glm::perspective(glm::radians(45.0f),vkSwapChain->GetSwapExtent().width / static_cast<float>(vkSwapChain->GetSwapExtent().height),0.1f,10.0f);
+        uniformBuff.proj = glm::perspective(glm::radians(45.0f),gfxEngine->get()->GetSwapChain()->GetSwapExtent().width / static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().height),0.1f,10.0f);
         uniformBuff.proj[1][1] *= -1;
 
         void *data;
@@ -62,15 +196,24 @@ namespace SceneryEditorX
         vkUnmapMemory(vkDevice->GetDevice(), uniformBuffersMemory[currentImage]);
     }
 
-
-
+    /**
+     * @brief Creates uniform buffers for each frame in flight
+     * 
+     * This method initializes uniform buffers needed for shader uniform data:
+     * 1. Resizes storage vectors to match the number of frames in flight
+     * 2. Allocates one uniform buffer per frame with appropriate memory flags
+     * 3. Ensures buffers are host-visible and coherent for efficient CPU updates
+     * 
+     * The uniform buffers are sized according to the UniformBuffer structure size and
+     * are configured for efficient CPU-to-GPU data transfer. Each buffer in the sequence
+     * corresponds to a specific frame in flight, preventing race conditions during rendering.
+     */
     void UniformBuffer::CreateUniformBuffers()
     {
+        uniformBuffers.resize(data.framesInFlight);
+        uniformBuffersMemory.resize(data.framesInFlight);
 
-        uniformBuffers.resize(RenderData::framesInFlight);
-        uniformBuffersMemory.resize(RenderData::framesInFlight);
-
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
+        for (size_t i = 0; i < data.framesInFlight; i++)
         {
             VkDeviceSize bufferSize = sizeof(UniformBuffer);
             CreateBuffer(bufferSize,
@@ -79,6 +222,7 @@ namespace SceneryEditorX
                          uniformBuffers[i], uniformBuffersMemory[i]);
         }
     }
+
 
 	void UniformBuffer::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory) const
     {
@@ -117,7 +261,7 @@ namespace SceneryEditorX
 
     IndexBuffer::~IndexBuffer()
     {
-		for (size_t i = 0; i < RenderData::framesInFlight; i++)
+		for (size_t i = 0; i < data.framesInFlight; i++)
 		{
             vkDestroyBuffer(vkDevice->GetDevice(), indexBuffer, nullptr);
             vkFreeMemory(vkDevice->GetDevice(), indexBufferMemory, nullptr);
@@ -155,7 +299,7 @@ namespace SceneryEditorX
 
     VertexBuffer::~VertexBuffer()
     {
-		for (size_t i = 0; i < RenderData::framesInFlight; i++)
+		for (size_t i = 0; i < data.framesInFlight; i++)
 		{
             vkDestroyBuffer(vkDevice->GetDevice(), vertexBuffer, nullptr);
             vkFreeMemory(vkDevice->GetDevice(), vertexBufferMemory, nullptr);
@@ -259,80 +403,7 @@ namespace SceneryEditorX
     }
 	*/
 
-    Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
-    {
-        VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
 
-		// ---------------------------------------------------------
-
-		if (usage & BufferUsage::Vertex)
-            usage |= BufferUsage::TransferDst;
-
-        if (usage & BufferUsage::Index)
-            usage |= BufferUsage::TransferDst;
-
-        if (usage & BufferUsage::Storage)
-		{
-		    usage |= BufferUsage::Address;
-            size += size % GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->Selected().deviceProperties.limits.minStorageBufferOffsetAlignment;
-		}
-
-		if (usage & BufferUsage::AccelerationStructureInput)
-		{
-		    usage |= BufferUsage::Address;
-		    usage |= BufferUsage::TransferDst;
-		}
-
-		if (usage & BufferUsage::AccelerationStructure)
-            usage |= BufferUsage::Address;
-
-		const Ref<BufferResource> resource = CreateRef<BufferResource>(size, usage, memory, name);
-
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = static_cast<VkBufferUsageFlagBits>(usage);
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		VmaAllocationCreateInfo allocInfo = {};
-        allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-        if (memory & MemoryType::CPU)
-            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-        auto result = vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, &resource->buffer, &resource->allocation, nullptr);
-        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
-
-        Buffer buffer = {
-            .resource = resource,
-            .size = size,
-            .usage = usage,
-            .memory = memory,
-        };
-
-        if (usage & BufferUsage::Storage)
-        {
-            BindlessResources::bindlessDescriptorSet = bindlessDescript;
-
-            resource->resourceID = ImageID::availBufferRID.back();
-            ImageID::availBufferRID.pop_back();
-
-            VkDescriptorBufferInfo descriptorInfo = {};
-            VkWriteDescriptorSet write = {};
-            descriptorInfo.buffer = resource->buffer;
-            descriptorInfo.offset = 0;
-            descriptorInfo.range = size;
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = BindlessResources::bindlessDescriptorSet;
-            write.dstBinding = 1;
-            write.dstArrayElement = buffer.ResourceID();
-            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            write.descriptorCount = 1;
-            write.pBufferInfo = &descriptorInfo;
-            vkUpdateDescriptorSets(GraphicsEngine::GetCurrentDevice()->GetDevice(), 1, &write, 0, nullptr);
-        }
-
-        return buffer;
-    }
 
 } // namespace SceneryEditorX
 

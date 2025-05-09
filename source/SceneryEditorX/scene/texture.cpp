@@ -22,12 +22,12 @@ namespace SceneryEditorX
 
 	TextureAsset::TextureAsset(const std::string &path)
 	{
-	    Load(path);
+        TextureAsset::Load(path);
 	}
 	
 	TextureAsset::~TextureAsset()
 	{
-	    Unload();
+        TextureAsset::Unload();
 	}
 
 	void TextureAsset::Load(const std::string &path)

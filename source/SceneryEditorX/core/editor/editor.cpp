@@ -290,6 +290,7 @@ namespace SceneryEditorX
 	
 	void EditorApplication::DrawFrame()
 	{
+        /// Check if the viewport size has changed
         if (viewportData.viewportSize.x != newViewportSize.x || viewportData.viewportSize.y != newViewportSize.y)
 	    {
 	        if (newViewportSize.x > 0 && newViewportSize.y > 0)

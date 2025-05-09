@@ -61,7 +61,7 @@ namespace SceneryEditorX
 		/// Getter methods
 		uint32_t GetWidth() const { return renderData.width; }
 		uint32_t GetHeight() const { return renderData.height; }
-        GLOBAL uint32_t GetImageIndex() { return RenderData::imageIndex; }
+        uint32_t GetImageIndex() const { return renderData.imageIndex; }
 		VkFormat GetColorFormat() const { return colorFormat; }
 		VkFormat GetDepthFormat() const { return depthFormat; }
 		VkRenderPass GetRenderPass() const { return renderPass; }

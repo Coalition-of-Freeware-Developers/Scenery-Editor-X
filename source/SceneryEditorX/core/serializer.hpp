@@ -15,7 +15,7 @@
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/scene/asset_manager.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {

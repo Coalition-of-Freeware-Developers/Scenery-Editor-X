@@ -70,7 +70,7 @@ namespace SceneryEditorX
 		LOCAL VkInstance GetInstance() { return vkInstance; }
 
         VkSampler CreateSampler(float maxLod);
-        VkSampler GetSampler() { return vkDevice->GetSampler(); }
+        VkSampler GetSampler() const { return vkDevice->GetSampler(); }
         void WaitIdle(const Ref<VulkanDevice> &device);
 
         [[nodiscard]] const VkAllocationCallbacks *GetAllocatorCallback() const { return allocator; }

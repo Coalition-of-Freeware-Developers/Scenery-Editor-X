@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * buffer_data.h
@@ -63,11 +63,19 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
+    /**
+     * @brief Safely destroys a Vulkan buffer and frees its associated memory allocation
+     * 
+     * This utility function handles the clean destruction of a VkBuffer object and its
+     * associated VMA allocation. It performs safety checks to ensure valid resources
+     * before attempting destruction.
+     * 
+     * @param buffer The VkBuffer handle to destroy
+     * @param allocation The VmaAllocation associated with the buffer to free
+     */
     namespace VulkanMemoryUtils
     {
-
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
-
     }
 
     // -------------------------------------------------------
@@ -81,30 +89,133 @@ namespace SceneryEditorX
     };
 	*/
 
+    /**
+     * @struct BufferResource
+     * @brief Resource wrapper for Vulkan buffers with memory management
+     * 
+     * BufferResource encapsulates a Vulkan buffer handle and its associated memory allocation.
+     * It inherits from Resource to integrate with the engine's resource management system
+     * and provides automatic cleanup through the destructor.
+     */
     struct BufferResource : Resource
     {
-        VkBuffer buffer;
+        /**
+         * @brief Vulkan buffer handle
+         * 
+         * The underlying VkBuffer object used by the graphics API
+         */
+        VkBuffer buffer = VK_NULL_HANDLE;
+
+        /**
+         * @brief VMA memory allocation associated with this buffer
+         * 
+         * Managed by the Vulkan Memory Allocator (VMA) library
+         */
         VmaAllocation allocation;
 
+        /**
+         * @brief Native Vulkan device memory handle
+         * 
+         * Direct reference to the underlying VkDeviceMemory, typically managed by VMA
+         */
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+
+        /**
+         * @brief Destroys the buffer and frees its memory allocation
+         * 
+         * Automatically called when the resource is destroyed, ensuring proper cleanup
+         * of Vulkan resources to prevent memory leaks.
+         */
         virtual ~BufferResource() override
         {
             VulkanMemoryUtils::DestroyBuffer(buffer, allocation);
         }
     };
 
+    /**
+     * @struct Buffer
+     * @brief Wrapper class for Vulkan buffer objects with associated memory
+     * 
+     * This class encapsulates a Vulkan buffer along with its memory allocation details,
+     * providing a convenient interface for buffer management. It stores metadata about
+     * the buffer's size, usage flags, memory type, and mapped status.
+     */
     struct Buffer
     {
-        std::shared_ptr<BufferResource> resource;
-        uint32_t size;
+        /**
+         * @brief Logical device that owns this buffer.
+         * 
+         * Reference to the Vulkan device handle that created this buffer.
+         */
+        VkDevice device;
+
+        /**
+         * @brief Resource handle for the underlying buffer object.
+         * 
+         * Contains the actual VkBuffer handle and memory allocation.
+         */
+        Ref<BufferResource> bufferResource;
+
+        /**
+         * @brief Size of the buffer in bytes
+         */
+        VkDeviceSize size = 0;
+
+        /**
+         * @brief Memory alignment requirement for the buffer.
+         * 
+         * The buffer data will be aligned to this boundary in memory.
+         */
+        VkDeviceSize alignment = 0;
+
+        /**
+         * @brief Buffer usage flags defining how this buffer can be used.
+         * 
+         * Combination of BufferUsage flags (vertex, index, uniform, etc.)
+         * @see BufferUsage
+         */
         BufferUsageFlags usage;
+
+        /**
+         * @brief Memory type flags specifying where the buffer is allocated.
+         * 
+         * Determines if the buffer is in GPU-only memory, CPU-accessible memory, etc.
+         * @see MemoryType
+         */
         MemoryFlags memory;
+
+        /**
+         * @brief Pointer to mapped memory region.
+         * 
+         * Null when the buffer is not mapped to CPU-accessible memory.
+         */
+        void *mapped = nullptr;
+
+        /**
+         * @brief Usage flags to be filled by external source at buffer creation (to query at some later point).
+         */
+        VkBufferUsageFlags usageFlags;
+
+        /**
+         * @brief Memory property flags to be filled by external source at buffer creation (to query at some later point).
+         */
+        VkMemoryPropertyFlags memoryPropertyFlags;
+
+        /**
+         * @brief Get the Resource ID of the buffer resource.
+         * @return uint32_t Resource ID.
+         */
         [[nodiscard]] uint32_t ResourceID() const;
     };
 
+    /**
+     * @brief Get the Resource ID of the buffer resource.
+     * @return uint32_t Resource ID.
+     */
     inline uint32_t Buffer::ResourceID() const
     {
-        SEDX_ASSERT(resource->resourceID != -1, "Invalid buffer rid");
-        return static_cast<uint32_t>(resource->resourceID);
+        SEDX_ASSERT(bufferResource->resourceID != -1, "Invalid buffer rid");
+        return static_cast<uint32_t>(bufferResource->resourceID);
     }
 
 }  // namespace SceneryEditorX

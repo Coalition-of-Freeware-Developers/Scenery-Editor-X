@@ -24,6 +24,7 @@ namespace SceneryEditorX
 	// ------------------------------------------------
 
 	/**
+	 * @class Time
 	 * @brief Time management class for tracking delta time, FPS, and providing timers.
 	 *
 	 * This class provides functionality for retrieving system time, application time,

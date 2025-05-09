@@ -608,7 +608,7 @@ namespace SceneryEditorX
         {
             VkBufferDeviceAddressInfo scratchInfo{};
             scratchInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-            scratchInfo.buffer = scratchBuffer.resource->buffer;
+            scratchInfo.buffer = scratchBuffer.bufferResource->buffer;
             scratchAddress = vkGetBufferDeviceAddressKHR(device, &scratchInfo);
         }
     }
@@ -1303,7 +1303,7 @@ namespace SceneryEditorX
 
         /// Create buffer object
         Buffer buffer = {
-            .resource = resource,
+            .bufferResource = resource,
             .size = size,
             .usage = usage,
             .memory = memory

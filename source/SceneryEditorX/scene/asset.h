@@ -76,7 +76,7 @@ namespace SceneryEditorX
         virtual void Serialize(Serializer &ser) override = 0;
         virtual void Load(const std::string &path) = 0;
         virtual void Unload() = 0;
-        //virtual void SetName(const std::string &name) = 0;
+        virtual void SetName(const std::string &name) = 0;
     };
 
 } // namespace SceneryEditorX
