@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
@@ -51,14 +51,17 @@ namespace SceneryEditorX::IO
         static std::vector<char> ReadFile(const std::string &filename);
 
         /**
-         * @brief
+         * @brief 
+         *
+         * This function opens the specified file and writes the provided data to it.
+         * @return true if the file was written successfully.
+         * @return false if the file was not written successfully.
          */
         static void GetAppData();
 
-
 	};
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 	class FileDialogs
 	{
@@ -67,7 +70,7 @@ namespace SceneryEditorX::IO
 		GLOBAL std::string OpenFile(const char* filter);
 		GLOBAL std::string SaveFile(const char* filter);
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         LOCAL bool IsTexture(const std::filesystem::path &path);
         LOCAL bool IsModel(const std::filesystem::path &path);
@@ -76,7 +79,7 @@ namespace SceneryEditorX::IO
         LOCAL void WriteFileBytes(const std::filesystem::path &path, const std::vector<uint8_t> &content);
         GLOBAL void WriteFile(const std::filesystem::path &path, const std::string &content);
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 		/*
         uint64_t Import(const std::filesystem::path &path, AssetManager &assets);
         uint64_t ImportModel(const std::filesystem::path &path, const AssetManager &assets);
@@ -86,7 +89,7 @@ namespace SceneryEditorX::IO
         uint64_t ImportFBX(const std::filesystem::path &path, const AssetManager &assets);
         uint64_t Import3DS(const std::filesystem::path &path, const AssetManager &assets);
         */
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         GLOBAL void ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t);
         //LOCAL uint64_t ImportTexture(const std::filesystem::path &path, AssetManager &assets);
@@ -94,7 +97,6 @@ namespace SceneryEditorX::IO
 
 	};
 
-	
 } // namespace SceneryEditorX::IO
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

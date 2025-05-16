@@ -11,9 +11,8 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/platform/editor_config.hpp>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/vulkan/vk_render_pass.h>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
+#include <SceneryEditorX/vulkan/vk_render_pass.h>
 
 // -------------------------------------------------------
 
@@ -21,20 +20,19 @@ namespace SceneryEditorX
 {
 	RenderPass::~RenderPass()
 	{
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
-        {
-            vkDestroyBuffer(vkDevice->GetDevice(), uniformBuffers[i], allocator);
-            vkFreeMemory(vkDevice->GetDevice(), uniformBuffersMemory[i], allocator);
-        }
-
-        vkDestroyBuffer(vkDevice->GetDevice(), vertexBuffer, allocator);
-        vkFreeMemory(vkDevice->GetDevice(), vertexBufferMemory, allocator);
-
-	    if (renderPass != VK_NULL_HANDLE)
+        if (renderPass != VK_NULL_HANDLE && gfxEngine->GetLogicDevice()->GetDevice())
 	    {
-	        vkDestroyRenderPass(vkDevice->GetDevice(), renderPass, gfxEngine->GetAllocatorCallback());
+	        vkDestroyRenderPass(gfxEngine->GetLogicDevice()->GetDevice(), renderPass, 
+	                           (gfxEngine != nullptr) ? gfxEngine->GetAllocatorCallback() : nullptr);
 	        renderPass = VK_NULL_HANDLE;
 	    }
+	    
+	    // The buffer resources should be managed by their respective classes
+	    // UniformBuffer, VertexBuffer, and IndexBuffer each have their own destructors
+	    // that handle resource cleanup. If you need to explicitly clean up these resources,
+	    // you should store instances of these classes as members of RenderPass and let
+	    // their destructors handle the cleanup automatically, or provide explicit clean-up
+	    // methods that you can call here.
 	}
 
 	void RenderPass::CreateRenderPass()
@@ -106,121 +104,8 @@ namespace SceneryEditorX
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
 
-        if (vkCreateRenderPass(vkDevice->GetDevice(), &renderPassInfo, gfxEngine->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
-        {
+        if (vkCreateRenderPass(gfxEngine->GetLogicDevice()->GetDevice(), &renderPassInfo, gfxEngine->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create render pass!");
-            ErrMsg("failed to create render pass!");
-        }
-	}
-
-    void GraphicsEngine::RenderFrame()
-    {
-        UI::GUI guiInstance;
-
-        vkWaitForFences(vkDevice->GetDevice(), 1, &inFlightFences[renderData.currentFrame], VK_TRUE, UINT64_MAX);
-
-        // -------------------------------------------------------
-
-        uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(vkDevice->GetDevice(),
-                                                vkSwapChain->swapChain,
-                                                UINT64_MAX,
-                                                imageAvailableSemaphores[renderData.currentFrame],
-                                                VK_NULL_HANDLE,
-                                                &imageIndex);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-        {
-            SEDX_CORE_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkAcquireNextImageKHR - recreating swap chain");
-            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
-            return;
-        }
-        else if (result == VK_SUBOPTIMAL_KHR)
-        {
-            SEDX_CORE_INFO("VK_SUBOPTIMAL_KHR returned from vkAcquireNextImageKHR - continuing with render");
-        }
-        else if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to acquire swap chain image: {}", ToString(result));
-        }
-
-        /// Check if a Resize has been requested through the Window class
-        if (Window::GetFramebufferResized())
-        {
-            SEDX_CORE_INFO("Framebuffer Resize detected from Window class");
-            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
-            return;
-        }
-
-        RenderPass::UpdateUniformBuffer(renderData.currentFrame);
-
-        vkResetFences(vkDevice->GetDevice(), 1, &inFlightFences[renderData.currentFrame]);
-
-        vkResetCommandBuffer(commandBuffers[renderData.currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
-        RecordCommandBuffer(commandBuffers[renderData.currentFrame], imageIndex);
-
-        // -------------------------------------------------------
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-        VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[renderData.currentFrame]};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[renderData.currentFrame];
-
-        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[renderData.currentFrame]};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
-
-        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[renderData.currentFrame]) != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to submit draw command buffer");
-            throw std::runtime_error("failed to submit draw command buffer!");
-        }
-
-        // -------------------------------------------------------
-
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = {vkSwapChain->swapChain};
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-        presentInfo.pImageIndices = &imageIndex;
-
-        // -------------------------------------------------------
-
-        result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-        {
-            SEDX_CORE_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkQueuePresentKHR - recreating swap chain");
-            renderData.framebufferResized = false;
-            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
-        }
-        else if (result == VK_SUBOPTIMAL_KHR)
-        {
-            SEDX_CORE_INFO("VK_SUBOPTIMAL_KHR returned from vkQueuePresentKHR - recreating swap chain");
-            renderData.framebufferResized = false;
-            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
-        }
-        else if (Window::GetFramebufferResized())
-        {
-            SEDX_CORE_INFO("Window framebuffer Resize flag set - recreating swap chain");
-            renderData.framebufferResized = false;
-            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
-        }
-        else if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to present swap chain image: {}", ToString(result));
-        }
-
-        renderData.currentFrame = (renderData.currentFrame + 1) % RenderData::framesInFlight;
     }
 
 	void RenderPass::CreateDescriptorSets()
@@ -236,10 +121,8 @@ namespace SceneryEditorX
         allocInfo.pSetLayouts = layouts.data();
 
         descriptorSets.resize(RenderData::framesInFlight);
-        if (vkAllocateDescriptorSets(vkDevice->GetDevice(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
-        {
+        if (vkAllocateDescriptorSets(gfxEngine->GetLogicDevice()->GetDevice(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate descriptor sets!");
-        }
 
         // -------------------------------------------------------
 
@@ -281,14 +164,133 @@ namespace SceneryEditorX
 
             // -------------------------------------------------------
 
-            vkUpdateDescriptorSets(vkDevice->GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+            vkUpdateDescriptorSets(gfxEngine->GetLogicDevice()->GetDevice(), descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
         }
 
         // -------------------------------------------------------
     }
 
+	void RenderPass::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const
+    {
+        Ref<VulkanPhysicalDevice> physicalDevice;
+        /// Check if image format supports linear blitting
+        VkFormatProperties formatProperties;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice->GetGPUDevice(), imageFormat, &formatProperties);
+
+        if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+            SEDX_CORE_ERROR_TAG("Texture", "Texture image format does not support linear blitting!");
+
+        cmdBuffer->Begin(Queue::Graphics);
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.image = image;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+        barrier.subresourceRange.levelCount = 1;
+
+        int32_t mipWidth = texWidth;
+        int32_t mipHeight = texHeight;
+
+        for (uint32_t i = 1; i < mipLevels; i++)
+        {
+            barrier.subresourceRange.baseMipLevel = i - 1;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+            vkCmdPipelineBarrier(cmdBuffer->GetActiveCommandBuffer(),
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0,
+                                 0,
+                                 nullptr,
+                                 0,
+                                 nullptr,
+                                 1,
+                                 &barrier);
+
+            VkImageBlit blit{};
+            blit.srcOffsets[0] = {.x = 0,.y = 0,.z = 0};
+            blit.srcOffsets[1] = {.x = mipWidth,.y = mipHeight,.z = 1};
+            blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.srcSubresource.mipLevel = i - 1;
+            blit.srcSubresource.baseArrayLayer = 0;
+            blit.srcSubresource.layerCount = 1;
+            blit.dstOffsets[0] = {.x = 0,.y = 0,.z = 0};
+            blit.dstOffsets[1] = {.x = mipWidth > 1 ? mipWidth / 2 : 1,.y = mipHeight > 1 ? mipHeight / 2 : 1,.z = 1};
+            blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.dstSubresource.mipLevel = i;
+            blit.dstSubresource.baseArrayLayer = 0;
+            blit.dstSubresource.layerCount = 1;
+
+            vkCmdBlitImage(cmdBuffer->GetActiveCommandBuffer(),
+                           image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           1,
+                           &blit,
+                           VK_FILTER_LINEAR);
+
+            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            vkCmdPipelineBarrier(cmdBuffer->GetActiveCommandBuffer(),
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                 0,
+                                 0,
+                                 nullptr,
+                                 0,
+                                 nullptr,
+                                 1,
+                                 &barrier);
+
+            if (mipWidth > 1)
+                mipWidth /= 2;
+            if (mipHeight > 1)
+                mipHeight /= 2;
+        }
+
+        barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(cmdBuffer->GetActiveCommandBuffer(),
+                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                             0,
+                             0,
+                             nullptr,
+                             0,
+                             nullptr,
+                             1,
+                             &barrier);
+
+        //EndSingleTimeCommands(cmdBuffer->GetActiveCommandBuffer());
+
+        /// Create a submit info structure
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        /// No wait semaphores needed for this operation
+        submitInfo.waitSemaphoreCount = 0;
+        submitInfo.pWaitSemaphores = nullptr;
+        submitInfo.pWaitDstStageMask = nullptr;
+
+        cmdBuffer->End(submitInfo);
+    }
+
     void RenderPass::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                                     VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory)
+                                     VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const
     {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -305,25 +307,21 @@ namespace SceneryEditorX
         imageInfo.samples = numSamples;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateImage(vkDevice->GetDevice(), &imageInfo, gfxEngine->GetAllocatorCallback(), &image) != VK_SUCCESS)
-        {
+        if (vkCreateImage(gfxEngine->GetLogicDevice()->GetDevice(), &imageInfo, gfxEngine->GetAllocatorCallback(), &image) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create image!");
-        }
 
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(vkDevice->GetDevice(), image, &memRequirements);
+        vkGetImageMemoryRequirements(gfxEngine->GetLogicDevice()->GetDevice(), image, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = vkDevice->FindMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = GraphicsEngine::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, gfxEngine->GetAllocatorCallback(), &imageMemory) != VK_SUCCESS)
-        {
+        if (vkAllocateMemory(gfxEngine->GetLogicDevice()->GetDevice(), &allocInfo, gfxEngine->GetAllocatorCallback(), &imageMemory) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate image memory!");
-        }
 
-        vkBindImageMemory(vkDevice->GetDevice(), image, imageMemory, 0);
+        vkBindImageMemory(gfxEngine->GetLogicDevice()->GetDevice(), image, imageMemory, 0);
     }
 
 } // namespace SceneryEditorX

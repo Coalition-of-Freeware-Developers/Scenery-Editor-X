@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/vulkan/vk_device.h>
 #include <vulkan/vulkan.h>
 
@@ -18,8 +19,22 @@
 
 namespace SceneryEditorX
 {
-	struct SoftwareStats;
+    /// Forward declarations
 
+    class VulkanDevice;
+    struct SoftwareStats;
+
+    /// -------------------------------------------------------
+
+	/**
+	 * @struct MemoryPool
+	 * @brief Represents a memory pool for efficient allocation.
+	 *
+	 * This structure encapsulates a Vulkan memory pool, its block size,
+	 * minimum alignment, and the associated VMA pool create info.
+	 * It is used to manage memory allocations for buffers and images
+	 * in a more efficient manner by grouping similar allocations together.
+	 */
     struct MemoryPool
     {
         VkDeviceSize blockSize;
@@ -44,9 +59,19 @@ namespace SceneryEditorX
     constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;       // 256KB
     constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024; // 1MB
     constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024; // 16MB
+    /// This is now just a default value and will be overridden by settings
+    constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024; // 16MB
 
     /// ---------------------------------------------------------
 
+    /**
+	 * @class MemoryAllocator
+	 * @brief Manages Vulkan memory allocations using VMA.
+	 *
+	 * This class provides a high-level interface for managing GPU memory allocations
+	 * using the Vulkan Memory Allocator (VMA). It handles buffer and image allocations,
+	 * defragmentation, and memory usage statistics.
+	 */
     class MemoryAllocator
     {
     public:
@@ -63,6 +88,15 @@ namespace SceneryEditorX
 
 		/// ---------------------------------------------------------
 
+		/**
+		 * @struct AllocationStats
+		 * @brief Represents memory allocation statistics.
+		 *
+		 * This structure contains information about the total bytes allocated,
+		 * used bytes, allocation count, and fragmentation ratio.
+		 *
+		 * @note This structure is used to monitor memory usage and
+		 */
         struct AllocationStats
         {
             uint64_t totalBytes;
@@ -75,6 +109,10 @@ namespace SceneryEditorX
         void PrintDetailedStats() const;
         void ResetStats();
 
+        /**
+         * @enum AllocationStrategy
+         * @brief Defines strategies for memory allocation.
+         */
         enum class AllocationStrategy : uint8_t
         {
             Default,        /// Let VMA decide
@@ -88,8 +126,32 @@ namespace SceneryEditorX
         bool ContainsAllocation(VmaAllocation allocation) const;
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
 
+        /**
+		 * @brief Gets the current custom buffer size
+		 * @return The custom buffer size in bytes
+		 */
+        static VkDeviceSize GetCustomBufferSize();
+
+		/**
+		 * @brief Sets the custom buffer size if the device supports it
+		 * @param size The desired buffer size in bytes
+		 * @param device Reference to the Vulkan device
+		 * @return true if set successfully, false if unsupported
+		 */
+		static bool SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device);
+
         /// ---------------------------------------------------------
 
+		/**
+		 * @struct MemoryBudget
+		 * @brief Represents memory budget information.
+		 *
+		 * This structure contains information about the total memory,
+		 * used memory, usage percentage, and whether the budget is exceeded.
+		 *
+		 * @note This structure is used to monitor memory usage and
+		 * to trigger warnings if the usage exceeds a certain threshold.
+		 */
 		struct MemoryBudget
         {
             uint64_t totalBytes;
@@ -107,6 +169,16 @@ namespace SceneryEditorX
 
 		/// ---------------------------------------------------------
 
+		/**
+		 * @struct BatchBufferAllocation
+		 * @brief Represents a batch buffer allocation.
+		 *
+		 * This structure encapsulates a Vulkan buffer, its associated VMA allocation,
+		 * and the size of the buffer. It is used for batch allocation of buffers
+		 * to improve performance and reduce fragmentation.
+		 *
+		 * @note This structure is used internally by the MemoryAllocator class.
+		 */
         struct BatchBufferAllocation
         {
             VkBuffer buffer;
@@ -129,6 +201,11 @@ namespace SceneryEditorX
 
 		/// ---------------------------------------------------------
 
+		/**
+		 * @tparam T
+		 * @fn MapMemory
+		 * @brief Maps memory for a given allocation.
+		 */
 		template<typename T>
 		T* MapMemory(const VmaAllocation allocation)
 		{
@@ -140,10 +217,10 @@ namespace SceneryEditorX
 		/// ---------------------------------------------------------
 
         void UnmapMemory(VmaAllocation allocation);
-        GLOBAL VmaAllocator GetMemAllocator();
+        static VmaAllocator GetMemAllocator();
 
-		GLOBAL void Init(Ref<VulkanDevice> device);
-		GLOBAL void Shutdown();
+		static void Init(const Ref<VulkanDevice> &device);
+		static void Shutdown();
 
 		/// ---------------------------------------------------------
 
@@ -173,6 +250,7 @@ namespace SceneryEditorX
         /// Helper function to align buffer sizes for better caching
         [[nodiscard]] VkDeviceSize AlignBufferSize(VkDeviceSize size) const;
 
+		static VkDeviceSize customBufferSize;
     };
 
 } // namespace SceneryEditorX

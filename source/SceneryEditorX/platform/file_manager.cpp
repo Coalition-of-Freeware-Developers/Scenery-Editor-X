@@ -22,12 +22,12 @@
 #include <tiny_obj_loader.h>
 #include "editor_config.hpp"
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
 	/*
 	std::string FileDialogs::OpenFile(const char* filter)
@@ -196,7 +196,7 @@ namespace SceneryEditorX::IO
 	 * and returns the vector. It uses the 'ate' flag to start reading at the end of the file
 	 * to determine the file size, then reads the file from the beginning.
 	 * 
-	 * @param path
+	 * @param path The path of the file to read.
 	 * @param filename The name of the file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the file.
 	*/

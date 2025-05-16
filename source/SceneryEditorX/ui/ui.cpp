@@ -450,7 +450,7 @@ namespace SceneryEditorX::UI
         ImGui::End();
     }
 
-    bool GUI::InitViewport(const glm::ivec2 &size, VkImageView imageView)
+    bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
     {
         if (!initialized)
         {
@@ -461,7 +461,7 @@ namespace SceneryEditorX::UI
         return true;
     }
 
-    void GUI::ViewportWindow(glm::ivec2 &size, bool &hovered, VkImageView imageView)
+    void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView)
     {
         if (!initialized || !visible || !viewportInitialized)
         {
@@ -474,7 +474,7 @@ namespace SceneryEditorX::UI
 
         /// Get content region size
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-        size = {static_cast<int>(viewportSize.x), static_cast<int>(viewportSize.y)};
+        size = {viewportSize.x, viewportSize.y};
         hovered = ImGui::IsWindowHovered();
 
         /// Display the image view as a texture

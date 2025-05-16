@@ -17,7 +17,7 @@
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
@@ -624,69 +624,105 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    /*
-    void GraphicsEngine::createInstance()
+    void GraphicsEngine::RenderFrame()
     {
-        if (enableValidationLayers && !CheckValidationLayerSupport())
+        UI::GUI guiInstance;
+
+        vkWaitForFences(vkDevice->GetDevice(), 1, &inFlightFences[renderData.currentFrame], VK_TRUE, UINT64_MAX);
+
+        // -------------------------------------------------------
+
+        uint32_t imageIndex;
+        VkResult result = vkAcquireNextImageKHR(vkDevice->GetDevice(),
+                                                vkSwapChain->swapChain,
+                                                UINT64_MAX,
+                                                imageAvailableSemaphores[renderData.currentFrame],
+                                                VK_NULL_HANDLE,
+                                                &imageIndex);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            SEDX_CORE_ERROR_TAG("Graphics Engine","Validation layers requested, but not available!");
-            //ErrMsg("Validation layers requested, but not available!");
+            SEDX_CORE_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkAcquireNextImageKHR - recreating swap chain");
+            vkSwapChain->Create(Window::GetWidth(), Window::GetHeight(), renderData.VSync);
+            return;
+        }
+        if (result == VK_SUBOPTIMAL_KHR)
+            SEDX_CORE_INFO("VK_SUBOPTIMAL_KHR returned from vkAcquireNextImageKHR - continuing with render");
+        else if (result != VK_SUCCESS)
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to acquire swap chain image: {}", ToString(result));
+
+        /// Check if a Resize has been requested through the Window class
+        if (Window::GetFramebufferResized())
+        {
+            SEDX_CORE_INFO("Framebuffer Resize detected from Window class");
+            vkSwapChain->Create(Window::GetWidth(), Window::GetHeight(), renderData.VSync);
+            return;
         }
 
-        uint32_t layerCount = 0;
-        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-        layers.Resize(layerCount);
-        activeLayers.Resize(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+        uniformBuffer->UpdateUniformBuffer(renderData.currentFrame);
 
-        // get all available extensions
-        uint32_t extensionCount = 0;
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, 0);
-        instanceExtensions.Resize(extensionCount);
-        activeExtensions.Resize(extensionCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, instanceExtensions.data());
+        vkResetFences(vkDevice->GetDevice(), 1, &inFlightFences[renderData.currentFrame]);
 
-        // get api version
-        vkEnumerateInstanceVersion(&apiVersion);
+        vkResetCommandBuffer(commandBuffers[renderData.currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+        RecordCommandBuffer(commandBuffers[renderData.currentFrame], imageIndex);
 
-        VkApplicationInfo appInfo{};
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "Scenery Editor X";
-        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.pEngineName = "SEDX Editor Engine";
-        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_0;
+        // -------------------------------------------------------
 
-        VkInstanceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        createInfo.pApplicationInfo = &appInfo;
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        auto extensions = getRequiredExtensions();
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-        createInfo.ppEnabledExtensionNames = extensions.data();
+        VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[renderData.currentFrame]};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffers[renderData.currentFrame];
 
-        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-        if (enableValidationLayers)
+        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[renderData.currentFrame]};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        if (vkQueueSubmit(vkDevice->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[renderData.currentFrame]) != VK_SUCCESS)
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to submit draw command buffer");
+
+        // -------------------------------------------------------
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+
+        VkSwapchainKHR swapChains[] = {vkSwapChain->swapChain};
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapChains;
+        presentInfo.pImageIndices = &imageIndex;
+
+        // -------------------------------------------------------
+
+        result = vkQueuePresentKHR(vkDevice->GetPresentQueue(), &presentInfo);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-            createInfo.ppEnabledLayerNames = validationLayers.data();
-
-            PopulateDebugMsgCreateInfo(debugCreateInfo);
-            createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
+            SEDX_CORE_INFO("VK_ERROR_OUT_OF_DATE_KHR returned from vkQueuePresentKHR - recreating swap chain");
+            renderData.framebufferResized = false;
+            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
         }
-        else
+        else if (result == VK_SUBOPTIMAL_KHR)
         {
-            createInfo.enabledLayerCount = 0;
-            createInfo.pNext = nullptr;
+            SEDX_CORE_INFO("VK_SUBOPTIMAL_KHR returned from vkQueuePresentKHR - recreating swap chain");
+            renderData.framebufferResized = false;
+            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
         }
-
-        if (vkCreateInstance(&createInfo, allocator, &instance) != VK_SUCCESS)
+        else if (Window::GetFramebufferResized())
         {
-            SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to create instance!");
-            //ErrMsg("Failed to create graphics instance!");
+            SEDX_CORE_INFO("Window framebuffer Resize flag set - recreating swap chain");
+            renderData.framebufferResized = false;
+            vkSwapChain->Create(viewportData.width, viewportData.height, renderData.VSync);
         }
+        else if (result != VK_SUCCESS)
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to present swap chain image: {}", ToString(result));
+
+        renderData.currentFrame = (renderData.currentFrame + 1) % RenderData::framesInFlight;
     }
-    */
 
 	/*
 	void GraphicsEngine::pickPhysicalDevice()
@@ -1033,6 +1069,7 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor set layout!");
     }
 
+    /*
     void GraphicsEngine::CreateGraphicsPipeline()
     {
         /// Get editor configuration
@@ -1205,6 +1242,7 @@ namespace SceneryEditorX
         vkDestroyShaderModule(vkDevice->GetDevice(), fragShaderModule, nullptr);
         vkDestroyShaderModule(vkDevice->GetDevice(), vertShaderModule, nullptr);
     }
+    */
 
 	void GraphicsEngine::CreateFramebuffers()
     {
@@ -1477,6 +1515,7 @@ namespace SceneryEditorX
     }
     */
 
+	/*
 	void GraphicsEngine::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const
     {
         /// Check if image format supports linear blitting
@@ -1584,6 +1623,7 @@ namespace SceneryEditorX
 
         EndSingleTimeCommands(commandBuffer);
     }
+    */
 
 	/*
 	void GraphicsEngine::CreateColorResources()
@@ -1702,20 +1742,6 @@ namespace SceneryEditorX
 
         if (vkCreateSampler(vkDevice->GetDevice(), &samplerInfo, allocator, &textureSampler) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "failed to create texture sampler!");
-    }
-
-    VkShaderModule GraphicsEngine::CreateShaderModule(const std::vector<char> &code) const
-    {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
-
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(vkDevice->GetDevice(), &createInfo, allocator, &shaderModule) != VK_SUCCESS)
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create shader module!");
-
-        return shaderModule;
     }
 
     SwapChainDetails GraphicsEngine::QuerySwapChainSupport(VkPhysicalDevice device) const

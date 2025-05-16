@@ -174,6 +174,11 @@ ADD_SUBDIRECTORY(source/edX)
 ADD_SUBDIRECTORY(source/edX/testing)
 
 # --------------------------------
+# Crash Handler Service
+# --------------------------------
+ADD_SUBDIRECTORY(source/CrashHandler)
+
+# --------------------------------
 # X-PLANE SCENERY LIBRARY
 # --------------------------------
 ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
@@ -226,12 +231,12 @@ MESSAGE(STATUS "Generating precompiled headers")
 
 TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/xpeditor_pch.h)
 
-SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
+SET_PROPERTY(TARGET FormatTester CrashHandler PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary libconfig libconfig++ PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

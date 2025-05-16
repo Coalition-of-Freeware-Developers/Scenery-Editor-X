@@ -10,10 +10,11 @@
 * Created: 5/5/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/core/memory.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 
 // ----------------------------------------------------------
 
@@ -41,10 +42,10 @@ namespace SceneryEditorX
 	 * 
 	 * @return       A Buffer structure containing the created buffer and its metadata
 	 */
-	Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
+    static Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
 	    /// Get the allocator from the current device
-	    VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
+	    const VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
 	
 	    // ---------------------------------------------------------
 	    
@@ -96,8 +97,7 @@ namespace SceneryEditorX
 	        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 	    
 	    /// Create the buffer with VMA
-	    SEDX_ASSERT(
-	        vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, &resource->buffer, &resource->allocation, nullptr));
+	    SEDX_ASSERT(vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, &resource->buffer, &resource->allocation, nullptr));
 	    
 	    /// Create and populate the buffer wrapper
 	    Buffer buffer = {
@@ -139,6 +139,14 @@ namespace SceneryEditorX
 	    return buffer;
 	}
 
+    void *MapBuffer(Buffer &buffer)
+    {
+        SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
+		void *mappedData;
+		vmaMapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.bufferResource->allocation, &mappedData);
+		return mappedData;
+	}
+
     // ----------------------------------------------------------
 
 	/**
@@ -154,7 +162,7 @@ namespace SceneryEditorX
 	 */
 	UniformBuffer::~UniformBuffer()
     {
-		for (size_t i = 0; i < data.framesInFlight; i++)
+        for (size_t i = 0; i < renderData.framesInFlight; i++)
 		{
             vkDestroyBuffer(vkDevice->GetDevice(), uniformBuffers[i], nullptr);
             vkFreeMemory(vkDevice->GetDevice(), uniformBuffersMemory[i], nullptr);
@@ -186,7 +194,7 @@ namespace SceneryEditorX
         UBO uniformBuff;
         uniformBuff.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         uniformBuff.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        uniformBuff.proj = glm::perspective(glm::radians(45.0f),gfxEngine->get()->GetSwapChain()->GetSwapExtent().width / static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().height),0.1f,10.0f);
+        uniformBuff.proj = glm::perspective(glm::radians(45.0f),static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().width) / static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().height),0.1f,10.0f);
         uniformBuff.proj[1][1] *= -1;
 
         void *data;
@@ -210,73 +218,76 @@ namespace SceneryEditorX
      */
     void UniformBuffer::CreateUniformBuffers()
     {
-        uniformBuffers.resize(data.framesInFlight);
-        uniformBuffersMemory.resize(data.framesInFlight);
+        uniformBuffers.resize(renderData.framesInFlight);
+        uniformBuffersMemory.resize(renderData.framesInFlight);
 
-        for (size_t i = 0; i < data.framesInFlight; i++)
+        for (size_t i = 0; i < renderData.framesInFlight; i++)
         {
             VkDeviceSize bufferSize = sizeof(UniformBuffer);
-            CreateBuffer(bufferSize,
-                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                         uniformBuffers[i], uniformBuffersMemory[i]);
+            CreateBuffer(bufferSize, BufferUsage::Uniform, MemoryType::CPU, uniformBuffers[i], uniformBuffersMemory[i]);
         }
     }
 
-
+	/**
+	 * @brief Creates a Vulkan buffer with specified parameters
+	 * 
+	 * This method creates a Vulkan buffer and allocates device memory for it.
+	 * The process involves:
+	 * 1. Setting up buffer creation parameters
+	 * 2. Creating the buffer handle
+	 * 3. Retrieving memory requirements
+	 * 4. Allocating device memory based on those requirements
+	 * 5. Binding the memory to the buffer
+	 * 
+	 * The method handles error checking at critical steps and reports failures
+	 * through the engine's logging system.
+	 * 
+	 * @param size Size of the buffer in bytes
+	 * @param usage VkBufferUsageFlags indicating how the buffer will be used (e.g., uniform buffer)
+	 * @param properties Memory property flags (e.g., host visible, device local)
+	 * @param buffer Reference to store the created VkBuffer handle 
+	 * @param bufferMemory Reference to store the allocated VkDeviceMemory handle
+	 */
 	void UniformBuffer::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory) const
-    {
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(vkDevice->GetDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-        {
+	{
+	    VkBufferCreateInfo bufferInfo{};
+	    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	    bufferInfo.size = size;
+	    bufferInfo.usage = usage;
+	    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	
+	    if (vkCreateBuffer(vkDevice->GetDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
-        }
 
         // -------------------------------------------------------
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(vkDevice->GetDevice(), buffer, &memRequirements);
-
-        // -------------------------------------------------------
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = vkDevice->FindMemoryType(memRequirements.memoryTypeBits, properties);
-
-        if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-        {
+	
+	    VkMemoryRequirements memRequirements;
+	    vkGetBufferMemoryRequirements(vkDevice->GetDevice(), buffer, &memRequirements);
+	
+	    // -------------------------------------------------------
+	
+	    VkMemoryAllocateInfo allocInfo{};
+	    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	    allocInfo.allocationSize = memRequirements.size;
+	    allocInfo.memoryTypeIndex = vkDevice->FindMemoryType(memRequirements.memoryTypeBits, properties);
+	
+	    if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Memory Allocator", "Failed to allocate buffer memory!");
-        }
 
         vkBindBufferMemory(vkDevice->GetDevice(), buffer, bufferMemory, 0);
-    }
+	}
 
-    // ----------------------------------------------------------
+    /// ----------------------------------------------------------
 
-    IndexBuffer::~IndexBuffer()
-    {
-		for (size_t i = 0; i < data.framesInFlight; i++)
-		{
-            vkDestroyBuffer(vkDevice->GetDevice(), indexBuffer, nullptr);
-            vkFreeMemory(vkDevice->GetDevice(), indexBufferMemory, nullptr);
-		}
-    }
-
-    void IndexBuffer::CreateIndexBuffer()
+    void IndexBuffer::CreateIndexBuffer() const
     {
         VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+        VkBuffer stagingBuffer = nullptr;
+        VkDeviceMemory stagingBufferMemory = nullptr;
 
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        CreateBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                     stagingBuffer, stagingBufferMemory);
+		/// -----------------------------------
+
+        CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "IndexStaging#");
 
         void *data;
 
@@ -284,52 +295,71 @@ namespace SceneryEditorX
         memcpy(data, indices.data(), (size_t)bufferSize);
         vkUnmapMemory(vkDevice->GetDevice(), stagingBufferMemory);
 
-        CreateBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                     indexBuffer, indexBufferMemory);
+		//TODO: Add back the UUID when fully implemented.
+        CreateBuffer(bufferSize, BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage, MemoryType::GPU, "IndexBuffer#" /*+ std::to_string(asset->uuid)*/);
 
         CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+		/// -----------------------------------
 
         vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
         vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
     }
 
-    // ----------------------------------------------------------
+    /**
+     * @brief Destroys index buffer resources
+     * 
+     * This destructor properly cleans up Vulkan resources allocated for index buffers.
+     * It iterates through all frames in flight and ensures proper destruction of:
+     * - The VkBuffer handle with vkDestroyBuffer
+     * - The associated device memory with vkFreeMemory
+     * 
+     * Note: Current implementation appears to destroy the same buffer multiple times
+     * rather than using separate buffers per frame. This should be revisited to ensure
+     * proper cleanup of frame-specific resources if multiple buffers are used.
+     */
+    IndexBuffer::~IndexBuffer()
+    {
+        for (size_t i = 0; i < renderData.framesInFlight; i++)
+        {
+            vkDestroyBuffer(vkDevice->GetDevice(), indexBuffer, nullptr);
+            vkFreeMemory(vkDevice->GetDevice(), indexBufferMemory, nullptr);
+        }
+    }
+
+    /// ----------------------------------------------------------
 
     VertexBuffer::~VertexBuffer()
     {
-		for (size_t i = 0; i < data.framesInFlight; i++)
+        for (size_t i = 0; i < renderData.framesInFlight; i++)
 		{
             vkDestroyBuffer(vkDevice->GetDevice(), vertexBuffer, nullptr);
             vkFreeMemory(vkDevice->GetDevice(), vertexBufferMemory, nullptr);
 		}
     }
 
-    void VertexBuffer::CreateVertexBuffer()
+    void VertexBuffer::CreateVertexBuffer() const
     {
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+        VkBuffer stagingBuffer = nullptr;
+        VkDeviceMemory stagingBufferMemory = nullptr;
 
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        CreateBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                     stagingBuffer,
-                     stagingBufferMemory);
+	    /// --------------------------------------
+
+        CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "VertexStaging#");
 
         void *data;
         vkMapMemory(vkDevice->GetDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy(data, vertices.data(), (size_t)bufferSize);
         vkUnmapMemory(vkDevice->GetDevice(), stagingBufferMemory);
 
-        CreateBuffer(bufferSize,
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                     vertexBuffer,
-                     vertexBufferMemory);
+		/// --------------------------------------
+
+        CreateBuffer(bufferSize, BufferUsage::Vertex | BufferUsage::TransferDst, MemoryType::GPU, "VertexBuffer#");
 
         CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+		/// --------------------------------------
 
         vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
         vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
@@ -402,8 +432,6 @@ namespace SceneryEditorX
         vkFreeCommandBuffers(vkDevice->GetDevice(), cmdPool, 1, &commandBuffer);
     }
 	*/
-
-
 
 } // namespace SceneryEditorX
 

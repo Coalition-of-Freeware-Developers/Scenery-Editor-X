@@ -10,8 +10,10 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <SceneryEditorX/vulkan/vk_pipelines.h>
+#include <SceneryEditorX/vulkan/vk_descriptors.h>
 
 /// -------------------------------------------------------
 
@@ -39,8 +41,11 @@ namespace SceneryEditorX
 		auto vertShaderCode = IO::FileManager::ReadShaders(vertShaderPath);
 		auto fragShaderCode = IO::FileManager::ReadShaders(fragShaderPath);
 
-		VkShaderModule vertShaderModule = vkShaderPtr->CreateShaderModule(vertShaderCode);
-        VkShaderModule fragShaderModule = vkShaderPtr->CreateShaderModule(fragShaderCode);
+        // Store the shader so we can access it later with GetShader()
+        vkShaderPtr = vertShader;
+
+		VkShaderModule vertShaderModule = CreateShaderModule(device->GetDevice(), vertShaderCode);
+        VkShaderModule fragShaderModule = CreateShaderModule(device->GetDevice(), fragShaderCode);
 
 		/// -------------------------------------------------------
 
@@ -66,8 +71,8 @@ namespace SceneryEditorX
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-        auto bindingDescription = VertexBuffer::Vertex::getBindingDescription();
-        auto attributeDescriptions = VertexBuffer::Vertex::getAttributeDescriptions();
+        auto bindingDescription = Vertex::getBindingDescription();
+        auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
         vertexInputInfo.vertexBindingDescriptionCount = 1;
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -84,17 +89,17 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
-        /// Configure viewport and scissor
+	    /// Configure viewport and scissor
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = vkSwapChain->GetSwapExtent().width;
-        viewport.height = vkSwapChain->GetSwapExtent().height;
+        viewport.width = static_cast<float>(vkSwapChain->GetSwapExtent().width);
+        viewport.height = static_cast<float>(vkSwapChain->GetSwapExtent().height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor{};
-        scissor.offset = {.x = 0,.y = 0};
+        scissor.offset = {0, 0};
         scissor.extent = vkSwapChain->GetSwapExtent();
 
 		/// -------------------------------------------------------
@@ -107,15 +112,15 @@ namespace SceneryEditorX
         viewportState.pScissors = &scissor;
 
         /// Configure rasterization
-        VkPipelineRasterizationStateCreateInfo rasterize{};
-        rasterize.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterize.depthClampEnable = VK_FALSE;
-        rasterize.rasterizerDiscardEnable = VK_FALSE;
-        rasterize.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterize.lineWidth = 1.0f;
-        rasterize.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterize.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; /// Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
-        rasterize.depthBiasEnable = VK_FALSE;
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; /// Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
+        rasterizer.depthBiasEnable = VK_FALSE;
 
 		/// -------------------------------------------------------
 
@@ -160,17 +165,29 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
-		std::vector<VkDescriptorSetLayout> layouts;
+		// Set up descriptor set layouts
+        std::vector<VkDescriptorSetLayout> layouts;
+        
+        // Get the bindless descriptor set layout from the device
+        if (device->bindlessResources.bindlessDescriptorSetLayout != VK_NULL_HANDLE) {
+            layouts.push_back(device->bindlessResources.bindlessDescriptorSetLayout);
+        }
 
-        /// Create the graphics pipeline
+        /// Create the graphics pipeline layout
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = layouts.data();
+        pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
+        pipelineLayoutInfo.pSetLayouts = layouts.empty() ? nullptr : layouts.data();
 
-        if (vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+        // Create the pipeline layout
+        if (vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
             SEDX_CORE_ERROR("Failed to create pipeline layout!");
+        }
 
+        // Get the render pass from the swap chain
+        VkRenderPass renderPass = vkSwapChain->GetRenderPass();
+        
+        // Complete pipeline creation info
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.stageCount = 2;
@@ -178,28 +195,66 @@ namespace SceneryEditorX
         pipelineInfo.pVertexInputState = &vertexInputInfo;
         pipelineInfo.pInputAssemblyState = &inputAssembly;
         pipelineInfo.pViewportState = &viewportState;
-        pipelineInfo.pRasterizationState = &rasterize;
+        pipelineInfo.pRasterizationState = &rasterizer;
         pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.layout = pipelineLayout;
-        pipelineInfo.renderPass = VK_NULL_HANDLE;
+        pipelineInfo.renderPass = renderPass;
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-        if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+        // Create the graphics pipeline
+        if (vkCreateGraphicsPipelines(device->GetDevice(), pipelineCache, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
             SEDX_CORE_ERROR("Failed to create graphics pipeline!");
+        }
 
+        // Clean up shader modules
         vkDestroyShaderModule(device->GetDevice(), fragShaderModule, nullptr);
         vkDestroyShaderModule(device->GetDevice(), vertShaderModule, nullptr);
 	}
 
+    /// Helper function to create a shader module from shader code
+    VkShaderModule Pipeline::CreateShaderModule(VkDevice device, const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+            SEDX_CORE_ERROR("Failed to create shader module!");
+            return VK_NULL_HANDLE;
+        }
+        
+        return shaderModule;
+    }
+
+    /// -------------------------------------------------------
+
+    VkExtent2D Pipeline::GetFloatSwapExtent() const {
+        VkExtent2D extent = vkSwapChain->GetSwapExtent();
+        return extent;
+    }
+
 	Pipeline::~Pipeline()
     {
-        vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
-        vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
-        pipeline = VK_NULL_HANDLE;
-        pipelineLayout = VK_NULL_HANDLE;
+        if (device) {
+            if (pipeline != VK_NULL_HANDLE) {
+                vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
+                pipeline = VK_NULL_HANDLE;
+            }
+            
+            if (pipelineLayout != VK_NULL_HANDLE) {
+                vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
+                pipelineLayout = VK_NULL_HANDLE;
+            }
+            
+            if (pipelineCache != VK_NULL_HANDLE) {
+                vkDestroyPipelineCache(device->GetDevice(), pipelineCache, nullptr);
+                pipelineCache = VK_NULL_HANDLE;
+            }
+        }
     }
 
 } // namespace SceneryEditorX

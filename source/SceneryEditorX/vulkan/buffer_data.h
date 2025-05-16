@@ -11,7 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/logging/asserts.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <vma/vk_mem_alloc.h>
 
 // -----------------------------------------

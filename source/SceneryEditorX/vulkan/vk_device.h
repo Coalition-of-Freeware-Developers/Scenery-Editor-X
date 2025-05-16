@@ -1,3 +1,4 @@
+
 /**
 * -------------------------------------------------------
 * Scenery Editor X
@@ -12,14 +13,14 @@
 */
 #pragma once
 #include <map>
-#include <memory>
 #include <mutex>
 #include <optional>
-#include <SceneryEditorX/renderer/buffer_data.h>
-#include <SceneryEditorX/renderer/image_data.h>
+#include <SceneryEditorX/vulkan/buffer_data.h>
+#include <SceneryEditorX/vulkan/image_data.h>
+#include <SceneryEditorX/vulkan/vk_descriptors.h>
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -64,10 +65,10 @@ namespace SceneryEditorX
 
     struct QueueFamilyIndices
     {
-        std::optional<std::pair<QueueFamilyType, uint32_t>> graphicsFamily;
-        std::optional<std::pair<QueueFamilyType, uint32_t>> presentFamily;
-        std::optional<std::pair<QueueFamilyType, uint32_t>> computeFamily;
-        std::optional<std::pair<QueueFamilyType, uint32_t>> transferFamily;
+        std::optional<std::pair<Queue, uint32_t>> graphicsFamily;
+        std::optional<std::pair<Queue, uint32_t>> presentFamily;
+        std::optional<std::pair<Queue, uint32_t>> computeFamily;
+        std::optional<std::pair<Queue, uint32_t>> transferFamily;
 
         [[nodiscard]] bool isComplete() const
         {
@@ -96,7 +97,6 @@ namespace SceneryEditorX
 	class VulkanPhysicalDevice
     {
     public:
-
         VulkanPhysicalDevice();
         ~VulkanPhysicalDevice();
 
@@ -179,7 +179,7 @@ namespace SceneryEditorX
         friend class VulkanQueue;
     };
 
-	// ---------------------------------------------------------
+	/// ---------------------------------------------------------
 
 	class VulkanDevice
     {
@@ -200,8 +200,8 @@ namespace SceneryEditorX
         VulkanDevice &operator=(const VulkanDevice &) = delete;
 
 		/// Allow move operations if needed
-        //VulkanDevice(VulkanDevice &&) noexcept;
-        //VulkanDevice &operator=(VulkanDevice &&) noexcept;
+        VulkanDevice(VulkanDevice &&) noexcept;
+        VulkanDevice &operator=(VulkanDevice &&) noexcept;
 
         /**
          * @brief Clean up resources and destroy the logical device
@@ -212,7 +212,7 @@ namespace SceneryEditorX
         [[nodiscard]] const VkDevice &Selected() const;
         [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
         [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
-        //[[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
+        [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
 		[[nodiscard]] VkDevice GetDevice() const {return device;}
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysDevice;}
         uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
@@ -233,7 +233,13 @@ namespace SceneryEditorX
          * @param name Debug name for the buffer
          * @return Buffer object configured for staging
          */
-        Buffer CreateStagingBuffer(uint32_t size, const std::string& name = "Staging Buffer");
+        Buffer CreateStagingBuffer(uint32_t size, const std::string& name = "Staging Buffer") const;
+
+	    /**
+         * @brief Get the maximum usable MSAA sample count supported by the device
+         * @return The maximum sample count as a VkSampleCountFlagBits value
+         */
+        [[nodiscard]] VkSampleCountFlagBits GetMaxUsableSampleCount() const;
 
 		/**
          * @brief Lock a queue for exclusive access
@@ -268,16 +274,15 @@ namespace SceneryEditorX
         void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
 
         /**
-         * @brief Get the maximum usable MSAA sample count supported by the device
-         * @return The maximum sample count as a VkSampleCountFlagBits value
+         * @brief Get the scratch buffer address
+         * @return The device address of the scratch buffer
          */
-        [[nodiscard]] VkSampleCountFlagBits GetMaxUsableSampleCount() const;
-
         VkSampler GetSampler() const { return textureSampler; }
 
     private:
         RenderData renderData;
-        ImageID textureImageID;
+        Descriptors descriptors;
+        //ImageID textureImageID;
         Extensions vkExtensions;
         Layers vkLayers;
         BindlessResources bindlessResources;
@@ -295,7 +300,7 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
         /// Function pointers for Vulkan extensions
-        ///
+
         PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
         PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
         PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
@@ -308,7 +313,7 @@ namespace SceneryEditorX
 
         VkQueue GraphicsQueue = VK_NULL_HANDLE;
         VkQueue ComputeQueue = VK_NULL_HANDLE;
-        //VkQueue PresentQueue = VK_NULL_HANDLE;
+        VkQueue PresentQueue = VK_NULL_HANDLE;
         std::mutex GraphicsQueueMutex;
         std::mutex ComputeQueueMutex;
 

@@ -11,23 +11,21 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/render_data.h>
-#include <SceneryEditorX/vulkan/vk_core.h>
-#include <SceneryEditorX/vulkan/vk_device.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_pipelines.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 struct GLFWwindow;
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
     class Pipeline;
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 	struct SwapChainDetails
 	{
@@ -36,14 +34,15 @@ namespace SceneryEditorX
 	    std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
 	struct SwapchainCommandBuffer
     {
         VkCommandPool CommandPool = nullptr;
         VkCommandBuffer CommandBuffer = nullptr;
     };
-    // -------------------------------------------------------
+
+    /// -------------------------------------------------------
 
 	class SwapChain
 	{
@@ -59,15 +58,17 @@ namespace SceneryEditorX
         void Destroy();
 
 		/// Getter methods
-		uint32_t GetWidth() const { return renderData.width; }
-		uint32_t GetHeight() const { return renderData.height; }
-        uint32_t GetImageIndex() const { return renderData.imageIndex; }
-		VkFormat GetColorFormat() const { return colorFormat; }
-		VkFormat GetDepthFormat() const { return depthFormat; }
-		VkRenderPass GetRenderPass() const { return renderPass; }
-        VkExtent2D GetSwapExtent() const { return swapChainExtent; }
-		VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
-        VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
+        [[nodiscard]] uint32_t GetWidth() const { return renderData.width; }
+        [[nodiscard]] uint32_t GetHeight() const { return renderData.height; }
+        [[nodiscard]] uint32_t GetImageIndex() const { return SceneryEditorX::RenderData::imageIndex; }
+		[[nodiscard]] VkFormat GetColorFormat() const { return colorFormat; }
+        [[nodiscard]] VkFormat GetDepthFormat() const { return depthFormat; }
+		[[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
+        [[nodiscard]] VkExtent2D GetSwapExtent() const { return swapChainExtent; }
+        [[nodiscard]] Viewport GetViewport() const { return viewportData.GetViewportSize(); }
+		[[nodiscard]] VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
+        [[nodiscard]] VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
+        [[nodiscard]] VkSwapchainKHR GetSwapchain() const { return swapChain; }
 
 		/// Setter methods
 		void SetVSync(const bool enabled) { renderData.VSync = enabled; }
@@ -76,8 +77,6 @@ namespace SceneryEditorX
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
 		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
 						 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const;
-
-
 
 	private:
         RenderData renderData;
@@ -92,15 +91,15 @@ namespace SceneryEditorX
         void CreateImageViews();
         void FindImageFormatAndColorSpace();
         void CreateDepthResources();
-        uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-		VkFormat FindDepthFormat() const;
-        VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+        [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+        [[nodiscard]] VkFormat FindDepthFormat() const;
+        [[nodiscard]] VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
 		/// Selection methods
         LOCAL VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
-        VkPresentModeKHR ChooseSwapPresentMode(uint32_t presentModeCount) const;
 	    LOCAL VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, uint32_t width, uint32_t height);
         LOCAL SwapChainDetails QuerySwapChainSupport(const VulkanDevice &device);
+        VkPresentModeKHR ChooseSwapPresentMode(uint32_t presentModeCount) const;
 
 		/// Vulkan resources - derived after device is initialized
 	    //VkDevice vkDevice = device->GetDevice();
@@ -110,7 +109,7 @@ namespace SceneryEditorX
         uint32_t queueIndex = UINT32_MAX;
         uint32_t swapChainImageCount = 0;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
 		// Swapped to the 'image_data.h' file Image Struct.
 
@@ -122,7 +121,7 @@ namespace SceneryEditorX
 		};
 		*/
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         /// Format and attachment data
         VkFormat colorFormat;
@@ -133,7 +132,7 @@ namespace SceneryEditorX
         VkAttachmentDescription colorAttachment{};
         VkAttachmentDescription depthAttachment{};
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
 		/// Core swapchain objects
         VkSurfaceKHR surface = nullptr;
@@ -142,7 +141,6 @@ namespace SceneryEditorX
         VkAllocationCallbacks *allocator = nullptr;
 
 		/// Image resources
-
         std::vector<Image> swapChainImages;
         std::vector<VkImage> swapChainImageResources;
         std::vector<VkImageView> swapChainViews;
@@ -156,26 +154,26 @@ namespace SceneryEditorX
         /// Fences to signal that command buffers are ready to be reused (one for each frame in flight)
 		std::vector<VkFence> waitFences;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         VkImage textureImage = nullptr;
         VkSampler textureSampler = nullptr;
         VkImageView textureImageView = nullptr;
         VkDeviceMemory textureImageMemory = nullptr;
 
-        // -------------------------------------------------------
+        /// -------------------------------------------------------
 
         VkImage depthImage = nullptr;
         VkImageView depthImageView = nullptr;
         VkDeviceMemory depthImageMemory = nullptr;
 
-        // -------------------------------------------------------
+        /// -------------------------------------------------------
 
         VkImage colorImage = nullptr;
         VkDeviceMemory colorImageMemory = nullptr;
         VkImageView colorImageView = nullptr;
 
-        // -------------------------------------------------------
+        /// -------------------------------------------------------
 
 		friend class GraphicsEngine;
     };
@@ -184,5 +182,5 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 

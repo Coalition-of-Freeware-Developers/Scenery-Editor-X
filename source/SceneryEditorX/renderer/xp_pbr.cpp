@@ -21,12 +21,12 @@ namespace SceneryEditorX
 
     PBR::PBR(const std::string &path) : MaterialAsset(path)
     {
-        TextureAsset::Load(path);
+        //TextureAsset::Load(path);
     }
 
     PBR::~PBR()
     {
         // Unload PBR texture data
-        TextureAsset::Unload();
+        //TextureAsset::Unload();
     }
 }

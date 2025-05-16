@@ -82,14 +82,10 @@ namespace SceneryEditorX
             
             /// Try to detect X-Plane installation
             if (DetectXPlanePath())
-            {
                 SEDX_CORE_TRACE_TAG("SETTINGS", "X-Plane 12 detected and paths configured");
-            }
             else
-            {
                 SEDX_CORE_WARN_TAG("SETTINGS", "X-Plane 12 installation not found");
-            }
-            
+
             /// Save the initial configuration
             WriteSettings();
         }
@@ -225,9 +221,8 @@ namespace SceneryEditorX
 				{
                     Setting &setting = cfg.lookup(section);
                     if (setting.exists(name))
-                    {
                         setting.remove(name);
-                    }
+
                     setting.add(name, Setting::TypeString) = value;
                 }
                 catch (const SettingNotFoundException &)
@@ -239,9 +234,8 @@ namespace SceneryEditorX
             {
                 /// It's a root setting
                 if (cfg.getRoot().exists(key))
-                {
                     cfg.getRoot().remove(key);
-                }
+
                 cfg.getRoot().add(key, Setting::TypeString) = value;
             }
         }
@@ -254,9 +248,7 @@ namespace SceneryEditorX
     void ApplicationSettings::GetOption(const std::string &key, std::string &value)
     {
         if (const auto it = settings.find(key); it != settings.end())
-        {
             value = it->second;
-        }
     }
 
     bool ApplicationSettings::HasOption(const std::string &key) const
@@ -282,17 +274,13 @@ namespace SceneryEditorX
 
                 /// Try to look up the setting
                 if (Setting &setting = cfg.lookup(section); setting.exists(name))
-                {
                     setting.remove(name);
-                }
             }
             else
             {
                 /// It's a root setting
                 if (cfg.getRoot().exists(key))
-                {
                     cfg.getRoot().remove(key);
-                }
             }
         }
         catch (...)
@@ -318,7 +306,7 @@ namespace SceneryEditorX
                     setting.add(name, Setting::TypeInt) = value;
                 }
                 catch (const SettingNotFoundException &)
-				{
+                {
                     CreateSettingPath(path, value);
                 }
             }
@@ -528,7 +516,7 @@ namespace SceneryEditorX
                                                 "D:/Program Files/X-Plane 12"};
 
 
-        #ifdef __APPLE__
+        #ifdef SEDX_PLATFORM_MACOS
         const char* homeDir = getenv("HOME");
         if (homeDir)
 		{
@@ -538,7 +526,7 @@ namespace SceneryEditorX
         commonPaths.push_back("/Applications/X-Plane 12");
         #endif
         
-        #ifdef __linux__
+        #ifdef SEDX_PLATFORM_LINUX
         const char* homeDir = getenv("HOME");
         if (homeDir)
 		{
@@ -649,9 +637,7 @@ namespace SceneryEditorX
             minimalConfig += "application: {";
             std::string appSection = APPLICATION_SECTION_TEMPLATE;
             if (const size_t versionPos = appSection.find("${APP_VERSION}"); versionPos != std::string::npos)
-			{
                 appSection.replace(versionPos, 13, SoftwareStats::versionString);
-            }
 
             minimalConfig += appSection;
             minimalConfig += "};\n";
@@ -719,17 +705,11 @@ namespace SceneryEditorX
             
             // Only add default values if not already set
             if (!HasOption("ui.theme"))
-			{
                 AddStringOption("ui.theme", "dark");
-            }
             if (!HasOption("ui.font_size"))
-			{
                 AddIntOption("ui.font_size", 12);
-            }
             if (!HasOption("ui.language"))
-			{
                 AddStringOption("ui.language", "english");
-            }
         }
         
         // Ensure project section exists
@@ -739,21 +719,18 @@ namespace SceneryEditorX
             root.add("project", Setting::TypeGroup);
             
             // Only add default values if not already set
-            if (!HasOption("project.auto_save")) {
+            if (!HasOption("project.auto_save"))
                 AddBoolOption("project.auto_save", true);
-            }
-            if (!HasOption("project.auto_save_interval")) {
+            if (!HasOption("project.auto_save_interval"))
                 AddIntOption("project.auto_save_interval", 5);
-            }
-            if (!HasOption("project.backup_count")) {
+            if (!HasOption("project.backup_count"))
                 AddIntOption("project.backup_count", 3);
-            }
             if (!HasOption("project.default_project_dir"))
 			{
-                // Set default project directory
+                /// Set default project directory
                 std::string defaultDir = "~/Documents/SceneryEditorX";
                 
-                // Replace ~ with actual home directory
+                /// Replace ~ with actual home directory
                 if (defaultDir.starts_with("~"))
 				{
                     const char* homeDir = nullptr;
@@ -841,9 +818,7 @@ namespace SceneryEditorX
                 std::string name = prefix.empty() ? child.getName() : prefix + "." + child.getName();
 
                 if (child.isGroup())
-                {
                     traverseSettings(child, name);
-                }
                 else
                 {
                     /// Store the value as string in our map
@@ -956,10 +931,8 @@ namespace SceneryEditorX
 
         /// Search for X-Plane 12 in each library folder
         for (const auto &library : libraryFolders)
-        {
             if (auto xplanePath = checkForXPlane12(library))
                 return xplanePath;
-        }
 
         return std::nullopt;
     }
@@ -974,22 +947,20 @@ namespace SceneryEditorX
         /// Check if the directory exists
         if (!fs::exists(basePath) || !fs::is_directory(basePath))
             return false;
-
         
         /// Check for essential subdirectories
         if (!fs::exists(basePath / "Resources") || !fs::is_directory(basePath / "Resources"))
             return false;
 
-        
         if (!fs::exists(basePath / "bin") || !fs::is_directory(basePath / "bin"))
             return false;
 
         /// Check for X-Plane executable
-        #ifdef _WIN32
+        #ifdef SEDX_PLATFORM_WINDOWS
         if (!fs::exists(basePath / "bin" / "X-Plane.exe"))
             return false;
 
-        #elif defined(__APPLE__)
+        #elif defined(SEDX_PLATFORM_MACOS)
         if (!fs::exists(basePath / "X-Plane.app"))
             return false;
 
@@ -1012,7 +983,7 @@ namespace SceneryEditorX
     {
         std::string steamPath;
     
-	#ifdef _WIN32
+	#ifdef SEDX_PLATFORM_WINDOWS
 	    /// Windows: Check registry or default locations
 	    /// Default is usually C:\Program Files (x86)\Steam
 	    char programFiles[MAX_PATH];
@@ -1033,7 +1004,7 @@ namespace SceneryEditorX
 	            }
 	        }
 	    }
-	#elif defined(__APPLE__)
+    #elif defined(SEDX_PLATFORM_MACOS)
 	    /// macOS: Check default location
 	    const char* homeDir = getenv("HOME");
 	    if (homeDir)
@@ -1044,7 +1015,7 @@ namespace SceneryEditorX
 	            return "";
 	        }
 	    }
-	#else
+	#elif defined(SEDX_PLATFORM_LINUX)
 	    /// Linux: Check default location
 	    const char* homeDir = getenv("HOME");
 	    if (homeDir)
@@ -1239,6 +1210,41 @@ namespace SceneryEditorX
         return false;
     }
 
+    /*
+	VkDeviceSize ApplicationSettings::GetCustomBufferSize() const
+	{
+	    // If not specified, return the default value
+	    return GetIntOption("vulkan.custom_buffer_size", static_cast<int>(CUSTOM_BUFFER_SIZE));
+	}
+	*/
+
+	bool ApplicationSettings::SetCustomBufferSize(VkDeviceSize size)
+	{
+	    // Store in settings
+	    AddIntOption("vulkan.custom_buffer_size", static_cast<int>(size));
+	    return true;
+	}
+	
+	bool ApplicationSettings::ValidateBufferSize(VkDeviceSize size, const VkPhysicalDeviceLimits& deviceLimits)
+	{
+	    // Check that buffer size is not larger than the maximum allowed by the device
+	    if (size > deviceLimits.maxStorageBufferRange)
+	    {
+	        SEDX_CORE_ERROR_TAG("SETTINGS", "Requested buffer size ({} bytes) exceeds device maximum ({} bytes)",
+	            size, deviceLimits.maxStorageBufferRange);
+	        return false;
+	    }
+	    
+	    // Ensure the size is a multiple of minStorageBufferOffsetAlignment
+	    if (size % deviceLimits.minStorageBufferOffsetAlignment != 0)
+	    {
+	        SEDX_CORE_WARN_TAG("SETTINGS", "Buffer size {} is not aligned to device requirements ({})",
+	            size, deviceLimits.minStorageBufferOffsetAlignment);
+	        return false;
+	    }
+	    
+	    return true;
+	}
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------

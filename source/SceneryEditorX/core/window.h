@@ -16,7 +16,7 @@
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <stb_image.h>
 
 // -------------------------------------------------------

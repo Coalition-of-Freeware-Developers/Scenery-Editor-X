@@ -12,9 +12,7 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
-#include <glm/vec2.hpp>
 #include <SceneryEditorX/platform/platform_states.h>
-#include <vector>
 #include <vulkan/vulkan_core.h>
 
 // -------------------------------------------------------
@@ -32,8 +30,17 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    /// Identical to Vulkan's VkAccessFlagBits
-    /// [Note:] this is a bitfield!
+    /**
+     * @enum ResourceAccessFlags
+     * @brief Represents the access flags for Vulkan resources.
+     *
+     * This enum is used to specify the types of access that can be performed on Vulkan resources,
+     * such as buffers and images.
+     * It is used in synchronization operations to ensure proper access control and memory barriers.
+     *
+     * @note The values in this enum are bitwise OR'd together to create a bitfield representing multiple access types.
+     * @note Identical to Vulkan's VkAccessFlagBits
+     */
     enum class ResourceAccessFlags
     {
         None = 0,
@@ -56,8 +63,18 @@ namespace SceneryEditorX
         MemoryWrite = 0x00010000,
     };
 
-    /// Identical to Vulkan's VkPipelineStageFlagBits
-    /// [Note:] This is a bitfield!
+    /**
+     * @enum PipelineStage
+     * @brief Represents the various stages of a Vulkan pipeline.
+     *
+     * This enum is used to specify the stages of the pipeline
+     * for synchronization purposes, such as when waiting for
+     * operations to complete or when setting up barriers.
+     *
+     * @note The values in this enum are bitwise OR'd together
+     * to create a bitfield representing multiple stages.
+     * @note Identical to Vulkan's VkPipelineStageFlagBits
+     */
     enum class PipelineStage
     {
         None = 0,
@@ -82,6 +99,17 @@ namespace SceneryEditorX
 
 	// ---------------------------------------------------------
 
+    /**
+     * @struct VulkanDeviceFeatures
+     * @brief Holds Vulkan device features
+     *
+     * This structure contains a set of boolean flags that indicate
+     * the availability of various Vulkan features on the device.
+     * It is used to configure the Vulkan device during initialization
+     * and to check for feature support.
+     *
+     * @return VulkanDeviceFeatures
+     */
     struct VulkanDeviceFeatures
     {
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -213,6 +241,7 @@ namespace SceneryEditorX
     // -----------------------------------------------------------
 
 	/**
+	* @struct Extensions
 	* @brief Manages Vulkan extension requirements and availability
 	* 
 	* This structure contains information about required and available Vulkan extensions.
@@ -231,17 +260,27 @@ namespace SceneryEditorX
 	     * - VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME: Required for ray tracing acceleration structures
 	     * - VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME: Required for asynchronous operations
 	     * - VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME: Required for atomic operations on floating-point values
+	     * - VK_EXT_DEBUG_UTILS_EXTENSION_NAME: Required for debugging and validation
+	     * - VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME: Required for dynamic vertex input state
 	     */
-        std::vector<const char *> requiredExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                                                        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-                                                        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-                                                        VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME};
+        std::vector<const char *> requiredExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+            // VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+            VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
+            VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+			VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME
+        };
 
         /** @brief List of device extensions that must be supported
 	     *
 	     * At minimum, the swapchain extension is required for rendering to the screen
 	     */
-        const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        std::vector<const char *> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME
+        };
 
         /** @brief List of extensions available on the physical device */
         std::vector<VkExtensionProperties> availableExtensions;
@@ -255,6 +294,7 @@ namespace SceneryEditorX
 
 
 	/**
+	 * @struct Layers
 	 * @brief Manages Vulkan validation layers for debugging and validation purposes
 	 * 
 	 * This structure contains information about available and active Vulkan validation layers.
@@ -267,8 +307,9 @@ namespace SceneryEditorX
         std::vector<bool> activeLayers;
 
         /** @brief Standard validation layer for Vulkan debugging
-		 *  
+         *
 		 * Includes the Khronos validation layer which contains most validation functionality:
+		 *
 		 * - Parameter validation
 		 * - Object lifetime tracking
 		 * - Thread safety validation
@@ -287,10 +328,10 @@ namespace SceneryEditorX
         uint32_t layerCount = 0;
     };
 
-
-    // -----------------------------------------------------------
+    /// -----------------------------------------------------------
 
     /**
+     * @struct Resource
      * @brief Base class for all render-able resources in the graphics system.
      *
      * The Resource class serves as a foundation for all resources that can be 
@@ -312,8 +353,8 @@ namespace SceneryEditorX
         virtual ~Resource() = default;
     };
 
-
     /**
+     * @struct BindlessResources
      * @brief Manages bindless resource descriptors for efficient GPU resource access
      * 
      * Bindless resources allow the GPU to access a large number of resources (textures, buffers, etc.)
@@ -327,6 +368,7 @@ namespace SceneryEditorX
     struct BindlessResources
     {
         /**
+         * @enum BindlessType
          * @brief Defines the types of resources that can be accessed in a bindless fashion
          * 
          * Used to categorize different resource types that require different descriptor bindings.
@@ -352,49 +394,58 @@ namespace SceneryEditorX
         VkDescriptorSetLayout bindlessDescriptorLayout = VK_NULL_HANDLE;
 
         /** @brief Maximum number of storage buffers or storage texel buffers that can be accessed */
-        const uint32_t MAX_STORAGE = 8192;
+        uint32_t MAX_STORAGE = 8192;
 
         /** @brief Maximum number of sampled images (textures) that can be accessed */
-        const uint32_t MAX_SAMPLED_IMAGES = 8192;
+        uint32_t MAX_SAMPLED_IMAGES = 8192;
 
         /** @brief Maximum number of storage images that can be accessed for read/write operations */
-        const uint32_t MAX_STORAGE_IMAGES = 8192;
+        uint32_t MAX_STORAGE_IMAGES = 8192;
     };
 
-
-    // -----------------------------------------------------------
+    /// -----------------------------------------------------------
 
     /**
+     * @enum Queue
      * @brief Enumeration of Vulkan queue family types used in the rendering system
      * 
      * Vulkan uses different queue families to execute different types of operations.
      * This enum provides a type-safe way to identify and reference these queue families
      * throughout the rendering system.
      */
-    enum QueueFamilyType : uint8_t
+    enum Queue : uint8_t
     {
         Graphics = 0, ///< Graphics queue family for rendering operations and drawing commands
-        Compute,      ///< Compute queue family for compute shader and general computation operations
-        Transfer,     ///< Transfer queue family dedicated to memory transfer operations
-        Present,      ///< Present queue family for presenting rendered images to the display surface
+        Compute  = 1, ///< Compute queue family for compute shader and general computation operations
+        Transfer = 2, ///< Transfer queue family dedicated to memory transfer operations
+        Count    = 3, ///< Total number of queue families
+        Present  = 4, ///< Present queue family for presenting rendered images to the display surface
     };
 
-
+    /**
+     * @struct CommandResources
+     * @brief Holds command buffer and synchronization resources for Vulkan queues
+     *
+     * This structure encapsulates the command buffer, synchronization primitives,
+     * and other resources needed for recording and executing commands on a Vulkan queue.
+     * It is designed to support multiple command buffers and synchronization objects
+     */
     struct CommandResources
     {
         //Buffer staging;
-        //VkFence fence = nullptr;
-        //uint32_t stagingOffset = 0;
-        //uint8_t *stagingCpu = nullptr;
-        //VkQueryPool queryPool;
-        //VkCommandPool pool = nullptr;
-        //VkCommandBuffer buffer = nullptr;
+        VkFence fence = nullptr;
+        uint32_t stagingOffset = 0;
+        uint8_t *stagingCpu = nullptr;
+        VkQueryPool queryPool;
+        VkCommandPool pool = nullptr;
+        VkCommandBuffer buffer = nullptr;
 
         std::vector<uint64_t> timeStamps;
         std::vector<std::string> timeStampNames;
     };
 
     /**
+     * @struct InternalQueue
      * @brief Represents a Vulkan queue and its associated command resources.
      * 
      * InternalQueue encapsulates a Vulkan queue along with its family index and a collection
@@ -423,10 +474,10 @@ namespace SceneryEditorX
         std::vector<CommandResources> commands;
     };
 
-
-    // -----------------------------------------------------------
+    /// -----------------------------------------------------------
 
 	/**
+	 * @struct Viewport
 	 * @brief Represents a viewport for rendering in the scene editor.
 	 * 
 	 * The Viewport structure encapsulates all data related to a rendering viewport, including 
@@ -436,29 +487,40 @@ namespace SceneryEditorX
 	 */
     struct Viewport
     {
-        /** @brief Dimensions of the viewport in integer vector format */
-        glm::ivec2 viewportSize = {64, 64};
+        /** @brief Position of the viewport in the scene editor */
+        float x, y;
 
-        /** 
+		/**
+		 * @brief Constructor for initializing the viewport with default values
+		 */
+		constexpr Viewport() : x(0.0f), y(0.0f) {}
+		constexpr Viewport(const float _x, const float _y) : x(_x), y(_y) {}
+
+		/**
+		 * @fn GetViewportPosition
+		 * @brief Retrieves the current viewport position
+		 * @return The x and y coordinates of the viewport as a float vector
+		 */
+		[[nodiscard]] Viewport GetViewportPosition() const
+		{
+            return {x, y};
+		}
+
+        /**
+         * @fn GetViewportSize
 	     * @brief Retrieves the current viewport dimensions
-	     * @return The width and height of the viewport as a glm::ivec2
+	     * @return The width and height of the viewport as a float vector
 	     */
-        [[nodiscard]] glm::ivec2 GetViewportSize() const
+        [[nodiscard]] Viewport GetViewportSize() const 
         {
-            return viewportSize;
-        }
-
-        /** @brief X-coordinate of the viewport's top-left corner in pixels */
-        uint32_t x = 0;
-
-        /** @brief Y-coordinate of the viewport's top-left corner in pixels */
-        uint32_t y = 0;
+			return {width, height};
+		}
 
         /** @brief Width of the viewport in pixels */
-        uint32_t width = 0;
+        float width = 0.0f;
 
         /** @brief Height of the viewport in pixels */
-        uint32_t height = 0;
+        float height = 0.0f;
 
         /** @brief Aspect ratio of the viewport (width/height) for camera projection */
         float aspectRatio = 0.0f;
@@ -489,6 +551,7 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
     /**
+     * @struct LightingData
      * @brief Stores lighting configuration data for the renderer.
      * 
      * The LightingData structure maintains settings related to scene lighting
@@ -507,10 +570,10 @@ namespace SceneryEditorX
         int shadowMapSamples = 4;
     };
 
-
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     /**
+     * @struct RenderData
 	 * @brief Core rendering configuration and state information for the renderer.
 	 * 
 	 * The RenderData structure serves as a central repository for renderer state, configuration,
@@ -569,10 +632,7 @@ namespace SceneryEditorX
 		 * @brief Check if the swap chain needs to be recreated
 		 * @return True if the swap chain is marked as dirty and needs rebuilding
 		 */
-        [[nodiscard]] bool GetSwapChainDirty() const
-        {
-            return swapChainDirty;
-        }
+        [[nodiscard]] bool GetSwapChainDirty() const { return swapChainDirty; }
 
         /** @brief Flag indicating if the swap chain needs to be recreated (e.g., after window resize) */
         bool swapChainDirty = false;

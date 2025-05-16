@@ -29,8 +29,7 @@ namespace SceneryEditorX
 	    class UIContextImpl;
 	}
 
-
-    /*
+    /**
 	* -------------------------------------------------------
 	* EditorApplication Global Variables
 	* -------------------------------------------------------
@@ -130,7 +129,7 @@ namespace SceneryEditorX
 	    {
             if (viewportData.viewportResized)
 	        {
-                vkSwapChain->OnResize(viewportData.viewportSize.x, viewportData.viewportSize.y);
+                vkSwapChain->OnResize(viewportData.x, viewportData.y);
                 viewportData.viewportResized = false;
 	        }
 
@@ -146,8 +145,8 @@ namespace SceneryEditorX
 	void EditorApplication::CreateViewportResources()
 	{
 
-	    // Create image for the viewport
-        vkSwapChain->CreateImage(viewportData.viewportSize.x, viewportData.viewportSize.y, 1,
+	    /// Create image for the viewport
+        vkSwapChain->CreateImage(viewportData.x, viewportData.y, 1,
 	                           VK_SAMPLE_COUNT_1_BIT,
 	                           vkSwapChain->GetColorFormat(),
 	                           VK_IMAGE_TILING_OPTIMAL,
@@ -156,10 +155,10 @@ namespace SceneryEditorX
                                viewportData.viewportImage,
                                viewportData.viewportImageMemory);
 	
-	    // Create image view for the viewport
+	    /// Create image view for the viewport
         viewportData.viewportImageView = vkSwapChain->CreateImageView(viewportData.viewportImage, vkSwapChain->GetColorFormat(), VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	
-	    // Create render pass for the viewport
+	    /// Create render pass for the viewport
 	    VkAttachmentDescription colorAttachment{};
         colorAttachment.format = vkSwapChain->GetColorFormat();
 	    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -187,20 +186,18 @@ namespace SceneryEditorX
 	    renderPassInfo.pSubpasses = &subpass;
 	
 	    SEDX_CORE_ASSERT(vkCreateRenderPass(gfxEngine.GetLogicDevice()->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
-            //throw std::runtime_error("Failed to create viewport render pass");
 
-        // Create framebuffer for the viewport
+        /// Create framebuffer for the viewport
 	    VkFramebufferCreateInfo framebufferInfo{};
 	    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = viewportData.viewportRenderPass;
 	    framebufferInfo.attachmentCount = 1;
         framebufferInfo.pAttachments = &viewportData.viewportImageView;
-        framebufferInfo.width = viewportData.viewportSize.x;
-        framebufferInfo.height = viewportData.viewportSize.y;
+        framebufferInfo.width = viewportData.x;
+        framebufferInfo.height = viewportData.y;
 	    framebufferInfo.layers = 1;
 	
 	    SEDX_CORE_ASSERT(vkCreateFramebuffer(gfxEngine.GetLogicDevice()->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
-	        //throw std::runtime_error("Failed to create viewport framebuffer");
 
 	}
 	
@@ -255,7 +252,7 @@ namespace SceneryEditorX
 	
 	void EditorApplication::OnSurfaceUpdate(uint32_t width, uint32_t height)
 	{
-        vkSwapChain->OnResize(viewportData.viewportSize.x, viewportData.viewportSize.y);
+        vkSwapChain->OnResize(viewportData.x, viewportData.y);
         viewportData.viewportResized = false;
 	}
 	
@@ -266,9 +263,9 @@ namespace SceneryEditorX
 	        Window::WaitEvents();
 	    }
 	
-	    viewportData.viewportSize = newViewportSize;
+	    viewportData.GetViewportSize() = newViewportSize;
 	
-	    if (viewportData.viewportSize.x == 0 || viewportData.viewportSize.y == 0)
+	    if (viewportData.x == 0 || viewportData.y == 0)
 	    {
 	        return;
 	    }
@@ -291,11 +288,11 @@ namespace SceneryEditorX
 	void EditorApplication::DrawFrame()
 	{
         /// Check if the viewport size has changed
-        if (viewportData.viewportSize.x != newViewportSize.x || viewportData.viewportSize.y != newViewportSize.y)
+        if (viewportData.x != newViewportSize.x || viewportData.y != newViewportSize.y)
 	    {
 	        if (newViewportSize.x > 0 && newViewportSize.y > 0)
 	        {
-                viewportData.viewportSize = newViewportSize;
+                viewportData.GetViewportSize() = newViewportSize;
 	            CleanupViewportResources();
 	            CreateViewportResources();
 	        }
@@ -316,7 +313,7 @@ namespace SceneryEditorX
             ui.ShowDemoWindow();
 
             // Draw viewport if needed
-            ui.ViewportWindow(viewportData.viewportSize, viewportData.viewportHovered, viewportData.viewportImageView);
+            ui.ViewportWindow(viewportData, viewportData.viewportHovered, viewportData.viewportImageView);
 
             uiContext->End();
         }

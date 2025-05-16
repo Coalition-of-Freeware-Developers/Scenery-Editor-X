@@ -11,11 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/platform/editor_config.hpp>
-#include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/scene/asset_manager.h>
-#include <SceneryEditorX/vulkan/vk_core.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
 
 // -------------------------------------------------------
 
@@ -32,10 +29,20 @@ namespace SceneryEditorX
 	    Pipeline() = default;
         virtual ~Pipeline();
 
-        [[nodiscard]] virtual Ref<Shader> GetShader() const = 0;
-        void CreatePipeline();
+	    void CreatePipeline();
+        VkExtent2D GetFloatSwapExtent() const;
 		VkPipeline GetPipeline() const { return pipeline; }
 		VkPipelineLayout GetVulkanPipelineLayout() const { return pipelineLayout; }
+        [[nodiscard]] virtual Ref<Shader> GetShader() const { return vkShaderPtr; }
+
+    protected:
+        /**
+         * @brief Creates a shader module from shader code
+         * @param device The logical device
+         * @param code The shader code
+         * @return The created shader module
+         */
+        static VkShaderModule CreateShaderModule(VkDevice device, const std::vector<char>& code);
 
 	private:
         Viewport *vkViewport = nullptr;
@@ -43,11 +50,11 @@ namespace SceneryEditorX
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> device;
 
-        VkPipeline pipeline = nullptr;
-        VkPipelineLayout pipelineLayout = nullptr;
-        VkPipelineCache pipelineCache = nullptr;
+        VkPipeline pipeline = VK_NULL_HANDLE;
+        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+        VkPipelineCache pipelineCache = VK_NULL_HANDLE;
 	};
 
-} // namespace SceneryEditorX1
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

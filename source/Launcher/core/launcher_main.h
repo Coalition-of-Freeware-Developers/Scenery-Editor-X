@@ -14,7 +14,7 @@
 #pragma once
 #include <Launcher/core/splash_handler.h>
 #include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 #include <SceneryEditorX/vulkan/vk_core.h>

@@ -141,6 +141,12 @@ SOURCE_GROUP("Core/Logger" FILES
 SOURCE_GROUP("Core/Vulkan" FILES
 	${VULKAN_FILES}
 )
+SOURCE_GROUP("Core/Vulkan/Globals" FILES
+	vulkan/buffer_data.h
+	vulkan/image_data.cpp
+	vulkan/image_data.h
+	vulkan/render_data.h
+)
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}
 )

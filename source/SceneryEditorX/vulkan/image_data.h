@@ -13,6 +13,8 @@
 #pragma once
 #include <imgui/imgui.h>
 #include <imgui_impl_vulkan.h>
+#include <SceneryEditorX/vulkan/render_data.h>
+#include <SceneryEditorX/vulkan/vk_allocator.h>
 
 // -------------------------------------------------------
 
@@ -90,40 +92,14 @@ namespace SceneryEditorX
 
 	struct ImageResource : Resource
     {
-		VkImage image;
-		VkImageView view;
-		VmaAllocation allocation;
+        VkImage image = VK_NULL_HANDLE;
+        VkImageView view = VK_NULL_HANDLE;
+        VmaAllocation allocation = VK_NULL_HANDLE;
 		bool fromSwapchain = false;
 		std::vector<VkImageView> layersView;
 		std::vector<ImTextureID> imguiRIDs;
-
-		/*
-		virtual ~ImageResource() override
-        {
-		    if (!fromSwapchain)
-			{
-		        for (VkImageView layerView : layersView)
-				{
-                    vkDestroyImageView(GraphicsEngine::GetCurrentDevice()->GetDevice(), layerView, nullptr);
-		        }
-		        layersView.clear();
-                vkDestroyImageView(GraphicsEngine::GetCurrentDevice()->GetDevice(), view, nullptr);
-                vmaDestroyImage(MemoryAllocator::GetMemAllocator(), image, allocation);
-                if (resourceID >= 0)
-				{
-                    ImageID::availImageRID.push_back(resourceID);
-		            for (ImTextureID imguiRID : imguiRIDs)
-					{
-		                ImGui_ImplVulkan_RemoveTexture(reinterpret_cast<VkDescriptorSet>(imguiRID));
-		            }
-                    resourceID = -1;
-		            imguiRIDs.clear();
-		        }
-		    }
-		}
-		*/
-
     };
+
 
 	struct Image
 	{

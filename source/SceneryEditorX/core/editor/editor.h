@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
 //#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/ui/ui.h>
@@ -165,7 +165,7 @@ namespace SceneryEditorX
          * 
          * Stores the target size for viewport recreation when dimensions change.
          */
-	    glm::ivec2 newViewportSize = viewportData.viewportSize;
+	    Viewport newViewportSize = viewportData.GetViewportSize();
 	    
 	    /**
 	     * @brief Counter for total frames rendered since application start.

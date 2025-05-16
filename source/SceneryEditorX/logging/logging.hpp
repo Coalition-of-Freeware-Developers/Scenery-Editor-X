@@ -40,22 +40,38 @@ namespace SceneryEditorX
 	 *
 	 * This class provides a static interface for initializing the logger and
 	 * accessing the logger instance. It uses the spdlog library for logging.
+	 *
+	 * @note This class is not intended to be instantiated.
 	 */
-	
 	class Log
 	{
 	public:
 
         /**
+         * @enum Type
 		 * @brief An enumeration of log types.
+		 *
+		 * This enum is used to specify the type of logger being used.
+		 * It includes types such as Core and Editor.
+		 * These types can be used to differentiate between
+		 * different loggers in the application.
+		 *
+		 * @note The Core logger is used for core application logging,
+		 * while the Editor logger is used for editor-specific logging.
 		 */
 	    enum class Type : uint8_t
 	    {
 	        Core = 0,
 	        Editor = 1
 	    };
+
 	    /**
+	     * @enum Level
 		 * @brief An enumeration of log levels.
+		 *
+		 * This enum is used to specify the severity of log messages.
+		 * It includes levels such as Trace, Info, Warn, Error, and Fatal.
+		 * These levels can be used to filter log messages based on their severity.
 		 */
 	    enum class Level : uint8_t
 	    {
@@ -67,7 +83,17 @@ namespace SceneryEditorX
 	    };
 	
 	    /**
+	     * @struct TagDetails
 		 * @brief A structure to hold the details of a tag.
+		 *
+		 * This structure contains information about whether a tag is enabled
+		 * and the log level filter associated with that tag.
+		 *
+		 * @note The Enabled field indicates whether the tag is enabled for logging,
+		 * while the LevelFilter field specifies the minimum log level for messages
+		 * associated with this tag.
+		 *
+		 * @note The LevelFilter field can be used to filter log messages based on their severity.
 		 */
 	    struct TagDetails
 	    {
@@ -78,6 +104,7 @@ namespace SceneryEditorX
 	    // ------------------------------------------------
 	
 	    /**
+	     * @fn Init
 		 * @brief Initializes the logger instance.
 		 *
 		 * This function initializes the logger instance with the desired settings.
@@ -85,6 +112,7 @@ namespace SceneryEditorX
 	    static void Init();
 	
 	    /**
+	     * @fn LogHeader
 		 * @brief Logs system information to the console.
 		 *
 		 * This function logs system information to the console. It logs the
@@ -94,6 +122,7 @@ namespace SceneryEditorX
 	    static void LogHeader();
 	
 	    /**
+	     * @fn ShutDown
 		 * @brief Shuts down the logger instance.
 		 *
 		 * This function shuts down the logger instance and releases any resources
@@ -103,30 +132,81 @@ namespace SceneryEditorX
 	    static void ShutDown();
 	
 	    /**
-		* @brief Logs a message with the specified vulkan log level.
-		*
-		* This function logs a message with the vulkan log level to the console and the log file.
-		*/
+	     * @fn LogVulkanDebug
+		 * @brief Logs a message with the specified vulkan log level.
+		 *
+		 * This function logs a message with the vulkan log level to the console and the log file.
+		 *
+		 * @param message The message to log.
+		 */
 	    static void LogVulkanDebug(const std::string &message);
-	
-	    // Helper function for logging Vulkan API calls with result checking
-	    static void LogVulkanResult(VkResult result, const std::string &operation);
+
+        /**
+         * @fn LogVulkanDebug
+         * @brief Logs a Vulkan result with the specified operation.
+         *
+         * This function logs a Vulkan result with the specified operation to the console and the log file.
+         * 
+         * @param result The Vulkan result to log.
+         * @param operation The operation that was performed.
+         */
+        static void LogVulkanResult(VkResult result, const std::string &operation);
 	
 	    /**
 		 * @brief Gets the logger instance.
 		 * @return A shared pointer to the logger instance.
 		 *
 		 * This function returns a shared pointer to the logger instance.
+		 * It can be used to access the logger for logging messages.
+		 *
+		 * @note The logger instance is initialized in the Init function.
 		 */
         static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return CoreLogger; }
+
+        /**
+         * @fn GetEditorLogger
+         * @brief Gets the editor logger instance.
+         *
+         * This function returns a shared pointer to the editor logger instance.
+         * It can be used to access the editor logger for logging messages.
+         *
+         * @note The editor logger instance is initialized in the Init function.
+         * @return A shared pointer to the editor logger instance.
+         */
         static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return EditorLogger; }
+
+        /**
+         * @fn GetEditorConsoleLogger
+         * @brief Gets the editor console logger instance.
+         *
+         * This function returns a shared pointer to the editor console logger instance.
+         * It can be used to access the editor console logger for logging messages.
+         * 
+         * @return A shared pointer to the editor console logger instance.
+         */
         static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return EditorConsoleLogger; }
 	
 	    // -------------------------------------------------------------
-	
-	    static bool HasTag(const std::string &tag) { return EnabledTags_.contains(std::string(tag.data(), tag.size())); }
-	    static std::map<std::string, TagDetails> &EnabledTags() { return EnabledTags_; }
-	    static void SetDefaultTagSettings();
+
+        /**
+         * @brief Checks if a tag is enabled.
+         *
+         * @param tag The tag to check.
+         * @return True if the tag is enabled, false otherwise.
+         */
+        static bool HasTag(const std::string &tag) { return EnabledTags_.contains(std::string(tag.data(), tag.size())); }
+
+        /**
+         * @brief Gets the tag details for a specific tag.
+         *
+         * @return The tag details for the specified tag.
+         */
+        static std::map<std::string, TagDetails> &EnabledTags() { return EnabledTags_; }
+
+        /**
+         * @brief Sets the tag details for a specific tag.
+         */
+        static void SetDefaultTagSettings();
 	
 	    // -----------------------------------------------------------
 
@@ -182,8 +262,16 @@ namespace SceneryEditorX
 	
 	        return Level::Trace;
 	    }
-	
-	    // Add this method to manually flush all loggers
+
+        /**
+         * @brief Flushes all loggers.
+         *
+         * This function flushes all loggers to ensure that all log messages
+         * are written to the log files and console.
+         *
+         * @note This function should be called before the application exits
+         * to ensure that all log messages are properly flushed.
+         */
         static void FlushAll()
         {
             if (CoreLogger) CoreLogger->flush();
@@ -209,17 +297,17 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Tagged logs (prefer these!)                                                                                      //
+	/// Tagged logs (prefer these!)                                                                                    ///
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	// Core logging
+	/// Core logging
 	#define SEDX_CORE_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
 	#define SEDX_CORE_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
 	#define SEDX_CORE_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
 	#define SEDX_CORE_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
 	#define SEDX_CORE_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
 	
-	// Editor logging
+	/// Editor logging
 	#define EDITOR_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
 	#define EDITOR_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
 	#define EDITOR_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
@@ -228,21 +316,21 @@ namespace SceneryEditorX
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	// Core Logging
+	/// Core Logging
 	#define SEDX_CORE_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
 	#define SEDX_CORE_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
 	#define SEDX_CORE_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
 	#define SEDX_CORE_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
 	#define SEDX_CORE_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
 	
-	// Client Logging
+	/// Client Logging
 	#define EDITOR_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
 	#define EDITOR_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
 	#define EDITOR_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
 	#define EDITOR_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
 	#define EDITOR_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
 	
-	// Editor Console Logging Macros
+	/// Editor Console Logging Macros
 	#define EDITOR_CONSOLE_LOG_TRACE(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->trace(__VA_ARGS__)
 	#define EDITOR_CONSOLE_LOG_INFO(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->info(__VA_ARGS__)
 	#define EDITOR_CONSOLE_LOG_WARN(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->warn(__VA_ARGS__)

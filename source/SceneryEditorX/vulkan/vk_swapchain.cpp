@@ -12,7 +12,7 @@
 */
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/vulkan/vk_device.h>
 #include <SceneryEditorX/vulkan/vk_swapchain.h>
@@ -117,9 +117,7 @@ namespace SceneryEditorX
 
         /// Create the surface
         if (glfwCreateWindowSurface(GraphicsEngine::GetInstance(), window->GetWindow(), allocator, &surface) != VK_SUCCESS)
-        {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create window surface!");
-        }
 
         uint32_t queueCount;
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
@@ -159,13 +157,11 @@ namespace SceneryEditorX
         {
             /// If there's no queue that supports both present and graphics try to find a separate present queue
             for (uint32_t i = 0; i < queueCount; ++i)
-            {
                 if (supportsPresent[i] == VK_TRUE)
                 {
                     presentQueueNodeIndex = i;
                     break;
                 }
-            }
         }
 
         SEDX_CORE_ASSERT(graphicsQueueNodeIndex != UINT32_MAX, "Failed to find a graphics queue!");
@@ -311,23 +307,17 @@ namespace SceneryEditorX
         /// Set minimum image count (usually min+1 for triple buffering)
         uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
         if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
-        {
             imageCount = surfaceCapabilities.maxImageCount;
-        }
 
-		/// Find the transformation of the surface
+        /// Find the transformation of the surface
         VkSurfaceTransformFlagsKHR preTransform;
         if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
-        {
             /// We prefer a non-rotated transform
             preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        }
         else
-        {
             preTransform = surfaceCapabilities.currentTransform;
-        }
 
-		/// Find a supported composite alpha format (not all devices support alpha opaque)
+        /// Find a supported composite alpha format (not all devices support alpha opaque)
         VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         /// Simply select the first composite alpha format available
         std::vector<VkCompositeAlphaFlagBitsKHR> compositeAlphaFlags = {
@@ -338,15 +328,13 @@ namespace SceneryEditorX
         };
 
         for (auto &compositeAlphaFlag : compositeAlphaFlags)
-        {
             if (surfaceCapabilities.supportedCompositeAlpha & compositeAlphaFlag)
             {
                 compositeAlpha = compositeAlphaFlag;
                 break;
-            };
-        }
+            }
 
-		///////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////
 		/// SwapChain Creation
         ///////////////////////////////////////////////////////////////////////////////////
 
@@ -371,26 +359,18 @@ namespace SceneryEditorX
 
 		/// Enable transfer source on swap chain images if supported
 		if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
-        {
             createInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        }
 
         /// Enable transfer destination on swap chain images if supported
         if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-        {
             createInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        }
 
-		VK_CHECK_RESULT(fpCreateSwapchainKHR(vkDevice, &createInfo, allocator, &swapChain));
+        VK_CHECK_RESULT(fpCreateSwapchainKHR(vkDevice, &createInfo, allocator, &swapChain));
         if (oldSwapChain)
-        {
             fpDestroySwapchainKHR(vkDevice, oldSwapChain, allocator);
-        }
 
-		for (size_t i = 0; i < swapChainViews.size(); i++)
-        {
-            vkDestroyImageView(vkDevice, swapChainViews[i], allocator);
-        }
+        for (auto &swapChainView : swapChainViews)
+            vkDestroyImageView(vkDevice, swapChainView, allocator);
 
         swapChainImages.clear();
 
@@ -585,25 +565,19 @@ namespace SceneryEditorX
         vkFreeMemory(vkDevice, depthImageMemory, allocator);
 
         for (auto framebuffer : swapChainFramebuffers)
-        {
             vkDestroyFramebuffer(vkDevice, framebuffer, allocator);
-        }
 
         for (size_t i = 0; i < swapChainImageResources.size(); i++)
-        {
             vkDestroyImageView(vkDevice, swapChainImages[i].resource->view, allocator);
-        }
 
         vkDestroyPipeline(vkDevice, pipeline->GetPipeline(), allocator);
         vkDestroyPipelineLayout(vkDevice, pipeline->GetVulkanPipelineLayout(), allocator);
         vkDestroyRenderPass(vkDevice, renderPass, allocator);
 
         for (auto &swapChainImage : swapChainImages)
-        {
             vkDestroyImageView(vkDevice, swapChainImage.resource->view, nullptr);
-        }
 
-		for (size_t i = 0; i < RenderData::framesInFlight; i++)
+        for (size_t i = 0; i < RenderData::framesInFlight; i++)
         {
             vkDestroySemaphore(vkDevice, imageAvailableSemaphores[i], nullptr);
             vkDestroySemaphore(vkDevice, renderFinishedSemaphores[i], nullptr);
@@ -658,26 +632,22 @@ namespace SceneryEditorX
 		uint32_t imageIndex;
 
         if (VkResult result = fpAcquireNextImageKHR(vkDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[GetImageIndex()], (VkFence)nullptr, &imageIndex); result != VK_SUCCESS)
-		{
-			if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-			{
+        {
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+            {
                 OnResize(viewportData.width, viewportData.height);
-				VK_CHECK_RESULT(fpAcquireNextImageKHR(vkDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[GetImageIndex()], (VkFence)nullptr, &imageIndex));
-			}
-		}
+                VK_CHECK_RESULT(fpAcquireNextImageKHR(vkDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[GetImageIndex()], (VkFence)nullptr, &imageIndex));
+            }
+        }
 
-		return imageIndex;
+        return imageIndex;
 	}
 
     VkSurfaceFormatKHR SwapChain::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
     {
         for (const auto &availableFormat : availableFormats)
-        {
             if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-            {
                 return availableFormat;
-            }
-        }
 
         return availableFormats[0];
     }
@@ -687,9 +657,7 @@ namespace SceneryEditorX
         swapChainViews.resize(swapChainImages.size());
 
         for (size_t i = 0; i < swapChainImages.size(); i++)
-        {
             swapChainViews[i] = CreateImageView(swapChainImages[i].resource->image, static_cast<VkFormat>(swapChainImages[i].format),  VK_IMAGE_ASPECT_COLOR_BIT, 1);
-        }
     }
 
     void SwapChain::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels,
@@ -712,10 +680,7 @@ namespace SceneryEditorX
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         if (vkCreateImage(vkDevice, &imageInfo, allocator, &image) != VK_SUCCESS)
-        {
             SEDX_CORE_ERROR("Failed to create image!");
-            ErrMsg("Failed to create image!");
-        }
 
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
@@ -726,10 +691,7 @@ namespace SceneryEditorX
         allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
         if (vkAllocateMemory(vkDevice, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
-        {
             SEDX_CORE_ERROR("Failed to allocate image memory!");
-            ErrMsg("Failed to allocate image memory!");
-        }
 
         vkBindImageMemory(vkDevice, image, imageMemory, 0);
 
@@ -740,15 +702,10 @@ namespace SceneryEditorX
         VkPhysicalDeviceMemoryProperties memProperties = device->GetPhysicalDevice()->GetMemoryProperties();
 
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
+            if (typeFilter & (1 << i) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
                 return i;
-            }
-        }
 
         SEDX_CORE_ERROR("Failed to find suitable memory type!");
-        throw std::runtime_error("Failed to find suitable memory type!");
     }
 
     VkImageView SwapChain::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const
@@ -766,10 +723,7 @@ namespace SceneryEditorX
 
         VkImageView imageView;
         if (vkCreateImageView(vkDevice, &viewInfo, allocator, &imageView) != VK_SUCCESS)
-        {
             SEDX_CORE_ERROR("Failed to create texture image view!");
-            ErrMsg("Failed to create texture image view!");
-        }
 
         return imageView;
     }
@@ -787,7 +741,7 @@ namespace SceneryEditorX
 
     void SwapChain::CreateDepthResources()
     {
-        VkFormat depthFormat = FindDepthFormat();
+        const VkFormat depthFormat = FindDepthFormat();
 
         CreateImage(swapChainExtent.width, swapChainExtent.height, 1, renderData.msaaSamples, depthFormat,
                     VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -822,7 +776,7 @@ namespace SceneryEditorX
 
 	VkFormat SwapChain::FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
     {
-        for (VkFormat format : candidates)
+        for (const VkFormat format : candidates)
         {
             VkFormatProperties props;
             const VkPhysicalDevice physicalDevice = vkPhysDevice;

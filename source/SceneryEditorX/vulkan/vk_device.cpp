@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -21,226 +21,301 @@
 
 namespace SceneryEditorX
 {
-    //////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////
 	/// VulkanPhysicalDevice Implementation
 	//////////////////////////////////////////////////////////
 
-    VulkanPhysicalDevice::VulkanPhysicalDevice()
-	{
-        auto vkInstance = GraphicsEngine::GetInstance();
 
-        uint32_t GFXDevices = 0;                          /// Number of physical devices
+    /**
+     * @fn VulkanPhysicalDevice::VulkanPhysicalDevice
+     * @brief Constructor that enumerates and initializes available physical GPU devices
+     * 
+     * @details This constructor performs the following operations:
+     * 1. Retrieves the Vulkan instance from the Graphics Engine
+     * 2. Enumerates all physical devices (GPUs) available in the system
+     * 3. Stores device handles and queries detailed device properties
+     * 4. Prioritizes discrete GPUs over integrated GPUs
+     * 5. Logs detailed information about each discovered GPU
+     * 6. Queries device features, memory properties, queue families, and extension support
+     * 7. Identifies and configures dedicated graphics, compute, and transfer queues
+     * 8. Sets up queue create infos required for logical device creation
+     * 9. Determines appropriate depth buffer formats supported by the device
+     * 
+     * The constructor first attempts to find a discrete GPU for optimal performance.
+     * If none is found, it logs an error as the engine currently requires a discrete GPU.
+     * For each device, it queries comprehensive hardware capabilities and prepares queue
+     * configurations that will later be used for logical device creation.
+     * 
+     * @note This constructor doesn't create a logical device - it only prepares the physical device
+     *       information needed for logical device creation in the VulkanDevice class.
+     * @note Errors during device enumeration or if no discrete GPU is found are logged
+     *       but don't throw exceptions.
+     * 
+     * @see VulkanDevice, GetQueueFamilyIndices, FindDepthFormat
+     */
+	VulkanPhysicalDevice::VulkanPhysicalDevice()
+	{
+		const auto vkInstance = GraphicsEngine::GetInstance();
+
+		uint32_t GFXDevices = 0;                          /// Number of physical devices
 		vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, nullptr); 
 		//VK_CHECK_RESULT(vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data()))
 
 		std::vector<VkPhysicalDevice> device(GFXDevices); /// Vector to hold physical devices
-        if (GFXDevices > 0)
-        {
-            device.resize(GFXDevices);
-            if (const VkResult result = vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data());
-                (result != VK_SUCCESS) || (GFXDevices == 0))
-            {
-                SEDX_CORE_ERROR_TAG("Graphics Engine","Could not enumerate physical devices.");
-                return;
-            }
+		if (GFXDevices > 0)
+		{
+			device.resize(GFXDevices);
+			if (const VkResult result = vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data());
+				(result != VK_SUCCESS) || (GFXDevices == 0))
+			{
+				SEDX_CORE_ERROR_TAG("Graphics Engine","Could not enumerate physical devices.");
+				return;
+			}
 
-            /// Resize the devices vector to accommodate the number of physical devices
-            devices.resize(GFXDevices);
-
-            for (uint32_t index = 0; index < GFXDevices; index++)
-            {
-                const VkPhysicalDevice physicalDevice = device[index]; /// Get device properties
-                devices[index].physicalDevice = physicalDevice;        /// Store device properties
-            }
+			/// Resize the devices vector to accommodate the number of physical devices
+			devices.resize(GFXDevices);
+			for (uint32_t index = 0; index < GFXDevices; index++)
+			{
+				const VkPhysicalDevice physicalDevice = device[index]; /// Get device properties
+				devices[index].physicalDevice = physicalDevice;        /// Store device properties
+			}
 
 			//device.resize(GFXDevices);
 
-            if (const VkResult result = vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data());
-                (result != VK_SUCCESS) || (GFXDevices == 0))
-            {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not enumerate physical devices.");
-                return;
-            }
+			if (const VkResult result = vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data());
+				(result != VK_SUCCESS) || (GFXDevices == 0))
+			{
+				SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not enumerate physical devices.");
+				return;
+			}
 
-            /// Resize the devices vector to accommodate the number of physical devices
-            devices.resize(GFXDevices);
-
-            /// Get device properties for each physical device
-            VkPhysicalDevice selectedPhysicalDevice = nullptr;
-            for (uint32_t index = 0; index < devices.size(); ++index)
-            {
-                VkPhysicalDevice GFXDevice = devices[index].physicalDevice; /// Access the VkPhysicalDevice from GPUDevice
-                vkGetPhysicalDeviceProperties(GFXDevice, &devices[index].deviceProperties); /// Get device properties
+			/// Resize the devices vector to accommodate the number of physical devices
+			devices.resize(GFXDevices);
+			/// Get device properties for each physical device
+			VkPhysicalDevice selectedPhysicalDevice = nullptr;
+			for (uint32_t index = 0; index < devices.size(); ++index)
+			{
+				VkPhysicalDevice GFXDevice = devices[index].physicalDevice; /// Access the VkPhysicalDevice from GPUDevice
+				vkGetPhysicalDeviceProperties(GFXDevice, &devices[index].deviceProperties); /// Get device properties
 
 				if (devices[index].deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 				{
-                    SEDX_CORE_INFO("============================================");
-                    SEDX_CORE_INFO("Device Name: {}", ToString(devices[index].deviceProperties.deviceName));
-                    SEDX_CORE_INFO("Device Type: {}", ToString(devices[index].deviceProperties.deviceType));
-                    SEDX_CORE_INFO("Device ID: {}", ToString(devices[index].deviceProperties.deviceID));
-                    SEDX_CORE_INFO("Driver Version: {}", ToString(devices[index].deviceProperties.driverVersion));
-                    SEDX_CORE_INFO("API Version: {}", ToString(devices[index].deviceProperties.apiVersion));
-                    SEDX_CORE_INFO("Vendor ID: {}", ToString(devices[index].deviceProperties.vendorID));
-                    SEDX_CORE_INFO("============================================");
-				    selectedPhysicalDevice = GFXDevice;
-				    break;
+					SEDX_CORE_INFO("============================================");
+					SEDX_CORE_INFO("Device Name: {}", ToString(devices[index].deviceProperties.deviceName));
+					SEDX_CORE_INFO("Device Type: {}", ToString(devices[index].deviceProperties.deviceType));
+					SEDX_CORE_INFO("Device ID: {}", ToString(devices[index].deviceProperties.deviceID));
+					SEDX_CORE_INFO("Driver Version: {}", ToString(devices[index].deviceProperties.driverVersion));
+					SEDX_CORE_INFO("API Version: {}", ToString(devices[index].deviceProperties.apiVersion));
+					SEDX_CORE_INFO("Vendor ID: {}", ToString(devices[index].deviceProperties.vendorID));
+					SEDX_CORE_INFO("============================================");
+					selectedPhysicalDevice = GFXDevice;
+					break;
 				}
 
 				if (devices[index].deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
 				{
-				    SEDX_CORE_WARN_TAG("Graphics Engine", "Integrated GPU found: {}", ToString(devices[index].deviceProperties.deviceName));
-				    SEDX_CORE_ERROR_TAG("Graphics Engine", "Scenery Editor X cannot utilize an integrated GPU currently.");
+					SEDX_CORE_WARN_TAG("Graphics Engine", "Integrated GPU found: {}", ToString(devices[index].deviceProperties.deviceName));
+					SEDX_CORE_ERROR_TAG("Graphics Engine", "Scenery Editor X cannot utilize an integrated GPU currently.");
 				}
-            }
+			}
 
-            if (!selectedPhysicalDevice)
-            {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find discrete GPU.");
-            }
-        }
-        else
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine","No physical devices found.");
-            return;
-        }
+			if (!selectedPhysicalDevice)
+			{
+				SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find discrete GPU.");
+			}
+		}
+		else
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine","No physical devices found.");
+			return;
+		}
 
-        /// Initialize device information for each physical device
-        for (uint32_t index = 0; index < GFXDevices; index++)
-        {
-            /// Use the device-specific physical device handle
-            const VkPhysicalDevice vkDevice = devices[index].physicalDevice;
+		/// Initialize device information for each physical device
+		for (uint32_t index = 0; index < GFXDevices; index++)
+		{
+			/// Use the device-specific physical device handle
+			const VkPhysicalDevice vkDevice = devices[index].physicalDevice;
 
-            /// Get device features
-            vkGetPhysicalDeviceFeatures(vkDevice, &devices[index].GFXFeatures);
+			/// Get device features
+			vkGetPhysicalDeviceFeatures(vkDevice, &devices[index].GFXFeatures);
 
-            /// Get memory properties
-            vkGetPhysicalDeviceMemoryProperties(vkDevice, &(devices[index].memoryInfo));
-            SEDX_CORE_INFO("Number of memory types: {}", ToString(devices[index].memoryInfo.memoryTypeCount));
-            for (uint32_t mem = 0; mem < devices[index].memoryInfo.memoryTypeCount; mem++)
-            {
-                const auto &[propertyFlags, heapIndex] = devices[index].memoryInfo.memoryTypes[mem];
-                //SEDX_CORE_TRACE("============================================");
-                //SEDX_CORE_TRACE("Memory Type Index: {}", ToString(mem));
-                //SEDX_CORE_TRACE("Memory Heap Index: {}", ToString(heapIndex));
-                //SEDX_CORE_TRACE("Memory Property Flags: {}", ToString(propertyFlags));
-                //SEDX_CORE_TRACE("============================================");
-            }
+			/// Get memory properties
+			vkGetPhysicalDeviceMemoryProperties(vkDevice, &(devices[index].memoryInfo));
+			SEDX_CORE_INFO("Number of memory types: {}", ToString(devices[index].memoryInfo.memoryTypeCount));
+			for (uint32_t mem = 0; mem < devices[index].memoryInfo.memoryTypeCount; mem++)
+			{
+				const auto &[propertyFlags, heapIndex] = devices[index].memoryInfo.memoryTypes[mem];
+				//SEDX_CORE_TRACE("============================================");
+				//SEDX_CORE_TRACE("Memory Type Index: {}", ToString(mem));
+				//SEDX_CORE_TRACE("Memory Heap Index: {}", ToString(heapIndex));
+				//SEDX_CORE_TRACE("Memory Property Flags: {}", ToString(propertyFlags));
+				//SEDX_CORE_TRACE("============================================");
+			}
 
-            SEDX_CORE_INFO("Number of memory heaps: {}", ToString(devices[index].memoryInfo.memoryHeapCount));
+			SEDX_CORE_INFO("Number of memory heaps: {}", ToString(devices[index].memoryInfo.memoryHeapCount));
 
-            /// Get queue family properties
-            uint32_t numQueueFamilies = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, nullptr);
-            SEDX_CORE_ASSERT(numQueueFamilies > 0, "No queue families found for the physical device.");
+			/// Get queue family properties
+			uint32_t numQueueFamilies = 0;
+			vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, nullptr);
+			SEDX_CORE_ASSERT(numQueueFamilies > 0, "No queue families found for the physical device.");
 
-            devices[index].queueFamilyInfo.resize(numQueueFamilies);
-            devices[index].queueSupportPresent.resize(numQueueFamilies);
-            vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, devices[index].queueFamilyInfo.data());
-            SEDX_CORE_INFO("Number of GPU device family queues: {}", ToString(numQueueFamilies));
+			devices[index].queueFamilyInfo.resize(numQueueFamilies);
+			devices[index].queueSupportPresent.resize(numQueueFamilies);
+			vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, devices[index].queueFamilyInfo.data());
+			SEDX_CORE_INFO("Number of GPU device family queues: {}", ToString(numQueueFamilies));
 
-            vkEnumerateDeviceExtensionProperties(vkDevice, nullptr, &numQueueFamilies, nullptr);
-            SEDX_CORE_INFO("Number of device extensions: {}", ToString(numQueueFamilies));
-            if (numQueueFamilies > 0)
-            {
-                std::vector<VkExtensionProperties> extensions(numQueueFamilies);
-                if (vkEnumerateDeviceExtensionProperties(vkDevice, nullptr, &numQueueFamilies, &extensions.front()) == VK_SUCCESS)
-                {
-                    for (const auto &extension : extensions)
-                    {
-                        supportedExtensions.emplace(extension.extensionName, extension.specVersion);
-                        //SEDX_CORE_INFO("Extension Name: {}", ToString(extension.extensionName));
-                        //SEDX_CORE_INFO("Extension Version: {}", ToString(extension.specVersion));
-                    }
-                }
-            }
-            else
-            {
-                SEDX_CORE_WARN("No device extensions found.");
-            }
+			vkEnumerateDeviceExtensionProperties(vkDevice, nullptr, &numQueueFamilies, nullptr);
+			SEDX_CORE_INFO("Number of device extensions: {}", ToString(numQueueFamilies));
+			if (numQueueFamilies > 0)
+			{
+				std::vector<VkExtensionProperties> extensions(numQueueFamilies);
+				if (vkEnumerateDeviceExtensionProperties(vkDevice, nullptr, &numQueueFamilies, &extensions.front()) == VK_SUCCESS)
+				{
+					for (const auto &extension : extensions)
+					{
+						supportedExtensions.emplace(extension.extensionName, extension.specVersion);
+						//SEDX_CORE_INFO("Extension Name: {}", ToString(extension.extensionName));
+						//SEDX_CORE_INFO("Extension Version: {}", ToString(extension.specVersion));
+					}
+				}
+			}
+			else
+			{
+				SEDX_CORE_WARN("No device extensions found.");
+			}
 
 			SEDX_CORE_INFO("============================================");
 
-            // -----------------------------------------------
+			// -----------------------------------------------
 
-            static const float defaultQueuePriority(0.0f);
-            int requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
-            QFamilyIndices = GetQueueFamilyIndices(requestedQueueTypes);
+			static constexpr float defaultQueuePriority(0.0f);
+			int requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
+			QFamilyIndices = GetQueueFamilyIndices(requestedQueueTypes);
 
-            // -----------------------------------------------
+			// -----------------------------------------------
 
-            /// Dedicated Graphics Queue
-            if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
-            {
-                VkDeviceQueueCreateInfo queueCreateInfo{};
-                queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetGraphicsFamily();
-                queueCreateInfo.queueCount = 1;
-                queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
-                devices[index].queueCreateInfos.push_back(queueCreateInfo);
-            }
-
-            /// -----------------------------------------------
-
-            /// Dedicated Compute Queue
-            if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
-            {
-                VkDeviceQueueCreateInfo queueCreateInfo{};
-                queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetComputeFamily();
-                queueCreateInfo.queueCount = 1;
-                queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
-                devices[index].queueCreateInfos.push_back(queueCreateInfo);
-            }
-
-            /// -----------------------------------------------
-
-            /// Dedicated Transfer Queue
-            if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
-            {
-                if ((QFamilyIndices.GetTransferFamily() != QFamilyIndices.GetGraphicsFamily()) &&
-                    (QFamilyIndices.GetTransferFamily() != QFamilyIndices.GetComputeFamily()))
-				{
-                    VkDeviceQueueCreateInfo queueCreateInfo{};
-                    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                    queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetTransferFamily();
-                    queueCreateInfo.queueCount = 1;
-                    queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
-                    devices[index].queueCreateInfos.push_back(queueCreateInfo);
-                }
-            }
+			/// Dedicated Graphics Queue
+			if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
+			{
+				VkDeviceQueueCreateInfo queueCreateInfo{};
+				queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetGraphicsFamily();
+				queueCreateInfo.queueCount = 1;
+				queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
+				devices[index].queueCreateInfos.push_back(queueCreateInfo);
+			}
 
 			/// -----------------------------------------------
 
-            FindDepthFormat(devices[index]);
-        }
+			/// Dedicated Compute Queue
+			if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
+			{
+				VkDeviceQueueCreateInfo queueCreateInfo{};
+				queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetComputeFamily();
+				queueCreateInfo.queueCount = 1;
+				queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
+				devices[index].queueCreateInfos.push_back(queueCreateInfo);
+			}
+
+			/// -----------------------------------------------
+
+			/// Dedicated Transfer Queue
+			if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
+			{
+				if ((QFamilyIndices.GetTransferFamily() != QFamilyIndices.GetGraphicsFamily()) &&
+					(QFamilyIndices.GetTransferFamily() != QFamilyIndices.GetComputeFamily()))
+				{
+					VkDeviceQueueCreateInfo queueCreateInfo{};
+					queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+					queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetTransferFamily();
+					queueCreateInfo.queueCount = 1;
+					queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
+					devices[index].queueCreateInfos.push_back(queueCreateInfo);
+				}
+			}
+
+			/// -----------------------------------------------
+
+			FindDepthFormat(devices[index]);
+		}
 	}
 
-    VkFormat VulkanPhysicalDevice::FindDepthFormat(const GPUDevice &device)
-    {
-        std::vector candidates = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
+	/**
+	 * @fn FindDepthFormat
+	 * @brief Determines the best supported depth format for the given physical device
+	 * 
+	 * @details This method selects an appropriate depth format from a list of preferred
+	 * candidates in order of preference. It uses FindSupportedFormat to check which
+	 * format is supported with optimal tiling and depth/stencil attachment capabilities.
+	 * The candidate formats are:
+	 * 1. @enum VK_FORMAT_D32_SFLOAT - 32-bit floating-point depth only (preferred)
+	 * 2. @enum VK_FORMAT_D32_SFLOAT_S8_UINT - 32-bit float depth with 8-bit stencil
+	 * 3. @enum VK_FORMAT_D24_UNORM_S8_UINT - 24-bit normalized depth with 8-bit stencil
+	 * 
+	 * This method is typically called during device initialization to determine the
+	 * appropriate format for depth buffers used in the rendering pipeline.
+	 * 
+	 * @param device The GPU device for which to find a compatible depth format
+	 * @return VkFormat The best supported depth format for the device
+	 * 
+	 * @see FindSupportedFormat, @enum VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+	 */
+	VkFormat VulkanPhysicalDevice::FindDepthFormat(const GPUDevice &device)
+	{
+		std::vector candidates = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT};
 
-        VkFormat depthFormat = FindSupportedFormat(device.physicalDevice, candidates, VK_IMAGE_TILING_OPTIMAL,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+		VkFormat depthFormat = FindSupportedFormat(device.physicalDevice, candidates, VK_IMAGE_TILING_OPTIMAL,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-        return depthFormat;
-    }
+		return depthFormat;
+	}
 
-    VkFormat VulkanPhysicalDevice::FindSupportedFormat(const VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-    {
-        for (const VkFormat format : candidates)
-        {
-            VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+	/**
+	 * @fn FindSupportedFormat
+	 * @brief Find the first format in the provided candidates list that supports the required features
+	 * 
+	 * @details This method examines each format in the candidates list to find the first one that
+	 * supports the specified feature flags with the given tiling mode. For each candidate format:
+	 * 1. It queries the physical device for the format properties using vkGetPhysicalDeviceFormatProperties
+	 * 2. It checks if the format supports the requested features with the specified tiling mode:
+	 *    - For linear tiling: Checks linearTilingFeatures against the required features
+	 *    - For optimal tiling: Checks optimalTilingFeatures against the required features
+	 * 3. Returns the first format that satisfies all requirements
+	 * 
+	 * This function is typically used to find appropriate depth/stencil formats or 
+	 * other specialized formats with specific hardware feature requirements.
+	 * 
+	 * @param physicalDevice The physical device to query for format support
+	 * @param candidates A list of format candidates to check in order of preference
+	 * @param tiling The desired tiling mode (linear or optimal)
+	 * @param features Required format features that must be supported
+	 * 
+	 * @return VkFormat The first format from the candidate list that supports the requested features
+	 * 
+	 * @throws Logs an error if no suitable format is found among the candidates
+	 * 
+	 * @note Linear tiling is typically used for host-accessible images, while optimal tiling
+	 *       provides better performance for GPU-only access images like depth buffers and textures
+	 * 
+	 * @see vkGetPhysicalDeviceFormatProperties, VkFormatProperties, VkImageTiling
+	 */
+	VkFormat VulkanPhysicalDevice::FindSupportedFormat(const VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+	{
+		for (const VkFormat format : candidates)
+		{
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
 
-            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-                return format;
-            if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-                return format;
-        }
+			if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+				return format;
+			if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+				return format;
+		}
 
 		SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find a supported format!");
-    }
+	}
 
-    // -------------------------------------------------------
+	// -------------------------------------------------------
 
 /*
 	/// Get surface formats
@@ -252,11 +327,11 @@ namespace SceneryEditorX
 	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(vkDevice, nullptr, &numSurfaceFormats, devices[index].surfaceFormats.data()))
 	for (uint32_t format = 0; format < numSurfaceFormats; format++)
 	{
-	    const VkSurfaceFormatKHR &surfaceFormat = devices[index].surfaceFormats[format];
-	    SEDX_CORE_INFO("============================================");
-	    SEDX_CORE_INFO("Surface Format: {}", ToString(surfaceFormat.format));
-	    SEDX_CORE_INFO("Color Space: {}", ToString(surfaceFormat.colorSpace));
-	    SEDX_CORE_INFO("============================================");
+		const VkSurfaceFormatKHR &surfaceFormat = devices[index].surfaceFormats[format];
+		SEDX_CORE_INFO("============================================");
+		SEDX_CORE_INFO("Surface Format: {}", ToString(surfaceFormat.format));
+		SEDX_CORE_INFO("Color Space: {}", ToString(surfaceFormat.colorSpace));
+		SEDX_CORE_INFO("============================================");
 	}
 	
 	/// Get surface capabilities
@@ -288,265 +363,345 @@ namespace SceneryEditorX
 	// Store queue family properties for later queue index lookup
 	if (!devices.empty())
 	{
-	    queueFamilyProperties = devices[0].queueFamilyInfo;
+		queueFamilyProperties = devices[0].queueFamilyInfo;
 	}
 }
 */
 
-    VulkanPhysicalDevice::~VulkanPhysicalDevice() = default;
+    /**
+     * @fn VulkanPhysicalDevice
+	 * @brief Default destructor for VulkanPhysicalDevice
+	 * 
+	 * @details This destructor handles the cleanup of VulkanPhysicalDevice resources.
+	 * Since the class uses RAII (Resource Acquisition Is Initialization) pattern,
+	 * most resources are automatically cleaned up by their own destructors.
+	 * 
+	 * Key points:
+	 * - Uses the default implementation as no manual resource cleanup is needed
+	 * - Any Vulkan handles stored in the devices vector are not explicitly destroyed here
+	 *   as they are owned by the Vulkan instance, not by this class
+	 * - The physical device handle itself is not destroyed as it's managed by the Vulkan runtime
+	 * 
+	 * @note Physical device handles (VkPhysicalDevice) are not created or destroyed by the
+	 *       application. They are managed by the Vulkan implementation.
+	 */
+	VulkanPhysicalDevice::~VulkanPhysicalDevice() = default;
 
 	// -------------------------------------------------------
 
-    /**
-     * @brief Select a VulkanPhysicalDevice instance.
-     * @return A reference to the selected VulkanPhysicalDevice instance.
-     */
-    Ref<VulkanPhysicalDevice> VulkanPhysicalDevice::Select()
-    {
-        return CreateRef<VulkanPhysicalDevice>();
-    }
-
 	/**
-	 * @brief Checks to see if the device is suitable for the application.
-	 * @param queueType
-	 * @param supportPresent
-	 * @param device 
-	 * @return True if the device is suitable for the application.
-	 * @return False if the device is not suitable for the application.
+	 * @fn Select
+	 * @brief Creates and returns a new Vulkan physical device instance
+	 * 
+	 * @details This static factory method creates a new VulkanPhysicalDevice instance
+	 * which performs physical device enumeration and selection. The implementation:
+	 * 1. Creates a new VulkanPhysicalDevice object using the default constructor
+	 * 2. During construction, the object automatically enumerates all available GPUs
+	 * 3. Evaluates device capabilities (queue families, features, extensions)
+	 * 4. Returns a shared pointer (Ref) to the newly created object
+	 * 
+	 * This method is the primary way for the graphics engine to initialize
+	 * physical device functionality, typically followed by logical device creation.
+	 * 
+	 * @return Ref<VulkanPhysicalDevice> A shared pointer to the newly created physical device object
+	 * 
+	 * @note The returned physical device has enumerated all available GPUs but may not
+	 *       have explicitly selected one yet. Call SelectDevice() to choose a specific device.
+	 * 
+	 * @see VulkanPhysicalDevice(), VulkanDevice
 	 */
+	Ref<VulkanPhysicalDevice> VulkanPhysicalDevice::Select()
+	{
+		return CreateRef<VulkanPhysicalDevice>();
+	}
 
-    /*
-    bool VulkanDevice::IsDeviceSuitable(Ref<VulkanPhysicalDevice> physDevice)
-    {
-        Ref<VulkanPhysicalDevice> indices = physDevice->Selected()->GetQueueFamilyIndices();
+	/*
+	bool VulkanDevice::IsDeviceSuitable(Ref<VulkanPhysicalDevice> physDevice)
+	{
+		Ref<VulkanPhysicalDevice> indices = physDevice->Selected()->GetQueueFamilyIndices();
 
-        VulkanChecks checks;
-        QueueFamilyIndices indices;
+		VulkanChecks checks;
+		QueueFamilyIndices indices;
 
-        bool extensionsSupported = checks.CheckDeviceExtensionSupport(physDevice);
-        bool swapChainAdequate = false;
-        if (extensionsSupported)
-        {
-            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(vkPhysicalDevice);
-            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-        }
+		bool extensionsSupported = checks.CheckDeviceExtensionSupport(physDevice);
+		bool swapChainAdequate = false;
+		if (extensionsSupported)
+		{
+			SwapChainSupportDetails swapChainSupport = querySwapChainSupport(vkPhysicalDevice);
+			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+		}
 
-        VkPhysicalDeviceFeatures supportedFeatures;
-        vkGetPhysicalDeviceFeatures(vkPhysicalDevice, &supportedFeatures);
+		VkPhysicalDeviceFeatures supportedFeatures;
+		vkGetPhysicalDeviceFeatures(vkPhysicalDevice, &supportedFeatures);
 
-        return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
-    }
+		return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+	}
 	*/
 
-    /**
-	 * @brief Select a device based on the queue type and support present.
-	 * @param queueType - The type of queue to select.
-	 * @param supportPresent - Whether the queue supports present.
-	 * @return - The queue family index.
+	/**
+	 * @fn Selected
+	 * @brief Returns a reference to the currently selected physical device
+	 * 
+	 * @details This method retrieves the GPUDevice object representing the currently selected
+	 * physical GPU in the system. It performs validation to ensure a valid device has been
+	 * selected before returning a reference to it.
+	 * 
+	 * The selection is based on the deviceIndex property that should have been set during
+	 * physical device enumeration and selection. This device represents the GPU that will
+	 * be used for rendering operations.
+	 * 
+	 * @return const GPUDevice& A reference to the selected GPU device object containing 
+	 *         all relevant capabilities, properties, and feature information
+	 * 
+	 * @throws Logs an error if no device has been selected or if the device index is invalid
+	 * 
+	 * @note This method should only be called after a physical device has been properly
+	 *       selected via SelectDevice() or an equivalent selection method
+	 * 
+	 * @see @struct GPUDevice, SelectDevice
 	 */
+	const GPUDevice &VulkanPhysicalDevice::Selected() const
+	{
+		if (deviceIndex < 0 || devices.size() > deviceIndex)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "No device selected or invalid device index.");
+		}
 
-    /**
-	* @brief Get the selected device.
-	* 
-	* @param const GPUDevice& - The selected device.
-	* @return const GPUDevice&
-	*/
-    const GPUDevice &VulkanPhysicalDevice::Selected() const
-    {
-        if (deviceIndex < 0 || devices.size() > deviceIndex)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "No device selected or invalid device index.");
-        }
-
-        return devices[deviceIndex];
-    }
-
-    /**
-     * @brief Get the queue family indices for the device.
-     * @param qFlags - The queue flags to check for.
-     * @return - The queue family indices.
-     */
-    QueueFamilyIndices VulkanPhysicalDevice::GetQueueFamilyIndices(VkQueueFlags qFlags) const
-    {
-        QueueFamilyIndices indices;
-        
-        /// Early return if no devices available
-        if (devices.empty()) {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "No physical devices available");
-            return indices;
-        }
-        
-        /// Only process the selected device (or first device if none selected)
-        uint32_t deviceIdx = (deviceIndex >= 0 && deviceIndex < static_cast<int>(devices.size())) ? deviceIndex : 0;
-        const VkPhysicalDevice vkDevice = devices[deviceIdx].physicalDevice;
-        
-        /// Get queue family properties for the device
-        uint32_t numQueueFamilies = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, nullptr);
-        SEDX_CORE_ASSERT(numQueueFamilies > 0, "No queue families found for the physical device.");
-        
-        std::vector<VkQueueFamilyProperties> queueFamilyProperties(numQueueFamilies);
-        vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, queueFamilyProperties.data());
-        
-        /// Log queue family information
-        for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
-            const VkQueueFamilyProperties &queueFamilyInfo = queueFamilyProperties[queueIdx];
-            
-            SEDX_CORE_INFO("============================================");
-            SEDX_CORE_INFO("Queue Family Index: {}", ToString(queueIdx));
-            SEDX_CORE_INFO("Queue Count: {}", ToString(queueFamilyInfo.queueCount));
-            SEDX_CORE_INFO("Queue Flags: {}", ToString(queueFamilyInfo.queueFlags));
-            SEDX_CORE_INFO("============================================");
-        }
-        
-        /// First pass: look for dedicated queues
-        if (qFlags & VK_QUEUE_COMPUTE_BIT) {
-            /// Find dedicated compute queue (compute, but not graphics)
-            for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
-                const auto &props = queueFamilyProperties[queueIdx];
-                const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
-                const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-                
-                if (supportsCompute && !supportsGraphics)
-                {
-                    indices.computeFamily = std::make_optional(std::make_pair(QueueFamilyType::Compute, queueIdx));
-                    break;
-                }
-            }
-        }
-        
-        if (qFlags & VK_QUEUE_TRANSFER_BIT) {
-            /// Find dedicated transfer queue (transfer, but not graphics or compute)
-            for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
-                const auto &props = queueFamilyProperties[queueIdx];
-                const bool supportsTransfer = (props.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
-                const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-                const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
-                
-                if (supportsTransfer && !supportsGraphics && !supportsCompute) {
-                    indices.transferFamily = std::make_optional(std::make_pair(QueueFamilyType::Transfer, queueIdx));
-                    break;
-                }
-            }
-        }
-        
-        /// Second pass: set any remaining indices to general-purpose queues
-        for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
-            const auto &props = queueFamilyProperties[queueIdx];
-            const bool supportsTransfer = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
-            const bool supportsGraphics = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-            const bool supportsCompute = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
-
-            /// Set graphics queue
-            if (supportsTransfer && !supportsGraphics && !supportsCompute)
-            {
-                indices.transferFamily = std::make_optional(std::make_pair(QueueFamilyType::Transfer, queueIdx));
-                break;
-            }
-            
-            /// Set compute queue if not already set
-            if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !indices.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
-            {
-                indices.computeFamily = std::make_optional(std::make_pair(QueueFamilyType::Compute, queueIdx));
-            }
-            
-            /// Set transfer queue if not already set
-            if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !indices.transferFamily.has_value() && (props.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
-                indices.transferFamily = std::make_optional(std::make_pair(QueueFamilyType::Transfer, queueIdx));
-            }
-        }
-        
-        // Check presentation support if we have a surface
-        // This is commented out since the current implementation lacks valid surface parameter
-        // To be uncommented and properly implemented once surface creation is added
-        /*
-        if (surface != VK_NULL_HANDLE) {
-            for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
-                VkBool32 presentSupport = VK_FALSE;
-                vkGetPhysicalDeviceSurfaceSupportKHR(vkDevice, queueIdx, surface, &presentSupport);
-                
-                if (presentSupport) {
-                    // Set presentation queue (ideally same as graphics queue)
-                    if (queueIdx == indices.Graphics) {
-                        SEDX_CORE_INFO("Graphics queue also supports presentation");
-                    }
-                    // Store present support info for later use
-                    devices[deviceIdx].queueSupportPresent.resize(numQueueFamilies);
-                    devices[deviceIdx].queueSupportPresent[queueIdx] = presentSupport;
-                }
-            }
-        }
-        */
-        SEDX_CORE_INFO("============================================");
-        SEDX_CORE_INFO("Selected Queue Families:");
-        SEDX_CORE_INFO("Graphics: {}", indices.graphicsFamily.has_value() ? ToString(indices.graphicsFamily.value().second) : "Not Available");
-        SEDX_CORE_INFO("Compute: {}", indices.computeFamily.has_value() ? ToString(indices.computeFamily.value().second) : "Not Available");
-        SEDX_CORE_INFO("Transfer: {}", indices.transferFamily.has_value() ? ToString(indices.transferFamily.value().second) : "Not Available");
-        SEDX_CORE_INFO("============================================");
-
-        return indices;
-    }
-
-    ///////////////////////////////////////////////////////////
-    /// Vulkan Device Implementation                        ///
-    ///////////////////////////////////////////////////////////
+		return devices[deviceIndex];
+	}
 
 	/**
-	 * @brief Create a Vulkan device.
-	 * @param physDevice - The physical device to create the logical device for.
-	 * @param enabledFeatures - The features to enable for the logical device.
+	 * @fn GetQueueFamilyIndices
+	 * @brief Identifies queue families available on the physical device that match requested capabilities
+	 * 
+	 * @details This method analyzes the queue families provided by a physical device and
+	 * determines which queue families can support the requested queue operations. The implementation:
+	 * 1. First attempts to find dedicated queue families for specialized tasks:
+	 *    - Dedicated compute queues (support compute but not graphics operations)
+	 *    - Dedicated transfer queues (support transfer but neither graphics nor compute operations)
+	 * 
+	 * 2. Then assigns general-purpose queues to any required roles that weren't filled by dedicated queues
+	 * 
+	 * This approach optimizes performance by using hardware queues that are specialized for specific
+	 * tasks when available, falling back to more general queues when necessary. Dedicated queues often
+	 * provide better performance for their specialized operations since they don't compete with other
+	 * operation types.
+	 * 
+	 * The function logs extensive information about available queue families and the final selections
+	 * to assist with debugging and optimization.
+	 * 
+	 * @param qFlags Bitfield of required queue capabilities (@enum VK_QUEUE_GRAPHICS_BIT, @enum VK_QUEUE_COMPUTE_BIT, etc.)
+	 * @return @struct QueueFamilyIndices containing the selected queue family indices for different operations
+	 * 
+	 * @note If the device has no dedicated compute or transfer queues, the general graphics queue will
+	 *       be used for all operations.
+	 * @note The commented-out section contains code for checking presentation support once surface
+	 *       creation is implemented.
+	 * 
+	 * @see VkQueueFlagBits, QueueFamilyIndices
 	 */
-    VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures)
-        : vkPhysDevice(physDevice), vkEnabledFeatures(enabledFeatures)
-    {
-        VulkanChecks checks;
-        /*
-        QueueFamilyIndices indices = vkPhysDevice->FindQueueFamilies(vkPhysDevice->GetGPUDevice());
+	QueueFamilyIndices VulkanPhysicalDevice::GetQueueFamilyIndices(VkQueueFlags qFlags) const
+	{
+		QueueFamilyIndices indices;
+		
+		/// Early return if no devices available
+		if (devices.empty()) {
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "No physical devices available");
+			return indices;
+		}
+		
+		/// Only process the selected device (or first device if none selected)
+		uint32_t deviceIdx = (deviceIndex >= 0 && deviceIndex < static_cast<int>(devices.size())) ? deviceIndex : 0;
+		const VkPhysicalDevice vkDevice = devices[deviceIdx].physicalDevice;
+		
+		/// Get queue family properties for the device
+		uint32_t numQueueFamilies = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, nullptr);
+		SEDX_CORE_ASSERT(numQueueFamilies > 0, "No queue families found for the physical device.");
+		
+		std::vector<VkQueueFamilyProperties> queueFamilyProperties(numQueueFamilies);
+		vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, queueFamilyProperties.data());
+		
+		/// Log queue family information
+		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+			const VkQueueFamilyProperties &queueFamilyInfo = queueFamilyProperties[queueIdx];
+			
+			SEDX_CORE_INFO("============================================");
+			SEDX_CORE_INFO("Queue Family Index: {}", ToString(queueIdx));
+			SEDX_CORE_INFO("Queue Count: {}", ToString(queueFamilyInfo.queueCount));
+			SEDX_CORE_INFO("Queue Flags: {}", ToString(queueFamilyInfo.queueFlags));
+			SEDX_CORE_INFO("============================================");
+		}
+		
+		/// First pass: look for dedicated queues
+		if (qFlags & VK_QUEUE_COMPUTE_BIT) {
+			/// Find dedicated compute queue (compute, but not graphics)
+			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+				const auto &props = queueFamilyProperties[queueIdx];
+				const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
+
+                if (const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0; supportsCompute && !supportsGraphics)
+				{
+					indices.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
+					break;
+				}
+			}
+		}
+		
+		if (qFlags & VK_QUEUE_TRANSFER_BIT) {
+			/// Find dedicated transfer queue (transfer, but not graphics or compute)
+			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+				const auto &props = queueFamilyProperties[queueIdx];
+				const bool supportsTransfer = (props.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
+				const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
+				const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
+				
+				if (supportsTransfer && !supportsGraphics && !supportsCompute) {
+					indices.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
+					break;
+				}
+			}
+		}
+		
+		/// Second pass: set any remaining indices to general-purpose queues
+		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+			const auto &props = queueFamilyProperties[queueIdx];
+			const bool supportsTransfer = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
+			const bool supportsGraphics = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
+			const bool supportsCompute = (queueFamilyProperties[queueIdx].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
+
+			/// Set graphics queue
+			if (supportsTransfer && !supportsGraphics && !supportsCompute)
+			{
+				indices.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
+				break;
+			}
+			
+			/// Set compute queue if not already set
+			if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !indices.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
+			{
+				indices.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
+			}
+			
+			/// Set transfer queue if not already set
+			if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !indices.transferFamily.has_value() && (props.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
+				indices.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
+			}
+		}
+		
+		// Check presentation support if we have a surface
+		// This is commented out since the current implementation lacks valid surface parameter
+		// To be uncommented and properly implemented once surface creation is added
+		/*
+		if (surface != VK_NULL_HANDLE) {
+			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+				VkBool32 presentSupport = VK_FALSE;
+				vkGetPhysicalDeviceSurfaceSupportKHR(vkDevice, queueIdx, surface, &presentSupport);
+				
+				if (presentSupport) {
+					// Set presentation queue (ideally same as graphics queue)
+					if (queueIdx == indices.Graphics) {
+						SEDX_CORE_INFO("Graphics queue also supports presentation");
+					}
+					// Store present support info for later use
+					devices[deviceIdx].queueSupportPresent.resize(numQueueFamilies);
+					devices[deviceIdx].queueSupportPresent[queueIdx] = presentSupport;
+				}
+			}
+		}
+		*/
+		SEDX_CORE_INFO("============================================");
+		SEDX_CORE_INFO("Selected Queue Families:");
+		SEDX_CORE_INFO("Graphics: {}", indices.graphicsFamily.has_value() ? ToString(indices.graphicsFamily.value().second) : "Not Available");
+		SEDX_CORE_INFO("Compute: {}", indices.computeFamily.has_value() ? ToString(indices.computeFamily.value().second) : "Not Available");
+		SEDX_CORE_INFO("Transfer: {}", indices.transferFamily.has_value() ? ToString(indices.transferFamily.value().second) : "Not Available");
+		SEDX_CORE_INFO("============================================");
+
+		return indices;
+	}
+
+	///////////////////////////////////////////////////////////
+	/// Vulkan Device Implementation                        ///
+	///////////////////////////////////////////////////////////
+
+	/**
+	 * @fn VulkanDevice::VulkanDevice
+	 * @brief Creates a Vulkan logical device from a physical device
+	 * 
+	 * @details This constructor initializes a logical Vulkan device with the following steps:
+	 * 1. Verifies that required device extensions are supported
+	 * 2. Adds necessary extensions such as VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	 * 3. Conditionally adds vendor-specific extensions (NVIDIA diagnostic extensions)
+	 * 4. Creates the logical device with appropriate queue configurations
+	 * 5. Retrieves handles to graphics and compute queues
+	 * 6. Loads function pointers for extended Vulkan functionality
+	 * 7. Sets up bindless resources for efficient shader resource access
+	 * 8. Creates an initial scratch buffer for general GPU operations
+	 * 
+	 * The constructor configures the device based on the supplied physical device capabilities
+	 * and the requested feature set, ensuring all necessary features and extensions are enabled.
+	 * 
+	 * @param physDevice The physical device to create a logical device from
+	 * @param enabledFeatures The device features to be enabled on the logical device
+	 * 
+	 * @note The device creation may fail if required extensions are not supported, in which
+	 *       case an error is logged and the function returns early.
+	 * @note Device queues are acquired based on queue family indices determined during
+	 *       physical device selection.
+	 * 
+	 * @see LoadExtensionFunctions, InitializeBindlessResources, CreateBuffer
+	 */
+	VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures)
+		: vkPhysDevice(physDevice), vkEnabledFeatures(enabledFeatures)
+	{
+		VulkanChecks checks;
+		/*
+		QueueFamilyIndices indices = vkPhysDevice->FindQueueFamilies(vkPhysDevice->GetGPUDevice());
 
 
-        /// Validate that necessary queue families were found
-        if (!indices.IsComplete())
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find all required queue families.");
-            return;
-        }
+		/// Validate that necessary queue families were found
+		if (!indices.IsComplete())
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find all required queue families.");
+			return;
+		}
 
-        /// Create unique queue create infos for each queue family
-        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        std::set uniqueQueueFamilies = {
-            indices.graphicsFamily.value(),
-            indices.presentFamily.value()
-        };
+		/// Create unique queue create infos for each queue family
+		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+		std::set uniqueQueueFamilies = {
+			indices.graphicsFamily.value(),
+			indices.presentFamily.value()
+		};
 
-        auto queuePriority = 1.0f;
-        for (uint32_t queueFamily : uniqueQueueFamilies)
-        {
-            VkDeviceQueueCreateInfo queueCreateInfo{};
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.queueFamilyIndex = queueFamily;
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
-            queueCreateInfos.push_back(queueCreateInfo);
-        }
+		auto queuePriority = 1.0f;
+		for (uint32_t queueFamily : uniqueQueueFamilies)
+		{
+			VkDeviceQueueCreateInfo queueCreateInfo{};
+			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queueCreateInfo.queueFamilyIndex = queueFamily;
+			queueCreateInfo.queueCount = 1;
+			queueCreateInfo.pQueuePriorities = &queuePriority;
+			queueCreateInfos.push_back(queueCreateInfo);
+		}
 
 		// ---------------------------------------------------------
 		*/
 
-        /// Verify extension support
-        std::vector<const char *> &deviceExtensions = vkExtensions.requiredExtensions;
-        if (!checks.CheckDeviceExtensionSupport(vkPhysDevice->GetGPUDevice()))
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
-            return;
-        }
+		/// Verify extension support
+		std::vector<const char *> &deviceExtensions = vkExtensions.requiredExtensions;
+		if (!checks.CheckDeviceExtensionSupport(vkPhysDevice->GetGPUDevice()))
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
+			return;
+		}
 
-        SEDX_CORE_ASSERT(checks.IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME));
-        deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+		SEDX_CORE_ASSERT(checks.IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME));
+		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 		if (checks.IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME))
-            deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
-        if (checks.IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
-            deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+			deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+		if (checks.IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
+			deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
 
 		// ---------------------------------------------------------
 
@@ -557,443 +712,494 @@ namespace SceneryEditorX
 
 		// ---------------------------------------------------------
 
-        /// Create the logical device
-        VkDeviceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos = physDevice->Selected().queueCreateInfos.data();
-        createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueFamilyInfo.size());
-        createInfo.pEnabledFeatures = &enabledFeatures;
-        //createInfo.ppEnabledLayerNames = nullptr; // Deprecated in Vulkan 1.2
-        //createInfo.enabledLayerCount = 0; // Deprecated in Vulkan 1.2
+		/// Create the logical device
+		VkDeviceCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		createInfo.pQueueCreateInfos = physDevice->Selected().queueCreateInfos.data();
+		createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueFamilyInfo.size());
+		createInfo.pEnabledFeatures = &enabledFeatures;
+		//createInfo.ppEnabledLayerNames = nullptr; // Deprecated in Vulkan 1.2
+		//createInfo.enabledLayerCount = 0; // Deprecated in Vulkan 1.2
 
 		VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{};
 
 		if (checks.IsExtensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
-        {
-            deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-        }
+		{
+			deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+		}
 
-        if (!deviceExtensions.empty())
-        {
-            createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-            createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-        }
+		if (!deviceExtensions.empty())
+		{
+			createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+			createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+		}
 
-        /// Create the logical device
-        VkResult result = vkCreateDevice(vkPhysDevice->GetGPUDevice(), &createInfo, nullptr, &device);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device! Error: {}", static_cast<int>(result));
-            return;
-        }
+		/// Create the logical device
+        if (VkResult result = vkCreateDevice(vkPhysDevice->GetGPUDevice(), &createInfo, nullptr, &device); result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device! Error: {}", static_cast<int>(result));
+			return;
+		}
 
-        /// Get device queues
-        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
-        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
+		/// Get device queues
+		vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
+		vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
 
-        /// Load device extension function pointers
-        LoadExtensionFunctions();
+		/// Load device extension function pointers
+		LoadExtensionFunctions();
 
-        /// Initialize memory allocator
-        //InitializeMemoryAllocator();
+		/// Initialize memory allocator
+		//InitializeMemoryAllocator();
 
-        /// Set up bindless resources and initial buffers
-        InitializeBindlessResources();
+		/// Set up bindless resources and initial buffers
+		InitializeBindlessResources();
 
-        /// Create initial scratch buffer
-        scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
+		/// Create initial scratch buffer
+		scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
 
-        /// Get the device address for the scratch buffer
-        if (vkGetBufferDeviceAddressKHR != nullptr)
-        {
-            VkBufferDeviceAddressInfo scratchInfo{};
-            scratchInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-            scratchInfo.buffer = scratchBuffer.bufferResource->buffer;
-            scratchAddress = vkGetBufferDeviceAddressKHR(device, &scratchInfo);
-        }
-    }
+		/// Get the device address for the scratch buffer
+		if (vkGetBufferDeviceAddressKHR != nullptr)
+		{
+			VkBufferDeviceAddressInfo scratchInfo{};
+			scratchInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+			scratchInfo.buffer = scratchBuffer.bufferResource->buffer;
+			scratchAddress = vkGetBufferDeviceAddressKHR(device, &scratchInfo);
+		}
+	}
 
-    void VulkanDevice::LoadExtensionFunctions()
+	/**
+	 * @fn LoadExtensionFunctions
+	 * @brief Loads function pointers for Vulkan extension functions
+	 * 
+	 * @details This method dynamically loads function pointers for Vulkan extension functions that
+	 * are not part of the core API and must be queried at runtime. It loads:
+	 * 1. Debug utilities functions:
+	 *    - vkSetDebugUtilsObjectNameEXT: Sets a debug name for Vulkan objects for debugging tools
+	 *
+	 * 2. Ray tracing acceleration structure functions:
+	 *    - vkGetAccelerationStructureBuildSizesKHR: Calculates memory requirements for acceleration structures
+	 *    - vkCreateAccelerationStructureKHR: Creates acceleration structure objects
+	 *    - vkCmdBuildAccelerationStructuresKHR: Records commands to build acceleration structures
+	 *    - vkGetAccelerationStructureDeviceAddressKHR: Retrieves device addresses for acceleration structures
+	 *    - vkDestroyAccelerationStructureKHR: Destroys acceleration structure objects
+	 *
+	 * 3. Buffer device address functions:
+	 *    - vkGetBufferDeviceAddressKHR: Retrieves device address for a buffer
+	 * 
+	 * These function pointers enable the engine to use extension functionality in a 
+	 * cross-platform and runtime-compatible way.
+	 * 
+	 * @note Function pointers are initialized to nullptr and will remain that way if the 
+	 *       corresponding extension is not supported or enabled.
+	 * 
+	 * @see vkGetDeviceProcAddr
+	 */
+	void VulkanDevice::LoadExtensionFunctions()
+	{
+		// Load debug utils functions
+		vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device,"vkSetDebugUtilsObjectNameEXT");
+		// Load ray tracing functions
+		vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetDeviceProcAddr(device,"vkGetAccelerationStructureBuildSizesKHR");
+		vkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR");
+		vkGetBufferDeviceAddressKHR = (PFN_vkGetBufferDeviceAddressKHR)vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR");
+		vkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR");
+		vkGetAccelerationStructureDeviceAddressKHR = (PFN_vkGetAccelerationStructureDeviceAddressKHR) vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR");
+		vkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR");
+	}
+
+	/*
+	void VulkanDevice::InitializeMemoryAllocator()
+	{
+		memoryAllocator = CreateRef<MemoryAllocator>("VulkanDevice");
+		memoryAllocator->Init(VulkanDevice device);
+	}
+	*/
+
+	/**
+	 * @fn InitializeBindlessResources
+	 * @brief Sets up bindless resource system for efficient shader resource access
+	 * 
+	 * @details This method initializes the bindless descriptor system which allows shaders to 
+	 * access a large number of resources through indices rather than fixed bindings:
+	 * 1. Creates a descriptor pool specifically for ImGui rendering with sufficient resources
+	 * 2. Initializes resource ID tracking for both buffers and sampled images
+	 * 3. Creates a global descriptor pool for bindless resources with update-after-bind support
+	 * 4. Sets up the descriptor set layout with three main bindings:
+	 *    - Combined image samplers (textures)
+	 *    - Storage buffers
+	 *    - Storage images
+	 * 5. Configures binding flags to enable partial binding and dynamic updates
+	 * 6. Allocates the global bindless descriptor set
+	 * 
+	 * The bindless resource system enables the engine to:
+	 * - Access thousands of resources from any shader without rebinding
+	 * - Update resources at runtime without recreating descriptor sets
+	 * - Use dynamic indexing in shaders for data-driven rendering techniques
+	 * - Support efficient texture arrays, material systems, and instance data
+	 * 
+	 * @note This implementation relies on VK_EXT_descriptor_indexing extension
+	 * @note The descriptor pools are sized according to predefined MAX_* constants
+	 * 
+	 * @see VkDescriptorPoolCreateInfo, VkDescriptorSetLayoutCreateInfo
+	 */
+	void VulkanDevice::InitializeBindlessResources()
     {
-        // Load debug utils functions
-        vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device,"vkSetDebugUtilsObjectNameEXT");
-        // Load ray tracing functions
-        vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetDeviceProcAddr(device,"vkGetAccelerationStructureBuildSizesKHR");
-        vkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR");
-        vkGetBufferDeviceAddressKHR = (PFN_vkGetBufferDeviceAddressKHR)vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR");
-        vkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR");
-        vkGetAccelerationStructureDeviceAddressKHR = (PFN_vkGetAccelerationStructureDeviceAddressKHR) vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR");
-        vkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR");
-    }
-
-    /*
-    void VulkanDevice::InitializeMemoryAllocator()
-    {
-        memoryAllocator = CreateRef<MemoryAllocator>("VulkanDevice");
-        memoryAllocator->Init(VulkanDevice device);
-    }
-    */
-
-    void VulkanDevice::InitializeBindlessResources()
-    {
-        /// Create ImGui descriptor pool
-        const VkDescriptorPoolSize imguiPoolSizes[] = {
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000}
-        };
-
-        VkDescriptorPoolCreateInfo imguiPoolInfo{};
-        imguiPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        imguiPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        imguiPoolInfo.maxSets = 1024;
-        imguiPoolInfo.poolSizeCount = sizeof(imguiPoolSizes) / sizeof(VkDescriptorPoolSize);
-        imguiPoolInfo.pPoolSizes = imguiPoolSizes;
-
-        VK_CHECK_RESULT(vkCreateDescriptorPool(device, &imguiPoolInfo, nullptr, &bindlessResources.imguiDescriptorPool))
-
-        /// Initialize resource ID arrays
-        for (int i = 0; i < bindlessResources.MAX_STORAGE; i++)
-        {
+        // Initialize bindless resources using our helper functions
+        InitializeBindlessResources(device, bindlessResources);
+        
+        // Initialize resource ID arrays for tracking available resource slots
+        for (int i = 0; i < bindlessResources.MAX_STORAGE_BUFFERS; i++) {
             ImageID::availBufferRID.push_back(i);
         }
-
-        for (int i = 0; i < bindlessResources.MAX_SAMPLED_IMAGES; i++)
-        {
+        
+        for (int i = 0; i < bindlessResources.MAX_SAMPLED_IMAGES; i++) {
             ImageID::availImageRID.push_back(i);
         }
-
-        /// Create bindless descriptor pool
-        std::vector<VkDescriptorPoolSize> bindlessPoolSizes = {
-            {
-                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = bindlessResources.MAX_SAMPLED_IMAGES
-            },
-
-            {
-                .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                .descriptorCount = bindlessResources.MAX_STORAGE
-            },
-
-            {
-                .type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                .descriptorCount = bindlessResources.MAX_STORAGE_IMAGES
-            }
-        };
-
-        VkDescriptorPoolCreateInfo bindlessPoolInfo{};
-        bindlessPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        bindlessPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-        bindlessPoolInfo.maxSets = 1;
-        bindlessPoolInfo.poolSizeCount = static_cast<uint32_t>(bindlessPoolSizes.size());
-        bindlessPoolInfo.pPoolSizes = bindlessPoolSizes.data();
-
-        VK_CHECK_RESULT(vkCreateDescriptorPool(device, &bindlessPoolInfo, nullptr, &bindlessResources.bindlessDescriptorPool))
-
-        /// Create bindless descriptor set layout
-        std::vector<VkDescriptorSetLayoutBinding> bindings = {
-            /// Textures binding
-            {
-                BindlessResources::TEXTURE,                // binding
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, // descriptorType
-                bindlessResources.MAX_SAMPLED_IMAGES,      // descriptorCount
-                VK_SHADER_STAGE_ALL,                       // stageFlags
-                nullptr                                    // pImmutableSamplers
-            },
-            /// Storage buffers binding
-            {
-                BindlessResources::BUFFER,         // binding
-                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, // descriptorType
-                bindlessResources.MAX_STORAGE,     // descriptorCount
-                VK_SHADER_STAGE_ALL,               // stageFlags
-                nullptr                            // pImmutableSamplers
-            },
-            /// Storage images binding
-            {
-                BindlessResources::STORAGE_IMAGE,     // binding
-                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,     // descriptorType
-                bindlessResources.MAX_STORAGE_IMAGES, // descriptorCount
-                VK_SHADER_STAGE_ALL,                  // stageFlags
-                nullptr                               // pImmutableSamplers
-            }};
-
-        std::vector<VkDescriptorBindingFlags> bindingFlags = {
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT,
-            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
-        };
-
-        VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
-        bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-        bindingFlagsInfo.bindingCount = static_cast<uint32_t>(bindingFlags.size());
-        bindingFlagsInfo.pBindingFlags = bindingFlags.data();
-
-        VkDescriptorSetLayoutCreateInfo layoutInfo;
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-        layoutInfo.pBindings = bindings.data();
-        layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-        layoutInfo.pNext = &bindingFlagsInfo;
-
-        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &bindlessResources.bindlessDescriptorLayout))
-
-        /// Create bindless descriptor set
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = bindlessResources.bindlessDescriptorPool;
-        allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &bindlessResources.bindlessDescriptorLayout;
-
-        VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &bindlessResources.bindlessDescriptorSet))
+        
+        SEDX_CORE_INFO("Bindless resources initialized with {} buffer slots and {} texture slots", 
+                      bindlessResources.MAX_STORAGE_BUFFERS, bindlessResources.MAX_SAMPLED_IMAGES);
     }
 
+	/**
+	 * @fn ~VulkanDevice()
+	 * @brief Destroys the VulkanDevice instance and cleans up associated resources
+	 * 
+	 * @details This destructor handles the complete cleanup of all Vulkan resources created by the device:
+	 * 1. Waits for all pending device operations to complete using vkDeviceWaitIdle
+	 * 2. Cleans up thread-specific command pools stored in the CmdPools map
+	 * 3. Releases the scratch buffer used for temporary storage operations
+	 * 4. Destroys bindless descriptor resources (layout, descriptor pools)
+	 * 5. Shuts down the memory allocator subsystem
+	 * 6. Destroys the logical device
+	 * 
+	 * The destructor follows a careful order of destruction to prevent accessing freed resources,
+	 * and includes appropriate null-checking to handle partially-initialized states.
+	 * 
+	 * @note This class follows RAII principles with this destructor ensuring all Vulkan resources
+	 *       are properly freed when a VulkanDevice instance goes out of scope.
+	 * 
+	 * @see VulkanDevice::Destroy, MemoryAllocator::Shutdown
+	 */
 	VulkanDevice::~VulkanDevice()
-    {
-        /// Wait for device to be idle before cleanup
-        if (device != VK_NULL_HANDLE)
-        {
+	{
+		/// Wait for device to be idle before cleanup
+		if (device != VK_NULL_HANDLE)
             vkDeviceWaitIdle(device);
-        }
 
         /// Clean up command pools
-        CmdPools.clear();
+		CmdPools.clear();
 
-        /// Clean up scratch buffer
-        scratchBuffer = {};
+		/// Clean up scratch buffer
+		scratchBuffer = {};
 
-        /// Clean up bindless resources
-        if (device != VK_NULL_HANDLE)
-        {
-            if (bindlessResources.bindlessDescriptorLayout != VK_NULL_HANDLE)
-            {
+		/// Clean up bindless resources
+		if (device != VK_NULL_HANDLE)
+		{
+			if (bindlessResources.bindlessDescriptorLayout != VK_NULL_HANDLE)
                 vkDestroyDescriptorSetLayout(device, bindlessResources.bindlessDescriptorLayout, nullptr);
-            }
 
             if (bindlessResources.bindlessDescriptorPool != VK_NULL_HANDLE)
-            {
                 vkDestroyDescriptorPool(device, bindlessResources.bindlessDescriptorPool, nullptr);
-            }
 
             if (bindlessResources.imguiDescriptorPool != VK_NULL_HANDLE)
-            {
                 vkDestroyDescriptorPool(device, bindlessResources.imguiDescriptorPool, nullptr);
-            }
         }
 
-        /// Shutdown memory allocator
-        if (memoryAllocator)
-        {
-            MemoryAllocator::Shutdown();
-            memoryAllocator = nullptr;
-        }
+		/// Shutdown memory allocator
+		if (memoryAllocator)
+		{
+			MemoryAllocator::Shutdown();
+			memoryAllocator = nullptr;
+		}
 
-        /// Destroy logical device
-        if (device != VK_NULL_HANDLE)
-        {
-            vkDestroyDevice(device, nullptr);
-            device = VK_NULL_HANDLE;
-        }
-    }
+		/// Destroy logical device
+		if (device != VK_NULL_HANDLE)
+		{
+			vkDestroyDevice(device, nullptr);
+			device = VK_NULL_HANDLE;
+		}
+	}
 
-    // -------------------------------------------------------
+	/// -------------------------------------------------------
 
-    VmaAllocator VulkanDevice::GetMemoryAllocator() const
-    {
-        if (memoryAllocator)
-            return memoryAllocator->GetMemAllocator();
+	/**
+	 * @brief Get the memory allocator associated with this device
+	 * 
+	 * Retrieves the VMA allocator object that handles memory management for this Vulkan device.
+	 * The memory allocator provides efficient allocation, binding, and management of Vulkan 
+	 * memory resources, helping to reduce fragmentation and optimize memory usage.
+	 * 
+	 * @return VmaAllocator The Vulkan Memory Allocator handle, or nullptr if not initialized
+	 * 
+	 * @note This function checks if the memory allocator has been properly initialized and
+	 *       logs an error if it hasn't been. Memory operations will fail without a valid allocator.
+	 * 
+	 * @see MemoryAllocator::GetMemAllocator()
+	 */
+	VmaAllocator VulkanDevice::GetMemoryAllocator() const
+	{
+		if (memoryAllocator)
+			return memoryAllocator->GetMemAllocator();
 
-        SEDX_CORE_ERROR_TAG("Graphics Engine", "Memory allocator not initialized.");
-        return nullptr;
-    }
+		SEDX_CORE_ERROR_TAG("Graphics Engine", "Memory allocator not initialized.");
+		return nullptr;
+	}
 
-    void VulkanDevice::Destroy()
-    {
-        /// Clear command pools
-        CmdPools.clear();
+	/**
+	 * @brief Destroys the Vulkan logical device and cleans up resources
+	 * 
+	 * This method handles the proper destruction of the Vulkan logical device:
+	 * 1. Clears all command pools associated with the device
+	 * 2. Waits for all device operations to complete using vkDeviceWaitIdle
+	 * 3. Destroys the logical device
+	 * 4. Sets the device handle to VK_NULL_HANDLE to prevent reuse
+	 * 
+	 * This should be called before the VulkanDevice instance is destroyed or
+	 * when the application is shutting down to ensure proper cleanup of GPU resources.
+	 */
+	void VulkanDevice::Destroy()
+	{
+		/// Clear command pools
+		CmdPools.clear();
 
-        /// Wait for device to be idle
-        if (device != VK_NULL_HANDLE)
-        {
-            vkDeviceWaitIdle(device);
-            vkDestroyDevice(device, nullptr);
-            device = VK_NULL_HANDLE;
-        }
-    }
+		/// Wait for device to be idle
+		if (device != VK_NULL_HANDLE)
+		{
+			vkDeviceWaitIdle(device);
+			vkDestroyDevice(device, nullptr);
+			device = VK_NULL_HANDLE;
+		}
+	}
 
-    void VulkanDevice::LockQueue(const bool compute)
-    {
-        if (compute)
-            ComputeQueueMutex.lock();
-        else
-            GraphicsQueueMutex.lock();
-    }
+	/**
+	 * 
+	 * @brief Locks a queue for thread-safe access
+	 * 
+	 * This method provides exclusive access to either the graphics or compute queue
+	 * by locking the appropriate mutex. This prevents race conditions when multiple
+	 * threads attempt to submit work to the same queue simultaneously.
+	 * 
+	 * @param compute If true, locks the compute queue mutex; otherwise locks the graphics queue mutex
+	 * 
+	 * @note This should be paired with a matching UnlockQueue call in a RAII pattern,
+	 *       ideally using a std::lock_guard or similar scope-based locking mechanism.
+	 * 
+	 * @see UnlockQueue
+	 */
+	void VulkanDevice::LockQueue(const bool compute)
+	{
+		if (compute)
+			ComputeQueueMutex.lock();
+		else
+			GraphicsQueueMutex.lock();
+	}
 
-    void VulkanDevice::UnlockQueue(const bool compute)
-    {
-        if (compute)
-            ComputeQueueMutex.unlock();
-        else
-            GraphicsQueueMutex.unlock();
-    }
+	/**
+	 * @brief Unlocks a previously locked queue
+	 * 
+	 * @details This method releases the lock on either the graphics or compute queue,
+	 * allowing other threads to access it. It should only be called after a
+	 * corresponding LockQueue call.
+	 * 
+	 * @param compute If true, unlocks the compute queue mutex; otherwise unlocks the graphics queue mutex
+	 * 
+	 * @see LockQueue
+	 */
+	void VulkanDevice::UnlockQueue(const bool compute)
+	{
+		if (compute)
+			ComputeQueueMutex.unlock();
+		else
+			GraphicsQueueMutex.unlock();
+	}
 
-    /**
+
+	/**
 	 * @brief Find the queue families for the device.
 	 * @param device - The device to find the queue families for.
 	 * @return - The queue family indices.
 	 */
 	/*
 	QueueFamilyIndices VulkanPhysicalDevice::FindQueueFamilies(const VkPhysicalDevice device) const
-    {
-        QueueFamilyIndices indices;
+	{
+		QueueFamilyIndices indices;
 
 		uint32_t queueFamilyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-        if (deviceIndex >= 0 && deviceIndex < devices.size())
+		if (deviceIndex >= 0 && deviceIndex < devices.size())
 		{
-		    const GPUDevice& selectedDevice = devices[deviceIndex];
-		    
-		    // Find queue families that support graphics and presentation
-		    for (uint32_t idx = 0; idx < selectedDevice.queueFamilyInfo.size(); idx++)
+			const GPUDevice& selectedDevice = devices[deviceIndex];
+			
+			// Find queue families that support graphics and presentation
+			for (uint32_t idx = 0; idx < selectedDevice.queueFamilyInfo.size(); idx++)
 			{
-                if (const VkQueueFamilyProperties &queueFamily = selectedDevice.queueFamilyInfo[idx]; queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				if (const VkQueueFamilyProperties &queueFamily = selectedDevice.queueFamilyInfo[idx]; queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 				{
-		            indices.graphicsFamily = idx;
-		            // Store in our other format too for consistency
-		            indices.Graphics = idx;
-		        }
+					indices.graphicsFamily = idx;
+					// Store in our other format too for consistency
+					indices.Graphics = idx;
+				}
 
-		        // Check presentation support
-		        if (selectedDevice.queueSupportPresent[idx])
+				// Check presentation support
+				if (selectedDevice.queueSupportPresent[idx])
 				{
-		            indices.presentFamily = idx;
-		        }
-		        if (indices.IsComplete())
+					indices.presentFamily = idx;
+				}
+				if (indices.IsComplete())
 				{
-		            break;
-		        }
-		    }
+					break;
+				}
+			}
 		}
-	    
-	    return indices;
+		
+		return indices;
 	}
 	*/
 
-	const VkDevice &VulkanDevice::Selected() const { return device; }
-
-    /*
-    VkCommandBuffer VulkanDevice::CreateSecondaryCommandBuffer(const char *debugName)
+	/**
+	 * @brief Get the logical device handle.
+	 * @details Returns a const reference to the internal VkDevice handle that represents 
+	 * the logical Vulkan device. This handle is used for most Vulkan API calls 
+	 * that interact with the GPU device.
+	 * 
+	 * @return const VkDevice& Reference to the Vulkan logical device handle
+	 */
+	const VkDevice &VulkanDevice::Selected() const
     {
-        /// Get the command pool for the current thread
-        Ref<CommandPool> cmdPool = GetOrCreateThreadLocalCmdPool();
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = cmdPool->GetGraphicsCmdPool();
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer cmdBuffer;
-        VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer))
-
-        /// Set debug name if available
-        if (debugName && vkSetDebugUtilsObjectNameEXT)
-        {
-            VkDebugUtilsObjectNameInfoEXT nameInfo{};
-            nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-            nameInfo.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
-            nameInfo.objectHandle = (uint64_t)cmdBuffer;
-            nameInfo.pObjectName = debugName;
-            vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
-        }
-
-        return cmdBuffer;
-
-    }
-    */
-
-    /*
-    Ref<CommandPool> VulkanDevice::GetThreadLocalCmdPool()
-    {
-        const auto threadID = std::this_thread::get_id();
-        const auto it = CmdPools.find(threadID);
-        if (it == CmdPools.end())
-        {
-            SEDX_CORE_WARN("Command pool for thread {} not found. Creating a new one.",
-                           std::hash<std::thread::id>{}(threadID));
-            return GetOrCreateThreadLocalCmdPool();
-        }
-
-        return it->second;
-    }
-    */
-
-    /*
-    Ref<CommandPool> VulkanDevice::GetOrCreateThreadLocalCmdPool()
-    {
-        const auto threadID = std::this_thread::get_id();
-        if (const auto it = CmdPools.find(threadID); it != CmdPools.end())
-        {
-            return it->second;
-        }
-
-        /// Create a new command pool for this thread pass.
-        Ref<CommandPool> commandPool = CreateRef<CommandPool>(this);
-        CmdPools[threadID] = commandPool;
-
-        SEDX_CORE_INFO("Created new command pool for thread {}", std::hash<std::thread::id>{}(threadID));
-
-        return commandPool;
-    }
-    */
-
-	// -------------------------------------------------------
-
-    VkSampleCountFlagBits VulkanDevice::GetMaxUsableSampleCount() const
-    {
-        VkPhysicalDeviceProperties physicalDeviceProperties;
-        vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevice(), &physicalDeviceProperties);
-
-        VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts;
-        counts &= physicalDeviceProperties.limits.framebufferDepthSampleCounts;
-
-        /// Get the highest sample count that is supported
-        if (counts & VK_SAMPLE_COUNT_64_BIT)
-            return VK_SAMPLE_COUNT_64_BIT;
-        if (counts & VK_SAMPLE_COUNT_32_BIT)
-            return VK_SAMPLE_COUNT_32_BIT;
-        if (counts & VK_SAMPLE_COUNT_16_BIT)
-            return VK_SAMPLE_COUNT_16_BIT;
-        if (counts & VK_SAMPLE_COUNT_8_BIT)
-            return VK_SAMPLE_COUNT_8_BIT;
-        if (counts & VK_SAMPLE_COUNT_4_BIT)
-            return VK_SAMPLE_COUNT_4_BIT;
-        if (counts & VK_SAMPLE_COUNT_2_BIT)
-            return VK_SAMPLE_COUNT_2_BIT;
-
-        return VK_SAMPLE_COUNT_1_BIT;
+        return device;
     }
 
-    /*
-    void VulkanDevice::CreateDeviceFeatures2()
-    {
+	/*
+	VkCommandBuffer VulkanDevice::CreateSecondaryCommandBuffer(const char *debugName)
+	{
+		/// Get the command pool for the current thread
+		Ref<CommandPool> cmdPool = GetOrCreateThreadLocalCmdPool();
+
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = cmdPool->GetGraphicsCmdPool();
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer cmdBuffer;
+		VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer))
+
+		/// Set debug name if available
+		if (debugName && vkSetDebugUtilsObjectNameEXT)
+		{
+			VkDebugUtilsObjectNameInfoEXT nameInfo{};
+			nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			nameInfo.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
+			nameInfo.objectHandle = (uint64_t)cmdBuffer;
+			nameInfo.pObjectName = debugName;
+			vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
+		}
+
+		return cmdBuffer;
+
+	}
+	*/
+
+	/*
+	Ref<CommandPool> VulkanDevice::GetThreadLocalCmdPool()
+	{
+		const auto threadID = std::this_thread::get_id();
+		const auto it = CmdPools.find(threadID);
+		if (it == CmdPools.end())
+		{
+			SEDX_CORE_WARN("Command pool for thread {} not found. Creating a new one.",
+						   std::hash<std::thread::id>{}(threadID));
+			return GetOrCreateThreadLocalCmdPool();
+		}
+
+		return it->second;
+	}
+	*/
+
+	/*
+	Ref<CommandPool> VulkanDevice::GetOrCreateThreadLocalCmdPool()
+	{
+		const auto threadID = std::this_thread::get_id();
+		if (const auto it = CmdPools.find(threadID); it != CmdPools.end())
+		{
+			return it->second;
+		}
+
+		/// Create a new command pool for this thread pass.
+		Ref<CommandPool> commandPool = CreateRef<CommandPool>(this);
+		CmdPools[threadID] = commandPool;
+
+		SEDX_CORE_INFO("Created new command pool for thread {}", std::hash<std::thread::id>{}(threadID));
+
+		return commandPool;
+	}
+	*/
+
+	/// -------------------------------------------------------
+
+	/**
+	 * @brief Determine the maximum MSAA sample count supported by the GPU
+	 * 
+	 * This method queries the physical device properties to determine the highest multisample
+	 * anti-aliasing (MSAA) sample count that is supported for both color and depth attachments.
+	 * It performs a bitwise AND operation between the supported color and depth sample counts
+	 * to find values that are supported by both.
+	 * 
+	 * The method checks sample counts in descending order (64 → 2) and returns the highest
+	 * supported value. If no multisampling is supported, it returns VK_SAMPLE_COUNT_1_BIT.
+	 * 
+	 * @return VkSampleCountFlagBits The maximum supported MSAA sample count
+	 * 
+	 * @note The returned sample count can be used when creating render passes and framebuffers
+	 *       to enable MSAA rendering at the highest quality level supported by the hardware.
+	 */
+	VkSampleCountFlagBits VulkanDevice::GetMaxUsableSampleCount() const
+	{
+		VkPhysicalDeviceProperties physicalDeviceProperties;
+		vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevice(), &physicalDeviceProperties);
+
+		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts;
+		counts &= physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+		/// Get the highest sample count that is supported
+		if (counts & VK_SAMPLE_COUNT_64_BIT)
+			return VK_SAMPLE_COUNT_64_BIT;
+		if (counts & VK_SAMPLE_COUNT_32_BIT)
+			return VK_SAMPLE_COUNT_32_BIT;
+		if (counts & VK_SAMPLE_COUNT_16_BIT)
+			return VK_SAMPLE_COUNT_16_BIT;
+		if (counts & VK_SAMPLE_COUNT_8_BIT)
+			return VK_SAMPLE_COUNT_8_BIT;
+		if (counts & VK_SAMPLE_COUNT_4_BIT)
+			return VK_SAMPLE_COUNT_4_BIT;
+		if (counts & VK_SAMPLE_COUNT_2_BIT)
+			return VK_SAMPLE_COUNT_2_BIT;
+
+		return VK_SAMPLE_COUNT_1_BIT;
+	}
+
+	/*
+	void VulkanDevice::CreateDeviceFeatures2()
+	{
 		std::set<uint32_t> uniqueFamilies;
 		for (int q = 0; q < Queue::Count; q++)
 		{
-		    uniqueFamilies.emplace(queues[q].family);
+			uniqueFamilies.emplace(queues[q].family);
 		};
 
 		// priority for each type of queue
 		float priority = 1.0f;
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		for (uint32_t family : uniqueFamilies) {
-		    VkDeviceQueueCreateInfo createInfo{};
-		    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		    createInfo.queueFamilyIndex = family;
-		    createInfo.queueCount = 1;
-		    createInfo.pQueuePriorities = &priority;
-		    queueCreateInfos.push_back(createInfo);
+			VkDeviceQueueCreateInfo createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			createInfo.queueFamilyIndex = family;
+			createInfo.queueCount = 1;
+			createInfo.pQueuePriorities = &priority;
+			queueCreateInfos.push_back(createInfo);
 		}
 
 		auto supportedFeatures = GetPhysicalDevice()->Selected().GFXFeatures;
@@ -1010,23 +1216,23 @@ namespace SceneryEditorX
 		if (supportedFeatures.depthClamp)        { features2.features.depthClamp        = VK_TRUE; }
 
 		auto requiredExtensions = Extensions::requiredExtensions;
-        auto allExtensions = Extensions::availableExtensions;
+		auto allExtensions = Extensions::availableExtensions;
 		for (auto req : requiredExtensions)
 		{
-		    bool available = false;
-		    for (size_t i = 0; i < allExtensions.size(); i++)
+			bool available = false;
+			for (size_t i = 0; i < allExtensions.size(); i++)
 			{
-		        if (strcmp(allExtensions[i].extensionName, req) == 0)
+				if (strcmp(allExtensions[i].extensionName, req) == 0)
 				{ 
-		            available = true; 
-		            break;
-		        }
-		    }
+					available = true; 
+					break;
+				}
+			}
 
-		    if(!available)
+			if(!available)
 			{
-		        SEDX_CORE_ERROR("Required extension {0} not available!", req);
-		    }
+				SEDX_CORE_ERROR("Required extension {0} not available!", req);
+			}
 		}
 
 		VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
@@ -1049,12 +1255,12 @@ namespace SceneryEditorX
 		accelerationStructureFeatures.accelerationStructure = VK_TRUE;
 		accelerationStructureFeatures.descriptorBindingAccelerationStructureUpdateAfterBind = VK_TRUE;
 		accelerationStructureFeatures.accelerationStructureCaptureReplay = VK_TRUE;
-        accelerationStructureFeatures.pNext = &bufferDeviceAddresFeatures;
+		accelerationStructureFeatures.pNext = &bufferDeviceAddresFeatures;
 
 		VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures{};
 		dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
 		dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
-        dynamicRenderingFeatures.pNext = &accelerationStructureFeatures;
+		dynamicRenderingFeatures.pNext = &accelerationStructureFeatures;
 
 		VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
 		sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
@@ -1074,18 +1280,18 @@ namespace SceneryEditorX
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
 		createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
 		createInfo.ppEnabledExtensionNames = requiredExtensions.data();
-        createInfo.pEnabledFeatures;
+		createInfo.pEnabledFeatures;
 		createInfo.pNext = &features2;
 
 		// specify the required layers to the device 
 		if (enableValidationLayers)
 		{
-            auto &layers = Layers::activeLayersNames;
-		    createInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
-		    createInfo.ppEnabledLayerNames = layers.data();
+			auto &layers = Layers::activeLayersNames;
+			createInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
+			createInfo.ppEnabledLayerNames = layers.data();
 		}
 		else {
-		    createInfo.enabledLayerCount = 0;
+			createInfo.enabledLayerCount = 0;
 		}
 
 		auto res = vkCreateDevice(GetPhysicalDevice()->physicalDevice, &createInfo, renderData.allocator, &device);
@@ -1098,15 +1304,15 @@ namespace SceneryEditorX
 		VmaAllocatorCreateInfo allocatorCreateInfo = {};
 		allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 		allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-        allocatorCreateInfo.physicalDevice = GetPhysicalDevice()->physicalDevice;
+		allocatorCreateInfo.physicalDevice = GetPhysicalDevice()->physicalDevice;
 		allocatorCreateInfo.device = device;
 		allocatorCreateInfo.instance = vkInstance;
 		allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
-        vmaCreateAllocator(&allocatorCreateInfo, &MemoryAllocator::memAllocatorData->Allocator);
+		vmaCreateAllocator(&allocatorCreateInfo, &MemoryAllocator::memAllocatorData->Allocator);
 
 		for (int q = 0; q < Queue::Count; q++)
 		{
-		    vkGetDeviceQueue(device, queues[q].family, 0, &queues[q].queue);
+			vkGetDeviceQueue(device, queues[q].family, 0, &queues[q].queue);
 		}
 
 		// ----------------------------------------------
@@ -1122,8 +1328,8 @@ namespace SceneryEditorX
 		// ---------------------------------------------------------
 
 		VkDescriptorPoolSize imguiPoolSizes[] = {
-		    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
-		    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000}
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000}
 		};
 
 		VkDescriptorPoolCreateInfo imguiPoolInfo{};
@@ -1138,86 +1344,86 @@ namespace SceneryEditorX
 
 		// Create bindless resources
 		{
-            BindlessResources bindlessRes;
-            for (int i = 0; i < bindlessRes.MAX_STORAGE; i++)
+			BindlessResources bindlessRes;
+			for (int i = 0; i < bindlessRes.MAX_STORAGE; i++)
 			{
-                bindlessResources.availBufferRID.push_back(i);
-		    }
-            for (int i = 0; i < bindlessRes.MAX_SAMPLED_IMAGES; i++)
+				bindlessResources.availBufferRID.push_back(i);
+			}
+			for (int i = 0; i < bindlessRes.MAX_SAMPLED_IMAGES; i++)
 			{
-                bindlessResources.availImageRID.push_back(i);
-		    }
+				bindlessResources.availImageRID.push_back(i);
+			}
 
-		    // Create descriptor set pool for bindless resources
-		    std::vector<VkDescriptorPoolSize> bindlessPoolSizes =
+			// Create descriptor set pool for bindless resources
+			std::vector<VkDescriptorPoolSize> bindlessPoolSizes =
 			{ 
-		        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, bindlessRes.MAX_SAMPLED_IMAGES},
-                {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, bindlessRes.MAX_STORAGE},
-                {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, bindlessRes.MAX_STORAGE_IMAGES},
-		    };
+				{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, bindlessRes.MAX_SAMPLED_IMAGES},
+				{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, bindlessRes.MAX_STORAGE},
+				{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, bindlessRes.MAX_STORAGE_IMAGES},
+			};
 
-		    VkDescriptorPoolCreateInfo bindlessPoolInfo{};
-		    bindlessPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		    bindlessPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-		    bindlessPoolInfo.maxSets = 1;
-		    bindlessPoolInfo.poolSizeCount = bindlessPoolSizes.size();
-		    bindlessPoolInfo.pPoolSizes = bindlessPoolSizes.data();
+			VkDescriptorPoolCreateInfo bindlessPoolInfo{};
+			bindlessPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			bindlessPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+			bindlessPoolInfo.maxSets = 1;
+			bindlessPoolInfo.poolSizeCount = bindlessPoolSizes.size();
+			bindlessPoolInfo.pPoolSizes = bindlessPoolSizes.data();
 
-		    result = vkCreateDescriptorPool(device, &bindlessPoolInfo, renderData.allocator, &bindlessRes.bindlessDescriptorPool);
-		    SEDX_ASSERT(result, "Failed to create bindless descriptor pool!");
+			result = vkCreateDescriptorPool(device, &bindlessPoolInfo, renderData.allocator, &bindlessRes.bindlessDescriptorPool);
+			SEDX_ASSERT(result, "Failed to create bindless descriptor pool!");
 
-		    // create descriptor set layout for bindless resources
-		    std::vector<VkDescriptorSetLayoutBinding> bindings;
-		    std::vector<VkDescriptorBindingFlags> bindingFlags;
+			// create descriptor set layout for bindless resources
+			std::vector<VkDescriptorSetLayoutBinding> bindings;
+			std::vector<VkDescriptorBindingFlags> bindingFlags;
 
-		    VkDescriptorSetLayoutBinding texturesBinding{};
-            texturesBinding.binding = BindlessResources::TEXTURE;
-		    texturesBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            texturesBinding.descriptorCount = bindlessRes.MAX_SAMPLED_IMAGES;
-		    texturesBinding.stageFlags = VK_SHADER_STAGE_ALL;
-		    bindings.push_back(texturesBinding);
-		    bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT });
+			VkDescriptorSetLayoutBinding texturesBinding{};
+			texturesBinding.binding = BindlessResources::TEXTURE;
+			texturesBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			texturesBinding.descriptorCount = bindlessRes.MAX_SAMPLED_IMAGES;
+			texturesBinding.stageFlags = VK_SHADER_STAGE_ALL;
+			bindings.push_back(texturesBinding);
+			bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT });
 
-		    VkDescriptorSetLayoutBinding storageBuffersBinding{};
-            storageBuffersBinding.binding = BindlessResources::BUFFER;
-		    storageBuffersBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            storageBuffersBinding.descriptorCount = bindlessRes.MAX_STORAGE;
-		    storageBuffersBinding.stageFlags = VK_SHADER_STAGE_ALL;
-		    bindings.push_back(storageBuffersBinding);
-		    bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT });
+			VkDescriptorSetLayoutBinding storageBuffersBinding{};
+			storageBuffersBinding.binding = BindlessResources::BUFFER;
+			storageBuffersBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			storageBuffersBinding.descriptorCount = bindlessRes.MAX_STORAGE;
+			storageBuffersBinding.stageFlags = VK_SHADER_STAGE_ALL;
+			bindings.push_back(storageBuffersBinding);
+			bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT });
 
-		    VkDescriptorSetLayoutBinding imageStorageBinding{};
-            imageStorageBinding.binding = BindlessResources::STORAGE_IMAGE;
-		    imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            imageStorageBinding.descriptorCount = bindlessRes.MAX_STORAGE_IMAGES;
-		    imageStorageBinding.stageFlags = VK_SHADER_STAGE_ALL;
-		    bindings.push_back(imageStorageBinding);
-		    bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT });
+			VkDescriptorSetLayoutBinding imageStorageBinding{};
+			imageStorageBinding.binding = BindlessResources::STORAGE_IMAGE;
+			imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			imageStorageBinding.descriptorCount = bindlessRes.MAX_STORAGE_IMAGES;
+			imageStorageBinding.stageFlags = VK_SHADER_STAGE_ALL;
+			bindings.push_back(imageStorageBinding);
+			bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT });
 
-		    VkDescriptorSetLayoutBindingFlagsCreateInfo setLayoutBindingFlags{};
-		    setLayoutBindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-		    setLayoutBindingFlags.bindingCount = bindingFlags.size();
-		    setLayoutBindingFlags.pBindingFlags = bindingFlags.data();
+			VkDescriptorSetLayoutBindingFlagsCreateInfo setLayoutBindingFlags{};
+			setLayoutBindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+			setLayoutBindingFlags.bindingCount = bindingFlags.size();
+			setLayoutBindingFlags.pBindingFlags = bindingFlags.data();
 
-		    VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
-		    descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		    descriptorLayoutInfo.bindingCount = bindings.size();
-		    descriptorLayoutInfo.pBindings = bindings.data();
-		    descriptorLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-		    descriptorLayoutInfo.pNext = &setLayoutBindingFlags;
+			VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
+			descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			descriptorLayoutInfo.bindingCount = bindings.size();
+			descriptorLayoutInfo.pBindings = bindings.data();
+			descriptorLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+			descriptorLayoutInfo.pNext = &setLayoutBindingFlags;
 
-		    result = vkCreateDescriptorSetLayout(device, &descriptorLayoutInfo, renderData.allocator, &bindlessRes.bindlessDescriptorLayout);
-            SEDX_ASSERT(result, "Failed to create bindless descriptor set layout!");
+			result = vkCreateDescriptorSetLayout(device, &descriptorLayoutInfo, renderData.allocator, &bindlessRes.bindlessDescriptorLayout);
+			SEDX_ASSERT(result, "Failed to create bindless descriptor set layout!");
 
-		    // create descriptor set for bindless resources
-		    VkDescriptorSetAllocateInfo allocInfo{};
-		    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            allocInfo.descriptorPool = bindlessRes.bindlessDescriptorPool;
-		    allocInfo.descriptorSetCount = 1;
-            allocInfo.pSetLayouts = &bindlessRes.bindlessDescriptorLayout;
+			// create descriptor set for bindless resources
+			VkDescriptorSetAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.descriptorPool = bindlessRes.bindlessDescriptorPool;
+			allocInfo.descriptorSetCount = 1;
+			allocInfo.pSetLayouts = &bindlessRes.bindlessDescriptorLayout;
 
-		    result = vkAllocateDescriptorSets(device, &allocInfo, &bindlessRes.bindlessDescriptorSet);
-            SEDX_ASSERT(result, "Failed to allocate bindless descriptor set!");
+			result = vkAllocateDescriptorSets(device, &allocInfo, &bindlessRes.bindlessDescriptorSet);
+			SEDX_ASSERT(result, "Failed to allocate bindless descriptor set!");
 		}
 
 		scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU);
@@ -1228,354 +1434,535 @@ namespace SceneryEditorX
 
 		/*
 		dummyVertexBuffer = CreateBuffer(6 * 3 * sizeof(float), BufferUsage::Vertex | BufferUsage::AccelerationStructureInput, MemoryType::GPU,"VertexBuffer#Dummy" );
-        #1#
-    }
-    */
+		#1#
+	}
+	*/
 
-    /// Create a buffer with the specified size, usage, and memory type
-    Buffer VulkanDevice::CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name) const
+	/// Create a buffer with the specified size, usage, and memory type
+	Buffer VulkanDevice::CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name) const
+	{
+		/// Adjust buffer usage flags based on usage requirements
+		if (usage & BufferUsage::Vertex)
+			usage |= BufferUsage::TransferDst;
+
+		if (usage & BufferUsage::Index)
+			usage |= BufferUsage::TransferDst;
+
+		if (usage & BufferUsage::Storage)
+		{
+			usage |= BufferUsage::Address;
+
+			/// Align storage buffer size to meet device requirements
+			const auto alignment = vkPhysDevice->GetLimits().minStorageBufferOffsetAlignment;
+			size = (size + alignment - 1) & ~(alignment - 1);
+		}
+
+		if (usage & BufferUsage::AccelerationStructureInput)
+			usage |= BufferUsage::Address | BufferUsage::TransferDst;
+
+		if (usage & BufferUsage::AccelerationStructure)
+		{
+			usage |= BufferUsage::Address;
+		}
+
+		/// Create buffer resource
+		std::shared_ptr<BufferResource> resource = std::make_shared<BufferResource>();
+		resource->resourceID = -1;
+		resource->name = name;
+
+		/// Set up buffer creation info
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		/// Determine allocation strategy based on memory type
+		VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_AUTO;
+
+		if (memory & MemoryType::CPU)
+		{
+			/// CPU accessible memory
+			vmaUsage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+			memoryAllocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SpeedOptimized);
+		}
+		else
+		{
+			/// GPU-only memory
+			vmaUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+			memoryAllocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::MemoryOptimized);
+		}
+
+		/// Allocate buffer memory
+		resource->allocation = memoryAllocator->AllocateBuffer(bufferInfo, vmaUsage, resource->buffer);
+		if (!resource->allocation)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate buffer memory for '{}', size: {} bytes", name, size);
+			return {};
+		}
+
+		/// For large buffers, mark for potential defragmentation
+		if (size > 16 * 1024 * 1024)
+		{
+			memoryAllocator->MarkForDefragmentation(resource->allocation);
+		}
+
+		/// Create buffer object
+		Buffer buffer = {
+			.bufferResource = resource,
+			.size = size,
+			.usage = usage,
+			.memory = memory
+		};
+
+		/// Set up storage buffer binding if needed
+		if ((usage & BufferUsage::Storage) && !ImageID::availBufferRID.empty())
+		{
+			resource->resourceID = ImageID::availBufferRID.back();
+			ImageID::availBufferRID.pop_back();
+
+			VkDescriptorBufferInfo descriptorInfo{};
+			descriptorInfo.buffer = resource->buffer;
+			descriptorInfo.offset = 0;
+			descriptorInfo.range = size;
+
+			VkWriteDescriptorSet write{};
+			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			write.dstSet = bindlessResources.bindlessDescriptorSet;
+			write.dstBinding = BindlessResources::BUFFER;
+			write.dstArrayElement = buffer.ResourceID();
+			write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			write.descriptorCount = 1;
+			write.pBufferInfo = &descriptorInfo;
+
+			vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+		}
+
+		/// Set debug name if debugging is enabled
+		if (!name.empty() && vkSetDebugUtilsObjectNameEXT)
+		{
+			VkDebugUtilsObjectNameInfoEXT nameInfo{};
+			nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
+			nameInfo.objectHandle = reinterpret_cast<uint64_t>(resource->buffer);
+			nameInfo.pObjectName = name.c_str();
+			vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
+		}
+
+		SEDX_CORE_TRACE_TAG("Graphics Engine","Created buffer '{}': size={} bytes, usage={:#x}", name.empty() ? "Unnamed" : name,size,usage);
+
+		return buffer;
+	}
+
+	/**
+	 * @fn CreateStagingBuffer
+	 * @brief Creates a host-visible staging buffer for CPU-to-GPU data transfer
+	 * 
+	 * @details This method creates a buffer with transfer source usage and CPU-accessible memory,
+	 * which is optimized for staging operations where data needs to be transferred from the CPU
+	 * to the GPU. Staging buffers are commonly used in graphics pipelines for uploading textures,
+	 * mesh data, and other GPU resources.
+	 * 
+	 * The staging buffer is allocated with @enum VK_BUFFER_USAGE_TRANSFER_SRC_BIT and mapped memory
+	 * that can be written to by the CPU. After writing data to this buffer, use a command buffer 
+	 * to copy the data to a GPU-local device buffer for optimal rendering performance.
+	 * 
+	 * @param size Size of the buffer in bytes
+	 * @param name Optional debug name for the buffer (defaults to "Staging Buffer" if empty)
+	 * @return Buffer A configured buffer object ready for staging operations
+	 * 
+	 * @see @fn CreateBuffer
+	 */
+	Buffer VulkanDevice::CreateStagingBuffer(uint32_t size, const std::string &name) const
     {
-        /// Adjust buffer usage flags based on usage requirements
-        if (usage & BufferUsage::Vertex)
-            usage |= BufferUsage::TransferDst;
+		return CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU, name.empty() ? "Staging Buffer" : name);
+	}
 
-        if (usage & BufferUsage::Index)
-            usage |= BufferUsage::TransferDst;
+	// TODO: Create separate one for shadow maps
+	/**
+	 * @fn CreateSampler
+	 * @brief Creates a texture sampler with specified configuration parameters
+	 * 
+	 * @details This function creates a Vulkan sampler object with common texture sampling
+	 * parameters. The sampler is configured with linear filtering for both magnification
+	 * and minification, repeat address modes for all dimensions, and conditional anisotropic
+	 * filtering based on hardware support.
+	 * 
+	 * Samplers are essential objects in Vulkan that define how texture data is read and 
+	 * filtered within shaders. They control aspects such as:
+	 * - Filtering modes (linear, nearest)
+	 * - Address modes (repeat, clamp, mirror)
+	 * - Anisotropic filtering
+	 * - Mipmap selection and filtering
+	 * - LOD (Level of Detail) behavior
+	 * 
+	 * @param maxLOD Maximum level of detail that can be accessed through this sampler,
+	 *               useful for controlling mipmap access (default should be the max mip level)
+	 * 
+	 * @return VkSampler A configured Vulkan sampler object that must be destroyed when no longer needed
+	 * 
+	 * @note The sampler checks for anisotropic filtering support at runtime and enables it
+	 *       if available, using the maximum available anisotropy level from the physical device.
+	 *       The returned sampler should be destroyed with vkDestroySampler when no longer needed.
+	 * 
+	 * @see VkSamplerCreateInfo, vkCreateSampler, vkDestroySampler
+	 */
+	VkSampler VulkanDevice::CreateSampler(const float maxLOD) const
+	{
+		VkSamplerCreateInfo samplerInfo{};
+		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		samplerInfo.magFilter = VK_FILTER_LINEAR;
+		samplerInfo.minFilter = VK_FILTER_LINEAR;
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	
+		/// Check if anisotropy is supported
+		VkPhysicalDeviceFeatures deviceFeatures;
+		vkGetPhysicalDeviceFeatures(vkPhysDevice->GetGPUDevice(), &deviceFeatures);
+	
+		if (deviceFeatures.samplerAnisotropy)
+		{
+			samplerInfo.anisotropyEnable = VK_TRUE;
+			samplerInfo.maxAnisotropy = vkPhysDevice->GetLimits().maxSamplerAnisotropy;
+		}
+		else
+		{
+			samplerInfo.anisotropyEnable = VK_FALSE;
+			samplerInfo.maxAnisotropy = 1.0f;
+		}
+	
+		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.compareEnable = VK_FALSE;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = maxLOD;
+	
+		VkSampler sampler;
+		VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
+	
+		return sampler;
+	}
 
-        if (usage & BufferUsage::Storage)
-        {
-            usage |= BufferUsage::Address;
+	/**
+	 * @fn FindMemoryType
+	 * @brief Finds a suitable memory type index that meets specific requirements
+	 * 
+	 * This method locates a memory type that satisfies both:
+	 * 1. It must be compatible with the provided type filter (represented as a bit field)
+	 * 2. It must have all the required memory properties
+	 * 
+	 * The implementation retrieves memory properties from the physical device and iterates
+	 * through available memory types. For each memory type index, it checks:
+	 * - Whether the type is suitable according to the type filter (using bit masking)
+	 * - Whether the memory type has all the required property flags
+	 * 
+	 * This function is critical for proper allocation of buffers and images in Vulkan,
+	 * as it ensures memory is allocated from an appropriate memory heap with the needed
+	 * characteristics (e.g., device-local, host-visible, coherent).
+	 *
+	 * @param typeFilter Bit field where each bit represents a memory type that is suitable
+	 * @param properties Required memory properties (e.g., @enum VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+	 * @return Index of a suitable memory type, or 0 if no suitable memory type is found
+	 * 
+	 * @see vkGetPhysicalDeviceMemoryProperties, VkMemoryPropertyFlags
+	 */
+	uint32_t VulkanDevice::FindMemoryType(const uint32_t typeFilter, const VkMemoryPropertyFlags properties) const
+	{
+		/// Get memory properties from the physical vkDevice
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(vkPhysDevice->GetGPUDevice(), &memProperties);
+	
+		/// Find a memory type that satisfies both the type filter and the property requirements
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		{
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+	
+		SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find suitable memory type!");
+		return 0; /// Return a default value to avoid undefined behavior
+	}
 
-            /// Align storage buffer size to meet device requirements
-            const auto alignment = vkPhysDevice->GetLimits().minStorageBufferOffsetAlignment;
-            size = (size + alignment - 1) & ~(alignment - 1);
-        }
+	/// -------------------------------------------------------
+	/// CommandPool Implementation
+	/// -------------------------------------------------------
 
-        if (usage & BufferUsage::AccelerationStructureInput)
-            usage |= BufferUsage::Address | BufferUsage::TransferDst;
+	/**
+	 * @fn CommandPool
+	 * @brief Creates command pools for graphics and compute operations
+	 * 
+	 * @details This constructor initializes separate command pools for graphics and compute queues.
+	 * Command pools are memory managers for command buffers and should typically be created for
+	 * each thread that will record commands. This implementation:
+	 * 1. Creates a graphics command pool using the graphics queue family
+	 * 2. Creates a separate compute command pool if a dedicated compute queue is available
+	 * 3. Falls back to using the graphics command pool for compute operations if necessary
+	 * 
+	 * Command pools are created with the @enum VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag,
+	 * allowing individual command buffers to be reset for reuse without resetting the entire pool.
+	 * 
+	 * @param vulkanDevice Reference to the Vulkan device that will own these command pools
+	 * 
+	 * @note Command pools are specific to queue families and buffers allocated from a pool
+	 *       can only be submitted to queues of the matching family.
+	 * 
+	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
+	 */
+	CommandPool::CommandPool(Ref<VulkanDevice> vulkanDevice)
+	{
+		const auto vulkanDeviceHandle = device->GetDevice();
+		const auto &queueIndices = device->GetPhysicalDevice()->GetQueueFamilyIndices();
 
-        if (usage & BufferUsage::AccelerationStructure)
-        {
-            usage |= BufferUsage::Address;
-        }
+		/// Create graphics command pool
+		VkCommandPoolCreateInfo cmdPoolInfo{};
+		cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		cmdPoolInfo.queueFamilyIndex = queueIndices.GetGraphicsFamily();
+		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-        /// Create buffer resource
-        std::shared_ptr<BufferResource> resource = std::make_shared<BufferResource>();
-        resource->resourceID = -1;
-        resource->name = name;
+		VkResult result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &GraphicsCmdPool);
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create graphics command pool! Error: {}", static_cast<int>(result));
+		}
 
-        /// Set up buffer creation info
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		/// Create compute command pool if compute queue is available
+		if (queueIndices.GetComputeFamily() >= 0)
+		{
+			cmdPoolInfo.queueFamilyIndex = queueIndices.GetComputeFamily();
+			result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &ComputeCmdPool);
 
-        /// Determine allocation strategy based on memory type
-        VmaMemoryUsage vmaUsage = VMA_MEMORY_USAGE_AUTO;
+			if (result != VK_SUCCESS)
+			{
+				SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create compute command pool! Error: {}", static_cast<int>(result));
+				/// Fall back to using graphics pool for compute operations
+				ComputeCmdPool = GraphicsCmdPool;
+			}
+		}
+		else
+		{
+			/// If no separate compute queue, use the graphics pool
+			ComputeCmdPool = GraphicsCmdPool;
+		}
+	}
 
-        if (memory & MemoryType::CPU)
-        {
-            /// CPU accessible memory
-            vmaUsage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-            memoryAllocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SpeedOptimized);
-        }
-        else
-        {
-            /// GPU-only memory
-            vmaUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-            memoryAllocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::MemoryOptimized);
-        }
+	/**
+	 * @fn ~CommandPool
+	 * @brief Destroys the command pools created by this object
+	 * 
+	 * @details This destructor properly cleans up command pool resources by:
+	 * 1. Checking if the device is still valid before proceeding
+	 * 2. Destroying the compute command pool if it's distinct from the graphics pool
+	 * 3. Destroying the graphics command pool
+	 * 4. Setting all handles to VK_NULL_HANDLE to prevent use-after-free issues
+	 * 
+	 * The destructor handles the case where the compute and graphics command pools
+	 * share the same handle to avoid double-deletion, which would cause a Vulkan
+	 * validation error.
+	 * 
+	 * @note Command pools must be destroyed before their parent device is destroyed.
+	 *       When a command pool is destroyed, all command buffers allocated from it
+	 *       are implicitly freed and should not be used afterward.
+	 * 
+	 * @see @fn vkDestroyCommandPool
+	 */
+	CommandPool::~CommandPool()
+	{
+		if (!device || !device->GetDevice())
+		{
+			return;
+		}
 
-        /// Allocate buffer memory
-        resource->allocation = memoryAllocator->AllocateBuffer(bufferInfo, vmaUsage, resource->buffer);
-        if (!resource->allocation)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate buffer memory for '{}', size: {} bytes", name, size);
-            return {};
-        }
+		const auto vulkanDevice = device->GetDevice();
 
-        /// For large buffers, mark for potential defragmentation
-        if (size > 16 * 1024 * 1024)
-        {
-            memoryAllocator->MarkForDefragmentation(resource->allocation);
-        }
+		/// Only destroy compute pool if it's different from graphics pool
+		if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
+		{
+			vkDestroyCommandPool(vulkanDevice, ComputeCmdPool, nullptr);
+		}
 
-        /// Create buffer object
-        Buffer buffer = {
-            .bufferResource = resource,
-            .size = size,
-            .usage = usage,
-            .memory = memory
-        };
+		if (GraphicsCmdPool != VK_NULL_HANDLE)
+		{
+			vkDestroyCommandPool(vulkanDevice, GraphicsCmdPool, nullptr);
+		}
 
-        /// Set up storage buffer binding if needed
-        if ((usage & BufferUsage::Storage) && !ImageID::availBufferRID.empty())
-        {
-            resource->resourceID = ImageID::availBufferRID.back();
-            ImageID::availBufferRID.pop_back();
+		GraphicsCmdPool = VK_NULL_HANDLE;
+		ComputeCmdPool = VK_NULL_HANDLE;
+	}
 
-            VkDescriptorBufferInfo descriptorInfo{};
-            descriptorInfo.buffer = resource->buffer;
-            descriptorInfo.offset = 0;
-            descriptorInfo.range = size;
+	/**
+	 * @fn AllocateCommandBuffer
+	 * @brief Allocates a command buffer from the appropriate command pool
+	 * 
+	 * @details This method allocates a new command buffer from either the graphics or compute command pool
+	 * based on the provided parameters. It handles proper allocation, initialization, and error checking.
+	 * If requested, it will also automatically begin the command buffer with one-time-submit usage flag,
+	 * making it ready to record commands immediately.
+	 * 
+	 * The command buffer is allocated as a primary command buffer, which can be submitted directly to a queue
+	 * and can call secondary command buffers. Primary command buffers cannot be called by other command buffers.
+	 * 
+	 * @param begin If true, the command buffer will be automatically started with @enum VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+	 * @param compute If true, the command buffer will be allocated from the compute command pool;
+	 *                otherwise, it will be allocated from the graphics command pool
+	 * 
+	 * @return VkCommandBuffer The newly allocated command buffer, or VK_NULL_HANDLE if allocation failed
+	 * 
+	 * @note Command buffers allocated with this method should either be freed manually or flushed using 
+	 *       the FlushCmdBuffer method, which will handle submission and automatic cleanup.
+	 * 
+	 * @see FlushCmdBuffer
+	 */
+	VkCommandBuffer CommandPool::AllocateCommandBuffer(const bool begin, const bool compute) const
+	{
+		const auto vulkanDevice = device->GetDevice();
+		const VkCommandPool cmdPool = compute ? ComputeCmdPool : GraphicsCmdPool;
 
-            VkWriteDescriptorSet write{};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = bindlessResources.bindlessDescriptorSet;
-            write.dstBinding = BindlessResources::BUFFER;
-            write.dstArrayElement = buffer.ResourceID();
-            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            write.descriptorCount = 1;
-            write.pBufferInfo = &descriptorInfo;
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = cmdPool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandBufferCount = 1;
 
-            vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
-        }
+		VkCommandBuffer cmdBuffer;
+		VkResult result = vkAllocateCommandBuffers(vulkanDevice, &allocInfo, &cmdBuffer);
 
-        /// Set debug name if debugging is enabled
-        if (!name.empty() && vkSetDebugUtilsObjectNameEXT)
-        {
-            VkDebugUtilsObjectNameInfoEXT nameInfo{};
-            nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-            nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
-            nameInfo.objectHandle = (uint64_t)resource->buffer;
-            nameInfo.pObjectName = name.c_str();
-            vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
-        }
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR("Failed to allocate command buffer! Error: {}", static_cast<int>(result));
+			return VK_NULL_HANDLE;
+		}
 
-        SEDX_CORE_TRACE_TAG("Graphics Engine","Created buffer '{}': size={} bytes, usage={:#x}", name.empty() ? "Unnamed" : name,size,usage);
+		if (begin)
+		{
+			VkCommandBufferBeginInfo beginInfo{};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        return buffer;
-    }
+			result = vkBeginCommandBuffer(cmdBuffer, &beginInfo);
+			if (result != VK_SUCCESS)
+			{
+				SEDX_CORE_ERROR("Failed to begin command buffer! Error: {}", static_cast<int>(result));
+				vkFreeCommandBuffers(vulkanDevice, cmdPool, 1, &cmdBuffer);
+				return VK_NULL_HANDLE;
+			}
+		}
 
-    Buffer VulkanDevice::CreateStagingBuffer(uint32_t size, const std::string &name)
-    {
-        return CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU, name.empty() ? "Staging Buffer" : name);
-    }
+		return cmdBuffer;
+	}
 
-    // TODO: Create separate one for shadow maps
-    VkSampler VulkanDevice::CreateSampler(float maxLOD) const
-    {
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	/**
+	 * @fn FlushCmdBuffer
+	 * @brief Submits a command buffer to the graphics queue and waits for its completion
+	 * 
+	 * @details This is a convenience method that forwards to the overloaded FlushCmdBuffer function,
+	 * using the default graphics queue from the associated device. This method handles the
+	 * full submission lifecycle of a command buffer:
+	 * 1. Ending the command buffer recording
+	 * 2. Creating a fence to synchronize completion
+	 * 3. Submitting the command buffer to the appropriate queue
+	 * 4. Waiting for execution to complete
+	 * 5. Cleaning up resources
+	 * 
+	 * @param cmdBuffer The Vulkan command buffer to be submitted and executed
+	 * 
+	 * @note This method is a convenience wrapper that simplifies the common case of submitting
+	 *       to the graphics queue. For submissions to other queue types (compute, transfer),
+	 *       use the overloaded version with the appropriate queue parameter.
+	 * 
+	 * @see FlushCmdBuffer(VkCommandBuffer, VkQueue)
+	 */
+	void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer) const
+	{
+		FlushCmdBuffer(cmdBuffer, device->GetGraphicsQueue());
+	}
 
-        /// Check if anisotropy is supported
-        VkPhysicalDeviceFeatures deviceFeatures;
-        vkGetPhysicalDeviceFeatures(vkPhysDevice->GetGPUDevice(), &deviceFeatures);
+	/**
+	 * @fn FlushCmdBuffer
+	 * @brief Submits a command buffer to a specified queue and waits for its completion
+	 * 
+	 * @details This method handles the complete submission lifecycle of a command buffer:
+	 * 1. Ends the command buffer recording with vkEndCommandBuffer
+	 * 2. Creates a fence to synchronize execution completion
+	 * 3. Submits the command buffer to the specified queue
+	 * 4. Waits for execution to complete using the fence
+	 * 5. Cleans up resources (fence and command buffer)
+	 * 
+	 * This implementation uses a fence-based synchronization approach to ensure the GPU has
+	 * completely processed the submitted commands before returning. This is suitable for
+	 * operations that need to be completed before the CPU continues execution, such as
+	 * resource initialization or one-time uploads to the GPU.
+	 * 
+	 * @param cmdBuffer The command buffer to submit and execute
+	 * @param queue The queue to which the command buffer should be submitted
+	 * 
+	 * @note After this function returns, the command buffer has been freed and should not be used
+	 * @note This function will block the calling thread until the GPU completes execution
+	 * @note For regular rendering operations that don't need CPU synchronization,
+	 *       consider using semaphores instead for better performance
+	 * 
+	 * @see vkEndCommandBuffer, vkCreateFence, vkQueueSubmit, vkWaitForFences
+	 */
+	void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer, const VkQueue queue) const
+	{
+		if (cmdBuffer == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_WARN_TAG("Graphics Engine", "Attempted to flush a null command buffer");
+			return;
+		}
 
-        if (deviceFeatures.samplerAnisotropy)
-        {
-            samplerInfo.anisotropyEnable = VK_TRUE;
-            samplerInfo.maxAnisotropy = vkPhysDevice->GetLimits().maxSamplerAnisotropy;
-        }
-        else
-        {
-            samplerInfo.anisotropyEnable = VK_FALSE;
-            samplerInfo.maxAnisotropy = 1.0f;
-        }
+		const auto vulkanDevice = device->GetDevice();
 
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = maxLOD;
+		/// End the command buffer
+		VkResult result = vkEndCommandBuffer(cmdBuffer);
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR("Failed to end command buffer! Error: {}", static_cast<int>(result));
+			return;
+		}
 
-        VkSampler sampler;
-        VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
+		/// Create a fence to wait for the command buffer to complete
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-        return sampler;
-    }
+		VkFence fence;
+		result = vkCreateFence(vulkanDevice, &fenceInfo, nullptr, &fence);
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR("Failed to create fence! Error: {}", static_cast<int>(result));
+			return;
+		}
 
-    uint32_t VulkanDevice::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
-    {
-        /// Get memory properties from the physical vkDevice
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(vkPhysDevice->GetGPUDevice(), &memProperties);
+		/// Submit the command buffer
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cmdBuffer;
 
-        /// Find a memory type that satisfies both the type filter and the property requirements
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
-                return i;
-            }
-        }
+		result = vkQueueSubmit(queue, 1, &submitInfo, fence);
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR("Failed to submit command buffer! Error: {}", static_cast<int>(result));
+			vkDestroyFence(vulkanDevice, fence, nullptr);
+			return;
+		}
 
-        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find suitable memory type!");
-        return 0; /// Return a default value to avoid undefined behavior
-    }
+		/// Wait for the fence
+		result = vkWaitForFences(vulkanDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
+		if (result != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR("Failed to wait for fence! Error: {}", static_cast<int>(result));
+		}
 
-    /// -------------------------------------------------------
-    /// CommandPool Implementation
-    /// -------------------------------------------------------
-
-    CommandPool::CommandPool(Ref<VulkanDevice> vulkanDevice)
-    {
-        const auto vulkanDeviceHandle = device->GetDevice();
-        const auto &queueIndices = device->GetPhysicalDevice()->GetQueueFamilyIndices();
-
-        /// Create graphics command pool
-        VkCommandPoolCreateInfo cmdPoolInfo{};
-        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmdPoolInfo.queueFamilyIndex = queueIndices.GetGraphicsFamily();
-        cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-        VkResult result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &GraphicsCmdPool);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create graphics command pool! Error: {}", static_cast<int>(result));
-        }
-
-        /// Create compute command pool if compute queue is available
-        if (queueIndices.GetComputeFamily() >= 0)
-        {
-            cmdPoolInfo.queueFamilyIndex = queueIndices.GetComputeFamily();
-            result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &ComputeCmdPool);
-
-            if (result != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create compute command pool! Error: {}", static_cast<int>(result));
-                /// Fall back to using graphics pool for compute operations
-                ComputeCmdPool = GraphicsCmdPool;
-            }
-        }
-        else
-        {
-            /// If no separate compute queue, use the graphics pool
-            ComputeCmdPool = GraphicsCmdPool;
-        }
-    }
-
-    CommandPool::~CommandPool()
-    {
-        if (!device || !device->GetDevice())
-        {
-            return;
-        }
-
-        const auto vulkanDevice = device->GetDevice();
-
-        /// Only destroy compute pool if it's different from graphics pool
-        if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
-        {
-            vkDestroyCommandPool(vulkanDevice, ComputeCmdPool, nullptr);
-        }
-
-        if (GraphicsCmdPool != VK_NULL_HANDLE)
-        {
-            vkDestroyCommandPool(vulkanDevice, GraphicsCmdPool, nullptr);
-        }
-
-        GraphicsCmdPool = VK_NULL_HANDLE;
-        ComputeCmdPool = VK_NULL_HANDLE;
-    }
-
-    VkCommandBuffer CommandPool::AllocateCommandBuffer(bool begin, bool compute) const
-    {
-        const auto vulkanDevice = device->GetDevice();
-        const VkCommandPool cmdPool = compute ? ComputeCmdPool : GraphicsCmdPool;
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = cmdPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer cmdBuffer;
-        VkResult result = vkAllocateCommandBuffers(vulkanDevice, &allocInfo, &cmdBuffer);
-
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to allocate command buffer! Error: {}", static_cast<int>(result));
-            return VK_NULL_HANDLE;
-        }
-
-        if (begin)
-        {
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-            result = vkBeginCommandBuffer(cmdBuffer, &beginInfo);
-            if (result != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR("Failed to begin command buffer! Error: {}", static_cast<int>(result));
-                vkFreeCommandBuffers(vulkanDevice, cmdPool, 1, &cmdBuffer);
-                return VK_NULL_HANDLE;
-            }
-        }
-
-        return cmdBuffer;
-    }
-
-    void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer) const
-    {
-        FlushCmdBuffer(cmdBuffer, device->GetGraphicsQueue());
-    }
-
-    void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer, const VkQueue queue) const
-    {
-        if (cmdBuffer == VK_NULL_HANDLE)
-        {
-            SEDX_CORE_WARN_TAG("Graphics Engine", "Attempted to flush a null command buffer");
-            return;
-        }
-
-        const auto vulkanDevice = device->GetDevice();
-
-        /// End the command buffer
-        VkResult result = vkEndCommandBuffer(cmdBuffer);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to end command buffer! Error: {}", static_cast<int>(result));
-            return;
-        }
-
-        /// Create a fence to wait for the command buffer to complete
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-        VkFence fence;
-        result = vkCreateFence(vulkanDevice, &fenceInfo, nullptr, &fence);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to create fence! Error: {}", static_cast<int>(result));
-            return;
-        }
-
-        /// Submit the command buffer
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdBuffer;
-
-        result = vkQueueSubmit(queue, 1, &submitInfo, fence);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to submit command buffer! Error: {}", static_cast<int>(result));
-            vkDestroyFence(vulkanDevice, fence, nullptr);
-            return;
-        }
-
-        /// Wait for the fence
-        result = vkWaitForFences(vulkanDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to wait for fence! Error: {}", static_cast<int>(result));
-        }
-
-        /// Clean up
-        vkDestroyFence(vulkanDevice, fence, nullptr);
-        vkFreeCommandBuffers(vulkanDevice, GraphicsCmdPool, 1, &cmdBuffer);
-    }
+		/// Clean up
+		vkDestroyFence(vulkanDevice, fence, nullptr);
+		vkFreeCommandBuffers(vulkanDevice, GraphicsCmdPool, 1, &cmdBuffer);
+	}
 
 } // namespace SceneryEditorX
 

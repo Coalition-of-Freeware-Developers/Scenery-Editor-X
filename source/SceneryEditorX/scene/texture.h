@@ -40,7 +40,7 @@ namespace SceneryEditorX
         //[[nodiscard]] virtual bool IsLoaded() const override;
         [[nodiscard]] virtual const std::string &GetPath() const;
         //[[nodiscard]] virtual const std::string &GetName() const override;
-        virtual void SetName(const std::string &name);
+        virtual void SetName(const std::string &name) override;
 
         std::vector<uint8_t> data;
         int channels = 0;
@@ -53,7 +53,7 @@ namespace SceneryEditorX
         void CreateTextureSampler();
 		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int i);
 
-		WeakRef<RenderData> renderData;
+		Ref<RenderData> renderData;
         WeakRef<EditorConfig> config;
         Ref<VulkanDevice> vkDevice = nullptr;
         Ref<VulkanPhysicalDevice> vkPhysDevice = nullptr;

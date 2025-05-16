@@ -13,6 +13,7 @@
 #define VMA_IMPLEMENTATION
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/memory.h>
+#include <SceneryEditorX/platform/settings.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
 #include <vma/vk_mem_alloc.h>
@@ -21,6 +22,8 @@
 
 namespace SceneryEditorX
 {
+
+    VkDeviceSize MemoryAllocator::customBufferSize = DEFAULT_CUSTOM_BUFFER_SIZE;
 
     /// ---------------------------------------------------------
 
@@ -150,6 +153,36 @@ namespace SceneryEditorX
 
     /// ---------------------------------------------------------
 
+	/*
+	VkDeviceSize MemoryAllocator::GetCustomBufferSize()
+	{
+	    auto& settings = GetApplicationSettings();
+	    if (settings.HasOption("vulkan.custom_buffer_size"))
+	    {
+	        return static_cast<VkDeviceSize>(settings.GetIntOption("vulkan.custom_buffer_size", 
+	            static_cast<int>(DEFAULT_CUSTOM_BUFFER_SIZE)));
+	    }
+	    return customBufferSize;
+	}
+	
+	bool MemoryAllocator::SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device)
+	{
+	    // Validate against device limits
+	    const auto& deviceLimits = device.vkPhysDevice->GetProperties().limits;
+	    
+	    if (!ApplicationSettings::ValidateBufferSize(size, deviceLimits))
+	    {
+	        return false;
+	    }
+	    
+	    // Store locally and in settings
+	    customBufferSize = size;
+	    auto& settings = GetApplicationSettings();
+	    settings.SetCustomBufferSize(size);
+	    return true;
+	}
+	*/
+	
     /**
      * @brief Initializes the Vulkan memory allocator for efficient GPU memory management.
      * 
@@ -221,29 +254,29 @@ namespace SceneryEditorX
             return;
         }
 
-        // If already in progress, end the current defragmentation first
+        /// If already in progress, end the current defragmentation first
         if (defragmentationContext != nullptr)
         {
             SEDX_CORE_WARN("Defragmentation already in progress, ending previous session first");
             EndDefragmentation();
         }
 
-        // Clear any previous candidates list
+        /// Clear any previous candidates list
         defragmentationCandidates.clear();
 
-        // Create VMA defragmentation info
+        /// Create VMA defragmentation info
         VmaDefragmentationInfo defragInfo = {};
         defragInfo.flags = flags;
-        defragInfo.pool = nullptr;         // Will be filled in EndDefragmentation
+        defragInfo.pool = nullptr;         /// Will be filled in EndDefragmentation
 
-        // Set algorithm based on flags or use default
+        /// Set algorithm based on flags or use default
         if (flags == 0)
         {
-            // If no specific algorithm requested, use balanced by default for general purpose
+            /// If no specific algorithm requested, use balanced by default for general purpose
             defragInfo.flags |= VMA_DEFRAGMENTATION_FLAG_ALGORITHM_BALANCED_BIT;
         }
 
-        // Log defragmentation start with selected algorithm
+        /// Log defragmentation start with selected algorithm
         const char *algorithmName;
         if (defragInfo.flags & VMA_DEFRAGMENTATION_FLAG_ALGORITHM_FAST_BIT)
             algorithmName = "Fast";
@@ -256,10 +289,11 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO("Beginning memory defragmentation with {} algorithm", algorithmName);
 
-        // Don't create the actual context yet - do that in 'EndDefragmentation' after we've collected all the allocations to de-fragment
+        /// Don't create the actual context yet - do that in 'EndDefragmentation' after we've collected all the allocations to de-fragment
     }
 
 	/**
+	 * @fn EndDefragmentation
 	 * @brief Ends the defragmentation process and applies the optimizations
 	 * 
 	 * This function finalizes the defragmentation process by processing
@@ -275,27 +309,25 @@ namespace SceneryEditorX
             return;
         }
 
-        // Check if we have candidates to de-fragment
+        /// Check if we have candidates to de-fragment
         if (defragmentationCandidates.empty())
         {
             SEDX_CORE_WARN("No allocations marked for defragmentation");
             return;
         }
 
-        // Prepare defragmentation parameters
+        /// Prepare defragmentation parameters
         VmaDefragmentationInfo defragInfo = {};
         defragInfo.flags = VMA_DEFRAGMENTATION_FLAG_ALGORITHM_BALANCED_BIT;
-        defragInfo.pool = nullptr;            // Use default pool
-        defragInfo.maxBytesPerPass = 0;       // No limit on bytes per pass
-        defragInfo.maxAllocationsPerPass = 0; // No limit on allocations per pass
+        defragInfo.pool = nullptr;            /// Use default pool
+        defragInfo.maxBytesPerPass = 0;       /// No limit on bytes per pass
+        defragInfo.maxAllocationsPerPass = 0; /// No limit on allocations per pass
 
-        // Stats to track results
+        /// Stats to track results
         VmaDefragmentationStats defragStats = {};
 
-        // Create and execute defragmentation
-
-        if (VkResult result = vmaBeginDefragmentation(memAllocatorData->Allocator, &defragInfo, &defragmentationContext);
-			result != VK_SUCCESS)
+        /// Create and execute defragmentation
+        if (VkResult result = vmaBeginDefragmentation(memAllocatorData->Allocator, &defragInfo, &defragmentationContext); result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to begin memory defragmentation, error: {}", static_cast<int>(result));
             defragmentationContext = nullptr;
@@ -303,32 +335,33 @@ namespace SceneryEditorX
             return;
         }
 
-        // End the defragmentation operation
+        /// End the defragmentation operation
         vmaEndDefragmentation(memAllocatorData->Allocator, defragmentationContext, &defragStats);
 
-        // Log results
+        /// Log results
         SEDX_CORE_INFO("Memory defragmentation completed:");
         SEDX_CORE_INFO("  - Bytes moved: {} MB", defragStats.bytesMoved / (1024.0 * 1024.0));
         SEDX_CORE_INFO("  - Bytes freed: {} MB", defragStats.bytesFreed / (1024.0 * 1024.0));
         SEDX_CORE_INFO("  - Allocations moved: {}", defragStats.allocationsMoved);
         SEDX_CORE_INFO("  - Device memory blocks freed: {}", defragStats.deviceMemoryBlocksFreed);
 
-        // Reset state
+        /// Reset state
         defragmentationContext = nullptr;
         defragmentationCandidates.clear();
 
-        // Update peak memory usage stats after defragmentation
+        /// Update peak memory usage stats after defragmentation
         const AllocationStats currentStats = GetStats();
         memAllocatorData->PeakMemoryUsage = currentStats.usedBytes;
     }
 
 	/**
+	 * @fn MarkForDefragmentation
 	 * @brief Marks an allocation to be included in the defragmentation process
 	 * 
 	 * This function adds a specific allocation to the list of allocations
 	 * that will be considered for defragmentation when EndDefragmentation is called.
-	 * 
-	 * @param allocation The VMA allocation to be de-fragmented
+	 *
+	 * @param allocation The VMA allocation to be marked for defragmentation
 	 */
     void MemoryAllocator::MarkForDefragmentation(VmaAllocation allocation)
     {
@@ -346,30 +379,30 @@ namespace SceneryEditorX
             return;
         }
 
-        // Check if allocation is valid and in our tracking map
+        /// Check if allocation is valid and in our tracking map
         if (!AllocationMap.contains(allocation))
         {
             SEDX_CORE_WARN("Attempted to mark unknown allocation for defragmentation");
             return;
         }
 
-        // Check if this allocation is already marked
+        /// Check if this allocation is already marked
         if (std::ranges::find(defragmentationCandidates, allocation) != defragmentationCandidates.end())
         {
-            return; // Already marked, no need to add again
+            return; /// Already marked, no need to add again
         }
 
-        // Get allocation info to determine if it's suitable for defragmentation
+        /// Get allocation info to determine if it's suitable for defragmentation
         VmaAllocationInfo allocInfo;
         vmaGetAllocationInfo(memAllocatorData->Allocator, allocation, &allocInfo);
 
-        // Usually only device-local allocations benefit from defragmentation
-        // However, we'll allow any allocation to be marked and let VMA handle compatibility
+        /// Usually only device-local allocations benefit from defragmentation
+        /// However, we'll allow any allocation to be marked and let VMA handle compatibility
 
-        // Add to candidates list
+        /// Add to candidates list
         defragmentationCandidates.push_back(allocation);
 
-        // Log only occasionally to prevent spam
+        /// Log only occasionally to prevent spam
         if (defragmentationCandidates.size() % 100 == 1 || defragmentationCandidates.size() < 5)
         {
             const auto &[allocatedSize, allocType] = AllocationMap[allocation];
@@ -382,7 +415,7 @@ namespace SceneryEditorX
         }
     }
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
 	VmaAllocation MemoryAllocator::AllocateBuffer(const VkBufferCreateInfo &bufferCreateInfo, const VmaMemoryUsage usage, VkBuffer &outBuffer)
 	{
@@ -393,7 +426,7 @@ namespace SceneryEditorX
 
 	    ApplyAllocationStrategy(allocCreateInfo);
 
-        // Choose appropriate memory pool based on size
+        /// Choose appropriate memory pool based on size
         const VkDeviceSize size = bufferCreateInfo.size;
         VmaPool pool;
 
@@ -413,7 +446,7 @@ namespace SceneryEditorX
             allocCreateInfo.pool = pool;
         }
 
-        // ---------------------------------------------------------
+        /// ---------------------------------------------------------
 
         /// Create the allocation
         VmaAllocation allocation;
@@ -422,11 +455,10 @@ namespace SceneryEditorX
         if (const VkResult result = vmaCreateBuffer(memAllocatorData->Allocator, &bufferCreateInfo, &allocCreateInfo, &outBuffer, &allocation, &allocInfo); result != VK_SUCCESS || allocation == nullptr)
         {
             SEDX_CORE_ERROR( "Failed to allocate buffer memory: {}", static_cast<int>(result));
-            ErrMsg("Failed to allocate buffer memory");
             return nullptr;
         }
 
-        // Update statistics
+        /// Update statistics
         memAllocatorData->BytesAllocated += allocInfo.size;
         memAllocatorData->BytesAllocated++;
         memAllocatorData->CurrentAllocations++;
@@ -436,10 +468,10 @@ namespace SceneryEditorX
         memoryTypeStats[memoryTypeIndex].CurrentAllocations++;
         memoryTypeStats[memoryTypeIndex].BytesAllocated++;
 
-        // Update peak memory usage
+        /// Update peak memory usage
         memAllocatorData->PeakMemoryUsage = std::max(memAllocatorData->PeakMemoryUsage, memAllocatorData->BytesAllocated);
 
-        // Store allocation tracking information
+        /// Store allocation tracking information
         AllocInfo info;
         info.AllocatedSize = allocInfo.size;
         info.Type = AllocationType::Buffer;
@@ -448,6 +480,21 @@ namespace SceneryEditorX
         return allocation;
 	}
 
+	/**
+	 * @fn AllocateImage
+	 * @brief Allocates a GPU image with the specified properties.
+	 * 
+	 * This function creates a Vulkan image and allocates memory for it using the VMA allocator.
+	 * It sets up the image creation info and allocation info, and returns the created image
+	 * and its associated allocation handle.
+	 *
+	 * @param imageCreateInfo The Vulkan image creation info structure
+	 * @param usage The memory usage type for the allocation (e.g., GPU only, CPU visible)
+	 * @param outImage A reference to store the created Vulkan image handle
+	 * @param allocatedSize Optional pointer to store the size of the allocated memory
+	 *
+	 * @return The VMA allocation handle for the allocated image memory
+	 */
 	VmaAllocation MemoryAllocator::AllocateImage(const VkImageCreateInfo &imageCreateInfo, const VmaMemoryUsage usage, VkImage& outImage, VkDeviceSize* allocatedSize)
 	{
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -472,7 +519,7 @@ namespace SceneryEditorX
 
 	    memAllocatorData->BytesAllocated += allocInfo.size;
 
-        // Store allocation tracking information
+        /// Store allocation tracking information
         AllocInfo info;
         info.AllocatedSize = allocInfo.size;
         info.Type = AllocationType::Image;
@@ -481,8 +528,19 @@ namespace SceneryEditorX
         return allocation;
 	}
 
-    // -------------------------------------------------
+    /// -------------------------------------------------
 
+	/**
+	 * @fn Free
+	 * @brief Frees the memory associated with a Vulkan allocation.
+	 * 
+	 * This function releases the memory allocated for a specific Vulkan resource
+	 * (buffer or image) and updates the internal tracking structures to reflect
+	 * the deallocation. It ensures that all resources are properly cleaned up
+	 * to prevent memory leaks.
+	 *
+	 * @param allocation The VMA allocation handle to be freed
+	 */
     void MemoryAllocator::Free(const VmaAllocation allocation)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -497,6 +555,16 @@ namespace SceneryEditorX
         vmaFreeMemory(memAllocatorData->Allocator, allocation);
     }
 
+    /**
+	 * @fn DestroyImage
+	 * @brief Destroys a Vulkan image and its associated memory allocation.
+	 * 
+	 * This function releases the Vulkan image and its memory allocation,
+	 * ensuring that all resources are properly cleaned up to prevent memory leaks.
+	 *
+	 * @param image The Vulkan image handle to be destroyed
+	 * @param allocation The VMA allocation handle associated with the image
+	 */
     void MemoryAllocator::DestroyImage(const VkImage image, const VmaAllocation allocation)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -511,19 +579,43 @@ namespace SceneryEditorX
         vmaDestroyImage(memAllocatorData->Allocator, image, allocation);
     }
 
+	/**
+	 * @namespace VulkanMemoryUtils
+	 * @brief Utility functions for Vulkan memory management.
+	 *
+	 * This namespace contains helper functions for managing Vulkan memory allocations,
+	 * de-allocations, and other memory-related operations.
+	 */
     namespace VulkanMemoryUtils
     {
+		/**
+		 * @fn DestroyBuffer
+		 * @brief Destroys a Vulkan buffer and its associated memory allocation.
+		 *
+		 * This function releases the Vulkan buffer and its memory allocation,
+		 * ensuring that all resources are properly cleaned up to prevent memory leaks.
+		 *
+		 * @param buffer The Vulkan buffer handle to be destroyed
+		 * @param allocation The VMA allocation handle associated with the buffer
+		 */
 		void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 		{
 		    if (buffer != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
 		    {
-		        // Destroy buffer with VMA
+		        /// Destroy buffer with VMA
                 vmaDestroyBuffer(memAllocatorData->Allocator, buffer, allocation);
 		        SEDX_CORE_TRACE("Buffer destroyed successfully");
 		    }
 		}
     } // namespace VulkanMemoryUtils
 
+    /**
+     * @fn DestroyBuffer
+     * @brief Destroys a Vulkan buffer and its associated memory allocation.
+     *
+     * @param buffer The Vulkan buffer handle to be destroyed
+     * @param allocation The VMA allocation handle associated with the buffer
+     */
     void MemoryAllocator::DestroyBuffer(const VkBuffer buffer, const VmaAllocation allocation)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -557,36 +649,56 @@ namespace SceneryEditorX
     }
     */
 
+	/**
+	 * @fn UnmapMemory
+	 * @brief Unmaps a previously mapped memory allocation.
+	 *
+	 * This function unmaps the memory associated with a specific VMA allocation,
+	 * allowing it to be accessed by the GPU again. It is important to call this
+	 * function after mapping memory to ensure that the GPU can access the data.
+	 *
+	 * @param allocation The VMA allocation handle to be unmapped
+	 */
 	void MemoryAllocator::UnmapMemory(const VmaAllocation allocation)
     {
 		vmaUnmapMemory(memAllocatorData->Allocator, allocation);
 	}
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
+    /**
+     * @fn GetOrCreateBufferPool
+     * @brief Retrieves or creates a buffer memory pool for the specified size and usage.
+     *
+     * This function checks if a memory pool for the specified size already exists.
+     * If it does, it returns the existing pool. If not, it creates a new pool
+     *
+     * @param size The size of the buffer for which to create or retrieve the pool
+     * @param usage The memory usage type for the allocation (e.g., GPU only, CPU visible)
+     */
     VmaPool MemoryAllocator::GetOrCreateBufferPool(VkDeviceSize size, const VmaMemoryUsage usage)
     {
         std::lock_guard<std::mutex> lock(poolMutex);
 
-        // Check if pool for this size already exists
+        /// Check if pool for this size already exists
         if (const auto it = bufferPools.find(size); it != bufferPools.end())
         {
             if (const auto &pool = it->second; !pool.pools.empty())
             {
-                return pool.pools[0]; // Return the first pool (we could implement more sophisticated selection)
+                return pool.pools[0]; /// Return the first pool (we could implement more sophisticated selection)
             }
         }
         else
         {
-            // Create new pool entry for this size
+            /// Create new pool entry for this size
             bufferPools[size] = MemoryPool(size, usage);
         }
 
-        // Create new VMA pool
+        /// Create new VMA pool
         MemoryPool &pool = bufferPools[size];
 
         VmaPoolCreateInfo poolInfo = pool.createInfo;
-        poolInfo.memoryTypeIndex = 0; // You might want to determine this based on usage
+        poolInfo.memoryTypeIndex = 0; /// You might want to determine this based on usage
         poolInfo.blockSize = size;
 
         VmaPool newPool;
@@ -601,29 +713,39 @@ namespace SceneryEditorX
         return newPool;
     }
 
+    /**
+	 * @fn GetOrCreateImagePool
+	 * @brief Retrieves or creates an image memory pool for the specified size and usage.
+	 *
+	 * This function checks if a memory pool for the specified size already exists.
+	 * If it does, it returns the existing pool. If not, it creates a new pool
+	 *
+	 * @param size The size of the image for which to create or retrieve the pool
+	 * @param usage The memory usage type for the allocation (e.g., GPU only, CPU visible)
+	 */
     VmaPool MemoryAllocator::GetOrCreateImagePool(VkDeviceSize size, VmaMemoryUsage usage)
     {
         std::lock_guard<std::mutex> lock(poolMutex);
 
-        // Check if pool for this size already exists
+        /// Check if pool for this size already exists
         if (const auto it = imagePools.find(size); it != imagePools.end())
         {
             if (const auto &pool = it->second; !pool.pools.empty())
             {
-                return pool.pools[0]; // Return the first pool (we could implement more sophisticated selection)
+                return pool.pools[0]; /// Return the first pool (we could implement more sophisticated selection)
             }
         }
         else
         {
-            // Create new pool entry for this size
+            /// Create new pool entry for this size
             imagePools[size] = MemoryPool(size, usage);
         }
 
-        // Create new VMA pool
+        /// Create new VMA pool
         MemoryPool &pool = imagePools[size];
 
         VmaPoolCreateInfo poolInfo = pool.createInfo;
-        poolInfo.memoryTypeIndex = 0; // You might want to determine this based on usage
+        poolInfo.memoryTypeIndex = 0; /// You might want to determine this based on usage
         poolInfo.blockSize = size;
 
         VmaPool newPool;
@@ -656,24 +778,24 @@ namespace SceneryEditorX
             return false;
         }
 
-        // Get memory budget from VMA
+        /// Get memory budget from VMA
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
         vmaGetHeapBudgets(memAllocatorData->Allocator, budgets);
 
-        // Get physical device properties to determine number of heaps
+        /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
         vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
 
         uint64_t totalAllocation = 0;
         uint64_t totalBudget = 0;
 
-        // Calculate totals across all heaps
+        /// Calculate totals across all heaps
         for (uint32_t i = 0; i < memProps.memoryHeapCount; i++)
         {
             totalAllocation += budgets[i].usage;
             totalBudget += budgets[i].budget;
 
-            // Log individual heap usage if it's close to budget
+            /// Log individual heap usage if it's close to budget
             if (const float usagePercent = static_cast<float>(budgets[i].usage) / static_cast<float>(budgets[i].budget); usagePercent > memoryWarningThreshold)
             {
                 SEDX_CORE_WARN("Memory heap {} is at {:.1f}% usage ({} MB / {} MB)",
@@ -698,40 +820,56 @@ namespace SceneryEditorX
         return isOverBudget;
     }
 
+    /**
+     * @fn AlignBufferSize
+     * @brief Aligns the buffer size to the nearest power of two or custom alignment.
+     *
+     * This function ensures that the buffer size is aligned to a specified
+     * alignment value or to a default alignment based on the size of the buffer.
+     *
+     * @param size The size of the buffer to be aligned
+     * @return The aligned size of the buffer
+     */
     VkDeviceSize MemoryAllocator::AlignBufferSize(VkDeviceSize size) const
     {
         if (size == 0)
             return 0;
 
-        // Apply custom alignment if specified
+        /// Apply custom alignment if specified
         if (customBufferAlignment > 0)
         {
-            // Round up to the next multiple of customBufferAlignment
+            /// Round up to the next multiple of customBufferAlignment
             return ((size + customBufferAlignment - 1) / customBufferAlignment) * customBufferAlignment;
         }
 
-        // If no custom alignment is set but size is small, round up to improve cache efficiency
+        /// If no custom alignment is set but size is small, round up to improve cache efficiency
         if (size < SMALL_BUFFER_SIZE)
         {
-            // For small buffers, align to 256 bytes to improve cache efficiency
+            /// For small buffers, align to 256 bytes to improve cache efficiency
             constexpr VkDeviceSize defaultSmallBufferAlignment = 256;
             return ((size + defaultSmallBufferAlignment - 1) / defaultSmallBufferAlignment) * defaultSmallBufferAlignment;
         }
 
-        // For medium to large buffers, align to 4KB (typical page size)
+        /// For medium to large buffers, align to 4KB (typical page size)
         if (size < LARGE_BUFFER_SIZE)
         {
-            constexpr VkDeviceSize pageSize = 4 * 1024; // 4KB
+            constexpr VkDeviceSize pageSize = 4 * 1024; /// 4KB
             return ((size + pageSize - 1) / pageSize) * pageSize;
         }
 
-        // For very large buffers, use default alignment
+        /// For very large buffers, use default alignment
         return size;
     }
 
     // ---------------------------------------------------------
 
-	void MemoryAllocator::Init(Ref<VulkanDevice> device)
+    /**
+     * @fn Init
+     * @brief Initializes the memory allocator with the specified Vulkan device.
+     *
+     * @param device The Vulkan device to be used for memory allocation
+     */
+    void MemoryAllocator::Init(const Ref<VulkanDevice> &device)
     {
         memAllocatorData = hnew VulkanAllocatorData();
 
@@ -744,18 +882,44 @@ namespace SceneryEditorX
         vmaCreateAllocator(&allocatorInfo, &memAllocatorData->Allocator);
 	}
 
-	void MemoryAllocator::Shutdown()
+    /**
+     * @fn Shutdown
+     * @brief Cleans up the memory allocator and releases all resources.
+     *
+     * This function destroys the VMA allocator instance and cleans up
+     * any remaining resources associated with the memory allocator.
+     */
+    void MemoryAllocator::Shutdown()
     {
         vmaDestroyAllocator(memAllocatorData->Allocator);
         hdelete memAllocatorData;
         memAllocatorData = nullptr;
     }
 
+    /**
+     * @fn ContainsAllocation
+     * @brief Checks if the allocator contains a specific allocation.
+     *
+     * This function checks if the specified VMA allocation is present
+     * in the internal allocation tracking map.
+     *
+     * @param allocation The VMA allocation handle to check
+     * @return true if the allocation is found
+     * @return false if the allocation is not found
+     */
     bool MemoryAllocator::ContainsAllocation(VmaAllocation allocation) const
     {
         return AllocationMap.contains(allocation);
     }
 
+    /**
+	 * @fn GetMemAllocator
+	 * @brief Retrieves the Vulkan memory allocator instance.
+	 *
+	 * This function returns the VMA allocator instance used for memory management.
+	 *
+	 * @return The VMA allocator instance
+	 */
     VmaAllocator MemoryAllocator::GetMemAllocator()
     {
         SEDX_ASSERT(memAllocatorData != nullptr, "Memory allocator data is null");
@@ -782,20 +946,20 @@ namespace SceneryEditorX
             return stats;
         }
 
-        // Get VMA statistics
+        /// Get VMA statistics
         VmaTotalStatistics vmaStats;
         vmaCalculateStatistics(memAllocatorData->Allocator, &vmaStats);
 
-        // Fill our custom stats structure
+        /// Fill our custom stats structure
         stats.totalBytes = vmaStats.total.statistics.blockBytes;
         stats.usedBytes = vmaStats.total.statistics.allocationBytes;
         stats.allocationCount = vmaStats.total.statistics.allocationCount;
 
-        // Calculate fragmentation ratio (if no blocks, fragmentation is 0)
+        /// Calculate fragmentation ratio (if no blocks, fragmentation is 0)
         if (vmaStats.total.statistics.blockCount > 0)
         {
-            // Calculate fragmentation as 1 - (used / allocated)
-            // This represents the proportion of allocated memory that's not being used
+            /// Calculate fragmentation as 1 - (used / allocated)
+            /// This represents the proportion of allocated memory that's not being used
             stats.fragmentationRatio = 1.0f - ((float)vmaStats.total.statistics.allocationBytes / (float)vmaStats.total.statistics.blockBytes);
         }
         else
@@ -807,10 +971,14 @@ namespace SceneryEditorX
     }
 
 	/**
+	 * @fn PrintDetailedStats
 	 * @brief Prints detailed memory allocation statistics to the log
 	 * 
 	 * This function outputs comprehensive memory usage information to help
 	 * with debugging and monitoring memory usage patterns.
+	 *
+	 * @note This function is thread-safe and locks the allocation mutex
+	 * to ensure consistent access to memory statistics.
 	 */
     void MemoryAllocator::PrintDetailedStats() const
     {
@@ -822,15 +990,15 @@ namespace SceneryEditorX
             return;
         }
 
-        // Get statistics from VMA
+        /// Get statistics from VMA
         VmaTotalStatistics vmaStats;
         vmaCalculateStatistics(memAllocatorData->Allocator, &vmaStats);
 
-        // Get memory budget from VMA
+        /// Get memory budget from VMA
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
         vmaGetHeapBudgets(memAllocatorData->Allocator, budgets);
 
-        // Get physical device properties to determine number of heaps
+        /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
         vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
 
@@ -843,7 +1011,7 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("Total allocation count: {}", vmaStats.total.statistics.allocationCount);
         SEDX_CORE_INFO("Total block count: {}", vmaStats.total.statistics.blockCount);
 
-        // Print per-heap statistics
+        /// Print per-heap statistics
         SEDX_CORE_INFO("-------- MEMORY HEAP DETAILS (BUDGETs) --------");
         for (uint32_t i = 0; i < memProps.memoryHeapCount; i++)
         {
@@ -856,10 +1024,10 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("-------- MEMORY TYPE DETAILS --------");
         for (uint32_t i = 0; i < memProps.memoryTypeCount; i++)
         {
-            // Skip if no memory is allocated from this type
+            /// Skip if no memory is allocated from this type
             if (memoryTypeStats[i].BytesAllocated == 0) continue;
 
-            // Determine memory type properties string
+            /// Determine memory type properties string
             std::string propertyStr;
             const VkMemoryPropertyFlags flags = memProps.memoryTypes[i].propertyFlags;
 
@@ -880,10 +1048,14 @@ namespace SceneryEditorX
     }
 
 	/**
+	 * @fn ResetStats
 	 * @brief Resets memory allocation statistics tracking
 	 * 
 	 * This function clears the statistics counters without affecting
 	 * actual memory allocations.
+	 *
+	 * @note This function is thread-safe and locks the allocation mutex
+	 * to ensure consistent access to memory statistics.
 	 */
     void MemoryAllocator::ResetStats()
     {
@@ -895,11 +1067,11 @@ namespace SceneryEditorX
             return;
         }
 
-        // Reset our allocation tracking statistics
+        /// Reset our allocation tracking statistics
         for (auto &[Allocator, BytesAllocated, BytesFreed, CurrentAllocations, PeakMemoryUsage] :
              memoryTypeStats)
         {
-            // Keep track of current allocations, but reset historical tracking
+            /// Keep track of current allocations, but reset historical tracking
             const uint32_t currentAllocCount = CurrentAllocations;
             const uint64_t currentBytes = CurrentAllocations - BytesFreed;
 
@@ -908,12 +1080,24 @@ namespace SceneryEditorX
             BytesAllocated = currentAllocCount;
         }
 
-        // Reset peak memory usage to current usage
+        /// Reset peak memory usage to current usage
         memAllocatorData->PeakMemoryUsage = memAllocatorData->BytesAllocated;
 
         SEDX_CORE_INFO("Memory allocation statistics have been reset");
     }
 
+    /**
+     * @brief Sets the memory allocation strategy
+     *
+     * This function allows the user to specify the memory allocation strategy
+     * to be used by the allocator. The strategy can be set to optimize for
+     * speed, memory usage, or use the default strategy.
+     *
+     * @param strategy The desired allocation strategy
+     *
+     * @note This function is thread-safe and locks the allocation mutex
+     * to ensure consistent access to the allocation strategy.
+     */
     void MemoryAllocator::SetAllocationStrategy(const AllocationStrategy strategy)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -930,6 +1114,17 @@ namespace SceneryEditorX
         }
     }
 
+
+    /**
+     * @fn ApplyAllocationStrategy
+     * @brief Applies the current allocation strategy to the VMA allocation create info.
+     *
+     * This function modifies the VMA allocation create info structure
+     * to apply the current allocation strategy.
+     *
+     *
+     * @param createInfo The VMA allocation create info structure to modify
+     */
     void MemoryAllocator::ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo)
     {
         //const_cast<const MemoryAllocator *>(this)->ApplyAllocationStrategy(createInfo);
@@ -937,25 +1132,25 @@ namespace SceneryEditorX
         switch (currentStrategy)
         {
         case AllocationStrategy::SpeedOptimized:
-            // Optimize for speed - prefer pre-allocated memory
+            /// Optimize for speed - prefer pre-allocated memory
             createInfo.flags |= VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
-            // For speed-optimized allocations, we don't need to be as strict about finding the perfect fit
+            /// For speed-optimized allocations, we don't need to be as strict about finding the perfect fit
             createInfo.flags &= ~VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
             createInfo.flags &= ~VMA_DEFRAGMENTATION_FLAG_ALGORITHM_FAST_BIT;
             break;
 
         case AllocationStrategy::MemoryOptimized:
-            // Optimize for memory efficiency - try to find the smallest fitting block
+            /// Optimize for memory efficiency - try to find the smallest fitting block
             createInfo.flags |= VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
-            // For memory-optimized allocations, also try to minimize fragmentation
+            /// For memory-optimized allocations, also try to minimize fragmentation
             createInfo.flags |= VMA_DEFRAGMENTATION_FLAG_ALGORITHM_BALANCED_BIT;
-            // But we don't care about allocation time as much
+            /// But we don't care about allocation time as much
             createInfo.flags &= ~VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
             break;
 
         case AllocationStrategy::Default:
         default:
-            // Let VMA decide the best strategy - don't set any specific strategy flags
+            /// Let VMA decide the best strategy - don't set any specific strategy flags
             createInfo.flags &= ~(VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT |
 								  VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT |
 								  VMA_DEFRAGMENTATION_FLAG_ALGORITHM_MASK);
@@ -964,6 +1159,7 @@ namespace SceneryEditorX
     }
 
 	/**
+	 * @fn GetMemoryBudget
 	 * @brief Gets the current memory budget information
 	 * 
 	 * This function retrieves memory budget details from the VMA
@@ -983,18 +1179,18 @@ namespace SceneryEditorX
             return budget;
         }
 
-        // Get memory budget from VMA
+        /// Get memory budget from VMA
         VmaBudget vmabudgets[VK_MAX_MEMORY_HEAPS];
         vmaGetHeapBudgets(memAllocatorData->Allocator, vmabudgets);
 
-        // Get physical device properties to determine number of heaps
+        /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
         vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
 
         uint64_t totalBudget = 0;
         uint64_t totalUsage = 0;
 
-        // Calculate totals across all heaps
+        /// Calculate totals across all heaps
         for (uint32_t i = 0; i < memProps.memoryHeapCount; i++)
         {
             totalBudget += vmabudgets[i].budget;
@@ -1009,6 +1205,15 @@ namespace SceneryEditorX
         return budget;
     }
 
+    /**
+	 * @fn SetMemoryUsageWarningThreshold
+	 * @brief Sets the memory usage warning threshold.
+	 *
+	 * This function allows the user to specify a threshold for memory usage
+	 * warnings. If the memory usage exceeds this threshold, a warning will be logged.
+	 *
+	 * @param percentage The percentage of memory usage (0.0 to 1.0)
+	 */
     void MemoryAllocator::SetMemoryUsageWarningThreshold(float percentage)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
@@ -1025,23 +1230,34 @@ namespace SceneryEditorX
         memoryWarningThreshold = percentage;
         SEDX_CORE_INFO_TAG("VulkanAllocator", "Memory usage warning threshold set to {:.1f}%", percentage * 100.0f);
 
-        // Check current memory status against new threshold
+        /// Check current memory status against new threshold
         if (memAllocatorData && memAllocatorData->Allocator)
         {
             CheckMemoryBudget();
         }
     }
 
+
+	/**
+	 * @fn SetBufferAlignment
+	 * @brief Sets the custom buffer alignment for memory allocations.
+	 *
+	 * This function allows the user to specify a custom alignment value
+	 * for buffer memory allocations. The alignment must be a power of 2.
+	 * If the alignment is not a power of 2, it will be rounded up to the next power of 2.
+	 *
+	 * @param alignment The custom buffer alignment value (must be a power of 2)
+	 */
     void MemoryAllocator::SetBufferAlignment(VkDeviceSize alignment)
     {
         std::lock_guard<std::mutex> lock(allocationMutex);
 
-        // Ensure alignment is a power of 2
+        /// Ensure alignment is a power of 2
         if (alignment & (alignment - 1))
         {
             SEDX_CORE_WARN_TAG("VulkanAllocator", "Buffer alignment must be a power of 2, got {}", alignment);
 
-            // Round up to the next power of 2
+            /// Round up to the next power of 2
             VkDeviceSize powerOf2 = 1;
             while (powerOf2 < alignment)
                 powerOf2 *= 2;
@@ -1054,6 +1270,20 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("VulkanAllocator", "Custom buffer alignment set to {} bytes", alignment);
     }
 
+    /**
+     * @fn AllocateBufferBatch
+     * @brief Allocates a batch of Vulkan buffers with the specified sizes and usage.
+     *
+     * This function allocates multiple Vulkan buffers in a single batch operation,
+     * allowing for more efficient memory allocation. It takes a vector of sizes,
+     * a usage flag, and a memory usage type. The function returns a vector of
+     * BatchBufferAllocation structures containing the allocated buffers and their sizes.
+     * 
+     * @param sizes A vector of sizes for the buffers to be allocated
+     * @param usage The usage flag for the buffers (e.g., VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+     * @param memoryUsage The memory usage type (e.g., VMA_MEMORY_USAGE_GPU_ONLY)
+     * @return A vector of BatchBufferAllocation structures containing the allocated buffers and their sizes
+     */
     std::vector<MemoryAllocator::BatchBufferAllocation> MemoryAllocator::AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, const BufferUsageFlags usage, const VmaMemoryUsage memoryUsage)
     {
         std::vector<BatchBufferAllocation> allocations;
@@ -1073,12 +1303,12 @@ namespace SceneryEditorX
         allocations.reserve(sizes.size());
         uint64_t totalAllocation = 0;
 
-        // Apply allocation strategy
+        /// Apply allocation strategy
         VmaAllocationCreateInfo allocCreateInfo = {};
         allocCreateInfo.usage = memoryUsage;
         ApplyAllocationStrategy(allocCreateInfo);
 
-        // Allocate each buffer
+        /// Allocate each buffer
         for (const auto &size : sizes)
         {
             if (size == 0)
@@ -1111,20 +1341,20 @@ namespace SceneryEditorX
             }
 
             allocation.size = alignedSize;
-
-            // Update allocation tracking
+			
+            /// Update allocation tracking
             totalAllocation += allocInfo.size;
             memAllocatorData->BytesAllocated += allocInfo.size;
             memAllocatorData->BytesAllocated++;
             memAllocatorData->CurrentAllocations++;
-
-            // Update per-memory-type statistics
+			
+            /// Update per-memory-type statistics
             uint32_t memoryTypeIndex = allocInfo.memoryType;
             memoryTypeStats[memoryTypeIndex].BytesAllocated += allocInfo.size;
             memoryTypeStats[memoryTypeIndex].CurrentAllocations++;
             memoryTypeStats[memoryTypeIndex].BytesAllocated++;
 
-            // Store allocation info
+            /// Store allocation info
             AllocInfo info;
             info.AllocatedSize = allocInfo.size;
             info.Type = AllocationType::Buffer;
@@ -1132,7 +1362,7 @@ namespace SceneryEditorX
             allocations.push_back(allocation);
         }
 
-        // Update peak memory usage
+        /// Update peak memory usage
         memAllocatorData->PeakMemoryUsage =
             std::max(memAllocatorData->PeakMemoryUsage, memAllocatorData->BytesAllocated);
 
@@ -1147,6 +1377,16 @@ namespace SceneryEditorX
         return allocations;
     }
 
+    /**
+     * @fn FreeBufferBatch
+     * @brief Frees a batch of Vulkan buffers and their associated memory allocations.
+     *
+     * This function releases the Vulkan buffers and their memory allocations
+     * in a single batch operation. It takes a vector of BatchBufferAllocation
+     * structures containing the buffers and their allocations.
+     *
+     * @param allocations A vector of BatchBufferAllocation structures containing the buffers and their allocations
+     */
     void MemoryAllocator::FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations)
     {
         if (allocations.empty())
@@ -1168,7 +1408,7 @@ namespace SceneryEditorX
             if (allocation.buffer == VK_NULL_HANDLE || allocation.allocation == nullptr)
                 continue;
 
-            // Track total memory being freed
+            /// Track total memory being freed
             if (AllocationMap.contains(allocation.allocation))
             {
                 const auto &[AllocatedSize, Type] = AllocationMap[allocation.allocation];
@@ -1177,7 +1417,7 @@ namespace SceneryEditorX
                 AllocationMap.erase(allocation.allocation);
             }
 
-            // Destroy the buffer
+            /// Destroy the buffer
             vmaDestroyBuffer(memAllocatorData->Allocator, allocation.buffer, allocation.allocation);
             count++;
         }
