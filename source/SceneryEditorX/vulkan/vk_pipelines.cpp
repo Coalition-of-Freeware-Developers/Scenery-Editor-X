@@ -12,8 +12,8 @@
 */
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
-#include <SceneryEditorX/vulkan/vk_pipelines.h>
 #include <SceneryEditorX/vulkan/vk_descriptors.h>
+#include <SceneryEditorX/vulkan/vk_pipelines.h>
 
 /// -------------------------------------------------------
 
@@ -41,8 +41,8 @@ namespace SceneryEditorX
 		auto vertShaderCode = IO::FileManager::ReadShaders(vertShaderPath);
 		auto fragShaderCode = IO::FileManager::ReadShaders(fragShaderPath);
 
-        // Store the shader so we can access it later with GetShader()
-        vkShaderPtr = vertShader;
+        /// Store the shader so we can access it later with GetShader()
+        shaderPtr = vertShader;
 
 		VkShaderModule vertShaderModule = CreateShaderModule(device->GetDevice(), vertShaderCode);
         VkShaderModule fragShaderModule = CreateShaderModule(device->GetDevice(), fragShaderCode);
@@ -71,8 +71,8 @@ namespace SceneryEditorX
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-        auto bindingDescription = Vertex::getBindingDescription();
-        auto attributeDescriptions = Vertex::getAttributeDescriptions();
+        auto bindingDescription = MeshVertex::getBindingDescription();
+        auto attributeDescriptions = MeshVertex::getAttributeDescriptions();
 
         vertexInputInfo.vertexBindingDescriptionCount = 1;
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -169,8 +169,8 @@ namespace SceneryEditorX
         std::vector<VkDescriptorSetLayout> layouts;
         
         // Get the bindless descriptor set layout from the device
-        if (device->bindlessResources.bindlessDescriptorSetLayout != VK_NULL_HANDLE) {
-            layouts.push_back(device->bindlessResources.bindlessDescriptorSetLayout);
+        if (device->GetBindlessResources().bindlessDescriptorSetLayout != VK_NULL_HANDLE) {
+            layouts.push_back(device->GetBindlessResources().bindlessDescriptorSetLayout);
         }
 
         /// Create the graphics pipeline layout

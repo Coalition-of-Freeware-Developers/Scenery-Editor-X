@@ -39,7 +39,7 @@ namespace SceneryEditorX
         void UnloadWithAllocator();
         //[[nodiscard]] virtual bool IsLoaded() const override;
         [[nodiscard]] virtual const std::string &GetPath() const;
-        //[[nodiscard]] virtual const std::string &GetName() const override;
+        [[nodiscard]] virtual const std::string &GetName() const;
         virtual void SetName(const std::string &name) override;
 
         std::vector<uint8_t> data;
@@ -58,12 +58,14 @@ namespace SceneryEditorX
         Ref<VulkanDevice> vkDevice = nullptr;
         Ref<VulkanPhysicalDevice> vkPhysDevice = nullptr;
         Ref<MemoryAllocator> allocator;
+        std::string texturePath;
+        std::string textureName;
 		// -------------------------------------------------------
 
-		VkImage textureImage;
-        VkSampler textureSampler;
-        VkImageView textureImageView;
-        VkDeviceMemory textureImageMemory;
+		VkImage textureImage = VK_NULL_HANDLE;
+        VkSampler textureSampler = VK_NULL_HANDLE;
+        VkImageView textureImageView = VK_NULL_HANDLE;
+        VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
 
 		// -------------------------------------------------------
 

@@ -752,7 +752,7 @@ namespace SceneryEditorX
 		//InitializeMemoryAllocator();
 
 		/// Set up bindless resources and initial buffers
-		InitializeBindlessResources();
+		InitializeBindlessResources(device, bindlessResources);
 
 		/// Create initial scratch buffer
 		scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
@@ -842,10 +842,8 @@ namespace SceneryEditorX
 	 * 
 	 * @see VkDescriptorPoolCreateInfo, VkDescriptorSetLayoutCreateInfo
 	 */
-	void VulkanDevice::InitializeBindlessResources()
+    void VulkanDevice::InitializeBindlessResources(const VkDevice device, const BindlessResources& bindlessResources)
     {
-        // Initialize bindless resources using our helper functions
-        InitializeBindlessResources(device, bindlessResources);
         
         // Initialize resource ID arrays for tracking available resource slots
         for (int i = 0; i < bindlessResources.MAX_STORAGE_BUFFERS; i++) {
@@ -895,8 +893,8 @@ namespace SceneryEditorX
 		/// Clean up bindless resources
 		if (device != VK_NULL_HANDLE)
 		{
-			if (bindlessResources.bindlessDescriptorLayout != VK_NULL_HANDLE)
-                vkDestroyDescriptorSetLayout(device, bindlessResources.bindlessDescriptorLayout, nullptr);
+            if (bindlessResources.bindlessDescriptorSetLayout != VK_NULL_HANDLE)
+                vkDestroyDescriptorSetLayout(device, bindlessResources.bindlessDescriptorSetLayout, nullptr);
 
             if (bindlessResources.bindlessDescriptorPool != VK_NULL_HANDLE)
                 vkDestroyDescriptorPool(device, bindlessResources.bindlessDescriptorPool, nullptr);

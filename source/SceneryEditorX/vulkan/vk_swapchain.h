@@ -48,7 +48,6 @@ namespace SceneryEditorX
 	{
     public:
         SwapChain() = default;
-        ~SwapChain() = default;
 
 		/// Initialization methods
 		void Init(VkInstance instance, const Ref<VulkanDevice> &device);
@@ -69,8 +68,26 @@ namespace SceneryEditorX
 		[[nodiscard]] VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
         [[nodiscard]] VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
         [[nodiscard]] VkSwapchainKHR GetSwapchain() const { return swapChain; }
+        
+        /**
+         * @brief Gets the texture image view for use in descriptor sets
+         * @return VkImageView The texture image view handle or VK_NULL_HANDLE if not available
+         */
+        [[nodiscard]] VkImageView GetTextureImageView() const { return textureImageView; }
+        
+        /**
+         * @brief Gets the texture sampler for use in descriptor sets
+         * @return VkSampler The texture sampler handle or VK_NULL_HANDLE if not available
+         */
+        [[nodiscard]] VkSampler GetTextureSampler() const { return textureSampler; }
+        
+        /**
+         * @brief Gets the depth image view for use in descriptor sets or framebuffers
+         * @return VkImageView The depth image view handle or VK_NULL_HANDLE if not available
+         */
+        [[nodiscard]] VkImageView GetDepthImageView() const { return depthImageView; }
 
-		/// Setter methods
+		/// Set methods
 		void SetVSync(const bool enabled) { renderData.VSync = enabled; }
 
 		/// Image/view utility methods

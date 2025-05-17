@@ -222,8 +222,8 @@ namespace SceneryEditorX::UI
         }
 
         /// Upload fonts to GPU
-        VkCommandBuffer commandBuffer = renderer.BeginSingleTimeCommands();
-        renderer.EndSingleTimeCommands(commandBuffer);
+        //VkCommandBuffer commandBuffer = renderer.BeginSingleTimeCommands();
+        //renderer.EndSingleTimeCommands(commandBuffer);
 
         /// Wait for font upload to complete
         vkDeviceWaitIdle(device->GetDevice());

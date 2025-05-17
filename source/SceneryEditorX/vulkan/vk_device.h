@@ -50,7 +50,6 @@ namespace SceneryEditorX
 			depthFormat(),
             tilingFormat(),
             formatProperties(),
-			physicalDevice(VK_NULL_HANDLE),
 			GFXFeatures({}),
 	        GFXLimits({}),
 			surfaceCapabilities(),
@@ -279,6 +278,12 @@ namespace SceneryEditorX
          */
         VkSampler GetSampler() const { return textureSampler; }
 
+        /**
+         * @brief 
+         * @return 
+         */
+        BindlessResources GetBindlessResources() const { return bindlessResources; }
+
     private:
         RenderData renderData;
         Descriptors descriptors;
@@ -343,8 +348,14 @@ namespace SceneryEditorX
 
         /**
          * @brief Initialize bindless resources for the device
+         *
+         * @param device The Vulkan device to initialize resources for
+         * @param bindlessResources The bindless resources to initialize
+         *
+         * @note This function sets up the bindless resources for the device, including
+         * creating the bindless descriptor pool and descriptor sets.
          */
-        void InitializeBindlessResources();
+        void InitializeBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
 
         /**
          * @brief Load function pointers for extension functions

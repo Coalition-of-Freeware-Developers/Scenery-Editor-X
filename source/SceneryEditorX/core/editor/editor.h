@@ -14,6 +14,7 @@
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
+#include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
 //#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
@@ -106,6 +107,11 @@ namespace SceneryEditorX
          * Manages Vulkan resources, rendering operations, and the window surface.
          */
         GraphicsEngine gfxEngine;
+        
+        /**
+         * @brief Command buffer for rendering operations.
+         */
+        Ref<CommandBuffer> cmdBuffer;
         
         /**
          * @brief Reference to the swap chain for rendering.

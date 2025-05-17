@@ -200,7 +200,6 @@ namespace SceneryEditorX::IO
 	 * @param filename The name of the file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the file.
 	*/
-
     std::vector<uint8_t> FileManager::ReadRawBytes(const std::filesystem::path &path)
 	{
         std::ifstream input(path, std::ios::binary);

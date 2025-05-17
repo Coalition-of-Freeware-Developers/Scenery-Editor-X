@@ -17,10 +17,12 @@
 
 /// -------------------------------------------------------
 
+/*
 std::string getDumpDirectory()
 {
     return std::filesystem::temp_directory_path().string();
 }
+*/
 
 int main(const int argc, const char** argv[])
 {
@@ -28,6 +30,8 @@ int main(const int argc, const char** argv[])
     SceneryEditorX::Log::Init();
 
 	/// Initialize the Crash Handler
+	
+	/*
     CrashHandler::CrashService::CrashHandlerConfig config;
     config.appVersion = SEDX_VERSION_STRING;
     config.dumpDir = getDumpDirectory();
@@ -37,6 +41,7 @@ int main(const int argc, const char** argv[])
         spdlog::critical("Crash detected, dump saved to: {}", dumpPath);
     };
     CrashHandler::CrashService::Init(config);
+	*/
 
 	/// ----------------------------------------------------
 
@@ -55,12 +60,12 @@ int main(const int argc, const char** argv[])
     {
         SEDX_CORE_ERROR_TAG("Core", "Application error: {}", error.what());
         SceneryEditorX::Log::FlushAll();
-        CrashHandler::CrashService::WriteDump("Unhandled exception: " + std::string(error.what()));
+        //CrashHandler::CrashService::WriteDump("Unhandled exception: " + std::string(error.what()));
         return EXIT_FAILURE;
     }
 
     /// Shut down crash handler before exit
-    CrashHandler::CrashService::Shutdown();
+    //CrashHandler::CrashService::Shutdown();
 
     SEDX_CORE_INFO("Scenery Editor X Engine is shutting down...");
     SceneryEditorX::Log::FlushAll(); /// Make sure to flush logs before shutdown

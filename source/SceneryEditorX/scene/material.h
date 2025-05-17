@@ -50,6 +50,8 @@ namespace SceneryEditorX
 
     private:
         friend class AssetManager;
+        std::string materialPath;
+        std::string materialName;
     };
 	
 } // namespace SceneryEditorX

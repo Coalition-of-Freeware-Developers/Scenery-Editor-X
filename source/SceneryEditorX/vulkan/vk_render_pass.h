@@ -11,16 +11,23 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/scene/texture.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 #include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/vulkan/vk_core.h>
-#include <SceneryEditorX/vulkan/vk_device.h>
 #include <SceneryEditorX/vulkan/vk_swapchain.h>
+#include <SceneryEditorX/vulkan/vk_descriptors.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+    struct RenderSpec
+	{
+        Ref<Pipeline> vkPipeline;
+        std::string DebugName;
+	};
+
     /**
 	 * @class RenderPass
 	 * @brief Manages the Vulkan render pass and associated resources
@@ -35,20 +42,28 @@ namespace SceneryEditorX
 	class RenderPass
 	{
 	public:
-	    RenderPass() = default;
+        RenderPass(const RenderSpec& spec);
 	    virtual ~RenderPass();
+
+		void AddInput(std::string_view name, Ref<UniformBuffer> uniformBuffer);
+		//void AddInput(std::string_view name, Ref<UniformBufferSet> uniformBufferSet);
+
+	    //void AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer);
+        //void AddInput(std::string_view name, Ref<StorageBuffer> storageBufferSet);
+
+		void AddInput(std::string_view name, Ref<TextureAsset> texture);
+
         void CreateRenderPass();
-	    //void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory) const;
-        void UpdateUniformBuffer(uint32_t currentImage) const;
 
         [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
-
+		//VkDescriptorPool GetDescriptorPool() const { return descriptors->descriptorPool; }
 	private:
         GraphicsEngine *gfxEngine;
         Ref<SwapChain> vkSwapChain;
         Ref<MemoryAllocator> allocator;
+        Ref<Descriptors> descriptors;
         Ref<CommandBuffer> cmdBuffer;
-        WeakRef<UniformBuffer> uniformBuffer;
+        Ref<UniformBuffer> uniformBuffer;
         RenderData renderData;
 	    VkRenderPass renderPass = nullptr;
         //VkAllocationCallbacks *allocator = nullptr;
@@ -60,7 +75,7 @@ namespace SceneryEditorX
 
 		/// ----------------------------------
 
-        void CreateDescriptorSets();
+        void CreateDescriptorSets() const;
 
         [[nodiscard]] VkCommandBuffer BeginSingleTimeCommands() const;
         void EndSingleTimeCommands(VkCommandBuffer commandBuffer) const;

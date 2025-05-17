@@ -33,7 +33,7 @@ namespace SceneryEditorX
         VkExtent2D GetFloatSwapExtent() const;
 		VkPipeline GetPipeline() const { return pipeline; }
 		VkPipelineLayout GetVulkanPipelineLayout() const { return pipelineLayout; }
-        [[nodiscard]] virtual Ref<Shader> GetShader() const { return vkShaderPtr; }
+        [[nodiscard]] virtual Ref<Shader> GetShader() const { return shaderPtr; }
 
     protected:
         /**
@@ -42,11 +42,11 @@ namespace SceneryEditorX
          * @param code The shader code
          * @return The created shader module
          */
-        static VkShaderModule CreateShaderModule(VkDevice device, const std::vector<char>& code);
+        INTERNAL VkShaderModule CreateShaderModule(VkDevice device, const std::vector<char>& code);
 
 	private:
         Viewport *vkViewport = nullptr;
-        Ref<Shader> vkShaderPtr;
+        Ref<Shader> shaderPtr;
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> device;
 

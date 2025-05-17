@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/memory.h>
+#include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
-#include <SceneryEditorX/vulkan/render_data.h>
 
 // ----------------------------------------------------------
 
@@ -42,7 +42,7 @@ namespace SceneryEditorX
 	 * 
 	 * @return       A Buffer structure containing the created buffer and its metadata
 	 */
-    static Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
+    GLOBAL Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
 	    /// Get the allocator from the current device
 	    const VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
@@ -139,7 +139,7 @@ namespace SceneryEditorX
 	    return buffer;
 	}
 
-    void *MapBuffer(Buffer &buffer)
+    INTERNAL void *MapBuffer(Buffer &buffer)
     {
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
 		void *mappedData;
@@ -149,7 +149,12 @@ namespace SceneryEditorX
 
     // ----------------------------------------------------------
 
-	/**
+	UniformBuffer::UniformBuffer()
+    {
+        CreateUniformBuffers();
+    }
+
+    /**
 	 * @brief Destroys uniform buffer resources
 	 * 
 	 * This destructor properly cleans up Vulkan resources allocated for uniform buffers:
@@ -168,7 +173,6 @@ namespace SceneryEditorX
             vkFreeMemory(vkDevice->GetDevice(), uniformBuffersMemory[i], nullptr);
 		}
 	}
-
 
 	/**
 	 * @brief Updates the uniform buffer for the current frame
@@ -191,7 +195,7 @@ namespace SceneryEditorX
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float>(currentTime - startTime).count();
 
-        UBO uniformBuff;
+        UBO uniformBuff{};
         uniformBuff.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         uniformBuff.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
         uniformBuff.proj = glm::perspective(glm::radians(45.0f),static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().width) / static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().height),0.1f,10.0f);
@@ -306,6 +310,11 @@ namespace SceneryEditorX
         vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
     }
 
+    IndexBuffer::IndexBuffer()
+    {
+        CreateIndexBuffer();
+    }
+
     /**
      * @brief Destroys index buffer resources
      * 
@@ -328,6 +337,11 @@ namespace SceneryEditorX
     }
 
     /// ----------------------------------------------------------
+
+    VertexBuffer::VertexBuffer()
+    {
+		CreateVertexBuffer();
+    }
 
     VertexBuffer::~VertexBuffer()
     {
@@ -377,6 +391,7 @@ namespace SceneryEditorX
         EndSingleTimeCommands(commandBuffer);
     }
 
+	/*
 	void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const
     {
         VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
@@ -432,6 +447,36 @@ namespace SceneryEditorX
         vkFreeCommandBuffers(vkDevice->GetDevice(), cmdPool, 1, &commandBuffer);
     }
 	*/
+
+    Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
+    {
+        return Buffer();
+    }
+
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+    {
+		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+		VkBufferImageCopy region{};
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+		region.imageOffset = {.x = 0, .y = 0, .z = 0};
+		region.imageExtent = {.width = width, .height = height, .depth = 1};
+
+		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		EndSingleTimeCommands(commandBuffer);
+    }
+
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+    {
+
+    }
 
 } // namespace SceneryEditorX
 

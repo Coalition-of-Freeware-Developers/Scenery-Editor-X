@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/vulkan/buffer_data.h>
 #include <SceneryEditorX/vulkan/vk_device.h>
-#include "vk_swapchain.h"
+#include <SceneryEditorX/vulkan/vk_swapchain.h>
 
 // --------------------------------------------
 
@@ -122,10 +122,8 @@ namespace SceneryEditorX
          * @param buffer Reference to store the created buffer handle
          * @param bufferMemory Reference to store the allocated memory handle
          */
-        void CreateBuffer(VkDeviceSize size,
-                          VkBufferUsageFlags usage,
-                          VkMemoryPropertyFlags properties,
-                          VkBuffer &buffer, VkDeviceMemory &bufferMemory) const;
+        void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                          VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory) const;
 
         /**
          * @brief Updates the contents of a uniform buffer for the current frame
@@ -136,6 +134,42 @@ namespace SceneryEditorX
          * frame with the current camera and model state.
          */
         void UpdateUniformBuffer(uint32_t currentImage) const;
+
+        /**
+         * @brief Gets the buffer handle for the specified frame
+         *
+         * @param index Index of the frame's buffer to retrieve
+         * @return VkBuffer The uniform buffer handle, or VK_NULL_HANDLE if invalid index
+         */
+        VkBuffer GetBuffer(uint32_t index) const
+        {
+            if (index < uniformBuffers.size())
+                return uniformBuffers[index];
+            return VK_NULL_HANDLE;
+        }
+
+        /**
+         * @brief Gets the buffer memory handle for the specified frame
+         *
+         * @param index Index of the frame's buffer memory to retrieve
+         * @return VkDeviceMemory The uniform buffer memory handle, or VK_NULL_HANDLE if invalid index
+         */
+        VkDeviceMemory GetBufferMemory(uint32_t index) const
+        {
+            if (index < uniformBuffersMemory.size())
+                return uniformBuffersMemory[index];
+            return VK_NULL_HANDLE;
+        }
+
+        /**
+         * @brief Gets the total number of uniform buffers managed by this instance
+         *
+         * @return size_t The number of uniform buffers
+         */
+        size_t GetBufferCount() const
+        {
+            return uniformBuffers.size();
+        }
 
     private:
         Ref<GraphicsEngine> *gfxEngine;						///< Pointer to the graphics engine reference

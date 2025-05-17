@@ -353,56 +353,6 @@ namespace SceneryEditorX
         virtual ~Resource() = default;
     };
 
-    /**
-     * @struct BindlessResources
-     * @brief Manages bindless resource descriptors for efficient GPU resource access
-     * 
-     * Bindless resources allow the GPU to access a large number of resources (textures, buffers, etc.)
-     * without rebinding descriptor sets between draw calls. This enables more efficient rendering
-     * by reducing API overhead and state changes.
-     * 
-     * This structure maintains the Vulkan descriptor sets and pools required for bindless
-     * resource access, as well as defines the maximum number of resources that can be
-     * referenced in shaders without rebinding.
-     */
-    struct BindlessResources
-    {
-        /**
-         * @enum BindlessType
-         * @brief Defines the types of resources that can be accessed in a bindless fashion
-         * 
-         * Used to categorize different resource types that require different descriptor bindings.
-         */
-        enum BindlessType : uint8_t
-        {
-            TEXTURE,      ///< Regular texture resources (sampled images)
-            BUFFER,       ///< Storage or uniform buffer resources
-            TLAS,         ///< Top Level Acceleration Structure for ray tracing
-            STORAGE_IMAGE ///< Images that support read/write operations in shaders
-        };
-
-        /** @brief Descriptor pool used for ImGui interface elements */
-        VkDescriptorPool imguiDescriptorPool = VK_NULL_HANDLE;
-
-        /** @brief The descriptor set containing all bindless resources */
-        VkDescriptorSet bindlessDescriptorSet = VK_NULL_HANDLE;
-
-        /** @brief Descriptor pool from which the bindless descriptor set is allocated */
-        VkDescriptorPool bindlessDescriptorPool = VK_NULL_HANDLE;
-
-        /** @brief Layout defining the organization of descriptors within the bindless set */
-        VkDescriptorSetLayout bindlessDescriptorLayout = VK_NULL_HANDLE;
-
-        /** @brief Maximum number of storage buffers or storage texel buffers that can be accessed */
-        uint32_t MAX_STORAGE = 8192;
-
-        /** @brief Maximum number of sampled images (textures) that can be accessed */
-        uint32_t MAX_SAMPLED_IMAGES = 8192;
-
-        /** @brief Maximum number of storage images that can be accessed for read/write operations */
-        uint32_t MAX_STORAGE_IMAGES = 8192;
-    };
-
     /// -----------------------------------------------------------
 
     /**

@@ -23,23 +23,6 @@
 
 /// -------------------------------------------------------
 
-/*
-namespace std
-{
-	template <>
-	struct std::hash<SceneryEditorX::Vertex>
-	{
-	    size_t operator()(const SceneryEditorX::Vertex &vertex) const noexcept
-        {
-	        return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
-	    }
-	};
-
-} // namespace std
-*/
-
-/// -------------------------------------------------------
-
 struct GLFWwindow;
 
 namespace SceneryEditorX
@@ -71,25 +54,6 @@ namespace SceneryEditorX
 
 	    void WaitIdle(const Ref<VulkanDevice> &device);
 
-	    //INTERNAL Ref<ShaderLibrary> GetShaderLibrary();
-		//INTERNAL void WaitAndRender(RenderThread *renderThread);
-        //INTERNAL void SwapQueues();
-
-		/// -------------------------------------------------------
-
-		uint32_t GetRenderQueueIndex();
-        uint32_t GetRenderQueueSubmissionIndex();
-        uint32_t GetCurrentFrameIndex();
-
-        [[nodiscard]] VkCommandBuffer BeginSingleTimeCommands() const;
-        void EndSingleTimeCommands(VkCommandBuffer commandBuffer) const;
-        void Submit();
-
-		/// -------------------------------------------------------
-
-		//static void BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
-		//static void EndRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer);
-
 		/// -------------------------------------------------------
 
 	    void BeginFrame();
@@ -102,7 +66,7 @@ namespace SceneryEditorX
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> vkDevice;
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
-        Ref<UniformBuffer> uniformBuffer;
+        //Ref<UniformBuffer> uniformBuffer;
         Ref<VulkanChecks> checks;
         Ref<MemoryAllocator> allocatorManager;
 
@@ -121,6 +85,7 @@ namespace SceneryEditorX
         void glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer);
 
 	    friend struct ImageResource;
+
 		/// -------------------------------------------------------
 
 		VkDevice device = nullptr;
@@ -173,49 +138,29 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
         void CreateSurface(GLFWwindow *glfwWindow);
-        void CreateLogicalDevice();
         void CreateSwapChain();
         void CreateImageViews();
-        VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
-        void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples,
-                         VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                         VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
-        void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+        VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
+        void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) const;
         GLOBAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
-        void CreateRenderPass();
-        void CreateVertexBuffer();
         void CreateDepthResources();
-        void CreateIndexBuffer();
         void CreateDescriptorPool();
         void CreateDescriptorSetLayout();
-        void CreateDescriptorSets();
-        void CreateGraphicsPipeline();
         void CreateFramebuffers();
-        void CreateCommandPool();
-        void CreateCommandBuffers();
-        void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
         void CreateSyncObjects();
         void RecreateSwapChain();
         void RenderFrame();
-        void RecreateSurfaceFormats();
-        void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const;
-        void CreateColorResources();
-        VkSampleCountFlagBits GetMaxUsableSampleCount() const;
-        void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const;
-        void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const;
-        void CreateTextureImage();
         VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
         VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
         VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
         void CreateTextureImageView();
         void CreateTextureSampler();
         SwapChainDetails QuerySwapChainSupport(VkPhysicalDevice device) const;
-	    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
         VkFormat FindDepthFormat() const;
         void CleanUp();
         void CleanupSwapChain();
-        VkSampleCountFlagBits GetMaxUsableSampleCount();
+        VkSampleCountFlagBits GetMaxUsableSampleCount() const;
 
 		/// -------------------------------------------------------
 	};

@@ -299,10 +299,17 @@ namespace SceneryEditorX
 	    }
 
         // Get a command buffer to render into
-        VkCommandBuffer commandBuffer = gfxEngine.BeginSingleTimeCommands();
+        gfxEngine.BeginFrame();
+
+            // Ensure cmdBuffer is initialized and retrieve the active Vulkan command buffer
+        if (!cmdBuffer)
+        {
+            cmdBuffer = CreateRef<CommandBuffer>();
+        }
+        VkCommandBuffer vkCmdBuffer = cmdBuffer->GetActiveCommandBuffer();
 
         // Set the command buffer for ImGui to render into
-        ui.SetActiveCommandBuffer(commandBuffer);
+        ui.SetActiveCommandBuffer(vkCmdBuffer);  
 
         // Begin ImGui UI
         if (uiContext)
@@ -319,7 +326,7 @@ namespace SceneryEditorX
         }
 
         // End and submit the command buffer
-        gfxEngine.EndSingleTimeCommands(commandBuffer);
+        gfxEngine.EndFrame();
 
         // Update frame counter
         frameCount = (frameCount + 1) % (1 << 15);

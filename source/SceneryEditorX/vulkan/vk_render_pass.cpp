@@ -18,6 +18,11 @@
 
 namespace SceneryEditorX
 {
+	RenderPass::RenderPass(const RenderSpec &spec)
+	{
+        SEDX_CORE_VERIFY(spec.vkPipeline);
+	}
+
 	RenderPass::~RenderPass()
 	{
         if (renderPass != VK_NULL_HANDLE && gfxEngine->GetLogicDevice()->GetDevice())
@@ -38,6 +43,7 @@ namespace SceneryEditorX
 	void RenderPass::CreateRenderPass()
 	{
         VkAttachmentDescription colorAttachment{};
+        colorAttachment.flags = 0;
         colorAttachment.format = vkSwapChain->GetColorFormat();
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -108,20 +114,21 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR("Failed to create render pass!");
     }
 
-	void RenderPass::CreateDescriptorSets()
+	/*
+	void RenderPass::CreateDescriptorSets() const
     {
-        std::vector<VkDescriptorSetLayout> layouts(RenderData::framesInFlight, descriptorSetLayout);
+        std::vector<VkDescriptorSetLayout> layouts(RenderData::framesInFlight, descriptors->descriptorSetLayout);
 
         // -------------------------------------------------------
 
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorPool = descriptors->descriptorPool;
         allocInfo.descriptorSetCount = RenderData::framesInFlight;
         allocInfo.pSetLayouts = layouts.data();
 
-        descriptorSets.resize(RenderData::framesInFlight);
-        if (vkAllocateDescriptorSets(gfxEngine->GetLogicDevice()->GetDevice(), &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+        descriptors->descriptorSets.resize(RenderData::framesInFlight);
+        if (vkAllocateDescriptorSets(gfxEngine->GetLogicDevice()->GetDevice(), &allocInfo, descriptors->descriptorSets.data()) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate descriptor sets!");
 
         // -------------------------------------------------------
@@ -129,14 +136,15 @@ namespace SceneryEditorX
         for (size_t i = 0; i < RenderData::framesInFlight; i++)
         {
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.buffer = uniformBuffer->uniformBuffers[i];
             bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBuffer);
+            bufferInfo.range = sizeof(UniformBuffer::UBO);
 
+            // Get texture resources from appropriate source - in this case the SwapChain
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = textureImageView;
-            imageInfo.sampler = textureSampler;
+            imageInfo.imageView = vkSwapChain->textureImageView;
+            imageInfo.sampler = vkSwapChain->textureSampler;
 
             // -------------------------------------------------------
 
@@ -145,7 +153,7 @@ namespace SceneryEditorX
             // -------------------------------------------------------
 
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[i];
+            descriptorWrites[0].dstSet = descriptors->descriptorSets[i];
             descriptorWrites[0].dstBinding = 0;
             descriptorWrites[0].dstArrayElement = 0;
             descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -155,7 +163,7 @@ namespace SceneryEditorX
             // -------------------------------------------------------
 
             descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[i];
+            descriptorWrites[1].dstSet = descriptors->descriptorSets[i];
             descriptorWrites[1].dstBinding = 1;
             descriptorWrites[1].dstArrayElement = 0;
             descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -169,6 +177,7 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
     }
+    */
 
 	void RenderPass::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const
     {
