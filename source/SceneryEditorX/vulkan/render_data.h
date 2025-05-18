@@ -12,7 +12,6 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
-#include <SceneryEditorX/platform/platform_states.h>
 #include <vulkan/vulkan_core.h>
 
 // -------------------------------------------------------

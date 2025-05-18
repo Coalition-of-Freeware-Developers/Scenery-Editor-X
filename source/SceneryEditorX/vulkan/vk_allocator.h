@@ -12,8 +12,8 @@
 */
 #pragma once
 #include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/vulkan/vk_device.h>
-#include <vulkan/vulkan.h>
+#include <SceneryEditorX/vulkan/buffer_data.h>
+#include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
 
@@ -122,15 +122,15 @@ namespace SceneryEditorX
 
         void SetAllocationStrategy(AllocationStrategy strategy);
         //void ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo) const;
-        void ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo);
-        bool ContainsAllocation(VmaAllocation allocation) const;
+        void ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo) const;
+        GLOBAL bool ContainsAllocation(VmaAllocation allocation);
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
 
         /**
 		 * @brief Gets the current custom buffer size
 		 * @return The custom buffer size in bytes
 		 */
-        static VkDeviceSize GetCustomBufferSize();
+        GLOBAL VkDeviceSize GetCustomBufferSize();
 
 		/**
 		 * @brief Sets the custom buffer size if the device supports it
@@ -138,7 +138,7 @@ namespace SceneryEditorX
 		 * @param device Reference to the Vulkan device
 		 * @return true if set successfully, false if unsupported
 		 */
-		static bool SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device);
+		GLOBAL bool SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device);
 
         /// ---------------------------------------------------------
 
@@ -187,7 +187,7 @@ namespace SceneryEditorX
         };
 
         /// Batch allocation methods
-        [[nodiscard]] std::vector<BatchBufferAllocation> AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, BufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO);
+        [[nodiscard]] std::vector<BatchBufferAllocation> AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, BufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO) const;
 
         void FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations);
 
@@ -217,10 +217,10 @@ namespace SceneryEditorX
 		/// ---------------------------------------------------------
 
         void UnmapMemory(VmaAllocation allocation);
-        static VmaAllocator GetMemAllocator();
+        GLOBAL VmaAllocator GetMemAllocator();
 
-		static void Init(const Ref<VulkanDevice> &device);
-		static void Shutdown();
+		GLOBAL void Init(const Ref<VulkanDevice> &device);
+		GLOBAL void Shutdown();
 
 		/// ---------------------------------------------------------
 
@@ -250,7 +250,7 @@ namespace SceneryEditorX
         /// Helper function to align buffer sizes for better caching
         [[nodiscard]] VkDeviceSize AlignBufferSize(VkDeviceSize size) const;
 
-		static VkDeviceSize customBufferSize;
+		INTERNAL VkDeviceSize customBufferSize;
     };
 
 } // namespace SceneryEditorX

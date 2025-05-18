@@ -12,13 +12,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <map>
-#include <mutex>
 #include <optional>
 #include <SceneryEditorX/vulkan/buffer_data.h>
-#include <SceneryEditorX/vulkan/image_data.h>
 #include <SceneryEditorX/vulkan/vk_descriptors.h>
-#include <vulkan/vulkan.h>
+//#include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
 
@@ -296,9 +293,8 @@ namespace SceneryEditorX
         VkDeviceAddress scratchAddress = 0;
 
 		Ref<MemoryAllocator> memoryAllocator;
-        VkSampler textureSampler = VK_NULL_HANDLE;
-        VkDevice device = VK_NULL_HANDLE;
-        VkInstance vkInstance = VK_NULL_HANDLE;
+        VkSampler textureSampler = nullptr;
+        VkDevice device = nullptr;
         Ref<VulkanPhysicalDevice> vkPhysDevice;
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
         const uint32_t initialScratchBufferSize = 64 * 1024 * 1024;

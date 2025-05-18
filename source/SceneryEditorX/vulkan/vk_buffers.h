@@ -12,8 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/vulkan/buffer_data.h>
-#include <SceneryEditorX/vulkan/vk_device.h>
-#include <SceneryEditorX/vulkan/vk_swapchain.h>
+#include <SceneryEditorX/vulkan/vk_core.h>
 
 // --------------------------------------------
 
@@ -62,6 +61,8 @@ namespace SceneryEditorX
      * appropriate layout for a transfer destination operation before calling this function.
      */
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+    void *MapBuffer(Buffer &buffer);
 
     /// ----------------------------------------------------------
 
@@ -141,7 +142,7 @@ namespace SceneryEditorX
          * @param index Index of the frame's buffer to retrieve
          * @return VkBuffer The uniform buffer handle, or VK_NULL_HANDLE if invalid index
          */
-        VkBuffer GetBuffer(uint32_t index) const
+        [[nodiscard]] VkBuffer GetBuffer(uint32_t index) const
         {
             if (index < uniformBuffers.size())
                 return uniformBuffers[index];
@@ -154,7 +155,7 @@ namespace SceneryEditorX
          * @param index Index of the frame's buffer memory to retrieve
          * @return VkDeviceMemory The uniform buffer memory handle, or VK_NULL_HANDLE if invalid index
          */
-        VkDeviceMemory GetBufferMemory(uint32_t index) const
+        [[nodiscard]] VkDeviceMemory GetBufferMemory(uint32_t index) const
         {
             if (index < uniformBuffersMemory.size())
                 return uniformBuffersMemory[index];
@@ -166,14 +167,13 @@ namespace SceneryEditorX
          *
          * @return size_t The number of uniform buffers
          */
-        size_t GetBufferCount() const
+        [[nodiscard]] size_t GetBufferCount() const
         {
             return uniformBuffers.size();
         }
 
     private:
         Ref<GraphicsEngine> *gfxEngine;						///< Pointer to the graphics engine reference
-        Ref<VulkanDevice> vkDevice;							///< Reference to the Vulkan logical device
         Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
         RenderData renderData;                              ///< Reference to the render data structure
         std::vector<VkBuffer> uniformBuffers;				///< Array of uniform buffer handles (one per frame)
@@ -284,11 +284,10 @@ namespace SceneryEditorX
          * Allocates memory for the vertex buffer and transfers vertex data to it.
          * The buffer is created with appropriate usage flags for vertex data.
          */
-        void CreateVertexBuffer() const;
+        [[nodiscard]] Buffer CreateVertexBuffer() const;
 
     private:
-        //Ref<GraphicsEngine> *gfxEngine;      ///< Pointer to the graphics engine reference
-        Ref<VulkanDevice> vkDevice;          ///< Reference to the Vulkan logical device
+        Ref<GraphicsEngine> *gfxEngine;      ///< Pointer to the graphics engine reference
         Ref<MemoryAllocator> allocator;      ///< Reference to the memory allocator
         std::vector<Vertex> vertices;        ///< Storage for vertex data
         RenderData renderData;
@@ -337,7 +336,6 @@ namespace SceneryEditorX
 
     private:
         Ref<GraphicsEngine> *gfxEngine;		///< Pointer to the graphics engine reference
-        Ref<VulkanDevice> vkDevice;			///< Reference to the Vulkan logical device
         Ref<MemoryAllocator> allocator;		///< Reference to the memory allocator
         RenderData renderData;
         std::vector<uint32_t> indices;		///< Storage for index data

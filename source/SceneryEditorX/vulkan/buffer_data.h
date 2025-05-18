@@ -124,9 +124,12 @@ namespace SceneryEditorX
 
         /**
          * @brief Destroys the buffer and frees its memory allocation
-         * 
-         * Automatically called when the resource is destroyed, ensuring proper cleanup
-         * of Vulkan resources to prevent memory leaks.
+         *
+         * This destructor is responsible for cleaning up the Vulkan buffer and its associated
+         * memory allocation. It ensures that resources are released properly to prevent memory leaks.
+         *
+         * @note This destructor is virtual to allow for polymorphic behavior in derived classes.
+		 * @see VulkanMemoryUtils::DestroyBuffer
          */
         virtual ~BufferResource() override
         {

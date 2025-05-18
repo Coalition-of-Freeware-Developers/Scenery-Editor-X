@@ -12,12 +12,12 @@
 */
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/vulkan/image_data.h>
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/vulkan/vk_device.h>
 #include <SceneryEditorX/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/vulkan/vk_util.h>
-#include <utility>
 
 // -------------------------------------------------------
 

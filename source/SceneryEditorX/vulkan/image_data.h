@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <imgui/imgui.h>
-#include <imgui_impl_vulkan.h>
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 
@@ -20,7 +19,6 @@
 
 namespace SceneryEditorX
 {
-
     class GraphicsEngine;
 
 	namespace ImageUsage
@@ -92,9 +90,9 @@ namespace SceneryEditorX
 
 	struct ImageResource : Resource
     {
-        VkImage image = VK_NULL_HANDLE;
-        VkImageView view = VK_NULL_HANDLE;
-        VmaAllocation allocation = VK_NULL_HANDLE;
+        VkImage image = nullptr;
+        VkImageView view = nullptr;
+        VmaAllocation allocation = nullptr;
 		bool fromSwapchain = false;
 		std::vector<VkImageView> layersView;
 		std::vector<ImTextureID> imguiRIDs;

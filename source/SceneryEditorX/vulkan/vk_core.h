@@ -44,6 +44,7 @@ namespace SceneryEditorX
         Ref<Window> GetWindow() { return editorWindow; }
 		Ref<SwapChain> GetSwapChain() { return vkSwapChain; }
 		Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
+		Ref<MemoryAllocator> GetMemAllocator() { return allocatorManager; }
 		LOCAL Ref<GraphicsEngine> Get() { return {}; }
 		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice();}
 		LOCAL VkInstance GetInstance() { return vkInstance; }
@@ -66,7 +67,6 @@ namespace SceneryEditorX
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> vkDevice;
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
-        //Ref<UniformBuffer> uniformBuffer;
         Ref<VulkanChecks> checks;
         Ref<MemoryAllocator> allocatorManager;
 
