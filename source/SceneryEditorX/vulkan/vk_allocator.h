@@ -121,7 +121,6 @@ namespace SceneryEditorX
         };
 
         void SetAllocationStrategy(AllocationStrategy strategy);
-        //void ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo) const;
         void ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo) const;
         GLOBAL bool ContainsAllocation(VmaAllocation allocation);
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);

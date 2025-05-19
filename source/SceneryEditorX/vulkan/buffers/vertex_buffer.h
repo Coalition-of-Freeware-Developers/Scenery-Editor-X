@@ -13,16 +13,42 @@
 #pragma once
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
+#include <functional>
 
 /// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    /**
+     * @enum VertexBufferType
+     * @brief Defines the type and usage pattern of vertex buffer
+     */
     enum class VertexBufferType : uint8_t
     {
         None = 0,
-		Static = 1,
-		Dynamic = 2, /// Dynamic vertex buffer
+        Static = 1,      ///< Static data, rarely or never updated (GPU optimized)
+        Dynamic = 2,     ///< Frequently changed data (CPU-GPU shared memory)
+        Transient = 3,   ///< Single-use buffer that will be discarded after rendering
+        Streaming = 4    ///< Continuously streamed data (e.g. particles)
+    };
+
+    /**
+     * @enum VertexFormat
+     * @brief Standard vertex data formats
+     */
+    enum class VertexFormat : uint8_t
+    {
+        None = 0,
+        Position2D = 1,                     ///< vec2 position
+        Position3D = 2,                     ///< vec3 position
+        Position3D_Color3 = 3,              ///< vec3 position + vec3 color
+        Position3D_Color4 = 4,              ///< vec3 position + vec4 color
+        Position3D_Normal = 5,              ///< vec3 position + vec3 normal
+        Position3D_TexCoord = 6,            ///< vec3 position + vec2 texcoord
+        Position3D_Color4_TexCoord = 7,     ///< vec3 position + vec4 color + vec2 texcoord
+        Position3D_Normal_TexCoord = 8,     ///< vec3 position + vec3 normal + vec2 texcoord
+        Position3D_Normal_TexCoord_Tangent = 9, ///< vec3 position + vec3 normal + vec2 texcoord + vec4 tangent
+        Custom = 255                         ///< Custom vertex format defined by user
     };
 
     /**
@@ -37,26 +63,10 @@ namespace SceneryEditorX
     {
     public:
         /**
-         * @brief Constructor for VertexBuffer
-         *
-         * Initializes the VertexBuffer instance by getting references to required
-         * graphics engine components.
-         */
-        VertexBuffer();
-
-        /**
-         * @brief Destructor for VertexBuffer
-         *
-         * Cleans up vertex buffer resources and associated memory.
-         */
-        virtual ~VertexBuffer();
-
-        /**
          * @struct Vertex
-         * @brief Defines the structure and layout of vertex data
+         * @brief Base vertex structure that can be extended for different vertex formats
          *
-         * Contains position, color, and texture coordinate data for each vertex,
-         * along with methods to describe the vertex layout to Vulkan.
+         * Contains position, color, and texture coordinate data for each vertex.
          */
         struct Vertex
         {
@@ -65,43 +75,71 @@ namespace SceneryEditorX
             glm::vec2 texCoord; ///< Texture coordinates of the vertex
 
             /**
-             * @brief Provides the vertex binding description for Vulkan
-             * @return VkVertexInputBindingDescription describing how to bind vertex data
-             *
-             * Specifies the stride and input rate for the vertex data.
+             * @brief Default constructor
              */
-            static VkVertexInputBindingDescription GetBindingDescription()
-            {
-                VkVertexInputBindingDescription bindingDescription;
-                bindingDescription.binding = 0;
-                bindingDescription.stride = sizeof(Vertex);
-                bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            Vertex() = default;
 
+            /**
+             * @brief Constructor with position
+             * @param position 3D position of the vertex
+             */
+            explicit Vertex(const glm::vec3& position) 
+                : pos(position), color(1.0f, 1.0f, 1.0f), texCoord(0.0f, 0.0f) {}
+
+            /**
+             * @brief Constructor with position and color
+             * @param position 3D position of the vertex
+             * @param vertexColor RGB color of the vertex
+             */
+            Vertex(const glm::vec3& position, const glm::vec3& vertexColor)
+                : pos(position), color(vertexColor), texCoord(0.0f, 0.0f) {}
+
+            /**
+             * @brief Constructor with position, color and texture coordinates
+             * @param position 3D position of the vertex
+             * @param vertexColor RGB color of the vertex
+             * @param uv Texture coordinates of the vertex
+             */
+            Vertex(const glm::vec3& position, const glm::vec3& vertexColor, const glm::vec2& uv)
+                : pos(position), color(vertexColor), texCoord(uv) {}
+
+            /**
+             * @brief Provides the vertex binding description for Vulkan
+             * @param binding Binding index to use
+             * @param inputRate Vertex input rate (vertex or instance)
+             * @return VkVertexInputBindingDescription describing how to bind vertex data
+             */
+            static VkVertexInputBindingDescription GetBindingDescription(
+                uint32_t binding = 0, 
+                VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX)
+            {
+                VkVertexInputBindingDescription bindingDescription{};
+                bindingDescription.binding = binding;
+                bindingDescription.stride = sizeof(Vertex);
+                bindingDescription.inputRate = inputRate;
                 return bindingDescription;
             }
 
             /**
              * @brief Provides attribute descriptions for vertex data components
+             * @param binding The binding index these attributes are associated with
              * @return Array of attribute descriptions for position, color, and texture coordinates
-             *
-             * Describes how to interpret each attribute (position, color, texture coordinates)
-             * within the vertex data, including their locations, formats, and offsets.
              */
-            static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions()
+            static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions(uint32_t binding = 0)
             {
                 std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
-                attributeDescriptions[0].binding = 0;
+                attributeDescriptions[0].binding = binding;
                 attributeDescriptions[0].location = 0;
                 attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
                 attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
-                attributeDescriptions[1].binding = 0;
+                attributeDescriptions[1].binding = binding;
                 attributeDescriptions[1].location = 1;
                 attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
                 attributeDescriptions[1].offset = offsetof(Vertex, color);
 
-                attributeDescriptions[2].binding = 0;
+                attributeDescriptions[2].binding = binding;
                 attributeDescriptions[2].location = 2;
                 attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
                 attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
@@ -121,20 +159,184 @@ namespace SceneryEditorX
         };
 
         /**
-         * @brief Creates and initializes the vertex buffer on the GPU
-         *
-         * Allocates memory for the vertex buffer and transfers vertex data to it.
-         * The buffer is created with appropriate usage flags for vertex data.
+         * @brief Constructor for VertexBuffer
+         * 
+         * @param type The type of vertex buffer (Static, Dynamic, etc)
+         * @param vertexFormat The format of vertices to be stored
+         * @param initialCapacity Initial buffer capacity in vertices (optional)
          */
-        [[nodiscard]] Buffer CreateVertexBuffer() const;
+        explicit VertexBuffer(
+            VertexBufferType type = VertexBufferType::Static,
+            VertexFormat vertexFormat = VertexFormat::Position3D_Color3_TexCoord,
+            uint32_t initialCapacity = 0
+        );
+
+        /**
+         * @brief Constructor for VertexBuffer with initial data
+         * 
+         * @param initialVertices Vector of vertices to initialize the buffer with
+         * @param type The type of vertex buffer (Static, Dynamic, etc)
+         */
+        explicit VertexBuffer(
+            const std::vector<Vertex>& initialVertices,
+            VertexBufferType type = VertexBufferType::Static
+        );
+
+        /**
+         * @brief Destructor for VertexBuffer
+         */
+        virtual ~VertexBuffer();
+
+        /**
+         * @brief Creates the vertex buffer with current data
+         * @return Buffer structure representing the created vertex buffer
+         */
+        [[nodiscard]] Buffer CreateVertexBuffer();
+        
+        /**
+         * @brief Gets the Vulkan buffer handle
+         * @return VkBuffer handle to the vertex buffer
+         */
+        [[nodiscard]] VkBuffer GetBuffer() const { return vertexBuffer; }
+        
+        /**
+         * @brief Gets the size of the vertex buffer in bytes
+         * @return Size of the buffer in bytes
+         */
+        [[nodiscard]] VkDeviceSize GetBufferSize() const { return bufferSize; }
+        
+        /**
+         * @brief Gets the number of vertices in the buffer
+         * @return Count of vertices
+         */
+        [[nodiscard]] size_t GetVertexCount() const { return vertices.size(); }
+        
+        /**
+         * @brief Sets new vertex data, replacing existing data
+         * 
+         * @param newVertices Vector of new vertices
+         * @param recreateBuffer Whether to recreate the buffer immediately
+         */
+        void SetData(const std::vector<Vertex>& newVertices, bool recreateBuffer = true);
+        
+        /**
+         * @brief Adds vertices to the buffer
+         * 
+         * @param additionalVertices Vector of vertices to add
+         * @param recreateBuffer Whether to recreate the buffer immediately
+         */
+        void AppendData(const std::vector<Vertex>& additionalVertices, bool recreateBuffer = true);
+        
+        /**
+         * @brief Updates a subset of vertices in the buffer
+         * 
+         * @param startIndex Starting index to update
+         * @param updatedVertices Vector of vertices with new data
+         */
+        void UpdateData(uint32_t startIndex, const std::vector<Vertex>& updatedVertices);
+        
+        /**
+         * @brief Clears all vertex data
+         * 
+         * @param releaseBuffer Whether to also release the GPU buffer
+         */
+        void ClearData(bool releaseBuffer = false);
+        
+        /**
+         * @brief Resizes the buffer to accommodate a specific number of vertices
+         * 
+         * @param newCapacity The new capacity in vertices
+         * @param preserveData Whether to preserve existing vertex data
+         */
+        void Reserve(uint32_t newCapacity, bool preserveData = true);
+        
+        /**
+         * @brief Maps the buffer memory for CPU access (only for dynamic buffers)
+         * @return Pointer to mapped memory, or nullptr if mapping fails
+         */
+        void* MapMemory();
+        
+        /**
+         * @brief Unmaps the buffer memory after CPU access
+         */
+        void UnmapMemory();
+        
+        /**
+         * @brief Gets the binding description for this vertex buffer
+         * 
+         * @param binding Binding index to use
+         * @param inputRate Vertex input rate (vertex or instance)
+         * @return VkVertexInputBindingDescription structure
+         */
+        [[nodiscard]] VkVertexInputBindingDescription GetBindingDescription(
+            uint32_t binding = 0,
+            VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX) const;
+            
+        /**
+         * @brief Gets attribute descriptions for this vertex buffer
+         * 
+         * @param binding The binding index these attributes are associated with
+         * @return Array of VkVertexInputAttributeDescription structures
+         */
+        [[nodiscard]] std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions(uint32_t binding = 0) const;
+
+        /**
+         * @brief Creates a vertex buffer representing a primitive geometry
+         * 
+         * @param type Type of primitive shape to create
+         * @param size Size of the primitive
+         * @param color Color to apply to the primitive vertices
+         * @return Ref<VertexBuffer> Reference to the created vertex buffer
+         */
+        static Ref<VertexBuffer> CreatePrimitive(
+            PrimitiveType type, 
+            const glm::vec3& size = glm::vec3(1.0f), 
+            const glm::vec3& color = glm::vec3(1.0f));
 
     private:
-        Ref<GraphicsEngine> *gfxEngine;      ///< Pointer to the graphics engine reference
-        Ref<MemoryAllocator> allocator;      ///< Reference to the memory allocator
-        std::vector<Vertex> vertices;        ///< Storage for vertex data
-        RenderData renderData;
-        VkBuffer vertexBuffer;               ///< Handle to the Vulkan vertex buffer
-        VkDeviceMemory vertexBufferMemory;   ///< Handle to the allocated memory for the vertex buffer
+        Ref<GraphicsEngine>* gfxEngine;        ///< Pointer to the graphics engine reference
+        Ref<MemoryAllocator> allocator;        ///< Reference to the memory allocator
+        std::vector<Vertex> vertices;          ///< Storage for vertex data
+        RenderData renderData;                 ///< Render data reference
+        VertexBufferType bufferType;           ///< Type of vertex buffer
+        VertexFormat format;                   ///< Format of vertices
+        
+        VkBuffer vertexBuffer = VK_NULL_HANDLE;           ///< Handle to the Vulkan vertex buffer
+        VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE; ///< Handle to the allocated memory for the vertex buffer
+        Buffer internalBuffer;                 ///< Buffer wrapper 
+        VkDeviceSize bufferSize = 0;           ///< Size of the buffer in bytes
+        uint32_t capacity = 0;                 ///< Capacity in number of vertices
+        bool isInitialized = false;            ///< Whether the buffer has been initialized
+        void* mappedMemory = nullptr;          ///< Pointer to mapped memory
+
+        /**
+         * @brief Initializes the vertex buffer with the given options
+         */
+        void Initialize();
+        
+        /**
+         * @brief Releases resources associated with the buffer
+         */
+        void Release();
+        
+        /**
+         * @brief Creates vertex attribute descriptions based on the vertex format
+         */
+        std::vector<VkVertexInputAttributeDescription> CreateAttributeDescriptions(uint32_t binding) const;
+    };
+
+    /**
+     * @enum PrimitiveType
+     * @brief Types of primitive shapes that can be created
+     */
+    enum class PrimitiveType
+    {
+        Cube,       ///< 3D cube
+        Quad,       ///< 2D quad
+        Sphere,     ///< 3D sphere
+        Cylinder,   ///< 3D cylinder
+        Plane,      ///< 3D plane
+        Pyramid     ///< 3D pyramid
     };
 
 }
