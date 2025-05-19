@@ -208,7 +208,7 @@ namespace SceneryEditorX
 
         /// Create VMA (Vulkan Memory Allocator) instance
         VmaAllocatorCreateInfo allocatorCreateInfo = {};
-        allocatorCreateInfo.physicalDevice = vkPhysDevice->GetGPUDevice();
+        allocatorCreateInfo.physicalDevice = vkPhysDevice->GetGPUDevices();
         allocatorCreateInfo.device = device;
         allocatorCreateInfo.instance = GraphicsEngine::GetInstance();
 
@@ -783,7 +783,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
 
         uint64_t totalAllocation = 0;
         uint64_t totalBudget = 0;
@@ -874,7 +874,7 @@ namespace SceneryEditorX
 
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.vulkanApiVersion = SoftwareStats::minVulkanVersion;
-        allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevice();
+        allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
         allocatorInfo.device = device->Selected();
         allocatorInfo.instance = GraphicsEngine::GetInstance();
 
@@ -999,7 +999,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
 
         SEDX_CORE_INFO("----------- VULKAN MEMORY ALLOCATION STATS -----------");
         SEDX_CORE_INFO("Tag: {}", Tag_);
@@ -1183,7 +1183,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevice(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
 
         uint64_t totalBudget = 0;
         uint64_t totalUsage = 0;

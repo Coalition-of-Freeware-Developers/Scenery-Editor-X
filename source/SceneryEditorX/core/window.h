@@ -16,6 +16,7 @@
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/utils/monitor_data.h>
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <stb_image.h>
 
@@ -63,15 +64,11 @@ namespace SceneryEditorX
 	struct WindowData
 	{
 	    INTERNAL inline GLFWwindow *window		= nullptr;
-	    INTERNAL inline GLFWmonitor **monitors	= nullptr;
 	    INTERNAL inline const char *title		= "Scenery Editor X";
 	    INTERNAL inline int width				= 1280;
 	    INTERNAL inline int height				= 720;
 	    INTERNAL inline int posX				= 0;
 	    INTERNAL inline int posY				= 30;
-	    INTERNAL inline int monitorIndex		= 0;
-	    INTERNAL inline int monitorCount		= 0;
-	    INTERNAL inline int videoModeIndex		= 0;
 	    INTERNAL inline bool framebufferResized = false;
         INTERNAL inline bool dirty				= true;
         INTERNAL inline bool resizable			= true;

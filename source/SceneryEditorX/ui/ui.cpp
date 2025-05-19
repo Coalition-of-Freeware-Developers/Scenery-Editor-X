@@ -198,9 +198,9 @@ namespace SceneryEditorX::UI
         /// Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
         info.Instance = GraphicsEngine::GetInstance();
-        info.PhysicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevice();
+        info.PhysicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         info.Device = device->GetDevice();
-        info.QueueFamily = reinterpret_cast<uint32_t>(info.Queue = vkDevice->GetGraphicsQueue());
+        info.QueueFamily = reinterpret_cast<uint32_t>(vkDevice->GetGraphicsQueue());
         info.DescriptorPool = imguiPool;
         info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;

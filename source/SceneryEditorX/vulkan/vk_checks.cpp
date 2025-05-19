@@ -367,9 +367,9 @@ namespace SceneryEditorX
         CHECK_FEATURE(variableMultisampleRate)
         CHECK_FEATURE(inheritedQueries)
 
-        if (missingFeatures > 0)
+        if (missingFeatures)
 	    {
-	        SEDX_CORE_ERROR("Vulkan: Device does not support all required features:");
+	        SEDX_CORE_ERROR("Vulkan: Your device does not support all required features:");
             //SEDX_CORE_ERROR("Missing features: {}", missingFeaturesLog);
 	        ErrMsg("Vulkan: Device does not support all required features");
 	        return false;

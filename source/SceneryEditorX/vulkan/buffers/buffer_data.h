@@ -11,12 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <vma/vk_mem_alloc.h>
 
-// -----------------------------------------
+/// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -144,6 +143,8 @@ namespace SceneryEditorX
      * This class encapsulates a Vulkan buffer along with its memory allocation details,
      * providing a convenient interface for buffer management. It stores metadata about
      * the buffer's size, usage flags, memory type, and mapped status.
+     *
+     * @note This class is designed to be used in conjunction with VulkanMemoryUtils for resource management.
      */
     struct Buffer
     {
@@ -225,4 +226,4 @@ namespace SceneryEditorX
 
 }  // namespace SceneryEditorX
 
-// ---------------------------------------------------------
+/// ---------------------------------------------------------

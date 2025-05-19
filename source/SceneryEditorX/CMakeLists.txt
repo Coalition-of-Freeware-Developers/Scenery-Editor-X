@@ -13,6 +13,7 @@ FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
 FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
 FILE(GLOB VULKAN_FILES vulkan/*.cpp vulkan/*.h vulkan/*.hpp)
 FILE(GLOB UI_FILES ui/*.cpp ui/*.h ui/*.hpp)
+FILE(GLOB UTILITIES_FILES utils/*.cpp utils/*.h utils/*.hpp)
 
 SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
 SET (PROJECT_CONFIG_FILES
@@ -32,6 +33,7 @@ ADD_EXECUTABLE(SceneryEditorX
     ${RENDERER_FILES}
 	${VULKAN_FILES}
     ${SCENE_FILES}
+	${UTILITIES_FILES}
 	${LOGGER}
     ${PLATFORM}
     ${REGISTRY_KEYS}
@@ -62,6 +64,14 @@ ADD_EXECUTABLE(SceneryEditorX
 	renderer/shaders/shader.h
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
+	# --------------------------------
+	vulkan/buffers/buffer_data.h
+	vulkan/buffers/index_buffer.h
+	vulkan/buffers/index_buffer.cpp
+	vulkan/buffers/uniform_buffer.h
+	vulkan/buffers/uniform_buffer.cpp
+	vulkan/buffers/vertex_buffer.cpp
+	vulkan/buffers/vertex_buffer.h
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
@@ -141,11 +151,17 @@ SOURCE_GROUP("Core/Logger" FILES
 SOURCE_GROUP("Core/Vulkan" FILES
 	${VULKAN_FILES}
 )
-SOURCE_GROUP("Core/Vulkan/Globals" FILES
-	vulkan/buffer_data.h
-	vulkan/image_data.cpp
-	vulkan/image_data.h
-	vulkan/render_data.h
+SOURCE_GROUP("Core/Vulkan/Buffers" FILES
+	vulkan/buffers/buffer_data.h
+	vulkan/buffers/index_buffer.h
+	vulkan/buffers/index_buffer.cpp
+	vulkan/buffers/uniform_buffer.h
+	vulkan/buffers/uniform_buffer.cpp
+	vulkan/buffers/vertex_buffer.cpp
+	vulkan/buffers/vertex_buffer.h
+)
+SOURCE_GROUP("Core/Utilities" FILES
+	${UTILITIES_FILES}
 )
 SOURCE_GROUP("Editor/Renderer" FILES
     ${RENDERER_FILES}

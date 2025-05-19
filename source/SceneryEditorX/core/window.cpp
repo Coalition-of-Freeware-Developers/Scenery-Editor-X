@@ -12,9 +12,10 @@
 */
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/utils/monitor_data.h>
 #include <stb_image.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -35,10 +36,13 @@ namespace SceneryEditorX
 	    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	
-	    WindowData::monitors = glfwGetMonitors(&WindowData::monitorCount); // get all monitors
-	
-	    glfwGetVideoModes(WindowData::monitors[WindowData::monitorIndex], &WindowData::videoModeIndex);
-	    WindowData::videoModeIndex -= 1;
+	    // Initialize monitor information
+	    MonitorInfo::RefreshMonitors();
+	    
+	    // Get available video modes for the current monitor
+	    int modeCount = 0;
+	    MonitorInfo::GetVideoModes(MonitorInfo::GetCurrentMonitorIndex(), &modeCount);
+	    MonitorInfo::SetVideoModeIndex(modeCount > 0 ? modeCount - 1 : 0);
 	
 	    WindowData::window =
 	        glfwCreateWindow(WindowData::width, WindowData::height, WindowData::title, nullptr, nullptr); // create window
@@ -280,16 +284,26 @@ namespace SceneryEditorX
 	 */
 	void Window::ApplyChanges()
 	{
-        WindowData::monitors = glfwGetMonitors(&WindowData::monitorCount);
-        SEDX_CORE_ASSERT(WindowData::monitorIndex < WindowData::monitorCount, "Invalid monitorIndex inside Window creation!");
-        const auto monitor = WindowData::monitors[WindowData::monitorIndex];
+        /// Refresh monitor information
+        MonitorInfo::RefreshMonitors();
+        
+        /// Get the current monitor
+        const int monitorIndex = MonitorInfo::GetCurrentMonitorIndex();
+        SEDX_CORE_ASSERT(monitorIndex < MonitorInfo::GetMonitorCount(), "Invalid monitorIndex inside Window creation!");
+        
+        const auto monitor = MonitorInfo::GetMonitors()[monitorIndex];
 		const auto monitorMode = glfwGetVideoMode(monitor);
 	
+		/// Get video modes for the current monitor
 		int modesCount;
-        const GLFWvidmode *videoModes = glfwGetVideoModes(WindowData::monitors[WindowData::monitorIndex], &modesCount);
-        if (WindowData::videoModeIndex >= modesCount)
+        const GLFWvidmode *videoModes = MonitorInfo::GetVideoModes(monitorIndex, &modesCount);
+        
+        /// Validate video mode index
+        int videoModeIndex = MonitorInfo::GetVideoModeIndex();
+        if (videoModeIndex >= modesCount)
 		{
-            WindowData::videoModeIndex = modesCount - 1;
+            videoModeIndex = modesCount - 1;
+            MonitorInfo::SetVideoModeIndex(videoModeIndex);
 		}
 	
 		/// Window Creation
@@ -314,7 +328,7 @@ namespace SceneryEditorX
 				glfwSetWindowMonitor(WindowData::window,monitor,0,0,monitorMode->width,monitorMode->height,monitorMode->refreshRate);
 				break;
 			case WindowMode::FullScreen:
-				GLFWvidmode videoMode = videoModes[WindowData::videoModeIndex];
+				GLFWvidmode videoMode = videoModes[videoModeIndex];
 				glfwSetWindowMonitor(WindowData::window,monitor,0,0,videoMode.width,videoMode.height,videoMode.refreshRate);
 				break;
 		}
@@ -411,15 +425,20 @@ namespace SceneryEditorX
 					ImGui::SameLine(totalWidth / 2.0f);
 					ImGui::SetNextItemWidth(totalWidth / 2.0f);
 					ImGui::PushID("monitorCombo");
-                    if (ImGui::BeginCombo("", glfwGetMonitorName(WindowData::monitors[WindowData::monitorIndex])))
+					
+					// Get current monitor name
+					int currentMonitorIndex = MonitorInfo::GetCurrentMonitorIndex();
+					const char* currentMonitorName = glfwGetMonitorName(MonitorInfo::GetMonitors()[currentMonitorIndex]);
+					
+                    if (ImGui::BeginCombo("", currentMonitorName))
 					{
-                        for (int i = 0; i < WindowData::monitorCount; i++)
+                        for (int i = 0; i < MonitorInfo::GetMonitorCount(); i++)
 						{
-                            bool selected = WindowData::monitorIndex == i;
+                            bool selected = currentMonitorIndex == i;
 							ImGui::PushID(i);
-                            if (ImGui::Selectable(glfwGetMonitorName(WindowData::monitors[i]), selected))
+                            if (ImGui::Selectable(glfwGetMonitorName(MonitorInfo::GetMonitors()[i]), selected))
 							{
-								WindowData::monitorIndex = i;
+								MonitorInfo::SetCurrentMonitorIndex(i);
 								WindowData::dirty = true;
 							}
 							if (selected)
@@ -441,21 +460,33 @@ namespace SceneryEditorX
 					ImGui::SameLine(totalWidth / 2.0f);
 					ImGui::SetNextItemWidth(totalWidth / 4.0f);
 					ImGui::PushID("monitorRes");
+					
+					// Get video modes for current monitor
 					int modesCount;
-                    const GLFWvidmode *videoModes = glfwGetVideoModes(WindowData::monitors[WindowData::monitorIndex], &modesCount);
-                    GLFWvidmode currMode = videoModes[WindowData::videoModeIndex];
+                    const GLFWvidmode *videoModes = MonitorInfo::GetVideoModes(
+                        MonitorInfo::GetCurrentMonitorIndex(), &modesCount);
+                    
+                    // Get current video mode
+                    int videoModeIndex = MonitorInfo::GetVideoModeIndex();
+                    if (videoModeIndex >= modesCount) {
+                        videoModeIndex = modesCount - 1;
+                        MonitorInfo::SetVideoModeIndex(videoModeIndex);
+                    }
+                    
+                    GLFWvidmode currMode = videoModes[videoModeIndex];
 					std::string modeText = VideoModeText(currMode);
-					if (ImGui::BeginCombo("",modeText.c_str()))
+					
+					if (ImGui::BeginCombo("", modeText.c_str()))
 					{
 						for (int i = 0; i < modesCount; i++)
 						{
-                            bool selected = WindowData::videoModeIndex == i;
+                            bool selected = videoModeIndex == i;
 							currMode = videoModes[i];
 							ImGui::PushID(i);
 							modeText = VideoModeText(currMode);
-							if (ImGui::Selectable(modeText.c_str(),selected))
+							if (ImGui::Selectable(modeText.c_str(), selected))
 							{
-								WindowData::videoModeIndex = i;
+								MonitorInfo::SetVideoModeIndex(i);
 								WindowData::dirty = true;
 							}
 							if (selected)

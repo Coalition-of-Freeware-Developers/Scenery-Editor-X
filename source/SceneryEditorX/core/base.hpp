@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <cstdint>
-
+#include <glm/glm.hpp>
 // -------------------------------------------------------
 
 #ifdef SEDX_DEBUG

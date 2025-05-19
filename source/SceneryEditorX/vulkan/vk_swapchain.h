@@ -29,7 +29,7 @@ namespace SceneryEditorX
 
 	struct SwapChainDetails
 	{
-	    VkSurfaceCapabilitiesKHR capabilities;
+        VkSurfaceCapabilitiesKHR capabilities{};
 	    std::vector<VkSurfaceFormatKHR> formats;
 	    std::vector<VkPresentModeKHR> presentModes;
 	};
@@ -99,7 +99,8 @@ namespace SceneryEditorX
         RenderData renderData;
         Viewport viewportData;
         VkInstance instance = nullptr;
-        Ref<VulkanDevice> device;
+        Ref<GraphicsEngine> gfxEngine;
+        Ref<VulkanDevice> physDevice;
         Ref<Pipeline> pipeline;
         //Ref<SwapChainDetails> swapChainDetails;
 
@@ -121,8 +122,8 @@ namespace SceneryEditorX
 		/// Vulkan resources - derived after device is initialized
 	    //VkDevice vkDevice = device->GetDevice();
         //VkPhysicalDevice vkPhysDevice = device->GetPhysicalDevice()->GetGPUDevice();
-        VkDevice vkDevice = nullptr;
-        VkPhysicalDevice vkPhysDevice = nullptr;
+        //VkDevice vkDevice = nullptr;
+        //VkPhysicalDevice vkPhysDevice = nullptr;
         uint32_t queueIndex = UINT32_MAX;
         uint32_t swapChainImageCount = 0;
 

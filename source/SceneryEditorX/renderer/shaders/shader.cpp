@@ -18,27 +18,26 @@
 namespace SceneryEditorX
 {
 
-	Shader::Shader(const std::string &filepath, bool forceCompile, bool disableOptimization)
-	{
-	    // Load shader from file
-		std::string shaderPath = GetShaderDirectoryPath() + filepath;
-		auto shaderCode = IO::FileManager::ReadShaders(shaderPath);
-		if (shaderCode.empty())
-		{
-			SEDX_CORE_ERROR("Failed to load shader from file: {}", shaderPath);
-			ErrMsg("failed to load shader from file!");
-			return;
-		}
+	Shader::Shader(const std::string &filepath, bool forceCompile, bool disableOptimization) : name(filepath)
+    {
+        // Load shader from file
+        std::string shaderPath = GetShaderDirectoryPath() + filepath;
+        const auto shaderCode = IO::FileManager::ReadShaders(shaderPath);
+        if (shaderCode.empty())
+        {
+            SEDX_CORE_ERROR("Failed to load shader from file: {}", shaderPath);
+            ErrMsg("failed to load shader from file!");
+            return;
+        }
 
-		VkShaderModule shaderModule = CreateShaderModule(shaderCode);
-		if (shaderModule == VK_NULL_HANDLE)
-		{
-			SEDX_CORE_ERROR("Failed to create shader module from file: {}", shaderPath);
-			ErrMsg("failed to create shader module!");
-			return;
-		}
+        if (const VkShaderModule shaderModule = CreateShaderModule(shaderCode); shaderModule == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_ERROR("Failed to create shader module from file: {}", shaderPath);
+            ErrMsg("failed to create shader module!");
+            return;
+        }
 
-	}
+    }
 
     Shader::~Shader()
     {
@@ -59,7 +58,7 @@ namespace SceneryEditorX
 
     const std::string & Shader::GetName() const
     {
-        return {};
+        return name;
     }
 
     void Shader::AddShaderReloadedCallback(const ShaderReloadedCallback &callback)

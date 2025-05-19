@@ -689,7 +689,7 @@ namespace SceneryEditorX
 
 		/// Verify extension support
 		std::vector<const char *> &deviceExtensions = vkExtensions.requiredExtensions;
-		if (!checks.CheckDeviceExtensionSupport(vkPhysDevice->GetGPUDevice()))
+		if (!checks.CheckDeviceExtensionSupport(vkPhysDevice->GetGPUDevices()))
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
 			return;
@@ -735,7 +735,7 @@ namespace SceneryEditorX
 		}
 
 		/// Create the logical device
-        if (VkResult result = vkCreateDevice(vkPhysDevice->GetGPUDevice(), &createInfo, nullptr, &device); result != VK_SUCCESS)
+        if (VkResult result = vkCreateDevice(vkPhysDevice->GetGPUDevices(), &createInfo, nullptr, &device); result != VK_SUCCESS)
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device! Error: {}", static_cast<int>(result));
 			return;
@@ -1157,7 +1157,7 @@ namespace SceneryEditorX
 	VkSampleCountFlagBits VulkanDevice::GetMaxUsableSampleCount() const
 	{
 		VkPhysicalDeviceProperties physicalDeviceProperties;
-		vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevice(), &physicalDeviceProperties);
+		vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevices(), &physicalDeviceProperties);
 
 		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts;
 		counts &= physicalDeviceProperties.limits.framebufferDepthSampleCounts;
@@ -1501,7 +1501,7 @@ namespace SceneryEditorX
 	
 		/// Check if anisotropy is supported
 		VkPhysicalDeviceFeatures deviceFeatures;
-		vkGetPhysicalDeviceFeatures(vkPhysDevice->GetGPUDevice(), &deviceFeatures);
+		vkGetPhysicalDeviceFeatures(vkPhysDevice->GetGPUDevices(), &deviceFeatures);
 	
 		if (deviceFeatures.samplerAnisotropy)
 		{
@@ -1556,7 +1556,7 @@ namespace SceneryEditorX
 	{
 		/// Get memory properties from the physical vkDevice
 		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(vkPhysDevice->GetGPUDevice(), &memProperties);
+		vkGetPhysicalDeviceMemoryProperties(vkPhysDevice->GetGPUDevices(), &memProperties);
 	
 		/// Find a memory type that satisfies both the type filter and the property requirements
 		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)

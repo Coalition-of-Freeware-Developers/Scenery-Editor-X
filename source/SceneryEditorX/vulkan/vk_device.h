@@ -13,9 +13,10 @@
 */
 #pragma once
 #include <optional>
-#include <SceneryEditorX/vulkan/buffer_data.h>
+#include <SceneryEditorX/vulkan/buffers/buffer_data.h>
+#include <SceneryEditorX/vulkan/image_data.h>
 #include <SceneryEditorX/vulkan/vk_descriptors.h>
-//#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
 
@@ -131,7 +132,7 @@ namespace SceneryEditorX
 		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
         [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryInfo; }
 		[[nodiscard]] VkFormat GetDepthFormat() const { return devices.at(deviceIndex).depthFormat; }
-		[[nodiscard]] VkPhysicalDevice GetGPUDevice() const { return devices.at(deviceIndex).physicalDevice; }
+		[[nodiscard]] VkPhysicalDevice GetGPUDevices() const { return devices.at(deviceIndex).physicalDevice; }
 		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceInfo; }
         [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }

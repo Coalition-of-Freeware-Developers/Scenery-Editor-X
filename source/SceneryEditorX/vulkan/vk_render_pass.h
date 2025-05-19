@@ -12,10 +12,11 @@
 */
 #pragma once
 #include <SceneryEditorX/scene/texture.h>
+#include <SceneryEditorX/vulkan/buffers/uniform_buffer.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 #include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/vulkan/vk_descriptors.h>
+#include <SceneryEditorX/vulkan/vk_swapchain.h>
 
 // -------------------------------------------------------
 

@@ -184,7 +184,7 @@ namespace SceneryEditorX
         Ref<VulkanPhysicalDevice> physicalDevice;
         /// Check if image format supports linear blitting
         VkFormatProperties formatProperties;
-        vkGetPhysicalDeviceFormatProperties(physicalDevice->GetGPUDevice(), imageFormat, &formatProperties);
+        vkGetPhysicalDeviceFormatProperties(physicalDevice->GetGPUDevices(), imageFormat, &formatProperties);
 
         if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
             SEDX_CORE_ERROR_TAG("Texture", "Texture image format does not support linear blitting!");

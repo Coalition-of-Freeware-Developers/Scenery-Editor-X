@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/vulkan/buffer_data.h>
+#include <SceneryEditorX/vulkan/buffers/buffer_data.h>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
@@ -59,7 +59,7 @@ namespace SceneryEditorX
     constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;       // 256KB
     constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024; // 1MB
     constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024; // 16MB
-    /// This is now just a default value and will be overridden by settings
+    /// This is a default value and will be overridden by users settings.
     constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024; // 16MB
 
     /// ---------------------------------------------------------
@@ -205,6 +205,12 @@ namespace SceneryEditorX
 		 * @tparam T
 		 * @fn MapMemory
 		 * @brief Maps memory for a given allocation.
+		 *
+		 * This function maps the memory associated with a given VMA allocation
+		 * and returns a pointer to the mapped memory.
+		 *
+		 * @param allocation The VMA allocation to map.
+		 * @return A pointer to the mapped memory.
 		 */
 		template<typename T>
 		T* MapMemory(const VmaAllocation allocation)

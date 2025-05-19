@@ -11,6 +11,8 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/memory.h>
+#include <SceneryEditorX/vulkan/buffers/buffer_data.h>
+#include <SceneryEditorX/vulkan/image_data.h>
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_allocator.h>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
@@ -147,250 +149,11 @@ namespace SceneryEditorX
         return buffer.bufferResource->allocation->GetMappedData();
 	}
 
-    // ----------------------------------------------------------
-
-	UniformBuffer::UniformBuffer()
-    {
-        CreateUniformBuffers();
-    }
-
-    /**
-	 * @brief Destroys uniform buffer resources
-	 * 
-	 * This destructor properly cleans up Vulkan resources allocated for uniform buffers:
-	 * 1. Iterates through all buffers created for each frame in flight
-	 * 2. Destroys each VkBuffer handle
-	 * 3. Frees the associated device memory allocation
-	 * 
-	 * This ensures proper resource cleanup and prevents memory leaks when the
-	 * UniformBuffer object is destroyed.
-	 */
-	UniformBuffer::~UniformBuffer()
-    {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
-		{
-            vkDestroyBuffer(vkDevice, uniformBuffers[i], nullptr);
-            vkFreeMemory(vkDevice, uniformBuffersMemory[i], nullptr);
-		}
-	}
-
-	/**
-	 * @brief Updates the uniform buffer for the current frame
-	 * 
-	 * This method updates the model-view-projection matrices for rendering.
-	 * It calculates:
-	 * 1. The model matrix with rotation based on elapsed time
-	 * 2. The view matrix (camera position/orientation)
-	 * 3. The projection matrix with aspect ratio correction
-	 * 
-	 * The updated matrices are uploaded to the GPU in the uniform buffer
-	 * corresponding to the current frame being rendered.
-	 * 
-	 * @param currentImage Index of the current frame's uniform buffer to update
-	 */
-    void UniformBuffer::UpdateUniformBuffer(uint32_t currentImage) const
-    {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float>(currentTime - startTime).count();
-
-        UBO uniformBuff{};
-        uniformBuff.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        uniformBuff.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        uniformBuff.proj = glm::perspective(glm::radians(45.0f),static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().width) / static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().height),0.1f,10.0f);
-        uniformBuff.proj[1][1] *= -1;
-
-        void *data;
-
-        vkMapMemory(vkDevice, uniformBuffersMemory[currentImage], 0, sizeof(uniformBuff), 0, &data);
-        memcpy(data, &uniformBuff, sizeof(uniformBuff));
-        vkUnmapMemory(vkDevice, uniformBuffersMemory[currentImage]);
-    }
-
-    /**
-     * @brief Creates uniform buffers for each frame in flight
-     * 
-     * This method initializes uniform buffers needed for shader uniform data:
-     * 1. Resizes storage vectors to match the number of frames in flight
-     * 2. Allocates one uniform buffer per frame with appropriate memory flags
-     * 3. Ensures buffers are host-visible and coherent for efficient CPU updates
-     * 
-     * The uniform buffers are sized according to the UniformBuffer structure size and
-     * are configured for efficient CPU-to-GPU data transfer. Each buffer in the sequence
-     * corresponds to a specific frame in flight, preventing race conditions during rendering.
-     */
-    void UniformBuffer::CreateUniformBuffers()
-    {
-        uniformBuffers.resize(renderData.framesInFlight);
-        uniformBuffersMemory.resize(renderData.framesInFlight);
-
-        for (size_t i = 0; i < renderData.framesInFlight; i++)
-        {
-            VkDeviceSize bufferSize = sizeof(UniformBuffer);
-            CreateBuffer(bufferSize, BufferUsage::Uniform, MemoryType::CPU, uniformBuffers[i], uniformBuffersMemory[i]);
-        }
-    }
-
-	/**
-	 * @brief Creates a Vulkan buffer with specified parameters
-	 * 
-	 * This method creates a Vulkan buffer and allocates device memory for it.
-	 * The process involves:
-	 * 1. Setting up buffer creation parameters
-	 * 2. Creating the buffer handle
-	 * 3. Retrieving memory requirements
-	 * 4. Allocating device memory based on those requirements
-	 * 5. Binding the memory to the buffer
-	 * 
-	 * The method handles error checking at critical steps and reports failures
-	 * through the engine's logging system.
-	 * 
-	 * @param size Size of the buffer in bytes
-	 * @param usage VkBufferUsageFlags indicating how the buffer will be used (e.g., uniform buffer)
-	 * @param properties Memory property flags (e.g., host visible, device local)
-	 * @param buffer Reference to store the created VkBuffer handle 
-	 * @param bufferMemory Reference to store the allocated VkDeviceMemory handle
-	 */
-	void UniformBuffer::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory) const
-	{
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-	    VkBufferCreateInfo bufferInfo{};
-	    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	    bufferInfo.size = size;
-	    bufferInfo.usage = usage;
-	    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	
-	    if (vkCreateBuffer(vkDevice, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
-
-        // -------------------------------------------------------
-	
-	    VkMemoryRequirements memRequirements;
-	    vkGetBufferMemoryRequirements(vkDevice, buffer, &memRequirements);
-	
-	    // -------------------------------------------------------
-	
-	    VkMemoryAllocateInfo allocInfo{};
-	    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	    allocInfo.allocationSize = memRequirements.size;
-	    allocInfo.memoryTypeIndex = gfxEngine->get()->GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
-	
-	    if (vkAllocateMemory(vkDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-            SEDX_CORE_ERROR_TAG("Memory Allocator", "Failed to allocate buffer memory!");
-
-        vkBindBufferMemory(vkDevice, buffer, bufferMemory, 0);
-	}
 
     /// ----------------------------------------------------------
 
-    void IndexBuffer::CreateIndexBuffer() const
-    {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-        VkBuffer stagingBuffer = nullptr;
-        VkDeviceMemory stagingBufferMemory = nullptr;
 
-		/// -----------------------------------
-
-        CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "IndexStaging#");
-
-        void *data;
-
-        vkMapMemory(vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, indices.data(), (size_t)bufferSize);
-        vkUnmapMemory(vkDevice, stagingBufferMemory);
-
-		//TODO: Add back the UUID when fully implemented.
-        CreateBuffer(bufferSize, BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage, MemoryType::GPU, "IndexBuffer#" /*+ std::to_string(asset->uuid)*/);
-
-        CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-		/// -----------------------------------
-
-        vkDestroyBuffer(vkDevice, stagingBuffer, nullptr);
-        vkFreeMemory(vkDevice, stagingBufferMemory, nullptr);
-    }
-
-    IndexBuffer::IndexBuffer()
-    {
-        CreateIndexBuffer();
-    }
-
-    /**
-     * @brief Destroys index buffer resources
-     * 
-     * This destructor properly cleans up Vulkan resources allocated for index buffers.
-     * It iterates through all frames in flight and ensures proper destruction of:
-     * - The VkBuffer handle with vkDestroyBuffer
-     * - The associated device memory with vkFreeMemory
-     * 
-     * Note: Current implementation appears to destroy the same buffer multiple times
-     * rather than using separate buffers per frame. This should be revisited to ensure
-     * proper cleanup of frame-specific resources if multiple buffers are used.
-     */
-    IndexBuffer::~IndexBuffer()
-    {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
-        {
-            vkDestroyBuffer(vkDevice, indexBuffer, nullptr);
-            vkFreeMemory(vkDevice, indexBufferMemory, nullptr);
-        }
-    }
-
-    /// ----------------------------------------------------------
-
-    VertexBuffer::VertexBuffer()
-    {
-		//CreateVertexBuffer();
-    }
-
-    VertexBuffer::~VertexBuffer()
-    {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
-		{
-            vkDestroyBuffer(vkDevice, vertexBuffer, nullptr);
-            vkFreeMemory(vkDevice, vertexBufferMemory, nullptr);
-		}
-    }
-
-    Buffer VertexBuffer::CreateVertexBuffer() const
-    {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-        VkBuffer stagingBuffer = nullptr;
-        VkDeviceMemory stagingBufferMemory = nullptr;
-
-	    /// --------------------------------------
-
-        CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "VertexStaging#");
-
-        void *data;
-        vkMapMemory(vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, vertices.data(), (size_t)bufferSize);
-        vkUnmapMemory(vkDevice, stagingBufferMemory);
-
-		/// --------------------------------------
-
-        CreateBuffer(bufferSize, BufferUsage::Vertex | BufferUsage::TransferDst, MemoryType::GPU, "VertexBuffer#");
-
-        CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-		/// --------------------------------------
-
-        vkDestroyBuffer(vkDevice, stagingBuffer, nullptr);
-        vkFreeMemory(vkDevice, stagingBufferMemory, nullptr);
-        return {};
-    }
-
-/*
-    GLOBAL void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const
+    GLOBAL void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -401,8 +164,7 @@ namespace SceneryEditorX
         EndSingleTimeCommands(commandBuffer);
     }
 
-	/*
-	void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const
+	void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
     {
         VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -422,8 +184,10 @@ namespace SceneryEditorX
         EndSingleTimeCommands(commandBuffer);
     }
 
-	VkCommandBuffer RenderPass::BeginSingleTimeCommands() const
+    GLOBAL VkCommandBuffer BeginSingleTimeCommands()
     {
+        VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
+
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -431,7 +195,7 @@ namespace SceneryEditorX
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(vkDevice->GetDevice(), &allocInfo, &commandBuffer);
+        vkAllocateCommandBuffers(vkDevice, &allocInfo, &commandBuffer);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -442,9 +206,11 @@ namespace SceneryEditorX
         return commandBuffer;
     }
 
-    void RenderPass::EndSingleTimeCommands(VkCommandBuffer commandBuffer) const
+    GLOBAL void EndSingleTimeCommands(VkCommandBuffer commandBuffer)
     {
         vkEndCommandBuffer(commandBuffer);
+
+        VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -454,9 +220,8 @@ namespace SceneryEditorX
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
         vkQueueWaitIdle(graphicsQueue);
 
-        vkFreeCommandBuffers(vkDevice->GetDevice(), cmdPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(vkDevice, cmdPool, 1, &commandBuffer);
     }
-	*/
 
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
@@ -471,7 +236,7 @@ namespace SceneryEditorX
 		region.imageSubresource.baseArrayLayer = 0;
 		region.imageSubresource.layerCount = 1;
 		region.imageOffset = {.x = 0, .y = 0, .z = 0};
-		region.imageExtent = {.width = width, .height = height, .depth = 1};
+		region.imageExtent = {.width = WindowData::width, .height = WindowData::height, .depth = 1};
 
 		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 

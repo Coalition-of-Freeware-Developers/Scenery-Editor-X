@@ -159,7 +159,7 @@ namespace SceneryEditorX
     void TextureAsset::CreateTextureSampler()
 	{
 	    VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevice(), &properties);
+        vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevices(), &properties);
 	
 	    VkSamplerCreateInfo samplerInfo{};
 	    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

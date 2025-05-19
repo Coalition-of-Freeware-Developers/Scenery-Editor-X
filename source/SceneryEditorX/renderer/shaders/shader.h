@@ -69,13 +69,14 @@ namespace SceneryEditorX
          * Creates an uninitialized shader instance that must be loaded before use.
          */
         Shader() = default;
-        
+
         /**
          * @brief Construct shader from file.
          * 
          * @param filepath Path to the shader file, relative to shader directory
          * @param forceCompile Whether to force recompilation even if cached version exists
          * @param disableOptimization Whether to disable shader optimization during compilation
+         * @param name Name of the shader
          */
         Shader(const std::string &filepath, bool forceCompile = false, bool disableOptimization = false);
         
@@ -147,6 +148,9 @@ namespace SceneryEditorX
         
         /** @brief List of callbacks to invoke when shader is reloaded */
         std::vector<ShaderReloadedCallback> reloadCallbacks;
+
+		/** @brief */
+		std::string name;
 	};
 
 } // namespace SceneryEditorX

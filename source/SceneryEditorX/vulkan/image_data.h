@@ -13,12 +13,13 @@
 #pragma once
 #include <imgui/imgui.h>
 #include <SceneryEditorX/vulkan/render_data.h>
-#include <SceneryEditorX/vulkan/vk_allocator.h>
+#include <SceneryEditorX/vulkan/vk_allocator.h> /// Used by VmaAllocation in struct. !MUST KEEP!
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    /// Forward Declarations 
     class GraphicsEngine;
 
 	namespace ImageUsage

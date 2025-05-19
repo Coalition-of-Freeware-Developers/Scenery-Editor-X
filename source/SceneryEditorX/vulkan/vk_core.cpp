@@ -1176,7 +1176,7 @@ namespace SceneryEditorX
         EDITOR_LOG_INFO("Window framebuffer size: {}x{}", WindowData::width, WindowData::height);
 			
         /// Create the extent using the retrieved dimensions
-        VkExtent2D actualExtent = {reinterpret_cast<uint32_t>(&WindowData::width),reinterpret_cast<uint32_t>(&WindowData::height)};
+        VkExtent2D actualExtent = {static_cast<uint32_t>(WindowData::width),static_cast<uint32_t>(WindowData::height)};
 
         /// Clamp to the allowed min/max extents from the surface capabilities
         actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
@@ -1194,7 +1194,7 @@ namespace SceneryEditorX
     void GraphicsEngine::CreateTextureSampler()
     {
         VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(vkPhysicalDevice->GetGPUDevice(), &properties);
+        vkGetPhysicalDeviceProperties(vkPhysicalDevice->GetGPUDevices(), &properties);
 
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1245,6 +1245,7 @@ namespace SceneryEditorX
         }
 
         SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find supported format!");
+        return VK_FORMAT_UNDEFINED;
     }
 
     VkFormat GraphicsEngine::FindDepthFormat() const
