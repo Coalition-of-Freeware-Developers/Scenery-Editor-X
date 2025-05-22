@@ -13,45 +13,96 @@
 #include <SceneryEditorX/vulkan/buffers/buffer_data.h>
 #include <SceneryEditorX/vulkan/buffers/vertex_buffer.h>
 #include <SceneryEditorX/vulkan/vk_buffers.h>
-#include <SceneryEditorX/vulkan/vk_device.h>
 
 /// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	VertexBuffer::VertexBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity)
+	{
+	}
 	
-    VertexBuffer::VertexBuffer()
+	VertexBuffer::VertexBuffer(const std::vector<Vertex> &initialVertices, VertexBufferType type)
+	{
+	}
+	
+	VertexBuffer::~VertexBuffer()
     {
-		//CreateVertexBuffer();
+        for (size_t i = 0; i < RenderData::framesInFlight; i++)
+            allocator->DestroyBuffer(vertexBuffer, vertexBuffersAllocation);
     }
 
-    VertexBuffer::~VertexBuffer()
+    void VertexBuffer::SetData(const std::vector<Vertex> &newVertices, bool recreateBuffer)
     {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
+    }
 
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
-		{
-            vkDestroyBuffer(vkDevice, vertexBuffer, nullptr);
-            vkFreeMemory(vkDevice, vertexBufferMemory, nullptr);
-		}
+    void VertexBuffer::AppendData(const std::vector<Vertex> &additionalVertices, bool recreateBuffer)
+    {
+    }
+
+    void VertexBuffer::UpdateData(uint32_t startIndex, const std::vector<Vertex> &updatedVertices)
+    {
+    }
+
+    void VertexBuffer::ClearData(bool releaseBuffer)
+    {
+    }
+
+    void VertexBuffer::Reserve(uint32_t newCapacity, bool preserveData)
+    {
+    }
+
+    void * VertexBuffer::MapMemory()
+    {
+        return nullptr;
+    }
+
+    void VertexBuffer::UnmapMemory()
+    {
+    }
+
+    VkVertexInputBindingDescription VertexBuffer::GetBindingDescription(uint32_t binding, VkVertexInputRate inputRate) const
+    {
+        return {};
+    }
+
+    std::vector<VkVertexInputAttributeDescription> VertexBuffer::GetAttributeDescriptions(uint32_t binding) const
+    {
+        return {};
+    }
+
+    Ref<VertexBuffer> VertexBuffer::CreatePrimitive(PrimitiveType type, const glm::vec3 &size, const glm::vec3 &color)
+    {
+        return {};
+    }
+
+    void VertexBuffer::Initialize()
+    {
+    }
+
+    void VertexBuffer::Release()
+    {
+    }
+
+    std::vector<VkVertexInputAttributeDescription> VertexBuffer::CreateAttributeDescriptions(uint32_t binding) const
+    {
+        return {};
     }
 
     Buffer VertexBuffer::CreateVertexBuffer() const
     {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
         VkBuffer stagingBuffer = nullptr;
-        VkDeviceMemory stagingBufferMemory = nullptr;
+        VmaAllocation stagingBufferAllocation = nullptr;
 
 	    /// --------------------------------------
 
         CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "VertexStaging#");
 
-        void *data;
-        vkMapMemory(vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+        void* data = allocator->MapMemory<void>(stagingBufferAllocation);
         memcpy(data, vertices.data(), (size_t)bufferSize);
-        vkUnmapMemory(vkDevice, stagingBufferMemory);
+        allocator->UnmapMemory(stagingBufferAllocation);
 
 		/// --------------------------------------
 
@@ -61,8 +112,7 @@ namespace SceneryEditorX
 
 		/// --------------------------------------
 
-        vkDestroyBuffer(vkDevice, stagingBuffer, nullptr);
-        vkFreeMemory(vkDevice, stagingBufferMemory, nullptr);
+        allocator->DestroyBuffer(stagingBuffer, stagingBufferAllocation);
         return {};
     }
 

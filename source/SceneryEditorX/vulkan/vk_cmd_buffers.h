@@ -31,7 +31,6 @@ namespace SceneryEditorX
         virtual void Begin(Queue queue);
         virtual void End(VkSubmitInfo submitInfo);
         virtual void Submit();
-        static void EndCommandBuffer();
 
         [[nodiscard]] CommandResources &GetCurrentCommandResources() const;
         [[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() const { return activeCmdBuffer; }
@@ -60,6 +59,9 @@ namespace SceneryEditorX
         uint32_t queryCount = 0;
 		uint32_t pipelineQueryCount = 0;
         const uint32_t timeStampPerPool = 64;
+
+		friend class VulkanDevice;
+        friend class GraphicsEngine;
 	};
 
     inline InternalQueue queues[Present];

@@ -1,4 +1,3 @@
-
 /**
 * -------------------------------------------------------
 * Scenery Editor X
@@ -15,6 +14,7 @@
 #include <optional>
 #include <SceneryEditorX/vulkan/buffers/buffer_data.h>
 #include <SceneryEditorX/vulkan/image_data.h>
+#include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/vulkan/vk_descriptors.h>
 #include <vulkan/vulkan.h>
 
@@ -118,7 +118,7 @@ namespace SceneryEditorX
          * @param supportPresent Whether presentation support is required
          * @return The queue family index for the selected device
          */
-        uint32_t SelectDevice(VkQueueFlags queueType, bool supportPresent);
+        //uint32_t SelectDevice(VkQueueFlags queueType, bool supportPresent);
 
 		/**
          * @brief Get the currently selected GPU device
@@ -138,13 +138,13 @@ namespace SceneryEditorX
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
 		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
 		[[nodiscard]] const std::vector<VkQueueFamilyProperties>& GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
-
+        
         /**
          * @brief Find queue families that meet specified criteria in the physical device
          * @param device The physical device to examine
          * @return Queue family indices for different queue types
          */
-        QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
+        //QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
 
 
     private:
@@ -169,7 +169,7 @@ namespace SceneryEditorX
          * @brief Enumerate and populate device information
          * @param instance The Vulkan instance to use
          */
-        void EnumerateDevices();
+        //void EnumerateDevices();
 
 		friend class VulkanDevice;
 		friend class VulkanChecks;
@@ -189,7 +189,7 @@ namespace SceneryEditorX
          */
         VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures);
         virtual ~VulkanDevice();
-        Ref<MemoryAllocator> GetValue() const;
+        //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
 
         /// Delete copy constructor and assignment operator
@@ -212,25 +212,16 @@ namespace SceneryEditorX
         [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
 		[[nodiscard]] VkDevice GetDevice() const {return device;}
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysDevice;}
-        uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+        [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+        [[nodiscard]] Ref<CommandBuffer> GetCommandBuffer() const { return cmdBuffer; }
 
         /**
-         * @brief Create a buffer with specified properties
-         * @param size Size of the buffer in bytes
-         * @param usage How the buffer will be used
-         * @param memory Memory type for allocation
-         * @param name Debug name for the buffer
-         * @return Buffer object
-         */
-        Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory = MemoryType::GPU, const std::string& name = "") const;
-
-		/**
          * @brief Create a staging buffer for data transfer
          * @param size Size of the buffer in bytes
          * @param name Debug name for the buffer
          * @return Buffer object configured for staging
          */
-        Buffer CreateStagingBuffer(uint32_t size, const std::string& name = "Staging Buffer") const;
+        GLOBAL Buffer CreateStagingBuffer(uint32_t size, const std::string& name = "Staging Buffer");
 
 	    /**
          * @brief Get the maximum usable MSAA sample count supported by the device
@@ -255,20 +246,20 @@ namespace SceneryEditorX
          * @param debugName Name for debugging purposes
          * @return A new command buffer
          */
-        VkCommandBuffer CreateSecondaryCommandBuffer(const char *debugName);
+        //VkCommandBuffer CreateSecondaryCommandBuffer(const char *debugName);
 
         /**
          * @brief Submit and wait for a command buffer to complete execution
          * @param cmdBuffer The command buffer to submit
          */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
+        //void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
 
         /**
          * @brief Submit a command buffer to a specific queue and wait for completion
          * @param cmdBuffer The command buffer to submit
          * @param queue The queue to submit to
          */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
+        //void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
 
         /**
          * @brief Get the scratch buffer address
@@ -294,6 +285,7 @@ namespace SceneryEditorX
         VkDeviceAddress scratchAddress = 0;
 
 		Ref<MemoryAllocator> memoryAllocator;
+        Ref<CommandBuffer> cmdBuffer = nullptr;
         VkSampler textureSampler = nullptr;
         VkDevice device = nullptr;
         Ref<VulkanPhysicalDevice> vkPhysDevice;
@@ -323,13 +315,13 @@ namespace SceneryEditorX
 
         /// Command pool management
         std::map<std::thread::id, Ref<CommandPool>> CmdPools;
-        Ref<CommandPool> GetThreadLocalCmdPool();
+        //Ref<CommandPool> GetThreadLocalCmdPool();
         //Ref<CommandPool> GetOrCreateThreadLocalCmdPool();
 
         /**
          * @brief Create Vulkan 1.2+ features structure and load device extensions
          */
-        void CreateDeviceFeatures2();
+        //void CreateDeviceFeatures2();
 
         /**
          * @brief Initialize the memory allocator for this device
@@ -402,7 +394,6 @@ namespace SceneryEditorX
         /// Accessor methods
         [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
         [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
-        [[nodiscard]] Ref<VulkanDevice> GetDevice() const { return device; }
 
     private:
         Ref<VulkanDevice> device;

@@ -575,7 +575,14 @@ namespace SceneryEditorX
         std::string Version;
 
         /** @brief Vulkan API version supported by the device */
-        uint32_t apiVersion;
+        struct apiVersion
+        {
+            int Variant = 0;
+            int Major	= 0;
+            int Minor	= 0;
+            int Patch	= 0;
+        };
+
 
         /**
 		 * @brief Check if the swap chain needs to be recreated

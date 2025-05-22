@@ -30,8 +30,9 @@ namespace SceneryEditorX
 	};
 	using MemoryFlags = Flags;
 
+    // ReSharper disable twice IdentifierTypo
     namespace BufferUsage
-    {
+    { 
 		enum
 		{
 		    TransferSrc = 0x00000001,
@@ -55,7 +56,7 @@ namespace SceneryEditorX
 		    SamplerDescriptor = 0x00200000,
 		    ResourceDescriptor = 0x00400000,
 		    PushDescriptors = 0x04000000,
-		    MicromapBuildInputReadOnly = 0x00800000,
+            MicromapBuildInputReadOnly = 0x00800000,
 		    MicromapStorage = 0x01000000,
 		};
 

@@ -48,6 +48,15 @@
 
 /*
 ##########################################################
+                    PLATFORM SPECIFIC
+##########################################################
+*/
+#ifdef SEDX_PLATFORM_WINDOWS
+    #include <Windows.h>
+#endif
+
+/*
+##########################################################
 					 GLFW INCLUDES & DEFINES
 ##########################################################
 */
@@ -95,6 +104,14 @@
 //#include <spdlog/sinks/stdout_color_sinks.h>
 //#include <spdlog/spdlog.h>
 
+/* 
+##########################################################
+                         FMT Library
+##########################################################
+*/
+#include <fmt/core.h>
+#include <fmt/format.h>
+
 /*
 ##########################################################
                      Project Includes
@@ -129,19 +146,32 @@ namespace fs = std::filesystem;
 template <typename T>
 void ErrMsg(const T &errorMessage)
 {
-    // Use fmt::format to convert errorMessage to a string
+    /// Use fmt::format to convert errorMessage to a string
     std::string errorStr = fmt::format("{}", errorMessage);
 
 #ifdef SEDX_PLATFORM_WINDOWS
-    // Convert to wide string for Windows
-    std::wstring errorWStr(errorStr.begin(), errorStr.end());
+    /// Convert to wide string for Windows
+    const std::wstring errorWStr(errorStr.begin(), errorStr.end());
     MessageBoxW(nullptr, errorWStr.c_str(), L"Error", MB_OK | MB_ICONERROR);
-#else
-    // For other platforms, log to console and potentially show via GLFW
-    spdlog::error("Error: {}", errorStr);
-    // Note: If you have an active GLFW window, you could trigger a custom ImGui popup here
 #endif
+#ifdef SEDX_PLATFORM_APPLE
+    @autoreleasepool {
+		NSString *errorStr = [NSString stringWithUTF8String:errorMessage.c_str()];
+		NSString *nsTitle = [NSString stringWithUTF8String:"Error"];
+		  
+    	NSAlert *alert = [[NSAlert alloc] init];
+		[alert setMessageText:nsTitle];
+		[alert setInformativeText:errorStr];
+		[alert setAlertStyle:NSAlertStyleCritical]; /// Use Critical style for errors
+		[alert runModal];
+    }
+    /// For other platforms, log to console and potentially show via GLFW
+    spdlog::error("Error: {}", errorStr);
+    /// Note: If you have an active GLFW window, you could trigger a custom ImGui popup here
+#endif
+#ifdef SEDX_PLATFORM_LINUX
     throw std::runtime_error(errorStr);
+#endif
 };
 
 // -------------------------------------------------------

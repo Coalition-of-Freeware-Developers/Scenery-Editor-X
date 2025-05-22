@@ -42,14 +42,13 @@
 	/** Windows x64  **/
         #define SEDX_PLATFORM_WINDOWS
 		#include <Windows.h>
-		#include <fileapi.h>
-		constexpr char dirSeparator = '\\';
+constexpr char dirSeparator = '\\';
 		#if defined(_DEBUG) || defined(DEBUG)
-		#ifndef SEDX_DEBUG
-		#define SEDX_DEBUG
-		#endif
-		#define SEDX_DEBUGBREAK() __debugbreak()
-		#define APP_USE_VULKAN_DEBUG_REPORT
+			#ifndef SEDX_DEBUG
+			    #define SEDX_DEBUG
+			#endif
+			#define SEDX_DEBUGBREAK() __debugbreak()
+			#define APP_USE_VULKAN_DEBUG_REPORT
 		#endif
     #else
 	/** Windows x86 **/
@@ -60,6 +59,7 @@
 //////////////////////////////////////////////////////
 #elif defined(__APPLE__) || defined(__MACH__) || (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) ||                               \
     defined(VK_USE_PLATFORM_METAL_EXT))
+    #define SEDX_PLATFORM_APPLE
 	#include <TargetConditionals.h>
 	/**
 	 * TARGET_OS_MAC exists on all the platforms
@@ -104,7 +104,7 @@
 	constexpr char dirSeparator = '/';
 	#if defined(_DEBUG) || defined(DEBUG)
 		#ifndef SEDX_DEBUG
-		#define SEDX_DEBUG
+		    #define SEDX_DEBUG
 		#endif
 		#define SEDX_DEBUGBREAK() raise(SIGTRAP)
 	#endif

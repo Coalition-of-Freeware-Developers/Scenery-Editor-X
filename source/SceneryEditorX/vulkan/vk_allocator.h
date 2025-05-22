@@ -37,18 +37,15 @@ namespace SceneryEditorX
 	 */
     struct MemoryPool
     {
-        VkDeviceSize blockSize;
-        VkDeviceSize minAlignment;
+        VkDeviceSize blockSize = 0;
+        VkDeviceSize minAlignment = 0;
         std::vector<VmaPool> pools;
-        VmaPoolCreateInfo createInfo;
+        VmaPoolCreateInfo createInfo = {};
 
-        MemoryPool() = default;
+        MemoryPool() : createInfo({}) {}
 
-        MemoryPool(const VkDeviceSize size, const VmaMemoryUsage usage) : minAlignment(0)
+        MemoryPool(const VkDeviceSize size, const VmaMemoryUsage usage) : blockSize(size), createInfo({})
         {
-            blockSize = size;
-            createInfo = {};
-            createInfo.blockSize = size;
             createInfo.memoryTypeIndex = static_cast<uint32_t>(usage);
         }
     };
@@ -75,7 +72,7 @@ namespace SceneryEditorX
     class MemoryAllocator
     {
     public:
-        MemoryAllocator() = default;
+        MemoryAllocator() {}
         explicit MemoryAllocator(std::string tag);
         ~MemoryAllocator();
 
@@ -127,14 +124,16 @@ namespace SceneryEditorX
 
         /**
 		 * @brief Gets the current custom buffer size
+		 *
 		 * @return The custom buffer size in bytes
 		 */
         GLOBAL VkDeviceSize GetCustomBufferSize();
 
 		/**
-		 * @brief Sets the custom buffer size if the device supports it
-		 * @param size The desired buffer size in bytes
-		 * @param device Reference to the Vulkan device
+		 * @brief Sets the custom buffer size if the device supports it.
+		 *
+		 * @param size The desired buffer size in bytes.
+		 * @param device Reference to the Vulkan device.
 		 * @return true if set successfully, false if unsupported
 		 */
 		GLOBAL bool SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device);
@@ -215,14 +214,14 @@ namespace SceneryEditorX
 		T* MapMemory(const VmaAllocation allocation)
 		{
 			T* mappedMemory;
-            vmaMapMemory(GetMemAllocator(), allocation, static_cast<void **>(&mappedMemory));
+            vmaMapMemory(GetAllocator(), allocation, static_cast<void **>(&mappedMemory));
 			return mappedMemory;
 		}
 
 		/// ---------------------------------------------------------
 
-        void UnmapMemory(VmaAllocation allocation);
-        GLOBAL VmaAllocator GetMemAllocator();
+        GLOBAL void UnmapMemory(VmaAllocation allocation);
+        GLOBAL VmaAllocator GetAllocator();
 
 		GLOBAL void Init(const Ref<VulkanDevice> &device);
 		GLOBAL void Shutdown();
@@ -232,8 +231,8 @@ namespace SceneryEditorX
     private:
         std::string Tag_;
         std::vector<VmaAllocation> defragmentationCandidates;
-        VmaDefragmentationContext defragmentationContext;
-        AllocationStrategy currentStrategy;
+        VmaDefragmentationContext defragmentationContext = nullptr;
+        AllocationStrategy currentStrategy = AllocationStrategy::Default;
 
         /// Fixed-size pools for common allocation sizes
         std::unordered_map<VkDeviceSize, MemoryPool> bufferPools;

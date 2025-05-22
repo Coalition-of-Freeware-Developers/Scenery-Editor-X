@@ -10,18 +10,59 @@
 * Created: 5/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/memory.h>
+//#include <SceneryEditorX/core/memory.h>
 #include <SceneryEditorX/vulkan/buffers/buffer_data.h>
 #include <SceneryEditorX/vulkan/image_data.h>
 #include <SceneryEditorX/vulkan/render_data.h>
-#include <SceneryEditorX/vulkan/vk_allocator.h>
-#include <SceneryEditorX/vulkan/vk_buffers.h>
+//#include <SceneryEditorX/vulkan/vk_allocator.h>
+//#include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
 
 // ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    GLOBAL VkCommandBuffer BeginSingleTimeCommands()
+    {
+        VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
+        VkCommandPool cmdPool = GraphicsEngine::GetCurrentDevice()->GetCommandBuffer()->GetCommandPool();
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = cmdPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(vkDevice, &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        return commandBuffer;
+    }
+
+    GLOBAL void EndSingleTimeCommands(VkCommandBuffer commandBuffer)
+    {
+        vkEndCommandBuffer(commandBuffer);
+
+        VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
+        VkQueue graphicsQueue = GraphicsEngine::GetCurrentDevice()->GetGraphicsQueue(); 
+        VkCommandPool cmdPool = GraphicsEngine::GetCurrentDevice()->GetCommandBuffer()->GetCommandPool();
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphicsQueue);
+
+        vkFreeCommandBuffers(vkDevice, cmdPool, 1, &commandBuffer);
+    }
 
 	/**
 	 * @brief Creates a Vulkan buffer with specified parameters
@@ -144,9 +185,10 @@ namespace SceneryEditorX
     void *MapBuffer(Buffer &buffer)
     {
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
-		void* data;
+		void* data = nullptr; // Initialize data
+		// Use VMA to map memory
 		vmaMapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.bufferResource->allocation, &data);
-        return buffer.bufferResource->allocation->GetMappedData();
+        return data; // Return the mapped pointer directly
 	}
 
 
@@ -177,75 +219,14 @@ namespace SceneryEditorX
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
         region.imageOffset = {.x = 0, .y = 0, .z = 0};
+        // Assuming WindowData::width and WindowData::height are accessible and are the intended values.
+        // If width and height parameters are intended, use them instead.
+        // For now, using the parameters passed to the function.
         region.imageExtent = {.width = width, .height = height, .depth = 1};
 
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
         EndSingleTimeCommands(commandBuffer);
-    }
-
-    GLOBAL VkCommandBuffer BeginSingleTimeCommands()
-    {
-        VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = cmdPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(vkDevice, &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-        return commandBuffer;
-    }
-
-    GLOBAL void EndSingleTimeCommands(VkCommandBuffer commandBuffer)
-    {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
-
-        vkFreeCommandBuffers(vkDevice, cmdPool, 1, &commandBuffer);
-    }
-
-    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-    {
-		VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
-
-		VkBufferImageCopy region{};
-		region.bufferOffset = 0;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = 0;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
-		region.imageOffset = {.x = 0, .y = 0, .z = 0};
-		region.imageExtent = {.width = WindowData::width, .height = WindowData::height, .depth = 1};
-
-		vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-		EndSingleTimeCommands(commandBuffer);
-    }
-
-    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
-    {
-
     }
 
 } // namespace SceneryEditorX

@@ -21,27 +21,25 @@ namespace SceneryEditorX
 	{
 	    CreateUniformBuffers();
 	}
-	
-	/**
-	 * @brief Destroys uniform buffer resources
-	 * 
-	 * This destructor properly cleans up Vulkan resources allocated for uniform buffers:
-	 * 1. Iterates through all buffers created for each frame in flight
-	 * 2. Destroys each VkBuffer handle
-	 * 3. Frees the associated device memory allocation
-	 * 
-	 * This ensures proper resource cleanup and prevents memory leaks when the
-	 * UniformBuffer object is destroyed.
-	 */
-	UniformBuffer::~UniformBuffer()
-	{
-	    const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-	    for (size_t i = 0; i < RenderData::framesInFlight; i++)
-	    {
-	        vkDestroyBuffer(vkDevice, uniformBuffers[i], nullptr);
-	        vkFreeMemory(vkDevice, uniformBuffersMemory[i], nullptr);
-	    }
-	}
+
+    /**
+     * @brief Destructor for UniformBuffer
+     * 
+     * Cleans up resources by destroying all uniform buffers and freeing their 
+     * associated memory allocations. This ensures proper resource cleanup when
+     * the UniformBuffer object is destroyed.
+     * 
+     * The method iterates through each frame's buffer (based on framesInFlight)
+     * and calls the memory allocator's DestroyBuffer method to release both 
+     * the Vulkan buffer objects and their backing memory allocations.
+     */
+    UniformBuffer::~UniformBuffer()
+    {
+        for (size_t i = 0; i < RenderData::framesInFlight; i++)
+        {
+            allocator->DestroyBuffer(uniformBuffers[i], &uniformBuffersAllocation[i]);
+        }
+    }
 	
 	/**
 	 * @brief Updates the uniform buffer for the current frame
@@ -57,15 +55,14 @@ namespace SceneryEditorX
 	 * 
 	 * @param currentImage Index of the current frame's uniform buffer to update
 	 */
-	void UniformBuffer::UpdateUniformBuffer(uint32_t currentImage) const
+	void UniformBuffer::UpdateUniformBuffer(const uint32_t currentImage) const
 	{
-	    const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
 	    static auto startTime = std::chrono::high_resolution_clock::now();
+
+	    const auto currentTime = std::chrono::high_resolution_clock::now();
+	    const float time = std::chrono::duration<float>(currentTime - startTime).count();
 	
-	    auto currentTime = std::chrono::high_resolution_clock::now();
-	    float time = std::chrono::duration<float>(currentTime - startTime).count();
-	
-	    UBO uniformBuff{};
+	    UBO uniformBuff = {};
 	    uniformBuff.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	    uniformBuff.view =
 	        glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -76,12 +73,10 @@ namespace SceneryEditorX
 	                         0.1f,
 	                         10.0f);
 	    uniformBuff.proj[1][1] *= -1;
-	
-	    void *data;
-	
-	    vkMapMemory(vkDevice, uniformBuffersMemory[currentImage], 0, sizeof(uniformBuff), 0, &data);
-	    memcpy(data, &uniformBuff, sizeof(uniformBuff));
-	    vkUnmapMemory(vkDevice, uniformBuffersMemory[currentImage]);
+
+        void *data = allocator->MapMemory<void>(uniformBuffersAllocation[currentImage]);
+        memcpy(data, &uniformBuff, sizeof(uniformBuff));
+        allocator->UnmapMemory(uniformBuffersAllocation[currentImage]);
 	}
 	
 	/**
@@ -103,7 +98,7 @@ namespace SceneryEditorX
 	
 	    for (size_t i = 0; i < RenderData::framesInFlight; i++)
 	    {
-	        VkDeviceSize bufferSize = sizeof(UniformBuffer);
+            constexpr VkDeviceSize bufferSize = sizeof(UniformBuffer);
 	        CreateBuffer(bufferSize, BufferUsage::Uniform, CPU, uniformBuffers[i], uniformBuffersMemory[i]);
 	    }
 	}

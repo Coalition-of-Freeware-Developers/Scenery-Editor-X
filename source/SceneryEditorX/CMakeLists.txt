@@ -55,10 +55,10 @@ ADD_EXECUTABLE(SceneryEditorX
     core/window.cpp
     core/window.h
 	# --------------------------------
-	core/editor/editor.cpp
-	core/editor/editor.h
-	core/editor/scenery_gateway.cpp
-	core/editor/scenery_gateway.h
+	editor/editor.cpp
+	editor/editor.h
+	editor/scenery_gateway.cpp
+	editor/scenery_gateway.h
     # --------------------------------
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
@@ -134,10 +134,10 @@ SOURCE_GROUP("Core" FILES
     core/window.h
 )
 SOURCE_GROUP("Editor/Core" FILES
-	core/editor/editor.cpp
-	core/editor/editor.h
-	core/editor/scenery_gateway.cpp
-	core/editor/scenery_gateway.h
+	editor/editor.cpp
+	editor/editor.h
+	editor/scenery_gateway.cpp
+	editor/scenery_gateway.h
 )
 SOURCE_GROUP("Core/Platform" FILES
 	${PLATFORM}

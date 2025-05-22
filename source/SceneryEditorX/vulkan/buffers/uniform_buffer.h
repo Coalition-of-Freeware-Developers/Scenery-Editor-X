@@ -128,11 +128,12 @@ namespace SceneryEditorX
         }
 
     private:
-        Ref<GraphicsEngine> *gfxEngine;                   ///< Pointer to the graphics engine reference
-        Ref<MemoryAllocator> allocator;                   ///< Reference to the memory allocator
-        RenderData renderData;                            ///< Reference to the render data structure
-        std::vector<VkBuffer> uniformBuffers;             ///< Array of uniform buffer handles (one per frame)
-        std::vector<VkDeviceMemory> uniformBuffersMemory; ///< Array of memory handles for uniform buffers
+        Ref<GraphicsEngine> *gfxEngine;						///< Pointer to the graphics engine reference
+        Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
+        RenderData renderData;								///< Reference to the render data structure
+        std::vector<VkBuffer> uniformBuffers;				///< Array of uniform buffer handles (one per frame)
+        std::vector<VkDeviceMemory> uniformBuffersMemory;	///< Array of memory handles for uniform buffers
+        VmaAllocation uniformBuffersAllocation;             ///< Allocation handle for uniform buffers
     };
 
 }

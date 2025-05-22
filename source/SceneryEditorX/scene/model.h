@@ -93,6 +93,20 @@ namespace SceneryEditorX
         Model();
         virtual ~Model() override;
 
+		struct Index
+        {
+            uint32_t V1, V2, V3;
+        };
+
+        static_assert(sizeof(Index) == 3 * sizeof(uint32_t));
+
+        struct Triangle
+        {
+            MeshVertex V0, V1, V2;
+
+            Triangle(const MeshVertex &v0, const MeshVertex &v1, const MeshVertex &v2) : V0(v0), V1(v1), V2(v2) {}
+        };
+
         virtual void Serialize(Serializer &ser) override;
 
         std::vector<MeshVertex> vertices;
@@ -113,7 +127,14 @@ namespace SceneryEditorX
 
     struct MeshNode : Node
     {
+        uint32_t parent = 0xffffffff;
         Ref<Model> mesh;
+        std::vector<uint32_t> children;
+        std::vector<uint32_t> submeshes;
+        std::string name;
+        glm::mat4 localTransform;
+
+        bool IsRoot() const { return parent == 0xffffffff; }
         //Ref<MaterialAsset> material;
 
         MeshNode();

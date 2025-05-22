@@ -18,20 +18,21 @@
 
 /// -------------------------------------------------------
 
+// Using glm::vec2 instead of Vec2 to avoid undefined type
 template <>
-struct fmt::formatter<Vec2>
+struct fmt::formatter<glm::vec2>
 {
     char presentation = 'f';
 	
     /**
-	         * @brief Parses the format specification for the vector.
-	         * 
-	         * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
-	         * 
-	         * @param ctx The format parse context
-	         * @return Iterator pointing past the parsed format specification
-	         * @throws format_error if the format specification is invalid
-	         */
+	 * @brief Parses the format specification for the vector.
+	 * 
+	 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
+	 * 
+	 * @param ctx The format parse context
+	 * @return Iterator pointing past the parsed format specification
+	 * @throws format_error if the format specification is invalid
+	 */
     constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
     {
         auto it = ctx.begin(), end = ctx.end();
@@ -45,17 +46,17 @@ struct fmt::formatter<Vec2>
     }
 	
     /**
-	         * @brief Formats the Vec2 object into the output.
-	         * 
-	         * Renders the vector as "(x, y)" with 3 decimal places in either
-	         * fixed-point or scientific notation based on the presentation format.
-	         * 
-	         * @param vec The vector to format
-	         * @param ctx The formatting context that receives the formatted output
-	         * @return Iterator pointing past the end of the formatted output
-	         */
+	 * @brief Formats the glm::vec2 object into the output.
+	 * 
+	 * Renders the vector as "(x, y)" with 3 decimal places in either
+	 * fixed-point or scientific notation based on the presentation format.
+	 * 
+	 * @param vec The vector to format
+	 * @param ctx The formatting context that receives the formatted output
+	 * @return Iterator pointing past the end of the formatted output
+	 */
     template <typename FormatContext>
-    auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+    auto format(const glm::vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
     {
         return presentation == 'f' ? fmt::format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
                    : fmt::format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);

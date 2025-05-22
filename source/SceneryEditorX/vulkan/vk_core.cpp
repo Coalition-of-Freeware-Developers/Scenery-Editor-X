@@ -280,8 +280,7 @@ namespace SceneryEditorX
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, vkExtensions.instanceExtensions.data());
 
         /// Get Vulkan API version
-        vkEnumerateInstanceVersion(&renderData.apiVersion);
-        SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance API Version: {}", renderData.apiVersion);
+        VulkanChecks::CheckAPIVersion(SoftwareStats::minVulkanVersion);
 
 		bool khronosAvailable = false;
         for (size_t i = 0; i < vkLayers.layers.size(); i++)
@@ -324,7 +323,7 @@ namespace SceneryEditorX
         appInfo.applicationVersion = SoftwareStats::version;
         appInfo.pEngineName = SoftwareStats::renderName.c_str();
         appInfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
-        appInfo.apiVersion = SoftwareStats::maxVulkanVersion;
+        appInfo.apiVersion = SoftwareStats::minVulkanVersion;
 
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -368,9 +367,9 @@ namespace SceneryEditorX
 
 		// ---------------------------------------------------------
 
-        VkDebugUtilsMessengerCreateInfoEXT vkDebugCreateInfo;
         if (enableValidationLayers)
         {
+            VkDebugUtilsMessengerCreateInfoEXT vkDebugCreateInfo;
             createInfo.enabledLayerCount = static_cast<uint32_t>(vkLayers.validationLayer.size());
             createInfo.ppEnabledLayerNames = vkLayers.validationLayer.data();
             /// We need to set up a separate logger just for the instance creation/destruction because our "default" logger is created after
@@ -439,7 +438,7 @@ namespace SceneryEditorX
         /// Initalize the Vulkan Physical Device & Vulkan Device
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        vkPhysicalDevice = VulkanPhysicalDevice::Select();
+       Ref<VulkanPhysicalDevice> vkPhysicalDevice = GetCurrentDevice()->GetPhysicalDevice();
 
         /*
         try
@@ -455,10 +454,7 @@ namespace SceneryEditorX
         physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
         */
 
-        VulkanDeviceFeatures deviceFeatures;
-        deviceFeatures.GetPhysicalDeviceFeatures();
-
-        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, deviceFeatures.GetPhysicalDeviceFeatures());
+        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, GetCurrentDevice()->GetPhysicalDevice()->Selected().GFXFeatures);
 
 		/// Memory Allocator initialization.
         MemoryAllocator::Init(vkDevice);
@@ -487,6 +483,20 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created");
     }
 
+    /**
+     * @brief Makes the device wait until all commands have been executed
+     * 
+     * This function calls vkDeviceWaitIdle to ensure the device has completed
+     * all operations before proceeding. It's typically used before cleanup
+     * operations or when synchronization is needed between CPU and GPU.
+     * 
+     * @param device A reference to the Vulkan device to wait for
+     * 
+     * @note This is a blocking call that will halt CPU execution until
+     *       all GPU operations on the specified device are completed.
+     *       For more fine-grained synchronization, consider using fences
+     *       or semaphores instead.
+     */
     void GraphicsEngine::WaitIdle(const Ref<VulkanDevice> &device)
     {
         vkDeviceWaitIdle(device->GetDevice());
@@ -558,18 +568,19 @@ namespace SceneryEditorX
 		vkSwapChain->Destroy();
         //vkDestroySwapchainKHR(vkDevice->GetDevice(), vkSwapChain, allocator);
 
-
-        //for (int q = 0; q < Queue::Count; q++)
-        //{
-        //    for (int i = 0; i < currentFrame; i++)
-        //    {
-        //        vkDestroyCommandPool(vkDevice->GetDevice(), queues[q].commands[i].pool, allocator);
-        //        queues[q].commands[i].staging = {};
-        //        queues[q].commands[i].stagingCpu = nullptr;
-        //        vkDestroyFence(vkDevice->GetDevice(), queues[q].commands[i].fence, allocator);
-        //        vkDestroyQueryPool(vkDevice->GetDevice(), queues[q].commands[i].queryPool, allocator);
-        //    }
-        //}
+		/*
+        for (int q = 0; q < Queue::Count; q++)
+        {
+            for (int i = 0; i < currentFrame; i++)
+            {
+                vkDestroyCommandPool(vkDevice->GetDevice(), queues[q].commands[i].pool, allocator);
+                queues[q].commands[i].staging = {};
+                queues[q].commands[i].stagingCpu = nullptr;
+                vkDestroyFence(vkDevice->GetDevice(), queues[q].commands[i].fence, allocator);
+                vkDestroyQueryPool(vkDevice->GetDevice(), queues[q].commands[i].queryPool, allocator);
+            }
+        }
+        */
 
 
         imageAvailableSemaphores.clear();
@@ -784,7 +795,7 @@ namespace SceneryEditorX
     void GraphicsEngine::CreateSwapChain()
     {
         /// Get swap chain support details from the selected device
-        const GPUDevice &selectedDevice = vkPhysicalDevice->Selected();
+        const GPUDevice &selectedDevice = GetLogicDevice()->GetPhysicalDevice()->Selected();
 
         /// Create our swap chain using the capabilities from the selected device
         VkSwapchainCreateInfoKHR createInfo{};
@@ -884,9 +895,7 @@ namespace SceneryEditorX
 
         VkImageView imageView;
         if (vkCreateImageView(vkDevice->GetDevice(), &viewInfo, allocator, &imageView) != VK_SUCCESS)
-        {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create texture image view!");
-        }
 
         return imageView;
     }
@@ -976,17 +985,17 @@ namespace SceneryEditorX
     {
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[0].descriptorCount = RenderData::framesInFlight;
 
-        // -------------------------------------------------------
+        /// -------------------------------------------------------
 
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[1].descriptorCount = RenderData::framesInFlight;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -995,14 +1004,12 @@ namespace SceneryEditorX
         poolInfo.maxSets = RenderData::framesInFlight;
 
         if (vkCreateDescriptorPool(vkDevice->GetDevice(), &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
-        {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor pool!");
-        }
     }
 
 	void GraphicsEngine::CreateDescriptorSetLayout()
     {
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         VkDescriptorSetLayoutBinding uboLayoutBinding{};
         uboLayoutBinding.binding = 0;
@@ -1114,7 +1121,7 @@ namespace SceneryEditorX
         renderData.framebufferResized = false;
     }*/
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
     VkSampleCountFlagBits GraphicsEngine::GetMaxUsableSampleCount() const
     {
@@ -1139,7 +1146,7 @@ namespace SceneryEditorX
         return VK_SAMPLE_COUNT_1_BIT;
     }
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
     VkPresentModeKHR GraphicsEngine::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
     {
@@ -1193,6 +1200,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::CreateTextureSampler()
     {
+        Ref<VulkanPhysicalDevice> vkPhysicalDevice = GetCurrentDevice()->GetPhysicalDevice();
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(vkPhysicalDevice->GetGPUDevices(), &properties);
 
@@ -1215,10 +1223,10 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Graphics Engine", "failed to create texture sampler!");
     }
 
-    SwapChainDetails GraphicsEngine::QuerySwapChainSupport(VkPhysicalDevice device) const
+    SwapChainDetails GraphicsEngine::QuerySwapChainSupport(VkPhysicalDevice device)
     {
         SwapChainDetails details;
-        const GPUDevice &selectedDevice = vkPhysicalDevice->Selected();
+        const GPUDevice &selectedDevice = GetCurrentDevice()->GetPhysicalDevice()->Selected();
 
         /// Copy the data that's already available
         details.capabilities = selectedDevice.surfaceCapabilities;

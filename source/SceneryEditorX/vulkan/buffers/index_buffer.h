@@ -56,12 +56,12 @@ namespace SceneryEditorX
         void CreateIndexBuffer() const;
 
     private:
-        Ref<GraphicsEngine> *gfxEngine;		///< Pointer to the graphics engine reference
-        Ref<MemoryAllocator> allocator;		///< Reference to the memory allocator
-        RenderData renderData;
-        std::vector<uint32_t> indices;		///< Storage for index data
-        VkBuffer indexBuffer;				///< Handle to the Vulkan index buffer
-        VkDeviceMemory indexBufferMemory;	///< Handle to the allocated memory for the index buffer
+        Ref<GraphicsEngine> *gfxEngine;      ///< Pointer to the graphics engine reference
+        Ref<MemoryAllocator> allocator;		 ///< Reference to the memory allocator
+        RenderData renderData;               ///< Reference to the render data structure
+        std::vector<uint32_t> indices;		 ///< Storage for index data
+        VkBuffer indexBuffer;				 ///< Handle to the Vulkan index buffer
+        VmaAllocation indexBufferAllocation; ///< Handle to the allocated memory for the index buffer
     };
 
 }

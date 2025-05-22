@@ -50,10 +50,10 @@ namespace SceneryEditorX
 		LOCAL VkInstance GetInstance() { return vkInstance; }
 	    [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass;}
         [[nodiscard]] VkSampler CreateSampler(float maxLod);
-        [[nodiscard]] VkSampler GetSampler() const { return vkDevice->GetSampler(); }
+        //[[nodiscard]] VkSampler GetSampler() const { return vkDevice->GetSampler(); }
         [[nodiscard]] const VkAllocationCallbacks *GetAllocatorCallback() const { return allocator; }
 
-	    void WaitIdle(const Ref<VulkanDevice> &device);
+        GLOBAL void WaitIdle(const Ref<VulkanDevice> &device);
 
 		/// -------------------------------------------------------
 
@@ -66,7 +66,7 @@ namespace SceneryEditorX
         Ref<Window> editorWindow;
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> vkDevice;
-        Ref<VulkanPhysicalDevice> vkPhysicalDevice;
+        //Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanChecks> checks;
         Ref<MemoryAllocator> allocatorManager;
 
@@ -155,7 +155,7 @@ namespace SceneryEditorX
         VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
         void CreateTextureImageView();
         void CreateTextureSampler();
-        SwapChainDetails QuerySwapChainSupport(VkPhysicalDevice device) const;
+        INTERNAL SwapChainDetails QuerySwapChainSupport(VkPhysicalDevice device);
         VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
         VkFormat FindDepthFormat() const;
         void CleanUp();

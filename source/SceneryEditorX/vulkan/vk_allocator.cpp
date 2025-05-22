@@ -38,7 +38,7 @@ namespace SceneryEditorX
 	struct VulkanAllocatorData
 	{
 	    /** @brief VMA allocator instance used for all memory operations */
-	    VmaAllocator Allocator;
+	    VmaAllocator Allocator = nullptr;
 	
 	    /** @brief Total bytes allocated across all memory heaps */
 	    uint64_t BytesAllocated = 0;
@@ -140,7 +140,7 @@ namespace SceneryEditorX
      * 
      * @param tag A string identifier for this allocator instance
      */
-    MemoryAllocator::MemoryAllocator(std::string tag) : Tag_(std::move(tag)), defragmentationContext(nullptr), currentStrategy() { }
+    MemoryAllocator::MemoryAllocator(std::string tag) : Tag_(std::move(tag)), currentStrategy() { }
 
     /**
      * @brief Destroys the memory allocator instance.
@@ -220,7 +220,7 @@ namespace SceneryEditorX
             allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
         /// Use a descriptor pool for memory allocation if needed
-        /// allocatorCreateInfo.pAllocationCallbacks = allocator;
+        /* allocatorCreateInfo.pAllocationCallbacks = allocator; */
 
         /// Create VMA allocator
         VmaVulkanFunctions vulkanFunctions = {};
@@ -265,7 +265,7 @@ namespace SceneryEditorX
         defragmentationCandidates.clear();
 
         /// Create VMA defragmentation info
-        VmaDefragmentationInfo defragInfo;
+        VmaDefragmentationInfo defragInfo = {};
         defragInfo.flags = flags;
         defragInfo.pool = nullptr;         /// Will be filled in EndDefragmentation
 
@@ -449,7 +449,7 @@ namespace SceneryEditorX
         /// ---------------------------------------------------------
 
         /// Create the allocation
-        VmaAllocation allocation;
+        VmaAllocation allocation = {};
         VmaAllocationInfo allocInfo{};
 
         if (const VkResult result = vmaCreateBuffer(memAllocatorData->Allocator, &bufferCreateInfo, &allocCreateInfo, &outBuffer, &allocation, &allocInfo); result != VK_SUCCESS || allocation == nullptr)
@@ -607,7 +607,7 @@ namespace SceneryEditorX
 		        SEDX_CORE_TRACE("Buffer destroyed successfully");
 		    }
 		}
-    } // namespace VulkanMemoryUtils
+    } /// namespace VulkanMemoryUtils
 
     /**
      * @fn DestroyBuffer
@@ -633,23 +633,68 @@ namespace SceneryEditorX
         }
     }
 
-    /*
-    void MemoryAllocator::DestroyBuffer(const VkBuffer buffer, const VmaAllocation allocation)
+    /**
+     * @brief Gets the current custom buffer size.
+     * 
+     * This function returns the custom buffer size that has been set for the memory allocator,
+     * or the default value if no custom size has been configured. The custom buffer size affects
+     * how memory is allocated for larger buffers and can be optimized for specific workloads.
+     * 
+     * @return The current custom buffer size in bytes.
+     * 
+     * @note If customBufferSize is zero, this function will return DEFAULT_CUSTOM_BUFFER_SIZE.
+     */
+    VkDeviceSize MemoryAllocator::GetCustomBufferSize()
     {
-        std::lock_guard<std::mutex> lock(allocationMutex);
-
-        if (AllocationMap.contains(allocation))
-        {
-            const auto &[AllocatedSize, Type] = AllocationMap[allocation];
-            memAllocatorData->BytesAllocated -= AllocatedSize;
-            AllocationMap.erase(allocation);
-        }
-
-        vmaDestroyBuffer(memAllocatorData->Allocator, buffer, allocation);
+        /// Return the custom buffer size if set, otherwise return the default value
+        return customBufferSize ? customBufferSize : DEFAULT_CUSTOM_BUFFER_SIZE;
     }
-    */
 
-	/**
+    /**
+     * @brief Sets the custom buffer size for allocations if supported by the device
+     * 
+     * This function configures the custom buffer size used by the memory allocator,
+     * but only if the specified size meets the device's requirements. It validates
+     * that:
+     * 1. The buffer size is not zero
+     * 2. The buffer size is properly aligned with the device's non-coherent atom size
+     * 3. The device has at least one memory type with DEVICE_LOCAL_BIT property
+     * 
+     * Setting a custom buffer size can optimize memory allocation patterns for specific
+     * workloads and memory access patterns. The value affects how larger buffers are
+     * allocated and managed by the allocator.
+     * 
+     * @param size The desired buffer size in bytes.
+     * @param device Reference to the Vulkan device for checking compatibility.
+     * @return true if the custom buffer size was set successfully.
+     * @return false if unsupported or invalid.
+     */
+    bool MemoryAllocator::SetCustomBufferSize(const VkDeviceSize size, const VulkanDevice &device)
+    {
+        /// Ensure the size is valid and aligned
+        if (size == 0 || size % device.GetPhysicalDevice()->GetLimits().nonCoherentAtomSize != 0)
+            return false;
+
+        /// Check if the device supports the requested buffer size
+        const auto& memoryProperties = device.GetPhysicalDevice()->GetMemoryProperties();
+        bool isSupported = false;
+
+        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+            if ((memoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0)
+            {
+                isSupported = true;
+                break;
+            }
+
+        if (!isSupported)
+            return false;
+
+        /// Set the custom buffer size
+        customBufferSize = size;
+        return true;
+    }
+
+    /**
 	 * @fn UnmapMemory
 	 * @brief Unmaps a previously mapped memory allocation.
 	 *
@@ -701,7 +746,7 @@ namespace SceneryEditorX
         poolInfo.memoryTypeIndex = 0; /// You might want to determine this based on usage
         poolInfo.blockSize = size;
 
-        VmaPool newPool;
+        VmaPool newPool = {};
 
         if (const VkResult result = vmaCreatePool(memAllocatorData->Allocator, &poolInfo, &newPool); result != VK_SUCCESS)
         {
@@ -748,7 +793,7 @@ namespace SceneryEditorX
         poolInfo.memoryTypeIndex = 0; /// You might want to determine this based on usage
         poolInfo.blockSize = size;
 
-        VmaPool newPool;
+        VmaPool newPool = {};
 
         if (const VkResult result = vmaCreatePool(memAllocatorData->Allocator, &poolInfo, &newPool); result != VK_SUCCESS)
         {
@@ -919,7 +964,7 @@ namespace SceneryEditorX
 	 *
 	 * @return The VMA allocator instance
 	 */
-    VmaAllocator MemoryAllocator::GetMemAllocator()
+    VmaAllocator MemoryAllocator::GetAllocator()
     {
         SEDX_ASSERT(memAllocatorData != nullptr, "Memory allocator data is null");
         return memAllocatorData->Allocator;
@@ -1218,10 +1263,8 @@ namespace SceneryEditorX
 
         if (percentage <= 0.0f || percentage > 1.0f)
         {
-            SEDX_CORE_WARN_TAG(
-                "VulkanAllocator",
-                "Invalid memory warning threshold value: {}, must be between 0.0 and 1.0. Using default value (0.9)",
-                percentage);
+            SEDX_CORE_WARN_TAG("Memory Allocator",
+                "Invalid memory warning threshold value: {}, must be between 0.0 and 1.0. Using default value (0.9)", percentage);
             percentage = 0.9f;
         }
 
@@ -1231,7 +1274,8 @@ namespace SceneryEditorX
         /// Check current memory status against new threshold
         if (memAllocatorData && memAllocatorData->Allocator)
         {
-            CheckMemoryBudget();
+            if (!CheckMemoryBudget())
+                SEDX_CORE_WARN_TAG("Memory Allocator", "Memory budget exceeded!");
         }
     }
 

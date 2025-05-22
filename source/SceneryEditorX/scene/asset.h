@@ -22,6 +22,7 @@ namespace SceneryEditorX
 
 	enum class ObjectType : uint8_t
 	{
+		None = 0,
 	    Invalid,
 	    TextureAsset,
 	    MeshAsset,
@@ -72,7 +73,14 @@ namespace SceneryEditorX
 	class Asset : public Object
 	{
 	public:
+        uint64_t Handle = 0;
         virtual ~Asset() override;
+
+		GLOBAL ObjectType GetStaticType() { return ObjectType::None; }
+        [[nodiscard]] virtual ObjectType GetAssetType() const { return ObjectType::None; }
+        [[nodiscard]] virtual bool operator!=(const Asset& other) const { return !(*this == other); }
+
+		virtual bool operator==(const Asset &other) const { return Handle == other.Handle;}
         virtual void Serialize(Serializer &ser) override = 0;
         virtual void Load(const std::string &path) = 0;
         virtual void Unload() = 0;

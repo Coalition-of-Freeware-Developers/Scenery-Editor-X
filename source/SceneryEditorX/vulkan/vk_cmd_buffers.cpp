@@ -10,21 +10,20 @@
 * Created: 7/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/editor/editor.h>
+#include <SceneryEditorX/editor/editor.h>
 #include <SceneryEditorX/vulkan/vk_cmd_buffers.h>
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     CommandResources& CommandBuffer::GetCurrentCommandResources() const
     {
         return queues[currentQueue].commands[renderData.swapChainCurrentFrame];
-
     }
 
     /*
@@ -132,10 +131,10 @@ namespace SceneryEditorX
 
     void CommandBuffer::Submit()
     {
-        auto &cmd = GetCurrentCommandResources();
+        const auto &cmd = GetCurrentCommandResources();
 
         VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        VkSwapchainKHR swapchain = gfxEngine->GetSwapChain()->GetSwapchain();
+        const VkSwapchainKHR swapchain = gfxEngine->GetSwapChain()->GetSwapchain();
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

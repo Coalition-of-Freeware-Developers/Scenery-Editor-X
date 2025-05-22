@@ -13,47 +13,49 @@
 #pragma once
 #include <SceneryEditorX/vulkan/render_data.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
-#include <functional>
 
 /// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /**
+    /// Forward Declaration
+    enum class PrimitiveType : uint8_t;
+
+	/**
      * @enum VertexBufferType
-     * @brief Defines the type and usage pattern of vertex buffer
+     * @brief Defines the type and usage pattern of vertex buffer.
      */
     enum class VertexBufferType : uint8_t
     {
         None = 0,
-        Static = 1,      ///< Static data, rarely or never updated (GPU optimized)
-        Dynamic = 2,     ///< Frequently changed data (CPU-GPU shared memory)
-        Transient = 3,   ///< Single-use buffer that will be discarded after rendering
-        Streaming = 4    ///< Continuously streamed data (e.g. particles)
+        Static = 1,      ///< Static data, rarely or never updated (GPU optimized).
+        Dynamic = 2,     ///< Frequently changed data (CPU-GPU shared memory).
+        Transient = 3,   ///< Single-use buffer that will be discarded after rendering.
+        Streaming = 4    ///< Continuously streamed data (e.g. particles).
     };
 
     /**
      * @enum VertexFormat
-     * @brief Standard vertex data formats
+     * @brief Standard vertex data formats.
      */
     enum class VertexFormat : uint8_t
     {
         None = 0,
-        Position2D = 1,                     ///< vec2 position
-        Position3D = 2,                     ///< vec3 position
-        Position3D_Color3 = 3,              ///< vec3 position + vec3 color
-        Position3D_Color4 = 4,              ///< vec3 position + vec4 color
-        Position3D_Normal = 5,              ///< vec3 position + vec3 normal
-        Position3D_TexCoord = 6,            ///< vec3 position + vec2 texcoord
-        Position3D_Color4_TexCoord = 7,     ///< vec3 position + vec4 color + vec2 texcoord
-        Position3D_Normal_TexCoord = 8,     ///< vec3 position + vec3 normal + vec2 texcoord
-        Position3D_Normal_TexCoord_Tangent = 9, ///< vec3 position + vec3 normal + vec2 texcoord + vec4 tangent
-        Custom = 255                         ///< Custom vertex format defined by user
+        Position2D = 1,							///< Vec2 position
+        Position3D = 2,							///< Vec3 position
+        Position3D_Color3 = 3,					///< Vec3 position + Vec3 color
+        Position3D_Color4 = 4,					///< Vec3 position + Vec4 color
+        Position3D_Normal = 5,					///< Vec3 position + Vec3 normal
+        Position3D_TexCoord = 6,				///< Vec3 position + Vec2 texcoord
+        Position3D_Color4_TexCoord = 7,			///< Vec3 position + Vec4 color + Vec2 texcoord
+        Position3D_Normal_TexCoord = 8,			///< Vec3 position + Vec3 normal + Vec2 texcoord
+        Position3D_Normal_TexCoord_Tangent = 9, ///< Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
+        Custom = 255                            ///< Custom vertex format defined by user
     };
 
     /**
      * @class VertexBuffer
-     * @brief Manages vertex data storage and configuration in Vulkan
+     * @brief Manages vertex data storage and configuration in Vulkan.
      *
      * This class handles the creation and management of vertex buffers in Vulkan,
      * including memory allocation and vertex attribute descriptions. It provides
@@ -64,15 +66,15 @@ namespace SceneryEditorX
     public:
         /**
          * @struct Vertex
-         * @brief Base vertex structure that can be extended for different vertex formats
+         * @brief Base vertex structure that can be extended for different vertex formats.
          *
          * Contains position, color, and texture coordinate data for each vertex.
          */
         struct Vertex
         {
-            glm::vec3 pos;      ///< 3D position of the vertex
-            glm::vec3 color;    ///< RGB color of the vertex
-            glm::vec2 texCoord; ///< Texture coordinates of the vertex
+            glm::vec3 pos;      ///< 3D position of the vertex.
+            glm::vec3 color;    ///< RGB color of the vertex.
+            glm::vec2 texCoord; ///< Texture coordinates of the vertex.
 
             /**
              * @brief Default constructor
@@ -80,40 +82,41 @@ namespace SceneryEditorX
             Vertex() = default;
 
             /**
-             * @brief Constructor with position
-             * @param position 3D position of the vertex
+             * @brief Constructor with position.
+             *
+             * @param position 3D position of the vertex.
              */
             explicit Vertex(const glm::vec3& position) 
                 : pos(position), color(1.0f, 1.0f, 1.0f), texCoord(0.0f, 0.0f) {}
 
             /**
-             * @brief Constructor with position and color
-             * @param position 3D position of the vertex
-             * @param vertexColor RGB color of the vertex
+             * @brief Constructor with position and color.
+             *
+             * @param position 3D position of the vertex.
+             * @param vertexColor RGB color of the vertex.
              */
             Vertex(const glm::vec3& position, const glm::vec3& vertexColor)
                 : pos(position), color(vertexColor), texCoord(0.0f, 0.0f) {}
 
             /**
-             * @brief Constructor with position, color and texture coordinates
-             * @param position 3D position of the vertex
-             * @param vertexColor RGB color of the vertex
-             * @param uv Texture coordinates of the vertex
+             * @brief Constructor with position, color and texture coordinates.
+             *
+             * @param position 3D position of the vertex.
+             * @param vertexColor RGB color of the vertex.
+             * @param uv Texture coordinates of the vertex.
              */
             Vertex(const glm::vec3& position, const glm::vec3& vertexColor, const glm::vec2& uv)
                 : pos(position), color(vertexColor), texCoord(uv) {}
 
             /**
-             * @brief Provides the vertex binding description for Vulkan
-             * @param binding Binding index to use
-             * @param inputRate Vertex input rate (vertex or instance)
-             * @return VkVertexInputBindingDescription describing how to bind vertex data
+             * @brief Provides the vertex binding description for Vulkan.
+             * @param binding Binding index to use.
+             * @param inputRate Vertex input rate (vertex or instance).
+             * @return VkVertexInputBindingDescription describing how to bind vertex data.
              */
-            static VkVertexInputBindingDescription GetBindingDescription(
-                uint32_t binding = 0, 
-                VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX)
+            static VkVertexInputBindingDescription GetBindingDescription( uint32_t binding = 0, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX)
             {
-                VkVertexInputBindingDescription bindingDescription{};
+                VkVertexInputBindingDescription bindingDescription = {};
                 bindingDescription.binding = binding;
                 bindingDescription.stride = sizeof(Vertex);
                 bindingDescription.inputRate = inputRate;
@@ -121,9 +124,9 @@ namespace SceneryEditorX
             }
 
             /**
-             * @brief Provides attribute descriptions for vertex data components
-             * @param binding The binding index these attributes are associated with
-             * @return Array of attribute descriptions for position, color, and texture coordinates
+             * @brief Provides attribute descriptions for vertex data components.
+             * @param binding The binding index these attributes are associated with.
+             * @return Array of attribute descriptions for position, color, and texture coordinates.
              */
             static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions(uint32_t binding = 0)
             {
@@ -148,9 +151,9 @@ namespace SceneryEditorX
             }
 
             /**
-             * @brief Equality comparison operator for vertices
-             * @param other The vertex to compare against
-             * @return true if vertices are equal, false otherwise
+             * @brief Equality comparison operator for vertices.
+             * @param other The vertex to compare against.
+             * @return true if vertices are equal, false otherwise.
              */
             bool operator==(const Vertex &other) const
             {
@@ -159,23 +162,23 @@ namespace SceneryEditorX
         };
 
         /**
-         * @brief Constructor for VertexBuffer
+         * @brief Constructor for VertexBuffer.
          * 
-         * @param type The type of vertex buffer (Static, Dynamic, etc)
-         * @param vertexFormat The format of vertices to be stored
-         * @param initialCapacity Initial buffer capacity in vertices (optional)
+         * @param type The type of vertex buffer (Static, Dynamic, etc.)
+         * @param vertexFormat The format of vertices to be stored.
+         * @param initialCapacity Initial buffer capacity in vertices (optional).
          */
         explicit VertexBuffer(
-            VertexBufferType type = VertexBufferType::Static,
-            VertexFormat vertexFormat = VertexFormat::Position3D_Color3_TexCoord,
+            VertexBufferType type,
+            VertexFormat vertexFormat,
             uint32_t initialCapacity = 0
         );
 
         /**
-         * @brief Constructor for VertexBuffer with initial data
+         * @brief Constructor for VertexBuffer with initial data.
          * 
-         * @param initialVertices Vector of vertices to initialize the buffer with
-         * @param type The type of vertex buffer (Static, Dynamic, etc)
+         * @param initialVertices Vector of vertices to initialize the buffer with.
+         * @param type The type of vertex buffer (Static, Dynamic, etc.).
          */
         explicit VertexBuffer(
             const std::vector<Vertex>& initialVertices,
@@ -191,7 +194,7 @@ namespace SceneryEditorX
          * @brief Creates the vertex buffer with current data
          * @return Buffer structure representing the created vertex buffer
          */
-        [[nodiscard]] Buffer CreateVertexBuffer();
+        [[nodiscard]] Buffer Create(); // Renamed from CreateVertexBuffer to Create
         
         /**
          * @brief Gets the Vulkan buffer handle
@@ -203,7 +206,7 @@ namespace SceneryEditorX
          * @brief Gets the size of the vertex buffer in bytes
          * @return Size of the buffer in bytes
          */
-        [[nodiscard]] VkDeviceSize GetBufferSize() const { return bufferSize; }
+        [[nodiscard]] VkDeviceSize GetBufferSize() const { return internalBuffer.size; }
         
         /**
          * @brief Gets the number of vertices in the buffer
@@ -294,20 +297,18 @@ namespace SceneryEditorX
             const glm::vec3& color = glm::vec3(1.0f));
 
     private:
-        Ref<GraphicsEngine>* gfxEngine;        ///< Pointer to the graphics engine reference
-        Ref<MemoryAllocator> allocator;        ///< Reference to the memory allocator
-        std::vector<Vertex> vertices;          ///< Storage for vertex data
-        RenderData renderData;                 ///< Render data reference
-        VertexBufferType bufferType;           ///< Type of vertex buffer
-        VertexFormat format;                   ///< Format of vertices
-        
-        VkBuffer vertexBuffer = VK_NULL_HANDLE;           ///< Handle to the Vulkan vertex buffer
+        Ref<GraphicsEngine>* gfxEngine;						///< Pointer to the graphics engine reference
+        Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
+        std::vector<Vertex> vertices;						///< Storage for vertex data
+        RenderData renderData;								///< Render data reference
+        VertexBufferType bufferType;						///< Type of vertex buffer
+        VertexFormat format;								///< Format of vertices
+        VkBuffer vertexBuffer = VK_NULL_HANDLE;             ///< Handle to the Vulkan vertex buffer
         VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE; ///< Handle to the allocated memory for the vertex buffer
-        Buffer internalBuffer;                 ///< Buffer wrapper 
-        VkDeviceSize bufferSize = 0;           ///< Size of the buffer in bytes
-        uint32_t capacity = 0;                 ///< Capacity in number of vertices
-        bool isInitialized = false;            ///< Whether the buffer has been initialized
-        void* mappedMemory = nullptr;          ///< Pointer to mapped memory
+        VmaAllocation vertexBuffersAllocation;              ///< Allocation handle for uniform buffers
+        Buffer internalBuffer;								///< Buffer wrapper 
+        uint32_t capacity = 0;								///< Capacity in number of vertices
+        bool isInitialized = false;							///< Whether the buffer has been initialized
 
         /**
          * @brief Initializes the vertex buffer with the given options
@@ -323,20 +324,7 @@ namespace SceneryEditorX
          * @brief Creates vertex attribute descriptions based on the vertex format
          */
         std::vector<VkVertexInputAttributeDescription> CreateAttributeDescriptions(uint32_t binding) const;
-    };
-
-    /**
-     * @enum PrimitiveType
-     * @brief Types of primitive shapes that can be created
-     */
-    enum class PrimitiveType
-    {
-        Cube,       ///< 3D cube
-        Quad,       ///< 2D quad
-        Sphere,     ///< 3D sphere
-        Cylinder,   ///< 3D cylinder
-        Plane,      ///< 3D plane
-        Pyramid     ///< 3D pyramid
+        Buffer CreateVertexBuffer() const;
     };
 
 }

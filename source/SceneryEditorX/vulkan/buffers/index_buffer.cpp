@@ -21,20 +21,18 @@ namespace SceneryEditorX
 
     void IndexBuffer::CreateIndexBuffer() const
     {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-        VkBuffer stagingBuffer = nullptr;
-        VkDeviceMemory stagingBufferMemory = nullptr;
+        //const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
+        const VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+        const VkBuffer stagingBuffer = nullptr;
+        const VmaAllocation stagingBufferAllocation = nullptr;
 
 		/// -----------------------------------
 
         CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "IndexStaging#");
 
-        void *data;
-
-        vkMapMemory(vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+        void* data = allocator->MapMemory<void>(stagingBufferAllocation);
         memcpy(data, indices.data(), (size_t)bufferSize);
-        vkUnmapMemory(vkDevice, stagingBufferMemory);
+        allocator->UnmapMemory(stagingBufferAllocation);
 
 		//TODO: Add back the UUID when fully implemented.
         CreateBuffer(bufferSize, BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage, MemoryType::GPU, "IndexBuffer#" /*+ std::to_string(asset->uuid)*/);
@@ -43,8 +41,7 @@ namespace SceneryEditorX
 
 		/// -----------------------------------
 
-        vkDestroyBuffer(vkDevice, stagingBuffer, nullptr);
-        vkFreeMemory(vkDevice, stagingBufferMemory, nullptr);
+        allocator->DestroyBuffer(stagingBuffer, stagingBufferAllocation);
     }
 
     IndexBuffer::IndexBuffer()
@@ -66,13 +63,15 @@ namespace SceneryEditorX
      */
     IndexBuffer::~IndexBuffer()
     {
-        const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
+        //const VkDevice vkDevice = gfxEngine->get()->GetLogicDevice()->GetDevice();
         for (size_t i = 0; i < RenderData::framesInFlight; i++)
         {
-            vkDestroyBuffer(vkDevice, indexBuffer, nullptr);
-            vkFreeMemory(vkDevice, indexBufferMemory, nullptr);
+            allocator->DestroyBuffer(indexBuffer, indexBufferAllocation);
         }
+        indexBuffer = nullptr;
+        indexBufferAllocation = nullptr;
     }
+
 }
 
 /// --------------------------------------------

@@ -12,7 +12,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <SceneryEditorX/core/editor/scenery_gateway.h>
+#include <SceneryEditorX/editor/scenery_gateway.h>
 #include <sstream>
 
 // -------------------------------------------------------

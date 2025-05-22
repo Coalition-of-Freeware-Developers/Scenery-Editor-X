@@ -42,18 +42,24 @@ namespace SceneryEditorX
     bool VulkanChecks::CheckAPIVersion(const uint32_t minVulkanVersion)
     {
         uint32_t instanceVersion;
-		vkEnumerateInstanceVersion(&instanceVersion);
+		const VkResult result = vkEnumerateInstanceVersion(&instanceVersion);
+        SEDX_ASSERT(result, "vkEnumerateInstanceVersion");
+        RenderData::apiVersion vulkanVersion;
+        vulkanVersion.Variant = VK_API_VERSION_VARIANT(instanceVersion);
+		vulkanVersion.Major = VK_API_VERSION_MAJOR(instanceVersion);
+		vulkanVersion.Minor = VK_API_VERSION_MINOR(instanceVersion);
+		vulkanVersion.Patch = VK_API_VERSION_PATCH(instanceVersion);
 
 		if (instanceVersion < minVulkanVersion)
 		{
-			SEDX_CORE_ERROR("Incompatible Vulkan driver version!");
-            SEDX_CORE_ERROR("  You have {}.{}.{}.{}",
+			SEDX_CORE_ERROR_TAG("Graphics Engine","Installed Vulkan API version is incompatible with the program!");
+            SEDX_CORE_ERROR("You have {}.{}.{}.{}",
 							 VK_API_VERSION_VARIANT(instanceVersion),
 							 VK_API_VERSION_MAJOR(instanceVersion),
 							 VK_API_VERSION_MINOR(instanceVersion),
 							 VK_API_VERSION_PATCH(instanceVersion));
 
-            SEDX_CORE_ERROR("  You need at least {}.{}.{}.{}",
+            SEDX_CORE_ERROR("You need at least {}.{}.{}.{}",
 							 VK_API_VERSION_VARIANT(minVulkanVersion),
 							 VK_API_VERSION_MAJOR(minVulkanVersion),
 							 VK_API_VERSION_MINOR(minVulkanVersion),
@@ -67,8 +73,9 @@ namespace SceneryEditorX
 
     /**
 	 * @brief Checks to see if the device has support for the required extensions.
-	 * @param availExtensions 
-	 * @param extension 
+	 *
+	 * @param availExtensions - The available extensions.
+	 * @param extension - The extension name to check for.
 	 * @return True if the device has support for the required extensions.
 	 * @return False if the device cannot support the required extensions.
 	 */
@@ -88,6 +95,7 @@ namespace SceneryEditorX
 
     /**
      * @brief Checks to see if the device has support for the required extensions.
+     *
      * @param extension The extension name to check for.
      * @return True if the device has support for the required extensions.
      * @return False if the device cannot support the required extensions.
@@ -118,6 +126,7 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Checks to see if the device has support for the required layers.
+	 *
 	 * @return True if the device has support for the required layers.
 	 * @return False if the device cannot support the required layers.
 	 */
@@ -125,7 +134,7 @@ namespace SceneryEditorX
     {
         if (!vkLayers.validationLayer.empty())
         {
-            // Add validation
+            /// Add validation
             uint32_t layerCount = 0;
             vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -156,7 +165,8 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Checks to see if the device has support for the required extensions.
-	 * @param device
+	 *
+	 * @param device - The Vulkan physical device.
 	 * @return True if the device has support for the required extensions.
 	 * @return False if the device cannot support the required extensions.
 	 */
@@ -199,7 +209,8 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Checks to see if the device has support for the required extensions.
-	 * @param extensions
+	 *
+	 * @param extensions - The extensions to check for.
 	 * @return True if the device has support for the required extensions.
 	 * @return False if the device cannot support the required extensions.
 	 */
@@ -248,7 +259,8 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Checks to see if the device has support for the required layers.
-	 * @param layers
+	 *
+	 * @param layers - The layers to check for.
 	 * @return True if the device has support for the required layers.
 	 * @return False if the device cannot support the required layers.
 	 */
@@ -306,11 +318,11 @@ namespace SceneryEditorX
 
         constexpr VulkanDeviceFeatures requiredFeatures; // Create a temporary instance with default values
 	    
-	    // Check for all true features in our configuration if they're supported by the device
+	    /// Check for all true features in our configuration if they're supported by the device
 	    bool missingFeatures = false;
 	    std::string missingFeaturesLog;
 	
-	    // Check all features that might be required by our application
+	    /// Check all features that might be required by our application
         CHECK_FEATURE(robustBufferAccess)
         CHECK_FEATURE(fullDrawIndexUint32)
         CHECK_FEATURE(imageCubeArray)
@@ -369,13 +381,13 @@ namespace SceneryEditorX
 
         if (missingFeatures)
 	    {
-	        SEDX_CORE_ERROR("Vulkan: Your device does not support all required features:");
+            SEDX_CORE_ERROR_TAG("Graphics Core", "Your device does not support all required Vulkan device features!");
             //SEDX_CORE_ERROR("Missing features: {}", missingFeaturesLog);
-	        ErrMsg("Vulkan: Device does not support all required features");
+	        //ErrMsg("Vulkan: Device does not support all required features");
 	        return false;
 	    }
 	
-	    SEDX_CORE_INFO("Vulkan: All required device features are supported");
+	    SEDX_CORE_TRACE_TAG("Graphics Core", "All required Vulkan device features are supported");
 	    return true;
     }
 
@@ -395,13 +407,13 @@ namespace SceneryEditorX
         /// Check for required device type (discrete GPU preferred)
         if (bool isDiscreteGPU = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU); !isDiscreteGPU)
         {
-            SEDX_CORE_WARN("Vulkan: Device is not a discrete GPU. Performance might be affected.");
+            SEDX_CORE_WARN_TAG("Graphics Core","Graphics device is not a discrete GPU. Performance might be affected.");
         }
 
-        if (bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (CheckDeviceFeatures(device) == true); !isSuitable)
+        if (const bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (CheckDeviceFeatures(device) == true); !isSuitable)
         {
-            SEDX_CORE_ERROR("Vulkan: Device does not meet required features or is not discrete GPU");
-            ErrMsg("Vulkan: Device does not meet required features or is not discrete GPU");
+            SEDX_CORE_ERROR_TAG("Graphics Core","Your device does not contain the features required for this Vulkan device or is not discrete GPU");
+            //ErrMsg("Vulkan: Device does not meet required features or is not discrete GPU");
             return false;
 
 			//TODO: Add error handling in case the device is an integrated GPU.

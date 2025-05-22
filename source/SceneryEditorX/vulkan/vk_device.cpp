@@ -937,11 +937,105 @@ namespace SceneryEditorX
 	VmaAllocator VulkanDevice::GetMemoryAllocator() const
 	{
 		if (memoryAllocator)
-			return memoryAllocator->GetMemAllocator();
+			return MemoryAllocator::GetAllocator();
 
 		SEDX_CORE_ERROR_TAG("Graphics Engine", "Memory allocator not initialized.");
 		return nullptr;
 	}
+
+    /**
+     * @fn VulkanDevice::VulkanDevice(VulkanDevice &&)
+     * @brief Move constructor that transfers ownership of Vulkan device resources.
+     * 
+     * @details This constructor efficiently transfers ownership of all Vulkan resources from one
+     * VulkanDevice instance to another without performing deep copies. It implements the following:
+     * 1. Moves all member variables (descriptors, resources, buffers, etc.) from source to destination.
+     * 2. Transfers ownership of all Vulkan handles (device, queues, etc.) to the new instance.
+     * 3. Nullifies critical handles in the source object to prevent double-deletion.
+     * 
+     * Move semantics are essential for Vulkan resources which are expensive to copy and must have
+     * clearly defined ownership to prevent validation errors or resource leaks. This constructor
+     * enables VulkanDevice objects to be stored in standard containers that require move operations.
+     * 
+     * @param other The source VulkanDevice instance to move from (will be left in a valid but empty state).
+     * 
+     * @note After the move operation, the source object remains in a valid but resource-empty state,
+     *       with its critical handles set to null/zero to prevent any destructive operations when
+     *       its destructor is called.
+     * 
+     * @see ~VulkanDevice, operator=
+     */
+    VulkanDevice::VulkanDevice(VulkanDevice &&other) noexcept
+        : renderData(std::move(other.renderData)), descriptors(std::move(other.descriptors)),
+          bindlessResources(std::move(other.bindlessResources)), scratchBuffer(std::move(other.scratchBuffer)),
+          scratchAddress(other.scratchAddress), memoryAllocator(std::move(other.memoryAllocator)),
+          textureSampler(other.textureSampler), device(other.device), vkPhysDevice(std::move(other.vkPhysDevice)),
+          vkEnabledFeatures(other.vkEnabledFeatures), vkGetBufferDeviceAddressKHR(other.vkGetBufferDeviceAddressKHR),
+          vkSetDebugUtilsObjectNameEXT(other.vkSetDebugUtilsObjectNameEXT),
+          vkCreateAccelerationStructureKHR(other.vkCreateAccelerationStructureKHR),
+          vkDestroyAccelerationStructureKHR(other.vkDestroyAccelerationStructureKHR),
+          vkCmdBuildAccelerationStructuresKHR(other.vkCmdBuildAccelerationStructuresKHR),
+          vkGetAccelerationStructureBuildSizesKHR(other.vkGetAccelerationStructureBuildSizesKHR),
+          vkGetAccelerationStructureDeviceAddressKHR(other.vkGetAccelerationStructureDeviceAddressKHR),
+          GraphicsQueue(other.GraphicsQueue), ComputeQueue(other.ComputeQueue), PresentQueue(other.PresentQueue),
+          CmdPools(std::move(other.CmdPools))
+    {
+        other.device = nullptr;
+        other.textureSampler = nullptr;
+        other.scratchAddress = 0;
+    }
+
+	/**
+	 * @fn operator=
+	 * @brief Move assignment operator that transfers ownership of Vulkan device resources
+	 * 
+	 * @details This operator properly handles resource transfer when moving one VulkanDevice
+	 * instance to another. It implements the following strategy:
+	 * 1. Checks for self-assignment to prevent resource corruption.
+	 * 2. Properly cleans up any existing resources in the destination object.
+	 * 3. Transfers ownership of all Vulkan handles and resources from source to destination.
+	 * 4. Nullifies the source object's handles to prevent double-deletion.
+	 * 
+	 * This ensures safe transfer of device ownership with proper resource management, which
+	 * is essential for RAII (Resource Acquisition Is Initialization) in Vulkan applications
+	 * where resource cleanup order is critical.
+	 * 
+	 * @param other The source VulkanDevice to move resources from (will be in a valid but empty state after the move)
+	 * @return VulkanDevice& A reference to the destination object (*this) containing all moved resources
+	 * 
+	 * @note After the move, the source object remains valid but with all its Vulkan handles set to null
+	 *       and should not be used to execute Vulkan operations without reinitialization.
+	 * 
+	 * @see VulkanDevice, VulkanDevice::Destroy
+	 */
+    VulkanDevice &VulkanDevice::operator=(VulkanDevice &&other) noexcept
+    {
+        if (this != &other)
+        {
+            /// Clean up existing resources
+            Destroy();
+
+            /// Move resources from the other VulkanDevice
+            device = other.device;
+            vkPhysDevice = std::move(other.vkPhysDevice);
+            vkEnabledFeatures = other.vkEnabledFeatures;
+            GraphicsQueue = other.GraphicsQueue;
+            ComputeQueue = other.ComputeQueue;
+            PresentQueue = other.PresentQueue;
+            memoryAllocator = std::move(other.memoryAllocator);
+            textureSampler = other.textureSampler;
+            bindlessResources = std::move(other.bindlessResources);
+            descriptors = std::move(other.descriptors);
+
+            /// Nullify the moved-from object
+            other.device = nullptr;
+            other.GraphicsQueue = VK_NULL_HANDLE;
+            other.ComputeQueue = VK_NULL_HANDLE;
+            other.PresentQueue = VK_NULL_HANDLE;
+            other.textureSampler = nullptr;
+        }
+        return *this;
+    }
 
 	/**
 	 * @brief Destroys the Vulkan logical device and cleans up resources
@@ -1455,7 +1549,7 @@ namespace SceneryEditorX
 	 * 
 	 * @see @fn CreateBuffer
 	 */
-	Buffer VulkanDevice::CreateStagingBuffer(uint32_t size, const std::string &name) const
+	Buffer VulkanDevice::CreateStagingBuffer(const uint32_t size, const std::string &name)
     {
 		return CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU, name.empty() ? "Staging Buffer" : name);
 	}
@@ -1848,4 +1942,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

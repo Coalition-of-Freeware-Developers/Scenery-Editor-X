@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/editor/editor.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/editor/editor.h>
 #include <SceneryEditorX/platform/settings.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>

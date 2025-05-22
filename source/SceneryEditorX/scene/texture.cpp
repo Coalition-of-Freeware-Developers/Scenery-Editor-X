@@ -13,7 +13,7 @@
 #include <stb_image.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/scene/texture.h>
-#include <SceneryEditorX/vulkan/vk_buffers.h>
+//#include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <SceneryEditorX/vulkan/vk_core.h>
 
 // -------------------------------------------------------
@@ -46,8 +46,9 @@ namespace SceneryEditorX
         vkDevice = GraphicsEngine::GetCurrentDevice();
         vkPhysDevice = vkDevice->GetPhysicalDevice();
         renderData = CreateRef<RenderData>();
-        allocator = GraphicsEngine::GetCurrentDevice()->GetValue();
-        
+        allocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
+        //allocator = MemoryAllocator::AllocateBuffer()::CreateRef<MemoryAllocator>();
+
         if (auto configPtr = config.lock())
         {
             std::string actualPath = path;
@@ -59,11 +60,10 @@ namespace SceneryEditorX
             
             SEDX_CORE_INFO("Loading texture from: {}", actualPath);
             
-            // Load the image
+            /// Load the image
             int texWidth, texHeight, texChannels;
-            stbi_uc *pixels = stbi_load(actualPath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-            
-            if (pixels)
+
+            if (stbi_uc *pixels = stbi_load(actualPath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha))
             {
                 width = texWidth;
                 height = texHeight;
