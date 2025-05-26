@@ -15,7 +15,7 @@
 #include <regex>
 #include <SceneryEditorX/platform/settings.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -77,7 +77,7 @@ namespace SceneryEditorX
         if (!ReadSettings())
         {
             /// If we couldn't read existing settings, create a minimal configuration
-            InitializeMinimalConfig();
+            InitMinConfig();
             configInitialized = true;
             
             /// Try to detect X-Plane installation
@@ -115,9 +115,18 @@ namespace SceneryEditorX
             }
             
             cfg.readFile(filePath.string().c_str());
-            SEDX_CORE_TRACE_TAG("SETTINGS", "Found application config file.");
             SEDX_CORE_TRACE_TAG("SETTINGS", "Reading settings from: {}", filePath.string());
-            
+
+			try
+            {
+                if (const Setting &root = cfg.getRoot(); root.exists("application"))
+				{
+                    const Setting &app = root["application"];
+                    if (app.exists("version"))
+                        app.lookup("version", appStats.version);
+				}
+
+            }
             /// Load X-Plane stats
             if (cfg.exists("x_plane"))
             {
@@ -626,7 +635,7 @@ namespace SceneryEditorX
         xPlaneStats.isSteam = basePath.string().find("steamapps") != std::string::npos;
     }
 
-    void ApplicationSettings::InitializeMinimalConfig()
+    void ApplicationSettings::InitMinConfig()
     {
         try
         {
@@ -637,7 +646,7 @@ namespace SceneryEditorX
             minimalConfig += "application: {";
             std::string appSection = APPLICATION_SECTION_TEMPLATE;
             if (const size_t versionPos = appSection.find("${APP_VERSION}"); versionPos != std::string::npos)
-                appSection.replace(versionPos, 13, SoftwareStats::versionString);
+                appSection.replace(versionPos, 13, AppData::versionString);
 
             minimalConfig += appSection;
             minimalConfig += "};\n";
@@ -679,7 +688,7 @@ namespace SceneryEditorX
             Setting &root = cfg.getRoot();
             root.add("application", Setting::TypeGroup);
             Setting &app = cfg.lookup("application");
-            app.add("version", Setting::TypeString) = SoftwareStats::versionString;
+            app.add("version", Setting::TypeString) = AppData::versionString;
             app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
         }
         
@@ -795,7 +804,7 @@ namespace SceneryEditorX
             
             if (app.exists("version"))
                 app.remove("version");
-            app.add("version", Setting::TypeString) = SoftwareStats::versionString;
+            app.add("version", Setting::TypeString) = AppData::versionString;
         }
         catch (const SettingNotFoundException &e)
         {

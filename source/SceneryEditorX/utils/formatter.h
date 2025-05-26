@@ -18,9 +18,9 @@
 
 /// -------------------------------------------------------
 
-// Using glm::vec2 instead of Vec2 to avoid undefined type
+// Using Vec2 instead of Vec2 to avoid undefined type
 template <>
-struct fmt::formatter<glm::vec2>
+struct fmt::formatter<Vec2>
 {
     char presentation = 'f';
 	
@@ -46,7 +46,7 @@ struct fmt::formatter<glm::vec2>
     }
 	
     /**
-	 * @brief Formats the glm::vec2 object into the output.
+	 * @brief Formats the Vec2 object into the output.
 	 * 
 	 * Renders the vector as "(x, y)" with 3 decimal places in either
 	 * fixed-point or scientific notation based on the presentation format.
@@ -56,7 +56,7 @@ struct fmt::formatter<glm::vec2>
 	 * @return Iterator pointing past the end of the formatted output
 	 */
     template <typename FormatContext>
-    auto format(const glm::vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+    auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
     {
         return presentation == 'f' ? fmt::format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
                    : fmt::format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
@@ -100,19 +100,19 @@ namespace std
 	
 	/**
 	 * @struct formatter
-	 * @brief Specialization of the std::formatter for glm::vec2 objects.
+	 * @brief Specialization of the std::formatter for Vec2 objects.
 	 * 
 	 * This formatter enables using std::format() and std::format_to() with
-	 * glm::vec2 objects in format strings. Supports both fixed-point ('f')
+	 * Vec2 objects in format strings. Supports both fixed-point ('f')
 	 * and scientific ('e') presentation formats.
 	 * 
 	 * @example
-	 *   glm::vec2 position(1.2345f, 6.7890f);
+	 *   Vec2 position(1.2345f, 6.7890f);
 	 *   std::string formatted = std::format("Position: {}", position);     // Uses fixed format: "(1.235, 6.789)"
 	 *   std::string scientific = std::format("Position: {:e}", position);  // Uses scientific: "(1.235e+00, 6.789e+00)"
 	 */
 	template <>
-	struct formatter<glm::vec2>
+	struct formatter<Vec2>
 	{
 	    char presentation = 'f';
 	
@@ -138,7 +138,7 @@ namespace std
 	    }
 	
 	    /**
-		 * @brief Formats the glm::vec2 object into the output.
+		 * @brief Formats the Vec2 object into the output.
 		 * 
 		 * Renders the vector as "(x, y)" with 3 decimal places in either
 		 * fixed-point or scientific notation based on the presentation format.
@@ -148,7 +148,7 @@ namespace std
 		 * @return Iterator pointing past the end of the formatted output
 		 */
 	    template <typename FormatContext>
-	    auto format(const glm::vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+	    auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
 	    {
 	        return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
 	                                   : format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
@@ -159,19 +159,19 @@ namespace std
 	
 	/**
 	 * @struct formatter
-	 * @brief Specialization of the std::formatter for glm::vec3 objects.
+	 * @brief Specialization of the std::formatter for Vec3 objects.
 	 * 
 	 * This formatter enables using std::format() and std::format_to() with
-	 * glm::vec3 objects in format strings. Supports both fixed-point ('f')
+	 * Vec3 objects in format strings. Supports both fixed-point ('f')
 	 * and scientific ('e') presentation formats.
 	 * 
 	 * @example
-	 *   glm::vec3 position(1.2345f, 6.7890f, 9.1234f);
+	 *   Vec3 position(1.2345f, 6.7890f, 9.1234f);
 	 *   std::string formatted = std::format("Position: {}", position);     // Uses fixed format: "(1.235, 6.789, 9.123)"
 	 *   std::string scientific = std::format("Position: {:e}", position);  // Uses scientific: "(1.235e+00, 6.789e+00, 9.123e+00)"
 	 */
 	template <>
-	struct formatter<glm::vec3>
+	struct formatter<Vec3>
 	{
 	    char presentation = 'f';
 	
@@ -197,7 +197,7 @@ namespace std
 	    }
 	
 	    /**
-		 * @brief Formats the glm::vec3 object into the output.
+		 * @brief Formats the Vec3 object into the output.
 		 * 
 		 * Renders the vector as "(x, y, z)" with 3 decimal places in either
 		 * fixed-point or scientific notation based on the presentation format.
@@ -207,7 +207,7 @@ namespace std
 		 * @return Iterator pointing past the end of the formatted output
 		 */
 	    template <typename FormatContext>
-	    auto format(const glm::vec3 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+	    auto format(const Vec3 &vec, FormatContext &ctx) const -> decltype(ctx.out())
 	    {
 	        return presentation == 'f' ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z)
 	                                   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z);
@@ -217,19 +217,19 @@ namespace std
 	/// -------------------------------------------------------
 	/**
 	 * @struct formatter
-	 * @brief Specialization of the std::formatter for glm::vec4 objects.
+	 * @brief Specialization of the std::formatter for Vec4 objects.
 	 * 
 	 * This formatter enables using std::format() and std::format_to() with
-	 * glm::vec4 objects in format strings. Supports both fixed-point ('f')
+	 * Vec4 objects in format strings. Supports both fixed-point ('f')
 	 * and scientific ('e') presentation formats.
 	 * 
 	 * @example
-	 *   glm::vec4 color(1.0f, 0.5f, 0.2f, 1.0f);
+	 *   Vec4 color(1.0f, 0.5f, 0.2f, 1.0f);
 	 *   std::string formatted = std::format("Color: {}", color);     // Uses fixed format: "(1.000, 0.500, 0.200, 1.000)"
 	 *   std::string scientific = std::format("Color: {:e}", color);  // Uses scientific: "(1.000e+00, 5.000e-01, 2.000e-01, 1.000e+00)"
 	 */
 	template <>
-	struct formatter<glm::vec4>
+	struct formatter<Vec4>
 	{
 	    char presentation = 'f';
 	
@@ -255,7 +255,7 @@ namespace std
 	    }
 	
 	    /**
-		 * @brief Formats the glm::vec4 object into the output.
+		 * @brief Formats the Vec4 object into the output.
 		 * 
 		 * Renders the vector as "(x, y, z, w)" with 3 decimal places in either
 		 * fixed-point or scientific notation based on the presentation format.
@@ -265,7 +265,7 @@ namespace std
 		 * @return Iterator pointing past the end of the formatted output
 		 */
 	    template <typename FormatContext>
-	    auto format(const glm::vec4 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+	    auto format(const Vec4 &vec, FormatContext &ctx) const -> decltype(ctx.out())
 	    {
 	        return presentation == 'f'
 	                   ? format_to(ctx.out(), "({:.3f}, {:.3f}, {:.3f}, {:.3f})", vec.x, vec.y, vec.z, vec.w)

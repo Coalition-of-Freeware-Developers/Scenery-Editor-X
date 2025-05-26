@@ -13,7 +13,8 @@
 #pragma once
 #include <cstdint>
 #include <glm/glm.hpp>
-// -------------------------------------------------------
+
+/// -------------------------------------------------------
 
 #ifdef SEDX_DEBUG
 constexpr bool enableValidationLayers = true;
@@ -214,7 +215,7 @@ namespace SceneryEditorX
 	 * @struct AtomicFlag
 	 * @brief A lightweight wrapper around std::atomic_flag providing intuitive dirty state management.
 	 * 
-	 * The AtomicFlag class encapsulates an std::atomic_flag to provide a thread-safe
+	 * The AtomicFlag class encapsulates a std::atomic_flag to provide a thread-safe
 	 * mechanism for tracking and resetting a "dirty" state. This is useful for signaling
 	 * that data has changed and needs processing, in a way that's safe for concurrent access.
 	 * 

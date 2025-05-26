@@ -11,11 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <cstdlib>
 #include <filesystem>
-#include <functional>
-#include <iomanip>
-#include <iostream>
 #include <libconfig.h++>
 #include <map>
 #include <optional>
@@ -118,7 +114,7 @@ namespace SceneryEditorX
 	     * @param defaultValue Value to return if option doesn't exist
 	     * @return The boolean value or defaultValue if not found
 	     */
-	    bool GetBoolOption(const std::string &path, bool defaultValue = false) const;
+        [[nodiscard]] bool GetBoolOption(const std::string &path, bool defaultValue = false) const;
 	    
 	    /**
 	     * @brief Retrieves an integer option.
@@ -126,7 +122,7 @@ namespace SceneryEditorX
 	     * @param defaultValue Value to return if option doesn't exist
 	     * @return The integer value or defaultValue if not found
 	     */
-	    int GetIntOption(const std::string &path, int defaultValue = 0) const;
+        [[nodiscard]] int GetIntOption(const std::string &path, int defaultValue = 0) const;
 	    
 	    /**
 	     * @brief Retrieves a floating point option.
@@ -134,7 +130,7 @@ namespace SceneryEditorX
 	     * @param defaultValue Value to return if option doesn't exist
 	     * @return The floating point value or defaultValue if not found
 	     */
-	    double GetFloatOption(const std::string &path, double defaultValue = 0.0) const;
+        [[nodiscard]] double GetFloatOption(const std::string &path, double defaultValue = 0.0) const;
 	    
 	    /**
 	     * @brief Retrieves a string option.
@@ -142,7 +138,7 @@ namespace SceneryEditorX
 	     * @param defaultValue Value to return if option doesn't exist
 	     * @return The string value or defaultValue if not found
 	     */
-	    std::string GetStringOption(const std::string &path, const std::string &defaultValue = "") const;
+        [[nodiscard]] std::string GetStringOption(const std::string &path, const std::string &defaultValue = "") const;
 	
 	    /**
 	     * @brief Automatically detects X-Plane installation path.
@@ -161,13 +157,13 @@ namespace SceneryEditorX
 	     * @brief Gets the current X-Plane installation path.
 	     * @return Path to X-Plane installation directory
 	     */
-	    std::string GetXPlanePath() const;
+        [[nodiscard]] std::string GetXPlanePath() const;
 	    
 	    /**
 	     * @brief Validates that all required X-Plane paths and files exist.
 	     * @return true if all required X-Plane paths are valid, false otherwise
 	     */
-	    bool ValidateXPlanePaths() const;
+        [[nodiscard]] bool ValidateXPlanePaths() const;
 	    
 	    /**
 	     * @brief Updates derived paths based on main X-Plane path.
@@ -179,7 +175,7 @@ namespace SceneryEditorX
 	     * @brief Gets read-only access to X-Plane stats.
 	     * @return Const reference to X-Plane statistics
 	     */
-	    const XPlaneStats& GetXPlaneStats() const { return xPlaneStats; }
+        [[nodiscard]] const XPlaneStats& GetXPlaneStats() const { return xPlaneStats; }
 	    
 	    /**
 	     * @brief Gets modifiable access to X-Plane stats.
@@ -191,19 +187,19 @@ namespace SceneryEditorX
 	     * @brief Gets read-only access to application stats.
 	     * @return Const reference to application statistics
 	     */
-	    const SoftwareStats& GetAppStats() const { return appStats; }
+        [[nodiscard]] const AppData& GetAppStats() const { return appStats; }
 	    
 	    /**
 	     * @brief Gets modifiable access to application stats.
 	     * @return Reference to application statistics
 	     */
-	    SoftwareStats& GetAppStats() { return appStats; }
+	    AppData& GetAppStats() { return appStats; }
 	
 	    /**
 		 * @brief Gets the custom buffer size to be used for allocations.
 		 * @return The custom buffer size in bytes
 		 */
-        VkDeviceSize GetCustomBufferSize() const;
+        [[nodiscard]] VkDeviceSize GetCustomBufferSize() const;
 
 		/**
 		 * @brief Sets the custom buffer size to be used for allocations.
@@ -215,6 +211,7 @@ namespace SceneryEditorX
 		/**
 		 * @brief Validates if a given buffer size is supported by the device.
 		 * @param size The buffer size to validate in bytes
+		 * @param deviceLimits
 		 * @param device The Vulkan device to check against
 		 * @return true if the size is supported, false otherwise
 		 */
@@ -224,7 +221,7 @@ namespace SceneryEditorX
 	     * @brief Initializes config with default minimal settings.
 	     * Called when no config file exists or when initialization is needed
 	     */
-	    void InitializeMinimalConfig();
+	    void InitMinConfig();
 	    
 	    /**
 	     * @brief Updates libconfig structure from internal data.
@@ -251,11 +248,11 @@ namespace SceneryEditorX
 	     * @param value Value to store at the specified path
 	     */
 	    template <typename T>
-	    void CreateSettingPath(const std::string &path, T value);
+	    void CreateSettingPath(const std::string &path, const T &value);
 	    
 	    libconfig::Config cfg;							///< Configuration object
 	    XPlaneStats xPlaneStats;						///< X-Plane statistics and paths
-	    SoftwareStats appStats;							///< Application statistics
+	    AppData appStats;							///< Application statistics
 	    std::filesystem::path filePath;					///< Path to configuration file
         std::map<std::string, std::string> settings;    ///< Key-value settings map
         bool configInitialized = false;                 ///< Flag indicating if config is initialized

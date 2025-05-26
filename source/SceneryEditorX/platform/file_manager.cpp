@@ -15,9 +15,9 @@
 #include <GLFW/glfw3native.h>
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/platform/time.h>
-#include <SceneryEditorX/scene/asset_manager.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/scene/model.h>
+#include <GraphicsEngine/scene/asset_manager.h>
+#include <GraphicsEngine/scene/material.h>
+#include <GraphicsEngine/scene/ModelAsset.h>
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
 #include "editor_config.hpp"
@@ -505,9 +505,9 @@ namespace SceneryEditorX::IO
 				{
 	                MeshVertex vertex{};
 	                vertex.position = glm::make_vec3(&bufferPos[v * stridePos]);
-	                vertex.normal = bufferNormals ? glm::make_vec3(&bufferNormals[v * strideNormals]) : glm::vec3(0);
-	                vertex.texCoord = bufferUV ? glm::make_vec3(&bufferUV[v * strideUV]) : glm::vec3(0);
-	                vertex.tangent = bufferTangents ? glm::make_vec4(&bufferTangents[v * strideTangents]) : glm::vec4(0);
+	                vertex.normal = bufferNormals ? glm::make_vec3(&bufferNormals[v * strideNormals]) : Vec3(0);
+	                vertex.texCoord = bufferUV ? glm::make_vec3(&bufferUV[v * strideUV]) : Vec3(0);
+	                vertex.tangent = bufferTangents ? glm::make_vec4(&bufferTangents[v * strideTangents]) : Vec4(0);
 	                desc->vertices.push_back(vertex);
 	            }
 	
@@ -543,8 +543,8 @@ namespace SceneryEditorX::IO
 	            // calculate tangents
 	            if (!bufferTangents)
 				{
-	                glm::vec3* tan1 = new glm::vec3[desc->vertices.size()*2];
-	                glm::vec3* tan2 = tan1 + vertexCount;
+	                Vec3* tan1 = new Vec3[desc->vertices.size()*2];
+	                Vec3* tan2 = tan1 + vertexCount;
 	                for (int indexID = 0; indexID < desc->indices.size(); indexID += 3)
 					{
 	                    int index1 = desc->indices[indexID + 0];
@@ -553,13 +553,13 @@ namespace SceneryEditorX::IO
 	                    const auto& v1 = desc->vertices[index1];
 	                    const auto& v2 = desc->vertices[index2];
 	                    const auto& v3 = desc->vertices[index3];
-	                    glm::vec3 e1 = v2.position - v1.position;
-	                    glm::vec3 e2 = v3.position - v1.position;
-	                    glm::vec2 duv1 = v2.texCoord - v1.texCoord;
-	                    glm::vec2 duv2 = v3.texCoord - v1.texCoord;
+	                    Vec3 e1 = v2.position - v1.position;
+	                    Vec3 e2 = v3.position - v1.position;
+	                    Vec2 duv1 = v2.texCoord - v1.texCoord;
+	                    Vec2 duv2 = v3.texCoord - v1.texCoord;
 	                    float f = 1.0f / (duv1.x * duv2.y - duv2.x * duv1.y);
-	                    glm::vec3 sdir = f * (duv2.y * e1 - duv1.y * e2);
-	                    glm::vec3 tdir = f * (duv1.x * e2 - duv2.x * e1);
+	                    Vec3 sdir = f * (duv2.y * e1 - duv1.y * e2);
+	                    Vec3 tdir = f * (duv1.x * e2 - duv2.x * e1);
 	                    tan1[index1] += sdir;
 	                    tan1[index2] += sdir;
 	                    tan1[index3] += sdir;
@@ -569,10 +569,10 @@ namespace SceneryEditorX::IO
 	                }
 	                for (int a = 0; a < desc->vertices.size(); a++)
 					{
-	                    glm::vec3 t = tan1[a];
+	                    Vec3 t = tan1[a];
 	                    auto& v = desc->vertices[a];
-	                    glm::vec3 n = v.normal;
-	                    v.tangent = glm::vec4(glm::normalize(t - n * glm::dot(t, n)), 1.0);
+	                    Vec3 n = v.normal;
+	                    v.tangent = Vec4(glm::normalize(t - n * glm::dot(t, n)), 1.0);
 	                    v.tangent.w = (glm::dot(glm::cross(n, t), tan2[a]) < 0.0f) ? -1.0f : 1.0f;
 	                }
 	                delete[] tan1;
@@ -624,8 +624,8 @@ namespace SceneryEditorX::IO
 	                glm::value_ptr(mat)[i] = node.matrix[i];
 	            }
 	            glm::quat quat = {};
-	            glm::vec3 skew;
-	            glm::vec4 perspective;
+	            Vec3 skew;
+	            Vec4 perspective;
 	            glm::decompose(mat, groupNode->scale, quat, groupNode->position, skew, perspective);
 	            groupNode->rotation = glm::degrees(glm::eulerAngles(quat));
 	        }
@@ -684,8 +684,8 @@ namespace SceneryEditorX::IO
 	    for (auto &material : materials)
         {
 	        Ref<MaterialAsset> asset = manager.CreateAsset<MaterialAsset>(filename + ":" + material.name);
-	        //asset->color = glm::vec4(1, 0, 0, 1);
-	        asset->color = glm::vec4(glm::make_vec3(material.diffuse), 1);
+	        //asset->color = Vec4(1, 0, 0, 1);
+	        asset->color = Vec4(glm::make_vec3(material.diffuse), 1);
 	        asset->emission = glm::make_vec3(material.emission);
 	        asset->metallic = material.metallic;
 	        if (material.specular != nullptr)

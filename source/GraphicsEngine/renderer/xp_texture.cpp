@@ -1,0 +1,23 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* xp_texture.cpp
+* -------------------------------------------------------
+* Created: 9/5/2025
+* -------------------------------------------------------
+*/
+#include <GraphicsEngine/scene/texture.h>
+#include <GraphicsEngine/renderer/xp_texture.h>
+
+// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------

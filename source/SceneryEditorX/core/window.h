@@ -14,13 +14,12 @@
 #include <chrono>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <imgui/imgui.h>
+#include <GraphicsEngine/vulkan/render_data.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/utils/monitor_data.h>
-#include <SceneryEditorX/vulkan/render_data.h>
 #include <stb_image.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -32,7 +31,7 @@ namespace SceneryEditorX
 		FullScreen
 	};
 	
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 	
 	struct IconData
 	{
@@ -59,7 +58,7 @@ namespace SceneryEditorX
 	    }
 	};
 	
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 	
 	struct WindowData
 	{
@@ -80,7 +79,7 @@ namespace SceneryEditorX
         INTERNAL inline Vec2 deltaMousePos		= Vec2(.0f, .0f);
 	};
 	
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 	
 	struct WindowCallbacks
 	{
@@ -98,14 +97,14 @@ namespace SceneryEditorX
         void (*windowFocusCallback)(GLFWwindow *window, int focused) = nullptr;
 	};
 	
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 	
 	class Window
 	{
 	public:
 	    Window();
 	    ~Window();
-	    RenderData renderData;
+        RenderData renderData;
 		Ref<RenderData> GetRenderData() { return CreateRef<RenderData>(renderData); }
 
         GLOBAL void Update();
@@ -115,19 +114,19 @@ namespace SceneryEditorX
 		GLOBAL void			UpdateFramebufferSize();
         GLOBAL bool			IsKeyPressed(uint16_t keyCode);
         GLOBAL void SetFramebufferResized(const bool resized)   { WindowData::framebufferResized = resized; }
-	    GLOBAL void			SetTitle(const std::string& title)  {glfwSetWindowTitle(WindowData::window,title.c_str());}
-		GLOBAL void			WaitEvents()						{glfwWaitEvents();}
-	    GLOBAL GLFWwindow*	GetWindow()                         {return WindowData::window;}
-		GLOBAL uint32_t		GetWidth()                          {return WindowData::width;}
-		GLOBAL uint32_t		GetHeight()                         {return WindowData::height;}
-		GLOBAL bool			GetShouldClose()                    {return glfwWindowShouldClose(WindowData::window);}
-		GLOBAL float		GetDeltaScroll()                    {return WindowData::deltaScroll;}
-		GLOBAL float		GetDeltaTime()					    {return deltaTime;}
-	    GLOBAL Vec2			GetDeltaMouse()                     {return WindowData::deltaMousePos;}
-		GLOBAL bool			GetFramebufferResized()             {return WindowData::framebufferResized;}
-		GLOBAL bool			IsKeyDown(uint16_t keyCode)         {return glfwGetKey(WindowData::window,keyCode);}
-		GLOBAL bool			IsMouseDown(uint16_t buttonCode)    {return glfwGetMouseButton(WindowData::window,buttonCode);}
-        GLOBAL bool         IsDirty()                           {return WindowData::dirty;}
+	    GLOBAL void			SetTitle(const std::string& title)  { glfwSetWindowTitle(WindowData::window,title.c_str()); }
+		GLOBAL void			WaitEvents()						{ glfwWaitEvents(); }
+	    GLOBAL GLFWwindow*	GetWindow()                         { return WindowData::window; }
+		GLOBAL uint32_t		GetWidth()                          { return WindowData::width; }
+		GLOBAL uint32_t		GetHeight()                         { return WindowData::height; }
+		GLOBAL bool			GetShouldClose()                    { return glfwWindowShouldClose(WindowData::window); }
+		GLOBAL float		GetDeltaScroll()                    { return WindowData::deltaScroll; }
+		GLOBAL float		GetDeltaTime()					    { return deltaTime; }
+	    GLOBAL Vec2			GetDeltaMouse()                     { return WindowData::deltaMousePos; }
+		GLOBAL bool			GetFramebufferResized()             { return WindowData::framebufferResized; }
+		GLOBAL bool			IsKeyDown(uint16_t keyCode)         { return glfwGetKey(WindowData::window,keyCode); }
+		GLOBAL bool			IsMouseDown(uint16_t buttonCode)    { return glfwGetMouseButton(WindowData::window,buttonCode); }
+        GLOBAL bool         IsDirty()                           { return WindowData::dirty; }
 
 	private:
         WindowCallbacks windowCallbacks;
@@ -136,7 +135,6 @@ namespace SceneryEditorX
         bool mousePressed;
         bool initState;
 
-        //GLOBAL Ref<SwapChain> vkSwapChain;
         INTERNAL inline std::chrono::high_resolution_clock::time_point lastTime;
         INTERNAL inline std::vector<std::string> pathsDrop;
         INTERNAL inline float deltaTime = .0f;
@@ -155,7 +153,7 @@ namespace SceneryEditorX
 	
 	};
 	
-} // namespace SceneryEditorX
+} /// namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 

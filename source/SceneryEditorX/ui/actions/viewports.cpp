@@ -14,7 +14,7 @@
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
-#include <SceneryEditorX/vulkan/vk_util.h>
+#include <GraphicsEngine/vulkan/vk_util.h>
 
 // -------------------------------------------------------
 

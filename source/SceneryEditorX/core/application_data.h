@@ -11,38 +11,30 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <vulkan/vulkan_core.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	
 	/**
-	 * @struct SoftwareStats
+	 * @struct AppData
 	 * @brief Stores global application configuration and version information.
 	 * 
 	 * Contains version requirements, application identification, and UI configuration
 	 * settings used throughout the application.
 	 */
-	struct SoftwareStats
+	struct AppData
 	{
-	    /**
-		 * @brief Minimum supported Vulkan API version.
-		 * The application requires at least this Vulkan version to run properly.
-		 */
-	    GLOBAL inline uint32_t minVulkanVersion = VK_API_VERSION_1_3;
-	
-	    /**
-		 * @brief Maximum supported Vulkan API version.
-		 * The application has been tested up to this Vulkan version.
-		 */
-	    GLOBAL inline uint32_t maxVulkanVersion = VK_API_VERSION_1_4;
-	
 	    /**
 		 * @brief Application name displayed in window title and about dialogs.
 		 */
-	    GLOBAL inline std::string appName = "Scenery Editor X";
-	
+	    std::string appName = "Scenery Editor X";
+
+		uint32_t WinWidth = 1280; ///< Default window width
+        uint32_t WinHeight = 720; ///< Default window height
+
 	    /**
 		 * @brief Name of the graphics rendering subsystem.
 		 */
@@ -66,6 +58,10 @@ namespace SceneryEditorX
 	     * When true, the application window will be displayed without a titlebar.
 	     */
 	    bool NoTitlebar = false;
+
+		bool VSync = false;
+
+        std::filesystem::path IconPath;
 	};
 	
 	/**
@@ -81,7 +77,7 @@ namespace SceneryEditorX
 	     * @brief Current X-Plane version string.
 	     * Identifies the version of X-Plane that the editor is configured to work with.
 	     */
-        std::string xPlaneVersion = "X-Plane 12.2.0-b1-0f62ac46";
+        std::string xPlaneVersion;
 
         /**
 	     * @brief Root installation path of X-Plane.

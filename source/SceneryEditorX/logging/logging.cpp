@@ -227,7 +227,7 @@ namespace SceneryEditorX
 
 	void Log::LogHeader()
 	{
-        SoftwareStats stats;
+        AppData stats;
 		// -------------------------------------------------------
 		// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
 		SYSTEM_INFO sysInfo;

@@ -49,13 +49,13 @@ namespace SceneryEditorX
 	struct TransformComponent
 	{
 	    /** @brief The position of the object in 3D space */
-	    glm::vec3 translation{};
+	    Vec3 translation{};
 	    
 	    /** @brief The scale of the object along each axis, defaults to (1,1,1) */
-	    glm::vec3 scale{1.f, 1.f, 1.f};
+	    Vec3 scale{1.f, 1.f, 1.f};
 	    
 	    /** @brief The rotation of the object in radians around each axis */
-	    glm::vec3 rotation{};
+	    Vec3 rotation{};
 	
 	    /**
 	     * @brief Generates a 4x4 transformation matrix from the component's values.

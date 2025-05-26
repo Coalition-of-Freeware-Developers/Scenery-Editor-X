@@ -17,8 +17,8 @@
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/vulkan/vk_core.h>
-#include <SceneryEditorX/vulkan/vk_device.h>
+#include <GraphicsEngine/vulkan/vk_core.h>
+#include <GraphicsEngine/vulkan/vk_device.h>
 
 // -------------------------------------------------------
 
@@ -194,6 +194,7 @@ namespace SceneryEditorX::UI
         /// Get queue family info
         const VulkanDevice *vkDevice = GraphicsEngine::GetCurrentDevice().get();
         //const QueueFamilyIndices indices = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
+        RenderData renderData;
 
         /// Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
@@ -204,14 +205,13 @@ namespace SceneryEditorX::UI
         info.DescriptorPool = imguiPool;
         info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;
-        info.ImageCount = swapchain->GetImageIndex();
+        info.ImageCount = renderData.imageIndex;
         info.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
         info.Allocator = nullptr;
-        info.CheckVkResultFn = [](const VkResult result) {
+        info.CheckVkResultFn = [](const VkResult result)
+        {
             if (result != VK_SUCCESS)
-            {
                 SEDX_CORE_ERROR("ImGui Vulkan Error: {}", static_cast<int>(result));
-            }
         };
 
         /// Initialize Vulkan implementation
@@ -245,9 +245,7 @@ namespace SceneryEditorX::UI
     void GUI::BeginFrame() const
     {
         if (!initialized || !visible)
-        {
             return;
-        }
 
         /// Start the ImGui frame
         ImGui_ImplVulkan_NewFrame();
@@ -258,17 +256,13 @@ namespace SceneryEditorX::UI
     void GUI::EndFrame() const
     {
         if (!initialized || !visible)
-        {
             return;
-        }
 
         /// Render the ImGui frame
         ImGui::Render();
 
         if (activeCommandBuffer != VK_NULL_HANDLE)
-        {
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
-        }
 
         /// Update and render additional platform windows
         ImGuiIO &io = ImGui::GetIO();
@@ -283,9 +277,7 @@ namespace SceneryEditorX::UI
     void GUI::CleanUp()
     {
         if (!initialized)
-        {
             return;
-        }
 
         vkDeviceWaitIdle(device->GetDevice());
 
@@ -307,9 +299,7 @@ namespace SceneryEditorX::UI
     void GUI::Resize(uint32_t width, uint32_t height)
     {
         if (!initialized)
-        {
             return;
-        }
 
         /// Update DPI scale if needed
         UpdateDpiScale();
@@ -320,9 +310,7 @@ namespace SceneryEditorX::UI
     void GUI::Update(float deltaTime) const
     {
         if (!initialized || !visible)
-        {
             return;
-        }
 
         /// Any per-frame updates not related to drawing would go here
     }
@@ -330,9 +318,7 @@ namespace SceneryEditorX::UI
     void GUI::ShowDemoWindow(bool *open) const
     {
         if (!initialized || !visible)
-        {
             return;
-        }
 
         ImGui::ShowDemoWindow(open);
     }
@@ -425,13 +411,10 @@ namespace SceneryEditorX::UI
 	}
 	*/
 
-	
     void GUI::ShowAppInfo(const std::string &appName) const
     {
         if (!initialized || !visible)
-        {
             return;
-        }
 
         ImGui::Begin("Application Info", nullptr, commonFlags | infoFlags);
 
@@ -453,9 +436,7 @@ namespace SceneryEditorX::UI
     bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
     {
         if (!initialized)
-        {
             return false;
-        }
 
         viewportInitialized = true;
         return true;
@@ -464,9 +445,7 @@ namespace SceneryEditorX::UI
     void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView)
     {
         if (!initialized || !visible || !viewportInitialized)
-        {
             return;
-        }
 
         /// Start viewport window with dockable behavior
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -488,28 +467,26 @@ namespace SceneryEditorX::UI
         ImGui::PopStyleVar();
     }
 
-    ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout)
+    ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout) const
     {
         if (!initialized || imageView == VK_NULL_HANDLE)
-        {
             return reinterpret_cast<ImTextureID>(nullptr);
-        }
 
-        // Check if device is valid
+        /// Check if device is valid
         if (device == nullptr)
         {
             SEDX_CORE_ERROR("Cannot get texture ID: device is null");
             return reinterpret_cast<ImTextureID>(nullptr);
         }
 
-        // Get a sampler if none was provided
+        /// Get a sampler if none was provided
         VkSampler actualSampler = sampler;
         if (actualSampler == VK_NULL_HANDLE)
         {
-            // If we have a valid device, use its sampler
+            /// If we have a valid device, use its sampler
             actualSampler = device->GetSampler();
 
-            // If we still don't have a valid sampler, we can't proceed
+            /// If we still don't have a valid sampler, we can't proceed
             if (actualSampler == VK_NULL_HANDLE)
             {
                 SEDX_CORE_ERROR("Cannot get texture ID: no valid sampler available");
@@ -517,8 +494,8 @@ namespace SceneryEditorX::UI
             }
         }
 
-        // Now we have a valid sampler and imageView
-        // ImGui_ImplVulkan_AddTexture returns VkDescriptorSet which needs to be cast to ImTextureID
+        /// Now we have a valid sampler and imageView
+        /// ImGui_ImplVulkan_AddTexture returns VkDescriptorSet which needs to be cast to ImTextureID
         VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(actualSampler, imageView, layout);
         return reinterpret_cast<ImTextureID>(descriptorSet);
     }
@@ -652,9 +629,7 @@ namespace SceneryEditorX::UI
 
         // If not available, use default
         if (!mainFont)
-        {
             mainFont = io.Fonts->AddFontDefault();
-        }
 
         /// Add icons to the font
         // io.Fonts->AddFontFromMemoryCompressedTTF(
@@ -671,7 +646,6 @@ namespace SceneryEditorX::UI
         io.Fonts->Build();
     }
 
-
 } // namespace SceneryEditorX::UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -14,7 +14,7 @@
 #include <IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
-#include <SceneryEditorX/vulkan/vk_core.h>
+#include <GraphicsEngine/vulkan/vk_core.h>
 
 // -------------------------------------------------------
 
@@ -296,7 +296,7 @@ namespace SceneryEditorX::UI
          * @param layout Image layout
          * @return ImTextureID that can be used with ImGui::Image functions
          */
-        ImTextureID GetTextureID(VkImageView imageView, VkSampler sampler, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        ImTextureID GetTextureID(VkImageView imageView, VkSampler sampler, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) const;
 
         GLOBAL bool visible;                 /// Used to show/hide the GUI
         LOCAL const std::string defaultFont; /// Default font name

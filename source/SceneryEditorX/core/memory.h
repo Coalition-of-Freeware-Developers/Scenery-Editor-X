@@ -389,7 +389,7 @@ void __CRTDECL operator delete(void* memory);
 /**
  * @brief Placement operator delete matching the descriptor-based new operator.
  * 
- * This delete operator matches the descriptor-based new operator and is called in case
+ * This "delete" operator matches the descriptor-based new operator and is called in case
  * of exceptions during the construction phase after memory allocation.
  * 
  * @param memory Pointer to the memory block to be deallocated
@@ -401,7 +401,7 @@ void __CRTDECL operator delete(void* memory, const char* desc);
 /**
  * @brief Placement operator delete matching the source location-based new operator.
  * 
- * This delete operator matches the file/line-based new operator and is called in case
+ * This "delete" operator matches the file/line-based new operator and is called in case
  * of exceptions during the construction phase after memory allocation.
  * 
  * @param memory Pointer to the memory block to be deallocated
@@ -425,7 +425,7 @@ void __CRTDECL operator delete[](void* memory);
 /**
  * @brief Placement array operator delete matching the descriptor-based new[] operator.
  * 
- * This delete operator matches the descriptor-based new[] operator and is called in case
+ * This "delete" operator matches the descriptor-based new[] operator and is called in case
  * of exceptions during the array construction phase after memory allocation.
  * 
  * @param memory Pointer to the memory block to be deallocated
@@ -437,7 +437,7 @@ void __CRTDECL operator delete[](void* memory, const char* desc);
 /**
  * @brief Placement array operator delete matching the source location-based new[] operator.
  * 
- * This delete operator matches the file/line-based new[] operator and is called in case
+ * This "delete" operator matches the file/line-based new[] operator and is called in case
  * of exceptions during the array construction phase after memory allocation.
  * 
  * @param memory Pointer to the memory block to be deallocated

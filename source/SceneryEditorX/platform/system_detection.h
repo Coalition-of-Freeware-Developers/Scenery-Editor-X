@@ -42,7 +42,7 @@
 	/** Windows x64  **/
         #define SEDX_PLATFORM_WINDOWS
 		#include <Windows.h>
-constexpr char dirSeparator = '\\';
+        constexpr char dirSeparator = '\\';
 		#if defined(_DEBUG) || defined(DEBUG)
 			#ifndef SEDX_DEBUG
 			    #define SEDX_DEBUG
@@ -50,7 +50,12 @@ constexpr char dirSeparator = '\\';
 			#define SEDX_DEBUGBREAK() __debugbreak()
 			#define APP_USE_VULKAN_DEBUG_REPORT
 		#endif
-    #else
+		#if defined(_RELEASE) || defined(NDEBUG) || defined(RELEASE)
+		    #ifndef SEDX_RELEASE
+		    #define SEDX_RELEASE
+		    #endif
+		#endif
+    #elif
 	/** Windows x86 **/
     #error "x86 Builds are not supported!"
     #endif

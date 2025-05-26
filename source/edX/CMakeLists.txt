@@ -10,7 +10,6 @@ SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/SceneryEditorX.licenseheader
 )
 
-
 SET(EDX_HEADER_FILES
     edXLibraryFile.h
     edXProjectFile.h

@@ -164,6 +164,16 @@ OPTION(BUILD_FUZZERS "Enable fuzzers" OFF)
 ADD_SUBDIRECTORY(dependency/libconfig)
 
 # --------------------------------
+# AppCore
+# --------------------------------
+ADD_SUBDIRECTORY(source/SceneryEditorX)
+
+# --------------------------------
+# Scenery Editor X
+# --------------------------------
+ADD_SUBDIRECTORY(source/Editor)
+
+# --------------------------------
 # EDX
 # --------------------------------
 ADD_SUBDIRECTORY(source/edX)
@@ -171,7 +181,12 @@ ADD_SUBDIRECTORY(source/edX)
 # --------------------------------
 # FILE FORMAT TESTER
 # --------------------------------
-ADD_SUBDIRECTORY(source/edX/testing)
+ADD_SUBDIRECTORY(source/Tests/file_formats)
+
+# --------------------------------
+# GRAPHICS ENGINE
+# --------------------------------
+ADD_SUBDIRECTORY(source/GraphicsEngine)
 
 # --------------------------------
 # Crash Handler Service
@@ -182,6 +197,8 @@ ADD_SUBDIRECTORY(source/CrashHandler)
 # X-PLANE SCENERY LIBRARY
 # --------------------------------
 ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
+
+# --------------------------------
 
 ADD_LIBRARY(imgui
 	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
@@ -207,11 +224,6 @@ TARGET_LINK_LIBRARIES(imgui
 		GPUOpen::VulkanMemoryAllocator
 )
 
-# --------------------------------
-# SCENERY EDITOR X
-# --------------------------------
-ADD_SUBDIRECTORY(source/SceneryEditorX)
-
 FOREACH(TARGET IN ITEMS SceneryEditorX
         PUBLIC
             $<$<CONFIG:Debug>:SEDX_DEBUG>
@@ -229,14 +241,17 @@ ENDFOREACH()
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating precompiled headers")
 
-TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/xpeditor_pch.h)
+TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Editor/xpeditor_pch.h)
+TARGET_PRECOMPILE_HEADERS(GraphicsEngine PRIVATE ${CMAKE_SOURCE_DIR}/Source/GraphicsEngine/sedx_vulkan_pch.h)
+TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_core_pch.h)
 
 SET_PROPERTY(TARGET FormatTester CrashHandler PROPERTY FOLDER "Tools")
-SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary libconfig libconfig++ PROPERTY FOLDER "File Formats")
+SET_PROPERTY(TARGET edX libconfig libconfig++ PROPERTY FOLDER "File Formats")
+SET_PROPERTY(TARGET AppCore X-PlaneSceneryLibrary GraphicsEngine PROPERTY FOLDER "Libraries")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX AppCore FormatTester GraphicsEngine CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
