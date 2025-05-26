@@ -29,10 +29,10 @@ IF(NOT CMAKE_VERSION VERSION_LESS 3.7.0)
 ENDIF()
 
 IF(TARGET WIN32)
-    FILE(VULKAN_VALIDATOR "C:/VulkanSDK/${VULKAN_VERS}/Config/vk_layer_settings.txt")
+    FILE(COPY "C:/VulkanSDK/${VULKAN_VERS}/Config/vk_layer_settings.txt" DESTINATION ${CMAKE_BINARY_DIR})
     SET(VK_USE_PLATFORM_WIN32_KHR)
 ELSEIF(TARGET UNIX)
-    FILE(VULKAN_VALIDATOR "$HOME/.local/share/vulkan/settings.d/vk_layer_settings.txt")
+    FILE(COPY "$HOME/.local/share/vulkan/settings.d/vk_layer_settings.txt" DESTINATION ${CMAKE_BINARY_DIR})
 ENDIF()
 
 # --------------------------------
@@ -43,6 +43,28 @@ SET(FONT_DIR    "${CMAKE_SOURCE_DIR}/assets/fonts")
 SET(MODEL_DIR   "${CMAKE_SOURCE_DIR}/assets/models")
 SET(SHADER_DIR  "${CMAKE_SOURCE_DIR}/assets/shaders")
 SET(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/assets/textures")
+
+# --------------------------------
+# Tracy Profiler Setup
+# --------------------------------
+OPTION(TRACY_ENABLE "Enable Tracy profiler" ON)
+OPTION(TRACY_ON_DEMAND "Enable Tracy on-demand profiling" OFF)
+OPTION(TRACY_NO_EXIT "Enable Tracy profiler even without exit" OFF)
+OPTION(TRACY_NO_BROADCAST "Disable Tracy broadcast" OFF)
+
+# Add Tracy-specific compile definitions
+IF(TRACY_ENABLE)
+    ADD_COMPILE_DEFINITIONS(TRACY_ENABLE)
+    IF(TRACY_ON_DEMAND)
+        ADD_COMPILE_DEFINITIONS(TRACY_ON_DEMAND)
+    ENDIF()
+    IF(TRACY_NO_EXIT)
+        ADD_COMPILE_DEFINITIONS(TRACY_NO_EXIT)
+    ENDIF()
+    IF(TRACY_NO_BROADCAST)
+        ADD_COMPILE_DEFINITIONS(TRACY_NO_BROADCAST)
+    ENDIF()
+ENDIF()
 
 # --------------------------------
 # BUILD SYSTEM
@@ -141,6 +163,7 @@ SET(ICON_FILES
 FIND_PACKAGE(Vulkan                        REQUIRED)
 FIND_PACKAGE(glm                    CONFIG REQUIRED)
 FIND_PACKAGE(spdlog                 CONFIG REQUIRED)
+FIND_PACKAGE(tracy				    CONFIG REQUIRED)
 FIND_PACKAGE(Stb                           REQUIRED)
 FIND_PACKAGE(CURL                   CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen                          QUIET)

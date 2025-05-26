@@ -6,6 +6,7 @@
         "portable-file-dialogs",
         "spdlog",
         "stb",
+		"tracy",
         { "name": "curl", "features": [ "http2", "idn", "ssl"] }
     ]
   }
