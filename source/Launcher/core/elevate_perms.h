@@ -19,10 +19,10 @@
 // -------------------------------------------------------
 
 // Function to check if the application is running as administrator
-bool RunningAsAdmin()
+inline bool RunningAsAdmin()
 {
-    BOOL isAdmin = FALSE;       // Assume the application is not running as administrator
-    HANDLE hToken = NULL;       // Handle to the process token
+    BOOL isAdmin = false; // Assume the application is not running as administrator
+    HANDLE hToken = nullptr;     // Handle to the process token
 
     // Open the process token
     if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))                                    // Get the process token
@@ -47,11 +47,11 @@ bool RunningAsAdmin()
 }
 
 // Function to relaunch the application with administrator privileges
-void RelaunchAsAdmin()
+inline void RelaunchAsAdmin()
 {
     TCHAR szPath[MAX_PATH];                                             // Buffer to store the path
 
-    if (GetModuleFileName(NULL, szPath, MAX_PATH))                      // If the path could be retrieved successfully
+    if (GetModuleFileName(nullptr, szPath, MAX_PATH))                      // If the path could be retrieved successfully
     {
         SHELLEXECUTEINFO sei{};                                         // Shell execute information structure
         sei.cbSize = sizeof(SHELLEXECUTEINFO);                          // Size of the structure
@@ -88,7 +88,7 @@ void RelaunchAsAdmin()
                 LAUNCHER_LOG_INFO("Debugger is present. Attaching to the new elevated process.");
                 //std::cerr << "Debugger is present. Attaching to the new elevated process." << std::endl;
 
-                if (sei.hProcess != NULL && !DebugActiveProcess(GetProcessId(sei.hProcess)))
+                if (sei.hProcess != nullptr && !DebugActiveProcess(GetProcessId(sei.hProcess)))
                 {
                     LAUNCHER_LOG_ERROR("Failed to attach debugger. Process handle is NULL.");
 					//ErrMsg("Failed to attach debugger. Process handle is NULL."); // Display an error message
@@ -107,20 +107,20 @@ void RelaunchAsAdmin()
 		//ErrMsg("Failed to get module file name."); // Display an error message
         //std::cerr << "Failed to get module file name." << std::endl;
 
-        Log::Shutdown();    // Shutdown logging
+        SceneryEditorX::Log::ShutDown();    // Shutdown logging
         EXIT_FAILURE;       // Exit the application
     }
 }
 
 // Function to check for administrator privileges and relaunch if necessary
-int adminCheck()
+inline int adminCheck()
 {
     // Check if the application is running with the "--elevated" argument
 
     int argc;                                                       // Argument count
     LPWSTR *argv = CommandLineToArgvW(GetCommandLineW(), &argc);    // Get the command line arguments
-    bool isElevated = false;                                        // Flag to check if the application is running with elevated privileges
-    for (int i = 0; i < argc; ++i)                                  // Iterate through the arguments
+    auto isElevated = false;                                        // Flag to check if the application is running with elevated privileges
+    for (auto i = 0; i < argc; ++i)                                  // Iterate through the arguments
     {
         if (wcscmp(argv[i], L"--elevated") == 0)                    // Check if the "--elevated" argument is present
         {

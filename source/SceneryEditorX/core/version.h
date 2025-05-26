@@ -14,15 +14,33 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define SEDX_VER_MAJOR 0
-#define SEDX_VER_MINOR 2
-#define SEDX_VER_PATCH 27
-#define SEDX_VER_BUILD 197
+// -------------------------------------------------------
 
-#define SEDX_TO_VERSION(major, minor, patch, build) (major * 10000 + minor * 100 + patch + build)
-#define SEDX_VERSION SEDX_TO_VERSION(SEDX_VER_MAJOR, SEDX_VER_MINOR, SEDX_VER_PATCH, SEDX_VER_BUILD)
-
-#define SEDX_GET_VERSION() SEDX_VERSION
-
-#define SEDX_GET_VERSION_MAJOR() SEDX_VER_MAJOR
+#ifndef SEDX_VERSION_MAJOR
+#define SEDX_VERSION_MAJOR(version) (((version) >> 24) & 0xFF)
 #endif
+
+#ifndef SEDX_VERSION_MINOR
+#define SEDX_VERSION_MINOR(version) (((version) >> 16) & 0xFF)
+#endif
+
+#ifndef SEDX_VERSION_PATCH
+#define SEDX_VERSION_PATCH(version) (((version) >> 8) & 0xFF)
+#endif
+
+#ifndef SEDX_VERSION_BUILD
+#define SEDX_VERSION_BUILD(version) ((version) & 0xFF)
+#endif
+
+#define SEDX_VERSION(major, minor, patch, build) \
+    ((((uint32_t)(major)) << 24U) | (((uint32_t)(minor)) << 16U) | (((uint32_t)(patch)) << 8U) | ((uint32_t)(build)))
+
+
+//#define SEDX_VERSION(SEDX_VERSION_MAJOR, SEDX_VERSION_MINOR, SEDX_VERSION_PATCH, SEDX_VERSION_BUILD)
+
+#define SEDX_GET_VERSION_MAJOR() SEDX_VERSION_MAJOR
+
+
+#endif
+
+// -------------------------------------------------------

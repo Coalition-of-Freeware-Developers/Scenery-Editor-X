@@ -1,19 +1,19 @@
 # --------------------------------
-# Scenery Editor X
+# Scenery Editor X | Application Core
 # --------------------------------
 
 MESSAGE(STATUS "=================================================")
-MESSAGE(STATUS "Generating Scenery Editor X Project")
+MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
 
-FILE(GLOB MAC_PLATFORM platform/mac/*.cpp platform/mac/*.h platform/mac/*.hpp)
-FILE(GLOB LINUX_PLATFORM platform/linux/*.cpp platform/linux/*.h platform/linux/*.hpp)
-FILE(GLOB WIN_PLATFORM platform/windows/*.cpp platform/windows/*.h platform/windows/*.hpp)
-FILE(GLOB RENDERER_FILES renderer/*.cpp renderer/*.h renderer/*.hpp)
+FILE(GLOB CORE core/*.cpp core/*.h core/*.hpp)
+FILE(GLOB LOGGER logging/*.cpp logging//*.h logging//*.hpp)
+FILE(GLOB PLATFORM platform/*.cpp platform/*.h platform/*.hpp)
+FILE(GLOB RENDERER renderer/*.cpp renderer/*.h renderer/*.hpp)
 FILE(GLOB UI_FILES ui/*.cpp ui/*.h ui/*.hpp)
+FILE(GLOB UTILITIES_FILES utils/*.cpp utils/*.h utils/*.hpp)
 
-SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
 	${CMAKE_SOURCE_DIR}/.editorconfig
@@ -25,44 +25,28 @@ FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQ
 SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
 
 # --------------------------------
-ADD_EXECUTABLE(SceneryEditorX
-    ${ICON_FILES}
-    ${FONT_FILES}
-    ${RENDERER_FILES}
-    ${SCENE_FILES}
-	#${UI_FILES}
-    ${MAC_PLATFORM}
-    ${LINUX_PLATFORM}
-    ${WIN_PLATFORM}
-    ${REGISTRY_KEYS}
+
+ADD_LIBRARY(AppCore
+	${CORE}
+	${LOGGER}
+    ${PLATFORM}
+	${RENDERER}
 	${PROJECT_CONFIG_FILES}
+    ${REGISTRY_KEYS}
+	${UTILITIES_FILES}
     ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
-    core/base.hpp
-    core/main.cpp
-    core/transforms.cpp
-    core/window.cpp
-    core/window.h
-	core/version.h
-    # --------------------------------
-    scene/asset_manager.cpp
-    scene/asset_manager.h
-    # --------------------------------
-    platform/system_detection.h
-    platform/platform.h
-    # --------------------------------
-    logging/logging.cpp
-    logging/logging.hpp
+	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
-	ui/gui_context.cpp
-	ui/gui_context.h
+	ui/ui_context.cpp
+	ui/ui_context.h
 	ui/styles.cpp
 	ui/ui.cpp
 	ui/ui.h
 	ui/ui_manager.h
-	ui/panels/about.cpp
+	ui/ui_globals.cpp
 	ui/panels/content_browser.cpp
 	ui/panels/layer_stack.cpp
 	ui/panels/loading_radial.cpp
@@ -71,83 +55,39 @@ ADD_EXECUTABLE(SceneryEditorX
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
     # --------------------------------
-    SceneryEditorX.rc
     resource.h
-
-    # --------------------------------
-    # LAUNCHER FILES
-    # --------------------------------
-
-    #${LAUNCHER_DIR}/core/updater.h
-    #${LAUNCHER_DIR}/core/updater.cpp
-    #${LAUNCHER_DIR}/core/launcher_main.cpp
-    #${LAUNCHER_DIR}/core/launcher_main.h
-    #${LAUNCHER_DIR}/core/elevate_perms.h
-    #${LAUNCHER_DIR}/core/directory_manager.cpp
-    #${LAUNCHER_DIR}/core/directory_manager.cpp
-    #${LAUNCHER_DIR}/core/splash_handler.h
-    #${LAUNCHER_DIR}/core/updater.h
-    #${LAUNCHER_DIR}/core/updater.cpp
-
-    # --------------------------------
-
-    #${LAUNCHER_DIR}/registry/reg_init.h
-    #${LAUNCHER_DIR}/registry/reg_check.h
-
-    # --------------------------------
 )
 
 # --------------------------------
 
-SOURCE_GROUP("Editor/Core" FILES
-    core/base.hpp
-    core/main.cpp
-	core/layer.cpp
-	core/layer.h
-    core/version.h
-    core/window.cpp
-    core/window.h
+SOURCE_GROUP("Core" FILES
+	${CORE}
+	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 )
-SOURCE_GROUP("Core/Platform" FILES
-    platform/system_detection.h
-    platform/platform.h
-    core/version.h
+SOURCE_GROUP("Platform" FILES
+	${PLATFORM}
 )
-SOURCE_GROUP("Core/Platform/Windows" FILES
-    ${WIN_PLATFORM}
+SOURCE_GROUP("Logger" FILES
+	${LOGGER}
 )
-SOURCE_GROUP("Core/Platform/Linux" FILES
-    ${LINUX_PLATFORM}
+SOURCE_GROUP("Renderer" FILES
+	${RENDERER}
 )
-SOURCE_GROUP("Core/Platform/Mac" FILES
-    ${MAC_PLATFORM}
+SOURCE_GROUP("Utilities" FILES
+	${UTILITIES_FILES}
 )
-SOURCE_GROUP("Core/Coordinates" FILES
-	core/transforms.cpp
-
-)
-SOURCE_GROUP("Core/Logger" FILES
-    logging/logging.cpp
-    logging/logging.hpp
-)
-SOURCE_GROUP("Editor/Renderer" FILES
-    ${RENDERER_FILES}
-)
-SOURCE_GROUP("Editor/Scene" FILES
-    scene/asset_manager.cpp
-    scene/asset_manager.h
-)
-SOURCE_GROUP("Editor/UI" FILES
+SOURCE_GROUP("UI" FILES
 	ui/colors.h
 	ui/fonts.h
-	ui/gui_context.cpp
-	ui/gui_context.h
+	ui/ui_context.cpp
+	ui/ui_context.h
 	ui/styles.cpp
 	ui/ui.cpp
 	ui/ui.h
 	ui/ui_manager.h
+	ui/ui_globals.cpp
 )
-SOURCE_GROUP("Editor/UI/Panels" FILES
+SOURCE_GROUP("UI/Panels" FILES
 	ui/panels/about.cpp
 	ui/panels/content_browser.cpp
 	ui/panels/layer_stack.cpp
@@ -155,20 +95,12 @@ SOURCE_GROUP("Editor/UI/Panels" FILES
 	ui/panels/menu_bar.cpp
 	ui/panels/settings_panel.cpp
 )
-SOURCE_GROUP("Editor/UI/Actions" FILES
+SOURCE_GROUP("UI/Actions" FILES
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
 )
-#SOURCE_GROUP("Editor/Core/Renderer/Scene" FILES
-#    ${SCENE_FILES}
-#)
-
-#SOURCE_GROUP("Core/Settings" FILES
-#    options/Settings.cpp
-#)
 SOURCE_GROUP("Resource" FILES
     resource.h
-    SceneryEditorX.rc
 )
 SOURCE_GROUP("Resource/Icons" FILES
     ${ICON_FILES}
@@ -206,19 +138,19 @@ SOURCE_GROUP("Launcher/Registry/Keys" FILES
 # SHADERS
 # --------------------------------
 
-if(WIN32)
+IF(WIN32)
     cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
-else()
+ELSE()
     cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/bin/glslangValidator")
-endif()
-message("GLSL VALIDATOR ${GLSL_VALIDATOR}")
-add_compile_definitions(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
+ENDIF()
+MESSAGE("GLSL VALIDATOR ${GLSL_VALIDATOR}")
+ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
 
 # --------------------------------
 
-TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
+TARGET_INCLUDE_DIRECTORIES(AppCore
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/Source
+        ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
@@ -233,7 +165,7 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 
 # --------------------------------
 
-TARGET_LINK_LIBRARIES(SceneryEditorX
+TARGET_LINK_LIBRARIES(AppCore
     PRIVATE
         glm::glm-header-only
         spdlog::spdlog_header_only
@@ -241,6 +173,8 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         CURL::libcurl
         Vulkan::Vulkan
 		imgui
+		libconfig
+		libconfig++
 		X-PlaneSceneryLibrary
         glfw
         dxgi
@@ -248,19 +182,14 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         Shell32.lib
 )
 
-#TARGET_LINK_OPTIONS(SceneryEditorX
-#    PRIVATE
-#        /SUBSYSTEM:WINDOWS
-#)
-
 # --------------------------------
 
-TARGET_COMPILE_DEFINITIONS(SceneryEditorX
+TARGET_COMPILE_DEFINITIONS(AppCore
     PUBLIC
-        EDITOR
-        LAUNCHER
+        APPCORE
         $<$<CONFIG:Debug>:SEDX_DEBUG>
         $<$<CONFIG:Release>:SEDX_RELEASE>
+		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
         GLFW_INCLUDE_VULKAN
         GLFW_EXPOSE_NATIVE_WIN32

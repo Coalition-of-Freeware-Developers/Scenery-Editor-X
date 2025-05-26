@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * main.cpp
@@ -13,20 +13,24 @@
 
 #include <cstdlib>
 #include <exception>
-#include <Launcher/core/directory_manager.hpp>
-#include <Launcher/core/elevate_perms.h>
-#include <Launcher/core/splash_handler.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/vk_core.h>
+#include <Launcher/core/directory_manager.hpp>
 #include <Launcher/core/launcher_main.h>
+#include <Launcher/core/splash_handler.h>
 #include <Launcher/core/updater.h>
 #include <Launcher/registry/reg_check.h>
 #include <synchapi.h>
-#include <GLFW/glfw3native.h>
 
 // -------------------------------------------------------
 
 namespace Launcher
 {
+	namespace UI
+	{
+	    class UIContextImpl;
+	}
+
     /*
     GLOBAL void AdminCheck()
     {
@@ -60,6 +64,16 @@ namespace Launcher
     }
     */
 
+	void Loader::run()
+	{
+		//TODO: Implement the admin check function
+
+		//AdminCheck();
+		CreateSplash();
+		MainLoop();
+		CleanUp();
+	}
+
     void Loader::PerformPreloading()
     {
         // TODO: Add Scenery Gateway API pull and cache
@@ -92,13 +106,15 @@ namespace Launcher
         LAUNCHER_LOG_INFO("Loading resources.");
         //std::cout << "Loading resources." << std::endl;
 
-        //TODO: Add loading of resources here
-        // - Add Precompiled Shaders
-        // - Add Textures
-        // - Add Models
-        // - Config Files
-        // - Add Scenery Gateway Data
-        // - Add Default edX Scene files
+		/*
+        TODO: Add loading of resources here
+         - Add Precompiled Shaders
+         - Add Textures
+         - Add Models
+         - Config Files
+         - Add Scenery Gateway Data
+         - Add Default edX Scene files
+		*/
 
         LAUNCHER_LOG_INFO("Preloading tasks completed.");
         //std::cout << "Preloading tasks completed." << std::endl;
@@ -114,7 +130,7 @@ namespace Launcher
         //Create the splash screen window
         splashHandler = new SplashHandler();
         GLFWwindow* splash = nullptr;
-        splashHandler->CreateSplashScreen(splash);
+        SplashHandler::CreateSplashScreen(splash);
     }
 
     void Loader::MainLoop()
@@ -122,9 +138,9 @@ namespace Launcher
         // Perform the operations in separate threads
         OperationThreads();
 
-        while (true)
+	    while (!Window::GetShouldClose())
         {
-            Sleep(1000);
+            //Sleep(1000);
             mtThreadCounter.lock();
             if (intThreadCount == 0)
             {
@@ -132,7 +148,11 @@ namespace Launcher
                 break;
             }
             mtThreadCounter.unlock();
+			DrawFrame();
+			Window::Update();
         }
+
+		vkDeviceWaitIdle(device);
     }
 
     void Loader::OperationThreads()
@@ -145,7 +165,7 @@ namespace Launcher
         preloadThread.detach();
     }
 
-    void Loader::CleanUp()
+    void Loader::CleanUp() const
     {
         LAUNCHER_LOG_INFO("Cleaning up before relaunch.");
         //std::cout << "Cleaning up before relaunch." << std::endl;
@@ -157,6 +177,50 @@ namespace Launcher
         //std::cout << "Launcher has completed execution." << std::endl;
 
     }
+
+	void Loader::DrawFrame()
+	{
+        if (viewportData.viewportSize.x != newViewportSize.x || viewportData.viewportSize.y != newViewportSize.y)
+	    {
+	        if (newViewportSize.x > 0 && newViewportSize.y > 0)
+	        {
+                viewportData.viewportSize = newViewportSize;
+	            CleanupViewportResources();
+	            CreateViewportResources();
+	        }
+	    }
+
+        // Get a command buffer to render into
+        VkCommandBuffer commandBuffer = vkRenderer.BeginSingleTimeCommands();
+
+        // Set the command buffer for ImGui to render into
+        ui.SetActiveCommandBuffer(commandBuffer);
+
+        // Begin ImGui UI
+        if (uiContext)
+        {
+            uiContext->Begin();
+
+            // Draw your UI elements here
+            ui.ShowDemoWindow();
+
+            // Draw viewport if needed
+            ui.ViewportWindow(viewportData.viewportSize, viewportData.viewportHovered, viewportData.viewportImageView);
+
+            uiContext->End();
+        }
+
+        // End and submit the command buffer
+        vkRenderer.EndSingleTimeCommands(commandBuffer);
+
+        // Update frame counter
+        frameCount = (frameCount + 1) % (1 << 15);
+	}
+
+	Loader::~Loader()
+	{
+	    vkRenderer.~Loader();
+	}
 
 } // namespace Launcher
 
@@ -180,11 +244,11 @@ void SplashHandler::CreateSplashScreen(GLFWwindow* splash)
     }
 }
 
-void SplashImg()
+static void SplashImg()
 {
     int width,height,channels;
 
-    std::ifstream file("..\\..\\assets\\splash_screen.png",std::ios::binary | std::ios::ate);
+    std::ifstream file(R"(..\..\assets\splash_screen.png)",std::ios::binary | std::ios::ate);
     if (!file.is_open())
     {
         LAUNCHER_LOG_ERROR("Failed to open splash screen image!");

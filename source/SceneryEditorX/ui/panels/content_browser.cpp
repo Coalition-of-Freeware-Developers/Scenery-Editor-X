@@ -10,21 +10,21 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
 namespace UI
 {
-    void AssetBrowser()
+	void UIManager::AssetBrowser()
     {
         ImGui::Begin("Asset Browser",
                      nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize |
                          ImGuiWindowFlags_NoCollapse);
-        ImGuiWindowFlags child_flags =
+        constexpr ImGuiWindowFlags child_flags =
             ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar;
         ImGui::SetScrollHereX(0.25f); // 0.0f:left, 0.5f:center, 1.0f:right
 
@@ -39,7 +39,7 @@ namespace UI
                     if (sort_specs->SpecsDirty) { }
                 ImGui::EndTable();
             }
-            ImGui::Text("Selected: %d/%d items" /*, Selection.Size, Items.Size */ );
+            ImGui::Text(R"(Selected: %d/%d items)" /*, Selection.Size, Items.Size */ );
             ImGui::EndChild();
 
         ImGui::End();

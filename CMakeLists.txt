@@ -49,10 +49,12 @@ SET(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/assets/textures")
 # --------------------------------
 SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED True)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 SET(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS}
     /EHsc
+	/Zc:preprocessor
     -DVK_USE_PLATFORM_WIN32_KHR
     -DNOMINMAX
     -D_USE_MATH_DEFINES "
@@ -152,6 +154,26 @@ FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 ADD_SUBDIRECTORY(dependency/glfw)
 
 # --------------------------------
+# libconfig
+# --------------------------------
+# Override libconfig options before adding the subdirectory
+OPTION(BUILD_EXAMPLES "Enable examples" OFF)
+OPTION(BUILD_SHARED_LIBS "Enable shared library" OFF)
+OPTION(BUILD_TESTS "Enable tests" OFF)
+OPTION(BUILD_FUZZERS "Enable fuzzers" OFF)
+ADD_SUBDIRECTORY(dependency/libconfig)
+
+# --------------------------------
+# AppCore
+# --------------------------------
+ADD_SUBDIRECTORY(source/SceneryEditorX)
+
+# --------------------------------
+# Scenery Editor X
+# --------------------------------
+ADD_SUBDIRECTORY(source/Editor)
+
+# --------------------------------
 # EDX
 # --------------------------------
 ADD_SUBDIRECTORY(source/edX)
@@ -159,12 +181,24 @@ ADD_SUBDIRECTORY(source/edX)
 # --------------------------------
 # FILE FORMAT TESTER
 # --------------------------------
-ADD_SUBDIRECTORY(source/edX/testing)
+ADD_SUBDIRECTORY(source/Tests/file_formats)
+
+# --------------------------------
+# GRAPHICS ENGINE
+# --------------------------------
+ADD_SUBDIRECTORY(source/GraphicsEngine)
+
+# --------------------------------
+# Crash Handler Service
+# --------------------------------
+ADD_SUBDIRECTORY(source/CrashHandler)
 
 # --------------------------------
 # X-PLANE SCENERY LIBRARY
 # --------------------------------
 ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
+
+# --------------------------------
 
 ADD_LIBRARY(imgui
 	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
@@ -190,11 +224,6 @@ TARGET_LINK_LIBRARIES(imgui
 		GPUOpen::VulkanMemoryAllocator
 )
 
-# --------------------------------
-# SCENERY EDITOR X
-# --------------------------------
-ADD_SUBDIRECTORY(source/SceneryEditorX)
-
 FOREACH(TARGET IN ITEMS SceneryEditorX
         PUBLIC
             $<$<CONFIG:Debug>:SEDX_DEBUG>
@@ -212,14 +241,17 @@ ENDFOREACH()
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating precompiled headers")
 
-TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/xpeditor_pch.h)
+TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Editor/xpeditor_pch.h)
+TARGET_PRECOMPILE_HEADERS(GraphicsEngine PRIVATE ${CMAKE_SOURCE_DIR}/Source/GraphicsEngine/sedx_vulkan_pch.h)
+TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_core_pch.h)
 
-SET_PROPERTY(TARGET FormatTester PROPERTY FOLDER "Tools")
-SET_PROPERTY(TARGET edX X-PlaneSceneryLibrary PROPERTY FOLDER "File Formats")
+SET_PROPERTY(TARGET FormatTester CrashHandler PROPERTY FOLDER "Tools")
+SET_PROPERTY(TARGET edX libconfig libconfig++ PROPERTY FOLDER "File Formats")
+SET_PROPERTY(TARGET AppCore X-PlaneSceneryLibrary GraphicsEngine PROPERTY FOLDER "Libraries")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX FormatTester imgui edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS SceneryEditorX AppCore FormatTester GraphicsEngine CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

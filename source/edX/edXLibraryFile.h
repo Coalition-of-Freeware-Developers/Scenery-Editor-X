@@ -12,7 +12,7 @@
 
 namespace ProjectLibrarys
 {
-    std::string generateRandomHexValue()
+    inline std::string generateRandomHexValue()
     {
         std::random_device rd;
         std::mt19937 gen(rd());

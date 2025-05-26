@@ -1,0 +1,352 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* vk_device.h
+* -------------------------------------------------------
+* Created: 21/3/2025
+* -------------------------------------------------------
+*/
+#pragma once
+#include <optional>
+#include <GraphicsEngine/buffers/buffer_data.h>
+#include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
+#include <GraphicsEngine/vulkan/vk_descriptors.h>
+#include <vulkan/vulkan.h>
+
+/// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	class CommandPool;
+
+	struct GPUDevice
+	{
+        VkFormat depthFormat;
+        VkFormat tilingFormat;
+        VkFormatProperties formatProperties;
+
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkPhysicalDeviceFeatures GFXFeatures = {};
+        VkPhysicalDeviceLimits GFXLimits = {};
+        VkSurfaceCapabilitiesKHR surfaceCapabilities;
+        VkPhysicalDeviceFeatures deviceInfo = {};
+        VkPhysicalDeviceProperties deviceProperties = {};
+
+		/// -------------------------------------------------------
+
+	    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentricFeature  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR };
+        VkPhysicalDeviceVulkan13Features vulkan13Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+        VkPhysicalDeviceVulkan12Features vulkan12Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+        VkPhysicalDeviceVulkan11Features vulkan11Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+        VkPhysicalDeviceFeatures2 vulkan10Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+        VkPhysicalDeviceMemoryProperties memoryInfo = {};
+
+	    /// -------------------------------------------------------
+
+        std::vector<VkBool32> queueSupportPresent;
+        std::vector<VkPresentModeKHR> presentModes;
+        std::vector<VkSurfaceFormatKHR> surfaceFormats;
+	    std::vector<VkQueueFamilyProperties> queueFamilyInfo;
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+	    /// -------------------------------------------------------
+
+	    GPUDevice() : depthFormat(), tilingFormat(), formatProperties(),
+			GFXFeatures({}), GFXLimits({}), surfaceCapabilities(),
+	        deviceInfo({}), deviceProperties({}), memoryInfo({})
+	    { }
+	};
+
+    /// -----------------------------------------------------------
+
+    struct QueueFamilyIndices
+    {
+        std::optional<std::pair<Queue, uint32_t>> graphicsFamily;
+        std::optional<std::pair<Queue, uint32_t>> presentFamily;
+        std::optional<std::pair<Queue, uint32_t>> computeFamily;
+        std::optional<std::pair<Queue, uint32_t>> transferFamily;
+
+        [[nodiscard]] bool isComplete() const { return (graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value()) || computeFamily.has_value(); }
+        [[nodiscard]] uint32_t GetGraphicsFamily() const { return graphicsFamily.value().second; }
+        [[nodiscard]] uint32_t GetPresentFamily() const { return presentFamily.value().second;  }
+        [[nodiscard]] uint32_t GetComputeFamily() const { return computeFamily.value().second; }
+        [[nodiscard]] uint32_t GetTransferFamily() const { return transferFamily.value().second; }
+    };
+
+    /// -----------------------------------------------------------
+
+	class VulkanPhysicalDevice
+    {
+    public:
+        VulkanPhysicalDevice();
+        ~VulkanPhysicalDevice();
+
+		/// Delete copy constructor and assignment operator
+        VulkanPhysicalDevice(const VulkanPhysicalDevice &) = delete;
+        VulkanPhysicalDevice &operator=(const VulkanPhysicalDevice &) = delete;
+
+        /// Allow move operations if needed
+        VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
+        VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
+
+		/**
+		 * @brief Select a physical device based on the best available options
+		 * @return A reference to the selected physical device
+		 * @throws Error if no suitable device is found
+		 */
+	    static Ref<VulkanPhysicalDevice> Select();
+
+		/**
+         * @brief Select a physical device based on queue requirements
+         * @param queueType The required queue type flags
+         * @param supportPresent Whether presentation support is required
+         * @return The queue family index for the selected device
+         */
+        //uint32_t SelectDevice(VkQueueFlags queueType, bool supportPresent);
+
+		/**
+         * @brief Get the currently selected GPU device
+         * @return Reference to the selected GPU device
+         * @throws Error if no device is selected
+         */
+        [[nodiscard]] const GPUDevice& Selected() const;
+
+        /// Accessor methods
+		[[nodiscard]] const QueueFamilyIndices &GetQueueFamilyIndices() const { return QFamilyIndices; }
+		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
+        [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryInfo; }
+		[[nodiscard]] VkFormat GetDepthFormat() const { return devices.at(deviceIndex).depthFormat; }
+		[[nodiscard]] VkPhysicalDevice GetGPUDevices() const { return devices.at(deviceIndex).physicalDevice; }
+		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceInfo; }
+        [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
+		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
+		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
+		[[nodiscard]] const std::vector<VkQueueFamilyProperties> &GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
+        
+        /**
+         * @brief Find queue families that meet specified criteria in the physical device
+         * @param device The physical device to examine
+         * @return Queue family indices for different queue types
+         */
+        //QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
+
+    private:
+        std::vector<GPUDevice> devices;
+        std::unordered_set<std::string> supportedExtensions;
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkInstance instance = VK_NULL_HANDLE;
+        QueueFamilyIndices QFamilyIndices;
+        int deviceIndex = -1;
+
+		INTERNAL VkFormat FindDepthFormat(const GPUDevice& device);
+		INTERNAL VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+
+	    /**
+         * @brief Find queue families that match specified queue flags
+         * @param qFlags The queue flags to search for
+         * @return Queue family indices for different queue types
+         */
+        [[nodiscard]] QueueFamilyIndices GetQueueFamilyIndices(VkQueueFlags qFlags) const;
+
+		/**
+         * @brief Enumerate and populate device information
+         * @param instance The Vulkan instance to use
+         */
+        //void EnumerateDevices();
+
+		friend class VulkanDevice;
+		friend class VulkanChecks;
+        friend class VulkanQueue;
+    };
+
+	/// ---------------------------------------------------------
+
+	class VulkanDevice
+    {
+    public:
+
+        /**
+         * @brief Create a logical device from a physical device
+         * @param physDevice The physical device to use
+         * @param enabledFeatures Device features to enable
+         */
+        VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures);
+        virtual ~VulkanDevice();
+        //Ref<MemoryAllocator> GetValue() const;
+        VmaAllocator GetMemoryAllocator() const;
+
+        /// Delete copy constructor and assignment operator
+        VulkanDevice(const VulkanDevice &) = delete;
+        VulkanDevice &operator=(const VulkanDevice &) = delete;
+
+		/// Allow move operations if needed
+        VulkanDevice(VulkanDevice &&) noexcept;
+        VulkanDevice &operator=(VulkanDevice &&) noexcept;
+
+        /**
+         * @brief Clean up resources and destroy the logical device
+         */
+        void Destroy();
+
+		/// Accessor methods
+        [[nodiscard]] const VkDevice &Selected() const;
+        [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
+        [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
+        [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
+		[[nodiscard]] VkDevice GetDevice() const {return device;}
+		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysDevice;}
+        [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+        //[[nodiscard]] Ref<CommandBuffer> GetCommandBuffer() const { return cmdBuffer; }
+
+        /**
+         * @brief Create a staging buffer for data transfer
+         * @param size Size of the buffer in bytes
+         * @param name Debug name for the buffer
+         * @return Buffer object configured for staging
+         */
+        GLOBAL Buffer CreateStagingBuffer(uint32_t size, const std::string& name = "Staging Buffer");
+
+	    /**
+         * @brief Get the maximum usable MSAA sample count supported by the device
+         * @return The maximum sample count as a VkSampleCountFlagBits value
+         */
+        [[nodiscard]] VkSampleCountFlagBits GetMaxUsableSampleCount() const;
+
+		/**
+         * @brief Lock a queue for exclusive access
+         * @param compute Whether to lock the compute queue (true) or graphics queue (false)
+         */
+		void LockQueue(bool compute = false);
+
+        /**
+         * @brief Unlock a previously locked queue
+         * @param compute Whether to unlock the compute queue (true) or graphics queue (false)
+         */
+        void UnlockQueue(bool compute = false);
+
+        /**
+         * @brief Create a secondary command buffer for recording commands
+         * @param debugName Name for debugging purposes
+         * @return A new command buffer
+         */
+        //VkCommandBuffer CreateSecondaryCommandBuffer(const char *debugName);
+
+        /**
+         * @brief Submit and wait for a command buffer to complete execution
+         * @param cmdBuffer The command buffer to submit
+         */
+        //void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
+
+        /**
+         * @brief Submit a command buffer to a specific queue and wait for completion
+         * @param cmdBuffer The command buffer to submit
+         * @param queue The queue to submit to
+         */
+        //void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
+
+        /**
+         * @brief Get the scratch buffer address
+         * @return The device address of the scratch buffer
+         */
+        VkSampler GetSampler() const { return textureSampler; }
+
+        /**
+         * @brief 
+         * @return 
+         */
+        BindlessResources GetBindlessResources() const { return bindlessResources; }
+
+    private:
+        RenderData renderData;
+        Descriptors descriptors;
+        //ImageID textureImageID;
+        Extensions vkExtensions;
+        Layers vkLayers;
+        BindlessResources bindlessResources;
+
+        Buffer scratchBuffer;
+        VkDeviceAddress scratchAddress = 0;
+
+		Ref<MemoryAllocator> memoryAllocator;
+        Ref<CommandBuffer> cmdBuffer = nullptr;
+        VkSampler textureSampler = nullptr;
+        VkDevice device = nullptr;
+        Ref<VulkanPhysicalDevice> vkPhysDevice;
+        VkPhysicalDeviceFeatures vkEnabledFeatures = {};
+        uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
+
+		/// -------------------------------------------------------
+        /// Function pointers for Vulkan extensions
+        /// -------------------------------------------------------
+        PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
+        PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
+        PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
+        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR = nullptr;
+        PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR = nullptr;
+        PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR = nullptr;
+
+		/// -------------------------------------------------------
+
+        VkQueue GraphicsQueue = VK_NULL_HANDLE;
+        VkQueue ComputeQueue = VK_NULL_HANDLE;
+        VkQueue PresentQueue = VK_NULL_HANDLE;
+        std::mutex GraphicsQueueMutex;
+        std::mutex ComputeQueueMutex;
+
+		/// -------------------------------------------------------
+
+        /// Command pool management
+        std::map<std::thread::id, Ref<CommandPool>> CmdPools;
+        //Ref<CommandPool> GetThreadLocalCmdPool();
+        //Ref<CommandPool> GetOrCreateThreadLocalCmdPool();
+
+        /**
+         * @brief Create Vulkan 1.2+ features structure and load device extensions
+         */
+        //void CreateDeviceFeatures2();
+
+        /**
+         * @brief Initialize the memory allocator for this device
+         */
+        void InitializeMemoryAllocator();
+
+        /**
+         * @brief Create a texture sampler with specified parameters
+         * @param maxLOD Maximum LOD level for mipmapping
+         * @return VkSampler handle
+         */
+        [[nodiscard]] VkSampler CreateSampler(float maxLOD) const;
+
+        /**
+         * @brief Initialize bindless resources for the device
+         *
+         * @param device The Vulkan device to initialize resources for
+         * @param bindlessResources The bindless resources to initialize
+         *
+         * @note This function sets up the bindless resources for the device, including
+         * creating the bindless descriptor pool and descriptor sets.
+         */
+        GLOBAL void InitializeBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
+
+        /**
+         * @brief Load function pointers for extension functions
+         */
+        void LoadExtensionFunctions();
+
+	    VkQueue vkQueue = VK_NULL_HANDLE;
+        VkDevice vkDevice = VK_NULL_HANDLE;
+	    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
+        VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
+        VkPhysicalDevice vkPhysicalDevice = VK_NULL_HANDLE;
+    };
+
+	/// ---------------------------------------------------------
+
+} // namespace SceneryEditorX
+
+/// -------------------------------------------------------

@@ -124,7 +124,7 @@ public:
 };
 
 /**
-    * @brief the region parameters. These are referenced by the definitions, and are used to determine if an object is compatible with a region. They have their own data structure so they can be shared. Should be used in an map with the name being the key
+    * @brief The region parameters. These are referenced by the definitions, and are used to determine if an object is compatible with a region. They have their own data structure so they can be shared. Should be used in a map with the name being the key
 	*/
 class Region
 {
@@ -148,7 +148,7 @@ public:
 
 /**
     * @brief RegionDefinitions are the highest level of organization in the X-Plane library system.
-    * They contain conditions, and seasonalzied variants of objects.
+    * They contain conditions, and seasonal variants of objects.
 	*/
 class RegionalDefinitions
 {

@@ -10,15 +10,14 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-
 #include <imgui/imgui.h>
-#include <SceneryEditorX/UI/ui.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
 namespace UI
 {
-    void LayerStack()
+	void UIManager::LayerStack()
     {
 		ImGui::Begin("Layer Stack");
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{4, 4});
@@ -34,4 +33,8 @@ namespace UI
         ImGui::Spacing();
 		ImGui::End();
     }
-}
+
+} // namespace UI
+
+// -------------------------------------------------------
+

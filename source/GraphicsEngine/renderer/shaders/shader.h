@@ -1,0 +1,158 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* shader.h
+* -------------------------------------------------------
+* Created: 8/4/2025
+* -------------------------------------------------------
+*/
+#pragma once
+#include <functional>
+#include <GraphicsEngine/vulkan/vk_device.h>
+
+/// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	/**
+	 * @namespace ShaderStage
+	 * @brief Contains shader stage type flags for Vulkan shader operations.
+	 */
+	namespace ShaderStage
+	{
+	    /**
+	     * @enum Stage
+	     * @brief Defines the various shader stages in the Vulkan graphics/compute pipeline.
+	     * 
+	     * These values match Vulkan's VkShaderStageFlagBits and can be combined
+	     * using bitwise operations to specify multiple stages.
+	     */
+	    enum Stage
+	    {
+	        Vertex = 0x00000001,      ///< Vertex shader stage for processing each vertex
+	        Geometry = 0x00000008,    ///< Geometry shader stage for processing primitives
+	        Fragment = 0x00000010,    ///< Fragment shader stage for processing fragments/pixels
+	        Compute = 0x00000020,     ///< Compute shader stage for general-purpose computation
+	        AllGraphics = 0x0000001F, ///< Combination of all graphics pipeline stages
+	        All = 0x7FFFFFFF,         ///< All possible shader stages
+	    };
+	};
+
+	/// -------------------------------------------------------
+
+	/**
+	 * @class Shader
+	 * @brief Represents a Vulkan shader program.
+	 * 
+	 * This class manages shader loading, compilation, and lifecycle in the Scenery Editor X renderer.
+	 * It handles shader modules that can be loaded from files or created from string sources.
+	 * The class supports hot-reloading through a callback system to notify dependents of changes.
+	 */
+	class Shader
+	{
+	public:
+		/**
+		 * @typedef ShaderReloadedCallback.
+		 * @brief Function type for shader reload notifications
+		 * 
+		 * Called when a shader is reloaded to allow dependents to update resources.
+		 */
+		using ShaderReloadedCallback = std::function<void()>;
+
+        /**
+         * @brief Default constructor.
+         * 
+         * Creates an uninitialized shader instance that must be loaded before use.
+         */
+        Shader() = default;
+
+        /**
+         * @brief Construct shader from file.
+         * 
+         * @param filepath Path to the shader file, relative to shader directory
+         * @param forceCompile Whether to force recompilation even if cached version exists
+         * @param disableOptimization Whether to disable shader optimization during compilation
+         * @param name Name of the shader
+         */
+        Shader(const std::string &filepath, bool forceCompile = false, bool disableOptimization = false);
+        
+        /**
+         * @brief Virtual destructor.
+         * 
+         * Cleans up Vulkan shader module resources.
+         */
+        virtual ~Shader();
+
+		/**
+		 * @brief Load shader from a shader pack file.
+		 * 
+		 * @param filepath Path to the shader pack file
+		 * @param forceCompile Whether to force recompilation even if cached version exists
+		 * @param disableOptimization Whether to disable shader optimization during compilation
+		 */
+		void LoadFromShaderPack(const std::string& filepath, bool forceCompile = false, bool disableOptimization = false);
+        
+        /**
+         * @brief Create a shader from source code string.
+         * 
+         * @param source The shader source code as a string
+         * @return Ref<Shader> Reference to the newly created shader
+         */
+        static Ref<Shader> CreateFromString(const std::string &source);
+
+		//virtual const std::unordered_map<std::string, ShaderBuffer>& GetShaderBuffers() const = 0;
+		//virtual const std::unordered_map<std::string, ShaderResourceDeclaration>& GetResources() const = 0;
+
+		/**
+		 * @brief Register a callback to be invoked when shader is reloaded.
+		 * 
+		 * @param callback Function to call when shader is recompiled or reloaded
+		 */
+		virtual void AddShaderReloadedCallback(const ShaderReloadedCallback& callback);
+        
+        /**
+         * @brief Get the name of the shader.
+         * 
+         * @return const std::string& The shader name, typically derived from the filename
+         */
+        [[nodiscard]] virtual const std::string &GetName() const;
+
+	    /**
+	     * @brief Get the base directory path for shader assets.
+	     * 
+	     * @return const char* Path to the shader directory
+	     */
+	    static constexpr const char* GetShaderDirectoryPath()
+        {
+            return "assets/shaders/";
+        }
+
+	    /**
+	     * @brief Create a Vulkan shader module from compiled bytecode.
+	     * 
+	     * @param code Vector containing the compiled shader bytecode
+	     * @return VkShaderModule The created Vulkan shader module
+	     */
+	    [[nodiscard]] VkShaderModule CreateShaderModule(const std::vector<char> &code) const;
+
+	private:
+        /** @brief Reference to the Vulkan device */
+        Ref<VulkanDevice> device;
+        
+        /** @brief Vulkan shader module handle */
+        VkShaderModule shaderModule = VK_NULL_HANDLE;
+        
+        /** @brief List of callbacks to invoke when shader is reloaded */
+        std::vector<ShaderReloadedCallback> reloadCallbacks;
+
+		/** @brief */
+		std::string name;
+	};
+
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------

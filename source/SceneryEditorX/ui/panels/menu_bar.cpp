@@ -10,10 +10,8 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-
 #include <imgui/imgui.h>
-#include <SceneryEditorX/Platform/Windows/FileManager/FileDialog.h>
-#include <SceneryEditorX/UI/ui.h>
+#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -25,9 +23,11 @@
    // This is a placeholder implementation
 //}
 
+// -------------------------------------------------------
+
 namespace UI
 {
-    void MainMenuBar()
+	void UIManager::MainMenuBar()
 	{
         if (ImGui::BeginMainMenuBar())
 		{
@@ -205,4 +205,8 @@ namespace UI
         ImGui::EndMainMenuBar();
         }
     }
+
 } // namespace UI
+
+// -------------------------------------------------------
+

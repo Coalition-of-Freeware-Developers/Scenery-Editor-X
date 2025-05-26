@@ -1,0 +1,23 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* initializer.h
+* -------------------------------------------------------
+* Created: 25/5/2025
+* -------------------------------------------------------
+*/
+#pragma once
+
+namespace SceneryEditorX
+{
+
+	void InitCore();
+	void Shutdown();
+
+} // namespace SceneryEditorX
+
+

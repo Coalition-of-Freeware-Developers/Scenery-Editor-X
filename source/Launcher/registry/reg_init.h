@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <cstring>
 #include <minwindef.h>
 #include <winerror.h>
 #include <winnt.h>
@@ -86,7 +85,7 @@ void RegisterLibraryAssociation()
  * with the "SceneryEditorX" application. It also defines the command to open these files 
  * with the SceneryEditorX executable.
  */
-void RegisterEDXAssociation()
+inline void RegisterEDXAssociation()
 {
     LAUNCHER_LOG_INFO("Registering EDX file association.");
     HKEY hKey; // Handle to the registry key
@@ -159,10 +158,9 @@ void RegisterEDXAssociation()
     * 
     * @return void
     */
-    if (RegCreateKey(HKEY_CLASSES_ROOT, "SceneryEditorX\\shell\\open\\command", &hKey) == ERROR_SUCCESS)
+    if (RegCreateKey(HKEY_CLASSES_ROOT, R"(SceneryEditorX\shell\open\command)", &hKey) == ERROR_SUCCESS)
     {
-        const char *command = "\"C:\\Program Files\\Scenery Editor X\\SceneryEditorX.exe\" \"%1\"";
-        if (RegSetValue(hKey, nullptr, REG_SZ, command, static_cast<DWORD>(strlen(command) + 1)) == ERROR_SUCCESS)
+        if (const auto command = R"("C:\Program Files\Scenery Editor X\SceneryEditorX.exe" "%1")"; RegSetValue(hKey, nullptr, REG_SZ, command, static_cast<DWORD>(strlen(command) + 1)) == ERROR_SUCCESS)
         {
             LAUNCHER_LOG_INFO("Registered open command for Scenery Editor X.");
         }
@@ -186,7 +184,7 @@ void RegisterEDXAssociation()
  * with the "SceneryEditorXLib" application. It also defines the command to open these files 
  * with the SceneryEditorX executable.
  */
-void RegisterLibraryAssociation()
+inline void RegisterLibraryAssociation()
 {
     LAUNCHER_LOG_INFO("Registering EDX Library file association.");
     HKEY hKey;
@@ -197,11 +195,11 @@ void RegisterLibraryAssociation()
     }
     if (RegCreateKey(HKEY_CLASSES_ROOT, "SceneryEditorXLib", &hKey) == ERROR_SUCCESS)
     {
-        const char *libvalue = "Scenery Editor X Library";
+        const auto libvalue = "Scenery Editor X Library";
         RegSetValue(hKey, nullptr, REG_SZ, libvalue, static_cast<DWORD>(strlen(libvalue)));
         RegCloseKey(hKey);
     }
-    if (RegCreateKey(HKEY_CLASSES_ROOT, "SceneryEditorXLib\\shell\\open\\command", &hKey) == ERROR_SUCCESS)
+    if (RegCreateKey(HKEY_CLASSES_ROOT, R"(SceneryEditorXLib\shell\open\command)", &hKey) == ERROR_SUCCESS)
     {
         RegSetValue(hKey, nullptr, REG_SZ, "SceneryEditorX.exe %1", 18);
         RegCloseKey(hKey);
@@ -214,13 +212,13 @@ void RegisterLibraryAssociation()
  * This function creates a registry key under "SOFTWARE\\Scenery Editor X" and sets the value 
  * to "Scenery Editor X". This allows the application to be recognized and referenced by its name.
  */
-void RegisterApplication()
+inline void RegisterApplication()
 {
     LAUNCHER_LOG_INFO("Registering Scenery Editor X");
     HKEY hKey;
     if (RegCreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scenery Editor X", &hKey) == ERROR_SUCCESS)
     {
-        const char *AppValue = "Scenery Editor X";
+        const auto AppValue = "Scenery Editor X";
         RegSetValue(hKey, nullptr, REG_SZ, AppValue, static_cast<DWORD>(strlen(AppValue)));
         RegCloseKey(hKey);
     }
@@ -233,13 +231,13 @@ void RegisterApplication()
  * "AbsolutePath" to "C:\\Program Files\\Scenery Editor X\\SceneryEditorX.exe". This allows the 
  * application to be referenced by its absolute path.
  */
-void RegisterAbsolutePath()
+inline void RegisterAbsolutePath()
 {
     LAUNCHER_LOG_INFO("Registering Absolute Path");
     HKEY hKey;
     if (RegCreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scenery Editor X", &hKey) == ERROR_SUCCESS)
     {
-        const char *AbsPathValue = "C:\\Program Files\\Scenery Editor X\\SceneryEditorX.exe";
+        const auto AbsPathValue = R"(C:\Program Files\Scenery Editor X\SceneryEditorX.exe)";
         RegSetValue(hKey, "AbsolutePath", REG_SZ, AbsPathValue, static_cast<DWORD>(strlen(AbsPathValue)));
         RegCloseKey(hKey);
     }
@@ -252,13 +250,13 @@ void RegisterAbsolutePath()
  * "RelativePath" to "SceneryEditorX.exe". This allows the application to be referenced by its 
  * relative path.
  */
-void RegisterRelativePath()
+inline void RegisterRelativePath()
 {
     LAUNCHER_LOG_INFO("Registering Relative Path");
     HKEY hKey;
     if (RegCreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Scenery Editor X", &hKey) == ERROR_SUCCESS)
     {
-        const char *RelPathValue = "SceneryEditorX.exe";
+        const auto RelPathValue = "SceneryEditorX.exe";
         RegSetValue(hKey, "RelativePath", REG_SZ, RelPathValue, static_cast<DWORD>(strlen(RelPathValue)));
         RegCloseKey(hKey);
     }

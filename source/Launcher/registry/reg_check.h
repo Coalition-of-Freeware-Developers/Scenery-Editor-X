@@ -15,7 +15,6 @@
 
 #include <Launcher/core/elevate_perms.h>
 #include <Launcher/registry/reg_init.h>
-#include <shellapi.h>
 
 // -------------------------------------------------------
 
@@ -28,13 +27,12 @@
  *
  * @param hKeyRoot The root key under which the subkey is located.
  * @param subKey The name of the subkey to check.
- * @return true if the registry key exists, false otherwise.
+ * @return True if the registry key exists, false otherwise.
  */
-static bool CheckRegistryKeyExists(HKEY hKeyRoot, const char* subKey)
+static bool CheckRegistryKeyExists(const HKEY hKeyRoot, const char* subKey)
 {
     HKEY hKey;
-    LONG result = RegOpenKeyEx(hKeyRoot, subKey, 0, KEY_READ, &hKey);
-    if (result == ERROR_SUCCESS)
+    if (const LONG result = RegOpenKeyEx(hKeyRoot, subKey, 0, KEY_READ, &hKey); result == ERROR_SUCCESS)
     {
         RegCloseKey(hKey);
         return true;
@@ -51,7 +49,7 @@ static bool CheckRegistryKeyExists(HKEY hKeyRoot, const char* subKey)
  * If the application is not running with administrative privileges, it logs an error
  * and attempts to relaunch the application with administrative privileges.
  */
-void RegistryCheck()
+inline void RegistryCheck()
 {
     /**
     * @brief Structure to hold information about a registry key.
@@ -76,11 +74,11 @@ void RegistryCheck()
     * needs to be registered, and a human-readable name for logging purposes.
     */
     RegistryKeyInfo registryKeys[] = {
-        {HKEY_CLASSES_ROOT,     ".edx",                        RegisterEDXAssociation,        ".edx"},
-        {HKEY_CLASSES_ROOT,     ".edx.lib",                    RegisterLibraryAssociation,    ".edx.lib"},
-        {HKEY_LOCAL_MACHINE,    "SOFTWARE\\SceneryEditorX",    RegisterApplication,           "SceneryEditorX"},
-        {HKEY_LOCAL_MACHINE,    "SOFTWARE\\SceneryEditorX",    RegisterAbsolutePath,          "SceneryEditorX"},
-        {HKEY_LOCAL_MACHINE,    "SOFTWARE\\SceneryEditorX",    RegisterRelativePath,          "SceneryEditorX"}
+        {.hKeyRoot = HKEY_CLASSES_ROOT,.subKey = ".edx",.registerFunc = RegisterEDXAssociation, .keyName = ".edx"},
+        {.hKeyRoot = HKEY_CLASSES_ROOT,.subKey = ".edx.lib",.registerFunc = RegisterLibraryAssociation, .keyName = ".edx.lib"},
+        {.hKeyRoot = HKEY_LOCAL_MACHINE,.subKey = "SOFTWARE\\SceneryEditorX",.registerFunc = RegisterApplication, .keyName = "SceneryEditorX"},
+        {.hKeyRoot = HKEY_LOCAL_MACHINE,.subKey = "SOFTWARE\\SceneryEditorX",.registerFunc = RegisterAbsolutePath, .keyName = "SceneryEditorX"},
+        {.hKeyRoot = HKEY_LOCAL_MACHINE,.subKey = "SOFTWARE\\SceneryEditorX",.registerFunc = RegisterRelativePath, .keyName = "SceneryEditorX"}
     };
 
     /**
@@ -92,30 +90,30 @@ void RegistryCheck()
     * registration function. If the application is not running with administrative privileges,
     * it logs an error and attempts to relaunch the application with administrative privileges.
     */
-    for (const auto &keyInfo : registryKeys)
+    for (const auto &[hKeyRoot, subKey, registerFunc, keyName] : registryKeys)
     {
-        if (!CheckRegistryKeyExists(keyInfo.hKeyRoot, keyInfo.subKey))
+        if (!CheckRegistryKeyExists(hKeyRoot, subKey))
         {
             if (RunningAsAdmin())
             {
-                LAUNCHER_LOG_WARN("{} registry key not found. Creating...", keyInfo.keyName);
+                LAUNCHER_LOG_WARN("{} registry key not found. Creating...", keyName);
                 
-                keyInfo.registerFunc();
+                registerFunc();
                 // Verify if the key was created successfully
-                if (CheckRegistryKeyExists(keyInfo.hKeyRoot, keyInfo.subKey))
+                if (CheckRegistryKeyExists(hKeyRoot, subKey))
                 {
-					LAUNCHER_LOG_INFO("{} registry key created successfully.",keyInfo.keyName);
+					LAUNCHER_LOG_INFO("{} registry key created successfully.",keyName);
                     //spdlog::info("{} registry key created successfully.", keyInfo.keyName);
                 }
                 else
                 {
-					LAUNCHER_LOG_WARN("Failed to create {} registry key.",keyInfo.keyName);
+					LAUNCHER_LOG_WARN("Failed to create {} registry key.",keyName);
                     //spdlog::error("Failed to create {} registry key.", keyInfo.keyName);
                 }
             }
             else
             {
-				LAUNCHER_LOG_ERROR("{} registry key not found. Cannot create association without admin privileges.",keyInfo.keyName);
+				LAUNCHER_LOG_ERROR("{} registry key not found. Cannot create association without admin privileges.",keyName);
 				//ErrMsg("Cannot create association without admin privileges.");
                 //spdlog::error("{} registry key not found. Cannot create association without admin privileges.", keyInfo.keyName);
                 RelaunchAsAdmin();
@@ -124,7 +122,7 @@ void RegistryCheck()
         }
         else
         {
-            LAUNCHER_LOG_INFO("{} registry key already exists.", keyInfo.keyName);
+            LAUNCHER_LOG_INFO("{} registry key already exists.", keyName);
         }
     }
 }

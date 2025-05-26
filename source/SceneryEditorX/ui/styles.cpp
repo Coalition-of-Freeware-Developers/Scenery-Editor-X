@@ -1,4 +1,15 @@
-
+/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* styles.cpp
+* -------------------------------------------------------
+* Created: 30/3/2025
+* -------------------------------------------------------
+*/
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
@@ -35,6 +46,8 @@ namespace UI
         return GImGui->ActiveId;
     }
 } // namespace UI
+
+// -------------------------------------------------------
 
 /*
 ImGuiStyle * style = &ImGui::GetStyle();
