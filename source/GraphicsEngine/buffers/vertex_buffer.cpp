@@ -29,7 +29,8 @@ namespace SceneryEditorX
 	
 	VertexBuffer::~VertexBuffer()
     {
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
+        RenderData renderData;
+        for (size_t i = 0; i < renderData.framesInFlight; i++)
             allocator->DestroyBuffer(vertexBuffer, vertexBuffersAllocation);
     }
 

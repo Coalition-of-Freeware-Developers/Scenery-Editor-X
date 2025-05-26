@@ -109,11 +109,12 @@ namespace SceneryEditorX
 	 */
 	void UniformBuffer::CreateUniformBuffers()
 	{
-	    uniformBuffers.resize(RenderData::framesInFlight);
-	    uniformBuffersMemory.resize(RenderData::framesInFlight);
-	    uniformBuffersAllocation.resize(RenderData::framesInFlight);
+        RenderData renderData;
+        uniformBuffers.resize(renderData.framesInFlight);
+        uniformBuffersMemory.resize(renderData.framesInFlight);
+        uniformBuffersAllocation.resize(renderData.framesInFlight);
 	
-	    for (size_t i = 0; i < RenderData::framesInFlight; i++)
+	    for (size_t i = 0; i < renderData.framesInFlight; i++)
 	    {
             constexpr VkDeviceSize bufferSize = sizeof(UBO);
             

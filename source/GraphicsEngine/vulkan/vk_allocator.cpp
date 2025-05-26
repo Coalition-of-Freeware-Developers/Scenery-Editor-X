@@ -914,8 +914,9 @@ namespace SceneryEditorX
     {
         memAllocatorData = hnew VulkanAllocatorData();
 
+		RenderData renderData;
         VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.vulkanApiVersion = AppData::minVulkanVersion;
+        allocatorInfo.vulkanApiVersion = renderData.minVulkanVersion;
         allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
         allocatorInfo.device = device->Selected();
         allocatorInfo.instance = GraphicsEngine::GetInstance();

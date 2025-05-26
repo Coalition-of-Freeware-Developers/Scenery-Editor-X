@@ -33,6 +33,10 @@ IF(TARGET WIN32)
     SET(VK_USE_PLATFORM_WIN32_KHR)
 ELSEIF(TARGET UNIX)
     FILE(COPY "$HOME/.local/share/vulkan/settings.d/vk_layer_settings.txt" DESTINATION ${CMAKE_BINARY_DIR})
+	SET(VK_USE_PLATFORM_XLIB_KHR)
+ELSEIF(TARGET APPLE)
+	FILE(COPY "/Library/Frameworks/Vulkan.framework/Resources/vk_layer_settings.txt" DESTINATION ${CMAKE_BINARY_DIR})
+	SET(VK_USE_PLATFORM_MACOS_MVK)
 ENDIF()
 
 # --------------------------------
@@ -247,16 +251,37 @@ TARGET_LINK_LIBRARIES(imgui
 		GPUOpen::VulkanMemoryAllocator
 )
 
-FOREACH(TARGET IN ITEMS SceneryEditorX
-        PUBLIC
-            $<$<CONFIG:Debug>:SEDX_DEBUG>
-            $<$<CONFIG:Release>:SEDX_RELEASE>
-            UNICODE
-            _UNICODE
-            _CRT_SECURE_NO_WARNINGS
-            #WIN32_LEAN_AND_MEAN
-    )
-ENDFOREACH()
+IF(TARGET WIN32)
+	FOREACH(TARGET IN ITEMS SceneryEditorX
+	        PUBLIC
+	            $<$<CONFIG:Debug>:SEDX_DEBUG>
+	            $<$<CONFIG:Release>:SEDX_RELEASE>
+	            UNICODE
+	            _UNICODE
+	            _CRT_SECURE_NO_WARNINGS
+	    )
+	ENDFOREACH()
+ELSEIF (TARGET UNIX)
+	FOREACH(TARGET IN ITEMS SceneryEditorX
+			PUBLIC
+				$<$<CONFIG:Debug>:SEDX_DEBUG>
+				$<$<CONFIG:Release>:SEDX_RELEASE>
+				UNICODE
+				_UNICODE
+				_CRT_SECURE_NO_WARNINGS
+		)
+	ENDFOREACH()
+ELSEIF (TARGET APPLE)
+	FOREACH(TARGET IN ITEMS SceneryEditorX
+			PUBLIC
+				$<$<CONFIG:Debug>:SEDX_DEBUG>
+				$<$<CONFIG:Release>:SEDX_RELEASE>
+				UNICODE
+				_UNICODE
+				_CRT_SECURE_NO_WARNINGS
+		)
+	ENDFOREACH()
+ENDIF()
 
 # --------------------------------
 # PRECOMPILED HEADER
@@ -269,10 +294,9 @@ TARGET_PRECOMPILE_HEADERS(GraphicsEngine PRIVATE ${CMAKE_SOURCE_DIR}/Source/Grap
 TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_core_pch.h)
 
 SET_PROPERTY(TARGET FormatTester CrashHandler PROPERTY FOLDER "Tools")
-SET_PROPERTY(TARGET edX libconfig libconfig++ PROPERTY FOLDER "File Formats")
-SET_PROPERTY(TARGET AppCore X-PlaneSceneryLibrary GraphicsEngine PROPERTY FOLDER "Libraries")
+SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET imgui libconfig libconfig++ PROPERTY FOLDER "Dependency")
 
 FOREACH(TARGET IN ITEMS SceneryEditorX AppCore FormatTester GraphicsEngine CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES

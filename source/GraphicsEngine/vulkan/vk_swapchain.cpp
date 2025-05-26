@@ -433,14 +433,15 @@ namespace SceneryEditorX
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Synchronization Objects
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        RenderData renderData;
 
-        if (imageAvailableSemaphores.size() != RenderData::framesInFlight)
+        if (imageAvailableSemaphores.size() != renderData.framesInFlight)
         {
-            imageAvailableSemaphores.resize(RenderData::framesInFlight);
-            renderFinishedSemaphores.resize(RenderData::framesInFlight);
+            imageAvailableSemaphores.resize(renderData.framesInFlight);
+            renderFinishedSemaphores.resize(renderData.framesInFlight);
             VkSemaphoreCreateInfo semaphoreInfo{};
             semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            for (size_t i = 0; i < RenderData::framesInFlight; i++)
+            for (size_t i = 0; i < renderData.framesInFlight; i++)
             {
                 VK_CHECK_RESULT(vkCreateSemaphore(vkDevice, &semaphoreInfo, allocator, &imageAvailableSemaphores[i]))
                 SetDebugUtilsObjectName(vkDevice, VK_OBJECT_TYPE_SEMAPHORE, std::format("Swapchain Semaphore ImageAvailable {0}", i), imageAvailableSemaphores[i]);
@@ -449,13 +450,13 @@ namespace SceneryEditorX
             }
         }
 
-		if (waitFences.size() != RenderData::framesInFlight)
+		if (waitFences.size() != renderData.framesInFlight)
         {
             VkFenceCreateInfo fenceInfo{};
             fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
             fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-            waitFences.resize(RenderData::framesInFlight);
+            waitFences.resize(renderData.framesInFlight);
             for (auto &fence : waitFences)
             {
                 VK_CHECK_RESULT(vkCreateFence(vkDevice, &fenceInfo, allocator, &fence))
@@ -547,6 +548,7 @@ namespace SceneryEditorX
 	void SwapChain::Destroy()
 	{
         const VkDevice vkDevice = gfxEngine->GetLogicDevice()->GetDevice();
+        RenderData renderData;
 
         if (depthImageView != VK_NULL_HANDLE)
         {
@@ -577,7 +579,7 @@ namespace SceneryEditorX
         for (auto &swapChainImage : swapChainImages)
             vkDestroyImageView(vkDevice, swapChainImage.resource->view, nullptr);
 
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
+        for (size_t i = 0; i < renderData.framesInFlight; i++)
         {
             vkDestroySemaphore(vkDevice, imageAvailableSemaphores[i], nullptr);
             vkDestroySemaphore(vkDevice, renderFinishedSemaphores[i], nullptr);

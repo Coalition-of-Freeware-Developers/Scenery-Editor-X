@@ -27,7 +27,7 @@ namespace SceneryEditorX
 	 */
 	void VulkanChecks::InitChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers, const VkPhysicalDevice &device)
 	{
-        CheckAPIVersion(AppData::minVulkanVersion);
+        CheckAPIVersion(RenderData::minVulkanVersion);
 	    CheckExtensions(extensions);
 	    CheckLayers(layers);
 	}

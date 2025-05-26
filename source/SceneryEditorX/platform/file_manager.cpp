@@ -17,7 +17,7 @@
 #include <SceneryEditorX/platform/time.h>
 #include <GraphicsEngine/scene/asset_manager.h>
 #include <GraphicsEngine/scene/material.h>
-#include <GraphicsEngine/scene/ModelAsset.h>
+#include <GraphicsEngine/scene/model_asset.h>
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
 #include "editor_config.hpp"

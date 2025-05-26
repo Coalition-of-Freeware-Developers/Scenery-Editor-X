@@ -117,6 +117,7 @@ namespace SceneryEditorX
             cfg.readFile(filePath.string().c_str());
             SEDX_CORE_TRACE_TAG("SETTINGS", "Reading settings from: {}", filePath.string());
 
+			/*
 			try
             {
                 if (const Setting &root = cfg.getRoot(); root.exists("application"))
@@ -127,6 +128,8 @@ namespace SceneryEditorX
 				}
 
             }
+			*/
+
             /// Load X-Plane stats
             if (cfg.exists("x_plane"))
             {
@@ -860,7 +863,7 @@ namespace SceneryEditorX
     }
 
     template <typename T>
-    void ApplicationSettings::CreateSettingPath(const std::string &path, T value)
+    void ApplicationSettings::CreateSettingPath(const std::string &path, const T &value)
     {
         /// Split the path by dots
         std::vector<std::string> parts;

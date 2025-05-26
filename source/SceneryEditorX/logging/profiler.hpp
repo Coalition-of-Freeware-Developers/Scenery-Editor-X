@@ -11,12 +11,25 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include <optick.h>
 
-// -------------------------------------------------------
+#define SEDX_PROFILING_ENABLED !defined(SEDX_RELEASE)
+#if SEDX_PROFILING_ENABLED
+#include <tracy/Tracy.hpp>
+#endif
 
-//#define SEDX_PROFILE_FRAME() OPTICK_FRAME("MainThread")
-//#define SEDX_PROFILE_FUNC() OPTICK_EVENT()
-//#define SEDX_PROFILE_THREAD(name) OPTICK_EVENT((name))
+/// -------------------------------------------------------
 
-// -------------------------------------------------------
+#if SEDX_PROFILING_ENABLED
+	#define SEDX_PROFILE_FRAME() FrameMark
+	#define SEDX_PROFILE_FUNC(...)			  ZoneScoped##__VA_OPT__(N(__VA_ARGS__))
+	#define SEDX_PROFILE_SCOPE(...)			  SEDX_PROFILE_FUNC(__VA_ARGS__)
+	#define SEDX_PROFILE_SCOPE_DYNAMIC(NAME)  ZoneScoped; ZoneName(NAME, strlen(NAME))
+	#define SEDX_PROFILE_THREAD(...)          tracy::SetThreadName(__VA_ARGS__)
+#else
+	#define SEDX_PROFILE_MARK_FRAME
+	#define SEDX_PROFILE_FUNC(...)
+	#define SEDX_PROFILE_SCOPE(...)
+	#define SEDX_PROFILE_SCOPE_DYNAMIC(NAME)
+	#define SEDX_PROFILE_THREAD(...)
+#endif
+/// -------------------------------------------------------

@@ -222,7 +222,7 @@ namespace SceneryEditorX
         /// Store the window reference
         editorWindow = window;
 
-        if (!VulkanChecks::CheckAPIVersion(AppData::minVulkanVersion))
+        if (!VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion))
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Incompatible Vulkan driver version!");
 
         CreateInstance(window);
@@ -274,7 +274,7 @@ namespace SceneryEditorX
         vkEnumerateInstanceExtensionProperties(nullptr, &extensions.extensionCount, extensions.instanceExtensions.data());
 
         /// Get Vulkan API version
-        VulkanChecks::CheckAPIVersion(AppData::minVulkanVersion);
+        VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion);
 
 		bool khronosAvailable = false;
         for (size_t i = 0; i < layersInstance.layers.size(); i++)
@@ -309,14 +309,15 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Application Info
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        AppData appData;
 
 	    VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = AppData::appName.c_str();
+        appInfo.pApplicationName = appData.appName.c_str();
         appInfo.applicationVersion = AppData::version;
         appInfo.pEngineName = AppData::renderName.c_str();
         appInfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
-        appInfo.apiVersion = AppData::minVulkanVersion;
+        appInfo.apiVersion = RenderData::minVulkanVersion;
 
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -492,7 +493,7 @@ namespace SceneryEditorX
 
         vkDestroyDescriptorSetLayout(vkDevice->GetDevice(), descriptorSetLayout, allocator);
 
-		for (size_t i = 0; i < RenderData::framesInFlight; i++)
+		for (size_t i = 0; i < renderData.framesInFlight; i++)
         {
             vkDestroySemaphore(vkDevice->GetDevice(), renderFinishedSemaphores[i], allocator);
             vkDestroySemaphore(vkDevice->GetDevice(), imageAvailableSemaphores[i], allocator);
@@ -957,12 +958,12 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSizes[0].descriptorCount = RenderData::framesInFlight;
+        poolSizes[0].descriptorCount = renderData.framesInFlight;
 
         /// -------------------------------------------------------
 
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[1].descriptorCount = RenderData::framesInFlight;
+        poolSizes[1].descriptorCount = renderData.framesInFlight;
 
 		/// -------------------------------------------------------
 
@@ -970,7 +971,7 @@ namespace SceneryEditorX
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = RenderData::framesInFlight;
+        poolInfo.maxSets = renderData.framesInFlight;
 
         if (vkCreateDescriptorPool(vkDevice->GetDevice(), &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor pool!");
@@ -1033,9 +1034,9 @@ namespace SceneryEditorX
 
     void GraphicsEngine::CreateSyncObjects()
     {
-        imageAvailableSemaphores.resize(RenderData::framesInFlight);
-        renderFinishedSemaphores.resize(RenderData::framesInFlight);
-        inFlightFences.resize(RenderData::framesInFlight);
+        imageAvailableSemaphores.resize(renderData.framesInFlight);
+        renderFinishedSemaphores.resize(renderData.framesInFlight);
+        inFlightFences.resize(renderData.framesInFlight);
 
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -1044,7 +1045,7 @@ namespace SceneryEditorX
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        for (size_t i = 0; i < RenderData::framesInFlight; i++)
+        for (size_t i = 0; i < renderData.framesInFlight; i++)
             if (vkCreateSemaphore(vkDevice->GetDevice(), &semaphoreInfo, allocator, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
                 vkCreateSemaphore(vkDevice->GetDevice(), &semaphoreInfo, allocator, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
                 vkCreateFence(vkDevice->GetDevice(), &fenceInfo, allocator, &inFlightFences[i]) != VK_SUCCESS)
