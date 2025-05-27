@@ -10,13 +10,12 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include <stb_image.h>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <GraphicsEngine/scene/texture.h>
-//#include <SceneryEditorX/vulkan/vk_buffers.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/scene/texture.h>
+#include <stb_image.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -42,12 +41,11 @@ namespace SceneryEditorX
 	{
         texturePath = path;
         
-        // Get Vulkan resources
+        /// Get Vulkan resources
+        renderData = CreateRef<RenderData>();
         vkDevice = GraphicsEngine::GetCurrentDevice();
         vkPhysDevice = vkDevice->GetPhysicalDevice();
-        renderData = CreateRef<RenderData>();
-        // Get memory allocator as a Ref instead of directly assigning the VmaAllocator
-        allocator = GraphicsEngine::Get()->GetMemAllocator();
+        allocator = GraphicsEngine::Get()->GetMemAllocator();        /// Get memory allocator as a Ref instead of directly assigning the VmaAllocator
         //allocator = MemoryAllocator::AllocateBuffer()::CreateRef<MemoryAllocator>();
 
         if (auto configPtr = config.lock())
@@ -70,11 +68,11 @@ namespace SceneryEditorX
                 height = texHeight;
                 channels = texChannels;
                 
-                // Store the image data
+                /// Store the image data
                 data.resize(width * height * 4);
                 memcpy(data.data(), pixels, data.size());
                 
-                // Create the texture image and related resources
+                /// Create the texture image and related resources
                 CreateTextureImage();
                 CreateTextureImageView();
                 CreateTextureSampler();
@@ -121,7 +119,7 @@ namespace SceneryEditorX
             }
         }
         
-        // Clear data
+        /// Clear data
         data.clear();
         width = 0;
         height = 0;
@@ -178,10 +176,8 @@ namespace SceneryEditorX
 	    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	
 	    if (vkCreateSampler(vkDevice->GetDevice(), &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
-	    {
-	        SEDX_CORE_ERROR("Failed to create texture sampler!");
-	    }
-	}
+            SEDX_CORE_ERROR("Failed to create texture sampler!");
+    }
 
     void TextureAsset::CreateTextureImageView()
     {
@@ -199,11 +195,11 @@ namespace SceneryEditorX
         VkDeviceSize imageSize = data.size();
         renderData->mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
         
-        // Create a staging buffer
+        /// Create a staging buffer
         VkBuffer stagingBuffer = nullptr;
         VkDeviceMemory stagingBufferMemory = nullptr;
         
-        // Create staging buffer to transfer data to GPU
+        /// Create staging buffer to transfer data to GPU
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.size = imageSize;
@@ -216,7 +212,7 @@ namespace SceneryEditorX
             return;
         }
         
-        // Get memory requirements
+        /// Get memory requirements
         VkMemoryRequirements memRequirements;
         vkGetBufferMemoryRequirements(vkDevice->GetDevice(), stagingBuffer, &memRequirements);
         
@@ -237,13 +233,13 @@ namespace SceneryEditorX
         
         vkBindBufferMemory(vkDevice->GetDevice(), stagingBuffer, stagingBufferMemory, 0);
         
-        // Copy data to staging buffer
+        /// Copy data to staging buffer
         void *mappedData;
         vkMapMemory(vkDevice->GetDevice(), stagingBufferMemory, 0, imageSize, 0, &mappedData);
         memcpy(mappedData, data.data(), imageSize);
         vkUnmapMemory(vkDevice->GetDevice(), stagingBufferMemory);
         
-        // Create the texture image
+        /// Create the texture image
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -259,7 +255,7 @@ namespace SceneryEditorX
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         
-        // Create the image
+        /// Create the image
         if (vkCreateImage(vkDevice->GetDevice(), &imageInfo, nullptr, &textureImage) != VK_SUCCESS)
         {
             vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
@@ -268,7 +264,7 @@ namespace SceneryEditorX
             return;
         }
         
-        // Allocate memory for the image
+        /// Allocate memory for the image
         vkGetImageMemoryRequirements(vkDevice->GetDevice(), textureImage, &memRequirements);
         
         VkMemoryAllocateInfo imageAllocInfo{};
@@ -293,13 +289,13 @@ namespace SceneryEditorX
         // TODO: Transition image layout, copy buffer to image, and generate mipmaps
         // For now this is a simplified version without proper layout transitions
         
-        // Clean up staging resources
+        /// Clean up staging resources
         vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
         vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
 	}
 	
-	VkImageView TextureAsset::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, int mipLevels)
-	{
+	VkImageView TextureAsset::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, int mipLevels) const
+    {
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
@@ -323,4 +319,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// ---------------------------------------------------------
+/// ---------------------------------------------------------

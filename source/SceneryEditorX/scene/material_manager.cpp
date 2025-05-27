@@ -11,8 +11,7 @@
 * -------------------------------------------------------
 */
 #include <memory>
-
-#include <GraphicsEngine/scene/material_manager.h>
+#include <SceneryEditorX/scene/material_manager.h>
 
 // -------------------------------------------------------
 

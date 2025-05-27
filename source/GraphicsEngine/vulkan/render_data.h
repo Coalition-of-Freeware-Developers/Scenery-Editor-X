@@ -612,7 +612,7 @@ namespace SceneryEditorX
         VkFormat swapChainImageFormat;
 
         /** @brief Default sampler used for texture sampling */
-        VkSampler baseSampler;
+        VkSampler baseSampler = VK_NULL_HANDLE;
 
         /** @brief Current dimensions of the swap chain surface */
         VkExtent2D swapChainExtent;

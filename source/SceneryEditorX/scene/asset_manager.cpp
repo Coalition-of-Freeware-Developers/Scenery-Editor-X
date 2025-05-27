@@ -10,14 +10,14 @@
 * Created: 19/3/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/scene/asset.h>
-#include <GraphicsEngine/scene/asset_manager.h>
-#include <GraphicsEngine/scene/model_asset.h>
 #include <random>
 #include <SceneryEditorX/core/encoding.hpp>
 #include <SceneryEditorX/core/serializer.hpp>
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/platform/time.h>
+#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/scene/model_asset.h>
 
 // -------------------------------------------------------
 

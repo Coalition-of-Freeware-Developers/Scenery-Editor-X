@@ -5,18 +5,27 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* animation.cpp
+* project_settings.h
 * -------------------------------------------------------
-* Created: 16/4/2025
+* Created: 26/5/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/scene/animation.h>
+#pragma once
+#include <map>
 
-// -------------------------------------------------------
+/// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	struct RecentProjects
+	{
+        std::string projectName;
+        std::string projectPath;
+        time_t LastOpened;
+	};
 
-} // namespace SceneryEditorX
+	
 
-// ----------------------------------------
+}
+
+/// ---------------------------------------------------------

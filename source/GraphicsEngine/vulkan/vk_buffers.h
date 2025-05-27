@@ -47,7 +47,7 @@ namespace SceneryEditorX
      * allocating it in the appropriate memory type based on the memory parameter.
      * It abstracts away the details of buffer creation and memory allocation in Vulkan.
      */
-    Buffer CreateBuffer(uint32_t size, BufferUsageFlags usage, MemoryFlags memory = MemoryType::GPU, const std::string& name = "");
+    Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory = MemoryType::GPU, const std::string& name = "");
     
     /**
      * @brief Copies data between two Vulkan buffers

@@ -89,7 +89,7 @@
 ##########################################################
 */
 
-#include <stb_image.h> 
+#include <stb_image.h>
 #include <portable-file-dialogs.h>
 #include <nlohmann/json.hpp>
 
@@ -104,7 +104,7 @@
 //#include <spdlog/sinks/stdout_color_sinks.h>
 //#include <spdlog/spdlog.h>
 
-/* 
+/*
 ##########################################################
                          FMT Library
 ##########################################################
@@ -131,17 +131,15 @@
 */
 
 #ifdef SEDX_DEBUG
-	std::filesystem::path workingDir = std::filesystem::current_path();
+    extern std::filesystem::path workingDir;
 #endif
-
-namespace fs = std::filesystem;
 
 // -------------------------------------------------------
 
 /**
  * @brief - A macro to display an error message
- * @tparam T 
- * @param errorMessage 
+ * @tparam T
+ * @param errorMessage
  */
 template <typename T>
 void ErrMsg(const T &errorMessage)
@@ -158,7 +156,7 @@ void ErrMsg(const T &errorMessage)
     @autoreleasepool {
 		NSString *errorStr = [NSString stringWithUTF8String:errorMessage.c_str()];
 		NSString *nsTitle = [NSString stringWithUTF8String:"Error"];
-		  
+
     	NSAlert *alert = [[NSAlert alloc] init];
 		[alert setMessageText:nsTitle];
 		[alert setInformativeText:errorStr];

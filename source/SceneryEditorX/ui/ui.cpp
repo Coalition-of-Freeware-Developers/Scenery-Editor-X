@@ -201,7 +201,7 @@ namespace SceneryEditorX::UI
         info.Instance = GraphicsEngine::GetInstance();
         info.PhysicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         info.Device = device->GetDevice();
-        info.QueueFamily = reinterpret_cast<uint32_t>(vkDevice->GetGraphicsQueue());
+        info.QueueFamily = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
         info.DescriptorPool = imguiPool;
         info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;

@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/scene/asset.h>
-#include <GraphicsEngine/scene/node.h>
+#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/scene/node.h>
 
 // -----------------------------------------
 

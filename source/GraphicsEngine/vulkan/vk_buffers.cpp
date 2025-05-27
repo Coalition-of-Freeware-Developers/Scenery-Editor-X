@@ -16,7 +16,7 @@
 #include <GraphicsEngine/vulkan/vk_buffers.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
 
-// ----------------------------------------------------------
+/// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -83,7 +83,7 @@ namespace SceneryEditorX
 	 * 
 	 * @return       A Buffer structure containing the created buffer and its metadata
 	 */
-    GLOBAL Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
+    Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
 	    /// Get the allocator from the current device
 	    const VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
@@ -147,7 +147,7 @@ namespace SceneryEditorX
 	        .usage = usage,
 	        .memory = memory,
 	    };
-	    
+
 	    /// Handle storage buffer descriptors for bindless access
 	    if (usage & BufferUsage::Storage)
 	    {
@@ -188,7 +188,6 @@ namespace SceneryEditorX
 		vmaMapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.bufferResource->allocation, &data);
         return data; /// Return the mapped pointer directly
 	}
-
 
     /// ----------------------------------------------------------
 

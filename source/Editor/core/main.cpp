@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #include <CrashHandler/crash_handler.h>
-#include <Editor/core/editor.h>
 #include <Launcher/core/launcher_main.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/EntryPoint.h>

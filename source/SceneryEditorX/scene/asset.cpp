@@ -5,27 +5,20 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* xp_pbr.cpp
+* asset.cpp
 * -------------------------------------------------------
-* Created: 9/5/2025
+* Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/renderer/xp_pbr.h>
-#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/scene/asset.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	Asset::~Asset() = default;
+    Object::~Object() = default;
 
-    PBR::PBR(const std::string &path) : MaterialAsset(path)
-    {
-        //TextureAsset::Load(path);
-    }
+} // namespace SceneryEditorX
 
-    PBR::~PBR()
-    {
-        // Unload PBR texture data
-        //TextureAsset::Unload();
-    }
-}
+/// -------------------------------------------------------

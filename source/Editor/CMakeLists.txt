@@ -93,6 +93,7 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 
 TARGET_LINK_LIBRARIES(SceneryEditorX
     PRIVATE
+		AppCore
         glm::glm-header-only
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator

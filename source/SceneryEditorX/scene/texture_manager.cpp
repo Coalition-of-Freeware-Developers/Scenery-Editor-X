@@ -10,9 +10,9 @@
 * Created: 8/5/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/scene/texture_manager.h>
+#include <SceneryEditorX/scene/texture_manager.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -38,4 +38,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -7,46 +7,125 @@
 * -------------------------------------------------------
 * scene.h
 * -------------------------------------------------------
-* Created: 2/4/2025
+* Created: 11/4/2025
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/scene/node.h>
 
-#include <SceneryEditorX/core/delta_time.h>
-#include <SceneryEditorX/core/events.h>
-#include <SceneryEditorX/scene/asset_manager.h>
-
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class Scene : public Asset
+    struct Serializer;
+	class EditorConfig;
+	
+	/// -------------------------------------------------------
+	
+	class SceneAsset : public Asset
 	{
 	public:
-        Scene(const std::string &name = "NewAirport", bool isEditorScene = false, bool initalize = true);
-        ~Scene();
+        SceneAsset();
+        virtual void Serialize(Serializer &s) override;
+	    virtual void Load(const std::string &path) override;
+	    virtual void Unload() override;
+        bool IsLoaded() const;
+        const std::string &GetPath() const;
+        const std::string &GetName() const;
+	    virtual void SetName(const std::string &name) override;
 
-        void SetViewportBounds(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
+        std::vector<Ref<Node>> nodes;
+        Vec3 ambientLightColor = Vec3(1);
+        float ambientLight = 0.01f;
+        int aoSamples = 4;
+        int lightSamples = 2;
+        float aoMin = 0.0001f;
+        float aoMax = 1.0000f;
+        float exposure = 2.0f;
+        //ShadowType shadowType = ShadowType::ShadowRayTraced;
+        uint32_t shadowResolution = 1024;
 
-       static Ref<Scene> CreateEmpty();
+        float camSpeed = 0.01f;
+        float zoomSpeed = 1.0f;
+        float rotationSpeed = 0.3f;
+        bool autoOrbit = false;
+        Ref<CameraNode> mainCamera;
 
+        template <typename T>
+        Ref<T> Add()
+        {
+            Ref<T> node = std::make_shared<T>();
+            nodes.push_back(node);
+            return node;
+        }
 
-		virtual void OnAttach() {}
-		virtual void OnDetach() {}
-		virtual void OnUpdate(DeltaTime ts) {}
-		virtual void OnUIRender() {}
-		virtual void OnImGuiRender() {}
-		virtual void OnEvent(Event& e) {}
+        void Add(const Ref<Node> &node)
+        {
+            nodes.push_back(node);
+        }
 
-	private:
-        std::string Name_;
-        bool isEditorScene_ = false;
-        uint32_t Viewport_Top = 0;
-        uint32_t Viewport_Left = 0;
-        uint32_t Viewport_Right = 0;
-        uint32_t Viewport_Bottom = 0;
+        void DeleteRecursive(const Ref<Node> &node);
+
+		template<typename T>
+		Ref<T> Get(uint32_t id)
+	    {
+		    // todo: search recursively
+		    for (auto& node : nodes)
+			{
+		        if (node->uuid == id)
+				{
+		            return std::dynamic_pointer_cast<T>(node);
+		        }
+		    }
+		    return {};
+		}
+
+		template<typename T>
+		void GetAll(ObjectType type, std::vector<Ref<T>>& all)
+	    {
+		    for (auto& node : nodes)
+			{
+		        if (node->type == type)
+				{
+		            all.emplace_back(std::dynamic_pointer_cast<T>(node));
+		        }
+		        node->GetAll(type, all);
+		    }
+		}
+
+		template<typename T>
+		std::vector<Ref<T>> GetAll(ObjectType type)
+	    {
+		    std::vector<Ref<T>> all;
+		    for (auto& node : nodes)
+			{
+		        if (node->type == type)
+				{
+		            all.emplace_back(std::dynamic_pointer_cast<T>(node));
+		        }
+		        node->GetAll(type, all);
+		    }
+		    return all;
+		}
+
+		void UpdateParents()
+	    {
+		    for (auto& node : nodes)
+			{
+		        node->parent = {};
+		        Node::UpdateChildrenParent(node);
+		    }
+		}
+
+    private:
+        friend class AssetManager;
+        std::string scenePath;
+        std::string sceneName;
+        bool isLoaded = false;
 	};
-
+	
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// ---------------------------------------------------------

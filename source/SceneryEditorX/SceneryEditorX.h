@@ -5,20 +5,17 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* asset.cpp
+* SceneryEditorX.h
 * -------------------------------------------------------
-* Created: 15/4/2025
+* Created: 27/5/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/scene/asset.h>
+#pragma once
+#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/initializer.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/core/version.h>
 
-/// -------------------------------------------------------
+#include "imgui/imgui.h"
 
-namespace SceneryEditorX
-{
-	Asset::~Asset() = default;
-    Object::~Object() = default;
 
-} // namespace SceneryEditorX
-
-/// -------------------------------------------------------

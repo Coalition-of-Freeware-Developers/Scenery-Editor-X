@@ -53,14 +53,14 @@ namespace SceneryEditorX
         GLOBAL void WaitIdle(const Ref<VulkanDevice> &device);
 
 	    [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass;}
-        [[nodiscard]] VkSampler CreateSampler(float maxLod);
+        [[nodiscard]] VkSampler CreateSampler(float maxLod) const;
         //[[nodiscard]] VkSampler GetSampler() const { return vkDevice->GetSampler(); }
         [[nodiscard]] const VkAllocationCallbacks *GetAllocatorCallback() const { return allocator; }
 
 		/// -------------------------------------------------------
 
-	    void BeginFrame();
-		void EndFrame();
+	    //void BeginFrame();
+		//void EndFrame() const;
 
 		/// -------------------------------------------------------
 

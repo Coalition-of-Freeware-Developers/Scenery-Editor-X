@@ -14,8 +14,8 @@
 #include <json.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/platform/file_manager.hpp>
-#include <GraphicsEngine/scene/material.h>
-#include <GraphicsEngine/scene/texture_manager.h>
+#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/scene/texture_manager.h>
 
 // -------------------------------------------------------
 

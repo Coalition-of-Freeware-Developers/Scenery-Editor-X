@@ -14,6 +14,8 @@
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
 #include <vulkan/vulkan.h>
 
+#include "vk_util.h"
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
@@ -73,6 +75,29 @@ namespace SceneryEditorX
     }
     */
 
+    CommandBuffer::CommandBuffer(uint32_t count) : gfxEngine(GraphicsEngine::Get())
+    {
+        // Get the device from graphics engine
+        auto device = gfxEngine->GetLogicDevice()->GetDevice();
+
+        // Create command pool
+        cmdPool = CreateRef<CommandPool>();
+
+        // Resize command buffers array
+        cmdBuffers.resize(count);
+
+        // Allocate command buffers if count > 0
+        if (count > 0)
+        {
+            VkCommandBufferAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.commandPool = cmdPool->GetComputeCmdPool();
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandBufferCount = count;
+
+            vkAllocateCommandBuffers(device, &allocInfo, cmdBuffers.data());
+        }
+    }
     CommandBuffer::~CommandBuffer() = default;
 
     void CommandBuffer::Begin(const Queue queue)

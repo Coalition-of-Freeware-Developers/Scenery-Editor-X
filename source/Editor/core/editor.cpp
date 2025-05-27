@@ -301,7 +301,7 @@ namespace SceneryEditorX
 	    }
 
         // Get a command buffer to render into
-        gfxEngine.BeginFrame();
+        //gfxEngine.BeginFrame();
 
             // Ensure cmdBuffer is initialized and retrieve the active Vulkan command buffer
         if (!cmdBuffer)
@@ -328,7 +328,7 @@ namespace SceneryEditorX
         }
 
         // End and submit the command buffer
-        gfxEngine.EndFrame();
+        //gfxEngine.EndFrame();
 
         // Update frame counter
         frameCount = (frameCount + 1) % (1 << 15);

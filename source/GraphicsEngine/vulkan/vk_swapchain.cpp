@@ -704,7 +704,6 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR("Failed to allocate image memory!");
 
         vkBindImageMemory(vkDevice, image, imageMemory, 0);
-
     }
 
     uint32_t SwapChain::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const

@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/scene/material.h>
+#include <SceneryEditorX/scene/material.h>
 
 /// -------------------------------------------------------
 

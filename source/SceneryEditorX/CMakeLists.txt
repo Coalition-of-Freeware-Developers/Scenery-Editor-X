@@ -10,7 +10,9 @@ MESSAGE(STATUS "Generating Application Core")
 FILE(GLOB CORE core/*.cpp core/*.h core/*.hpp)
 FILE(GLOB LOGGER logging/*.cpp logging//*.h logging//*.hpp)
 FILE(GLOB PLATFORM platform/*.cpp platform/*.h platform/*.hpp)
+FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
 FILE(GLOB RENDERER renderer/*.cpp renderer/*.h renderer/*.hpp)
+FILE(GLOB SCENE scene/*.cpp scene/*.h scene/*.hpp)
 FILE(GLOB UI_FILES ui/*.cpp ui/*.h ui/*.hpp)
 FILE(GLOB UTILITIES_FILES utils/*.cpp utils/*.h utils/*.hpp)
 
@@ -30,7 +32,9 @@ ADD_LIBRARY(AppCore
 	${CORE}
 	${LOGGER}
     ${PLATFORM}
+	${PROJECT}
 	${RENDERER}
+	${SCENE}
 	${PROJECT_CONFIG_FILES}
     ${REGISTRY_KEYS}
 	${UTILITIES_FILES}
@@ -64,6 +68,9 @@ SOURCE_GROUP("Core" FILES
 	${CORE}
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 )
+SOURCE_GROUP("Project" FILES
+	${PROJECT}
+)
 SOURCE_GROUP("Platform" FILES
 	${PLATFORM}
 )
@@ -72,6 +79,9 @@ SOURCE_GROUP("Logger" FILES
 )
 SOURCE_GROUP("Renderer" FILES
 	${RENDERER}
+)
+SOURCE_GROUP("Scene" FILES
+	${SCENE}
 )
 SOURCE_GROUP("Utilities" FILES
 	${UTILITIES_FILES}

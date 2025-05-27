@@ -10,8 +10,8 @@
 * Created: 9/5/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/scene/texture.h>
 #include <GraphicsEngine/renderer/xp_texture.h>
+#include <SceneryEditorX/scene/texture.h>
 
 // -------------------------------------------------------
 

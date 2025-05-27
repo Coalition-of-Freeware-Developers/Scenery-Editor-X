@@ -11,16 +11,16 @@
 * -------------------------------------------------------
 */
 #define TINYOBJLOADER_IMPLEMENTATION
+#include <GraphicsEngine/vulkan/render_data.h>
+#include <GraphicsEngine/vulkan/vk_checks.h>
+#include <GraphicsEngine/vulkan/vk_core.h>
+#include <GraphicsEngine/vulkan/vk_util.h>
 #include <imgui_impl_vulkan.h>
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/ui/ui.h>
-#include <GraphicsEngine/vulkan/render_data.h>
-#include <GraphicsEngine/vulkan/vk_checks.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
-#include <GraphicsEngine/vulkan/vk_util.h>
 #include <tiny_obj_loader.h>
 
 /// -------------------------------------------------------
@@ -1232,38 +1232,72 @@ namespace SceneryEditorX
     /*
     void GraphicsEngine::BeginFrame()
     {
-        // Wait for the previous frame to finish
-        if (vkDevice)
-        {
-            vkDevice->WaitIdle();
-        }
-        
-        // Begin command buffer for this frame
-        if (cmdBufferManger)
-        {
-            cmdBufferManger->Begin();
-        }
+        // Acquire next swapchain image
+        renderData.currentFrame = (renderData.currentFrame + 1) % renderData.framesInFlight;
 
-    }
+        // Wait for previous frame to finish
+        vkWaitForFences(vkDevice->GetDevice(), 1, &inFlightFences[renderData.currentFrame], VK_TRUE, UINT64_MAX);
 
-    void GraphicsEngine::EndFrame()
-    {
-        // End command buffer for this frame
-        if (cmdBufferManger)
+        // Get next image from swapchain
+        vkSwapChain->AcquireNextImage();
+
+        // Reset fence for current frame
+        vkResetFences(vkDevice->GetDevice(), 1, &inFlightFences[renderData.currentFrame]);
+
+        // Begin command buffer recording
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        VkResult result = vkBeginCommandBuffer(commandBuffers[renderData.currentFrame], &beginInfo);
+        if (result != VK_SUCCESS)
         {
-            cmdBufferManger->End();
-            cmdBufferManger->Submit();
-        }
-        
-        // End swap chain rendering if available
-        if (vkSwapChain)
-        {
-            vkSwapChain->EndFrame();
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to begin command buffer!");
         }
     }
     */
 
-    VkSampler GraphicsEngine::CreateSampler(float maxLod)
+    /*
+    void GraphicsEngine::EndFrame() const
+    {
+        VkResult result = vkEndCommandBuffer(commandBuffers[renderData.currentFrame]);
+        if (result != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to end command buffer!");
+        }
+
+        // Submit command buffer
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        // Set wait semaphores and stages
+        VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[renderData.currentFrame]};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+
+        // Set command buffer
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffers[renderData.currentFrame];
+
+        // Set signal semaphores
+        VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[renderData.currentFrame]};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        const VkQueue graphicsQueue = vkDevice->GetGraphicsQueue();
+        result = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[renderData.currentFrame]);
+        if (result != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to submit draw command buffer!");
+        }
+
+        // Present rendered image
+        //vkSwapChain->PresentImage(signalSemaphores);
+    }
+    */
+
+
+    VkSampler GraphicsEngine::CreateSampler(float maxLod) const
     {
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

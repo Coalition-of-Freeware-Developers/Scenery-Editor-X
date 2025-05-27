@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/scene/asset_manager.h>
+#include <SceneryEditorX/scene/asset_manager.h>
 #include <string>
 #include <vector>
 

@@ -5,37 +5,34 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* animation.h
+* texture_manager.h
 * -------------------------------------------------------
-* Created: 15/4/2025
+* Created: 8/5/2025
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/scene/asset.h>
+#include <memory>
+#include <SceneryEditorX/scene/texture.h>
+#include <string>
+#include <unordered_map>
 
 // -------------------------------------------------------
+
 namespace SceneryEditorX
 {
-	class Animation : public Asset
+	class TextureManager
 	{
 	public:
-	    Animation();
-	    virtual ~Animation() override;
+	    TextureManager() = default;
+	    ~TextureManager() = default;
 	
-	    // -------------------------------------------------------
+	    std::shared_ptr<TextureAsset> LoadTexture(const std::string &path);
+	    void UnloadTexture(const std::string &path);
 	
-	    //virtual void Load(const std::string &path) override;
-	    //virtual void Unload() override;
-	    //virtual bool IsLoaded() const;
-	    virtual const std::string &GetPath() const;
-	    virtual const std::string &GetName() const;
-	    //virtual void SetName(const std::string &name) override;
-
-    private:
-        friend class AssetManager;
+	private:
+	    std::unordered_map<std::string, std::shared_ptr<TextureAsset>> textures;
 	};
 	
-
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------

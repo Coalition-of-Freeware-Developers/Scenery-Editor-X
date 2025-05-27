@@ -11,17 +11,17 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/platform/editor_config.hpp>
-#include <GraphicsEngine/scene/asset.h>
 #include <GraphicsEngine/vulkan/vk_device.h>
+#include <SceneryEditorX/platform/editor_config.hpp>
+#include <SceneryEditorX/scene/asset.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	struct Serializer;
 	
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
 	class TextureAsset : public Asset
     {
@@ -33,13 +33,13 @@ namespace SceneryEditorX
         virtual ~TextureAsset() override;
         virtual void Serialize(Serializer &ser) override;
 
-        // -------------------------------------------------------
+        /// -------------------------------------------------------
 
         virtual void Load(const std::string &path) override;
         virtual void Unload() override;
 
-	    void LoadWithAllocator();
-        void UnloadWithAllocator();
+        GLOBAL void LoadWithAllocator();
+        GLOBAL void UnloadWithAllocator();
         //[[nodiscard]] virtual bool IsLoaded() const override;
         [[nodiscard]] virtual const std::string &GetPath() const;
         [[nodiscard]] virtual const std::string &GetName() const;
@@ -54,7 +54,7 @@ namespace SceneryEditorX
         void CreateTextureImage();
         void CreateTextureImageView();
         void CreateTextureSampler();
-		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int i);
+		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int i) const;
 
 		Ref<RenderData> renderData;
         WeakRef<EditorConfig> config;
@@ -63,14 +63,15 @@ namespace SceneryEditorX
         Ref<MemoryAllocator> allocator;
         std::string texturePath;
         std::string textureName;
-		// -------------------------------------------------------
+
+		/// -------------------------------------------------------
 
 		VkImage textureImage = VK_NULL_HANDLE;
         VkSampler textureSampler = VK_NULL_HANDLE;
         VkImageView textureImageView = VK_NULL_HANDLE;
         VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         friend class AssetManager;
     };
@@ -78,4 +79,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

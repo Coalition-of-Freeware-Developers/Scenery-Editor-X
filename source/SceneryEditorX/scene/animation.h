@@ -5,34 +5,37 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* material_manager.h
+* animation.h
 * -------------------------------------------------------
-* Created: 8/5/2025
+* Created: 15/4/2025
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/scene/material.h>
-#include <memory>
-#include <string>
-#include <unordered_map>
+#include <SceneryEditorX/scene/asset.h>
 
 // -------------------------------------------------------
-
 namespace SceneryEditorX
 {
-	class MaterialManager
+	class Animation : public Asset
 	{
 	public:
-	    MaterialManager() = default;
-	    ~MaterialManager() = default;
+	    Animation();
+	    virtual ~Animation() override;
 	
-	    std::shared_ptr<MaterialAsset> LoadMaterial(const std::string &path);
-	    void UnloadMaterial(const std::string &path);
+	    // -------------------------------------------------------
 	
-	private:
-	    std::unordered_map<std::string, std::shared_ptr<MaterialAsset>> materials;
+	    //virtual void Load(const std::string &path) override;
+	    //virtual void Unload() override;
+	    //virtual bool IsLoaded() const;
+	    virtual const std::string &GetPath() const;
+	    virtual const std::string &GetName() const;
+	    //virtual void SetName(const std::string &name) override;
+
+    private:
+        friend class AssetManager;
 	};
 	
+
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------

@@ -11,15 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/scene/asset.h>
-#include <GraphicsEngine/scene/camera.h>
-#include <GraphicsEngine/scene/lights.h>
-#include <GraphicsEngine/scene/material.h>
-#include <GraphicsEngine/scene/model_asset.h>
-#include <GraphicsEngine/scene/node.h>
-#include <GraphicsEngine/scene/scene.h>
-#include <GraphicsEngine/scene/texture.h>
 #include <GraphicsEngine/vulkan/render_data.h>
+#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/scene/lights.h>
+#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/scene/model_asset.h>
+#include <SceneryEditorX/scene/node.h>
+#include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/scene/texture.h>
 #include <vector>
 
 // -------------------------------------------------------

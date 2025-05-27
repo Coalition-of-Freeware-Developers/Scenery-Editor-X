@@ -11,12 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <glm/glm.hpp>
-#include <GraphicsEngine/scene/asset.h>
-#include <GraphicsEngine/scene/material.h>
-#include <GraphicsEngine/scene/node.h>
-#include <vulkan/vulkan.h>
 #include <array>
+#include <glm/glm.hpp>
+#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/scene/node.h>
+#include <vulkan/vulkan.h>
 
 // -------------------------------------------------------
 

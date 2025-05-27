@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/platform/editor_config.hpp>
-#include <GraphicsEngine/scene/model_asset.h>
+#include <SceneryEditorX/scene/model_asset.h>
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
 

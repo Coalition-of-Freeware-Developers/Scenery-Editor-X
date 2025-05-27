@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <nlohmann/json.hpp>
-#include <GraphicsEngine/scene/asset_manager.h>
+#include <SceneryEditorX/scene/asset_manager.h>
 
 /// -------------------------------------------------------
 

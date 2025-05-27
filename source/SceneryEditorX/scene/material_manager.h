@@ -5,14 +5,14 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* texture_manager.h
+* material_manager.h
 * -------------------------------------------------------
 * Created: 8/5/2025
 * -------------------------------------------------------
 */
 #pragma once
 #include <memory>
-#include <GraphicsEngine/scene/texture.h>
+#include <SceneryEditorX/scene/material.h>
 #include <string>
 #include <unordered_map>
 
@@ -20,17 +20,17 @@
 
 namespace SceneryEditorX
 {
-	class TextureManager
+	class MaterialManager
 	{
 	public:
-	    TextureManager() = default;
-	    ~TextureManager() = default;
+	    MaterialManager() = default;
+	    ~MaterialManager() = default;
 	
-	    std::shared_ptr<TextureAsset> LoadTexture(const std::string &path);
-	    void UnloadTexture(const std::string &path);
+	    std::shared_ptr<MaterialAsset> LoadMaterial(const std::string &path);
+	    void UnloadMaterial(const std::string &path);
 	
 	private:
-	    std::unordered_map<std::string, std::shared_ptr<TextureAsset>> textures;
+	    std::unordered_map<std::string, std::shared_ptr<MaterialAsset>> materials;
 	};
 	
 } // namespace SceneryEditorX
