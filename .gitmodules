@@ -13,6 +13,3 @@
 [submodule "dependency/IconFontCppHeaders"]
 	path = dependency/IconFontCppHeaders
 	url = git@github.com:juliettef/IconFontCppHeaders.git
-[submodule "dependency/libconfig"]
-	path = dependency/libconfig
-	url = git@github.com:Coalition-of-Freeware-Developers/libconfig.git
