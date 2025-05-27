@@ -14,7 +14,6 @@ SET(PROJECT_CONFIG_FILES
 )
 
 SET(PROJECT_RESOURCE_FILES
-	${CMAKE_SOURCE_DIR}/source/CrashHandler/CrashHandler.aps
 	${CMAKE_SOURCE_DIR}/source/CrashHandler/CrashHandler.rc
 	${CMAKE_SOURCE_DIR}/source/CrashHandler/resource.h
 )
