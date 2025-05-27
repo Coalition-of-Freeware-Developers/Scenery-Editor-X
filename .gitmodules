@@ -15,4 +15,4 @@
 	url = git@github.com:juliettef/IconFontCppHeaders.git
 [submodule "dependency/libconfig"]
 	path = dependency/libconfig
-	url = git@github.com:hyperrealm/libconfig.git
+	url = git@github.com:Coalition-of-Freeware-Developers/libconfig.git
