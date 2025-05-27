@@ -1,3 +1,4 @@
+![SceneryEditorX-Banner](assets/textures/splash_screen.png)
 # Scenery Editor X 
 Scenery Editor X is a editor tool for use in creating, modifying, and building custom X-Plane 12 scenery. Unlike similar editing software this program utilizes a 3D viewport to allow the user to quickly and rapidly manipulate and create sceneries with more adaptive and modern tools and utilities. 
 
@@ -46,3 +47,9 @@ I tried to make this as easy and simple as possible to get you up and running. A
 After that you will have the whole project setup and located in the `build/` folder.
 
 [NOTE] Use the `Setup.bat` script if you need to regenerate the project structure.
+
+---
+
+<p align="center">
+<img src=https://github.com/user-attachments/assets/1d752157-ed53-4f5e-80f9-21c2fdcb2537 width=40%>
+</p>
