@@ -16,17 +16,13 @@ Scenery Editor X is a editor tool for use in creating, modifying, and building c
 ## Dependencies
 Inorder to compile and develop Scenery Editor X you will need:
 
+* [CMake](https://cmake.org/download/)
 * [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows)
-* [Boost C++ Library v1.86](https://www.boost.org/users/history/version_1_86_0.html)
-[NOTE] I have pondered with the idea of just building the boost library components into their respective `.dll` files and embeding them into the Scenery Editor X project to reduce the amount of dependencies needed.
-This has not been done at the time of me updating this read-me but I will do so when I cleanup this code.
 
 ## Environment Variables 
 To be able to build this program you must have a few environment variables set in your system to be able to be referenced in the code base.
 Environment Variables:
 ### User Variables
-* BOOST_INCLUDE - Path to the Boost C++ Librarys' folder.
-* BOOST_LIB - Path to the Boost C++ Library `stage\lib` folder.
 * XPLANE_12_SDK - Path to where your XPlane 12 SDK folder is.
 
 ### System Variables
@@ -46,10 +42,7 @@ SSH: `git clone --recurse-submodules git@github.com:The3dVehicleguy/Scenery-Edit
 
 ### CMake:
 Please make sure you have CMake installed and added to your environment variable path.
-Once the repository is cloned go into the folder and run the following terminal commands:
-```
-mkdir Build
-cd Build
-cmake .. -G Ninja
-```
+I tried to make this as easy and simple as possible to get you up and running. All you need to do is run `Setup.bat` and follow the prompts on the command prompt window.
+After that you will have the whole project setup and located in the `build/` folder.
 
+[NOTE] Use the `Setup.bat` script if you need to regenerate the project structure.
