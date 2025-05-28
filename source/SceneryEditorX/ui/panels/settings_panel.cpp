@@ -13,43 +13,43 @@
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 //bool UI::showSettingsPanel = false;
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-// Settings state variables
+/// Settings state variables
 namespace UI
 {
-	// General settings
+	/// General settings
 	static int languageIndex = 0;
 	static bool autosave = true;
 	static int autosaveInterval = 5; // minutes
 	
-	// Graphics settings
+	/// Graphics settings
 	static int msaaLevel = 2; // 0: Off, 1: 2x, 2: 4x, 3: 8x
 	static bool vSync = true;
 	static float fov = 60.0f;
 	static int shadowQuality = 2; // 0: Low, 1: Medium, 2: High
 	
-	// Input settings
+	/// Input settings
 	static float mouseSensitivity = 1.0f;
 	static bool invertY = false;
 	static bool cameraMomentum = true;
 	
-	// Paths settings
+	/// Paths settings
     static char xplanePath[1024] = "C:/X-Plane 12"; // Temporary path
 	static char defaultProjectPath[1024] = "C:/Users/Documents/Scenery Editor X/Projects"; // Temporary path
 	
-	// Editor settings
+	/// Editor settings
 	static bool showGrid = true;
 	static float gridSize = 1.0f;
 	static bool autoSnap = true;
 
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace UI
 {
@@ -65,7 +65,7 @@ namespace UI
 	
 	    ImGui::Begin("Settings", &showSettingsPanel, ImGuiWindowFlags_NoCollapse);
 	
-	    // Left side: Categories
+	    /// Left side: Categories
 	    static int selectedTab = 0;
 	    const char *tabs[] = {"General", "Graphics", "Input", "Paths", "Editor"};
 	
@@ -83,17 +83,17 @@ namespace UI
 	
 	    ImGui::SameLine();
 	
-	    // Right side: Settings content
+	    /// Right side: Settings content
 	    ImGui::BeginChild("SettingsContent", ImVec2(0, -35), true);
 	
-	    // Define all arrays outside the switch statement
+	    /// Define all arrays outside the switch statement
 	    const char *languages[] = {"English", "French", "German", "Spanish", "Chinese"};
 	    const char *msaaOptions[] = {"Off", "2x MSAA", "4x MSAA", "8x MSAA"};
 	    const char *shadowOptions[] = {"Low", "Medium", "High"};
 	
 	    switch (selectedTab)
 	    {
-	    case 0: // General
+	    case 0: /// General
 	        {
 	            ImGui::Text("Application Settings");
 	            ImGui::Separator();
@@ -113,7 +113,7 @@ namespace UI
 	        }
 	        break;
 	
-	    case 1: // Graphics
+	    case 1: /// Graphics
 	        {
 	            ImGui::Text("Graphics Settings");
 	            ImGui::Separator();
@@ -129,7 +129,7 @@ namespace UI
 	        }
 	        break;
 	
-	    case 2: // Input
+	    case 2: /// Input
 	        {
 	            ImGui::Text("Input Settings");
 	            ImGui::Separator();
@@ -149,7 +149,7 @@ namespace UI
 	        }
 	        break;
 	
-	    case 3: // Paths
+	    case 3: /// Paths
 	        {
 	            ImGui::Text("Path Settings");
 	            ImGui::Separator();
@@ -158,19 +158,19 @@ namespace UI
 	            ImGui::SameLine();
 	            if (ImGui::Button("Browse##1"))
 	            {
-	                // File dialog would be implemented here
+	                /// File dialog would be implemented here
 	            }
 	
 	            ImGui::InputText("Default Project Path", defaultProjectPath, IM_ARRAYSIZE(defaultProjectPath));
 	            ImGui::SameLine();
 	            if (ImGui::Button("Browse##2"))
 	            {
-	                // File dialog would be implemented here
+	                /// File dialog would be implemented here
 	            }
 	        }
 	        break;
 	
-	    case 4: // Editor
+	    case 4: /// Editor
 	        {
 	            ImGui::Text("Editor Settings");
 	            ImGui::Separator();
@@ -187,20 +187,20 @@ namespace UI
 	
 	            ImGui::Separator();
 	            ImGui::Text("Color Scheme");
-	            // Here you would add color pickers for UI elements
+	            /// Here you would add color pickers for UI elements
 	        }
 	        break;
 	    }
 	
 	    ImGui::EndChild();
 	
-	    // Bottom buttons
+	    /// Bottom buttons
 	    ImGui::Separator();
 	    ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 220);
 	    if (ImGui::Button("Apply", ImVec2(100.0f, 0.0f)))
 	    {
-	        // Save settings
-	        // This would actually save to a config file
+	        /// Save settings
+	        /// This would actually save to a config file
 	    }
 	    ImGui::SameLine();
 	    if (ImGui::Button("Close", ImVec2(100.0f, 0.0f)))
@@ -214,4 +214,4 @@ namespace UI
 
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

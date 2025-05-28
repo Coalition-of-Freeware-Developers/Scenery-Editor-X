@@ -79,7 +79,6 @@ namespace SceneryEditorX
 
 		Viewport viewportData;
         RenderData renderData;
-        //Extensions vkExtensions;
         VulkanDeviceFeatures vkEnabledFeatures;
 
         LOCAL void glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer);

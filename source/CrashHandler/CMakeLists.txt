@@ -33,6 +33,9 @@ ADD_EXECUTABLE(CrashHandler
 	# --------------------------------
 )
 
+# Set the output name to xService while keeping CrashHandler as target name
+SET_TARGET_PROPERTIES(CrashHandler PROPERTIES OUTPUT_NAME "xService")
+
 # --------------------------------
 
 TARGET_INCLUDE_DIRECTORIES(CrashHandler

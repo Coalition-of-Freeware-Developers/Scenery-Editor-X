@@ -13,21 +13,19 @@
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-// Define showExitModal and showAboutModal variables
 //bool UI::showExitModal = false;
 //bool UI::showAboutModal = false;
 //bool UI::showCreateProjectModal = false;
 
 namespace UI
 {
-
-	// Define projectName and projectLocation variables
+	/// Define projectName and projectLocation variables
     INTERNAL char projectName[128];
 	INTERNAL char projectLocation[2048];
 
-	// ---------------------------------------------------------
+	/// ---------------------------------------------------------
 
     void UIManager::ExitConfirmationModal(GLFWwindow *window)
     {
@@ -45,7 +43,7 @@ namespace UI
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 180);
             if (ImGui::Button("Exit", ImVec2(85, 0)))
             {
-                // Exit application
+                /// Exit application
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
                 showExitModal = false;
             }
@@ -83,7 +81,7 @@ namespace UI
                 ImGui::InputText("##ProjectLocation", projectLocation, IM_ARRAYSIZE(projectLocation));
                 ImGui::Separator();
 
-                // Buttons
+                /// Buttons
                 if (ImGui::Button("Create", ImVec2(100.0f, 0.0f)))
                 {
                     showCreateProjectModal = false; // Close the modal
@@ -91,7 +89,7 @@ namespace UI
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f)))
                 {
-                    showCreateProjectModal = false; // Close the modal without creating a new project
+                    showCreateProjectModal = false; /// Close the modal without creating a new project
                 }
 
                 ImGui::EndPopup();
@@ -134,4 +132,4 @@ namespace UI
 
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

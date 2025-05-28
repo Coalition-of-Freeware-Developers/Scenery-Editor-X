@@ -10,23 +10,22 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
+#include <GraphicsEngine/vulkan/vk_util.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
-#include <GraphicsEngine/vulkan/vk_util.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-// Temporary stub for ImGuizmo until you integrate the actual library
+/// Temporary stub for ImGuizmo until integration of the actual library
 namespace ImGuizmo 
 {
-    // Simple stub implementation
     bool IsUsing() { return false; }
 
 }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace UI
 {
@@ -50,7 +49,8 @@ namespace UI
 
 			viewportHovered = ImGui::IsWindowHovered();
             
-            // Set up ImGuizmo uncomment when integrating ImGuizmo
+            /// Set up ImGuizmo
+            /// Uncomment when integrating ImGuizmo
             /*
             ImGuizmo::SetDrawlist();
             ImGuizmo::SetRect(ImGui::GetWindowPos().x,
@@ -60,7 +60,7 @@ namespace UI
 
 			*/
 
-            // Check if viewport is hovered
+            /// Check if viewport is hovered
             //viewportHovered = ImGui::IsWindowHovered() && !ImGuizmo::IsUsing();
 
 			if (!ImGuizmo::IsUsing())
@@ -81,8 +81,8 @@ namespace UI
         static bool opt_fullscreen = true;
         static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
 
-        // We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-        // because it would be confusing to have two docking targets within each other.
+        /// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
+        /// because it would be confusing to have two docking targets within each other.
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
         if (opt_fullscreen)
         {
@@ -96,9 +96,9 @@ namespace UI
             window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
         }
 
-        // Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-        // This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
-        // all active windows docked into it will lose their parent and become undocked.
+        /// Important: note that we proceed even if Begin() returns false (aka window is collapsed).
+        /// This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
+        /// all active windows docked into it will lose their parent and become undocked.
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin("DockSpace Demo", p_open, window_flags);
         ImGui::PopStyleVar();
@@ -106,14 +106,14 @@ namespace UI
         if (opt_fullscreen)
             ImGui::PopStyleVar(2);
 
-        // Submit the DockSpace
+        /// Submit the DockSpace
         ImGuiIO& io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
         {
             ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
             ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 
-            // Set up default docking layout if first time
+            /// Set up default docking layout if first time
             static bool first_time = true;
             if (first_time)
             {
@@ -122,13 +122,13 @@ namespace UI
                 ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags | ImGuiDockNodeFlags_DockSpace);
                 ImGui::DockBuilderSetNodeSize(dockspace_id, io.DisplaySize);
 
-                // Split the dockspace
+                /// Split the dockspace
                 ImGuiID dock_main_id = dockspace_id;
                 ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id);
                 ImGuiID dock_id_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.25f, nullptr, &dock_main_id);
                 ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.25f, nullptr, &dock_main_id);
 
-                // Dock windows
+                /// Dock windows
                 ImGui::DockBuilderDockWindow("Viewport", dock_main_id);
                 ImGui::DockBuilderDockWindow("Layer Stack", dock_id_right);
                 ImGui::DockBuilderDockWindow("Asset Browser", dock_id_bottom);
@@ -138,7 +138,7 @@ namespace UI
             }
         }
 
-        // Your main menu bar should be here
+        /// Your main menu bar should be here
         if (ImGui::BeginMenuBar())
         {
             MainMenuBar();
@@ -158,4 +158,4 @@ namespace UI
 
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

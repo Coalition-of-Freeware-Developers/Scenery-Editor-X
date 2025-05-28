@@ -36,7 +36,7 @@ struct Icons
     GLOBAL constexpr const char* FILE = ICON_FA_FILE;
     GLOBAL constexpr const char* FILE_ALT = ICON_FA_FILE_ALT;
 
-    // Editor tools
+    /// Editor tools
     GLOBAL constexpr const char* PENCIL = ICON_FA_PENCIL_ALT;
     GLOBAL constexpr const char* EDIT = ICON_FA_EDIT;
     GLOBAL constexpr const char* MOVE = ICON_FA_ARROWS_ALT;
@@ -49,7 +49,7 @@ struct Icons
     GLOBAL constexpr const char* LOCK = ICON_FA_LOCK;
     GLOBAL constexpr const char* UNLOCK = ICON_FA_UNLOCK;
 
-    // 3D visualization
+    /// 3D visualization
     GLOBAL constexpr const char* CUBE = ICON_FA_CUBE;
     GLOBAL constexpr const char* CUBES = ICON_FA_CUBES;
     GLOBAL constexpr const char* MOUNTAIN = ICON_FA_MOUNTAIN;
@@ -61,7 +61,7 @@ struct Icons
     GLOBAL constexpr const char* OBJECT_GROUP = ICON_FA_OBJECT_GROUP;
     GLOBAL constexpr const char* OBJECT_UNGROUP = ICON_FA_OBJECT_UNGROUP;
 
-    // Interface elements
+    /// Interface elements
     GLOBAL constexpr const char* COG = ICON_FA_COG;
     GLOBAL constexpr const char* COGS = ICON_FA_COGS;
     GLOBAL constexpr const char* BARS = ICON_FA_BARS;
@@ -77,10 +77,10 @@ struct Icons
     GLOBAL constexpr const char* PAUSE = ICON_FA_PAUSE;
     GLOBAL constexpr const char* STOP = ICON_FA_STOP;
 
-    // Helper method to get font icon
+    /// Helper method to get font icon
     static const char* GetIcon(const std::string& name)
     {
-        // Map common names to icon constants
+        /// Map common names to icon constants
         static const std::unordered_map<std::string, const char*> iconMap = {
             {"arrow_right", ARROW_RIGHT},
             {"arrow_left", ARROW_LEFT},
@@ -138,7 +138,7 @@ struct Icons
     }
 };
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 struct Image
 {

@@ -1,19 +1,7 @@
-/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* resource.h
-* -------------------------------------------------------
-* Created: 13/5/2025
-* -------------------------------------------------------
-*/
-
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by CrashHandler.rc
+//
 
 // Next default values for new objects
 // 

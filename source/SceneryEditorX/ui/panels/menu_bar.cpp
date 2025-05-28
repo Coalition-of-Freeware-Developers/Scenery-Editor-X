@@ -13,9 +13,9 @@
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-// Function to open a file dialog and return the selected file path
+/// Function to open a file dialog and return the selected file path
 //std::string FileDialogs()
 //{
    // Implementation of file dialog (platform-specific)
@@ -23,7 +23,7 @@
    // This is a placeholder implementation
 //}
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace UI
 {
@@ -208,5 +208,5 @@ namespace UI
 
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 

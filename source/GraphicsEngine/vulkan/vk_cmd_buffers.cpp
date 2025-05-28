@@ -78,10 +78,11 @@ namespace SceneryEditorX
     CommandBuffer::CommandBuffer(uint32_t count) : gfxEngine(GraphicsEngine::Get())
     {
         // Get the device from graphics engine
-        auto device = gfxEngine->GetLogicDevice()->GetDevice();
+        auto vulkanDevice = gfxEngine->GetLogicDevice();
+        auto device = vulkanDevice->GetDevice();
 
-        // Create command pool
-        cmdPool = CreateRef<CommandPool>();
+        // Create command pool with the VulkanDevice
+        cmdPool = CreateRef<CommandPool>(vulkanDevice);
 
         // Resize command buffers array
         cmdBuffers.resize(count);

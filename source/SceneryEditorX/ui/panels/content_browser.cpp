@@ -14,7 +14,7 @@
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/ui/ui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace UI
 {
@@ -26,7 +26,7 @@ namespace UI
                          ImGuiWindowFlags_NoCollapse);
         constexpr ImGuiWindowFlags child_flags =
             ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar;
-        ImGui::SetScrollHereX(0.25f); // 0.0f:left, 0.5f:center, 1.0f:right
+        ImGui::SetScrollHereX(0.25f); /// 0.0f:left, 0.5f:center, 1.0f:right
 
             ImGui::BeginChild("Library Items", ImVec2(0, 0), false, child_flags);
             ImGuiTableFlags table_flags_for_sort_specs = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
@@ -45,3 +45,5 @@ namespace UI
         ImGui::End();
     }
 } // namespace UI
+
+/// -------------------------------------------------------

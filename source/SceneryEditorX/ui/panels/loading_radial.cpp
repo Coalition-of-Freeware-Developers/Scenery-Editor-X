@@ -18,6 +18,8 @@
 
 using namespace ImGui;
 
+/// -------------------------------------------------------
+
 namespace SceneryEditorX::UI  
 {  
    void LoadingIndicatorCircle(const char *label,
@@ -61,3 +63,4 @@ namespace SceneryEditorX::UI
    }
 }
 */
+/// -------------------------------------------------------

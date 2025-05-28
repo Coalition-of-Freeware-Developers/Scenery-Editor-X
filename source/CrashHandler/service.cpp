@@ -12,8 +12,8 @@
 */
 #include <chrono>
 #include <CrashHandler/crash_handler.h>
-#include <CrashHandler/service_ipc.h>
 #include <CrashHandler/dialog.h>
+#include <CrashHandler/service_ipc.h>
 #include <filesystem>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
