@@ -12,6 +12,7 @@
 */
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/core/window/icon.h>
 #include <SceneryEditorX/utils/monitor_data.h>
 #include <stb_image.h>
 
@@ -31,10 +32,18 @@ namespace SceneryEditorX
 	{
 	    glfwInit();
 	    glfwSetErrorCallback([](int error, const char *description) {
+	        // Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
+	        if (error == 0x10003 && strstr(description, "joystick")) {
+	            // Silently ignore joystick-related GLFW_INVALID_ENUM errors
+	            return;
+	        }
 	        SEDX_CORE_ERROR_TAG("Window", "GLFW Error ({0}): {1}", error, description);
 	    });
 	    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	    
+	    // Initialize GLFW with joystick hat buttons disabled to reduce errors
+	    glfwInitHint(GLFW_JOYSTICK_HAT_BUTTONS, GLFW_FALSE);
 	
 	    // Initialize monitor information
 	    MonitorInfo::RefreshMonitors();
@@ -70,6 +79,9 @@ namespace SceneryEditorX
 	
 	    WindowData::dirty = false;
 	    ApplyChanges();
+	    
+	    // Disable joystick detection to avoid errors with flight sim hardware
+	    DisableJoystickHandling();
 	}
 
     /**
@@ -84,6 +96,20 @@ namespace SceneryEditorX
 	    glfwDestroyWindow(WindowData::window);
 	    glfwTerminate();
 	}
+	
+	/**
+     * @brief Disables joystick handling to avoid errors with flight simulator hardware.
+     * 
+     * This function disables all joystick-related callbacks and event processing
+     * to prevent GLFW errors when dealing with complex flight simulator controllers.
+     */
+    void Window::DisableJoystickHandling()
+    {
+        // Detach any registered joystick callback
+        glfwSetJoystickCallback(nullptr);
+        
+        SEDX_CORE_INFO_TAG("Window", "Joystick handling disabled to prevent conflicts with flight simulator hardware");
+    }
 
 	/**
 	 * @brief Callback function for handling scroll events.
@@ -564,7 +590,6 @@ namespace SceneryEditorX
 	 */
 	void Window::SetWindowIcon(GLFWwindow *window)
 	{
-	
 	    IconData iconData;
 	
 	    std::ifstream file(iconData.path, std::ios::binary | std::ios::ate);

@@ -245,7 +245,7 @@ namespace SceneryEditorX
         return vkExtensions;
     }
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     void GraphicsEngine::CreateInstance(const Ref<Window> &window)
     {
@@ -371,7 +371,7 @@ namespace SceneryEditorX
 
         VulkanLoadDebugUtilsExtensions(vkInstance);
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
 		if (enableValidationLayers)
         {
@@ -382,7 +382,7 @@ namespace SceneryEditorX
 
         }
 
-		// ---------------------------------------------------------
+		/// ---------------------------------------------------------
 
 		//TODO: Move this to the swapchain creation
 		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
@@ -410,27 +410,13 @@ namespace SceneryEditorX
         /// Initalize the Vulkan Physical Device & Vulkan Device
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        /*
-        try
-        {
-            physDevice = VulkanPhysicalDevice::GetInstance();
-        }
-        catch (const std::exception &e)
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create physical device: {}", e.what());
-            return;
-        }
-
-        physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
-        */
-
-        Ref<VulkanPhysicalDevice> vkPhysicalDevice = GetCurrentDevice()->GetPhysicalDevice();
+		//Ref<VulkanPhysicalDevice> vkPhysicalDevice = CreateRef<VulkanPhysicalDevice>(vkInstance);
+        Ref<VulkanPhysicalDevice> vkPhysicalDevice = VulkanPhysicalDevice::Select(vkInstance);
+        vkPhysicalDevice = GetCurrentDevice()->GetPhysicalDevice();
         vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, GetCurrentDevice()->GetPhysicalDevice()->Selected().GFXFeatures);
 
 		/// Memory Allocator initialization.
         MemoryAllocator::Init(vkDevice);
-
-        //allocatorManager->Init(vkDevice->GetDevice(), vkPhysDevice, vkInstance);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Pipeline Cache Creation
@@ -561,7 +547,7 @@ namespace SceneryEditorX
         //vkSwapChain = VK_NULL_HANDLE;
 	}
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     /*
     void GraphicsEngine::RenderFrame()
@@ -995,11 +981,11 @@ namespace SceneryEditorX
         samplerLayoutBinding.pImmutableSamplers = nullptr;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1203,7 +1189,7 @@ namespace SceneryEditorX
         return details;
     }
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
 	VkFormat GraphicsEngine::FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
     {
@@ -1295,7 +1281,6 @@ namespace SceneryEditorX
         //vkSwapChain->PresentImage(signalSemaphores);
     }
     */
-
 
     VkSampler GraphicsEngine::CreateSampler(float maxLod) const
     {

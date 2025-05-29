@@ -33,7 +33,6 @@ namespace CrashHandler
 
     // Other BackgroundService implementations...
 
-
     BackgroundService::BackgroundService(const std::string& dumpDir)
         : m_lastHeartbeatTime("2025-05-13T12:00:00Z")
         , m_dumpDir(dumpDir) // Example timestamp

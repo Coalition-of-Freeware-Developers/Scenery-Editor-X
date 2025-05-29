@@ -13,11 +13,9 @@
 #pragma once
 #include <chrono>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/utils/monitor_data.h>
-#include <stb_image.h>
+#include <SceneryEditorX/core/window/icon.h>
 
 /// -------------------------------------------------------
 
@@ -30,53 +28,26 @@ namespace SceneryEditorX
 		WindowedFullScreen,
 		FullScreen
 	};
-	
-	/// -------------------------------------------------------
-	
-	struct IconData
-	{
-	    std::string path;                  // Path to the icon file
-	    int width;                         // Icon width
-	    int height;                        // Icon height
-	    int channels;                      // Number of channels
-	    std::vector<unsigned char> buffer; // Buffer for the icon data
-	    mutable unsigned char* pixels;     // Pixel data after loading
-	
-		IconData() :
-	    path(R"(..\..\assets\icon.png)"),
-	    width(0),
-	    height(0),
-	    channels(0),
-	    pixels(nullptr) {}
-	
-		~IconData() 
-	    {
-	        if (pixels) {
-	            stbi_image_free(pixels);
-	            pixels = nullptr;
-	        }
-	    }
-	};
-	
+
 	/// -------------------------------------------------------
 	
 	struct WindowData
 	{
-	    INTERNAL inline GLFWwindow *window		= nullptr;
-	    INTERNAL inline const char *title		= "Scenery Editor X";
-	    INTERNAL inline int width				= 1280;
-	    INTERNAL inline int height				= 720;
-	    INTERNAL inline int posX				= 0;
-	    INTERNAL inline int posY				= 30;
-	    INTERNAL inline bool framebufferResized = false;
-        INTERNAL inline bool dirty				= true;
-        INTERNAL inline bool resizable			= true;
-        INTERNAL inline bool decorated			= true;
-        INTERNAL inline bool maximized			= true;
-		INTERNAL inline float scroll			= .0f;
-        INTERNAL inline float deltaScroll		= .0f;
-        INTERNAL inline Vec2 mousePos			= Vec2(.0f, .0f);
-        INTERNAL inline Vec2 deltaMousePos		= Vec2(.0f, .0f);
+	    GLOBAL inline GLFWwindow *window		= nullptr;
+	    GLOBAL inline const char *title			= "Scenery Editor X";
+	    GLOBAL inline int width					= 1280;
+	    GLOBAL inline int height				= 720;
+	    GLOBAL inline int posX					= 0;
+	    GLOBAL inline int posY					= 30;
+        GLOBAL inline bool framebufferResized   = false;
+        GLOBAL inline bool dirty				= true;
+        GLOBAL inline bool resizable			= true;
+        GLOBAL inline bool decorated			= true;
+        GLOBAL inline bool maximized			= true;
+		GLOBAL inline float scroll				= .0f;
+        GLOBAL inline float deltaScroll			= .0f;
+        GLOBAL inline Vec2 mousePos				= Vec2(.0f, .0f);
+        GLOBAL inline Vec2 deltaMousePos		= Vec2(.0f, .0f);
 	};
 	
 	/// -------------------------------------------------------
@@ -106,9 +77,10 @@ namespace SceneryEditorX
 	    ~Window();
         RenderData renderData;
 		Ref<RenderData> GetRenderData() { return CreateRef<RenderData>(renderData); }
+		Ref<IconData> GetIconData() { return CreateRef<IconData>(); }
 
         GLOBAL void Update();
-        GLOBAL std::string VideoModeText(const GLFWvidmode &mode);
+        GLOBAL std::string  VideoModeText(const GLFWvidmode &mode);
 		GLOBAL void			OnImgui();
         GLOBAL void			ApplyChanges();
 		GLOBAL void			UpdateFramebufferSize();
@@ -135,6 +107,7 @@ namespace SceneryEditorX
         bool mousePressed;
         bool initState;
 
+        void DisableJoystickHandling();
         INTERNAL inline std::chrono::high_resolution_clock::time_point lastTime;
         INTERNAL inline std::vector<std::string> pathsDrop;
         INTERNAL inline float deltaTime = .0f;
@@ -150,7 +123,6 @@ namespace SceneryEditorX
         INTERNAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);
         INTERNAL void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
         INTERNAL void SetWindowIcon(GLFWwindow *window);
-	
 	};
 	
 } /// namespace SceneryEditorX

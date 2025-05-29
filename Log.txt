@@ -1,0 +1,797 @@
+Log.txt for X-Plane 12.2.0-b6-94821bcc (build 122011 Intel 64-bit, Vulkan 14cc717966f44b3dbe024a1bb25e0b1154c0885e)
+Compiled on May 20 2025 09:31:37
+X-Plane Started on Tue May 27 22:38:20 2025
+
+This log file is generated automatically by Laminar Research applications and contains diagnostics about your graphics hardware, installation, and any error conditions.
+If you need to contact tech support or file a bug, please send us this file. NOTE: this file is rewritten every time you start ANY of your X-System applications.
+
+Windows 10.0 (build 19045/2)
+This is a 64-bit version of Windows.
+CPU type: AMD Ryzen 9 7900X 12-Core Processor - Speed: 4.4-4.8 GHz - Cores: 24
+          Microcode 0xa601206
+Physical Memory (total for computer): 68404789248
+Maximum Virtual Memory (for X-Plane only): 140737488224256
+
+X-System folder:'K:\SteamLibrary/steamapps/common/X-Plane 12/', case sensitive=0
+
+-------------------------------------------------------------------
+Application was launched with the following command line options...
+	'--telemetry_exvis'
+-------------------------------------------------------------------
+
+0:00:00.000 I/GFX/VK: Vulkan Layers: VK_LAYER_NV_optimus (1), VK_LAYER_NV_present (1), VK_LAYER_RENDERDOC_Capture (38), VK_LAYER_VALVE_steam_overlay (1), VK_LAYER_VALVE_steam_fossilize (1), VK_LAYER_OBS_HOOK (1), VK_LAYER_OBS_HOOK (1), VK_LAYER_EOS_Overlay (1), VK_LAYER_EOS_Overlay (1), VK_LAYER_LUNARG_api_dump (2), VK_LAYER_LUNARG_gfxreconstruct (4194309), VK_LAYER_KHRONOS_synchronization2 (1), VK_LAYER_KHRONOS_validation (1), VK_LAYER_LUNARG_monitor (1), VK_LAYER_LUNARG_screenshot (1), VK_LAYER_KHRONOS_profiles (1), VK_LAYER_KHRONOS_shader_object (1), VK_LAYER_LUNARG_crash_diagnostic (1)
+0:00:00.000 I/GFX/VK: 
+Vulkan Device       : NVIDIA GeForce RTX 3090 (333d100000)
+Vulkan Version      : 1.4.303
+Vulkan Driver       : 576.52.0
+Vulkan Extensions   : VK_KHR_16bit_storage VK_KHR_8bit_storage VK_KHR_acceleration_structure VK_KHR_bind_memory2 VK_KHR_buffer_device_address VK_KHR_calibrated_timestamps VK_KHR_compute_shader_derivatives VK_KHR_cooperative_matrix VK_KHR_copy_commands2 VK_KHR_create_renderpass2 VK_KHR_dedicated_allocation VK_KHR_deferred_host_operations VK_KHR_depth_stencil_resolve VK_KHR_descriptor_update_template VK_KHR_device_group VK_KHR_draw_indirect_count VK_KHR_driver_properties VK_KHR_dynamic_rendering VK_KHR_dynamic_rendering_local_read VK_KHR_external_fence VK_KHR_external_fence_win32 VK_KHR_external_memory VK_KHR_external_memory_win32 VK_KHR_external_semaphore VK_KHR_external_semaphore_win32 VK_KHR_format_feature_flags2 VK_KHR_fragment_shader_barycentric VK_KHR_fragment_shading_rate VK_KHR_get_memory_requirements2 VK_KHR_global_priority VK_KHR_image_format_list VK_KHR_imageless_framebuffer VK_KHR_index_type_uint8 VK_KHR_line_rasterization VK_KHR_load_store_op_none VK_KHR_maintenance1 VK_KHR_maintenance2 VK_KHR_maintenance3 VK_KHR_maintenance4 VK_KHR_maintenance5 VK_KHR_maintenance6 VK_KHR_maintenance7 VK_KHR_map_memory2 VK_KHR_multiview VK_KHR_pipeline_binary VK_KHR_pipeline_executable_properties VK_KHR_pipeline_library VK_KHR_present_id VK_KHR_present_wait VK_KHR_push_descriptor VK_KHR_ray_query VK_KHR_ray_tracing_maintenance1 VK_KHR_ray_tracing_pipeline VK_KHR_ray_tracing_position_fetch VK_KHR_relaxed_block_layout VK_KHR_sampler_mirror_clamp_to_edge VK_KHR_sampler_ycbcr_conversion VK_KHR_separate_depth_stencil_layouts VK_KHR_shader_atomic_int64 VK_KHR_shader_clock VK_KHR_shader_draw_parameters VK_KHR_shader_expect_assume VK_KHR_shader_float16_int8 VK_KHR_shader_float_controls VK_KHR_shader_float_controls2 VK_KHR_shader_integer_dot_product VK_KHR_shader_maximal_reconvergence VK_KHR_shader_non_semantic_info VK_KHR_shader_quad_control VK_KHR_shader_relaxed_extended_instruction VK_KHR_shader_subgroup_extended_types VK_KHR_shader_subgroup_rotate VK_KHR_shader_subgroup_uniform_control_flow VK_KHR_shader_terminate_invocation VK_KHR_spirv_1_4 VK_KHR_storage_buffer_storage_class VK_KHR_swapchain VK_KHR_swapchain_mutable_format VK_KHR_synchronization2 VK_KHR_timeline_semaphore VK_KHR_uniform_buffer_standard_layout VK_KHR_variable_pointers VK_KHR_vertex_attribute_divisor VK_KHR_video_decode_av1 VK_KHR_video_decode_h264 VK_KHR_video_decode_h265 VK_KHR_video_decode_queue VK_KHR_video_encode_h264 VK_KHR_video_encode_h265 VK_KHR_video_encode_quantization_map VK_KHR_video_encode_queue VK_KHR_video_maintenance1 VK_KHR_video_maintenance2 VK_KHR_video_queue VK_KHR_vulkan_memory_model VK_KHR_win32_keyed_mutex VK_KHR_workgroup_memory_explicit_layout VK_KHR_zero_initialize_workgroup_memory VK_EXT_4444_formats VK_EXT_attachment_feedback_loop_dynamic_state VK_EXT_attachment_feedback_loop_layout VK_EXT_blend_operation_advanced VK_EXT_border_color_swizzle VK_EXT_buffer_device_address VK_EXT_calibrated_timestamps VK_EXT_color_write_enable VK_EXT_conditional_rendering VK_EXT_conservative_rasterization VK_EXT_custom_border_color VK_EXT_depth_bias_control VK_EXT_depth_clamp_control VK_EXT_depth_clamp_zero_one VK_EXT_depth_clip_control VK_EXT_depth_clip_enable VK_EXT_depth_range_unrestricted VK_EXT_descriptor_buffer VK_EXT_descriptor_indexing VK_EXT_device_address_binding_report VK_EXT_device_fault VK_EXT_device_generated_commands VK_EXT_discard_rectangles VK_EXT_dynamic_rendering_unused_attachments VK_EXT_extended_dynamic_state VK_EXT_extended_dynamic_state2 VK_EXT_extended_dynamic_state3 VK_EXT_external_memory_host VK_EXT_fragment_shader_interlock VK_EXT_full_screen_exclusive VK_EXT_graphics_pipeline_library VK_EXT_hdr_metadata VK_EXT_host_image_copy VK_EXT_host_query_reset VK_EXT_image_2d_view_of_3d VK_EXT_image_robustness VK_EXT_image_sliced_view_of_3d VK_EXT_image_view_min_lod VK_EXT_index_type_uint8 VK_EXT_inline_uniform_block VK_EXT_legacy_vertex_attributes VK_EXT_line_rasterization VK_EXT_load_store_op_none VK_EXT_memory_budget VK_EXT_memory_priority VK_EXT_mesh_shader VK_EXT_multi_draw VK_EXT_mutable_descriptor_type VK_EXT_nested_command_buffer VK_EXT_non_seamless_cube_map VK_EXT_opacity_micromap VK_EXT_pageable_device_local_memory VK_EXT_pci_bus_info VK_EXT_pipeline_creation_cache_control VK_EXT_pipeline_creation_feedback VK_EXT_pipeline_library_group_handles VK_EXT_pipeline_robustness VK_EXT_post_depth_coverage VK_EXT_present_mode_fifo_latest_ready VK_EXT_primitive_topology_list_restart VK_EXT_primitives_generated_query VK_EXT_private_data VK_EXT_provoking_vertex VK_EXT_queue_family_foreign VK_EXT_robustness2 VK_EXT_sample_locations VK_EXT_sampler_filter_minmax VK_EXT_scalar_block_layout VK_EXT_separate_stencil_usage VK_EXT_shader_atomic_float VK_EXT_shader_demote_to_helper_invocation VK_EXT_shader_image_atomic_int64 VK_EXT_shader_module_identifier VK_EXT_shader_object VK_EXT_shader_replicated_composites VK_EXT_shader_subgroup_ballot VK_EXT_shader_subgroup_vote VK_EXT_shader_viewport_index_layer VK_EXT_subgroup_size_control VK_EXT_swapchain_maintenance1 VK_EXT_texel_buffer_alignment VK_EXT_tooling_info VK_EXT_transform_feedback VK_EXT_vertex_attribute_divisor VK_EXT_vertex_attribute_robustness VK_EXT_vertex_input_dynamic_state VK_EXT_ycbcr_2plane_444_formats VK_EXT_ycbcr_image_arrays VK_NV_clip_space_w_scaling VK_NV_cluster_acceleration_structure VK_NV_compute_shader_derivatives VK_NV_cooperative_matrix VK_NV_cooperative_matrix2 VK_NV_cooperative_vector VK_NV_copy_memory_indirect VK_NV_corner_sampled_image VK_NV_coverage_reduction_mode VK_NV_cuda_kernel_launch VK_NV_dedicated_allocation VK_NV_dedicated_allocation_image_aliasing VK_NV_descriptor_pool_overallocation VK_NV_device_diagnostic_checkpoints VK_NV_device_diagnostics_config VK_NV_device_generated_commands VK_NV_device_generated_commands_compute VK_NV_disk_cache_utils VK_NV_external_compute_queue VK_NV_external_memory VK_NV_external_memory_win32 VK_NV_fill_rectangle VK_NV_fragment_coverage_to_color VK_NV_fragment_shader_barycentric VK_NV_fragment_shading_rate_enums VK_NV_framebuffer_mixed_samples VK_NV_geometry_shader_passthrough VK_NV_inherited_viewport_scissor VK_NV_internal_nvpresent VK_NV_linear_color_attachment VK_NV_low_latency VK_NV_low_latency2 VK_NV_memory_decompression VK_NV_mesh_shader VK_NV_optical_flow VK_NV_partitioned_acceleration_structure VK_NV_present_metering VK_NV_raw_access_chains VK_NV_ray_tracing VK_NV_ray_tracing_invocation_reorder VK_NV_ray_tracing_motion_blur VK_NV_representative_fragment_test VK_NV_sample_mask_override_coverage VK_NV_scissor_exclusive VK_NV_shader_atomic_float16_vector VK_NV_shader_image_footprint VK_NV_shader_sm_builtins VK_NV_shader_subgroup_partitioned VK_NV_shading_rate_image VK_NV_viewport_array2 VK_NV_viewport_swizzle VK_NV_win32_keyed_mutex VK_NVX_binary_import VK_NVX_image_view_handle VK_NVX_multiview_per_view_attributes VK_AMD_buffer_marker VK_GOOGLE_hlsl_functionality1 VK_GOOGLE_user_type 
+Vulkan Instance Extensions: VK_KHR_device_group_creation VK_KHR_external_fence_capabilities VK_KHR_external_memory_capabilities VK_KHR_external_semaphore_capabilities VK_KHR_get_physical_device_properties2 VK_KHR_get_surface_capabilities2 VK_KHR_surface VK_KHR_surface_protected_capabilities VK_KHR_win32_surface VK_EXT_debug_report VK_EXT_debug_utils VK_EXT_surface_maintenance1 VK_EXT_swapchain_colorspace VK_NV_external_memory_capabilities VK_KHR_portability_enumeration VK_LUNARG_direct_driver_loading 
+checkpoints         : 0	aftermath           : 0	descriptor buffers  : 0	
+0:00:00.000 I/GFX: 
+anisotropic_avail   : 1	coarse_timer_avail  : 1	precise_timer_avail : 1	tess_avail          : 0	geom_avail          : 0	
+viewport_arr        : 1	layer_arr           : 1	native_reverse_z    : 1	has_reverse_z       : 1	
+persistent map      : 1	msaa shader write   : 1	shader float16      : 0	shader int16        : 1	
+rebar_avail         : 1	alpha_to_one_avail  : 1	msaa_storage_image_avail: 1	
+sparse bindings     : 0	sparse page size    : 0	
+max iso filtering   : 16
+max samples         : 3
+max texture size    : 32768 (hardware limit)
+max tex units       : 1048576
+
+This video card is bucketed as: Vulkan with async compute
+0:00:00.000 I/GFX/VK: Device Queues:
+Queue 0: Generic, Presentation, (VK_QUEUE_GRAPHICS_BIT|VK_QUEUE_COMPUTE_BIT|VK_QUEUE_TRANSFER_BIT|VK_QUEUE_SPARSE_BINDING_BIT)
+Queue 1: (VK_QUEUE_TRANSFER_BIT|VK_QUEUE_SPARSE_BINDING_BIT)
+Queue 2: Async Compute, (VK_QUEUE_COMPUTE_BIT|VK_QUEUE_TRANSFER_BIT|VK_QUEUE_SPARSE_BINDING_BIT)
+Queue 3: (VK_QUEUE_TRANSFER_BIT|VK_QUEUE_SPARSE_BINDING_BIT|VK_QUEUE_VIDEO_DECODE_BIT_KHR)
+Queue 4: (VK_QUEUE_TRANSFER_BIT|VK_QUEUE_SPARSE_BINDING_BIT|VK_QUEUE_VIDEO_ENCODE_BIT_KHR)
+Queue 5: Transfer, (VK_QUEUE_TRANSFER_BIT|VK_QUEUE_SPARSE_BINDING_BIT|VK_QUEUE_OPTICAL_FLOW_BIT_NV)
+0:00:00.000 I/GFX/VK: Heap info (2 heaps)
+	Heap 0 - Flags: VK_MEMORY_HEAP_DEVICE_LOCAL_BIT, size: 23.76 gb
+	Heap 1 - Flags: VkMemoryHeapFlags(0), size: 31.85 gb
+Memory type info (6 types)
+	Heap: 1, flags: VkMemoryPropertyFlags(0)
+	Heap: 0, flags: VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	Heap: 0, flags: VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	Heap: 1, flags: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+	Heap: 1, flags: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT|VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+	Heap: 0, flags: VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT|VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+0:00:00.000 I/GFX/VK: 
+Discovered Vulkan devices, in order of preference:
+	 (0) NVIDIA GeForce RTX 3090
+		Vulkan: 1.4.303, driver: 576.52.0
+		LUID: 333d100000
+		Bridge distance: 0
+		Zink profile: VP_ZINK_gl46_baseline
+		This device is usable
+
+0:00:00.000 I/GFX/Bridge: OpenGL bridge device:
+	 NVIDIA GeForce RTX 3090/PCIe/SSE2
+		OpenGL: 4.6.0 NVIDIA 576.52
+		LUID: 333d100000
+
+0:00:00.000 I/GFX: Diagnostics         : memory	
+Device memory       : 24702353408
+Host memory         : 33397088256
+
+
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/depth_resolve_mapping.xsv with hash: 84cabb1da18ce8af418a66ad554e1bf8
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/depth_resolve.xsa with hash: 8835a0884947aa94186288cb80f9777e
+0:00:00.000 I/GFX/bridge: 
+OpenGL bridge device:
+OpenGL Vendor       : NVIDIA Corporation
+OpenGL Render       : NVIDIA GeForce RTX 3090/PCIe/SSE2 (333d100000)
+OpenGL Version      : 4.6.0 NVIDIA 576.52 (460/0)
+OpenGL Extensions   : GL_AMD_multi_draw_indirect GL_AMD_seamless_cubemap_per_texture GL_AMD_vertex_shader_viewport_index GL_AMD_vertex_shader_layer GL_ARB_arrays_of_arrays GL_ARB_base_instance GL_ARB_bindless_texture GL_ARB_blend_func_extended GL_ARB_buffer_storage GL_ARB_clear_buffer_object GL_ARB_clear_texture GL_ARB_clip_control GL_ARB_color_buffer_float GL_ARB_compatibility GL_ARB_compressed_texture_pixel_storage GL_ARB_conservative_depth GL_ARB_compute_shader GL_ARB_compute_variable_group_size GL_ARB_conditional_render_inverted GL_ARB_copy_buffer GL_ARB_copy_image GL_ARB_cull_distance GL_ARB_debug_output GL_ARB_depth_buffer_float GL_ARB_depth_clamp GL_ARB_depth_texture GL_ARB_derivative_control GL_ARB_direct_state_access GL_ARB_draw_buffers GL_ARB_draw_buffers_blend GL_ARB_draw_indirect GL_ARB_draw_elements_base_vertex GL_ARB_draw_instanced GL_ARB_enhanced_layouts GL_ARB_ES2_compatibility GL_ARB_ES3_compatibility GL_ARB_ES3_1_compatibility GL_ARB_ES3_2_compatibility GL_ARB_explicit_attrib_location GL_ARB_explicit_uniform_location GL_ARB_fragment_coord_conventions GL_ARB_fragment_layer_viewport GL_ARB_fragment_program GL_ARB_fragment_program_shadow GL_ARB_fragment_shader GL_ARB_fragment_shader_interlock GL_ARB_framebuffer_no_attachments GL_ARB_framebuffer_object GL_ARB_framebuffer_sRGB GL_ARB_geometry_shader4 GL_ARB_get_program_binary GL_ARB_get_texture_sub_image GL_ARB_gl_spirv GL_ARB_gpu_shader5 GL_ARB_gpu_shader_fp64 GL_ARB_gpu_shader_int64 GL_ARB_half_float_pixel GL_ARB_half_float_vertex GL_ARB_imaging GL_ARB_indirect_parameters GL_ARB_instanced_arrays GL_ARB_internalformat_query GL_ARB_internalformat_query2 GL_ARB_invalidate_subdata GL_ARB_map_buffer_alignment GL_ARB_map_buffer_range GL_ARB_multi_bind GL_ARB_multi_draw_indirect GL_ARB_multisample GL_ARB_multitexture GL_ARB_occlusion_query GL_ARB_occlusion_query2 GL_ARB_parallel_shader_compile GL_ARB_pipeline_statistics_query GL_ARB_pixel_buffer_object GL_ARB_point_parameters GL_ARB_point_sprite GL_ARB_polygon_offset_clamp GL_ARB_post_depth_coverage GL_ARB_program_interface_query GL_ARB_provoking_vertex GL_ARB_query_buffer_object GL_ARB_robust_buffer_access_behavior GL_ARB_robustness GL_ARB_sample_locations GL_ARB_sample_shading GL_ARB_sampler_objects GL_ARB_seamless_cube_map GL_ARB_seamless_cubemap_per_texture GL_ARB_separate_shader_objects GL_ARB_shader_atomic_counter_ops GL_ARB_shader_atomic_counters GL_ARB_shader_ballot GL_ARB_shader_bit_encoding GL_ARB_shader_clock GL_ARB_shader_draw_parameters GL_ARB_shader_group_vote GL_ARB_shader_image_load_store GL_ARB_shader_image_size GL_ARB_shader_objects GL_ARB_shader_precision GL_ARB_shader_storage_buffer_object GL_ARB_shader_subroutine GL_ARB_shader_texture_image_samples GL_ARB_shader_texture_lod GL_ARB_shading_language_100 GL_ARB_shader_viewport_layer_array GL_ARB_shading_language_420pack GL_ARB_shading_language_include GL_ARB_shading_language_packing GL_ARB_shadow GL_ARB_sparse_buffer GL_ARB_sparse_texture GL_ARB_sparse_texture2 GL_ARB_sparse_texture_clamp GL_ARB_spirv_extensions GL_ARB_stencil_texturing GL_ARB_sync GL_ARB_tessellation_shader GL_ARB_texture_barrier GL_ARB_texture_border_clamp GL_ARB_texture_buffer_object GL_ARB_texture_buffer_object_rgb32 GL_ARB_texture_buffer_range GL_ARB_texture_compression GL_ARB_texture_compression_bptc GL_ARB_texture_compression_rgtc GL_ARB_texture_cube_map GL_ARB_texture_cube_map_array GL_ARB_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_env_crossbar GL_ARB_texture_env_dot3 GL_ARB_texture_filter_anisotropic GL_ARB_texture_filter_minmax GL_ARB_texture_float GL_ARB_texture_gather GL_ARB_texture_mirror_clamp_to_edge GL_ARB_texture_mirrored_repeat GL_ARB_texture_multisample GL_ARB_texture_non_power_of_two GL_ARB_texture_query_levels GL_ARB_texture_query_lod GL_ARB_texture_rectangle GL_ARB_texture_rg GL_ARB_texture_rgb10_a2ui GL_ARB_texture_stencil8 GL_ARB_texture_storage GL_ARB_texture_storage_multisample GL_ARB_texture_swizzle GL_ARB_texture_view GL_ARB_timer_query GL_ARB_transform_feedback2 GL_ARB_transform_feedback3 GL_ARB_transform_feedback_instanced GL_ARB_transform_feedback_overflow_query GL_ARB_transpose_matrix GL_ARB_uniform_buffer_object GL_ARB_vertex_array_bgra GL_ARB_vertex_array_object GL_ARB_vertex_attrib_64bit GL_ARB_vertex_attrib_binding GL_ARB_vertex_buffer_object GL_ARB_vertex_program GL_ARB_vertex_shader GL_ARB_vertex_type_10f_11f_11f_rev GL_ARB_vertex_type_2_10_10_10_rev GL_ARB_viewport_array GL_ARB_window_pos GL_ATI_draw_buffers GL_ATI_texture_float GL_ATI_texture_mirror_once GL_S3_s3tc GL_EXT_texture_env_add GL_EXT_abgr GL_EXT_bgra GL_EXT_bindable_uniform GL_EXT_blend_color GL_EXT_blend_equation_separate GL_EXT_blend_func_separate GL_EXT_blend_minmax GL_EXT_blend_subtract GL_EXT_compiled_vertex_array GL_EXT_Cg_shader GL_EXT_depth_bounds_test GL_EXT_direct_state_access GL_EXT_draw_buffers2 GL_EXT_draw_instanced GL_EXT_draw_range_elements GL_EXT_fog_coord GL_EXT_framebuffer_blit GL_EXT_framebuffer_multisample GL_EXTX_framebuffer_mixed_formats GL_EXT_framebuffer_multisample_blit_scaled GL_EXT_framebuffer_object GL_EXT_framebuffer_sRGB GL_EXT_geometry_shader4 GL_EXT_gpu_program_parameters GL_EXT_gpu_shader4 GL_EXT_multi_draw_arrays GL_EXT_multiview_texture_multisample GL_EXT_multiview_timer_query GL_EXT_packed_depth_stencil GL_EXT_packed_float GL_EXT_packed_pixels GL_EXT_pixel_buffer_object GL_EXT_point_parameters GL_EXT_polygon_offset_clamp GL_EXT_post_depth_coverage GL_EXT_provoking_vertex GL_EXT_raster_multisample GL_EXT_rescale_normal GL_EXT_secondary_color GL_EXT_separate_shader_objects GL_EXT_separate_specular_color GL_EXT_shader_image_load_formatted GL_EXT_shader_image_load_store GL_EXT_shader_integer_mix GL_EXT_shadow_funcs GL_EXT_sparse_texture2 GL_EXT_stencil_two_side GL_EXT_stencil_wrap GL_EXT_texture3D GL_EXT_texture_array GL_EXT_texture_buffer_object GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_latc GL_EXT_texture_compression_rgtc GL_EXT_texture_compression_s3tc GL_EXT_texture_cube_map GL_EXT_texture_edge_clamp GL_EXT_texture_env_combine GL_EXT_texture_env_dot3 GL_EXT_texture_filter_anisotropic GL_EXT_texture_filter_minmax GL_EXT_texture_integer GL_EXT_texture_lod GL_EXT_texture_lod_bias GL_EXT_texture_mirror_clamp GL_EXT_texture_object GL_EXT_texture_shadow_lod GL_EXT_texture_shared_exponent GL_EXT_texture_sRGB GL_EXT_texture_sRGB_R8 GL_EXT_texture_sRGB_decode GL_EXT_texture_storage GL_EXT_texture_swizzle GL_EXT_timer_query GL_EXT_transform_feedback2 GL_EXT_vertex_array GL_EXT_vertex_array_bgra GL_EXT_vertex_attrib_64bit GL_EXT_window_rectangles GL_EXT_import_sync_object GL_IBM_rasterpos_clip GL_IBM_texture_mirrored_repeat GL_KHR_context_flush_control GL_KHR_debug GL_EXT_memory_object GL_EXT_memory_object_win32 GL_NV_memory_object_sparse GL_EXT_win32_keyed_mutex GL_KHR_parallel_shader_compile GL_KHR_no_error GL_KHR_robust_buffer_access_behavior GL_KHR_robustness GL_EXT_semaphore GL_EXT_semaphore_win32 GL_NV_timeline_semaphore GL_KHR_shader_subgroup GL_KTX_buffer_region GL_NV_alpha_to_coverage_dither_control GL_NV_bindless_multi_draw_indirect GL_NV_bindless_multi_draw_indirect_count GL_NV_bindless_texture GL_NV_blend_equation_advanced GL_NV_blend_equation_advanced_coherent GL_NVX_blend_equation_advanced_multi_draw_buffers GL_NV_blend_minmax_factor GL_NV_blend_square GL_NV_clip_space_w_scaling GL_NV_command_list GL_NV_compute_program5 GL_NV_compute_shader_derivatives GL_NV_conditional_render GL_NV_conservative_raster GL_NV_conservative_raster_dilate GL_NV_conservative_raster_pre_snap GL_NV_conservative_raster_pre_snap_triangles GL_NV_conservative_raster_underestimation GL_NV_copy_depth_to_color GL_NV_copy_image GL_NV_depth_buffer_float GL_NV_depth_clamp GL_NV_draw_texture GL_NV_draw_vulkan_image GL_NV_ES1_1_compatibility GL_NV_ES3_1_compatibility GL_NV_explicit_multisample GL_NV_feature_query GL_NV_fence GL_NV_fill_rectangle GL_NV_float_buffer GL_NV_fog_distance GL_NV_fragment_coverage_to_color GL_NV_fragment_program GL_NV_fragment_p
+CPU count        : 24
+0:00:00.000 I/GFX/VK: Surface formats for surface:
+0:00:00.000 I/GFX/VK: 	VK_FORMAT_B8G8R8A8_UNORM
+0:00:00.000 I/GFX/VK: 	VK_FORMAT_B8G8R8A8_SRGB
+0:00:00.000 I/GFX/VK: 	VK_FORMAT_R8G8B8A8_UNORM
+0:00:00.000 I/GFX/VK: 	VK_FORMAT_R8G8B8A8_SRGB
+0:00:00.000 I/GFX/VK: 	VK_FORMAT_A2B10G10R10_UNORM_PACK32
+0:00:00.000 I/GFX/VK: Picked VK_FORMAT_B8G8R8A8_SRGB as the common window surface format
+0:00:00.000 I/GFX/VK: Surface 000001E9FAF297F0:
+0:00:00.000 I/GFX/VK: 	minImageCount 2:
+0:00:00.000 I/GFX/VK: 	maxImageCount 8:
+0:00:00.000 I/GFX/VK: 	supportedUsageFlags 9f:
+0:00:00.000 I/GFX/VK: 	supportedTransforms: VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR
+0:00:00.000 I/GFX/VK: 	currentTransform: VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR
+0:00:00.000 I/GFX/VK: 	supported modes:
+0:00:00.000 I/GFX/VK: 		VK_PRESENT_MODE_MAILBOX_KHR:
+0:00:00.000 I/GFX/VK: 		VK_PRESENT_MODE_IMMEDIATE_KHR:
+0:00:00.000 I/GFX/VK: 		VK_PRESENT_MODE_FIFO_KHR:
+0:00:00.000 I/GFX/VK: 		VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+0:00:00.000 I/GFX/VK: 		Unhandled VkPresentModeKHR:
+0:00:00.000 I/GFX/VK: Disabling fullscreen exclusive mode for swapchain 000001E983725340
+0:00:00.000 I/GFX/VK: Created swapchain for 000001E983725340 with size { 1920x1080x3 }. Mode: VK_PRESENT_MODE_MAILBOX_KHR
+0:00:00.000 I/wmgr: Monitor 0: { 0, 0, 1920, 1080 }
+0:00:00.000 I/wmgr: Monitor 1: { -3840, 0, 3840, 2160 }
+0:00:00.000 I/wmgr: Monitor 2: { 0, 1080, 1920, 1080 }
+0:00:00.000 I/wmgr: Re-building fbos for window 000001E9FA186870 using pool 6
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/legacy_flat_mapping.xsv with hash: eb29fdd6554f16d8e4efd4541dea72a
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/legacy_flat.xsa with hash: 9a55dc777a7b233cc71448333171dc
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/legacy_depth_mapping.xsv with hash: 255fba8eb20b2dcc6a96ccb3c1d8dcf
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/legacy_depth.xsa with hash: 40288d7c5f3d86f13de689cc30c1cb15
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/blit_mapping.xsv with hash: b2bb326ca6a6f443d0c3e81482296232
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/blit.xsa with hash: 9deae64ac4a9f16c31ab7407bfe8931
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/font_mapping.xsv with hash: ee62dd7d11e3b973687d6ee045a9215d
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/font.xsa with hash: e56222389c61ee1ea7697ae6f8e14e7
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/minify_mapping.xsv with hash: c6366ed1bdef73ec16ea1acb790
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/minify.xsa with hash: 1a9bbd3528b80a735871734801c7b89
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/gstack_mapping.xsv with hash: df3947beb02bf3aac2288aa9345eb6
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/gstack.xsa with hash: b37edd2eb14f3b97e1674fea0569c41
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/in_place_blur_mapping.xsv with hash: af9dc15925f6045a4fe7877f4215b49
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/in_place_blur.xsa with hash: 36989187a59fbfe99742be882b695896
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/single_pass_blur_mapping.xsv with hash: fbebedda6e8e322f3fc73a42b6f7ef6
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/single_pass_blur.xsa with hash: 8f2ceb93864029da4148e682cc627528
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/background_blur_mapping.xsv with hash: 544873302636339dd2e93f95e06c70a9
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/background_blur.xsa with hash: 9f21e537c69b987779298864cd95e96c
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/resolve_mapping.xsv with hash: 8465c498728fa73e8ad5967aca8926c
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/resolve.xsa with hash: 9a79b66aae7dc05eacba5174d18f11a1
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/fake_terrain_mapping.xsv with hash: 7fa9847ba7239bf35d1661e9988c8dd8
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/fake_terrain.xsa with hash: 611148d671f052e261f87c787f28
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/line3d_mapping.xsv with hash: b882a9961bf22f46cd099b06e3ef084
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/line3d.xsa with hash: 2c50e5d7abd8576cd56f604fd2ddc
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/terrain_mapping.xsv with hash: 1372f551f7f85268161e43c5b9358f2
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/terrain.xsa with hash: 2e6bc735a59a1d0a53e5b8455a57d
+0:00:00.000 I/FMOD: Initial Sample rate: 48000 speaker mode: 7 (8 speakers)
+0:00:00.000 I/FMOD: Using driver 0: ASUS Monitor - (VG278) (NVIDIA High Definition Audio)
+Fetching plugins for K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins
+
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/PluginAdmin/64/win.xpl (xpsdk.examples.pluginadmin).
+
+[NavigraphSimlink_64.xpl]: Dataref 'sim/weather/barometer_sealevel_inhg' has been replaced. Please use the new name.
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/NavigraphSimlink_64.xpl (Navigraph Simlink for X-Plane).
+
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/AFC_Bridge/win_x64/AFC_Bridge.xpl (aerosoft.bridge).
+
+ASXP12 plugin stage 1..
+ASXP12 plugin stage 2..
+ASXP12 plugin stage 3..
+ASXP12 plugin ( 12.0.0.41 ) initialized...
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/ASXPConnect12/64/win.xpl (hifi.asxconnect12).
+
+2025-05-27 22:38:26 AutoDGS[autodgs.c:998]: startup 2.20
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/AutoDGS/64/win.xpl (hotbso.AutoDGS).
+
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/AutoGate/64/win.xpl (Marginal.AutoGate).
+
+AviTab version 0.6.3
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/AviTab/win_x64/AviTab.xpl (org.solhost.folko.avitab).
+
+2025-05-27 22:38:27 BetterPushback[xplane.c:894]: INFO: This is Better Pushback (MOD) -v1.10 libacfutils-8b89501 - for X-Plane 11/12
+2025-05-27 22:38:27 BetterPushback[cfg.cpp:1249]: current version v1.10 / new available version v1.10 / update available false
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/BetterPushback/win_x64/BetterPushback.xpl (skiselkov.BetterPushback).
+
+FlyWithLua: Your system path is K:\SteamLibrary/steamapps/common/X-Plane 12/
+FlyWithLua: System Dir: K:\SteamLibrary/steamapps/common/X-Plane 12/
+FlyWithLua: Plugin Dir: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/FlyWithLua
+FlyWithLua: Plugin Scripts Dir: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/FlyWithLua/Scripts
+FlyWithLua: Plugin Internals Dir: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/FlyWithLua/Internals/
+FlyWithLua: Plugin Modules Dir: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/FlyWithLua/Modules/
+FlyWithLua: Plugin Scripts Quarantine Dir: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/FlyWithLua/Scripts (Quarantine)/
+FlyWithLua: Plugin Version: 2.8.11 build Oct 19 2023 19:35:08
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/FlyWithLua/win_x64/FlyWithLua.xpl (CarstenLynker.FlyWithLua.NG+).
+
+K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/SAM/win_x64/SAM.xpl : Error Code = 127 : The specified procedure could not be found.
+2025-05-27 22:38:27 [SharedFlight][sharedflight.cpp:205]: Shared Flight version 1.0.5 (commit e85e3a0) is installed.
+[SharedFlight/win_x64/SharedFlight.xpl]: Dataref 'sim/cockpit2/controls/parking_brake_ratio' has been replaced. Please use the new name.
+2025-05-27 22:38:28 [SharedFlight][SFManipDrawing.cpp:534]: [DEBUG] Will init shaders from path: K:\SteamLibrary\steamapps\common\X-Plane 12\Resources\plugins\SharedFlight\shaders
+2025-05-27 22:38:28 [SharedFlight][SFDataSocket.cpp:60]: [DATASOCKET] Configuring local address...
+2025-05-27 22:38:28 [SharedFlight][SFDataSocket.cpp:68]: [DATASOCKET] Creating socket...
+2025-05-27 22:38:28 [SharedFlight][SFDataSocket.cpp:78]: [DATASOCKET] Binding socket to local address...
+2025-05-27 22:38:28 [SharedFlight][SFDataSocket.cpp:86]: [DATASOCKET] Listening...
+2025-05-27 22:38:28 [SharedFlight][SFDataSocket.cpp:98]: [DATASOCKET] Socket port number is 3983
+2025-05-27 22:38:28 [SharedFlight][SFDataSocket.cpp:105]: [DATASOCKET] Waiting for connections...
+2025-05-27 22:38:28 [SharedFlight][SFnetworkclient.cpp:122]: [INFO] Failed to start dual IPV4 and IPV6 ports. Trying IPV4 only.
+2025-05-27 22:38:28 [SharedFlight][SFFlightClientController.cpp:5557]: [DEBUG] Sending login to https://sharedflight.com/apiClient/login_check
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/SharedFlight/win_x64/SharedFlight.xpl (justinsnapp.SharedFlight).
+
+XPL2ACMI: Tacview X-Plane recorder created
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/Tacview/64/win.xpl (RaiaSoftware.Tacview.XPL2ACMI).
+
+0:00:00.000 xPilot: xPilot version 3.0.1 initialized
+Loaded: K:\SteamLibrary/steamapps/common/X-Plane 12/Resources/plugins/xPilot/win_x64/xPilot.xpl (org.vatsim.xpilot).
+
+2025-05-27 22:38:28 BetterPushback[cfg.cpp:1249]: current version v1.10 / new available version v1.10 / update available false
+XPL2ACMI: Tacview X-Plane recorder enabled
+0:00:00.000 xPilot/XPMP2 INFO  XPMPMultiplayer.cpp:518/XPMPSetDefaultPlaneICAO: Default ICAO aircraft type now is MD11
+0:00:00.000 xPilot: xPilot plugin enabled
+0:00:00.000 D/HID: HID Bridge Running
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/tchotchke_mapping.xsv with hash: bb1b2c9614ceccda9a77a492b11c27e0
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/tchotchke.xsa with hash: 553fb6f6e0ddb77fd6aec15f656bf9ed
+I found the following scenery packages (prioritized in this order):
+  0 Custom Scenery/X-Plane Airports - EGPR Barra/
+  1 Custom Scenery/X-Plane Airports - KJRB Downtown Manhattan Heliport/
+  2 Custom Scenery/wgs84/
+  3 Custom Scenery/RELICS - EHAM/
+  4 Custom Scenery/RELICS - EINN/
+  5 Custom Scenery/RELICS - KBDL/
+  6 Custom Scenery/RELICS - KBID/
+  7 Custom Scenery/RELICS - KBTV/
+  8 Custom Scenery/RELICS - KDTW/
+  9 Custom Scenery/RELICS - KGON/
+ 10 Custom Scenery/RELICS - KHVN/
+ 11 Custom Scenery/RELICS - KLGA/
+ 12 Custom Scenery/RELICS - KOAK/
+ 13 Custom Scenery/RELICS - KORD/
+ 14 Custom Scenery/RELICS - KPVD/
+ 15 Custom Scenery/RELICS - KTMK/
+ 16 Custom Scenery/RELICS - KUIN/
+ 17 Custom Scenery/RELICS - KUUU/
+ 18 Custom Scenery/RELICS - KWRI/
+ 19 Custom Scenery/ZDP_Library/
+ 20 Custom Scenery/MisterX_Library/
+ 21 Custom Scenery/OpenSceneryX/
+ 22 Custom Scenery/RA_Library/
+ 23 Custom Scenery/Orbx_XP12_Library/
+ 24 Custom Scenery/SAM_DeveloperPack/
+ 25 Custom Scenery/HD Forests/
+ 26 K:\SteamLibrary\steamapps\common\X-Plane 12\Resources\plugins\SAM\lib\SAM_Library/
+ 27 Custom Scenery/RELICS_LIBRARY/
+ 28 Custom Scenery/RELICS - KMEM/
+ 29 Custom Scenery/RELICS_TERRAINS/
+ 30 Custom Scenery/EGLL - Heathrow v0.4.0/
+ 31 Custom Scenery/3D_people_library/
+ 32 Custom Scenery/PMDY - Henderson Field Midway/
+ 33 Custom Scenery/X-Plane Airports - TFFJ St Barthelemy/
+ 34 Custom Scenery/X-Plane Airports - TNCS Juancho E Yrausquin/
+ 35 Custom Scenery/PANC Anchorage-v2.0.2/
+ 36 Custom Scenery/BIVO - Vopnafjordur/
+ 37 Custom Scenery/MMSD - Los Cabos International Airport/
+ 38 Custom Scenery/AeroX EGLC/
+ 39 Custom Scenery/KSDF - Louisville Int - v2.0.1/
+ 40 Custom Scenery/ESUP - Pajala Airport/
+ 41 Custom Scenery/zzzz_MUXP_default_mesh_updates/
+ 42 Custom Scenery/EBCI - Brussels South Charleroi/
+ 43 Custom Scenery/KSTL - St Louis Lambert Intl/
+ 44 Custom Scenery/CYZF - Yellowknife/
+ 45 Custom Scenery/KIAD - Washington Dulles Intl/
+ 46 Custom Scenery/MMTL - Tulum Intl/
+ 47 Custom Scenery/SKBO - El Dorado Intl/
+ 48 Custom Scenery/KEUG - Mahlon Sweet Fld/
+ 49 Custom Scenery/KFMH - Cape Cod CGAS/
+ 50 Custom Scenery/KLAN - Capital City/
+ 51 Custom Scenery/PASC - Deadhorse/
+ 52 Custom Scenery/DGAA - Kotoka Intl/
+ 53 Custom Scenery/KBED - Bedford/
+ 54 Custom Scenery/KMHT - Manchester/
+ 55 Custom Scenery/KOWD - Norwood Memorial/
+ 56 Custom Scenery/PAKU - Ugnu-Kuparuk/
+ 57 Custom Scenery/KHOU - William P Hobby/
+ 58 Custom Scenery/KEYE - Eagle Creek Airpark/
+ 59 Custom Scenery/EP70 - Rzepin/
+ 60 Custom Scenery/KILG - New Castle/
+ 61 Custom Scenery/NTAA - Fa'a'ā Int/
+ 62 Custom Scenery/PGWT - Tinian Intl/
+ 63 Custom Scenery/KMSY - Armstrong New Orleans Intl/
+ 64 Custom Scenery/KNEW - Lakefront/
+ 65 Custom Scenery/SFD_KBOS_Boston_Logan_Intl/
+ 66 Custom Scenery/5S4 - Toledo State/
+ 67 Custom Scenery/KDAF - Necedah/
+ 68 Custom Scenery/KONP - Newport Municipal/
+ 69 Custom Scenery/KSFF - Felts Field/
+ 70 Custom Scenery/KPDX - Portland International/
+ 71 Custom Scenery/KPHX - Phoenix Sky Harbor Intl/
+ 72 Custom Scenery/THE-FRUIT-STAND Aircraft Library v3.0/
+ 73 Custom Scenery/world_wind_turbines/
+ 74 Custom Scenery/Aerosoft - LFMN Nice Cote d Azur X/
+ 75 Custom Scenery/Aerosoft - LPFR Faro/
+ 76 Custom Scenery/X-Plane Airports - KBTV Burlington/
+ 77 Custom Scenery/X-Plane Landmarks - Berlin and Frankfurt/
+ 78 Custom Scenery/X-Plane Landmarks - Budapest/
+ 79 Custom Scenery/X-Plane Landmarks - Chicago/
+ 80 Custom Scenery/X-Plane Landmarks - Dubai/
+ 81 Custom Scenery/X-Plane Landmarks - Las Vegas/
+ 82 Custom Scenery/X-Plane Landmarks - London/
+ 83 Custom Scenery/X-Plane Landmarks - Los Angeles/
+ 84 Custom Scenery/X-Plane Landmarks - New York/
+ 85 Custom Scenery/X-Plane Landmarks - Paris/
+ 86 Custom Scenery/X-Plane Landmarks - Portland/
+ 87 Custom Scenery/X-Plane Landmarks - Rio De Janeiro/
+ 88 Custom Scenery/X-Plane Landmarks - Saint Louis/
+ 89 Custom Scenery/X-Plane Landmarks - San Francisco/
+ 90 Custom Scenery/X-Plane Landmarks - Sydney/
+ 91 Custom Scenery/X-Plane Landmarks - Washington DC/
+ 92 Custom Scenery/KHVN - Tweed New Haven/
+ 93 Global Scenery/Global Airports/
+ 94 Custom Scenery/X-Plane Landmarks - Salzburg/
+ 95 Custom Scenery/EIDW - Dublin Intl/
+ 96 Custom Scenery/EINN - Shannon/
+ 97 Custom Scenery/Untitled 1/
+ 98 Global Scenery/X-Plane 12 Demo Areas/
+ 99 Global Scenery/X-Plane 12 Global Scenery/
+100 Resources/default scenery/1000 autogen/
+101 Resources/default scenery/1000 decals/
+102 Resources/default scenery/1000 roads/
+103 Resources/default scenery/1000 world terrain/
+104 Resources/default scenery/1200 atc data/
+105 Resources/default scenery/1200 beaches/
+106 Resources/default scenery/1200 forests/
+107 Resources/default scenery/700 roads/
+108 Resources/default scenery/900 beaches/
+109 Resources/default scenery/900 europe objects/
+110 Resources/default scenery/900 forests/
+111 Resources/default scenery/900 roads/
+112 Resources/default scenery/900 us objects/
+113 Resources/default scenery/900 world object placeholders/
+114 Resources/default scenery/airport scenery/
+115 Resources/default scenery/sim objects/
+116 Resources/tutorials/tutorials_Alaska/
+117 Resources/tutorials/tutorials_Hawaii/
+118 Resources/tutorials/tutorials_Portland/
+119 Resources/tutorials/tutorials_Seattle/
+
+Fetching plugins for Custom Scenery/AeroX EGLC/plugins
+
+Loaded: Custom Scenery/AeroX EGLC/plugins/GroundTraffic/64/win.xpl (Marginal.GroundTraffic.AeroX EGLC).
+
+[London City/64/win.xpl]: Dataref 'sim/weather/wind_direction_degt' has been replaced. Please use the new name.
+Loaded: Custom Scenery/AeroX EGLC/plugins/London City/64/win.xpl (aerox-simulations.london-city).
+
+GroundTraffic: Note: Ignoring duplicate waypoint at line 31
+Fetching plugins for Custom Scenery/KPDX - Portland International/plugins
+
+Loaded: Custom Scenery/KPDX - Portland International/plugins/GroundTraffic/64/win.xpl (Marginal.GroundTraffic.KPDX - Portland International).
+
+Fetching plugins for Custom Scenery/KPHX - Phoenix Sky Harbor Intl/plugins
+
+Loaded: Custom Scenery/KPHX - Phoenix Sky Harbor Intl/plugins/GroundTraffic/64/win.xpl (Marginal.GroundTraffic.KPHX - Phoenix Sky Harbor Intl).
+
+0:00:00.000 W/APT: Unknown key 'allows_ciruits' for 'La Guardia' in Custom Scenery/RELICS - KLGA/Earth nav data/apt.dat on line 5.
+0:00:00.000 E/APT: The airport ETOU (Wiesbaden Erbenheim AAF) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport EEEI (Ämari Military Aerodrome) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport EBCV (Chievres Air Base) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport EHLW (Leeuwarden) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 I/NAVT: Airspaces are done loading async...
+0:00:00.000 E/APT: The airport KPSM (PORTSMOUTH INTL AT PEASE) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport KAGC (Allegheny Co) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport KTRI (Tri Cities Rgnl Tn Va) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport LIED (Decimomannu) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport LERT (Cadiz Rota) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport XLT0003 (Cukurova) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport KAFW (Fort Worth Alliance) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport LCPH (Pafos Intl) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport RJOP ([H] Komatsushima AB) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport RCKH (Kaohsiung Intl) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport RCFN (Taitung Fongnian) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 E/APT: The airport OEDF (King Fahd Intl) has lost some controllers due to bad frequencies.  Each controller needs at least one frequency in the range of 118.00 to 136.990 mhz.
+0:00:00.000 W/APT: WARNING: airport Hubbard (ID TA49) overrides code 25TX but it has already been overridden by Chennault Airfield (ID XK00BR)
+0:00:00.000 W/APT: WARNING: airport Standard Field (ID 1M6) overrides code 5KY4 but it has already been overridden by Muhlenberg Co (ID M21)
+0:00:00.000 W/APT: WARNING: airport Stony Creek (ID XY000M) overrides code AU999 but it has already been overridden by Bunurong Field (ID XY000G)
+0:00:00.000 W/APT: WARNING: airport Washington Island (ID XK2P2) overrides code WI47 but it has already been overridden by Timberline (ID XKWI47)
+0:00:00.000 W/APT: WARNING: airport Çukurova Intl (ID XLT0004) overrides code LTDB but it has already been overridden by Cukurova (ID XLT0003)
+0:00:00.000 W/APT: WARNING: airport [H] Grace Hospital Emergency Medical (ID 5NC3) overrides code BQ1 but it has already been overridden by Gilliam-McConnell (ID XK002J)
+0:00:00.000 W/APT: WARNING: airport [H] Mays (ID OH71) overrides code 6CM but it has already been overridden by Chapman Memorial Field (ID 00I)
+0:00:00.000 W/APT: WARNING: airport [X] Stockton Muni (ID SN07) overrides code 07S but it has already been overridden by Beaumont Hotel (ID 7K9)
+0:00:00.000 I/APT: Airport '[H] Kewanee Hospital' (ID 14IL, code 0IL5) overrides '[H] City of Pontiac' (ID 0IL5).
+0:00:00.000 I/APT: Airport '[H] Mendota Community Hospital' (ID 74IL, code 14IL) overrides '[H] Kewanee Hospital' (ID 14IL).
+0:00:00.000 I/APT: Airport 'Outlaw Flyers' (ID XK009M, code 16XS) overrides 'Propwash' (ID 16XS).
+0:00:00.000 I/APT: Airport 'Slack' (ID 9N6, code 18PA) overrides 'Echo' (ID 18PA).
+0:00:00.000 I/APT: Airport 'Nest of Eagles' (ID 9WI7, code 1H9) overrides 'Ribble' (ID 1H9).
+0:00:00.000 I/APT: Airport 'Ickes' (ID XK006G, code 1PS0) overrides '[H] Southern Adams County' (ID 1PS0).
+0:00:00.000 I/APT: Airport 'Pela 15' (ID XK007J, code 1TN1) overrides '[H] Clayton' (ID 1TN1).
+0:00:00.000 I/APT: Airport 'Etna' (ID XK004V, code 2AR1) overrides 'Ozark Aerodrome' (ID 2AR1).
+0:00:00.000 I/APT: Airport 'Flying Hare Field' (ID XK009C, code 34XS) overrides 'Kenley Ranch' (ID 34XS).
+0:00:00.000 I/APT: Airport 'Philadelphia Gliderport' (ID 0PA0, code 3PA2) overrides 'Neeb' (ID 3PA2).
+0:00:00.000 I/APT: Airport 'Clark' (ID 3TX6, code 3T6) overrides 'Gum Island' (ID 3T6).
+0:00:00.000 I/APT: Airport 'Middle Bass Island' (ID XK0033, code 3T7) overrides 'Pavlat' (ID 3T7).
+0:00:00.000 I/APT: Airport 'Gerald Weidner' (ID H33, code 4IS9) overrides '[H] Doctors Hospital' (ID 4IS9).
+0:00:00.000 I/APT: Airport 'Catoctin Crosswind' (ID XK005S, code 4MD7) overrides 'Wood' (ID 4MD7).
+0:00:00.000 I/APT: Airport 'Kapaun-Wilson Field' (ID 00Y, code 4MN5) overrides '[H] Chisago Health Services' (ID 4MN5).
+0:00:00.000 I/APT: Airport '[H] Meritus Hospital' (ID XK005Q, code 5MD3) overrides '[H] Sinai Hospital' (ID 5MD3).
+0:00:00.000 I/APT: Airport 'Old Hoppe Place' (ID 67TX, code 67T) overrides 'Fisher Ranch' (ID 67T).
+0:00:00.000 I/APT: Airport 'Heathcliff Airpark' (ID XK00A6, code 7OH7) overrides 'Hydebrook' (ID 7OH7).
+0:00:00.000 I/APT: Airport 'American Creek' (ID AK80, code 80A) overrides 'McLean Brothers' (ID 80A).
+0:00:00.000 I/APT: Airport 'Maxson Airfield' (ID 89N, code 89NY) overrides 'Sheldon Airstrip' (ID 89NY).
+0:00:00.000 I/APT: Airport 'Barnesville Muni' (ID 8M3, code 9MN3) overrides '[S] Fountain Lake' (ID 9MN3).
+0:00:00.000 I/APT: Airport 'CD-3 Airstrip' (ID XPA000D, code AK20) overrides 'Quail Creek' (ID AK20).
+0:00:00.000 I/APT: Airport 'Big Creek' (ID XPA000J, code AK51) overrides '[S] Tazlina Smokey Lake' (ID AK51).
+0:00:00.000 I/APT: Airport 'Snowy Range' (ID XY000K, code AU53) overrides 'Mundrabilla Road' (ID AU53).
+0:00:00.000 I/APT: Airport 'Dingo' (ID XY0034, code AU90) overrides 'Cranbrook' (ID AU90).
+0:00:00.000 I/APT: Airport 'Hidden Valley' (ID XK0011, code AZ43) overrides 'Solair Estates' (ID AZ43).
+0:00:00.000 I/APT: Airport 'Lower Loon Creek' (ID ID67, code C53) overrides 'John Deere Dubuque Works' (ID C53).
+0:00:00.000 I/APT: Airport 'Cayuse Creek USFS' (ID S74, code C64) overrides 'Wawasee' (ID C64).
+0:00:00.000 I/APT: Airport 'Ullswater' (ID XC008L, code CLW2) overrides 'Lewvan (Farr Air)' (ID CLW2).
+0:00:00.000 I/APT: Airport 'Colorado Springs East' (ID A50, code CO49) overrides 'Flying Lazy D Ranch' (ID CO49).
+0:00:00.000 I/APT: Airport 'Pakuba Airfield' (ID HUKF, code HUPA) overrides 'Bugungu Airstrip' (ID HUPA).
+0:00:00.000 I/APT: Airport 'Hell Roaring Ranch' (ID XK00CE, code ID39) overrides 'Owen Ranches Inc' (ID ID39).
+0:00:00.000 I/APT: Airport 'Fairfield Ranch (pvt)' (ID XK00CD, code ID70) overrides '[H] Adams Gulch' (ID ID70).
+0:00:00.000 I/APT: Airport 'Foster Field' (ID 7A4, code IL28) overrides 'Werries' (ID IL28).
+0:00:00.000 I/APT: Airport 'Harrold' (ID 2IN6, code IN16) overrides 'Wilkins Strip' (ID IN16).
+0:00:00.000 I/APT: Airport 'Wolfe Field' (ID 3C9, code IN65) overrides 'Culp Farms' (ID IN65).
+0:00:00.000 I/APT: Airport '[H] Kantonsspital St.Gallen' (ID XLS0010, code LSHG) overrides '[H] Gampel' (ID LSHG).
+0:00:00.000 I/APT: Airport 'Mountainair Muni' (ID Q04, code M10) overrides 'Hunter' (ID M10).
+0:00:00.000 I/APT: Airport 'Bel-Voir Acres' (ID MO61, code MO04) overrides 'Lyell' (ID MO04).
+0:00:00.000 I/APT: Airport 'Sassuolo' (ID XLI001U, code MO07) overrides '[S] Bagnell' (ID MO07).
+0:00:00.000 I/APT: Airport 'Table Rock' (ID 36M, code MO32) overrides 'Princeton-Kauffman Meml' (ID MO32).
+0:00:00.000 I/APT: Airport '[H] Red River Heliport' (ID XK006N, code N02) overrides '[H] Keystone' (ID N02).
+0:00:00.000 I/APT: Airport 'Blue Heron' (ID NK93, code N25) overrides 'Westport' (ID N25).
+0:00:00.000 I/APT: Airport 'Harvey Point Defense Test Act' (ID XK008A, code NC01) overrides 'May' (ID NC01).
+0:00:00.000 I/APT: Airport 'Deck Airpark' (ID 02W, code NC11) overrides 'Bear Creek' (ID NC11).
+0:00:00.000 I/APT: Airport 'Old Forge NY' (ID XK00CM, code NK26) overrides 'Coles Landing' (ID NK26).
+0:00:00.000 I/APT: Airport 'Cielo Dorado Estates' (ID TA50, code NM05) overrides 'Williams' (ID NM05).
+0:00:00.000 I/APT: Airport 'Porter' (ID 2I6, code OH92) overrides 'Camstra' (ID OH92).
+0:00:00.000 I/APT: Airport 'JJ & PK Airstrip' (ID 73W, code PA08) overrides 'Moorhead Airpark' (ID PA08).
+0:00:00.000 I/APT: Airport 'Kingsdale Air Park' (ID 76W, code PA23) overrides 'Mifflintown' (ID PA23).
+0:00:00.000 I/APT: Airport 'Cloudbound' (ID XK006F, code PA47) overrides 'Jim Shearer' (ID PA47).
+0:00:00.000 I/APT: Airport 'Port Alsworth' (ID XPA000G, code PALJ) overrides 'Wilder Runway' (ID PALJ).
+0:00:00.000 I/APT: Airport 'Adjuntas' (ID XTJ0003, code PR20) overrides '[H] Old San Juan' (ID PR20).
+0:00:00.000 I/APT: Airport 'Flying R.N.' (ID KS10, code S10) overrides 'Lake Chelan' (ID S10).
+0:00:00.000 I/APT: Airport 'Fazenda Sao Miguel' (ID SJOY, code SDTV) overrides '[H] Tivoli Center' (ID SDTV).
+0:00:00.000 I/APT: Airport 'Agropastoril Bom Pastor' (ID SDRO, code SDWC) overrides 'Aldeia Bau' (ID SDWC).
+0:00:00.000 I/APT: Airport 'Irmãos Gonçalves' (ID XSB0008, code SIDG) overrides 'Fazenda Jotabasso' (ID SIDG).
+0:00:00.000 I/APT: Airport 'Rio Negrinho' (ID SSRN, code SILN) overrides 'Fazenda Rio Capim' (ID SILN).
+0:00:00.000 I/APT: Airport 'Manoel Urbano' (ID SSPX, code SIMB) overrides '[H] Monumental Business' (ID SIMB).
+0:00:00.000 I/APT: Airport 'Jorge Luiz Stocco' (ID XSB000C, code SJOY) overrides 'Fazenda Sao Miguel' (ID SJOY).
+0:00:00.000 I/APT: Airport 'Cond. Aeron. Santos Dumont' (ID XSB000I, code SNDD) overrides 'Fazenda Eldorado' (ID SNDD).
+0:00:00.000 I/APT: Airport 'Tancredo Thomas de Faria' (ID SBGU, code SSGG) overrides 'Fazenda Jacare de Chifre' (ID SSGG).
+0:00:00.000 I/APT: Airport 'Forquilhinha' (ID SBCM, code SSIM) overrides 'Boqueirao Alegre' (ID SSIM).
+0:00:00.000 I/APT: Airport 'Fazenda Serra Dourada' (ID SNIF, code SSUD) overrides '[H] Bom Dia Cafe' (ID SSUD).
+0:00:00.000 I/APT: Airport 'Telemaco Borba' (ID SBTL, code SSVL) overrides 'Fazenda Santa Claudina' (ID SSVL).
+0:00:00.000 I/APT: Airport 'Sao Joao dos Patos' (ID XSB0003, code SSYR) overrides 'Fazenda Santa Maria' (ID SSYR).
+0:00:00.000 I/APT: Airport 'Zirondi' (ID XSB0009, code SSZD) overrides '[H] Aficel' (ID SSZD).
+0:00:00.000 I/APT: Airport 'Playa Pintada' (ID XSVPQ, code SVPQ) overrides 'El Pardillero' (ID SVPQ).
+0:00:00.000 I/APT: Airport 'Luis Eduardo Magalhaes' (ID XSB000G, code SWNB) overrides 'Nobres' (ID SWNB).
+0:00:00.000 I/APT: Airport 'Aero Estates' (ID TS96, code T25) overrides 'Jennings Ranch' (ID T25).
+0:00:00.000 I/APT: Airport 'Goldthwaite Muni' (ID XK007O, code T37) overrides 'Locker Brothers' (ID T37).
+0:00:00.000 I/APT: Airport 'Flying B Ranch' (ID XK009L, code TA12) overrides '[H] Petroleum Helicopters Inc' (ID TA12).
+0:00:00.000 I/APT: Airport 'West Liberty' (ID XK009G, code TS35) overrides '[H] Marriott Astrodome' (ID TS35).
+0:00:00.000 I/APT: Airport 'Hammer Airfield' (ID XK009K, code TS75) overrides 'Mitchell Nr One' (ID TS75).
+0:00:00.000 I/APT: Airport 'Fair Weather Field' (ID XK009I, code TX42) overrides 'Bransom Farm' (ID TX42).
+0:00:00.000 I/APT: Airport 'Eberly Ranch' (ID XK008Z, code TX70) overrides 'Hess' (ID TX70).
+0:00:00.000 I/APT: Airport 'Morowali Industrial Park' (ID XWI000L, code WAMP) overrides 'Kasiguncu' (ID WAMP).
+0:00:00.000 I/APT: Airport 'Mukah Lapangan Terbang' (ID XWB0005, code WBGK) overrides 'Mukah' (ID WBGK).
+0:00:00.000 I/APT: Airport 'Rainelle' (ID 9W4, code WV30) overrides 'Leon' (ID WV30).
+0:00:00.000 I/APT: Airport 'Mundaring Weir' (ID YMWR, code YMDW) overrides 'MAITLAND DOWNS' (ID YMDW).
+0:00:00.000 I/APT: Airport 'Mandemar' (ID XY004M, code YMMR) overrides 'MUNMARLARY' (ID YMMR).
+0:00:00.000 I/APT: Airport 'Port Hedland/Wodgina' (ID XY001Z, code YWGA) overrides 'Wonga Beach' (ID YWGA).
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/cube_filter_compute_mapping.xsv with hash: bad21c347f6af072901f41f65e6c12ac
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/cube_filter_compute.xsa with hash: 08d8d3cf364608c647445d5459019d5
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/cube_filter_raster_mapping.xsv with hash: 42e5dfb39f46f98fc65ddd67a18c298
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/cube_filter_raster.xsa with hash: 2293a6e7a15f3cacbffa1861cbd12b5
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/ssr_deferred_mapping.xsv with hash: 6e9ba45a625ab6bb3dc9a32b638f12
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/ssr_deferred.xsa with hash: 8e1343d053146ae491080c1bf175b8e
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/ssr_mesh_mapping.xsv with hash: fa251c8446aa6ea51d38d8effd615790
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/ssr_mesh.xsa with hash: df1c1239252677ce7360c5c993c93ac
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/ground_lights_mapping.xsv with hash: 1c97a55643b34f44f31b65d5e9798
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/ground_lights.xsa with hash: 32d476a479634c464be1f02fd9e11bd2
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/light_mapping.xsv with hash: 7aae35fdc5436ae3c0d76edeb4d9121
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/light.xsa with hash: c0327a9b6121654eb11f47cb9c484d0
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/light_tile_mapping.xsv with hash: bcaed692c6b765d372d261bc921fa568
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/light_tile.xsa with hash: ebc0dc88ccc464bf36b6897a85b6a90
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/light_transform_mapping.xsv with hash: b3396f416f3c8fee2fa5ac7596429
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/light_transform.xsa with hash: d8f784f5269bb5f39b2b03d40e8cfa0
+0:00:00.000 I/GFX: Loaded mapping Resources/shaders/bin/light_vis_mapping.xsv with hash: 72e7a7ac823b7778235a829aa655e6d
+0:00:00.000 I/GFX: Loaded archive Resources/shaders/bin/spv/light_vis.xsa with hash: 269a295c77b1ce1a6e1818dba8b6ea10
+0:00:00.000 I/NAVT: NavData is done loading async...
+0:00:00.000 I/NAVT: Navaids are done loading async...
+0:00:00.000 I/NAVT: Fixes are done loading async...
+0:00:00.000 I/NAVT: Airways are done loading async...
+0:00:00.000 I/NAVT: All navt data is done loading async...
+0:00:00.000 I/OXR: Created OpenXR Instance:
+	Name: SteamVR/OpenXR
+	Version: 2.10.4
+0:00:00.000 I/REN: Setting texture resolution read from prefs as 5
+0:00:00.000 W/ACF: Scanning of aircraft files is complete. Some of your aircraft files will not be available to fly in X-Plane, probably because they were created by a version of X-Plane that is too old. Aircraft that will be ignored:
+0:00:00.000 W/ACF:     Aircraft/ABSim_DC-10/DC-10.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200 CF6-80A A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200 JT9D A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER CF6-80A A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER CF6-80A AL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER CF6-80C A copy/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER CF6-80C AL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER JT9D A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER JT9D AL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER PW4000 A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-200ER PW4000 AL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300 CF6-80A A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300 CF6-80C A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300 CF6-80C AL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300 CF6-80C B/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300 CF6-80C BL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300 JT9D A/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300 PW BL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300BCF CF6-80C L/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300BCF PW4000 L/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER GE AL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER GE AWL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER GE BL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER GE BWL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER PW AL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER PW AWL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER PW BL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER PW BWL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER RR BL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300ER RR BWL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300F CF6-80C L/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300F CF6-80C WL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300F PW4000 L/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-300F PW4000 WL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing 767-400ER BL/763.acf
+0:00:00.000 W/ACF:     Aircraft/B767 XP10/Boeing E767 CF6-80C A/763.acf
+0:00:00.000 W/ACF:     Aircraft/Bombardier CS100/CS100.acf
+0:00:00.000 W/ACF:     Aircraft/DG 1000/DG1000.acf
+0:00:00.000 I/REN: Setting |dim under high G-load or hypoxia read from prefs as 0.
+0:00:00.000 I/REN: Setting |3-d drawing detail read from prefs as 4.
+0:00:00.000 I/REN: Setting |drawing range read from prefs as 4.
+0:00:00.000 I/REN: Setting |draw parked aircraft at airports read from prefs as 0.
+0:00:00.000 I/REN: Setting |draw boats in the water  read from prefs as 1.
+0:00:00.000 I/REN: Setting |Cloud quality read from prefs as 3.
+0:00:00.000 I/REN: Setting |FSR quality level read from prefs as 0.
+0:00:00.000 I/REN: Setting |SSAO quality level read from prefs as 1.
+0:00:00.000 I/REN: Setting |Enable 3D trees read from prefs as 1.
+0:00:00.000 I/REN: Setting |3-d shadows read from prefs as 4.
+0:00:00.000 I/REN: Setting |Tree quality level read from prefs as 4.
+0:00:00.000 I/REN: Setting |HDR anti-aliasing read from prefs as 1.
+0:00:00.000 I/REN: Setting |Enable FXAA to remove jagged lines via post processing which is cheaper than MSAA. read from prefs as 1.
+0:00:00.000 I/REN: Setting |Texture Resolution read from prefs as 4.
+0:00:00.000 I/REN: Setting |Anisotropic Filtering read from prefs as 1.
+0:00:00.000 D/KTX2: [Resources/bitmaps/world/moon_NML.ktx2] 1024x1024x0 0 layers 11 levels 1 faces none
+0:00:00.000 I/WEBSRV: Port 8086 bound
+0:00:00.000 I/WEBSRV: Port 53645 bound
+0:00:00.000 I/gfx: Max budget for managed buffers changed to 1073741824
+0:00:00.000 I/NET: OS has RFC 4941 Privacy Extensions for IPv6 *disabled*, using PERMANENT IPv6 addresses
+0:00:00.000 I/NET: Ethernet (Intel(R) Ethernet Controller (3) I225-V) 192.168.1.191
+0:00:00.000 I/NET: Ethernet (Intel(R) Ethernet Controller (3) I225-V) fe80::6852:94a4:ead3:8076
+0:00:00.000 I/NET: (RakNet) Init: Successful!
+0:00:00.000 I/NET: Networking initialized successfully
+0:00:00.000 I/NET: UPnP-capable gateway found: http://192.168.1.1:58573/rootDesc.xml
+0:00:00.000 I/NET: UPnP init OK: gateway accepting UPnP requests
+0:00:00.000 I/NET: UPnP add redirect OK: port 49010 for 192.168.1.191
+0:00:00.000 I/NET: UPnP add redirect OK: port 49000 for 192.168.1.191
+0:00:00.000 I/TEX: Target scale moved to 0.125000. Texture usage is 2.80 kb out of 19.95 gb available. Memory headroom is 20.47 gb
+0:00:00.000 D/HID: Hardware ADDED(044f, 0404) - Throttle - HOTAS Warthog at path \\?\hid#vid_044f&pid_0404#a&253d6ee0&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}
+0:00:00.000 I/JOY: REGISTER Joystick device: Throttle - HOTAS Warthog - VID:1103PID:1028, this is a familiar device.
+0:00:00.000 D/HID: 	BUTTON Added Index: 0 (HID_Page_Button/01) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 1 (HID_Page_Button/02) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 2 (HID_Page_Button/03) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 3 (HID_Page_Button/04) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 4 (HID_Page_Button/05) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 5 (HID_Page_Button/06) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 6 (HID_Page_Button/07) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 7 (HID_Page_Button/08) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 8 (HID_Page_Button/09) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 9 (HID_Page_Button/0a) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 10 (HID_Page_Button/0b) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 11 (HID_Page_Button/0c) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 12 (HID_Page_Button/0d) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 13 (HID_Page_Button/0e) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 14 (HID_Page_Button/0f) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 15 (HID_Page_Button/10) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 16 (HID_Page_Button/11) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 17 (HID_Page_Button/12) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 18 (HID_Page_Button/13) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 19 (HID_Page_Button/14) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 20 (HID_Page_Button/15) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 21 (HID_Page_Button/16) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 22 (HID_Page_Button/17) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 23 (HID_Page_Button/18) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 24 (HID_Page_Button/19) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 25 (HID_Page_Button/1a) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 26 (HID_Page_Button/1b) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 27 (HID_Page_Button/1c) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 28 (HID_Page_Button/1d) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 29 (HID_Page_Button/1e) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 30 (HID_Page_Button/1f) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 31 (HID_Page_Button/20) for handle: 000001E9EF3F8EE0
+0:00:00.000 D/HID: 	HATSWITCH Added Index: 0 (HID_Page_GenericDesktop/HID_Usage_GD_Hatswitch) for handle: 000001E9EF3F8EE0. It has 8 positions.
+0:00:00.000 D/HID: 	AXIS Added Index: 0 (HID_Page_GenericDesktop/HID_Usage_GD_X) for handle: 000001E9EF3F8EE0. Min/Max 0 - 1023
+0:00:00.000 D/HID: 	AXIS Added Index: 1 (HID_Page_GenericDesktop/HID_Usage_GD_Y) for handle: 000001E9EF3F8EE0. Min/Max 0 - 1023
+0:00:00.000 D/HID: 	AXIS Added Index: 2 (HID_Page_GenericDesktop/HID_Usage_GD_Slider) for handle: 000001E9EF3F8EE0. Min/Max 0 - 1023
+0:00:00.000 D/HID: 	AXIS Added Index: 3 (HID_Page_GenericDesktop/HID_Usage_GD_Z) for handle: 000001E9EF3F8EE0. Min/Max 0 - 16383
+0:00:00.000 D/HID: 	AXIS Added Index: 4 (HID_Page_GenericDesktop/HID_Usage_GD_Rz) for handle: 000001E9EF3F8EE0. Min/Max 0 - 16383
+0:00:00.000 D/HID: 	SKIPPED (ff/05) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/04) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/03) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/02) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/01) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: 	SKIPPED (ff/06) for handle: 000001E9EF3F8EE0 because of usage page.
+0:00:00.000 D/HID: END HARDWARE
+0:00:00.000 D/HID: Hardware ADDED(3344, 83f1) - L-VPC Stick WarBRD-D at path \\?\hid#vid_3344&pid_83f1&col01#a&245544f1&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}
+0:00:00.000 I/JOY: REGISTER Joystick device: L-VPC Stick WarBRD-D - VID:13124PID:33777, this is a familiar device.
+0:00:00.000 D/HID: 	BUTTON Added Index: 0 (HID_Page_Button/01) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 1 (HID_Page_Button/02) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 2 (HID_Page_Button/03) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 3 (HID_Page_Button/04) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 4 (HID_Page_Button/05) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 5 (HID_Page_Button/06) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 6 (HID_Page_Button/07) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 7 (HID_Page_Button/08) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 8 (HID_Page_Button/09) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 9 (HID_Page_Button/0a) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 10 (HID_Page_Button/0b) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 11 (HID_Page_Button/0c) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 12 (HID_Page_Button/0d) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 13 (HID_Page_Button/0e) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 14 (HID_Page_Button/0f) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 15 (HID_Page_Button/10) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 16 (HID_Page_Button/11) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 17 (HID_Page_Button/12) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	BUTTON Added Index: 18 (HID_Page_Button/13) for handle: 000001E9EF3F7CE0
+0:00:00.000 D/HID: 	AXIS Added Index: 0 (HID_Page_GenericDesktop/HID_Usage_GD_X) for handle: 000001E9EF3F7CE0. Min/Max 0 - 60000
+0:00:00.000 D/HID: 	AXIS Added Index: 1 (HID_Page_GenericDesktop/HID_Usage_GD_Y) for handle: 000001E9EF3F7CE0. Min/Max 0 - 60000
+0:00:00.000 D/HID: 	HATSWITCH Added Index: 0 (HID_Page_GenericDesktop/HID_Usage_GD_Hatswitch) for handle: 000001E9EF3F7CE0. It has 72 positions.
+0:00:00.000 D/HID: END HARDWARE
+0:00:00.000 D/HID: Hardware ADDED(3344, 01f8) - VPC Rudder Pedals at path \\?\hid#vid_3344&pid_01f8&col01#a&ac1152c&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}
+0:00:00.000 I/JOY: REGISTER Joystick device: VPC Rudder Pedals - VID:13124PID:504, this is a familiar device.
+0:00:00.000 D/HID: 	AXIS Added Index: 0 (HID_Page_GenericDesktop/HID_Usage_GD_Z) for handle: 000001E9EF3F8520. Min/Max 0 - 60000
+0:00:00.000 D/HID: 	AXIS Added Index: 1 (HID_Page_GenericDesktop/HID_Usage_GD_Slider) for handle: 000001E9EF3F8520. Min/Max 0 - 60000
+0:00:00.000 D/HID: 	AXIS Added Index: 2 (HID_Page_GenericDesktop/HID_Usage_GD_Dial) for handle: 000001E9EF3F8520. Min/Max 0 - 60000
+0:00:00.000 D/HID: END HARDWARE
+0:00:00.000 D/STM: Transitioning from state state_InitialLoading to state_QuickFlightWizard
+0:00:00.000 I/ACF: Loading airplane number 20 with Aircraft/Flight Factor/Boeing 777-200ER/777-200ER_xp12.acf
+2025-05-27 22:38:50 BetterPushback[bp.c:1211]: WARN: Aircraft not on the ground.
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     5.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.39 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=     6.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     6.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=     7.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     7.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=     8.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     8.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=     9.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=     9.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    10.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    10.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    11.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    11.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    12.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    12.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    13.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    13.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    14.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    14.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    15.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    15.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    16.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    16.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+time=    17.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+time=    17.0, RECV label=BECN from IP=192.168.1.191-49707, length after packaging removal=34
+Private-message parse, RECV label=BECN, len=34
+WE ARE SENDING     0.00 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+WE ARE RECEIVING   0.08 kilo-bytes per second (1,200 kilo-bytes per second is a low-end LAN)
+0:00:00.000 I/WIN: Showing subscreen Main Menu
+0:00:00.000 I/OVR: User is entering the holodeck.
+0:00:00.000 I/WIN: Opened window Primary V11 UI
+0:00:00.000 I/WXR: wxr cache: (window 000001E9FA186870) 960 x 540
+0:00:00.234 D/KTX2: [Resources/bitmaps/world/moon_NML.ktx2] 1024x1024x0 0 layers 11 levels 1 faces none
+0:00:00.310 I/TEX: Target scale moved to 0.250000. Texture usage is 128.82 kb out of 19.85 gb available. Memory headroom is 20.36 gb
+0:00:00.324 D/KTX2: [Resources/bitmaps/world/moon_NML.ktx2] 1024x1024x0 0 layers 11 levels 1 faces none
+0:00:00.407 I/TEX: Target scale moved to 0.500000. Texture usage is 506.80 kb out of 19.82 gb available. Memory headroom is 20.33 gb
+0:00:00.422 D/KTX2: [Resources/bitmaps/world/moon_NML.ktx2] 1024x1024x0 0 layers 11 levels 1 faces none
+0:00:00.500 I/TEX: Target scale moved to 1.000000. Texture usage is 1.97 mb out of 19.76 gb available. Memory headroom is 20.27 gb
+0:00:00.517 D/KTX2: [Resources/bitmaps/world/moon_NML.ktx2] 1024x1024x0 0 layers 11 levels 1 faces none
+0:00:00.597 I/TEX: Target scale moved to 2.000000. Texture usage is 6.76 mb out of 19.64 gb available. Memory headroom is 20.14 gb
+0:00:00.642 I/TEX: Target scale moved to 4.000000. Texture usage is 6.77 mb out of 19.40 gb available. Memory headroom is 19.89 gb
+0:00:00.694 I/TEX: Target scale moved to 8.000000. Texture usage is 6.80 mb out of 18.91 gb available. Memory headroom is 19.39 gb
+0:00:00.739 I/TEX: Target scale moved to 16.000000. Texture usage is 6.93 mb out of 18.91 gb available. Memory headroom is 19.39 gb
+0:00:17.063 I/SIM: Exiting the sim without confirmation
+0:00:17.064 E/NET: Download failed with error: 28 for URL https://lookup.x-plane.com/_lookup_12_/analytics.html (IP: 18.161.34.17)
+0:00:17.064 I/ANL: Did not send because of error: 268435484. Writing session 51afbc76-5f4a-42e8-863c-b04f89a8783a to disk instead.
+0:00:17.064 D/STM: Transitioning from state state_QuickFlightWizard to state_ShuttingDown
+2025-05-27 22:39:09 AutoDGS[autodgs.c:182]: setting state to DISABLED
+FlyWithLua Error: ReadScriptFile() failed, Lua is not running, can't load script file.
+Resources/plugins/FlyWithLua/Internals/FlyWithLua.exit
+FlyWithLua Error: Unable to load exit file.
+FlyWithLua Info:  deinitFmodSupport() FmodSounds.size =  0
+FlyWithLua Info: deinitFmodSupport()  Should be 0 now FmodSounds.size =  0
+FlyWithLua Info: FlyWithLua plugin disabled.
+XPL2ACMI: Tacview X-Plane recorder disabled
+0:00:17.064 xPilot/XPMP2 INFO  XPMPMultiplayer.cpp:217/XPMPMultiplayerCleanup: XPMP2 cleaning up...
+0:00:17.064 xPilot: xPilot plugin disabled
+ASXP12 plugin stopped...
+2025-05-27 22:39:11 BetterPushback[xplane.c:1044]: INFO: Unloading BetterPushBack
+FlyWithLua Info:  deinitFmodSupport() FmodSounds.size =  0
+FlyWithLua Info: deinitFmodSupport()  Should be 0 now FmodSounds.size =  0
+2025-05-27 22:39:12 [SharedFlight][SFFlightClientController.cpp:4853]: Logger stop finished...
+SFDocumentViewerWindow plugin stop called.
+SFHUDLayerWindow plugin stop called.
+SFControlsTransferWindow plugin stop called.
+SFOverlayWindow plugin stop called.
+SFSyncPausedWindow plugin stop called.
+SFOverlayWindow plugin stop called.
+SFSyncDebugWindow plugin stop called.
+SFChecklistAndFlowWindow plugin stop called.
+SFMainWindow plugin stop called.
+SharedFlight plugin stopped...XPL2ACMI: Tacview X-Plane recorder deleted

@@ -42,8 +42,12 @@ namespace SceneryEditorX
     bool VulkanChecks::CheckAPIVersion(const uint32_t minVulkanVersion)
     {
         uint32_t instanceVersion;
-		const VkResult result = vkEnumerateInstanceVersion(&instanceVersion);
-        SEDX_ASSERT(result, "vkEnumerateInstanceVersion");
+        if (VkResult result = vkEnumerateInstanceVersion(&instanceVersion); result != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR("Failed to enumerate instance version: {}", ToString(result));
+            return false;
+        }
+        
         RenderData::apiVersion vulkanVersion;
         vulkanVersion.Variant = VK_API_VERSION_VARIANT(instanceVersion);
 		vulkanVersion.Major = VK_API_VERSION_MAJOR(instanceVersion);

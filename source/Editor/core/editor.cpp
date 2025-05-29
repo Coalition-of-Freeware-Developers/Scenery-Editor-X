@@ -10,14 +10,14 @@
 * Created: 13/4/2025
 * -------------------------------------------------------
 */
+#include <Editor/core/editor.h>
+#include <GraphicsEngine/vulkan/vk_checks.h>
+#include <GraphicsEngine/vulkan/vk_core.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/window.h>
-#include <Editor/core/editor.h>
 #include <SceneryEditorX/platform/settings.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
-#include <GraphicsEngine/vulkan/vk_checks.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 
 // ---------------------------------------------------------
 
@@ -56,24 +56,27 @@ namespace SceneryEditorX
 
     void EditorApplication::Run()
     {
+
+        const Ref<Window> &window = GetWindow();
         const auto start = std::chrono::high_resolution_clock::now();
 
-		InitEditor();
+		InitEditor(window);
 
 		const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
 		MainLoop();
-
     }
 
-    void EditorApplication::InitEditor()
+    void EditorApplication::InitEditor(const Ref<Window> &window)
     {
 	    /// Log header information immediately after init and flush to ensure it's written
-        Log::LogHeader();
-        //Log::FlushAll();
-	    EDITOR_INFO("Scenery Editor X Engine is starting...");
-	
+	    EDITOR_INFO("Scenery Editor X Graphics Engine is starting...");
+
+        gfxEngine.Init(window);
+
+        Ref<VulkanChecks> vulkanChecks = CreateRef<VulkanChecks>();
+        vulkanChecks->InitChecks({}, {}, {});
 	    //Launcher::AdminCheck();
 	    //Launcher::Loader loader{};
 	    //loader.run();
@@ -81,10 +84,10 @@ namespace SceneryEditorX
 	    //assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
         
         // Create and load settings
-        Ref<ApplicationSettings> appSettings = CreateRef<ApplicationSettings>("settings.cfg");
-        appSettings->ReadSettings();
+        //Ref<ApplicationSettings> appSettings = CreateRef<ApplicationSettings>("settings.cfg");
+        //appSettings->ReadSettings();
 
-        ImGui::CreateContext(); //TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
+        //ImGui::CreateContext(); //TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
 
 	    //scene = assetManager.GetInitialScene();
 	    //camera = assetManager.GetMainCamera(scene);
@@ -92,12 +95,7 @@ namespace SceneryEditorX
 	
 	void EditorApplication::Create()
 	{
-        const Ref<Window> editorWindow = CreateRef<Window>();
-
-        gfxEngine.Init(editorWindow);
-	
-        Ref<VulkanChecks> vulkanChecks = CreateRef<VulkanChecks>();
-        vulkanChecks->InitChecks({}, {}, {});
+        //const Ref<Window> editorWindow = CreateRef<Window>();
 
         //auto physDevice = vkDevice->GetPhysicalDevice();
         //physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);

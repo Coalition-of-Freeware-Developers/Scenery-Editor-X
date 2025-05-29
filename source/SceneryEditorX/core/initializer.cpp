@@ -24,6 +24,7 @@ namespace SceneryEditorX
     {
 		Allocator::Init();
 		Log::Init();
+        Log::LogHeader();
     }
 
     void Shutdown()

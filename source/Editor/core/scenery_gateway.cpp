@@ -21,7 +21,7 @@ namespace SceneryEditorX
 {
 	
 	/// libcurl write callback
-	size_t SceneryGateway::WriteCallback(char *contents, size_t size, size_t nmemb, void *userdata)
+	size_t SceneryGateway::WriteCallback(const char *contents, size_t size, size_t nmemb, void *userdata)
 	{
 	    size_t realSize = size * nmemb;
 	    FILE *file = static_cast<FILE *>(userdata);
@@ -55,8 +55,7 @@ namespace SceneryEditorX
 	        
 	    if (curl)
 	    {
-	        char* encoded = curl_easy_escape(curl, input.c_str(), static_cast<int>(input.length()));
-	        if (encoded)
+            if (char* encoded = curl_easy_escape(curl, input.c_str(), static_cast<int>(input.length())))
 	        {
 	            result = encoded;
 	            curl_free(encoded);
@@ -177,7 +176,7 @@ namespace SceneryEditorX
 
         /// Prepare to capture response
         std::string responseData;
-        curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION,[](char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t
+        curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION,[](const char *ptr, size_t size, size_t nmemb, void *userdata) -> size_t
 		{
 			std::string *responseDataPtr = static_cast<std::string *>(userdata);
 			responseDataPtr->append(ptr, size * nmemb);
@@ -433,7 +432,7 @@ namespace SceneryEditorX
 	}
 	
     /// Download a scenery pack
-    bool SceneryGateway::DownloadSceneryPack(int id, const std::string &saveDir, SceneryEditorX::ProgressCallback progressCb, CompletionCallback completionCb)
+    bool SceneryGateway::DownloadSceneryPack(int id, const std::string &saveDir, const SceneryEditorX::ProgressCallback &progressCb, const CompletionCallback &completionCb)
     {
         if (downloadStatus_.inProgress)
         {

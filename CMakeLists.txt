@@ -196,6 +196,11 @@ ADD_SUBDIRECTORY(dependency/libconfig)
 ADD_SUBDIRECTORY(source/SceneryEditorX)
 
 # --------------------------------
+# Launcher
+# --------------------------------
+ADD_SUBDIRECTORY(source/Launcher)
+
+# --------------------------------
 # Scenery Editor X
 # --------------------------------
 ADD_SUBDIRECTORY(source/Editor)
@@ -290,15 +295,16 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating precompiled headers")
 
 TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Editor/xpeditor_pch.h)
-TARGET_PRECOMPILE_HEADERS(GraphicsEngine PRIVATE ${CMAKE_SOURCE_DIR}/Source/GraphicsEngine/sedx_vulkan_pch.h)
-TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_core_pch.h)
+TARGET_PRECOMPILE_HEADERS(GraphicsEngine PRIVATE ${CMAKE_SOURCE_DIR}/Source/GraphicsEngine/vkGfx_pch.h)
+TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_pch.h)
+TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/startup_pch.h)
 
 SET_PROPERTY(TARGET FormatTester CrashHandler PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 SET_PROPERTY(TARGET imgui libconfig libconfig++ PROPERTY FOLDER "Dependency")
 
-FOREACH(TARGET IN ITEMS SceneryEditorX AppCore FormatTester GraphicsEngine CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore FormatTester GraphicsEngine CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

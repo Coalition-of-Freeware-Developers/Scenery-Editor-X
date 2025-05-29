@@ -29,6 +29,7 @@ ADD_LIBRARY(GraphicsEngine
 	${SCENE_FILES}
 	${SHADER_FILES}
 	${VULKAN_FILES}
+	${PROJECT_CONFIG_FILES}
     # --------------------------------
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
@@ -71,6 +72,9 @@ SOURCE_GROUP("Scene" FILES
 SOURCE_GROUP("Shaders" FILES
 	${SHADER_FILES}
 )
+#SOURCE_GROUP("Resources" FILES
+#	${PROJECT_CONFIG_FILES}
+#)
 # --------------------------------
 # SHADERS
 # --------------------------------
@@ -93,7 +97,6 @@ TARGET_INCLUDE_DIRECTORIES(GraphicsEngine
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
         ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
-        ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
         ${Stb_INCLUDE_DIR}

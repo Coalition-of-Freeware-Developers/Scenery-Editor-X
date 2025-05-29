@@ -36,9 +36,7 @@ ADD_LIBRARY(AppCore
 	${RENDERER}
 	${SCENE}
 	${PROJECT_CONFIG_FILES}
-    ${REGISTRY_KEYS}
 	${UTILITIES_FILES}
-    ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 	# --------------------------------
@@ -115,33 +113,8 @@ SOURCE_GROUP("Resource" FILES
 SOURCE_GROUP("Resource/Icons" FILES
     ${ICON_FILES}
 )
-SOURCE_GROUP("Resource/Images" FILES
-    ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
-)
 SOURCE_GROUP("Resource/Fonts" FILES
     ${FONT_FILES}
-)
-SOURCE_GROUP("Resource/Registry" FILES
-    ${REGISTRY_KEYS}
-)
-SOURCE_GROUP("Launcher/Core" FILES
-    ${LAUNCHER_DIR}/core/launcher_main.cpp
-    ${LAUNCHER_DIR}/core/launcher_main.h
-    ${LAUNCHER_DIR}/core/directory_manager.cpp
-    ${LAUNCHER_DIR}/core/directory_manager.hpp
-    ${LAUNCHER_DIR}/core/splash_handler.h
-    ${LAUNCHER_DIR}/core/updater.h
-    ${LAUNCHER_DIR}/core/updater.cpp
-)
-SOURCE_GROUP("Launcher/Registry" FILES
-    ${LAUNCHER_DIR}/registry/reg_init.h
-    ${LAUNCHER_DIR}/registry/reg_check.h
-    ${LAUNCHER_DIR}/core/elevate_perms.h
-)
-SOURCE_GROUP("Launcher/Registry/Keys" FILES
-    ${LAUNCHER_DIR}/registry/edXLibReg.rgs
-    ${LAUNCHER_DIR}/registry/edXReg.rgs
-    ${LAUNCHER_DIR}/registry/ProgramReg.rgs
 )
 
 # --------------------------------

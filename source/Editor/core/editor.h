@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/window.h>
 #include <GraphicsEngine/vulkan/render_data.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
+#include <GraphicsEngine/vulkan/vk_core.h>
+#include <SceneryEditorX/core/window.h>
 //#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
@@ -60,7 +60,7 @@ namespace SceneryEditorX
          * Sets up the graphics engine, UI system, and other core components
          * required for the editor to function properly.
          */
-        void InitEditor();
+        void InitEditor(const Ref<Window> &window);
         
         /**
          * @brief Starts the editor application.

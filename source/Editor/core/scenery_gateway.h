@@ -163,9 +163,7 @@ namespace SceneryEditorX
         ApiResponse GetRecommendedScenery() const;
 
         /// Download functionality
-        bool DownloadSceneryPack(int id, const std::string& saveDir, 
-            ProgressCallback progressCb = nullptr,
-            CompletionCallback completionCb = nullptr);
+        bool DownloadSceneryPack(int id, const std::string& saveDir, const ProgressCallback &progressCb = nullptr, const CompletionCallback &completionCb = nullptr);
         
         /// Access to cached data
         const std::vector<AirportInfo>& GetCachedAirports() const;
@@ -186,7 +184,7 @@ namespace SceneryEditorX
         ApiResponse MakeAuthenticatedRequest(const std::string& endpoint) const;
         
         /// libcurl callbacks
-        static size_t WriteCallback(char* contents, size_t size, size_t nmemb, void* userdata);
+        static size_t WriteCallback(const char* contents, size_t size, size_t nmemb, void* userdata);
         static int ProgressCallback(void* clientp, double dltotal, double dlnow, double ultotal, double ulnow);
 
         /// Internal data

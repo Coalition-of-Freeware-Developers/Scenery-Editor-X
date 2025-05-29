@@ -27,10 +27,10 @@ namespace SceneryEditorX
         // Create the window
         window = CreateScope<Window>();
         
-        // Set window properties from appData
+        /// Set window properties from appData
         if (WindowData::width > 0 && WindowData::height > 0)
         {
-            // Update window properties if provided
+            /// Update window properties if provided
             WindowData::width = WindowData::width;
             WindowData::height = WindowData::height;
         }
@@ -41,7 +41,7 @@ namespace SceneryEditorX
             window->SetTitle(WindowData::title);
         }
         
-        // Update window properties
+        /// Update window properties
         window->ApplyChanges();
         
         isRunning = true;
@@ -50,37 +50,29 @@ namespace SceneryEditorX
 
     void Application::Run()
     {
-        SEDX_CORE_INFO("Starting application main loop");
-        
-        // Call user-defined initialization
         OnInit();
         
-        // Main application loop
+        /// Main application loop
         while (isRunning && !window->GetShouldClose())
         {
-            // Update the window (poll events)
+            /// Update the window (poll events)
             Window::Update();
             
-            // Skip frame if window is minimized
+            /// Skip frame if window is minimized
             if (isMinimized)
-            {
                 continue;
-            }
-            
-            // Call user-defined update function
+
+            /// Call user-defined update function
             OnUpdate();
         }
-        
-        // Call user-defined shutdown function
+
         OnShutdown();
     }
-
 
     void Application::Stop()
     {
         isRunning = false;
     }
-
 
     void Application::OnShutdown()
     {
@@ -110,5 +102,6 @@ namespace SceneryEditorX
         #endif
     }
 
-
 }
+
+/// -------------------------------------------------------------------------

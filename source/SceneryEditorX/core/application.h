@@ -32,7 +32,7 @@ namespace SceneryEditorX
         virtual void OnUpdate() {}
         virtual void OnShutdown();
 
-        Window &GetWindow() const { return *window; }
+        [[nodiscard]] Window &GetWindow() const { return *window; }
         GLOBAL Application &Get() { return *instance; }
         GLOBAL const char *GetConfigType();
         GLOBAL const char *GetPlatform();

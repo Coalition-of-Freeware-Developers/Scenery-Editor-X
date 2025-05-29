@@ -10,7 +10,7 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 FILE(GLOB CORE core/*.cpp core/*.h core/*.hpp)
 FILE(GLOB SETTINGS settings/*.cpp settings/*.h settings/*.hpp)
 FILE(GLOB UI ui/*.cpp ui/*.h ui/*.hpp)
-SET(LAUNCHER_DIR ${CMAKE_SOURCE_DIR}/source/Launcher)
+
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
 	${CMAKE_SOURCE_DIR}/.editorconfig
@@ -25,9 +25,7 @@ ADD_EXECUTABLE(SceneryEditorX
 	${UI}
 	${ICON_FILES}
     ${FONT_FILES}
-    ${REGISTRY_KEYS}
 	${PROJECT_CONFIG_FILES}
-    ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
     # --------------------------------
     SceneryEditorX.rc
     resource.h
@@ -62,14 +60,8 @@ SOURCE_GROUP("Resource" FILES
 SOURCE_GROUP("Resource/Icons" FILES
     ${ICON_FILES}
 )
-SOURCE_GROUP("Resource/Images" FILES
-    ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
-)
 SOURCE_GROUP("Resource/Fonts" FILES
     ${FONT_FILES}
-)
-SOURCE_GROUP("Resource/Registry" FILES
-    ${REGISTRY_KEYS}
 )
 
 # --------------------------------
@@ -82,7 +74,6 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
         ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
-        ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
         ${Stb_INCLUDE_DIR}
