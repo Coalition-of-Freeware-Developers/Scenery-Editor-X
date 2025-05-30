@@ -10,23 +10,22 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
-#define TINYOBJLOADER_IMPLEMENTATION
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <GraphicsEngine/vulkan/vk_checks.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
 #include <GraphicsEngine/vulkan/vk_util.h>
-#include <imgui_impl_vulkan.h>
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/window.h>
-#include <SceneryEditorX/platform/editor_config.hpp>
-#include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/ui/ui.h>
-#include <tiny_obj_loader.h>
+#include <memory>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    /// Initialize the static instance member
+    Ref<GraphicsEngine> GraphicsEngine::gfxContext = nullptr;
+    //VkInstance GraphicsEngine::vkInstance = VK_NULL_HANDLE;
 
     /// -------------------------------------------------------
 
@@ -215,10 +214,31 @@ namespace SceneryEditorX
         vkInstance = nullptr;
     }
 
+    // Static method to access the singleton instance
+    Ref<GraphicsEngine> GraphicsEngine::Get()
+    {
+        // First time, create the instance
+        if (!gfxContext)
+        {
+            SEDX_CORE_WARN_TAG("Graphics Engine", "GraphicsEngine singleton not initialized! Creating empty instance.");
+            gfxContext = CreateRef<GraphicsEngine>();
+        }
+        return gfxContext;
+    }
+
+    // Static method to get the VkInstance
+    VkInstance GraphicsEngine::GetInstance() 
+    {
+        return vkInstance;
+    }
+
     /// -------------------------------------------------------
 
     void GraphicsEngine::Init(const Ref<Window> &window)
     {
+        // Store the instance in the singleton for future use
+        gfxContext = CreateRef<GraphicsEngine>(*this);
+        
         /// Store the window reference
         editorWindow = window;
 
@@ -276,6 +296,8 @@ namespace SceneryEditorX
         /// Get Vulkan API version
         VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion);
 
+		vkEnumerateInstanceVersion(&apiVersion);
+
 		bool khronosAvailable = false;
         for (size_t i = 0; i < layersInstance.layers.size(); i++)
         {
@@ -317,7 +339,7 @@ namespace SceneryEditorX
         appInfo.applicationVersion = AppData::version;
         appInfo.pEngineName = AppData::renderName.c_str();
         appInfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
-        appInfo.apiVersion = RenderData::minVulkanVersion;
+        appInfo.apiVersion = apiVersion;
 
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -388,35 +410,22 @@ namespace SceneryEditorX
 		if (glfwCreateWindowSurface(vkInstance, Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create window surface!");
 
-        /*
-		if (enableValidationLayers)
-        {
-			auto vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(vkInstance, "vkCreateDebugUtilsMessengerEXT");
-            //SEDX_ASSERT(vkCreateDebugUtilsMessengerEXT != nullptr, "");
-
-            VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-            PopulateDebugMsgCreateInfo(createInfo);
-            if (CreateDebugUtilsMessengerEXT(vkInstance, &createInfo, allocator, &debugMessenger) != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR_TAG("Graphics Engine","Failed to set up debug messenger!");
-                //ErrMsg("Failed to set up debug messenger!");
-            }
-
-			SEDX_CORE_TRACE_TAG("Graphics Engine","Vulkan Debug messenger initialized.");
-        }
-        */
-
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Initalize the Vulkan Physical Device & Vulkan Device
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		//Ref<VulkanPhysicalDevice> vkPhysicalDevice = CreateRef<VulkanPhysicalDevice>(vkInstance);
         Ref<VulkanPhysicalDevice> vkPhysicalDevice = VulkanPhysicalDevice::Select(vkInstance);
-        vkPhysicalDevice = GetCurrentDevice()->GetPhysicalDevice();
-        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, GetCurrentDevice()->GetPhysicalDevice()->Selected().GFXFeatures);
+		if (!vkPhysicalDevice)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
+			return;
+        }
+        Ref<VulkanDevice> vkDevice = nullptr;
+        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, vkPhysicalDevice->GetDeviceFeatures());
 
 		/// Memory Allocator initialization.
-        MemoryAllocator::Init(vkDevice);
+        /// TODO: Move/ Refactor this to a more appropriate place, I just put it here for now so it can work before I go to bed.
+        vkDevice->InitializeMemoryAllocator(vkInstance);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Pipeline Cache Creation
@@ -427,7 +436,7 @@ namespace SceneryEditorX
         pipelineCacheInfo.initialDataSize = 0;
         pipelineCacheInfo.pInitialData = nullptr;
         pipelineCacheInfo.flags = 0;
-        if (vkCreatePipelineCache(vkDevice->GetDevice(), &pipelineCacheInfo, allocator, &pipelineCache) != VK_SUCCESS)
+        if (vkCreatePipelineCache(vkDevice->Selected(), &pipelineCacheInfo, allocator, &pipelineCache) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline cache!");
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

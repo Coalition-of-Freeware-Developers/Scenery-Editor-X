@@ -31,30 +31,43 @@ namespace SceneryEditorX
 	Window::Window() : renderData()
 	{
 	    glfwInit();
-	    glfwSetErrorCallback([](int error, const char *description) {
-	        // Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
-	        if (error == 0x10003 && strstr(description, "joystick")) {
-	            // Silently ignore joystick-related GLFW_INVALID_ENUM errors
+	    glfwSetErrorCallback([](int error, const char *description)
+		{
+	        /// Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
+	        if (error == 0x10003 && strstr(description, "joystick"))
+			{
+	            /// Silently ignore joystick-related GLFW_INVALID_ENUM errors
 	            return;
 	        }
+
 	        SEDX_CORE_ERROR_TAG("Window", "GLFW Error ({0}): {1}", error, description);
 	    });
+
 	    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	    
-	    // Initialize GLFW with joystick hat buttons disabled to reduce errors
+	    /// Initialize GLFW with joystick hat buttons disabled to reduce errors
 	    glfwInitHint(GLFW_JOYSTICK_HAT_BUTTONS, GLFW_FALSE);
-	
-	    // Initialize monitor information
+
+	    /// Initialize monitor information
 	    MonitorInfo::RefreshMonitors();
 	    
-	    // Get available video modes for the current monitor
+	    /// Get available video modes for the current monitor
 	    int modeCount = 0;
 	    MonitorInfo::GetVideoModes(MonitorInfo::GetCurrentMonitorIndex(), &modeCount);
 	    MonitorInfo::SetVideoModeIndex(modeCount > 0 ? modeCount - 1 : 0);
-	
-	    WindowData::window =
-	        glfwCreateWindow(WindowData::width, WindowData::height, WindowData::title, nullptr, nullptr); // create window
+
+		mainMonitor = MonitorInfo::GetPriMonitor();
+		if (!mainMonitor)
+		{
+			SEDX_CORE_ERROR("No monitors found! Cannot create window.");
+			return;
+        }
+
+		////////////////////////////////////////////////////////////////
+		/// GLFW Application Window Creation
+        ////////////////////////////////////////////////////////////////
+	    WindowData::window = glfwCreateWindow(WindowData::width, WindowData::height, WindowData::title, *mainMonitor, nullptr);
 	
 	    if (!WindowData::window)
 	    {
@@ -80,7 +93,7 @@ namespace SceneryEditorX
 	    WindowData::dirty = false;
 	    ApplyChanges();
 	    
-	    // Disable joystick detection to avoid errors with flight sim hardware
+	    /// Disable joystick detection to avoid errors with flight sim hardware
 	    DisableJoystickHandling();
 	}
 
@@ -105,7 +118,7 @@ namespace SceneryEditorX
      */
     void Window::DisableJoystickHandling()
     {
-        // Detach any registered joystick callback
+        /// Detach any registered joystick callback
         glfwSetJoystickCallback(nullptr);
         
         SEDX_CORE_INFO_TAG("Window", "Joystick handling disabled to prevent conflicts with flight simulator hardware");
@@ -167,6 +180,19 @@ namespace SceneryEditorX
         }
     }
 
+    /**
+     * @brief Callback function for handling mouse position/movement events.
+     *
+     * This function is called whenever the mouse cursor position changes within the window.
+     * When movement capture is enabled, it tracks the mouse position and calculates position
+     * deltas for camera or other movement controls. The function handles initialization of
+     * tracking on first call and applies sensitivity scaling to the movement offsets.
+     *
+     * @param window The GLFW window where the event occurred.
+     * @param data Pointer to the WindowData structure containing window state information.
+     * @param x The new x-coordinate of the cursor relative to the window.
+     * @param y The new y-coordinate of the cursor relative to the window.
+     */
     void Window::MousePositionCallback(GLFWwindow *window, WindowData *data, double x, double y)
     {
         auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
@@ -317,7 +343,7 @@ namespace SceneryEditorX
         const int monitorIndex = MonitorInfo::GetCurrentMonitorIndex();
         SEDX_CORE_ASSERT(monitorIndex < MonitorInfo::GetMonitorCount(), "Invalid monitorIndex inside Window creation!");
         
-        const auto monitor = MonitorInfo::GetMonitors()[monitorIndex];
+        const auto monitor = MonitorInfo::GetPriMonitor()[monitorIndex];
 		const auto monitorMode = glfwGetVideoMode(monitor);
 	
 		/// Get video modes for the current monitor
@@ -364,19 +390,27 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * @brief Updates the window state.
-	 *
-	 * This function updates the state of the window, including the key states,
-	 * scroll delta, time delta, mouse position, and processes any pending events.
-	 * It captures the current time to calculate the time delta since the last update,
-	 * retrieves the current cursor position, and polls for any pending events.
+	 * @brief Updates the window state for the current frame.
+	 * 
+	 * This method is called once per frame to:
+	 * 1. Update the key state tracking buffer for all keyboard keys
+	 * 2. Reset the delta scroll value for the current frame
+	 * 3. Calculate the delta time between frames in milliseconds
+	 * 4. Update the current and delta mouse position values
+	 * 5. Process window events via glfwPollEvents()
+	 * 
+	 * The delta time calculation converts microseconds to milliseconds for consistent
+	 * timing across different hardware. Mouse position is tracked to calculate movement
+	 * delta between frames for camera or UI interaction.
+	 * 
+	 * This method should be called at the beginning of each frame's update cycle.
 	 */
 	void Window::Update()
 	{
-		for (auto i = 0; i < GLFW_KEY_LAST + 1; i++)
-		{
-            lastKeyState[i] = glfwGetKey(WindowData::window, i);
-		}
+        for (auto i = 0; i < GLFW_KEY_LAST + 1; i++)
+        {
+            lastKeyState[i] = static_cast<char>(glfwGetKey(WindowData::window, i));
+        }
 
         WindowData::deltaScroll = 0;
 		auto newTime = std::chrono::high_resolution_clock::now();
@@ -401,8 +435,7 @@ namespace SceneryEditorX
 	 */
     std::string Window::VideoModeText(const GLFWvidmode &mode)
 	{
-		return std::to_string(mode.width) + "x" + std::to_string(mode.height) + " " + std::to_string(mode.refreshRate) +
-			" Hz";
+		return std::to_string(mode.width) + "x" + std::to_string(mode.height) + " " + std::to_string(mode.refreshRate) + " Hz";
 	}
 
     /**
@@ -452,9 +485,9 @@ namespace SceneryEditorX
 					ImGui::SetNextItemWidth(totalWidth / 2.0f);
 					ImGui::PushID("monitorCombo");
 					
-					// Get current monitor name
+					/// Get current monitor name
 					int currentMonitorIndex = MonitorInfo::GetCurrentMonitorIndex();
-					const char* currentMonitorName = glfwGetMonitorName(MonitorInfo::GetMonitors()[currentMonitorIndex]);
+					const char* currentMonitorName = glfwGetMonitorName(MonitorInfo::GetPriMonitor()[currentMonitorIndex]);
 					
                     if (ImGui::BeginCombo("", currentMonitorName))
 					{
@@ -462,7 +495,7 @@ namespace SceneryEditorX
 						{
                             bool selected = currentMonitorIndex == i;
 							ImGui::PushID(i);
-                            if (ImGui::Selectable(glfwGetMonitorName(MonitorInfo::GetMonitors()[i]), selected))
+                            if (ImGui::Selectable(glfwGetMonitorName(MonitorInfo::GetPriMonitor()[i]), selected))
 							{
 								MonitorInfo::SetCurrentMonitorIndex(i);
 								WindowData::dirty = true;
@@ -487,12 +520,12 @@ namespace SceneryEditorX
 					ImGui::SetNextItemWidth(totalWidth / 4.0f);
 					ImGui::PushID("monitorRes");
 					
-					// Get video modes for current monitor
+					/// Get video modes for current monitor
 					int modesCount;
                     const GLFWvidmode *videoModes = MonitorInfo::GetVideoModes(
                         MonitorInfo::GetCurrentMonitorIndex(), &modesCount);
                     
-                    // Get current video mode
+                    /// Get current video mode
                     int videoModeIndex = MonitorInfo::GetVideoModeIndex();
                     if (videoModeIndex >= modesCount) {
                         videoModeIndex = modesCount - 1;
@@ -583,10 +616,28 @@ namespace SceneryEditorX
         WindowData::framebufferResized = false;
         glfwGetFramebufferSize(WindowData::window, &WindowData::width, &WindowData::height);
 	}
-	
+
 	/**
-	 * @brief Gets the window icon image.
+	 * @brief Sets the application window icon using a PNG image file.
 	 * 
+	 * This method loads an icon from the predefined path in IconData and sets it as the
+	 * window's icon using GLFW. The process involves:
+	 * 1. Opening the icon file in binary mode
+	 * 2. Reading the file data into a memory buffer
+	 * 3. Using stb_image to decode the PNG data into RGBA pixel data
+	 * 4. Creating a GLFWimage structure with the decoded pixel data
+	 * 5. Setting the window icon using glfwSetWindowIcon
+	 * 6. Properly freeing the pixel data to prevent memory leaks
+	 * 
+	 * The method includes error handling for file operations and image decoding.
+	 * If any step fails, appropriate error messages are logged and the function returns
+	 * without setting the icon.
+	 * 
+	 * @param window The GLFW window handle for which to set the icon
+	 * 
+	 * @note The icon file path is defined in the IconData structure, typically pointing
+	 *       to "..\\..\\assets\\icon.png"
+	 * @note This implementation uses stb_image for PNG decoding and requires it to be included
 	 */
 	void Window::SetWindowIcon(GLFWwindow *window)
 	{
@@ -599,7 +650,7 @@ namespace SceneryEditorX
 	        return;
 	    }
 	
-	    // Get file size and read the data
+	    /// Get file size and read the data
 	    const std::streamsize size = file.tellg();
 	    file.seekg(0, std::ios::beg);
 	
@@ -625,10 +676,8 @@ namespace SceneryEditorX
 	        iconData.pixels = nullptr;
 	    }
 	    else
-	    {
-	        SEDX_CORE_ERROR("Failed to load window icon!");
-	    }
-	}
+            SEDX_CORE_ERROR("Failed to load window icon!");
+    }
 	
 	/**
 	 * @brief Checks if a key is pressed.

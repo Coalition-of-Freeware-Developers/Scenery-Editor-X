@@ -17,14 +17,18 @@
 #include <SceneryEditorX/core/layer.h>
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 void check_vk_result(VkResult err);
 
 struct GLFWwindow;
 
+/// -------------------------------------------------------
+
 namespace Launcher
 {
+
+    /// -------------------------------------------------------
 
 	class Application
 	{
@@ -70,6 +74,9 @@ namespace Launcher
 
 	Application *CreateApplication(int argc, char **argv);
 
+    /// -------------------------------------------------------
+
+
 } // namespace Launcher
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

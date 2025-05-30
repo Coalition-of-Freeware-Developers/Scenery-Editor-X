@@ -16,17 +16,17 @@
 #include <json.hpp>
 #include <vector>
 
-// -----------------------------------------
+/// -----------------------------------------
 
 namespace SceneryEditorX
 {
 
-    // -----------------------------------------
+    /// -----------------------------------------
 
     /// Base URL for X-Plane Scenery Gateway API
     constexpr const char* GATEWAY_API_URL = "https://gateway.x-plane.com/api";
 
-    // -----------------------------------------
+    /// -----------------------------------------
 
     /// API endpoints
     constexpr const char* ENDPOINT_AIRPORTS = "/airports";
@@ -37,13 +37,13 @@ namespace SceneryEditorX
     constexpr const char* ENDPOINT_ARTIST = "/artist/%d";
     constexpr const char* ENDPOINT_RECOMMENDED = "/apiv1/recommended.php";
 
-    // -----------------------------------------
+    /// -----------------------------------------
 
     /// Function callback types
     using ProgressCallback = std::function<void(double progress)>;
     using CompletionCallback = std::function<void(bool success, const std::string& message)>;
 
-    // ----------------------------------------------
+    /// ----------------------------------------------
 
     /// Error codes
     enum class GatewayErrorCode : uint8_t
@@ -137,7 +137,7 @@ namespace SceneryEditorX
         void ClearCache();
     };
 
-    // ----------------------------------------------------------
+    /// ----------------------------------------------------------
 
     class SceneryGateway
     {
@@ -204,4 +204,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

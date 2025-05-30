@@ -27,10 +27,9 @@ struct GLFWwindow;
 
 namespace SceneryEditorX
 {
-	/// Forward declarations
 	class SwapChain;
 	struct SwapChainDetails;
-	
+
     /// -------------------------------------------------------
 	
 	class GraphicsEngine
@@ -47,36 +46,31 @@ namespace SceneryEditorX
 		Ref<MemoryAllocator> GetMemAllocator() { return allocatorManager; }
 		Ref<CommandBuffer> GetCommandBuffer() { return cmdBufferManger; }
 
-		LOCAL Ref<GraphicsEngine> Get() { return {}; }
-		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice();}
-		LOCAL VkInstance GetInstance() { return vkInstance; }
+		LOCAL Ref<GraphicsEngine> Get(); ///< Static accessor method to get the singleton instance
+		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
+		LOCAL VkInstance GetInstance();
         GLOBAL void WaitIdle(const Ref<VulkanDevice> &device);
 
 	    [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass;}
         [[nodiscard]] VkSampler CreateSampler(float maxLod) const;
-        //[[nodiscard]] VkSampler GetSampler() const { return vkDevice->GetSampler(); }
         [[nodiscard]] const VkAllocationCallbacks *GetAllocatorCallback() const { return allocator; }
 
 		/// -------------------------------------------------------
 
-	    //void BeginFrame();
-		//void EndFrame() const;
-
-		/// -------------------------------------------------------
-
 	private:
+        INTERNAL Ref<GraphicsEngine> gfxContext;
+        
         Ref<Window> editorWindow;
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> vkDevice;
         Ref<VulkanChecks> checks;
         Ref<MemoryAllocator> allocatorManager;
         Ref<CommandBuffer> cmdBufferManger;
-        LOCAL inline VkInstance vkInstance;
+        inline static VkInstance vkInstance;
 
 	    VkAllocationCallbacks *allocator = nullptr;
         VkDebugUtilsMessengerEXT debugMessenger = nullptr;
         VkPipelineCache pipelineCache = nullptr;
-
 		Viewport viewportData;
         RenderData renderData;
         VulkanDeviceFeatures vkEnabledFeatures;
@@ -87,8 +81,9 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
+        uint32_t apiVersion;
 		VkDevice device = nullptr;
-        VkPhysicalDevice vkPhysDevice;
+        VkPhysicalDevice vkPhysDevice = nullptr;
 
         /// -------------------------------------------------------
 
@@ -149,9 +144,9 @@ namespace SceneryEditorX
         void CreateSyncObjects();
         void RecreateSwapChain();
         void RenderFrame();
-        LOCAL VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
-        LOCAL VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
-        LOCAL VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
+        VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+        VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+        VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
         void CreateTextureImageView();
         void CreateTextureSampler();
         INTERNAL SwapChainDetails QuerySwapChainSupport(VkPhysicalDevice device);

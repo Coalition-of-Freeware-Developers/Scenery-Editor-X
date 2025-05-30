@@ -221,7 +221,7 @@ namespace SceneryEditorX
         GLOBAL void UnmapMemory(VmaAllocation allocation);
         GLOBAL VmaAllocator GetAllocator();
 
-		GLOBAL void Init(const Ref<VulkanDevice> &device);
+		GLOBAL void Init(Ref<VulkanDevice> device, const uint32_t &apiVersion);
 		GLOBAL void Shutdown();
 
 		/// ---------------------------------------------------------

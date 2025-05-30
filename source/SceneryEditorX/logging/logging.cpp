@@ -28,6 +28,7 @@ namespace SceneryEditorX
 	std::shared_ptr<spdlog::logger> Log::CoreLogger;
 	std::shared_ptr<spdlog::logger> Log::EditorLogger;
 	std::shared_ptr<spdlog::logger> Log::EditorConsoleLogger;
+    std::shared_ptr<spdlog::logger> Log::LauncherLogger;
 	
 	/**
 	 * @brief Static member to hold the enabled tags.
@@ -67,34 +68,52 @@ namespace SceneryEditorX
 	{
 	    try 
 	    {
+            /// Check if loggers already exist and drop them
+            if (spdlog::get("SceneryEditorX-Core"))
+                spdlog::drop("SceneryEditorX-Core");
+            if (spdlog::get("SceneryEditorX-Editor"))
+                spdlog::drop("SceneryEditorX-Editor");
+            if (spdlog::get("VulkanDebug"))
+                spdlog::drop("VulkanDebug");
+            if (spdlog::get("Launcher"))
+                spdlog::drop("Launcher");
+
+	        /// -------------------------------------------------------
+
 	        std::vector<spdlog::sink_ptr> coreSinks = {
-	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true),
+                std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true),
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>()};
 	
 	        std::vector<spdlog::sink_ptr> editorSinks = {
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true)};
+                std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true)};
 	
 	        std::vector<spdlog::sink_ptr> editorConsoleSinks = {
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
 	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("EditorCore.log", true)};
+
+			std::vector <spdlog::sink_ptr> launcherSinks = {
+				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
+                std::make_shared<spdlog::sinks::basic_file_sink_mt>("Launcher.log", true)};
 	
-	        // -------------------------------------------------------
+	        /// -------------------------------------------------------
 	
-	        // Pattern for console sinks
-	        coreSinks[1]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
-	        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");  // color coding for console
+	        /// Pattern for console sinks
+	        coreSinks[1]->set_pattern("%^[%T] %n: %v%$");
+	        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");
+            launcherSinks[1]->set_pattern("%^[%T] %n: %v%$"); 
 	
-	        // Pattern for file sinks - note the correct indices
-	        coreSinks[0]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
-	        editorSinks[1]->set_pattern("[%T] [%l] %n: %v"); // no color coding for file
+	        /// Pattern for file sinks - note the correct indices
+	        coreSinks[0]->set_pattern("[%T] [%l] %n: %v");
+	        editorSinks[1]->set_pattern("[%T] [%l] %n: %v"); 
+            launcherSinks[1]->set_pattern("[%T] [%l] %n: %v");
 	        
 	        for (const auto& sink : editorConsoleSinks) 
 	            sink->set_pattern("%^%v%$");
 	
-	        // -------------------------------------------------------
+	        /// -------------------------------------------------------
 	
-	        CoreLogger = std::make_shared<spdlog::logger>("SceneryEditorX", coreSinks.begin(), coreSinks.end());
+	        CoreLogger = std::make_shared<spdlog::logger>("Core", coreSinks.begin(), coreSinks.end());
 	        CoreLogger->set_level(spdlog::level::trace);
 	        CoreLogger->flush_on(spdlog::level::info); // Flush on info level and above
 	
@@ -102,14 +121,19 @@ namespace SceneryEditorX
 	        EditorLogger->set_level(spdlog::level::trace);
 	        EditorLogger->flush_on(spdlog::level::info); // Flush on info level and above
 	
-	        EditorConsoleLogger = std::make_shared<spdlog::logger>("VulkanDebug", editorConsoleSinks.begin(), editorConsoleSinks.end());
+	        EditorConsoleLogger = std::make_shared<spdlog::logger>("Vulkan", editorConsoleSinks.begin(), editorConsoleSinks.end());
 	        EditorConsoleLogger->set_level(spdlog::level::trace);
 	        EditorConsoleLogger->flush_on(spdlog::level::info); // Flush on info level and above
+
+			LauncherLogger = std::make_shared<spdlog::logger>("Launcher", launcherSinks.begin(), launcherSinks.end());
+            LauncherLogger->set_level(spdlog::level::trace);
+            LauncherLogger->flush_on(spdlog::level::info); // Flush on info level and above
 	
 	        // Register loggers with spdlog
 	        spdlog::register_logger(CoreLogger);
 	        spdlog::register_logger(EditorLogger);
 	        spdlog::register_logger(EditorConsoleLogger);
+			spdlog::register_logger(LauncherLogger);
 	
 	        SetDefaultTagSettings();
 	
@@ -118,9 +142,10 @@ namespace SceneryEditorX
 	    }
 	    catch (const spdlog::spdlog_ex& ex)
 	    {
-	        std::cerr << "Log initialization failed: " << ex.what() << std::endl;
+	        std::cerr << "Log initialization failed: " << ex.what() << '\n';
 	    }
-	    // -------------------------------------------------------
+
+	    /// -------------------------------------------------------
 	}
 
 	void Log::SetDefaultTagSettings()
@@ -132,41 +157,25 @@ namespace SceneryEditorX
 	{
 	    if (CoreLogger)
 	    {
-	        // Parse severity from the formatted message
+	        /// Parse severity from the formatted message
 	        if (message.find("[ERROR]") != std::string::npos)
-	        {
-	            CoreLogger->error(message);
-	        }
-	        else if (message.find("[WARNING]") != std::string::npos)
-	        {
-	            CoreLogger->warn(message);
-	        }
-	        else if (message.find("[INFO]") != std::string::npos)
-	        {
-	            CoreLogger->info(message);
-	        }
-	        else if (message.find("[VERBOSE]") != std::string::npos)
-	        {
-	            CoreLogger->debug(message);
-	        }
-	        else if (message.find("error") != std::string::npos || message.find("ERROR") != std::string::npos)
-	        {
-	            CoreLogger->error(message);
-	        }
-	        else if (message.find("warning") != std::string::npos || message.find("WARNING") != std::string::npos)
-	        {
-	            CoreLogger->warn(message);
-	        }
-	        else if (message.find("performance") != std::string::npos || message.find("PERFORMANCE") != std::string::npos)
-	        {
-	            CoreLogger->warn("PERFORMANCE: {}", message);
-	        }
-	        else
-	        {
-	            CoreLogger->trace(message);
-	        }
-	
-	        // Always flush to ensure messages are written immediately
+                CoreLogger->error(message);
+            else if (message.find("[WARNING]") != std::string::npos)
+                CoreLogger->warn(message);
+            else if (message.find("[INFO]") != std::string::npos)
+                CoreLogger->info(message);
+            else if (message.find("[VERBOSE]") != std::string::npos)
+                CoreLogger->debug(message);
+            else if (message.find("error") != std::string::npos || message.find("ERROR") != std::string::npos)
+                CoreLogger->error(message);
+            else if (message.find("warning") != std::string::npos || message.find("WARNING") != std::string::npos)
+                CoreLogger->warn(message);
+            else if (message.find("performance") != std::string::npos || message.find("PERFORMANCE") != std::string::npos)
+                CoreLogger->warn("PERFORMANCE: {}", message);
+            else
+                CoreLogger->trace(message);
+
+            /// Always flush to ensure messages are written immediately
 	        CoreLogger->flush();
 	    }
 	}
@@ -223,22 +232,22 @@ namespace SceneryEditorX
 	#endif
 	}
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 	void Log::LogHeader()
 	{
         AppData stats;
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 		// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
 		SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
 	
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 		// TODO:
 		SYSTEMTIME systemTime;
 		GetSystemTime(&systemTime);
 	
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 	
 		// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
 		TIME_ZONE_INFORMATION timeZoneInfo;
@@ -246,7 +255,7 @@ namespace SceneryEditorX
 		std::wstring timeZoneName =
 			(timeZoneInfo.StandardName[0] != L'\0') ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
 	
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 	
 		SEDX_CORE_INFO("============================================");
 		SEDX_CORE_INFO("System Information");
@@ -280,30 +289,41 @@ namespace SceneryEditorX
 	
 	void Log::ShutDown()
 	{
-	    if (CoreLogger)
-	    {
-	        CoreLogger->flush();
-	        CoreLogger.reset();
-	    }
-	    
-	    if (EditorLogger)
-	    {
-	        EditorLogger->flush();
-	        EditorLogger.reset();
-	    }
-	    
-	    if (EditorConsoleLogger)
-	    {
-	        EditorConsoleLogger->flush();
-	        EditorConsoleLogger.reset();
-	    }
+        if (CoreLogger)
+        {
+            CoreLogger->flush();
+            spdlog::drop(CoreLogger->name()); // Explicitly drop by name
+            CoreLogger.reset();
+        }
+
+        if (EditorLogger)
+        {
+            EditorLogger->flush();
+            spdlog::drop(EditorLogger->name()); // Explicitly drop by name
+            EditorLogger.reset();
+        }
+
+        if (EditorConsoleLogger)
+        {
+            EditorConsoleLogger->flush();
+            spdlog::drop(EditorConsoleLogger->name()); // Explicitly drop by name
+            EditorConsoleLogger.reset();
+        }
+
+	    if (LauncherLogger)
+        {
+            LauncherLogger->flush();
+            spdlog::drop(LauncherLogger->name()); // Explicitly drop by name
+            LauncherLogger.reset();
+        }
 	    
 	    spdlog::drop_all(); // Drop all loggers
 	    spdlog::shutdown();
 	}
 	
-	// -------------------------------------------------------
-	// taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c
+	/// -------------------------------------------------------
+
+	/// taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c
     [[maybe_unused]] static const char* vkErrorString(VkResult result)
 	{
 		switch (static_cast<int>(result))
@@ -368,8 +388,8 @@ namespace SceneryEditorX
 		return "VK_<Unknown>";
 	}
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -19,7 +19,7 @@
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
-// ---------------------------------------------------------
+/// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {

@@ -76,7 +76,7 @@ namespace SceneryEditorX
 	    Window();
 	    ~Window();
         RenderData renderData;
-		Ref<RenderData> GetRenderData() { return CreateRef<RenderData>(renderData); }
+        Ref<RenderData> GetRenderData() { return CreateRef<RenderData>(renderData); }
 		Ref<IconData> GetIconData() { return CreateRef<IconData>(); }
 
         GLOBAL void Update();
@@ -88,9 +88,11 @@ namespace SceneryEditorX
         GLOBAL void SetFramebufferResized(const bool resized)   { WindowData::framebufferResized = resized; }
 	    GLOBAL void			SetTitle(const std::string& title)  { glfwSetWindowTitle(WindowData::window,title.c_str()); }
 		GLOBAL void			WaitEvents()						{ glfwWaitEvents(); }
-	    GLOBAL GLFWwindow*	GetWindow()                         { return WindowData::window; }
+
+	    GLOBAL GLFWwindow  *GetWindow()                         { return WindowData::window; }
 		GLOBAL uint32_t		GetWidth()                          { return WindowData::width; }
 		GLOBAL uint32_t		GetHeight()                         { return WindowData::height; }
+
 		GLOBAL bool			GetShouldClose()                    { return glfwWindowShouldClose(WindowData::window); }
 		GLOBAL float		GetDeltaScroll()                    { return WindowData::deltaScroll; }
 		GLOBAL float		GetDeltaTime()					    { return deltaTime; }
@@ -103,11 +105,12 @@ namespace SceneryEditorX
 	private:
         WindowCallbacks windowCallbacks;
         WindowData windowData;
+        GLFWmonitor **mainMonitor;
         bool captureMovement;
         bool mousePressed;
         bool initState;
 
-        void DisableJoystickHandling();
+        INTERNAL void DisableJoystickHandling();
         INTERNAL inline std::chrono::high_resolution_clock::time_point lastTime;
         INTERNAL inline std::vector<std::string> pathsDrop;
         INTERNAL inline float deltaTime = .0f;

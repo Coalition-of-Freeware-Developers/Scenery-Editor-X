@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <optional>
 #include <GraphicsEngine/buffers/buffer_data.h>
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
 #include <GraphicsEngine/vulkan/vk_descriptors.h>
+#include <optional>
 #include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
@@ -27,23 +27,13 @@ namespace SceneryEditorX
 	{
         VkFormat depthFormat;
         VkFormat tilingFormat;
-        VkFormatProperties formatProperties;
-
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-        VkPhysicalDeviceFeatures GFXFeatures = {};
-        VkPhysicalDeviceLimits GFXLimits = {};
+        VkFormatProperties formatProperties;
+        VkPhysicalDeviceLimits GFXLimits;
+        VkPhysicalDeviceFeatures deviceFeatures;
         VkSurfaceCapabilitiesKHR surfaceCapabilities;
-        VkPhysicalDeviceFeatures deviceInfo = {};
-        VkPhysicalDeviceProperties deviceProperties = {};
-
-		/// -------------------------------------------------------
-
-	    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentricFeature  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR };
-        VkPhysicalDeviceVulkan13Features vulkan13Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-        VkPhysicalDeviceVulkan12Features vulkan12Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-        VkPhysicalDeviceVulkan11Features vulkan11Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-        VkPhysicalDeviceFeatures2 vulkan10Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-        VkPhysicalDeviceMemoryProperties memoryInfo = {};
+        VkPhysicalDeviceProperties deviceProperties;
+        VkPhysicalDeviceMemoryProperties memoryProperties;
 
 	    /// -------------------------------------------------------
 
@@ -55,55 +45,8 @@ namespace SceneryEditorX
 
 	    /// -------------------------------------------------------
 
-	    GPUDevice() : depthFormat(), tilingFormat(), formatProperties(),
-			GFXFeatures({}), GFXLimits({}), surfaceCapabilities(),
-	        deviceInfo({}), deviceProperties({}), memoryInfo({})
-	    { }
+	    GPUDevice() : depthFormat(), tilingFormat(), formatProperties(), GFXLimits({}), deviceFeatures(), surfaceCapabilities(), deviceProperties(), memoryProperties() {}
 	};
-
-    /// -----------------------------------------------------------
-
-    struct QueueFamilyIndices
-    {
-        std::optional<std::pair<Queue, uint32_t>> graphicsFamily;
-        std::optional<std::pair<Queue, uint32_t>> presentFamily;
-        std::optional<std::pair<Queue, uint32_t>> computeFamily;
-        std::optional<std::pair<Queue, uint32_t>> transferFamily;
-
-        [[nodiscard]] bool isComplete() const { return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value(); }
-        
-        [[nodiscard]] uint32_t GetGraphicsFamily() const { 
-            if (!graphicsFamily.has_value()) {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access graphics family when it's not initialized");
-                return 0; // Return a default value to avoid crashing
-            }
-            return graphicsFamily.value().second; 
-        }
-        
-        [[nodiscard]] uint32_t GetPresentFamily() const { 
-            if (!presentFamily.has_value()) {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access present family when it's not initialized");
-                return 0; // Return a default value to avoid crashing
-            }
-            return presentFamily.value().second;  
-        }
-        
-        [[nodiscard]] uint32_t GetComputeFamily() const { 
-            if (!computeFamily.has_value()) {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access compute family when it's not initialized");
-                return 0; // Return a default value to avoid crashing
-            }
-            return computeFamily.value().second; 
-        }
-        
-        [[nodiscard]] uint32_t GetTransferFamily() const { 
-            if (!transferFamily.has_value()) {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access transfer family when it's not initialized");
-                return 0; // Return a default value to avoid crashing
-            }
-            return transferFamily.value().second; 
-        }
-    };
 
     /// -----------------------------------------------------------
 
@@ -120,6 +63,56 @@ namespace SceneryEditorX
         /// Allow move operations if needed
         VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
         VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
+
+		struct QueueFamilyIndices
+		{
+		    std::optional<std::pair<Queue, uint32_t>> graphicsFamily;
+		    std::optional<std::pair<Queue, uint32_t>> presentFamily;
+		    std::optional<std::pair<Queue, uint32_t>> computeFamily;
+		    std::optional<std::pair<Queue, uint32_t>> transferFamily;
+		
+		    [[nodiscard]] bool isComplete() const { return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value(); }
+		    
+		    [[nodiscard]] uint32_t GetGraphicsFamily() const
+		    { 
+		        if (!graphicsFamily.has_value())
+				{
+		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access graphics family when it's not initialized");
+		            return 0; // Return a default value to avoid crashing
+		        }
+		        return graphicsFamily.value().second; 
+		    }
+		    
+		    [[nodiscard]] uint32_t GetPresentFamily() const
+		    { 
+		        if (!presentFamily.has_value())
+				{
+		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access present family when it's not initialized");
+		            return 0; // Return a default value to avoid crashing
+		        }
+		        return presentFamily.value().second;  
+		    }
+		    
+		    [[nodiscard]] uint32_t GetComputeFamily() const
+		    { 
+		        if (!computeFamily.has_value())
+				{
+		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access compute family when it's not initialized");
+		            return 0; // Return a default value to avoid crashing
+		        }
+		        return computeFamily.value().second; 
+		    }
+		    
+		    [[nodiscard]] uint32_t GetTransferFamily() const
+		    { 
+		        if (!transferFamily.has_value())
+				{
+		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access transfer family when it's not initialized");
+		            return 0; // Return a default value to avoid crashing
+		        }
+		        return transferFamily.value().second; 
+		    }
+		};
 
 		/**
 		 * @brief Select a physical device based on the best available options
@@ -147,10 +140,10 @@ namespace SceneryEditorX
         /// Accessor methods
 		[[nodiscard]] const QueueFamilyIndices &GetQueueFamilyIndices() const { return QFamilyIndices; }
 		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
-        [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryInfo; }
-		[[nodiscard]] VkFormat GetDepthFormat() const { return devices.at(deviceIndex).depthFormat; }
+        [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryProperties; }
+		[[nodiscard]] VkFormat GetDepthFormat() const { return  devices.at(deviceIndex).depthFormat;}
 		[[nodiscard]] VkPhysicalDevice GetGPUDevices() const { return devices.at(deviceIndex).physicalDevice; }
-		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceInfo; }
+		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceFeatures; }
         [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
 		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
@@ -164,16 +157,27 @@ namespace SceneryEditorX
         //QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
 
     private:
+        VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+        VkInstance *vkInstance;
+        VkPhysicalDevice physicalDevice = nullptr;
+        QueueFamilyIndices QFamilyIndices;
+
+        int deviceIndex = -1;
         std::vector<GPUDevice> devices;
         std::unordered_set<std::string> supportedExtensions;
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-        VkInstance instance = VK_NULL_HANDLE;
-        QueueFamilyIndices QFamilyIndices;
-        int deviceIndex = -1;
-        VkInstance* vkInstance;
 
         INTERNAL VkFormat FindDepthFormat(const GPUDevice& device);
 		INTERNAL VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+
+	    /// -------------------------------------------------------
+
+	    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentricFeature  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR };
+        VkPhysicalDeviceVulkan13Features vulkan13Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+        VkPhysicalDeviceVulkan12Features vulkan12Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+        VkPhysicalDeviceVulkan11Features vulkan11Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+        VkPhysicalDeviceFeatures2 vulkan10Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+		
+	    /// -------------------------------------------------------
 
 	    /**
          * @brief Find queue families that match specified queue flags
@@ -181,12 +185,6 @@ namespace SceneryEditorX
          * @return Queue family indices for different queue types
          */
         [[nodiscard]] QueueFamilyIndices GetQueueFamilyIndices(VkQueueFlags qFlags) const;
-
-		/**
-         * @brief Enumerate and populate device information
-         * @param instance The Vulkan instance to use
-         */
-        //void EnumerateDevices();
 
 		friend class VulkanDevice;
 		friend class VulkanChecks;
@@ -290,24 +288,22 @@ namespace SceneryEditorX
          */
         BindlessResources GetBindlessResources() const { return bindlessResources; }
 
+		/**
+         * @brief Initialize the memory allocator for this device
+         */
+        void InitializeMemoryAllocator(VkInstance &instance);
+
     private:
-        RenderData renderData;
-        Descriptors descriptors;
-        //ImageID textureImageID;
-        Extensions vkExtensions;
         Layers vkLayers;
+        VkDevice device = nullptr;
         BindlessResources bindlessResources;
-
-        Buffer scratchBuffer;
-        VkDeviceAddress scratchAddress = 0;
-
 		Ref<MemoryAllocator> memoryAllocator;
         Ref<CommandBuffer> cmdBuffer = nullptr;
         VkSampler textureSampler = nullptr;
-        VkDevice device = nullptr;
+
         Ref<VulkanPhysicalDevice> vkPhysDevice;
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
-        uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
+        //uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
 
 		/// -------------------------------------------------------
         /// Function pointers for Vulkan extensions
@@ -339,11 +335,6 @@ namespace SceneryEditorX
          * @brief Create Vulkan 1.2+ features structure and load device extensions
          */
         //void CreateDeviceFeatures2();
-
-        /**
-         * @brief Initialize the memory allocator for this device
-         */
-        void InitializeMemoryAllocator();
 
         /**
          * @brief Create a texture sampler with specified parameters

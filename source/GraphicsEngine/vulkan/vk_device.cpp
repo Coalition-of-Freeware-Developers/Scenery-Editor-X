@@ -10,23 +10,22 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/base.hpp>
 #include <GraphicsEngine/vulkan/image_data.h>
 #include <GraphicsEngine/vulkan/vk_allocator.h>
 #include <GraphicsEngine/vulkan/vk_buffers.h>
 #include <GraphicsEngine/vulkan/vk_checks.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <GraphicsEngine/vulkan/vk_device.h>
 #include <GraphicsEngine/vulkan/vk_util.h>
+#include <SceneryEditorX/core/base.hpp>
+#include <utility>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	//////////////////////////////////////////////////////////
 	/// VulkanPhysicalDevice Implementation
 	//////////////////////////////////////////////////////////
-
 
     /**
      * @fn VulkanPhysicalDevice::VulkanPhysicalDevice
@@ -57,7 +56,7 @@ namespace SceneryEditorX
      */
     VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance &instance)
     {
-        this->vkInstance = &instance; /// Store the Vulkan instance
+        this->vkInstance = &instance;                      /// Store the Vulkan instance
 
         uint32_t GFXDevices = 0;                          /// Number of physical devices
         vkEnumeratePhysicalDevices(*vkInstance, &GFXDevices, nullptr); 
@@ -82,7 +81,7 @@ namespace SceneryEditorX
                 devices[index].physicalDevice         = physicalDevice; /// Store device properties
             }
 
-            //device.resize(GFXDevices);
+            device.resize(GFXDevices);
 
             if (const VkResult result = vkEnumeratePhysicalDevices(*vkInstance, &GFXDevices, device.data());
                 (result != VK_SUCCESS) || (GFXDevices == 0))
@@ -111,6 +110,7 @@ namespace SceneryEditorX
                     SEDX_CORE_INFO("Vendor ID: {}", ToString(devices[index].deviceProperties.vendorID));
                     SEDX_CORE_INFO("============================================");
                     selectedPhysicalDevice = GFXDevice;
+                    deviceIndex = index; // Set the selected device index
                     break;
                 }
 
@@ -124,6 +124,28 @@ namespace SceneryEditorX
             if (!selectedPhysicalDevice)
             {
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find discrete GPU.");
+                
+                // Fallback to integrated GPU if no discrete GPU was found
+                for (uint32_t index = 0; index < devices.size(); ++index)
+                {
+                    if (devices[index].deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                    {
+                        SEDX_CORE_WARN_TAG("Graphics Engine", "Falling back to integrated GPU: {}", 
+                                           ToString(devices[index].deviceProperties.deviceName));
+                        selectedPhysicalDevice = devices[index].physicalDevice;
+                        deviceIndex = index;
+                        break;
+                    }
+                }
+                
+                // If still no GPU found, use the first available
+                if (!selectedPhysicalDevice && !devices.empty())
+                {
+                    SEDX_CORE_WARN_TAG("Graphics Engine", "Falling back to first available GPU: {}", 
+                                      ToString(devices[0].deviceProperties.deviceName));
+                    selectedPhysicalDevice = devices[0].physicalDevice;
+                    deviceIndex = 0;
+                }
             }
         }
         else
@@ -139,14 +161,14 @@ namespace SceneryEditorX
             const VkPhysicalDevice vkDevice = devices[index].physicalDevice;
 
             /// Get device features
-            vkGetPhysicalDeviceFeatures(vkDevice, &devices[index].GFXFeatures);
+            vkGetPhysicalDeviceFeatures(vkDevice, &devices[index].deviceFeatures);
 
             /// Get memory properties
-            vkGetPhysicalDeviceMemoryProperties(vkDevice, &(devices[index].memoryInfo));
-            SEDX_CORE_INFO("Number of memory types: {}", ToString(devices[index].memoryInfo.memoryTypeCount));
-            for (uint32_t mem = 0; mem < devices[index].memoryInfo.memoryTypeCount; mem++)
+            vkGetPhysicalDeviceMemoryProperties(vkDevice, &(devices[index].memoryProperties));
+            SEDX_CORE_INFO("Number of memory types: {}", ToString(devices[index].memoryProperties.memoryTypeCount));
+            for (uint32_t mem = 0; mem < devices[index].memoryProperties.memoryTypeCount; mem++)
             {
-                const auto &[propertyFlags, heapIndex] = devices[index].memoryInfo.memoryTypes[mem];
+                const auto &[propertyFlags, heapIndex] = devices[index].memoryProperties.memoryTypes[mem];
                 //SEDX_CORE_TRACE("============================================");
                 //SEDX_CORE_TRACE("Memory Type Index: {}", ToString(mem));
                 //SEDX_CORE_TRACE("Memory Heap Index: {}", ToString(heapIndex));
@@ -154,7 +176,7 @@ namespace SceneryEditorX
                 //SEDX_CORE_TRACE("============================================");
             }
 
-            SEDX_CORE_INFO("Number of memory heaps: {}", ToString(devices[index].memoryInfo.memoryHeapCount));
+            SEDX_CORE_INFO("Number of memory heaps: {}", ToString(devices[index].memoryProperties.memoryHeapCount));
 
             /// Get queue family properties
             uint32_t numQueueFamilies = 0;
@@ -182,9 +204,7 @@ namespace SceneryEditorX
                 }
             }
             else
-            {
                 SEDX_CORE_WARN("No device extensions found.");
-            }
 
             SEDX_CORE_INFO("============================================");
 
@@ -315,6 +335,7 @@ namespace SceneryEditorX
 		}
 
 		SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find a supported format!");
+        return candidates[0]; // Return the first format as a fallback
 	}
 
 	// -------------------------------------------------------
@@ -418,29 +439,6 @@ namespace SceneryEditorX
 		return CreateRef<VulkanPhysicalDevice>(instance);
 	}
 
-	/*
-	bool VulkanDevice::IsDeviceSuitable(Ref<VulkanPhysicalDevice> physDevice)
-	{
-		Ref<VulkanPhysicalDevice> indices = physDevice->Selected()->GetQueueFamilyIndices();
-
-		VulkanChecks checks;
-		QueueFamilyIndices indices;
-
-		bool extensionsSupported = checks.CheckDeviceExtensionSupport(physDevice);
-		bool swapChainAdequate = false;
-		if (extensionsSupported)
-		{
-			SwapChainSupportDetails swapChainSupport = querySwapChainSupport(vkPhysicalDevice);
-			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-		}
-
-		VkPhysicalDeviceFeatures supportedFeatures;
-		vkGetPhysicalDeviceFeatures(vkPhysicalDevice, &supportedFeatures);
-
-		return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
-	}
-	*/
-
 	/**
 	 * @fn Selected
 	 * @brief Returns a reference to the currently selected physical device
@@ -465,12 +463,10 @@ namespace SceneryEditorX
 	 */
 	const GPUDevice &VulkanPhysicalDevice::Selected() const
 	{
-		if (deviceIndex < 0 || devices.size() > deviceIndex)
-		{
-			SEDX_CORE_ERROR_TAG("Graphics Engine", "No device selected or invalid device index.");
-		}
+		if (deviceIndex < 0 || deviceIndex >= devices.size())
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "No device selected or invalid device index.");
 
-		return devices[deviceIndex];
+        return devices[deviceIndex];
 	}
 
 	/**
@@ -503,7 +499,7 @@ namespace SceneryEditorX
 	 * 
 	 * @see VkQueueFlagBits, QueueFamilyIndices
 	 */
-	QueueFamilyIndices VulkanPhysicalDevice::GetQueueFamilyIndices(VkQueueFlags qFlags) const
+	VulkanPhysicalDevice::QueueFamilyIndices VulkanPhysicalDevice::GetQueueFamilyIndices(VkQueueFlags qFlags) const
 	{
 		QueueFamilyIndices indices;
 		
@@ -650,9 +646,9 @@ namespace SceneryEditorX
 	 * 
 	 * @see LoadExtensionFunctions, InitializeBindlessResources, CreateBuffer
 	 */
-	VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures)
-		: vkPhysDevice(physDevice), vkEnabledFeatures(enabledFeatures)
-	{
+	VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures) : vkPhysDevice(physDevice), vkEnabledFeatures(enabledFeatures)
+    {
+
 		VulkanChecks checks;
 		/*
 		QueueFamilyIndices indices = vkPhysDevice->FindQueueFamilies(vkPhysDevice->GetGPUDevice());
@@ -687,12 +683,13 @@ namespace SceneryEditorX
 		*/
 
 		/// Verify extension support
-        std::vector<const char *> &deviceExtensions = vkExtensions.deviceExtensions;
 		if (!checks.CheckDeviceExtensionSupport(vkPhysDevice->GetGPUDevices()))
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
 			return;
 		}
+
+        std::vector<const char *> &deviceExtensions = checks.vkExtensions.deviceExtensions;
 
 		SEDX_CORE_ASSERT(checks.IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME));
 		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -712,7 +709,7 @@ namespace SceneryEditorX
 		/// ---------------------------------------------------------
 
 		/// Create the logical device
-		VkDeviceCreateInfo createInfo{};
+		VkDeviceCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		createInfo.pQueueCreateInfos = physDevice->Selected().queueCreateInfos.data();
 		createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueFamilyInfo.size());
@@ -748,22 +745,22 @@ namespace SceneryEditorX
 		LoadExtensionFunctions();
 
 		/// Initialize memory allocator
-		InitializeMemoryAllocator();
+		//InitializeMemoryAllocator();
 
 		/// Set up bindless resources and initial buffers
 		InitializeBindlessResources(device, bindlessResources);
 
 		/// Create initial scratch buffer
-		scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
+		//scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
 
 		/// Get the device address for the scratch buffer
-		if (vkGetBufferDeviceAddressKHR != nullptr)
-		{
-			VkBufferDeviceAddressInfo scratchInfo{};
-			scratchInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-			scratchInfo.buffer = scratchBuffer.bufferResource->buffer;
-			scratchAddress = vkGetBufferDeviceAddressKHR(device, &scratchInfo);
-		}
+		// if (vkGetBufferDeviceAddressKHR != nullptr)
+		// {
+		// 	VkBufferDeviceAddressInfo scratchInfo{};
+		// 	scratchInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+		// 	scratchInfo.buffer = scratchBuffer.bufferResource->buffer;
+		// 	scratchAddress = vkGetBufferDeviceAddressKHR(device, &scratchInfo);
+		// }
 	}
 
 	/**
@@ -889,7 +886,7 @@ namespace SceneryEditorX
 		CmdPools.clear();
 
 		/// Clean up scratch buffer
-		scratchBuffer = {};
+		//scratchBuffer = {};
 
 		/// Clean up bindless resources
 		if (device != VK_NULL_HANDLE)
@@ -966,11 +963,9 @@ namespace SceneryEditorX
      * 
      * @see ~VulkanDevice, operator=
      */
-    VulkanDevice::VulkanDevice(VulkanDevice &&other) noexcept
-        : renderData(std::move(other.renderData)), descriptors(std::move(other.descriptors)),
-          bindlessResources(other.bindlessResources), scratchBuffer(std::move(other.scratchBuffer)),
-          scratchAddress(other.scratchAddress), memoryAllocator(std::move(other.memoryAllocator)),
-          textureSampler(other.textureSampler), device(other.device), vkPhysDevice(std::move(other.vkPhysDevice)),
+    VulkanDevice::VulkanDevice(VulkanDevice &&other) noexcept : 
+          bindlessResources(other.bindlessResources), memoryAllocator(std::move(other.memoryAllocator)),
+          device(other.device), vkPhysDevice(std::move(other.vkPhysDevice)),
           vkEnabledFeatures(other.vkEnabledFeatures), vkGetBufferDeviceAddressKHR(other.vkGetBufferDeviceAddressKHR),
           vkSetDebugUtilsObjectNameEXT(other.vkSetDebugUtilsObjectNameEXT),
           vkCreateAccelerationStructureKHR(other.vkCreateAccelerationStructureKHR),
@@ -980,8 +975,8 @@ namespace SceneryEditorX
           vkGetAccelerationStructureDeviceAddressKHR(other.vkGetAccelerationStructureDeviceAddressKHR)
     {
         other.device = nullptr;
-        other.textureSampler = nullptr;
-        other.scratchAddress = 0;
+        //other.textureSampler = nullptr;
+        //other.scratchAddress = 0;
     }
 
 	/**
@@ -1022,16 +1017,14 @@ namespace SceneryEditorX
             ComputeQueue = other.ComputeQueue;
             PresentQueue = other.PresentQueue;
             memoryAllocator = std::move(other.memoryAllocator);
-            textureSampler = other.textureSampler;
             bindlessResources = other.bindlessResources;
-            descriptors = std::move(other.descriptors);
 
             /// Nullify the moved-from object
             other.device = nullptr;
             other.GraphicsQueue = VK_NULL_HANDLE;
             other.ComputeQueue = VK_NULL_HANDLE;
             other.PresentQueue = VK_NULL_HANDLE;
-            other.textureSampler = nullptr;
+            //other.textureSampler = nullptr;
         }
         return *this;
     }
@@ -1527,6 +1520,55 @@ namespace SceneryEditorX
 		#1#
 	}
 	*/
+
+    /**
+     * @brief Initializes the Vulkan memory allocator for efficient GPU memory management.
+     * 
+     * This function creates and configures the Vulkan Memory Allocator (VMA) instance
+     * that will handle all memory allocations for buffers, images, and other GPU resources.
+     * VMA provides efficient memory management, minimizes fragmentation, and optimizes 
+     * allocation strategies based on usage patterns.
+     * 
+     * The function:
+     * 1. Sets up the core allocator configuration with the physical device, logical device, and instance
+     * 2. Configures optional features like buffer device address support when available
+     * 3. Provides function pointers for dynamic Vulkan function loading
+     * 4. Creates the memory allocator instance
+     * 
+     * Once initialized, all Vulkan memory allocations should be handled through this allocator
+     * rather than directly through vkAllocateMemory for optimal performance and resource management.
+     */
+    void VulkanDevice::InitializeMemoryAllocator(VkInstance &instance)
+    {
+        SEDX_CORE_TRACE_TAG("Vulkan Device", "Initializing Vulkan Memory Allocator");
+
+        /// Create VMA (Vulkan Memory Allocator) instance
+        VmaAllocatorCreateInfo allocatorCreateInfo = {};
+        allocatorCreateInfo.physicalDevice = vkPhysDevice->GetGPUDevices();
+        allocatorCreateInfo.device = device;
+        allocatorCreateInfo.instance = instance;
+
+        /// Set up flags
+        allocatorCreateInfo.flags = 0;
+
+        /// Enable buffer device address if available
+        if (vkGetBufferDeviceAddressKHR != nullptr)
+            allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+
+        /// Use a descriptor pool for memory allocation if needed
+        /* allocatorCreateInfo.pAllocationCallbacks = allocator; */
+
+        /// Create VMA allocator
+        VmaVulkanFunctions vulkanFunctions = {};
+        vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+        vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+        allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+        /// Create the memory allocator
+        memoryAllocator = CreateRef<MemoryAllocator>();
+
+        SEDX_CORE_TRACE_TAG("Vulkan Device", "Vulkan Memory Allocator initialized successfully");
+    }
 
 	// TODO: Create separate one for shadow maps
 	/**

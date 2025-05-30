@@ -62,7 +62,8 @@ namespace SceneryEditorX
 	    enum class Type : uint8_t
 	    {
 	        Core = 0,
-	        Editor = 1
+	        Editor = 1,
+            Launcher = 2
 	    };
 
 	    /**
@@ -185,8 +186,19 @@ namespace SceneryEditorX
          * @return A shared pointer to the editor console logger instance.
          */
         static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return EditorConsoleLogger; }
+
+	    /**
+         * @fn GetLauncherLogger
+         * @brief Gets the launcher logger instance.
+         *
+         * This function returns a shared pointer to the launcher logger instance.
+         * It can be used to access the launcher logger for logging messages.
+         * 
+         * @return A shared pointer to the launcher logger instance.
+         */
+		static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return LauncherLogger; }
 	
-	    // -------------------------------------------------------------
+	    /// -------------------------------------------------------------
 
         /**
          * @brief Checks if a tag is enabled.
@@ -208,7 +220,7 @@ namespace SceneryEditorX
          */
         static void SetDefaultTagSettings();
 	
-	    // -----------------------------------------------------------
+	    /// -----------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_WINDOWS
         template <typename... Args>
@@ -227,7 +239,7 @@ namespace SceneryEditorX
 	
 	    static void PrintAssertMessage(Log::Type type, std::string_view prefix);
 	
-	    // -----------------------------------------------------------
+	    /// -----------------------------------------------------------
 	
 	    /**
 		 * @brief Converts a log level to a string.
@@ -277,6 +289,7 @@ namespace SceneryEditorX
             if (CoreLogger) CoreLogger->flush();
             if (EditorLogger) EditorLogger->flush();
             if (EditorConsoleLogger) EditorConsoleLogger->flush();
+			if (LauncherLogger) LauncherLogger->flush();
         }
 	
 	private:
@@ -286,6 +299,7 @@ namespace SceneryEditorX
 	    static std::shared_ptr<spdlog::logger> CoreLogger;
 	    static std::shared_ptr<spdlog::logger> EditorLogger;
 	    static std::shared_ptr<spdlog::logger> EditorConsoleLogger;
+        static std::shared_ptr<spdlog::logger> LauncherLogger;
 	
 	    inline static std::map<std::string, TagDetails> EnabledTags_;
 	    static std::map<std::string, TagDetails> DefaultTagDetails_;
@@ -294,52 +308,66 @@ namespace SceneryEditorX
 } // namespace SceneryEditorX
 
 
-    // -------------------------------------------------------
+/// -------------------------------------------------------
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/// Tagged logs (prefer these!)                                                                                    ///
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	/// Core logging
-	#define SEDX_CORE_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
-	#define SEDX_CORE_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
-	#define SEDX_CORE_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
-	#define SEDX_CORE_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
-	#define SEDX_CORE_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
-	
-	/// Editor logging
-	#define EDITOR_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
-	#define EDITOR_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
-	#define EDITOR_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
-	#define EDITOR_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
-	#define EDITOR_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
-	
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-	/// Core Logging
-	#define SEDX_CORE_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
-	#define SEDX_CORE_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
-	#define SEDX_CORE_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
-	#define SEDX_CORE_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
-	#define SEDX_CORE_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
-	
-	/// Client Logging
-	#define EDITOR_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
-	#define EDITOR_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
-	#define EDITOR_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
-	#define EDITOR_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
-	#define EDITOR_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
-	
-	/// Editor Console Logging Macros
-	#define EDITOR_CONSOLE_LOG_TRACE(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->trace(__VA_ARGS__)
-	#define EDITOR_CONSOLE_LOG_INFO(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->info(__VA_ARGS__)
-	#define EDITOR_CONSOLE_LOG_WARN(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->warn(__VA_ARGS__)
-	#define EDITOR_CONSOLE_LOG_ERROR(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->error(__VA_ARGS__)
-	#define EDITOR_CONSOLE_LOG_FATAL(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->critical(__VA_ARGS__)
-	
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Tagged logs (prefer these!)                                                                                    ///
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// ----------------------------------------------------
+/// Core logging
+#define SEDX_CORE_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
+#define SEDX_CORE_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
+#define SEDX_CORE_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
+#define SEDX_CORE_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
+#define SEDX_CORE_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
+
+/// Editor logging
+#define EDITOR_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
+#define EDITOR_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
+#define EDITOR_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
+#define EDITOR_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
+#define EDITOR_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
+
+/// Launcher logging
+#define LAUNCHER_TRACE_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Trace, tag, __VA_ARGS__)
+#define LAUNCHER_INFO_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Info, tag, __VA_ARGS__)
+#define LAUNCHER_WARN_TAG(tag, ...)  ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Warn, tag, __VA_ARGS__)
+#define LAUNCHER_ERROR_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Error, tag, __VA_ARGS__)
+#define LAUNCHER_FATAL_TAG(tag, ...) ::SceneryEditorX::Log::PrintMessageTag(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Fatal, tag, __VA_ARGS__)
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Core Logging
+#define SEDX_CORE_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
+#define SEDX_CORE_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
+#define SEDX_CORE_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
+#define SEDX_CORE_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
+#define SEDX_CORE_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Core, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
+
+/// Client Logging
+#define EDITOR_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
+#define EDITOR_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
+#define EDITOR_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
+#define EDITOR_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
+#define EDITOR_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Editor, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
+
+/// Editor Console Logging Macros
+#define EDITOR_CONSOLE_LOG_TRACE(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->trace(__VA_ARGS__)
+#define EDITOR_CONSOLE_LOG_INFO(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->info(__VA_ARGS__)
+#define EDITOR_CONSOLE_LOG_WARN(...)  ::SceneryEditorX::Log::GetEditorConsoleLogger()->warn(__VA_ARGS__)
+#define EDITOR_CONSOLE_LOG_ERROR(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->error(__VA_ARGS__)
+#define EDITOR_CONSOLE_LOG_FATAL(...) ::SceneryEditorX::Log::GetEditorConsoleLogger()->critical(__VA_ARGS__)
+
+/// Launcher Logging
+#define LAUNCHER_CORE_TRACE(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Trace, __VA_ARGS__)
+#define LAUNCHER_CORE_INFO(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Info, __VA_ARGS__)
+#define LAUNCHER_CORE_WARN(...)  ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Warn, __VA_ARGS__)
+#define LAUNCHER_CORE_ERROR(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Error, __VA_ARGS__)
+#define LAUNCHER_CORE_FATAL(...) ::SceneryEditorX::Log::PrintMessage(::SceneryEditorX::Log::Type::Launcher, ::SceneryEditorX::Log::Level::Fatal, __VA_ARGS__)
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// ----------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -377,7 +405,7 @@ namespace SceneryEditorX
 	    }
 	}
 	
-	// ----------------------------------------------------
+	/// ----------------------------------------------------
 	
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
@@ -408,8 +436,7 @@ namespace SceneryEditorX
 	    }
 	}
 	
-	
-	// ----------------------------------------------------
+	/// ----------------------------------------------------
 	
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
@@ -438,12 +465,14 @@ namespace SceneryEditorX
 	    }
 	}
 	
-	// ----------------------------------------------------
+	/// ----------------------------------------------------
 	
 	template <typename... Args>
 	void Log::PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+	    auto logger = (type == Type::Core) ? GetCoreLogger() : 
+	                  (type == Type::Editor) ? GetEditorLogger() : 
+	                  GetLauncherLogger();
 	    auto formatted = std::format(message, std::forward<Args>(args)...);
 	    logger->error("{}: {}", prefix, formatted);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
@@ -452,11 +481,13 @@ namespace SceneryEditorX
 	}
 	
 	
-	// ----------------------------------------------------
+	/// ----------------------------------------------------
 	
 	inline void Log::PrintAssertMessage(Log::Type type, std::string_view prefix)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+	    auto logger = (type == Type::Core) ? GetCoreLogger() : 
+	                  (type == Type::Editor) ? GetEditorLogger() : 
+	                  GetLauncherLogger();
 	    logger->error("{}", prefix);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
 	    MessageBoxA(nullptr, "- No message -", "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
@@ -465,8 +496,7 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-
-	// ----------------------------------------------------
+/// ----------------------------------------------------
 	
 	
 	/**

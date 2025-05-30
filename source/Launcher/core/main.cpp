@@ -21,6 +21,7 @@
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/EntryPoint.h>
 #include <synchapi.h>
+#include <SceneryEditorX/platform/settings.h>
 
 /// -------------------------------------------------------
 
@@ -32,6 +33,70 @@
 
 namespace Launcher
 {
+    class PreLoader : public SceneryEditorX::Application
+    {
+    public:
+        PreLoader(const SceneryEditorX::WindowData &appData, std::string_view projPath)
+            : Application(appData), splashHandler(nullptr), m_ProjectPath(projPath)
+        {
+            if (projPath.empty())
+                m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
+
+        }
+
+		virtual ~PreLoader() override;
+
+		virtual void OnInit() override
+		{
+            m_UserSettings = CreateRef<SceneryEditorX::ApplicationSettings>("settings.cfg");
+            if (!m_UserSettings->ReadSettings())
+                EDITOR_ERROR_TAG("Core", "Failed to initialize user settings for project: {}", m_ProjectPath);
+
+		    //TODO: Implement the admin check function
+
+            //AdminCheck();
+            CreateSplash();
+            MainLoop();
+
+        }
+
+		virtual void OnUpdate() override
+        {
+
+        }
+
+		virtual void OnShutdown() override
+        {
+
+            SplashHandler::DestroySplashScreen(); /// Close splash screen
+			delete splashHandler;                 /// Delete splash screen object
+
+			LAUNCHER_LOG_INFO("Launcher has completed execution.");
+
+        }
+
+    private:
+        SplashHandler *splashHandler;
+        std::string m_ProjectPath;
+        Ref<SceneryEditorX::ApplicationSettings> m_UserSettings{};
+        Ref<SceneryEditorX::Window> m_Window;
+
+        /// Counter to make sure we wait for all threads to finish
+        std::mutex mtThreadCounter;
+        int intThreadCount{0};
+
+		/// ---------------------------------------------------------
+
+		static void InitPreloader();
+        void PerformPreloading();
+        void CreateSplash();
+        void MainLoop();
+        void OperationThreads();
+		void CreateViewportResources();
+        void CleanupViewportResources();
+        void OnSurfaceUpdate(uint32_t width, uint32_t height);
+        void RecreateFrameResources();
+    };
 	namespace UI
 	{
 	    class UIContextImpl;
@@ -70,24 +135,19 @@ namespace Launcher
     }
     */
 
-	void Loader::run()
-	{
-		//TODO: Implement the admin check function
 
-		//AdminCheck();
-		CreateSplash();
-		MainLoop();
-		CleanUp();
-	}
-
-    void Loader::PerformPreloading()
+    void PreLoader::PerformPreloading()
     {
-        // TODO: Add Scenery Gateway API pull and cache
-        // Get All Airports (GET /apiv1/airports)
-        // ------------------------------------------
-        // TODO: Add Check for app updates
-        // TODO: Add Check for directory to X-Plane 12
-        // This can be done by checking the registry for the X-Plane 12 directory
+        /// TODO: Add Scenery Gateway API pull and cache
+        /// Get All Airports (GET /apiv1/airports)
+        /// ------------------------------------------
+        /// TODO: Add Check for app updates
+        /// TODO: Add Check for directory to X-Plane 12
+        /// This can be done by checking the registry for the X-Plane 12 directory
+        ///	TODO: Add precompiling of shaders
+        ///	TODO: Add loading of textures
+        ///	TODO: Add loading of models
+        ///	TODO: If launched from a project, load the project data
 
         Updater updater;
         updater.UpdateCheck();
@@ -95,22 +155,18 @@ namespace Launcher
         Sleep(6000);
 
         LAUNCHER_LOG_INFO("Preloading tasks started.");
-        //std::cout << "Preloading tasks started." << std::endl;
 
         RegistryCheck();
 
         LAUNCHER_LOG_INFO("Registry check complete");
-        //std::cout << "Registry check complete" << std::endl;
 
         DirectoryInit();
 
         LAUNCHER_LOG_INFO("Directory check complete");
-        //std::cout << "Directory check complete" << std::endl;
 
         Sleep(6000);
 
         LAUNCHER_LOG_INFO("Loading resources.");
-        //std::cout << "Loading resources." << std::endl;
 
 		/*
         TODO: Add loading of resources here
@@ -123,7 +179,6 @@ namespace Launcher
 		*/
 
         LAUNCHER_LOG_INFO("Preloading tasks completed.");
-        //std::cout << "Preloading tasks completed." << std::endl;
 
         mtThreadCounter.lock();
         intThreadCount--;
@@ -131,20 +186,20 @@ namespace Launcher
 
     }
 
-    void Loader::CreateSplash()
+    void PreLoader::CreateSplash()
     {
-        //Create the splash screen window
+        ///Create the splash screen window
         splashHandler = new SplashHandler();
         GLFWwindow* splash = nullptr;
         SplashHandler::CreateSplashScreen(splash);
     }
 
-    void Loader::MainLoop()
+    void PreLoader::MainLoop()
     {
-        // Perform the operations in separate threads
+        /// Perform the operations in separate threads
         OperationThreads();
 
-	    while (!Window::GetShouldClose())
+	    while (!SceneryEditorX::Window::GetShouldClose())
         {
             //Sleep(1000);
             mtThreadCounter.lock();
@@ -155,78 +210,21 @@ namespace Launcher
             }
             mtThreadCounter.unlock();
 			DrawFrame();
-			Window::Update();
+            SceneryEditorX::Window::Update();
         }
 
 		vkDeviceWaitIdle(device);
     }
 
-    void Loader::OperationThreads()
+    void PreLoader::OperationThreads()
     {
-        // Create a thread to perform the preloading tasks
+        /// Create a thread to perform the preloading tasks
         mtThreadCounter.lock();
         intThreadCount++;
         mtThreadCounter.unlock();
-        std::thread preloadThread(&Loader::PerformPreloading,this);
+        std::thread preloadThread(&PreLoader::PerformPreloading,this);
         preloadThread.detach();
     }
-
-    void Loader::CleanUp() const
-    {
-        LAUNCHER_LOG_INFO("Cleaning up before relaunch.");
-        //std::cout << "Cleaning up before relaunch." << std::endl;
-
-        splashHandler->DestroySplashScreen(); // Close splash screen
-        delete splashHandler;                 // Delete splash screen object
-
-        LAUNCHER_LOG_INFO("Launcher has completed execution.");
-        //std::cout << "Launcher has completed execution." << std::endl;
-
-    }
-
-	void Loader::DrawFrame()
-	{
-        if (viewportData.viewportSize.x != newViewportSize.x || viewportData.viewportSize.y != newViewportSize.y)
-	    {
-	        if (newViewportSize.x > 0 && newViewportSize.y > 0)
-	        {
-                viewportData.viewportSize = newViewportSize;
-	            CleanupViewportResources();
-	            CreateViewportResources();
-	        }
-	    }
-
-        // Get a command buffer to render into
-        VkCommandBuffer commandBuffer = vkRenderer.BeginSingleTimeCommands();
-
-        // Set the command buffer for ImGui to render into
-        ui.SetActiveCommandBuffer(commandBuffer);
-
-        // Begin ImGui UI
-        if (uiContext)
-        {
-            uiContext->Begin();
-
-            // Draw your UI elements here
-            ui.ShowDemoWindow();
-
-            // Draw viewport if needed
-            ui.ViewportWindow(viewportData.viewportSize, viewportData.viewportHovered, viewportData.viewportImageView);
-
-            uiContext->End();
-        }
-
-        // End and submit the command buffer
-        vkRenderer.EndSingleTimeCommands(commandBuffer);
-
-        // Update frame counter
-        frameCount = (frameCount + 1) % (1 << 15);
-	}
-
-	Loader::~Loader()
-	{
-	    vkRenderer.~Loader();
-	}
 
 } // namespace Launcher
 
@@ -265,17 +263,6 @@ static void SplashImg()
     file.seekg(0,std::ios::beg);
 }
 
-void SplashHandler::DestroySplashScreen()
-{
-    /*
-    if (m_splashWindow)
-    {
-        glfwDestroyWindow(m_splashWindow);
-        m_splashWindow = nullptr;
-    }
-    */
-}
-
 namespace SceneryEditorX
 {
     Application* CreateApplication(int argc, char** argv)
@@ -290,13 +277,13 @@ namespace SceneryEditorX
         /// Configure window data
         WindowData windowData;
         windowData.title = "Scenery Editor X";
-        windowData.width = 1280;
-        windowData.height = 720;
+        windowData.width = 978;
+        windowData.height = 526;
         windowData.resizable = false;
         windowData.maximized = false;
+        windowData.decorated = false;
 
-
-        return new Launcher(windowData, projectPath);
+        return new Launcher::PreLoader(windowData, projectPath);
     }
 
 } // namespace SceneryEditorX

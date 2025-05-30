@@ -35,9 +35,10 @@ namespace SceneryEditorX
 		/// Static methods for monitor management
 		GLOBAL std::vector<MonitorStats> GetMonitorStats();
 		GLOBAL void PresentMonitorStats();
+        GLOBAL Vec2 GetMonitorCenter(GLFWmonitor **monitors);
 		
 		/// Monitor access methods
-		GLOBAL GLFWmonitor** GetMonitors() { return monitors; }
+		GLOBAL GLFWmonitor** GetPriMonitor() { return monitor; }
 		GLOBAL int GetMonitorCount() { return monitorCount; }
 		GLOBAL int GetCurrentMonitorIndex() { return monitorIndex; }
 		GLOBAL void SetCurrentMonitorIndex(int index) { monitorIndex = index; }
@@ -49,7 +50,7 @@ namespace SceneryEditorX
 		GLOBAL void SetVideoModeIndex(int index) { videoModeIndex = index; }
 		
 	private:
-		INTERNAL inline GLFWmonitor** monitors = nullptr;
+		INTERNAL inline GLFWmonitor** monitor = nullptr;
 		INTERNAL inline int monitorCount = 0;
 		INTERNAL inline int monitorIndex = 0;
 		INTERNAL inline int videoModeIndex = 0;

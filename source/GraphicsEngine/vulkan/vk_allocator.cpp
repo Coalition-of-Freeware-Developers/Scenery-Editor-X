@@ -181,56 +181,6 @@ namespace SceneryEditorX
 	    return true;
 	}
 	*/
-	
-    /**
-     * @brief Initializes the Vulkan memory allocator for efficient GPU memory management.
-     * 
-     * This function creates and configures the Vulkan Memory Allocator (VMA) instance
-     * that will handle all memory allocations for buffers, images, and other GPU resources.
-     * VMA provides efficient memory management, minimizes fragmentation, and optimizes 
-     * allocation strategies based on usage patterns.
-     * 
-     * The function:
-     * 1. Sets up the core allocator configuration with the physical device, logical device, and instance
-     * 2. Configures optional features like buffer device address support when available
-     * 3. Provides function pointers for dynamic Vulkan function loading
-     * 4. Creates the memory allocator instance
-     * 
-     * Once initialized, all Vulkan memory allocations should be handled through this allocator
-     * rather than directly through vkAllocateMemory for optimal performance and resource management.
-     */
-    void VulkanDevice::InitializeMemoryAllocator()
-    {
-        SEDX_CORE_TRACE_TAG("Vulkan Device", "Initializing Vulkan Memory Allocator");
-
-        /// Create VMA (Vulkan Memory Allocator) instance
-        VmaAllocatorCreateInfo allocatorCreateInfo = {};
-        allocatorCreateInfo.physicalDevice = vkPhysDevice->GetGPUDevices();
-        allocatorCreateInfo.device = device;
-        allocatorCreateInfo.instance = GraphicsEngine::GetInstance();
-
-        /// Set up flags
-        allocatorCreateInfo.flags = 0;
-
-        /// Enable buffer device address if available
-        if (vkGetBufferDeviceAddressKHR != nullptr)
-            allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-
-        /// Use a descriptor pool for memory allocation if needed
-        /* allocatorCreateInfo.pAllocationCallbacks = allocator; */
-
-        /// Create VMA allocator
-        VmaVulkanFunctions vulkanFunctions = {};
-        vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
-        vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
-        allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
-
-        /// Create the memory allocator
-        memoryAllocator = CreateRef<MemoryAllocator>();
-
-        SEDX_CORE_TRACE_TAG("Vulkan Device", "Vulkan Memory Allocator initialized successfully");
-    }
-
 
 	/**
 	 * @brief Begins a defragmentation process for GPU memory.
@@ -909,19 +859,36 @@ namespace SceneryEditorX
      * @brief Initializes the memory allocator with the specified Vulkan device.
      *
      * @param device The Vulkan device to be used for memory allocation
+     * @param apiVersion
      */
-    void MemoryAllocator::Init(const Ref<VulkanDevice> &device)
+    void MemoryAllocator::Init(Ref<VulkanDevice> device, const uint32_t &apiVersion)
     {
         memAllocatorData = hnew VulkanAllocatorData();
 
-		RenderData renderData;
         VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.vulkanApiVersion = RenderData::minVulkanVersion;
+        allocatorInfo.vulkanApiVersion = apiVersion; 
         allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
-        allocatorInfo.device = device->Selected();
+        allocatorInfo.device = device->GetDevice();
         allocatorInfo.instance = GraphicsEngine::GetInstance();
 
-        vmaCreateAllocator(&allocatorInfo, &memAllocatorData->Allocator);
+        // Set up Vulkan function pointers properly for VMA
+        VmaVulkanFunctions vulkanFunctions = {};
+        vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+        vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+        allocatorInfo.pVulkanFunctions = &vulkanFunctions;
+
+        // We'll avoid using the buffer device address extension for now since we
+        // don't have access to check if it's available
+
+        VkResult result = vmaCreateAllocator(&allocatorInfo, &memAllocatorData->Allocator);
+        if (result != VK_SUCCESS) {
+            SEDX_CORE_ERROR("Failed to create Vulkan Memory Allocator. Error code: {}", static_cast<int>(result));
+            hdelete memAllocatorData;
+            memAllocatorData = nullptr;
+            return;
+        }
+
+        SEDX_CORE_INFO("Vulkan Memory Allocator initialized successfully");
 	}
 
     /**
@@ -934,7 +901,8 @@ namespace SceneryEditorX
     void MemoryAllocator::Shutdown()
     {
         vmaDestroyAllocator(memAllocatorData->Allocator);
-        hdelete memAllocatorData;
+
+        delete memAllocatorData;
         memAllocatorData = nullptr;
     }
 

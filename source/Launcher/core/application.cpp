@@ -11,10 +11,8 @@
 * -------------------------------------------------------
 */
 
-#include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
-#include <stdio.h>          // printf, fprintf
-#include <stdlib.h>         // abort
+#include <stdio.h>
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -23,7 +21,6 @@
 #include <iostream>
 #include <Launcher/core/launcher_main.h>
 #include <SceneryEditorX/core/application.h>
-#include "stb_image.h"
 
 // -------------------------------------------------------
 

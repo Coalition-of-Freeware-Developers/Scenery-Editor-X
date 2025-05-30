@@ -10,12 +10,12 @@
 * Created: 26/4/2025
 */
 #include <cstring>
+#include <Editor/core/scenery_gateway.h>
 #include <filesystem>
 #include <fstream>
-#include <Editor/core/scenery_gateway.h>
 #include <sstream>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
