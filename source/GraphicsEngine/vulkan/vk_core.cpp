@@ -23,9 +23,8 @@
 
 namespace SceneryEditorX
 {
-    /// Initialize the static instance member
+    /// Static instance member
     Ref<GraphicsEngine> GraphicsEngine::gfxContext = nullptr;
-    //VkInstance GraphicsEngine::vkInstance = VK_NULL_HANDLE;
 
     /// -------------------------------------------------------
 
@@ -414,30 +413,52 @@ namespace SceneryEditorX
         /// Initalize the Vulkan Physical Device & Vulkan Device
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        Ref<VulkanPhysicalDevice> vkPhysicalDevice = VulkanPhysicalDevice::Select(vkInstance);
-		if (!vkPhysicalDevice)
-		{
-			SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
-			return;
+        vkPhysicalDevice = VulkanPhysicalDevice::Select(vkInstance);
+        if (!vkPhysicalDevice)
+        {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
+            return;
         }
-        Ref<VulkanDevice> vkDevice = nullptr;
-        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, vkPhysicalDevice->GetDeviceFeatures());
+
+		VkPhysicalDeviceFeatures deviceFeatures = {};
+        deviceFeatures.samplerAnisotropy = VK_TRUE; // Enable anisotropic filtering
+        deviceFeatures.wideLines = VK_TRUE;         // Enable wide lines if needed
+        deviceFeatures.fillModeNonSolid = VK_TRUE;  // Enable non-solid fill modes
+        deviceFeatures.geometryShader = VK_TRUE;    // Enable geometry shaders if needed
+        deviceFeatures.tessellationShader = VK_TRUE; // Enable tessellation shaders if needed
+        deviceFeatures.independentBlend = VK_TRUE;   // Enable independent blending if needed
+        deviceFeatures.pipelineStatisticsQuery = VK_TRUE; // Enable pipeline statistics queries if needed
+        deviceFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE; // Enable storage image writes without format
+        
+        vkDevice = Ref<VulkanDevice>(vkPhysicalDevice, deviceFeatures);
+        
+        // Verify the device was created successfully before proceeding
+        if (!vkDevice || vkDevice->GetDevice() == VK_NULL_HANDLE) {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create valid Vulkan device!");
+            return;
+        }
 
 		/// Memory Allocator initialization.
-        /// TODO: Move/ Refactor this to a more appropriate place, I just put it here for now so it can work before I go to bed.
         vkDevice->InitializeMemoryAllocator(vkInstance);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// Pipeline Cache Creation
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-		VkPipelineCacheCreateInfo pipelineCacheInfo{};
+		/// Pipeline Cache Creation
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		VkPipelineCacheCreateInfo pipelineCacheInfo = {};
         pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-        pipelineCacheInfo.initialDataSize = 0;
-        pipelineCacheInfo.pInitialData = nullptr;
-        pipelineCacheInfo.flags = 0;
-        if (vkCreatePipelineCache(vkDevice->Selected(), &pipelineCacheInfo, allocator, &pipelineCache) != VK_SUCCESS)
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline cache!");
+        
+        // First check if the device is valid
+        if (vkDevice && vkDevice->GetDevice() != VK_NULL_HANDLE) {
+            VkResult result = vkCreatePipelineCache(vkDevice->GetDevice(), &pipelineCacheInfo, nullptr, &pipelineCache);
+            if (result != VK_SUCCESS) {
+                SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline cache! Error: {}", static_cast<int>(result));
+            } else {
+                SEDX_CORE_TRACE_TAG("Graphics Engine", "Pipeline cache created successfully");
+            }
+        } else {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Cannot create pipeline cache: Vulkan device is null or not initialized");
+        }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Surface Creation
@@ -1088,8 +1109,9 @@ namespace SceneryEditorX
 
     VkSampleCountFlagBits GraphicsEngine::GetMaxUsableSampleCount() const
     {
+        const Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         VkPhysicalDeviceProperties physicalDeviceProperties;
-        vkGetPhysicalDeviceProperties(vkPhysDevice, &physicalDeviceProperties);
+        vkGetPhysicalDeviceProperties(vkPhysicalDevice->GetGPUDevices(), &physicalDeviceProperties);
 
         VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
         if (counts & VK_SAMPLE_COUNT_64_BIT)
@@ -1162,7 +1184,6 @@ namespace SceneryEditorX
 
     void GraphicsEngine::CreateTextureSampler()
     {
-        const Ref<VulkanPhysicalDevice> vkPhysicalDevice = GetCurrentDevice()->GetPhysicalDevice();
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(vkPhysicalDevice->GetGPUDevices(), &properties);
 
@@ -1206,7 +1227,7 @@ namespace SceneryEditorX
         {
             VkFormatProperties props;
 
-            vkGetPhysicalDeviceFormatProperties(vkPhysDevice, format, &props);
+            vkGetPhysicalDeviceFormatProperties(vkPhysicalDevice->GetGPUDevices(), format, &props);
 
             if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
                 return format;

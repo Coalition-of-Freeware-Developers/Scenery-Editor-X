@@ -646,9 +646,9 @@ namespace SceneryEditorX
 	 * 
 	 * @see LoadExtensionFunctions, InitializeBindlessResources, CreateBuffer
 	 */
-	VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures) : vkPhysDevice(physDevice), vkEnabledFeatures(enabledFeatures)
+	VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures) 
+        : vkPhysicalDevice(physDevice), vkEnabledFeatures(enabledFeatures)
     {
-
 		VulkanChecks checks;
 		/*
 		QueueFamilyIndices indices = vkPhysDevice->FindQueueFamilies(vkPhysDevice->GetGPUDevice());
@@ -683,7 +683,7 @@ namespace SceneryEditorX
 		*/
 
 		/// Verify extension support
-		if (!checks.CheckDeviceExtensionSupport(vkPhysDevice->GetGPUDevices()))
+		if (!checks.CheckDeviceExtensionSupport(vkPhysicalDevice->GetGPUDevices()))
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
 			return;
@@ -731,11 +731,15 @@ namespace SceneryEditorX
 		}
 
 		/// Create the logical device
-        if (VkResult result = vkCreateDevice(vkPhysDevice->GetGPUDevices(), &createInfo, nullptr, &device); result != VK_SUCCESS)
+        VkResult result = vkCreateDevice(vkPhysicalDevice->GetGPUDevices(), &createInfo, nullptr, &device);
+		if (result != VK_SUCCESS)
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device! Error: {}", static_cast<int>(result));
+            device = VK_NULL_HANDLE; // Ensure device is set to null for error checking elsewhere
 			return;
 		}
+        
+        SEDX_CORE_TRACE_TAG("Graphics Engine", "Logical device created successfully");
 
 		/// Get device queues
 		vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
@@ -901,13 +905,6 @@ namespace SceneryEditorX
                 vkDestroyDescriptorPool(device, bindlessResources.imguiDescriptorPool, nullptr);
         }
 
-		/// Shutdown memory allocator
-		if (memoryAllocator)
-		{
-			MemoryAllocator::Shutdown();
-			memoryAllocator = nullptr;
-		}
-
 		/// Destroy logical device
 		if (device != VK_NULL_HANDLE)
 		{
@@ -965,7 +962,7 @@ namespace SceneryEditorX
      */
     VulkanDevice::VulkanDevice(VulkanDevice &&other) noexcept : 
           bindlessResources(other.bindlessResources), memoryAllocator(std::move(other.memoryAllocator)),
-          device(other.device), vkPhysDevice(std::move(other.vkPhysDevice)),
+          device(other.device), vkPhysicalDevice(std::move(other.vkPhysicalDevice)),
           vkEnabledFeatures(other.vkEnabledFeatures), vkGetBufferDeviceAddressKHR(other.vkGetBufferDeviceAddressKHR),
           vkSetDebugUtilsObjectNameEXT(other.vkSetDebugUtilsObjectNameEXT),
           vkCreateAccelerationStructureKHR(other.vkCreateAccelerationStructureKHR),
@@ -1011,7 +1008,7 @@ namespace SceneryEditorX
 
             /// Move resources from the other VulkanDevice
             device = other.device;
-            vkPhysDevice = std::move(other.vkPhysDevice);
+            vkPhysicalDevice = std::move(other.vkPhysicalDevice);
             vkEnabledFeatures = other.vkEnabledFeatures;
             GraphicsQueue = other.GraphicsQueue;
             ComputeQueue = other.ComputeQueue;
@@ -1242,7 +1239,7 @@ namespace SceneryEditorX
 	VkSampleCountFlagBits VulkanDevice::GetMaxUsableSampleCount() const
 	{
 		VkPhysicalDeviceProperties physicalDeviceProperties;
-		vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevices(), &physicalDeviceProperties);
+		vkGetPhysicalDeviceProperties(vkPhysicalDevice->GetGPUDevices(), &physicalDeviceProperties);
 
 		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts;
 		counts &= physicalDeviceProperties.limits.framebufferDepthSampleCounts;
@@ -1538,13 +1535,18 @@ namespace SceneryEditorX
      * Once initialized, all Vulkan memory allocations should be handled through this allocator
      * rather than directly through vkAllocateMemory for optimal performance and resource management.
      */
-    void VulkanDevice::InitializeMemoryAllocator(VkInstance &instance)
+    void VulkanDevice::InitializeMemoryAllocator(const VkInstance &instance)
     {
+        if (device == VK_NULL_HANDLE) {
+            SEDX_CORE_ERROR_TAG("Vulkan Device", "Cannot initialize memory allocator with null device handle");
+            return;
+        }
+        
         SEDX_CORE_TRACE_TAG("Vulkan Device", "Initializing Vulkan Memory Allocator");
 
         /// Create VMA (Vulkan Memory Allocator) instance
         VmaAllocatorCreateInfo allocatorCreateInfo = {};
-        allocatorCreateInfo.physicalDevice = vkPhysDevice->GetGPUDevices();
+        allocatorCreateInfo.physicalDevice = vkPhysicalDevice->GetGPUDevices();
         allocatorCreateInfo.device = device;
         allocatorCreateInfo.instance = instance;
 
@@ -1611,12 +1613,12 @@ namespace SceneryEditorX
 	
 		/// Check if anisotropy is supported
 		VkPhysicalDeviceFeatures deviceFeatures;
-		vkGetPhysicalDeviceFeatures(vkPhysDevice->GetGPUDevices(), &deviceFeatures);
+		vkGetPhysicalDeviceFeatures(vkPhysicalDevice->GetGPUDevices(), &deviceFeatures);
 	
 		if (deviceFeatures.samplerAnisotropy)
 		{
 			samplerInfo.anisotropyEnable = VK_TRUE;
-			samplerInfo.maxAnisotropy = vkPhysDevice->GetLimits().maxSamplerAnisotropy;
+			samplerInfo.maxAnisotropy = vkPhysicalDevice->GetLimits().maxSamplerAnisotropy;
 		}
 		else
 		{
@@ -1666,7 +1668,7 @@ namespace SceneryEditorX
 	{
 		/// Get memory properties from the physical vkDevice
 		VkPhysicalDeviceMemoryProperties memProperties;
-		vkGetPhysicalDeviceMemoryProperties(vkPhysDevice->GetGPUDevices(), &memProperties);
+		vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice->GetGPUDevices(), &memProperties);
 	
 		/// Find a memory type that satisfies both the type filter and the property requirements
 		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)

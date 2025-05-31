@@ -142,13 +142,21 @@ namespace SceneryEditorX
     MemoryAllocator::MemoryAllocator(std::string tag) : Tag_(std::move(tag)), currentStrategy() { }
 
     /**
-     * @brief Destroys the memory allocator instance.
+     * @brief Destructor for the memory allocator.
      * 
-     * Virtual destructor that ensures proper cleanup of derived allocator types.
-     * The actual Vulkan memory cleanup happens in the Shutdown() method, which
-     * must be called explicitly before destruction.
+     * Cleans up all allocator resources by calling Shutdown() which:
+     * - Releases any remaining allocations tracked by this allocator
+     * - Destroys all memory pools created by this allocator
+     * - Destroys the VMA allocator instance
+     * - Releases all internal tracking structures
+     * 
+     * This ensures proper cleanup of all Vulkan memory resources
+     * to prevent memory leaks when the allocator is destroyed.
      */
-    MemoryAllocator::~MemoryAllocator() = default;
+    MemoryAllocator::~MemoryAllocator()
+    {
+        Shutdown();
+    };
 
     /// ---------------------------------------------------------
 

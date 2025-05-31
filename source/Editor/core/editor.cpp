@@ -23,7 +23,6 @@
 
 namespace SceneryEditorX
 {
-
 	namespace UI
 	{
 	    class UIContextImpl;
@@ -45,7 +44,7 @@ namespace SceneryEditorX
 	
 	//INTERNAL void initVulkan(GraphicsEngine &gfxEngine);
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
     EditorApplication::EditorApplication() = default;
 
@@ -56,7 +55,6 @@ namespace SceneryEditorX
 
     void EditorApplication::Run()
     {
-
         const Ref<Window> &window = GetWindow();
         const auto start = std::chrono::high_resolution_clock::now();
 
@@ -75,17 +73,11 @@ namespace SceneryEditorX
 
         gfxEngine.Init(window);
 
-        Ref<VulkanChecks> vulkanChecks = CreateRef<VulkanChecks>();
-        vulkanChecks->InitChecks({}, {}, {});
 	    //Launcher::AdminCheck();
 	    //Launcher::Loader loader{};
 	    //loader.run();
 	    //SceneryEditorX::ReadCache();
 	    //assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
-        
-        // Create and load settings
-        //Ref<ApplicationSettings> appSettings = CreateRef<ApplicationSettings>("settings.cfg");
-        //appSettings->ReadSettings();
 
         //ImGui::CreateContext(); //TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
 
@@ -95,8 +87,6 @@ namespace SceneryEditorX
 	
 	void EditorApplication::Create()
 	{
-        //const Ref<Window> editorWindow = CreateRef<Window>();
-
         //auto physDevice = vkDevice->GetPhysicalDevice();
         //physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
@@ -203,7 +193,6 @@ namespace SceneryEditorX
 	
 	void EditorApplication::CleanupViewportResources()
 	{
-	
 	    if (viewportData.viewportFramebuffer != VK_NULL_HANDLE)
 	    {
             vkDestroyFramebuffer(device, viewportData.viewportFramebuffer, nullptr);
@@ -237,18 +226,15 @@ namespace SceneryEditorX
 
     void EditorApplication::Update()
     {
-        // Update the viewport size if it has changed
+        /// Update the viewport size if it has changed
         if (viewportData.viewportResized)
         {
             RecreateFrameResources();
         }
-        // Update the UI context
-        //if (uiContext)
-        //{
-        //    uiContext->Update();
-        //}
+
     }
-	// -------------------------------------------------------
+
+	/// -------------------------------------------------------
 	
 	void EditorApplication::OnSurfaceUpdate(uint32_t width, uint32_t height)
 	{
@@ -259,36 +245,31 @@ namespace SceneryEditorX
 	void EditorApplication::RecreateFrameResources()
 	{
 	    while (Window::GetWidth() == 0 || Window::GetHeight() == 0)
-	    {
-	        Window::WaitEvents();
-	    }
-	
-	    viewportData.GetViewportSize() = newViewportSize;
+            Window::WaitEvents();
+
+        viewportData.GetViewportSize() = newViewportSize;
 	
 	    if (viewportData.x == 0 || viewportData.y == 0)
-	    {
-	        return;
-	    }
-	
-	    vkDeviceWaitIdle(device);
+            return;
+
+        vkDeviceWaitIdle(device);
 	
 	    if (Window::GetFramebufferResized() || WindowData::dirty == true)
 	    {
             if (WindowData::dirty == true)
-	        {
-	            Window::ApplyChanges();
-	        }
-	        Window::UpdateFramebufferSize();
+                Window::ApplyChanges();
+
+            Window::UpdateFramebufferSize();
 	        OnSurfaceUpdate(Window::GetWidth(), Window::GetHeight());
 	    }
 	}
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 	
 	void EditorApplication::DrawFrame()
 	{
         /// Check if the viewport size has changed
-        if (viewportData.x != newViewportSize.x || viewportData.y != newViewportSize.y)
+        if (viewportData.x == newViewportSize.x || viewportData.y == newViewportSize.y)
 	    {
 	        if (newViewportSize.x > 0 && newViewportSize.y > 0)
 	        {
@@ -298,35 +279,30 @@ namespace SceneryEditorX
 	        }
 	    }
 
-        // Get a command buffer to render into
-        //gfxEngine.BeginFrame();
-
-            // Ensure cmdBuffer is initialized and retrieve the active Vulkan command buffer
+        /// Ensure cmdBuffer is initialized and retrieve the active Vulkan command buffer
         if (!cmdBuffer)
         {
             cmdBuffer = CreateRef<CommandBuffer>();
         }
+
         VkCommandBuffer vkCmdBuffer = cmdBuffer->GetActiveCommandBuffer();
 
-        // Set the command buffer for ImGui to render into
+        /// Set the command buffer for ImGui to render into
         ui.SetActiveCommandBuffer(vkCmdBuffer);  
 
-        // Begin ImGui UI
+        /// Begin ImGui UI
         if (uiContext)
         {
             uiContext->Begin();
 
-            // Draw your UI elements here
+            /// Draw your UI elements here
             ui.ShowDemoWindow();
 
-            // Draw viewport if needed
+            /// Draw viewport if needed
             ui.ViewportWindow(viewportData, viewportData.viewportHovered, viewportData.viewportImageView);
 
             uiContext->End();
         }
-
-        // End and submit the command buffer
-        //gfxEngine.EndFrame();
 
         // Update frame counter
         frameCount = (frameCount + 1) % (1 << 15);
@@ -334,4 +310,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

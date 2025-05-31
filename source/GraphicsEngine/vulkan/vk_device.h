@@ -225,8 +225,14 @@ namespace SceneryEditorX
         [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
         [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
         [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
-		[[nodiscard]] VkDevice GetDevice() const {return device;}
-		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysDevice;}
+		[[nodiscard]] VkDevice GetDevice() const 
+		{
+		    if (device == VK_NULL_HANDLE) {
+		        SEDX_CORE_ERROR_TAG("Vulkan Device", "Attempting to access device handle that is null");
+		    }
+		    return device;
+		}
+		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         //[[nodiscard]] Ref<CommandBuffer> GetCommandBuffer() const { return cmdBuffer; }
 
@@ -291,7 +297,7 @@ namespace SceneryEditorX
 		/**
          * @brief Initialize the memory allocator for this device
          */
-        void InitializeMemoryAllocator(VkInstance &instance);
+        void InitializeMemoryAllocator(const VkInstance &instance);
 
     private:
         Layers vkLayers;
@@ -301,7 +307,7 @@ namespace SceneryEditorX
         Ref<CommandBuffer> cmdBuffer = nullptr;
         VkSampler textureSampler = nullptr;
 
-        Ref<VulkanPhysicalDevice> vkPhysDevice;
+        Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
         //uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
 
@@ -363,7 +369,6 @@ namespace SceneryEditorX
         VkDevice vkDevice = VK_NULL_HANDLE;
 	    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
         VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
-        VkPhysicalDevice vkPhysicalDevice = VK_NULL_HANDLE;
     };
 
 	/// ---------------------------------------------------------

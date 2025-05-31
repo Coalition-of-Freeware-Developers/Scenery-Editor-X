@@ -63,6 +63,7 @@ namespace SceneryEditorX
         Ref<Window> editorWindow;
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> vkDevice;
+        Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanChecks> checks;
         Ref<MemoryAllocator> allocatorManager;
         Ref<CommandBuffer> cmdBufferManger;
@@ -83,7 +84,6 @@ namespace SceneryEditorX
 
         uint32_t apiVersion;
 		VkDevice device = nullptr;
-        VkPhysicalDevice vkPhysDevice = nullptr;
 
         /// -------------------------------------------------------
 
