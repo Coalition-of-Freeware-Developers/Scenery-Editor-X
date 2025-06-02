@@ -16,6 +16,7 @@
 #include <map>
 #include <optional>
 #include <SceneryEditorX/core/application_data.h>
+#include <SceneryEditorX/core/pointers.h>
 #include <string>
 #include <vector>
 
@@ -31,7 +32,7 @@ namespace SceneryEditorX
 	 * path detection and validation, and storing key-value configuration options in various formats.
 	 * Settings are stored in a configuration file using libconfig format.
 	 */
-	class ApplicationSettings
+	class ApplicationSettings : public RefCounted
 	{
 	public:
 	    /**

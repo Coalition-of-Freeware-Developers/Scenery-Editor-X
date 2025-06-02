@@ -76,8 +76,8 @@ namespace SceneryEditorX
 	        glm::lookAt(Vec3(2.0f, 2.0f, 2.0f), Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 0.0f, 1.0f));
 	    uniformBuff.proj =
 	        glm::perspective(glm::radians(45.0f),
-	                         static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().width) /
-	                             static_cast<float>(gfxEngine->get()->GetSwapChain()->GetSwapExtent().height),
+	                         static_cast<float>(gfxEngine->Get()->GetSwapChain()->GetSwapExtent().width) /
+	                             static_cast<float>(gfxEngine->Get()->GetSwapChain()->GetSwapExtent().height),
 	                         0.1f,
 	                         10.0f);
 	    uniformBuff.proj[1][1] *= -1;

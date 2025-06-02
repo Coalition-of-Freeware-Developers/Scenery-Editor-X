@@ -13,9 +13,9 @@
 #pragma once
 #include <SceneryEditorX/platform/system_detection.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-/*
+/**
 ##########################################################
                      C++ 20 INCLUDES
 ##########################################################
@@ -46,7 +46,7 @@
 #include <utility>
 #include <vector>
 
-/*
+/**
 ##########################################################
                     PLATFORM SPECIFIC
 ##########################################################
@@ -55,7 +55,7 @@
     #include <Windows.h>
 #endif
 
-/*
+/**
 ##########################################################
 					 GLFW INCLUDES & DEFINES
 ##########################################################
@@ -65,7 +65,7 @@
 #define GLFW_INCLUDE_VULKAN
 //#define IMGUI_IMPL_VULKAN_USE_VOLK
 
-/*
+/**
 ##########################################################
                         GLM LIBRARY
 ##########################################################
@@ -83,7 +83,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 
-/*
+/**
 ##########################################################
                         CONFIG FILE
 ##########################################################
@@ -93,7 +93,7 @@
 #include <portable-file-dialogs.h>
 #include <nlohmann/json.hpp>
 
-/*
+/**
 ##########################################################
                         SPDLOG LOGGER
 ##########################################################
@@ -104,7 +104,7 @@
 //#include <spdlog/sinks/stdout_color_sinks.h>
 //#include <spdlog/spdlog.h>
 
-/*
+/**
 ##########################################################
                          FMT Library
 ##########################################################
@@ -112,20 +112,21 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-/*
+/**
 ##########################################################
                      Project Includes
 ##########################################################
 */
 
 #include <SceneryEditorX/resource.h>
+#include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/platform/platform_states.h>
 
-/*
+/**
 ##########################################################
 ##########################################################
 */

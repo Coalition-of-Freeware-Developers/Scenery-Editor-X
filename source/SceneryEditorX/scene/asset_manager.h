@@ -32,11 +32,11 @@ namespace SceneryEditorX
 		
 	inline std::string ShadowTypeNames[] = {"Disabled", "RayTraced", "Map"};
 
-	class AssetManager
+	class AssetManager : public RefCounted
     {
 	public:
         AssetManager();
-        ~AssetManager();
+        virtual ~AssetManager() override;
 
 		// -------------------------------------------------------
 
@@ -71,7 +71,7 @@ namespace SceneryEditorX
             return assets[uuid];
         }
 
-		template <typename T>
+        template <typename T>
         std::vector<Ref<T>> GetAll(ObjectType type) const
         {
             std::vector<Ref<T>> all;
@@ -79,7 +79,10 @@ namespace SceneryEditorX
             {
                 if (val->type == type)
                 {
-                    all.emplace_back(std::dynamic_pointer_cast<T>(val));
+                    if (auto casted = std::dynamic_pointer_cast<T>(val))
+                    {
+                        all.emplace_back(casted);
+                    }
                 }
             }
             return all;
@@ -134,24 +137,43 @@ namespace SceneryEditorX
                         assert(false);
 #endif
 				    return nullptr;
+                case ObjectType::None:
+                    break;
+                case ObjectType::Invalid:
+                    break;
+                case ObjectType::Count:
+                    break;
             }
+            return nullptr;
         }
 
-        template <typename T>
-        static std::shared_ptr<Object> CloneObject(const Ref<Object> &rhs)
-        {
-            Ref<T> object = CreateObject<T>(rhs->name, 0);
-            *object = *std::dynamic_pointer_cast<T>(rhs);
-            return object;
-        }
-
-        template <typename T>
-        Ref<T> CloneAsset(const Ref<Object> &rhs)
-        {
-            Ref<T> asset = CreateAsset<T>(rhs->name, 0);
-            *asset = *std::dynamic_pointer_cast<T>(rhs);
-            return asset;
-        }
+		template <typename T>
+		static std::shared_ptr<Object> CloneObject(const Ref<Object> &rhs)
+		{
+		    // Ensure T is derived from Object and rhs is of type Ref<Object>
+		    auto casted = std::dynamic_pointer_cast<T>(rhs);
+		    if (!casted)
+		    {
+                SEDX_CORE_ERROR_TAG("Core", "Failed to cast object to the requested type.");
+		    }
+		    Ref<T> object = CreateObject<T>(rhs->name, 0);
+		    *object = *casted; // Perform the assignment after successful cast
+		    return object;
+		}
+		
+		template <typename T>
+		Ref<T> CloneAsset(const Ref<Object> &rhs)
+		{
+		    // Ensure T is derived from Asset and rhs is of type Ref<Object>
+		    auto casted = std::dynamic_pointer_cast<T>(rhs);
+		    if (!casted)
+		    {
+                SEDX_CORE_ERROR_TAG("Core", "Failed to cast asset to the requested type.");
+		    }
+		    Ref<T> asset = CreateAsset<T>(rhs->name, 0);
+		    *asset = *casted; // Perform the assignment after successful cast
+		    return asset;
+		}
 
         Ref<Object> CloneAsset(ObjectType type, const Ref<Object> &rhs)
         {
@@ -171,10 +193,10 @@ namespace SceneryEditorX
         {
             switch (type)
             {
-				case ObjectType::Node: return CloneObject<Node>(rhs);
-				case ObjectType::MeshNode: return CloneObject<MeshNode>(rhs);
-				case ObjectType::LightNode: return CloneObject<LightNode>(rhs);
-				case ObjectType::CameraNode: return CloneObject<CameraNode>(rhs);
+				case ObjectType::Node: return Ref(CloneObject<Node>(rhs));
+				case ObjectType::MeshNode: return Ref(CloneObject<MeshNode>(rhs));
+				case ObjectType::LightNode: return Ref(CloneObject<LightNode>(rhs));
+				case ObjectType::CameraNode: return Ref(CloneObject<CameraNode>(rhs));
                 default:
 #ifndef NDEBUG
                     if (static_cast<int>(type) < 0 || static_cast<int>(type) >= static_cast<int>(ObjectType::Count))

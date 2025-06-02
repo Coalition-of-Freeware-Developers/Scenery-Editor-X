@@ -50,7 +50,7 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
-	struct Object
+	struct Object : RefCounted
 	{
 	    std::string name = "Uninitialized";
 	    uint32_t uuid = 0;

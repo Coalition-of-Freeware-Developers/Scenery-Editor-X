@@ -151,8 +151,8 @@ namespace SceneryEditorX::UI
         this->window = window;
         this->renderer = &renderer;
 
-        device = GraphicsEngine::GetCurrentDevice().get();
-        swapchain = renderer.GetSwapChain().get();
+        device = GraphicsEngine::GetCurrentDevice().Get();
+        swapchain = renderer.GetSwapChain().Get();
 
         if (initialized)
         {
@@ -162,7 +162,7 @@ namespace SceneryEditorX::UI
 
         /// Get essential Vulkan objects
         //device = GraphicsEngine::GetDevice()->GetDevice();
-        swapchain = renderer.GetSwapChain().get();
+        swapchain = renderer.GetSwapChain().Get();
 
         if (!device || !swapchain)
         {
@@ -192,7 +192,7 @@ namespace SceneryEditorX::UI
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         /// Get queue family info
-        const VulkanDevice *vkDevice = GraphicsEngine::GetCurrentDevice().get();
+        const VulkanDevice *vkDevice = GraphicsEngine::GetCurrentDevice().Get();
         //const QueueFamilyIndices indices = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
         RenderData renderData;
 

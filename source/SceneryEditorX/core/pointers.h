@@ -124,19 +124,192 @@ namespace SceneryEditorX
 
     /// ----------------------------------------------------------
 
-    /// Forward declarations for internal implementation details
     namespace Internal
     {
-        template <typename T>
-        class ControlBlock;
-        
-        template <typename T>
-        class ControlBlockRegistry;
-    }
+    /**
+     * @brief Control block for weak reference handling.
+     * 
+     * This class provides the implementation for tracking weak references to objects.
+     * When an object with Ref pointers is destroyed, the control block remains
+     * until all WeakRef instances pointing to it are also destroyed.
+     * 
+     * @tparam T The type of the managed object.
+     */
+    template <typename T>
+    class ControlBlock
+    {
+    public:
+        /**
+         * @brief Constructs a control block for the specified object
+         * 
+         * @param ptr Pointer to the object being tracked
+         */
+        explicit ControlBlock(T *ptr) noexcept : m_Ptr(ptr), m_WeakCount(0)
+        {
+        }
+
+        /**
+         * @brief Increments the weak reference count
+         * 
+         * Called when a new WeakRef is created or copied to point to this object
+         */
+        void IncWeakCount() noexcept
+        {
+            ++m_WeakCount;
+        }
+
+        /**
+         * @brief Decrements the weak reference count
+         * 
+         * When the weak count reaches zero and the object pointer is nullptr
+         * (indicating the object has been destroyed), the control block
+         * deletes itself as it's no longer needed.
+         */
+        void DecWeakCount() noexcept
+        {
+            if (--m_WeakCount == 0 && m_Ptr == nullptr)
+                delete this;
+        }
+
+        /**
+         * @brief Gets the pointer to the managed object
+         * 
+         * @return The pointer to the object, or nullptr if the object has been destroyed
+         */
+        T *GetPtr() const noexcept
+        {
+            return m_Ptr;
+        }
+
+        /**
+         * @brief Sets the object pointer
+         * 
+         * This is typically called with nullptr when the object is being destroyed
+         * to indicate that the object is no longer valid.
+         * 
+         * @param ptr The new object pointer value
+         */
+        void SetPtr(T *ptr) noexcept
+        {
+            m_Ptr = ptr;
+        }
+
+        /**
+         * @brief Gets the current weak reference count
+         * 
+         * @return The number of weak references pointing to this control block
+         */
+        uint32_t GetWeakCount() const noexcept
+        {
+            return m_WeakCount;
+        }
+
+    private:
+        T *m_Ptr;                          ///< Pointer to the managed object, or nullptr if destroyed
+        std::atomic<uint32_t> m_WeakCount; ///< Number of weak references to this control block
+    };
+
+    /**
+     * @brief Registry that manages control blocks for weak references
+     * 
+     * This singleton class maintains a mapping between object pointers and their
+     * corresponding control blocks, allowing WeakRef instances to find the
+     * appropriate control block for an object.
+     * 
+     * @tparam T The type of the managed object.
+     */
+    template <typename T>
+    class ControlBlockRegistry
+    {
+    public:
+        /**
+         * @brief Get the singleton instance of the registry
+         * 
+         * @return A reference to the singleton instance
+         */
+        static ControlBlockRegistry &GetInstance()
+        {
+            static ControlBlockRegistry instance;
+            return instance;
+        }
+
+        /**
+         * @brief Get or create a control block for the specified object pointer
+         * 
+         * If a control block already exists for the given pointer, it returns that block.
+         * Otherwise, it creates a new control block, registers it, and returns it.
+         * 
+         * @param ptr Pointer to the object for which to get/create a control block
+         * @return Pointer to the control block, or nullptr if ptr is nullptr
+         */
+        ControlBlock<T> *GetControlBlock(T *ptr)
+        {
+            if (!ptr)
+                return nullptr;
+
+            std::lock_guard<std::mutex> lock(m_Mutex);
+
+            auto it = m_Blocks.find(ptr);
+            if (it != m_Blocks.end())
+                return it->second;
+
+            auto *block = new ControlBlock<T>(ptr);
+            m_Blocks[ptr] = block;
+            return block;
+        }
+
+        /**
+         * @brief Remove the control block associated with the specified object pointer
+         * 
+         * This method is called when an object is being destroyed. It sets the object pointer
+         * in the control block to nullptr to indicate that the object is no longer valid.
+         * If there are no weak references to the object, the control block itself is deleted.
+         * 
+         * @param ptr Pointer to the object whose control block should be removed
+         */
+        void RemoveControlBlock(T *ptr)
+        {
+            if (!ptr)
+                return;
+
+            std::lock_guard<std::mutex> lock(m_Mutex);
+
+            auto it = m_Blocks.find(ptr);
+            if (it != m_Blocks.end())
+            {
+                ControlBlock<T> *block = it->second;
+                m_Blocks.erase(it);
+
+                if (block->GetWeakCount() == 0)
+                    delete block;
+                else
+                    block->SetPtr(nullptr); // Mark the object as destroyed
+            }
+        }
+
+    private:
+        /**
+         * @brief Private constructor to enforce singleton pattern
+         */
+        ControlBlockRegistry() = default;
+
+        ~ControlBlockRegistry()
+        {
+            // Delete any remaining control blocks
+            std::lock_guard<std::mutex> lock(m_Mutex);
+            for (auto &pair : m_Blocks)
+                delete pair.second;
+            m_Blocks.clear();
+        }
+
+        std::unordered_map<T *, ControlBlock<T> *> m_Blocks; ///< Map of object pointers to control blocks
+        std::mutex m_Mutex;                                  ///< Mutex to protect concurrent access to the map
+    };
+    } // namespace Internal
 
     /// -----------------------------------------------------------
 
-	/// Forward declaration for WeakRef
+
 	template <typename T>
 	class WeakRef;
 

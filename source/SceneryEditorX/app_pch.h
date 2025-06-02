@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <SceneryEditorX/platform/system_detection.h>
-#include <SceneryEditorX/core/pointers.h>
 
 /// -------------------------------------------------------
 
@@ -120,6 +119,7 @@
 */
 
 #include <SceneryEditorX/resource.h>
+#include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/profiler.hpp>
