@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #include <CrashHandler/crash_handler.h>
+#include <filesystem>
 #include <spdlog/spdlog.h>
 #include <string>
 
@@ -18,47 +19,47 @@
 
 namespace CrashHandler
 {
-    // Define the CrashHandlerImpl class before usage
+    /// Define the CrashHandlerImpl class before usage
     class CrashHandlerImpl
     {
     public:
-        explicit CrashHandlerImpl(const CrashService::CrashHandlerConfig& config)
-            : m_config(config)
+        explicit CrashHandlerImpl(CrashService::CrashHandlerConfig config)
+            : m_config(std::move(config))
         {
-            // Initialize crash handler implementation
+            /// Initialize crash handler implementation
             spdlog::debug("Initializing crash handler implementation");
             
-            // Create dump directory if it doesn't exist
+            /// Create dump directory if it doesn't exist
             if (!m_config.dumpDir.empty())
             {
                 std::filesystem::create_directories(m_config.dumpDir);
             }
             
-            // Initialize platform-specific crash handler
+            /// Initialize platform-specific crash handler
         }
         
         ~CrashHandlerImpl()
         {
-            // Cleanup any resources
+            /// Cleanup any resources
             spdlog::debug("Shutting down crash handler implementation");
         }
         
         void addCrashData(const std::string& key, const std::string& value)
         {
-            // Add custom crash data implementation
+            /// Add custom crash data implementation
             m_crashData[key] = value;
         }
         
         bool writeDump(const std::string& reason)
         {
-            // Implement manual dump creation
+            /// Implement manual dump creation
             spdlog::info("Writing manual dump: {}", reason);
             return true;
         }
         
         void notifyBackgroundService(const std::string& dumpPath)
         {
-            // Notify background service about crash
+            /// Notify background service about crash
             spdlog::info("Notifying background service about crash: {}", dumpPath);
         }
         
@@ -100,7 +101,7 @@ namespace CrashHandler
     {
         if (s_impl)
         {
-            // Implement heartbeat functionality
+            /// Implement heartbeat functionality
         }
     }
 
@@ -120,7 +121,6 @@ namespace CrashHandler
         }
         return false;
     }
-
 
 } // namespace CrashHandler
 

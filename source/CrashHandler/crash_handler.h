@@ -11,102 +11,93 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <CrashHandler/service_ipc.h>
 #include <functional>
 #include <memory>
-#include <spdlog/spdlog.h>
 #include <string>
-#include <thread>
+#include <Windows.h>
+#include <chrono>
+#include <iomanip>
 
 /// -------------------------------------------------------
 
 namespace CrashHandler
 {
-	class CrashHandlerImpl; /// PIMPL for platform-specific implementations
+    /// Forward declarations
+	class IPCClient;
+    class CrashHandlerImpl;
+	
+	/// Initialize Windows native exception handler
+	bool InitializeNativeCrashHandler(const std::string &dumpPath,
+	                                  const std::string &applicationId,
+	                                  std::function<void(const std::string &)> crashCallback = nullptr);
+	
+	/// Generate a crash dump manually (for non-crash errors)
+	void GenerateDump(const std::string &reason);
+	
+	/// Windows exception filter function
+	LONG WINAPI UnhandledExceptionFilter(EXCEPTION_POINTERS *exceptionPointers);
 
-	class CrashService
+	std::string getCurrentTimestamp()
     {
+        const auto now = std::chrono::system_clock::now();
+        const auto timeT = std::chrono::system_clock::to_time_t(now);
+        std::tm tm{};
+        localtime_s(&tm, &timeT);
+
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
+        return oss.str();
+    }
+
+	/// Client API for applications to use
+	class ClientAPI
+	{
 	public:
-	    struct CrashHandlerConfig
-	    {
-	        std::string appName = "CrashHandler";
-	        std::string companyName = "Coalition-of-Freeware-Developers";
-	        std::string appVersion;
-	        std::string dumpDir;
-	        bool enableBackgroundService = true;
-	        int heartbeatIntervalMs = 5000;
+	    ClientAPI(const std::string &applicationId);
+	    ~ClientAPI();
+	
+	    /// Initialize crash handler
+	    bool initialize(const std::string &dumpPath = "");
+	
+	    /// Send heartbeat to crash handler service
+	    void sendHeartbeat();
+	
+	    /// Log an error (will be collected by crash handler service)
+	    void logError(const std::string &errorMessage);
+	
+	    /// Update project state (so crash handler knows what project was open)
+	    void updateProjectState(const std::string &projectPath) const;
+	
+	    /// Manually trigger a crash report for a non-fatal error
+	    void reportNonFatalError(const std::string &errorMessage);
+	
+	private:
+	    std::string m_applicationId;
+	    std::string m_dumpPath;
+	    std::shared_ptr<IPCClient> m_ipcClient;
+	    std::function<void(const std::string &)> m_crashCallback;
+	    bool m_isInitialized;
+	};
 
-	        /// Callback when a crash is detected
-	        std::function<void(const std::string& dumpPath)> onCrashDetectedCallback;
-	    };
+    class CrashService
+    {
+    public:
+        struct CrashHandlerConfig
+        {
+            std::string dumpDir;
+        };
 
-	    /// Initialize crash handler in the main application
         static bool Init(const CrashHandlerConfig &config);
+        static void Shutdown();
+        static void Tick();
+        static void addCrashData(const std::string &key, const std::string &value);
+        static bool WriteDump(const std::string &reason);
 
         ~CrashService();
 
-	    /// Shut down the crash handler
-	    static void Shutdown();
-
-	    /// Send a heartbeat to the crash handler service
-	    static void Tick();
-
-	    /// Add custom crash data
-	    static void addCrashData(const std::string& key, const std::string& value);
-
-	    /// Write a minidump manually (for non-crash scenarios)
-	    static bool WriteDump(const std::string& reason);
-
-	private:
-        CrashHandlerConfig m_config;
-        std::shared_ptr<BackgroundService> m_backgroundService;
-	    static std::unique_ptr<CrashHandlerImpl> s_impl;
-        std::string dumpPath;
-        std::thread m_heartbeatThread;
-
-        static bool filterCallback(void *context)
-        {
-            return true; /// Process all crashes
-        }
-
-        /*
-        static bool minidumpCallback(const wchar_t *dump_path,
-                                     const wchar_t *minidump_id,
-                                     void *context,
-                                     EXCEPTION_POINTERS *exinfo,
-                                     MDRawAssertionInfo *assertion,
-                                     bool succeeded)
-        {
-            if (succeeded)
-            {
-                CrashHandlerImpl *self = static_cast<CrashHandlerImpl *>(context);
-                std::string dumpPath = utf8FromWchar(dump_path) + std::string("\\") + utf8FromWchar(minidump_id) + ".dmp";
-
-                spdlog::critical("Application crashed. Minidump written to: {}", dumpPath);
-
-                /// Notify the background service about the crash
-                self->notifyBackgroundService(dumpPath);
-
-                /// Invoke user callback if provided
-                if (self->m_config.onCrashDetectedCallback)
-                {
-                    self->m_config.onCrashDetectedCallback(dumpPath);
-                }
-            }
-            else
-            {
-                spdlog::error("Failed to write minidump");
-            }
-
-            return succeeded;
-        }
-        */
-
-        /// Platform-specific background service and IPC methods...
-        /// ...
-
-
-	};
+    private:
+        static std::unique_ptr<CrashHandlerImpl> s_impl;
+    };
 
 } // namespace CrashHandler
 
