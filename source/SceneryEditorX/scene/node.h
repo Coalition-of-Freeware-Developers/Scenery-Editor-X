@@ -17,6 +17,7 @@
 
 namespace SceneryEditorX
 {
+	/*
 	struct Serializer;
 	class SceneAsset;
 
@@ -107,6 +108,7 @@ namespace SceneryEditorX
 
 		friend class AssetManager;
 	};
+	*/
 
 } // namespace SceneryEditorX
 

@@ -60,7 +60,7 @@ namespace SceneryEditorX
      * including memory allocation and vertex attribute descriptions. It provides
      * functionality for storing and transferring vertex data to the GPU.
      */
-    class VertexBuffer
+    class VertexBuffer : public RefCounted
     {
     public:
         /**

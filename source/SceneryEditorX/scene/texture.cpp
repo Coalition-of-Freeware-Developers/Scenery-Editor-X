@@ -20,6 +20,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	TextureAsset::TextureAsset(const std::string &path)
 	{
         texturePath = path;
@@ -312,6 +313,7 @@ namespace SceneryEditorX
 
         return imageView;
     }
+    */
 
 } // namespace SceneryEditorX
 

@@ -26,7 +26,7 @@
 
 namespace SceneryEditorX
 {
-
+    /*
 	struct Serializer;
 
 	/// -------------------------------------------------------
@@ -206,17 +206,17 @@ namespace SceneryEditorX
             }
         }
     
+	    struct AssetManagerImpl *impl;
+        std::unordered_map<uint32_t, Ref<Asset>> assets;
 
     private:
         RenderData renderData;
-
-        struct AssetManagerImpl *impl;
-        std::unordered_map<uint32_t, Ref<Asset>> assets;
         static uint32_t NewUUID();
         uint32_t initialScene = 0;
 
         friend class GraphicsEngine;
     };
+    */
 
 }
 

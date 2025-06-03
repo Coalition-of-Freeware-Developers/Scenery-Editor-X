@@ -17,6 +17,8 @@
 
 namespace SceneryEditorX
 {
+
+	/*
 	class PBR : public MaterialAsset
 	{
     public:
@@ -36,6 +38,7 @@ namespace SceneryEditorX
 	private:
 
 	};
+	*/
 
 
 }

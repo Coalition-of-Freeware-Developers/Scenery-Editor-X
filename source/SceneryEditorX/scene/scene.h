@@ -19,6 +19,7 @@
 
 namespace SceneryEditorX
 {
+    /*
     struct Serializer;
 	class EditorConfig;
 	
@@ -125,6 +126,7 @@ namespace SceneryEditorX
         std::string sceneName;
         bool isLoaded = false;
 	};
+	*/
 	
 } // namespace SceneryEditorX
 

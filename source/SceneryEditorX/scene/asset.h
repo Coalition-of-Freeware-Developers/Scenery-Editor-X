@@ -17,6 +17,7 @@
 
 namespace SceneryEditorX
 {
+    /*
     struct Serializer;
 
     /// -------------------------------------------------------
@@ -89,6 +90,7 @@ namespace SceneryEditorX
         virtual void Unload() = 0;
         virtual void SetName(const std::string &name) = 0;
     };
+    */
 
 } // namespace SceneryEditorX
 

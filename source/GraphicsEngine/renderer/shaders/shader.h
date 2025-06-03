@@ -13,6 +13,7 @@
 #pragma once
 #include <functional>
 #include <GraphicsEngine/vulkan/vk_device.h>
+#include <SceneryEditorX/core/pointers.h>
 
 /// -------------------------------------------------------
 
@@ -52,7 +53,7 @@ namespace SceneryEditorX
 	 * It handles shader modules that can be loaded from files or created from string sources.
 	 * The class supports hot-reloading through a callback system to notify dependents of changes.
 	 */
-	class Shader
+	class Shader : public RefCounted
 	{
 	public:
 		/**

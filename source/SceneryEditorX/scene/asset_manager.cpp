@@ -23,6 +23,8 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     /// Asset Manager
     struct AssetManagerImpl
     {
@@ -302,6 +304,7 @@ namespace SceneryEditorX
     {
         return impl->currentProjectPath.stem().string();
     }
+    */
 
 } // namespace SceneryEditorX
 

@@ -18,7 +18,7 @@
 
 namespace SceneryEditorX
 {
-	using Json = nlohmann::json;
+	/*using Json = nlohmann::json;
 
 	/// -------------------------------------------------------
 
@@ -240,6 +240,7 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 	};
+	*/
 
 } // namespace SceneryEditorX
 

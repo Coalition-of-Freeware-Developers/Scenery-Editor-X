@@ -23,9 +23,9 @@ namespace SceneryEditorX
      * Initializes the UniformBuffer instance by setting up the
      * memory allocator reference from the graphics engine.
      */
-    UniformBuffer::UniformBuffer()
+    UniformBuffer::UniformBuffer() : gfxEngine(nullptr)
     {
-        allocator = GraphicsEngine::Get()->GetMemAllocator();
+        allocator = CreateRef<MemoryAllocator>(GraphicsEngine::Get()->GetMemAllocator());
     }
 
     /**

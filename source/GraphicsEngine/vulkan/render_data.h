@@ -329,7 +329,7 @@ namespace SceneryEditorX
      * Resources include objects such as textures, buffers, shaders, and other
      * GPU-related assets that need to be managed throughout their lifecycle.
      */
-    struct Resource
+    struct Resource : RefCounted
     {
         /** @brief Descriptive name of the resource for debugging and tracking */
         std::string name;
@@ -338,7 +338,7 @@ namespace SceneryEditorX
         int32_t resourceID = -1;
 
         /** @brief Virtual destructor to ensure proper cleanup of derived resources */
-        virtual ~Resource() = default;
+        virtual ~Resource() override = default;
     };
 
     /// -----------------------------------------------------------

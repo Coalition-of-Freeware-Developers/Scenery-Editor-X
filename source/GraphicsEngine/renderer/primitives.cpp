@@ -20,6 +20,7 @@
 namespace SceneryEditorX
 {
 	
+	/*
 	ObjectType Primitives::CreateBox(const glm::vec3 &size)
 	{
         std::vector<MeshVertex> vertices;
@@ -170,6 +171,7 @@ namespace SceneryEditorX
 	{
 	    return {};
 	}
+	*/
 
 }
 

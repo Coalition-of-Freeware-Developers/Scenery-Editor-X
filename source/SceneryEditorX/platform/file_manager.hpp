@@ -91,7 +91,7 @@ namespace SceneryEditorX::IO
         */
 		/// -------------------------------------------------------
 
-        GLOBAL void ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t);
+        //GLOBAL void ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t);
         //LOCAL uint64_t ImportTexture(const std::filesystem::path &path, AssetManager &assets);
         INTERNAL void ReadTexture(const std::filesystem::path &path, std::vector<uint8_t> &data, int32_t &w, int32_t &h);
 

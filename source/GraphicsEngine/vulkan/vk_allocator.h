@@ -66,12 +66,12 @@ namespace SceneryEditorX
 	 * using the Vulkan Memory Allocator (VMA). It handles buffer and image allocations,
 	 * defragmentation, and memory usage statistics.
 	 */
-    class MemoryAllocator : public RefCounted
+    class MemoryAllocator
     {
     public:
-        MemoryAllocator() {}
+        MemoryAllocator() = default;
         explicit MemoryAllocator(std::string tag);
-        virtual ~MemoryAllocator() override;
+        virtual ~MemoryAllocator();
 
         /// Defragmentation methods
         void BeginDefragmentation(VmaDefragmentationFlags flags = 0);

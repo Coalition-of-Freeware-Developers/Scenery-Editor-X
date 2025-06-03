@@ -18,6 +18,8 @@
 
 namespace SceneryEditorX
 {
+
+	/*
 	enum CameraMode : uint8_t
 	{
 	    Orbit,
@@ -75,6 +77,7 @@ namespace SceneryEditorX
 
 		friend class AssetManager;
 	};
+	*/
 
 } // namespace SceneryEditorX
 

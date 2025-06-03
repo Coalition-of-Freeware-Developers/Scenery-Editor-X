@@ -17,7 +17,7 @@
 
 namespace SceneryEditorX
 {
-
+	/*
     PBR::PBR(const std::string &path) : MaterialAsset(path)
     {
         //TextureAsset::Load(path);
@@ -28,4 +28,5 @@ namespace SceneryEditorX
         // Unload PBR texture data
         //TextureAsset::Unload();
     }
+	*/
 }

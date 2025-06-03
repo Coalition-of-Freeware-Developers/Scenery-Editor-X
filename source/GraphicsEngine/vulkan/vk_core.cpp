@@ -213,16 +213,10 @@ namespace SceneryEditorX
         vkInstance = nullptr;
     }
 
-    // Static method to access the singleton instance
     Ref<GraphicsEngine> GraphicsEngine::Get()
     {
-        // First time, create the instance
-        if (!gfxContext)
-        {
-            SEDX_CORE_WARN_TAG("Graphics Engine", "GraphicsEngine singleton not initialized! Creating empty instance.");
-            gfxContext = CreateRef<GraphicsEngine>();
-        }
-        return gfxContext;
+        static Ref<GraphicsEngine> instance = CreateRef<GraphicsEngine>();
+        return instance;
     }
 
     // Static method to get the VkInstance

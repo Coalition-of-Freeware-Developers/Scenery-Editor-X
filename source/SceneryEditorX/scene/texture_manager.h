@@ -16,10 +16,12 @@
 #include <string>
 #include <unordered_map>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/*
 	class TextureManager
 	{
 	public:
@@ -32,7 +34,8 @@ namespace SceneryEditorX
 	private:
 	    std::unordered_map<std::string, std::shared_ptr<TextureAsset>> textures;
 	};
+	*/
 	
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
