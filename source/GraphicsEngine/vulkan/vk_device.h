@@ -333,9 +333,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
         /// Command pool management
-        std::map<std::thread::id, Ref<CommandPool>> CmdPools;
-        //Ref<CommandPool> GetThreadLocalCmdPool();
-        //Ref<CommandPool> GetOrCreateThreadLocalCmdPool();
+        std::map<std::thread::id, CommandPool> CmdPools;
 
         /**
          * @brief Create Vulkan 1.2+ features structure and load device extensions
@@ -372,6 +370,23 @@ namespace SceneryEditorX
     };
 
 	/// ---------------------------------------------------------
+
+    class CommandPool : public RefCounted
+    {
+    public:
+        /**
+         * @brief Create command pools for a device
+         * @param vulkanDevice The device to create command pools for
+         * @param type
+         */
+        CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
+        virtual ~CommandPool() override;
+
+		Queue queueType;
+		VkCommandPool commandPool = {VK_NULL_HANDLE};
+    };
+
+    /// ---------------------------------------------------------
 
 } // namespace SceneryEditorX
 
