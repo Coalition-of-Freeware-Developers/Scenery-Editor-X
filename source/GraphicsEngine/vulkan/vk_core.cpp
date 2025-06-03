@@ -190,7 +190,7 @@ namespace SceneryEditorX
     void GraphicsEngine::glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer)
     {
         /// Set the GLFWwindow user pointer to point to our Window instance
-        ::glfwSetWindowUserPointer(pointer, window.get());
+        ::glfwSetWindowUserPointer(pointer, window.Get());
     }
 
     /// -------------------------------------------------------
@@ -235,7 +235,7 @@ namespace SceneryEditorX
 
     void GraphicsEngine::Init(const Ref<Window> &window)
     {
-        // Store the instance in the singleton for future use
+        /// Store the instance in the singleton for future use
         gfxContext = CreateRef<GraphicsEngine>(*this);
         
         /// Store the window reference
@@ -430,7 +430,7 @@ namespace SceneryEditorX
         deviceFeatures.pipelineStatisticsQuery = VK_TRUE; // Enable pipeline statistics queries if needed
         deviceFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE; // Enable storage image writes without format
         
-        vkDevice = Ref<VulkanDevice>(vkPhysicalDevice, deviceFeatures);
+        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice, deviceFeatures);
         
         // Verify the device was created successfully before proceeding
         if (!vkDevice || vkDevice->GetDevice() == VK_NULL_HANDLE) {

@@ -19,7 +19,7 @@
 #include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/scene/model_asset.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -66,7 +66,7 @@ namespace SceneryEditorX
 	    }
 
 	    initialScene = j["initialScene"];
-	    for (auto& scene : GetAll<SceneAsset>(ObjectType::SceneAsset))
+        for (auto &scene : GetAll<SceneAsset>(ObjectType::SceneAsset))
 		{
 	        scene->UpdateParents();
 	    }
@@ -86,11 +86,11 @@ namespace SceneryEditorX
 	    std::vector<uint32_t> assetsUUIDs;
 	    assetsOrdered.reserve(assets.size());
 
-	    for (auto& assetPair : assets)
-		{
-	        assetsOrdered.push_back(assetPair.second);
-	        assetsUUIDs.push_back(assetPair.first);
-	    }
+        for (auto &[uuid, asset] : assets)
+        {
+            assetsOrdered.push_back(asset);
+            assetsUUIDs.push_back(uuid);
+        }
 
 	    uint32_t assetsHash = Encoding::HashUUID(assetsUUIDs);
 	    if (assetsHash != impl->lastAssetsHash)
@@ -100,7 +100,7 @@ namespace SceneryEditorX
 	        j["scenes"] = Json::object();
             j["assets"] = Json::array();
 
-	        // serialize assets
+	        /// Serialize Assets
 	        std::ranges::sort(assetsOrdered, [&](const Ref<Asset>& a, const Ref<Asset>& b) {return a->type < b->type; });
 
 	        for (Ref<Asset> asset : assetsOrdered)
@@ -120,7 +120,7 @@ namespace SceneryEditorX
 	        impl->lastJson = std::move(j);
 	    }
 
-	    // always serialize scenes
+	    /// always serialize scenes
 	    for (auto& scene : GetAll<SceneAsset>(ObjectType::SceneAsset))
 		{
             std::string sceneUuid = std::to_string(scene->uuid);

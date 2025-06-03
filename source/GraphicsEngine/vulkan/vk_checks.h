@@ -20,7 +20,7 @@ namespace SceneryEditorX
 {
 	/// -------------------------------------------------------
 
-    class VulkanChecks
+    class VulkanChecks : public RefCounted
     {
     public:
         void InitChecks(const std::vector<const char *> &extensions, const std::vector<const char *> &layers, const VkPhysicalDevice &device);

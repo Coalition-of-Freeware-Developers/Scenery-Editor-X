@@ -10,11 +10,8 @@
 * Created: 7/4/2025
 * -------------------------------------------------------
 */
-#include <Editor/core/editor.h>
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
 #include <vulkan/vulkan.h>
-
-#include "vk_util.h"
 
 /// -------------------------------------------------------
 
@@ -75,14 +72,14 @@ namespace SceneryEditorX
     }
     */
 
-    CommandBuffer::CommandBuffer(uint32_t count) : gfxEngine(GraphicsEngine::Get())
+    CommandBuffer::CommandBuffer(uint32_t count)
     {
         // Get the device from graphics engine
-        auto vulkanDevice = gfxEngine->GetLogicDevice();
-        auto device = vulkanDevice->GetDevice();
+        GraphicsEngine::Get();
+        auto device = GraphicsEngine::Get()->GetLogicDevice();
 
         // Create command pool with the VulkanDevice
-        cmdPool = CreateRef<CommandPool>(vulkanDevice);
+        //cmdPool = CreateRef<CommandPool>(vulkanDevice);
 
         // Resize command buffers array
         cmdBuffers.resize(count);
@@ -96,7 +93,7 @@ namespace SceneryEditorX
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocInfo.commandBufferCount = count;
 
-            vkAllocateCommandBuffers(device, &allocInfo, cmdBuffers.data());
+            vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, cmdBuffers.data());
         }
     }
     CommandBuffer::~CommandBuffer() = default;
@@ -108,12 +105,12 @@ namespace SceneryEditorX
 
         auto &cmd = GetCurrentCommandResources();
 
-        vkWaitForFences(gfxEngine->GetLogicDevice()->GetDevice(), 1, &cmd.fence, VK_TRUE, UINT64_MAX);
-        vkResetFences(gfxEngine->GetLogicDevice()->GetDevice(), 1, &cmd.fence);
+        vkWaitForFences(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), 1, &cmd.fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), 1, &cmd.fence);
 
 		if (!cmd.timeStamps.empty())
         {
-            vkGetQueryPoolResults(gfxEngine->GetLogicDevice()->GetDevice(), cmd.queryPool,0,cmd.timeStamps.size(),
+            vkGetQueryPoolResults(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), cmd.queryPool,0,cmd.timeStamps.size(),
 								  cmd.timeStamps.size() * sizeof(uint64_t),cmd.timeStamps.data(),sizeof(uint64_t),VK_QUERY_RESULT_64_BIT);
             for (int i = 0; i < cmd.timeStampNames.size(); i++)
             {
@@ -126,7 +123,7 @@ namespace SceneryEditorX
         }
 
 		InternalQueue &internalQueue = queues[queue];
-        vkResetCommandPool(gfxEngine->GetLogicDevice()->GetDevice(), GetCommandPool()->GetComputeCmdPool(), 0);
+        vkResetCommandPool(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), GetCommandPool()->GetComputeCmdPool(), 0);
         cmd.stagingOffset = 0;
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -183,7 +180,7 @@ namespace SceneryEditorX
         const auto &cmd = GetCurrentCommandResources();
 
         constexpr VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        const VkSwapchainKHR swapchain = gfxEngine->GetSwapChain()->GetSwapchain();
+        const VkSwapchainKHR swapchain = GraphicsEngine::Get()->GetSwapChain()->GetSwapchain();
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -232,7 +229,7 @@ namespace SceneryEditorX
 	 * 
 	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
 	 */
-    CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice) : device(vulkanDevice)
+    CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice)
 	{
 		const auto vulkanDeviceHandle = vulkanDevice->GetDevice();
 		const auto &queueIndices = vulkanDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
@@ -283,10 +280,9 @@ namespace SceneryEditorX
 	 */
 	CommandPool::~CommandPool()
 	{
-		if (!device || !device->GetDevice())
+        VkDevice vulkanDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice(); 
+		if (!vulkanDevice)
             return;
-
-        const auto vulkanDevice = device->GetDevice();
 
 		/// Only destroy compute pool if it's different from graphics pool
 		if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
@@ -324,7 +320,7 @@ namespace SceneryEditorX
 	 */
 	VkCommandBuffer CommandPool::AllocateCommandBuffer(const bool begin, const bool compute) const
 	{
-		const auto vulkanDevice = device->GetDevice();
+        VkDevice vulkanDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice(); 
 		const VkCommandPool cmdPool = compute ? ComputeCmdPool : GraphicsCmdPool;
 
 		VkCommandBufferAllocateInfo allocInfo{};
@@ -414,13 +410,13 @@ namespace SceneryEditorX
 	 */
 	void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer, const VkQueue queue) const
 	{
+        VkDevice vulkanDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice();
+
 		if (cmdBuffer == VK_NULL_HANDLE)
 		{
 			SEDX_CORE_WARN_TAG("Graphics Engine", "Attempted to flush a null command buffer");
 			return;
 		}
-
-		const auto vulkanDevice = device->GetDevice();
 
 		/// End the command buffer
 		VkResult result = vkEndCommandBuffer(cmdBuffer);

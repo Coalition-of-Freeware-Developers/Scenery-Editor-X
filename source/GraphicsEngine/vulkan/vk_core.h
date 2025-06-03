@@ -32,11 +32,11 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 	
-	class GraphicsEngine
+	class GraphicsEngine : public RefCounted
     {
 	public:
         GraphicsEngine();
-        virtual ~GraphicsEngine();
+        virtual ~GraphicsEngine() override;
         virtual void Init(const Ref<Window> &window);
         virtual void CreateInstance(const Ref<Window> &window);
 

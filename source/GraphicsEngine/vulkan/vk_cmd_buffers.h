@@ -12,8 +12,9 @@
 */
 #pragma once
 #include <GraphicsEngine/vulkan/render_data.h>
+#include <SceneryEditorX/core/pointers.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -28,13 +29,12 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	class CommandBuffer
+	class CommandBuffer : public RefCounted
 	{
 	public:
-
-        CommandBuffer(uint32_t count = 0);
-        CommandBuffer(bool swapchain);
-        ~CommandBuffer();
+        explicit CommandBuffer(uint32_t count = 0);
+        explicit CommandBuffer(bool swapchain);
+        virtual ~CommandBuffer() override;
 
         virtual void Begin(Queue queue);
         virtual void End(VkSubmitInfo submitInfo);
@@ -43,11 +43,9 @@ namespace SceneryEditorX
         [[nodiscard]] CommandResources &GetCurrentCommandResources() const;
         [[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() const { return activeCmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
-		[[nodiscard]] Ref<CommandPool> GetCommandPool() const { return cmdPool; }
+		//[[nodiscard]] Ref<CommandPool> GetCommandPool() const { return cmdPool; }
 
 	private:
-        Ref<GraphicsEngine> gfxEngine;
-        Ref<CommandPool> cmdPool = nullptr;
         VkCommandBuffer activeCmdBuffer = nullptr;
 
         std::vector<VkFence> waitFences;
@@ -78,7 +76,7 @@ namespace SceneryEditorX
          * @brief Create command pools for a device
          * @param vulkanDevice The device to create command pools for
          */
-        explicit CommandPool(const Ref<VulkanDevice> &vulkanDevice);
+        explicit CommandPool(const VulkanDevice &vulkanDevice);
         virtual ~CommandPool();
 
         /**
@@ -109,7 +107,6 @@ namespace SceneryEditorX
         [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
 
     private:
-        Ref<VulkanDevice> device;
         VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
         VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
     };

@@ -44,7 +44,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	class SwapChain
+	class SwapChain : public RefCounted
 	{
     public:
         SwapChain() = default;

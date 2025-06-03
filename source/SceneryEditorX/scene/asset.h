@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/core/pointers.h>
 
 /// -------------------------------------------------------
 
@@ -66,7 +67,7 @@ namespace SceneryEditorX
 	        return *this;
 	    }
 	
-	    virtual ~Object();
+	    virtual ~Object() override;
 	    virtual void Serialize(Serializer &ser) = 0;
 	};
 
