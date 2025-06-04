@@ -13,13 +13,13 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/window.h>
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <GraphicsEngine/vulkan/vk_allocator.h>
 #include <GraphicsEngine/vulkan/vk_checks.h>
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
 #include <GraphicsEngine/vulkan/vk_device.h>
 #include <GraphicsEngine/vulkan/vk_swapchain.h>
+#include <SceneryEditorX/core/window.h>
 
 /// -------------------------------------------------------
 

@@ -15,7 +15,6 @@
 #include <GraphicsEngine/vulkan/vk_buffers.h>
 #include <GraphicsEngine/vulkan/vk_checks.h>
 #include <GraphicsEngine/vulkan/vk_device.h>
-#include <GraphicsEngine/vulkan/vk_util.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <utility>
 
@@ -1709,7 +1708,7 @@ namespace SceneryEditorX
 	 * 
 	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
 	 */
-    CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type)
+    CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type) : commandPool(nullptr)
     {
         const auto vulkanDeviceHandle = vulkanDevice->GetDevice();
         const auto &queueIndices = vulkanDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
@@ -1725,8 +1724,8 @@ namespace SceneryEditorX
         VkResult result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &queueType);
         if (result != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine",
-                                "Failed to create graphics command pool! Error: {}",
-                                static_cast<int>(result));
+                            "Failed to create graphics command pool! Error: {}",
+                            static_cast<int>(result));
 
         /// Create compute command pool if compute queue is available
         if (queueIndices.GetComputeFamily() >= 0)

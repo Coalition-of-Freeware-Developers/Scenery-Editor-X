@@ -212,7 +212,7 @@ namespace SceneryEditorX
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-            vkCmdPipelineBarrier(cmdBuffer->GetActiveCommandBuffer(),
+            vkCmdPipelineBarrier(cmdBuffer->GetActiveCmdBuffer(),
                                  VK_PIPELINE_STAGE_TRANSFER_BIT,
                                  VK_PIPELINE_STAGE_TRANSFER_BIT,
                                  0,
@@ -237,7 +237,7 @@ namespace SceneryEditorX
             blit.dstSubresource.baseArrayLayer = 0;
             blit.dstSubresource.layerCount = 1;
 
-            vkCmdBlitImage(cmdBuffer->GetActiveCommandBuffer(),
+            vkCmdBlitImage(cmdBuffer->GetActiveCmdBuffer(),
                            image,
                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                            image,
@@ -251,7 +251,7 @@ namespace SceneryEditorX
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-            vkCmdPipelineBarrier(cmdBuffer->GetActiveCommandBuffer(),
+            vkCmdPipelineBarrier(cmdBuffer->GetActiveCmdBuffer(),
                                  VK_PIPELINE_STAGE_TRANSFER_BIT,
                                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                  0,
@@ -274,7 +274,7 @@ namespace SceneryEditorX
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-        vkCmdPipelineBarrier(cmdBuffer->GetActiveCommandBuffer(),
+        vkCmdPipelineBarrier(cmdBuffer->GetActiveCmdBuffer(),
                              VK_PIPELINE_STAGE_TRANSFER_BIT,
                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                              0,

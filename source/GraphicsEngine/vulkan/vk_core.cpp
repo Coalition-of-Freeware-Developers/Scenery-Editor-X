@@ -14,10 +14,10 @@
 #include <GraphicsEngine/vulkan/vk_checks.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
 #include <GraphicsEngine/vulkan/vk_util.h>
+#include <memory>
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/ui/ui.h>
-#include <memory>
 
 /// -------------------------------------------------------
 
@@ -213,10 +213,10 @@ namespace SceneryEditorX
         vkInstance = nullptr;
     }
 
-    // Static method to access the singleton instance
+    /// Static method to access the singleton instance
     Ref<GraphicsEngine> GraphicsEngine::Get()
     {
-        // First time, create the instance
+        /// First time, create the instance
         if (!gfxContext)
         {
             SEDX_CORE_WARN_TAG("Graphics Engine", "GraphicsEngine singleton not initialized! Creating empty instance.");
@@ -225,17 +225,14 @@ namespace SceneryEditorX
         return gfxContext;
     }
 
-    // Static method to get the VkInstance
-    VkInstance GraphicsEngine::GetInstance() 
-    {
-        return vkInstance;
-    }
+    /// Static method to get the VkInstance
+    VkInstance GraphicsEngine::GetInstance() { return vkInstance; }
 
     /// -------------------------------------------------------
 
     void GraphicsEngine::Init(const Ref<Window> &window)
     {
-        // Store the instance in the singleton for future use
+        /// Store the instance in the singleton for future use
         gfxContext = CreateRef<GraphicsEngine>(*this);
         
         /// Store the window reference

@@ -222,9 +222,9 @@ namespace SceneryEditorX
 
         VkBufferCopy copyRegion{};
         copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer->GetActiveCommandBuffer(), srcBuffer, dstBuffer, 1, &copyRegion);
+        vkCmdCopyBuffer(commandBuffer->GetActiveCmdBuffer(), srcBuffer, dstBuffer, 1, &copyRegion);
 
-        EndSingleTimeCommands(commandBuffer->GetActiveCommandBuffer());
+        EndSingleTimeCommands(commandBuffer->GetActiveCmdBuffer());
     }
 
     GLOBAL void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
@@ -246,9 +246,9 @@ namespace SceneryEditorX
         /// For now, using the parameters passed to the function.
         region.imageExtent = {.width = width, .height = height, .depth = 1};
 
-        vkCmdCopyBufferToImage(commandBuffer->GetActiveCommandBuffer(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        vkCmdCopyBufferToImage(commandBuffer->GetActiveCmdBuffer(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        EndSingleTimeCommands(commandBuffer->GetActiveCommandBuffer());
+        EndSingleTimeCommands(commandBuffer->GetActiveCmdBuffer());
     }
 
 } // namespace SceneryEditorX

@@ -285,7 +285,7 @@ namespace SceneryEditorX
             cmdBuffer = CreateRef<CommandBuffer>();
         }
 
-        VkCommandBuffer vkCmdBuffer = cmdBuffer->GetActiveCommandBuffer();
+        VkCommandBuffer vkCmdBuffer = cmdBuffer->GetActiveCmdBuffer();
 
         /// Set the command buffer for ImGui to render into
         ui.SetActiveCommandBuffer(vkCmdBuffer);  

@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
+#include <GraphicsEngine/vulkan/vk_core.h>
 #include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
@@ -72,36 +73,80 @@ namespace SceneryEditorX
     }
     */
 
-    CommandBuffer::CommandBuffer(uint32_t count)
+    CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : debugName(std::move(debugName))
     {
-        // Get the device from graphics engine
-        GraphicsEngine::Get();
-        auto device = GraphicsEngine::Get()->GetLogicDevice();
+        /// Get the device from graphics engine
+        auto device       = GraphicsEngine::Get()->GetLogicDevice();
+        auto vulkanDevice = GraphicsEngine::GetCurrentDevice();
 
-        // Create command pool with the VulkanDevice
-        //cmdPool = CreateRef<CommandPool>(vulkanDevice);
+		if (count == 0)
+		{
+            /// 0 = one per frame in flight
+            count = data.framesInFlight;
+		}
 
-        // Resize command buffers array
-        cmdBuffers.resize(count);
+		SEDX_CORE_VERIFY(count > 0, "CommandBuffer count must be greater than 0");
 
-        // Allocate command buffers if count > 0
+        /// Allocate command buffers if count > 0
         if (count > 0)
         {
             VkCommandBufferAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.commandPool = cmdPool->GetComputeCmdPool();
-            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.commandPool        = cmdPool;
+            allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocInfo.commandBufferCount = count;
+            commandBuffer.resize(count);
 
-            vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, cmdBuffers.data());
+            VK_CHECK_RESULT(vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, commandBuffer.data()))
+
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				/// Set debug name for each command buffer
+				if (!debugName.empty())
+				{
+					VkDebugUtilsObjectNameInfoEXT nameInfo{};
+					nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+					nameInfo.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
+					nameInfo.objectHandle = reinterpret_cast<uint64_t>(commandBuffer[i]);
+					nameInfo.pObjectName = (debugName + std::to_string(i)).c_str();
+                    VK_CHECK_RESULT(vkSetDebugUtilsObjectNameEXT(device->GetDevice(), &nameInfo))
+				}
+			}
+        }
+
+    }
+
+    CommandBuffer::~CommandBuffer()
+    {
+        VkCommandPool commandPool = cmdPool;
+		if (!commandBuffer.empty())
+		{
+			auto device = GraphicsEngine::Get()->GetLogicDevice();
+			vkDestroyCommandPool(device->GetDevice(), commandPool, nullptr);
+			commandBuffer.clear();
         }
     }
-    CommandBuffer::~CommandBuffer() = default;
+
+    /// -------------------------------------------------------
+
+    Ref<CommandBuffer> CommandBuffer::Get()
+    {
+        if (!cmdBuffers)
+		{
+            SEDX_CORE_WARN_TAG("CommandBuffer", "Creating command buffers for the first time");
+            cmdBuffers = CreateRef<CommandBuffer>();
+        }
+        return cmdBuffers;
+    }
+
+    /// -------------------------------------------------------
 
     void CommandBuffer::Begin(const Queue queue)
     {
         SEDX_ASSERT(currentQueue == Queue::Count, "Already recording a command buffer");
         currentQueue = queue;
+
+		Ref<CommandBuffer> cmdBufferInst;
 
         auto &cmd = GetCurrentCommandResources();
 
@@ -123,7 +168,7 @@ namespace SceneryEditorX
         }
 
 		InternalQueue &internalQueue = queues[queue];
-        vkResetCommandPool(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), GetCommandPool()->GetComputeCmdPool(), 0);
+        vkResetCommandPool(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), cmdPool, 0);
         cmd.stagingOffset = 0;
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -168,11 +213,13 @@ namespace SceneryEditorX
      * 
      * @see Begin, End, Submit
      */
+    /*
     VkCommandBuffer CommandBuffer::GetCommandBuffer(const RenderData &frameIndex) const
     {
         SEDX_CORE_ASSERT(frameIndex.frameIndex < cmdBuffers.size());
         return cmdBuffers[frameIndex.frameIndex];
     }
+	*/
 
     void CommandBuffer::Submit()
     {

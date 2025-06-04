@@ -126,7 +126,7 @@ namespace SceneryEditorX
 	     * 
 	     * @return const char* Path to the shader directory
 	     */
-	    static constexpr const char* GetShaderDirectoryPath()
+	    GLOBAL constexpr const char* GetShaderDirectoryPath()
         {
             return "assets/shaders/";
         }
@@ -149,7 +149,6 @@ namespace SceneryEditorX
         /** @brief List of callbacks to invoke when shader is reloaded */
         std::vector<ShaderReloadedCallback> reloadCallbacks;
 
-		/** @brief */
 		std::string name;
 	};
 

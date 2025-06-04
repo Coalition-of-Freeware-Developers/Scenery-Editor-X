@@ -27,44 +27,59 @@ namespace SceneryEditorX
     inline InternalQueue queues[Present];
     inline Queue currentQueue = Present;
 
+    enum GPUQueueType : uint8_t
+    {
+        GPU_QUEUE_GRAPHICS = 0,
+        GPU_QUEUE_COMPUTE = 1,
+        GPU_QUEUE_TRANSFER = 2,
+        GPU_QUEUES_COUNT = 3,
+        GPU_QUEUE_UNKNOWN = static_cast<uint8_t>(-1)
+    };
+
     /// -------------------------------------------------------
 
 	class CommandBuffer : public RefCounted
 	{
 	public:
-        CommandBuffer(uint32_t count = 0);
+        CommandBuffer(uint32_t count = 0, std::string debugName = "");
         CommandBuffer(bool swapchain);
-        ~CommandBuffer();
+        virtual ~CommandBuffer() override;
+
+		GLOBAL Ref<CommandBuffer> Get(); ///< Static accessor method to get the singleton instance
 
         virtual void Begin(Queue queue);
         virtual void End(VkSubmitInfo submitInfo);
         virtual void Submit();
 
         [[nodiscard]] CommandResources &GetCurrentCommandResources() const;
-        [[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() const { return activeCmdBuffer; }
+        [[nodiscard]] VkCommandBuffer GetActiveCmdBuffer() const { return activeCmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
-        void GetCommandPool();
-        //[[nodiscard]] Ref<CommandPool> GetCommandPool() const { return cmdPool; }
 
 	private:
-        VkCommandBuffer activeCmdBuffer = nullptr;
+        INTERNAL Ref<CommandBuffer> cmdBuffers;
 
-        std::vector<VkFence> waitFences;
-        std::vector<VkCommandBuffer> cmdBuffers;
-        std::map<std::string, float> timeStampTable;
+        VkCommandBuffer activeCmdBuffer = nullptr;
+        VkCommandPool cmdPool = nullptr;
+
+	    std::vector<VkFence> waitFences;
+	    std::vector<VkCommandBuffer> commandBuffer;
+
+        std::vector<VkQueryPool> TimestampQueryPools;
+        std::vector<VkQueryPool> PipelineQueryPools;
 
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;
 
-		std::vector<VkQueryPool> TimestampQueryPools;
-		std::vector<VkQueryPool> PipelineQueryPools;
+        std::map<std::string, float> timeStampTable;
 
+		RenderData data; 
 		uint32_t availQuery = 2;
         uint32_t queryCount = 0;
 		uint32_t pipelineQueryCount = 0;
         uint32_t timeStampPerPool = 64;
+        std::string debugName;
 
-		friend class VulkanDevice;
+        friend class VulkanDevice;
         friend class GraphicsEngine;
 	};
 
@@ -110,4 +125,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

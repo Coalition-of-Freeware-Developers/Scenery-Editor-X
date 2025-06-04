@@ -377,13 +377,13 @@ namespace SceneryEditorX
         /**
          * @brief Create command pools for a device
          * @param vulkanDevice The device to create command pools for
-         * @param type
+         * @param type The type of queue this command pool will be used with (graphics, compute, transfer, etc.)
          */
         CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
-        virtual ~CommandPool() override;
+        virtual ~CommandPool();
 
 		Queue queueType;
-		VkCommandPool commandPool = {VK_NULL_HANDLE};
+		VkCommandPool commandPool;
     };
 
     /// ---------------------------------------------------------

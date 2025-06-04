@@ -26,6 +26,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	struct Serializer;
 
 	/// -------------------------------------------------------
@@ -195,6 +196,7 @@ namespace SceneryEditorX
 
 		friend class GraphicsEngine;
 	};
+	*/
 
 }
 

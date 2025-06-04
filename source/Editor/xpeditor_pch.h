@@ -121,18 +121,25 @@
 #include <SceneryEditorX/resource.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/platform/platform_states.h>
 
 /**
 ##########################################################
+					Development Macros
 ##########################################################
 */
 
 #ifdef SEDX_DEBUG
-	std::filesystem::path workingDir = std::filesystem::current_path();
+    extern std::filesystem::path workingDir;
 #endif
+
+#ifdef SEDX_DEBUG && SEDX_PROFILING_ENABLED
+	#include <SceneryEditorX/logging/profiler.hpp>
+	#define TRACY_ENABLE
+#endif
+
+/// -------------------------------------------------------
 
 namespace fs = std::filesystem;
 

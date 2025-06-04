@@ -32,4 +32,5 @@
 	#define SEDX_PROFILE_SCOPE_DYNAMIC(NAME)
 	#define SEDX_PROFILE_THREAD(...)
 #endif
+
 /// -------------------------------------------------------
