@@ -16,6 +16,7 @@
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/core/window/icon.h>
+#include <SceneryEditorX/core/pointers.h>
 
 /// -------------------------------------------------------
 
@@ -70,14 +71,13 @@ namespace SceneryEditorX
 	
 	/// -------------------------------------------------------
 	
-	class Window
+	class Window : public RefCounted
 	{
 	public:
 	    Window();
-	    ~Window();
-        RenderData renderData;
-        Ref<RenderData> GetRenderData() { return CreateRef<RenderData>(renderData); }
-		Ref<IconData> GetIconData() { return CreateRef<IconData>(); }
+        virtual ~Window();
+        RenderData GetRenderData() { return renderData; }
+		IconData GetIconData() { return iconData; }
 
         GLOBAL void Update();
         GLOBAL std::string  VideoModeText(const GLFWvidmode &mode);
@@ -106,6 +106,8 @@ namespace SceneryEditorX
         WindowCallbacks windowCallbacks;
         WindowData windowData;
         GLFWmonitor **mainMonitor;
+        RenderData renderData;
+        IconData iconData;
         bool captureMovement;
         bool mousePressed;
         bool initState;

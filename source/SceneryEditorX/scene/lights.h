@@ -18,6 +18,8 @@
 
 namespace SceneryEditorX
 {
+
+	/*
 	enum LightType : uint8_t
 	{
 	    Point = 0,
@@ -74,6 +76,7 @@ namespace SceneryEditorX
 	private:
         friend class AssetManager;
     };
+    */
 
 } // namespace SceneryEditorX
 

@@ -13,10 +13,12 @@
 #include <memory>
 #include <SceneryEditorX/scene/material_manager.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/*
 	std::shared_ptr<MaterialAsset> MaterialManager::LoadMaterial(const std::string &path)
 	{
         if (auto it = materials.find(path); it != materials.end())
@@ -36,7 +38,8 @@ namespace SceneryEditorX
 	        materials.erase(it);
 	    }
 	}
+	*/
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -11,11 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/core/pointers.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    /*
     struct Serializer;
 
     /// -------------------------------------------------------
@@ -50,7 +52,7 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
-	struct Object
+	struct Object : RefCounted
 	{
 	    std::string name = "Uninitialized";
 	    uint32_t uuid = 0;
@@ -66,7 +68,7 @@ namespace SceneryEditorX
 	        return *this;
 	    }
 	
-	    virtual ~Object();
+	    virtual ~Object() override;
 	    virtual void Serialize(Serializer &ser) = 0;
 	};
 
@@ -88,6 +90,7 @@ namespace SceneryEditorX
         virtual void Unload() = 0;
         virtual void SetName(const std::string &name) = 0;
     };
+    */
 
 } // namespace SceneryEditorX
 

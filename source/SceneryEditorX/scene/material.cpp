@@ -17,11 +17,13 @@
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/texture_manager.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    // Use nlohmann json for parsing material files
+
+    /*
+    /// Use nlohmann json for parsing material files
     using json = nlohmann::json;
 
     MaterialAsset::MaterialAsset(const std::string &path)
@@ -36,23 +38,23 @@ namespace SceneryEditorX
 
     void MaterialAsset::Serialize(Serializer &ser)
     {
-        // TODO: Implement serialization
-        // This would store material properties in a specific format
+        /// TODO: Implement serialization
+        /// This would store material properties in a specific format
     }
 
     void MaterialAsset::Load(const std::string &path)
     {
-        // Store the path
+        /// Store the path
         materialPath = path;
         materialName = path.substr(path.find_last_of("/\\") + 1);
         
-        // Default values
+        /// Default values
         color = Vec4(1.0f, 1.0f, 1.0f, 1.0f);
         emission = Vec3(0.0f);
         metallic = 0.0f;
         roughness = 1.0f;
         
-        // Clear any existing texture references
+        /// Clear any existing texture references
         aoMap = nullptr;
         colorMap = nullptr;
         normalMap = nullptr;
@@ -64,7 +66,7 @@ namespace SceneryEditorX
 
     void MaterialAsset::Unload()
     {
-        // Release texture references
+        /// Release texture references
         aoMap = nullptr;
         colorMap = nullptr;
         normalMap = nullptr;
@@ -86,6 +88,7 @@ namespace SceneryEditorX
     {
         return materialName;
     }
+    */
 
 } // namespace SceneryEditorX
 

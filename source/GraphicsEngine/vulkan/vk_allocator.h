@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
 #include <GraphicsEngine/buffers/buffer_data.h>
 
 /// -------------------------------------------------------
@@ -70,9 +69,9 @@ namespace SceneryEditorX
     class MemoryAllocator
     {
     public:
-        MemoryAllocator() {}
+        MemoryAllocator() = default;
         explicit MemoryAllocator(std::string tag);
-        ~MemoryAllocator();
+        virtual ~MemoryAllocator();
 
         /// Defragmentation methods
         void BeginDefragmentation(VmaDefragmentationFlags flags = 0);

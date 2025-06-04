@@ -20,6 +20,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	TextureAsset::TextureAsset(const std::string &path)
 	{
         texturePath = path;
@@ -42,13 +43,13 @@ namespace SceneryEditorX
         texturePath = path;
         
         /// Get Vulkan resources
-        renderData = CreateRef<RenderData>();
+        RenderData renderData;
         vkDevice = GraphicsEngine::GetCurrentDevice();
         vkPhysDevice = vkDevice->GetPhysicalDevice();
         allocator = GraphicsEngine::Get()->GetMemAllocator();        /// Get memory allocator as a Ref instead of directly assigning the VmaAllocator
         //allocator = MemoryAllocator::AllocateBuffer()::CreateRef<MemoryAllocator>();
 
-        if (auto configPtr = config.lock())
+        if (auto configPtr = config.Lock())
         {
             std::string actualPath = path;
             if (!path.empty() && path[0] != '/' && path[0] != '\\' && (path.size() < 2 || path[1] != ':'))
@@ -80,15 +81,11 @@ namespace SceneryEditorX
                 stbi_image_free(pixels);
             }
             else
-            {
                 SEDX_CORE_ERROR("Failed to load texture: {}", actualPath);
-            }
         }
         else
-        {
             SEDX_CORE_ERROR("Failed to access EditorConfig: config is expired or null");
-        }
-	}
+    }
 
     void TextureAsset::Unload()
     {
@@ -316,6 +313,7 @@ namespace SceneryEditorX
 
         return imageView;
     }
+    */
 
 } // namespace SceneryEditorX
 

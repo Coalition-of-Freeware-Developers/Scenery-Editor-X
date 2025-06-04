@@ -22,8 +22,8 @@ struct GLFWwindow;
 
 namespace SceneryEditorX
 {
-
     class Pipeline;
+    class GraphicsEngine;
 
     /// -------------------------------------------------------
 
@@ -44,7 +44,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	class SwapChain
+	class SwapChain : public RefCounted
 	{
     public:
         SwapChain() = default;
@@ -90,9 +90,8 @@ namespace SceneryEditorX
 
 	private:
         VkInstance instance = nullptr;
-        Ref<GraphicsEngine> gfxEngine;
         Ref<VulkanDevice> physDevice;
-        Ref<Pipeline> pipeline;
+        Ref<GraphicsEngine> gfxEngine;
 
 		/// Helper methods
         uint32_t AcquireNextImage();

@@ -18,7 +18,7 @@
 
 namespace SceneryEditorX
 {
-	using Json = nlohmann::json;
+	/*using Json = nlohmann::json;
 
 	/// -------------------------------------------------------
 
@@ -101,15 +101,16 @@ namespace SceneryEditorX
 			{
                 if (!j.contains("type") || !j.contains("name") || !j.contains("uuid"))
                 {
-                    throw std::runtime_error("JSON object doesn't contain required fields (type, name, uuid)");
+                    SEDX_CORE_ERROR_TAG("Serializer", "JSON object doesn't contain required fields (type, name, uuid)");
                 }
                 ObjectType type = j["type"];
                 std::string name = j["name"];
                 uint32_t uuid = j["uuid"];
-                object = std::dynamic_pointer_cast<T>(manager.CreateObject(type, name, uuid));
+                auto createdObject = manager.CreateObject(type, name, uuid);
+                object = std::dynamic_pointer_cast<T>(createdObject);
                 if (!object)
                 {
-                    throw std::runtime_error("Failed to create object of requested type");
+                    SEDX_CORE_ERROR_TAG("Serializer", "Failed to create object of requested type");
                 }
                 Serializer ser(j, storage, directory, manager);
                 object->Serialize(ser);
@@ -239,6 +240,7 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 	};
+	*/
 
 } // namespace SceneryEditorX
 

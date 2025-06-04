@@ -18,13 +18,15 @@
 #include <SceneryEditorX/scene/node.h>
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/*
 	struct Serializer;
 	
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
     struct MeshVertex
     {
@@ -51,31 +53,31 @@ namespace SceneryEditorX
         static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions() {
             std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
             
-            // Position
+            /// Position
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
             attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[0].offset = offsetof(MeshVertex, position);
             
-            // Color
+            /// Color
             attributeDescriptions[1].binding = 0;
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[1].offset = offsetof(MeshVertex, color);
             
-            // Normal
+            /// Normal
             attributeDescriptions[2].binding = 0;
             attributeDescriptions[2].location = 2;
             attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[2].offset = offsetof(MeshVertex, normal);
             
-            // Tangent
+            /// Tangent
             attributeDescriptions[3].binding = 0;
             attributeDescriptions[3].location = 3;
             attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
             attributeDescriptions[3].offset = offsetof(MeshVertex, tangent);
             
-            // Texture coordinates
+            /// Texture coordinates
             attributeDescriptions[4].binding = 0;
             attributeDescriptions[4].location = 4;
             attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
@@ -85,7 +87,7 @@ namespace SceneryEditorX
         }
     };
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     class ModelAsset : public Asset
 	{
@@ -112,7 +114,7 @@ namespace SceneryEditorX
         std::vector<MeshVertex> vertices;
         std::vector<uint32_t> indices;
 
-        // -------------------------------------------------------
+        /// -------------------------------------------------------
 
         virtual void Load(const std::string &path) override;
         virtual void Unload() override;
@@ -144,8 +146,9 @@ namespace SceneryEditorX
         virtual void Serialize(Serializer &ser) override;
     };
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
+	*/
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -18,6 +18,8 @@
 
 namespace SceneryEditorX
 {
+
+	/*
 	struct Serializer;
 	
 	/// -------------------------------------------------------
@@ -56,5 +58,6 @@ namespace SceneryEditorX
         std::string materialPath;
         std::string materialName;
     };
+    */
 	
 } // namespace SceneryEditorX

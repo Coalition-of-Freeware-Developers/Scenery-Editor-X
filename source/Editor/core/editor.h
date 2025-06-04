@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	 * UI system, asset management, and viewport rendering. It handles initialization,
 	 * main loop execution, frame rendering, and resource management.
 	 */
-	class EditorApplication
+	class EditorApplication : public RefCounted
 	{
 	public:
         /**

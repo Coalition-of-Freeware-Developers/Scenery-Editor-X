@@ -15,6 +15,7 @@
 #include <format>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/core/pointers.h>
 
 /// ---------------------------------------------------------
 
@@ -34,7 +35,7 @@ namespace SceneryEditorX
         int AutoSaveTimer = 300;
 	};
 
-    class Project
+    class Project : public RefCounted
     {
     public:
 		Project();
@@ -80,7 +81,7 @@ namespace SceneryEditorX
     private:
         ProjectConfig config;
 		inline GLOBAL Ref<Project> currentProject;
-        inline GLOBAL Ref<AssetManager> assetManager;
+        //inline GLOBAL Ref<AssetManager> assetManager;
     };
 }
 

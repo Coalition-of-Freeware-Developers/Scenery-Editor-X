@@ -16,6 +16,7 @@
 
 namespace SceneryEditorX
 {
+	/*
 	std::shared_ptr<TextureAsset> TextureManager::LoadTexture(const std::string &path)
 	{
         if (auto it = textures.find(path); it != textures.end())
@@ -35,6 +36,7 @@ namespace SceneryEditorX
 	        textures.erase(it);
 	    }
 	}
+	*/
 
 } // namespace SceneryEditorX
 

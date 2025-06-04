@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/logging/asserts.h>
+#include <SceneryEditorX/core/pointers.h>
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <vma/vk_mem_alloc.h>
 

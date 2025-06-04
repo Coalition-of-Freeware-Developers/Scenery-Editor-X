@@ -32,19 +32,20 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 	
-	class GraphicsEngine
+	class GraphicsEngine : public RefCounted
     {
 	public:
         GraphicsEngine();
-        virtual ~GraphicsEngine();
+        virtual ~GraphicsEngine() override;
+
         virtual void Init(const Ref<Window> &window);
         virtual void CreateInstance(const Ref<Window> &window);
 
         Ref<Window> GetWindow() { return editorWindow; }
 		Ref<SwapChain> GetSwapChain() { return vkSwapChain; }
 		Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
-		Ref<MemoryAllocator> GetMemAllocator() { return allocatorManager; }
-		Ref<CommandBuffer> GetCommandBuffer() { return cmdBufferManger; }
+        MemoryAllocator &GetMemAllocator() { return allocatorManager; }
+		CommandBuffer GetCommandBuffer() { return cmdBufferManger; }
 
 		LOCAL Ref<GraphicsEngine> Get(); ///< Static accessor method to get the singleton instance
 		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
@@ -65,8 +66,8 @@ namespace SceneryEditorX
         Ref<VulkanDevice> vkDevice;
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanChecks> checks;
-        Ref<MemoryAllocator> allocatorManager;
-        Ref<CommandBuffer> cmdBufferManger;
+        MemoryAllocator allocatorManager;
+        CommandBuffer cmdBufferManger;
         inline static VkInstance vkInstance;
 
 	    VkAllocationCallbacks *allocator = nullptr;

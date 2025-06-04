@@ -50,11 +50,11 @@ namespace SceneryEditorX
 
     /// -----------------------------------------------------------
 
-	class VulkanPhysicalDevice
+	class VulkanPhysicalDevice : public RefCounted
     {
     public:
-        VulkanPhysicalDevice(VkInstance &instance);
-        ~VulkanPhysicalDevice();
+        explicit VulkanPhysicalDevice(VkInstance &instance);
+        virtual ~VulkanPhysicalDevice() override;
 
 		/// Delete copy constructor and assignment operator
         VulkanPhysicalDevice(const VulkanPhysicalDevice &) = delete;
@@ -193,7 +193,7 @@ namespace SceneryEditorX
 
 	/// ---------------------------------------------------------
 
-	class VulkanDevice
+	class VulkanDevice : public RefCounted
     {
     public:
 
@@ -203,7 +203,7 @@ namespace SceneryEditorX
          * @param enabledFeatures Device features to enable
          */
         VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures);
-        virtual ~VulkanDevice();
+        virtual ~VulkanDevice() override;
         //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
 

@@ -12,12 +12,13 @@
 */
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/core/serializer.hpp>
-#include <algorithm> // For std::remove
+#include <algorithm> /// For std::remove
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    /*
     SceneAsset::SceneAsset()
     {
         type = ObjectType::SceneAsset;
@@ -102,6 +103,7 @@ namespace SceneryEditorX
             nodes.erase(it);
         }
     }
+    */
 
 } // namespace SceneryEditorX
 

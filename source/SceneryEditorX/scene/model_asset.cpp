@@ -17,6 +17,7 @@
 
 /// -------------------------------------------------------
 
+/*
 template <>
 struct std::hash<SceneryEditorX::MeshVertex>
 {
@@ -28,12 +29,14 @@ struct std::hash<SceneryEditorX::MeshVertex>
         return h1 ^ (h2 << 1) ^ (h3 << 2); /// Combine the hashes
     }
 };
+*/
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+	/*
 	ModelAsset::ModelAsset()
 	{
 	    /// Initialize the model with default values
@@ -148,6 +151,7 @@ namespace SceneryEditorX
         // This will depend on the exact implementation of the Serializer class
         // For now, providing a minimal implementation
     }
+    */
 
 } // namespace SceneryEditorX
 

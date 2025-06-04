@@ -13,16 +13,19 @@
 #pragma once
 #include <SceneryEditorX/scene/asset.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
+
 namespace SceneryEditorX
 {
+
+	/*
 	class Animation : public Asset
 	{
 	public:
 	    Animation();
 	    virtual ~Animation() override;
 	
-	    // -------------------------------------------------------
+	    /// -------------------------------------------------------
 	
 	    //virtual void Load(const std::string &path) override;
 	    //virtual void Unload() override;
@@ -34,8 +37,8 @@ namespace SceneryEditorX
     private:
         friend class AssetManager;
 	};
-	
+	*/
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
