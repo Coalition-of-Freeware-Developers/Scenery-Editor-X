@@ -16,3 +16,6 @@
 [submodule "dependency/libconfig"]
 	path = dependency/libconfig
 	url = git@github.com:Coalition-of-Freeware-Developers/libconfig.git
+[submodule "dependency/taskflow"]
+	path = dependency/taskflow
+	url = git@github.com:taskflow/taskflow.git
