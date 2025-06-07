@@ -56,7 +56,7 @@ namespace SceneryEditorX
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
 
 	private:
-        INTERNAL Ref<CommandBuffer> cmdBuffers;
+        Ref<CommandBuffer> cmdBuffers;
 
         VkCommandBuffer activeCmdBuffer = nullptr;
         VkCommandPool cmdPool = nullptr;

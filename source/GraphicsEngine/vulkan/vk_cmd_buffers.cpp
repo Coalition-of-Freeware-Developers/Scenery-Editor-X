@@ -102,15 +102,15 @@ namespace SceneryEditorX
 			for (uint32_t i = 0; i < count; ++i)
 			{
 				/// Set debug name for each command buffer
-				if (!debugName.empty())
-				{
-					VkDebugUtilsObjectNameInfoEXT nameInfo{};
-					nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-					nameInfo.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
-					nameInfo.objectHandle = reinterpret_cast<uint64_t>(commandBuffer[i]);
-					nameInfo.pObjectName = (debugName + std::to_string(i)).c_str();
-                    VK_CHECK_RESULT(vkSetDebugUtilsObjectNameEXT(device->GetDevice(), &nameInfo))
-				}
+                if (vulkanDevice->vkSetDebugUtilsObjectNameEXT && !debugName.empty())
+                {
+                    VkDebugUtilsObjectNameInfoEXT nameInfo{};
+                    nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+                    nameInfo.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
+                    nameInfo.objectHandle = reinterpret_cast<uint64_t>(activeCmdBuffer);
+                    nameInfo.pObjectName = debugName.c_str();
+                    vulkanDevice->vkSetDebugUtilsObjectNameEXT(vulkanDevice->Selected(), &nameInfo);
+                }
 			}
         }
 
@@ -128,15 +128,16 @@ namespace SceneryEditorX
     }
 
     /// -------------------------------------------------------
-
-    Ref<CommandBuffer> CommandBuffer::Get()
-    {
-        if (!cmdBuffers)
-		{
-            SEDX_CORE_WARN_TAG("CommandBuffer", "Creating command buffers for the first time");
-            cmdBuffers = CreateRef<CommandBuffer>();
-        }
-        return cmdBuffers;
+    
+    Ref<CommandBuffer> CommandBuffer::Get()  
+    {  
+        static Ref<CommandBuffer> cmdBuffersInstance; /// Static instance to ensure a single shared instance  
+        if (!cmdBuffersInstance)  
+        {  
+            SEDX_CORE_WARN_TAG("CommandBuffer", "Creating command buffers for the first time");  
+            cmdBuffersInstance = CreateRef<CommandBuffer>();  
+        }  
+        return cmdBuffersInstance;  
     }
 
     /// -------------------------------------------------------
@@ -247,8 +248,6 @@ namespace SceneryEditorX
         presentInfo.pSwapchains = &swapchain;
         presentInfo.pImageIndices = &renderData.imageIndex;
         presentInfo.pResults = nullptr;
-
-
     }
 
 

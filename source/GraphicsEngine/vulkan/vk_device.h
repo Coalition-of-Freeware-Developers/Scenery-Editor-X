@@ -237,6 +237,17 @@ namespace SceneryEditorX
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         //[[nodiscard]] Ref<CommandBuffer> GetCommandBuffer() const { return cmdBuffer; }
 
+	    /// -------------------------------------------------------
+        /// Function pointers for Vulkan extensions
+        /// -------------------------------------------------------
+        PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
+        PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
+        PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
+        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR = nullptr;
+        PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR = nullptr;
+        PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR = nullptr;
+
         /**
          * @brief Create a staging buffer for data transfer.
          * @param size Size of the buffer in bytes.
@@ -298,7 +309,7 @@ namespace SceneryEditorX
 		/**
          * @brief Initialize the memory allocator for this device.
          */
-        void InitializeMemoryAllocator();
+        //void InitializeMemoryAllocator();
 
     private:
         Layers vkLayers;
@@ -311,17 +322,6 @@ namespace SceneryEditorX
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
         //uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
-
-		/// -------------------------------------------------------
-        /// Function pointers for Vulkan extensions
-        /// -------------------------------------------------------
-        PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
-        PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
-        PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
-        PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR = nullptr;
-        PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR = nullptr;
-        PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR = nullptr;
 
 		/// -------------------------------------------------------
 

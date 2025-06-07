@@ -679,9 +679,6 @@ namespace SceneryEditorX
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
 
-        /// Load device extension function pointers
-        LoadExtensionFunctions();
-
 		/*
 		QueueFamilyIndices indices = vkPhysDevice->FindQueueFamilies(vkPhysDevice->GetGPUDevice());
 
@@ -845,8 +842,12 @@ namespace SceneryEditorX
         
         SEDX_CORE_TRACE_TAG("Graphics Engine", "Logical device created successfully");
 
+        /// Load device extension function pointers
+        LoadExtensionFunctions();
+
+        //RenderData::apiVersion renderData;
 		/// Initialize memory allocator
-		InitializeMemoryAllocator();
+        //MemoryAllocator::Init(device, renderData);
 
 		/// Set up bindless resources and initial buffers
 		//InitializeBindlessResources(device, bindlessResources);
