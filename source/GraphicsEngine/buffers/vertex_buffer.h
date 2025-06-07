@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <GraphicsEngine/vulkan/vk_buffers.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
 
 /// ----------------------------------------------------------
@@ -19,38 +20,6 @@ namespace SceneryEditorX
 {
     /// Forward Declaration
     enum class PrimitiveType : uint8_t;
-
-	/**
-     * @enum VertexBufferType
-     * @brief Defines the type and usage pattern of vertex buffer.
-     */
-    enum class VertexBufferType : uint8_t
-    {
-        None = 0,
-        Static = 1,      ///< Static data, rarely or never updated (GPU optimized).
-        Dynamic = 2,     ///< Frequently changed data (CPU-GPU shared memory).
-        Transient = 3,   ///< Single-use buffer that will be discarded after rendering.
-        Streaming = 4    ///< Continuously streamed data (e.g. particles).
-    };
-
-    /**
-     * @enum VertexFormat
-     * @brief Standard vertex data formats.
-     */
-    enum class VertexFormat : uint8_t
-    {
-        None = 0,
-        Position2D = 1,							///< Vec2 position
-        Position3D = 2,							///< Vec3 position
-        Position3D_Color3 = 3,					///< Vec3 position + Vec3 color
-        Position3D_Color4 = 4,					///< Vec3 position + Vec4 color
-        Position3D_Normal = 5,					///< Vec3 position + Vec3 normal
-        Position3D_TexCoord = 6,				///< Vec3 position + Vec2 texcoord
-        Position3D_Color4_TexCoord = 7,			///< Vec3 position + Vec4 color + Vec2 texcoord
-        Position3D_Normal_TexCoord = 8,			///< Vec3 position + Vec3 normal + Vec2 texcoord
-        Position3D_Normal_TexCoord_Tangent = 9, ///< Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
-        Custom = 255                            ///< Custom vertex format defined by user
-    };
 
     /**
      * @class VertexBuffer
@@ -85,8 +54,7 @@ namespace SceneryEditorX
              *
              * @param position 3D position of the vertex.
              */
-            explicit Vertex(const Vec3& position) 
-                : pos(position), color(1.0f, 1.0f, 1.0f), texCoord(0.0f, 0.0f) {}
+            explicit Vertex(const Vec3& position) : pos(position), color(1.0f, 1.0f, 1.0f), texCoord(0.0f, 0.0f) {}
 
             /**
              * @brief Constructor with position and color.
@@ -94,8 +62,7 @@ namespace SceneryEditorX
              * @param position 3D position of the vertex.
              * @param vertexColor RGB color of the vertex.
              */
-            Vertex(const Vec3& position, const Vec3& vertexColor)
-                : pos(position), color(vertexColor), texCoord(0.0f, 0.0f) {}
+            Vertex(const Vec3& position, const Vec3& vertexColor) : pos(position), color(vertexColor), texCoord(0.0f, 0.0f) {}
 
             /**
              * @brief Constructor with position, color and texture coordinates.
@@ -104,8 +71,7 @@ namespace SceneryEditorX
              * @param vertexColor RGB color of the vertex.
              * @param uv Texture coordinates of the vertex.
              */
-            Vertex(const Vec3& position, const Vec3& vertexColor, const Vec2& uv)
-                : pos(position), color(vertexColor), texCoord(uv) {}
+            Vertex(const Vec3& position, const Vec3& vertexColor, const Vec2& uv) : pos(position), color(vertexColor), texCoord(uv) {}
 
             /**
              * @brief Provides the vertex binding description for Vulkan.
@@ -115,7 +81,7 @@ namespace SceneryEditorX
              */
             static VkVertexInputBindingDescription GetBindingDescription( uint32_t binding = 0, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX)
             {
-                VkVertexInputBindingDescription bindingDescription = {};
+                VkVertexInputBindingDescription bindingDescription;
                 bindingDescription.binding = binding;
                 bindingDescription.stride = sizeof(Vertex);
                 bindingDescription.inputRate = inputRate;
@@ -160,6 +126,39 @@ namespace SceneryEditorX
             }
         };
 
+		
+		/**
+		 * @enum VertexBufferType
+		 * @brief Defines the type and usage pattern of vertex buffer.
+		 */
+        enum class VertexBufferType : uint8_t
+        {
+            None = 0,      ///< No specific type defined.
+            Static = 1,    ///< Static data, rarely or never updated (GPU optimized).
+            Dynamic = 2,   ///< Frequently changed data (CPU-GPU shared memory).
+            Transient = 3, ///< Single-use buffer that will be discarded after rendering.
+            Streaming = 4  ///< Continuously streamed data (e.g. particles).
+        };
+
+        /**
+		 * @enum VertexFormat
+		 * @brief Standard vertex data formats.
+		 */
+        enum class VertexFormat : uint8_t
+        {
+            None = 0,
+            Position2D = 1,                         ///< Vec2 position
+            Position3D = 2,                         ///< Vec3 position
+            Position3D_Color3 = 3,                  ///< Vec3 position + Vec3 color
+            Position3D_Color4 = 4,                  ///< Vec3 position + Vec4 color
+            Position3D_Normal = 5,                  ///< Vec3 position + Vec3 normal
+            Position3D_TexCoord = 6,                ///< Vec3 position + Vec2 texcoord
+            Position3D_Color4_TexCoord = 7,         ///< Vec3 position + Vec4 color + Vec2 texcoord
+            Position3D_Normal_TexCoord = 8,         ///< Vec3 position + Vec3 normal + Vec2 texcoord
+            Position3D_Normal_TexCoord_Tangent = 9, ///< Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
+            Custom = 255                            ///< Custom vertex format defined by user
+        };
+
         /**
          * @brief Constructor for VertexBuffer.
          * 
@@ -167,11 +166,7 @@ namespace SceneryEditorX
          * @param vertexFormat The format of vertices to be stored.
          * @param initialCapacity Initial buffer capacity in vertices (optional).
          */
-        explicit VertexBuffer(
-            VertexBufferType type,
-            VertexFormat vertexFormat,
-            uint32_t initialCapacity = 0
-        );
+        explicit VertexBuffer( VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity = 0);
 
         /**
          * @brief Constructor for VertexBuffer with initial data.
@@ -179,22 +174,22 @@ namespace SceneryEditorX
          * @param initialVertices Vector of vertices to initialize the buffer with.
          * @param type The type of vertex buffer (Static, Dynamic, etc.).
          */
-        explicit VertexBuffer(
-            const std::vector<Vertex>& initialVertices,
-            VertexBufferType type = VertexBufferType::Static
-        );
+        explicit VertexBuffer(const std::vector<Vertex>& initialVertices,VertexBufferType type = VertexBufferType::Static);
 
         /**
          * @brief Destructor for VertexBuffer
          */
-        virtual ~VertexBuffer();
+        virtual ~VertexBuffer() override;
 
         /**
-         * @brief Creates the vertex buffer with current data
-         * @return Buffer structure representing the created vertex buffer
+         * @brief Creates vertex attribute descriptions based on the vertex format
          */
-        [[nodiscard]] Buffer Create(); // Renamed from CreateVertexBuffer to Create
-        
+        std::vector<VkVertexInputAttributeDescription> CreateAttributeDescriptions(uint32_t binding) const;
+
+        Buffer Create() const;
+
+        Buffer Release() const;
+
         /**
          * @brief Gets the Vulkan buffer handle
          * @return VkBuffer handle to the vertex buffer
@@ -205,7 +200,7 @@ namespace SceneryEditorX
          * @brief Gets the size of the vertex buffer in bytes
          * @return Size of the buffer in bytes
          */
-        [[nodiscard]] VkDeviceSize GetBufferSize() const { return internalBuffer.size; }
+        //[[nodiscard]] VkDeviceSize GetBufferSize() const { return internalBuffer.buffer; }
         
         /**
          * @brief Gets the number of vertices in the buffer
@@ -253,26 +248,13 @@ namespace SceneryEditorX
         void Reserve(uint32_t newCapacity, bool preserveData = true);
         
         /**
-         * @brief Maps the buffer memory for CPU access (only for dynamic buffers)
-         * @return Pointer to mapped memory, or nullptr if mapping fails
-         */
-        void* MapMemory();
-        
-        /**
-         * @brief Unmaps the buffer memory after CPU access
-         */
-        void UnmapMemory();
-        
-        /**
          * @brief Gets the binding description for this vertex buffer
          * 
          * @param binding Binding index to use
          * @param inputRate Vertex input rate (vertex or instance)
          * @return VkVertexInputBindingDescription structure
          */
-        [[nodiscard]] VkVertexInputBindingDescription GetBindingDescription(
-            uint32_t binding = 0,
-            VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX) const;
+        [[nodiscard]] VkVertexInputBindingDescription GetBindingDescription(uint32_t binding = 0, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX) const;
             
         /**
          * @brief Gets attribute descriptions for this vertex buffer
@@ -290,13 +272,10 @@ namespace SceneryEditorX
          * @param color Color to apply to the primitive vertices
          * @return Ref<VertexBuffer> Reference to the created vertex buffer
          */
-        static Ref<VertexBuffer> CreatePrimitive(
-            PrimitiveType type, 
-            const Vec3& size = Vec3(1.0f), 
-            const Vec3& color = Vec3(1.0f));
+        static Ref<VertexBuffer> CreatePrimitive(PrimitiveType type, const Vec3& size = Vec3(1.0f), const Vec3& color = Vec3(1.0f));
 
     private:
-        Ref<GraphicsEngine>* gfxEngine;						///< Pointer to the graphics engine reference
+        Ref<GraphicsEngine> *gfxEngine;						///< Pointer to the graphics engine reference
         Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
         std::vector<Vertex> vertices;						///< Storage for vertex data
         RenderData renderData;								///< Render data reference
@@ -305,25 +284,9 @@ namespace SceneryEditorX
         VkBuffer vertexBuffer = VK_NULL_HANDLE;             ///< Handle to the Vulkan vertex buffer
         VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE; ///< Handle to the allocated memory for the vertex buffer
         VmaAllocation vertexBuffersAllocation;              ///< Allocation handle for uniform buffers
-        Buffer internalBuffer;								///< Buffer wrapper 
+        BufferResource internalBuffer;								///< Buffer wrapper 
         uint32_t capacity = 0;								///< Capacity in number of vertices
         bool isInitialized = false;							///< Whether the buffer has been initialized
-
-        /**
-         * @brief Initializes the vertex buffer with the given options
-         */
-        void Initialize();
-        
-        /**
-         * @brief Releases resources associated with the buffer
-         */
-        void Release();
-        
-        /**
-         * @brief Creates vertex attribute descriptions based on the vertex format
-         */
-        std::vector<VkVertexInputAttributeDescription> CreateAttributeDescriptions(uint32_t binding) const;
-        Buffer CreateVertexBuffer() const;
     };
 
 }

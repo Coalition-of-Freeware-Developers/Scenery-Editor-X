@@ -29,7 +29,6 @@ namespace SceneryEditorX
 	
 	VertexBuffer::~VertexBuffer()
     {
-        RenderData renderData;
         for (size_t i = 0; i < renderData.framesInFlight; i++)
             allocator->DestroyBuffer(vertexBuffer, vertexBuffersAllocation);
     }
@@ -54,15 +53,6 @@ namespace SceneryEditorX
     {
     }
 
-    void * VertexBuffer::MapMemory()
-    {
-        return nullptr;
-    }
-
-    void VertexBuffer::UnmapMemory()
-    {
-    }
-
     VkVertexInputBindingDescription VertexBuffer::GetBindingDescription(uint32_t binding, VkVertexInputRate inputRate) const
     {
         return {};
@@ -73,25 +63,20 @@ namespace SceneryEditorX
         return {};
     }
 
+    //TODO: Move to primitive creation code. -> Renderer/primitives.cpp
+    /*
     Ref<VertexBuffer> VertexBuffer::CreatePrimitive(PrimitiveType type, const Vec3 &size, const Vec3 &color)
     {
         return {};
     }
-
-    void VertexBuffer::Initialize()
-    {
-    }
-
-    void VertexBuffer::Release()
-    {
-    }
+	*/
 
     std::vector<VkVertexInputAttributeDescription> VertexBuffer::CreateAttributeDescriptions(uint32_t binding) const
     {
         return {};
     }
 
-    Buffer VertexBuffer::CreateVertexBuffer() const
+    Buffer VertexBuffer::Create() const
     {
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
         VkBuffer stagingBuffer = nullptr;
@@ -99,16 +84,15 @@ namespace SceneryEditorX
 
 	    /// --------------------------------------
 
-        CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "VertexStaging#");
+        CreateBuffer(bufferSize, BufferUsage::TransferSrc, CPU, "VertexStagingBuffer#");
 
-        void* data = allocator->MapMemory<void>(stagingBufferAllocation);
+        void *data = allocator->MapMemory<void>(stagingBufferAllocation);
         memcpy(data, vertices.data(), (size_t)bufferSize);
-        allocator->UnmapMemory(stagingBufferAllocation);
+        MemoryAllocator::UnmapMemory(stagingBufferAllocation);
 
 		/// --------------------------------------
 
-        CreateBuffer(bufferSize, BufferUsage::Vertex | BufferUsage::TransferDst, MemoryType::GPU, "VertexBuffer#");
-
+        CreateBuffer(bufferSize, BufferUsage::Vertex | BufferUsage::TransferDst, GPU, "VertexBuffer#");
         CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
 		/// --------------------------------------

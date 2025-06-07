@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 
-// This file contains only the STB Image implementation
+///< This file contains only the STB Image implementation
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -14,6 +14,7 @@
 #include <GraphicsEngine/buffers/buffer_data.h>
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
 #include <GraphicsEngine/vulkan/vk_descriptors.h>
+#include <GraphicsEngine/vulkan/vk_allocator.h>
 #include <optional>
 #include <vulkan/vulkan.h>
 
@@ -56,11 +57,11 @@ namespace SceneryEditorX
         explicit VulkanPhysicalDevice(VkInstance &instance);
         virtual ~VulkanPhysicalDevice() override;
 
-		/// Delete copy constructor and assignment operator
+		/// Delete copy constructor and assignment operator/
         VulkanPhysicalDevice(const VulkanPhysicalDevice &) = delete;
         VulkanPhysicalDevice &operator=(const VulkanPhysicalDevice &) = delete;
 
-        /// Allow move operations if needed
+        /// Allow move operations if needed/
         VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
         VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
 
@@ -78,7 +79,7 @@ namespace SceneryEditorX
 		        if (!graphicsFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access graphics family when it's not initialized");
-		            return 0; // Return a default value to avoid crashing
+		            return 0; /// Return a default value to avoid crashing
 		        }
 		        return graphicsFamily.value().second; 
 		    }
@@ -88,7 +89,7 @@ namespace SceneryEditorX
 		        if (!presentFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access present family when it's not initialized");
-		            return 0; // Return a default value to avoid crashing
+		            return 0; /// Return a default value to avoid crashing
 		        }
 		        return presentFamily.value().second;  
 		    }
@@ -98,7 +99,7 @@ namespace SceneryEditorX
 		        if (!computeFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access compute family when it's not initialized");
-		            return 0; // Return a default value to avoid crashing
+		            return 0; /// Return a default value to avoid crashing
 		        }
 		        return computeFamily.value().second; 
 		    }
@@ -108,32 +109,32 @@ namespace SceneryEditorX
 		        if (!transferFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access transfer family when it's not initialized");
-		            return 0; // Return a default value to avoid crashing
+		            return 0; /// Return a default value to avoid crashing
 		        }
 		        return transferFamily.value().second; 
 		    }
 		};
 
 		/**
-		 * @brief Select a physical device based on the best available options
-		 * @param instance The Vulkan instance to use
-		 * @return A reference to the selected physical device
-		 * @throws Error if no suitable device is found
+		 * @brief Select a physical device based on the best available options.
+		 * @param instance The Vulkan instance to use.
+		 * @return A reference to the selected physical device.
+		 * @throws Error if no suitable device is found.
 		 */
 	    GLOBAL Ref<VulkanPhysicalDevice> Select(VkInstance &instance);
 
 		/**
-         * @brief Select a physical device based on queue requirements
-         * @param queueType The required queue type flags
-         * @param supportPresent Whether presentation support is required
-         * @return The queue family index for the selected device
+         * @brief Select a physical device based on queue requirements.
+         * @param queueType The required queue type flags.
+         * @param supportPresent Whether presentation support is required.
+         * @return The queue family index for the selected device.
          */
         //uint32_t SelectDevice(VkQueueFlags queueType, bool supportPresent);
 
 		/**
-         * @brief Get the currently selected GPU device
-         * @return Reference to the selected GPU device
-         * @throws Error if no device is selected
+         * @brief Get the currently selected GPU device.
+         * @return Reference to the selected GPU device.
+         * @throws Error if no device is selected.
          */
         [[nodiscard]] const GPUDevice& Selected() const;
 
@@ -150,9 +151,9 @@ namespace SceneryEditorX
 		[[nodiscard]] const std::vector<VkQueueFamilyProperties> &GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
         
         /**
-         * @brief Find queue families that meet specified criteria in the physical device
-         * @param device The physical device to examine
-         * @return Queue family indices for different queue types
+         * @brief Find queue families that meet specified criteria in the physical device.
+         * @param device The physical device to examine.
+         * @return Queue family indices for different queue types.
          */
         //QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
 
@@ -180,9 +181,9 @@ namespace SceneryEditorX
 	    /// -------------------------------------------------------
 
 	    /**
-         * @brief Find queue families that match specified queue flags
-         * @param qFlags The queue flags to search for
-         * @return Queue family indices for different queue types
+         * @brief Find queue families that match specified queue flags.
+         * @param qFlags The queue flags to search for.
+         * @return Queue family indices for different queue types.
          */
         [[nodiscard]] QueueFamilyIndices GetQueueFamilyIndices(VkQueueFlags qFlags) const;
 
@@ -198,111 +199,111 @@ namespace SceneryEditorX
     public:
 
         /**
-         * @brief Create a logical device from a physical device
-         * @param physDevice The physical device to use
-         * @param enabledFeatures Device features to enable
+         * @brief Create a logical device from a physical device.
+         * @param physDevice The physical device to use.
+         * @param enabledFeatures Device features to enable.
          */
-        VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice, VkPhysicalDeviceFeatures enabledFeatures);
+        VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice);
         virtual ~VulkanDevice() override;
         //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
 
-        /// Delete copy constructor and assignment operator
+        /// Delete copy constructor and assignment operator.
         VulkanDevice(const VulkanDevice &) = delete;
         VulkanDevice &operator=(const VulkanDevice &) = delete;
 
-		/// Allow move operations if needed
+		/// Allow move operations if needed.
         VulkanDevice(VulkanDevice &&) noexcept;
         VulkanDevice &operator=(VulkanDevice &&) noexcept;
 
         /**
-         * @brief Clean up resources and destroy the logical device
+         * @brief Clean up resources and destroy the logical device.
          */
         void Destroy();
 
-		/// Accessor methods
+		/// Accessor methods.
         [[nodiscard]] const VkDevice &Selected() const;
         [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
         [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
         [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
 		[[nodiscard]] VkDevice GetDevice() const 
 		{
-		    if (device == VK_NULL_HANDLE) {
-		        SEDX_CORE_ERROR_TAG("Vulkan Device", "Attempting to access device handle that is null");
-		    }
-		    return device;
+		    if (device == VK_NULL_HANDLE)
+                SEDX_CORE_ERROR_TAG("Vulkan Device", "Attempting to access device handle that is null");
+            return device;
 		}
+
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         //[[nodiscard]] Ref<CommandBuffer> GetCommandBuffer() const { return cmdBuffer; }
 
         /**
-         * @brief Create a staging buffer for data transfer
-         * @param size Size of the buffer in bytes
-         * @param name Debug name for the buffer
-         * @return Buffer object configured for staging
+         * @brief Create a staging buffer for data transfer.
+         * @param size Size of the buffer in bytes.
+         * @param name Debug name for the buffer.
+         * @return Buffer object configured for staging.
          */
-        GLOBAL Buffer CreateStagingBuffer(uint32_t size, const std::string& name = "Staging Buffer");
+        GLOBAL Buffer CreateStagingBuffer(uint64_t size, const std::string& name = "Staging Buffer");
 
 	    /**
-         * @brief Get the maximum usable MSAA sample count supported by the device
-         * @return The maximum sample count as a VkSampleCountFlagBits value
+         * @brief Get the maximum usable MSAA sample count supported by the device.
+         * @return The maximum sample count as a VkSampleCountFlagBits value.
          */
         [[nodiscard]] VkSampleCountFlagBits GetMaxUsableSampleCount() const;
 
 		/**
-         * @brief Lock a queue for exclusive access
-         * @param compute Whether to lock the compute queue (true) or graphics queue (false)
+         * @brief Lock a queue for exclusive access.
+         * @param compute Whether to lock the compute queue (true) or graphics queue (false).
          */
 		void LockQueue(bool compute = false);
 
         /**
-         * @brief Unlock a previously locked queue
-         * @param compute Whether to unlock the compute queue (true) or graphics queue (false)
+         * @brief Unlock a previously locked queue.
+         * @param compute Whether to unlock the compute queue (true) or graphics queue (false).
          */
         void UnlockQueue(bool compute = false);
 
         /**
-         * @brief Create a secondary command buffer for recording commands
-         * @param debugName Name for debugging purposes
-         * @return A new command buffer
+         * @brief Create a secondary command buffer for recording commands.
+         * @param debugName Name for debugging purposes.
+         * @return A new command buffer.
          */
         //VkCommandBuffer CreateSecondaryCommandBuffer(const char *debugName);
 
         /**
-         * @brief Submit and wait for a command buffer to complete execution
-         * @param cmdBuffer The command buffer to submit
+         * @brief Submit and wait for a command buffer to complete execution.
+         * @param cmdBuffer The command buffer to submit.
          */
         //void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
 
         /**
-         * @brief Submit a command buffer to a specific queue and wait for completion
-         * @param cmdBuffer The command buffer to submit
-         * @param queue The queue to submit to
+         * @brief Submit a command buffer to a specific queue and wait for completion.
+         * @param cmdBuffer The command buffer to submit.
+         * @param queue The queue to submit to.
          */
         //void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
 
         /**
-         * @brief Get the scratch buffer address
-         * @return The device address of the scratch buffer
+         * @brief Get the scratch buffer address.
+         * @return The device address of the scratch buffer.
          */
         VkSampler GetSampler() const { return textureSampler; }
 
         /**
-         * @brief 
-         * @return 
+         * @brief Get the bindless resources associated with this device.
+         * @return The bindless resources associated with this device.
          */
-        BindlessResources GetBindlessResources() const { return bindlessResources; }
+        //BindlessResources GetBindlessResources() const { return bindlessResources; }
 
 		/**
-         * @brief Initialize the memory allocator for this device
+         * @brief Initialize the memory allocator for this device.
          */
-        void InitializeMemoryAllocator(const VkInstance &instance);
+        void InitializeMemoryAllocator();
 
     private:
         Layers vkLayers;
         VkDevice device = nullptr;
-        BindlessResources bindlessResources;
+        //BindlessResources bindlessResources;
 		Ref<MemoryAllocator> memoryAllocator;
         Ref<CommandBuffer> cmdBuffer = nullptr;
         VkSampler textureSampler = nullptr;
@@ -356,7 +357,7 @@ namespace SceneryEditorX
          * @note This function sets up the bindless resources for the device, including
          * creating the bindless descriptor pool and descriptor sets.
          */
-        GLOBAL void InitializeBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
+        //GLOBAL void InitializeBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
 
         /**
          * @brief Load function pointers for extension functions
@@ -380,10 +381,42 @@ namespace SceneryEditorX
          * @param type The type of queue this command pool will be used with (graphics, compute, transfer, etc.)
          */
         CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
-        virtual ~CommandPool();
+        virtual ~CommandPool() override;
 
-		Queue queueType;
-		VkCommandPool commandPool;
+        /**
+         * @brief Allocate a command buffer from the pool
+         * 
+         * @param begin Whether to begin the command buffer
+         * @param compute Whether to allocate from the compute pool
+         * 
+         * @return A new command buffer
+         */
+        [[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;
+
+        /**
+         * @brief Submit a command buffer to the graphics queue and wait for completion
+         * @param cmdBuffer The command buffer to submit
+         */
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
+
+        /**
+         * @brief Submit a command buffer to a specific queue and wait for completion
+         * @param cmdBuffer The command buffer to submit
+         * @param queue The queue to submit to
+         */
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
+
+        /// Accessor methods
+        [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
+        [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
+
+        Queue queueType;
+        VkCommandPool commandPool = VK_NULL_HANDLE;
+    private:
+        Ref<GraphicsEngine> *gfxEngine = nullptr;
+        VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
+        VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
+
     };
 
     /// ---------------------------------------------------------

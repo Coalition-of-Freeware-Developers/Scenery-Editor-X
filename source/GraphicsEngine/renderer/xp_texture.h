@@ -23,23 +23,23 @@ namespace SceneryEditorX
 	        float r;
 	        float g;
 	        float b;
-            float a; // Alpha channel
+            float a; /// Alpha channel
 	        std::string name;
 	    };
 	
 	    struct Normal
 	    {
-            float r; // OpenGL Red
-            float g; // OpenGL Green
-	        float b; // This channel is sometimes black
+            float r; /// OpenGL Red
+            float g; /// OpenGL Green
+	        float b; /// This channel is sometimes black
 	        std::string name;
 	    };
 	
 	    struct RoughMet
 	    {
-            float r; // Metallic
-            float g; // Roughness
-	        float b; // This channel is sometimes black
+            float r; /// Metallic
+            float g; /// Roughness
+	        float b; /// This channel is sometimes black
             std::string name;
 	    };
 	};
@@ -59,16 +59,16 @@ namespace SceneryEditorX
             float r;
             float g;
             float b;
-            float a; // Alpha channel
+            float a; /// Alpha channel
             std::string name;
         };
 
 		struct Normal
         {
-            float r; // OpenGL Red
-            float g; // OpenGL Green
-            float b; // Fresnel Level (f0)
-            float a; // Glossiness
+            float r; /// OpenGL Red
+            float g; /// OpenGL Green
+            float b; /// Fresnel Level (f0)
+            float a; /// Glossiness
             std::string name;
         };
 	};

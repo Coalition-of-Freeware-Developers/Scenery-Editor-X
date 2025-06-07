@@ -20,7 +20,8 @@
 
 namespace SceneryEditorX
 {
-    VkCommandBuffer BeginSingleTimeCommands()
+    /*
+    VkCommandBuffer BeginCommands()
     {
         const VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
         const VkCommandPool cmdPool = GraphicsEngine::Get()->GetCommandBuffer()->GetCommandPool()->GetComputeCmdPool();
@@ -41,9 +42,10 @@ namespace SceneryEditorX
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
         return commandBuffer;
-    }
+    }*/
 
-    GLOBAL void EndSingleTimeCommands(VkCommandBuffer commandBuffer)
+    /*
+    GLOBAL void EndCommands(VkCommandBuffer commandBuffer)
     {
         vkEndCommandBuffer(commandBuffer);
 
@@ -60,7 +62,24 @@ namespace SceneryEditorX
         vkQueueWaitIdle(graphicsQueue);
 
         vkFreeCommandBuffers(vkDevice, cmdPool, 1, &commandBuffer);
-    }
+    }*/
+
+	/**
+	 * @brief Retrieves the unique resource ID of the buffer.
+	 *
+	 * This method returns the unique identifier associated with the underlying buffer resource.
+	 * It asserts that the resource ID is valid (not equal to -1) before returning the value.
+	 * The resource ID is used for tracking and referencing the buffer within the engine's
+	 * resource management and bindless descriptor systems.
+	 *
+	 * @return uint32_t The unique resource ID of the buffer.
+	 * @throws Assertion failure if the resource ID is invalid.
+	 */
+	uint32_t Buffer::ID() const
+	{
+	    SEDX_ASSERT(resource->resourceID != -1, "Invalid Buffer Resource ID!");
+	    return static_cast<uint32_t>(resource->resourceID);
+	}
 
 	/**
 	 * @brief Creates a Vulkan buffer with specified parameters
@@ -88,7 +107,7 @@ namespace SceneryEditorX
 	    /// Get the allocator from the current device
 	    const VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
 	
-	    // ---------------------------------------------------------
+	    /// ---------------------------------------------------------
 	    
 	    /// Add transfer destination flag for vertex buffers
 	    if (usage & BufferUsage::Vertex)
@@ -103,10 +122,7 @@ namespace SceneryEditorX
 	    {
 	        usage |= BufferUsage::Address;
 	        /// Align storage buffer size to minimum required alignment
-	        size += size % GraphicsEngine::GetCurrentDevice()
-	                           ->GetPhysicalDevice()
-	                           ->Selected()
-	                           .deviceProperties.limits.minStorageBufferOffsetAlignment;
+	        size += size % GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->Selected().deviceProperties.limits.minStorageBufferOffsetAlignment;
 	    }
 	    
 	    /// Handle acceleration structure input buffers
@@ -142,7 +158,7 @@ namespace SceneryEditorX
 	    
 	    /// Create and populate the buffer wrapper
 	    Buffer buffer = {
-	        .bufferResource = resource,
+	        .resource = resource,
 	        .size = size,
 	        .usage = usage,
 	        .memory = memory,
@@ -151,7 +167,7 @@ namespace SceneryEditorX
 	    /// Handle storage buffer descriptors for bindless access
 	    if (usage & BufferUsage::Storage)
 	    {
-	        BindlessResources bindlessDescript;
+            BindlessResources bindlessData;
 	        
 	        /// Get a resource ID from the available pool
 	        resource->resourceID = ImageID::availBufferRID.back();
@@ -166,9 +182,9 @@ namespace SceneryEditorX
 	        
 	        /// Configure descriptor write operation
 	        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	        write.dstSet = bindlessDescript.bindlessDescriptorSet;
+	        write.dstSet = bindlessData.bindlessDescriptorSet;
 	        write.dstBinding = 1;
-	        write.dstArrayElement = buffer.ResourceID();
+	        write.dstArrayElement = buffer.resource->resourceID;
 	        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	        write.descriptorCount = 1;
 	        write.pBufferInfo = &descriptorInfo;
@@ -183,11 +199,16 @@ namespace SceneryEditorX
     void *MapBuffer(const Buffer &buffer)
     {
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
-		void* data = nullptr; /// Initialize data
-		/// Use VMA to map memory
-		vmaMapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.bufferResource->allocation, &data);
-        return data; /// Return the mapped pointer directly
+		void* data = nullptr; ///< Initialize data
+		vmaMapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.resource->allocation, &data);
+        return data;
 	}
+
+    void UnmapBuffer(const Buffer &buffer)
+    {
+        SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
+        vmaUnmapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.resource->allocation);
+    }
 
     /// ----------------------------------------------------------
 
@@ -210,11 +231,12 @@ namespace SceneryEditorX
 	 * 
 	 * @see @fn CreateBuffer
 	 */
-    Buffer VulkanDevice::CreateStagingBuffer(const uint32_t size, const std::string &name)
+    Buffer VulkanDevice::CreateStagingBuffer(const uint64_t size, const std::string &name)
     {
         return CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU, name.empty() ? "Staging Buffer" : name);
     }
 
+    /*
     GLOBAL void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         Ref<CommandBuffer> commandBuffer = GraphicsEngine::Get()->GetCommandBuffer();
@@ -224,7 +246,7 @@ namespace SceneryEditorX
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer->GetActiveCmdBuffer(), srcBuffer, dstBuffer, 1, &copyRegion);
 
-        EndSingleTimeCommands(commandBuffer->GetActiveCmdBuffer());
+        EndCommands(commandBuffer->GetActiveCmdBuffer());
     }
 
     GLOBAL void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
@@ -248,9 +270,10 @@ namespace SceneryEditorX
 
         vkCmdCopyBufferToImage(commandBuffer->GetActiveCmdBuffer(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        EndSingleTimeCommands(commandBuffer->GetActiveCmdBuffer());
+        EndCommands(commandBuffer->GetActiveCmdBuffer());
     }
+    */
 
 } // namespace SceneryEditorX
 
-// ----------------------------------------------------------
+/// ----------------------------------------------------------

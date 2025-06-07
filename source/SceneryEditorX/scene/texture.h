@@ -19,9 +19,7 @@
 
 namespace SceneryEditorX
 {
-
-	/*
-	struct Serializer;
+	//struct Serializer;
 	
 	/// -------------------------------------------------------
 
@@ -33,7 +31,7 @@ namespace SceneryEditorX
                          textureImageView(VK_NULL_HANDLE), textureImageMemory(VK_NULL_HANDLE) {}
         explicit TextureAsset(const std::string &path);
         virtual ~TextureAsset() override;
-        virtual void Serialize(Serializer &ser) override;
+        //virtual void Serialize(Serializer &ser) override;
 
         /// -------------------------------------------------------
 
@@ -62,7 +60,7 @@ namespace SceneryEditorX
         WeakRef<EditorConfig> config;
         Ref<VulkanDevice> vkDevice = nullptr;
         Ref<VulkanPhysicalDevice> vkPhysDevice = nullptr;
-        Ref<MemoryAllocator> allocator;
+        //Ref<MemoryAllocator> allocator = nullptr;
         std::string texturePath;
         std::string textureName;
 
@@ -77,8 +75,6 @@ namespace SceneryEditorX
 
         friend class AssetManager;
     };
-    */
-
 
 } // namespace SceneryEditorX
 

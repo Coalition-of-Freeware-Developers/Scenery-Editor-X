@@ -13,19 +13,19 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-inline PFN_vkSetDebugUtilsObjectNameEXT fpSetDebugUtilsObjectNameEXT; //Making it static randomly sets it to nullptr for some reason.
+inline PFN_vkSetDebugUtilsObjectNameEXT fpSetDebugUtilsObjectNameEXT; ///Making it static randomly sets it to nullptr for some reason.
 inline PFN_vkCmdBeginDebugUtilsLabelEXT fpCmdBeginDebugUtilsLabelEXT;
 inline PFN_vkCmdEndDebugUtilsLabelEXT fpCmdEndDebugUtilsLabelEXT;
 inline PFN_vkCmdInsertDebugUtilsLabelEXT fpCmdInsertDebugUtilsLabelEXT;
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 void VulkanLoadDebugUtilsExtensions(VkInstance instance);
 void RetrieveDiagnosticCheckpoints();
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 inline void VulkanCheckResult(const VkResult result)
 {
@@ -74,18 +74,7 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
         VulkanCheckResult(result, __FILE__, __LINE__);                                                                 \
     }
 
-// -------------------------------------------------------
-
-/*
-#define VK_CHECK_RESULT(result, message)                                                                               \
-	if (result != VK_SUCCESS)                                                                                          \
-	{                                                                                                                  \
-		fprintf(stderr, "Error in %s:%d - %s, code %x\n", __FILE__, __LINE__, message, result);                        \
-		exit(1);                                                                                                       \
-	}
-*/
-
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief Macro to check Vulkan features.
@@ -96,7 +85,7 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
  * @param requiredFeatures The required Vulkan features.
  * @param deviceFeatures The supported Vulkan features of the device.
  */
-// Helper macro to check each feature
+/// Helper macro to check each feature
 #define CHECK_FEATURE(feature)                                                                                         \
     if (requiredFeatures.feature && !deviceFeatures.feature)                                                           \
     {                                                                                                                  \
@@ -106,7 +95,7 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
         SEDX_CORE_ERROR("  Missing feature: {}", #feature);                                                            \
     }
 
-// ----------------------------------------------------------
+/// ----------------------------------------------------------
 
 /**
  * @brief Macro to get the size of an array.
@@ -124,6 +113,8 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
 			return false;                                                                                              \
 		}
 
+/// ----------------------------------------------------------
+
 /**
  * @brief Log Vulkan result and return false if operation fails
  * 
@@ -139,6 +130,8 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
         }                                                                                                              \
     }
 
+/// ----------------------------------------------------------
+
 /**
  * @brief Log Vulkan result and throw exception if operation fails
  * 
@@ -153,6 +146,8 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
             throw std::runtime_error((operation) + " failed with " + VK_ERROR_STRING(result));                         \
         }                                                                                                              \
     }
+
+/// ----------------------------------------------------------
 
 /**
  * @brief Log Vulkan result without any control flow change
@@ -196,7 +191,7 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
         }                                                                                                              \
     }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief Helper function to get the bits per pixel of a Vulkan format.
@@ -206,7 +201,7 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
  */
 extern int getBPP(VkFormat format);
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 enum class ShaderSourceLanguage : uint8_t
 {
@@ -221,7 +216,7 @@ enum class ShadingLanguage : uint8_t
 	HLSL,
 };
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief Get the string representation of a Vulkan debug message severity.
@@ -282,7 +277,7 @@ const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags);
 
 //std::vector<char> CompileShader(const std::filesystem::path &path);
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 inline float HaltonSeq(uint32_t i, const uint32_t b)
 {
@@ -299,12 +294,12 @@ inline float HaltonSeq(uint32_t i, const uint32_t b)
     return r;
 }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 //typedef VkResult result;
 //const result VK_SUCCESS_RESULT = VK_SUCCESS;
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType objectType, const std::string& name, const void* handle)
 {
@@ -326,6 +321,4 @@ static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType ob
  */
 const char *VkObjectTypeToString(VkObjectType objectType);
 
-
-
-// -------------------------------------------------------
+/// -------------------------------------------------------

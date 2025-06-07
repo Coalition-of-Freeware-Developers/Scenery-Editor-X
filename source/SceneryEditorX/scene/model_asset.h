@@ -22,9 +22,7 @@
 
 namespace SceneryEditorX
 {
-
-	/*
-	struct Serializer;
+	//struct Serializer;
 	
 	/// -------------------------------------------------------
 
@@ -41,7 +39,8 @@ namespace SceneryEditorX
             return position == other.position && normal == other.normal && texCoord == other.texCoord;
         }
         
-        static VkVertexInputBindingDescription getBindingDescription() {
+        static VkVertexInputBindingDescription getBindingDescription()
+        {
             VkVertexInputBindingDescription bindingDescription{};
             bindingDescription.binding = 0;
             bindingDescription.stride = sizeof(MeshVertex);
@@ -50,7 +49,8 @@ namespace SceneryEditorX
             return bindingDescription;
         }
         
-        static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions() {
+        static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions()
+        {
             std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
             
             /// Position
@@ -109,7 +109,7 @@ namespace SceneryEditorX
             Triangle(const MeshVertex &v0, const MeshVertex &v1, const MeshVertex &v2) : V0(v0), V1(v1), V2(v2) {}
         };
 
-        virtual void Serialize(Serializer &ser) override;
+        //virtual void Serialize(Serializer &ser) override;
 
         std::vector<MeshVertex> vertices;
         std::vector<uint32_t> indices;
@@ -143,11 +143,10 @@ namespace SceneryEditorX
         bool IsRoot() const { return parent == 0xffffffff; }
 
         MeshNode();
-        virtual void Serialize(Serializer &ser) override;
+        //virtual void Serialize(Serializer &ser) override;
     };
 
-	/// -------------------------------------------------------
-	*/
+	/// ------------------------------------------------------- 
 
 } // namespace SceneryEditorX
 

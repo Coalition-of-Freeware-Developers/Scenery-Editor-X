@@ -85,44 +85,6 @@ namespace SceneryEditorX
 
 	/// ---------------------------------------------------------
 
-    /*
-    class CommandPool
-    {
-    public:
-
-        /**
-         * @brief Allocate a command buffer from the pool
-         *
-         * @param begin Whether to begin the command buffer
-         * @param compute Whether to allocate from the compute pool
-         *
-         * @return A new command buffer
-         #1#
-        [[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin, bool compute = false) const;
-
-        /**
-         * @brief Submit a command buffer to the graphics queue and wait for completion
-         * @param cmdBuffer The command buffer to submit
-         #1#
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
-
-        /**
-         * @brief Submit a command buffer to a specific queue and wait for completion
-         * @param cmdBuffer The command buffer to submit
-         * @param queue The queue to submit to
-         #1#
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
-
-        /// Accessor methods
-        [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
-        [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
-
-    private:
-        VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
-        VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
-    };
-    */
-
 } // namespace SceneryEditorX
 
 /// -------------------------------------------------------

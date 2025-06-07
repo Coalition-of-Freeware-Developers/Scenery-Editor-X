@@ -13,7 +13,7 @@
 #include <cstdlib>
 #include <GraphicsEngine/vulkan/vk_util.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 const char* vkDeviceTypeString(VkPhysicalDeviceType type)
 {
@@ -31,7 +31,7 @@ const char* vkDeviceTypeString(VkPhysicalDeviceType type)
         return "Unknown";
     }
 }
-		    
+
 const char* vkColorSpaceString(VkColorSpaceKHR colorSpace)
 {
     switch (colorSpace)
@@ -135,6 +135,8 @@ const char* vkDebugSeverityString(VkDebugUtilsMessageSeverityFlagBitsEXT severit
         return "WARNING";
     case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT :
         return "ERROR";
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_FLAG_BITS_MAX_ENUM_EXT:
+        break;
     default :
         exit(1);
     }
@@ -163,11 +165,11 @@ const char* vkDebugType(VkDebugUtilsMessageTypeFlagsEXT type)
     return "No Known Type";
 }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 void VulkanLoadDebugUtilsExtensions(VkInstance instance)
 {
-    fpSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)(vkGetInstanceProcAddr( instance, "vkSetDebugUtilsObjectNameEXT"));
+    fpSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
     if (fpSetDebugUtilsObjectNameEXT == nullptr)
     {
         fpSetDebugUtilsObjectNameEXT = [](VkDevice device, const VkDebugUtilsObjectNameInfoEXT *pNameInfo)
@@ -176,33 +178,33 @@ void VulkanLoadDebugUtilsExtensions(VkInstance instance)
         };
     }
 
-    fpCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
+    fpCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
     if (fpCmdBeginDebugUtilsLabelEXT == nullptr)
     {
         fpCmdBeginDebugUtilsLabelEXT = [](VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT *pLabelInfo) {};
     }
 
-    fpCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)(vkGetInstanceProcAddr(instance,"vkCmdEndDebugUtilsLabelEXT"));
+    fpCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
     if (fpCmdEndDebugUtilsLabelEXT == nullptr)
     {
         fpCmdEndDebugUtilsLabelEXT = [](VkCommandBuffer commandBuffer) {};
     }
 
-    fpCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)(vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT"));
+    fpCmdInsertDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdInsertDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT"));
     if (fpCmdInsertDebugUtilsLabelEXT == nullptr)
     {
         fpCmdInsertDebugUtilsLabelEXT = [](VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT *pLabelInfo) {};
     }
 }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 void RetrieveDiagnosticCheckpoints()
 {
 
 }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
 * @brief Get the number of bytes per pixel for a given format.
@@ -380,10 +382,11 @@ int32_t getBPP(VkFormat format)
 }
 
 /**
-* @brief Get the number of bytes per pixel for a given format.
+ * @brief Get the number of bytes per pixel for a given format.
  *
  * This function returns the number of bytes per pixel for a given Vulkan format.
  *
+ * @param layout The Vulkan image layout.
  * @param format The Vulkan format.
  * @return uint32_t The number of bytes per pixel.
  */
@@ -408,8 +411,7 @@ VkAccessFlags VK_ACCESS_FLAGS(VkImageLayout layout)
         return VK_ACCESS_TRANSFER_READ_BIT;
     case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL :
         return VK_ACCESS_TRANSFER_WRITE_BIT;
-    case VK_IMAGE_LAYOUT_GENERAL : assert(
-            false && "Don't know how to get a meaningful VkAccessFlags for VK_IMAGE_LAYOUT_GENERAL! Don't use it!");
+    case VK_IMAGE_LAYOUT_GENERAL : assert(false && "Don't know how to get a meaningful VkAccessFlags for VK_IMAGE_LAYOUT_GENERAL! Don't use it!");
         return 0;
     default : assert(false);
         return 0;
@@ -417,7 +419,7 @@ VkAccessFlags VK_ACCESS_FLAGS(VkImageLayout layout)
 }
 
 /**
-* @brief Get the number of bytes per pixel for a given format.
+ * @brief Get the number of bytes per pixel for a given format.
  *
  * This function returns the number of bytes per pixel for a given Vulkan format.
  *
@@ -1100,8 +1102,12 @@ const char *VkObjectTypeToString(const VkObjectType type)
         return "VK_OBJECT_TYPE_UNKNOWN";
     case VK_OBJECT_TYPE_MAX_ENUM:
         return "VK_OBJECT_TYPE_MAX_ENUM";
+    default:
+        break;
     }
 
     SEDX_CORE_ASSERT(false);
     return "";
 }
+
+/// -------------------------------------------------------

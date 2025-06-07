@@ -18,34 +18,33 @@
 
 namespace SceneryEditorX
 {
-    void IndexBuffer::CreateIndexBuffer() const
+    void IndexBuffer::Create() const
     {
         const VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
         const VkBuffer stagingBuffer = nullptr;
         const VmaAllocation stagingBufferAllocation = nullptr;
 
-		/// -----------------------------------
+		/// --------------------------------------------
 
         CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "IndexStaging#");
 
         void* data = allocator->MapMemory<void>(stagingBufferAllocation);
         memcpy(data, indices.data(), (size_t)bufferSize);
-        allocator->UnmapMemory(stagingBufferAllocation);
+        MemoryAllocator::UnmapMemory(stagingBufferAllocation);
 
 		//TODO: Add back the UUID when fully implemented.
         CreateBuffer(bufferSize, BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage, MemoryType::GPU, "IndexBuffer#" /*+ std::to_string(asset->uuid)*/);
 
         CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
-		/// -----------------------------------
+		/// --------------------------------------------
 
         allocator->DestroyBuffer(stagingBuffer, stagingBufferAllocation);
     }
 
-    IndexBuffer::IndexBuffer()
-    {
-        CreateIndexBuffer();
-    }
+    /// --------------------------------------------
+
+    IndexBuffer::IndexBuffer() = default;
 
     /**
      * @brief Destroys index buffer resources

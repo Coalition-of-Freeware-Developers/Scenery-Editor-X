@@ -12,94 +12,66 @@
 */
 #include <GraphicsEngine/vulkan/image_data.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
+#include <imgui/imgui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	/*
-	// Move resource cleanup logic to a separate method that can be called explicitly
-    void CleanupResources()
+    /**
+     * @brief Retrieves the unique resource ID for this image.
+     *
+     * This method asserts that the underlying resource has a valid resource ID assigned.
+     * The resource ID is used to uniquely identify the image within the graphics system.
+     *
+     * @return The unique resource ID as a uint32_t.
+     * @throws Assertion failure if the resource ID is invalid (-1).
+     */
+    uint32_t Image::ID() const
+    {
+        SEDX_ASSERT(resource->resourceID != -1, "Invalid Image Resource ID!");
+        return static_cast<uint32_t>(resource->resourceID);
+    }
+
+	/**
+	 * @brief Retrieves the ImGui texture ID for the first layer of this image.
+	 *
+	 * This method returns the ImGui texture ID (ImTextureID) associated with the first layer
+	 * of the image resource. The ImGui texture ID is used to display the image in ImGui widgets.
+	 * If the image resource is invalid or does not have any ImGui texture IDs assigned,
+	 * the method returns a null ImTextureID.
+	 *
+	 * @return ImTextureID for the first image layer, or nullptr if unavailable.
+	 */
+	ImTextureID Image::ImGuiRID() const
 	{
-	    if (fromSwapchain || resourceID < 0)
-	        return;
-	
-	    try
+	    if (!resource || resource->resourceID == -1 || resource->imguiRIDs.empty())
 	    {
-	        // Get logical device - safely handle potential null cases
-	        VkDevice device = VK_NULL_HANDLE;
-	        auto *graphicsEngine = GraphicsEngine::GetInstance();
-	        if (graphicsEngine)
-	        {
-	            auto vkDevice = graphicsEngine->GetLogicDevice();
-	            if (vkDevice)
-	                device = vkDevice->GetDevice();
-	        }
-	
-	        // Only proceed with cleanup if we have a valid device
-	        if (device != VK_NULL_HANDLE)
-	        {
-	            // Clean up layer views
-	            for (auto &layerView : layersView)
-	            {
-	                if (layerView != VK_NULL_HANDLE)
-	                {
-	                    vkDestroyImageView(device, layerView, nullptr);
-	                    layerView = VK_NULL_HANDLE;
-	                }
-	            }
-	            layersView.clear();
-	
-	            // Clean up main view
-	            if (view != VK_NULL_HANDLE)
-	            {
-	                vkDestroyImageView(device, view, nullptr);
-	                view = VK_NULL_HANDLE;
-	            }
-	
-	            // Clean up image if we have a valid allocator
-	            if (graphicsEngine)
-	            {
-	                VmaAllocator allocator = graphicsEngine->GetLogicDevice()->GetMemoryAllocator();
-	                if (allocator != nullptr && allocation != VK_NULL_HANDLE && image != VK_NULL_HANDLE)
-	                {
-	                    vmaDestroyImage(allocator, image, allocation);
-	                    image = VK_NULL_HANDLE;
-	                    allocation = VK_NULL_HANDLE;
-	                }
-	            }
-	
-	            // Return resource ID to the pool and clean up ImGui resources
-	            ImageID::availImageRID.push_back(resourceID);
-	            for (ImTextureID imguiRID : imguiRIDs)
-	            {
-	                if (imguiRID)
-	                    ImGui_ImplVulkan_RemoveTexture(reinterpret_cast<VkDescriptorSet>(imguiRID));
-	            }
-	
-	            resourceID = -1;
-	            imguiRIDs.clear();
-	        }
+	        return reinterpret_cast<ImTextureID>(nullptr);
 	    }
-	    catch (const std::exception &e)
-	    {
-	        // Log the error but don't crash
-	        SEDX_CORE_ERROR("Exception in ImageResource cleanup: {}", e.what());
-	    }
+	    return resource->imguiRIDs[0];
 	}
 
-	virtual ~ImageResource() override
-    {
-        // Skip cleanup for swapchain images as they're managed by the swapchain
-        if (fromSwapchain)
-            return;
-
-        // Use a static cleanup method to prevent issues with device/allocator access
-        CleanupResources();
-    }
-    */
-	
+	/**
+	 * @brief Retrieves the ImGui texture ID for a specific image layer.
+	 *
+	 * This method returns the ImGui texture ID (ImTextureID) associated with the specified layer
+	 * of the image resource. The ImGui texture ID is used to display the image in ImGui widgets.
+	 * If the image resource is invalid, the resource ID is not assigned, or the requested layer
+	 * does not have an associated ImGui texture ID, the method returns a null ImTextureID.
+	 *
+	 * @param layer The index of the image layer for which to retrieve the ImGui texture ID.
+	 * @return ImTextureID for the specified image layer, or nullptr if unavailable.
+	 */
+	ImTextureID Image::ImGuiRID(uint64_t layer) const
+	{
+		if (!resource || resource->resourceID == -1 || resource->imguiRIDs.size() <= layer)
+		{
+			return reinterpret_cast<ImTextureID>(nullptr);
+		}
+		return resource->imguiRIDs[layer];
+	}
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

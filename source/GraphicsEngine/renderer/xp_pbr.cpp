@@ -13,7 +13,7 @@
 #include <GraphicsEngine/renderer/xp_pbr.h>
 #include <SceneryEditorX/scene/material.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {

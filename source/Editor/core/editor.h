@@ -104,7 +104,8 @@ namespace SceneryEditorX
          * @return A reference to the Window object managed by the graphics engine.
          */
         Ref<Window> GetWindow() { return gfxEngine.GetWindow(); }
-	
+
+
 	private:
         /**
          * @brief Graphics engine instance for rendering.
@@ -133,8 +134,8 @@ namespace SceneryEditorX
          * Handles drawing and interaction with the editor user interface.
          */
         UI::GUI ui;
-        
-        /**
+
+	    /**
          * @brief Context for UI rendering and interaction.
          * 
          * Provides state and resources needed for UI operations.

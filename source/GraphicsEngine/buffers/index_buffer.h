@@ -52,7 +52,10 @@ namespace SceneryEditorX
          * The buffer is created with appropriate usage flags for index data access
          * during rendering.
          */
-        void CreateIndexBuffer() const;
+        void Create() const;
+
+
+		void Release() const;
 
     private:
         //Ref<GraphicsEngine> *gfxEngine;      ///< Pointer to the graphics engine reference

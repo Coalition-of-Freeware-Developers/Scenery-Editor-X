@@ -17,7 +17,7 @@
 
 namespace SceneryEditorX
 {
-    // Forward declarations
+    ///< Forward declarations
     class VulkanDevice;
 
     /**
@@ -71,7 +71,7 @@ namespace SceneryEditorX
      * @struct Descriptors
      * @brief Manages descriptor sets and resources for rendering
      */
-    struct Descriptors
+    struct Descriptors : RefCounted
     {
         /** @brief Descriptor set layout for main rendering pipeline */
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
@@ -124,10 +124,13 @@ namespace SceneryEditorX
     /**
      * @brief Creates a descriptor set with a combined image sampler
      * 
-     * @param sampler The sampler to use
-     * @param image_view The image view to use
-     * @param image_layout The layout of the image
-     * @return VkDescriptorSet The created descriptor set
+     * @param device The logical device to use for descriptor creation
+     * @param descriptorPool The descriptor pool to allocate from.
+     * @param layout The descriptor set layout to use.
+     * @param sampler The sampler to use.
+     * @param image_view The image view to use.
+     * @param image_layout The layout of the image.
+     * @return VkDescriptorSet The created descriptor set.
      */
     VkDescriptorSet CreateDescriptor(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout, 
                                     VkSampler sampler, VkImageView image_view, VkImageLayout image_layout);

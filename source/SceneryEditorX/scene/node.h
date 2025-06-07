@@ -17,9 +17,9 @@
 
 namespace SceneryEditorX
 {
-	/*
-	struct Serializer;
-	class SceneAsset;
+
+	//struct Serializer;
+	//class SceneAsset;
 
     /// -------------------------------------------------------
 
@@ -28,7 +28,7 @@ namespace SceneryEditorX
 	public:
 
         Node();
-        virtual void Serialize(Serializer &ser) override;
+        //virtual void Serialize(Serializer &ser) override;
 
 		/// -------------------------------------------------------
 
@@ -108,8 +108,7 @@ namespace SceneryEditorX
 
 		friend class AssetManager;
 	};
-	*/
 
 } // namespace SceneryEditorX
 
-// ------------------------------------------------
+/// ------------------------------------------------

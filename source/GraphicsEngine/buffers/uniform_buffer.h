@@ -26,7 +26,7 @@ namespace SceneryEditorX
      * used to pass transformation matrices and other uniform data to shaders.
      * It maintains a separate buffer for each frame in flight to prevent race conditions.
      */
-    class UniformBuffer
+    class UniformBuffer : public RefCounted
     {
     public:
         /**
@@ -75,7 +75,7 @@ namespace SceneryEditorX
          * @param buffer Reference to store the created buffer handle
          * @param bufferMemory Reference to store the allocated memory handle
          */
-        GLOBAL void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
+        GLOBAL void Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
 
         /**
          * @brief Updates the contents of a uniform buffer for the current frame
@@ -85,7 +85,7 @@ namespace SceneryEditorX
          * Updates transformation matrices in the uniform buffer for the specified
          * frame with the current camera and model state.
          */
-        void UpdateUniformBuffer(uint32_t currentImage) const;
+        void Update(uint32_t currentImage) const;
 
         /**
          * @brief Gets the buffer handle for the specified frame
@@ -97,19 +97,6 @@ namespace SceneryEditorX
         {
             if (index < uniformBuffers.size())
                 return uniformBuffers[index];
-            return VK_NULL_HANDLE;
-        }
-
-        /**
-         * @brief Gets the buffer memory handle for the specified frame
-         *
-         * @param index Index of the frame's buffer memory to retrieve
-         * @return VkDeviceMemory The uniform buffer memory handle, or VK_NULL_HANDLE if invalid index
-         */
-        [[nodiscard]] VkDeviceMemory GetBufferMemory(uint32_t index) const
-        {
-            if (index < uniformBuffersMemory.size())
-                return uniformBuffersMemory[index];
             return VK_NULL_HANDLE;
         }
 

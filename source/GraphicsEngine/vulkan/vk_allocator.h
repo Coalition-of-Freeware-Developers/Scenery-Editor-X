@@ -66,7 +66,7 @@ namespace SceneryEditorX
 	 * using the Vulkan Memory Allocator (VMA). It handles buffer and image allocations,
 	 * defragmentation, and memory usage statistics.
 	 */
-    class MemoryAllocator
+    class MemoryAllocator : public RefCounted
     {
     public:
         MemoryAllocator() = default;
@@ -220,7 +220,7 @@ namespace SceneryEditorX
         GLOBAL void UnmapMemory(VmaAllocation allocation);
         GLOBAL VmaAllocator GetAllocator();
 
-		GLOBAL void Init(Ref<VulkanDevice> device, const uint32_t &apiVersion);
+		GLOBAL void Init(const Ref<VulkanDevice> &device, const uint32_t &apiVersion);
 		GLOBAL void Shutdown();
 
 		/// ---------------------------------------------------------

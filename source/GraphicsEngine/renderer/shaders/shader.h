@@ -86,7 +86,7 @@ namespace SceneryEditorX
          * 
          * Cleans up Vulkan shader module resources.
          */
-        virtual ~Shader();
+        virtual ~Shader() override;
 
 		/**
 		 * @brief Load shader from a shader pack file.
@@ -127,10 +127,7 @@ namespace SceneryEditorX
 	     * 
 	     * @return const char* Path to the shader directory
 	     */
-	    GLOBAL constexpr const char* GetShaderDirectoryPath()
-        {
-            return "assets/shaders/";
-        }
+	    GLOBAL constexpr const char* GetShaderDirectoryPath() { return "assets/shaders/"; }
 
 	    /**
 	     * @brief Create a Vulkan shader module from compiled bytecode.
@@ -155,4 +152,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

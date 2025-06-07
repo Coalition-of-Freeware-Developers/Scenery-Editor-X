@@ -30,7 +30,7 @@ namespace SceneryEditorX
          * Provides default locations appropriate for the Windows environment.
          * 
          */
-        struct EditorConfig
+        struct EditorConfig : RefCounted
         {
             std::string shaderFolder    = "../../assets/shaders";   ///< Directory containing shader files
             std::string textureFolder   = "../../assets/textures";  ///< Directory containing texture files
@@ -48,7 +48,7 @@ namespace SceneryEditorX
          * Contains paths to essential resources like shaders, textures, models, and fonts.
          * Provides default locations appropriate for the Linux environment.
          */
-        struct EditorConfig
+        struct EditorConfig : RefCounted
         {
             std::string shaderFolder    = "../../assets/shaders";   ///< Directory containing shader files
             std::string textureFolder   = "../../assets/textures";  ///< Directory containing texture files
@@ -66,7 +66,7 @@ namespace SceneryEditorX
          * Contains paths to essential resources like shaders, textures, models, and fonts.
          * Provides default locations appropriate for the macOS environment.
          */
-        struct EditorConfig
+        struct EditorConfig : RefCounted
         {
             std::string shaderFolder    = "../../assets/shaders";   ///< Directory containing shader files
             std::string textureFolder   = "../../assets/textures";  ///< Directory containing texture files

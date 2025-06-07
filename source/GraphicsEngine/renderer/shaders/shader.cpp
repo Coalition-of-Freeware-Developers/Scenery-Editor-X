@@ -75,7 +75,7 @@ namespace SceneryEditorX
         createInfo.codeSize = code.size();
         createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
 
-        VkShaderModule shaderModule;
+        VkShaderModule shaderModule = nullptr;
         if (vkCreateShaderModule(device->GetDevice(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create shader module!");

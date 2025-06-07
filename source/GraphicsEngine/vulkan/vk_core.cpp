@@ -190,7 +190,7 @@ namespace SceneryEditorX
     void GraphicsEngine::glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer)
     {
         /// Set the GLFWwindow user pointer to point to our Window instance
-        ::glfwSetWindowUserPointer(pointer, window.get());
+        ::glfwSetWindowUserPointer(pointer, window.Get());
     }
 
     /// -------------------------------------------------------
@@ -233,7 +233,7 @@ namespace SceneryEditorX
     void GraphicsEngine::Init(const Ref<Window> &window)
     {
         /// Store the instance in the singleton for future use
-        gfxContext = CreateRef<GraphicsEngine>(*this);
+        gfxContext = CreateRef<GraphicsEngine>();
         
         /// Store the window reference
         editorWindow = window;
@@ -357,6 +357,7 @@ namespace SceneryEditorX
 
 		/// ---------------------------------------------------------
 
+        /*
         if (enableValidationLayers)
         {
             VkDebugUtilsMessengerCreateInfoEXT vkDebugCreateInfo;
@@ -364,19 +365,28 @@ namespace SceneryEditorX
             createInfo.ppEnabledLayerNames = layersInstance.validationLayer.data();
             /// We need to set up a separate logger just for the instance creation/destruction because our "default" logger is created after
             PopulateDebugMsgCreateInfo(vkDebugCreateInfo);
-            // createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+            //createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&vkDebugCreateInfo;
         }
         else
         {
             createInfo.enabledLayerCount = 0;
             createInfo.pNext = nullptr;
-        }
+        }*/
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Instance and Surface Creation
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        if (layersInstance.validationLayer.empty() && enableValidationLayers)
+        if (enableValidationLayers)
+        {
+            VkDebugUtilsMessengerCreateInfoEXT messengerInfo;
+            PopulateDebugMsgCreateInfo(messengerInfo);
+
+            SEDX_ASSERT(CreateDebugUtilsMessengerEXT(vkInstance, &messengerInfo, allocator, &debugMessenger) == VK_SUCCESS);
+        }
+
+        /// ---------------------------------------------------------
+        if (layersInstance.validationLayer.empty())
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Validation layers enabled but none available!");
             return;
@@ -388,17 +398,6 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created");
 
         VulkanLoadDebugUtilsExtensions(vkInstance);
-
-		/// ---------------------------------------------------------
-
-		if (enableValidationLayers)
-        {
-            VkDebugUtilsMessengerCreateInfoEXT messengerInfo;
-            PopulateDebugMsgCreateInfo(messengerInfo);
-
-			SEDX_ASSERT(CreateDebugUtilsMessengerEXT(vkInstance, &messengerInfo, allocator, &debugMessenger) == VK_SUCCESS);
-
-        }
 
 		/// ---------------------------------------------------------
 
@@ -417,26 +416,16 @@ namespace SceneryEditorX
             return;
         }
 
-		VkPhysicalDeviceFeatures deviceFeatures = {};
-        deviceFeatures.samplerAnisotropy = VK_TRUE; // Enable anisotropic filtering
-        deviceFeatures.wideLines = VK_TRUE;         // Enable wide lines if needed
-        deviceFeatures.fillModeNonSolid = VK_TRUE;  // Enable non-solid fill modes
-        deviceFeatures.geometryShader = VK_TRUE;    // Enable geometry shaders if needed
-        deviceFeatures.tessellationShader = VK_TRUE; // Enable tessellation shaders if needed
-        deviceFeatures.independentBlend = VK_TRUE;   // Enable independent blending if needed
-        deviceFeatures.pipelineStatisticsQuery = VK_TRUE; // Enable pipeline statistics queries if needed
-        deviceFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE; // Enable storage image writes without format
+        vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice);
         
-        vkDevice = Ref<VulkanDevice>(vkPhysicalDevice, deviceFeatures);
-        
-        // Verify the device was created successfully before proceeding
+        /// Verify the device was created successfully before proceeding
         if (!vkDevice || vkDevice->GetDevice() == VK_NULL_HANDLE) {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create valid Vulkan device!");
             return;
         }
 
 		/// Memory Allocator initialization.
-        vkDevice->InitializeMemoryAllocator(vkInstance);
+        //vkDevice->InitializeMemoryAllocator(vkInstance);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Pipeline Cache Creation
@@ -445,17 +434,16 @@ namespace SceneryEditorX
 		VkPipelineCacheCreateInfo pipelineCacheInfo = {};
         pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
         
-        // First check if the device is valid
-        if (vkDevice && vkDevice->GetDevice() != VK_NULL_HANDLE) {
-            VkResult result = vkCreatePipelineCache(vkDevice->GetDevice(), &pipelineCacheInfo, nullptr, &pipelineCache);
-            if (result != VK_SUCCESS) {
+        /// First check if the device is valid
+        if (vkDevice && vkDevice->GetDevice() != VK_NULL_HANDLE)
+		{
+            if (VkResult result = vkCreatePipelineCache(vkDevice->GetDevice(), &pipelineCacheInfo, nullptr, &pipelineCache); result != VK_SUCCESS)
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create pipeline cache! Error: {}", static_cast<int>(result));
-            } else {
+            else
                 SEDX_CORE_TRACE_TAG("Graphics Engine", "Pipeline cache created successfully");
-            }
-        } else {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Cannot create pipeline cache: Vulkan device is null or not initialized");
         }
+        else
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Cannot create pipeline cache: Vulkan device is null or not initialized");
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Surface Creation
@@ -518,11 +506,16 @@ namespace SceneryEditorX
         //vkDestroySwapchainKHR(vkDevice->GetDevice(), vkSwapChain, allocator);
         vkDestroyDevice(vkDevice->GetDevice(), allocator);
 
+        Layers layersInstance;
+        layersInstance.activeLayers.clear();
+        layersInstance.activeLayersNames.clear();
+        layersInstance.layers.clear();
+
         if (enableValidationLayers)
-        {
+		{
             DestroyDebugUtilsMessengerEXT(vkInstance, debugMessenger, allocator);
         }
-
+		
         vkDestroySurfaceKHR(vkInstance, surface, allocator);
         vkDestroyInstance(vkInstance, allocator);
     }
@@ -571,7 +564,6 @@ namespace SceneryEditorX
         renderFinishedSemaphores.clear();
         swapChainImageViews.clear();
         vkSwapChain->swapChainImages.clear();
-        //vkSwapChain = VK_NULL_HANDLE;
 	}
 
     /// -------------------------------------------------------

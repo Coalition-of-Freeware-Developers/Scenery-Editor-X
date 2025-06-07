@@ -14,20 +14,20 @@
 #pragma once
 #include <vulkan/vulkan_core.h>
 
+#include "vk_buffers.h"
+
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class MemoryAllocator;
-
-	// -------------------------------------------------------
+    /// -------------------------------------------------------
 
 	#define VK_FLAGS_NONE 0
 	#define DEFAULT_FENCE_TIMEOUT 100000000000
 
 	using Flags = uint32_t;
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     /**
      * @enum ResourceAccessFlags
@@ -62,41 +62,7 @@ namespace SceneryEditorX
         MemoryWrite = 0x00010000,
     };
 
-    /**
-     * @enum PipelineStage
-     * @brief Represents the various stages of a Vulkan pipeline.
-     *
-     * This enum is used to specify the stages of the pipeline
-     * for synchronization purposes, such as when waiting for
-     * operations to complete or when setting up barriers.
-     *
-     * @note The values in this enum are bitwise OR'd together
-     * to create a bitfield representing multiple stages.
-     * @note Identical to Vulkan's VkPipelineStageFlagBits
-     */
-    enum class PipelineStage
-    {
-        None = 0,
-        TopOfPipe = 0x00000001,
-        DrawIndirect = 0x00000002,
-        VertexInput = 0x00000004,
-        VertexShader = 0x00000008,
-        TesselationControlShader = 0x00000010,
-        TesselationEvaluationShader = 0x00000020,
-        GeometryShader = 0x00000040,
-        FragmentShader = 0x00000080,
-        EarlyFragmentTests = 0x00000100,
-        LateFragmentTests = 0x00000200,
-        ColorAttachmentOutput = 0x00000400,
-        ComputeShader = 0x00000800,
-        Transfer = 0x00001000,
-        BottomOfPipe = 0x00002000,
-        Host = 0x00004000,
-        AllGraphics = 0x00008000,
-        AllCommands = 0x00010000
-    };
-
-	// ---------------------------------------------------------
+	/// ---------------------------------------------------------
 
     /**
      * @struct VulkanDeviceFeatures
@@ -171,9 +137,9 @@ namespace SceneryEditorX
         bool variableMultisampleRate				 = VK_FALSE; // Specifies whether all pipelines that will be bound to a command buffer during a subpass have the same value for VkPipelineMultisampleStateCreateInfo::rasterizationSamples.
         bool inheritedQueries						 = VK_FALSE; // Specifies whether a secondary command buffer may be executed while a query is active.
 
-		// ------------------------------------------------------------------------------------------------------------------------------------------------
+		/// ------------------------------------------------------------------------------------------------------------------------------------------------
 
-        // Helper function to initialize VkPhysicalDeviceFeatures from this struct
+        /// Helper function to initialize VkPhysicalDeviceFeatures from this struct
         [[nodiscard]] VkPhysicalDeviceFeatures GetPhysicalDeviceFeatures() const
         {
             VkPhysicalDeviceFeatures features{};
@@ -248,18 +214,14 @@ namespace SceneryEditorX
 	*/
     struct Extensions
     {
-        /** @brief Indicates which extensions are active (true) or inactive (false) */
+        /**
+         * @brief Indicates which extensions are active (true) or inactive (false).
+         * @result A vector of booleans where each index corresponds to an extension.
+         */
         std::vector<bool> activeExtensions;
 
-        /** @brief List of extension names that are required by the application
-	     *
-	     * These extensions are considered essential for the application to function properly:
-	     * - VK_KHR_SWAPCHAIN_EXTENSION_NAME: Required for presenting rendered images to display
-	     * - VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME: Required for ray tracing acceleration structures
-	     * - VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME: Required for asynchronous operations
-	     * - VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME: Required for atomic operations on floating-point values
-	     * - VK_EXT_DEBUG_UTILS_EXTENSION_NAME: Required for debugging and validation
-	     * - VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME: Required for dynamic vertex input state
+        /**
+         * @brief List of extension names that are required by the application
 	     */
         std::vector<const char *> deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -270,16 +232,24 @@ namespace SceneryEditorX
 			VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME
         };
 
-        /** @brief List of extensions available on the physical device */
+        /**
+         * @brief List of extensions available on the physical device.
+         * @result A vector of VkExtensionProperties containing information about each available extension.
+         */
         std::vector<VkExtensionProperties> availableExtensions;
 
-        /** @brief List of extensions available at the instance level */
+        /**
+         * @brief List of extensions available at the instance level.
+         *	@result A vector of VkExtensionProperties containing information about each available instance extension.
+         */
         std::vector<VkExtensionProperties> instanceExtensions;
 
-        /** @brief Count of available extensions */
+        /**
+         * @brief Count of available extensions.
+         * @result The number of available extensions on the physical device.
+         */
         uint32_t extensionCount = 0;
     };
-
 
 	/**
 	 * @struct Layers
@@ -319,58 +289,33 @@ namespace SceneryEditorX
     /// -----------------------------------------------------------
 
     /**
-     * @struct Resource
-     * @brief Base class for all render-able resources in the graphics system.
-     *
-     * The Resource class serves as a foundation for all resources that can be 
-     * tracked and managed by the rendering system. It provides basic identification
-     * through a name and a unique resource ID.
-     *
-     * Resources include objects such as textures, buffers, shaders, and other
-     * GPU-related assets that need to be managed throughout their lifecycle.
-     */
-    struct Resource : RefCounted
-    {
-        /** @brief Descriptive name of the resource for debugging and tracking */
-        std::string name;
-
-        /** @brief Unique identifier for the resource (-1 indicates unassigned) */
-        int32_t resourceID = -1;
-
-        /** @brief Virtual destructor to ensure proper cleanup of derived resources */
-        virtual ~Resource() override = default;
-    };
-
-    /// -----------------------------------------------------------
-
-    /**
-     * @enum Queue
-     * @brief Enumeration of Vulkan queue family types used in the rendering system
-     * 
-     * Vulkan uses different queue families to execute different types of operations.
-     * This enum provides a type-safe way to identify and reference these queue families
-     * throughout the rendering system.
-     */
+	 * @enum Queue
+	 * @brief Enumeration of Vulkan queue family types used in the rendering system
+	 * 
+	 * Vulkan uses different queue families to execute different types of operations.
+	 * This enum provides a type-safe way to identify and reference these queue families
+	 * throughout the rendering system.
+	 */
     enum Queue : uint8_t
     {
-        Graphics = 0, ///< Graphics queue family for rendering operations and drawing commands
-        Compute  = 1, ///< Compute queue family for compute shader and general computation operations
-        Transfer = 2, ///< Transfer queue family dedicated to memory transfer operations
-        Count    = 3, ///< Total number of queue families
-        Present  = 4, ///< Present queue family for presenting rendered images to the display surface
+        Graphics	= 0, ///< Graphics queue family for rendering operations and drawing commands
+        Compute		= 1, ///< Compute queue family for compute shader and general computation operations
+        Transfer	= 2, ///< Transfer queue family dedicated to memory transfer operations
+        Count		= 3, ///< Total number of queue families
+        Present		= 4, ///< Present queue family for presenting rendered images to the display surface
     };
 
     /**
-     * @struct CommandResources
-     * @brief Holds command buffer and synchronization resources for Vulkan queues
-     *
-     * This structure encapsulates the command buffer, synchronization primitives,
-     * and other resources needed for recording and executing commands on a Vulkan queue.
-     * It is designed to support multiple command buffers and synchronization objects
-     */
+	 * @struct CommandResources
+	 * @brief Holds command buffer and synchronization resources for Vulkan queues
+	 *
+	 * This structure encapsulates the command buffer, synchronization primitives,
+	 * and other resources needed for recording and executing commands on a Vulkan queue.
+	 * It is designed to support multiple command buffers and synchronization objects
+	 */
     struct CommandResources
     {
-        //Buffer staging;
+        Buffer staging;
         VkFence fence = nullptr;
         uint32_t stagingOffset = 0;
         uint8_t *stagingCpu = nullptr;
@@ -383,17 +328,17 @@ namespace SceneryEditorX
     };
 
     /**
-     * @struct InternalQueue
-     * @brief Represents a Vulkan queue and its associated command resources.
-     * 
-     * InternalQueue encapsulates a Vulkan queue along with its family index and a collection
-     * of associated command resources. It provides the foundation for managing Vulkan command
-     * execution across different queue types (graphics, compute, transfer, etc.).
-     * 
-     * Each queue can have multiple associated command resources allowing for parallel command
-     * buffer recording and submission, which is particularly useful when implementing 
-     * multithreaded rendering operations.
-     */
+	 * @struct InternalQueue
+	 * @brief Represents a Vulkan queue and its associated command resources.
+	 * 
+	 * InternalQueue encapsulates a Vulkan queue along with its family index and a collection
+	 * of associated command resources. It provides the foundation for managing Vulkan command
+	 * execution across different queue types (graphics, compute, transfer, etc.).
+	 * 
+	 * Each queue can have multiple associated command resources allowing for parallel command
+	 * buffer recording and submission, which is particularly useful when implementing 
+	 * multithreaded rendering operations.
+	 */
     struct InternalQueue
     {
         /** @brief Queue family index to which this queue belongs (-1 indicates uninitialized) */
@@ -403,12 +348,12 @@ namespace SceneryEditorX
         VkQueue queue = nullptr;
 
         /**
-         * @brief Collection of command resources associated with this queue.
-         * 
-         * Each CommandResources instance can contain command pools, buffers, and synchronization
-         * primitives required for command execution on this queue. Multiple command resources
-         * enable parallel command recording from different threads.
-         */
+	     * @brief Collection of command resources associated with this queue.
+	     * 
+	     * Each CommandResources instance can contain command pools, buffers, and synchronization
+	     * primitives required for command execution on this queue. Multiple command resources
+	     * enable parallel command recording from different threads.
+	     */
         std::vector<CommandResources> commands;
     };
 
@@ -528,7 +473,7 @@ namespace SceneryEditorX
 	 * This structure is shared across different components of the renderer to ensure
 	 * consistent access to rendering parameters and state.
 	 */
-    struct RenderData
+    struct RenderData : RefCounted
     {
         [[nodiscard]] uint32_t GetWidth() const { return width; }
         [[nodiscard]] uint32_t GetHeight() const { return height; }
@@ -670,7 +615,6 @@ namespace SceneryEditorX
         }
 
     };
-
 
 } // namespace SceneryEditorX
 

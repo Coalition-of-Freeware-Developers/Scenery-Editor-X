@@ -51,9 +51,9 @@ namespace SceneryEditorX
 
 		/// Initialization methods
 		void Init(VkInstance instance, const Ref<VulkanDevice> &device);
-        void InitSurface(const Ref<Window> &window);
-        void Create(float width, float height, bool vsync);
-		void OnResize(float width, float height);
+        void InitSurface();
+        void Create(uint32_t width, uint32_t height, bool vsync);
+        void OnResize(uint32_t width, uint32_t height);
         void Destroy();
 
 		/// Getter methods
@@ -90,8 +90,9 @@ namespace SceneryEditorX
 
 	private:
         VkInstance instance = nullptr;
-        Ref<VulkanDevice> physDevice;
-        Ref<GraphicsEngine> gfxEngine;
+        Ref<VulkanDevice> vkDevice;
+        Ref<GraphicsEngine> *gfxEngine;
+        Ref<Pipeline> *pipeline;
 
 		/// Helper methods
         uint32_t AcquireNextImage();

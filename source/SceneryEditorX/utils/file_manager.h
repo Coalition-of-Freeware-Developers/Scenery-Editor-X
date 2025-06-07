@@ -70,7 +70,7 @@ namespace SceneryEditorX
         GLOBAL bool OpenDirectoryInExplorer(const std::filesystem::path &path);
         GLOBAL bool OpenExternally(const std::filesystem::path &path);
 
-	    GLOBAL bool WriteBytes(const std::filesystem::path &filepath, const Buffer &buffer);
+	    GLOBAL bool WriteBytes(const std::filesystem::path &filepath, const BufferResource &buffer);
         GLOBAL Buffer ReadBytes(const std::filesystem::path &filepath);
 
         GLOBAL std::filesystem::path GetUniqueFileName(const std::filesystem::path &filepath);

@@ -25,9 +25,6 @@ namespace SceneryEditorX
 
         //static const std::string_view GLSL_VALIDATOR;
 
-
-        /// -------------------------------------------------------
-
         /**
          * @brief Compile the shader using glslangValidator
          * @param path The path to the shader file
@@ -41,4 +38,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -12,7 +12,7 @@
 */
 #pragma once
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -24,7 +24,7 @@ namespace SceneryEditorX
 	 * that can be attached, detached and updated independently. Each layer can handle
 	 * its own rendering, events, and update logic.
 	 */
-	class Layer
+	class Layer : public RefCounted
 	{
 	public:
 		/**
@@ -36,7 +36,7 @@ namespace SceneryEditorX
 		/**
 		 * @brief Virtual destructor for proper cleanup of derived classes.
 		 */
-		virtual ~Layer();
+		virtual ~Layer() override;
 		
 		/**
 		 * @brief Called when the layer is attached to the application.
@@ -77,4 +77,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

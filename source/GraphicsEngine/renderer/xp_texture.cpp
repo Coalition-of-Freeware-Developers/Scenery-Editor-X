@@ -13,11 +13,11 @@
 #include <GraphicsEngine/renderer/xp_texture.h>
 #include <SceneryEditorX/scene/texture.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -17,8 +17,8 @@
 
 namespace SceneryEditorX
 {
-    /*
-    struct Serializer;
+
+    //struct Serializer;
 
     /// -------------------------------------------------------
 
@@ -69,7 +69,7 @@ namespace SceneryEditorX
 	    }
 	
 	    virtual ~Object() override;
-	    virtual void Serialize(Serializer &ser) = 0;
+	    //virtual void Serialize(Serializer &ser) = 0;
 	};
 
     /// -------------------------------------------------------
@@ -85,12 +85,11 @@ namespace SceneryEditorX
         [[nodiscard]] virtual bool operator!=(const Asset& other) const { return !(*this == other); }
 
 		virtual bool operator==(const Asset &other) const { return Handle == other.Handle;}
-        virtual void Serialize(Serializer &ser) override = 0;
+        //virtual void Serialize(Serializer &ser) override = 0;
         virtual void Load(const std::string &path) = 0;
         virtual void Unload() = 0;
         virtual void SetName(const std::string &name) = 0;
     };
-    */
 
 } // namespace SceneryEditorX
 

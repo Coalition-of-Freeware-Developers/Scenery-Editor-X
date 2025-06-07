@@ -91,9 +91,9 @@ namespace SceneryEditorX
 	 */
     enum class AllocationType : uint8_t
     {
-        None = 0,   /** @brief No allocation type specified */
-        Buffer = 1, /** @brief Buffer allocation (uniform buffers, vertex buffers, etc.) */
-        Image = 2   /** @brief Image allocation (textures, render targets, etc.) */
+        None   = 0,		///< @brief No allocation type specified.
+        Buffer = 1,		///< @brief Buffer allocation (uniform buffers, vertex buffers, etc.)
+        Image  = 2		///< @brief Image allocation (textures, render targets, etc.)
     };
 	
 	/**
@@ -159,36 +159,6 @@ namespace SceneryEditorX
     };
 
     /// ---------------------------------------------------------
-
-	/*
-	VkDeviceSize MemoryAllocator::GetCustomBufferSize()
-	{
-	    auto& settings = GetApplicationSettings();
-	    if (settings.HasOption("vulkan.custom_buffer_size"))
-	    {
-	        return static_cast<VkDeviceSize>(settings.GetIntOption("vulkan.custom_buffer_size", 
-	            static_cast<int>(DEFAULT_CUSTOM_BUFFER_SIZE)));
-	    }
-	    return customBufferSize;
-	}
-	
-	bool MemoryAllocator::SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device)
-	{
-	    // Validate against device limits
-	    const auto& deviceLimits = device.vkPhysDevice->GetProperties().limits;
-	    
-	    if (!ApplicationSettings::ValidateBufferSize(size, deviceLimits))
-	    {
-	        return false;
-	    }
-	    
-	    // Store locally and in settings
-	    customBufferSize = size;
-	    auto& settings = GetApplicationSettings();
-	    settings.SetCustomBufferSize(size);
-	    return true;
-	}
-	*/
 
 	/**
 	 * @brief Begins a defragmentation process for GPU memory.
@@ -461,7 +431,7 @@ namespace SceneryEditorX
         vmaCreateImage(memAllocatorData->Allocator, &imageCreateInfo, &allocCreateInfo, &outImage, &allocation, nullptr);
         if (allocation == nullptr)
         {
-            ErrMsg("Failed to allocate GPU image");
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate GPU image!");
             return nullptr;
         }
 
@@ -562,6 +532,7 @@ namespace SceneryEditorX
 		        SEDX_CORE_TRACE("Buffer destroyed successfully");
 		    }
 		}
+
     } /// namespace VulkanMemoryUtils
 
     /**
@@ -684,9 +655,7 @@ namespace SceneryEditorX
         if (const auto it = bufferPools.find(size); it != bufferPools.end())
         {
             if (const auto &pool = it->second; !pool.pools.empty())
-            {
                 return pool.pools[0]; /// Return the first pool (we could implement more sophisticated selection)
-            }
         }
         else
         {
@@ -731,9 +700,7 @@ namespace SceneryEditorX
         if (const auto it = imagePools.find(size); it != imagePools.end())
         {
             if (const auto &pool = it->second; !pool.pools.empty())
-            {
                 return pool.pools[0]; /// Return the first pool (we could implement more sophisticated selection)
-            }
         }
         else
         {
@@ -836,10 +803,8 @@ namespace SceneryEditorX
 
         /// Apply custom alignment if specified
         if (customBufferAlignment > 0)
-        {
             /// Round up to the next multiple of customBufferAlignment
             return ((size + customBufferAlignment - 1) / customBufferAlignment) * customBufferAlignment;
-        }
 
         /// If no custom alignment is set but size is small, round up to improve cache efficiency
         if (size < SMALL_BUFFER_SIZE)
@@ -860,16 +825,16 @@ namespace SceneryEditorX
         return size;
     }
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
     /**
      * @fn Init
      * @brief Initializes the memory allocator with the specified Vulkan device.
      *
-     * @param device The Vulkan device to be used for memory allocation
-     * @param apiVersion
+     * @param device The Vulkan device to be used for memory allocation.
+     * @param apiVersion The Vulkan API version to be used for the allocator.
      */
-    void MemoryAllocator::Init(Ref<VulkanDevice> device, const uint32_t &apiVersion)
+    void MemoryAllocator::Init(const Ref<VulkanDevice> &device, const uint32_t &apiVersion)
     {
         memAllocatorData = hnew VulkanAllocatorData();
 
@@ -879,14 +844,14 @@ namespace SceneryEditorX
         allocatorInfo.device = device->GetDevice();
         allocatorInfo.instance = GraphicsEngine::GetInstance();
 
-        // Set up Vulkan function pointers properly for VMA
+        /// Set up Vulkan function pointers properly for VMA
         VmaVulkanFunctions vulkanFunctions = {};
         vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
         vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
         allocatorInfo.pVulkanFunctions = &vulkanFunctions;
 
-        // We'll avoid using the buffer device address extension for now since we
-        // don't have access to check if it's available
+        /// We'll avoid using the buffer device address extension for now since we
+        /// don't have access to check if it's available
 
         VkResult result = vmaCreateAllocator(&allocatorInfo, &memAllocatorData->Allocator);
         if (result != VK_SUCCESS) {
@@ -921,9 +886,9 @@ namespace SceneryEditorX
      * This function checks if the specified VMA allocation is present
      * in the internal allocation tracking map.
      *
-     * @param allocation The VMA allocation handle to check
-     * @return true if the allocation is found
-     * @return false if the allocation is not found
+     * @param allocation The VMA allocation handle to check.
+     * @return true if the allocation is found.
+     * @return false if the allocation is not found.
      */
     bool MemoryAllocator::ContainsAllocation(VmaAllocation allocation)
     {
@@ -936,7 +901,7 @@ namespace SceneryEditorX
 	 *
 	 * This function returns the VMA allocator instance used for memory management.
 	 *
-	 * @return The VMA allocator instance
+	 * @return The VMA allocator instance.
 	 */
     VmaAllocator MemoryAllocator::GetAllocator()
     {
@@ -945,12 +910,12 @@ namespace SceneryEditorX
     }
 
 	/**
-	 * @brief Gets the current memory allocation statistics
+	 * @brief Gets the current memory allocation statistics.
 	 * 
 	 * This function queries the VMA for current allocation statistics
 	 * and returns them in a structured format.
 	 * 
-	 * @return AllocationStats containing memory usage information
+	 * @return AllocationStats containing memory usage information.
 	 */
     MemoryAllocator::AllocationStats MemoryAllocator::GetStats()
     {
@@ -975,15 +940,11 @@ namespace SceneryEditorX
 
         /// Calculate fragmentation ratio (if no blocks, fragmentation is 0)
         if (vmaStats.total.statistics.blockCount > 0)
-        {
             /// Calculate fragmentation as 1 - (used / allocated)
             /// This represents the proportion of allocated memory that's not being used
-            stats.fragmentationRatio = 1.0f - ((float)vmaStats.total.statistics.allocationBytes / (float)vmaStats.total.statistics.blockBytes);
-        }
+            stats.fragmentationRatio = 1.0f - static_cast<float>(vmaStats.total.statistics.allocationBytes) / static_cast<float>(vmaStats.total.statistics.blockBytes);
         else
-        {
             stats.fragmentationRatio = 0.0f;
-        }
 
         return stats;
     }
@@ -1086,8 +1047,7 @@ namespace SceneryEditorX
         }
 
         /// Reset our allocation tracking statistics
-        for (auto &[Allocator, BytesAllocated, BytesFreed, CurrentAllocations, PeakMemoryUsage] :
-             memoryTypeStats)
+        for (auto &[Allocator, BytesAllocated, BytesFreed, CurrentAllocations, PeakMemoryUsage] :  memoryTypeStats)
         {
             /// Keep track of current allocations, but reset historical tracking
             const uint64_t currentAllocCount = CurrentAllocations;
@@ -1131,7 +1091,6 @@ namespace SceneryEditorX
             currentStrategy = strategy;
         }
     }
-
 
     /**
      * @fn ApplyAllocationStrategy
@@ -1237,8 +1196,7 @@ namespace SceneryEditorX
 
         if (percentage <= 0.0f || percentage > 1.0f)
         {
-            SEDX_CORE_WARN_TAG("Memory Allocator",
-                "Invalid memory warning threshold value: {}, must be between 0.0 and 1.0. Using default value (0.9)", percentage);
+            SEDX_CORE_WARN_TAG("Memory Allocator", "Invalid memory warning threshold value: {}, must be between 0.0 and 1.0. Using default value (0.9)", percentage);
             percentage = 0.9f;
         }
 
@@ -1276,7 +1234,9 @@ namespace SceneryEditorX
             /// Round up to the next power of 2
             VkDeviceSize powerOf2 = 1;
             while (powerOf2 < alignment)
+            {
                 powerOf2 *= 2;
+            }
 
             alignment = powerOf2;
             SEDX_CORE_INFO_TAG("VulkanAllocator", "Rounded buffer alignment to {} (next power of 2)", alignment);
@@ -1379,13 +1339,11 @@ namespace SceneryEditorX
         }
 
         /// Update peak memory usage
-        memAllocatorData->PeakMemoryUsage =
-            std::max(memAllocatorData->PeakMemoryUsage, memAllocatorData->BytesAllocated);
+        memAllocatorData->PeakMemoryUsage = std::max(memAllocatorData->PeakMemoryUsage, memAllocatorData->BytesAllocated);
 
         if (!allocations.empty())
         {
-            SEDX_CORE_INFO_TAG("VulkanAllocator",
-                               "Allocated batch of {} buffers totaling {} MB",
+            SEDX_CORE_INFO_TAG("VulkanAllocator", "Allocated batch of {} buffers totaling {} MB",
                                allocations.size(), static_cast<double>(totalAllocation) / (1024.0 * 1024.0));
         }
 
@@ -1445,4 +1403,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -11,12 +11,12 @@
 * -------------------------------------------------------
 */
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/window.h>
 #include <GraphicsEngine/vulkan/image_data.h>
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <GraphicsEngine/vulkan/vk_device.h>
 #include <GraphicsEngine/vulkan/vk_swapchain.h>
 #include <GraphicsEngine/vulkan/vk_util.h>
+#include <SceneryEditorX/core/window.h>
 
 // -------------------------------------------------------
 
@@ -82,7 +82,7 @@ namespace SceneryEditorX
     {
         /// Don't reassign the parameter "instance"
         this->instance = instance;
-        this->physDevice = device;
+        this->vkDevice = device;
 
 		const VkDevice vkDevice = device->GetDevice();
         GET_DEVICE_PROC_ADDR(vkDevice, CreateSwapchainKHR)
@@ -100,15 +100,15 @@ namespace SceneryEditorX
         GET_INSTANCE_PROC_ADDR(instance, GetQueueCheckpointDataNV)
     }
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     std::vector<int32_t> ImageID::availImageRID;
     std::vector<int32_t> ImageID::availBufferRID;
     std::vector<int32_t> ImageID::availTLASRID;
 
-    void SwapChain::InitSurface(const Ref<Window> &window)
+    void SwapChain::InitSurface()
     {
-        VkPhysicalDevice physicalDevice = physDevice->GetPhysicalDevice()->GetGPUDevices();
+        VkPhysicalDevice physicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         GPUDevice gpuData;
 
         /// Create the surface
@@ -237,19 +237,19 @@ namespace SceneryEditorX
 	}
 	*/
 
-    void SwapChain::Create(float width, float height, bool vsync)
+    void SwapChain::Create(uint32_t width, uint32_t height, bool vsync)
     {
         RenderData data;
         data.width = width;
         data.height = height;
         data.VSync = vsync;
 
-		VkPhysicalDevice physicalDevice = physDevice->GetPhysicalDevice()->GetGPUDevices();
-        VkDevice vkDevice = gfxEngine->GetLogicDevice()->GetDevice();
+		VkPhysicalDevice physicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
+        //VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
         VkSwapchainKHR oldSwapChain = swapChain;
 
 		/// Get physical device surface properties and formats
-        VkSurfaceCapabilitiesKHR surfaceInfo = physDevice->GetPhysicalDevice()->Selected().surfaceCapabilities;
+        VkSurfaceCapabilitiesKHR surfaceInfo = vkDevice->GetPhysicalDevice()->Selected().surfaceCapabilities;
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceInfo))
 
         /// Get available present modes
@@ -257,7 +257,7 @@ namespace SceneryEditorX
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr))
         SEDX_CORE_ASSERT(presentModeCount > 0, "No present modes available!");
 
-        std::vector presentModes(physDevice->GetPhysicalDevice()->Selected().presentModes);
+        std::vector presentModes(vkDevice->GetPhysicalDevice()->Selected().presentModes);
         presentModes.resize(presentModeCount);
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data()))
 
@@ -290,7 +290,7 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 
         /// Choose the best format and present mode
-        VkSurfaceFormatKHR surfaceFormats = physDevice->GetPhysicalDevice()->Selected().surfaceFormats[0];
+        VkSurfaceFormatKHR surfaceFormats = vkDevice->GetPhysicalDevice()->Selected().surfaceFormats[0];
         std::vector formats = {surfaceFormats};
         VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(formats);
         colorFormat = surfaceFormat.format;
@@ -300,7 +300,7 @@ namespace SceneryEditorX
         /// Create the swap chain
         swapChainExtent = ChooseSwapExtent(surfaceInfo, width, height);
 
-        VkSurfaceCapabilitiesKHR surfaceCapabilities = physDevice->GetPhysicalDevice()->Selected().surfaceCapabilities;
+        VkSurfaceCapabilitiesKHR surfaceCapabilities = vkDevice->GetPhysicalDevice()->Selected().surfaceCapabilities;
 
         /// Set minimum image count (usually min+1 for triple buffering)
         uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
@@ -336,6 +336,8 @@ namespace SceneryEditorX
 		/// SwapChain Creation
         ///////////////////////////////////////////////////////////////////////////////////
 
+		VkDevice usedDevice = vkDevice->Selected();
+
         VkSwapchainCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.pNext = nullptr;
@@ -343,7 +345,7 @@ namespace SceneryEditorX
         createInfo.minImageCount = imageCount;
         createInfo.imageFormat = surfaceFormats.format;
         createInfo.imageColorSpace = surfaceFormats.colorSpace;
-        createInfo.imageExtent = {swapExtent.width, swapExtent.height};
+        createInfo.imageExtent = {.width = swapExtent.width,.height = swapExtent.height};
         createInfo.imageArrayLayers = 1;
         createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         createInfo.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
@@ -363,18 +365,18 @@ namespace SceneryEditorX
         if (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             createInfo.imageUsage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-        VK_CHECK_RESULT(fpCreateSwapchainKHR(vkDevice, &createInfo, allocator, &swapChain))
+        VK_CHECK_RESULT(fpCreateSwapchainKHR(usedDevice, &createInfo, allocator, &swapChain))
         if (oldSwapChain)
-            fpDestroySwapchainKHR(vkDevice, oldSwapChain, allocator);
+            fpDestroySwapchainKHR(usedDevice, oldSwapChain, allocator);
 
         for (auto &swapChainView : swapChainViews)
-            vkDestroyImageView(vkDevice, swapChainView, allocator);
+            vkDestroyImageView(usedDevice, swapChainView, allocator);
 
         //swapChainImages.clear();
 
-		VK_CHECK_RESULT(fpGetSwapchainImagesKHR(vkDevice, swapChain, &imageCount, nullptr))
+		VK_CHECK_RESULT(fpGetSwapchainImagesKHR(usedDevice, swapChain, &imageCount, nullptr))
         swapChainImageResources.resize(imageCount);
-        VK_CHECK_RESULT(fpGetSwapchainImagesKHR(vkDevice, swapChain, &imageCount, swapChainImageResources.data()))
+        VK_CHECK_RESULT(fpGetSwapchainImagesKHR(usedDevice, swapChain, &imageCount, swapChainImageResources.data()))
 
 		/// Get the swap chain buffers containing the image and imageview
         swapChainViews.resize(swapChainImageResources.size());
@@ -396,9 +398,9 @@ namespace SceneryEditorX
             colorAttachmentView.subresourceRange.baseArrayLayer = 0;
             colorAttachmentView.subresourceRange.layerCount = 1;
 
-            VK_CHECK_RESULT(vkCreateImageView(vkDevice, &colorAttachmentView, allocator, &swapChainViews[i]))
+            VK_CHECK_RESULT(vkCreateImageView(usedDevice, &colorAttachmentView, allocator, &swapChainViews[i]))
 
-            swapChainImages[i].resource = std::make_shared<ImageResource>();
+            swapChainImages[i].resource = Ref<ImageResource>();
             swapChainImages[i].resource->image = swapChainImageResources[i];
             swapChainImages[i].resource->view = swapChainViews[i];
             swapChainImages[i].layout = Layout::Undefined;
@@ -409,7 +411,7 @@ namespace SceneryEditorX
         }
 
 		for (auto &cmdBuffer : cmdBuffers)
-            vkDestroyCommandPool(vkDevice, cmdBuffer.CommandPool, nullptr);
+            vkDestroyCommandPool(usedDevice, cmdBuffer.CommandPool, nullptr);
 
 		VkCommandPoolCreateInfo cmdPool = {};
         cmdPool.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -424,9 +426,9 @@ namespace SceneryEditorX
 		cmdBuffers.resize(imageCount);
         for (auto &commandBuffer : cmdBuffers)
         {
-            VK_CHECK_RESULT(vkCreateCommandPool(vkDevice, &cmdPool, allocator, &commandBuffer.CommandPool))
+            VK_CHECK_RESULT(vkCreateCommandPool(usedDevice, &cmdPool, allocator, &commandBuffer.CommandPool))
             cmdBufAllocateInfo.commandPool = commandBuffer.CommandPool;
-            VK_CHECK_RESULT(vkAllocateCommandBuffers(vkDevice, &cmdBufAllocateInfo, &commandBuffer.CommandBuffer))
+            VK_CHECK_RESULT(vkAllocateCommandBuffers(usedDevice, &cmdBufAllocateInfo, &commandBuffer.CommandBuffer))
         }
 
 		
@@ -443,10 +445,10 @@ namespace SceneryEditorX
             semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
             for (size_t i = 0; i < renderData.framesInFlight; i++)
             {
-                VK_CHECK_RESULT(vkCreateSemaphore(vkDevice, &semaphoreInfo, allocator, &imageAvailableSemaphores[i]))
-                SetDebugUtilsObjectName(vkDevice, VK_OBJECT_TYPE_SEMAPHORE, std::format("Swapchain Semaphore ImageAvailable {0}", i), imageAvailableSemaphores[i]);
-                VK_CHECK_RESULT(vkCreateSemaphore(vkDevice, &semaphoreInfo, allocator, &renderFinishedSemaphores[i]))
-				SetDebugUtilsObjectName(vkDevice, VK_OBJECT_TYPE_SEMAPHORE, std::format("Swapchain Semaphore RenderFinished {0}", i), renderFinishedSemaphores[i]);
+                VK_CHECK_RESULT(vkCreateSemaphore(usedDevice, &semaphoreInfo, allocator, &imageAvailableSemaphores[i]))
+                SetDebugUtilsObjectName(usedDevice, VK_OBJECT_TYPE_SEMAPHORE, std::format("Swapchain Semaphore ImageAvailable {0}", i), imageAvailableSemaphores[i]);
+                VK_CHECK_RESULT(vkCreateSemaphore(usedDevice, &semaphoreInfo, allocator, &renderFinishedSemaphores[i]))
+				SetDebugUtilsObjectName(usedDevice, VK_OBJECT_TYPE_SEMAPHORE, std::format("Swapchain Semaphore RenderFinished {0}", i), renderFinishedSemaphores[i]);
             }
         }
 
@@ -459,8 +461,8 @@ namespace SceneryEditorX
             waitFences.resize(renderData.framesInFlight);
             for (auto &fence : waitFences)
             {
-                VK_CHECK_RESULT(vkCreateFence(vkDevice, &fenceInfo, allocator, &fence))
-                SetDebugUtilsObjectName(vkDevice, VK_OBJECT_TYPE_FENCE, "Swapchain Fence {0}", fence);
+                VK_CHECK_RESULT(vkCreateFence(usedDevice, &fenceInfo, allocator, &fence))
+                SetDebugUtilsObjectName(usedDevice, VK_OBJECT_TYPE_FENCE, "Swapchain Fence {0}", fence);
             }
         }
 
@@ -518,15 +520,15 @@ namespace SceneryEditorX
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
 
-		VK_CHECK_RESULT(vkCreateRenderPass(vkDevice, &renderPassInfo, allocator, &renderPass))
-        SetDebugUtilsObjectName(vkDevice, VK_OBJECT_TYPE_RENDER_PASS, "Swapchain Render Pass", renderPass);
+		VK_CHECK_RESULT(vkCreateRenderPass(usedDevice, &renderPassInfo, allocator, &renderPass))
+        SetDebugUtilsObjectName(usedDevice, VK_OBJECT_TYPE_RENDER_PASS, "Swapchain Render Pass", renderPass);
 
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Framebuffers
         //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		for (auto &framebuffer : swapChainFramebuffers)
-            vkDestroyFramebuffer(vkDevice, framebuffer, allocator);
+            vkDestroyFramebuffer(usedDevice, framebuffer, allocator);
 
 		VkFramebufferCreateInfo framebufferInfo = {};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -540,87 +542,89 @@ namespace SceneryEditorX
         for (size_t i = 0; i < swapChainFramebuffers.size(); i++)
         {
             framebufferInfo.pAttachments = &swapChainImages[i].resource->view;
-            VK_CHECK_RESULT(vkCreateFramebuffer(vkDevice, &framebufferInfo, allocator, &swapChainFramebuffers[i]))
-            SetDebugUtilsObjectName(vkDevice,VK_OBJECT_TYPE_FRAMEBUFFER,std::format("Swapchain Framebuffer {0}", i),swapChainFramebuffers[i]);
+            VK_CHECK_RESULT(vkCreateFramebuffer(usedDevice, &framebufferInfo, allocator, &swapChainFramebuffers[i]))
+            SetDebugUtilsObjectName(usedDevice,VK_OBJECT_TYPE_FRAMEBUFFER,std::format("Swapchain Framebuffer {0}", i),swapChainFramebuffers[i]);
         }
     }
 
 	void SwapChain::Destroy()
-	{
-        const VkDevice vkDevice = gfxEngine->GetLogicDevice()->GetDevice();
-        RenderData renderData;
+    {
+        VkDevice usedDevice = vkDevice->Selected();
+        //const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
 
         if (depthImageView != VK_NULL_HANDLE)
         {
-            vkDestroyImageView(vkDevice, depthImageView, allocator);
+            vkDestroyImageView(usedDevice, depthImageView, allocator);
             depthImageView = VK_NULL_HANDLE;
         }
 
         if (depthImage != VK_NULL_HANDLE)
         {
-            vkDestroyImage(vkDevice, depthImage, allocator);
+            vkDestroyImage(usedDevice, depthImage, allocator);
             depthImage = VK_NULL_HANDLE;
         }
 
         //vkDestroyImageView(vkDevice, depthImageView, allocator);
         //vkDestroyImage(vkDevice, depthImage, allocator);
-        vkFreeMemory(vkDevice, depthImageMemory, allocator);
+        vkFreeMemory(usedDevice, depthImageMemory, allocator);
 
         for (auto framebuffer : swapChainFramebuffers)
-            vkDestroyFramebuffer(vkDevice, framebuffer, allocator);
+            vkDestroyFramebuffer(usedDevice, framebuffer, allocator);
 
         for (size_t i = 0; i < swapChainImageResources.size(); i++)
-            vkDestroyImageView(vkDevice, swapChainImages[i].resource->view, allocator);
+            vkDestroyImageView(usedDevice, swapChainImages[i].resource->view, allocator);
 
-        vkDestroyPipeline(vkDevice, pipeline->GetPipeline(), allocator);
-        vkDestroyPipelineLayout(vkDevice, pipeline->GetVulkanPipelineLayout(), allocator);
-        vkDestroyRenderPass(vkDevice, renderPass, allocator);
+		/// Handled by the Pipeline Struct
+        //vkDestroyPipeline(usedDevice, pipeline->GetPipeline(), allocator);
+        //vkDestroyPipelineLayout(usedDevice, pipeline->GetVulkanPipelineLayout(), allocator);
+        //vkDestroyRenderPass(usedDevice, renderPass, allocator);
+        pipeline->Get()->Destroy();
 
         for (auto &swapChainImage : swapChainImages)
-            vkDestroyImageView(vkDevice, swapChainImage.resource->view, nullptr);
+            vkDestroyImageView(usedDevice, swapChainImage.resource->view, nullptr);
 
+        RenderData renderData;
         for (size_t i = 0; i < renderData.framesInFlight; i++)
         {
-            vkDestroySemaphore(vkDevice, imageAvailableSemaphores[i], nullptr);
-            vkDestroySemaphore(vkDevice, renderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(usedDevice, imageAvailableSemaphores[i], nullptr);
+            vkDestroySemaphore(usedDevice, renderFinishedSemaphores[i], nullptr);
         }
 
-		vkDestroySwapchainKHR(vkDevice, swapChain, nullptr);
+		vkDestroySwapchainKHR(usedDevice, swapChain, nullptr);
 
-		/*
 		for (auto &queue : queues)
         {
-            for (auto i = 0; std::cmp_less(i, RenderData::framesInFlight); i++)
+            for (auto i = 0; std::cmp_less(i, renderData.framesInFlight); i++)
 			{
-                vkDestroyCommandPool(vkDevice, queue.commands[i].pool, nullptr);
+                vkDestroyCommandPool(usedDevice, queue.commands[i].pool, nullptr);
                 queue.commands[i].stagingOffset = {};
                 queue.commands[i].stagingCpu = nullptr;
-                vkDestroyFence(vkDevice, queue.commands[i].fence, nullptr);
-                vkDestroyQueryPool(vkDevice, queue.commands[i].queryPool, nullptr);
+                vkDestroyFence(usedDevice, queue.commands[i].fence, nullptr);
+                vkDestroyQueryPool(usedDevice, queue.commands[i].queryPool, nullptr);
 			}
 		}
-		*/
+
 
 		imageAvailableSemaphores.clear();
         renderFinishedSemaphores.clear();
         swapChainImages.clear();
         swapChain = VK_NULL_HANDLE;
 
-		vkDeviceWaitIdle(vkDevice);
+		vkDeviceWaitIdle(usedDevice);
     }
 
-    void SwapChain::OnResize(float width, float height)
+    void SwapChain::OnResize(uint32_t width, uint32_t height)
     {
         RenderData data;
         Viewport viewportData;
-        const VkDevice vkDevice = gfxEngine->GetLogicDevice()->GetDevice();
+        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
         data.width = width;
         data.height = height;
-        // if (data.width == 0 || data.height == 0)
-        // {
-        //     SEDX_CORE_INFO("Window minimized, waiting for restore");
-        //     return;
-        // }
+        if (data.width == 0 || data.height == 0)
+        {
+            SEDX_CORE_INFO("Window minimized, waiting for restore");
+            return;
+        }
         SEDX_CORE_INFO("Window resized to {}x{}", data.width, data.height);
         //vkDestroySwapchainKHR(vkDevice, swapChain, nullptr);
         vkDeviceWaitIdle(vkDevice);
@@ -630,7 +634,7 @@ namespace SceneryEditorX
 
     uint32_t SwapChain::AcquireNextImage()
     {
-        const VkDevice vkDevice = gfxEngine->GetLogicDevice()->GetDevice();
+        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
 		RenderData renderData;
         renderData.swapChainCurrentFrame = (renderData.swapChainCurrentFrame + 1) % swapChainImages.size();
 
@@ -672,7 +676,7 @@ namespace SceneryEditorX
         VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage&image, VkDeviceMemory&imageMemory) const
     {
-        const VkDevice vkDevice = gfxEngine->GetLogicDevice()->GetDevice();
+        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -708,7 +712,7 @@ namespace SceneryEditorX
 
     uint32_t SwapChain::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
     {
-        const VkPhysicalDevice vkPhysDevice = gfxEngine->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+        const VkPhysicalDevice vkPhysDevice = GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(vkPhysDevice, &memProperties);
 
@@ -726,7 +730,7 @@ namespace SceneryEditorX
 
     VkImageView SwapChain::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const
     {
-        const VkDevice vkDevice = gfxEngine->GetLogicDevice()->GetDevice();
+        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
 
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -770,7 +774,7 @@ namespace SceneryEditorX
 
     VkPresentModeKHR SwapChain::ChooseSwapPresentMode(uint32_t presentModeCount) const
     {
-        VkPresentModeKHR swapchainPresentMode = physDevice->GetPhysicalDevice()->Selected().presentModes[0];
+        VkPresentModeKHR swapchainPresentMode = vkDevice->GetPhysicalDevice()->Selected().presentModes[0];
 
         /// Check if VSync is disabled and prefer mailbox if available
         if (RenderData renderData; !renderData.VSync)
@@ -797,7 +801,7 @@ namespace SceneryEditorX
     {
         for (const VkFormat format : candidates)
         {
-            const VkPhysicalDevice vkPhysDevice = gfxEngine->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+            const VkPhysicalDevice vkPhysDevice = GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
             VkFormatProperties props;
 
             vkGetPhysicalDeviceFormatProperties(vkPhysDevice, format, &props);
@@ -857,7 +861,7 @@ namespace SceneryEditorX
 	 */
     void SwapChain::FindImageFormatAndColorSpace()
     {
-        const VkPhysicalDevice vkPhysDevice = gfxEngine->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+        const VkPhysicalDevice vkPhysDevice = GraphicsEngine::Get()->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
 
 		uint32_t formatCount;
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(vkPhysDevice, surface, &formatCount, nullptr))
@@ -865,7 +869,7 @@ namespace SceneryEditorX
 		std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(vkPhysDevice, surface, &formatCount, surfaceFormats.data()))
 
-		if ((formatCount == 1) && (surfaceFormats[0].format == VK_FORMAT_UNDEFINED))
+		if (formatCount == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED)
 		{
 			colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
 			colorSpace = surfaceFormats[0].colorSpace;
@@ -875,12 +879,12 @@ namespace SceneryEditorX
 			// iterate over the list of available surface format and
 			// check for the presence of VK_FORMAT_B8G8R8A8_UNORM
 			bool found_B8G8R8A8_UNORM = false;
-            for (auto &&surfaceFormat : surfaceFormats)
+            for (auto &[format, colorSpace] : surfaceFormats)
 			{
-                if (surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM)
+                if (format == VK_FORMAT_B8G8R8A8_UNORM)
 				{
-                    colorFormat = surfaceFormat.format;
-                    colorSpace = surfaceFormat.colorSpace;
+                    colorFormat = format;
+                    colorSpace = colorSpace;
 					found_B8G8R8A8_UNORM = true;
 					break;
 				}
@@ -898,5 +902,5 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 

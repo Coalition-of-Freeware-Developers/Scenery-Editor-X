@@ -20,7 +20,6 @@
 namespace SceneryEditorX
 {
 
-	/*
 	TextureAsset::TextureAsset(const std::string &path)
 	{
         texturePath = path;
@@ -33,10 +32,12 @@ namespace SceneryEditorX
         TextureAsset::Unload();
 	}
 
+    /*
     void TextureAsset::Serialize(Serializer &ser)
     {
         // TODO: Implement serialization
     }
+    */
 
 	void TextureAsset::Load(const std::string &path)
 	{
@@ -46,8 +47,6 @@ namespace SceneryEditorX
         RenderData renderData;
         vkDevice = GraphicsEngine::GetCurrentDevice();
         vkPhysDevice = vkDevice->GetPhysicalDevice();
-        allocator = GraphicsEngine::Get()->GetMemAllocator();        /// Get memory allocator as a Ref instead of directly assigning the VmaAllocator
-        //allocator = MemoryAllocator::AllocateBuffer()::CreateRef<MemoryAllocator>();
 
         if (auto configPtr = config.Lock())
         {
@@ -313,7 +312,6 @@ namespace SceneryEditorX
 
         return imageView;
     }
-    */
 
 } // namespace SceneryEditorX
 
