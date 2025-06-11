@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <Editor/resource.h>
-#include <vulkan/vulkan_core.h>
 
 /// -------------------------------------------------------
 

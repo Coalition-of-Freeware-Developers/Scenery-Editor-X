@@ -15,7 +15,7 @@
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
@@ -70,12 +70,14 @@ namespace SceneryEditorX::UI
         colors[ImGuiCol_SliderGrabActive] = ImVec4(0.66f, 0.66f, 0.66f, 1.0f);
     }
 
+    /// -------------------------------------------------------
+
 	void UIContext::SetDarkThemeV2Colors()
     {
         auto &style  = ImGui::GetStyle();
         auto &colors = ImGui::GetStyle().Colors;
 
-        //========================================================
+        ///========================================================
 
         /// Headers
         colors[ImGuiCol_Header] = ImGui::ColorConvertU32ToFloat4(Colors::Theme::groupHeader);
@@ -146,12 +148,15 @@ namespace SceneryEditorX::UI
         /// Menu-bar
         colors[ImGuiCol_MenuBarBg] = ImVec4{0.0f, 0.0f, 0.0f, 0.0f};
 
-        //========================================================
+        ///========================================================
+
         /// Style
         style.FrameRounding = 2.5f;
         style.FrameBorderSize = 1.0f;
         style.IndentSpacing = 11.0f;
     }
+
+    /// -------------------------------------------------------
 
     void UIContext::AllowInputEvents(bool allowEvents)
     {
@@ -172,4 +177,4 @@ namespace SceneryEditorX::UI
 
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

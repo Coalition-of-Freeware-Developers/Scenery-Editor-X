@@ -12,7 +12,7 @@
 */
 #include <SceneryEditorX/platform/file_dialog.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
@@ -28,7 +28,7 @@ namespace SceneryEditorX::IO
                                         {"Scenery Editor-X Files", "*.edX *.edX-lib *.wed", "All Files", "*"},
                                         pfd::opt::multiselect).result();
     
-        // Do something with selection
+        /// Do something with selection
         for (const auto &filename : selection)
             std::cout << "Selected file: " << filename << "\n";
     }
@@ -46,7 +46,7 @@ namespace SceneryEditorX::IO
                                           {"Scenery Editor-X Files", "*.edX", "All Files", "*"},
                                           pfd::opt::force_overwrite).result();
 
-        // Do something with destination
+        /// Do something with destination
         std::cout << "Selected file: " << destination << "\n";
     }
 
@@ -59,7 +59,7 @@ namespace SceneryEditorX::IO
     {
         const auto selection = pfd::select_folder("Select a folder", ".").result();
 
-        // Do something with selection
+        /// Do something with selection
         std::cout << "Selected folder: " << selection << "\n";
     }
 
@@ -72,11 +72,11 @@ namespace SceneryEditorX::IO
     {
         const auto destination = pfd::select_folder("Select a folder", ".").result();
 
-        // Do something with destination
+        /// Do something with destination
         std::cout << "Selected folder: " << destination << "\n";
     }
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 

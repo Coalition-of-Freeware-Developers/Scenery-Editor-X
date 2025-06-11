@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-
 #define SEDX_PROFILING_ENABLED !defined(SEDX_RELEASE)
 #if SEDX_PROFILING_ENABLED
 #include <tracy/Tracy.hpp>

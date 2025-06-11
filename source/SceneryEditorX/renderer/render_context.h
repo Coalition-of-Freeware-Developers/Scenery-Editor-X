@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/vulkan/vk_device.h>
-#include <GraphicsEngine/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/vk_device.h>
+#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 
 /// -------------------------------------------------------
 
@@ -37,8 +37,8 @@ namespace SceneryEditorX
 		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
 
     private:
-        Ref<VulkanDevice> vkDevice;
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
+        Ref<VulkanDevice> vkDevice;
         inline LOCAL VkInstance instance;
 
         SwapChain swapChain;

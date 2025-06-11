@@ -14,7 +14,7 @@
 #include <SceneryEditorX/scene/asset.h>
 #include <SceneryEditorX/scene/node.h>
 
-// -----------------------------------------
+/// -----------------------------------------
 
 namespace SceneryEditorX
 {
@@ -81,4 +81,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

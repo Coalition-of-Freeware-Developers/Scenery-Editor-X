@@ -10,9 +10,9 @@
 * Created: 31/5/2025
 * -------------------------------------------------------
 */
+#include <mutex>
 #include <SceneryEditorX/core/pointers.h>
 #include <unordered_map>
-#include <mutex>
 
 /// -------------------------------------------------------
 

@@ -10,8 +10,8 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
 #include <SceneryEditorX/scene/texture.h>
 #include <stb_image.h>
 
@@ -45,7 +45,7 @@ namespace SceneryEditorX
         
         /// Get Vulkan resources
         RenderData renderData;
-        vkDevice = GraphicsEngine::GetCurrentDevice();
+        vkDevice = RenderContext::GetCurrentDevice();
         vkPhysDevice = vkDevice->GetPhysicalDevice();
 
         if (auto configPtr = config.Lock())

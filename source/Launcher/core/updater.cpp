@@ -15,7 +15,7 @@
 #include <Launcher/core/updater.h>
 #include <SceneryEditorX/core/version.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief Callback function for handling data received from a cURL request.

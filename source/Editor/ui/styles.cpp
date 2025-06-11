@@ -13,7 +13,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace UI
 {
@@ -21,33 +21,35 @@ namespace UI
         auto &colors = ImGui::GetStyle().Colors;
         colors[ImGuiCol_WindowBg] = ImVec4(0.1f, 0.105f, 0.11f, 1.0f);
 
-        // Headers
+        /// Headers
         colors[ImGuiCol_Header] = ImVec4(0.2f, 0.205f, 0.21f, 1.0f);
         colors[ImGuiCol_HeaderHovered] = ImVec4(0.3f, 0.305f, 0.31f, 1.0f);
         colors[ImGuiCol_HeaderActive] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
 
-        // Buttons
+        /// Buttons
         colors[ImGuiCol_Button] = ImVec4(0.2f, 0.205f, 0.21f, 1.0f);
         colors[ImGuiCol_ButtonHovered] = ImVec4(0.3f, 0.305f, 0.31f, 1.0f);
         colors[ImGuiCol_ButtonActive] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
 
-        // Frame BG
+        /// Frame BG
         colors[ImGuiCol_FrameBg] = ImVec4(0.2f, 0.205f, 0.21f, 1.0f);
         colors[ImGuiCol_FrameBgHovered] = ImVec4(0.3f, 0.305f, 0.31f, 1.0f);
         colors[ImGuiCol_FrameBgActive] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
 
-        // Tabs
+        /// Tabs
         colors[ImGuiCol_Tab] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
         colors[ImGuiCol_TabHovered] = ImVec4(0.38f, 0.3805f, 0.381f, 1.0f);
         colors[ImGuiCol_TabActive] = ImVec4(0.28f, 0.2805f, 0.281f, 1.0f);
     }
 
-    uint32_t GetActiveWidgetID() {
+    uint32_t GetActiveWidgetID()
+    {
         return GImGui->ActiveId;
     }
+
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /*
 ImGuiStyle * style = &ImGui::GetStyle();
@@ -107,6 +109,5 @@ ImGuiStyle * style = &ImGui::GetStyle();
 	style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
 	style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
 	style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
-
 
 */

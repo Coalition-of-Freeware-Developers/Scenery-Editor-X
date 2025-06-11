@@ -12,13 +12,14 @@
 */
 
 #pragma once
-#include <GraphicsEngine/vulkan/render_data.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <Launcher/core/splash_handler.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/vulkan/render_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
-// -------------------------------------------------------
+
+/// -------------------------------------------------------
 
 namespace Launcher
 {
@@ -27,3 +28,5 @@ namespace Launcher
     //GLOBAL void AdminCheck();
 
 } // namespace Launcher
+
+/// -------------------------------------------------------

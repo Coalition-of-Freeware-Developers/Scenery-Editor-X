@@ -13,6 +13,8 @@
 #include <SceneryEditorX/core/application.h>
 #include <SceneryEditorX/logging/logging.hpp>
 
+/// ---------------------------------------------------------------
+
 extern bool appRunning; /// Global variable to control the application loop
 
 namespace SceneryEditorX
@@ -24,8 +26,8 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("Creating application with window: {}x{}", appData.width, appData.height);
 
         instance = this;
-        /// Create the window
-        window = CreateScope<Window>();
+
+
 
         /// Set window properties from appData
         if (WindowData::width > 0 && WindowData::height > 0)
@@ -38,11 +40,11 @@ namespace SceneryEditorX
         if (WindowData::title)
         {
             WindowData::title = WindowData::title;
-            window->SetTitle(WindowData::title);
+            m_Window->SetTitle(WindowData::title);
         }
 
         /// Update window properties
-        window->ApplyChanges();
+        m_Window->ApplyChanges();
 
         isRunning = true;
         isMinimized = false;
@@ -53,10 +55,10 @@ namespace SceneryEditorX
         OnInit();
         
         /// Main application loop
-        while (isRunning && !window->GetShouldClose())
+        while (isRunning && !m_Window->GetShouldClose())
         {
             /// Update the window (poll events)
-            Window::Update();
+            m_Window->Update();
             
             /// Skip frame if window is minimized
             if (isMinimized)

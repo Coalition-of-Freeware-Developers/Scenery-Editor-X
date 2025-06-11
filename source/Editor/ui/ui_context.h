@@ -14,7 +14,7 @@
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/layer.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
@@ -52,4 +52,4 @@ namespace SceneryEditorX::UI
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

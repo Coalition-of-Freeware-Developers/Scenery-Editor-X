@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/vulkan/render_data.h>
-#include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/vulkan/render_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
 //#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
@@ -103,7 +103,7 @@ namespace SceneryEditorX
          * 
          * @return A reference to the Window object managed by the graphics engine.
          */
-        Ref<Window> GetWindow() { return gfxEngine.GetWindow(); }
+        Ref<Window> &GetWindow() { return m_Window; }
 
 
 	private:
@@ -125,6 +125,11 @@ namespace SceneryEditorX
          * Manages the presentation of rendered frames to the display.
          */
         Ref<SwapChain> vkSwapChain;
+
+        /**
+         * @brief Reference to the window used by the editor.
+         */
+        Ref<Window> m_Window;
 
         //AssetManager assetManager;
         

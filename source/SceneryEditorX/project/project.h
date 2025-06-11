@@ -13,9 +13,9 @@
 #pragma once
 #include <filesystem>
 #include <format>
+#include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/scene/asset_manager.h>
-#include <SceneryEditorX/core/pointers.h>
 
 /// ---------------------------------------------------------
 

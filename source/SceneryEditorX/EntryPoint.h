@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/initializer.h>
 
 /// ----------------------------------------------------
 

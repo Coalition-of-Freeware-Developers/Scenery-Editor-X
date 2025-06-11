@@ -29,7 +29,7 @@ namespace SceneryEditorX
 	        '/';
 	#endif
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     /// Default section templates for use when creating config sections
     INTERNAL constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
@@ -63,7 +63,7 @@ namespace SceneryEditorX
 )";
 
 
-    // ----------------------------------------------------------
+    /// ----------------------------------------------------------
 
     ApplicationSettings::ApplicationSettings(std::filesystem::path filepath) : filePath(std::move(filepath))
     {
@@ -1259,4 +1259,4 @@ namespace SceneryEditorX
 	}
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

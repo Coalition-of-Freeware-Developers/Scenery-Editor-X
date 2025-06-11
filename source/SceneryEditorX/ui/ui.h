@@ -12,15 +12,17 @@
 */
 #pragma once
 #include <IconsFontAwesome5.h>
+
+#include <SceneryEditorX/core/window/window.h>
+
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 struct Icons
 {
-    // Core UI icons
+    /// Core UI icons
     GLOBAL constexpr const char* ARROW_RIGHT = ICON_FA_ARROW_RIGHT;
     GLOBAL constexpr const char* ARROW_LEFT = ICON_FA_ARROW_LEFT;
     GLOBAL constexpr const char* ARROW_UP = ICON_FA_ARROW_UP;
@@ -36,7 +38,7 @@ struct Icons
     GLOBAL constexpr const char* FILE = ICON_FA_FILE;
     GLOBAL constexpr const char* FILE_ALT = ICON_FA_FILE_ALT;
 
-    // Editor tools
+    /// Editor tools
     GLOBAL constexpr const char* PENCIL = ICON_FA_PENCIL_ALT;
     GLOBAL constexpr const char* EDIT = ICON_FA_EDIT;
     GLOBAL constexpr const char* MOVE = ICON_FA_ARROWS_ALT;
@@ -49,7 +51,7 @@ struct Icons
     GLOBAL constexpr const char* LOCK = ICON_FA_LOCK;
     GLOBAL constexpr const char* UNLOCK = ICON_FA_UNLOCK;
 
-    // 3D visualization
+    /// 3D visualization
     GLOBAL constexpr const char* CUBE = ICON_FA_CUBE;
     GLOBAL constexpr const char* CUBES = ICON_FA_CUBES;
     GLOBAL constexpr const char* MOUNTAIN = ICON_FA_MOUNTAIN;
@@ -61,7 +63,7 @@ struct Icons
     GLOBAL constexpr const char* OBJECT_GROUP = ICON_FA_OBJECT_GROUP;
     GLOBAL constexpr const char* OBJECT_UNGROUP = ICON_FA_OBJECT_UNGROUP;
 
-    // Interface elements
+    /// Interface elements
     GLOBAL constexpr const char* COG = ICON_FA_COG;
     GLOBAL constexpr const char* COGS = ICON_FA_COGS;
     GLOBAL constexpr const char* BARS = ICON_FA_BARS;
@@ -77,10 +79,10 @@ struct Icons
     GLOBAL constexpr const char* PAUSE = ICON_FA_PAUSE;
     GLOBAL constexpr const char* STOP = ICON_FA_STOP;
 
-    // Helper method to get font icon
+    /// Helper method to get font icon
     static const char* GetIcon(const std::string& name)
     {
-        // Map common names to icon constants
+        /// Map common names to icon constants
         static const std::unordered_map<std::string, const char*> iconMap = {
             {"arrow_right", ARROW_RIGHT},
             {"arrow_left", ARROW_LEFT},
@@ -138,7 +140,7 @@ struct Icons
     }
 };
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 struct Image
 {
@@ -155,39 +157,42 @@ struct Image
     ImTextureID ImGuiRID(uint32_t layer);
 };
 
-//struct Font
-//{
-//  /**
-//	 * @brief Constructor
-//	 * @param name The name of the font file that exists within 'assets/fonts' (without extension)
-//	 * @param size The font size, scaled by DPI
-//	 */
-//    Font(const std::string &name, float size)
-//        : name{name}, data{SceneryEditorX::fs::read_asset("fonts/" + name + ".ttf")}, size{size}
-//    {
-//        // Keep ownership of the font data to avoid a double delete
-//        ImFontConfig font_config{};
-//        font_config.FontDataOwnedByAtlas = false;
-//
-//        if (size < 1.0f)
-//        {
-//            size = 20.0f;
-//        }
-//
-//        ImGuiIO &io = ImGui::GetIO();
-//        handle = io.Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), size, &font_config);
-//    }
-//
-//    ImFont *handle{nullptr};
-//
-//    std::string name;
-//
-//    std::vector<uint8_t> data;
-//
-//    float size{};
-//};
+/*
+struct Font
+{
+    /**
+	 * @brief Constructor
+	 * @param name The name of the font file that exists within 'assets/fonts' (without extension)
+	 * @param size The font size, scaled by DPI
+	 #1#
+    Font(const std::string &name, float size)
+        : name{name}, data{SceneryEditorX::fs::read_asset("fonts/" + name + ".ttf")}, size{size}
+    {
+        /// Keep ownership of the font data to avoid a double delete
+        ImFontConfig font_config{};
+        font_config.FontDataOwnedByAtlas = false;
 
-// -------------------------------------------------------
+        if (size < 1.0f)
+        {
+            size = 20.0f;
+        }
+
+        ImGuiIO &io = ImGui::GetIO();
+        handle = io.Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), size, &font_config);
+    }
+
+    ImFont *handle{nullptr};
+
+    std::string name;
+
+    std::vector<uint8_t> data;
+
+    float size{};
+};
+*/
+
+/// -------------------------------------------------------
+
 namespace SceneryEditorX::UI
 {
     /**
@@ -208,7 +213,7 @@ namespace SceneryEditorX::UI
          * @param renderer Graphics engine reference
          * @return True if initialization was successful
          */
-        bool InitGUI(GLFWwindow *window, GraphicsEngine &renderer);
+        bool InitGUI(GLFWwindow *window, RenderContext &renderer);
 	
         /**
          * @brief Set the command buffer for rendering ImGui
@@ -303,12 +308,9 @@ namespace SceneryEditorX::UI
 
 	private:
         /// Vulkan resources
-        //Window *window = nullptr;
-        GLFWwindow *window = nullptr;
-        SwapChain *swapchain = nullptr;
-        VulkanDevice *device = nullptr;
-        //VkDevice device = VK_NULL_HANDLE;
-        GraphicsEngine *renderer = nullptr;
+        Ref<Window> *window = nullptr;
+        Ref<SwapChain> *swapchain = nullptr;
+        Ref<VulkanDevice> *device = nullptr;
         VkDescriptorPool imguiPool = VK_NULL_HANDLE;
         VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
 
@@ -337,4 +339,4 @@ namespace SceneryEditorX::UI
 } // namespace SceneryEditorX::UI
 
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

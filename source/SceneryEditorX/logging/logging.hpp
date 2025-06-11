@@ -20,7 +20,7 @@
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 #define SEDX_ASSERT_MESSAGE_BOX (!SEDX_RELEASE && SEDX_PLATFORM_WINDOWS)
 
@@ -30,7 +30,7 @@
 	#endif
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -102,7 +102,7 @@ namespace SceneryEditorX
 	        Level LevelFilter = Level::Trace;
 	    };
 	
-	    // ------------------------------------------------
+	    /// ------------------------------------------------
 	
 	    /**
 	     * @fn Init
@@ -513,7 +513,7 @@ namespace SceneryEditorX
 	#define LAUNCHER_LOG_ERROR(...)		::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
 	#define LAUNCHER_LOG_CRITICAL(...)  ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
 	
-	/*
+	/**
 	 * 
 	 * Editor Log Macros
 	 *

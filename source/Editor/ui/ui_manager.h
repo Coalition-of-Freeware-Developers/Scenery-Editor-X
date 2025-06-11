@@ -14,7 +14,7 @@
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/ui/ui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace UI
 {
@@ -24,7 +24,7 @@ namespace UI
     extern bool showAboutModal;
     extern bool showSettingsPanel;
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     void SetDarkThemeColors();
 
@@ -36,7 +36,7 @@ namespace UI
         GLOBAL void LayerStack();
         GLOBAL void AssetBrowser();
         GLOBAL void SettingsPanel();
-        //void Properties();
+        //GLOBAL void Properties();
         GLOBAL void CreateProjectModal(GLFWwindow *window);
         GLOBAL void ExitConfirmationModal(GLFWwindow *window);
         GLOBAL void AboutModal();
@@ -45,5 +45,5 @@ namespace UI
 
 } // namespace UI
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 

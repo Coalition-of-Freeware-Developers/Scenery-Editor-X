@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <SceneryEditorX/platform/editor_config.hpp>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -24,13 +24,13 @@ namespace SceneryEditorX
 	    Project();
 	    ~Project();
 
-	    // -------------------------------------------------------
+	    /// -------------------------------------------------------
 
         void CreateProject(std::string name, std::filesystem::path path);
 	    void Load(const std::filesystem::path &InPath);
 	    void Save(const std::filesystem::path &InPath);
 
-	    // -------------------------------------------------------
+	    /// -------------------------------------------------------
 
 	private:
 
@@ -38,9 +38,9 @@ namespace SceneryEditorX
         std::filesystem::path binPath;
         std::string projectName;
 
-        // -------------------------------------------------------
+        /// -------------------------------------------------------
 	};
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

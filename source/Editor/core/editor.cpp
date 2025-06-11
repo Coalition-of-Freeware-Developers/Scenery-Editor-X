@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #include <Editor/core/editor.h>
-#include <GraphicsEngine/vulkan/vk_checks.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/platform/settings.h>
+#include <SceneryEditorX/renderer/vulkan/vk_checks.h>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
@@ -55,10 +55,9 @@ namespace SceneryEditorX
 
     void EditorApplication::Run()
     {
-        const Ref<Window> &window = GetWindow();
         const auto start = std::chrono::high_resolution_clock::now();
 
-		InitEditor(window);
+		InitEditor(m_Window);
 
 		const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -71,6 +70,10 @@ namespace SceneryEditorX
 	    /// Log header information immediately after init and flush to ensure it's written
 	    EDITOR_INFO("Scenery Editor X Graphics Engine is starting...");
 
+        // Store the window reference
+        m_Window = window;
+        
+        // Initialize the graphics engine with the window
         gfxEngine.Init(window);
 
 	    //Launcher::AdminCheck();
@@ -97,13 +100,13 @@ namespace SceneryEditorX
         /// Update the vkDevice handle
         //device = vkDevice->GetDevice();
 
-	    //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
+	    //m_Window->SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         //gfxEngine.CreateInstance(editorWindow);
 	
 	    //createViewportResources();
 	
         /// Initialize UI components
-        ui.InitGUI(Window::GetWindow(), gfxEngine);
+        ui.InitGUI(m_Window->GetWindow(), gfxEngine);
 
 	    //SceneryEditorX::CreateEditor();
 	
@@ -115,7 +118,7 @@ namespace SceneryEditorX
 	
 	void EditorApplication::MainLoop()
 	{
-	    while (!Window::GetShouldClose())
+	    while (!m_Window->GetShouldClose())
 	    {
             if (viewportData.viewportResized)
 	        {
@@ -125,8 +128,8 @@ namespace SceneryEditorX
 
 			//Update();
 	        DrawFrame();
-	        bool ctrlPressed = Window::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) || Window::IsKeyDown(GLFW_KEY_LEFT_CONTROL);
-	        Window::Update();
+	        bool ctrlPressed = m_Window->IsKeyPressed(GLFW_KEY_LEFT_CONTROL) || m_Window->IsKeyDown(GLFW_KEY_LEFT_CONTROL);
+	        m_Window->Update();
 	    }
 
         vkDeviceWaitIdle(device);
@@ -174,8 +177,10 @@ namespace SceneryEditorX
 	    renderPassInfo.pAttachments = &colorAttachment;
 	    renderPassInfo.subpassCount = 1;
 	    renderPassInfo.pSubpasses = &subpass;
-	
-	    SEDX_ASSERT(vkCreateRenderPass(gfxEngine.GetLogicDevice()->GetDevice(), &renderPassInfo, nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
+
+		auto renderContext = RenderContext::Get();
+        SEDX_ASSERT(vkCreateRenderPass(renderContext->GetLogicDevice()->GetDevice(), &renderPassInfo,
+                                       nullptr, &viewportData.viewportRenderPass) == VK_SUCCESS);
 
         /// Create framebuffer for the viewport
 	    VkFramebufferCreateInfo framebufferInfo{};
@@ -187,7 +192,7 @@ namespace SceneryEditorX
         framebufferInfo.height = viewportData.y;
 	    framebufferInfo.layers = 1;
 	
-	    SEDX_ASSERT(vkCreateFramebuffer(gfxEngine.GetLogicDevice()->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
+	    SEDX_ASSERT(vkCreateFramebuffer(RenderContext::GetLogicDevice()->GetDevice(), &framebufferInfo, nullptr, &viewportData.viewportFramebuffer) == VK_SUCCESS);
 
 	}
 	

@@ -10,9 +10,9 @@
 * Created: 11/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/scene/scene.h>
-#include <SceneryEditorX/core/serializer.hpp>
 #include <algorithm> /// For std::remove
+#include <SceneryEditorX/core/serializer.hpp>
+#include <SceneryEditorX/scene/scene.h>
 
 /// -------------------------------------------------------
 

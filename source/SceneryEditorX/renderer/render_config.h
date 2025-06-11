@@ -13,6 +13,8 @@
 #pragma once
 #include <string>
 
+/// --------------------------------------------------------------------------
+
 namespace SceneryEditorX
 {
 	struct RendererConfig
@@ -22,3 +24,5 @@ namespace SceneryEditorX
     };
 
 }
+
+/// --------------------------------------------------------------------------

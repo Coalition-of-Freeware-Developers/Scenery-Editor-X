@@ -10,9 +10,6 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-#include <cstdlib>
-#include <exception>
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <Launcher/core/directory_manager.hpp>
 #include <Launcher/core/launcher_main.h>
 #include <Launcher/core/splash_handler.h>
@@ -20,13 +17,13 @@
 #include <Launcher/registry/reg_check.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/EntryPoint.h>
-#include <synchapi.h>
 #include <SceneryEditorX/platform/settings.h>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <synchapi.h>
 
 /// -------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_WINDOWS
-#include <Shlobj.h>
 #endif // SEDX_PLATFORM_WINDOWS
 
 /// -------------------------------------------------------

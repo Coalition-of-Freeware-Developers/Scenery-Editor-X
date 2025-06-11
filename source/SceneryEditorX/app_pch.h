@@ -61,7 +61,9 @@
 ##########################################################
 */
 
-//#define VK_NO_PROTOTYPES
+#if !defined(VK_NO_PROTOTYPES)
+	#define VK_NO_PROTOTYPES 1
+#endif // !defined(VK_NO_PROTOTYPES)
 #define GLFW_INCLUDE_VULKAN
 //#define IMGUI_IMPL_VULKAN_USE_VOLK
 
@@ -109,6 +111,7 @@
                          FMT Library
 ##########################################################
 */
+
 #include <fmt/core.h>
 #include <fmt/format.h>
 
@@ -141,11 +144,11 @@
 #endif
 
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief - A macro to display an error message
- * @tparam T
+ * @tparam T - The type of the error message, can be any type that supports fmt::format
  * @param errorMessage
  */
 template <typename T>
@@ -179,4 +182,4 @@ void ErrMsg(const T &errorMessage)
 #endif
 };
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

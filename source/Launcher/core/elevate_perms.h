@@ -16,9 +16,9 @@
 //#define _WIN32_WINNT 0x0601
 #include <shellapi.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-// Function to check if the application is running as administrator
+/// Function to check if the application is running as administrator
 inline bool RunningAsAdmin()
 {
     BOOL isAdmin = false; // Assume the application is not running as administrator

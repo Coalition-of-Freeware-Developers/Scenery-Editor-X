@@ -13,7 +13,7 @@
 #include <fstream>
 #include <SceneryEditorX/platform/cfg_loader.h>
 
-// ---------------------------------------------------------
+/// ---------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
@@ -325,4 +325,4 @@ namespace SceneryEditorX::IO
 	
 } // namespace SceneryEditorX::IO
 
-// ---------------------------------------------------------
+/// ---------------------------------------------------------

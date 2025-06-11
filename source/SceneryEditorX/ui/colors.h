@@ -13,7 +13,7 @@
 #pragma once
 #include <imgui/imgui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 // TODO: 1) Add more colors and options here.
 //		 2) Connect with user customization and config file.
@@ -37,3 +37,5 @@ namespace Colors::Theme
 	constexpr auto propertyField    = IM_COL32(15, 15, 15, 255);
 
 }
+
+/// -------------------------------------------------------

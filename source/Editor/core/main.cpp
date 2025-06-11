@@ -72,13 +72,13 @@ namespace SceneryEditorX
             if (projPath.empty())
                 m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
                 
-            // Initialize application services
+            /// Initialize application services
             initCrashHandlerServices();
         }
 
         virtual ~EditorX() override
         {
-            // Clean up application services
+            /// Clean up application services
             endCrashHandlerServices();
         }
 
@@ -95,7 +95,7 @@ namespace SceneryEditorX
             try 
             {
                 /// Create and initialize the editor application
-                m_Window = CreateRef<Window>(GetWindow());
+                m_Window = CreateRef<Window>(&GetWindow());
                 m_EditorApp = CreateScope<EditorApplication>();
                 m_EditorApp->InitEditor(m_Window);
             }
@@ -113,7 +113,7 @@ namespace SceneryEditorX
         
         virtual void OnShutdown() override
         {
-            // Clean up editor application before the main Application is destroyed
+            /// Clean up editor application before the main Application is destroyed
             if (m_EditorApp)
                 m_EditorApp.reset();
 
@@ -136,15 +136,17 @@ namespace SceneryEditorX
             projectPath = argv[1];
         }
 
-        // Configure window data
-        WindowData windowData;
-        windowData.title = "Scenery Editor X";
-        windowData.width = 1280;
-        windowData.height = 720;
-        windowData.resizable = true;
-        windowData.maximized = true;
+        ///< Configure window data
+        WindowData windowData = {};
+        WindowData::title = "Scenery Editor X";
+        WindowData::width = 1280;
+        WindowData::height = 720;
+        WindowData::resizable = true;
+        WindowData::maximized = true;
 
-        // Create and return the editor application
+        ///< Create and return the editor application
         return new EditorX(windowData, projectPath);
     }
 }
+
+/// -------------------------------------------------------

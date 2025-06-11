@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 
-// -----------------------------------------------------------
+/// -----------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
@@ -37,7 +37,7 @@ namespace SceneryEditorX::IO
 
         if (lockBool)
         {
-            // Lock the file
+            /// Lock the file
             if (!LockFileEx(hFile, dwFlags, 0, MAXDWORD, MAXDWORD, &overlapped))
             {
                 SEDX_CORE_ERROR("Failed to lock the file");
@@ -46,7 +46,7 @@ namespace SceneryEditorX::IO
         }
         else
         {
-            // Unlock the file
+            /// Unlock the file
             if (!UnlockFileEx(hFile, 0, MAXDWORD, MAXDWORD, &overlapped))
             {
                 SEDX_CORE_ERROR("Failed to unlock the file");
@@ -75,7 +75,7 @@ namespace SceneryEditorX::IO
         OVERLAPPED overlapped = {};
         DWORD dwFlags = LOCKFILE_FAIL_IMMEDIATELY | LOCKFILE_EXCLUSIVE_LOCK;
 
-        // Attempt to lock the file
+        /// Attempt to lock the file
         if (!LockFileEx(hFile, dwFlags, 0, MAXDWORD, MAXDWORD, &overlapped))
         {
             DWORD dwError = GetLastError();
@@ -91,7 +91,7 @@ namespace SceneryEditorX::IO
         }
         else
         {
-            // Unlock the file immediately if it was successfully locked
+            /// Unlock the file immediately if it was successfully locked
             UnlockFileEx(hFile, 0, MAXDWORD, MAXDWORD, &overlapped);
         }
 
@@ -99,4 +99,4 @@ namespace SceneryEditorX::IO
     }
 } // namespace SceneryEditorX::IO
 
-// -----------------------------------------------------------
+/// -----------------------------------------------------------

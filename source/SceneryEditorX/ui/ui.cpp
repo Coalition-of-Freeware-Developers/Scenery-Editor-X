@@ -15,12 +15,12 @@
 #include <imgui/imconfig.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
-#include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/ui/ui.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
-#include <GraphicsEngine/vulkan/vk_device.h>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 // Implementation of missing ImGui functions to fix linker errors
 // Note: This is a compatibility layer to ensure ImGui works correctly
@@ -146,23 +146,18 @@ namespace SceneryEditorX::UI
         style.ScaleAllSizes(dpiFactor);
     }
 
-    bool GUI::InitGUI(GLFWwindow *window, GraphicsEngine &renderer)
+    bool GUI::InitGUI(GLFWwindow *window, RenderContext &renderer)
     {
         this->window = window;
-        this->renderer = &renderer;
 
-        device = GraphicsEngine::GetCurrentDevice().Get();
-        swapchain = renderer.GetSwapChain().Get();
+        device = RenderContext::GetCurrentDevice().Get();
+        VkSwapchainKHR swapchainContext = swapchain->Get()->GetSwapchain();
 
         if (initialized)
         {
             SEDX_CORE_WARN("GUI already initialized");
             return true;
         }
-
-        /// Get essential Vulkan objects
-        //device = GraphicsEngine::GetDevice()->GetDevice();
-        swapchain = renderer.GetSwapChain().Get();
 
         if (!device || !swapchain)
         {
@@ -192,18 +187,17 @@ namespace SceneryEditorX::UI
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         /// Get queue family info
-        const VulkanDevice *vkDevice = GraphicsEngine::GetCurrentDevice().Get();
-        //const QueueFamilyIndices indices = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
+        const VulkanDevice *vkDevice = RenderContext::GetCurrentDevice().Get();
         RenderData renderData;
 
         /// Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
-        info.Instance = GraphicsEngine::GetInstance();
+        info.Instance = RenderContext::GetInstance();
         info.PhysicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         info.Device = device->GetDevice();
         info.QueueFamily = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
         info.DescriptorPool = imguiPool;
-        info.RenderPass = renderer.GetRenderPass();
+        info.RenderPass = swapchain->Get()->GetRenderPass();
         info.MinImageCount = 2;
         info.ImageCount = renderData.imageIndex;
         info.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
@@ -484,7 +478,7 @@ namespace SceneryEditorX::UI
         if (actualSampler == VK_NULL_HANDLE)
         {
             /// If we have a valid device, use its sampler
-            actualSampler = device->GetSampler();
+            actualSampler = GetSampler();
 
             /// If we still don't have a valid sampler, we can't proceed
             if (actualSampler == VK_NULL_HANDLE)
