@@ -7,14 +7,13 @@ MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
 
-FILE(GLOB CORE core/*.cpp core/*.h core/*.hpp)
 FILE(GLOB LOGGER logging/*.cpp logging//*.h logging//*.hpp)
-FILE(GLOB PLATFORM platform/*.cpp platform/*.h platform/*.hpp)
 FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
-FILE(GLOB RENDERER renderer/*.cpp renderer/*.h renderer/*.hpp)
 FILE(GLOB SCENE scene/*.cpp scene/*.h scene/*.hpp)
-FILE(GLOB UI_FILES ui/*.cpp ui/*.h ui/*.hpp)
 FILE(GLOB UTILITIES_FILES utils/*.cpp utils/*.h utils/*.hpp)
+FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.comp shaders/*.geom shaders/*.tesc shaders/*.tese)
+FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
+FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
 
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
@@ -29,16 +28,82 @@ SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VAL
 # --------------------------------
 
 ADD_LIBRARY(AppCore
-	${CORE}
 	${LOGGER}
-    ${PLATFORM}
 	${PROJECT}
-	${RENDERER}
 	${SCENE}
 	${PROJECT_CONFIG_FILES}
 	${UTILITIES_FILES}
+	${SCENE_FILES}
+	${SHADER_FILES}
+	${VULKAN_FILES}
+	${PROJECT_CONFIG_FILES}
     # --------------------------------
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
+	core/application.cpp
+	core/application.h
+	core/application_data.h
+	core/base.hpp
+	core/encoding.cpp
+	core/encoding.hpp
+	core/initializer.cpp
+	core/initializer.h
+	core/layer.cpp
+	core/layer.h
+	core/memory.cpp
+	core/memory.h
+	core/pointers.cpp
+	core/pointers.h
+	core/serializer.hpp
+	core/time.cpp
+	core/time.h
+	core/transforms.cpp
+	core/version.h
+	core/window/window.cpp
+	core/window/window.h
+	core/window/icon.h
+	core/window/monitor_data.cpp
+	core/window/monitor_data.h
+	# --------------------------------
+	platform/cfg_loader.cpp
+	platform/cfg_loader.h
+	platform/editor_config.hpp
+	platform/file_dialog.cpp
+	platform/file_dialog.h
+	platform/file_manager.cpp
+	platform/file_manager.hpp
+	platform/platform_states.h
+	platform/settings.cpp
+	platform/settings.h
+	platform/lock_file.cpp
+	platform/system_detection.h
+	# --------------------------------
+	renderer/primitives.cpp
+	renderer/primitives.h
+	renderer/renderer.cpp
+	renderer/renderer.h
+	renderer/render_data.h
+	renderer/render_context.cpp
+	renderer/render_context.h
+	renderer/render_config.h
+	renderer/stb_image_impl.cpp
+	renderer/xp_pbr.cpp
+	renderer/xp_pbr.h
+	renderer/xp_texture.cpp
+	renderer/xp_texture.h
+	# --------------------------------
+	renderer/shaders/shader.cpp
+	renderer/shaders/shader.h
+	renderer/shaders/shader_resource.cpp
+	renderer/shaders/shader_resource.h
+	renderer/shaders/shader_compiler.cpp
+	renderer/shaders/shader_compiler.h
+	# --------------------------------
+	renderer/buffers/index_buffer.h
+	renderer/buffers/index_buffer.cpp
+	renderer/buffers/uniform_buffer.h
+	renderer/buffers/uniform_buffer.cpp
+	renderer/buffers/vertex_buffer.cpp
+	renderer/buffers/vertex_buffer.h
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
@@ -63,28 +128,106 @@ ADD_LIBRARY(AppCore
 # --------------------------------
 
 SOURCE_GROUP("Core" FILES
-	${CORE}
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
+	core/base.hpp
+	core/memory.cpp
+	core/memory.h
+	core/pointers.cpp
+	core/pointers.h
+	core/layer.cpp
+	core/layer.h
+	core/version.h
+	core/window/monitor_data.cpp
+	core/window/monitor_data.h
+	core/window/icon.h
+	core/window/window.cpp
+	core/window/window.h
+)
+SOURCE_GROUP("Core/Application" FILES
+	core/application.cpp
+	core/application.h
+	core/application_data.h
+	core/initializer.cpp
+	core/initializer.h
+)
+SOURCE_GROUP("Core/Settings" FILES
+	platform/settings.cpp
+	platform/settings.h
+)
+SOURCE_GROUP("Core/Utils/Encoding" FILES
+	core/encoding.cpp
+	core/encoding.hpp
+)
+SOURCE_GROUP("Core/Utils/Serialization" FILES
+	core/serializer.hpp
+)
+SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
+	renderer/buffers/index_buffer.h
+	renderer/buffers/index_buffer.cpp
+	renderer/buffers/uniform_buffer.h
+	renderer/buffers/uniform_buffer.cpp
+	renderer/buffers/vertex_buffer.cpp
+	renderer/buffers/vertex_buffer.h
+)
+SOURCE_GROUP("Core/Utils/Time" FILES
+	core/time.cpp
+	core/time.h
+)
+SOURCE_GROUP("Core/Utils" FILES
+	core/transforms.cpp
+	platform/editor_config.hpp
+	platform/platform_states.h
+	platform/system_detection.h
+)
+SOURCE_GROUP("Core/Utils/File Utils" FILES
+	platform/file_manager.cpp
+	platform/file_manager.hpp
+	platform/file_dialog.cpp
+	platform/file_dialog.h
+	platform/cfg_loader.cpp
+	platform/cfg_loader.h
+	platform/lock_file.cpp
 )
 SOURCE_GROUP("Project" FILES
 	${PROJECT}
-)
-SOURCE_GROUP("Platform" FILES
-	${PLATFORM}
 )
 SOURCE_GROUP("Logger" FILES
 	${LOGGER}
 )
 SOURCE_GROUP("Renderer" FILES
-	${RENDERER}
+	renderer/primitives.cpp
+	renderer/primitives.h
+	renderer/renderer.cpp
+	renderer/renderer.h
+	renderer/render_data.h
+	renderer/render_context.cpp
+	renderer/render_context.h
+	renderer/render_config.h
+	renderer/stb_image_impl.cpp
+	renderer/xp_pbr.cpp
+	renderer/xp_pbr.h
+	renderer/xp_texture.cpp
+	renderer/xp_texture.h
+)
+SOURCE_GROUP("Renderer/Vulkan" FILES
+	${VULKAN_FILES}
 )
 SOURCE_GROUP("Scene" FILES
 	${SCENE}
+	${SCENE_FILES}
+)
+SOURCE_GROUP("Renderer/Shaders" FILES
+	renderer/shaders/shader.cpp
+	renderer/shaders/shader.h
+	renderer/shaders/shader_resource.cpp
+	renderer/shaders/shader_resource.h
+	renderer/shaders/shader_compiler.cpp
+	renderer/shaders/shader_compiler.h
 )
 SOURCE_GROUP("Utilities" FILES
 	${UTILITIES_FILES}
 )
-SOURCE_GROUP("UI" FILES
+SOURCE_GROUP("Renderer/UI" FILES
 	ui/colors.h
 	ui/fonts.h
 	ui/ui_context.cpp
@@ -95,7 +238,7 @@ SOURCE_GROUP("UI" FILES
 	ui/ui_manager.h
 	ui/ui_globals.cpp
 )
-SOURCE_GROUP("UI/Panels" FILES
+SOURCE_GROUP("Renderer/UI/Panels" FILES
 	ui/panels/about.cpp
 	ui/panels/content_browser.cpp
 	ui/panels/layer_stack.cpp
@@ -103,17 +246,20 @@ SOURCE_GROUP("UI/Panels" FILES
 	ui/panels/menu_bar.cpp
 	ui/panels/settings_panel.cpp
 )
-SOURCE_GROUP("UI/Actions" FILES
+SOURCE_GROUP("Renderer/UI/Actions" FILES
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
 )
-SOURCE_GROUP("Resource" FILES
+SOURCE_GROUP("Resources" FILES
     resource.h
 )
-SOURCE_GROUP("Resource/Icons" FILES
+SOURCE_GROUP("Resources/Shaders" FILES
+	${SHADER_FILES}
+)
+SOURCE_GROUP("Resources/Icons" FILES
     ${ICON_FILES}
 )
-SOURCE_GROUP("Resource/Fonts" FILES
+SOURCE_GROUP("Resources/Fonts" FILES
     ${FONT_FILES}
 )
 

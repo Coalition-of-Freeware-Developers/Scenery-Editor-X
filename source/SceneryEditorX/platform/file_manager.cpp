@@ -14,7 +14,7 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 #include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/platform/time.h>
+#include <SceneryEditorX/core/time.h>
 #include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/model_asset.h>

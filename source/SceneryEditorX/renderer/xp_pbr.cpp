@@ -5,24 +5,28 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* renderer_config.h
+* xp_pbr.cpp
 * -------------------------------------------------------
-* Created: 26/5/2025
+* Created: 9/5/2025
 * -------------------------------------------------------
 */
-#pragma once
-#include <string>
+#include <SceneryEditorX/renderer/xp_pbr.h>
+#include <SceneryEditorX/scene/material.h>
 
-/// --------------------------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	struct RendererConfig
-	{
-        uint32_t framesInFlight = 3; ///< Number of frames in flight for rendering
-        std::string shaderPath;      ///< Path to the shaders directory
-    };
+	/*
+    PBR::PBR(const std::string &path) : MaterialAsset(path)
+    {
+        //TextureAsset::Load(path);
+    }
 
+    PBR::~PBR()
+    {
+        // Unload PBR texture data
+        //TextureAsset::Unload();
+    }
+	*/
 }
-
-/// --------------------------------------------------------------------------

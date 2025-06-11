@@ -5,24 +5,27 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* renderer_config.h
+* renderer.cpp
 * -------------------------------------------------------
-* Created: 26/5/2025
+* Created: 7/6/2025
 * -------------------------------------------------------
 */
-#pragma once
-#include <string>
+#include <SceneryEditorX/renderer/renderer.h>
 
-/// --------------------------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	struct RendererConfig
+
+	void Renderer::Init()
 	{
-        uint32_t framesInFlight = 3; ///< Number of frames in flight for rendering
-        std::string shaderPath;      ///< Path to the shaders directory
-    };
+	}
+
+    void Renderer::Shutdown()
+    {
+    }
+
 
 }
 
-/// --------------------------------------------------------------------------
+/// -------------------------------------------------------

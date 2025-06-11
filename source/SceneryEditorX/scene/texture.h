@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/vulkan/vk_device.h>
+#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/scene/asset.h>
 

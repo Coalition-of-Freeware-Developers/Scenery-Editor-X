@@ -14,7 +14,7 @@
 #include <IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
 
 // -------------------------------------------------------
 

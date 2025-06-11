@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/core/initializer.h>
 #include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/core/window/window.h>
 
 /// -------------------------------------------------------
 

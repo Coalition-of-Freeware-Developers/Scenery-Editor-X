@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/buffers/buffer_data.h>
+#include <SceneryEditorX/renderer/buffers/buffer_data.h>
 #ifdef CreateDirectory
 #undef CreateDirectory
 #undef DeleteFile

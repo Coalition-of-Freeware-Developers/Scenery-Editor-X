@@ -15,10 +15,10 @@
 #include <imgui/imconfig.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
-#include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/ui/ui.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
-#include <GraphicsEngine/vulkan/vk_device.h>
+#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 
 // -------------------------------------------------------
 
