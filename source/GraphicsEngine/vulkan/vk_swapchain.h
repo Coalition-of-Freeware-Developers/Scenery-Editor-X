@@ -44,7 +44,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	class SwapChain : public RefCounted
+	class SwapChain
 	{
     public:
         SwapChain() = default;
@@ -167,7 +167,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		friend class GraphicsEngine;
+		friend class RenderContext;
     };
 
 } // namespace SceneryEditorX

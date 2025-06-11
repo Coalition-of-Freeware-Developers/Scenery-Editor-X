@@ -39,9 +39,11 @@ namespace SceneryEditorX
 	     * @brief Constructs settings manager with specified config file path.
 	     * @param filepath Path to the configuration file to use
 	     */
-	    ApplicationSettings(std::filesystem::path filepath);
-	
-	    /**
+        explicit ApplicationSettings(std::filesystem::path filepath);
+
+        ApplicationSettings();
+
+        /**
 	     * @brief Reads settings from the configuration file.
 	     * @return true if settings were successfully loaded, false otherwise
 	     */

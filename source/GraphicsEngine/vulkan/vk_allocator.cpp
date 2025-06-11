@@ -748,9 +748,10 @@ namespace SceneryEditorX
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
         vmaGetHeapBudgets(memAllocatorData->Allocator, budgets);
 
+        auto vkPhysDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(vkPhysDevice, &memProps);
 
         uint64_t totalAllocation = 0;
         uint64_t totalBudget = 0;
@@ -838,11 +839,13 @@ namespace SceneryEditorX
     {
         memAllocatorData = hnew VulkanAllocatorData();
 
+		auto instance = RenderContext::GetInstance();
+
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.vulkanApiVersion = apiVersion; 
         allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
         allocatorInfo.device = device->GetDevice();
-        allocatorInfo.instance = GraphicsEngine::GetInstance();
+        allocatorInfo.instance = instance;
 
         /// Set up Vulkan function pointers properly for VMA
         VmaVulkanFunctions vulkanFunctions = {};
@@ -854,7 +857,8 @@ namespace SceneryEditorX
         /// don't have access to check if it's available
 
         VkResult result = vmaCreateAllocator(&allocatorInfo, &memAllocatorData->Allocator);
-        if (result != VK_SUCCESS) {
+        if (result != VK_SUCCESS)
+		{
             SEDX_CORE_ERROR("Failed to create Vulkan Memory Allocator. Error code: {}", static_cast<int>(result));
             hdelete memAllocatorData;
             memAllocatorData = nullptr;
@@ -962,6 +966,7 @@ namespace SceneryEditorX
     void MemoryAllocator::PrintDetailedStats() const
     {
         std::lock_guard<std::mutex> lock(const_cast<std::mutex &>(allocationMutex));
+		auto vkPhysDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
 
         if (!memAllocatorData || !memAllocatorData->Allocator)
         {
@@ -979,7 +984,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(vkPhysDevice, &memProps);
 
         SEDX_CORE_INFO("----------- VULKAN MEMORY ALLOCATION STATS -----------");
         SEDX_CORE_INFO("Tag: {}", Tag_);
@@ -1146,6 +1151,7 @@ namespace SceneryEditorX
     MemoryAllocator::MemoryBudget MemoryAllocator::GetMemoryBudget() const
     {
         std::lock_guard<std::mutex> lock(const_cast<std::mutex &>(allocationMutex));
+        auto vkPhysDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
 
         MemoryBudget budget{};
 
@@ -1161,7 +1167,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(vkPhysDevice, &memProps);
 
         uint64_t totalBudget = 0;
         uint64_t totalUsage = 0;

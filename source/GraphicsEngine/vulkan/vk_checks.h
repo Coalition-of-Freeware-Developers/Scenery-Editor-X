@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <GraphicsEngine/vulkan/render_data.h>
+#include <GraphicsEngine/vulkan/vk_device.h>
 #include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
@@ -39,6 +40,7 @@ namespace SceneryEditorX
 		Layers vkLayers;
         Extensions vkExtensions;
         VkPhysicalDeviceFeatures vkEnabledFeatures;
+        Ref<VulkanDevice> vkDevice;
 
 		friend class VulkanDevice;
     };

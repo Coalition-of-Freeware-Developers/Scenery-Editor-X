@@ -5,20 +5,27 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* initializer.h
+* renderer.cpp
 * -------------------------------------------------------
-* Created: 25/5/2025
+* Created: 7/6/2025
 * -------------------------------------------------------
 */
-#pragma once
+#include <SceneryEditorX/renderer/renderer.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	void InitCore();
-	void Shutdown();
 
-} // namespace SceneryEditorX
+	void Renderer::Init()
+	{
+	}
+
+    void Renderer::Shutdown()
+    {
+    }
+
+
+}
 
 /// -------------------------------------------------------

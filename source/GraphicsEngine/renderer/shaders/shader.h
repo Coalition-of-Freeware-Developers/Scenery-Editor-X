@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <functional>
+#include <GraphicsEngine/shaders/shader_resource.h>
 #include <GraphicsEngine/vulkan/vk_device.h>
 #include <SceneryEditorX/core/pointers.h>
 
@@ -45,6 +46,103 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
+	enum class ShaderUniformType : uint8_t
+    {
+        None = 0,
+        Bool,
+        Int,
+        UInt,
+        Float,
+        Vec2,
+        Vec3,
+        Vec4,
+        Mat3,
+        Mat4,
+        IVec2,
+        IVec3,
+        IVec4
+    };
+
+	class ShaderUniform
+    {
+    public:
+        ShaderUniform() = default;
+        ShaderUniform(std::string name, ShaderUniformType type, uint32_t size, uint32_t offset);
+
+        [[nodiscard]] const std::string &GetName() const { return name; }
+        [[nodiscard]] ShaderUniformType GetType() const { return type; }
+        [[nodiscard]] uint32_t GetSize() const { return size; }
+        [[nodiscard]] uint32_t GetOffset() const { return offset; }
+
+        static constexpr std::string_view UniformTypeToString(ShaderUniformType type);
+
+        /*
+        static void Serialize(StreamWriter *serializer, const ShaderUniform &instance)
+        {
+            serializer->WriteString(instance.m_Name);
+            serializer->WriteRaw(instance.type);
+            serializer->WriteRaw(instance.size);
+            serializer->WriteRaw(instance.offset);
+        }
+
+        static void Deserialize(StreamReader *deserializer, ShaderUniform &instance)
+        {
+            deserializer->ReadString(instance.m_Name);
+            deserializer->ReadRaw(instance.m_Type);
+            deserializer->ReadRaw(instance.m_Size);
+            deserializer->ReadRaw(instance.m_Offset);
+        }
+        */
+
+    private:
+        std::string name;
+        ShaderUniformType type = ShaderUniformType::None;
+        uint32_t size = 0;
+        uint32_t offset = 0;
+    };
+
+	struct ShaderUniformBuffer
+    {
+        std::string Name;
+        uint32_t Index;
+        uint32_t BindingPoint;
+        uint32_t Size;
+        uint32_t RendererID;
+        std::vector<ShaderUniform> Uniforms;
+    };
+
+	struct ShaderStorageBuffer
+    {
+        std::string Name;
+        uint32_t Index;
+        uint32_t BindingPoint;
+        uint32_t Size;
+        uint32_t RendererID;
+        //std::vector<ShaderUniform> Uniforms;
+    };
+
+	struct ShaderBuffer
+    {
+        std::string Name;
+        uint32_t Size = 0;
+        std::unordered_map<std::string, ShaderUniform> Uniforms;
+
+        /*
+        static void Serialize(StreamWriter *serializer, const ShaderBuffer &instance)
+        {
+            serializer->WriteString(instance.Name);
+            serializer->WriteRaw(instance.Size);
+            serializer->WriteMap(instance.Uniforms);
+        }
+
+        static void Deserialize(StreamReader *deserializer, ShaderBuffer &instance)
+        {
+            deserializer->ReadString(instance.Name);
+            deserializer->ReadRaw(instance.Size);
+            deserializer->ReadMap(instance.Uniforms);
+        }*/
+    };
+
 	/**
 	 * @class Shader
 	 * @brief Represents a Vulkan shader program.
@@ -71,6 +169,9 @@ namespace SceneryEditorX
          */
         Shader() = default;
 
+		virtual void Reload(bool forceCompile = false) = 0;
+        virtual size_t GetHash() const = 0;
+
         /**
          * @brief Construct shader from file.
          * 
@@ -79,7 +180,7 @@ namespace SceneryEditorX
          * @param disableOptimization Whether to disable shader optimization during compilation
          * @param name Name of the shader
          */
-        Shader(const std::string &filepath, bool forceCompile = false, bool disableOptimization = false);
+        explicit Shader(const std::string &filepath, bool forceCompile = false, bool disableOptimization = false);
         
         /**
          * @brief Virtual destructor.
@@ -96,7 +197,10 @@ namespace SceneryEditorX
 		 * @param disableOptimization Whether to disable shader optimization during compilation
 		 */
 		void LoadFromShaderPack(const std::string& filepath, bool forceCompile = false, bool disableOptimization = false);
-        
+
+		static Ref<Shader> Create(const std::string& filepath, bool forceCompile = false, bool disableOptimization = false);
+
+
         /**
          * @brief Create a shader from source code string.
          * 
@@ -105,8 +209,8 @@ namespace SceneryEditorX
          */
         static Ref<Shader> CreateFromString(const std::string &source);
 
-		//virtual const std::unordered_map<std::string, ShaderBuffer>& GetShaderBuffers() const = 0;
-		//virtual const std::unordered_map<std::string, ShaderResourceDeclaration>& GetResources() const = 0;
+		virtual const std::unordered_map<std::string, ShaderBuffer>& GetShaderBuffers() const = 0;
+		virtual const std::unordered_map<std::string, ShaderResource>& GetResources() const = 0;
 
 		/**
 		 * @brief Register a callback to be invoked when shader is reloaded.
@@ -120,7 +224,7 @@ namespace SceneryEditorX
          * 
          * @return const std::string& The shader name, typically derived from the filename
          */
-        [[nodiscard]] virtual const std::string &GetName() const;
+        [[nodiscard]] virtual const std::string &GetName() const = 0;
 
 	    /**
 	     * @brief Get the base directory path for shader assets.

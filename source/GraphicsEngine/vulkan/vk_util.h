@@ -274,9 +274,6 @@ const char* vkQueueFlagsString(VkQueueFlags flags);
  */
 const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags);
 
-
-//std::vector<char> CompileShader(const std::filesystem::path &path);
-
 /// -------------------------------------------------------
 
 inline float HaltonSeq(uint32_t i, const uint32_t b)

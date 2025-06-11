@@ -524,4 +524,4 @@ namespace SceneryEditorX
 	#define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
 	#define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -11,9 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/initializer.h>
 #include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/core/initializer.h>
 #include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/platform/settings.h>
 
 /// -------------------------------------------------------
 
@@ -22,7 +23,7 @@ namespace SceneryEditorX
     class Application
     {
     public:
-        Application(const WindowData &appData);
+        explicit Application(const WindowData &appData);
 		virtual ~Application() = default;
 
 		void Run();
@@ -37,16 +38,23 @@ namespace SceneryEditorX
         GLOBAL const char *GetConfigType();
         GLOBAL const char *GetPlatform();
 
+		ApplicationSettings &GetSettings() { return settings; }
+        const ApplicationSettings &GetSettings() const { return settings;}
     private:
         Scope<Window> window;
         bool isRunning = true;
         bool isMinimized = false;
         INTERNAL Application *instance;
+
+		ApplicationSettings settings;
+
 		friend class GraphicsEngine;
+        friend class Renderer;
     protected:
         inline LOCAL bool isRuntime = false;
     };
 
+    /// -------------------------------------------------------
 
     Application *CreateApplication(int argc, char **argv);
 

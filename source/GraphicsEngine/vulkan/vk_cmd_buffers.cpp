@@ -75,9 +75,7 @@ namespace SceneryEditorX
 
     CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : debugName(std::move(debugName))
     {
-        /// Get the device from graphics engine
-        auto device       = GraphicsEngine::Get()->GetLogicDevice();
-        auto vulkanDevice = GraphicsEngine::GetCurrentDevice();
+        auto device = vkDevice;
 
 		if (count == 0)
 		{
@@ -102,14 +100,14 @@ namespace SceneryEditorX
 			for (uint32_t i = 0; i < count; ++i)
 			{
 				/// Set debug name for each command buffer
-                if (vulkanDevice->vkSetDebugUtilsObjectNameEXT && !debugName.empty())
+                if (device->vkSetDebugUtilsObjectNameEXT && !debugName.empty())
                 {
                     VkDebugUtilsObjectNameInfoEXT nameInfo{};
                     nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
                     nameInfo.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
                     nameInfo.objectHandle = reinterpret_cast<uint64_t>(activeCmdBuffer);
                     nameInfo.pObjectName = debugName.c_str();
-                    vulkanDevice->vkSetDebugUtilsObjectNameEXT(vulkanDevice->Selected(), &nameInfo);
+                    device->vkSetDebugUtilsObjectNameEXT(device->Selected(), &nameInfo);
                 }
 			}
         }
@@ -118,10 +116,11 @@ namespace SceneryEditorX
 
     CommandBuffer::~CommandBuffer()
     {
+
         VkCommandPool commandPool = cmdPool;
 		if (!commandBuffer.empty())
 		{
-			auto device = GraphicsEngine::Get()->GetLogicDevice();
+            auto device = vkDevice;
 			vkDestroyCommandPool(device->GetDevice(), commandPool, nullptr);
 			commandBuffer.clear();
         }
@@ -150,26 +149,30 @@ namespace SceneryEditorX
 		Ref<CommandBuffer> cmdBufferInst;
 
         auto &cmd = GetCurrentCommandResources();
+        auto device = vkDevice->GetDevice();
+        auto vkPhysDevice = vkDevice->GetPhysicalDevice();
 
-        vkWaitForFences(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), 1, &cmd.fence, VK_TRUE, UINT64_MAX);
-        vkResetFences(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), 1, &cmd.fence);
+        vkWaitForFences(device, 1, &cmd.fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(device, 1, &cmd.fence);
 
 		if (!cmd.timeStamps.empty())
         {
-            vkGetQueryPoolResults(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), cmd.queryPool,0,cmd.timeStamps.size(),
+            vkGetQueryPoolResults(device, cmd.queryPool,0,cmd.timeStamps.size(),
 								  cmd.timeStamps.size() * sizeof(uint64_t),cmd.timeStamps.data(),sizeof(uint64_t),VK_QUERY_RESULT_64_BIT);
             for (int i = 0; i < cmd.timeStampNames.size(); i++)
             {
                 const uint64_t begin = cmd.timeStamps[2 * i];
                 const uint64_t end = cmd.timeStamps[2 * i + 1];
-                timeStampTable[cmd.timeStampNames[i]] = static_cast<float>(end - begin) * GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetDeviceProperties().limits.timestampPeriod / 1000000.0f;
+                timeStampTable[cmd.timeStampNames[i]] =
+                    static_cast<float>(end - begin) *
+                    vkPhysDevice->GetDeviceProperties().limits.timestampPeriod / 1000000.0f;
             }
             cmd.timeStamps.clear();
             cmd.timeStampNames.clear();
         }
 
 		InternalQueue &internalQueue = queues[queue];
-        vkResetCommandPool(GraphicsEngine::Get()->GetLogicDevice()->GetDevice(), cmdPool, 0);
+        vkResetCommandPool(device, cmdPool, 0);
         cmd.stagingOffset = 0;
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -228,7 +231,7 @@ namespace SceneryEditorX
         const auto &cmd = GetCurrentCommandResources();
 
         constexpr VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        const VkSwapchainKHR swapchain = GraphicsEngine::Get()->GetSwapChain()->GetSwapchain();
+        auto swapchain = swapChain->GetSwapchain();
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -249,7 +252,6 @@ namespace SceneryEditorX
         presentInfo.pImageIndices = &renderData.imageIndex;
         presentInfo.pResults = nullptr;
     }
-
 
 } // namespace SceneryEditorX
 

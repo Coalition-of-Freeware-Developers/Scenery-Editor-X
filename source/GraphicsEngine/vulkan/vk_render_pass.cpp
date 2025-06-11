@@ -31,7 +31,7 @@ namespace SceneryEditorX
 	 * @note The renderData member is default-initialized.
 	 * @throws Assertion failure if spec.vkPipeline is not valid.
 	 */
-	RenderPass::RenderPass(const RenderSpec &spec) : gfxEngine(nullptr), renderData()
+	RenderPass::RenderPass(const RenderSpec &spec) : renderData()
 	{
 	    SEDX_CORE_VERIFY(spec.vkPipeline);
 	}
@@ -55,11 +55,9 @@ namespace SceneryEditorX
 	 */
 	RenderPass::~RenderPass()
 	{
-	    if (renderPass != VK_NULL_HANDLE && gfxEngine->Get()->GetLogicDevice()->GetDevice())
+        if (auto device = vkDevice->GetDevice(); renderPass != VK_NULL_HANDLE && device)
 	    {
-	        vkDestroyRenderPass(gfxEngine->Get()->GetLogicDevice()->GetDevice(), renderPass,
-	            (gfxEngine != nullptr) ? gfxEngine->Get()->GetAllocatorCallback() : nullptr
-	        );
+            vkDestroyRenderPass(device, renderPass,nullptr);
 	        renderPass = VK_NULL_HANDLE;
 	    }
 	}
@@ -143,8 +141,8 @@ namespace SceneryEditorX
 	    renderPassInfo.pSubpasses = &subpass;
 	    renderPassInfo.dependencyCount = 1;
 	    renderPassInfo.pDependencies = &dependency;
-	
-	    if (vkCreateRenderPass(gfxEngine->Get()->GetLogicDevice()->GetDevice(), &renderPassInfo, gfxEngine->Get()->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
+
+        if (auto device = vkDevice->GetDevice(); vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
 	        SEDX_CORE_ERROR("Failed to create render pass!");
 	}
 
@@ -395,22 +393,24 @@ namespace SceneryEditorX
 	    imageInfo.usage = usage;
 	    imageInfo.samples = numSamples;
 	    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	
-	    if (vkCreateImage(gfxEngine->Get()->GetLogicDevice()->GetDevice(), &imageInfo, gfxEngine->Get()->GetAllocatorCallback(), &image) != VK_SUCCESS)
+
+		auto device = vkDevice->GetDevice();
+
+	    if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create image!");
 	
 	    VkMemoryRequirements memRequirements;
-	    vkGetImageMemoryRequirements(gfxEngine->Get()->GetLogicDevice()->GetDevice(), image, &memRequirements);
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
 	
 	    VkMemoryAllocateInfo allocInfo{};
 	    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	    allocInfo.allocationSize = memRequirements.size;
-	    allocInfo.memoryTypeIndex = GraphicsEngine::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = vkDevice->FindMemoryType(memRequirements.memoryTypeBits, properties);
 	
-	    if (vkAllocateMemory(gfxEngine->Get()->GetLogicDevice()->GetDevice(), &allocInfo, gfxEngine->Get()->GetAllocatorCallback(), &imageMemory) != VK_SUCCESS)
+	    if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate image memory!");
 	
-	    vkBindImageMemory(gfxEngine->Get()->GetLogicDevice()->GetDevice(), image, imageMemory, 0);
+	    vkBindImageMemory(device, image, imageMemory, 0);
 	}
 
 } // namespace SceneryEditorX

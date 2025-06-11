@@ -5,20 +5,19 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* initializer.h
+* shader_resource.cpp
 * -------------------------------------------------------
-* Created: 25/5/2025
+* Created: 8/6/2025
 * -------------------------------------------------------
 */
-#pragma once
+#include <GraphicsEngine/shaders/shader_resource.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	void InitCore();
-	void Shutdown();
 
-} // namespace SceneryEditorX
+
+}
 
 /// -------------------------------------------------------

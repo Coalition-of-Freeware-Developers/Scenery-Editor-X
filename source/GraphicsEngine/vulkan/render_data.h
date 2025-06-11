@@ -461,6 +461,21 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+	GLOBAL const char* VendorIDToString(uint32_t vendorID)
+	{
+		switch (vendorID)
+		{
+			case 0x10DE: return "NVIDIA";
+			case 0x1002: return "AMD";
+			case 0x8086: return "INTEL";
+			case 0x13B5: return "ARM";
+		}
+		return "Unknown";
+	}
+
+    /// -------------------------------------------------------
+
+
     /**
      * @struct RenderData
 	 * @brief Core rendering configuration and state information for the renderer.
@@ -526,8 +541,12 @@ namespace SceneryEditorX
         /** @brief Hardware vendor name of the GPU device */
         std::string Vendor;
 
+		void SetDeviceVendorName(uint32_t vendorID) { Vendor = VendorIDToString(vendorID); }
+
         /** @brief Name of the GPU device being used */
         std::string Device;
+
+		void SetDeviceName(const std::string &deviceName) { Device = deviceName; }
 
         /** @brief Driver version information */
         std::string Version;

@@ -60,7 +60,7 @@ namespace SceneryEditorX
      */
     IndexBuffer::~IndexBuffer()
     {
-        RenderData renderData;
+        const RenderData renderData = {};
         for (size_t i = 0; i < renderData.framesInFlight; i++)
         {
             allocator->DestroyBuffer(indexBuffer, indexBufferAllocation);

@@ -13,7 +13,7 @@
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <GraphicsEngine/renderer/shaders/shader.h>
 
-// -----------------------------------------
+/// -----------------------------------------
 
 namespace SceneryEditorX
 {
@@ -79,13 +79,11 @@ namespace SceneryEditorX
         if (vkCreateShaderModule(device->GetDevice(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create shader module!");
-            ErrMsg("failed to create shader module!");
         }
 
         return shaderModule;
 	}
 
-
 } // namespace SceneryEditorX
 
-// -----------------------------------------
+/// -----------------------------------------

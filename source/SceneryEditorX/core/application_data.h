@@ -18,7 +18,6 @@
 
 namespace SceneryEditorX
 {
-	
 	/**
 	 * @struct AppData
 	 * @brief Stores global application configuration and version information.
@@ -109,4 +108,4 @@ namespace SceneryEditorX
 	
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

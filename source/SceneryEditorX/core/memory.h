@@ -18,7 +18,7 @@
 #include <mutex>
 #include <utility>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -39,6 +39,7 @@ namespace SceneryEditorX
 		size_t TotalFreed = 0;
 	};
 
+    /// -------------------------------------------------------
 
 	/**
 	 * @struct Allocation
@@ -82,7 +83,8 @@ namespace SceneryEditorX
 	}
 
     /// -------------------------------------------------------
-	/**
+
+    /**
 	 * @struct Mallocator
 	 * @brief A minimal STL-compatible allocator that uses malloc/free.
 	 * 
@@ -140,6 +142,7 @@ namespace SceneryEditorX
 		}
 	};
 
+    /// -------------------------------------------------------
 
 	/**
 	 * @struct AllocatorData

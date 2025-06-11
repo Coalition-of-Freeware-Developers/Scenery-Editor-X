@@ -15,6 +15,7 @@
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <GraphicsEngine/vulkan/vk_buffers.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
 
 /// ----------------------------------------------------------
 
@@ -104,8 +105,9 @@ namespace SceneryEditorX
 	 */
     Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
+        auto device = RenderContext::Get()->GetLogicDevice();
 	    /// Get the allocator from the current device
-	    const VmaAllocator vmaAllocator = GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator();
+        const VmaAllocator vmaAllocator = device->GetMemoryAllocator();
 	
 	    /// ---------------------------------------------------------
 	    
@@ -122,7 +124,7 @@ namespace SceneryEditorX
 	    {
 	        usage |= BufferUsage::Address;
 	        /// Align storage buffer size to minimum required alignment
-	        size += size % GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->Selected().deviceProperties.limits.minStorageBufferOffsetAlignment;
+            size += size % device->GetPhysicalDevice()->GetDeviceProperties().limits.minStorageBufferOffsetAlignment;
 	    }
 	    
 	    /// Handle acceleration structure input buffers
@@ -167,7 +169,7 @@ namespace SceneryEditorX
 	    /// Handle storage buffer descriptors for bindless access
 	    if (usage & BufferUsage::Storage)
 	    {
-            BindlessResources bindlessData;
+            //BindlessResources bindlessData;
 	        
 	        /// Get a resource ID from the available pool
 	        resource->resourceID = ImageID::availBufferRID.back();
@@ -182,7 +184,7 @@ namespace SceneryEditorX
 	        
 	        /// Configure descriptor write operation
 	        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	        write.dstSet = bindlessData.bindlessDescriptorSet;
+	        //write.dstSet = bindlessData.bindlessDescriptorSet;
 	        write.dstBinding = 1;
 	        write.dstArrayElement = buffer.resource->resourceID;
 	        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -190,7 +192,7 @@ namespace SceneryEditorX
 	        write.pBufferInfo = &descriptorInfo;
 	        
 	        /// Update descriptor set with buffer info
-	        vkUpdateDescriptorSets(GraphicsEngine::GetCurrentDevice()->GetDevice(), 1, &write, 0, nullptr);
+	        vkUpdateDescriptorSets(RenderContext::Get()->GetLogicDevice()->GetDevice(), 1, &write, 0, nullptr);
 	    }
 	    
 	    return buffer;
@@ -200,14 +202,14 @@ namespace SceneryEditorX
     {
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
 		void* data = nullptr; ///< Initialize data
-		vmaMapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.resource->allocation, &data);
+		vmaMapMemory(RenderContext::Get()->GetLogicDevice()->GetMemoryAllocator(), buffer.resource->allocation, &data);
         return data;
 	}
 
     void UnmapBuffer(const Buffer &buffer)
     {
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
-        vmaUnmapMemory(GraphicsEngine::GetCurrentDevice()->GetMemoryAllocator(), buffer.resource->allocation);
+        vmaUnmapMemory(RenderContext::Get()->GetLogicDevice()->GetMemoryAllocator(), buffer.resource->allocation);
     }
 
     /// ----------------------------------------------------------

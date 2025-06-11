@@ -1865,16 +1865,16 @@ namespace SceneryEditorX
 	 */
     CommandPool::~CommandPool()
     {
-        VkDevice vulkanDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice();
-        if (!vulkanDevice)
+        auto device = vkDevice->GetDevice();
+        if (!device)
             return;
 
         /// Only destroy compute pool if it's different from graphics pool
         if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
-            vkDestroyCommandPool(vulkanDevice, ComputeCmdPool, nullptr);
+            vkDestroyCommandPool(device, ComputeCmdPool, nullptr);
 
         if (GraphicsCmdPool != VK_NULL_HANDLE)
-            vkDestroyCommandPool(vulkanDevice, GraphicsCmdPool, nullptr);
+            vkDestroyCommandPool(device, GraphicsCmdPool, nullptr);
 
         GraphicsCmdPool = VK_NULL_HANDLE;
         ComputeCmdPool = VK_NULL_HANDLE;
@@ -1905,7 +1905,7 @@ namespace SceneryEditorX
 	 */
     VkCommandBuffer CommandPool::AllocateCommandBuffer(const bool begin, const bool compute) const
     {
-        VkDevice vulkanDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice();
+        auto device = vkDevice->GetDevice();
         const VkCommandPool cmdPool = compute ? ComputeCmdPool : GraphicsCmdPool;
 
         VkCommandBufferAllocateInfo allocInfo{};
@@ -1915,7 +1915,7 @@ namespace SceneryEditorX
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer cmdBuffer;
-        VkResult result = vkAllocateCommandBuffers(vulkanDevice, &allocInfo, &cmdBuffer);
+        VkResult result = vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer);
 
         if (result != VK_SUCCESS)
         {
@@ -1933,7 +1933,7 @@ namespace SceneryEditorX
             if (result != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR("Failed to begin command buffer! Error: {}", static_cast<int>(result));
-                vkFreeCommandBuffers(vulkanDevice, cmdPool, 1, &cmdBuffer);
+                vkFreeCommandBuffers(device, cmdPool, 1, &cmdBuffer);
                 return VK_NULL_HANDLE;
             }
         }
@@ -1969,7 +1969,7 @@ namespace SceneryEditorX
 	 */
     void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer, const VkQueue queue) const
     {
-        VkDevice vulkanDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
+        auto device = vkDevice->GetDevice();
 
         if (cmdBuffer == VK_NULL_HANDLE)
         {
@@ -1990,7 +1990,7 @@ namespace SceneryEditorX
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
         VkFence fence;
-        result = vkCreateFence(vulkanDevice, &fenceInfo, nullptr, &fence);
+        result = vkCreateFence(device, &fenceInfo, nullptr, &fence);
         if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create fence! Error: {}", static_cast<int>(result));
@@ -2007,20 +2007,20 @@ namespace SceneryEditorX
         if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to submit command buffer! Error: {}", static_cast<int>(result));
-            vkDestroyFence(vulkanDevice, fence, nullptr);
+            vkDestroyFence(device, fence, nullptr);
             return;
         }
 
         /// Wait for the fence
-        result = vkWaitForFences(vulkanDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
+        result = vkWaitForFences(device, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
         if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to wait for fence! Error: {}", static_cast<int>(result));
         }
 
         /// Clean up
-        vkDestroyFence(vulkanDevice, fence, nullptr);
-        vkFreeCommandBuffers(vulkanDevice, GraphicsCmdPool, 1, &cmdBuffer);
+        vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, GraphicsCmdPool, 1, &cmdBuffer);
     }
 
 } // namespace SceneryEditorX

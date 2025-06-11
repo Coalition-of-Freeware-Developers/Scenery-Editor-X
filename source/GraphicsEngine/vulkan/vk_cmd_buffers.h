@@ -14,6 +14,9 @@
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <SceneryEditorX/core/pointers.h>
 
+#include "vk_device.h"
+#include "vk_swapchain.h"
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
@@ -57,7 +60,8 @@ namespace SceneryEditorX
 
 	private:
         Ref<CommandBuffer> cmdBuffers;
-
+        Ref<VulkanDevice> vkDevice;
+        Ref<SwapChain> swapChain;
         VkCommandBuffer activeCmdBuffer = nullptr;
         VkCommandPool cmdPool = nullptr;
 
@@ -79,8 +83,8 @@ namespace SceneryEditorX
         uint32_t timeStampPerPool = 64;
         std::string debugName;
 
-        friend class VulkanDevice;
         friend class GraphicsEngine;
+        friend class RenderContext;
 	};
 
 	/// ---------------------------------------------------------

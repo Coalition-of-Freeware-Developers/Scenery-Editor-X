@@ -18,7 +18,7 @@
 #include <GraphicsEngine/vulkan/vk_util.h>
 #include <SceneryEditorX/core/window.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /// Macro to get a procedure address based on a vulkan instance
 #define GET_INSTANCE_PROC_ADDR(inst, entrypoint)                                                                   \
@@ -34,7 +34,7 @@
     SEDX_CORE_ASSERT(fp##entrypoint);                                                                              \
 }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 static PFN_vkGetPhysicalDeviceSurfaceSupportKHR fpGetPhysicalDeviceSurfaceSupportKHR;
 static PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR fpGetPhysicalDeviceSurfaceCapabilitiesKHR;
@@ -59,8 +59,7 @@ PFN_vkGetQueueCheckpointDataNV fpGetQueueCheckpointDataNV;
 
 /* Add AMD Specific extensions later when added */
 
-// -------------------------------------------------------
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 VKAPI_ATTR void VKAPI_CALL vkCmdSetCheckpointNV(VkCommandBuffer commandBuffer, const void *pCheckpointMarker)
 {
@@ -112,7 +111,7 @@ namespace SceneryEditorX
         GPUDevice gpuData;
 
         /// Create the surface
-        if (glfwCreateWindowSurface(GraphicsEngine::GetInstance(), Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
+        if (glfwCreateWindowSurface(RenderContext::GetInstance(), Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create window surface!");
 
         uint32_t queueCount;
@@ -617,7 +616,7 @@ namespace SceneryEditorX
     {
         RenderData data;
         Viewport viewportData;
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
+        auto device = vkDevice->GetDevice();
         data.width = width;
         data.height = height;
         if (data.width == 0 || data.height == 0)
@@ -626,29 +625,30 @@ namespace SceneryEditorX
             return;
         }
         SEDX_CORE_INFO("Window resized to {}x{}", data.width, data.height);
-        //vkDestroySwapchainKHR(vkDevice, swapChain, nullptr);
-        vkDeviceWaitIdle(vkDevice);
+        //vkDestroySwapchainKHR(device, swapChain, nullptr);
+        vkDeviceWaitIdle(device);
         Create(viewportData.width, viewportData.height, data.VSync);
-        vkDeviceWaitIdle(vkDevice);
+        vkDeviceWaitIdle(device);
     }
 
     uint32_t SwapChain::AcquireNextImage()
     {
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
+        auto device = vkDevice->GetDevice();
+
 		RenderData renderData;
         renderData.swapChainCurrentFrame = (renderData.swapChainCurrentFrame + 1) % swapChainImages.size();
 
-        VK_CHECK_RESULT(vkWaitForFences(vkDevice, 1, &waitFences[renderData.imageIndex], VK_TRUE, UINT64_MAX));
+        VK_CHECK_RESULT(vkWaitForFences(device, 1, &waitFences[renderData.imageIndex], VK_TRUE, UINT64_MAX));
 
 		uint32_t imageIndex;
 
-        if (const VkResult result = fpAcquireNextImageKHR(vkDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex); result != VK_SUCCESS)
+        if (const VkResult result = fpAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex); result != VK_SUCCESS)
         {
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
             {
                 Viewport viewportData;
                 OnResize(viewportData.width, viewportData.height);
-                VK_CHECK_RESULT(fpAcquireNextImageKHR(vkDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex));
+                VK_CHECK_RESULT(fpAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex));
             }
         }
 
@@ -676,7 +676,7 @@ namespace SceneryEditorX
         VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage&image, VkDeviceMemory&imageMemory) const
     {
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
+        auto device = vkDevice->GetDevice();
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -693,26 +693,26 @@ namespace SceneryEditorX
         imageInfo.samples = numSamples;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateImage(vkDevice, &imageInfo, allocator, &image) != VK_SUCCESS)
+        if (vkCreateImage(device, &imageInfo, allocator, &image) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create image!");
 
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(vkDevice, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(device, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to allocate image memory!");
 
-        vkBindImageMemory(vkDevice, image, imageMemory, 0);
+        vkBindImageMemory(device, image, imageMemory, 0);
     }
 
     uint32_t SwapChain::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
     {
-        const VkPhysicalDevice vkPhysDevice = GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+        auto vkPhysDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(vkPhysDevice, &memProperties);
 
@@ -730,7 +730,7 @@ namespace SceneryEditorX
 
     VkImageView SwapChain::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const
     {
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
+        auto device = vkDevice->GetDevice();
 
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -744,7 +744,7 @@ namespace SceneryEditorX
         viewInfo.subresourceRange.layerCount = 1;
 
         VkImageView imageView;
-        if (vkCreateImageView(vkDevice, &viewInfo, allocator, &imageView) != VK_SUCCESS)
+        if (vkCreateImageView(device, &viewInfo, allocator, &imageView) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create texture image view!");
 
         return imageView;
@@ -801,7 +801,7 @@ namespace SceneryEditorX
     {
         for (const VkFormat format : candidates)
         {
-            const VkPhysicalDevice vkPhysDevice = GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+            auto vkPhysDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
             VkFormatProperties props;
 
             vkGetPhysicalDeviceFormatProperties(vkPhysDevice, format, &props);
@@ -861,7 +861,7 @@ namespace SceneryEditorX
 	 */
     void SwapChain::FindImageFormatAndColorSpace()
     {
-        const VkPhysicalDevice vkPhysDevice = GraphicsEngine::Get()->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+        auto vkPhysDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
 
 		uint32_t formatCount;
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(vkPhysDevice, surface, &formatCount, nullptr))

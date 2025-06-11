@@ -12,9 +12,8 @@
 */
 #pragma once
 #include <GraphicsEngine/buffers/buffer_data.h>
-#include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
-#include <GraphicsEngine/vulkan/vk_descriptors.h>
 #include <GraphicsEngine/vulkan/vk_allocator.h>
+#include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
 #include <optional>
 #include <vulkan/vulkan.h>
 
@@ -316,7 +315,6 @@ namespace SceneryEditorX
         VkDevice device = nullptr;
         //BindlessResources bindlessResources;
 		Ref<MemoryAllocator> memoryAllocator;
-        Ref<CommandBuffer> cmdBuffer = nullptr;
         VkSampler textureSampler = nullptr;
 
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
@@ -413,7 +411,7 @@ namespace SceneryEditorX
         Queue queueType;
         VkCommandPool commandPool = VK_NULL_HANDLE;
     private:
-        Ref<GraphicsEngine> *gfxEngine = nullptr;
+        Ref<VulkanDevice> vkDevice;
         VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
         VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
 

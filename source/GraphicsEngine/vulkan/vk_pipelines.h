@@ -11,9 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/renderer/shaders/shader.h>
 #include <GraphicsEngine/vulkan/resource.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 
 /// -------------------------------------------------------
 
@@ -27,8 +25,8 @@ namespace SceneryEditorX
 	class Pipeline : public RefCounted
 	{
 	public:
-	    Pipeline() = default;
-        virtual ~Pipeline();
+	    Pipeline();
+        virtual ~Pipeline() override;
 
 	    /**
 		 * @enum PipelineStage
@@ -78,23 +76,13 @@ namespace SceneryEditorX
 
 	    void Create();
         void Destroy();
+
         VkExtent2D GetFloatSwapExtent() const;
         VkPipeline GetPipeline() const { return pipeline; }
 		VkPipelineLayout GetVulkanPipelineLayout() const { return pipelineLayout; }
-        [[nodiscard]] virtual Ref<Shader> GetShader() const { return shaderPtr; }
-
-    // protected:
-    //     /**
-    //      * @brief Creates a shader module from shader code
-    //      * @param device The logical device
-    //      * @param code The shader code
-    //      * @return The created shader module
-    //      */
-    //     INTERNAL VkShaderModule CreateShaderModule(VkDevice device, const std::vector<char>& code);
 
 	private:
         Viewport *vkViewport = nullptr;
-        Ref<Shader> shaderPtr;
         Ref<SwapChain> vkSwapChain;
         Ref<VulkanDevice> device;
 

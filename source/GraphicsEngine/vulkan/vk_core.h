@@ -18,7 +18,6 @@
 #include <GraphicsEngine/vulkan/vk_checks.h>
 #include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
 #include <GraphicsEngine/vulkan/vk_device.h>
-#include <GraphicsEngine/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/core/window.h>
 
 /// -------------------------------------------------------
@@ -27,11 +26,6 @@ struct GLFWwindow;
 
 namespace SceneryEditorX
 {
-	class SwapChain;
-	struct SwapChainDetails;
-
-    /// -------------------------------------------------------
-	
 	class GraphicsEngine : public RefCounted
     {
 	public:
@@ -39,22 +33,15 @@ namespace SceneryEditorX
         virtual ~GraphicsEngine() override;
 
         virtual void Init(const Ref<Window> &window);
-        virtual void CreateInstance(const Ref<Window> &window);
+        //virtual void CreateInstance(const Ref<Window> &window);
 
         Ref<Window> GetWindow() { return editorWindow; }
-		Ref<SwapChain> GetSwapChain() { return vkSwapChain; }
-		Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
+
         MemoryAllocator &GetMemAllocator() { return allocatorManager; }
 		CommandBuffer GetCommandBuffer() { return cmdBufferManger; }
 
 		LOCAL Ref<GraphicsEngine> Get(); ///< Static accessor method to get the singleton instance
-		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
-		LOCAL VkInstance GetInstance();
         GLOBAL void WaitIdle(const Ref<VulkanDevice> &device);
-
-	    [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass;}
-        [[nodiscard]] VkSampler CreateSampler(float maxLod) const;
-        [[nodiscard]] const VkAllocationCallbacks *GetAllocatorCallback() const { return allocator; }
 
 		/// -------------------------------------------------------
 
@@ -62,20 +49,13 @@ namespace SceneryEditorX
         INTERNAL Ref<GraphicsEngine> gfxContext;
         
         Ref<Window> editorWindow;
-        Ref<SwapChain> vkSwapChain;
-        Ref<VulkanDevice> vkDevice;
-        Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanChecks> checks;
         MemoryAllocator allocatorManager;
         CommandBuffer cmdBufferManger;
-        inline static VkInstance vkInstance;
 
 	    VkAllocationCallbacks *allocator = nullptr;
-        VkDebugUtilsMessengerEXT debugMessenger = nullptr;
-        VkPipelineCache pipelineCache = nullptr;
 		Viewport viewportData;
         RenderData renderData;
-        VulkanDeviceFeatures vkEnabledFeatures;
 
         LOCAL void glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer);
 
@@ -84,7 +64,6 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
         uint32_t apiVersion;
-		VkDevice device = nullptr;
 
         /// -------------------------------------------------------
 
@@ -131,31 +110,32 @@ namespace SceneryEditorX
         VkImageView colorImageView;
 
 		/// -------------------------------------------------------
-
-        void CreateSurface(GLFWwindow *glfwWindow);
-        void CreateSwapChain();
-        void CreateImageViews();
-        VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
-        void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) const;
-        GLOBAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
-        void CreateDepthResources();
-        void CreateDescriptorPool();
-        void CreateDescriptorSetLayout();
-        void CreateFramebuffers();
-        void CreateSyncObjects();
-        void RecreateSwapChain();
-        void RenderFrame();
-        VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
-        VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
-        VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
-        void CreateTextureImageView();
-        void CreateTextureSampler();
-        INTERNAL SwapChainDetails QuerySwapChainSupport(VkPhysicalDevice device);
-        VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
-        VkFormat FindDepthFormat() const;
         void CleanUp();
-        void CleanupSwapChain();
-        VkSampleCountFlagBits GetMaxUsableSampleCount() const;
+        GLOBAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
+
+        //void CreateSurface(GLFWwindow *glfwWindow);
+        //void CreateSwapChain();
+        //void CreateImageViews();
+        //VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
+        //void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) const;
+        //void CreateDepthResources();
+        //void CreateDescriptorPool();
+        //void CreateDescriptorSetLayout();
+        //void CreateFramebuffers();
+        //void CreateSyncObjects();
+        //void RecreateSwapChain();
+        //void RenderFrame();
+        //VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+        //VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+        //VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
+        //void CreateTextureImageView();
+        //void CreateTextureSampler();
+        //INTERNAL SwapChainDetails QuerySwapChainSupport(VkPhysicalDevice device);
+        //VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+        //VkFormat FindDepthFormat() const;
+
+        //void CleanupSwapChain();
+        //VkSampleCountFlagBits GetMaxUsableSampleCount() const;
 
 		/// -------------------------------------------------------
 	};

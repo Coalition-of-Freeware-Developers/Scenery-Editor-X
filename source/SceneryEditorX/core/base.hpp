@@ -22,7 +22,7 @@ constexpr bool enableValidationLayers = true;
 constexpr bool enableValidationLayers = false;
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
 * Type aliases for fixed-width integer types
@@ -39,7 +39,7 @@ using f32 = float;    // 32-bit floating point
 using f64 = double;   // 64-bit floating point
 using RID = u32;      // Resource Identifier, alias for unsigned 32-bit integer
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 using Vec2 = glm::vec2; // 2D vector
 using Vec3 = glm::vec3; // 3D vector
@@ -49,7 +49,7 @@ using Mat2 = glm::mat2; // 2x2 matrix
 using Mat3 = glm::mat3; // 3x3 matrix
 using Mat4 = glm::mat4; // 4x4 matrix
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief Aligns a size value to a specified alignment boundary.
@@ -156,7 +156,7 @@ using Mat4 = glm::mat4; // 4x4 matrix
  */
 #define SEDX_BIND_EVENT_FN(fn) [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -299,7 +299,7 @@ namespace SceneryEditorX
 	};
 
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 	/**
 	 * @struct Flag

@@ -10,9 +10,7 @@
 * Created: 14/5/2025
 * -------------------------------------------------------
 */
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <GraphicsEngine/vulkan/vk_descriptors.h>
-#include <SceneryEditorX/logging/asserts.h>
 
 /// -------------------------------------------------------
 

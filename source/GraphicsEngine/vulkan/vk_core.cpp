@@ -13,9 +13,7 @@
 #include <GraphicsEngine/vulkan/render_data.h>
 #include <GraphicsEngine/vulkan/vk_checks.h>
 #include <GraphicsEngine/vulkan/vk_core.h>
-#include <GraphicsEngine/vulkan/vk_util.h>
 #include <memory>
-#include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/ui/ui.h>
 
@@ -28,165 +26,6 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT;
-	PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
-	PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
-	PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
-	PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
-	PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
-	PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
-
-    INTERNAL std::string VK_DEBUG_SEVERITY(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity)
-    {
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-            return "VERBOSE";
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-            return "INFO";
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-            return "WARNING";
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-            return "ERROR";
-        return "UNKNOWN";
-    }
-
-    INTERNAL std::string VK_DEBUG_TYPE(VkFlags messageType)
-    {
-        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
-            return "GENERAL";
-        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
-            return "VALIDATION";
-        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
-            return "PERFORMANCE";
-        return "UNKNOWN";
-    }
-
-    /*
-    static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMsgCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
-    {
-        (void)pUserData; //Unused argument
-
-        std::string labels, objects;
-        if (constexpr bool performanceWarnings = false; !performanceWarnings)
-        {
-            if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
-                return VK_FALSE;
-        }
-
-        if (pCallbackData->cmdBufLabelCount)
-        {
-            labels = std::format("\tLabels({}): \n", pCallbackData->cmdBufLabelCount);
-            for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
-            {
-                const auto &label = pCallbackData->pCmdBufLabels[i];
-                const std::string colorStr = std::format("[ {}, {}, {}, {} ]", label.color[0], label.color[1], label.color[2], label.color[3]);
-                labels.append(std::format("\t\t- Command Buffer Label[{0}]: name: {1}, color: {2}\n",i, label.pLabelName ? label.pLabelName : "NULL", colorStr));
-            }
-        }
-
-        /*
-        /// Also log any objects that were involved in the message
-        if (pCallbackData->objectCount > 0)
-        {
-            for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
-            {
-                const auto &obj = pCallbackData->pObjects[i];
-                std::string objInfo = "   Object[" + std::to_string(i) + "] - Type: ";
-                objInfo += std::to_string(obj.objectType) + ", Handle: " + std::to_string((uint64_t)obj.objectHandle);
-
-                if (obj.pObjectName)
-                {
-                    objInfo += ", Name: \"" + std::string(obj.pObjectName) + "\"";
-                }
-
-                Log::LogVulkanDebug(objInfo);
-            }
-        }
-        #1#
-
-        if (pCallbackData->objectCount)
-        {
-            objects = std::format("\tObjects({}): \n", pCallbackData->objectCount);
-            for (uint32_t i = 0; i < pCallbackData->objectCount; ++i)
-            {
-                const auto &object = pCallbackData->pObjects[i];
-                objects.append(std::format("\t\t- Object[{0}] name: {1}, type: {2}, handle: {3:#x}\n",i, object.pObjectName ? object.pObjectName : "NULL", VkObjectTypeToString(object.objectType), object.objectHandle));
-            }
-        }
-
-		SEDX_CORE_WARN("{0} {1} message: \n\t{2}\n {3} {4}", VK_DEBUG_TYPE(messageType), VK_DEBUG_SEVERITY(messageSeverity), pCallbackData->pMessage, labels, objects);
-        return VK_FALSE; // Don't abort call
-    }
-    */
-
-    /// DebugUtilsMessenger utility functions
-    LOCAL VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
-    {
-        /// search for the requested function and return null if unable find
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-        if (func != nullptr)
-            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-
-    LOCAL void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
-    {
-        // search for the requested function and return null if unable find
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr)
-            func(instance, debugMessenger, pAllocator);
-    }
-
-    LOCAL VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMsgCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
-    {
-        /// if (messageSeverity > VK_DEBUG_UTILS...)
-        if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-            SEDX_CORE_WARN("[Validation Layer] {0}", pCallbackData->pMessage);
-
-        return VK_FALSE;
-    }
-
-    LOCAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
-    {
-        createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-        createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-        createInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
-        createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-        createInfo.messageType |= VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback = VulkanDebugMsgCallback;
-        createInfo.pUserData = nullptr;
-    }
-
-    /*
-    VkResult GraphicsEngine::CreateDebugUtilsMessengerEXT( VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT*pDebugMessenger)
-    {
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-        if (func != nullptr)
-        {
-            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-        }
-        else
-        {
-            return VK_ERROR_EXTENSION_NOT_PRESENT;
-        }
-    }
-    */
-
-    /// -------------------------------------------------------
-
-    /*
-    void GraphicsEngine::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
-    {
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr)
-        {
-            func(instance, debugMessenger, pAllocator);
-        }
-    }
-	*/
-
     void GraphicsEngine::glfwSetWindowUserPointer(const Ref<Window> &window, GLFWwindow *pointer)
     {
         /// Set the GLFWwindow user pointer to point to our Window instance
@@ -197,21 +36,7 @@ namespace SceneryEditorX
 
 	GraphicsEngine::GraphicsEngine() = default;
 
-    GraphicsEngine::~GraphicsEngine()
-    {
-        if (debugMessenger != VK_NULL_HANDLE)
-        {
-            DestroyDebugUtilsMessengerEXT(vkInstance, debugMessenger, allocator);
-            SEDX_CORE_TRACE_TAG("Graphics Engine", "Destroyed vulkan debugger.");
-        }
-        if (vkInstance != VK_NULL_HANDLE)
-        {
-            vkDestroyInstance(vkInstance, allocator);
-            SEDX_CORE_TRACE_TAG("Graphics Engine", "Destroyed Graphics Engine instance destroyed.");
-        }
-
-        vkInstance = nullptr;
-    }
+    GraphicsEngine::~GraphicsEngine() = default;
 
     /// Static method to access the singleton instance
     Ref<GraphicsEngine> GraphicsEngine::Get()
@@ -224,9 +49,6 @@ namespace SceneryEditorX
         }
         return gfxContext;
     }
-
-    /// Static method to get the VkInstance
-    VkInstance GraphicsEngine::GetInstance() { return vkInstance; }
 
     /// -------------------------------------------------------
 
@@ -241,7 +63,7 @@ namespace SceneryEditorX
         if (!VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion))
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Incompatible Vulkan driver version!");
 
-        CreateInstance(window);
+        //CreateInstance(window);
 
 		/// Use width and height from WindowData
         renderData.width = WindowData::width;
@@ -250,19 +72,9 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("Initializing graphics engine with window size: {}x{}", renderData.width, renderData.height);
     }
 
-    LOCAL Extensions GetRequiredExtensions(Extensions vkExtensions)
-    {
-        uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        vkExtensions.deviceExtensions = std::vector(glfwExtensions, glfwExtensions + glfwExtensionCount);
-        if (enableValidationLayers)
-            vkExtensions.deviceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-        return vkExtensions;
-    }
-
     /// -------------------------------------------------------
 
+    /*
     void GraphicsEngine::CreateInstance(const Ref<Window> &window)
     {
         SEDX_CORE_TRACE_TAG("Graphics Engine", "Creating Vulkan Instance");
@@ -371,7 +183,7 @@ namespace SceneryEditorX
         {
             createInfo.enabledLayerCount = 0;
             createInfo.pNext = nullptr;
-        }*/
+        }#1#
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Instance and Surface Creation
@@ -453,7 +265,7 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create window surface!");
 
         SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created");
-    }
+    }*/
 
     /**
      * @brief Makes the device wait until all commands have been executed
@@ -481,17 +293,19 @@ namespace SceneryEditorX
         UI::GUI guiInstance;
         guiInstance.CleanUp();
 
-        CleanupSwapChain();
+        //CleanupSwapChain();
 
+        /*
         vkDestroyDescriptorPool(vkDevice->GetDevice(), descriptorPool, allocator);
 
         vkDestroySampler(vkDevice->GetDevice(), textureSampler, allocator);
+
 
         for (auto imageView : swapChainImageViews)
         {
             vkDestroyImageView(vkDevice->GetDevice(), imageView, allocator);
         }
-
+		
         vkDestroyDescriptorSetLayout(vkDevice->GetDevice(), descriptorSetLayout, allocator);
 
 		for (size_t i = 0; i < renderData.framesInFlight; i++)
@@ -501,25 +315,30 @@ namespace SceneryEditorX
             vkDestroyFence(vkDevice->GetDevice(), inFlightFences[i], allocator);
         }
 
-		vkSwapChain->Destroy();
 
-        //vkDestroySwapchainKHR(vkDevice->GetDevice(), vkSwapChain, allocator);
+		swapChain->Destroy();
+
+        vkDestroySwapchainKHR(vkDevice->GetDevice(), vkSwapChain, allocator);
         vkDestroyDevice(vkDevice->GetDevice(), allocator);
+		*/
 
         Layers layersInstance;
         layersInstance.activeLayers.clear();
         layersInstance.activeLayersNames.clear();
         layersInstance.layers.clear();
 
+		/*
         if (enableValidationLayers)
 		{
             DestroyDebugUtilsMessengerEXT(vkInstance, debugMessenger, allocator);
         }
-		
+
         vkDestroySurfaceKHR(vkInstance, surface, allocator);
         vkDestroyInstance(vkInstance, allocator);
+		*/
     }
 
+	/*
 	void GraphicsEngine::CleanupSwapChain()
     {
         vkDestroyImageView(vkDevice->GetDevice(), depthImageView, allocator);
@@ -529,8 +348,10 @@ namespace SceneryEditorX
         for (auto framebuffer : swapChainFramebuffers)
             vkDestroyFramebuffer(vkDevice->GetDevice(), framebuffer, allocator);
 
-        for (size_t i = 0; i < vkSwapChain->swapChainImages.size(); i++)
+		/*
+        for (size_t i = 0; i < swapChain->swapChainImages.size(); i++)
             vkDestroyImageView(vkDevice->GetDevice(), swapChainImageViews[i], allocator);
+        #1#
 
         vkDestroyPipeline(vkDevice->GetDevice(), graphicsPipeline, allocator);
         vkDestroyPipelineLayout(vkDevice->GetDevice(), pipelineLayout, allocator);
@@ -542,7 +363,7 @@ namespace SceneryEditorX
             vkDestroySemaphore(vkDevice->GetDevice(), renderFinishedSemaphores[i], allocator);
         }
 
-		vkSwapChain->Destroy();
+		//swapChain->Destroy();
         //vkDestroySwapchainKHR(vkDevice->GetDevice(), vkSwapChain, allocator);
 
 		/*
@@ -557,14 +378,15 @@ namespace SceneryEditorX
                 vkDestroyQueryPool(vkDevice->GetDevice(), queues[q].commands[i].queryPool, allocator);
             }
         }
-        */
+        #1#
 
 
         imageAvailableSemaphores.clear();
         renderFinishedSemaphores.clear();
         swapChainImageViews.clear();
-        vkSwapChain->swapChainImages.clear();
+        //swapChain->swapChainImages.clear();
 	}
+	*/
 
     /// -------------------------------------------------------
 
@@ -768,6 +590,7 @@ namespace SceneryEditorX
     }
     */
 
+    /*
     void GraphicsEngine::CreateSwapChain()
     {
         /// Get swap chain support details from the selected device
@@ -817,7 +640,7 @@ namespace SceneryEditorX
             createInfo.queueFamilyIndexCount = 0;
             createInfo.pQueueFamilyIndices = nullptr;
         }
-        */
+        #1#
 
         createInfo.preTransform = selectedDevice.surfaceCapabilities.currentTransform;
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -826,7 +649,7 @@ namespace SceneryEditorX
 
         createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-        if (vkCreateSwapchainKHR(vkDevice->GetDevice(), &createInfo, allocator, &vkSwapChain->swapChain) != VK_SUCCESS)
+        if (vkCreateSwapchainKHR(vkDevice->GetDevice(), &createInfo, allocator, &swapChain->swapChain) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create swap chain!");
         }
@@ -843,18 +666,19 @@ namespace SceneryEditorX
         vkSwapChain->swapChainExtent = extent;
 
         SEDX_CORE_INFO("Swap chain created successfully with {} images", imageCount);
-		*/
+		#1#
     }
 
 	void GraphicsEngine::CreateImageViews()
     {
-        swapChainImageViews.resize(vkSwapChain->swapChainImages.size());
+        swapChainImageViews.resize(swapChain->swapChainImages.size());
 
-        for (size_t i = 0; i < vkSwapChain->swapChainImages.size(); i++)
+        for (size_t i = 0; i < swapChain->swapChainImages.size(); i++)
         {
-            swapChainImageViews[i] = CreateImageView(vkSwapChain->swapChainImages[i].resource->image,static_cast<VkFormat>(vkSwapChain->swapChainImages[i].format),VK_IMAGE_ASPECT_COLOR_BIT,1);
+            swapChainImageViews[i] = CreateImageView(swapChain->swapChainImages[i].resource->image,static_cast<VkFormat>(swapChain->swapChainImages[i].format),VK_IMAGE_ASPECT_COLOR_BIT,1);
         }
     }
+
 
     VkImageView GraphicsEngine::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const
     {
@@ -875,6 +699,7 @@ namespace SceneryEditorX
 
         return imageView;
     }
+	*/
 
 	/*
 	void GraphicsEngine::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels) const
@@ -956,6 +781,7 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
+	/*
 	void GraphicsEngine::CreateDescriptorPool()
     {
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
@@ -981,7 +807,9 @@ namespace SceneryEditorX
         if (vkCreateDescriptorPool(vkDevice->GetDevice(), &poolInfo, allocator, &descriptorPool) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create descriptor pool!");
     }
+    */
 
+	/*
 	void GraphicsEngine::CreateDescriptorSetLayout()
     {
 		/// -------------------------------------------------------
@@ -1056,6 +884,7 @@ namespace SceneryEditorX
                 vkCreateFence(vkDevice->GetDevice(), &fenceInfo, allocator, &inFlightFences[i]) != VK_SUCCESS)
                     ErrMsg("failed to create synchronization objects for a frame!");
     }
+    */
 
 	/*
 	void GraphicsEngine::RecreateSwapChain()
@@ -1096,6 +925,7 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
+    /*
     VkSampleCountFlagBits GraphicsEngine::GetMaxUsableSampleCount() const
     {
         const Ref<VulkanPhysicalDevice> vkPhysicalDevice;
@@ -1118,9 +948,11 @@ namespace SceneryEditorX
 
         return VK_SAMPLE_COUNT_1_BIT;
     }
+    */
 
 	/// -------------------------------------------------------
 
+    /*
     VkPresentModeKHR GraphicsEngine::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
     {
         for (const auto &availablePresentMode : availablePresentModes)
@@ -1139,7 +971,9 @@ namespace SceneryEditorX
 
         return availableFormats[0];
     }
+    */
 
+    /*
     VkExtent2D GraphicsEngine::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities)
     {
         /// If the current extent width is the max value, it means the window manager
@@ -1165,7 +999,9 @@ namespace SceneryEditorX
         EDITOR_LOG_INFO("Using calculated extent: {}x{}", actualExtent.width, actualExtent.height);
         return actualExtent;
     }
+    */
 
+    /*
     void GraphicsEngine::CreateTextureImageView()
     {
         textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -1207,9 +1043,11 @@ namespace SceneryEditorX
 
         return details;
     }
+    */
 
 	/// -------------------------------------------------------
 
+	/*
 	VkFormat GraphicsEngine::FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
     {
         for (VkFormat format : candidates)
@@ -1233,6 +1071,7 @@ namespace SceneryEditorX
         return FindSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
                                    VK_IMAGE_TILING_OPTIMAL,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
+    */
 
     /*
     void GraphicsEngine::BeginFrame()
@@ -1301,6 +1140,7 @@ namespace SceneryEditorX
     }
     */
 
+    /*
     VkSampler GraphicsEngine::CreateSampler(float maxLod) const
     {
         VkSamplerCreateInfo samplerInfo{};
@@ -1330,6 +1170,7 @@ namespace SceneryEditorX
         
         return sampler;
     }
+    */
 
 } // namespace SceneryEditorX
 

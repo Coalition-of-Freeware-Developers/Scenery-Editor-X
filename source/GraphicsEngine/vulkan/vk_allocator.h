@@ -71,7 +71,7 @@ namespace SceneryEditorX
     public:
         MemoryAllocator() = default;
         explicit MemoryAllocator(std::string tag);
-        virtual ~MemoryAllocator();
+        virtual ~MemoryAllocator() override;
 
         /// Defragmentation methods
         void BeginDefragmentation(VmaDefragmentationFlags flags = 0);
@@ -230,6 +230,7 @@ namespace SceneryEditorX
         std::vector<VmaAllocation> defragmentationCandidates;
         VmaDefragmentationContext defragmentationContext = nullptr;
         AllocationStrategy currentStrategy = AllocationStrategy::Default;
+        Ref<VulkanDevice> vkDevice;
 
         /// Fixed-size pools for common allocation sizes
         std::unordered_map<VkDeviceSize, MemoryPool> bufferPools;
@@ -256,4 +257,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -12,7 +12,6 @@
 */
 #include <SceneryEditorX/core/application_data.h>
 #include <GraphicsEngine/vulkan/vk_checks.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
 #include <GraphicsEngine/vulkan/vk_util.h>
 
 // -------------------------------------------------------
@@ -98,11 +97,11 @@ namespace SceneryEditorX
     }
 
     /**
-     * @brief Checks to see if the device has support for the required extensions.
+     * @brief Checks to see if the instance extensions has support for the required extensions.
      *
      * @param extension The extension name to check for.
-     * @return True if the device has support for the required extensions.
-     * @return False if the device cannot support the required extensions.
+     * @return True if the instance extensions are available the required extensions.
+     * @return False if the instance extensions are available not support the required extensions.
      */
     bool VulkanChecks::IsExtensionSupported(const char *extension)
     {
@@ -111,7 +110,6 @@ namespace SceneryEditorX
         std::unordered_set<std::string> supportedExtension;
         supportedExtension.clear();
 
-        vkEnumerateDeviceExtensionProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->physicalDevice, nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
         for (const auto &ext: availableExtensions)

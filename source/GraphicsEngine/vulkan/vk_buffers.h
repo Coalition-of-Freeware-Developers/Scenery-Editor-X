@@ -13,7 +13,6 @@
 #pragma once
 #include <GraphicsEngine/vulkan/resource.h>
 #include <SceneryEditorX/core/pointers.h>
-#include <SceneryEditorX/logging/asserts.h>
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------
@@ -237,7 +236,6 @@ namespace SceneryEditorX
 	 * @see MapBuffer(BufferResource&) to map the buffer before unmapping
 	 */
 	void UnmapBuffer(BufferResource &buffer);
-
 
 } // namespace SceneryEditorX
 

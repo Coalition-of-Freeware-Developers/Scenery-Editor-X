@@ -1393,7 +1393,7 @@ namespace SceneryEditorX
 	 * @brief Attempts to convert a weak reference to a strong reference.
 	 * 
 	 * This method tries to obtain a strong reference (Ref<T>) from the weak reference.
-	 * If the object the WeakRef points to is still alive (not expired), it creates
+	 * If the object to the WeakRef points to is still alive (not expired), it creates
 	 * and returns a new Ref<T> pointing to that object, which increments the reference
 	 * count of the object. If the object has been destroyed, it returns an empty Ref<T>.
 	 * 

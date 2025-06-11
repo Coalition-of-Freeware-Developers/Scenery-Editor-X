@@ -10,6 +10,7 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
+#include <GraphicsEngine/vulkan/vk_swapchain.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/window.h>
 #include <SceneryEditorX/core/window/icon.h>
@@ -145,6 +146,7 @@ namespace SceneryEditorX
 
         //WindowData::scroll += x, WindowData::deltaScroll += y;
 	}
+
     /**
 	 * @brief Callback function for handling mouse button events.
 	 *
@@ -181,6 +183,37 @@ namespace SceneryEditorX
     }
 
     /**
+	 * @brief Maximizes the application window.
+	 *
+	 * This method calls the GLFW function to maximize the window associated with this instance.
+	 * It is typically used to expand the window to fill the available screen space on the current monitor.
+	 * The maximized state is managed by GLFW and may trigger window maximize callbacks if registered.
+	 */
+	void Window::Maximize()
+	{
+	    glfwMaximizeWindow(WindowData::window);
+	}
+
+	/**
+	 * @brief Centers the application window on the primary monitor.
+	 *
+	 * This method calculates the position required to center the window
+	 * based on the current resolution of the primary monitor and the
+	 * window's width and height. It then sets the window's position
+	 * accordingly using GLFW.
+	 *
+	 * The calculation ensures that the window appears centered horizontally
+	 * and vertically on the user's main display.
+	 */
+	void Window::CenterWindow()
+	{
+	    const GLFWvidmode *videoMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+	    WindowData::posX = (videoMode->width / 2) - (WindowData::width / 2);
+	    WindowData::posY = (videoMode->height / 2) - (WindowData::height / 2);
+	    glfwSetWindowPos(WindowData::window, WindowData::posX, WindowData::posY);
+	}
+
+    /**
      * @brief Callback function for handling mouse position/movement events.
      *
      * This function is called whenever the mouse cursor position changes within the window.
@@ -189,11 +222,10 @@ namespace SceneryEditorX
      * tracking on first call and applies sensitivity scaling to the movement offsets.
      *
      * @param window The GLFW window where the event occurred.
-     * @param data Pointer to the WindowData structure containing window state information.
      * @param x The new x-coordinate of the cursor relative to the window.
      * @param y The new y-coordinate of the cursor relative to the window.
      */
-    void Window::MousePositionCallback(GLFWwindow *window, WindowData *data, double x, double y)
+    void Window::MousePositionCallback(GLFWwindow* window, double x, double y)
     {
         auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
         if (windowInstance->captureMovement)
@@ -692,7 +724,21 @@ namespace SceneryEditorX
     {
         return lastKeyState[keyCode] && !glfwGetKey(WindowData::window, keyCode);
 	}
+
+    /**
+     * @brief Retrieves the swap chain associated with this window.
+     *
+     * This method returns a reference to the SwapChain object used for rendering
+     * in this window. The swap chain manages the presentation of rendered images
+     * to the window surface and is a core component of the Vulkan rendering pipeline.
+     *
+     * @return Reference to the SwapChain used by this window.
+     */
+    SwapChain &Window::GetSwapChain()
+    {
+        return *swapChain;
+    }
 	
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

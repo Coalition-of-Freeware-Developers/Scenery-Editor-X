@@ -23,10 +23,10 @@ namespace SceneryEditorX
     {
         SEDX_CORE_INFO("Creating application with window: {}x{}", appData.width, appData.height);
 
-		instance = this;
-        // Create the window
+        instance = this;
+        /// Create the window
         window = CreateScope<Window>();
-        
+
         /// Set window properties from appData
         if (WindowData::width > 0 && WindowData::height > 0)
         {
@@ -34,16 +34,16 @@ namespace SceneryEditorX
             WindowData::width = WindowData::width;
             WindowData::height = WindowData::height;
         }
-        
+
         if (WindowData::title)
         {
             WindowData::title = WindowData::title;
             window->SetTitle(WindowData::title);
         }
-        
+
         /// Update window properties
         window->ApplyChanges();
-        
+
         isRunning = true;
         isMinimized = false;
     }

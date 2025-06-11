@@ -12,6 +12,7 @@
 */
 #include <GraphicsEngine/buffers/buffer_data.h>
 #include <GraphicsEngine/buffers/uniform_buffer.h>
+#include <GraphicsEngine/vulkan/vk_buffers.h>
 
 /// --------------------------------------------
 
@@ -23,14 +24,14 @@ namespace SceneryEditorX
      * Initializes the UniformBuffer instance by setting up the
      * memory allocator reference from the graphics engine.
      */
-    UniformBuffer::UniformBuffer() : gfxEngine(nullptr)
+    UniformBuffer::UniformBuffer(uint32_t index) : index(index)
     {
         allocator = CreateRef<MemoryAllocator>();
     }
 
     /**
      * @brief Destructor for UniformBuffer
-     * 
+     *
      * Cleans up resources by destroying all uniform buffers and freeing their 
      * associated memory allocations. This ensures proper resource cleanup when
      * the UniformBuffer object is destroyed.
@@ -43,9 +44,9 @@ namespace SceneryEditorX
     {
         for (size_t i = 0; i < uniformBuffers.size(); i++)
         {
-            if (uniformBuffers[i] != VK_NULL_HANDLE)
+            if (uniformBuffers[i].resource && uniformBuffers[i].resource->buffer != VK_NULL_HANDLE)
             {
-                allocator->DestroyBuffer(uniformBuffers[i], uniformBuffersAllocation[i]);
+                allocator->DestroyBuffer(uniformBuffers[i].resource->buffer, uniformBuffersAllocation[i]);
             }
         }
     }
@@ -75,9 +76,7 @@ namespace SceneryEditorX
 	    uniformBuff.view = glm::lookAt(Vec3(2.0f, 2.0f, 2.0f),
 									   Vec3(0.0f, 0.0f, 0.0f),
 									   Vec3(0.0f, 0.0f, 1.0f));
-	    uniformBuff.proj = glm::perspective(glm::radians(45.0f),
-	                         static_cast<float>(gfxEngine->Get()->GetSwapChain()->GetSwapExtent().width) /
-	                             static_cast<float>(gfxEngine->Get()->GetSwapChain()->GetSwapExtent().height),
+	    uniformBuff.proj = glm::perspective(glm::radians(45.0f), 1.0f,  // Using a default aspect ratio as swapChain not available
 	                         0.1f, 10.0f);
 	    uniformBuff.proj[1][1] *= -1;
 
@@ -93,8 +92,28 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR("Attempting to update uniform buffer with invalid frame index");
         }
 	}
-	
-	/**
+
+    /**
+     * @brief Retrieves the Vulkan buffer handle for a specific frame index
+     * 
+     * This method provides access to the uniform buffer for a particular frame
+     * in the frame cycle. It performs bounds checking to ensure that only valid
+     * buffer indices are accessed.
+     * 
+     * @param index The frame index to retrieve the buffer for (should be < framesInFlight)
+     * @return Buffer The uniform buffer object for the specified frame, or 
+     *         a null buffer (VK_NULL_HANDLE) if the index is out of range
+     */
+    Buffer UniformBuffer::GetBuffer(uint32_t index) const
+    {
+        if (index < uniformBuffers.size())
+            return uniformBuffers[index];
+        
+        /// Return a Buffer with a null resource
+        return Buffer{};
+    }
+
+    /**
 	 * @brief Creates uniform buffers for each frame in flight
 	 * 
 	 * This method initializes uniform buffers needed for shader uniform data:
@@ -108,7 +127,7 @@ namespace SceneryEditorX
 	 */
 	void UniformBuffer::CreateUniformBuffers()
 	{
-        RenderData renderData;
+        RenderData renderData = {};
         uniformBuffers.resize(renderData.framesInFlight);
         uniformBuffersMemory.resize(renderData.framesInFlight);
         uniformBuffersAllocation.resize(renderData.framesInFlight);
@@ -116,69 +135,10 @@ namespace SceneryEditorX
 	    for (size_t i = 0; i < renderData.framesInFlight; i++)
 	    {
             constexpr VkDeviceSize bufferSize = sizeof(UBO);
-            
-            /// Create buffer info for a uniform buffer
-            VkBufferCreateInfo bufferInfo = {};
-            bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            bufferInfo.size = bufferSize;
-            bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            
-            /// Allocate the buffer using the memory allocator
-            uniformBuffersAllocation[i] = allocator->AllocateBuffer(bufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBuffers[i]);
+            uniformBuffers[i] = CreateBuffer(bufferSize, BufferUsage::Uniform, MemoryType::CPU, "Uniform Buffer " + std::to_string(i));
+            uniformBuffersAllocation[i] = uniformBuffers[i].resource->allocation;
 	    }
 	}
-	
-	/**
-	 * @brief Creates a Vulkan buffer with specified parameters
-	 * 
-	 * This method creates a Vulkan buffer and allocates device memory for it.
-	 * The process involves:
-	 * 1. Setting up buffer creation parameters
-	 * 2. Creating the buffer handle
-	 * 3. Retrieving memory requirements
-	 * 4. Allocating device memory based on those requirements
-	 * 5. Binding the memory to the buffer
-	 * 
-	 * The method handles error checking at critical steps and reports failures
-	 * through the engine's logging system.
-	 * 
-	 * @param size Size of the buffer in bytes
-	 * @param usage VkBufferUsageFlags indicating how the buffer will be used (e.g., uniform buffer)
-	 * @param properties Memory property flags (e.g., host visible, device local)
-	 * @param buffer Reference to store the created VkBuffer handle 
-	 * @param bufferMemory Reference to store the allocated VkDeviceMemory handle
-	 */
-	void UniformBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory)
-    {
-        const VkDevice vkDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice();
-	    VkBufferCreateInfo bufferInfo{};
-	    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	    bufferInfo.size = size;
-	    bufferInfo.usage = usage;
-	    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	
-	    if (vkCreateBuffer(vkDevice, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
-	
-	    /// -------------------------------------------------------
-	
-	    VkMemoryRequirements memRequirements;
-	    vkGetBufferMemoryRequirements(vkDevice, buffer, &memRequirements);
-	
-	    /// -------------------------------------------------------
-	
-	    VkMemoryAllocateInfo allocInfo{};
-	    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	    allocInfo.allocationSize = memRequirements.size;
-	    allocInfo.memoryTypeIndex = GraphicsEngine::Get()->GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
-	
-	    if (vkAllocateMemory(vkDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-	        SEDX_CORE_ERROR_TAG("Memory Allocator", "Failed to allocate buffer memory!");
-	
-	    vkBindBufferMemory(vkDevice, buffer, bufferMemory, 0);
-	}
-
 }
 
 /// -------------------------------------------------------

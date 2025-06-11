@@ -27,6 +27,10 @@ const char* vkDeviceTypeString(VkPhysicalDeviceType type)
         return "Virtual GPU";
     case VK_PHYSICAL_DEVICE_TYPE_CPU :
         return "CPU";
+    case VK_PHYSICAL_DEVICE_TYPE_OTHER :
+        return "Other";
+    case VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM :
+        break;
     default :
         return "Unknown";
     }
@@ -169,32 +173,27 @@ const char* vkDebugType(VkDebugUtilsMessageTypeFlagsEXT type)
 
 void VulkanLoadDebugUtilsExtensions(VkInstance instance)
 {
-    fpSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
+    fpSetDebugUtilsObjectNameEXT =
+        (PFN_vkSetDebugUtilsObjectNameEXT)(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
     if (fpSetDebugUtilsObjectNameEXT == nullptr)
-    {
-        fpSetDebugUtilsObjectNameEXT = [](VkDevice device, const VkDebugUtilsObjectNameInfoEXT *pNameInfo)
-        {
+        fpSetDebugUtilsObjectNameEXT = [](VkDevice device, const VkDebugUtilsObjectNameInfoEXT *pNameInfo) {
             return VK_SUCCESS;
         };
-    }
 
-    fpCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
+    fpCmdBeginDebugUtilsLabelEXT =
+        (PFN_vkCmdBeginDebugUtilsLabelEXT)(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
     if (fpCmdBeginDebugUtilsLabelEXT == nullptr)
-    {
         fpCmdBeginDebugUtilsLabelEXT = [](VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT *pLabelInfo) {};
-    }
 
-    fpCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
+    fpCmdEndDebugUtilsLabelEXT =
+        (PFN_vkCmdEndDebugUtilsLabelEXT)(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
     if (fpCmdEndDebugUtilsLabelEXT == nullptr)
-    {
         fpCmdEndDebugUtilsLabelEXT = [](VkCommandBuffer commandBuffer) {};
-    }
 
-    fpCmdInsertDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdInsertDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT"));
+    fpCmdInsertDebugUtilsLabelEXT =
+        (PFN_vkCmdInsertDebugUtilsLabelEXT)(vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT"));
     if (fpCmdInsertDebugUtilsLabelEXT == nullptr)
-    {
         fpCmdInsertDebugUtilsLabelEXT = [](VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT *pLabelInfo) {};
-    }
 }
 
 /// -------------------------------------------------------

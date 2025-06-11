@@ -14,9 +14,11 @@
 #include <chrono>
 #include <GLFW/glfw3.h>
 #include <GraphicsEngine/vulkan/render_data.h>
+#include <GraphicsEngine/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/core/window/icon.h>
 #include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/core/window/icon.h>
+#include <SceneryEditorX/renderer/render_context.h>
 
 /// -------------------------------------------------------
 
@@ -45,6 +47,7 @@ namespace SceneryEditorX
         GLOBAL inline bool resizable			= true;
         GLOBAL inline bool decorated			= true;
         GLOBAL inline bool maximized			= true;
+        GLOBAL inline bool startMaximized		= false;
 		GLOBAL inline float scroll				= .0f;
         GLOBAL inline float deltaScroll			= .0f;
         GLOBAL inline Vec2 mousePos				= Vec2(.0f, .0f);
@@ -75,16 +78,28 @@ namespace SceneryEditorX
 	{
 	public:
 	    Window();
-        virtual ~Window();
+        virtual ~Window() override;
+
         RenderData GetRenderData() { return renderData; }
 		IconData GetIconData() { return iconData; }
+
+        virtual Ref<RenderContext> GetRenderContext() { return renderContext; }
+        virtual void Maximize();
+        virtual void CenterWindow();
+        virtual const std::string &GetTitle() const {
+            static std::string titleStr = ToString(WindowData::title);  
+            return titleStr;  
+        }
+
+        virtual SwapChain &GetSwapChain();
 
         GLOBAL void Update();
         GLOBAL std::string  VideoModeText(const GLFWvidmode &mode);
 		GLOBAL void			OnImgui();
         GLOBAL void			ApplyChanges();
 		GLOBAL void			UpdateFramebufferSize();
-        GLOBAL bool			IsKeyPressed(uint16_t keyCode);
+        GLOBAL bool IsKeyPressed(uint16_t keyCode);
+
         GLOBAL void SetFramebufferResized(const bool resized)   { WindowData::framebufferResized = resized; }
 	    GLOBAL void			SetTitle(const std::string& title)  { glfwSetWindowTitle(WindowData::window,title.c_str()); }
 		GLOBAL void			WaitEvents()						{ glfwWaitEvents(); }
@@ -103,10 +118,11 @@ namespace SceneryEditorX
         GLOBAL bool         IsDirty()                           { return WindowData::dirty; }
 
 	private:
+        Ref<RenderContext> renderContext;
         WindowCallbacks windowCallbacks;
-        WindowData windowData;
         GLFWmonitor **mainMonitor;
         RenderData renderData;
+        SwapChain *swapChain;
         IconData iconData;
         bool captureMovement;
         bool mousePressed;
@@ -122,7 +138,7 @@ namespace SceneryEditorX
         INTERNAL void ScrollCallback(GLFWwindow *window, double x, double y);
         INTERNAL void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
         INTERNAL void MouseClickCallback(GLFWwindow *window, int button, int action, int mod);
-        INTERNAL void MousePositionCallback(GLFWwindow *window, WindowData *data, double x, double y);
+        INTERNAL void MousePositionCallback(GLFWwindow* window, double x, double y);
         INTERNAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
         INTERNAL void WindowMaximizeCallback(GLFWwindow *window, int maximize);
         INTERNAL void WindowChangePosCallback(GLFWwindow *window, int x, int y);

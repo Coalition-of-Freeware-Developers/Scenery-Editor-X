@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <GraphicsEngine/vulkan/render_data.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
+#include <GraphicsEngine/vulkan/vk_swapchain.h>
 
 /// ----------------------------------------------------------
 
@@ -49,14 +49,14 @@ namespace SceneryEditorX
          * Initializes the UniformBuffer instance by getting references to the 
          * required graphics engine components.
          */
-        UniformBuffer();
+        explicit UniformBuffer(uint32_t size);
 
         /**
          * @brief Destructor for UniformBuffer
          *
          * Cleans up resources associated with the uniform buffers.
          */
-        ~UniformBuffer();
+        virtual ~UniformBuffer() override;
 
         /**
          * @brief Creates uniform buffers for each frame in the swap chain
@@ -65,17 +65,6 @@ namespace SceneryEditorX
          * matrices to shaders. Creates one buffer per swap chain image.
          */
         void CreateUniformBuffers();
-
-        /**
-         * @brief Creates a Vulkan buffer with specified parameters
-         *
-         * @param size Size of the buffer in bytes
-         * @param usage Buffer usage flags indicating how the buffer will be used
-         * @param properties Memory property flags for the buffer allocation
-         * @param buffer Reference to store the created buffer handle
-         * @param bufferMemory Reference to store the allocated memory handle
-         */
-        GLOBAL void Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
 
         /**
          * @brief Updates the contents of a uniform buffer for the current frame
@@ -93,12 +82,7 @@ namespace SceneryEditorX
          * @param index Index of the frame's buffer to retrieve
          * @return VkBuffer The uniform buffer handle, or VK_NULL_HANDLE if invalid index
          */
-        [[nodiscard]] VkBuffer GetBuffer(uint32_t index) const
-        {
-            if (index < uniformBuffers.size())
-                return uniformBuffers[index];
-            return VK_NULL_HANDLE;
-        }
+        [[nodiscard]] Buffer GetBuffer(uint32_t index) const;
 
         /**
          * @brief Gets the total number of uniform buffers managed by this instance
@@ -108,13 +92,12 @@ namespace SceneryEditorX
         [[nodiscard]] size_t GetBufferCount() const { return uniformBuffers.size(); }
 
     private:
-        Ref<GraphicsEngine> *gfxEngine;						///< Pointer to the graphics engine reference
-        Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
-        std::vector<VkBuffer> uniformBuffers;				///< Array of uniform buffer handles (one per frame)
-        std::vector<VkDeviceMemory> uniformBuffersMemory;	///< Array of memory handles for uniform buffers
-        std::vector<VmaAllocation> uniformBuffersAllocation;///< Array of allocation handles for uniform buffers (one per frame)
+        Ref<MemoryAllocator> allocator;							///< Reference to the memory allocator
+        std::vector<Buffer> uniformBuffers;						///< Array of uniform buffer handles (one per frame)
+        std::vector<VkDeviceMemory> uniformBuffersMemory;		///< Array of memory handles for uniform buffers
+        std::vector<VmaAllocation> uniformBuffersAllocation;	///< Array of allocation handles for uniform buffers (one per frame)
     };
 
 }
 
-/// -----
+/// ----------------------------------------------------------
