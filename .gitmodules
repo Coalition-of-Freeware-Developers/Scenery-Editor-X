@@ -16,3 +16,6 @@
 [submodule "dependency/libconfig"]
 	path = dependency/libconfig
 	url = git@github.com:Coalition-of-Freeware-Developers/libconfig.git
+[submodule "dependency/Catch2"]
+	path = dependency/Catch2
+	url = git@github.com:catchorg/Catch2.git

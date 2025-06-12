@@ -191,6 +191,11 @@ OPTION(BUILD_FUZZERS "Enable fuzzers" OFF)
 ADD_SUBDIRECTORY(dependency/libconfig)
 
 # --------------------------------
+# Catch2
+# --------------------------------
+ADD_SUBDIRECTORY(dependency/Catch2)
+
+# --------------------------------
 # AppCore
 # --------------------------------
 ADD_SUBDIRECTORY(source/SceneryEditorX)
@@ -211,9 +216,9 @@ ADD_SUBDIRECTORY(source/Editor)
 ADD_SUBDIRECTORY(source/edX)
 
 # --------------------------------
-# FILE FORMAT TESTER
+# TESTS
 # --------------------------------
-ADD_SUBDIRECTORY(source/Tests/file_formats)
+ADD_SUBDIRECTORY(source/Tests)
 
 # --------------------------------
 # Crash Handler Service
@@ -293,12 +298,15 @@ TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Edit
 TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_pch.h)
 TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/startup_pch.h)
 
-SET_PROPERTY(TARGET FormatTester CrashHandler PROPERTY FOLDER "Tools")
+SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
+SET_PROPERTY(TARGET FormatTester RefTests PROPERTY FOLDER "Tests")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET imgui libconfig libconfig++ PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
+SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore FormatTester CrashHandler imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore FormatTester RefTests CrashHandler Catch2 Catch2WithMain imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}
