@@ -178,9 +178,8 @@ namespace SceneryEditorX
 		        Ref<TestObject> ref3 = CreateRef<TestObject>(42);
 		        ref3 = std::move(ref3);
 		        
-		        // This behavior is implementation-defined, but our implementation
-		        // should set the pointer to nullptr
-		        REQUIRE(ref3 == nullptr);
+                // Self-move assignment is a no-op; ref3 should still be valid
+                REQUIRE(ref3 != nullptr);
 		    }
 		}
 		

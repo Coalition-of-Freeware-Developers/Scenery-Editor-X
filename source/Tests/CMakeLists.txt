@@ -30,7 +30,9 @@ TARGET_INCLUDE_DIRECTORIES(RefTests PRIVATE
 )
 
 # Link with Catch2
-target_link_libraries(RefTests PRIVATE Catch2::Catch2WithMain)
+TARGET_LINK_LIBRARIES(RefTests PRIVATE
+    Catch2::Catch2WithMain
+)
 
 # Enable parallel compilation for MSVC
 IF(MSVC)
@@ -89,3 +91,43 @@ TARGET_INCLUDE_DIRECTORIES(FormatTester PRIVATE
 # Defines
 # --------------------------------
 TARGET_COMPILE_DEFINITIONS(FormatTester PRIVATE WIN32_LEAN_AND_MEAN)
+
+# --------------------------------
+# Setting Config Tests
+# --------------------------------
+
+# Define the test executable
+ADD_EXECUTABLE(SettingsTest
+    settings_tests/SettingsTest.cpp
+)
+
+# Include directories
+TARGET_INCLUDE_DIRECTORIES(SettingsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+# Link with Catch2 and libconfig libraries
+TARGET_LINK_LIBRARIES(SettingsTest PRIVATE
+    Catch2::Catch2WithMain
+    config++
+    dxgi
+    d3d12
+    Shell32.lib
+)
+
+# Enable parallel compilation for MSVC
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /MP)
+ENDIF()
+
+# Enable warning level
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+# Register with CTest
+INCLUDE(CTest)
+INCLUDE(Catch)
+catch_discover_tests(SettingsTest)
