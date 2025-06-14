@@ -11,18 +11,22 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/initializer.h>
-#include <SceneryEditorX/core/base.hpp>
+#include <deque>
+#include <SceneryEditorX/core/application_data.h>
+#include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/core/time.h>
 #include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/platform/platform_states.h>
+#include <SceneryEditorX/platform/settings.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Application
+	class Application
     {
     public:
-        Application(const WindowData &appData);
+        Application(const AppData &appData);
 		virtual ~Application() = default;
 
 		void Run();
@@ -32,17 +36,28 @@ namespace SceneryEditorX
         virtual void OnUpdate() {}
         virtual void OnShutdown();
 
-        [[nodiscard]] Window &GetWindow() const { return *window; }
-        GLOBAL Application &Get() { return *instance; }
+        [[nodiscard]] Window &GetWindow() const { return *m_Window; }
+
+        GLOBAL Application &Get() { return *appInstance; }
         GLOBAL const char *GetConfigType();
         GLOBAL const char *GetPlatform();
+        void RenderUI();
+        float GetTime();
 
+        ApplicationSettings &GetSettings() { return settings; }
+        [[nodiscard]] const ApplicationSettings &GetSettings() const { return settings;}
     private:
-        Scope<Window> window;
-        bool isRunning = true;
+        Scope<Window> m_Window;
+        std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
+
+	    bool isRunning = true;
         bool isMinimized = false;
-        INTERNAL Application *instance;
-		friend class GraphicsEngine;
+
+        ApplicationSettings settings = ApplicationSettings(std::filesystem::path("default_config_path.cfg"));
+        INTERNAL Application *appInstance;
+
+        friend class RenderContext;
+        friend class Renderer;
     protected:
         inline LOCAL bool isRuntime = false;
     };

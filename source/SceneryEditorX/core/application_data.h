@@ -12,7 +12,8 @@
 */
 #pragma once
 #include <Editor/resource.h>
-#include <vulkan/vulkan_core.h>
+#include <SceneryEditorX/platform/platform_states.h>
+#include <string>
 
 /// -------------------------------------------------------
 
@@ -32,13 +33,13 @@ namespace SceneryEditorX
 		 * @brief Application name displayed in window title and about dialogs.
 		 */
 	    std::string appName = "Scenery Editor X";
+		uint32_t WinWidth = 1280;
+        uint32_t WinHeight = 720;
 
-		uint32_t WinWidth = 1280; ///< Default window width
-        uint32_t WinHeight = 720; ///< Default window height
 
-	    /**
-		 * @brief Name of the graphics rendering subsystem.
-		 */
+
+
+
 	    GLOBAL inline std::string renderName = "X-Plane 12 Graphics Emulator";
 	
 	    /**
@@ -53,15 +54,15 @@ namespace SceneryEditorX
 		 * Defined by SEDX_VERSION macro
 		 */
 	    GLOBAL inline uint32_t version = SEDX_VERSION;
-	
-	    /**
-	     * @brief UI configuration flag to hide window titlebar.
-	     * When true, the application window will be displayed without a titlebar.
-	     */
+        bool Fullscreen = false;
+
+
+
+
 	    bool NoTitlebar = false;
 
 		bool VSync = false;
-
+        std::string WorkingDirectory;
         std::filesystem::path IconPath;
 	};
 	
@@ -109,4 +110,4 @@ namespace SceneryEditorX
 	
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

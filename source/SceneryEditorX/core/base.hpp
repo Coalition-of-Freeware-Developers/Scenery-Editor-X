@@ -22,32 +22,31 @@ constexpr bool enableValidationLayers = true;
 constexpr bool enableValidationLayers = false;
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
 * Type aliases for fixed-width integer types
 */
-using u8  = uint8_t;  // Unsigned 8-bit integer
-using u16 = uint16_t; // Unsigned 16-bit integer
-using u32 = uint32_t; // Unsigned 32-bit integer
-using u64 = uint64_t; // Unsigned 64-bit integer
-using i8  = int8_t;   // Signed 8-bit integer
-using i16 = int16_t;  // Signed 16-bit integer
-using i32 = int32_t;  // Signed 32-bit integer
-using i64 = int64_t;  // Signed 64-bit integer
-using f32 = float;    // 32-bit floating point
-using f64 = double;   // 64-bit floating point
-using RID = u32;      // Resource Identifier, alias for unsigned 32-bit integer
+using u8  = uint8_t;  ///< Unsigned 8-bit integer
+using u16 = uint16_t; ///< Unsigned 16-bit integer
+using u32 = uint32_t; ///< Unsigned 32-bit integer
+using u64 = uint64_t; ///< Unsigned 64-bit integer
+using i8  = int8_t;   ///< Signed 8-bit integer
+using i16 = int16_t;  ///< Signed 16-bit integer
+using i32 = int32_t;  ///< Signed 32-bit integer
+using i64 = int64_t;  ///< Signed 64-bit integer
+using f32 = float;    ///< 32-bit floating point
+using f64 = double;   ///< 64-bit floating point
+using RID = u32;      ///< Resource Identifier, alias for unsigned 32-bit integer
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-using Vec2 = glm::vec2; // 2D vector
-using Vec3 = glm::vec3; // 3D vector
-using Vec4 = glm::vec4; // 4D vector
-
-using Mat2 = glm::mat2; // 2x2 matrix
-using Mat3 = glm::mat3; // 3x3 matrix
-using Mat4 = glm::mat4; // 4x4 matrix
+using Vec2 = glm::vec2; ///< 2D vector
+using Vec3 = glm::vec3; ///< 3D vector
+using Vec4 = glm::vec4; ///< 4D vector
+using Mat2 = glm::mat2; ///< 2x2 matrix
+using Mat3 = glm::mat3; ///< 3x3 matrix
+using Mat4 = glm::mat4; ///< 4x4 matrix
 
 // -------------------------------------------------------
 
@@ -156,7 +155,7 @@ using Mat4 = glm::mat4; // 4x4 matrix
  */
 #define SEDX_BIND_EVENT_FN(fn) [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -189,16 +188,6 @@ namespace SceneryEditorX
 	template<typename T>
 	T RoundUp(T x, T fac) { return RoundDown(x + fac - 1, fac); }
 
-
-	// Pointer wrappers
-	//template<typename T>
-	//using Scope = std::unique_ptr<T>;
-	//template<typename T, typename ... Args>
-	//constexpr Scope<T> CreateScope(Args&& ... args)
-	//{
-	//	return std::make_unique<T>(std::forward<Args>(args)...);
-	//}
-
     /**
      * @brief Alias for unsigned 8-bit integer, providing a type named 'byte'.
      * 
@@ -209,7 +198,6 @@ namespace SceneryEditorX
      * @note Equivalent to uint8_t from <cstdint>
      */
     using byte = uint8_t;
-
 
 	/**
 	 * @struct AtomicFlag

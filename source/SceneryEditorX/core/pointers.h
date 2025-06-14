@@ -15,12 +15,13 @@
 #include <cassert>
 #include <cstddef>
 #include <memory>
-#include <type_traits>
-#include <utility>
-#include <unordered_map>
 #include <mutex>
+#include <type_traits>
 
-/// -------------------------------------------------------
+#include <unordered_map>
+#include <utility>
+
+
 
 ////////////////////////////////////////////////////////////
 ///				Pointer Templates & Alias				 ///
@@ -344,8 +345,9 @@ namespace SceneryEditorX
 		 * 
 		 * @param ptr Pointer to the object to manage.
 		 */
-		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
-		explicit Ref(U* ptr) noexcept : m_Ptr(ptr)
+		template <typename U>
+		explicit Ref(U* ptr) noexcept requires (std::is_convertible_v<U *,T *>)
+            : m_Ptr(ptr)
 		{
 			InternalAddRef();
 		}
@@ -452,11 +454,11 @@ namespace SceneryEditorX
 		
 		/**
 		 * @brief Copy assignment operator with type conversion. Shares ownership of the object.
-		 * 
+		 *
 		 * This operator increments the reference count of the assigned object,
 		 * decrements the reference count of the previously managed object, and allows
 		 * converting between compatible types.
-		 * 
+		 *
 		 * @tparam U The type of the other Ref.
 		 * @param other The Ref to copy from.
 		 * @return Reference to this Ref.
@@ -464,10 +466,13 @@ namespace SceneryEditorX
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
 		Ref& operator=(const Ref<U>& other) noexcept
 		{
-			InternalRelease();
-			m_Ptr = other.Get();
-			InternalAddRef();
-			return *this;
+		    // Self-assignment or assigning same pointer: do nothing
+		    if (static_cast<const void*>(this) == static_cast<const void*>(&other) || m_Ptr == other.Get())
+		        return *this;
+		    InternalRelease();
+		    m_Ptr = other.Get();
+		    InternalAddRef();
+		    return *this;
 		}
 		
 		/**
@@ -493,11 +498,11 @@ namespace SceneryEditorX
 		
 		/**
 		 * @brief Move assignment operator with type conversion. Takes ownership from another Ref.
-		 * 
+		 *
 		 * This operator decrements the reference count of the previously managed object,
 		 * takes ownership of the object from the other Ref without changing its reference count,
 		 * and allows converting between compatible types.
-		 * 
+		 *
 		 * @tparam U The type of the other Ref.
 		 * @param other The Ref to move from.
 		 * @return Reference to this Ref.
@@ -505,12 +510,15 @@ namespace SceneryEditorX
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
 		Ref& operator=(Ref<U>&& other) noexcept
 		{
-			InternalRelease();
-			m_Ptr = other.Get();
-			other.m_Ptr = nullptr;
-			return *this;
+		    // Self-move or moving same pointer: do nothing
+		    if (static_cast<void*>(this) == static_cast<void*>(&other) || m_Ptr == other.Get())
+		        return *this;
+		    InternalRelease();
+		    m_Ptr = other.Get();
+		    other.m_Ptr = nullptr;
+		    return *this;
 		}
-		
+
 		/**
 		 * @brief Assignment operator from nullptr. Resets the Ref.
 		 * 
@@ -705,8 +713,8 @@ namespace SceneryEditorX
 		    // We can't use decltype with operator== directly here as it might not be defined for type T
 		    // Instead, defer the actual comparison to a more specific implementation
 		    return CompareObjects(*m_Ptr, *other.m_Ptr);
-		}
-		
+		 }
+
 	private:
 		// Helper method for object comparison with SFINAE
 		template <typename U = T>
@@ -810,7 +818,12 @@ namespace SceneryEditorX
 		 * @brief Destructor.
 		 */
 		~WeakRef();
-		
+
+        Internal::ControlBlock<T> *GetControlBlock() const noexcept
+        {
+            return m_ControlBlock;
+        }
+
 		/**
 		 * @brief Copy assignment operator.
 		 * 
@@ -909,7 +922,10 @@ namespace SceneryEditorX
 		
 	private:
 		Internal::ControlBlock<T>* m_ControlBlock = nullptr;
-		
+
+        // Allow all WeakRef instantiations to access each other's private members
+        template <typename> friend class WeakRef;
+
 		/// Allow Ref<T> to access m_ControlBlock
 		template <typename U>
 		friend class Ref;
@@ -1393,7 +1409,7 @@ namespace SceneryEditorX
 	 * @brief Attempts to convert a weak reference to a strong reference.
 	 * 
 	 * This method tries to obtain a strong reference (Ref<T>) from the weak reference.
-	 * If the object the WeakRef points to is still alive (not expired), it creates
+	 * If the object of the WeakRef points to is still alive (not expired), it creates
 	 * and returns a new Ref<T> pointing to that object, which increments the reference
 	 * count of the object. If the object has been destroyed, it returns an empty Ref<T>.
 	 * 
@@ -1528,7 +1544,7 @@ namespace SceneryEditorX
 	 * @note This enables safe conversion from WeakRef<T> to Ref<T>, preventing access to destroyed objects
 	 */
     template <typename T>
-    Ref<T>::Ref(const WeakRef<T> &weak) noexcept : m_Ptr(weak.m_ControlBlock ? weak.m_ControlBlock->GetPtr() : nullptr)
+    Ref<T>::Ref(const WeakRef<T> &weak) noexcept : m_Ptr(static_cast<T *>(weak.GetControlBlock()->GetPtr()))
     {
         InternalAddRef();
     }

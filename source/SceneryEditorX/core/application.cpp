@@ -13,38 +13,43 @@
 #include <SceneryEditorX/core/application.h>
 #include <SceneryEditorX/logging/logging.hpp>
 
+/// -------------------------------------------------------
+
 extern bool appRunning; /// Global variable to control the application loop
+
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    Application *Application::instance = nullptr;
+    Application *Application::appInstance = nullptr;
 
-    Application::Application(const WindowData &appData)
+    Application::Application(const AppData &appData)
     {
-        SEDX_CORE_INFO("Creating application with window: {}x{}", appData.width, appData.height);
+        SEDX_CORE_INFO("Creating application with window: {}x{}", appData.WinWidth, appData.WinHeight);
 
-		instance = this;
-        // Create the window
-        window = CreateScope<Window>();
-        
+        appInstance = this;
+
+        /// Create the window
+        m_Window = CreateScope<Window>();
+
         /// Set window properties from appData
         if (WindowData::width > 0 && WindowData::height > 0)
         {
             /// Update window properties if provided
-            WindowData::width = WindowData::width;
-            WindowData::height = WindowData::height;
+            WindowData::width = appData.WinWidth;
+            WindowData::height = appData.WinHeight;
         }
-        
+
         if (WindowData::title)
-        {
-            WindowData::title = WindowData::title;
-            window->SetTitle(WindowData::title);
-        }
-        
+            m_Window->SetTitle(WindowData::title);
+
+
+
+
         /// Update window properties
-        window->ApplyChanges();
-        
-        isRunning = true;
+        m_Window->ApplyChanges();
+
+        isRunning   = true;
         isMinimized = false;
     }
 
@@ -53,7 +58,7 @@ namespace SceneryEditorX
         OnInit();
         
         /// Main application loop
-        while (isRunning && !window->GetShouldClose())
+        while (isRunning && !m_Window->GetShouldClose())
         {
             /// Update the window (poll events)
             Window::Update();
