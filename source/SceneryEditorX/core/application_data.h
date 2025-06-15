@@ -36,10 +36,6 @@ namespace SceneryEditorX
 		uint32_t WinWidth = 1280;
         uint32_t WinHeight = 720;
 
-
-
-
-
 	    GLOBAL inline std::string renderName = "X-Plane 12 Graphics Emulator";
 	
 	    /**
@@ -54,14 +50,13 @@ namespace SceneryEditorX
 		 * Defined by SEDX_VERSION macro
 		 */
 	    GLOBAL inline uint32_t version = SEDX_VERSION;
+
         bool Fullscreen = false;
-
-
-
-
 	    bool NoTitlebar = false;
-
 		bool VSync = false;
+        bool StartMaximized = true;
+        bool Resizable = true;
+        bool EnableImGui = true;
         std::string WorkingDirectory;
         std::filesystem::path IconPath;
 	};

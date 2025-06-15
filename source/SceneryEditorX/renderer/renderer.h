@@ -11,55 +11,58 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/application.h>
-#include <SceneryEditorX/renderer/render_context.h>
+#include <cstdint>
+#include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/platform/platform_states.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    // Forward declaration to break circular dependency
+    class RenderContext;
+
     class Renderer
 	{
 	public:
         typedef void (*RenderCommandFn)(void *);
 
-        GLOBAL Ref<RenderContext> GetContext()
-        {
-            return Application::Get().GetWindow().GetRenderContext();
-        }
+		GLOBAL Ref<RenderContext> GetContext();
 
         GLOBAL void Init();
 		GLOBAL void Shutdown();
 
-        static void BeginFrame();
-        static void EndFrame();
+        GLOBAL void BeginFrame();
+        GLOBAL void EndFrame();
 
-        static uint32_t GetRenderQueueIndex();
-        static uint32_t GetRenderQueueSubmissionIndex();
-        static uint32_t GetCurrentFrameIndex();
+		//GLOBAL Ref<ShaderLibrary> GetShaderLibrary();
 
-        //static void WaitAndRender(RenderThread* renderThread);
-		//static void SwapQueues();
+        GLOBAL uint32_t GetRenderQueueIndex();
+        GLOBAL uint32_t GetRenderQueueSubmissionIndex();
+        GLOBAL uint32_t GetCurrentFrameIndex();
+
+        //GLOBAL void WaitAndRender(RenderThread* renderThread);
+		//GLOBAL void SwapQueues();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Render Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //static void BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
-		//static void EndRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer);
+        //GLOBAL void BeginRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
+		//GLOBAL void EndRenderPass(Ref<RenderCommandBuffer> renderCommandBuffer);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Compute Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //static void BeginComputePass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass);
-		//static void EndComputePass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass);
-		//static void DispatchCompute(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const glm::uvec3& workGroups, Buffer constants = Buffer());
+        //GLOBAL void BeginComputePass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass);
+		//GLOBAL void EndComputePass(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass);
+		//GLOBAL void DispatchCompute(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const glm::uvec3& workGroups, Buffer constants = Buffer());
 
-		//static void ClearImage(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
-        //static void CopyImage(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+		//GLOBAL void ClearImage(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
+        //GLOBAL void CopyImage(Ref<RenderCommandBuffer> renderCommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 
-        //static RenderCommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
+        //GLOBAL RenderCommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
     private:
-        //static RenderCommandQueue &GetRenderCommandQueue();
+        //INTERNAL RenderCommandQueue &GetRenderCommandQueue();
 	};
 
 }

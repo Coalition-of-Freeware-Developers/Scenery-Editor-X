@@ -463,11 +463,19 @@ namespace SceneryEditorX
 	 */
     struct RenderData : RefCounted
     {
+        uint8_t *data = nullptr; // Pointer to dynamically allocated data
+
+        RenderData(uint32_t w, uint32_t h) : width(w), height(h) { data = new uint8_t[width * height]; }
+        RenderData();
+        virtual ~RenderData() override { delete[] data; }
+
         [[nodiscard]] uint32_t GetWidth() const { return width; }
         [[nodiscard]] uint32_t GetHeight() const { return height; }
         [[nodiscard]] uint32_t GetImageIndex() const { return imageIndex; }
 
 		/// --------------------------------------------------------
+
+		//const char *defaultValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
         /**
 		 * @brief Minimum supported Vulkan API version.

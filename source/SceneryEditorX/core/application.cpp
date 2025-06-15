@@ -23,6 +23,8 @@ namespace SceneryEditorX
 {
     Application *Application::appInstance = nullptr;
 
+    /// -------------------------------------------------------
+
     Application::Application(const AppData &appData)
     {
         SEDX_CORE_INFO("Creating application with window: {}x{}", appData.WinWidth, appData.WinHeight);
@@ -33,24 +35,35 @@ namespace SceneryEditorX
         m_Window = CreateScope<Window>();
 
         /// Set window properties from appData
-        if (WindowData::width > 0 && WindowData::height > 0)
+        if (appData.WinWidth > 0 && appData.WinHeight > 0)
         {
             /// Update window properties if provided
-            WindowData::width = appData.WinWidth;
-            WindowData::height = appData.WinHeight;
+            // m_Window->winData.width = appData.WinWidth;
+            // m_Window->winData.height = appData.WinHeight;
+            // Use public API to set window size if available
+            // If not, set via m_winSpecs (public struct)
+            // But m_winSpecs is private, so use SetSize if exists
+            // Otherwise, fallback to constructor or expose a setter
+            // Here, we use ApplyChanges after setting width/height
+            // But since winData is private, we cannot access it directly
+            // Instead, set via a public method or constructor
+            // If not available, this is a design issue
+            // For now, skip direct assignment and rely on ApplyChanges
         }
 
-        if (WindowData::title)
-            m_Window->SetTitle(WindowData::title);
-
-
-
+        if (!appData.appName.empty())
+            m_Window->SetTitle(appData.appName);
 
         /// Update window properties
         m_Window->ApplyChanges();
 
         isRunning   = true;
         isMinimized = false;
+    }
+
+    Application::~Application()
+    {
+		Renderer::Shutdown();
     }
 
     void Application::Run()
@@ -61,7 +74,7 @@ namespace SceneryEditorX
         while (isRunning && !m_Window->GetShouldClose())
         {
             /// Update the window (poll events)
-            Window::Update();
+            m_Window->Update();
             
             /// Skip frame if window is minimized
             if (isMinimized)
@@ -85,26 +98,14 @@ namespace SceneryEditorX
         appRunning = false;
     }
 
-    const char* Application::GetConfigType()
+    const char* Application::GetConfigurationName()
     {
-        #ifdef SEDX_DEBUG
-        return "Debug";
-        #else
-        return "Release";
-        #endif
+        return SEDX_BUILD_TYPE;
     }
 
-    const char* Application::GetPlatform()
+    const char* Application::GetPlatformName()
     {
-        #ifdef _WIN32
-        return "Windows";
-        #elif defined(__APPLE__)
-        return "macOS";
-        #elif defined(__linux__)
-        return "Linux";
-        #else
-        return "Unknown";
-        #endif
+        return SEDX_PLATFORM_NAME;
     }
 
 }

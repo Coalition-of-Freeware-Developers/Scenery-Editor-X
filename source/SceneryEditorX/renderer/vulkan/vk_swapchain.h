@@ -51,8 +51,8 @@ namespace SceneryEditorX
 
 		/// Initialization methods
 		void Init(VkInstance instance, const Ref<VulkanDevice> &device);
-        void InitSurface();
-        void Create(uint32_t width, uint32_t height, bool vsync);
+        void InitSurface(GLFWwindow *windowPtr);
+        void Create(uint32_t *width, uint32_t *height, bool vsync);
         void OnResize(uint32_t width, uint32_t height);
         void Destroy();
 
@@ -112,7 +112,7 @@ namespace SceneryEditorX
 		/// Vulkan resources - derived after device is initialized
         uint32_t queueIndex = UINT32_MAX;
         uint32_t swapChainImageCount = 0;
-
+        bool VSync = false;
 		/// -------------------------------------------------------
 
         /// Format and attachment data

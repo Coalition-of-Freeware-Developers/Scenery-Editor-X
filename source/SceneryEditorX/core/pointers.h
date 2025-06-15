@@ -17,11 +17,8 @@
 #include <memory>
 #include <mutex>
 #include <type_traits>
-
 #include <unordered_map>
 #include <utility>
-
-
 
 ////////////////////////////////////////////////////////////
 ///				Pointer Templates & Alias				 ///
@@ -346,8 +343,7 @@ namespace SceneryEditorX
 		 * @param ptr Pointer to the object to manage.
 		 */
 		template <typename U>
-		explicit Ref(U* ptr) noexcept requires (std::is_convertible_v<U *,T *>)
-            : m_Ptr(ptr)
+		explicit Ref(U* ptr) noexcept requires (std::is_convertible_v<U *,T *>) : m_Ptr(ptr)
 		{
 			InternalAddRef();
 		}

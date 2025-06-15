@@ -10,6 +10,9 @@
 * Created: 7/6/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/logging/profiler.hpp>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
 
 /// -------------------------------------------------------
@@ -25,6 +28,15 @@ namespace SceneryEditorX
     {
     }
 
+    Ref<RenderContext> Renderer::GetContext()
+    {
+        return Application::Get().GetWindow().GetRenderContext();
+    }
+
+	uint32_t Renderer::GetCurrentFrameIndex()
+    {
+        return Application::Get().GetCurrentFrameIndex();
+    }
 
 }
 

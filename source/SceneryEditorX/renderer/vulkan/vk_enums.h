@@ -93,6 +93,15 @@ namespace SceneryEditorX
 
     /// ----------------------------------------------------------
 
+    /*
+    enum PipelineCacheFlags : uint8_t
+    {
+        EXTERNAL_SYNC		= 0x00000001,
+        INTERNAL_SYNC_MERGE = 0x00000008,
+        CACHE_MAX_EMUN		= 0x7FFFFFFF
+    };
+    */
+
     enum SamplerFilter : uint8_t
     {
         SamplerFilter_Nearest = 0,

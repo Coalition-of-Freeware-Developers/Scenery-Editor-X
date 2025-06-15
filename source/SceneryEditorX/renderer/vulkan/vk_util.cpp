@@ -199,12 +199,12 @@ void VulkanLoadDebugUtilsExtensions(VkInstance instance)
 
 /// -------------------------------------------------------
 
-void RetrieveDiagnosticCheckpoints()
-{
 
-}
 
-/// -------------------------------------------------------
+
+
+
+
 
 /**
 * @brief Get the number of bytes per pixel for a given format.

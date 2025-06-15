@@ -14,6 +14,8 @@
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
 
+#include "vk_device.h"
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX

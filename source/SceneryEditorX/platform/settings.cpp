@@ -12,7 +12,7 @@
 */
 #include <filesystem>
 #include <libconfig.h++>
-#include <regex>
+#include <SceneryEditorX/core/steam_parser.h>
 #include <SceneryEditorX/platform/settings.h>
 
 /// -------------------------------------------------------
@@ -22,14 +22,7 @@ namespace SceneryEditorX
 	using namespace libconfig;
 	namespace fs = std::filesystem;
 
-    const char SteamGameFinder::dirSeparator =
-	#ifdef _WIN32
-	        '\\';
-	#else
-	        '/';
-	#endif
-
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     /// Default section templates for use when creating config sections
     INTERNAL constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
@@ -62,8 +55,8 @@ namespace SceneryEditorX
   default_project_dir = "~/Documents/SceneryEditorX";
 )";
 
+    /// ----------------------------------------------------------
 
-    // ----------------------------------------------------------
 
     ApplicationSettings::ApplicationSettings(std::filesystem::path filepath) : filePath(std::move(filepath))
     {
@@ -685,7 +678,7 @@ namespace SceneryEditorX
 
     void ApplicationSettings::EnsureRequiredSections()
     {
-        // Ensure application section exists
+        /// Ensure application section exists
         if (!cfg.exists("application"))
 		{
             Setting &root = cfg.getRoot();
@@ -695,7 +688,7 @@ namespace SceneryEditorX
             app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
         }
         
-        // Ensure x_plane section exists
+        /// Ensure x_plane section exists
         if (!cfg.exists("x_plane"))
 		{
             Setting &root = cfg.getRoot();
@@ -925,303 +918,6 @@ namespace SceneryEditorX
         }
     }
 
-    std::optional<std::string> SteamGameFinder::findXPlane12()
-    {
-        /// Get Steam directory
-        const std::string steamDir = getSteamDirectory();
-        if (steamDir.empty())
-        {
-            SEDX_CORE_WARN_TAG("SETTINGS", "Steam directory not found!");
-            return std::nullopt;
-        }
-
-        /// Get all Steam library folders
-        std::vector<std::string> libraryFolders = getSteamLibraryFolders(steamDir);
-
-        /// Add default Steam apps directory
-        libraryFolders.push_back(steamDir + dirSeparator + "steamapps");
-
-        /// Search for X-Plane 12 in each library folder
-        for (const auto &library : libraryFolders)
-            if (auto xplanePath = checkForXPlane12(library))
-                return xplanePath;
-
-        return std::nullopt;
-    }
-
-    bool SteamGameFinder::validateXPlanePath(const std::string &path)
-    {
-        if (path.empty())
-            return false;
-
-        fs::path basePath = path;
-        
-        /// Check if the directory exists
-        if (!fs::exists(basePath) || !fs::is_directory(basePath))
-            return false;
-        
-        /// Check for essential subdirectories
-        if (!fs::exists(basePath / "Resources") || !fs::is_directory(basePath / "Resources"))
-            return false;
-
-        if (!fs::exists(basePath / "bin") || !fs::is_directory(basePath / "bin"))
-            return false;
-
-        /// Check for X-Plane executable
-        #ifdef SEDX_PLATFORM_WINDOWS
-        if (!fs::exists(basePath / "bin" / "X-Plane.exe"))
-            return false;
-
-        #elif defined(SEDX_PLATFORM_MACOS)
-        if (!fs::exists(basePath / "X-Plane.app"))
-            return false;
-
-        #else
-        if (!fs::exists(basePath / "bin" / "X-Plane-x86_64"))
-            return false;
-
-        #endif
-        
-        /// Check for Resources/default data directory
-        if (!fs::exists(basePath / "Resources" / "default data") || !fs::is_directory(basePath / "Resources" / "default data"))
-            return false;
-
-        // -------------------------------------------------------
-
-        return true;
-    }
-
-    std::string SteamGameFinder::getSteamDirectory()
-    {
-        std::string steamPath;
-    
-	#ifdef SEDX_PLATFORM_WINDOWS
-	    /// Windows: Check registry or default locations
-	    /// Default is usually C:\Program Files (x86)\Steam
-	    char programFiles[MAX_PATH];
-	    if (SHGetFolderPathA(nullptr, CSIDL_PROGRAM_FILESX86, nullptr, 0, programFiles) == S_OK)
-		{
-	        steamPath = std::string(programFiles) + "\\Steam";
-	        if (!fs::exists(steamPath))
-			{
-	            /// Try alternative locations (common alternative installations)
-	            steamPath = "C:\\Steam";
-	            if (!fs::exists(steamPath))
-				{
-	                steamPath = "D:\\Steam";
-	                if (!fs::exists(steamPath))
-					{
-	                    return "";
-	                }
-	            }
-	        }
-	    }
-    #elif defined(SEDX_PLATFORM_MACOS)
-	    /// macOS: Check default location
-	    const char* homeDir = getenv("HOME");
-	    if (homeDir)
-		{
-	        steamPath = std::string(homeDir) + "/Library/Application Support/Steam";
-	        if (!fs::exists(steamPath))
-			{
-	            return "";
-	        }
-	    }
-	#elif defined(SEDX_PLATFORM_LINUX)
-	    /// Linux: Check default location
-	    const char* homeDir = getenv("HOME");
-	    if (homeDir)
-		{
-	        steamPath = std::string(homeDir) + "/.steam/steam";
-	        if (!fs::exists(steamPath))
-			{
-	            steamPath = std::string(homeDir) + "/.local/share/Steam";
-	            if (!fs::exists(steamPath))
-				{
-	                return "";
-	            }
-	        }
-	    }
-	#endif
-	
-	    return steamPath;
-    }
-
-    std::vector<std::string> SteamGameFinder::getSteamLibraryFolders(const std::string &steamPath)
-    {
-        std::vector<std::string> libraries;
-
-        /// Path to the Steam library config file
-        std::string configPath = steamPath + dirSeparator + "steamapps" + dirSeparator + "libraryfolders.vdf";
-
-        if (!fs::exists(configPath))
-        {
-            return libraries;
-        }
-
-        /// Read the libraryfolders.vdf file
-        std::ifstream file(configPath);
-        if (!file.is_open())
-        {
-            return libraries;
-        }
-
-        std::string line;
-        std::regex pathRegex("\"path\"\\s+\"(.+?)\"");
-
-        while (std::getline(file, line))
-        {
-            if (std::smatch match; std::regex_search(line, match, pathRegex) && match.size() > 1)
-            {
-                std::string libraryPath = match[1].str();
-
-                /// Fix path separators for Windows paths in the VDF file
-                if (dirSeparator == '\\')
-                {
-                    std::ranges::replace(libraryPath, '/', '\\');
-                }
-
-                /// Add steamapps subdirectory
-                libraryPath += dirSeparator;
-                libraryPath += "steamapps";
-
-                if (fs::exists(libraryPath))
-                {
-                    libraries.push_back(libraryPath);
-                }
-            }
-        }
-
-        return libraries;
-    }
-
-    std::optional<std::string> SteamGameFinder::checkForXPlane12(const std::string &libraryPath)
-    {
-        /// Check common folder paths for X-Plane 12
-        if (std::string commonPath = libraryPath + dirSeparator + "common"; fs::exists(commonPath))
-        {
-            /// Check for X-Plane 12 directory
-            std::string xplanePath = commonPath + dirSeparator + "X-Plane 12";
-            if (fs::exists(xplanePath))
-            {
-                return xplanePath;
-            }
-
-            /// Also try other possible folder names
-            xplanePath = commonPath + dirSeparator + "X-Plane12";
-            if (fs::exists(xplanePath))
-            {
-                return xplanePath;
-            }
-
-            xplanePath = commonPath + dirSeparator + "XPlane12";
-            if (fs::exists(xplanePath))
-            {
-                return xplanePath;
-            }
-
-            xplanePath = commonPath + dirSeparator + "X-Plane-12";
-            if (fs::exists(xplanePath))
-            {
-                return xplanePath;
-            }
-        }
-
-        /// Check for manifest file for X-Plane 12
-        for (const auto &entry : fs::directory_iterator(libraryPath))
-        {
-            if (std::string path = entry.path().string(); path.find("appmanifest") != std::string::npos && path.find(".acf") != std::string::npos)
-            {
-                std::ifstream manifestFile(path);
-                std::string line;
-                while (std::getline(manifestFile, line))
-                {
-                    /// Look for app ID for X-Plane 12 or name in the manifest
-                    if ((line.find("\"appid\"") != std::string::npos && line.find("2014780") != std::string::npos) ||
-                        (line.find("\"name\"") != std::string::npos && line.find("X-Plane 12") != std::string::npos))
-                    {
-                        /// Found X-Plane 12 manifest, extract install dir
-                        std::regex installDirRegex("\"installdir\"\\s+\"(.+?)\"");
-                        std::string installDir;
-
-                        while (std::getline(manifestFile, line))
-                        {
-                            if (std::smatch match; std::regex_search(line, match, installDirRegex) && match.size() > 1)
-                            {
-                                installDir = match[1].str();
-                                if (std::string fullPath = libraryPath + dirSeparator + "common" + dirSeparator + installDir; fs::exists(fullPath))
-                                {
-                                    return fullPath;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return std::nullopt;
-    }
-
-    bool SteamGameFinder::savePathToConfig(const std::string &path, const std::string &configFile)
-    {
-        Config cfg;
-
-        /// Try to read existing config
-        try
-        {
-            cfg.readFile(configFile.c_str());
-        }
-        catch (const FileIOException &ex)
-        {
-            SEDX_CORE_ERROR_TAG("SETTINGS", "Error reading config file: {}", ex.what());
-            /// File doesn't exist, we'll create a new one
-        }
-        catch (const ParseException &ex)
-        {
-            SEDX_CORE_ERROR_TAG("SETTINGS", "Parse error in config file at line: {} : {}", ex.getLine(), ex.getError());
-            return false;
-        }
-
-        /// Set the X-Plane 12 path in the config
-        try
-        {
-            /// Check if paths section exists, create if not
-            if (!cfg.exists("paths"))
-            {
-                cfg.getRoot().add("paths", Setting::TypeGroup);
-            }
-
-            Setting &paths = cfg.lookup("paths");
-
-            /// Remove existing setting if it exists
-            if (paths.exists("xplane12"))
-            {
-                paths.remove("xplane12");
-            }
-
-            /// Add the new path
-            paths.add("xplane12", Setting::TypeString) = path;
-
-            /// Write to file
-            cfg.writeFile(configFile.c_str());
-            return true;
-        }
-        catch (const SettingException &ex)
-        {
-            SEDX_CORE_ERROR_TAG("SETTINGS", "Error in config setting: {}", ex.what());
-            return false;
-        }
-        catch (const FileIOException &ex)
-        {
-            SEDX_CORE_ERROR_TAG("SETTINGS", "Error writing config file: {}", ex.what());
-            return false;
-        }
-
-        return false;
-    }
-
     /*
 	VkDeviceSize ApplicationSettings::GetCustomBufferSize() const
 	{
@@ -1230,6 +926,7 @@ namespace SceneryEditorX
 	}
 	*/
 
+	/*
 	bool ApplicationSettings::SetCustomBufferSize(VkDeviceSize size)
 	{
 	    // Store in settings
@@ -1257,6 +954,8 @@ namespace SceneryEditorX
 	    
 	    return true;
 	}
+	*/
+
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

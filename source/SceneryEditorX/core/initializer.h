@@ -12,12 +12,12 @@
 */
 #pragma once
 
+/// -------------------------------------------------------
+
 namespace SceneryEditorX
 {
-
 	void InitCore();
 	void Shutdown();
-
 } // namespace SceneryEditorX
 
-
+/// -------------------------------------------------------

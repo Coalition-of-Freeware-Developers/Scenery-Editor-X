@@ -12,18 +12,18 @@
 */
 #pragma once
 #include <chrono>
-#include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/core/window/icon.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/render_data.h>
+#include <vulkan/vulkan.h>
+#include <functional>
+#include <filesystem>
+#include <GLFW/glfw3.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
 	enum class WindowMode : uint8_t
 	{
 		Windowed,
@@ -35,25 +35,24 @@ namespace SceneryEditorX
 	
 	struct WindowData
     {
-        GLOBAL inline GLFWwindow *window = nullptr;
         GLOBAL inline WindowMode mode = WindowMode::Windowed;
-        GLOBAL inline const char *title = "Scenery Editor X";
-        GLOBAL inline uint32_t width = 1280;
-        GLOBAL inline uint32_t height = 720;
-        GLOBAL inline int posX = 0;
-        GLOBAL inline int posY = 30;
-        GLOBAL inline bool framebufferResized = false;
-        GLOBAL inline bool dirty = true;
-        GLOBAL inline bool resizable = true;
-        GLOBAL inline bool decorated = true;
-        GLOBAL inline bool maximized = true;
-        GLOBAL inline bool focused = true;
-        GLOBAL inline bool vsync = false;
-        GLOBAL inline bool startMaximized = false;
-        GLOBAL inline float scroll = .0f;
-        GLOBAL inline float deltaScroll = .0f;
-        GLOBAL inline Vec2 mousePos = Vec2(.0f, .0f);
-        GLOBAL inline Vec2 deltaMousePos = Vec2(.0f, .0f);
+        std::string title = "Scenery Editor X";
+        uint32_t width = 1280;
+        uint32_t height = 720;
+        int posX = 0;
+        int posY = 30;
+        bool framebufferResized = false;
+        bool dirty = true;
+        bool resizable = true;
+        bool decorated = true;
+        bool maximized = true;
+        bool focused = true;
+        bool vsync = false;
+        bool startMaximized = false;
+        float scroll = .0f;
+        float deltaScroll = .0f;
+        Vec2 mousePos = Vec2(.0f, .0f);
+        Vec2 deltaMousePos = Vec2(.0f, .0f);
     };
 	
 	/// -------------------------------------------------------
@@ -86,57 +85,69 @@ namespace SceneryEditorX
 	class Window
 	{
 	public:
-        Window(const WindowData &winData);
+        Window(WindowData winData);
         virtual ~Window();
 
         virtual void Init();
+        virtual void Update();
         virtual Ref<RenderContext> GetRenderContext() { return renderContext; }
         virtual void Maximize();
         virtual void CenterWindow();
-        virtual const std::string &GetTitle() const { static std::string titleStr = ToString(WindowData::title); return titleStr; }
-        virtual SwapChain &GetSwapChain();
+        virtual const std::string &GetTitle() const { return winData.title; }
+        virtual void SetTitle(const std::string &title);
         virtual void SetResizable(bool resizable) const;
 		virtual void ChangeWindowMode();
-        virtual VkExtent2D GetSize(Window *windowPtr);
+        virtual void ApplyChanges();
+        virtual VkExtent2D GetSize() const								{ return {m_winSpecs.width, m_winSpecs.height}; }
+        virtual SwapChain &GetSwapChain();
 
 	    RenderData			GetRenderData()								{ return renderData; }
 		IconData			GetIconData()								{ return iconData; }
 
-        GLOBAL Window *Create(const WindowData &windowSpecs = WindowData());
-	    GLOBAL GLFWwindow	*GetWindow()								{ return WindowData::window; }
-	    GLOBAL uint32_t		GetWidth()									{ return WindowData::width; }
-		GLOBAL uint32_t		GetHeight()									{ return WindowData::height; }
+	    inline void		   *GetWindow()									{ return window; }
+	    uint32_t			GetWidth()									{ return m_winSpecs.width; }
+		uint32_t			GetHeight()									{ return m_winSpecs.height; }
 
-        GLOBAL void			Update();
         GLOBAL std::string  VideoModeText(const GLFWvidmode &mode);
-		GLOBAL void			OnImgui();
-        GLOBAL void			ApplyChanges();
-		GLOBAL void			UpdateFramebufferSize();
-	    GLOBAL void			SetFramebufferResized(const bool resized)   { WindowData::framebufferResized = resized; }
-	    GLOBAL void			SetTitle(const std::string& title)			{ glfwSetWindowTitle(WindowData::window,title.c_str()); }
+		//GLOBAL void			OnImgui();
+
+		void				UpdateFramebufferSize();
+	    void				SetFramebufferResized(const bool resized)   { winData.framebufferResized = resized; }
 		GLOBAL void			WaitEvents()								{ glfwWaitEvents(); }
 
-	    GLOBAL Vec2			GetDeltaMouse()								{ return WindowData::deltaMousePos; }
-		GLOBAL bool			GetFramebufferResized()						{ return WindowData::framebufferResized; }
-		GLOBAL bool			IsKeyDown(uint16_t keyCode)					{ return glfwGetKey(WindowData::window,keyCode); }
-		GLOBAL bool			IsMouseDown(uint16_t buttonCode)			{ return glfwGetMouseButton(WindowData::window,buttonCode); }
-        GLOBAL bool         IsDirty()									{ return WindowData::dirty; }
-	    GLOBAL bool			IsKeyPressed(uint16_t keyCode);
-	    GLOBAL bool			GetShouldClose()							{ return glfwWindowShouldClose(WindowData::window); }
+	    Vec2				GetDeltaMouse()								{ return winData.deltaMousePos; }
+		bool				GetFramebufferResized()						{ return winData.framebufferResized; }
+		bool				IsKeyDown(uint16_t keyCode)					{ return glfwGetKey(window,keyCode); }
+		bool				IsMouseDown(uint16_t buttonCode)			{ return glfwGetMouseButton(window,buttonCode); }
+        bool				IsDirty()									{ return winData.dirty; }
+	    bool				IsKeyPressed(uint16_t keyCode) const;
+	    bool				GetShouldClose()							{ return glfwWindowShouldClose(window); }
 
-	    GLOBAL float		GetDeltaScroll()							{ return WindowData::deltaScroll; }
+	    //GLOBAL float		GetDeltaScroll()							{ return winData.deltaScroll; }
 		GLOBAL float		GetDeltaTime()								{ return deltaTime; }
+        GLOBAL Window		*Create(const WindowData &windowSpecs = WindowData());
 
 	private:
-        MonitorData **mainMonitor = nullptr;
         IconData iconData;
         SwapChain *swapChain;
         RenderData renderData;
-        WindowData windowSpecs;
         WindowCallbacks windowCallbacks;
         Ref<RenderContext> renderContext;
 
+        GLFWwindow *window;
 		GLFWcursor *ImGuiMouseCursors[9] = { nullptr };
+
+        MonitorData **mainMonitor = nullptr;
+        WindowData winData;
+        int leftAlt;
+
+        struct WindowSpecs
+		{
+            std::string title;
+            uint32_t width;
+            uint32_t height;
+		};
+		WindowSpecs m_winSpecs;
 
 		bool initState;
         bool mousePressed;
@@ -163,7 +174,6 @@ namespace SceneryEditorX
         INTERNAL void DisableJoystickHandling();
 	    INTERNAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
 	};
-
 
 } /// namespace SceneryEditorX
 

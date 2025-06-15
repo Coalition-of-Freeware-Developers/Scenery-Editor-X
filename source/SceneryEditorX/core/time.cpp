@@ -15,16 +15,12 @@
 #include <ctime>
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/time.h>
-#include "spdlog/fmt/chrono.h"
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    float Time::GetTime()
-    {
-        return static_cast<float>(glfwGetTime());
-    }
+    float Time::GetTime() { return (float)glfwGetTime(); }
 
     void Time::Init()
     {
@@ -38,46 +34,33 @@ namespace SceneryEditorX
 
     void Time::Update(DeltaTime dt)
     {
-        // Calculate delta time
+        /// Calculate delta time
         const float currentTime = GetTime();
         s_LastFrameTime = currentTime;
 
-        // Update FPS counter
+        /// Update FPS counter
         if (dt > 0.0f)
 		{
             s_FrameTimes.push_back(dt);
 
-            // Keep only the most recent samples
+            /// Keep only the most recent samples
             while (s_FrameTimes.size() > s_MaxFrameTimesSamples)
-			{
                 s_FrameTimes.pop_front();
-            }
 
-            // Calculate average FPS from samples
+            /// Calculate average FPS from samples
             float totalTime = 0.0f;
             for (const float frameTime : s_FrameTimes)
-			{
                 totalTime += frameTime;
-            }
 
             s_CurrentFPS = s_FrameTimes.size() / totalTime;
         }
     }
 
-    float Time::GetApplicationTime()
-    {
-        return GetTime() - s_ApplicationStartTime;
-    }
+    float Time::GetApplicationTime() { return GetTime() - s_ApplicationStartTime; }
 
-    float Time::GetApplicationTimeMs()
-    {
-        return GetApplicationTime() * 1000.0f;
-    }
+    float Time::GetApplicationTimeMs() { return GetApplicationTime() * 1000.0f; }
 
-    float Time::GetFPS()
-    {
-        return s_CurrentFPS;
-    }
+    float Time::GetFPS() { return s_CurrentFPS; }
 
     uint32_t Time::CreateTimer(const float durationSeconds)
     {
@@ -88,7 +71,7 @@ namespace SceneryEditorX
         newTimer.startTime = GetTime();
         newTimer.isActive = true;
 
-        // Find an available slot or add a new one
+        /// Find an available slot or add a new one
         bool timerAdded = false;
         for (auto& timer : s_Timers)
 		{
@@ -101,9 +84,7 @@ namespace SceneryEditorX
         }
 
         if (!timerAdded)
-		{
             s_Timers.push_back(newTimer);
-        }
 
         return timerID;
     }
@@ -111,9 +92,7 @@ namespace SceneryEditorX
     bool Time::IsTimerComplete(uint32_t timerID)
     {
         if (timerID >= s_Timers.size() || timerID == 0 || !s_Timers[timerID].isActive)
-		{
             return false;
-        }
 
         const Timer& timer = s_Timers[timerID];
         float currentTime = GetTime();
@@ -124,17 +103,13 @@ namespace SceneryEditorX
     void Time::ResetTimer(uint32_t timerID, float newDurationSeconds)
     {
         if (timerID >= s_Timers.size() || timerID == 0 || !s_Timers[timerID].isActive)
-		{
             return;
-        }
 
         Timer& timer = s_Timers[timerID];
         timer.startTime = GetTime();
 
         if (newDurationSeconds > 0.0f)
-		{
             timer.duration = newDurationSeconds;
-        }
     }
 
 	uint64_t Time::GetCurrentDateTimeU64()
@@ -164,4 +139,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

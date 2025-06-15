@@ -278,9 +278,9 @@ namespace SceneryEditorX
         Layers layersInstance;
         layersInstance.layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layersInstance.layerCount, nullptr);  
-        layersInstance.layers.resize(layersInstance.layerCount);  
+        layersInstance.layerNames.resize(layersInstance.layerCount);  
         layersInstance.activeLayers.resize(layersInstance.layerCount);  
-        vkEnumerateInstanceLayerProperties(&layersInstance.layerCount, layersInstance.layers.data());
+        vkEnumerateInstanceLayerProperties(&layersInstance.layerCount, layersInstance.layerNames.data());
 
         /// Get all available extensions
         Extensions extensions;
@@ -295,10 +295,10 @@ namespace SceneryEditorX
 		vkEnumerateInstanceVersion(&apiVersion);
 
 		bool khronosAvailable = false;
-        for (size_t i = 0; i < layersInstance.layers.size(); i++)
+        for (size_t i = 0; i < layersInstance.layerNames.size(); i++)
         {
             layersInstance.activeLayers[i] = false;
-            if (strcmp("VK_LAYER_KHRONOS_validation", layersInstance.layers[i].layerName) == 0)
+            if (strcmp("VK_LAYER_KHRONOS_validation", layersInstance.layerNames[i].layerName) == 0)
             {
                 layersInstance.activeLayers[i] = true;
                 khronosAvailable = true;
@@ -312,14 +312,14 @@ namespace SceneryEditorX
 		/// Get the name of all layers if they are enabled
         if (enableValidationLayers)
         {
-            for (size_t i = 0; i < layersInstance.layers.size(); i++)
+            for (size_t i = 0; i < layersInstance.layerNames.size(); i++)
             {
                 if (layersInstance.activeLayers[i])
                 {
-                    layersInstance.activeLayersNames.push_back(layersInstance.layers[i].layerName);
+                    layersInstance.activeLayersNames.push_back(layersInstance.layerNames[i].layerName);
                 }
 #ifdef SEDX_DEBUG
-                SEDX_CORE_TRACE_TAG("Graphics Engine","Active Layers: {} Layer Names: {}", i, layersInstance.layers[i].layerName);
+                SEDX_CORE_TRACE_TAG("Graphics Engine","Active Layers: {} Layer Names: {}", i, layersInstance.layerNames[i].layerName);
 #endif
             }
         }
@@ -484,7 +484,6 @@ namespace SceneryEditorX
         CleanupSwapChain();
 
         vkDestroyDescriptorPool(vkDevice->GetDevice(), descriptorPool, allocator);
-
         vkDestroySampler(vkDevice->GetDevice(), textureSampler, allocator);
 
         for (auto imageView : swapChainImageViews)
@@ -509,7 +508,7 @@ namespace SceneryEditorX
         Layers layersInstance;
         layersInstance.activeLayers.clear();
         layersInstance.activeLayersNames.clear();
-        layersInstance.layers.clear();
+        layersInstance.layerNames.clear();
 
         if (enableValidationLayers)
 		{

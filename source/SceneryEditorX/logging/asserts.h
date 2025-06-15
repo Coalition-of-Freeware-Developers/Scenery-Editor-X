@@ -14,7 +14,7 @@
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_WINDOWS
     #define SEDX_DEBUG_BREAK __debugbreak()
@@ -24,17 +24,17 @@
     #define SEDX_DEBUG_BREAK
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 #ifdef SEDX_DEBUG
 #define SEDX_ENABLE_ASSERTS
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 #define SEDX_ENABLE_VERIFY
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 #ifdef SEDX_ENABLE_ASSERTS
 	#ifdef SEDX_COMPILER_CLANG
@@ -52,7 +52,7 @@
 	#define SEDX_ASSERT(condition, ...) ((void)(condition))
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 #ifdef SEDX_ENABLE_VERIFY
 	#ifdef SEDX_COMPILER_CLANG
@@ -70,4 +70,4 @@
 	#define SEDX_VERIFY(condition, ...) ((void)(condition))
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

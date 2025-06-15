@@ -106,13 +106,13 @@ namespace SceneryEditorX
     std::vector<int32_t> ImageID::availBufferRID;
     std::vector<int32_t> ImageID::availTLASRID;
 
-    void SwapChain::InitSurface()
+    void SwapChain::InitSurface(GLFWwindow *windowPtr)
     {
         VkPhysicalDevice physicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         GPUDevice gpuData;
 
         /// Create the surface
-        if (glfwCreateWindowSurface(GraphicsEngine::GetInstance(), Window::GetWindow(), allocator, &surface) != VK_SUCCESS)
+        if (glfwCreateWindowSurface(RenderContext::GetInstance(), windowPtr, allocator, &surface) != VK_SUCCESS)
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create window surface!");
 
         uint32_t queueCount;
@@ -237,11 +237,11 @@ namespace SceneryEditorX
 	}
 	*/
 
-    void SwapChain::Create(uint32_t width, uint32_t height, bool vsync)
+    void SwapChain::Create(uint32_t *width, uint32_t *height, bool vsync)
     {
         RenderData data;
-        data.width = width;
-        data.height = height;
+        data.width = *width;
+        data.height = *height;
         data.VSync = vsync;
 
 		VkPhysicalDevice physicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
@@ -298,7 +298,7 @@ namespace SceneryEditorX
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, &surfaceFormats))
 
         /// Create the swap chain
-        swapChainExtent = ChooseSwapExtent(surfaceInfo, width, height);
+        swapChainExtent = ChooseSwapExtent(surfaceInfo, *width, *height);
 
         VkSurfaceCapabilitiesKHR surfaceCapabilities = vkDevice->GetPhysicalDevice()->Selected().surfaceCapabilities;
 
@@ -404,8 +404,8 @@ namespace SceneryEditorX
             swapChainImages[i].resource->image = swapChainImageResources[i];
             swapChainImages[i].resource->view = swapChainViews[i];
             swapChainImages[i].layout = Layout::Undefined;
-            swapChainImages[i].width = width;
-            swapChainImages[i].height = height;
+            swapChainImages[i].width = *width;
+            swapChainImages[i].height = *height;
             swapChainImages[i].format = static_cast<Format>(colorFormat);
             swapChainImages[i].aspect = Aspect::Color;
         }
@@ -550,8 +550,6 @@ namespace SceneryEditorX
 	void SwapChain::Destroy()
     {
         VkDevice usedDevice = vkDevice->Selected();
-        //const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
-
         if (depthImageView != VK_NULL_HANDLE)
         {
             vkDestroyImageView(usedDevice, depthImageView, allocator);
@@ -615,40 +613,29 @@ namespace SceneryEditorX
 
     void SwapChain::OnResize(uint32_t width, uint32_t height)
     {
-        RenderData data;
-        Viewport viewportData;
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
-        data.width = width;
-        data.height = height;
-        if (data.width == 0 || data.height == 0)
-        {
-            SEDX_CORE_INFO("Window minimized, waiting for restore");
-            return;
-        }
-        SEDX_CORE_INFO("Window resized to {}x{}", data.width, data.height);
-        //vkDestroySwapchainKHR(vkDevice, swapChain, nullptr);
-        vkDeviceWaitIdle(vkDevice);
-        Create(viewportData.width, viewportData.height, data.VSync);
-        vkDeviceWaitIdle(vkDevice);
+        auto device = vkDevice->GetDevice();
+        vkDeviceWaitIdle(device);
+        Create(&width, &height, VSync);
+        vkDeviceWaitIdle(device);
     }
 
     uint32_t SwapChain::AcquireNextImage()
     {
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
-		RenderData renderData;
+        auto device = vkDevice->GetDevice();
+		RenderData renderData = {};
         renderData.swapChainCurrentFrame = (renderData.swapChainCurrentFrame + 1) % swapChainImages.size();
 
-        VK_CHECK_RESULT(vkWaitForFences(vkDevice, 1, &waitFences[renderData.imageIndex], VK_TRUE, UINT64_MAX));
+        VK_CHECK_RESULT(vkWaitForFences(device, 1, &waitFences[renderData.imageIndex], VK_TRUE, UINT64_MAX));
 
 		uint32_t imageIndex;
 
-        if (const VkResult result = fpAcquireNextImageKHR(vkDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex); result != VK_SUCCESS)
+        if (const VkResult result = fpAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex); result != VK_SUCCESS)
         {
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
             {
                 Viewport viewportData;
                 OnResize(viewportData.width, viewportData.height);
-                VK_CHECK_RESULT(fpAcquireNextImageKHR(vkDevice, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex));
+                VK_CHECK_RESULT(fpAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex))
             }
         }
 
@@ -672,12 +659,10 @@ namespace SceneryEditorX
             swapChainViews[i] = CreateImageView(swapChainImages[i].resource->image, static_cast<VkFormat>(swapChainImages[i].format),  VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 
-    void SwapChain::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels,
-        VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
+    void SwapChain::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage&image, VkDeviceMemory&imageMemory) const
     {
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
-
+        auto device = vkDevice->GetDevice();
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -693,45 +678,41 @@ namespace SceneryEditorX
         imageInfo.samples = numSamples;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateImage(vkDevice, &imageInfo, allocator, &image) != VK_SUCCESS)
+        if (vkCreateImage(device, &imageInfo, allocator, &image) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create image!");
 
         VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(vkDevice, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(device, &allocInfo, allocator, &imageMemory) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to allocate image memory!");
 
-        vkBindImageMemory(vkDevice, image, imageMemory, 0);
+        vkBindImageMemory(device, image, imageMemory, 0);
     }
 
     uint32_t SwapChain::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
     {
-        const VkPhysicalDevice vkPhysDevice = GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+        const auto physDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
         VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(vkPhysDevice, &memProperties);
-
+        vkGetPhysicalDeviceMemoryProperties(physDevice, &memProperties);
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
         {
             if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
                 return i;
-            }
         }
 
         SEDX_CORE_ERROR("Failed to find suitable memory type!");
-        return UINT32_MAX; // Return an invalid memory type index
+        return UINT32_MAX; /// Return an invalid memory type index
     }
 
     VkImageView SwapChain::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const
     {
-        const VkDevice vkDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
-
+        auto device = vkDevice->GetDevice();
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
@@ -744,7 +725,7 @@ namespace SceneryEditorX
         viewInfo.subresourceRange.layerCount = 1;
 
         VkImageView imageView;
-        if (vkCreateImageView(vkDevice, &viewInfo, allocator, &imageView) != VK_SUCCESS)
+        if (vkCreateImageView(device, &viewInfo, allocator, &imageView) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create texture image view!");
 
         return imageView;
@@ -765,7 +746,6 @@ namespace SceneryEditorX
     {
         RenderData renderData;
         const VkFormat depthFormat = FindDepthFormat();
-
         CreateImage(swapChainExtent.width, swapChainExtent.height, 1, renderData.msaaSamples, depthFormat,
                     VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                     depthImage, depthImageMemory);
@@ -775,21 +755,16 @@ namespace SceneryEditorX
     VkPresentModeKHR SwapChain::ChooseSwapPresentMode(uint32_t presentModeCount) const
     {
         VkPresentModeKHR swapchainPresentMode = vkDevice->GetPhysicalDevice()->Selected().presentModes[0];
-
         /// Check if VSync is disabled and prefer mailbox if available
-        if (RenderData renderData; !renderData.VSync)
+        if (RenderData renderData; !VSync)
         {
             for (size_t i = 0; i < presentModeCount; i++)
             {
                 if (swapchainPresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-                {
                     return swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-                }
 
-				if ((swapchainPresentMode != VK_PRESENT_MODE_MAILBOX_KHR) && (presentModeCount == VK_PRESENT_MODE_IMMEDIATE_KHR))
-				{
+                if (swapchainPresentMode != VK_PRESENT_MODE_MAILBOX_KHR && presentModeCount == VK_PRESENT_MODE_IMMEDIATE_KHR)
                     return swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-				}
             }
         }
 
@@ -801,11 +776,10 @@ namespace SceneryEditorX
     {
         for (const VkFormat format : candidates)
         {
-            const VkPhysicalDevice vkPhysDevice = GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+            auto physDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
             VkFormatProperties props;
 
-            vkGetPhysicalDeviceFormatProperties(vkPhysDevice, format, &props);
-
+            vkGetPhysicalDeviceFormatProperties(physDevice, format, &props);
             if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
                 return format;
 
@@ -847,11 +821,9 @@ namespace SceneryEditorX
     SwapChainDetails SwapChain::QuerySwapChainSupport(const VulkanDevice &device)
     {
         SwapChainDetails details;
-
-        /// Copy the data that's already available
-        details.capabilities = device.GetPhysicalDevice()->Selected().surfaceCapabilities;
-        details.formats = device.GetPhysicalDevice()->Selected().surfaceFormats;
+        details.formats		 = device.GetPhysicalDevice()->Selected().surfaceFormats;
         details.presentModes = device.GetPhysicalDevice()->Selected().presentModes;
+        details.capabilities = device.GetPhysicalDevice()->Selected().surfaceCapabilities;
 
         return details;
     }
@@ -861,13 +833,12 @@ namespace SceneryEditorX
 	 */
     void SwapChain::FindImageFormatAndColorSpace()
     {
-        const VkPhysicalDevice vkPhysDevice = GraphicsEngine::Get()->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
-
+        const auto physDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
 		uint32_t formatCount;
-        VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(vkPhysDevice, surface, &formatCount, nullptr))
+        VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &formatCount, nullptr))
 
 		std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
-        VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(vkPhysDevice, surface, &formatCount, surfaceFormats.data()))
+        VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &formatCount, surfaceFormats.data()))
 
 		if (formatCount == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED)
 		{

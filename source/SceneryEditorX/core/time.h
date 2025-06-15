@@ -13,7 +13,7 @@
 #pragma once
 #include <deque>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -21,7 +21,7 @@ namespace SceneryEditorX
     /// Forward declarations
     class DeltaTime;
 
-	// ------------------------------------------------
+	/// ------------------------------------------------
 
 	/**
 	 * @class Time
@@ -155,21 +155,21 @@ namespace SceneryEditorX
 	        bool isActive;
 	    };
 
-	    // Time tracking
+	    /// Time tracking
 	    static inline float s_LastFrameTime = 0.0f;
 	    static inline float s_ApplicationStartTime = 0.0f;
 
-	    // FPS tracking
+	    /// FPS tracking
 	    static inline std::deque<float> s_FrameTimes;
 	    static inline float s_CurrentFPS = 0.0f;
 	    static constexpr size_t s_MaxFrameTimesSamples = 60;
 
-	    // Timer system
+	    /// Timer system
 	    static inline std::vector<Timer> s_Timers;
 	    static inline uint32_t s_NextTimerID = 1;
     };
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 	class DeltaTime
 	{
@@ -203,4 +203,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

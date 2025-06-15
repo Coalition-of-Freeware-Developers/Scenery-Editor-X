@@ -54,6 +54,8 @@ ADD_LIBRARY(AppCore
 	core/pointers.cpp
 	core/pointers.h
 	core/serializer.hpp
+	core/steam_parser.cpp
+	core/steam_parser.h
 	core/time.cpp
 	core/time.h
 	core/transforms.cpp
@@ -169,7 +171,7 @@ SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	renderer/buffers/vertex_buffer.cpp
 	renderer/buffers/vertex_buffer.h
 )
-SOURCE_GROUP("Core/Utils/Time" FILES
+SOURCE_GROUP("Core/Time" FILES
 	core/time.cpp
 	core/time.h
 )
@@ -178,6 +180,10 @@ SOURCE_GROUP("Core/Utils" FILES
 	platform/editor_config.hpp
 	platform/platform_states.h
 	platform/system_detection.h
+)
+SOURCE_GROUP("Core/Utils/Steam" FILES
+	core/steam_parser.cpp
+	core/steam_parser.h
 )
 SOURCE_GROUP("Core/Utils/File Utils" FILES
 	platform/file_manager.cpp

@@ -48,22 +48,11 @@
 
 /**
 ##########################################################
-                    PLATFORM SPECIFIC
-##########################################################
-*/
-#ifdef SEDX_PLATFORM_WINDOWS
-    #include <Windows.h>
-#endif
-
-/**
-##########################################################
 					 GLFW INCLUDES & DEFINES
 ##########################################################
 */
 
-//#define VK_NO_PROTOTYPES
 #define GLFW_INCLUDE_VULKAN
-//#define IMGUI_IMPL_VULKAN_USE_VOLK
 
 /**
 ##########################################################
@@ -135,13 +124,13 @@
     extern std::filesystem::path workingDir;
 #endif
 
-#ifdef SEDX_DEBUG && SEDX_PROFILING_ENABLED
+#if defined(SEDX_DEBUG) && defined(SEDX_PROFILING_ENABLED)
 	#include <SceneryEditorX/logging/profiler.hpp>
 	#define TRACY_ENABLE
 #endif
 
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief - A macro to display an error message

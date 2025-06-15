@@ -14,11 +14,9 @@
 #include <filesystem>
 #include <libconfig.h++>
 #include <map>
-#include <optional>
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/pointers.h>
 #include <string>
-#include <vector>
 
 /// -------------------------------------------------------
 
@@ -39,7 +37,7 @@ namespace SceneryEditorX
 	     * @brief Constructs settings manager with specified config file path.
 	     * @param filepath Path to the configuration file to use
 	     */
-	    ApplicationSettings(std::filesystem::path filepath);
+        explicit ApplicationSettings(std::filesystem::path filepath);
 	
 	    /**
 	     * @brief Reads settings from the configuration file.
@@ -200,14 +198,14 @@ namespace SceneryEditorX
 		 * @brief Gets the custom buffer size to be used for allocations.
 		 * @return The custom buffer size in bytes
 		 */
-        [[nodiscard]] VkDeviceSize GetCustomBufferSize() const;
+        //[[nodiscard]] VkDeviceSize GetCustomBufferSize() const;
 
 		/**
 		 * @brief Sets the custom buffer size to be used for allocations.
 		 * @param size The desired buffer size in bytes
 		 * @return true if the size was set successfully, false if invalid
 		 */
-		bool SetCustomBufferSize(VkDeviceSize size);
+		//bool SetCustomBufferSize(VkDeviceSize size);
 		
 		/**
 		 * @brief Validates if a given buffer size is supported by the device.
@@ -216,7 +214,7 @@ namespace SceneryEditorX
 		 * @param device The Vulkan device to check against
 		 * @return true if the size is supported, false otherwise
 		 */
-		static bool ValidateBufferSize(VkDeviceSize size, const VkPhysicalDeviceLimits& deviceLimits);
+		//static bool ValidateBufferSize(VkDeviceSize size, const VkPhysicalDeviceLimits& deviceLimits);
 	private:
 	    /**
 	     * @brief Initializes config with default minimal settings.
@@ -260,90 +258,6 @@ namespace SceneryEditorX
 	};
 
     /// ----------------------------------------------------------
-
-    /**
-	 * @class SteamGameFinder
-	 * @brief Utility class for locating X-Plane 12 in Steam library folders.
-	 *
-	 * Provides functionality to search for X-Plane 12 installation across multiple Steam library
-	 * folders on different platforms. This helps with automatic detection of X-Plane installation
-	 * when the simulator has been installed through Steam rather than as a standalone application.
-	 */
-    class SteamGameFinder
-    {
-    public:
-        /**
-         * @brief Attempts to find X-Plane 12 in Steam library folders
-         * 
-         * Searches standard Steam installation directories and all configured Steam library folders
-         * for an X-Plane 12 installation. The search is performed in platform-specific locations.
-         * 
-         * @return An optional string containing the path to X-Plane 12 if found, empty otherwise
-         */
-        GLOBAL std::optional<std::string> findXPlane12();
-
-        /**
-         * @brief Saves the discovered X-Plane path to the config file
-         * 
-         * @param path The X-Plane installation path to save
-         * @param configFile Path to the configuration file
-         * @return true if the path was successfully saved to the config file, false otherwise
-         */
-        GLOBAL bool savePathToConfig(const std::string &path, const std::string &configFile);
-
-        /**
-	     * @brief Validates if a path contains a valid X-Plane 12 installation
-	     * 
-	     * Checks for the presence of critical X-Plane 12 files and directories that
-	     * indicate a valid simulator installation.
-	     * 
-	     * @param path Path to validate as an X-Plane 12 installation directory
-	     * @return true if the path contains a valid X-Plane 12 installation, false otherwise
-	     */
-        GLOBAL bool validateXPlanePath(const std::string &path);
-
-    private:
-        /**
-         * @brief Gets the default Steam installation directory based on current platform
-         * 
-         * Returns the standard Steam installation location for Windows, macOS, or Linux,
-         * depending on the platform the application is running on.
-         * 
-         * @return String containing the default Steam installation directory path
-         */
-        LOCAL std::string getSteamDirectory();
-
-        /**
-         * @brief Retrieves all configured Steam library folders
-         * 
-         * Parses Steam's libraryfolders.vdf file to extract all configured Steam library locations
-         * where games might be installed.
-         * 
-         * @param steamPath Path to the main Steam installation directory
-         * @return Vector of strings containing paths to all Steam library folders
-         */
-        LOCAL std::vector<std::string> getSteamLibraryFolders(const std::string &steamPath);
-
-        /**
-         * @brief Checks if X-Plane 12 exists in the given library path
-         * 
-         * Searches for X-Plane 12 installation in a specific Steam library folder
-         * by checking common installation paths and validating the found directory.
-         * 
-         * @param libraryPath Path to a Steam library folder to check
-         * @return Optional string containing the path if X-Plane 12 is found, empty otherwise
-         */
-        LOCAL std::optional<std::string> checkForXPlane12(const std::string &libraryPath);
-
-        /**
-         * @brief Platform-specific directory separator character
-         * 
-         * Holds the correct directory separator character for the current platform
-         * ('\\' for Windows, '/' for Unix-based systems).
-         */
-        INTERNAL const char dirSeparator;
-    };
-
 
 } // namespace SceneryEditorX
 

@@ -194,6 +194,61 @@ namespace SceneryEditorX
 
 	/// ---------------------------------------------------------
 
+
+    class CommandPool : public RefCounted
+    {
+    public:
+        /**
+         * @brief Create command pools for a device
+         * @param vulkanDevice The device to create command pools for
+         * @param type The type of queue this command pool will be used with (graphics, compute, transfer, etc.)
+         */
+        CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
+        virtual ~CommandPool() override;
+
+        /**
+         * @brief Allocate a command buffer from the pool
+         * 
+         * @param begin Whether to begin the command buffer
+         * @param compute Whether to allocate from the compute pool
+         * 
+         * @return A new command buffer
+         */
+        [[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;
+
+        /**
+         * @brief Submit a command buffer to the graphics queue and wait for completion
+         * @param cmdBuffer The command buffer to submit
+         */
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
+
+        /**
+         * @brief Submit a command buffer to a specific queue and wait for completion
+         * @param cmdBuffer The command buffer to submit
+         * @param queue The queue to submit to
+         */
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
+
+        /// Accessor methods
+        [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const
+        {
+            return GraphicsCmdPool;
+        }
+        [[nodiscard]] VkCommandPool GetComputeCmdPool() const
+        {
+            return ComputeCmdPool;
+        }
+
+        Queue queueType;
+        VkCommandPool commandPool = VK_NULL_HANDLE;
+
+    private:
+        VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
+        VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
+    };
+
+    /// ---------------------------------------------------------
+
 	class VulkanDevice : public RefCounted
     {
     public:
@@ -316,9 +371,9 @@ namespace SceneryEditorX
         VkDevice device = nullptr;
         //BindlessResources bindlessResources;
 		Ref<MemoryAllocator> memoryAllocator;
-        Ref<CommandBuffer> cmdBuffer = nullptr;
         VkSampler textureSampler = nullptr;
-
+        Ref<CommandPool> LocalCommandPool();
+        Ref<CommandPool> CreateLocalCommandPool();
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
         //uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
@@ -334,7 +389,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
         /// Command pool management
-        std::map<std::thread::id, CommandPool> CmdPools;
+        std::map<std::thread::id, Ref<CommandPool>> CmdPools;
 
         /**
          * @brief Create Vulkan 1.2+ features structure and load device extensions
@@ -371,55 +426,6 @@ namespace SceneryEditorX
     };
 
 	/// ---------------------------------------------------------
-
-    class CommandPool : public RefCounted
-    {
-    public:
-        /**
-         * @brief Create command pools for a device
-         * @param vulkanDevice The device to create command pools for
-         * @param type The type of queue this command pool will be used with (graphics, compute, transfer, etc.)
-         */
-        CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
-        virtual ~CommandPool() override;
-
-        /**
-         * @brief Allocate a command buffer from the pool
-         * 
-         * @param begin Whether to begin the command buffer
-         * @param compute Whether to allocate from the compute pool
-         * 
-         * @return A new command buffer
-         */
-        [[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;
-
-        /**
-         * @brief Submit a command buffer to the graphics queue and wait for completion
-         * @param cmdBuffer The command buffer to submit
-         */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
-
-        /**
-         * @brief Submit a command buffer to a specific queue and wait for completion
-         * @param cmdBuffer The command buffer to submit
-         * @param queue The queue to submit to
-         */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
-
-        /// Accessor methods
-        [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
-        [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
-
-        Queue queueType;
-        VkCommandPool commandPool = VK_NULL_HANDLE;
-    private:
-        Ref<GraphicsEngine> *gfxEngine = nullptr;
-        VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
-        VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
-
-    };
-
-    /// ---------------------------------------------------------
 
 } // namespace SceneryEditorX
 

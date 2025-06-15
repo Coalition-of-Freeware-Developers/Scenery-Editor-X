@@ -13,7 +13,6 @@
 #pragma once
 #include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <SceneryEditorX/core/pointers.h>
-#include <SceneryEditorX/logging/asserts.h>
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------

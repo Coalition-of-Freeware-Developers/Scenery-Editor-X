@@ -11,6 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <vma/vk_mem_alloc.h>
+#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 
 /// -------------------------------------------------------
 

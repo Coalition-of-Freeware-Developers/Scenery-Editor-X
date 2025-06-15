@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/initializer.h>
 
 /// ----------------------------------------------------
 
@@ -38,13 +39,11 @@ namespace SceneryEditorX
 
 /// ----------------------------------------------------
 
-#ifdef SEDX_RELEASE
-#ifdef SEDX_PLATFORM_WINDOWS
+#ifdef SEDX_RELEASE && SEDX_PLATFORM_WINDOWS
 	int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 	{
 	    return SceneryEditorX::Main(__argc, __argv);
 	}
-#endif
 #else
 
 	int main(int argc, char** argv)

@@ -118,7 +118,7 @@ namespace SceneryEditorX
 
 	private:
         /** @brief Reference to the Vulkan device */
-        Ref<VulkanDevice> device;
+        Ref<VulkanDevice> device = nullptr;
         
         /** @brief Vulkan shader module handle */
         VkShaderModule shaderModule = VK_NULL_HANDLE;

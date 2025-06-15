@@ -17,8 +17,10 @@
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <utility>
-
-/// -------------------------------------------------------
+#include <set>
+#include <unordered_set>
+#include <string>
+#include <vector>
 
 namespace SceneryEditorX
 {
@@ -678,72 +680,34 @@ namespace SceneryEditorX
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
 
-		/*
-		QueueFamilyIndices indices = vkPhysDevice->FindQueueFamilies(vkPhysDevice->GetGPUDevice());
+        /// Prepare device extensions as vector<const char*>
+        std::vector<const char *> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-
-		/// Validate that necessary queue families were found
-		if (!indices.IsComplete())
-		{
-			SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find all required queue families.");
-			return;
-		}
-
-		/// Create unique queue create infos for each queue family
-		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		std::set uniqueQueueFamilies = {
-			indices.graphicsFamily.value(),
-			indices.presentFamily.value()
-		};
-
-		auto queuePriority = 1.0f;
-		for (uint32_t queueFamily : uniqueQueueFamilies)
-		{
-			VkDeviceQueueCreateInfo queueCreateInfo{};
-			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueCreateInfo.queueFamilyIndex = queueFamily;
-			queueCreateInfo.queueCount = 1;
-			queueCreateInfo.pQueuePriorities = &queuePriority;
-			queueCreateInfos.push_back(queueCreateInfo);
-		}
-
-		// ---------------------------------------------------------
-		*/
-
-		/// Verify extension support
-		if (!checks.CheckDeviceExtensionSupport(vkPhysicalDevice->GetGPUDevices()))
-		{
-			SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extensions not supported!");
-			return;
-		}
-
-        std::vector<const char *> &deviceExtensions = checks.vkExtensions.deviceExtensions;
-
-		SEDX_CORE_ASSERT(checks.IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME));
-		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-		if (VulkanChecks::IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME))
-			deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+        /// Optionally add NVIDIA/AMD extensions if supported
+        if (VulkanChecks::IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME))
+            deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
         if (VulkanChecks::IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
-			deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+            deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
 
-		/// ---------------------------------------------------------
-
-		/// If an Nvidia GPU - Enable Nvidia Nsight Aftermath SDK crash dumping.
-		//TODO: Add this and AMD specific changes later.
-    #if defined(SEDX_DEBUG)
-		if (VulkanChecks::IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
-		{
-			deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
-			SEDX_CORE_INFO_TAG("Graphics Engine", "NVIDIA Device Diagnostics Config extension is supported.");
-		}
-		else
-            SEDX_CORE_WARN_TAG("Graphics Engine", "NVIDIA Device Diagnostics Config extension is not supported.");
-
-        ///< Uncomment if you want to enable diagnostics config
-        ///< This is currently disabled due to issues with the extension on some systems.
-		//VkDeviceDiagnosticsConfigCreateInfoNV diagnosticsConfig{};
-    #endif
+        /// Check device extension support
+        std::vector<VkExtensionProperties> availableExtensions;
+        checks.CheckDeviceExtensionSupport(vkPhysicalDevice->Selected().physicalDevice, availableExtensions, nullptr);
+        for (const char* ext : deviceExtensions) {
+            bool found = false;
+            for (const auto& prop : availableExtensions)
+			{
+                if (strcmp(ext, prop.extensionName) == 0)
+				{
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+			{
+                SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extension not supported: {}", ext);
+                return;
+            }
+        }
 
 		/// ---------------------------------------------------------
 
@@ -806,11 +770,11 @@ namespace SceneryEditorX
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueFamilyInfo.size());
 
 		if (VulkanChecks::IsExtensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
-		{
-			deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-		}
+            deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 
-		if (!deviceExtensions.empty())
+
+
+        if (!deviceExtensions.empty())
 		{
 			createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 			createInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -1062,15 +1026,19 @@ namespace SceneryEditorX
      * @see ~VulkanDevice, operator=
      */
     VulkanDevice::VulkanDevice(VulkanDevice &&other) noexcept : 
-          /*bindlessResources(other.bindlessResources),*/ device(other.device),
-          memoryAllocator(std::move(other.memoryAllocator)), vkPhysicalDevice(std::move(other.vkPhysicalDevice)),
-          vkEnabledFeatures(other.vkEnabledFeatures), vkGetBufferDeviceAddressKHR(other.vkGetBufferDeviceAddressKHR),
-          vkSetDebugUtilsObjectNameEXT(other.vkSetDebugUtilsObjectNameEXT),
-          vkCreateAccelerationStructureKHR(other.vkCreateAccelerationStructureKHR),
-          vkDestroyAccelerationStructureKHR(other.vkDestroyAccelerationStructureKHR),
-          vkCmdBuildAccelerationStructuresKHR(other.vkCmdBuildAccelerationStructuresKHR),
+          /*bindlessResources(other.bindlessResources),*/ vkGetBufferDeviceAddressKHR(other.vkGetBufferDeviceAddressKHR),
+          vkSetDebugUtilsObjectNameEXT(other.vkSetDebugUtilsObjectNameEXT), vkCreateAccelerationStructureKHR(other.vkCreateAccelerationStructureKHR),
+          vkDestroyAccelerationStructureKHR(other.vkDestroyAccelerationStructureKHR), vkCmdBuildAccelerationStructuresKHR(other.vkCmdBuildAccelerationStructuresKHR),
+
+
+
+
           vkGetAccelerationStructureBuildSizesKHR(other.vkGetAccelerationStructureBuildSizesKHR),
-          vkGetAccelerationStructureDeviceAddressKHR(other.vkGetAccelerationStructureDeviceAddressKHR)
+          vkGetAccelerationStructureDeviceAddressKHR(other.vkGetAccelerationStructureDeviceAddressKHR),
+          device(other.device),
+          memoryAllocator(std::move(other.memoryAllocator)),
+          vkPhysicalDevice(std::move(other.vkPhysicalDevice)),
+          vkEnabledFeatures(other.vkEnabledFeatures)
     {
         other.device = nullptr;
         other.textureSampler = nullptr;
@@ -1195,7 +1163,26 @@ namespace SceneryEditorX
 			GraphicsQueueMutex.unlock();
 	}
 
-	/**
+    Ref<CommandPool> VulkanDevice::LocalCommandPool()
+    {
+        const auto threadID = std::this_thread::get_id();
+        SEDX_CORE_VERIFY(CmdPools.contains(threadID));
+        return CmdPools.at(threadID);
+    }
+
+    Ref<CommandPool> VulkanDevice::CreateLocalCommandPool()
+    {
+        const auto threadID = std::this_thread::get_id();
+        if (const auto commandPoolIt = CmdPools.find(threadID); commandPoolIt != CmdPools.end())
+            return commandPoolIt->second;
+
+        /// Use CreateRef to construct a new CommandPool smart pointer
+        Ref<CommandPool> commandPool = CreateRef<CommandPool>(Ref<VulkanDevice>(this), Queue::Graphics);
+        CmdPools[threadID] = commandPool;
+        return commandPool;
+    }
+
+    /**
 	 * @brief Find the queue families for the device.
 	 * @param device - The device to find the queue families for.
 	 * @return - The queue family indices.
@@ -1281,41 +1268,6 @@ namespace SceneryEditorX
 
 		return cmdBuffer;
 
-	}
-	*/
-
-	/*
-	Ref<CommandPool> VulkanDevice::GetThreadLocalCmdPool()
-	{
-		const auto threadID = std::this_thread::get_id();
-		const auto it = CmdPools.find(threadID);
-		if (it == CmdPools.end())
-		{
-			SEDX_CORE_WARN("Command pool for thread {} not found. Creating a new one.",
-						   std::hash<std::thread::id>{}(threadID));
-			return GetOrCreateThreadLocalCmdPool();
-		}
-
-		return it->second;
-	}
-	*/
-
-	/*
-	Ref<CommandPool> VulkanDevice::GetOrCreateThreadLocalCmdPool()
-	{
-		const auto threadID = std::this_thread::get_id();
-		if (const auto it = CmdPools.find(threadID); it != CmdPools.end())
-		{
-			return it->second;
-		}
-
-		/// Create a new command pool for this thread pass.
-		Ref<CommandPool> commandPool = CreateRef<CommandPool>(this);
-		CmdPools[threadID] = commandPool;
-
-		SEDX_CORE_INFO("Created new command pool for thread {}", std::hash<std::thread::id>{}(threadID));
-
-		return commandPool;
 	}
 	*/
 
@@ -1968,8 +1920,7 @@ namespace SceneryEditorX
 	 */
     void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer, const VkQueue queue) const
     {
-        VkDevice vulkanDevice = gfxEngine->Get()->GetLogicDevice()->GetDevice();
-
+        auto device = RenderContext::GetCurrentDevice()->GetDevice();
         if (cmdBuffer == VK_NULL_HANDLE)
         {
             SEDX_CORE_WARN_TAG("Graphics Engine", "Attempted to flush a null command buffer");
@@ -1989,7 +1940,7 @@ namespace SceneryEditorX
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
         VkFence fence;
-        result = vkCreateFence(vulkanDevice, &fenceInfo, nullptr, &fence);
+        result = vkCreateFence(device, &fenceInfo, nullptr, &fence);
         if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create fence! Error: {}", static_cast<int>(result));
@@ -2006,20 +1957,20 @@ namespace SceneryEditorX
         if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to submit command buffer! Error: {}", static_cast<int>(result));
-            vkDestroyFence(vulkanDevice, fence, nullptr);
+            vkDestroyFence(device, fence, nullptr);
             return;
         }
 
         /// Wait for the fence
-        result = vkWaitForFences(vulkanDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
+        result = vkWaitForFences(device, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
         if (result != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to wait for fence! Error: {}", static_cast<int>(result));
         }
 
         /// Clean up
-        vkDestroyFence(vulkanDevice, fence, nullptr);
-        vkFreeCommandBuffers(vulkanDevice, GraphicsCmdPool, 1, &cmdBuffer);
+        vkDestroyFence(device, fence, nullptr);
+        vkFreeCommandBuffers(device, GraphicsCmdPool, 1, &cmdBuffer);
     }
 
 } // namespace SceneryEditorX
