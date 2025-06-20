@@ -207,21 +207,6 @@ extern int getBPP(VkFormat format);
 
 /// -------------------------------------------------------
 
-enum class ShaderSourceLanguage : uint8_t
-{
-	GLSL,
-	HLSL,
-	SPV,
-};
-
-enum class ShadingLanguage : uint8_t
-{
-	GLSL,
-	HLSL,
-};
-
-/// -------------------------------------------------------
-
 /**
  * @brief Get the string representation of a Vulkan debug message severity.
  * @param severity The Vulkan debug message severity.
@@ -278,9 +263,6 @@ const char* vkQueueFlagsString(VkQueueFlags flags);
  */
 const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags);
 
-
-//std::vector<char> CompileShader(const std::filesystem::path &path);
-
 /// -------------------------------------------------------
 
 inline float HaltonSeq(uint32_t i, const uint32_t b)
@@ -297,11 +279,6 @@ inline float HaltonSeq(uint32_t i, const uint32_t b)
 
     return r;
 }
-
-/// -------------------------------------------------------
-
-//typedef VkResult result;
-//const result VK_SUCCESS_RESULT = VK_SUCCESS;
 
 /// -------------------------------------------------------
 

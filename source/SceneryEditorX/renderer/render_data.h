@@ -180,11 +180,6 @@ namespace SceneryEditorX
     struct Extensions
     {
 
-
-
-
-
-
         /**
          * @brief List of extension names that are required by the application
 	     */
@@ -199,10 +194,6 @@ namespace SceneryEditorX
 
         const char* availableExtensions = {};
 
-
-
-
-
         /**
          * @brief List of extensions available at the instance level.
          *	@result A vector of VkExtensionProperties containing information about each available instance extension.
@@ -215,41 +206,6 @@ namespace SceneryEditorX
          */
         uint32_t extensionCount = 0;
     };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     /// -----------------------------------------------------------
 

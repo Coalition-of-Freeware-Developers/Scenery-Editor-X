@@ -7,36 +7,51 @@
 * -------------------------------------------------------
 * project.cpp
 * -------------------------------------------------------
-* Created: 26/5/2025
+* Created: 7/5/2025
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/scene/asset_manager.h>
 
-/// ---------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    Project::Project()
+	Project::Project()
 	{
-    }
+	    // Initialize the project
+	}
+	Project::~Project()
+	{
+	    // Cleanup the project
+	}
 
-    Project::~Project() = default;
-
-	void Project::SetActive(const Ref<Project> &project)
+    void Project::SetActive(Ref<Project> project)
     {
-        if (currentProject)
-        {
-
-        }
-
-		currentProject = project;
-		if (currentProject)
+        if (activeProject)
 		{
-            //assetMgr = Ref<AssetManager>::Create(currentProject->GetPath() + "/assets/");
+            //TODO: Add code to handle the previous active project if needed
+		}
+
+		activeProject = project;
+        if (activeProject)
+        {
+            
         }
+
     }
 
-}
+    void Project::CreateProject(std::string name, std::filesystem::path path)
+    {
+    }
 
-/// ---------------------------------------------------------
+    void Project::Load(const std::filesystem::path &InPath)
+    {
+    }
+
+    void Project::Save(const std::filesystem::path &InPath)
+    {
+    }
+
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------

@@ -92,6 +92,7 @@ ADD_DEFINITIONS(
 MESSAGE(VCPKG_ROOT = " ${CMAKE_TOOLCHAIN_FILE} ")
 
 # --------------------------------
+
 IF(CMAKE_GENERATOR MATCHES "Visual Studio")
     ADD_COMPILE_OPTIONS(${COMMON_COMPILE_OPTIONS})
     SET(COMPILE_FLAGS ${COMMON_COMPILE_FLAGS})
@@ -299,14 +300,14 @@ TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEdit
 TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/startup_pch.h)
 
 SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
-SET_PROPERTY(TARGET FormatTester RefTests SettingsTest PROPERTY FOLDER "Tests")
+SET_PROPERTY(TARGET FormatTester MemoryAllocatorTests RefTests SettingsTest PROPERTY FOLDER "Tests")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
 SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
 SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore FormatTester RefTests SettingsTest CrashHandler Catch2 Catch2WithMain imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore FormatTester MemoryAllocatorTests RefTests SettingsTest CrashHandler Catch2 Catch2WithMain imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

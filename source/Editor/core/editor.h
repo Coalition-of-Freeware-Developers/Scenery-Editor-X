@@ -11,11 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GraphicsEngine/vulkan/render_data.h>
-#include <GraphicsEngine/vulkan/vk_cmd_buffers.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
-#include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/renderer/vulkan/render_data.h>
+//#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
+#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/core/window/window.h>
 //#include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
@@ -37,7 +38,7 @@ namespace SceneryEditorX
 	 * UI system, asset management, and viewport rendering. It handles initialization,
 	 * main loop execution, frame rendering, and resource management.
 	 */
-	class EditorApplication : public RefCounted
+	class EditorApplication
 	{
 	public:
         /**
@@ -52,7 +53,7 @@ namespace SceneryEditorX
          * 
          * Cleans up resources and ensures proper shutdown of the application.
          */
-        ~EditorApplication();
+        virtual ~EditorApplication();
 
         /**
          * @brief Initializes the editor components.
@@ -60,7 +61,7 @@ namespace SceneryEditorX
          * Sets up the graphics engine, UI system, and other core components
          * required for the editor to function properly.
          */
-        void InitEditor(const Ref<Window> &window);
+        void InitEditor();
         
         /**
          * @brief Starts the editor application.
@@ -103,10 +104,13 @@ namespace SceneryEditorX
          * 
          * @return A reference to the Window object managed by the graphics engine.
          */
-        Ref<Window> GetWindow() { return gfxEngine.GetWindow(); }
+        //Ref<Window> GetWindow() { return GraphicsEngine::GetContext(). GetWindow(); }
 
 
 	private:
+	    void UpdateWindowTitle(const std::string& sceneName);
+
+        using GraphicsEngine = Renderer;
         /**
          * @brief Graphics engine instance for rendering.
          * 
@@ -117,14 +121,14 @@ namespace SceneryEditorX
         /**
          * @brief Command buffer for rendering operations.
          */
-        Ref<CommandBuffer> cmdBuffer;
+        //Ref<CommandBuffer> cmdBuffer;
         
         /**
          * @brief Reference to the swap chain for rendering.
          * 
          * Manages the presentation of rendered frames to the display.
          */
-        Ref<SwapChain> vkSwapChain;
+        //Ref<SwapChain> vkSwapChain;
 
         //AssetManager assetManager;
         
@@ -224,7 +228,7 @@ namespace SceneryEditorX
          * Rebuilds swap chain images, framebuffers, and other resources
          * needed for rendering when the rendering context changes.
          */
-        void RecreateFrameResources();
+        //void RecreateFrameResources();
     };
 
 } // namespace SceneryEditorX

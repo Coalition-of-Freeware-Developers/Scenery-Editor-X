@@ -12,6 +12,7 @@
 */
 #include <SceneryEditorX/core/application.h>
 #include <SceneryEditorX/logging/logging.hpp>
+// #include <SceneryEditorX/renderer/renderer.h>
 
 /// -------------------------------------------------------
 
@@ -52,10 +53,19 @@ namespace SceneryEditorX
         }
 
         if (!appData.appName.empty())
+        {
             m_Window->SetTitle(appData.appName);
+            SEDX_CORE_INFO_TAG("Application", "Window title Changed to {}", appData.appName);  
+        }
 
+		SEDX_CORE_INFO("Initializing Window");
+        /// Initialize the window first
+        m_Window->Init();
+
+        SEDX_CORE_INFO("Window Initialized");
         /// Update window properties
         m_Window->ApplyChanges();
+        SEDX_CORE_INFO("Window changes applied");
 
         isRunning   = true;
         isMinimized = false;
@@ -63,7 +73,9 @@ namespace SceneryEditorX
 
     Application::~Application()
     {
-		Renderer::Shutdown();
+        m_Window->~Window();
+        // TODO: Re-enable Renderer::Shutdown() once the renderer header issue is resolved
+        //Renderer::Shutdown();
     }
 
     void Application::Run()

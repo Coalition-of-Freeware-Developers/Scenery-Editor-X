@@ -14,7 +14,7 @@
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/core/memory.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <vma/vk_mem_alloc.h>
 
 /// -------------------------------------------------------
@@ -750,7 +750,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
 
         uint64_t totalAllocation = 0;
         uint64_t totalBudget = 0;
@@ -842,7 +842,7 @@ namespace SceneryEditorX
         allocatorInfo.vulkanApiVersion = apiVersion; 
         allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
         allocatorInfo.device = device->GetDevice();
-        allocatorInfo.instance = GraphicsEngine::GetInstance();
+        allocatorInfo.instance = RenderContext::GetInstance();
 
         /// Set up Vulkan function pointers properly for VMA
         VmaVulkanFunctions vulkanFunctions = {};
@@ -979,7 +979,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
 
         SEDX_CORE_INFO("----------- VULKAN MEMORY ALLOCATION STATS -----------");
         SEDX_CORE_INFO("Tag: {}", Tag_);
@@ -1161,7 +1161,7 @@ namespace SceneryEditorX
 
         /// Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
-        vkGetPhysicalDeviceMemoryProperties(GraphicsEngine::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
+        vkGetPhysicalDeviceMemoryProperties(RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(), &memProps);
 
         uint64_t totalBudget = 0;
         uint64_t totalUsage = 0;

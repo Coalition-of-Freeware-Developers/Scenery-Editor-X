@@ -11,14 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/buffers/buffer_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 #ifdef CreateDirectory
 #undef CreateDirectory
 #undef DeleteFile
 #undef MoveFile
 #undef CopyFile
 #endif
-
 #include <functional>
 #include <filesystem>
 

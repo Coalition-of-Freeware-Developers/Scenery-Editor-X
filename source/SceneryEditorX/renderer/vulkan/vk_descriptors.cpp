@@ -10,14 +10,15 @@
 * Created: 14/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
-#include <SceneryEditorX/logging/asserts.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+    /// -------------------------------------------------------
 
     VkDescriptorSet CreateDescriptor(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout)
     {
@@ -40,9 +41,10 @@ namespace SceneryEditorX
         
         return descriptor_set;
     }
-    
-    void UpdateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, 
-                            VkSampler sampler, VkImageView image_view, VkImageLayout image_layout)
+
+    /// -------------------------------------------------------
+
+    void UpdateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout)
     {
         VkDescriptorImageInfo desc_image[1] = {};
         desc_image[0].sampler = sampler;
@@ -60,6 +62,8 @@ namespace SceneryEditorX
         
         vkUpdateDescriptorSets(device, 1, descriptor_write, 0, nullptr);
     }
+
+    /// -------------------------------------------------------
 
     VkDescriptorSetLayout CreateBindlessDescriptorSetLayout(VkDevice device)
     {
@@ -117,6 +121,8 @@ namespace SceneryEditorX
         return descriptorSetLayout;
     }
 
+    /// -------------------------------------------------------
+
     VkDescriptorPool CreateBindlessDescriptorPool(VkDevice device)
     {
         /// Define the descriptor pool sizes for the different types
@@ -153,7 +159,9 @@ namespace SceneryEditorX
         return descriptorPool;
     }
 
-    void InitializeBindlessResources(VkDevice device, BindlessResources& bindlessResources)
+    /// -------------------------------------------------------
+
+    void InitializeBindlessResources(VkDevice device, BindlessResources &bindlessResources)
     {
         /// Create descriptor set layout for bindless resources
         bindlessResources.bindlessDescriptorSetLayout = CreateBindlessDescriptorSetLayout(device);
@@ -177,7 +185,9 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("Bindless resources initialized successfully");
     }
 
-    void CleanupBindlessResources(VkDevice device, BindlessResources& bindlessResources)
+    /// -------------------------------------------------------
+
+    void CleanupBindlessResources(VkDevice device, BindlessResources &bindlessResources)
     {
         if (bindlessResources.bindlessDescriptorPool != VK_NULL_HANDLE)
 		{
@@ -194,9 +204,9 @@ namespace SceneryEditorX
         bindlessResources.bindlessDescriptorSet = VK_NULL_HANDLE;
     }
 
-    void UpdateBindlessTexture(VkDevice device, const BindlessResources& bindlessResources, 
-                              uint32_t arrayElement, VkSampler sampler, 
-                              VkImageView imageView, VkImageLayout imageLayout)
+    /// -------------------------------------------------------
+
+    void UpdateBindlessTexture(VkDevice device, const BindlessResources &bindlessResources, uint32_t arrayElement, VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout)
     {
         /// Early check if we have a valid descriptor set
         if (bindlessResources.bindlessDescriptorSet == VK_NULL_HANDLE)
@@ -232,9 +242,9 @@ namespace SceneryEditorX
         vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
 
-    void UpdateBindlessStorageBuffer(VkDevice device, const BindlessResources& bindlessResources,
-                                   uint32_t arrayElement, VkBuffer buffer, 
-                                   VkDeviceSize offset, VkDeviceSize range)
+    /// -------------------------------------------------------
+
+    void UpdateBindlessStorageBuffer(VkDevice device, const BindlessResources& bindlessResources, uint32_t arrayElement, VkBuffer buffer,  VkDeviceSize offset, VkDeviceSize range)
     {
         /// Early check if we have a valid descriptor set
         if (bindlessResources.bindlessDescriptorSet == VK_NULL_HANDLE)
@@ -270,6 +280,8 @@ namespace SceneryEditorX
         vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
 
+    /// -------------------------------------------------------
+
     void UpdateBindlessStorageImage(VkDevice device, const BindlessResources& bindlessResources, uint32_t arrayElement, VkImageView imageView, VkImageLayout imageLayout)
     {
         /// Early check if we have a valid descriptor set
@@ -304,6 +316,8 @@ namespace SceneryEditorX
         /// Update the descriptor set
         vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
+
+    /// -------------------------------------------------------
 
 } // namespace SceneryEditorX
 

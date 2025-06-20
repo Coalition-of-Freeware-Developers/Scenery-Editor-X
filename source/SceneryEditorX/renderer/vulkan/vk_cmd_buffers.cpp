@@ -11,18 +11,14 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <vulkan/vulkan.h>
-
-#include "vk_util.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    /// -------------------------------------------------------
-
     CommandResources& CommandBuffer::GetCurrentCommandResources() const
     {
         RenderData renderData;
@@ -78,15 +74,12 @@ namespace SceneryEditorX
     CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : debugName(std::move(debugName))
     {
         /// Get the device from graphics engine
-        auto device = vkDevice;
+        const auto device = vkDevice;
 
         if (count == 0)
-        {
-            /// 0 = one per frame in flight
-            count = data.framesInFlight;
-        }
+            count = data.framesInFlight;	/// 0 = one per frame in flight
 
-		SEDX_CORE_VERIFY(count > 0, "CommandBuffer count must be greater than 0");
+        SEDX_CORE_VERIFY(count > 0, "CommandBuffer count must be greater than 0");
 
         /// Allocate command buffers if count > 0
         if (count > 0)
@@ -134,10 +127,10 @@ namespace SceneryEditorX
     {  
         static Ref<CommandBuffer> cmdBuffersInstance; /// Static instance to ensure a single shared instance  
         if (!cmdBuffersInstance)  
-        {  
+        {
             SEDX_CORE_WARN_TAG("CommandBuffer", "Creating command buffers for the first time");  
             cmdBuffersInstance = CreateRef<CommandBuffer>();  
-        }  
+        }
         return cmdBuffersInstance;  
     }
 

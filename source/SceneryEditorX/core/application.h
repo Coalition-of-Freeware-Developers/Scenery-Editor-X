@@ -27,7 +27,7 @@ namespace SceneryEditorX
     {
     public:
         Application(const AppData &appData);
-		virtual ~Application();
+        virtual ~Application();
 
 		void Run();
         void Stop();

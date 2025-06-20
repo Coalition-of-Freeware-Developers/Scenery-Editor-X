@@ -14,6 +14,8 @@ FILE(GLOB UTILITIES_FILES utils/*.cpp utils/*.h utils/*.hpp)
 FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.comp shaders/*.geom shaders/*.tesc shaders/*.tese)
 FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
 FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
+FILE(GLOB GFX_DEBUG renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
+FILE(GLOB ASSET_FILES asset/*.cpp asset/*.h asset/*.hpp)
 
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
@@ -31,12 +33,13 @@ ADD_LIBRARY(AppCore
 	${LOGGER}
 	${PROJECT}
 	${SCENE}
+	${ASSET_FILES}
 	${PROJECT_CONFIG_FILES}
 	${UTILITIES_FILES}
 	${SCENE_FILES}
 	${SHADER_FILES}
 	${VULKAN_FILES}
-	${PROJECT_CONFIG_FILES}
+	${GFX_DEBUG}
     # --------------------------------
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 	core/application.cpp
@@ -100,37 +103,40 @@ ADD_LIBRARY(AppCore
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
 	# --------------------------------
-	renderer/buffers/index_buffer.h
-	renderer/buffers/index_buffer.cpp
-	renderer/buffers/uniform_buffer.h
-	renderer/buffers/uniform_buffer.cpp
-	renderer/buffers/vertex_buffer.cpp
-	renderer/buffers/vertex_buffer.h
+	#renderer/buffers/index_buffer.h
+	#renderer/buffers/index_buffer.cpp
+	#renderer/buffers/uniform_buffer.h
+	#renderer/buffers/uniform_buffer.cpp
+	#renderer/buffers/vertex_buffer.cpp
+	#renderer/buffers/vertex_buffer.h
 	# --------------------------------
-	ui/colors.h
-	ui/fonts.h
-	ui/ui_context.cpp
-	ui/ui_context.h
-	ui/styles.cpp
-	ui/ui.cpp
-	ui/ui.h
-	ui/ui_manager.h
-	ui/ui_globals.cpp
-	ui/panels/content_browser.cpp
-	ui/panels/layer_stack.cpp
-	ui/panels/loading_radial.cpp
-	ui/panels/menu_bar.cpp
-	ui/panels/settings_panel.cpp
-	ui/actions/modals.cpp
-	ui/actions/viewports.cpp
+	#ui/colors.h
+	#ui/fonts.h
+	#ui/ui_context.cpp
+	#ui/ui_context.h
+	#ui/styles.cpp
+	#ui/ui.cpp
+	#ui/ui.h
+	#ui/ui_manager.h
+	#ui/ui_globals.cpp
+	#ui/panels/content_browser.cpp
+	#ui/panels/layer_stack.cpp
+	#ui/panels/loading_radial.cpp
+	#ui/panels/menu_bar.cpp
+	#ui/panels/settings_panel.cpp
+	#ui/actions/modals.cpp
+	#ui/actions/viewports.cpp
     # --------------------------------
     resource.h
 )
 
 # --------------------------------
-
-SOURCE_GROUP("Core" FILES
+SOURCE_GROUP("SceneryEditorX/Asset" FILES
+	${ASSET_FILES}
+)
+SOURCE_GROUP("SceneryEditorX/Core" FILES
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
+	${LOGGER}
 	core/base.hpp
 	core/memory.cpp
 	core/memory.h
@@ -138,32 +144,32 @@ SOURCE_GROUP("Core" FILES
 	core/pointers.h
 	core/layer.cpp
 	core/layer.h
+	core/time.cpp
+	core/time.h
 	core/version.h
 	core/window/monitor_data.cpp
 	core/window/monitor_data.h
 	core/window/icon.h
 	core/window/window.cpp
 	core/window/window.h
-)
-SOURCE_GROUP("Core/Application" FILES
 	core/application.cpp
 	core/application.h
 	core/application_data.h
 	core/initializer.cpp
 	core/initializer.h
 )
-SOURCE_GROUP("Core/Settings" FILES
+SOURCE_GROUP("SceneryEditorX/Platform/Settings" FILES
 	platform/settings.cpp
 	platform/settings.h
 )
-SOURCE_GROUP("Core/Utils/Encoding" FILES
+SOURCE_GROUP("SceneryEditorX/Encoding" FILES
 	core/encoding.cpp
 	core/encoding.hpp
 )
-SOURCE_GROUP("Core/Utils/Serialization" FILES
+SOURCE_GROUP("SceneryEditorX/Serialization" FILES
 	core/serializer.hpp
 )
-SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer/Vulkan/Buffers" FILES
 	renderer/buffers/index_buffer.h
 	renderer/buffers/index_buffer.cpp
 	renderer/buffers/uniform_buffer.h
@@ -171,21 +177,11 @@ SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	renderer/buffers/vertex_buffer.cpp
 	renderer/buffers/vertex_buffer.h
 )
-SOURCE_GROUP("Core/Time" FILES
-	core/time.cpp
-	core/time.h
-)
-SOURCE_GROUP("Core/Utils" FILES
+SOURCE_GROUP("SceneryEditorX/Utilities" FILES
 	core/transforms.cpp
 	platform/editor_config.hpp
 	platform/platform_states.h
 	platform/system_detection.h
-)
-SOURCE_GROUP("Core/Utils/Steam" FILES
-	core/steam_parser.cpp
-	core/steam_parser.h
-)
-SOURCE_GROUP("Core/Utils/File Utils" FILES
 	platform/file_manager.cpp
 	platform/file_manager.hpp
 	platform/file_dialog.cpp
@@ -194,13 +190,14 @@ SOURCE_GROUP("Core/Utils/File Utils" FILES
 	platform/cfg_loader.h
 	platform/lock_file.cpp
 )
-SOURCE_GROUP("Project" FILES
+SOURCE_GROUP("SceneryEditorX/Steam" FILES
+	core/steam_parser.cpp
+	core/steam_parser.h
+)
+SOURCE_GROUP("SceneryEditorX/Project" FILES
 	${PROJECT}
 )
-SOURCE_GROUP("Logger" FILES
-	${LOGGER}
-)
-SOURCE_GROUP("Renderer" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer" FILES
 	renderer/primitives.cpp
 	renderer/primitives.h
 	renderer/renderer.cpp
@@ -215,14 +212,17 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/xp_texture.cpp
 	renderer/xp_texture.h
 )
-SOURCE_GROUP("Renderer/Vulkan" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer/Vulkan" FILES
 	${VULKAN_FILES}
 )
-SOURCE_GROUP("Scene" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer/Debug" FILES
+	${GFX_DEBUG}
+)
+SOURCE_GROUP("SceneryEditorX/Scene" FILES
 	${SCENE}
 	${SCENE_FILES}
 )
-SOURCE_GROUP("Renderer/Shaders" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer/Shaders" FILES
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
 	renderer/shaders/shader_resource.cpp
@@ -230,10 +230,10 @@ SOURCE_GROUP("Renderer/Shaders" FILES
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
 )
-SOURCE_GROUP("Utilities" FILES
+SOURCE_GROUP("SceneryEditorX/Utilities" FILES
 	${UTILITIES_FILES}
 )
-SOURCE_GROUP("Renderer/UI" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer/UI" FILES
 	ui/colors.h
 	ui/fonts.h
 	ui/ui_context.cpp
@@ -244,7 +244,7 @@ SOURCE_GROUP("Renderer/UI" FILES
 	ui/ui_manager.h
 	ui/ui_globals.cpp
 )
-SOURCE_GROUP("Renderer/UI/Panels" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer/UI/Panels" FILES
 	ui/panels/about.cpp
 	ui/panels/content_browser.cpp
 	ui/panels/layer_stack.cpp
@@ -252,27 +252,26 @@ SOURCE_GROUP("Renderer/UI/Panels" FILES
 	ui/panels/menu_bar.cpp
 	ui/panels/settings_panel.cpp
 )
-SOURCE_GROUP("Renderer/UI/Actions" FILES
+SOURCE_GROUP("SceneryEditorX/Renderer/UI/Actions" FILES
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
 )
-SOURCE_GROUP("Resources" FILES
+SOURCE_GROUP("SceneryEditorX/Resources" FILES
     resource.h
 )
-SOURCE_GROUP("Resources/Shaders" FILES
+SOURCE_GROUP("SceneryEditorX/Resources/Shaders" FILES
 	${SHADER_FILES}
 )
-SOURCE_GROUP("Resources/Icons" FILES
+SOURCE_GROUP("SceneryEditorX/Resources/Icons" FILES
     ${ICON_FILES}
 )
-SOURCE_GROUP("Resources/Fonts" FILES
+SOURCE_GROUP("SceneryEditorX/Resources/Fonts" FILES
     ${FONT_FILES}
 )
 
 # --------------------------------
 # SHADERS
 # --------------------------------
-
 IF(WIN32)
     cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 ELSE()

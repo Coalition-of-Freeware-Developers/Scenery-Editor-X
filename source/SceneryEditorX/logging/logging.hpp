@@ -20,7 +20,7 @@
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 #define SEDX_ASSERT_MESSAGE_BOX (!SEDX_RELEASE && SEDX_PLATFORM_WINDOWS)
 
@@ -30,7 +30,7 @@
 	#endif
 #endif
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -102,7 +102,7 @@ namespace SceneryEditorX
 	        Level LevelFilter = Level::Trace;
 	    };
 	
-	    // ------------------------------------------------
+	    /// ------------------------------------------------
 	
 	    /**
 	     * @fn Init
@@ -378,7 +378,6 @@ namespace SceneryEditorX
 	template <typename... Args>
 	void Log::PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args &&...args)
 #endif
-
 	{
 	    auto &detail = EnabledTags_[""];
 	    if (detail.Enabled && detail.LevelFilter <= level)

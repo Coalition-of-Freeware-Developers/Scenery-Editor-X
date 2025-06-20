@@ -10,7 +10,7 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/scene/texture.h>
 #include <stb_image.h>
@@ -45,9 +45,6 @@ namespace SceneryEditorX
         
         /// Get Vulkan resources
         RenderData renderData;
-        vkDevice = GraphicsEngine::GetCurrentDevice();
-        vkPhysDevice = vkDevice->GetPhysicalDevice();
-
         if (auto configPtr = config.Lock())
         {
             std::string actualPath = path;
@@ -88,29 +85,29 @@ namespace SceneryEditorX
 
     void TextureAsset::Unload()
     {
-        if (vkDevice)
+        if (auto device = RenderContext::GetCurrentDevice()->GetDevice())
         {
             if (textureSampler != VK_NULL_HANDLE)
             {
-                vkDestroySampler(vkDevice->GetDevice(), textureSampler, nullptr);
+                vkDestroySampler(device, textureSampler, nullptr);
                 textureSampler = VK_NULL_HANDLE;
             }
             
             if (textureImageView != VK_NULL_HANDLE)
             {
-                vkDestroyImageView(vkDevice->GetDevice(), textureImageView, nullptr);
+                vkDestroyImageView(device, textureImageView, nullptr);
                 textureImageView = VK_NULL_HANDLE;
             }
             
             if (textureImage != VK_NULL_HANDLE)
             {
-                vkDestroyImage(vkDevice->GetDevice(), textureImage, nullptr);
+                vkDestroyImage(device, textureImage, nullptr);
                 textureImage = VK_NULL_HANDLE;
             }
             
             if (textureImageMemory != VK_NULL_HANDLE)
             {
-                vkFreeMemory(vkDevice->GetDevice(), textureImageMemory, nullptr);
+                vkFreeMemory(device, textureImageMemory, nullptr);
                 textureImageMemory = VK_NULL_HANDLE;
             }
         }
@@ -137,24 +134,29 @@ namespace SceneryEditorX
         return textureName;
     }
 
+    /*
     void TextureAsset::LoadWithAllocator()
     {
         // Load texture using the memory allocator
         // This is a placeholder implementation
         // Actual implementation will depend on the specific requirements and libraries used
     }
+	*/
 
+    /*
     void TextureAsset::UnloadWithAllocator()
     {
         // Unload texture using the memory allocator
         // This is a placeholder implementation
         // Actual implementation will depend on the specific requirements and libraries used
     }
+	*/
 
     void TextureAsset::CreateTextureSampler()
 	{
+        auto physDevice = RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->Selected().physicalDevice;
 	    VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(vkPhysDevice->GetGPUDevices(), &properties);
+        vkGetPhysicalDeviceProperties(physDevice, &properties);
 	
 	    VkSamplerCreateInfo samplerInfo{};
 	    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -170,8 +172,9 @@ namespace SceneryEditorX
 	    samplerInfo.compareEnable = VK_FALSE;
 	    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	
-	    if (vkCreateSampler(vkDevice->GetDevice(), &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
+
+		auto device = RenderContext::GetCurrentDevice()->GetDevice();
+        if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create texture sampler!");
     }
 
@@ -189,6 +192,7 @@ namespace SceneryEditorX
         }
         
         VkDeviceSize imageSize = data.size();
+        RenderData *renderData = nullptr;
         renderData->mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
         
         /// Create a staging buffer
@@ -201,39 +205,35 @@ namespace SceneryEditorX
         bufferInfo.size = imageSize;
         bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        
-        if (vkCreateBuffer(vkDevice->GetDevice(), &bufferInfo, nullptr, &stagingBuffer) != VK_SUCCESS)
-        {
+
+		const auto device = RenderContext::GetCurrentDevice()->GetDevice();
+        if (vkCreateBuffer(device, &bufferInfo, nullptr, &stagingBuffer) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create staging buffer for texture");
-            return;
-        }
-        
+
         /// Get memory requirements
         VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(vkDevice->GetDevice(), stagingBuffer, &memRequirements);
+        vkGetBufferMemoryRequirements(device, stagingBuffer, &memRequirements);
         
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = vkDevice->FindMemoryType(
-            memRequirements.memoryTypeBits, 
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        );
+        allocInfo.memoryTypeIndex = RenderContext::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         
-        if (vkAllocateMemory(vkDevice->GetDevice(), &allocInfo, nullptr, &stagingBufferMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &stagingBufferMemory) != VK_SUCCESS)
         {
-            vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
+            vkDestroyBuffer(device, stagingBuffer, nullptr);
             SEDX_CORE_ERROR("Failed to allocate staging buffer memory for texture");
             return;
         }
         
-        vkBindBufferMemory(vkDevice->GetDevice(), stagingBuffer, stagingBufferMemory, 0);
+        vkBindBufferMemory(device, stagingBuffer, stagingBufferMemory, 0);
         
         /// Copy data to staging buffer
         void *mappedData;
-        vkMapMemory(vkDevice->GetDevice(), stagingBufferMemory, 0, imageSize, 0, &mappedData);
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &mappedData);
         memcpy(mappedData, data.data(), imageSize);
-        vkUnmapMemory(vkDevice->GetDevice(), stagingBufferMemory);
+        vkUnmapMemory(device, stagingBufferMemory);
         
         /// Create the texture image
         VkImageCreateInfo imageInfo{};
@@ -252,46 +252,44 @@ namespace SceneryEditorX
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         
         /// Create the image
-        if (vkCreateImage(vkDevice->GetDevice(), &imageInfo, nullptr, &textureImage) != VK_SUCCESS)
+        if (vkCreateImage(device, &imageInfo, nullptr, &textureImage) != VK_SUCCESS)
         {
-            vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
-            vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
+            vkDestroyBuffer(device, stagingBuffer, nullptr);
+            vkFreeMemory(device, stagingBufferMemory, nullptr);
             SEDX_CORE_ERROR("Failed to create texture image");
             return;
         }
         
         /// Allocate memory for the image
-        vkGetImageMemoryRequirements(vkDevice->GetDevice(), textureImage, &memRequirements);
+        vkGetImageMemoryRequirements(device, textureImage, &memRequirements);
         
         VkMemoryAllocateInfo imageAllocInfo{};
         imageAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         imageAllocInfo.allocationSize = memRequirements.size;
-        imageAllocInfo.memoryTypeIndex = vkDevice->FindMemoryType(
-            memRequirements.memoryTypeBits,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        );
+        imageAllocInfo.memoryTypeIndex = RenderContext::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         
-        if (vkAllocateMemory(vkDevice->GetDevice(), &imageAllocInfo, nullptr, &textureImageMemory) != VK_SUCCESS)
+        if (vkAllocateMemory(device, &imageAllocInfo, nullptr, &textureImageMemory) != VK_SUCCESS)
         {
-            vkDestroyImage(vkDevice->GetDevice(), textureImage, nullptr);
-            vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
-            vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
+            vkDestroyImage(device, textureImage, nullptr);
+            vkDestroyBuffer(device, stagingBuffer, nullptr);
+            vkFreeMemory(device, stagingBufferMemory, nullptr);
             SEDX_CORE_ERROR("Failed to allocate texture image memory");
             return;
         }
         
-        vkBindImageMemory(vkDevice->GetDevice(), textureImage, textureImageMemory, 0);
+        vkBindImageMemory(device, textureImage, textureImageMemory, 0);
         
         // TODO: Transition image layout, copy buffer to image, and generate mipmaps
         // For now this is a simplified version without proper layout transitions
         
         /// Clean up staging resources
-        vkDestroyBuffer(vkDevice->GetDevice(), stagingBuffer, nullptr);
-        vkFreeMemory(vkDevice->GetDevice(), stagingBufferMemory, nullptr);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
 	}
 	
 	VkImageView TextureAsset::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, int mipLevels) const
     {
+        const auto device = RenderContext::GetCurrentDevice()->GetDevice();
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
@@ -304,9 +302,9 @@ namespace SceneryEditorX
         viewInfo.subresourceRange.layerCount = 1;
 
         VkImageView imageView;
-        if (vkCreateImageView(vkDevice->GetDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+        if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR("Failed to create texture image view!");
+            SEDX_CORE_ERROR_TAG("Texture", "Failed to create texture image view!");
             return VK_NULL_HANDLE;
         }
 

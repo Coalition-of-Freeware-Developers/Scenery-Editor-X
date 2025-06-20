@@ -10,17 +10,20 @@
 * Created: 25/3/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/core/application.h>
+
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imconfig.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
+#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include <SceneryEditorX/ui/ui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 // Implementation of missing ImGui functions to fix linker errors
 // Note: This is a compatibility layer to ensure ImGui works correctly
@@ -63,13 +66,14 @@ extern "C"
 }
 */
 
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
 	/// Initialize static members
 	bool GUI::visible = true;
 	const std::string GUI::defaultFont = "Roboto-Regular";
-
+    static std::vector<VkCommandBuffer> uiCommandBuffers;
 
 	/// Additional ImGui initialization functions can be placed here if needed
 	void initImGuiExtensions()
@@ -85,8 +89,11 @@ namespace SceneryEditorX::UI
         CleanUp();
     }
 
+    /// -------------------------------------------------------
+
     bool GUI::CreateDescriptorPool()
     {
+        auto device = RenderContext::GetCurrentDevice()->GetDevice();
         if (!device)
         {
             SEDX_CORE_ERROR("Cannot create ImGui descriptor pool: device is null");
@@ -113,7 +120,7 @@ namespace SceneryEditorX::UI
         poolInfo.poolSizeCount = std::size(poolSizes);
         poolInfo.pPoolSizes = poolSizes;
 
-        if (vkCreateDescriptorPool(device->GetDevice(), &poolInfo, nullptr, &imguiPool) != VK_SUCCESS)
+        if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &imguiPool) != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("Failed to create ImGui descriptor pool!");
             return false;
@@ -122,8 +129,11 @@ namespace SceneryEditorX::UI
         return true;
     }
 
+    /// -------------------------------------------------------
+
     void GUI::UpdateDpiScale()
     {
+        const auto window = static_cast<GLFWwindow *>(Application::Get().GetWindow().GetWindow());
         /// Get content scale from GLFW
         float xScale, yScale;
         glfwGetWindowContentScale(window, &xScale, &yScale);
@@ -137,105 +147,147 @@ namespace SceneryEditorX::UI
             dpiFactor = xDpi;
         }
         else
-        {
             dpiFactor = xScale;
-        }
 
         /// Update ImGui style to reflect DPI changes
         ImGuiStyle &style = ImGui::GetStyle();
         style.ScaleAllSizes(dpiFactor);
     }
 
-    bool GUI::InitGUI(GLFWwindow *window, GraphicsEngine &renderer)
+    /// -------------------------------------------------------
+
+    bool GUI::InitGUI()
     {
-        this->window = window;
-        this->renderer = &renderer;
-
-        device = GraphicsEngine::GetCurrentDevice().Get();
-        swapchain = renderer.GetSwapChain().Get();
-
+        auto device = RenderContext::GetCurrentDevice()->GetDevice();
+        auto window = static_cast<GLFWwindow *>(Application::Get().GetWindow().GetWindow());
         if (initialized)
         {
             SEDX_CORE_WARN("GUI already initialized");
             return true;
         }
 
-        /// Get essential Vulkan objects
-        //device = GraphicsEngine::GetDevice()->GetDevice();
-        swapchain = renderer.GetSwapChain().Get();
-
+		/*
         if (!device || !swapchain)
         {
             SEDX_CORE_ERROR("Failed to get valid Vulkan device or swapchain");
             return false;
         }
+        */
 
         /// Create descriptor pool
         if (!CreateDescriptorPool())
-        {
             return false;
-        }
 
         /// Initialize ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGuiIO &io = ImGui::GetIO();
+        ImGuiIO &io = ImGui::GetIO(); (void)io;
 
         /// Configure ImGui features
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   /// Enable docking
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; /// Enable multi-viewport
-        io.ConfigDockingWithShift = false;                  /// Don't require shift for docking
-        io.ConfigWindowsResizeFromEdges = true;             /// Enable resizing windows from edges
-        io.ConfigWindowsMoveFromTitleBarOnly = false;       /// Allow moving windows from anywhere
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;   /// Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;		/// Enable docking
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;		/// Enable multi-viewport
+        io.ConfigDockingWithShift = false;						/// Don't require shift for docking
+        io.ConfigWindowsResizeFromEdges = true;					/// Enable resizing windows from edges
+        io.ConfigWindowsMoveFromTitleBarOnly = false;			/// Allow moving windows from anywhere
+
+        /// Set ImGui style and fonts
+        GUI::SetStyle();
+        GUI::SetFonts();
 
         /// Initialize GLFW backend
         ImGui_ImplGlfw_InitForVulkan(window, true);
+		
+        /// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+        ImGuiStyle &style = ImGui::GetStyle();
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            style.WindowRounding = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        }
+        style.Colors[ImGuiCol_WindowBg] = ImVec4(0.15f, 0.15f, 0.15f, style.Colors[ImGuiCol_WindowBg].w);
 
-        /// Get queue family info
-        const VulkanDevice *vkDevice = GraphicsEngine::GetCurrentDevice().Get();
-        //const QueueFamilyIndices indices = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// GUI Descriptor Pool Creation
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        VkDescriptorPool descriptorPool;
+        VkDescriptorPoolSize pool_sizes[] = {{VK_DESCRIPTOR_TYPE_SAMPLER, 100},
+                                             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
+                                             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100},
+                                             {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100},
+                                             {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100},
+                                             {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100},
+                                             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100},
+                                             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100},
+                                             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100},
+                                             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100},
+                                             {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100}};
+
+
+		VkDescriptorPoolCreateInfo pool_info = {};
+        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        pool_info.maxSets = 100 * IM_ARRAYSIZE(pool_sizes);
+        pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+        pool_info.pPoolSizes = pool_sizes;
+        VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptorPool))
+
+        /// -------------------------------------------------------
+
         RenderData renderData;
+        auto physDevice = RenderContext::GetCurrentDevice()->GetPhysicalDevice();
+        SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
 
-        /// Initialize Vulkan backend
+		ImGui_ImplGlfw_InitForVulkan(window, true);
         ImGui_ImplVulkan_InitInfo info{};
-        info.Instance = GraphicsEngine::GetInstance();
-        info.PhysicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
-        info.Device = device->GetDevice();
-        info.QueueFamily = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
+        info.Instance = RenderContext::GetInstance();
+        info.PhysicalDevice = physDevice->Selected().physicalDevice;
+        info.Device = device;
+        info.QueueFamily = physDevice->GetQueueFamilyIndices().GetGraphicsFamily();
+        info.Queue = RenderContext::GetCurrentDevice()->GetGraphicsQueue();
         info.DescriptorPool = imguiPool;
-        info.RenderPass = renderer.GetRenderPass();
-        info.MinImageCount = 2;
-        info.ImageCount = renderData.imageIndex;
-        info.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
+        info.PipelineCache = nullptr;
         info.Allocator = nullptr;
+        info.MinImageCount = 2;
+        info.ImageCount = swapChain.GetSwapChainImageCount();
+        info.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
+#if defined (VK_VERSION_1_2) || defined (VK_VERSION_1_3) || defined (VK_VERSION_1_4)
+        info.UseDynamicRendering = true;
+#else
+        info.UseDynamicRendering = false; /// Dynamic rendering requires Vulkan 1.3 or higher
+        info.RenderPass = renderData.renderPass; /// Use a valid render pass if dynamic rendering is not available
+#endif
+        info.CheckVkResultFn = VulkanCheckResult;
+
+        /*
         info.CheckVkResultFn = [](const VkResult result)
         {
             if (result != VK_SUCCESS)
-                SEDX_CORE_ERROR("ImGui Vulkan Error: {}", static_cast<int>(result));
+                SEDX_CORE_ERROR("Vulkan UI Error: {}", static_cast<int>(result));
         };
+        */
 
         /// Initialize Vulkan implementation
-        if (!ImGui_ImplVulkan_Init(&info))
+        ImGui_ImplVulkan_Init(&info);
+
+
         {
-            SEDX_CORE_ERROR("Failed to initialize ImGui Vulkan implementation");
-            return false;
+            /// Font upload objects are now handled by ImGui internally
+			/// Upload fonts to GPU
+			//VkCommandBuffer commandBuffer = renderer.BeginSingleTimeCommands();
+			//renderer.EndSingleTimeCommands(commandBuffer);
         }
 
-        /// Upload fonts to GPU
-        //VkCommandBuffer commandBuffer = renderer.BeginSingleTimeCommands();
-        //renderer.EndSingleTimeCommands(commandBuffer);
-
         /// Wait for font upload to complete
-        vkDeviceWaitIdle(device->GetDevice());
-
-        /// Font upload objects are now handled by ImGui internally
-
-        /// Set ImGui style and fonts
-        SetStyle();
-        SetFonts();
-
+        vkDeviceWaitIdle(device);
         /// Update DPI scale
         UpdateDpiScale();
+
+		uint32_t framesInFlight = renderData.framesInFlight;
+        uiCommandBuffers.resize(framesInFlight);
+        for (uint32_t i = 0; i < framesInFlight; ++i)
+            uiCommandBuffers[i] = RenderContext::GetCurrentDevice()->CreateUICmdBuffer("UI-CommandBuffer");
 
         initialized = true;
         SEDX_CORE_INFO("ImGui initialized successfully");
@@ -251,6 +303,7 @@ namespace SceneryEditorX::UI
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        //ImGuizmo::BeginFrame();
     }
 
     void GUI::EndFrame() const
@@ -261,11 +314,83 @@ namespace SceneryEditorX::UI
         /// Render the ImGui frame
         ImGui::Render();
 
-        if (activeCommandBuffer != VK_NULL_HANDLE)
-            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
+		SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
+
+        VkClearValue clearValues[2];
+        clearValues[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
+        clearValues[1].depthStencil = {.depth = 1.0f, .stencil = 0};
+
+        uint32_t width	= swapChain.GetWidth();
+        uint32_t height = swapChain.GetHeight();
+
+        uint32_t commandBufferIndex = swapChain.GetBufferIndex();
+
+        VkCommandBufferBeginInfo drawCmdBufInfo = {};
+        drawCmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        drawCmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        drawCmdBufInfo.pNext = nullptr;
+
+        VkCommandBuffer drawCommandBuffer = swapChain.GetActiveDrawCommandBuffer();
+        VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &drawCmdBufInfo))
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.pNext = nullptr;
+		renderPassBeginInfo.renderPass = swapChain.GetRenderPass();
+		renderPassBeginInfo.renderArea.offset.x = 0;
+		renderPassBeginInfo.renderArea.offset.y = 0;
+		renderPassBeginInfo.renderArea.extent.width = width;
+		renderPassBeginInfo.renderArea.extent.height = height;
+		renderPassBeginInfo.clearValueCount = 2; // Color + depth
+		renderPassBeginInfo.pClearValues = clearValues;
+		renderPassBeginInfo.framebuffer = swapChain.GetActiveFramebuffer();
+
+        vkCmdBeginRenderPass(drawCommandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+        VkCommandBufferInheritanceInfo inheritanceInfo = {};
+        inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+        inheritanceInfo.renderPass = swapChain.GetRenderPass();
+        inheritanceInfo.framebuffer = swapChain.GetActiveFramebuffer();
+
+        VkCommandBufferBeginInfo cmdBufInfo = {};
+        cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+        cmdBufInfo.pInheritanceInfo = &inheritanceInfo;
+
+        VK_CHECK_RESULT(vkBeginCommandBuffer(uiCommandBuffers[commandBufferIndex], &cmdBufInfo))
+
+        VkViewport viewport = {};
+		viewport.x = 0.0f;
+		viewport.y = (float)height;
+		viewport.height = -(float)height;
+		viewport.width = (float)width;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		vkCmdSetViewport(uiCommandBuffers[commandBufferIndex], 0, 1, &viewport);
+
+        VkRect2D scissor = {};
+        scissor.extent.width = width;
+        scissor.extent.height = height;
+        scissor.offset.x = 0;
+        scissor.offset.y = 0;
+        vkCmdSetScissor(uiCommandBuffers[commandBufferIndex], 0, 1, &scissor);
+
+        ImDrawData *main_draw_data = ImGui::GetDrawData();
+        ImGui_ImplVulkan_RenderDrawData(main_draw_data, uiCommandBuffers[commandBufferIndex]);
+
+        VK_CHECK_RESULT(vkEndCommandBuffer(uiCommandBuffers[commandBufferIndex]))
+
+        std::vector<VkCommandBuffer> commandBuffers;
+        commandBuffers.push_back(uiCommandBuffers[commandBufferIndex]);
+
+        vkCmdExecuteCommands(drawCommandBuffer, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+
+        vkCmdEndRenderPass(drawCommandBuffer);
+
+        VK_CHECK_RESULT(vkEndCommandBuffer(drawCommandBuffer))
 
         /// Update and render additional platform windows
-        ImGuiIO &io = ImGui::GetIO();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             ImGui::UpdatePlatformWindows();
@@ -273,28 +398,32 @@ namespace SceneryEditorX::UI
         }
     }
 	
-	
+    /// -------------------------------------------------------
+
     void GUI::CleanUp()
     {
+        const auto device = RenderContext::GetCurrentDevice()->GetDevice();
         if (!initialized)
             return;
 
-        vkDeviceWaitIdle(device->GetDevice());
+        vkDeviceWaitIdle(device);
 
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
 
         if (imguiPool != VK_NULL_HANDLE)
         {
-            vkDestroyDescriptorPool(device->GetDevice(), imguiPool, nullptr);
+            vkDestroyDescriptorPool(device, imguiPool, nullptr);
             imguiPool = VK_NULL_HANDLE;
         }
 
         ImGui::DestroyContext();
         initialized = false;
 
-        SEDX_CORE_INFO("ImGui resources cleaned up");
+        SEDX_CORE_INFO("GUI resources cleaned up");
     }
+
+    /// -------------------------------------------------------
 
     void GUI::Resize(uint32_t width, uint32_t height)
     {
@@ -307,6 +436,8 @@ namespace SceneryEditorX::UI
         SEDX_CORE_INFO("GUI resized to {}x{}", width, height);
     }
 
+    /// -------------------------------------------------------
+
     void GUI::Update(float deltaTime) const
     {
         if (!initialized || !visible)
@@ -315,6 +446,7 @@ namespace SceneryEditorX::UI
         /// Any per-frame updates not related to drawing would go here
     }
 
+#ifdef SEDX_DEBUG
     void GUI::ShowDemoWindow(bool *open) const
     {
         if (!initialized || !visible)
@@ -322,94 +454,9 @@ namespace SceneryEditorX::UI
 
         ImGui::ShowDemoWindow(open);
     }
-	
-	/*
-	void GUI::InitGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &renderer)
-	{
-	    // Store the engine reference
-	    this->renderer = &renderer;
-	    this->window = window;
-	
-	    // Create separate descriptor pool for ImGui with FREE_DESCRIPTOR_SET_BIT
-	    VkDescriptorPoolSize pool_sizes[] = {
-	        {VK_DESCRIPTOR_TYPE_SAMPLER, 100},
-	        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
-	        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100},
-	        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100},
-	        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100},
-	        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100},
-	        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100},
-	        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100},
-	        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100},
-	        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100},
-	        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100}
-	    };
-	
-	    VkDescriptorPoolCreateInfo pool_info = {};
-	    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-	    pool_info.maxSets = 100;
-	    pool_info.poolSizeCount = std::size(pool_sizes);
-	    pool_info.pPoolSizes = pool_sizes;
-	
-	    VkDescriptorPool imguiPool;
-	    if (vkCreateDescriptorPool(device->GetDevice(), &pool_info, nullptr, &imguiPool) != VK_SUCCESS)
-	    {
-	        SEDX_CORE_ERROR("Failed to create ImGui descriptor pool!");
-	        return;
-	    }
-	
-	    SceneryEditorX::QueueFamilyIndices indices = device->GetPhysicalDevice()->GetQueueFamilyIndices();
-	
-	    ImGui::CreateContext();
-	    ImGuiIO& io = ImGui::GetIO();
-	    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable docking
-	    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;    // Enable multi-viewport / platform windows
-	    io.ConfigDockingWithShift = false;                     // Don't require shift for docking
-	    io.ConfigWindowsResizeFromEdges = true;                // Enable resizing windows from edges
-	
-	    ImGui_ImplGlfw_InitForVulkan(Window::GetWindow(), true);
-	
-	    ImGui_ImplVulkan_InitInfo info{};
-	    info.ApiVersion = VK_API_VERSION_1_3;
-	    info.Instance = SceneryEditorX::GraphicsEngine::GetInstance();
-	    info.PhysicalDevice = device->GetPhysicalDevice()->GetGPUDevice();
-	    info.Device = device->GetDevice();
-	    info.QueueFamily = indices.graphicsFamily.value();
-	    info.Queue = device->GetGraphicsQueue();
-	    info.DescriptorPool = imguiPool;
-	    info.RenderPass = renderer->GetRenderPass();
-	    //info.Subpass = 0;
-	    info.MinImageCount = swapchain->GetSwapChainImages().size();
-	    info.ImageCount = swapchain->GetSwapChainImages().size();
-	    info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;  /* TODO: Replace when MSAA is implemented properly. #1#
-	    //info.MSAASamples = renderer->msaaSamples;
-	    //info.Allocator = nullptr;
-	    info.UseDynamicRendering = false;
-	    info.CheckVkResultFn = [](const VkResult result)
-	    {
-	        if (result != VK_SUCCESS)
-	        {
-	            SEDX_CORE_ERROR("ImGui Vulkan Error: {}", ToString(result));
-	        }
-	    };
-	
-	    ImGui_ImplVulkan_Init(&info);
-	
-	    // Upload fonts to GPU
-	    VkCommandBuffer commandBuffer = renderer->beginSingleTimeCommands();
-	    ImGui_ImplVulkan_CreateFontsTexture(); // Removed Nov 10, 2023 Commit #79a9e2f
-	    renderer->endSingleTimeCommands(commandBuffer);
-	
-	    vkDeviceWaitIdle(device->GetDevice());// Wait for font upload to complete
-	    //ImGui_ImplVulkan_DestroyFontUploadObjects(); // This is no longer needed in newer versions of ImGui
-	
-	    SetStyle();
-	
-	    initialized = true;
-	    SEDX_CORE_INFO("ImGui initialized successfully");
-	}
-	*/
+#endif
+
+    /// -------------------------------------------------------
 
     void GUI::ShowAppInfo(const std::string &appName) const
     {
@@ -433,6 +480,8 @@ namespace SceneryEditorX::UI
         ImGui::End();
     }
 
+    /// -------------------------------------------------------
+
     bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
     {
         if (!initialized)
@@ -442,7 +491,9 @@ namespace SceneryEditorX::UI
         return true;
     }
 
-    void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView)
+    /// -------------------------------------------------------
+
+    void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView) const
     {
         if (!initialized || !visible || !viewportInitialized)
             return;
@@ -467,8 +518,11 @@ namespace SceneryEditorX::UI
         ImGui::PopStyleVar();
     }
 
+    /// -------------------------------------------------------
+
     ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout) const
     {
+        const auto device = RenderContext::GetCurrentDevice();
         if (!initialized || imageView == VK_NULL_HANDLE)
             return reinterpret_cast<ImTextureID>(nullptr);
 
@@ -499,7 +553,9 @@ namespace SceneryEditorX::UI
         VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(actualSampler, imageView, layout);
         return reinterpret_cast<ImTextureID>(descriptorSet);
     }
-	
+
+    /// -------------------------------------------------------
+
     void GUI::SetStyle()
     {
         constexpr auto ColorFromBytes = [](uint8_t r, uint8_t g, uint8_t b)
@@ -591,6 +647,8 @@ namespace SceneryEditorX::UI
         style.ScrollbarSize = 14.0f;
         style.GrabMinSize = 10.0f;
     }
+
+    /// -------------------------------------------------------
 
     void GUI::SetFonts() const
     {

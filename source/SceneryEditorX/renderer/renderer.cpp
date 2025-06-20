@@ -7,7 +7,7 @@
 * -------------------------------------------------------
 * renderer.cpp
 * -------------------------------------------------------
-* Created: 7/6/2025
+* Created: 22/6/2025
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/application.h>
@@ -19,25 +19,75 @@
 
 namespace SceneryEditorX
 {
+    /// Static variables
+    LOCAL uint32_t s_RenderQueueIndex = 0;
+    LOCAL uint32_t s_RenderQueueSubmissionIndex = 0;
+    LOCAL uint32_t s_CurrentFrameIndex = 0;
 
-	void Renderer::Init()
-	{
-	}
-
-    void Renderer::Shutdown()
-    {
-    }
+    /// -------------------------------------------------------
 
     Ref<RenderContext> Renderer::GetContext()
     {
-        return Application::Get().GetWindow().GetRenderContext();
+        return RenderContext::Get();
     }
 
-	uint32_t Renderer::GetCurrentFrameIndex()
+    void Renderer::Init()
     {
-        return Application::Get().GetCurrentFrameIndex();
+        /// Initialize the rendering system. This includes setting up the render context, command buffers, etc.
+
+        /// Get the render context
+
+        /// Initialize the context if needed
+        if (auto context = GetContext())
+            context->Init();
+
+        /// Initialize render queue indices
+        s_RenderQueueIndex = 0;
+        s_RenderQueueSubmissionIndex = 0;
+        s_CurrentFrameIndex = 0;
     }
 
-}
+    void Renderer::Shutdown()
+    {
+        // Shutdown the rendering system
+        // Clean up resources, destroy Vulkan objects, etc.
+    }
+
+    void Renderer::BeginFrame()
+    {
+        // Begin a new frame
+        // This would typically involve waiting for fences, acquiring swapchain images, etc.
+    }
+
+    void Renderer::EndFrame()
+    {
+        // End the current frame
+        // This would typically involve submitting command buffers, presenting images, etc.
+    }
+
+    void Renderer::SubmitFrame()
+    {
+        // Submit the current frame to the GPU
+        // This would involve submitting command buffers to the appropriate queues
+    }
+
+    uint32_t Renderer::GetRenderQueueIndex()
+    {
+        return s_RenderQueueIndex;
+    }
+
+    uint32_t Renderer::GetRenderQueueSubmissionIndex()
+    {
+        return s_RenderQueueSubmissionIndex;
+    }
+
+    uint32_t Renderer::GetCurrentFrameIndex()
+    {
+        return s_CurrentFrameIndex;
+    }
+
+    /// -------------------------------------------------------
+
+} // namespace SceneryEditorX
 
 /// -------------------------------------------------------

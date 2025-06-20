@@ -10,11 +10,13 @@
 * Created: 5/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/buffers/buffer_data.h>
+#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/image_data.h>
-#include <SceneryEditorX/renderer/vulkan/render_data.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+
+#include "vk_util.h"
 
 /// ----------------------------------------------------------
 
@@ -104,7 +106,7 @@ namespace SceneryEditorX
 	 */
     Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
-        auto device = RenderContext::Get()->GetLogicDevice();
+        const auto device = RenderContext::Get()->GetLogicDevice();
         /// Get the allocator from the current device
         const VmaAllocator vmaAllocator = device->GetMemoryAllocator();
 
@@ -138,7 +140,7 @@ namespace SceneryEditorX
 	        usage |= BufferUsage::Address;
 	    
 	    /// Create buffer resource
-	    Ref<BufferResource> resource = CreateRef<BufferResource>();
+	    const Ref<BufferResource> resource = CreateRef<BufferResource>();
 	    
 	    /// Configure buffer creation info
 	    VkBufferCreateInfo bufferInfo{};
@@ -191,24 +193,26 @@ namespace SceneryEditorX
 	        write.pBufferInfo = &descriptorInfo;
 	        
 	        /// Update descriptor set with buffer info
-            vkUpdateDescriptorSets(RenderContext::Get()->GetLogicDevice()->GetDevice(), 1, &write, 0, nullptr);
+            vkUpdateDescriptorSets(device->GetDevice(), 1, &write, 0, nullptr);
         }
 	    
 	    return buffer;
 	}
 
-    void *MapBuffer(const Buffer &buffer)
+    void *MapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
     {
+        const auto device = RenderContext::Get()->GetLogicDevice();
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
         void *data = nullptr; ///< Initialize data
-        vmaMapMemory(RenderContext::Get()->GetLogicDevice()->GetMemoryAllocator(), buffer.resource->allocation, &data);
+        vmaMapMemory(device->GetMemoryAllocator(), buffer.resource->allocation, &data);
         return data;
 	}
 
-    void UnmapBuffer(const Buffer &buffer)
+    void UnmapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
     {
+        const auto device = RenderContext::Get()->GetLogicDevice();
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
-        vmaUnmapMemory(RenderContext::Get()->GetLogicDevice()->GetMemoryAllocator(), buffer.resource->allocation);
+        vmaUnmapMemory(device->GetMemoryAllocator(), buffer.resource->allocation);
     }
 
     /// ----------------------------------------------------------
@@ -274,6 +278,384 @@ namespace SceneryEditorX
         EndCommands(commandBuffer->GetActiveCmdBuffer());
     }
     */
+
+    /// ----------------------------------------------------------
+
+    inline VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification &specification, const FramebufferTextureSpecification &attachmentSpecification)
+    {
+        if (attachmentSpecification.LoadOp == AttachmentLoadOp::Inherit)
+        {
+            if (Utils::IsDepthFormat(attachmentSpecification.Format))
+                return specification.ClearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+
+            return specification.ClearColorOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+
+        return attachmentSpecification.LoadOp == AttachmentLoadOp::Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+    }
+
+    /// ----------------------------------------------------------
+
+    Framebuffer::Framebuffer(const FramebufferSpecification &specification) : m_Specification(specification)
+	{
+		if (specification.Width == 0)
+		{
+            fb_width = Application::Get().GetWindow().GetWidth();
+			fb_height = Application::Get().GetWindow().GetHeight();
+		}
+		else
+		{
+            fb_width = (uint32_t)(specification.Width * m_Specification.Scale);
+			fb_height = (uint32_t)(specification.Height * m_Specification.Scale);
+		}
+
+		/// Create all image objects immediately so we can start referencing them elsewhere.
+        if (!m_Specification.ExistingFramebuffer)
+        {
+            uint32_t attachmentIndex = 0;
+            for (auto& attachmentSpec : m_Specification.Attachments.Attachments)
+			{
+				if (m_Specification.ExistingImage)
+				{
+					if (Utils::IsDepthFormat(attachmentSpec.Format))
+						depthAttachmentImage = m_Specification.ExistingImage;
+					else
+						attachmentImages.emplace_back(m_Specification.ExistingImage);
+				}
+				else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
+				{
+					if (Utils::IsDepthFormat(attachmentSpec.Format))
+						depthAttachmentImage = m_Specification.ExistingImages.at(attachmentIndex);
+					else
+						attachmentImages.emplace_back(); // This will be set later
+				}
+				else if (Utils::IsDepthFormat(attachmentSpec.Format))
+				{
+					ImageSpecification spec;
+					spec.Format = attachmentSpec.Format;
+					spec.Usage = ImageUsage::Attachment;
+					spec.Transfer = m_Specification.Transfer;
+                    spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
+					spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
+					spec.DebugName = std::format("{0}-DepthAttachment{1}", m_Specification.DebugName.empty() ? "Unnamed FB" : m_Specification.DebugName, attachmentIndex);
+					depthAttachmentImage = Image2D::Create(spec);
+				}
+				else
+				{
+					ImageSpecification spec;
+					spec.Format = attachmentSpec.Format;
+					spec.Usage = ImageUsage::Attachment;
+					spec.Transfer = m_Specification.Transfer;
+                    spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
+					spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
+					spec.DebugName = std::format("{0}-ColorAttachment{1}", m_Specification.DebugName.empty() ? "Unnamed FB" : m_Specification.DebugName, attachmentIndex);
+					attachmentImages.emplace_back(Image2D::Create(spec));
+				}
+				attachmentIndex++;
+			}
+		}
+
+		SEDX_CORE_ASSERT(specification.Attachments.Attachments.size());
+        Framebuffer::Resize(fb_width, fb_height, true);
+	}
+
+    void Framebuffer::Resize(uint32_t width, uint32_t height, bool forceRecreate)
+    {
+        if (!forceRecreate && (fb_width == width && fb_height == height))
+            return;
+
+        Ref<Framebuffer> instance = this;
+        Renderer::SubmitFrame([instance, width, height]() mutable
+        {
+            instance->fb_width = (uint32_t)(width * instance->m_Specification.Scale);
+            instance->fb_height = (uint32_t)(height * instance->m_Specification.Scale);
+            if (!instance->m_Specification.SwapChainTarget)
+            {
+                instance->RT_Invalidate();
+            }
+            else
+            {
+                SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
+                instance->renderPass = swapChain.GetRenderPass();
+
+                instance->clearValues.clear();
+                instance->clearValues.emplace_back().color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+            }
+        });
+
+        for (auto &callback : resizeCallbacks)
+            callback(this);
+    }
+
+
+	void Framebuffer::AddResizeCallback(const std::function<void(Ref<Framebuffer>)>& func)
+	{
+		resizeCallbacks.push_back(func);
+	}
+
+	void Framebuffer::Invalidate()
+	{
+		Ref<Framebuffer> instance = this;
+		Renderer::Submit([instance]() mutable
+		{
+			instance->RT_Invalidate();
+		});
+	}
+
+	void Framebuffer::RT_Invalidate()
+	{
+		auto device = RenderContext::GetCurrentDevice()->GetDevice();
+
+		Release();
+
+		MemoryAllocator allocator("Framebuffer");
+
+		std::vector<VkAttachmentDescription> attachmentDescriptions;
+
+		std::vector<VkAttachmentReference> colorAttachmentReferences;
+		VkAttachmentReference depthAttachmentReference;
+
+		clearValues.resize(m_Specification.Attachments.Attachments.size());
+
+		bool createImages = attachmentImages.empty();
+
+		if (m_Specification.ExistingFramebuffer)
+			attachmentImages.clear();
+
+		uint32_t attachmentIndex = 0;
+		for (const auto& attachmentSpec : m_Specification.Attachments.Attachments)
+		{
+			if (Utils::IsDepthFormat(attachmentSpec.Format))
+			{
+				if (m_Specification.ExistingImage)
+				{
+					depthAttachmentImage = m_Specification.ExistingImage;
+				}
+				else if (m_Specification.ExistingFramebuffer)
+				{
+					Ref<Framebuffer> existingFramebuffer = m_Specification.ExistingFramebuffer.As<Framebuffer>();
+					depthAttachmentImage = existingFramebuffer->GetDepthImage();
+				}
+				else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
+				{
+					Ref<Image2D> existingImage = m_Specification.ExistingImages.at(attachmentIndex);
+					SEDX_CORE_ASSERT(Utils::IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach non-depth image as depth attachment");
+					depthAttachmentImage = existingImage;
+				}
+				else
+				{
+					Ref<Image2D> depthAttachmentImage = depthAttachmentImage.As<Image2D>();
+					auto& spec = depthAttachmentImage->GetSpecification();
+                    spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
+                    spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
+					depthAttachmentImage->RT_Invalidate(); // Create immediately
+				}
+
+				VkAttachmentDescription& attachmentDescription = attachmentDescriptions.emplace_back();
+				attachmentDescription.flags = 0;
+				attachmentDescription.format = Utils::VulkanImageFormat(attachmentSpec.Format);
+				attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+				attachmentDescription.loadOp = Utils::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
+				attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
+				attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				attachmentDescription.initialLayout = attachmentDescription.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				if (attachmentSpec.Format == ImageFormat::DEPTH24STENCIL8 || true) // Separate layouts requires a "separate layouts" flag to be enabled
+				{
+					attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // TODO: if not sampling
+					attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; // TODO: if sampling
+					depthAttachmentReference = { attachmentIndex, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+				}
+				else
+				{
+					attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL; // TODO: if not sampling
+					attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL; // TODO: if sampling
+					depthAttachmentReference = { attachmentIndex, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL };
+				}
+				clearValues[attachmentIndex].depthStencil = { m_Specification.DepthClearValue, 0 };
+			}
+			else
+			{
+				Ref<Image2D> colorAttachment;
+				if (m_Specification.ExistingFramebuffer)
+				{
+					Ref<Framebuffer> existingFramebuffer = m_Specification.ExistingFramebuffer.As<Framebuffer>();
+					Ref<Image2D> existingImage = existingFramebuffer->GetImage(attachmentIndex);
+					colorAttachment = attachmentImages.emplace_back(existingImage).As<Image2D>();
+				}
+				else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
+				{
+					Ref<Image2D> existingImage = m_Specification.ExistingImages[attachmentIndex];
+					SEDX_CORE_ASSERT(!Utils::IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach depth image as color attachment");
+					colorAttachment = existingImage.As<Image2D>();
+					attachmentImages[attachmentIndex] = existingImage;
+				}
+				else
+				{
+					if (createImages)
+					{
+						ImageSpecification spec;
+						spec.Format = attachmentSpec.Format;
+						spec.Usage = ImageUsage::Attachment;
+						spec.Transfer = m_Specification.Transfer;
+                        spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
+						spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
+						colorAttachment = attachmentImages.emplace_back(Image2D::Create(spec)).As<Image2D>();
+						SEDX_CORE_VERIFY(false);
+
+					}
+					else
+					{
+						Ref<Image2D> image = attachmentImages[attachmentIndex];
+						ImageSpecification& spec = image->GetSpecification();
+                        spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
+						spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
+						colorAttachment = image.As<Image2D>();
+						if (colorAttachment->GetSpecification().Layers == 1)
+							colorAttachment->RT_Invalidate(); // Create immediately
+						else if (attachmentIndex == 0 && m_Specification.ExistingImageLayers[0] == 0)// Only invalidate the first layer from only the first framebuffer
+						{
+							colorAttachment->RT_Invalidate(); // Create immediately
+							colorAttachment->RT_CreatePerSpecificLayerImageViews(m_Specification.ExistingImageLayers);
+						}
+						else if (attachmentIndex == 0)
+						{
+							colorAttachment->RT_CreatePerSpecificLayerImageViews(m_Specification.ExistingImageLayers);
+						}
+					}
+
+				}
+
+				VkAttachmentDescription& attachmentDescription = attachmentDescriptions.emplace_back();
+				attachmentDescription.flags = 0;
+				attachmentDescription.format = Utils::VulkanImageFormat(attachmentSpec.Format);
+				attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+				attachmentDescription.loadOp = Utils::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
+				attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
+				attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				attachmentDescription.initialLayout = attachmentDescription.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+				const auto& clearColor = m_Specification.ClearColor;
+				clearValues[attachmentIndex].color = { {clearColor.r, clearColor.g, clearColor.b, clearColor.a } };
+				colorAttachmentReferences.emplace_back(VkAttachmentReference { attachmentIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+			}
+
+			attachmentIndex++;
+		}
+
+		VkSubpassDescription subpassDescription = {};
+		subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpassDescription.colorAttachmentCount = uint32_t(colorAttachmentReferences.size());
+		subpassDescription.pColorAttachments = colorAttachmentReferences.data();
+		if (depthAttachmentImage)
+			subpassDescription.pDepthStencilAttachment = &depthAttachmentReference;
+
+		// TODO: do we need these?
+		// Use subpass dependencies for layout transitions
+		std::vector<VkSubpassDependency> dependencies;
+
+		if (attachmentImages.size())
+		{
+			{
+				VkSubpassDependency& depedency = dependencies.emplace_back();
+				depedency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				depedency.dstSubpass = 0;
+				depedency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				depedency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				depedency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				depedency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			}
+			{
+				VkSubpassDependency& depedency = dependencies.emplace_back();
+				depedency.srcSubpass = 0;
+				depedency.dstSubpass = VK_SUBPASS_EXTERNAL;
+				depedency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				depedency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				depedency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				depedency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			}
+		}
+
+		if (depthAttachmentImage)
+		{
+			{
+				VkSubpassDependency& depedency = dependencies.emplace_back();
+				depedency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				depedency.dstSubpass = 0;
+				depedency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				depedency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+				depedency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				depedency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			}
+
+			{
+				VkSubpassDependency& depedency = dependencies.emplace_back();
+				depedency.srcSubpass = 0;
+				depedency.dstSubpass = VK_SUBPASS_EXTERNAL;
+				depedency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				depedency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				depedency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				depedency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			}
+		}
+
+		/// Create the actual renderpass
+		VkRenderPassCreateInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size());
+		renderPassInfo.pAttachments = attachmentDescriptions.data();
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpassDescription;
+		renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+		renderPassInfo.pDependencies = dependencies.data();
+
+		VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_RENDER_PASS, m_Specification.DebugName, renderPass);
+
+		std::vector<VkImageView> attachments(attachmentImages.size());
+		for (uint32_t i = 0; i < attachmentImages.size(); i++)
+		{
+			Ref<Image2D> image = attachmentImages[i].As<Image2D>();
+			if (image->GetSpecification().Layers > 1)
+				attachments[i] = image->GetLayerImageView(m_Specification.ExistingImageLayers[i]);
+			else
+				attachments[i] = image->GetImageInfo().ImageView;
+			SEDX_CORE_ASSERT(attachments[i]);
+		}
+
+		if (depthAttachmentImage)
+		{
+			Ref<Image2D> image = depthAttachmentImage.As<Image2D>();
+			if (m_Specification.ExistingImage && image->GetSpecification().Layers > 1)
+			{
+				SEDX_CORE_ASSERT(m_Specification.ExistingImageLayers.size() == 1, "Depth attachments do not support deinterleaving");
+				attachments.emplace_back(image->GetLayerImageView(m_Specification.ExistingImageLayers[0]));
+			}
+			else
+				attachments.emplace_back(image->GetImageInfo().ImageView);
+
+			SEDX_CORE_ASSERT(attachments.back());
+		}
+
+		VkFramebufferCreateInfo framebufferCreateInfo = {};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.renderPass = renderPass;
+		framebufferCreateInfo.attachmentCount = uint32_t(attachments.size());
+		framebufferCreateInfo.pAttachments = attachments.data();
+        framebufferCreateInfo.width = fb_width;
+		framebufferCreateInfo.height = fb_height;
+		framebufferCreateInfo.layers = 1;
+
+		VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffer));
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_FRAMEBUFFER, m_Specification.DebugName, framebuffer);
+	}
+
 
 } // namespace SceneryEditorX
 

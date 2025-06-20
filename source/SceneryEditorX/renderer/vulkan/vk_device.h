@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/buffers/buffer_data.h>
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
@@ -194,7 +193,6 @@ namespace SceneryEditorX
 
 	/// ---------------------------------------------------------
 
-
     class CommandPool : public RefCounted
     {
     public:
@@ -230,14 +228,8 @@ namespace SceneryEditorX
         void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
 
         /// Accessor methods
-        [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const
-        {
-            return GraphicsCmdPool;
-        }
-        [[nodiscard]] VkCommandPool GetComputeCmdPool() const
-        {
-            return ComputeCmdPool;
-        }
+        [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
+        [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
 
         Queue queueType;
         VkCommandPool commandPool = VK_NULL_HANDLE;
@@ -334,7 +326,7 @@ namespace SceneryEditorX
          * @param debugName Name for debugging purposes.
          * @return A new command buffer.
          */
-        //VkCommandBuffer CreateSecondaryCommandBuffer(const char *debugName);
+        VkCommandBuffer CreateUICmdBuffer(const char *debugName);
 
         /**
          * @brief Submit and wait for a command buffer to complete execution.

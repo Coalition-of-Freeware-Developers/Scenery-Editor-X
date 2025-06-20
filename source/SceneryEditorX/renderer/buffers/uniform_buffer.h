@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/render_data.h>
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 
 /// ----------------------------------------------------------
 
@@ -49,14 +49,14 @@ namespace SceneryEditorX
          * Initializes the UniformBuffer instance by getting references to the 
          * required graphics engine components.
          */
-        UniformBuffer();
+        UniformBuffer(uint32_t size);
 
         /**
          * @brief Destructor for UniformBuffer
          *
          * Cleans up resources associated with the uniform buffers.
          */
-        ~UniformBuffer();
+        virtual ~UniformBuffer() override;
 
         /**
          * @brief Creates uniform buffers for each frame in the swap chain
@@ -89,7 +89,6 @@ namespace SceneryEditorX
 
         /**
          * @brief Gets the buffer handle for the specified frame
-         *
          * @param index Index of the frame's buffer to retrieve
          * @return VkBuffer The uniform buffer handle, or VK_NULL_HANDLE if invalid index
          */
@@ -102,19 +101,21 @@ namespace SceneryEditorX
 
         /**
          * @brief Gets the total number of uniform buffers managed by this instance
-         *
          * @return size_t The number of uniform buffers
          */
         [[nodiscard]] size_t GetBufferCount() const { return uniformBuffers.size(); }
 
     private:
-        Ref<GraphicsEngine> *gfxEngine;						///< Pointer to the graphics engine reference
-        Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
+        uint32_t name;										///< Unique identifier for the uniform buffer instance
+        uint32_t size = 0;                                  ///< Size of the uniform buffer in bytes
+        uint8_t *localMemAlloc = nullptr;					///< Pointer to local memory allocation for the uniform buffer
+        VmaAllocation allocation = nullptr;                 ///< Reference to the memory allocator
+        VkDescriptorBufferInfo descriptorInfo = {};			///< Descriptor buffer info for binding the uniform buffer
         std::vector<VkBuffer> uniformBuffers;				///< Array of uniform buffer handles (one per frame)
         std::vector<VkDeviceMemory> uniformBuffersMemory;	///< Array of memory handles for uniform buffers
         std::vector<VmaAllocation> uniformBuffersAllocation;///< Array of allocation handles for uniform buffers (one per frame)
     };
 
-}
+} // namespace SceneryEditorX
 
-/// -----
+/// ----------------------------------------------------------

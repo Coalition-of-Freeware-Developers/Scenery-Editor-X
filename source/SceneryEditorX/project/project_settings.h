@@ -7,25 +7,30 @@
 * -------------------------------------------------------
 * project_settings.h
 * -------------------------------------------------------
-* Created: 26/5/2025
+* Created: 15/6/2025
 * -------------------------------------------------------
 */
 #pragma once
-#include <map>
 
-/// ---------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	struct RecentProjects
+    struct ProjectSettings
 	{
-        std::string projectName;
-        std::string projectPath;
-        time_t LastOpened;
-	};
+        std::string name;
+		std::string projectName;
+		std::string projectPath;
+		std::string sceneryType;
+        std::string sceneryVersion;
+        std::string assetDir = "Assets";
 
-	
+		bool enableAutosave = true;
+		bool enableLighting = true;
+		bool enableWeatherEffects = false;
+		int autosaveInterval = 5; /// in minutes
+    };
 
 }
 
-/// ---------------------------------------------------------
+/// -------------------------------------------------------

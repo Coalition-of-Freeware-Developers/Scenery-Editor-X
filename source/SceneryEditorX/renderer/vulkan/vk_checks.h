@@ -30,15 +30,13 @@ namespace SceneryEditorX
         void CheckDeviceExtensionSupport(VkPhysicalDevice device, std::vector<VkExtensionProperties>& props, const char* validationLayer); /// Function to check if required device extensions are available
         INTERNAL bool CheckDeviceFeatures(const VkPhysicalDevice &device);                                                            /// Function to check the supported device features and if they are compatible.
         INTERNAL bool IsDeviceCompatible(const VkPhysicalDevice &device);                                                             /// Function to check if a device is compatible
-        bool CheckExtension(const char* extension, const std::vector<VkExtensionProperties>& props);      /// Function to check if required extensions are available
-
-
-        void CheckLayers(const std::vector<const char *> &layers);						 /// Function to check if required layers are available
+        bool CheckExtension(const char* extension, const std::vector<VkExtensionProperties>& props);								  /// Function to check if required extensions are available
+        void CheckLayers(const std::vector<const char *> &layers);																	  /// Function to check if required layers are available
 
     private:
         Extensions vkExtensions;
         VkPhysicalDeviceFeatures vkEnabledFeatures;
-        //Ref<VulkanDevice> vkDevice;
+
 
         friend class VulkanDevice;
     };

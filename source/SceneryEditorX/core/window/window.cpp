@@ -22,6 +22,8 @@
 
 namespace SceneryEditorX
 {
+    // Definition of the static member variable
+    GLFWwindow* WindowData::window = nullptr;
 
     /**
      * @brief Global flag indicating whether GLFW has been initialized.
@@ -85,6 +87,19 @@ namespace SceneryEditorX
     }
 
     /**
+     * @brief Constructs a Window instance with default window data.
+     * 
+     * This default constructor initializes a new Window object with default window data.
+     * It sets up the WindowData structure with default values but doesn't create the actual
+     * window yet - the window is created later when the Init() method is called.
+     * 
+     * @note This is a lightweight constructor that only initializes default configuration.
+     *       The actual window creation, monitor setup, and renderer initialization happens
+     *       in the Init() method.
+     */
+    Window::Window() : winData(WindowData{}) {}
+
+    /**
      * @brief Constructs a Window instance with the specified window data.
      * 
      * This constructor initializes a new Window object using the provided window specifications.
@@ -125,105 +140,174 @@ namespace SceneryEditorX
         m_winSpecs.title = winData.title;
         m_winSpecs.width = winData.width;
         m_winSpecs.height = winData.height;
-
+        
+        /// Initialize GLFW if not already initialized
         if (!windowInit)
         {
+            SEDX_CORE_INFO("Initializing GLFW");
             int success = glfwInit();
-            SEDX_CORE_ASSERT(success, "Failed to initialize GLFW!");
+            if (!success)
+			{
+                SEDX_CORE_ERROR("Failed to initialize GLFW!");
+                return;
+            }
             glfwSetErrorCallback(WindowErrorCallback);
             windowInit = true;
+            SEDX_CORE_INFO("GLFW initialized successfully");
         }
 
+        /// Set window hints
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
+        glfwWindowHint(GLFW_RESIZABLE, winData.resizable ? GLFW_TRUE : GLFW_FALSE);
+        
         if (!winData.decorated)
         {
-#ifdef SEDX_PLATFORM_WINDOWS
+            SEDX_CORE_INFO("Creating window without decorations");
             glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-#else
-            glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-#endif
         }
 
-        if (winData.maximized)
-        {
-            Maximize();
+        /// Initialize monitor data
+        MonitorData monitorData;
+        bool monitorInitSuccess = false;
+        
+        try
+		{
+            monitorData.RefreshMonitorList();
+            monitorInitSuccess = true;
+            SEDX_CORE_INFO("Monitor data initialized successfully");
+        }
+        catch (const std::exception& e)
+		{
+            SEDX_CORE_ERROR("Failed to initialize monitor data: {}", e.what());
+            monitorInitSuccess = false;
         }
 
-        MonitorData::RefreshMonitors();
-
-        if (winData.mode == WindowMode::FullScreen)
+        /// Create window based on mode
+        SEDX_CORE_INFO("Creating window: {}x{} - '{}'", 
+                       static_cast<int>(winData.width), 
+                       static_cast<int>(winData.height), 
+                       winData.title);
+                       
+        bool windowCreated = false;
+        
+        /// First attempt - create with specified settings
+        if (WindowData::mode == WindowMode::FullScreen && monitorInitSuccess)
         {
-            GLFWmonitor **display = MonitorData::GetPriMonitor();
-            const GLFWvidmode *mode = Monitor::videoModes;
-            glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-            glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-            glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-            glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-            glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-            window = glfwCreateWindow(mode->width, mode->height, winData.title.c_str(), *display, nullptr);
+            if (GLFWmonitor* primaryMonitor = monitorData.GetPrimaryMonitor())
+			{
+                if (const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor))
+				{
+                    SEDX_CORE_INFO("Creating fullscreen window on primary monitor: {}x{} @ {}Hz", mode->width, mode->height, mode->refreshRate);
+                    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+                    glfwWindowHint(GLFW_RED_BITS, mode->redBits);
+                    glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
+                    glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
+                    glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+                    WindowData::window = glfwCreateWindow(mode->width, mode->height, winData.title.c_str(), primaryMonitor, nullptr);
+                    windowCreated = (WindowData::window != nullptr);
+                }
+            }
         }
-        else
-        {
-            window = glfwCreateWindow((int)winData.width, (int)winData.height, winData.title.c_str(), nullptr, nullptr);
+        
+        /// If fullscreen creation failed or not in fullscreen mode, create windowed
+        if (!windowCreated) {
+            SEDX_CORE_INFO("Creating window in windowed mode: {}x{}", 
+                           static_cast<int>(winData.width), static_cast<int>(winData.height));
+            WindowData::window = glfwCreateWindow(static_cast<int>(winData.width), 
+                                                 static_cast<int>(winData.height), 
+                                                 winData.title.c_str(), nullptr, nullptr);
+            windowCreated = (WindowData::window != nullptr);
         }
+        
+        // Final fallback - try creating a minimal window
+        if (!windowCreated) {
+            SEDX_CORE_WARN("Window creation failed with specified parameters, trying fallback settings");
+            // Reset window hints to defaults
+            glfwDefaultWindowHints();
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+            
+            // Try creating a basic window
+            WindowData::window = glfwCreateWindow(800, 600, "Scenery Editor X (Fallback)", nullptr, nullptr);
+            windowCreated = (WindowData::window != nullptr);
+            
+            if (windowCreated) {
+                SEDX_CORE_INFO("Created fallback window successfully");
+                m_winSpecs.width = 800;
+                m_winSpecs.height = 600;
+                winData.width = 800;
+                winData.height = 600;
+            } else {
+                SEDX_CORE_ERROR("All window creation attempts failed!");
+                return;
+            }
+        }
+        
+        SEDX_CORE_INFO("Window created successfully");
+        
+        // Continue with window setup
+        if (WindowData::window) {
+            SetWindowIcon(WindowData::window);
+            winData.dirty = false;
+            
+            if (winData.maximized) {
+                SEDX_CORE_INFO("Maximizing window");
+                glfwMaximizeWindow(WindowData::window);
+            }
+            
+            renderContext = RenderContext::Get();
+            renderContext->Init();
+            
+            glfwSetWindowUserPointer(WindowData::window, &winData);
+            DisableJoystickHandling();
 
-        SetWindowIcon(window);
-        winData.dirty = false;
+            if (glfwRawMouseMotionSupported())
+                glfwSetInputMode(WindowData::window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+            else
+                SEDX_CORE_WARN_TAG("Window", "Raw mouse motion not supported.");
 
-        renderContext = RenderContext::Get();
-        renderContext->Init();
-        Ref<RenderContext> context = renderContext.As<RenderContext>();
+            // Set up window callbacks
+            glfwSetWindowSizeCallback(WindowData::window, [](GLFWwindow *window, int width, int height)
+            {
+                auto &data = *((WindowData *)glfwGetWindowUserPointer(window));
+                data.width = width;
+                data.height = height;
+            });
 
-        swapChain = hnew SwapChain();
-        swapChain->Init(RenderContext::GetInstance(), context->GetLogicDevice());
-        swapChain->InitSurface(window);
-        swapChain->Create(&m_winSpecs.width, &m_winSpecs.height, winData.vsync);
-        glfwSetWindowUserPointer(window, &winData);
+            winData.framebufferResized = true;
 
-        DisableJoystickHandling();
+            // Set all the callbacks
+            glfwSetWindowCloseCallback(WindowData::window, windowCallbacks.windowCloseCallback);
+            glfwSetFramebufferSizeCallback(WindowData::window, windowCallbacks.framebufferResizeCallback);
+            glfwSetWindowPos(WindowData::window, winData.posX, winData.posY);
+            glfwSetCharCallback(WindowData::window, windowCallbacks.charCallback);
+            glfwSetCursorPosCallback(WindowData::window, windowCallbacks.cursorPosCallback);
+            glfwSetKeyCallback(WindowData::window, windowCallbacks.keyCallback);
+            glfwSetMouseButtonCallback(WindowData::window, windowCallbacks.mouseButtonCallback);
+            glfwSetScrollCallback(WindowData::window, windowCallbacks.scrollCallback);
+            glfwSetWindowMaximizeCallback(WindowData::window, windowCallbacks.windowMaximizeCallback);
+            glfwSetWindowPosCallback(WindowData::window, windowCallbacks.windowChangePosCallback);
+            glfwSetDropCallback(WindowData::window, windowCallbacks.windowDropCallback);
+            glfwSetWindowIconifyCallback(WindowData::window, windowCallbacks.windowIconifyCallback);
 
-        if (glfwRawMouseMotionSupported())
-            glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-        else
-            SEDX_CORE_WARN_TAG("Window", "Raw mouse motion not supported.");
+            // Create mouse cursors for ImGui
+            ImGuiMouseCursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+            ImGuiMouseCursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);   // FIXME: GLFW doesn't have this.
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeNS] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeEW] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
+            ImGuiMouseCursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
 
-        glfwSetWindowSizeCallback(window, [](GLFWwindow *window, int width, int height)
-        {
-            auto &data = *((WindowData *)glfwGetWindowUserPointer(window));
-            data.width = width;
-            data.height = height;
-        });
-
-        winData.framebufferResized = true;
-
-        glfwSetWindowCloseCallback(window, windowCallbacks.windowCloseCallback);
-        glfwSetFramebufferSizeCallback(window, windowCallbacks.framebufferResizeCallback);
-        glfwSetWindowPos(window, winData.posX, winData.posY);
-        glfwSetCharCallback(window, windowCallbacks.charCallback);
-        glfwSetCursorPosCallback(window, windowCallbacks.cursorPosCallback);
-        glfwSetKeyCallback(window, windowCallbacks.keyCallback);
-        glfwSetMouseButtonCallback(window, windowCallbacks.mouseButtonCallback);
-        glfwSetScrollCallback(window, windowCallbacks.scrollCallback);
-        //glfwSetTitlebarHitTestCallback(window, windowCallbacks.titlebarHitTestCallback);
-        glfwSetWindowMaximizeCallback(window, windowCallbacks.windowMaximizeCallback);
-        glfwSetWindowPosCallback(window, windowCallbacks.windowChangePosCallback);
-        glfwSetDropCallback(window, windowCallbacks.windowDropCallback);
-        glfwSetWindowIconifyCallback(window, windowCallbacks.windowIconifyCallback);
-
-        ImGuiMouseCursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        ImGuiMouseCursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-        ImGuiMouseCursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);   // FIXME: GLFW doesn't have this.
-        ImGuiMouseCursors[ImGuiMouseCursor_ResizeNS] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
-        ImGuiMouseCursors[ImGuiMouseCursor_ResizeEW] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
-        ImGuiMouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
-        ImGuiMouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
-        ImGuiMouseCursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-
-        int width, height;
-        glfwGetWindowSize(window, &width, &height);
-        m_winSpecs.width = width;
-        m_winSpecs.height = height;
+            // Update window dimensions
+            int width, height;
+            glfwGetWindowSize(WindowData::window, &width, &height);
+            m_winSpecs.width = width;
+            m_winSpecs.height = height;
+            
+            SEDX_CORE_INFO("Window setup complete: {}x{}", width, height);
+        }
     }
 
     /**
@@ -244,11 +328,19 @@ namespace SceneryEditorX
      */
     void Window::Shutdown()
     {
-        swapChain->Destroy();
-        hdelete swapChain;
-        renderContext.As<RenderContext>()->GetLogicDevice()->Destroy();
-        glfwTerminate();
-        windowInit = false;
+        if (WindowData::window) {
+            glfwDestroyWindow(WindowData::window);
+            WindowData::window = nullptr;
+        }
+        
+        if (renderContext) {
+            renderContext.As<RenderContext>()->GetLogicDevice()->Destroy();
+        }
+        
+        if (windowInit) {
+            glfwTerminate();
+            windowInit = false;
+        }
     }
 
 	void Window::SwapBuffers()
@@ -271,8 +363,11 @@ namespace SceneryEditorX
 	inline std::pair<float, float> Window::GetWindowPos() const
     {
         int x, y;
-        glfwGetWindowPos(window, &x, &y);
-        return { (float)x, (float)y };
+        if (!WindowData::window) {
+            return {0.0f, 0.0f};
+        }
+        glfwGetWindowPos(WindowData::window, &x, &y);
+        return { static_cast<float>(x), static_cast<float>(y) };
     }
 
     /**
@@ -354,9 +449,18 @@ namespace SceneryEditorX
 	 */
 	void Window::Maximize()
 	{
-	    glfwMaximizeWindow(window);
+	    if (!WindowData::window) {
+	        SEDX_CORE_WARN("Cannot maximize window - window not created yet");
+	        return;
+	    }
+	    
+		auto &winData = *static_cast<WindowData *>(glfwGetWindowUserPointer(WindowData::window));
+		if (winData.maximized)
+            return;
+            
+	    glfwMaximizeWindow(WindowData::window);
         winData.maximized = true;
-        SEDX_CORE_INFO("Window maximized");
+        SEDX_CORE_INFO("Window Maximized");
 	}
 
 	/**
@@ -372,10 +476,20 @@ namespace SceneryEditorX
 	 */
 	void Window::CenterWindow()
 	{
+	    if (!WindowData::window) {
+	        SEDX_CORE_WARN("Cannot center window - window not created yet");
+	        return;
+	    }
+	    
 	    const GLFWvidmode *videoMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-        int x = (videoMode->width / 2) - (m_winSpecs.width / 2);
-        int y = (videoMode->height / 2) - (m_winSpecs.height / 2);
-	    glfwSetWindowPos(window, x, y);
+	    if (!videoMode) {
+	        SEDX_CORE_WARN("Cannot center window - failed to get primary monitor video mode");
+	        return;
+	    }
+	    
+        const int x = videoMode->width / 2 - (m_winSpecs.width / 2);
+        const int y = videoMode->height / 2 - (m_winSpecs.height / 2);
+	    glfwSetWindowPos(WindowData::window, x, y);
 	}
 
     /**
@@ -398,8 +512,8 @@ namespace SceneryEditorX
             windowInstance->winData.mousePos.x = static_cast<float>(x);
             windowInstance->winData.mousePos.y = static_cast<float>(y);
 
-			auto pointerX = (float)x;
-            auto pointerY = (float)y;
+			const auto pointerX = static_cast<float>(x);
+            const auto pointerY = static_cast<float>(y);
             if (windowInstance->initState)
             {
                 windowInstance->winData.deltaMousePos.x = pointerX;
@@ -475,7 +589,7 @@ namespace SceneryEditorX
         {
             windowInstance->winData.dirty = true;
 
-			const float movementSpeed = 2.5f;
+            constexpr float movementSpeed = 2.5f;
 
 			if (key == GLFW_KEY_LEFT_ALT && action == GLFW_PRESS)
                 windowInstance->leftAlt = true;
@@ -533,49 +647,91 @@ namespace SceneryEditorX
 	 */
 	void Window::ApplyChanges()
 	{
-        // Refresh monitor information
-        MonitorData::RefreshMonitors();
-        // Get the current monitor
-        const int monitorIndex = MonitorData::GetCurrentMonitorIndex();
-        SEDX_CORE_ASSERT(monitorIndex < MonitorData::GetMonitorCount(), "Invalid monitorIndex inside Window creation!");
-        const auto monitor = MonitorData::GetPriMonitor()[monitorIndex];
-        const auto monitorMode = glfwGetVideoMode(monitor);
-        // Get video modes for the current monitor
-        int modesCount;
-        const GLFWvidmode *videoModes = MonitorData::GetVideoModes(monitorIndex, &modesCount);
-        // Validate video mode index
-        int videoModeIndex = MonitorData::GetVideoModeIndex();
+	    if (!WindowData::window) {
+	        SEDX_CORE_WARN("Cannot apply window changes - window not created yet");
+	        return;
+	    }
+	    
+        /// Create a MonitorData instance to access monitor information
+        MonitorData monitorData;
+        
+        try {
+            monitorData.RefreshDisplayCount();
+            monitorData.RefreshMonitorList();
+        } catch (const std::exception& e) {
+            SEDX_CORE_ERROR("Failed to refresh monitor data: {}", e.what());
+            return;
+        }
+        
+        /// Get the current monitor
+        GLFWmonitor* currentMonitor = monitorData.GetCurrentMonitor();
+        if (!currentMonitor)
+		{
+            SEDX_CORE_ERROR("Failed to get current monitor");
+            return;
+        }
+        
+        /// Ensure the monitor index is valid
+        int currentMonitorIndex = monitorData.GetCurrentMonitorIndex();
+        int monitorCount = monitorData.GetMonitorCount();
+        
+        if (currentMonitorIndex >= monitorCount)
+		{
+            SEDX_CORE_ERROR("Invalid monitor index: {} (total monitors: {})", currentMonitorIndex, monitorCount);
+            return;
+        }
+        
+        /// Get current monitor's video mode
+        const GLFWvidmode* monitorMode = monitorData.GetCurrentVideoMode();
+        if (!monitorMode)
+		{
+            SEDX_CORE_ERROR("Failed to get current monitor video mode");
+            return;
+        }
+
+        /// Get video modes for the current monitor
+        int modesCount = 0;
+        const GLFWvidmode* videoModes = monitorData.GetVideoModes(currentMonitorIndex, &modesCount);
+        
+        /// Validate video mode index
+        int videoModeIndex = monitorData.GetVideoModeIndex();
         if (videoModeIndex >= modesCount)
         {
             videoModeIndex = modesCount - 1;
-            MonitorData::SetVideoModeIndex(videoModeIndex);
+            monitorData.SetVideoModeIndex(videoModeIndex);
         }
-        // Window Creation
+        
+        /// Apply window configuration based on current mode
         switch (mode)
         {
             case WindowMode::Windowed:
                 winData.posY = std::max(winData.posY, 31);
-                glfwSetWindowMonitor(window, nullptr, winData.posX, winData.posY, m_winSpecs.width, winData.height, GLFW_DONT_CARE);
+                glfwSetWindowMonitor(WindowData::window, nullptr, winData.posX, winData.posY, m_winSpecs.width, m_winSpecs.height, GLFW_DONT_CARE);
+                
                 if (winData.maximized)
-                {
-                    glfwMaximizeWindow(window);
-                }
-                glfwSetWindowAttrib(window, GLFW_MAXIMIZED, winData.maximized);
-                glfwSetWindowAttrib(window, GLFW_RESIZABLE, winData.resizable);
-                glfwSetWindowAttrib(window, GLFW_DECORATED, winData.decorated);
+                    glfwMaximizeWindow(WindowData::window);
+
+                glfwSetWindowAttrib(WindowData::window, GLFW_MAXIMIZED, winData.maximized ? GLFW_TRUE : GLFW_FALSE);
+                glfwSetWindowAttrib(WindowData::window, GLFW_RESIZABLE, winData.resizable ? GLFW_TRUE : GLFW_FALSE);
+                glfwSetWindowAttrib(WindowData::window, GLFW_DECORATED, winData.decorated ? GLFW_TRUE : GLFW_FALSE);
                 break;
+                
             case WindowMode::WindowedFullScreen:
-                glfwWindowHint(GLFW_RED_BITS, monitorMode->redBits);
-                glfwWindowHint(GLFW_GREEN_BITS, monitorMode->greenBits);
-                glfwWindowHint(GLFW_BLUE_BITS, monitorMode->blueBits);
-                glfwWindowHint(GLFW_REFRESH_RATE, monitorMode->refreshRate);
-                glfwSetWindowMonitor(window, monitor, 0, 0, monitorMode->width, monitorMode->height, monitorMode->refreshRate);
+                glfwSetWindowMonitor(WindowData::window, currentMonitor, 0, 0, monitorMode->width, monitorMode->height, monitorMode->refreshRate);
                 break;
+                
             case WindowMode::FullScreen:
-                GLFWvidmode videoMode = videoModes[videoModeIndex];
-                glfwSetWindowMonitor(window, monitor, 0, 0, videoMode.width, videoMode.height, videoMode.refreshRate);
+                if (videoModes && videoModeIndex < modesCount)
+				{
+                    const GLFWvidmode videoMode = videoModes[videoModeIndex];
+                    glfwSetWindowMonitor(WindowData::window, currentMonitor, 0, 0, videoMode.width, videoMode.height, videoMode.refreshRate);
+                }
+                else
+                    SEDX_CORE_ERROR("Invalid video mode index or no video modes available");
+
                 break;
         }
+        
         winData.framebufferResized = false;
         winData.dirty = false;
     }
@@ -631,8 +787,13 @@ namespace SceneryEditorX
 	 */
 	void Window::Update()
 	{
+	    if (!WindowData::window) {
+	        SEDX_CORE_WARN("Cannot update window - window not created yet");
+	        return;
+	    }
+	    
         for (auto i = 0; i < GLFW_KEY_LAST + 1; i++)
-            lastKeyState[i] = static_cast<char>(glfwGetKey(this->window, i));
+            lastKeyState[i] = static_cast<char>(glfwGetKey(WindowData::window, i));
 
         winData.deltaScroll = 0;
 		auto newTime = std::chrono::high_resolution_clock::now();
@@ -641,9 +802,15 @@ namespace SceneryEditorX
 		lastTime = newTime;
 
 		double x, y;
-        glfwGetCursorPos(this->window, &x, &y);
-        winData.deltaMousePos = winData.mousePos - Vec2(x, y);
-        winData.mousePos = Vec2(x, y);
+        glfwGetCursorPos(WindowData::window, &x, &y);
+
+        float prevX = winData.mousePos.x;
+        float prevY = winData.mousePos.y;
+        winData.deltaMousePos.x = prevX - static_cast<float>(x);
+        winData.deltaMousePos.y = prevY - static_cast<float>(y);
+        
+        winData.mousePos.x = static_cast<float>(x);
+        winData.mousePos.y = static_cast<float>(y);
 
 		glfwPollEvents();
 	}
@@ -659,177 +826,10 @@ namespace SceneryEditorX
 	 */
     std::string Window::VideoModeText(const GLFWvidmode &mode)
 	{
-		return std::to_string(mode.width) + "x" + std::to_string(mode.height) + " " + std::to_string(mode.refreshRate) + " Hz";
+		return ToString(mode.width) + "x" + ToString(mode.height) + " " + std::to_string(mode.refreshRate) + " Hz";
 	}
 
-    /*/**
-	 * @brief Renders the ImGui interface for the window settings.
-	 *
-	 * This function creates an ImGui interface for configuring the window settings.
-	 * It allows the user to change the window mode, monitor, resolution, and other
-	 * window attributes such as maximized, decorated, and resizable.
-	 #1#
-	void Window::OnImgui()
-	{
-		const float totalWidth = ImGui::GetContentRegionAvail().x;
-		if (ImGui::CollapsingHeader("Window"))
-		{
-			/// mode
-			{
-				const char* modeNames[] = {"Windowed", "Windowed FullScreen", "FullScreen"};
-				ImGui::Text("Mode");
-				ImGui::SameLine(totalWidth / 2.0f);
-				ImGui::SetNextItemWidth(totalWidth / 2.0f);
-				ImGui::PushID("modeCombo");
-				if (ImGui::BeginCombo("",modeNames[(int)mode]))
-				{
-					for (int i = 0; i < 3; i++)
-					{
-						bool selected = (int)mode == i;
-						if (ImGui::Selectable(modeNames[i],selected))
-						{
-							mode = (WindowMode)i;
-                            winData.dirty = true;
-						}
-						if (selected)
-						{
-							ImGui::SetItemDefaultFocus();
-						}
-					}
-					ImGui::EndCombo();
-				}
-				ImGui::PopID();
-			}
-			if (mode != WindowMode::Windowed)
-			{
-				/// monitor
-				{
-					ImGui::Text("Monitor");
-					ImGui::SameLine(totalWidth / 2.0f);
-					ImGui::SetNextItemWidth(totalWidth / 2.0f);
-					ImGui::PushID("monitorCombo");
-					
-					/// Get current monitor name
-					int currentMonitorIndex = MonitorData::GetCurrentMonitorIndex();
-					const char* currentMonitorName = glfwGetMonitorName(MonitorData::GetPriMonitor()[currentMonitorIndex]);
-					
-                    if (ImGui::BeginCombo("", currentMonitorName))
-					{
-                        for (int i = 0; i < MonitorData::GetMonitorCount(); i++)
-						{
-                            bool selected = currentMonitorIndex == i;
-							ImGui::PushID(i);
-                            if (ImGui::Selectable(glfwGetMonitorName(MonitorData::GetPriMonitor()[i]), selected))
-							{
-								MonitorData::SetCurrentMonitorIndex(i);
-								winData.dirty = true;
-							}
-							if (selected)
-							{
-								ImGui::SetItemDefaultFocus();
-							}
-							ImGui::PopID();
-						}
-						ImGui::EndCombo();
-					}
-					ImGui::PopID();
-				}
-			}
-			/// resolution
-			{
-				if (mode == WindowMode::FullScreen)
-				{
-					ImGui::Text("Resolution");
-					ImGui::SameLine(totalWidth / 2.0f);
-					ImGui::SetNextItemWidth(totalWidth / 4.0f);
-					ImGui::PushID("monitorRes");
-					
-					/// Get video modes for current monitor
-					int modesCount;
-                    const GLFWvidmode *videoModes = MonitorData::GetVideoModes(
-                        MonitorData::GetCurrentMonitorIndex(), &modesCount);
-                    
-                    /// Get current video mode
-                    int videoModeIndex = MonitorData::GetVideoModeIndex();
-                    if (videoModeIndex >= modesCount) {
-                        videoModeIndex = modesCount - 1;
-                        MonitorData::SetVideoModeIndex(videoModeIndex);
-                    }
-                    
-                    GLFWvidmode currMode = videoModes[videoModeIndex];
-					std::string modeText = VideoModeText(currMode);
-					
-					if (ImGui::BeginCombo("", modeText.c_str()))
-					{
-						for (int i = 0; i < modesCount; i++)
-						{
-                            bool selected = videoModeIndex == i;
-							currMode = videoModes[i];
-							ImGui::PushID(i);
-							modeText = VideoModeText(currMode);
-							if (ImGui::Selectable(modeText.c_str(), selected))
-							{
-								MonitorData::SetVideoModeIndex(i);
-								WindowData::dirty = true;
-							}
-							if (selected)
-							{
-								ImGui::SetItemDefaultFocus();
-							}
-							ImGui::PopID();
-						}
-						ImGui::EndCombo();
-					}
-					ImGui::PopID();
-				}
-			}
-
-			/// windowed only
-			{
-				if (mode == WindowMode::Windowed)
-				{
-					/// maximized
-					{
-						ImGui::Text("Maximized");
-						ImGui::SameLine(totalWidth / 2.0f);
-						ImGui::SetNextItemWidth(totalWidth / 2.0f);
-						ImGui::PushID("maximized");
-                        if (ImGui::Checkbox("", &winData.maximized))
-						{
-                            WindowData::dirty = true;
-						}
-						ImGui::PopID();
-					}
-					/// decorated
-					{
-						ImGui::Text("Decorated");
-						ImGui::SameLine(totalWidth / 2.0f);
-						ImGui::SetNextItemWidth(totalWidth / 2.0f);
-						ImGui::PushID("decorated");
-                        if (ImGui::Checkbox("", &WindowData::decorated))
-						{
-                            WindowData::dirty = true;
-						}
-						ImGui::PopID();
-					}
-					/// resizable
-					{
-						ImGui::Text("Resizable");
-						ImGui::SameLine(totalWidth / 2.0f);
-						ImGui::SetNextItemWidth(totalWidth / 2.0f);
-						ImGui::PushID("resizable");
-                        if (ImGui::Checkbox("", &WindowData::resizable))
-						{
-                            WindowData::dirty = true;
-						}
-						ImGui::PopID();
-					}
-				}
-			}
-		}
-	}*/
-	
-	/**
+    /**
 	 * @brief Updates the framebuffer size.
 	 *
 	 * This function retrieves the current framebuffer size using GLFW, stores
@@ -839,8 +839,13 @@ namespace SceneryEditorX
 	 */
     void Window::UpdateFramebufferSize()
     {
+        if (!WindowData::window) {
+            SEDX_CORE_WARN("Cannot update framebuffer size - window not created yet");
+            return;
+        }
+        
         int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
+        glfwGetFramebufferSize(WindowData::window, &width, &height);
         m_winSpecs.width = static_cast<uint32_t>(width);
         m_winSpecs.height = static_cast<uint32_t>(height);
         winData.framebufferResized = false;
@@ -849,7 +854,9 @@ namespace SceneryEditorX
     void Window::SetTitle(const std::string &title)
     {
         m_winSpecs.title = title;
-        glfwSetWindowTitle(window, m_winSpecs.title.c_str());
+        if (WindowData::window) {
+            glfwSetWindowTitle(WindowData::window, m_winSpecs.title.c_str());
+        }
     }
 
     /**
@@ -876,12 +883,17 @@ namespace SceneryEditorX
 	 */
 	void Window::SetWindowIcon(GLFWwindow *window)
 	{
+	    if (!window) {
+	        SEDX_CORE_WARN("Cannot set window icon - window handle is null");
+	        return;
+	    }
+	    
 	    IconData iconData;
 	
 	    std::ifstream file(iconData.path, std::ios::binary | std::ios::ate);
 	    if (!file.is_open())
 	    {
-	        SEDX_CORE_ERROR("Failed to open icon file!");
+	        SEDX_CORE_ERROR("Failed to open icon file: {}", iconData.path);
 	        return;
 	    }
 	
@@ -909,6 +921,7 @@ namespace SceneryEditorX
 	        glfwSetWindowIcon(window, 1, &icon);
 	        stbi_image_free(iconData.pixels);
 	        iconData.pixels = nullptr;
+	        SEDX_CORE_INFO("Window icon set successfully");
 	    }
 	    else
             SEDX_CORE_ERROR("Failed to load window icon!");
@@ -925,7 +938,10 @@ namespace SceneryEditorX
 	 */
 	bool Window::IsKeyPressed(const uint16_t keyCode) const
     {
-        return lastKeyState[keyCode] && !glfwGetKey(window, keyCode);
+        if (!WindowData::window) {
+            return false;
+        }
+        return lastKeyState[keyCode] && !glfwGetKey(WindowData::window, keyCode);
 	}
 
     /**
@@ -944,7 +960,9 @@ namespace SceneryEditorX
 
 	void Window::SetResizable(bool resizable) const
     {
-        glfwSetWindowAttrib(window, GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE);
+        if (WindowData::window) {
+            glfwSetWindowAttrib(WindowData::window, GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE);
+        }
     }
 
 } // namespace SceneryEditorX

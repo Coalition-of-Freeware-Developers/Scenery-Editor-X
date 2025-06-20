@@ -11,14 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    ///< Forward declarations
-    class VulkanDevice;
+
+    /// -------------------------------------------------------
 
     /**
      * @struct BindlessResources
@@ -67,6 +66,8 @@ namespace SceneryEditorX
         constexpr static uint32_t MAX_UNIFORM_BUFFERS = 1024;
     };
 
+    /// -------------------------------------------------------
+
     /**
      * @struct Descriptors
      * @brief Manages descriptor sets and resources for rendering
@@ -85,41 +86,43 @@ namespace SceneryEditorX
 
 	struct ImageDescriptorInfo
     {
-        VkDescriptorSet                     TargetDescriptorSet;
-        uint32_t                            TargetDescriptorBinding;
-        uint32_t                            TargetArrayElement;
-        VkDescriptorType                    TargetDescriptorType;
-        std::vector<VkDescriptorImageInfo>  ImageInfos;
+        VkDescriptorSet                     targetDescriptorSet;
+        uint32_t                            targetDescriptorBinding;
+        uint32_t                            targetArrayElement;
+        VkDescriptorType                    targetDescriptorType;
+        std::vector<VkDescriptorImageInfo>  imageInfos;
     };
 
 	struct BufferDescriptorInfo
     {
-        VkDescriptorSet                     TargetDescriptorSet;
-        uint32_t                            TargetDescriptorBinding;
-        uint32_t                            TargetArrayElement;
-        VkDescriptorType                    TargetDescriptorType;
-        std::vector<VkDescriptorBufferInfo> BufferInfos;
+        VkDescriptorSet                     targetDescriptorSet;
+        uint32_t                            targetDescriptorBinding;
+        uint32_t                            targetArrayElement;
+        VkDescriptorType                    targetDescriptorType;
+        std::vector<VkDescriptorBufferInfo> bufferInfos;
     };
 
 	struct TexelBufferDescriptorInfo
     {
-        VkDescriptorSet                     TargetDescriptorSet;
-        uint32_t                            TargetDescriptorBinding;
-        uint32_t                            TargetArrayElement;
-        VkDescriptorType                    TargetDescriptorType;
-        std::vector<VkBufferView>           TexelBufferViews;
+        VkDescriptorSet                     targetDescriptorSet;
+        uint32_t                            targetDescriptorBinding;
+        uint32_t                            targetArrayElement;
+        VkDescriptorType                    targetDescriptorType;
+        std::vector<VkBufferView>           texelBufferViews;
     };
 
 	struct CopyDescriptorInfo
     {
-        VkDescriptorSet     TargetDescriptorSet;
-        uint32_t            TargetDescriptorBinding;
-        uint32_t            TargetArrayElement;
-        VkDescriptorSet     SourceDescriptorSet;
-        uint32_t            SourceDescriptorBinding;
-        uint32_t            SourceArrayElement;
-        uint32_t            DescriptorCount;
+        VkDescriptorSet     targetDescriptorSet;
+        uint32_t            targetDescriptorBinding;
+        uint32_t            targetArrayElement;
+        VkDescriptorSet     sourceDescriptorSet;
+        uint32_t            sourceDescriptorBinding;
+        uint32_t            sourceArrayElement;
+        uint32_t            descriptorCount;
     };
+
+    /// -------------------------------------------------------
 
     /**
      * @brief Creates a descriptor set with a combined image sampler
@@ -132,9 +135,10 @@ namespace SceneryEditorX
      * @param image_layout The layout of the image.
      * @return VkDescriptorSet The created descriptor set.
      */
-    VkDescriptorSet CreateDescriptor(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout, 
-                                    VkSampler sampler, VkImageView image_view, VkImageLayout image_layout);
-    
+    VkDescriptorSet CreateDescriptor(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout);
+
+    /// -------------------------------------------------------
+
     /**
      * @brief Updates a descriptor set with new image information
      * 
@@ -144,8 +148,9 @@ namespace SceneryEditorX
      * @param image_view The image view to use
      * @param image_layout The layout of the image
      */
-    void UpdateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, 
-                            VkSampler sampler, VkImageView image_view, VkImageLayout image_layout);
+    void UpdateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout);
+
+    /// -------------------------------------------------------
 
     /**
      * @brief Create a descriptor set layout for bindless resources
@@ -155,6 +160,8 @@ namespace SceneryEditorX
      */
     VkDescriptorSetLayout CreateBindlessDescriptorSetLayout(VkDevice device);
 
+    /// -------------------------------------------------------
+
     /**
      * @brief Create a descriptor pool for bindless resources
      * 
@@ -162,6 +169,8 @@ namespace SceneryEditorX
      * @return VkDescriptorPool The created descriptor pool
      */
     VkDescriptorPool CreateBindlessDescriptorPool(VkDevice device);
+
+    /// -------------------------------------------------------
 
     /**
      * @brief Initialize the bindless resources structure
@@ -171,6 +180,8 @@ namespace SceneryEditorX
      */
     void InitializeBindlessResources(VkDevice device, BindlessResources& bindlessResources);
 
+    /// -------------------------------------------------------
+
     /**
      * @brief Clean up bindless resources
      * 
@@ -178,6 +189,8 @@ namespace SceneryEditorX
      * @param bindlessResources The bindless resources to clean up
      */
     void CleanupBindlessResources(VkDevice device, BindlessResources& bindlessResources);
+
+    /// -------------------------------------------------------
 
     /**
      * @brief Update a texture descriptor in the bindless descriptor set
@@ -189,9 +202,9 @@ namespace SceneryEditorX
      * @param imageView The image view to use
      * @param imageLayout The layout of the image
      */
-    void UpdateBindlessTexture(VkDevice device, const BindlessResources& bindlessResources, 
-                              uint32_t arrayElement, VkSampler sampler, 
-                              VkImageView imageView, VkImageLayout imageLayout);
+    void UpdateBindlessTexture(VkDevice device, const BindlessResources& bindlessResources, uint32_t arrayElement, VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout);
+
+    /// -------------------------------------------------------
 
     /**
      * @brief Update a storage buffer descriptor in the bindless descriptor set
@@ -203,9 +216,9 @@ namespace SceneryEditorX
      * @param offset The offset into the buffer
      * @param range The range of the buffer to use
      */
-    void UpdateBindlessStorageBuffer(VkDevice device, const BindlessResources& bindlessResources,
-                                   uint32_t arrayElement, VkBuffer buffer, 
-                                   VkDeviceSize offset, VkDeviceSize range);
+    void UpdateBindlessStorageBuffer(VkDevice device, const BindlessResources& bindlessResources, uint32_t arrayElement, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range);
+
+    /// -------------------------------------------------------
 
     /**
      * @brief Update a storage image descriptor in the bindless descriptor set
@@ -216,9 +229,9 @@ namespace SceneryEditorX
      * @param imageView The image view to use
      * @param imageLayout The layout of the image
      */
-    void UpdateBindlessStorageImage(VkDevice device, const BindlessResources& bindlessResources,
-                                  uint32_t arrayElement, VkImageView imageView, 
-                                  VkImageLayout imageLayout);
+    void UpdateBindlessStorageImage(VkDevice device, const BindlessResources& bindlessResources, uint32_t arrayElement, VkImageView imageView, VkImageLayout imageLayout);
+
+    /// -------------------------------------------------------
 
 } // namespace SceneryEditorX
 

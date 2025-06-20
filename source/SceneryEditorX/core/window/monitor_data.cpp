@@ -13,18 +13,47 @@
 #include <fmt/format.h>
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <algorithm>
 
 /// --------------------------------------------
 
 namespace SceneryEditorX
 {
     /**
+     * @brief Constructor for MonitorData
+     *
+     * Initializes the monitor data and refreshes the monitor list
+     */
+    MonitorData::MonitorData() : monitorHandles(nullptr), primaryMonitor(nullptr), monitorCount(0), monitorIndex(0), videoModeIndex(0)
+    {
+        try
+		{
+            RefreshDisplayCount();
+            RefreshMonitorList();
+        }
+        catch (const std::exception& e)
+		{
+            SEDX_CORE_WARN("Exception during MonitorData initialization: {}", e.what()); /// Continue with default values rather than crashing
+        }
+    }
+
+    /**
+     * @brief Destructor for MonitorData
+     *
+     * Cleans up any resources owned by the class
+     * @note: GLFW manages the lifetime of monitor handles, so we don't need to free them
+     */
+    MonitorData::~MonitorData() = default;
+
+
+    /**
      * @brief Retrieves detailed statistics for all connected monitors
      * 
      * This method collects comprehensive information about each connected display monitor,
      * including:
      * - Monitor identifier/name
-     * - Resolution in pixels (width � height)
+     * - Resolution in pixels (width × height)
      * - Physical dimensions in inches (converted from mm)
      * - Pixel density (PPI - pixels per inch)
      * - Refresh rate in Hz
@@ -34,47 +63,36 @@ namespace SceneryEditorX
      * that the most current configuration is used, handling monitor connection/disconnection
      * events appropriately.
      * 
-     * @return std::vector<MonitorStats> containing detailed statistics for each monitor
+     * @return std::vector<Monitor> containing detailed statistics for each monitor
      * 
-     * @see RefreshMonitors
-     * @see MonitorStats
+     * @see RefreshDisplayCount
+     * @see RefreshMonitorList
      * @see PresentMonitorStats
      */
 	std::vector<Monitor> MonitorData::GetMonitorStats()
 	{
-	    std::vector<Monitor> stats;
-        RefreshMonitors();
-        
-        /// Reserve space for monitors to avoid reallocation
-        stats.reserve(monitorCount);
-        GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
-
-		for (int i = 0; i < monitorCount; ++i)
+	    try
 		{
-            GLFWmonitor* currentMonitor = Monitor::monitor[i];
+	        /// Update monitor data if needed
+            RefreshDisplayCount();
+            
+            /// If we already have monitors, return them
+            if (!monitors.empty())
+                return monitors;
 
-			Monitor data;
-            data.monitorID = glfwGetMonitorName(currentMonitor);
-			
-			/// Get indexed monitor resolution.
-            const GLFWvidmode* mode = glfwGetVideoMode(currentMonitor);
-            data.resolution = Vec2(mode->width, mode->height);
-            data.refreshRate = mode->refreshRate;
+            /// Otherwise, populate the monitor data
+            RefreshMonitorList();
+            for (const auto &displayName : monitors)
+                SEDX_CORE_INFO("Monitor: {} = {}", monitorCount, displayName.monitorID);
 
-			/// Get indexed monitor physical size.
-			/// @note Monitor size is in millimeters. Convert to inches.
-            int width, height;
-            glfwGetMonitorPhysicalSize(currentMonitor, &width, &height);
-            data.dimensions = Vec2(width, height) / 25.4f;
+            return monitors;
 
-			// Calculate pixel density more efficiently
-            Vec2 vecPixelDensity = data.resolution / data.dimensions;
-            data.pixDensity = Vec2((vecPixelDensity.x + vecPixelDensity.y) * 0.5f);
-            data.isPrimary = (currentMonitor == primaryMonitor);
-            stats.push_back(std::move(data));
         }
-
-	    return stats;
+        catch (const std::exception& e)
+		{
+            SEDX_CORE_WARN("Exception in GetMonitorStats: {}", e.what());
+            return {}; /// Return empty vector on error
+        }
 	}
 
     /**
@@ -83,7 +101,7 @@ namespace SceneryEditorX
      * This method prints formatted information about each connected monitor to the
      * standard output, including:
      * - Monitor identifier/name with primary monitor indication
-     * - Resolution in pixels (width � height)
+     * - Resolution in pixels (width × height)
      * - Physical dimensions in inches
      * - Pixel density (PPI - pixels per inch)
      * 
@@ -94,21 +112,27 @@ namespace SceneryEditorX
      *       before displaying the information
      * 
      * @see GetMonitorStats
-     * @see MonitorStats
+     * @see Monitor
      */
-	void MonitorData::PresentMonitorStats()
+	void MonitorData::PresentMonitorStats() const
     {
-        for (const auto& data : GetMonitorStats())
-        {
-            constexpr auto formatString = "{}{}: {} x {} pixels, {:0.1f} x {:0.1f} inches, {:0.2f} Pixels\n";
-            fmt::print(fmt::runtime(formatString),
-                       data.monitorID,
-                       data.isPrimary ? " (Primary)" : "",
-                       data.resolution.x,
-                       data.resolution.y,
-                       data.dimensions.x,
-                       data.dimensions.y,
-                       data.pixDensity);
+        try
+		{
+            for (const auto& data : GetMonitors())
+            {
+                SEDX_CORE_TRACE("{}{}: {} x {} pixels, {:0.1f} x {:0.1f} inches, {:0.2f} Pixels",
+                           data.monitorID,
+                           data.isPrimary ? " (Primary)" : "",
+                           data.resolution.x,
+                           data.resolution.y,
+                           data.dimensions.x,
+                           data.dimensions.y,
+                           data.pixDensity.x);
+            }
+        }
+        catch (const std::exception& e)
+		{
+            SEDX_CORE_WARN("Exception in PresentMonitorStats: {}", e.what());
         }
     }
 
@@ -120,7 +144,7 @@ namespace SceneryEditorX
      * switch to the primary monitor and recursively call itself to get the center point.
      *
      * @param monitors Pointer to an array of GLFW monitor pointers. If nullptr, method
-     *                 will fall back to using the primary monitor.
+     *                 will use the current monitor handles.
      * @return Vec2 The center coordinates of the monitor (x, y) in pixels
      * 
      * @note The method contains recursive behavior when invalid monitor data is provided
@@ -128,25 +152,43 @@ namespace SceneryEditorX
      */
     Vec2 MonitorData::GetMonitorCenter(GLFWmonitor **monitors)
     {
-        /// Check if monitors are available and monitorIndex is valid
-		if (monitorIndex < 0 || monitorIndex >= monitorCount || monitors == nullptr)
+        try
 		{
-            // Get primary monitor and reset monitor index
-            RefreshMonitors();
-            monitorIndex = 0;
-            return GetMonitorCenter(Monitor::monitor);  // Recursive call with valid monitor
-		}
+            GLFWmonitor **monitorsToUse = (monitors != nullptr) ? monitors : monitorHandles;
+            
+            /// Check if monitors are available and monitorIndex is valid
+    		if (monitorIndex < 0 || monitorIndex >= monitorCount || monitorsToUse == nullptr)
+    		{
+                /// Get primary monitor and reset monitor index
+                RefreshDisplayCount();
+                monitorIndex = 0;
+                
+                /// Safety check to prevent infinite recursion
+                if (monitorHandles && monitorCount > 0)
+                    return GetMonitorCenter(monitorHandles);  /// Recursive call with valid monitor
 
-        const GLFWvidmode *mode = glfwGetVideoMode(monitors[monitorIndex]);
-        if (!mode) {
-            // Fallback if mode cannot be retrieved
-            return {0, 0};
+                SEDX_CORE_WARN("No valid monitors available for GetMonitorCenter");
+                return {640.0f, 360.0f};  /// Default fallback center
+            }
+    
+            const GLFWvidmode *mode = glfwGetVideoMode(monitorsToUse[monitorIndex]);
+            if (!mode)
+			{
+                /// Fallback if mode cannot be retrieved
+                SEDX_CORE_WARN("Failed to get video mode for monitor {}", monitorIndex);
+                return {640.0f, 360.0f};  /// Default fallback center
+            }
+    
+    		const int screenCenterX = mode->width / 2;
+    		const int screenCenterY = mode->height / 2;
+    
+    		return {static_cast<float>(screenCenterX), static_cast<float>(screenCenterY)};
         }
-
-		const int screenCenterX = mode->width / 2;
-		const int screenCenterY = mode->height / 2;  // Fixed bug: was using width instead of height
-
-		return {screenCenterX, screenCenterY};
+        catch (const std::exception& e)
+		{
+            SEDX_CORE_WARN("Exception in GetMonitorCenter: {}", e.what());
+            return {640.0f, 360.0f};  /// Default fallback center
+        }
     }
 
     /**
@@ -159,15 +201,66 @@ namespace SceneryEditorX
      * 
      * @note This method should be called whenever monitor configuration changes
      *       or before accessing monitor-related information to ensure data is current.
+     * @note Requires GLFW to be initialized before calling this method.
      * 
      * @see GetMonitorStats
      * @see GetMonitorCenter
      */
-    void MonitorData::RefreshMonitors()
+    void MonitorData::RefreshDisplayCount()
     {
-        Monitor::monitor = glfwGetMonitors(&monitorCount);
+        /// Check if GLFW is initialized
+        if (int initialized = glfwInit(); !initialized)
+		{
+            SEDX_CORE_WARN("Cannot refresh display count - GLFW not initialized");
+            monitorCount = 0;
+            monitorHandles = nullptr;
+            primaryMonitor = nullptr;
+            return;
+        }
+        
+        /// Get monitors from GLFW
+        monitorHandles = glfwGetMonitors(&monitorCount);
+        primaryMonitor = glfwGetPrimaryMonitor();
+        
+        /// Safety check to ensure we have at least one monitor
+        if (monitorCount <= 0)
+		{
+            SEDX_CORE_WARN("No monitors detected during RefreshDisplayCount");
+            monitorCount = 0;
+            monitorHandles = nullptr;
+            primaryMonitor = nullptr;
+        }
+        else
+            SEDX_CORE_INFO("Detected {} monitor(s)", monitorCount);
+
+        /// Make sure the current monitor index is valid
         if (monitorIndex >= monitorCount)
             monitorIndex = 0;
+    }
+
+    void MonitorData::RefreshMonitorList()
+    {
+        if (glfwInit() == GLFW_FALSE)
+        {
+            SEDX_CORE_WARN("GLFW not initialized - cannot refresh monitor list");
+            return;
+        }
+
+        int count;
+        monitorHandles = glfwGetMonitors(&count);
+
+        monitorCount = count;
+
+        if (monitorCount > 0)
+        {
+            SEDX_CORE_INFO("Successfully refreshed monitor list: {} monitor(s) detected", monitorCount);
+            primaryMonitor = glfwGetPrimaryMonitor();
+        }
+        else
+        {
+            SEDX_CORE_WARN("No monitors detected");
+            primaryMonitor = nullptr;
+        }
     }
 
     /**
@@ -183,19 +276,90 @@ namespace SceneryEditorX
      * @note The returned array is allocated and owned by GLFW, so it should not be freed
      * @note If an invalid monitor index is provided, count will be set to 0 and nullptr returned
      * 
-     * @see RefreshMonitors
+     * @see RefreshMonitorList
      */
     const GLFWvidmode* MonitorData::GetVideoModes(const int monitorIndex, int* count)
     {
-        if (monitorIndex < 0 || monitorIndex >= monitorCount)
-        {
-            *count = 0;
-            return nullptr;  /// Return nullptr instead of calling RefreshMonitors
-        }
+        /// Set default return value for error cases
+        *count = 0;
         
-        return glfwGetVideoModes(Monitor::monitor[monitorIndex], count);
+        try
+		{
+            /// Validate index and monitor handles
+            if (monitorIndex < 0 || monitorIndex >= monitorCount || monitorHandles == nullptr)
+			{
+                SEDX_CORE_WARN("Invalid monitor index {} for GetVideoModes (total: {})", monitorIndex, monitorCount);
+                return nullptr;
+            }
+            
+            /// Get video modes from GLFW
+            const GLFWvidmode* modes = glfwGetVideoModes(monitorHandles[monitorIndex], count);
+            
+            /// Log result
+            if (modes && *count > 0)
+                SEDX_CORE_INFO("Retrieved {} video modes for monitor {}", *count, monitorIndex);
+            else
+			{
+                SEDX_CORE_WARN("No video modes available for monitor {}", monitorIndex);
+                *count = 0;
+            }
+            
+            return modes;
+        }
+        catch (const std::exception& e)
+		{
+            SEDX_CORE_WARN("Exception in GetVideoModes: {}", e.what());
+            return nullptr;
+        }
     }
 
+    /**
+     * @brief Gets the primary monitor
+     * 
+     * @return GLFWmonitor* Handle to the primary monitor or nullptr if none available
+     */
+    GLFWmonitor* MonitorData::GetPrimaryMonitor() const
+    {
+        if (!primaryMonitor)
+            SEDX_CORE_WARN("Primary monitor not available");
+
+        return primaryMonitor;
+    }
+
+    /**
+     * @brief Gets the currently selected monitor
+     * 
+     * @return GLFWmonitor* Handle to the current monitor or nullptr if none available
+     */
+    GLFWmonitor* MonitorData::GetCurrentMonitor() const
+    {
+        if (monitorIndex >= 0 && monitorIndex < monitorCount && monitorHandles != nullptr)
+            return monitorHandles[monitorIndex];
+
+        SEDX_CORE_WARN("Current monitor not available (index: {}, count: {})", monitorIndex, monitorCount);
+        return nullptr;
+    }
+
+    /**
+     * @brief Gets the current video mode of the selected monitor
+     * 
+     * @return const GLFWvidmode* Current video mode or nullptr if not available
+     */
+    const GLFWvidmode* MonitorData::GetCurrentVideoMode() const
+    {
+        if (GLFWmonitor* monitor = GetCurrentMonitor())
+		{
+            const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+            if (!mode)
+                SEDX_CORE_WARN("Failed to get video mode for current monitor");
+
+            return mode;
+        }
+        
+        SEDX_CORE_WARN("Cannot get current video mode - no monitor available");
+        return nullptr;
+    }
+	
 } // namespace SceneryEditorX
 
 /// --------------------------------------------

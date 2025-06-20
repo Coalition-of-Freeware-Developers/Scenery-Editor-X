@@ -19,7 +19,7 @@
 #include <volk.h>
 #endif
 
-#include "../edX/edXProjectFile.h"
+//#include "../edX/edXProjectFile.h"
 #include "FileBrowser.hpp"
 
 // Data

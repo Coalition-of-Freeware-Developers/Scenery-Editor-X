@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------
@@ -33,29 +33,29 @@ namespace SceneryEditorX
     { 
 		enum BufferUsageFlags
 		{
-		    TransferSrc = 0x00000001,
-		    TransferDst = 0x00000002,
-		    UniformTexel = 0x00000004,
-		    StorageTexel = 0x00000008,
-		    Uniform = 0x00000010,
-		    Storage = 0x00000020,
-		    Index = 0x00000040,
-		    Vertex = 0x00000080,
-		    Indirect = 0x00000100,
-		    Address = 0x00020000,
-		    VideoDecodeSrc = 0x00002000,
-		    VideoDecodeDst = 0x00004000,
-		    TransformFeedback = 0x00000800,
-		    TransformFeedbackCounter = 0x00001000,
-		    ConditionalRendering = 0x00000200,
-		    AccelerationStructureInput = 0x00080000,
-		    AccelerationStructure = 0x00100000,
-		    ShaderBindingTable = 0x00000400,
-		    SamplerDescriptor = 0x00200000,
-		    ResourceDescriptor = 0x00400000,
-		    PushDescriptors = 0x04000000,
-            MicromapBuildInputReadOnly = 0x00800000,
-		    MicromapStorage = 0x01000000,
+		    TransferSrc					= 0x00000001,
+		    TransferDst					= 0x00000002,
+		    UniformTexel				= 0x00000004,
+		    StorageTexel				= 0x00000008,
+		    Uniform						= 0x00000010,
+		    Storage						= 0x00000020,
+		    Index						= 0x00000040,
+		    Vertex						= 0x00000080,
+		    Indirect					= 0x00000100,
+		    Address						= 0x00020000,
+		    VideoDecodeSrc				= 0x00002000,
+		    VideoDecodeDst				= 0x00004000,
+		    TransformFeedback			= 0x00000800,
+		    TransformFeedbackCounter	= 0x00001000,
+		    ConditionalRendering		= 0x00000200,
+		    AccelerationStructureInput	= 0x00080000,
+		    AccelerationStructure		= 0x00100000,
+		    ShaderBindingTable			= 0x00000400,
+		    SamplerDescriptor			= 0x00200000,
+		    ResourceDescriptor			= 0x00400000,
+		    PushDescriptors				= 0x04000000,
+            MicromapBuildInputReadOnly	= 0x00800000,
+		    MicromapStorage				= 0x01000000,
 		};
 
     }
@@ -237,6 +237,52 @@ namespace SceneryEditorX
 	 */
 	void UnmapBuffer(BufferResource &buffer);
 
+    /// ----------------------------------------------------------
+
+    class Framebuffer : public RefCounted
+    {
+    public:
+        Framebuffer(const FramebufferSpecification &spec);
+		virtual ~Framebuffer() override = default;
+
+		virtual void Resize(uint32_t width, uint32_t height, bool forceRecreate = false);
+        virtual void AddResizeCallback(const std::function<void(Ref<Framebuffer>)> &func);
+        virtual void BindTexture(uint32_t attachmentIndex = 0, uint32_t slot = 0);
+
+        virtual void Bind() const {}
+        virtual void Unbind() const {} /// Bind the framebuffer for rendering
+		virtual uint32_t GetWidth() const { return fb_width; }
+		virtual uint32_t GetHeight() const { return fb_height; }
+
+        virtual RID GetRendererID();
+
+        virtual Ref<Image2D> GetImage(uint32_t attachmentIndex = 0);
+        virtual Ref<Image2D> GetDepthImage();
+
+        virtual size_t GetColorAttachmentCount();
+        virtual bool HasDepthAttachment();
+
+        VkRenderPass GetRenderPass() const { return renderPass; }
+		VkFramebuffer GetFramebuffer() const { return framebuffer; }
+
+        virtual RID GetColorAttachmentRID() const { return 0; }
+		virtual RID GetDepthAttachmentRID() const { return 0; }
+
+        static Ref<Framebuffer> Create(const FramebufferSpecification &spec);
+        virtual const FramebufferSpecification &GetSpecification();
+    private:
+        uint32_t fb_width	= 0;											///< Width of the framebuffer
+        uint32_t fb_height = 0;                                             ///< Height of the framebuffer
+		FramebufferSpecification specification;								///< Specifications for the framebuffer
+        std::vector<std::function<void(Ref<Framebuffer>)>> resizeCallbacks; ///< Callbacks for resize events
+        std::vector<Ref<Image2D>> attachmentImages;
+        Ref<Image2D> depthAttachmentImage;
+
+        std::vector<VkClearValue> clearValues;
+
+        VkRenderPass renderPass = nullptr;
+        VkFramebuffer framebuffer = nullptr;
+    };
 
 } // namespace SceneryEditorX
 

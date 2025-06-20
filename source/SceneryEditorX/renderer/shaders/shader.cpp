@@ -12,13 +12,14 @@
 */
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/render_context.h>
 
 /// -----------------------------------------
 
 namespace SceneryEditorX
 {
 
-	Shader::Shader(const std::string &filepath, bool forceCompile, bool disableOptimization) : name(filepath)
+	Shader::Shader(const std::string &filepath) : name(filepath)
     {
         /// Load shader from file
         std::string shaderPath = GetShaderDirectoryPath() + filepath;
@@ -26,23 +27,21 @@ namespace SceneryEditorX
         if (shaderCode.empty())
         {
             SEDX_CORE_ERROR("Failed to load shader from file: {}", shaderPath);
-            ErrMsg("failed to load shader from file!");
             return;
         }
 
         if (const VkShaderModule shaderModule = CreateShaderModule(shaderCode); shaderModule == VK_NULL_HANDLE)
         {
             SEDX_CORE_ERROR("Failed to create shader module from file: {}", shaderPath);
-            ErrMsg("failed to create shader module!");
             return;
         }
-
     }
 
     Shader::~Shader()
     {
-        VkDevice vkDevice = device->GetDevice();
-        vkDestroyShaderModule(vkDevice, shaderModule, nullptr);
+        auto device = RenderContext::GetCurrentDevice()->GetDevice();
+        auto context = RenderContext::Get();
+        vkDestroyShaderModule(device, shaderModule, context->allocatorCallback);
     }
 
     void Shader::LoadFromShaderPack(const std::string &filepath, bool forceCompile, bool disableOptimization)
@@ -70,13 +69,15 @@ namespace SceneryEditorX
 
     VkShaderModule Shader::CreateShaderModule(const std::vector<char> &code) const
     {
+        auto device = RenderContext::GetCurrentDevice()->GetDevice();
+        auto context = RenderContext::Get();
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
         createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
 
         VkShaderModule shaderModule = nullptr;
-        if (vkCreateShaderModule(device->GetDevice(), &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+        if (vkCreateShaderModule(device, &createInfo, context->allocatorCallback, &shaderModule) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create shader module!");
 
         return shaderModule;

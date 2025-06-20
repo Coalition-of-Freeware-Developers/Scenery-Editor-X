@@ -12,13 +12,14 @@
 */
 #pragma once
 #include <chrono>
+#include <filesystem>
+#include <functional>
+#include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/window/icon.h>
+#include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/render_data.h>
 #include <vulkan/vulkan.h>
-#include <functional>
-#include <filesystem>
-#include <GLFW/glfw3.h>
 
 /// -------------------------------------------------------
 
@@ -36,6 +37,7 @@ namespace SceneryEditorX
 	struct WindowData
     {
         GLOBAL inline WindowMode mode = WindowMode::Windowed;
+        GLOBAL GLFWwindow *window;
         std::string title = "Scenery Editor X";
         uint32_t width = 1280;
         uint32_t height = 720;
@@ -85,6 +87,7 @@ namespace SceneryEditorX
 	class Window
 	{
 	public:
+        Window();
         Window(WindowData winData);
         virtual ~Window();
 
@@ -104,28 +107,22 @@ namespace SceneryEditorX
 	    RenderData			GetRenderData()								{ return renderData; }
 		IconData			GetIconData()								{ return iconData; }
 
-	    inline void		   *GetWindow()									{ return window; }
+        GLOBAL void		   *GetWindow()									{ return WindowData::window; }
 	    uint32_t			GetWidth()									{ return m_winSpecs.width; }
 		uint32_t			GetHeight()									{ return m_winSpecs.height; }
-
+        GLOBAL Window	   *Create(const WindowData &windowSpecs = WindowData());
         GLOBAL std::string  VideoModeText(const GLFWvidmode &mode);
-		//GLOBAL void			OnImgui();
-
 		void				UpdateFramebufferSize();
 	    void				SetFramebufferResized(const bool resized)   { winData.framebufferResized = resized; }
 		GLOBAL void			WaitEvents()								{ glfwWaitEvents(); }
-
 	    Vec2				GetDeltaMouse()								{ return winData.deltaMousePos; }
 		bool				GetFramebufferResized()						{ return winData.framebufferResized; }
-		bool				IsKeyDown(uint16_t keyCode)					{ return glfwGetKey(window,keyCode); }
-		bool				IsMouseDown(uint16_t buttonCode)			{ return glfwGetMouseButton(window,buttonCode); }
+		bool				IsKeyDown(uint16_t keyCode)					{ return glfwGetKey(WindowData::window,keyCode); }
+		bool				IsMouseDown(uint16_t buttonCode)			{ return glfwGetMouseButton(WindowData::window,buttonCode); }
         bool				IsDirty()									{ return winData.dirty; }
 	    bool				IsKeyPressed(uint16_t keyCode) const;
-	    bool				GetShouldClose()							{ return glfwWindowShouldClose(window); }
-
-	    //GLOBAL float		GetDeltaScroll()							{ return winData.deltaScroll; }
-		GLOBAL float		GetDeltaTime()								{ return deltaTime; }
-        GLOBAL Window		*Create(const WindowData &windowSpecs = WindowData());
+	    bool				GetShouldClose()							{ return glfwWindowShouldClose(WindowData::window); }
+	    GLOBAL float		GetDeltaTime()								{ return deltaTime; }
 
 	private:
         IconData iconData;
@@ -134,18 +131,16 @@ namespace SceneryEditorX
         WindowCallbacks windowCallbacks;
         Ref<RenderContext> renderContext;
 
-        GLFWwindow *window;
 		GLFWcursor *ImGuiMouseCursors[9] = { nullptr };
 
-        MonitorData **mainMonitor = nullptr;
         WindowData winData;
         int leftAlt;
 
         struct WindowSpecs
 		{
             std::string title;
-            uint32_t width;
-            uint32_t height;
+            uint32_t width = 1280;
+            uint32_t height = 720;
 		};
 		WindowSpecs m_winSpecs;
 

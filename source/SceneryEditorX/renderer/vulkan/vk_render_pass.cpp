@@ -31,7 +31,7 @@ namespace SceneryEditorX
 	 * @note The renderData member is default-initialized.
 	 * @throws Assertion failure if spec.vkPipeline is not valid.
 	 */
-	RenderPass::RenderPass(const RenderSpec &spec) : gfxEngine(nullptr), renderData()
+	RenderPass::RenderPass(const RenderSpec &spec) : renderData()
 	{
 	    SEDX_CORE_VERIFY(spec.vkPipeline);
 	}
@@ -55,11 +55,10 @@ namespace SceneryEditorX
 	 */
 	RenderPass::~RenderPass()
 	{
-	    if (renderPass != VK_NULL_HANDLE && gfxEngine->Get()->GetLogicDevice()->GetDevice())
+	    if (renderPass != VK_NULL_HANDLE && RenderContext::Get()->GetLogicDevice()->GetDevice())
 	    {
-	        vkDestroyRenderPass(gfxEngine->Get()->GetLogicDevice()->GetDevice(), renderPass,
-	            (gfxEngine != nullptr) ? gfxEngine->Get()->GetAllocatorCallback() : nullptr
-	        );
+            const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
+            vkDestroyRenderPass(device, renderPass, RenderContext::Get()->GetAllocatorCallback() : nullptr);
 	        renderPass = VK_NULL_HANDLE;
 	    }
 	}
@@ -134,7 +133,8 @@ namespace SceneryEditorX
 	    /// -------------------------------------------------------
 	
 	    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
-	
+        const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
+		
 	    VkRenderPassCreateInfo renderPassInfo{};
 	    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -144,7 +144,7 @@ namespace SceneryEditorX
 	    renderPassInfo.dependencyCount = 1;
 	    renderPassInfo.pDependencies = &dependency;
 	
-	    if (vkCreateRenderPass(gfxEngine->Get()->GetLogicDevice()->GetDevice(), &renderPassInfo, gfxEngine->Get()->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
+	    if (vkCreateRenderPass(device, &renderPassInfo, RenderContext::Get()->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
 	        SEDX_CORE_ERROR("Failed to create render pass!");
 	}
 
@@ -381,6 +381,7 @@ namespace SceneryEditorX
 	                             VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
 	                             VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const
 	{
+        const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
 	    VkImageCreateInfo imageInfo{};
 	    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	    imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -396,21 +397,21 @@ namespace SceneryEditorX
 	    imageInfo.samples = numSamples;
 	    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	
-	    if (vkCreateImage(gfxEngine->Get()->GetLogicDevice()->GetDevice(), &imageInfo, gfxEngine->Get()->GetAllocatorCallback(), &image) != VK_SUCCESS)
+	    if (vkCreateImage(device, &imageInfo, RenderContext::Get()->GetAllocatorCallback(), &image) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create image!");
 	
 	    VkMemoryRequirements memRequirements;
-	    vkGetImageMemoryRequirements(gfxEngine->Get()->GetLogicDevice()->GetDevice(), image, &memRequirements);
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
 	
 	    VkMemoryAllocateInfo allocInfo{};
 	    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	    allocInfo.allocationSize = memRequirements.size;
-	    allocInfo.memoryTypeIndex = GraphicsEngine::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
+	    allocInfo.memoryTypeIndex = RenderContext::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
 	
-	    if (vkAllocateMemory(gfxEngine->Get()->GetLogicDevice()->GetDevice(), &allocInfo, gfxEngine->Get()->GetAllocatorCallback(), &imageMemory) != VK_SUCCESS)
+	    if (vkAllocateMemory(device, &allocInfo, RenderContext::Get()->GetAllocatorCallback(), &imageMemory) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate image memory!");
 	
-	    vkBindImageMemory(gfxEngine->Get()->GetLogicDevice()->GetDevice(), image, imageMemory, 0);
+	    vkBindImageMemory(device, image, imageMemory, 0);
 	}
 
 } // namespace SceneryEditorX

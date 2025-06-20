@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/scene/asset.h>
 
@@ -35,12 +34,14 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-        virtual void Load(const std::string &path) override;
+        virtual void Load(const std::string &path);
         virtual void Unload() override;
 
-        GLOBAL void LoadWithAllocator();
-        GLOBAL void UnloadWithAllocator();
+		///TODO: Add these texture allocation functions
+        //GLOBAL void LoadWithAllocator();
+        //GLOBAL void UnloadWithAllocator();
         //[[nodiscard]] virtual bool IsLoaded() const override;
+
         [[nodiscard]] virtual const std::string &GetPath() const;
         [[nodiscard]] virtual const std::string &GetName() const;
         virtual void SetName(const std::string &name) override;
@@ -55,12 +56,7 @@ namespace SceneryEditorX
         void CreateTextureImageView();
         void CreateTextureSampler();
 		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int i) const;
-
-		Ref<RenderData> renderData;
         WeakRef<EditorConfig> config;
-        Ref<VulkanDevice> vkDevice = nullptr;
-        Ref<VulkanPhysicalDevice> vkPhysDevice = nullptr;
-        //Ref<MemoryAllocator> allocator = nullptr;
         std::string texturePath;
         std::string textureName;
 

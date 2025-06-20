@@ -431,7 +431,6 @@ namespace SceneryEditorX
         int shadowMapSamples = 4;
     };
 
-
     /// -------------------------------------------------------
 
 	GLOBAL const char* VendorIDToString(uint32_t vendorID)
@@ -461,14 +460,8 @@ namespace SceneryEditorX
 	 * This structure is shared across different components of the renderer to ensure
 	 * consistent access to rendering parameters and state.
 	 */
-    struct RenderData : RefCounted
+    struct RenderData
     {
-        uint8_t *data = nullptr; // Pointer to dynamically allocated data
-
-        RenderData(uint32_t w, uint32_t h) : width(w), height(h) { data = new uint8_t[width * height]; }
-        RenderData();
-        virtual ~RenderData() override { delete[] data; }
-
         [[nodiscard]] uint32_t GetWidth() const { return width; }
         [[nodiscard]] uint32_t GetHeight() const { return height; }
         [[nodiscard]] uint32_t GetImageIndex() const { return imageIndex; }

@@ -10,15 +10,16 @@
 * Created: 25/3/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/core/application.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imconfig.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
-#include <SceneryEditorX/core/window.h>
+#include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/ui/ui.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
-#include <GraphicsEngine/vulkan/vk_device.h>
 
 // -------------------------------------------------------
 
@@ -87,6 +88,8 @@ namespace SceneryEditorX::UI
 
     bool GUI::CreateDescriptorPool()
     {
+        auto device = RenderContext::GetCurrentDevice();
+        RenderContext context;
         if (!device)
         {
             EDITOR_ERROR("Cannot create ImGui descriptor pool: device is null");
@@ -113,7 +116,7 @@ namespace SceneryEditorX::UI
         poolInfo.poolSizeCount = std::size(poolSizes);
         poolInfo.pPoolSizes = poolSizes;
 
-        if (vkCreateDescriptorPool(device->GetDevice(), &poolInfo, nullptr, &imguiPool) != VK_SUCCESS)
+        if (vkCreateDescriptorPool(device->GetDevice(), &poolInfo, context.allocatorCallback, &imguiPool) != VK_SUCCESS)
         {
             EDITOR_ERROR("Failed to create ImGui descriptor pool!");
             return false;
@@ -124,12 +127,15 @@ namespace SceneryEditorX::UI
 
     void GUI::UpdateDpiScale()
     {
-        /// Get content scale from GLFW
+        auto &app = Application::Get();
+        GLFWwindow *window = static_cast<GLFWwindow *>(app.GetWindow().GetWindow());
+        
+        // Get content scale from GLFW
         float xScale, yScale;
         glfwGetWindowContentScale(window, &xScale, &yScale);
         contentScaleFactor = xScale;
 
-        /// Get monitor DPI info if available
+        // Get monitor DPI info if available
         if (GLFWmonitor *monitor = glfwGetPrimaryMonitor())
         {
             float xDpi, yDpi;
@@ -141,18 +147,17 @@ namespace SceneryEditorX::UI
             dpiFactor = xScale;
         }
 
-        /// Update ImGui style to reflect DPI changes
+        // Update ImGui style to reflect DPI changes
         ImGuiStyle &style = ImGui::GetStyle();
         style.ScaleAllSizes(dpiFactor);
+        
+        EDITOR_INFO("Updated DPI scale: {}", dpiFactor);
     }
 
-    bool GUI::InitGUI(GLFWwindow *window, GraphicsEngine &renderer)
+    bool GUI::InitGUI()
     {
-        this->window = window;
-        this->renderer = &renderer;
-
-        device = GraphicsEngine::GetCurrentDevice().Get();
-        swapchain = renderer.GetSwapChain().Get();
+        auto device = RenderContext::GetCurrentDevice();
+        auto* window = static_cast<GLFWwindow*>(Application::Get().GetWindow().GetWindow());
 
         if (initialized)
         {
@@ -162,9 +167,9 @@ namespace SceneryEditorX::UI
 
         /// Get essential Vulkan objects
         //device = GraphicsEngine::GetDevice()->GetDevice();
-        swapchain = renderer.GetSwapChain().Get();
+        //swapchain = renderer.GetSwapChain().Get();
 
-        if (!device || !swapchain)
+        if (!device /*|| !swapchain*/)
         {
             EDITOR_ERROR("Failed to get valid Vulkan device or swapchain");
             return false;
@@ -172,9 +177,7 @@ namespace SceneryEditorX::UI
 
         /// Create descriptor pool
         if (!CreateDescriptorPool())
-        {
             return false;
-        }
 
         /// Initialize ImGui context
         IMGUI_CHECKVERSION();
@@ -192,18 +195,16 @@ namespace SceneryEditorX::UI
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
         /// Get queue family info
-        const VulkanDevice *vkDevice = GraphicsEngine::GetCurrentDevice().Get();
-        //const QueueFamilyIndices indices = vkDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
         RenderData renderData;
 
         /// Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
-        info.Instance = GraphicsEngine::GetInstance();
-        info.PhysicalDevice = vkDevice->GetPhysicalDevice()->GetGPUDevices();
-        info.Device = device->GetDevice();
-        info.QueueFamily = reinterpret_cast<uint32_t>(vkDevice->GetGraphicsQueue());
+        info.Instance = RenderContext::GetInstance();
+        info.PhysicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
+        info.QueueFamily = device->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
+        info.Queue = device->GetGraphicsQueue();
         info.DescriptorPool = imguiPool;
-        info.RenderPass = renderer.GetRenderPass();
+        //info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;
         info.ImageCount = renderData.imageIndex;
         info.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
@@ -276,6 +277,7 @@ namespace SceneryEditorX::UI
 	
     void GUI::CleanUp()
     {
+        auto device = RenderContext::GetCurrentDevice();
         if (!initialized)
             return;
 
@@ -312,7 +314,6 @@ namespace SceneryEditorX::UI
         if (!initialized || !visible)
             return;
 
-        /// Any per-frame updates not related to drawing would go here
     }
 
     void GUI::ShowDemoWindow(bool *open) const
@@ -442,6 +443,7 @@ namespace SceneryEditorX::UI
         return true;
     }
 
+    /*
     void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView)
     {
         if (!initialized || !visible || !viewportInitialized)
@@ -466,9 +468,11 @@ namespace SceneryEditorX::UI
         ImGui::End();
         ImGui::PopStyleVar();
     }
+    */
 
     ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout) const
     {
+        auto device = RenderContext::GetCurrentDevice();
         if (!initialized || imageView == VK_NULL_HANDLE)
             return reinterpret_cast<ImTextureID>(nullptr);
 

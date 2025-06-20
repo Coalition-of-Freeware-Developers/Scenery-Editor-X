@@ -10,7 +10,6 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/buffers/buffer_data.h>
 #include <SceneryEditorX/renderer/buffers/index_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 

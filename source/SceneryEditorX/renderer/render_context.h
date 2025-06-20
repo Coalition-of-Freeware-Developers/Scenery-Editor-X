@@ -22,7 +22,7 @@ struct GLFWwindow;
 
 namespace SceneryEditorX
 {
-    // Forward declaration
+    /// Forward declaration
     class Renderer;
 
     class RenderContext : public RefCounted
@@ -35,18 +35,16 @@ namespace SceneryEditorX
 		virtual void Init();
 
         Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
-		GLOBAL VkInstance GetInstance() { return instance; }
+        GLOBAL VkInstance GetInstance();
         GLOBAL Ref<RenderContext> Get();
 		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
         std::vector<uint8_t> GetPipelineCacheData() const;
+        VkAllocationCallbacks *allocatorCallback = nullptr;
 
     private:
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanDevice> vkDevice;
         inline LOCAL VkInstance instance;
-        VulkanChecks check;
-        SwapChain swapChain;
-        RenderData renderData;
 
 		/// -------------------------------------------------------
 

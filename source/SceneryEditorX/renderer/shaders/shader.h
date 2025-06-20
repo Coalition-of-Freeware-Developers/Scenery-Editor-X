@@ -12,16 +12,12 @@
 */
 #pragma once
 #include <functional>
-//#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/core/pointers.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	/// -------------------------------------------------------
-
 	/**
 	 * @class Shader
 	 * @brief Represents a Vulkan shader program.
@@ -58,7 +54,7 @@ namespace SceneryEditorX
          * @param disableOptimization Whether to disable shader optimization during compilation
          * @param name Name of the shader
          */
-        Shader(const std::string &filepath, bool forceCompile = false, bool disableOptimization = false);
+        Shader(const std::string &filepath);
         
         /**
          * @brief Virtual destructor.
@@ -117,9 +113,6 @@ namespace SceneryEditorX
 	    [[nodiscard]] VkShaderModule CreateShaderModule(const std::vector<char> &code) const;
 
 	private:
-        /** @brief Reference to the Vulkan device */
-        Ref<VulkanDevice> device = nullptr;
-        
         /** @brief Vulkan shader module handle */
         VkShaderModule shaderModule = VK_NULL_HANDLE;
         

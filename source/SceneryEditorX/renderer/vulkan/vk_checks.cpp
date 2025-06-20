@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/application_data.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {

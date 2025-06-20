@@ -34,6 +34,7 @@ namespace SceneryEditorX
 
         GLOBAL void BeginFrame();
         GLOBAL void EndFrame();
+        GLOBAL void SubmitFrame();
 
 		//GLOBAL Ref<ShaderLibrary> GetShaderLibrary();
 

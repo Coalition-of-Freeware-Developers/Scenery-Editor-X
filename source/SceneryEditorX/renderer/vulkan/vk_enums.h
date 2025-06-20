@@ -49,6 +49,40 @@ namespace SceneryEditorX
         MemoryWrite = 0x00010000,
     };
 
+    /// -------------------------------------------------------
+
+    namespace ShaderStage
+    {
+        enum class Stage
+        {
+            Vertex		= 0x00000001,
+            Geometry	= 0x00000008,
+            Fragment	= 0x00000010,
+            Compute		= 0x00000020,
+            AllGraphics = 0x0000001F,
+            All			= 0x7FFFFFFF,
+        };
+    }
+
+    /// -------------------------------------------------------
+
+    enum class ShaderLanguage : uint8_t
+    {
+        GLSL,
+        HLSL,
+        SPV,
+    };
+
+    /// -------------------------------------------------------
+
+    enum class PipelineType : uint8_t
+    {
+        Graphics = 0,
+        Compute = 1,
+    };
+
+    /// -------------------------------------------------------
+
 	/**
 	 * @enum PipelineStage
 	 * @brief Represents the various stages of a Vulkan pipeline.
@@ -92,15 +126,6 @@ namespace SceneryEditorX
     };
 
     /// ----------------------------------------------------------
-
-    /*
-    enum PipelineCacheFlags : uint8_t
-    {
-        EXTERNAL_SYNC		= 0x00000001,
-        INTERNAL_SYNC_MERGE = 0x00000008,
-        CACHE_MAX_EMUN		= 0x7FFFFFFF
-    };
-    */
 
     enum SamplerFilter : uint8_t
     {

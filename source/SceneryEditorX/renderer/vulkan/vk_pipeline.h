@@ -5,65 +5,73 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* vk_pipelines.h
+* vk_pipeline.h
 * -------------------------------------------------------
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
-
-#include "vk_device.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class SwapChain;
-	struct Viewport;
 
-    /// -------------------------------------------------------
+    struct PipelineResource : Resource
+    {
+        VkPipeline pipeline;
+        VkPipelineLayout layout;
+
+        virtual ~PipelineResource() override
+        {
+            vkDestroyPipeline(RenderContext::GetCurrentDevice()->GetDevice(), pipeline, nullptr);
+            vkDestroyPipelineLayout(RenderContext::GetCurrentDevice()->GetDevice(), layout, nullptr);
+        }
+    };
+
+    struct PipelineData
+    {
+        Ref<Shader> shader;
+        Ref<Framebuffer> dstFramebuffer;
+        bool backfaceCulling = true;
+        bool depthTest = true;
+        bool depthWrite = true;
+        bool wireframe = false;
+        float lineWidth = 1.0f;
+        std::string name;
+    };
 
 	class Pipeline : public RefCounted
 	{
 	public:
-	    Pipeline() = default;
-        virtual ~Pipeline();
+	    Pipeline();
+        virtual ~Pipeline() override;
 
-		struct PipelineResource : Resource
+        struct Stage
         {
-            VkPipeline pipeline;
-            VkPipelineLayout layout;
-
-            virtual ~PipelineResource() override
-            {
-                Pipeline pipelineInstance;
-                pipelineInstance.Destroy();
-            }
+            ShaderStage::Stage stage;
+            std::filesystem::path path;
+            std::string entryPoint = "main";
         };
 
-	    void Create();
-        void Destroy();
+	    virtual void Create();
+
         VkExtent2D GetFloatSwapExtent() const;
         VkPipeline GetPipeline() const { return pipeline; }
 		VkPipelineLayout GetVulkanPipelineLayout() const { return pipelineLayout; }
         [[nodiscard]] virtual Ref<Shader> GetShader() const { return shaderPtr; }
-
-    // protected:
-    //     /**
-    //      * @brief Creates a shader module from shader code
-    //      * @param device The logical device
-    //      * @param code The shader code
-    //      * @return The created shader module
-    //      */
-    //     INTERNAL VkShaderModule CreateShaderModule(VkDevice device, const std::vector<char>& code);
+        bool dynamicLineWidth() const;
 
 	private:
-        Viewport *vkViewport = nullptr;
         Ref<Shader> shaderPtr;
         Ref<SwapChain> vkSwapChain;
-        Ref<VulkanDevice> device;
+        PipelineType type;
+        Ref<PipelineResource> resource;
+        std::vector<Stage> stages;
+        std::vector<std::vector<char>> stageBytes;
 
         VkPipeline pipeline = VK_NULL_HANDLE;
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;

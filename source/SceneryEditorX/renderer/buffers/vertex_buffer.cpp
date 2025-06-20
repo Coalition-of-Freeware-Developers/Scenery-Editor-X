@@ -10,7 +10,6 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/buffers/buffer_data.h>
 #include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 
@@ -85,7 +84,6 @@ namespace SceneryEditorX
 	    /// --------------------------------------
 
         CreateBuffer(bufferSize, BufferUsage::TransferSrc, CPU, "VertexStagingBuffer#");
-
         void *data = allocator->MapMemory<void>(stagingBufferAllocation);
         memcpy(data, vertices.data(), (size_t)bufferSize);
         MemoryAllocator::UnmapMemory(stagingBufferAllocation);

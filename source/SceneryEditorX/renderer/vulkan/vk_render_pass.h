@@ -73,7 +73,6 @@ namespace SceneryEditorX
 		//VkDescriptorPool GetDescriptorPool() const { return descriptors->descriptorPool; }
 
 	private:
-        Ref<GraphicsEngine> *gfxEngine;		///< Pointer to the graphics engine reference
         Ref<SwapChain> vkSwapChain;			///< Reference to the Vulkan swap chain
         Ref<MemoryAllocator> allocator;		///< Reference to the memory allocator for Vulkan resources
         Ref<Descriptors> descriptors;		///< Reference to the Vulkan descriptor set manager
@@ -103,4 +102,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

@@ -16,12 +16,6 @@
 
 /// -------------------------------------------------------
 
-#ifdef SEDX_PLATFORM_WINDOWS
-#include <Shlobj.h>
-#endif // SEDX_PLATFORM_WINDOWS
-
-/// -------------------------------------------------------
-
 /*
 std::string getDumpDirectory()
 {
@@ -67,24 +61,24 @@ namespace SceneryEditorX
     class EditorX : public Application
     {
     public:
-        EditorX(const WindowData &appData, std::string_view projPath) : Application(appData), m_ProjectPath(projPath)
+        EditorX(const AppData &appData, std::string_view projPath) : Application(appData), m_ProjectPath(projPath)
         {
             if (projPath.empty())
                 m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
                 
-            // Initialize application services
+            ///< Initialize application services
             initCrashHandlerServices();
         }
 
         virtual ~EditorX() override
         {
-            // Clean up application services
+            ///< Clean up application services
             endCrashHandlerServices();
         }
 
         virtual void OnInit() override  
         {  
-            /// Initialize the user settings  
+            ///< Initialize the user settings  
             m_UserSettings = CreateRef<ApplicationSettings>("settings.cfg");
             if (!m_UserSettings->ReadSettings())  
             {  
@@ -94,10 +88,7 @@ namespace SceneryEditorX
             
             try 
             {
-                /// Create and initialize the editor application
-                m_Window = CreateRef<Window>(GetWindow());
-                m_EditorApp = CreateScope<EditorApplication>();
-                m_EditorApp->InitEditor(m_Window);
+                m_EditorApp->InitEditor();
             }
             catch (const std::exception &e)
             {
@@ -113,7 +104,7 @@ namespace SceneryEditorX
         
         virtual void OnShutdown() override
         {
-            // Clean up editor application before the main Application is destroyed
+            ///< Clean up editor application before the main Application is destroyed
             if (m_EditorApp)
                 m_EditorApp.reset();
 
@@ -124,27 +115,29 @@ namespace SceneryEditorX
         std::string m_ProjectPath;
         Ref<ApplicationSettings> m_UserSettings{};
         Scope<EditorApplication> m_EditorApp{};
-        Ref<Window> m_Window;
     };
-
-    Application* CreateApplication(int argc, char** argv)
-    {
-        /// Parse command line arguments for project path
-        std::string_view projectPath;
-        if (argc > 1)
-        {
-            projectPath = argv[1];
-        }
-
-        // Configure window data
-        WindowData windowData;
-        windowData.title = "Scenery Editor X";
-        windowData.width = 1280;
-        windowData.height = 720;
-        windowData.resizable = true;
-        windowData.maximized = true;
-
-        // Create and return the editor application
-        return new EditorX(windowData, projectPath);
-    }
 }
+
+/// -------------------------------------------------------
+
+SceneryEditorX::Application* SceneryEditorX::CreateApplication(int argc, char** argv)
+{
+    /// Parse command line arguments for project path
+    std::string_view projectPath;
+    if (argc > 1)
+        projectPath = argv[1];
+
+    /// Create the application with default settings
+	AppData windowData;
+	windowData.appName = "Scenery Editor X";
+	windowData.WinWidth = 1280;
+	windowData.WinHeight = 720;
+	windowData.Resizable = true;
+	windowData.Fullscreen = true;
+    windowData.VSync = true;
+
+    /// Return a new instance of the editor application
+    return new EditorX(windowData, projectPath);
+}
+
+/// -------------------------------------------------------

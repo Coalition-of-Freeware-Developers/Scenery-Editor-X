@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <vma/vk_mem_alloc.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include <vma/vk_mem_alloc.h>
 
 /// -------------------------------------------------------
 
@@ -72,7 +72,7 @@ namespace SceneryEditorX
     public:
         MemoryAllocator() = default;
         explicit MemoryAllocator(std::string tag);
-        virtual ~MemoryAllocator();
+        virtual ~MemoryAllocator() override;
 
         /// Defragmentation methods
         void BeginDefragmentation(VmaDefragmentationFlags flags = 0);
@@ -257,4 +257,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

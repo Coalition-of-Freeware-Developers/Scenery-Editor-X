@@ -11,16 +11,16 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
-#include <utility>
 #include <set>
-#include <unordered_set>
-#include <string>
+#include <utility>
 #include <vector>
+
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -1240,11 +1240,10 @@ namespace SceneryEditorX
         return device;
     }
 
-	/*
-	VkCommandBuffer VulkanDevice::CreateSecondaryCommandBuffer(const char *debugName)
+	VkCommandBuffer VulkanDevice::CreateUICmdBuffer(const char *debugName)
 	{
 		/// Get the command pool for the current thread
-		Ref<CommandPool> cmdPool = GetOrCreateThreadLocalCmdPool();
+        Ref<CommandPool> cmdPool = CreateLocalCommandPool();
 
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1269,7 +1268,6 @@ namespace SceneryEditorX
 		return cmdBuffer;
 
 	}
-	*/
 
 	/// -------------------------------------------------------
 
@@ -1816,16 +1814,16 @@ namespace SceneryEditorX
 	 */
     CommandPool::~CommandPool()
     {
-        VkDevice vulkanDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice();
-        if (!vulkanDevice)
+        const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
+        if (!device)
             return;
 
         /// Only destroy compute pool if it's different from graphics pool
         if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
-            vkDestroyCommandPool(vulkanDevice, ComputeCmdPool, nullptr);
+            vkDestroyCommandPool(device, ComputeCmdPool, nullptr);
 
         if (GraphicsCmdPool != VK_NULL_HANDLE)
-            vkDestroyCommandPool(vulkanDevice, GraphicsCmdPool, nullptr);
+            vkDestroyCommandPool(device, GraphicsCmdPool, nullptr);
 
         GraphicsCmdPool = VK_NULL_HANDLE;
         ComputeCmdPool = VK_NULL_HANDLE;
@@ -1856,7 +1854,7 @@ namespace SceneryEditorX
 	 */
     VkCommandBuffer CommandPool::AllocateCommandBuffer(const bool begin, const bool compute) const
     {
-        VkDevice vulkanDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice();
+        const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
         const VkCommandPool cmdPool = compute ? ComputeCmdPool : GraphicsCmdPool;
 
         VkCommandBufferAllocateInfo allocInfo{};
@@ -1866,7 +1864,7 @@ namespace SceneryEditorX
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer cmdBuffer;
-        VkResult result = vkAllocateCommandBuffers(vulkanDevice, &allocInfo, &cmdBuffer);
+        VkResult result = vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer);
 
         if (result != VK_SUCCESS)
         {
@@ -1884,7 +1882,7 @@ namespace SceneryEditorX
             if (result != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR("Failed to begin command buffer! Error: {}", static_cast<int>(result));
-                vkFreeCommandBuffers(vulkanDevice, cmdPool, 1, &cmdBuffer);
+                vkFreeCommandBuffers(device, cmdPool, 1, &cmdBuffer);
                 return VK_NULL_HANDLE;
             }
         }

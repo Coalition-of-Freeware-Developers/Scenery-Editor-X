@@ -94,7 +94,6 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 		libconfig
 		libconfig++
 		X-PlaneSceneryLibrary
-		GraphicsEngine
         glfw
         dxgi
         d3d12

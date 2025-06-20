@@ -52,6 +52,50 @@ INCLUDE(Catch)
 catch_discover_tests(RefTests)
 
 # --------------------------------
+# Memory Allocator Tests
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Memory Allocator Tests")
+
+# Define the test executable for memory allocator tests
+ADD_EXECUTABLE(MemoryAllocatorTests
+    memory_tests/MemoryTestMain.cpp
+    memory_tests/MemoryAllocatorTestUtils.cpp
+    memory_tests/MemoryAllocatorTest.cpp
+    memory_tests/MemoryAllocatorStressTest.cpp
+    memory_tests/MemoryPoolTest.cpp
+)
+
+# Include directories
+TARGET_INCLUDE_DIRECTORIES(MemoryAllocatorTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+    ${CMAKE_SOURCE_DIR}/dependency/vma
+    $ENV{VULKAN_SDK}/Include/
+)
+
+# Link with Catch2 and Vulkan libraries
+TARGET_LINK_LIBRARIES(MemoryAllocatorTests PRIVATE
+    Catch2::Catch2
+    vulkan-1
+)
+
+# Enable parallel compilation for MSVC
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /MP)
+ENDIF()
+
+# Enable warning level
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+# Register with CTest
+catch_discover_tests(MemoryAllocatorTests)
+
+# --------------------------------
 # File Format Tester
 # --------------------------------
 

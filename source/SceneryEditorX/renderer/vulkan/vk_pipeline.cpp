@@ -5,12 +5,12 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* vk_pipelines.cpp
+* vk_pipeline.cpp
 * -------------------------------------------------------
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/vulkan/vk_pipelines.h>
+#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
 #include <SceneryEditorX/platform/file_manager.hpp>
 
 /// -------------------------------------------------------
@@ -18,12 +18,53 @@
 namespace SceneryEditorX
 {
 
-	void Pipeline::Create()
+	Pipeline::Pipeline()
 	{
-		/// Get editor configuration
-        EditorConfig config;
+		//SEDX_CORE_ASSERT()
+        Create();
+	}
 
-        std::string shaderPath(config.shaderFolder);
+    Pipeline::~Pipeline()
+    {
+        /*
+        if (device)
+        {
+            if (pipeline != VK_NULL_HANDLE)
+            {
+                vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
+                pipeline = VK_NULL_HANDLE;
+            }
+
+            if (pipelineLayout != VK_NULL_HANDLE)
+            {
+                vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
+                pipelineLayout = VK_NULL_HANDLE;
+            }
+
+            if (pipelineCache != VK_NULL_HANDLE)
+            {
+                vkDestroyPipelineCache(device->GetDevice(), pipelineCache, nullptr);
+                pipelineCache = VK_NULL_HANDLE;
+            }
+        }
+        */
+
+        const auto device = RenderContext::GetCurrentDevice()->GetDevice();
+        vkDestroyPipeline(device, pipeline, nullptr);
+        vkDestroyPipelineCache(device, pipelineCache, nullptr);
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    }
+
+    void Pipeline::Create()
+	{
+        Ref<Pipeline> instance = this;
+        EditorConfig config; /// Get editor configuration
+        VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+        Ref<Framebuffer> framebuffer = instance->m_Specification.dstFramebuffer.As<Framebuffer>();
+
+		auto descriptorSetLayouts = shader->GetAllDescriptorSetLayouts();
+
+	    std::string shaderPath(config.shaderFolder);
 
         Ref<Shader> vertShader = Shader::CreateFromString(shaderPath + "/vert.spv");
         Ref<Shader> fragShader = Shader::CreateFromString(shaderPath + "/frag.spv");
@@ -236,33 +277,16 @@ namespace SceneryEditorX
 
     VkExtent2D Pipeline::GetFloatSwapExtent() const
     {
-        VkExtent2D extent = vkSwapChain->GetSwapExtent();
+        auto extent = vkSwapChain->GetSwapExtent();
         return extent;
     }
 
-    void Pipeline::Destroy()
+	bool Pipeline::dynamicLineWidth() const
     {
-        if (device)
-        {
-            if (pipeline != VK_NULL_HANDLE)
-            {
-                vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
-                pipeline = VK_NULL_HANDLE;
-            }
-
-            if (pipelineLayout != VK_NULL_HANDLE)
-            {
-                vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
-                pipelineLayout = VK_NULL_HANDLE;
-            }
-
-            if (pipelineCache != VK_NULL_HANDLE)
-            {
-                vkDestroyPipelineCache(device->GetDevice(), pipelineCache, nullptr);
-                pipelineCache = VK_NULL_HANDLE;
-            }
-        }
+        return m_Specification.Topology == PrimitiveTopology::Lines ||
+               m_Specification.Topology == PrimitiveTopology::LineStrip || m_Specification.Wireframe;
     }
+
 
 } // namespace SceneryEditorX
 

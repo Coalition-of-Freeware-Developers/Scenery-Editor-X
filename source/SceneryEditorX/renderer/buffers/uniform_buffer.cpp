@@ -10,7 +10,7 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/buffers/buffer_data.h>
+#include <SceneryEditorX/core/memory.h>
 #include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 
 /// --------------------------------------------
@@ -23,9 +23,9 @@ namespace SceneryEditorX
      * Initializes the UniformBuffer instance by setting up the
      * memory allocator reference from the graphics engine.
      */
-    UniformBuffer::UniformBuffer() : gfxEngine(nullptr)
+    UniformBuffer::UniformBuffer(uint32_t size) : size(size)
     {
-        allocator = CreateRef<MemoryAllocator>();
+        localMemAlloc = hnew uint8_t[size];
     }
 
     /**
@@ -41,13 +41,22 @@ namespace SceneryEditorX
      */
     UniformBuffer::~UniformBuffer()
     {
+        if (!allocation)
+			return;
+
         for (size_t i = 0; i < uniformBuffers.size(); i++)
         {
             if (uniformBuffers[i] != VK_NULL_HANDLE)
             {
-                allocator->DestroyBuffer(uniformBuffers[i], uniformBuffersAllocation[i]);
+                MemoryAllocator allocation("UniformBuffer");
+                allocation.DestroyBuffer(uniformBuffers[i], uniformBuffersAllocation[i]);
             }
         }
+
+		allocation = nullptr;
+
+		delete[] localMemAlloc;
+        localMemAlloc = nullptr;
     }
 	
 	/**
@@ -76,23 +85,20 @@ namespace SceneryEditorX
 									   Vec3(0.0f, 0.0f, 0.0f),
 									   Vec3(0.0f, 0.0f, 1.0f));
 	    uniformBuff.proj = glm::perspective(glm::radians(45.0f),
-	                         static_cast<float>(gfxEngine->Get()->GetSwapChain()->GetSwapExtent().width) /
-	                             static_cast<float>(gfxEngine->Get()->GetSwapChain()->GetSwapExtent().height),
-	                         0.1f, 10.0f);
+	                         (float)RenderContext::Get()->GetSwapChain()->GetSwapExtent().width /
+	                             (float)gfxEngine->Get()->GetSwapChain()->GetSwapExtent().height, 0.1f, 10.0f);
 	    uniformBuff.proj[1][1] *= -1;
 
         /// Check if currentImage is within valid range
         if (currentImage < uniformBuffersAllocation.size())
         {
-            void *data = allocator->MapMemory<void>(uniformBuffersAllocation[currentImage]);
+            void *data = MemoryAllocator::MapMemory<void>(uniformBuffersAllocation[currentImage]);
             memcpy(data, &uniformBuff, sizeof(uniformBuff));
             MemoryAllocator::UnmapMemory(uniformBuffersAllocation[currentImage]);
         }
         else
-        {
             SEDX_CORE_ERROR("Attempting to update uniform buffer with invalid frame index");
-        }
-	}
+    }
 	
 	/**
 	 * @brief Creates uniform buffers for each frame in flight
@@ -125,7 +131,8 @@ namespace SceneryEditorX
             bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             
             /// Allocate the buffer using the memory allocator
-            uniformBuffersAllocation[i] = allocator->AllocateBuffer(bufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBuffers[i]);
+            uniformBuffersAllocation[i] = allocation;
+            //AllocateBuffer(bufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, uniformBuffers[i]);
 	    }
 	}
 	
@@ -151,32 +158,37 @@ namespace SceneryEditorX
 	 */
 	void UniformBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory)
     {
-        const VkDevice vkDevice = GraphicsEngine::Get()->GetLogicDevice()->GetDevice();
+        const auto device = RenderContext::GetCurrentDevice()->GetDevice();
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+        /// -------------------------------------------------------
+
+        VkMemoryAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.pNext = nullptr;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = 0;
+
+		CreateBuffer(size, BufferUsage::Uniform, MemoryType::GPU, "UniformBuffer");
+
 	    VkBufferCreateInfo bufferInfo{};
 	    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	    bufferInfo.size = size;
-	    bufferInfo.usage = usage;
 	    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	
-	    if (vkCreateBuffer(vkDevice, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+
+		MemoryAllocator allocator("UniformBuffer");
+	    if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create buffer!");
 	
 	    /// -------------------------------------------------------
-	
-	    VkMemoryRequirements memRequirements;
-	    vkGetBufferMemoryRequirements(vkDevice, buffer, &memRequirements);
-	
-	    /// -------------------------------------------------------
-	
-	    VkMemoryAllocateInfo allocInfo{};
-	    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	    allocInfo.allocationSize = memRequirements.size;
-	    allocInfo.memoryTypeIndex = GraphicsEngine::Get()->GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
-	
-	    if (vkAllocateMemory(vkDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+
+	    if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Memory Allocator", "Failed to allocate buffer memory!");
 	
-	    vkBindBufferMemory(vkDevice, buffer, bufferMemory, 0);
+	    vkBindBufferMemory(device, buffer, bufferMemory, 0);
 	}
 
 }

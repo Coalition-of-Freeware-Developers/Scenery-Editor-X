@@ -16,15 +16,6 @@
 
 namespace SceneryEditorX
 {
-	enum class ShaderType : uint8_t
-	{
-        NONE = 0,
-		VERTEX_SHADER = 1,
-		FRAGMENT_SHADER = 2,
-		GEOMETRY_SHADER = 3,
-		PIXEL_SHADER = 4,
-	};
-
     class ShaderResource
     {
     public:

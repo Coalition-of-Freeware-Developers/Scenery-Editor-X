@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
 
 /// ----------------------------------------------------------
 
@@ -58,7 +58,6 @@ namespace SceneryEditorX
 		void Release() const;
 
     private:
-        //Ref<GraphicsEngine> *gfxEngine;      ///< Pointer to the graphics engine reference
         Ref<MemoryAllocator> allocator;		 ///< Reference to the memory allocator
         std::vector<uint32_t> indices;		 ///< Storage for index data
         VkBuffer indexBuffer;				 ///< Handle to the Vulkan index buffer

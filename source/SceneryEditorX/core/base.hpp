@@ -322,9 +322,9 @@ namespace SceneryEditorX
 		{
 			if (flag)
 				return !((flag = !flag));
-			else
-				return false;
-		}
+
+		    return false;
+        }
 
 		/**
 		 * @brief Checks if the flag is currently in a dirty state.

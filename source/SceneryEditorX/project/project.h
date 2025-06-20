@@ -7,82 +7,61 @@
 * -------------------------------------------------------
 * project.h
 * -------------------------------------------------------
-* Created: 26/5/2025
+* Created: 7/5/2025
 * -------------------------------------------------------
 */
 #pragma once
 #include <filesystem>
-#include <format>
-#include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/scene/asset_manager.h>
-#include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/platform/editor_config.hpp>
+#include "project_settings.h"
 
-/// ---------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	struct ProjectConfig
+	class Project : public RefCounted
 	{
-        std::string projectName;
-        std::string assetDir = "assets";
+	public:
+	    Project();
+        virtual ~Project() override;
 
-        std::string startScene;
+	    /// -------------------------------------------------------
 
-		std::string projectFileName;
-        std::string projectDir;
+		const ProjectSettings &GetConfig() const { return config; }
 
-        bool EnableAutoSave = false;
-        int AutoSaveTimer = 300;
-	};
+	    GLOBAL Ref<Project> GetActive() { return activeProject; }
+        GLOBAL void SetActive(Ref<Project> project);
 
-    class Project : public RefCounted
-    {
-    public:
-		Project();
-		~Project();
+        void CreateProject(std::string name, std::filesystem::path path);
+	    void Load(const std::filesystem::path &InPath);
+	    void Save(const std::filesystem::path &InPath);
 
-        [[nodiscard]] const ProjectConfig &GetConfig() const { return config; }
-
-		GLOBAL Ref<Project> GetActive() { return currentProject; }
-        GLOBAL void SetActive(const Ref<Project> &project);
-
-		void Load(const std::filesystem::path& path);
-		void Save(const std::filesystem::path& path) const;
+	    /// -------------------------------------------------------
 
 		GLOBAL const std::string &GetProjectName()
         {
-            SEDX_CORE_ASSERT(currentProject);
-            return currentProject->GetConfig().projectName;
+            SEDX_CORE_ASSERT(activeProject);
+            return activeProject->GetConfig().name;
         }
 
-		GLOBAL const std::string &GetProjectDir()
+		GLOBAL std::filesystem::path GetProjectDirectory()
 		{
-            SEDX_ASSERT(currentProject);
-            return currentProject->GetConfig().projectDir;
+            SEDX_CORE_ASSERT(activeProject);
+            return activeProject->GetConfig().projectPath;
 		}
 
-		GLOBAL const std::string &GetAssetDir()
-		{
-			SEDX_CORE_ASSERT(currentProject);
-			return currentProject->GetConfig().assetDir;
-        }
+	private:
+        ProjectSettings config;
+        std::string projectName;
+        std::filesystem::path projectPath;
+        std::filesystem::path binPath;
 
-		GLOBAL std::filesystem::path GetXPLibraryPath()
-		{
-            SEDX_CORE_ASSERT(currentProject);
-            return std::filesystem::path(currentProject->GetConfig().projectDir) / "library.txt";
-		}
+        inline static Ref<Project> activeProject;
 
-		GLOBAL std::filesystem::path GetCacheDir()
-        {
-			SEDX_CORE_ASSERT(currentProject);
-            return std::filesystem::path(currentProject->GetConfig().projectDir) / "cache";
-        }
-    private:
-        ProjectConfig config;
-		inline GLOBAL Ref<Project> currentProject;
-        //inline GLOBAL Ref<AssetManager> assetManager;
-    };
-}
+        /// -------------------------------------------------------
 
-/// ---------------------------------------------------------
+	};
+
+} // namespace SceneryEditorX
+
+/// -------------------------------------------------------

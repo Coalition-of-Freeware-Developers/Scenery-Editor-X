@@ -11,9 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <glm/gtc/integer.hpp>
+#include <imgui/imgui.h>
 #include <SceneryEditorX/renderer/vulkan/render_data.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h> /// Used by VmaAllocation in struct. !MUST KEEP!
-#include <imgui/imgui.h>
 
 /// -------------------------------------------------------
 
@@ -69,6 +70,28 @@ namespace SceneryEditorX
         D24_unorm_S8_uint	= 129,
     };
 
+    enum class UVWrap : uint8_t
+    {
+        None = 0,
+        Clamp,
+        Repeat
+    };
+
+    struct ImageSubresourceRange
+    {
+        uint32_t mip = 0;
+        uint32_t mipCount = 0xffffffff;
+        uint32_t layer = 0;
+        uint32_t layerCount = 0xffffffff;
+    };
+
+    union ImageClearValue
+    {
+        glm::vec4 FloatValues;
+        glm::ivec4 IntValues;
+        glm::uvec4 UIntValues;
+    };
+
     namespace Aspect
     {
         enum AspectFlags : uint8_t
@@ -80,12 +103,16 @@ namespace SceneryEditorX
     }
 	using AspectFlags = Flags;
 
+    /// -------------------------------------------------------
+
     struct ImageID
     {
         GLOBAL std::vector<int32_t> availBufferRID;
         GLOBAL std::vector<int32_t> availImageRID;
         GLOBAL std::vector<int32_t> availTLASRID;
     };
+
+    /// -------------------------------------------------------
 
 	struct ImageResource : Resource
     {
@@ -96,6 +123,8 @@ namespace SceneryEditorX
 		std::vector<VkImageView> layersView;
 		std::vector<ImTextureID> imguiRIDs;
     };
+
+    /// -------------------------------------------------------
 
 	struct Image
 	{
@@ -112,6 +141,8 @@ namespace SceneryEditorX
         [[nodiscard]] ImTextureID ImGuiRID(uint64_t layer) const;
 	};
 
+    /// -------------------------------------------------------
+
     struct ImageDescriptions
     {
         uint32_t width	= 0;
@@ -121,6 +152,27 @@ namespace SceneryEditorX
         std::string name;
         uint64_t layers = 1;
     };
+
+    /// -------------------------------------------------------
+
+    struct Image2D
+    {
+        static Ref<Image2D> Create(const ImageDescriptions &desc, const std::string &name = "Image2D");
+        virtual void Resize(const glm::uvec2 &size) = 0;
+        virtual bool Valid() const = 0;
+    };
+
+    /// -------------------------------------------------------
+
+    struct ImageView
+    {
+        Ref<Image2D> image;
+        uint32_t mip = 0;
+
+        std::string name;
+    };
+
+    /// -------------------------------------------------------
 
 } // namespace SceneryEditorX
 
