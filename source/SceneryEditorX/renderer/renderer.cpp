@@ -23,6 +23,9 @@ namespace SceneryEditorX
     LOCAL uint32_t s_RenderQueueIndex = 0;
     LOCAL uint32_t s_RenderQueueSubmissionIndex = 0;
     LOCAL uint32_t s_CurrentFrameIndex = 0;
+    constexpr LOCAL uint32_t s_cmdQueueCount = 2;
+    LOCAL CommandQueue *s_cmdQueue[s_cmdQueueCount];
+    LOCAL std::atomic<uint32_t> s_cmdQueueSubmissionIdx = 0;
 
     /// -------------------------------------------------------
 
@@ -71,6 +74,11 @@ namespace SceneryEditorX
         // This would involve submitting command buffers to the appropriate queues
     }
 
+    CommandQueue &Renderer::GetRenderResourceReleaseQueue(uint32_t index)
+    {
+        return resourceFreeQueue[index];
+    }
+
     uint32_t Renderer::GetRenderQueueIndex()
     {
         return s_RenderQueueIndex;
@@ -84,6 +92,30 @@ namespace SceneryEditorX
     uint32_t Renderer::GetCurrentFrameIndex()
     {
         return s_CurrentFrameIndex;
+    }
+
+	void Renderer::RenderThreadFunc(ThreadManager *renderThread)
+    {
+        SEDX_PROFILE_THREAD("Render Thread");
+
+        while (renderThread->isRunning())
+            WaitAndRender(renderThread);
+    }
+
+    void Renderer::WaitAndRender(ThreadManager *renderThread)
+    {
+        renderThread->WaitAndSet(ThreadManager::State::Kick, ThreadManager::State::Busy);
+        s_cmdQueue[GetRenderQueueIndex()]->Execute();
+
+		// Rendering has completed, set state to idle
+        renderThread->Set(ThreadManager::State::Idle);
+
+        SubmitFrame();
+    }
+
+    void Renderer::SwapQueues()
+    {
+        s_cmdQueueSubmissionIdx = (s_cmdQueueSubmissionIdx + 1) % s_cmdQueueCount;
     }
 
     /// -------------------------------------------------------

@@ -11,7 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 #include <SceneryEditorX/scene/asset_manager.h>
+#ifdef CreateDirectory
+#undef CreateDirectory
+#undef DeleteFile
+#undef MoveFile
+#undef CopyFile
+#endif
+#include <functional>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -19,6 +28,16 @@
 
 namespace SceneryEditorX::IO
 {
+    enum class FileStatus : uint8_t
+    {
+        Success = 0,
+		Invalid,
+        NotFound,
+        Locked,
+		AccessDenied,
+		AlreadyExists,
+        UnknownError
+    };
 
 	class FileManager
 	{
@@ -51,7 +70,7 @@ namespace SceneryEditorX::IO
         static std::vector<char> ReadFile(const std::string &filename);
 
         /**
-         * @brief 
+         * @brief Writes data to a file.
          *
          * This function opens the specified file and writes the provided data to it.
          * @return true if the file was written successfully.
@@ -80,7 +99,8 @@ namespace SceneryEditorX::IO
         GLOBAL void WriteFile(const std::filesystem::path &path, const std::string &content);
 
 		/// -------------------------------------------------------
-		/*
+
+	    /*
         uint64_t Import(const std::filesystem::path &path, AssetManager &assets);
         uint64_t ImportModel(const std::filesystem::path &path, const AssetManager &assets);
 
@@ -89,6 +109,7 @@ namespace SceneryEditorX::IO
         uint64_t ImportFBX(const std::filesystem::path &path, const AssetManager &assets);
         uint64_t Import3DS(const std::filesystem::path &path, const AssetManager &assets);
         */
+
 		/// -------------------------------------------------------
 
         //GLOBAL void ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t);
@@ -96,6 +117,60 @@ namespace SceneryEditorX::IO
         INTERNAL void ReadTexture(const std::filesystem::path &path, std::vector<uint8_t> &data, int32_t &w, int32_t &h);
 
 	};
+
+	class FileSystem
+    {
+    public:
+        struct FileDialogItem
+        {
+            const char *Name;
+            const char *Spec;
+        };
+
+        GLOBAL std::filesystem::path GetWorkingDir();
+        GLOBAL void SetWorkingDir(const std::filesystem::path &path);
+
+        GLOBAL bool CreateDir(const std::filesystem::path &directory);
+        GLOBAL bool CreateDir(const std::string &directory);
+        GLOBAL bool DirExists(const std::filesystem::path &directory);
+        GLOBAL bool DirExists(const std::string &directory);
+
+        GLOBAL bool DeleteFile(const std::filesystem::path &filepath);
+        GLOBAL bool MoveFile(const std::filesystem::path &filepath, const std::filesystem::path &dest);
+        GLOBAL bool CopyFile(const std::filesystem::path &filepath, const std::filesystem::path &dest);
+
+        GLOBAL bool Exists(const std::string &filepath);
+        GLOBAL bool Exists(const std::filesystem::path &filepath);
+
+        GLOBAL FileStatus TryOpenFile(const std::filesystem::path &filePath);
+        GLOBAL FileStatus TryOpenFileAndWait(const std::filesystem::path &filepath, uint64_t waitms);
+        GLOBAL bool Move(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
+        GLOBAL bool Copy(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
+        GLOBAL bool Rename(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
+        GLOBAL bool RenameFilename(const std::filesystem::path &oldFilepath, const std::string &newName);
+
+        GLOBAL bool IsDirectory(const std::filesystem::path &filepath);
+        GLOBAL bool IsNewer(const std::filesystem::path &fileA, const std::filesystem::path &fileB);
+        GLOBAL bool ShowFileInExplorer(const std::filesystem::path &path);
+        GLOBAL bool OpenDirectoryInExplorer(const std::filesystem::path &path);
+        GLOBAL bool OpenExternally(const std::filesystem::path &path);
+
+        GLOBAL bool WriteBytes(const std::filesystem::path &filepath, const BufferResource &buffer);
+        GLOBAL Buffer ReadBytes(const std::filesystem::path &filepath);
+
+        GLOBAL std::filesystem::path GetUniqueFileName(const std::filesystem::path &filepath);
+        GLOBAL uint64_t GetLastWriteTime(const std::filesystem::path &filepath);
+
+        GLOBAL std::filesystem::path OpenFileDialog(const std::initializer_list<FileDialogItem> inFilters = {});
+        GLOBAL std::filesystem::path OpenFolderDialog(const char *initialFolder = "");
+        GLOBAL std::filesystem::path SaveFileDialog(const std::initializer_list<FileDialogItem> inFilters = {});
+
+        GLOBAL std::filesystem::path GetPersistentStoragePath();
+
+        static bool CheckEnvVariable(const std::string &key);
+        static bool SetEnvVariable(const std::string &key, const std::string &value);
+        static std::string GetEnvVariable(const std::string &key);
+    };
 
 } // namespace SceneryEditorX::IO
 

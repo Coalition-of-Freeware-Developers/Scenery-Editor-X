@@ -14,6 +14,7 @@
 #include <libconfig.h++>
 #include <regex>
 #include <SceneryEditorX/core/steam_parser.h>
+#include <fstream>
 
 /// -------------------------------------------------------
 
@@ -21,9 +22,9 @@ namespace SceneryEditorX
 {
     using namespace libconfig;
 	namespace fs = std::filesystem;
-
-    const char SteamGameFinder::dirSeparator =
-	#ifdef _WIN32
+	
+	const char SteamGameFinder::dirSeparator =
+	#ifdef _WIN32S
 	        '\\';
 	#else
 	        '/';
@@ -56,43 +57,87 @@ namespace SceneryEditorX
     bool SteamGameFinder::validateXPlanePath(const std::string &path)
     {
         if (path.empty())
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Path is empty");
             return false;
+        }
 
-        fs::path basePath = path;
+        const fs::path basePath = path;
+        SEDX_CORE_TRACE_TAG("SETTINGS", "Validating X-Plane path: {}", basePath.string());
 
         /// Check if the directory exists
-        if (!fs::exists(basePath) || !fs::is_directory(basePath))
+        if (!fs::exists(basePath))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Directory does not exist: {}", basePath.string());
             return false;
+        }
+        
+        if (!fs::is_directory(basePath))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Path is not a directory: {}", basePath.string());
+            return false;
+        }
 
         /// Check for essential subdirectories
-        if (!fs::exists(basePath / "Resources") || !fs::is_directory(basePath / "Resources"))
+        if (!fs::exists(basePath / "Resources"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Missing Resources directory");
             return false;
+        }
+        
+        if (!fs::is_directory(basePath / "Resources"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Resources is not a directory");
+            return false;
+        }
 
-        if (!fs::exists(basePath / "bin") || !fs::is_directory(basePath / "bin"))
+        if (!fs::exists(basePath / "bin"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Missing bin directory");
             return false;
+        }
+        
+        if (!fs::is_directory(basePath / "bin"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: bin is not a directory");
+            return false;
+        }
 
     /// Check for X-Plane executable
 #ifdef SEDX_PLATFORM_WINDOWS
         if (!fs::exists(basePath / "bin" / "X-Plane.exe"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: X-Plane.exe not found");
             return false;
-
+        }
 #elif defined(SEDX_PLATFORM_MACOS)
         if (!fs::exists(basePath / "X-Plane.app"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: X-Plane.app not found");
             return false;
-
+        }
 #else
         if (!fs::exists(basePath / "bin" / "X-Plane-x86_64"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: X-Plane-x86_64 not found");
             return false;
-
+        }
 #endif
 
         /// Check for Resources/default data directory
-        if (!fs::exists(basePath / "Resources" / "default data") ||
-            !fs::is_directory(basePath / "Resources" / "default data"))
+        if (!fs::exists(basePath / "Resources" / "default data"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Missing Resources/default data directory");
             return false;
+        }
+        
+        if (!fs::is_directory(basePath / "Resources" / "default data"))
+		{
+            SEDX_CORE_TRACE_TAG("SETTINGS", "validateXPlanePath: Resources/default data is not a directory");
+            return false;
+        }
 
-        /// -------------------------------------------------------
-
+        SEDX_CORE_TRACE_TAG("SETTINGS", "Path is a valid X-Plane 12 installation: {}", basePath.string());
         return true;
     }
 
@@ -102,22 +147,60 @@ namespace SceneryEditorX
 
     #ifdef SEDX_PLATFORM_WINDOWS
         /// Windows: Check registry or default locations
-        /// Default is usually C:\Program Files (x86)\Steam
-        const std::wstring steamRegPath = L"HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Valve\\Steam";
+        /// Try WOW6432Node first (Steam in 32-bit registry view on 64-bit Windows)
+        const std::wstring steamRegPath = L"SOFTWARE\\WOW6432Node\\Valve\\Steam";
         std::wstring steamInstallPath = GetRegValue(HKEY_LOCAL_MACHINE, steamRegPath, L"InstallPath");
-        if (!steamInstallPath.empty())
-            SEDX_CORE_WARN_TAG("Settings", "Could not find the Steam Library install registry key.");
-        else
+        
+        /// If not found, try without WOW6432Node
+        if (steamInstallPath.empty())
         {
-            /// Convert to UTF-8 string
-			steamPath = std::string(steamInstallPath.begin(), steamInstallPath.end());
-			if (fs::exists(steamPath))
-				return steamPath;
+            const std::wstring steamRegPathAlt = L"SOFTWARE\\Valve\\Steam";
+            steamInstallPath = GetRegValue(HKEY_LOCAL_MACHINE, steamRegPathAlt, L"InstallPath");
         }
-        /// Convert to UTF-8 string
-        steamPath = std::string(steamInstallPath.begin(), steamInstallPath.end());
+        
+        /// If still not found, try current user registry
+        if (steamInstallPath.empty())
+		{
+            const std::wstring steamRegPathUser = L"SOFTWARE\\Valve\\Steam";
+            steamInstallPath = GetRegValue(HKEY_CURRENT_USER, steamRegPathUser, L"SteamPath");
+        }
+        
+        if (!steamInstallPath.empty())
+		{
+            /// Convert to UTF-8 string
+            steamPath = std::string(steamInstallPath.begin(), steamInstallPath.end());
+            
+            /// Replace forward slashes with backslashes for consistent path format
+            std::ranges::replace(steamPath, '/', '\\');
+            
+            if (fs::exists(steamPath))
+                return steamPath;
+        }
+        else
+            SEDX_CORE_WARN_TAG("Settings", "Could not find the Steam Library install registry key");
 
-	#elif defined(SEDX_PLATFORM_MACOS)
+        /// Try default installation paths
+        const std::vector<std::string> defaultPaths = {
+            "C:\\Program Files (x86)\\Steam",
+            "C:\\Program Files\\Steam",
+            "D:\\Program Files (x86)\\Steam",
+            "D:\\Program Files\\Steam",
+            "E:\\Program Files (x86)\\Steam",
+            "E:\\Program Files\\Steam",
+            "F:\\Program Files (x86)\\Steam",
+            "F:\\Program Files\\Steam",
+            "G:\\Program Files (x86)\\Steam",
+            "G:\\Program Files\\Steam"
+        };
+        
+        for (const auto& path : defaultPaths)
+            if (fs::exists(path))
+            {
+                SEDX_CORE_TRACE_TAG("Settings", "Found Steam at default path: {}", path);
+                return path;
+            }
+
+    #elif defined(SEDX_PLATFORM_MACOS)
 	
 	    #error Not implemented yet
 	
@@ -133,33 +216,126 @@ namespace SceneryEditorX
     std::vector<std::string> SteamGameFinder::getSteamLibraryFolders(const std::string &steamPath)
     {
         std::vector<std::string> libraries;
+        
+        /// Add the main Steam library
+        if (std::string mainLibrary = steamPath + dirSeparator + "steamapps"; fs::exists(mainLibrary))
+		{
+            libraries.push_back(mainLibrary);
+            SEDX_CORE_TRACE_TAG("Settings", "Added main Steam library: {}", mainLibrary);
+        }
 
         /// Path to the Steam library config file
         std::string configPath = steamPath + dirSeparator + "steamapps" + dirSeparator + "libraryfolders.vdf";
 
+        SEDX_CORE_TRACE_TAG("Settings", "Looking for Steam library config at: {}", configPath);
+
         if (!fs::exists(configPath))
+		{
+            SEDX_CORE_WARN_TAG("Settings", "Steam library config file not found: {}", configPath);
             return libraries;
+        }
 
         /// Read the libraryfolders.vdf file
         std::ifstream file(configPath);
         if (!file.is_open())
+		{
+            SEDX_CORE_WARN_TAG("Settings", "Could not open Steam library config file: {}", configPath);
             return libraries;
+        }
 
         std::string line;
         std::regex pathRegex("\"path\"\\s+\"(.+?)\"");
-
+        std::regex directPathRegex("\"\\d+\"\\s+\"(.+?)\"");  /// For older format like "1" "D:\\SteamLibrary"
+        
+        bool inLibraryFolders = false;
+        
         while (std::getline(file, line))
         {
-            if (std::smatch match; std::regex_search(line, match, pathRegex) && match.size() > 1)
-            {
-                std::string libraryPath = match[1].str();
+            /// Keep track if we're in the libraryfolders section
+            if (line.find("\"libraryfolders\"") != std::string::npos)
+			{
+                inLibraryFolders = true;
+                continue;
+            }
+            
+            if (inLibraryFolders)
+			{
+                /// Check for path field
+                if (std::smatch match; std::regex_search(line, match, pathRegex) && match.size() > 1)
+				{
+                    std::string libraryPath = match[1].str();
+                    
+                    /// Replace escaped backslashes (if any)
+                    size_t pos = 0;
+                    while ((pos = libraryPath.find("\\\\", pos)) != std::string::npos)
+					{
+                        libraryPath.replace(pos, 2, "\\");
+                        pos += 1;
+                    }
+                    
+                    /// Add steamapps subdirectory
+                    if (std::string steamappsPath = libraryPath + dirSeparator + "steamapps"; fs::exists(steamappsPath))
+					{
+                        libraries.push_back(steamappsPath);
+                        SEDX_CORE_TRACE_TAG("Settings", "Found Steam library from path format: {}", steamappsPath);
+                    }
+                }
+                /// Check for direct path (older format)
+                else if (std::regex_search(line, match, directPathRegex) && match.size() > 1)
+				{
+                    std::string libraryPath = match[1].str();
+                    
+                    /// Replace escaped backslashes (if any)
+                    size_t pos = 0;
+                    while ((pos = libraryPath.find("\\\\", pos)) != std::string::npos)
+					{
+                        libraryPath.replace(pos, 2, "\\");
+                        pos += 1;
+                    }
+                    
+                    /// Add steamapps subdirectory if not already there
+                    std::string steamappsPath;
+                    if (libraryPath.find("steamapps") == std::string::npos)
+                        steamappsPath = libraryPath + dirSeparator + "steamapps";
+                    else
+                        steamappsPath = libraryPath;
 
-                /// Add steamapps subdirectory
-                libraryPath += dirSeparator;
-                libraryPath += "steamapps";
+                    if (fs::exists(steamappsPath))
+					{
+                        libraries.push_back(steamappsPath);
+                        SEDX_CORE_TRACE_TAG("Settings", "Found Steam library from numeric format: {}", steamappsPath);
+                    }
+                }
+            }
+        }
 
-                if (fs::exists(libraryPath))
-                    libraries.push_back(libraryPath);
+        /// If no libraries were found using the VDF file, try to find them manually
+        if (libraries.size() <= 1)
+		{
+            SEDX_CORE_TRACE_TAG("Settings", "Searching for additional Steam libraries by checking common paths");
+            
+            std::vector<std::string> commonDrives = {"C:", "D:", "E:", "F:", "G:"};
+            std::vector<std::string> commonPaths = {
+                "\\SteamLibrary\\steamapps",
+                "\\Steam\\steamapps",
+                "\\Steam Library\\steamapps",
+                R"(\Games\Steam\steamapps)",
+                R"(\Games\SteamLibrary\steamapps)",
+                R"(\Program Files\Steam\steamapps)",
+                R"(\Program Files (x86)\Steam\steamapps)"
+            };
+            
+            for (const auto& drive : commonDrives)
+			{
+                for (const auto& path : commonPaths)
+				{
+                    if (std::string fullPath = drive + path; fs::exists(fullPath) && std::ranges::find(libraries, fullPath) == libraries.end())
+                    {
+                        /// Check if this path is already in our libraries list
+                        libraries.push_back(fullPath);
+                        SEDX_CORE_TRACE_TAG("Settings", "Found additional Steam library: {}", fullPath);
+                    }
+                }
             }
         }
 
@@ -170,53 +346,33 @@ namespace SceneryEditorX
     {
         std::string steamPath = getSteamDirectory();
         if (steamPath.empty())
+		{
+            SEDX_CORE_WARN_TAG("Settings", "Could not locate Steam installation directory");
             return std::nullopt;
+        }
+        
+        SEDX_CORE_TRACE_TAG("Settings", "Found Steam installation at: {}", steamPath);
 
         std::vector<std::string> libraries = getSteamLibraryFolders(steamPath);
         
-        /// Add the main Steam library to the list if not already present
-        if (std::string mainLibrary = steamPath + dirSeparator + "steamapps"; fs::exists(mainLibrary))
-        {
-            if (std::ranges::find(libraries, mainLibrary) == libraries.end())
-                libraries.push_back(mainLibrary);
+        if (libraries.empty())
+		{
+            SEDX_CORE_WARN_TAG("Settings", "No Steam library folders found");
+            return std::nullopt;
         }
+        
+        SEDX_CORE_TRACE_TAG("Settings", "Found {} Steam libraries", libraries.size());
 
         /// Check for manifest file for X-Plane 12
         for (const auto &library : libraries)
         {
-            for (std::string manifestsPath = library; const auto &entry : fs::directory_iterator(manifestsPath))
-                if (std::string path = entry.path().string(); path.find("appmanifest_") != std::string::npos && path.find(".acf") != std::string::npos)
-                {
-                    std::ifstream manifestFile(path);
-                    std::string manifestLine;
-                    while (std::getline(manifestFile, manifestLine))
-                    {
-                        /// Look for app ID for X-Plane 12 or name in the manifest
-                        if (manifestLine.find("\"appid\"") != std::string::npos && manifestLine.find("2014780") != std::string::npos)
-                        {
-                            /// Found X-Plane 12 manifest, extract install dir
-                            std::regex installDirRegex("\"installdir\"\\s+\"(.+?)\"");
-                            std::string installDir;
-
-                            while (std::getline(manifestFile, manifestLine))
-                            {
-                                if (std::smatch match; std::regex_search(manifestLine, match, installDirRegex) && match.size() > 1)
-                                {
-                                    installDir = match[1].str();
-                                    if (std::string fullPath = library + dirSeparator + "common" + dirSeparator += installDir; fs::exists(fullPath) && validateXPlanePath(fullPath))
-                                    {
-                                        return fullPath;
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-            /// Check common folder paths for X-Plane 12
-            if (std::string commonPath = library + dirSeparator + "common"; fs::exists(commonPath))
+            SEDX_CORE_TRACE_TAG("Settings", "Scanning library: {}", library);
+            
+            /// First, check common folder directly - it's faster
+            if (std::string commonPath = library.substr(0, library.find("steamapps")) + dirSeparator + "steamapps" + dirSeparator + "common"; fs::exists(commonPath))
             {
+                SEDX_CORE_TRACE_TAG("Settings", "Checking common folder: {}", commonPath);
+                
                 /// Check for X-Plane 12 directory with various possible names
                 std::vector<std::string> possibleNames = {
                     "X-Plane 12",
@@ -227,12 +383,97 @@ namespace SceneryEditorX
 
                 for (const auto &name : possibleNames)
                 {
-                    if (std::string xplanePath = commonPath + dirSeparator += name; fs::exists(xplanePath) && validateXPlanePath(xplanePath))
-                        return xplanePath;
+                    std::string xplanePath = commonPath + dirSeparator + name;
+                    SEDX_CORE_TRACE_TAG("Settings", "Checking potential X-Plane path: {}", xplanePath);
+                    
+                    if (fs::exists(xplanePath))
+					{
+                        if (validateXPlanePath(xplanePath))
+						{
+                            SEDX_CORE_INFO_TAG("Settings", "Found X-Plane 12 using common name pattern: {}", xplanePath);
+                            return xplanePath;
+                        }
+
+                        SEDX_CORE_WARN_TAG("Settings", "Found X-Plane directory but validation failed: {}", xplanePath);
+                    }
                 }
+            }
+            
+            /// If not found by direct check, try checking manifest files
+            try
+			{
+                for (fs::path libraryPath(library); const auto &entry : fs::directory_iterator(libraryPath))
+                {
+                    /// Look for app manifest files
+                    if (std::string path = entry.path().string(); path.find("appmanifest_") != std::string::npos && path.find(".acf") != std::string::npos)
+                    {
+                        SEDX_CORE_TRACE_TAG("Settings", "Checking manifest file: {}", path);
+                        
+                        std::ifstream manifestFile(path);
+                        if (!manifestFile.is_open())
+                            continue;
+                            
+                        std::string manifestLine;
+                        bool isXPlane12 = false;
+                        while (std::getline(manifestFile, manifestLine))
+                        {
+                            /// Look for app ID for X-Plane 12 (2014780)
+                            if (manifestLine.find("\"appid\"") != std::string::npos && manifestLine.find("2014780") != std::string::npos)
+                            {
+                                SEDX_CORE_TRACE_TAG("Settings", "Found X-Plane 12 manifest file: {}", path);
+                                isXPlane12 = true;
+                                break;
+                            }
+                        }
+                        
+                        if (isXPlane12)
+						{
+                            /// Reopen the file to search for installdir
+                            manifestFile.clear();
+                            manifestFile.seekg(0);
+                            
+                            std::regex installDirRegex("\"installdir\"\\s+\"(.+?)\"");
+                            std::string installDir;
+
+                            while (std::getline(manifestFile, manifestLine))
+                            {
+                                if (std::smatch match; std::regex_search(manifestLine, match, installDirRegex) && match.size() > 1)
+                                {
+                                    installDir = match[1].str();
+                                    
+                                    /// Construct the full path to the X-Plane installation
+                                    fs::path libBasePath = libraryPath.parent_path(); // Go up one level from steamapps
+                                    std::string fullPath = (libBasePath / "steamapps" / "common" / installDir).string();
+                                    
+                                    SEDX_CORE_TRACE_TAG("Settings", "Found X-Plane 12 install dir: {} -> {}", installDir, fullPath);
+                                    
+                                    if (fs::exists(fullPath))
+									{
+                                        if (validateXPlanePath(fullPath))
+										{
+                                            SEDX_CORE_INFO_TAG("Settings", "Found valid X-Plane 12 installation: {}", fullPath);
+                                            return fullPath;
+                                        }
+
+                                        SEDX_CORE_WARN_TAG("Settings", "X-Plane 12 directory exists but validation failed: {}", fullPath);
+                                    }
+                                    else
+                                        SEDX_CORE_WARN_TAG("Settings", "X-Plane 12 directory from manifest doesn't exist: {}", fullPath);
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (const std::exception& e)
+			{
+                SEDX_CORE_WARN_TAG("Settings", "Error scanning Steam library: {}", e.what());
             }
         }
 
+        SEDX_CORE_WARN_TAG("Settings", "Could not find X-Plane 12 in any Steam library");
         return std::nullopt;
     }
 

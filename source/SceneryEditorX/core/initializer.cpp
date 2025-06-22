@@ -10,7 +10,6 @@
 * Created: 25/5/2025
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/resource.h>
 #include <SceneryEditorX/core/initializer.h>
 #include <SceneryEditorX/core/base.hpp>

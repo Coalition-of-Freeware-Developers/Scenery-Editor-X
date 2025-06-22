@@ -12,13 +12,11 @@
 */
 #pragma once
 #include <filesystem>
-#include <fmt/core.h>
 #include <format>
-#include <glm/glm.hpp>
+#include <SceneryEditorX/core/base.hpp>
 
 /// -------------------------------------------------------
 
-// Using Vec2 instead of Vec2 to avoid undefined type
 template <>
 struct fmt::formatter<Vec2>
 {

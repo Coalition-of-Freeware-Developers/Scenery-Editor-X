@@ -171,6 +171,47 @@ namespace SceneryEditorX
         Swizzle_A,
     };
 
+	enum class ResourceType : uint16_t
+    {
+        None = 0,
+        UniformBuffer,
+        UniformBufferSet,
+        StorageBuffer,
+        StorageBufferSet,
+        Texture2D,
+        TextureCube,
+        Image2D
+    };
+
+	enum class ResourceInputType : uint16_t
+	{
+        None = 0,
+        UniformBuffer,
+        StorageBuffer,
+        ImageSampler1D,
+        ImageSampler2D,
+        ImageSampler3D,
+        StorageImage1D,
+        StorageImage2D,
+        StorageImage3D	    
+	};
+
+	enum class FramebufferBlendMode : uint8_t
+    {
+        None = 0,
+        OneZero,
+        SrcAlphaOneMinusSrcAlpha,
+        Additive,
+        Zero_SrcColor
+    };
+
+	enum class AttachmentLoadOp : uint8_t
+    {
+        Inherit = 0,
+        Clear	= 1,
+        Load	= 2
+    };
+
 }
 
 /// -------------------------------------------------------

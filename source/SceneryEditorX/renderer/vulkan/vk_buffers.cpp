@@ -281,9 +281,10 @@ namespace SceneryEditorX
 
     /// ----------------------------------------------------------
 
-    inline VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification &specification, const FramebufferTextureSpecification &attachmentSpecification)
+    /*
+    inline VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification &specification, const FramebufferTextureSpec &attachmentSpecification)
     {
-        if (attachmentSpecification.LoadOp == AttachmentLoadOp::Inherit)
+        if (attachmentSpecification.loadOp == AttachmentLoadOp::Inherit)
         {
             if (Utils::IsDepthFormat(attachmentSpecification.Format))
                 return specification.ClearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -291,11 +292,13 @@ namespace SceneryEditorX
             return specification.ClearColorOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
         }
 
-        return attachmentSpecification.LoadOp == AttachmentLoadOp::Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+        return attachmentSpecification.loadOp == AttachmentLoadOp::Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
     }
+    */
 
     /// ----------------------------------------------------------
 
+    /*
     Framebuffer::Framebuffer(const FramebufferSpecification &specification) : m_Specification(specification)
 	{
 		if (specification.Width == 0)
@@ -655,6 +658,7 @@ namespace SceneryEditorX
 		VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffer));
 		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_FRAMEBUFFER, m_Specification.DebugName, framebuffer);
 	}
+	*/
 
 
 } // namespace SceneryEditorX

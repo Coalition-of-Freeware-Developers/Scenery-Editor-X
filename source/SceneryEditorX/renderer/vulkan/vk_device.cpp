@@ -140,7 +140,7 @@ namespace SceneryEditorX
                 if (!selectedPhysicalDevice && !devices.empty())
                 {
                     SEDX_CORE_WARN_TAG("Graphics Engine", "Falling back to first available GPU: {}", ToString(devices[0].deviceProperties.deviceName));
-                    devices[0].physicalDevice;
+                    selectedPhysicalDevice = devices[0].physicalDevice;  // <- Assign the value, not just access it
                     deviceIndex = 0;
                 }
             }
@@ -195,8 +195,8 @@ namespace SceneryEditorX
                     for (const auto &extension : extensions)
                     {
                         supportedExtensions.emplace(extension.extensionName, extension.specVersion);
-                        //SEDX_CORE_INFO("Extension Name: {}", ToString(extension.extensionName));
-                        //SEDX_CORE_INFO("Extension Version: {}", ToString(extension.specVersion));
+                        SEDX_CORE_INFO("Extension Name: {}", ToString(extension.extensionName));
+                        SEDX_CORE_INFO("Extension Version: {}", ToString(extension.specVersion));
                     }
                 }
             }
@@ -229,12 +229,17 @@ namespace SceneryEditorX
             /// Dedicated Compute Queue
             if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
             {
-                VkDeviceQueueCreateInfo queueCreateInfo{};
-                queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetComputeFamily();
-                queueCreateInfo.queueCount       = 1;
-                queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
-                devices[index].queueCreateInfos.push_back(queueCreateInfo);
+                if ((QFamilyIndices.GetComputeFamily() != QFamilyIndices.GetGraphicsFamily()) &&
+					(QFamilyIndices.GetComputeFamily() != QFamilyIndices.GetTransferFamily()))
+				{
+                    VkDeviceQueueCreateInfo queueCreateInfo{};
+                    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                    queueCreateInfo.queueFamilyIndex = QFamilyIndices.GetComputeFamily();
+                    queueCreateInfo.queueCount = 1;
+                    queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
+                    devices[index].queueCreateInfos.push_back(queueCreateInfo);
+				}
+
             }
 
             /// -----------------------------------------------
@@ -335,7 +340,7 @@ namespace SceneryEditorX
         return candidates[0]; // Return the first format as a fallback
 	}
 
-	// -------------------------------------------------------
+	/// -------------------------------------------------------
 
 /*
 	/// Get surface formats
@@ -460,13 +465,44 @@ namespace SceneryEditorX
 	 */
 	const GPUDevice &VulkanPhysicalDevice::Selected() const
 	{
-		if (deviceIndex < 0 || deviceIndex >= devices.size())
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "No device selected or invalid device index.");
+        /// Ensure deviceIndex is within the valid range
+        if (deviceIndex < 0 || std::cmp_greater_equal(deviceIndex, devices.size()))
+        {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "No device selected or invalid device index: {}", deviceIndex);
+            /// Return the first device as a fallback or handle the error more gracefully
+            static GPUDevice fallbackDevice{};
+            return fallbackDevice;
+        }
 
         return devices[deviceIndex];
 	}
 
-	/**
+    VkPhysicalDevice VulkanPhysicalDevice::GetGPUDevices() const
+    {
+        /// First check if we have the direct physical device handle (preferred)
+        if (physicalDevice != VK_NULL_HANDLE)
+            return physicalDevice;
+
+        /// Fall back to the devices array if direct handle isn't set
+        if (deviceIndex >= 0 && deviceIndex < static_cast<int>(devices.size()))
+        {
+            VkPhysicalDevice device = devices[deviceIndex].physicalDevice;
+            if (device != VK_NULL_HANDLE)
+                return device;
+        }
+
+        /// If we still don't have a valid device but have some devices available, use the first one
+        if (!devices.empty() && devices[0].physicalDevice != VK_NULL_HANDLE)
+        {
+            SEDX_CORE_WARN_TAG("Graphics Engine", "No valid device selected, falling back to first available device");
+            return devices[0].physicalDevice;
+        }
+
+        SEDX_CORE_ERROR_TAG("Graphics Engine", "No valid physical device available!");
+        return VK_NULL_HANDLE;
+    }
+
+    /**
 	 * @fn GetQueueFamilyIndices
 	 * @brief Identifies queue families available on the physical device that match requested capabilities
 	 * 
@@ -501,7 +537,8 @@ namespace SceneryEditorX
 		QueueFamilyIndices queueFamilies;
 		
 		/// Early return if no devices available
-		if (devices.empty()) {
+		if (devices.empty())
+		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "No physical devices available");
 			return queueFamilies;
 		}
@@ -529,39 +566,44 @@ namespace SceneryEditorX
 			SEDX_CORE_INFO("============================================");
 		}
 		
-		// First pass: find a graphics queue
-		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
-			const auto &props = queueFamilyProperties[queueIdx];
-			if (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+		/// First pass: find a graphics queue
+		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
+		{
+            if (const auto &props = queueFamilyProperties[queueIdx]; props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			{
 				queueFamilies.graphicsFamily = std::make_optional(std::make_pair(Queue::Graphics, queueIdx));
 				break;
 			}
 		}
 		
 		/// First pass: look for dedicated queues
-		if (qFlags & VK_QUEUE_COMPUTE_BIT) {
+		if (qFlags & VK_QUEUE_COMPUTE_BIT)
+		{
 			/// Find dedicated compute queue (compute, but not graphics)
-			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
+			{
 				const auto &props = queueFamilyProperties[queueIdx];
 				const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
-				const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-				
-				if (supportsCompute && !supportsGraphics) {
+                if (const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+					!= 0; supportsCompute && !supportsGraphics)
+				{
 					queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
 					break;
 				}
 			}
 		}
 		
-		if (qFlags & VK_QUEUE_TRANSFER_BIT) {
+		if (qFlags & VK_QUEUE_TRANSFER_BIT)
+		{
 			/// Find dedicated transfer queue (transfer, but not graphics or compute)
-			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
+		    {
 				const auto &props = queueFamilyProperties[queueIdx];
 				const bool supportsTransfer = (props.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
 				const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-				const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
-				
-				if (supportsTransfer && !supportsGraphics && !supportsCompute) {
+                if (const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT)
+					!= 0; supportsTransfer && !supportsGraphics && !supportsCompute)
+				{
 					queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
 					break;
 				}
@@ -569,39 +611,36 @@ namespace SceneryEditorX
 		}
 		
 		/// Second pass: set any remaining indices to general-purpose queues
-		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
+		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
+		{
 			const auto &props = queueFamilyProperties[queueIdx];
 			
-			// Set compute queue if not already set and if needed
-			if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
-				queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
-			}
-			
-			// Set transfer queue if not already set and if needed
-			if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !queueFamilies.transferFamily.has_value() && (props.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
+			/// Set compute queue if not already set and if needed
+			if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
+                queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
+
+            /// Set transfer queue if not already set and if needed
+			if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !queueFamilies.transferFamily.has_value() && (props.queueFlags & VK_QUEUE_TRANSFER_BIT))
+			{
 				queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
 				break;
 			}
 			
-			// Set presentation queue
-			// Note: This would normally check presentation support against a surface
-			// Since we don't have a surface at this point, we'll just use the graphics queue
-			if (!queueFamilies.presentFamily.has_value() && queueFamilies.graphicsFamily.has_value() && 
-				queueFamilies.graphicsFamily.value().second == queueIdx) {
-				queueFamilies.presentFamily = std::make_optional(std::make_pair(Queue::Present, queueIdx));
-			}
-		}
+			/// Set presentation queue
+			/// Note: This would normally check presentation support against a surface
+			/// Since we don't have a surface at this point, we'll just use the graphics queue
+			if (!queueFamilies.presentFamily.has_value() && queueFamilies.graphicsFamily.has_value() && queueFamilies.graphicsFamily.value().second == queueIdx)
+                queueFamilies.presentFamily = std::make_optional(std::make_pair(Queue::Present, queueIdx));
+        }
 		
-		// Fallback: If we couldn't find dedicated compute/transfer queues, use the graphics queue
-		if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && queueFamilies.graphicsFamily.has_value()) {
-			queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueFamilies.graphicsFamily.value().second));
-		}
-		
-		if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !queueFamilies.transferFamily.has_value() && queueFamilies.graphicsFamily.has_value()) {
-			queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueFamilies.graphicsFamily.value().second));
-		}
-		
-		SEDX_CORE_INFO("============================================");
+		/// Fallback: If we couldn't find dedicated compute/transfer queues, use the graphics queue
+		if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && queueFamilies.graphicsFamily.has_value())
+            queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueFamilies.graphicsFamily.value().second));
+
+        if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !queueFamilies.transferFamily.has_value() && queueFamilies.graphicsFamily.has_value())
+            queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueFamilies.graphicsFamily.value().second));
+
+        SEDX_CORE_INFO("============================================");
 		SEDX_CORE_INFO("Selected Queue Families:");
 		SEDX_CORE_INFO("Graphics: {}", queueFamilies.graphicsFamily.has_value() ? ToString(queueFamilies.graphicsFamily.value().second) : "Not Available");
 		SEDX_CORE_INFO("Compute: {}", queueFamilies.computeFamily.has_value() ? ToString(queueFamilies.computeFamily.value().second) : "Not Available");
@@ -647,6 +686,14 @@ namespace SceneryEditorX
     {
 		VulkanChecks checks;
 
+        // Verify we have a valid physical device before proceeding
+        VkPhysicalDevice physicalDevice = physDevice->GetGPUDevices();
+        if (physicalDevice == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Cannot create logical device: Invalid physical device handle");
+            return;
+        }
+
 	    VkPhysicalDeviceFeatures deviceFeatures = {};
         deviceFeatures.samplerAnisotropy = VK_TRUE;                    ///< Enable anisotropic filtering
         deviceFeatures.wideLines = VK_TRUE;                            ///< Enable wide lines if needed
@@ -656,29 +703,6 @@ namespace SceneryEditorX
         deviceFeatures.independentBlend = VK_TRUE;                     ///< Enable independent blending if needed
         deviceFeatures.pipelineStatisticsQuery = VK_TRUE;              ///< Enable pipeline statistics queries if needed
         deviceFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE; ///< Enable storage image writes without format
-        
-		std::set<uint32_t> uniqueFamilies;
-        for (int q =0; q < Queue::Count; q++)
-        {
-            uniqueFamilies.emplace(queues[q].family);
-        }
-
-        /// priority for each type of queue
-        float priority = 1.0f;
-        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        for (uint32_t family : uniqueFamilies)
-        {
-            VkDeviceQueueCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            createInfo.queueFamilyIndex = family;
-            createInfo.queueCount = 1;
-            createInfo.pQueuePriorities = &priority;
-            queueCreateInfos.push_back(createInfo);
-        }
-
-	    /// Get device queues
-        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
-        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
 
         /// Prepare device extensions as vector<const char*>
         std::vector<const char *> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -691,12 +715,13 @@ namespace SceneryEditorX
 
         /// Check device extension support
         std::vector<VkExtensionProperties> availableExtensions;
-        checks.CheckDeviceExtensionSupport(vkPhysicalDevice->Selected().physicalDevice, availableExtensions, nullptr);
-        for (const char* ext : deviceExtensions) {
+        checks.CheckDeviceExtensionSupport(physicalDevice, availableExtensions, nullptr);
+        for (const char* ext : deviceExtensions)
+		{
             bool found = false;
-            for (const auto& prop : availableExtensions)
+            for (const auto&[extensionName, specVersion] : availableExtensions)
 			{
-                if (strcmp(ext, prop.extensionName) == 0)
+                if (strcmp(ext, extensionName) == 0)
 				{
                     found = true;
                     break;
@@ -732,7 +757,6 @@ namespace SceneryEditorX
         descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = true;
         descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
         descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = true;
-
 		
         VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddresFeatures{};
         bufferDeviceAddresFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
@@ -750,7 +774,7 @@ namespace SceneryEditorX
         dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
         dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
         dynamicRenderingFeatures.pNext = &accelerationStructureFeatures;
-
+        
         VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
         sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
         sync2Features.synchronization2 = VK_TRUE;
@@ -763,16 +787,24 @@ namespace SceneryEditorX
 
         features2.pNext = &atomicFeatures;
 
+		vkGetPhysicalDeviceFeatures2(physicalDevice, &features2);
+
         /// Create the logical device
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        
+        // Verify we have valid queue create info before proceeding
+        if (physDevice->Selected().queueCreateInfos.empty())
+        {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "No queue create info available for device creation");
+            return;
+        }
+        
         createInfo.pQueueCreateInfos = physDevice->Selected().queueCreateInfos.data();
-        createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueFamilyInfo.size());
+        createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueCreateInfos.size());
 
 		if (VulkanChecks::IsExtensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
             deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-
-
 
         if (!deviceExtensions.empty())
 		{
@@ -792,18 +824,31 @@ namespace SceneryEditorX
             createInfo.enabledLayerCount = 0;
         }
 
-        createInfo.pEnabledFeatures = &deviceFeatures; /// 
+        createInfo.pEnabledFeatures = &deviceFeatures;
         createInfo.pNext = &features2; /// Use features2 for Vulkan 1.2+
 
 		/// Create the logical device
-        if (VkResult result = vkCreateDevice(vkPhysicalDevice->GetGPUDevices(), &createInfo, nullptr, &device); result != VK_SUCCESS)
+        auto result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &device);
+        if (result != VK_SUCCESS)
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device! Error: {}", static_cast<int>(result));
             device = VK_NULL_HANDLE; /// Ensure device is set to null for error checking elsewhere
 			return;
 		}
-        
-        SEDX_CORE_TRACE_TAG("Graphics Engine", "Logical device created successfully");
+
+        SEDX_CORE_INFO_TAG("Graphics Engine", "Logical device created successfully");
+
+        /// Get device queues
+        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
+        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
+        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetPresentFamily(), 0, &PresentQueue);
+        vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetTransferFamily(), 0, &TransferQueue);
+        SEDX_CORE_INFO_TAG("Graphics Engine",
+                           "Using queue family indices: Graphics {}, Compute {}, Present {}, Transfer {}",
+                           physDevice->QFamilyIndices.GetGraphicsFamily(),
+                           physDevice->QFamilyIndices.GetComputeFamily(),
+                           physDevice->QFamilyIndices.GetPresentFamily(),
+                           physDevice->QFamilyIndices.GetTransferFamily());
 
         /// Load device extension function pointers
         LoadExtensionFunctions();
@@ -813,7 +858,7 @@ namespace SceneryEditorX
         //MemoryAllocator::Init(device, renderData);
 
 		/// Set up bindless resources and initial buffers
-		//InitializeBindlessResources(device, bindlessResources);
+		//InitBindlessResources(device, bindlessResources);
 
 		/// Create initial scratch buffer
 		//scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
@@ -1184,6 +1229,7 @@ namespace SceneryEditorX
 
     /**
 	 * @brief Find the queue families for the device.
+	 * @param debugName
 	 * @param device - The device to find the queue families for.
 	 * @return - The queue family indices.
 	 */
@@ -1227,18 +1273,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-	/**
-	 * @brief Get the logical device handle.
-	 * @details Returns a const reference to the internal VkDevice handle that represents 
-	 * the logical Vulkan device. This handle is used for most Vulkan API calls 
-	 * that interact with the GPU device.
-	 * 
-	 * @return const VkDevice& Reference to the Vulkan logical device handle
-	 */
-	const VkDevice &VulkanDevice::Selected() const
-    {
-        return device;
-    }
+
 
 	VkCommandBuffer VulkanDevice::CreateUICmdBuffer(const char *debugName)
 	{
@@ -1758,7 +1793,7 @@ namespace SceneryEditorX
 	 * 
 	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
 	 */
-    CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type) : commandPool(nullptr)
+    CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type)
     {
         const auto vulkanDeviceHandle = vulkanDevice->GetDevice();
         const auto &queueIndices = vulkanDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
@@ -1784,9 +1819,7 @@ namespace SceneryEditorX
             result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &ComputeCmdPool);
             if (result != VK_SUCCESS)
             {
-                SEDX_CORE_ERROR_TAG("Graphics Engine",
-                                    "Failed to create compute command pool! Error: {}",
-                                    static_cast<int>(result));
+                SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create compute command pool! Error: {}", static_cast<int>(result));
                 ComputeCmdPool = GraphicsCmdPool; /// Fall back to using graphics pool for compute operations
             }
         }

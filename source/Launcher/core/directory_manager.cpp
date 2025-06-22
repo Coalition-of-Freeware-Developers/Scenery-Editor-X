@@ -11,13 +11,14 @@
 * -------------------------------------------------------
 */
 #include <Launcher/core/directory_manager.hpp>
+#include <SceneryEditorX/logging/logging.hpp>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace fs = std::filesystem;
 
-// Define the static members
-// TODO: When registry is implemented, remove the static members and replace with registry HKEY Values
+/// Define the static members
+/// TODO: When registry is implemented, remove the static members and replace with registry HKEY Values
 
 std::string DirectoryInit::absolutePath;
 std::string DirectoryInit::relativePath;
@@ -27,7 +28,7 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
     fs::path exeDir; // The directory containing the executable
 
 #ifdef SEDX_DEBUG
-    // Get the executable's directory in debug mode
+    /// Get the executable's directory in debug mode
     exeDir = fs::path(absolutePath).parent_path();
 #else
     HKEY hKey;
@@ -43,12 +44,12 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
         if (RegQueryValueExA(hKey, absPathValue, NULL, NULL, (LPBYTE)absPathBuffer, &bufferSize) == ERROR_SUCCESS)
         {
             exeDir = fs::path(std::string(absPathBuffer)).parent_path();
-            LAUNCHER_LOG_INFO("Using registry Absolute Path: {}", exeDir.string());
+            LAUNCHER_CORE_TRACE("Using registry Absolute Path: {}", exeDir.string());
             //std::cerr << "Using registry Absolute Path: " << exeDir.string() << std::endl;
         }
         else
         {
-            LAUNCHER_LOG_ERROR("Failed to read AbsolutePath from registry.");
+            LAUNCHER_CORE_ERROR("Failed to read AbsolutePath from registry.");
 			//ErrMsg("Failed to read AbsolutePath from registry.");
             //std::cerr << "Failed to read AbsolutePath from registry." << std::endl;
 
@@ -61,7 +62,7 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
     }
     else
     {
-        LAUNCHER_LOG_ERROR("Failed to open registry key.");
+        LAUNCHER_CORE_ERROR("Failed to open registry key.");
 		//ErrMsg("Failed to open registry key.");
         //std::cerr << "Failed to open registry key." << std::endl;
 
@@ -77,12 +78,12 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
         {
             fs::create_directories(fullPath);
 
-            LAUNCHER_LOG_INFO("Created directory: {}", fullPath.string());
+            LAUNCHER_CORE_TRACE("Created directory: {}", fullPath.string());
             //std::cerr << "Created directory: " << fullPath.string() << std::endl;
         }
         else
         {
-            LAUNCHER_LOG_INFO("Directory already exists: {}", fullPath.string());
+            LAUNCHER_CORE_TRACE("Directory already exists: {}", fullPath.string());
             //std::cerr << "Directory already exists: " << fullPath.string() << std::endl;
         }
     }
@@ -91,21 +92,21 @@ void DirectoryInit::ensureDirectoriesExist(const std::vector<std::string> &direc
 int DirectoryInit::DirectoryCheck(const int argc, char *argv[])
 {
 #ifdef SEDX_DEBUG
-    if (argc > 0) // Used to be (argc > 1) but in debug mode it will not find the executable and fail)
+    if (argc > 0) /// Used to be (argc > 1) but in debug mode it will not find the executable and fail)
     {
-        // Set the absolute path to the executable's path
+        /// Set the absolute path to the executable's path
         absolutePath = fs::absolute(fs::path(argv[0])).string();
-        LAUNCHER_LOG_INFO("============================================");
-        LAUNCHER_LOG_INFO("Absolute Path: {}", absolutePath);
+        LAUNCHER_CORE_TRACE("============================================");
+        LAUNCHER_CORE_TRACE("Absolute Path: {}", absolutePath);
 
-        // Set the relative path to the current working directory relative to the executable
+        /// Set the relative path to the current working directory relative to the executable
         relativePath = fs::relative(fs::current_path(), absolutePath).string();
-        LAUNCHER_LOG_INFO("Relative Path: {}", relativePath);
-        LAUNCHER_LOG_INFO("============================================");
+        LAUNCHER_CORE_TRACE("Relative Path: {}", relativePath);
+        LAUNCHER_CORE_TRACE("============================================");
     }
     else
     {
-        LAUNCHER_LOG_CRITICAL("No executable path found.");
+        LAUNCHER_CORE_FATAL("No executable path found.");
 		//ErrMsg("No executable path found.");
 
         return -1;
@@ -126,8 +127,8 @@ int DirectoryInit::DirectoryCheck(const int argc, char *argv[])
         if (RegQueryValueExA(hKey, absPathValue, NULL, NULL, (LPBYTE)absPathBuffer, &bufferSize) == ERROR_SUCCESS)
         {
             absolutePath = std::string(absPathBuffer);
-            LAUNCHER_LOG_INFO("============================================");
-            LAUNCHER_LOG_INFO("Absolute Path: {}", absolutePath);
+            LAUNCHER_CORE_TRACE("============================================");
+            LAUNCHER_CORE_TRACE("Absolute Path: {}", absolutePath);
             //std::cerr << "Absolute Path: " << absolutePath << std::endl;
         }
         else
@@ -144,9 +145,9 @@ int DirectoryInit::DirectoryCheck(const int argc, char *argv[])
         if (RegQueryValueExA(hKey, relPathValue, NULL, NULL, (LPBYTE)relPathBuffer, &bufferSize) == ERROR_SUCCESS)
         {
             relativePath = std::string(relPathBuffer);
-            LAUNCHER_LOG_INFO("Relative Path: {}", relativePath);
+            LAUNCHER_CORE_TRACE("Relative Path: {}", relativePath);
             //std::cerr << "Relative Path: " << relativePath << std::endl;
-            LAUNCHER_LOG_INFO("============================================");
+            LAUNCHER_CORE_TRACE("============================================");
         }
         else
         {
@@ -171,7 +172,7 @@ int DirectoryInit::DirectoryCheck(const int argc, char *argv[])
     }
 #endif
 
-    // Define the required directory structure
+    /// Define the required directory structure
     const std::vector<std::string> requiredDirectories = {"assets",
                                                     "assets/models",
                                                     "assets/textures",
@@ -188,7 +189,7 @@ int DirectoryInit::DirectoryCheck(const int argc, char *argv[])
                                                     "resources/cache/shaders",
                                                     "resources/cache/thumbnail"};
 
-    // Ensure that the required directories exist
+    /// Ensure that the required directories exist
     ensureDirectoriesExist(requiredDirectories);
 
     return 0;

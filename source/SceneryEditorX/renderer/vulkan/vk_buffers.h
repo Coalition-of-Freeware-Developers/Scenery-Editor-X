@@ -13,6 +13,7 @@
 #pragma once
 #include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
+#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------
@@ -239,10 +240,83 @@ namespace SceneryEditorX
 
     /// ----------------------------------------------------------
 
+    /*
+    class Framebuffer;
+    class Image2D;
+
+	struct FramebufferTextureSpec
+    {
+        FramebufferTextureSpec() = default;
+        FramebufferTextureSpec(ImageFormat format) : Format(format)
+        {
+        }
+
+        ImageFormat Format;
+        bool blend = true;
+        FramebufferBlendMode blendMode = FramebufferBlendMode::SrcAlphaOneMinusSrcAlpha;
+        AttachmentLoadOp loadOp = AttachmentLoadOp::Inherit;
+        // TODO: filtering/wrap
+    };
+
+	struct FramebufferAttachSpec
+    {
+        FramebufferAttachSpec() = default;
+        FramebufferAttachSpec(const std::initializer_list<FramebufferTextureSpec> &attachments)
+            : Attachments(attachments)
+        {
+        }
+
+        std::vector<FramebufferTextureSpec> Attachments;
+    };
+
+    struct FramebufferSpec
+    {
+        float scale = 1.0f;
+        uint32_t width = 0;
+        uint32_t height = 0;
+        glm::vec4 clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        float depthClearValue = 0.0f;
+        bool clearColorOnLoad = true;
+        bool clearDepthOnLoad = true;
+
+        FramebufferAttachSpec Attachments;
+        uint32_t Samples = 1; // multisampling
+
+        // TODO: Temp, needs scale
+        bool NoResize = false;
+
+        // Master switch (individual attachments can be disabled in FramebufferTextureSpecification)
+        bool Blend = true;
+        // None means use BlendMode in FramebufferTextureSpecification
+        FramebufferBlendMode BlendMode = FramebufferBlendMode::None;
+
+        // SwapChainTarget = screen buffer (i.e. no framebuffer)
+        bool swapChainTarget = false;
+
+        // Will it be used for transfer ops?
+        bool transfer = false;
+
+        // Note: these are used to attach multi-layered color/depth images
+        Ref<Image2D> ExistingImage;
+        std::vector<uint32_t> ExistingImageLayers;
+
+        // Specify existing images to attach instead of creating
+        // new images. attachment index -> image
+        std::map<uint32_t, Ref<Image2D>> ExistingImages;
+
+        // At the moment this will just create a new render pass
+        // with an existing framebuffer
+        Ref<Framebuffer> ExistingFramebuffer;
+
+        std::string DebugName;
+    };
+
+    /// ----------------------------------------------------------
+
     class Framebuffer : public RefCounted
     {
     public:
-        Framebuffer(const FramebufferSpecification &spec);
+        Framebuffer(const FramebufferSpec &spec);
 		virtual ~Framebuffer() override = default;
 
 		virtual void Resize(uint32_t width, uint32_t height, bool forceRecreate = false);
@@ -268,12 +342,12 @@ namespace SceneryEditorX
         virtual RID GetColorAttachmentRID() const { return 0; }
 		virtual RID GetDepthAttachmentRID() const { return 0; }
 
-        static Ref<Framebuffer> Create(const FramebufferSpecification &spec);
-        virtual const FramebufferSpecification &GetSpecification();
+        static Ref<Framebuffer> Create(const FramebufferSpec &spec);
+        virtual const FramebufferSpec &GetSpecification();
     private:
         uint32_t fb_width	= 0;											///< Width of the framebuffer
         uint32_t fb_height = 0;                                             ///< Height of the framebuffer
-		FramebufferSpecification specification;								///< Specifications for the framebuffer
+		FramebufferSpec specification;										///< Specifications for the framebuffer
         std::vector<std::function<void(Ref<Framebuffer>)>> resizeCallbacks; ///< Callbacks for resize events
         std::vector<Ref<Image2D>> attachmentImages;
         Ref<Image2D> depthAttachmentImage;
@@ -283,6 +357,9 @@ namespace SceneryEditorX
         VkRenderPass renderPass = nullptr;
         VkFramebuffer framebuffer = nullptr;
     };
+    */
+
+    /// ----------------------------------------------------------
 
 } // namespace SceneryEditorX
 

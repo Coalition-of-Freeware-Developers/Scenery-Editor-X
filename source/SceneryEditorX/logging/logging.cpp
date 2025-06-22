@@ -17,7 +17,7 @@
 #include <timezoneapi.h>
 #include <vulkan/vulkan.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -29,7 +29,8 @@ namespace SceneryEditorX
 	std::shared_ptr<spdlog::logger> Log::EditorLogger;
 	std::shared_ptr<spdlog::logger> Log::EditorConsoleLogger;
     std::shared_ptr<spdlog::logger> Log::LauncherLogger;
-	
+
+
 	/**
 	 * @brief Static member to hold the enabled tags.
 	 */
@@ -73,68 +74,71 @@ namespace SceneryEditorX
                 spdlog::drop("SceneryEditorX-Core");
             if (spdlog::get("SceneryEditorX-Editor"))
                 spdlog::drop("SceneryEditorX-Editor");
-            if (spdlog::get("VulkanDebug"))
-                spdlog::drop("VulkanDebug");
+            //if (spdlog::get("VulkanDebug"))
+            //    spdlog::drop("VulkanDebug");
             if (spdlog::get("Launcher"))
                 spdlog::drop("Launcher");
 
 	        /// -------------------------------------------------------
 
 	        std::vector<spdlog::sink_ptr> coreSinks = {
-                std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true),
+                std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/SceneryEditorX.log", true),
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>()};
-	
+
 	        std::vector<spdlog::sink_ptr> editorSinks = {
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-                std::make_shared<spdlog::sinks::basic_file_sink_mt>("SceneryEditorX.log", true)};
+                std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/SceneryEditorX.log", true)};
 	
 	        std::vector<spdlog::sink_ptr> editorConsoleSinks = {
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("EditorCore.log", true)};
+	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/EditorConsoleOut.log", true)};
 
 			std::vector <spdlog::sink_ptr> launcherSinks = {
 				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
-                std::make_shared<spdlog::sinks::basic_file_sink_mt>("Launcher.log", true)};
-	
+                std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/Launcher.log", true)};
+
 	        /// -------------------------------------------------------
 	
 	        /// Pattern for console sinks
 	        coreSinks[1]->set_pattern("%^[%T] %n: %v%$");
 	        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");
             launcherSinks[1]->set_pattern("%^[%T] %n: %v%$"); 
-	
+
+			/// -------------------------------------------------------
+
 	        /// Pattern for file sinks - note the correct indices
 	        coreSinks[0]->set_pattern("[%T] [%l] %n: %v");
-	        editorSinks[1]->set_pattern("[%T] [%l] %n: %v"); 
+	        editorSinks[1]->set_pattern("[%T] [%l] %n: %v");
+            for (const auto &sink : editorConsoleSinks)
+                sink->set_pattern("%^%v%$");
             launcherSinks[1]->set_pattern("[%T] [%l] %n: %v");
-	        
-	        for (const auto& sink : editorConsoleSinks) 
-	            sink->set_pattern("%^%v%$");
+
 	
 	        /// -------------------------------------------------------
 	
 	        CoreLogger = std::make_shared<spdlog::logger>("Core", coreSinks.begin(), coreSinks.end());
 	        CoreLogger->set_level(spdlog::level::trace);
-	        CoreLogger->flush_on(spdlog::level::info); // Flush on info level and above
-	
+	        CoreLogger->flush_on(spdlog::level::info); /// Flush on info level and above
+
 	        EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
 	        EditorLogger->set_level(spdlog::level::trace);
-	        EditorLogger->flush_on(spdlog::level::info); // Flush on info level and above
+	        EditorLogger->flush_on(spdlog::level::info); /// Flush on info level and above
 	
 	        EditorConsoleLogger = std::make_shared<spdlog::logger>("Vulkan", editorConsoleSinks.begin(), editorConsoleSinks.end());
 	        EditorConsoleLogger->set_level(spdlog::level::trace);
-	        EditorConsoleLogger->flush_on(spdlog::level::info); // Flush on info level and above
+	        EditorConsoleLogger->flush_on(spdlog::level::info); /// Flush on info level and above
 
 			LauncherLogger = std::make_shared<spdlog::logger>("Launcher", launcherSinks.begin(), launcherSinks.end());
             LauncherLogger->set_level(spdlog::level::trace);
-            LauncherLogger->flush_on(spdlog::level::info); // Flush on info level and above
-	
-	        // Register loggers with spdlog
+            LauncherLogger->flush_on(spdlog::level::info); /// Flush on info level and above
+
+			/// -------------------------------------------------------
+
+	        /// Register loggers with spdlog
 	        spdlog::register_logger(CoreLogger);
 	        spdlog::register_logger(EditorLogger);
 	        spdlog::register_logger(EditorConsoleLogger);
 			spdlog::register_logger(LauncherLogger);
-	
 	        SetDefaultTagSettings();
 	
 	        CoreLogger->info("Log system initialized successfully");
@@ -316,7 +320,7 @@ namespace SceneryEditorX
             spdlog::drop(LauncherLogger->name()); // Explicitly drop by name
             LauncherLogger.reset();
         }
-	    
+
 	    spdlog::drop_all(); // Drop all loggers
 	    spdlog::shutdown();
 	}

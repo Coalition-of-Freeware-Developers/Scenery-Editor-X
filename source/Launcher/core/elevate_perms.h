@@ -10,13 +10,12 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-
 #pragma once
-
 //#define _WIN32_WINNT 0x0601
+#include <SceneryEditorX/logging/logging.hpp>
 #include <shellapi.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 // Function to check if the application is running as administrator
 inline bool RunningAsAdmin()
@@ -39,7 +38,7 @@ inline bool RunningAsAdmin()
     }
     else
     {
-        LAUNCHER_LOG_ERROR("Failed to open process token. Error code: {}", GetLastError());
+        LAUNCHER_CORE_ERROR("Failed to open process token. Error code: {}", GetLastError());
 		//ErrMsg("Failed to open process token. Error code: " + GetLastError()); // Display an error message
     }
 
@@ -61,7 +60,7 @@ inline void RelaunchAsAdmin()
         sei.nShow = SW_SHOWNORMAL;                                      // Show the window
         sei.fMask = SEE_MASK_NOCLOSEPROCESS;                            // Ensure the process handle is not closed
 
-        LAUNCHER_LOG_INFO("Preparing to relaunch as administrator.");
+        LAUNCHER_CORE_TRACE("Preparing to relaunch as administrator.");
         //std::cerr << "Preparing to relaunch as administrator." << std::endl;
         //Log::Shutdown(); // Shutdown logging before relaunch
 
@@ -69,14 +68,14 @@ inline void RelaunchAsAdmin()
         if (!ShellExecuteEx(&sei))                                      // Relaunch the application with elevated privileges
         {
             DWORD error = GetLastError();                               // Get the error code from the last operation
-            LAUNCHER_LOG_ERROR("Failed to elevate privileges. Error code: {}", error);
+            LAUNCHER_CORE_ERROR("Failed to elevate privileges. Error code: {}", error);
 			//ErrMsg("Failed to elevate privileges. Error code: " + error); // Display an error message
             //std::cerr << "Failed to elevate privileges. Error code: " << error << std::endl;
             return; // Return without terminating the current process
         }
         else  // If ShellExecuteEx succeeds
         {
-            LAUNCHER_LOG_INFO("Relaunched successfully. Terminating current process.");
+            LAUNCHER_CORE_TRACE("Relaunched successfully. Terminating current process.");
             //std::cerr << "Relaunched successfully. Terminating current process."  << std::endl;
 
             //Log::Shutdown(); // Shutdown logging before relaunch
@@ -85,12 +84,12 @@ inline void RelaunchAsAdmin()
 #ifdef SEDX_DEBUG // Attach the debugger to the new elevated process if running in debug mode
             if (IsDebuggerPresent())
             {
-                LAUNCHER_LOG_INFO("Debugger is present. Attaching to the new elevated process.");
+                LAUNCHER_CORE_TRACE("Debugger is present. Attaching to the new elevated process.");
                 //std::cerr << "Debugger is present. Attaching to the new elevated process." << std::endl;
 
                 if (sei.hProcess != nullptr && !DebugActiveProcess(GetProcessId(sei.hProcess)))
                 {
-                    LAUNCHER_LOG_ERROR("Failed to attach debugger. Process handle is NULL.");
+                    LAUNCHER_CORE_ERROR("Failed to attach debugger. Process handle is NULL.");
 					//ErrMsg("Failed to attach debugger. Process handle is NULL."); // Display an error message
                     //std::cerr << "Failed to attach debugger. Process handle is NULL." << std::endl;
                 }
@@ -103,7 +102,7 @@ inline void RelaunchAsAdmin()
     }
     else // If the path could not be retrieved
     {
-        LAUNCHER_LOG_ERROR("Failed to get module file name.");
+        LAUNCHER_CORE_ERROR("Failed to get module file name.");
 		//ErrMsg("Failed to get module file name."); // Display an error message
         //std::cerr << "Failed to get module file name." << std::endl;
 
@@ -133,10 +132,10 @@ inline int adminCheck()
     if (!isElevated && !RunningAsAdmin())                           // Check if the application is running as administrator
     {
 #ifdef _DEBUG
-        LAUNCHER_LOG_INFO("Running in debug mode. Skipping relaunch as admin.");
+        LAUNCHER_CORE_TRACE("Running in debug mode. Skipping relaunch as admin.");
         //std::cerr << "Running in debug mode. Skipping relaunch as admin." << std::endl;
 #else
-        LAUNCHER_LOG_INFO("Administrator privileges are required. Relaunching as admin...");
+        LAUNCHER_CORE_TRACE("Administrator privileges are required. Relaunching as admin...");
         //std::cerr << "Administrator privileges are required. Relaunching as admin..." << std::endl;
         RelaunchAsAdmin();                                          // Relaunch the application with admin privileges
         return 0;                                                   // Exit the current process after relaunching
@@ -144,7 +143,7 @@ inline int adminCheck()
     }
 
     // Proceed with admin-required functions
-    LAUNCHER_LOG_INFO("Running with administrator privileges. Proceeding with tasks...");
+    LAUNCHER_CORE_TRACE("Running with administrator privileges. Proceeding with tasks...");
     //std::cerr << "Running with administrator privileges. Proceeding with tasks..." << std::endl;
 
 

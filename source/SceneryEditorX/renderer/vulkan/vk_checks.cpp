@@ -107,28 +107,33 @@ namespace SceneryEditorX
      * @return True if the device has support for the required extensions.
      * @return False if the device cannot support the required extensions.
      */
-	bool VulkanChecks::IsExtensionSupported(const char *extension)
-	{
-	    uint32_t extensionCount = 0;
-	
-	    std::unordered_set<std::string> supportedExtension;
-	    supportedExtension.clear();
-	
-	    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-	    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
-	    for (const auto &ext : availableExtensions)
-	    {
-	        supportedExtension.emplace(ext.extensionName);
-	    }
-	
-	    if (supportedExtension.contains(extension))
-	    {
-	        SEDX_CORE_INFO("Extension supported: {}", ToString(extension));
-	        return true;
-	    }
-	
-	    return false;
-	}
+    bool VulkanChecks::IsExtensionSupported(const char *extension)
+    {
+        uint32_t extensionCount = 0;
+        if (vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr) != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR("Failed to get instance extension count");
+            return false;
+        }
+
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        if (vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data()) != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR("Failed to enumerate instance extensions");
+            return false;
+        }
+
+        for (const auto &[extensionName, specVersion] : availableExtensions)
+        {
+            if (strcmp(extensionName, extension) == 0)
+            {
+                SEDX_CORE_INFO("Extension supported: {}", extension);
+                return true;
+            }
+        }
+
+        return false;
+    }
 	
 	
 	/**
@@ -288,6 +293,102 @@ namespace SceneryEditorX
 	
 	    return true;
 	}
+
+    /**
+     * @brief Checks if all required validation layers are available
+     * 
+     * @param layers The validation layers to check for
+     */
+    void VulkanChecks::CheckLayers(const std::vector<const char*>& layers)
+    {
+        uint32_t layerCount;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        
+        if (layerCount == 0) 
+        {
+            SEDX_CORE_ERROR_TAG("Vulkan", "No validation layers are available on this system");
+            return;
+        }
+
+        SEDX_CORE_INFO_TAG("Vulkan", "Found {} available validation layers", layerCount);
+
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+        // List all available layers for debugging
+        SEDX_CORE_TRACE_TAG("Vulkan", "Available validation layers:");
+        for (const auto& layer : availableLayers)
+        {
+            SEDX_CORE_TRACE_TAG("Vulkan", "  {} (version: {}, spec: {})", 
+                layer.layerName, 
+                layer.implementationVersion,
+                layer.specVersion);
+        }
+
+        // Check if all requested layers are available
+        bool allLayersFound = true;
+        for (const char* layerName : layers)
+        {
+            bool layerFound = false;
+
+            for (const auto& layerProperties : availableLayers)
+            {
+                if (strcmp(layerName, layerProperties.layerName) == 0)
+                {
+                    layerFound = true;
+                    SEDX_CORE_INFO_TAG("Vulkan", "Validation layer supported: {}", layerName);
+                    break;
+                }
+            }
+
+            if (!layerFound)
+            {
+                SEDX_CORE_WARN_TAG("Vulkan", "Validation layer not supported: {}", layerName);
+                allLayersFound = false;
+            }
+        }
+        
+        if (!allLayersFound)
+        {
+            SEDX_CORE_WARN_TAG("Vulkan", "Not all requested validation layers are available");
+        }
+    }
+
+    /**
+     * @brief Checks if validation layer support is available
+     * 
+     * @param layers The specific validation layers to check for
+     * @return true if all requested validation layers are supported
+     * @return false if any requested validation layer is not supported
+     */
+    bool VulkanChecks::CheckValidationLayerSupport() const
+    {
+        uint32_t layerCount;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+        if (layerCount == 0)
+        {
+            SEDX_CORE_ERROR_TAG("Vulkan", "No validation layers available on this system");
+            return false;
+        }
+
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+        
+        // Check for VK_LAYER_KHRONOS_validation specifically
+        for (const auto& layerProperties : availableLayers) 
+        {
+            if (strcmp("VK_LAYER_KHRONOS_validation", layerProperties.layerName) == 0) 
+            {
+                SEDX_CORE_INFO_TAG("Vulkan", "Khronos validation layer is available (version: {})", 
+                    layerProperties.implementationVersion);
+                return true;
+            }
+        }
+        
+        SEDX_CORE_WARN_TAG("Vulkan", "Khronos validation layer is not available");
+        return false;
+    }
 
 } // namespace SceneryEditorX
 

@@ -52,12 +52,14 @@
         #define SEDX_PLATFORM_WINDOWS
         #define SEDX_PLATFORM_NAME "Windowsx64"
 		#include <Windows.h>
+		#ifndef VK_USE_PLATFORM_WIN32_KHR
 		#define VK_USE_PLATFORM_WIN32_KHR
+		#endif
 		#include <vulkan/vulkan.h>
         constexpr char dirSeparator = '\\';
 		#if defined(_DEBUG) || defined(DEBUG)
 			#ifndef SEDX_DEBUG
-			    #define SEDX_DEBUG
+            #define SEDX_DEBUG
 			#endif
 			#define SEDX_DEBUGBREAK() __debugbreak()
 			#define APP_USE_VULKAN_DEBUG_REPORT
@@ -121,12 +123,14 @@
 	#include <csignal>
 	#include <sys/types.h>
 	#include <pwd.h>
+	#ifndef VK_USE_PLATFORM_XLIB_KHR
 	#define VK_USE_PLATFORM_XLIB_KHR
+	#endif
 	#include <vulkan/vulkan.h>
 	constexpr char dirSeparator = '/';
 	#if defined(_DEBUG) || defined(DEBUG)
 		#ifndef SEDX_DEBUG
-		    #define SEDX_DEBUG
+        #define SEDX_DEBUG
 		#endif
 		#define SEDX_DEBUGBREAK() raise(SIGTRAP)
 	#endif

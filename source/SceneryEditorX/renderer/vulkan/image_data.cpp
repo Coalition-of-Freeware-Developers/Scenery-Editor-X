@@ -71,6 +71,7 @@ namespace SceneryEditorX
         return resource->imguiRIDs[layer];
 	}
 
+    /*
     VkImageView Image2D::GetMipImageView(uint32_t mip)
     {
         if (m_PerMipImageViews.find(mip) == m_PerMipImageViews.end())
@@ -377,7 +378,6 @@ namespace SceneryEditorX
         allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
     }
 
-
     ImageView::ImageView(const ImageViewSpecification &specification) : m_Specification(specification)
     {
         Invalidate();
@@ -400,7 +400,6 @@ namespace SceneryEditorX
         Ref<ImageView> instance = this;
         Renderer::Submit([instance]() mutable { instance->RT_Invalidate(); });
     }
-
 
     void ImageView::RT_Invalidate()
     {
@@ -438,6 +437,7 @@ namespace SceneryEditorX
         m_DescriptorImageInfo = vulkanImage->GetDescriptorInfoVulkan();
         m_DescriptorImageInfo.imageView = m_ImageView;
     }
+    */
 
 } // namespace SceneryEditorX
 

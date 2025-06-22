@@ -48,12 +48,6 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
-        VkPipelineCache pipelineCache = nullptr;
-        size_t pipelineCacheDataSize = 0;
-        const void *pipelineCacheData = nullptr;
-
-        /// -------------------------------------------------------
-
 #ifdef SEDX_DEBUG
         VkDebugReportCallbackEXT debugCallback = VK_NULL_HANDLE;
 #endif

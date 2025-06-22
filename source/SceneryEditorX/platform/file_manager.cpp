@@ -13,21 +13,186 @@
 #include <commdlg.h>
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-#include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/core/time.h>
+#include <SceneryEditorX/platform/editor_config.hpp>
+#include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/model_asset.h>
+#include <SceneryEditorX/utils/string.h>
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
-#include "editor_config.hpp"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
+    /// -------------------------------------------------------
 
-	/// -------------------------------------------------------
+    std::filesystem::path FileSystem::GetWorkingDir()
+    {
+        return std::filesystem::current_path();
+    }
+
+    void FileSystem::SetWorkingDir(const std::filesystem::path &path)
+    {
+        std::filesystem::current_path(path);
+    }
+
+    bool FileSystem::CreateDir(const std::filesystem::path &directory)
+    {
+        return std::filesystem::create_directories(directory);
+    }
+
+    bool FileSystem::CreateDir(const std::string &directory)
+    {
+        return CreateDir(std::filesystem::path(directory));
+    }
+
+    bool FileSystem::DirExists(const std::filesystem::path &directory)
+    {
+        return std::filesystem::exists(directory);
+    }
+
+    bool FileSystem::DirExists(const std::string &directory)
+    {
+        return DirExists(std::filesystem::path(directory));
+    }
+
+    bool FileSystem::DeleteFile(const std::filesystem::path &filepath)
+    {
+        if (!Exists(filepath))
+            return false;
+
+        if (std::filesystem::is_directory(filepath))
+            return std::filesystem::remove_all(filepath) > 0;
+        return std::filesystem::remove(filepath);
+    }
+
+    bool FileSystem::MoveFile(const std::filesystem::path &filepath, const std::filesystem::path &dest)
+    {
+        return Move(filepath, dest / filepath.filename());
+    }
+
+    bool FileSystem::CopyFile(const std::filesystem::path &filepath, const std::filesystem::path &dest)
+    {
+        return Copy(filepath, dest / filepath.filename());
+    }
+
+	bool FileSystem::Exists(const std::filesystem::path &filepath)
+    {
+        return std::filesystem::exists(filepath);
+    }
+
+    bool FileSystem::Exists(const std::string &filepath)
+    {
+        return std::filesystem::exists(std::filesystem::path(filepath));
+    }
+
+    bool FileSystem::Copy(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath)
+    {
+		if (Exists(newFilepath))
+			return false;
+
+		std::filesystem::copy(oldFilepath, newFilepath);
+		return true;
+    }
+
+    bool FileSystem::Rename(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath)
+    {
+        return Move(oldFilepath, newFilepath);
+    }
+
+    bool FileSystem::RenameFilename(const std::filesystem::path &oldFilepath, const std::string &newName)
+    {
+        const std::filesystem::path newPath = oldFilepath.parent_path() / std::filesystem::path(newName + oldFilepath.extension().string());
+        return Rename(oldFilepath, newPath);
+    }
+
+	bool FileSystem::IsDirectory(const std::filesystem::path &filepath)
+    {
+        return std::filesystem::is_directory(filepath);
+    }
+
+	FileStatus FileSystem::TryOpenFileAndWait(const std::filesystem::path &filepath, uint64_t waitms)
+    {
+        FileStatus fileStatus = TryOpenFile(filepath);
+        if (fileStatus == FileStatus::Locked)
+        {
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(operator""ms((unsigned long long)waitms));
+            return TryOpenFile(filepath);
+        }
+        return fileStatus;
+    }
+
+	/// returns true <=> fileA was last modified more recently than fileB
+    bool FileSystem::IsNewer(const std::filesystem::path &fileA, const std::filesystem::path &fileB)
+    {
+        return std::filesystem::last_write_time(fileA) > std::filesystem::last_write_time(fileB);
+    }
+
+    bool FileSystem::ShowFileInExplorer(const std::filesystem::path &path)
+    {
+        const auto absolutePath = std::filesystem::canonical(path);
+        if (!Exists(absolutePath))
+            return false;
+
+    #ifdef SEDX_PLATFORM_WINDOWS
+        std::string cmd = std::format("explorer.exe /select,\"{0}\"", absolutePath.string());
+    #elif defined(SEDX_PLATFORM_LINUX)
+        std::string cmd = std::format("xdg-open \"{0}\"", dirname(absolutePath.string().data()));
+    #endif
+        system(cmd.c_str());
+        return true;
+    }
+
+    bool FileSystem::OpenDirectoryInExplorer(const std::filesystem::path &path)
+    {
+    #ifdef SEDX_PLATFORM_WINDOWS
+        auto absolutePath = std::filesystem::canonical(path);
+        if (!Exists(absolutePath))
+            return false;
+
+        ShellExecute(nullptr, reinterpret_cast<LPCSTR>(L"explore"), reinterpret_cast<LPCSTR>(absolutePath.c_str()), nullptr, nullptr, SW_SHOWNORMAL);
+        return true;
+    #elif defined(SEDX_PLATFORM_LINUX)
+        return ShowFileInExplorer(path);
+    #endif		
+    }
+
+    std::filesystem::path FileSystem::GetUniqueFileName(const std::filesystem::path &filepath)
+    {
+        if (!Exists(filepath))
+            return filepath;
+
+        int counter = 0;
+        auto checkID = [&counter, filepath](const auto &checkID) -> std::filesystem::path {
+            ++counter;
+            const std::string counterStr = [&counter]
+            {
+                if (counter < 10)
+                    return "0" + std::to_string(counter);
+
+                return std::to_string(counter);
+            }(); /// Pad with 0 if < 10;
+
+            std::string newFileName = std::format("{} ({})", RemoveExtension(filepath.filename().string()), counterStr);
+
+            if (filepath.has_extension())
+                newFileName = std::format("{}{}", newFileName, filepath.extension().string());
+
+            if (std::filesystem::exists(filepath.parent_path() / newFileName))
+                return checkID(checkID);
+
+            return filepath.parent_path() / newFileName;
+        };
+
+        return checkID(checkID);
+    }
+
+
+    /// -------------------------------------------------------
 
 	/*
 	std::string FileDialogs::OpenFile(const char* filter)
@@ -200,6 +365,7 @@ namespace SceneryEditorX::IO
 	 * @param filename The name of the file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the file.
 	*/
+
     std::vector<uint8_t> FileManager::ReadRawBytes(const std::filesystem::path &path)
 	{
         std::ifstream input(path, std::ios::binary);
@@ -226,7 +392,7 @@ namespace SceneryEditorX::IO
 	    {
 	        SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
 	        ErrMsg(std::string("Failed to open file: ") + ToString(filename));
-	        return {}; // Return empty vector on failure
+	        return {}; /// Return empty vector on failure
 	    }
 	
 	    size_t fileSize = file.tellg();
@@ -272,7 +438,7 @@ namespace SceneryEditorX::IO
 	    {
 	        SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
 	        ErrMsg(std::string("Failed to open file: ") + ToString(filename));
-	        return {}; // Return empty vector on failure
+	        return {}; /// Return empty vector on failure
 	    }
 	
 	    size_t fileSize = file.tellg();
@@ -309,9 +475,7 @@ namespace SceneryEditorX::IO
             std::filesystem::create_directories(appDataDir);
         }
         else
-        {
             SEDX_CORE_ERROR_TAG("FILE MANAGER", "Failed to get APPDATA environment variable");
-        }
     }
 
     /*
@@ -806,9 +970,9 @@ namespace SceneryEditorX::IO
 	}
 	*/
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 
 } // namespace SceneryEditorX::IO
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

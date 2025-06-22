@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include <SceneryEditorX/core/base.hpp>
+
 /// --------------------------------------------
 
 namespace SceneryEditorX

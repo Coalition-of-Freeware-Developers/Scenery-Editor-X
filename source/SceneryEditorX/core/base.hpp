@@ -54,7 +54,7 @@ using Mat2 = glm::mat2; ///< 2x2 matrix
 using Mat3 = glm::mat3; ///< 3x3 matrix
 using Mat4 = glm::mat4; ///< 4x4 matrix
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 /**
  * @brief Aligns a size value to a specified alignment boundary.

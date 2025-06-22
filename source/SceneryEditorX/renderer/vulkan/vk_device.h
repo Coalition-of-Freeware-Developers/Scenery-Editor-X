@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
+//#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
+//#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <optional>
 #include <vulkan/vulkan.h>
@@ -142,7 +142,7 @@ namespace SceneryEditorX
 		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
         [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryProperties; }
 		[[nodiscard]] VkFormat GetDepthFormat() const { return  devices.at(deviceIndex).depthFormat;}
-		[[nodiscard]] VkPhysicalDevice GetGPUDevices() const { return devices.at(deviceIndex).physicalDevice; }
+        [[nodiscard]] VkPhysicalDevice GetGPUDevices() const;
 		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceFeatures; }
         [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
@@ -171,11 +171,11 @@ namespace SceneryEditorX
 
 	    /// -------------------------------------------------------
 
-	    VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentricFeature  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR };
-        VkPhysicalDeviceVulkan13Features vulkan13Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-        VkPhysicalDeviceVulkan12Features vulkan12Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-        VkPhysicalDeviceVulkan11Features vulkan11Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-        VkPhysicalDeviceFeatures2 vulkan10Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+	    //VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentricFeature  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR };
+        //VkPhysicalDeviceVulkan13Features vulkan13Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
+        //VkPhysicalDeviceVulkan12Features vulkan12Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+        //VkPhysicalDeviceVulkan11Features vulkan11Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+        //VkPhysicalDeviceFeatures2 vulkan10Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
 		
 	    /// -------------------------------------------------------
 
@@ -269,20 +269,14 @@ namespace SceneryEditorX
         void Destroy();
 
 		/// Accessor methods.
-        [[nodiscard]] const VkDevice &Selected() const;
+	    [[nodiscard]] const VkDevice &Selected() const { return GetDevice(); }
         [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
         [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
         [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
-		[[nodiscard]] VkDevice GetDevice() const 
-		{
-		    if (device == VK_NULL_HANDLE)
-                SEDX_CORE_ERROR_TAG("Vulkan Device", "Attempting to access device handle that is null");
-            return device;
-		}
+		[[nodiscard]] VkDevice GetDevice() const { return device; }
 
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-        //[[nodiscard]] Ref<CommandBuffer> GetCommandBuffer() const { return cmdBuffer; }
 
 	    /// -------------------------------------------------------
         /// Function pointers for Vulkan extensions
@@ -375,18 +369,17 @@ namespace SceneryEditorX
         VkQueue GraphicsQueue = VK_NULL_HANDLE;
         VkQueue ComputeQueue = VK_NULL_HANDLE;
         VkQueue PresentQueue = VK_NULL_HANDLE;
+        VkQueue TransferQueue = VK_NULL_HANDLE;
+
         std::mutex GraphicsQueueMutex;
         std::mutex ComputeQueueMutex;
+        std::mutex PresentQueueMutex;
+        std::mutex TransferQueueMutex;
 
 		/// -------------------------------------------------------
 
         /// Command pool management
         std::map<std::thread::id, Ref<CommandPool>> CmdPools;
-
-        /**
-         * @brief Create Vulkan 1.2+ features structure and load device extensions
-         */
-        //void CreateDeviceFeatures2();
 
         /**
          * @brief Create a texture sampler with specified parameters
@@ -404,7 +397,7 @@ namespace SceneryEditorX
          * @note This function sets up the bindless resources for the device, including
          * creating the bindless descriptor pool and descriptor sets.
          */
-        //GLOBAL void InitializeBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
+        //GLOBAL void InitBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
 
         /**
          * @brief Load function pointers for extension functions

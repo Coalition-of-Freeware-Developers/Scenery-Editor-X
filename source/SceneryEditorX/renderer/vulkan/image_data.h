@@ -13,7 +13,7 @@
 #pragma once
 #include <glm/gtc/integer.hpp>
 #include <imgui/imgui.h>
-#include <SceneryEditorX/renderer/vulkan/render_data.h>
+#include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h> /// Used by VmaAllocation in struct. !MUST KEEP!
 
 /// -------------------------------------------------------
@@ -59,7 +59,7 @@ namespace SceneryEditorX
 	    };
     }
 
-	enum Format : uint8_t
+	enum ImageFormat : uint8_t
     {
         RGBA8_unorm			= 37,
         BGRA8_unorm			= 44,
@@ -131,7 +131,7 @@ namespace SceneryEditorX
 	    Ref<ImageResource> resource;
 	    uint32_t width  = 0;
 	    uint32_t height = 0;
-        Format format;
+        ImageFormat format;
         ImageUsageFlags usage;
         Layout::ImageLayout layout;
         AspectFlags aspect;
@@ -147,7 +147,7 @@ namespace SceneryEditorX
     {
         uint32_t width	= 0;
         uint32_t height = 0;
-        Format format;
+        ImageFormat format;
         ImageUsageFlags usage;
         std::string name;
         uint64_t layers = 1;

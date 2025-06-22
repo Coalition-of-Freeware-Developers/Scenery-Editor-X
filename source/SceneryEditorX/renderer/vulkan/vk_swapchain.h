@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/vulkan/image_data.h>
-#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
+//#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
 
 /// -------------------------------------------------------
 
@@ -22,11 +22,6 @@ struct GLFWwindow;
 
 namespace SceneryEditorX
 {
-    class Pipeline;
-    class GraphicsEngine;
-
-    /// -------------------------------------------------------
-
 	struct SwapChainDetails
 	{
         VkSurfaceCapabilitiesKHR capabilities{};
@@ -36,15 +31,7 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
-	struct SwapchainCommandBuffer
-    {
-        VkCommandPool CommandPool = nullptr;
-        VkCommandBuffer CommandBuffer = nullptr;
-    };
-
-    /// -------------------------------------------------------
-
-	class SwapChain : public RefCounted
+	class SwapChain
 	{
     public:
         SwapChain() = default;
@@ -54,7 +41,10 @@ namespace SceneryEditorX
         void InitSurface(GLFWwindow *windowPtr);
         void Create(uint32_t *width, uint32_t *height, bool vsync);
         void OnResize(uint32_t width, uint32_t height);
+        void Present();
         void Destroy();
+
+		void BeginFrame();
 
 		/// Getter methods
 		[[nodiscard]] VkFormat GetColorFormat() const { return colorFormat; }
@@ -68,8 +58,8 @@ namespace SceneryEditorX
 		[[nodiscard]] VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
         [[nodiscard]] VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
 
-	    uint32_t GetWidth() const { return swapWidth; }
-		uint32_t GetHeight() const { return swapHeight; }
+        [[nodiscard]] uint32_t GetWidth() const { return swapWidth; }
+        [[nodiscard]] uint32_t GetHeight() const { return swapHeight; }
 
 		VkFramebuffer GetFramebuffer(uint32_t index) const
         {
@@ -102,7 +92,6 @@ namespace SceneryEditorX
         [[nodiscard]] VkImageView GetDepthImageView() const { return depthImageView; }
 
 		uint32_t GetSwapChainImageCount() const { return swapChainImageCount; }
-
 		uint32_t GetBufferIndex() const { return currentFrameIdx; }
 
 		/// Image/view utility methods
@@ -114,8 +103,6 @@ namespace SceneryEditorX
     private:
         VkInstance instance = nullptr;
         Ref<VulkanDevice> vkDevice;
-        Ref<GraphicsEngine> *gfxEngine;
-        Ref<Pipeline> *pipeline;
 
 		/// Helper methods
         uint32_t AcquireNextImage();
@@ -158,14 +145,25 @@ namespace SceneryEditorX
         VkSurfaceKHR surface = nullptr;
         VkSwapchainKHR swapChain = nullptr;
         VkRenderPass renderPass = nullptr;
-        VkAllocationCallbacks *allocator = nullptr;
+	    struct SwapchainCommandBuffer
+        {
+            VkCommandPool CommandPool = nullptr;
+            VkCommandBuffer CommandBuffer = nullptr;
+        };
+        std::vector<SwapchainCommandBuffer> cmdBuffers;
+
+	    struct SwapchainImage
+        {
+            VkImage Image = nullptr;
+            VkImageView ImageView = nullptr;
+        };
+        std::vector<SwapchainImage> swapChainImage;
 
 		/// Image resources
-        std::vector<Image> swapChainImages;
-        std::vector<VkImage> swapChainImageResources;
+        //std::vector<Image> swapChainImages;
+        std::vector<VkImage> swapChainImageCounts;
         std::vector<VkImageView> swapChainViews;
         std::vector<VkFramebuffer> swapChainFramebuffers;
-        std::vector<SwapchainCommandBuffer> cmdBuffers;
 
 	    /// Semaphores to signal that images are available for rendering and that rendering has finished (one pair for each frame in flight)
         std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -195,7 +193,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		friend class GraphicsEngine;
+		friend class RenderContext;
     };
 
 } // namespace SceneryEditorX

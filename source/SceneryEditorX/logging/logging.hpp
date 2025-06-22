@@ -266,11 +266,11 @@ namespace SceneryEditorX
 		*/
 	    static Level LevelFromString(std::string_view string)
 	    {
-	        if (string == "Trace") return Level::Trace;
-	        if (string == "Info") return Level::Info;
-	        if (string == "Warn") return Level::Warn;
-	        if (string == "Error") return Level::Error;
-	        if (string == "Fatal") return Level::Fatal;
+	        if (string == "Trace")	return Level::Trace;
+	        if (string == "Info")	return Level::Info;
+	        if (string == "Warn")	return Level::Warn;
+	        if (string == "Error")	return Level::Error;
+	        if (string == "Fatal")	return Level::Fatal;
 	
 	        return Level::Trace;
 	    }
@@ -512,7 +512,7 @@ namespace SceneryEditorX
 	#define LAUNCHER_LOG_ERROR(...)		::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
 	#define LAUNCHER_LOG_CRITICAL(...)  ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
 	
-	/*
+	/**
 	 * 
 	 * Editor Log Macros
 	 *
@@ -523,4 +523,4 @@ namespace SceneryEditorX
 	#define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
 	#define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

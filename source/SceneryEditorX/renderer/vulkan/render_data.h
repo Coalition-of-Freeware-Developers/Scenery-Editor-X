@@ -13,7 +13,6 @@
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 #include <vulkan/vulkan_core.h>
 
 /// -------------------------------------------------------
@@ -50,21 +49,21 @@ namespace SceneryEditorX
         bool fullDrawIndexUint32					 = VK_FALSE; // Specifies the full 32-bit range of indices is supported for indexed draw.
         bool imageCubeArray							 = VK_FALSE; // Specifies whether image views with a VkImageViewType of VK_IMAGE_VIEW_TYPE_CUBE_ARRAY can be created.
         bool independentBlend						 = VK_TRUE;  // Specifies whether the VkPipelineColorBlendAttachmentState settings are controlled independently per-attachment.
-        bool geometryShader							 = VK_TRUE; // Geometry shader support
+        bool geometryShader							 = VK_TRUE;  // Geometry shader support
         bool tessellationShader						 = VK_FALSE; // Tessellation shader support
         bool sampleRateShading						 = VK_FALSE; // Specifies whether Sample Shading and multi-sample interpolation are supported.
         bool dualSrcBlend							 = VK_FALSE; // Specifies whether blend operations which take two sources are supported.
-        bool logicOp								 = VK_TRUE; // Specifies whether logic operations are supported.
+        bool logicOp								 = VK_TRUE;  // Specifies whether logic operations are supported.
         bool multiDrawIndirect						 = VK_FALSE; // Specifies whether multiple draw indirect is supported.
         bool drawIndirectFirstInstance				 = VK_FALSE; // Specifies whether indirect drawing calls support the firstInstance parameter.
-        bool depthClamp								 = VK_TRUE; // Specifies whether depth clamping is supported.
+        bool depthClamp								 = VK_TRUE;  // Specifies whether depth clamping is supported.
         bool depthBiasClamp							 = VK_FALSE; // Specifies whether depth bias clamping is supported.
         bool fillModeNonSolid						 = VK_TRUE;  // Enable wireframe and point rendering modes. Specifies whether point and wireframe fill modes are supported.
         bool depthBounds							 = VK_FALSE; // Specifies whether depth bounds tests are supported.
         bool wideLines								 = VK_TRUE;  // Enable wide lines for rendering. Specifies whether lines with width other than 1.0 are supported.
         bool largePoints							 = VK_FALSE; // Specifies whether points with size greater than 1.0 are supported.
         bool alphaToOne								 = VK_FALSE; // Specifies whether the impl is able to replace the alpha value of the fragment shader color output in the Multisample Coverage fragment operation.
-        bool multiViewport							 = VK_TRUE; // Specifies whether more than one viewport is supported.
+        bool multiViewport							 = VK_TRUE;  // Specifies whether more than one viewport is supported.
         bool samplerAnisotropy						 = VK_TRUE;  // Enable anisotropic filtering for textures.
         bool textureCompressionETC2					 = VK_FALSE; // Specifies whether all the ETC2 and EAC compressed texture formats are supported.
         bool textureCompressionASTC_LDR				 = VK_FALSE; // Specifies whether all the ASTC LDR compressed texture formats are supported.

@@ -50,8 +50,10 @@ ADD_LIBRARY(AppCore
 	core/encoding.hpp
 	core/initializer.cpp
 	core/initializer.h
-	core/layer.cpp
-	core/layer.h
+	core/modules/module.cpp
+	core/modules/module.h
+	core/modules/module_stage.cpp
+	core/modules/module_stage.h
 	core/memory.cpp
 	core/memory.h
 	core/pointers.cpp
@@ -59,6 +61,10 @@ ADD_LIBRARY(AppCore
 	core/serializer.hpp
 	core/steam_parser.cpp
 	core/steam_parser.h
+	core/threading/thread.cpp
+	core/threading/thread.h
+	core/threading/thread_manager.cpp
+	core/threading/thread_manager.h
 	core/time.cpp
 	core/time.h
 	core/transforms.cpp
@@ -82,6 +88,8 @@ ADD_LIBRARY(AppCore
 	platform/lock_file.cpp
 	platform/system_detection.h
 	# --------------------------------
+	renderer/command_queue.cpp
+	renderer/command_queue.h
 	renderer/primitives.cpp
 	renderer/primitives.h
 	renderer/renderer.cpp
@@ -131,19 +139,22 @@ ADD_LIBRARY(AppCore
 )
 
 # --------------------------------
-SOURCE_GROUP("SceneryEditorX/Asset" FILES
+SOURCE_GROUP("Asset" FILES
 	${ASSET_FILES}
 )
-SOURCE_GROUP("SceneryEditorX/Core" FILES
+SOURCE_GROUP("Core" FILES
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 	${LOGGER}
+	core/application.cpp
+	core/application.h
+	core/application_data.h
 	core/base.hpp
 	core/memory.cpp
 	core/memory.h
 	core/pointers.cpp
 	core/pointers.h
-	core/layer.cpp
-	core/layer.h
+	core/module.cpp
+	core/module.h
 	core/time.cpp
 	core/time.h
 	core/version.h
@@ -152,24 +163,33 @@ SOURCE_GROUP("SceneryEditorX/Core" FILES
 	core/window/icon.h
 	core/window/window.cpp
 	core/window/window.h
-	core/application.cpp
-	core/application.h
-	core/application_data.h
 	core/initializer.cpp
 	core/initializer.h
 )
-SOURCE_GROUP("SceneryEditorX/Platform/Settings" FILES
+SOURCE_GROUP("Core/Threading" FILES
+	core/threading/thread.cpp
+	core/threading/thread.h
+	core/threading/thread_manager.cpp
+	core/threading/thread_manager.h
+)
+SOURCE_GROUP("Core/Modules" FILES
+	core/modules/module.cpp
+	core/modules/module.h
+	core/modules/module_stage.cpp
+	core/modules/module_stage.h
+)
+SOURCE_GROUP("Platform/Settings" FILES
 	platform/settings.cpp
 	platform/settings.h
 )
-SOURCE_GROUP("SceneryEditorX/Encoding" FILES
+SOURCE_GROUP("Encoding" FILES
 	core/encoding.cpp
 	core/encoding.hpp
 )
-SOURCE_GROUP("SceneryEditorX/Serialization" FILES
+SOURCE_GROUP("Serialization" FILES
 	core/serializer.hpp
 )
-SOURCE_GROUP("SceneryEditorX/Renderer/Vulkan/Buffers" FILES
+SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	renderer/buffers/index_buffer.h
 	renderer/buffers/index_buffer.cpp
 	renderer/buffers/uniform_buffer.h
@@ -177,7 +197,7 @@ SOURCE_GROUP("SceneryEditorX/Renderer/Vulkan/Buffers" FILES
 	renderer/buffers/vertex_buffer.cpp
 	renderer/buffers/vertex_buffer.h
 )
-SOURCE_GROUP("SceneryEditorX/Utilities" FILES
+SOURCE_GROUP("Utilities" FILES
 	core/transforms.cpp
 	platform/editor_config.hpp
 	platform/platform_states.h
@@ -190,14 +210,16 @@ SOURCE_GROUP("SceneryEditorX/Utilities" FILES
 	platform/cfg_loader.h
 	platform/lock_file.cpp
 )
-SOURCE_GROUP("SceneryEditorX/Steam" FILES
+SOURCE_GROUP("Steam" FILES
 	core/steam_parser.cpp
 	core/steam_parser.h
 )
-SOURCE_GROUP("SceneryEditorX/Project" FILES
+SOURCE_GROUP("Project" FILES
 	${PROJECT}
 )
-SOURCE_GROUP("SceneryEditorX/Renderer" FILES
+SOURCE_GROUP("Renderer" FILES
+	renderer/command_queue.cpp
+	renderer/command_queue.h
 	renderer/primitives.cpp
 	renderer/primitives.h
 	renderer/renderer.cpp
@@ -212,17 +234,17 @@ SOURCE_GROUP("SceneryEditorX/Renderer" FILES
 	renderer/xp_texture.cpp
 	renderer/xp_texture.h
 )
-SOURCE_GROUP("SceneryEditorX/Renderer/Vulkan" FILES
+SOURCE_GROUP("Renderer/Vulkan" FILES
 	${VULKAN_FILES}
 )
-SOURCE_GROUP("SceneryEditorX/Renderer/Debug" FILES
+SOURCE_GROUP("Renderer/Debug" FILES
 	${GFX_DEBUG}
 )
-SOURCE_GROUP("SceneryEditorX/Scene" FILES
+SOURCE_GROUP("Scene" FILES
 	${SCENE}
 	${SCENE_FILES}
 )
-SOURCE_GROUP("SceneryEditorX/Renderer/Shaders" FILES
+SOURCE_GROUP("Renderer/Shaders" FILES
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
 	renderer/shaders/shader_resource.cpp
@@ -230,10 +252,10 @@ SOURCE_GROUP("SceneryEditorX/Renderer/Shaders" FILES
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
 )
-SOURCE_GROUP("SceneryEditorX/Utilities" FILES
+SOURCE_GROUP("Utilities" FILES
 	${UTILITIES_FILES}
 )
-SOURCE_GROUP("SceneryEditorX/Renderer/UI" FILES
+SOURCE_GROUP("Renderer/UI" FILES
 	ui/colors.h
 	ui/fonts.h
 	ui/ui_context.cpp
@@ -244,7 +266,7 @@ SOURCE_GROUP("SceneryEditorX/Renderer/UI" FILES
 	ui/ui_manager.h
 	ui/ui_globals.cpp
 )
-SOURCE_GROUP("SceneryEditorX/Renderer/UI/Panels" FILES
+SOURCE_GROUP("Renderer/UI/Panels" FILES
 	ui/panels/about.cpp
 	ui/panels/content_browser.cpp
 	ui/panels/layer_stack.cpp
@@ -252,20 +274,20 @@ SOURCE_GROUP("SceneryEditorX/Renderer/UI/Panels" FILES
 	ui/panels/menu_bar.cpp
 	ui/panels/settings_panel.cpp
 )
-SOURCE_GROUP("SceneryEditorX/Renderer/UI/Actions" FILES
+SOURCE_GROUP("Renderer/UI/Actions" FILES
 	ui/actions/modals.cpp
 	ui/actions/viewports.cpp
 )
-SOURCE_GROUP("SceneryEditorX/Resources" FILES
+SOURCE_GROUP("Resources" FILES
     resource.h
 )
-SOURCE_GROUP("SceneryEditorX/Resources/Shaders" FILES
+SOURCE_GROUP("Resources/Shaders" FILES
 	${SHADER_FILES}
 )
-SOURCE_GROUP("SceneryEditorX/Resources/Icons" FILES
+SOURCE_GROUP("Resources/Icons" FILES
     ${ICON_FILES}
 )
-SOURCE_GROUP("SceneryEditorX/Resources/Fonts" FILES
+SOURCE_GROUP("Resources/Fonts" FILES
     ${FONT_FILES}
 )
 

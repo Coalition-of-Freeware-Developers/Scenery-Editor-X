@@ -54,7 +54,7 @@ namespace SceneryEditorX
 	    bool isRunning = true;
         bool isMinimized = false;
 
-        ApplicationSettings settings = ApplicationSettings(std::filesystem::path("default_config_path.cfg"));
+        ApplicationSettings settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
         INTERNAL Application *appInstance;
 
 		uint32_t currentFrameIndex = 0;

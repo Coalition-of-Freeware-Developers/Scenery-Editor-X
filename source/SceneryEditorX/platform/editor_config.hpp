@@ -32,11 +32,11 @@ namespace SceneryEditorX
          */
         struct EditorConfig : RefCounted
         {
-            std::string shaderFolder    = "../../assets/shaders";   ///< Directory containing shader files
-            std::string textureFolder   = "../../assets/textures";  ///< Directory containing texture files
-            std::string modelFolder     = "../../assets/models";    ///< Directory containing 3D model files
-            std::string fontFolder      = "../../assets/fonts";     ///< Directory containing font files
-            const char *defaultFontPath = "C:\\Windows\\Fonts\\arial.ttf"; ///< System default font path for Windows
+            std::string shaderFolder    = "../../assets/shaders";          ///< Directory containing shader files
+            std::string textureFolder   = "../../assets/textures";         ///< Directory containing texture files
+            std::string modelFolder     = "../../assets/models";           ///< Directory containing 3D model files
+            std::string fontFolder      = "../../assets/fonts";            ///< Directory containing font files
+            const char *defaultFontPath = R"(C:\Windows\Fonts\arial.ttf)"; ///< System default font path for Windows
         };
 
     #elif SEDX_PLATFORM_LINUX
@@ -79,10 +79,10 @@ namespace SceneryEditorX
         #error "Unsupported platform!"
     #endif
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 

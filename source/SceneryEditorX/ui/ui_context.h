@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/layer.h>
+#include <SceneryEditorX/core/Module.h>
 #include <SceneryEditorX/platform/platform_states.h>
 
 /// -------------------------------------------------------
@@ -31,7 +31,7 @@ namespace SceneryEditorX::UI
         ImGuiID imguiDockspaceID = 0;
 	};
 
-	class UIContext : public Layer 
+	class UIContext : public Module 
 	{
     public:
         virtual void Begin() = 0;

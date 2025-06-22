@@ -14,6 +14,7 @@
 #include <SceneryEditorX/core/application_data.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
+#include <SceneryEditorX/renderer/vulkan/vk_pipeline_cache.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
 /// -------------------------------------------------------
@@ -69,7 +70,6 @@ namespace SceneryEditorX
         /// Initialize any member variables
         allocatorCallback = nullptr;
         instance = VK_NULL_HANDLE;
-        pipelineCache = VK_NULL_HANDLE;
         debugMessenger = VK_NULL_HANDLE;
 #ifdef SEDX_DEBUG
         debugCallback = VK_NULL_HANDLE;
@@ -78,13 +78,6 @@ namespace SceneryEditorX
 
     RenderContext::~RenderContext()
     {
-        /// Cleanup resources
-        if (pipelineCache != VK_NULL_HANDLE && vkDevice && vkDevice->GetDevice() != VK_NULL_HANDLE)
-        {
-            vkDestroyPipelineCache(vkDevice->GetDevice(), pipelineCache, allocatorCallback);
-            pipelineCache = VK_NULL_HANDLE;
-        }
-
         /// Clean up debug messenger if enabled
 #ifdef SEDX_DEBUG
         if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
@@ -392,15 +385,9 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Pipeline Cache Creation
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-            VkPipelineCacheCreateInfo pipelineCacheInfo = {};
-            pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-            pipelineCacheInfo.pNext = nullptr;
-            pipelineCacheInfo.flags = static_cast<VkPipelineCacheCreateFlags>(0);
-            pipelineCacheInfo.initialDataSize = pipelineCacheDataSize;
-            pipelineCacheInfo.pInitialData = pipelineCacheData;
 
-            SEDX_ASSERT(vkCreatePipelineCache(vkDevice->GetDevice(), &pipelineCacheInfo, nullptr, &pipelineCache));
+            PipelineCache pipelineCache;
+            pipelineCache.CreateCache();
 
             SEDX_CORE_INFO("Pipeline cache created successfully");
             SEDX_CORE_INFO("RenderContext initialization complete");
@@ -417,29 +404,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    std::vector<uint8_t> RenderContext::GetPipelineCacheData() const
-    {
-        std::vector<uint8_t> cacheData;
-        
-        if (pipelineCache == nullptr || !vkDevice || vkDevice->GetDevice() == VK_NULL_HANDLE)
-            return cacheData;
-            
-        /// Get the size of the pipeline cache data
-        size_t dataSize = 0;
-        VkResult result = vkGetPipelineCacheData(vkDevice->GetDevice(), pipelineCache, &dataSize, nullptr);
-        if (result != VK_SUCCESS || dataSize == 0)
-            return cacheData;
-            
-        /// Resize our vector to hold the data
-        cacheData.resize(dataSize);
-        
-        /// Get the actual data
-        result = vkGetPipelineCacheData(vkDevice->GetDevice(), pipelineCache, &dataSize, cacheData.data());
-        if (result != VK_SUCCESS)
-            cacheData.clear();
-            
-        return cacheData;
-    }
+
     
     VkInstance RenderContext::GetInstance()
     {

@@ -33,7 +33,6 @@ class SplashHandler
 public:
     static void CreateSplashScreen(GLFWwindow* splash);
     static void DestroySplashScreen();
-
 };
 
 
@@ -112,7 +111,7 @@ void ShowSplashScreen(HINSTANCE hInstance)
     hSplashBitmap = LoadBitmap(hInstance, MAKEINTRESOURCE(SEDX_SPLASH));
     if (!hSplashBitmap)
     {
-        LAUNCHER_LOG_ERROR("Failed to load splash screen image.");
+        LAUNCHER_CORE_ERROR("Failed to load splash screen image.");
         //MessageBox(nullptr, "Failed to load splash screen image.", "Error", MB_OK | MB_ICONERROR);
 		//ErrMsg("Failed to load splash screen image.");
         return;
@@ -186,7 +185,7 @@ void CreateSplashScreen()
 void DestroySplashScreen()
 {
     // Close the splash screen
-    LAUNCHER_LOG_INFO("Closing splash screen.");
+    LAUNCHER_CORE_TRACE("Closing splash screen.");
 
     PostMessage(hSplashWnd, WM_CLOSE, 0, 0);
     if (splashThread.joinable())

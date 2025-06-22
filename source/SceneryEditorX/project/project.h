@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <filesystem>
+#include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include "project_settings.h"
 
