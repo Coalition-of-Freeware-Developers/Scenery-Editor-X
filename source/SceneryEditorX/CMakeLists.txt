@@ -111,12 +111,14 @@ ADD_LIBRARY(AppCore
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
 	# --------------------------------
-	#renderer/buffers/index_buffer.h
-	#renderer/buffers/index_buffer.cpp
-	#renderer/buffers/uniform_buffer.h
-	#renderer/buffers/uniform_buffer.cpp
-	#renderer/buffers/vertex_buffer.cpp
-	#renderer/buffers/vertex_buffer.h
+	renderer/buffers/index_buffer.h
+	renderer/buffers/index_buffer.cpp
+	renderer/buffers/storage_buffer.cpp
+	renderer/buffers/storage_buffer.h
+	renderer/buffers/uniform_buffer.h
+	renderer/buffers/uniform_buffer.cpp
+	renderer/buffers/vertex_buffer.cpp
+	renderer/buffers/vertex_buffer.h
 	# --------------------------------
 	#ui/colors.h
 	#ui/fonts.h
@@ -192,6 +194,8 @@ SOURCE_GROUP("Serialization" FILES
 SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	renderer/buffers/index_buffer.h
 	renderer/buffers/index_buffer.cpp
+	renderer/buffers/storage_buffer.cpp
+	renderer/buffers/storage_buffer.h
 	renderer/buffers/uniform_buffer.h
 	renderer/buffers/uniform_buffer.cpp
 	renderer/buffers/vertex_buffer.cpp

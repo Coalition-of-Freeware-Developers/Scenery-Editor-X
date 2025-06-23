@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/platform/editor_config.hpp>
+#include <SceneryEditorX/renderer/buffers/storage_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 #include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
 
@@ -31,9 +32,15 @@ namespace SceneryEditorX
 	 * @note The renderData member is default-initialized.
 	 * @throws Assertion failure if spec.vkPipeline is not valid.
 	 */
-	RenderPass::RenderPass(const RenderSpec &spec) : renderData()
+	RenderPass::RenderPass(const RenderSpec &spec) : renderSpec(spec)
 	{
-	    SEDX_CORE_VERIFY(spec.vkPipeline);
+	    SEDX_CORE_VERIFY(spec.Pipeline);
+
+	    DescriptorSetManagerSpecification dmSpec;
+        dmSpec.DebugName = spec.debugName;
+        dmSpec.Shader = spec.Pipeline->GetSpecification().shader.As<Shader>();
+        dmSpec.StartSet = 1;
+        m_DescriptorSetManager = DescriptorSetManager(dmSpec);
 	}
 
 	/**
@@ -55,15 +62,122 @@ namespace SceneryEditorX
 	 */
 	RenderPass::~RenderPass()
 	{
-	    if (renderPass != VK_NULL_HANDLE && RenderContext::Get()->GetLogicDevice()->GetDevice())
+		/*
+        if (renderPass != VK_NULL_HANDLE && RenderContext::Get()->GetLogicDevice())
 	    {
-            const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
+            const auto device = RenderContext::Get()->GetLogicDevice();
             vkDestroyRenderPass(device, renderPass, RenderContext::Get()->GetAllocatorCallback() : nullptr);
 	        renderPass = VK_NULL_HANDLE;
 	    }
+        */
 	}
 
-	/**
+    void RenderPass::AddInput(std::string_view name, Ref<UniformBuffer> uniformBuffer)
+    {
+        m_DescriptorSetManager.AddInput(name, uniformBuffer);
+    }
+
+    void RenderPass::AddInput(std::string_view name, Ref<UniformBufferSet> uniformBufferSet)
+    {
+        m_DescriptorSetManager.AddInput(name, uniformBufferSet);
+    }
+
+	void RenderPass::AddInput(std::string_view name, Ref<StorageBufferSet> storageBufferSet)
+    {
+        m_DescriptorSetManager.AddInput(name, storageBufferSet);
+    }
+
+    void RenderPass::AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer)
+    {
+        m_DescriptorSetManager.AddInput(name, storageBuffer);
+    }
+
+    void RenderPass::AddInput(std::string_view name, Ref<TextureAsset> texture)
+    {
+    }
+
+    Ref<Image2D> RenderPass::GetOutput(uint32_t index)
+    {
+        return {};
+    }
+
+    Ref<Image2D> RenderPass::GetDepthOutput()
+    {
+        return {};
+    }
+
+    uint32_t RenderPass::GetFirstSetIndex() const
+    {
+        return 0;
+    }
+
+    Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const
+    {
+        return renderSpec.Pipeline->GetSpecification().dstFramebuffer;
+    }
+
+    Ref<Pipeline> RenderPass::GetPipeline() const
+    {
+        return renderSpec.Pipeline;
+    }
+
+    bool RenderPass::Validate()
+    {
+        return m_DescriptorSetManager.Validate();
+    }
+
+    void RenderPass::Bake()
+    {
+        m_DescriptorSetManager.Bake();
+    }
+
+    void RenderPass::Prepare()
+    {
+    }
+
+    bool RenderPass::HasDescriptorSets() const
+    {
+        return m_DescriptorSetManager.HasDescriptorSets();
+    }
+
+    const std::vector<VkDescriptorSet> & RenderPass::GetDescriptorSets(uint32_t frameIndex) const
+    {
+        SEDX_CORE_ASSERT(!m_DescriptorSetManager.m_DescriptorSets.empty());
+        if (frameIndex > 0 && m_DescriptorSetManager.m_DescriptorSets.size() == 1)
+            return m_DescriptorSetManager.m_DescriptorSets[0]; /// Frame index is irrelevant for this type of render pass
+        return m_DescriptorSetManager.m_DescriptorSets[frameIndex];
+    }
+
+    bool RenderPass::IsInputValid(std::string_view name) const
+    {
+        std::string nameStr(name);
+        return m_DescriptorSetManager.InputDeclarations.contains(nameStr);
+    }
+
+	const RenderPassInputDeclaration *RenderPass::GetInputDeclaration(std::string_view name) const
+    {
+        std::string nameStr(name);
+        if (!m_DescriptorSetManager.InputDeclarations.contains(nameStr))
+            return nullptr;
+        const RenderPassInputDeclaration &decl = m_DescriptorSetManager.InputDeclarations.at(nameStr);
+        return &decl;
+    }
+
+    void RenderPass::CreateDescriptorSets() const
+    {
+    }
+
+    bool RenderPass::IsInvalidated(uint32_t set, uint32_t binding) const
+    {
+        return false;
+    }
+
+    VkCommandBuffer RenderPass::BeginSingleTimeCommands() const
+    {
+        return nullptr;
+    }
+
+    /**
 	 * @brief Creates the Vulkan render pass for the graphics pipeline.
 	 *
 	 * This method sets up the color and depth attachments, subpass, and subpass dependency

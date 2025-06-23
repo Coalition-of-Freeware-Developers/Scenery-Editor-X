@@ -230,6 +230,7 @@ namespace SceneryEditorX
         /// Accessor methods
         [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
         [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
+        [[nodiscard]] VkCommandPool GetTransferCmdPool() const { return TransferCmdPool; }
 
         Queue queueType;
         VkCommandPool commandPool = VK_NULL_HANDLE;
@@ -237,6 +238,7 @@ namespace SceneryEditorX
     private:
         VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
         VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
+        VkCommandPool TransferCmdPool = VK_NULL_HANDLE;
     };
 
     /// ---------------------------------------------------------
@@ -254,6 +256,7 @@ namespace SceneryEditorX
         virtual ~VulkanDevice() override;
         //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
+        VkCommandBuffer GetCommandBuffer(bool cond);
 
         /// Delete copy constructor and assignment operator.
         VulkanDevice(const VulkanDevice &) = delete;
@@ -322,18 +325,22 @@ namespace SceneryEditorX
          */
         VkCommandBuffer CreateUICmdBuffer(const char *debugName);
 
+        Ref<CommandPool> GetThreadLocalCommandPool();
+
+        Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
+
         /**
          * @brief Submit and wait for a command buffer to complete execution.
          * @param cmdBuffer The command buffer to submit.
          */
-        //void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
 
         /**
          * @brief Submit a command buffer to a specific queue and wait for completion.
          * @param cmdBuffer The command buffer to submit.
          * @param queue The queue to submit to.
          */
-        //void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
 
         /**
          * @brief Get the scratch buffer address.

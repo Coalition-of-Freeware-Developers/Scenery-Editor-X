@@ -133,11 +133,11 @@ namespace SceneryEditorX
 		 */
         enum class VertexBufferType : uint8_t
         {
-            None = 0,      ///< No specific type defined.
-            Static = 1,    ///< Static data, rarely or never updated (GPU optimized).
-            Dynamic = 2,   ///< Frequently changed data (CPU-GPU shared memory).
-            Transient = 3, ///< Single-use buffer that will be discarded after rendering.
-            Streaming = 4  ///< Continuously streamed data (e.g. particles).
+            None		= 0,	///< No specific type defined.
+            Static		= 1,	///< Static data, rarely or never updated (GPU optimized).
+            Dynamic		= 2,	///< Frequently changed data (CPU-GPU shared memory).
+            Transient	= 3,	///< Single-use buffer that will be discarded after rendering.
+            Streaming	= 4		///< Continuously streamed data (e.g. particles).
         };
 
         /**
@@ -146,17 +146,17 @@ namespace SceneryEditorX
 		 */
         enum class VertexFormat : uint8_t
         {
-            None = 0,
-            Position2D = 1,                         ///< Vec2 position
-            Position3D = 2,                         ///< Vec3 position
-            Position3D_Color3 = 3,                  ///< Vec3 position + Vec3 color
-            Position3D_Color4 = 4,                  ///< Vec3 position + Vec4 color
-            Position3D_Normal = 5,                  ///< Vec3 position + Vec3 normal
-            Position3D_TexCoord = 6,                ///< Vec3 position + Vec2 texcoord
-            Position3D_Color4_TexCoord = 7,         ///< Vec3 position + Vec4 color + Vec2 texcoord
-            Position3D_Normal_TexCoord = 8,         ///< Vec3 position + Vec3 normal + Vec2 texcoord
-            Position3D_Normal_TexCoord_Tangent = 9, ///< Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
-            Custom = 255                            ///< Custom vertex format defined by user
+            None								= 0,
+            Position2D							= 1,    ///< Vec2 position
+            Position3D							= 2,    ///< Vec3 position
+            Position3D_Color3					= 3,    ///< Vec3 position + Vec3 color
+            Position3D_Color4					= 4,    ///< Vec3 position + Vec4 color
+            Position3D_Normal					= 5,    ///< Vec3 position + Vec3 normal
+            Position3D_TexCoord					= 6,    ///< Vec3 position + Vec2 texcoord
+            Position3D_Color4_TexCoord			= 7,    ///< Vec3 position + Vec4 color + Vec2 texcoord
+            Position3D_Normal_TexCoord			= 8,    ///< Vec3 position + Vec3 normal + Vec2 texcoord
+            Position3D_Normal_TexCoord_Tangent	= 9,	///< Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
+            Custom = 255								///< Custom vertex format defined by user
         };
 
         /**
@@ -166,7 +166,7 @@ namespace SceneryEditorX
          * @param vertexFormat The format of vertices to be stored.
          * @param initialCapacity Initial buffer capacity in vertices (optional).
          */
-        explicit VertexBuffer( VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity = 0);
+        explicit VertexBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity = 0);
 
         /**
          * @brief Constructor for VertexBuffer with initial data.
@@ -176,10 +176,20 @@ namespace SceneryEditorX
          */
         explicit VertexBuffer(const std::vector<Vertex>& initialVertices,VertexBufferType type = VertexBufferType::Static);
 
+        VertexBuffer(void *data, uint64_t size, VertexBufferType usage = VertexBufferType::Static);
+        explicit VertexBuffer(uint64_t size, VertexBufferType usage = VertexBufferType::Dynamic);
+
         /**
          * @brief Destructor for VertexBuffer
          */
         virtual ~VertexBuffer() override;
+
+        virtual void SetData(void* buffer, uint64_t size, uint64_t offset = 0);
+		virtual void Set_RenderThreadData(void* buffer, uint64_t size, uint64_t offset = 0);
+		virtual void Bind() const {}
+
+		virtual unsigned int GetSize() const { return m_Size; }
+		virtual uint32_t GetRendererID() const { return 0; }
 
         /**
          * @brief Creates vertex attribute descriptions based on the vertex format
@@ -187,7 +197,6 @@ namespace SceneryEditorX
         std::vector<VkVertexInputAttributeDescription> CreateAttributeDescriptions(uint32_t binding) const;
 
         Buffer Create() const;
-
         Buffer Release() const;
 
         /**
@@ -273,9 +282,8 @@ namespace SceneryEditorX
          * @return Ref<VertexBuffer> Reference to the created vertex buffer
          */
         static Ref<VertexBuffer> CreatePrimitive(PrimitiveType type, const Vec3& size = Vec3(1.0f), const Vec3& color = Vec3(1.0f));
-
+		
     private:
-        Ref<GraphicsEngine> *gfxEngine;						///< Pointer to the graphics engine reference
         Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
         std::vector<Vertex> vertices;						///< Storage for vertex data
         RenderData renderData;								///< Render data reference
@@ -284,10 +292,127 @@ namespace SceneryEditorX
         VkBuffer vertexBuffer = VK_NULL_HANDLE;             ///< Handle to the Vulkan vertex buffer
         VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE; ///< Handle to the allocated memory for the vertex buffer
         VmaAllocation vertexBuffersAllocation;              ///< Allocation handle for uniform buffers
-        BufferResource internalBuffer;								///< Buffer wrapper 
+        BufferResource internalBuffer;						///< Buffer wrapper 
         uint32_t capacity = 0;								///< Capacity in number of vertices
         bool isInitialized = false;							///< Whether the buffer has been initialized
+
+        uint64_t m_Size = 0;
+        Buffer m_LocalData;
+        VkBuffer m_VulkanBuffer = VK_NULL_HANDLE;
+        VmaAllocation m_MemoryAllocation;
     };
+
+    /// ----------------------------------------------------------
+
+	enum class ShaderDataType : uint8_t
+	{
+		None = 0,
+	    Float,
+	    Float2,
+	    Float3,
+	    Float4,
+	    Mat3,
+	    Mat4,
+	    Int,
+	    Int2,
+	    Int3,
+	    Int4,
+	    Bool
+	};
+
+	static uint32_t ShaderDataTypeSize(ShaderDataType type)
+	{
+		switch (type)
+		{
+			case ShaderDataType::Float:    return 4;
+			case ShaderDataType::Float2:   return 4 * 2;
+			case ShaderDataType::Float3:   return 4 * 3;
+			case ShaderDataType::Float4:   return 4 * 4;
+			case ShaderDataType::Mat3:     return 4 * 3 * 3;
+			case ShaderDataType::Mat4:     return 4 * 4 * 4;
+			case ShaderDataType::Int:      return 4;
+			case ShaderDataType::Int2:     return 4 * 2;
+			case ShaderDataType::Int3:     return 4 * 3;
+			case ShaderDataType::Int4:     return 4 * 4;
+			case ShaderDataType::Bool:     return 1;
+		}
+
+		SEDX_CORE_ASSERT(false, "Unknown ShaderDataType!");
+		return 0;
+	}
+
+    struct VertexBufferElement
+	{
+		std::string name;
+		ShaderDataType type;
+		uint32_t size;
+		uint32_t offset;
+		bool normalized;
+
+        VertexBufferElement() = default;
+
+        VertexBufferElement(const ShaderDataType type, std::string name, const bool normalized = false) :
+            name(std::move(name)), type(type), size(ShaderDataTypeSize(type)), offset(0), normalized(normalized) {}
+
+        [[nodiscard]] uint32_t GetComponentCount() const
+		{
+			switch (type)
+			{
+				case ShaderDataType::Float:   return 1;
+				case ShaderDataType::Float2:  return 2;
+				case ShaderDataType::Float3:  return 3;
+				case ShaderDataType::Float4:  return 4;
+				case ShaderDataType::Mat3:    return 3 * 3;
+				case ShaderDataType::Mat4:    return 4 * 4;
+				case ShaderDataType::Int:     return 1;
+				case ShaderDataType::Int2:    return 2;
+				case ShaderDataType::Int3:    return 3;
+				case ShaderDataType::Int4:    return 4;
+				case ShaderDataType::Bool:    return 1;
+            case ShaderDataType::None:
+                break;
+            }
+
+			SEDX_CORE_ASSERT(false, "Unknown ShaderDataType!");
+			return 0;
+		}
+	};
+
+	class VertexBufferLayout
+	{
+	public:
+        VertexBufferLayout() = default;
+
+		VertexBufferLayout(const std::initializer_list<VertexBufferElement> &elements) : m_Elements(elements)
+		{
+			CalculateOffsetsAndStride();
+		}
+
+        [[nodiscard]] uint32_t GetStride() const { return m_Stride; }
+        [[nodiscard]] const std::vector<VertexBufferElement> &GetElements() const { return m_Elements; }
+		[[nodiscard]] uint32_t GetElementCount() const { return (uint32_t)m_Elements.size(); }
+
+		[[nodiscard]] std::vector<VertexBufferElement>::iterator begin() { return m_Elements.begin(); }
+		[[nodiscard]] std::vector<VertexBufferElement>::iterator end() { return m_Elements.end(); }
+		[[nodiscard]] std::vector<VertexBufferElement>::const_iterator begin() const { return m_Elements.begin(); }
+		[[nodiscard]] std::vector<VertexBufferElement>::const_iterator end() const { return m_Elements.end(); }
+	private:
+		void CalculateOffsetsAndStride()
+		{
+			uint32_t offset = 0;
+			m_Stride = 0;
+			for (auto& element : m_Elements)
+			{
+				element.offset = offset;
+				offset += element.size;
+				m_Stride += element.size;
+			}
+		}
+
+		std::vector<VertexBufferElement> m_Elements;
+		uint32_t m_Stride = 0;
+	};
+
 
 }
 

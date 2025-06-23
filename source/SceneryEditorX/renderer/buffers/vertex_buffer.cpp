@@ -10,6 +10,7 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 
@@ -25,8 +26,27 @@ namespace SceneryEditorX
 	VertexBuffer::VertexBuffer(const std::vector<Vertex> &initialVertices, VertexBufferType type)
 	{
 	}
-	
-	VertexBuffer::~VertexBuffer()
+
+    VertexBuffer::VertexBuffer(void *data, uint64_t size, VertexBufferType usage) : m_Size(size)
+    {
+        m_LocalData.Allocate(size);
+
+        Ref<VertexBuffer> instance = this;
+        Renderer::Submit([instance]() mutable {
+            auto device = RenderContext::GetCurrentDevice();
+            MemoryAllocator allocator("VertexBuffer");
+
+            VkBufferCreateInfo vertexBufferCreateInfo = {};
+            vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            vertexBufferCreateInfo.size = instance->m_Size;
+            vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+            instance->m_MemoryAllocation =
+                allocator.AllocateBuffer(vertexBufferCreateInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, instance->m_VulkanBuffer);
+        });
+    }
+
+    VertexBuffer::~VertexBuffer()
     {
         for (size_t i = 0; i < renderData.framesInFlight; i++)
             allocator->DestroyBuffer(vertexBuffer, vertexBuffersAllocation);

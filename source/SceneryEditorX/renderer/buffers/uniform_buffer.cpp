@@ -59,7 +59,7 @@ namespace SceneryEditorX
         localMemAlloc = nullptr;
     }
 	
-	/**
+	/*/**
 	 * @brief Updates the uniform buffer for the current frame
 	 * 
 	 * This method updates the model-view-projection matrices for rendering.
@@ -72,7 +72,7 @@ namespace SceneryEditorX
 	 * corresponding to the current frame being rendered.
 	 * 
 	 * @param currentImage Index of the current frame's uniform buffer to update
-	 */
+	 #1#
 	void UniformBuffer::Update(const uint32_t currentImage) const
 	{
 	    INTERNAL auto startTime = std::chrono::high_resolution_clock::now();
@@ -98,7 +98,7 @@ namespace SceneryEditorX
         }
         else
             SEDX_CORE_ERROR("Attempting to update uniform buffer with invalid frame index");
-    }
+    }*/
 	
 	/**
 	 * @brief Creates uniform buffers for each frame in flight

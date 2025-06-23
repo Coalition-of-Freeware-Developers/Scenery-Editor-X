@@ -1273,8 +1273,6 @@ namespace SceneryEditorX
 	}
 	*/
 
-
-
 	VkCommandBuffer VulkanDevice::CreateUICmdBuffer(const char *debugName)
 	{
 		/// Get the command pool for the current thread
@@ -1304,7 +1302,36 @@ namespace SceneryEditorX
 
 	}
 
-	/// -------------------------------------------------------
+	Ref<CommandPool> VulkanDevice::GetThreadLocalCommandPool()
+    {
+        const auto threadID = std::this_thread::get_id();
+        SEDX_CORE_VERIFY(CmdPools.contains(threadID));
+
+        return CmdPools.at(threadID);
+    }
+
+	Ref<CommandPool> VulkanDevice::GetOrCreateThreadLocalCommandPool()
+    {
+        const auto threadID = std::this_thread::get_id();
+        if (const auto commandPoolIt = CmdPools.find(threadID); commandPoolIt != CmdPools.end())
+            return commandPoolIt->second;
+
+        Ref<CommandPool> commandPool = CreateRef<CommandPool>(Ref<VulkanDevice>(this), Queue::Graphics);
+        CmdPools[threadID] = commandPool;
+        return commandPool;
+    }
+
+    void VulkanDevice::FlushCmdBuffer(VkCommandBuffer cmdBuffer)
+    {
+        GetThreadLocalCommandPool()->FlushCmdBuffer(cmdBuffer);
+    }
+
+    void VulkanDevice::FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue)
+    {
+        GetThreadLocalCommandPool()->FlushCmdBuffer(cmdBuffer);
+    }
+
+    /// -------------------------------------------------------
 
 	/**
 	 * @brief Determine the maximum MSAA sample count supported by the GPU

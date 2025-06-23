@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/core/memory.h>
 #include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <SceneryEditorX/renderer/vulkan/vk_enums.h>
@@ -132,11 +133,105 @@ namespace SceneryEditorX
 
     struct Buffer
     {
+        void *data = nullptr;               ///< Pointer to the mapped memory region for CPU access, if applicable
         Ref<BufferResource> resource;		///< The Vulkan buffer resource
-        uint64_t size;						///< Size of the buffer in bytes
+        uint64_t size = 0;					///< Size of the buffer in bytes
         BufferUsageFlags usage;				///< Usage flags for the buffer (e.g., vertex, index, uniform)
         MemoryFlags memory;					///< Memory type flags indicating where the buffer is allocated (e.g., GPU, CPU)
         [[nodiscard]] uint32_t ID() const;  ///< Unique identifier for the buffer, used for tracking and debugging
+
+		Buffer() = default;
+        explicit Buffer(const void* data, const uint64_t size = 0) : data(const_cast<void *>(data)), size(size), usage(0), memory(0) {}
+
+		GLOBAL Buffer Copy(const Buffer& other)
+		{
+			Buffer buffer;
+			buffer.Allocate(other.size);
+			memcpy(buffer.data, other.data, other.size);
+			return buffer;
+		}
+
+		GLOBAL Buffer Copy(const void *data, const uint64_t size)
+		{
+			Buffer buffer;
+			buffer.Allocate(size);
+			if(size) memcpy(buffer.data, data, size);
+			return buffer;
+		}
+
+		void Allocate(const uint64_t size)
+		{
+			delete[] static_cast<byte *>(data);
+			data = nullptr;
+            this->size = size;
+
+			if (size == 0)
+				return;
+
+			data = hnew byte[size];
+		}
+
+		void Release()
+		{
+			delete[] static_cast<byte *>(data);
+			data = nullptr;
+			size = 0;
+		}
+
+		void ZeroInitialize() const
+        {
+			if (data)
+				memset(data, 0, size);
+		}
+
+		template<typename T>
+		T& Read(const uint64_t offset = 0)
+		{
+			return *(T*)(static_cast<byte *>(data) + offset);
+		}
+
+		template<typename T>
+		const T& Read(const uint64_t offset = 0) const
+		{
+			return *(T*)(static_cast<byte *>(data) + offset);
+		}
+
+        [[nodiscard]] byte* ReadBytes(const uint64_t size, const uint64_t offset) const
+		{
+			SEDX_CORE_ASSERT(offset + size <= this->size, "Buffer overflow!"); /// Fixed this line to use 'this->size'
+			byte* buffer = hnew byte[size];
+			memcpy(buffer, static_cast<byte *>(data) + offset, size);
+			return buffer;
+		}
+				
+		void Write(const void* data, const uint64_t size, const uint64_t offset = 0) const
+        {
+			SEDX_CORE_ASSERT(offset + size <= this->size, "Buffer overflow!");
+			memcpy(static_cast<byte *>(this->data) + offset, data, size);
+		}
+
+        explicit operator bool() const
+		{
+			return static_cast<bool>(data);
+		}
+
+		byte& operator[](const int index)
+		{
+			return static_cast<byte *>(data)[index];
+		}
+
+		byte operator[](const int index) const
+		{
+			return static_cast<byte *>(data)[index];
+		}
+
+		template<typename T>
+		T* As() const
+		{
+			return (T*)data;
+		}
+
+        [[nodiscard]] uint64_t GetSize() const { return size; }
     };
 	 
 	/// -------------------------------------------------------

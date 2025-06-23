@@ -15,6 +15,7 @@
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
+#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/scene/texture.h>
 
@@ -34,7 +35,12 @@ namespace SceneryEditorX
 	    /**
 	     * @brief Reference to the Vulkan pipeline used by this render pass.
 	     */
-	    Ref<Pipeline> vkPipeline;
+	    Ref<Pipeline> Pipeline;
+
+        /**
+         * @brief Reference to the Vulkan swap chain used for rendering.
+         */
+        Vec4 idColor;
 	
 	    /**
 	     * @brief Debug name for identifying the render pass instance.
@@ -53,43 +59,63 @@ namespace SceneryEditorX
 	 *
 	 * @note This class is part of the Scenery Editor X graphics engine.
 	 */
-	class RenderPass
+	class RenderPass : public RefCounted
 	{
 	public:
-        RenderPass(const RenderSpec& spec);
-	    virtual ~RenderPass();
+        explicit RenderPass(const RenderSpec &spec);
+	    virtual ~RenderPass() override;
 
-		void AddInput(std::string_view name, Ref<UniformBuffer> uniformBuffer);
-		//void AddInput(std::string_view name, Ref<UniformBufferSet> uniformBufferSet);
-
-	    //void AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer);
-        //void AddInput(std::string_view name, Ref<StorageBuffer> storageBufferSet);
-
-		//void AddInput(std::string_view name, Ref<TextureAsset> texture);
+		void AddInput(std::string_view name, Ref<UniformBufferSet> uniformBufferSet);
+        void AddInput(std::string_view name, Ref<UniformBuffer> uniformBuffer);
+	    void AddInput(std::string_view name, Ref<StorageBufferSet> storageBufferSet);
+        void AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer);
+		void AddInput(std::string_view name, Ref<TextureAsset> texture);
 
         void CreateRenderPass();
+		
+		virtual Ref<Image2D> GetOutput(uint32_t index);
+        virtual Ref<Image2D> GetDepthOutput();
+        virtual uint32_t GetFirstSetIndex() const;
 
-        [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
+        virtual Ref<Framebuffer> GetTargetFramebuffer() const;
+        virtual Ref<Pipeline> GetPipeline() const;
+
+        //[[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
 		//VkDescriptorPool GetDescriptorPool() const { return descriptors->descriptorPool; }
 
+	    virtual bool Validate();
+		virtual void Bake();
+		virtual bool Baked() const { return (bool)m_DescriptorSetManager.GetDescriptorPool(); }
+		virtual void Prepare();
+
+		bool HasDescriptorSets() const;
+		const std::vector<VkDescriptorSet>& GetDescriptorSets(uint32_t frameIndex) const;
+
+		bool IsInputValid(std::string_view name) const;
+		const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name) const;
+
 	private:
-        Ref<SwapChain> vkSwapChain;			///< Reference to the Vulkan swap chain
-        Ref<MemoryAllocator> allocator;		///< Reference to the memory allocator for Vulkan resources
-        Ref<Descriptors> descriptors;		///< Reference to the Vulkan descriptor set manager
-        Ref<CommandBuffer> cmdBuffer;		///< Reference to the Vulkan command buffer manager
-        Ref<UniformBuffer> uniformBuffer;	///< Reference to the uniform buffer used in the render pass
-        RenderData renderData;				///< Render data containing information about the render pass
-        VkRenderPass renderPass = nullptr;	///< Vulkan render pass handle
+        //Ref<SwapChain> vkSwapChain;			///< Reference to the Vulkan swap chain
+        //Ref<MemoryAllocator> allocator;		///< Reference to the memory allocator for Vulkan resources
+        //Ref<Descriptors> descriptors;			///< Reference to the Vulkan descriptor set manager
+        //Ref<CommandBuffer> cmdBuffer;			///< Reference to the Vulkan command buffer manager
+        //Ref<UniformBuffer> uniformBuffer;		///< Reference to the uniform buffer used in the render pass
+        RenderData renderData;					///< Render data containing information about the render pass
+        //VkRenderPass renderPass = nullptr;	///< Vulkan render pass handle
 
 		/// ----------------------------------
 
         VkQueue graphicsQueue = nullptr;
         VkQueue presentQueue = nullptr;
 
+        RenderSpec renderSpec;
+        DescriptorSetManager m_DescriptorSetManager;
+
 		/// ----------------------------------
 
         void CreateDescriptorSets() const;
 
+        bool IsInvalidated(uint32_t set, uint32_t binding) const;
         [[nodiscard]] VkCommandBuffer BeginSingleTimeCommands() const;
         //void EndSingleTimeCommands(VkCommandBuffer commandBuffer) const;
         //void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const;

@@ -35,10 +35,11 @@ namespace SceneryEditorX
 
         GLOBAL void Init();
 		GLOBAL void Shutdown();
-
         GLOBAL void BeginFrame();
         GLOBAL void EndFrame();
         GLOBAL void SubmitFrame();
+
+        /// -------------------------------------------------------
 
         template<typename FuncT>
 		static void Submit(FuncT&& func)
@@ -47,9 +48,11 @@ namespace SceneryEditorX
 				auto pFunc = (FuncT*)ptr;
 				(*pFunc)();
 
-				// NOTE: Instead of destroying we could try and enforce all items to be trivally destructible
-				// however some items like uniforms which contain std::strings still exist for now
-				// static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+				/**
+				 * @note: Instead of destroying we could try and enforce all items to be trivally destructible
+				 * however some items like uniforms which contain std::strings still exist for now.
+				 * static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+ 				 */
 				pFunc->~FuncT();
 			};
 			auto storageBuffer = GetCommandQueue().Allocate(renderCmd, sizeof(func));
@@ -63,9 +66,11 @@ namespace SceneryEditorX
 				auto pFunc = (FuncT*)ptr;
 				(*pFunc)();
 
-				// NOTE: Instead of destroying we could try and enforce all items to be trivally destructible
-				// however some items like uniforms which contain std::strings still exist for now
-				// static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+				/**
+				 * @note: Instead of destroying we could try and enforce all items to be trivally destructible
+				 * however some items like uniforms which contain std::strings still exist for now.
+				 * static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+				 */
 				pFunc->~FuncT();
 			};
 
@@ -91,10 +96,12 @@ namespace SceneryEditorX
         GLOBAL uint32_t GetRenderQueueIndex();
         GLOBAL uint32_t GetRenderQueueSubmissionIndex();
         GLOBAL uint32_t GetCurrentFrameIndex();
-
+        GLOBAL RenderData &GetRenderData();
+        GLOBAL void SetRenderData(const RenderData &renderData);
         GLOBAL void RenderThreadFunc(ThreadManager *renderThread);
         GLOBAL void WaitAndRender(ThreadManager* renderThread);
 		GLOBAL void SwapQueues();
+        GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Render Pass

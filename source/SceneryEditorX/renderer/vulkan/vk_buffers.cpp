@@ -10,13 +10,9 @@
 * Created: 5/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application.h>
 #include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/image_data.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-
-#include "vk_util.h"
 
 /// ----------------------------------------------------------
 

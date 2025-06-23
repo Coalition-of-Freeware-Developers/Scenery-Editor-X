@@ -12,7 +12,10 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+
+#include <utility>
 
 /// ----------------------------------------------------------
 
@@ -85,7 +88,7 @@ namespace SceneryEditorX
          * Updates transformation matrices in the uniform buffer for the specified
          * frame with the current camera and model state.
          */
-        void Update(uint32_t currentImage) const;
+        //void Update(uint32_t currentImage) const;
 
         /**
          * @brief Gets the buffer handle for the specified frame
@@ -114,6 +117,51 @@ namespace SceneryEditorX
         std::vector<VkBuffer> uniformBuffers;				///< Array of uniform buffer handles (one per frame)
         std::vector<VkDeviceMemory> uniformBuffersMemory;	///< Array of memory handles for uniform buffers
         std::vector<VmaAllocation> uniformBuffersAllocation;///< Array of allocation handles for uniform buffers (one per frame)
+    };
+
+	class UniformBufferSet : public RefCounted
+    {
+	public:
+        UniformBufferSet(uint32_t size, uint32_t framesInFlight) : m_framesInFlight(framesInFlight)
+        {
+            if (framesInFlight == 0)
+                m_framesInFlight = Renderer::GetRenderData().framesInFlight;
+
+            for (uint32_t frame = 0; frame < m_framesInFlight; frame++)
+                m_UniformBuffers[frame] = CreateRef<UniformBuffer>(size);
+        }
+
+	    virtual ~UniformBufferSet() override = default;
+
+		/// ----------------------------------------------------------
+
+        virtual Ref<UniformBuffer> Get()
+        {
+            const uint32_t frame = Renderer::GetCurrentFrameIndex();
+            return Get(frame);
+        }
+
+        virtual Ref<UniformBuffer> Get_RenderThread()
+        {
+            const uint32_t frame = Renderer::GetCurrentRenderThreadFrameIndex();
+            return Get(frame);
+        }
+
+		virtual Ref<UniformBuffer> Get(uint32_t frame)
+        {
+            SEDX_CORE_ASSERT(m_UniformBuffers.contains(frame));
+            return m_UniformBuffers.at(frame);
+        }
+
+        virtual void Set(Ref<UniformBuffer> uniformBuffer, uint32_t frame = 0)
+        {
+            m_UniformBuffers[frame] = std::move(uniformBuffer);
+        }
+
+	private:
+        uint32_t m_framesInFlight = 0;
+        std::map<uint32_t, Ref<UniformBuffer>> m_UniformBuffers;
+
     };
 
 } // namespace SceneryEditorX

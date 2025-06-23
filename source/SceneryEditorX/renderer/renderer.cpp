@@ -14,6 +14,7 @@
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 
 /// -------------------------------------------------------
 
@@ -26,6 +27,8 @@ namespace SceneryEditorX
     constexpr LOCAL uint32_t s_cmdQueueCount = 2;
     LOCAL CommandQueue *s_cmdQueue[s_cmdQueueCount];
     LOCAL std::atomic<uint32_t> s_cmdQueueSubmissionIdx = 0;
+    LOCAL RenderData m_renderData;
+
 
     /// -------------------------------------------------------
 
@@ -41,7 +44,7 @@ namespace SceneryEditorX
         /// Get the render context
 
         /// Initialize the context if needed
-        if (auto context = GetContext())
+        if (const auto context = GetContext())
             context->Init();
 
         /// Initialize render queue indices
@@ -94,10 +97,19 @@ namespace SceneryEditorX
         return s_CurrentFrameIndex;
     }
 
-	void Renderer::RenderThreadFunc(ThreadManager *renderThread)
+    RenderData &Renderer::GetRenderData()
+    {
+        return m_renderData;
+    }
+
+	void Renderer::SetRenderData(const RenderData &renderData)
+    {
+        m_renderData = renderData;
+    }
+
+    void Renderer::RenderThreadFunc(ThreadManager *renderThread)
     {
         SEDX_PROFILE_THREAD("Render Thread");
-
         while (renderThread->isRunning())
             WaitAndRender(renderThread);
     }
@@ -107,7 +119,7 @@ namespace SceneryEditorX
         renderThread->WaitAndSet(ThreadManager::State::Kick, ThreadManager::State::Busy);
         s_cmdQueue[GetRenderQueueIndex()]->Execute();
 
-		// Rendering has completed, set state to idle
+		/// Rendering has completed, set state to idle
         renderThread->Set(ThreadManager::State::Idle);
 
         SubmitFrame();
@@ -116,6 +128,12 @@ namespace SceneryEditorX
     void Renderer::SwapQueues()
     {
         s_cmdQueueSubmissionIdx = (s_cmdQueueSubmissionIdx + 1) % s_cmdQueueCount;
+    }
+
+    uint32_t Renderer::GetCurrentRenderThreadFrameIndex()
+    {
+        /// Swapchain owns the Render Thread frame index
+        return Application::Get().GetWindow().GetSwapChain().GetCurrentBufferIndex();
     }
 
     /// -------------------------------------------------------
