@@ -40,6 +40,16 @@ namespace SceneryEditorX
         virtual ~Resource() = default;
 	};
 
+    /// -----------------------------------------------------------
+
+	using ResourceDescriptorInfo = void *;
+
+    class RendererResource
+    {
+    public:
+        virtual ResourceDescriptorInfo GetDescriptorInfo() const = 0;
+    };
+
 }
 
 /// -------------------------------------------------------

@@ -17,6 +17,8 @@
 #include <SceneryEditorX/platform/platform_states.h>
 #include <SceneryEditorX/renderer/command_queue.h>
 
+#include "vulkan/render_data.h"
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
@@ -102,7 +104,8 @@ namespace SceneryEditorX
         GLOBAL void WaitAndRender(ThreadManager* renderThread);
 		GLOBAL void SwapQueues();
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
-
+        GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
+    
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Render Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,6 +126,7 @@ namespace SceneryEditorX
     private:
         INTERNAL CommandQueue &GetCommandQueue();
         INTERNAL CommandQueue resourceFreeQueue[3];
+
 	};
 
 }

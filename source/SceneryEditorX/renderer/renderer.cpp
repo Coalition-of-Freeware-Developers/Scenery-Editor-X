@@ -29,7 +29,6 @@ namespace SceneryEditorX
     LOCAL std::atomic<uint32_t> s_cmdQueueSubmissionIdx = 0;
     LOCAL RenderData m_renderData;
 
-
     /// -------------------------------------------------------
 
     Ref<RenderContext> Renderer::GetContext()
@@ -134,6 +133,11 @@ namespace SceneryEditorX
     {
         /// Swapchain owns the Render Thread frame index
         return Application::Get().GetWindow().GetSwapChain().GetCurrentBufferIndex();
+    }
+
+    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex)
+    {
+        return m_renderData.DescriptorPoolAllocationCount[frameIndex];
     }
 
     /// -------------------------------------------------------

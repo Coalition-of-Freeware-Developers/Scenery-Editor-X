@@ -349,10 +349,7 @@ namespace SceneryEditorX
 		 * @brief Retrieves the current viewport position
 		 * @return The x and y coordinates of the viewport as a float vector
 		 */
-		[[nodiscard]] Viewport GetViewportPosition() const
-		{
-            return {x, y};
-		}
+		[[nodiscard]] Viewport GetViewportPosition() const { return {x, y}; }
 
         /**
          * @fn GetViewportSize
@@ -407,8 +404,7 @@ namespace SceneryEditorX
         bool viewportResized = false;
     };
 
-
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     /**
      * @struct LightingData
@@ -469,6 +465,14 @@ namespace SceneryEditorX
 
 		//const char *defaultValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
+        VkDescriptorSet ActiveRendererDescriptorSet = nullptr;
+
+        std::vector<VkDescriptorPool> DescriptorPools;
+
+        VkDescriptorPool MaterialDescriptorPool;
+
+        std::vector<uint32_t> DescriptorPoolAllocationCount;
+
         /**
 		 * @brief Minimum supported Vulkan API version.
 		 * The application requires at least this Vulkan version to run properly.
@@ -514,15 +518,17 @@ namespace SceneryEditorX
         /** @brief Hardware vendor name of the GPU device */
         std::string Vendor;
 
-		void SetDeviceVendorName(uint32_t vendorID) { Vendor = VendorIDToString(vendorID); }
+	    /** @brief Driver version information */
+        std::string Version;
 
         /** @brief Name of the GPU device being used */
         std::string Device;
 
-		void SetDeviceName(const std::string &deviceName) { Device = deviceName; }
+		/** @brief  */
+		void SetDeviceVendorName(const uint32_t vendorID) { Vendor = VendorIDToString(vendorID); }
 
-        /** @brief Driver version information */
-        std::string Version;
+		/** @brief  */
+		void SetDeviceName(const std::string &deviceName) { Device = deviceName; }
 
         /** @brief Vulkan API version supported by the device */
         struct apiVersion
@@ -604,6 +610,11 @@ namespace SceneryEditorX
         GLOBAL bool HasStencilComponent(const VkFormat format)
         {
             return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+        }
+
+        GLOBAL uint32_t CalculateMipCount(uint32_t width, uint32_t height)
+        {
+            return (uint32_t)glm::floor(glm::log2(glm::min(width, height))) + 1;
         }
 
     };

@@ -43,7 +43,7 @@ using i32 = int32_t;  ///< Signed 32-bit integer
 using i64 = int64_t;  ///< Signed 64-bit integer
 using f32 = float;    ///< 32-bit floating point
 using f64 = double;   ///< 64-bit floating point
-using RID = u32;      ///< Resource Identifier, alias for unsigned 32-bit integer
+using ResourceID = u32;      ///< Resource Identifier, alias for unsigned 32-bit integer
 
 /// -------------------------------------------------------
 

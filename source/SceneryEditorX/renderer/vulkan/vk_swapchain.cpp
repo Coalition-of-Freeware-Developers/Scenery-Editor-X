@@ -59,8 +59,14 @@ PFN_vkGetQueueCheckpointDataNV fpGetQueueCheckpointDataNV;
 
 /* Add AMD Specific extensions later when added */
 
-// -------------------------------------------------------
-// -------------------------------------------------------
+/// -------------------------------------------------------
+
+static uint32_t GetImageMemorySize(VkFormat format, uint32_t width, uint32_t height)
+{
+    return width * height * getBPP(format);
+}
+
+/// -------------------------------------------------------
 
 VKAPI_ATTR void VKAPI_CALL vkCmdSetCheckpointNV(VkCommandBuffer commandBuffer, const void *pCheckpointMarker)
 {
@@ -887,7 +893,6 @@ namespace SceneryEditorX
 
 		std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
         VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &formatCount, surfaceFormats.data()))
-
 		if (formatCount == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED)
 		{
 			colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
@@ -895,22 +900,20 @@ namespace SceneryEditorX
 		}
 		else
 		{
-			/// Iterate over the list of available surface format and
-			/// check for the presence of VK_FORMAT_B8G8R8A8_UNORM.
+			/// Iterate over the list of available surface format and check for the presence of VK_FORMAT_B8G8R8A8_UNORM.
 			bool foundRequestedFormat = false;
-            for (auto &[format, colorSpace] : surfaceFormats)
+            for (auto &&surfaceFormat : surfaceFormats)
 			{
-                if (format == VK_FORMAT_B8G8R8A8_UNORM)
+                if (surfaceFormat.format == VK_FORMAT_B8G8R8A8_UNORM)
 				{
-                    colorFormat = format;
-                    colorSpace = colorSpace;
+                    colorFormat = surfaceFormat.format;
+                    colorSpace = surfaceFormat.colorSpace;
 					foundRequestedFormat = true;
 					break;
 				}
 			}
 
-			/// In case VK_FORMAT_B8G8R8A8_UNORM is not available
-			/// select the first available color format.
+			/// In case VK_FORMAT_B8G8R8A8_UNORM is not available select the first available color format.
 			if (!foundRequestedFormat)
 			{
 				colorFormat = surfaceFormats[0].format;

@@ -470,10 +470,10 @@ namespace SceneryEditorX
         /** @brief Hardware vendor name of the GPU device */
         std::string Vendor;
 
-		void SetDeviceVendorName(uint32_t vendorID) { Vendor = VendorIDToString(vendorID); }
-
-        /** @brief Name of the GPU device being used */
+	    /** @brief Name of the GPU device being used */
         std::string Device;
+
+		void SetDeviceVendorName(uint32_t vendorID) { Vendor = VendorIDToString(vendorID); }
 
 		void SetDeviceName(const std::string &deviceName) { Device = deviceName; }
 

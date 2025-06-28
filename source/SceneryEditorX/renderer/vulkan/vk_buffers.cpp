@@ -282,7 +282,7 @@ namespace SceneryEditorX
     {
         if (attachmentSpecification.loadOp == AttachmentLoadOp::Inherit)
         {
-            if (Utils::IsDepthFormat(attachmentSpecification.Format))
+            if (IsDepthFormat(attachmentSpecification.Format))
                 return specification.ClearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 
             return specification.ClearColorOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -316,19 +316,19 @@ namespace SceneryEditorX
 			{
 				if (m_Specification.ExistingImage)
 				{
-					if (Utils::IsDepthFormat(attachmentSpec.Format))
+					if (IsDepthFormat(attachmentSpec.Format))
 						depthAttachmentImage = m_Specification.ExistingImage;
 					else
 						attachmentImages.emplace_back(m_Specification.ExistingImage);
 				}
 				else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
 				{
-					if (Utils::IsDepthFormat(attachmentSpec.Format))
+					if (IsDepthFormat(attachmentSpec.Format))
 						depthAttachmentImage = m_Specification.ExistingImages.at(attachmentIndex);
 					else
 						attachmentImages.emplace_back(); // This will be set later
 				}
-				else if (Utils::IsDepthFormat(attachmentSpec.Format))
+				else if (IsDepthFormat(attachmentSpec.Format))
 				{
 					ImageSpecification spec;
 					spec.Format = attachmentSpec.Format;
@@ -370,7 +370,7 @@ namespace SceneryEditorX
             instance->fb_height = (uint32_t)(height * instance->m_Specification.Scale);
             if (!instance->m_Specification.SwapChainTarget)
             {
-                instance->RT_Invalidate();
+                instance->Invalidate_RenderThread();
             }
             else
             {
@@ -397,11 +397,11 @@ namespace SceneryEditorX
 		Ref<Framebuffer> instance = this;
 		Renderer::Submit([instance]() mutable
 		{
-			instance->RT_Invalidate();
+			instance->Invalidate_RenderThread();
 		});
 	}
 
-	void Framebuffer::RT_Invalidate()
+	void Framebuffer::Invalidate_RenderThread()
 	{
 		auto device = RenderContext::GetCurrentDevice()->GetDevice();
 
@@ -424,7 +424,7 @@ namespace SceneryEditorX
 		uint32_t attachmentIndex = 0;
 		for (const auto& attachmentSpec : m_Specification.Attachments.Attachments)
 		{
-			if (Utils::IsDepthFormat(attachmentSpec.Format))
+			if (IsDepthFormat(attachmentSpec.Format))
 			{
 				if (m_Specification.ExistingImage)
 				{
@@ -438,7 +438,7 @@ namespace SceneryEditorX
 				else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
 				{
 					Ref<Image2D> existingImage = m_Specification.ExistingImages.at(attachmentIndex);
-					SEDX_CORE_ASSERT(Utils::IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach non-depth image as depth attachment");
+					SEDX_CORE_ASSERT(IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach non-depth image as depth attachment");
 					depthAttachmentImage = existingImage;
 				}
 				else
@@ -447,7 +447,7 @@ namespace SceneryEditorX
 					auto& spec = depthAttachmentImage->GetSpecification();
                     spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
                     spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
-					depthAttachmentImage->RT_Invalidate(); // Create immediately
+					depthAttachmentImage->Invalidate_RenderThread(); // Create immediately
 				}
 
 				VkAttachmentDescription& attachmentDescription = attachmentDescriptions.emplace_back();
@@ -485,7 +485,7 @@ namespace SceneryEditorX
 				else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
 				{
 					Ref<Image2D> existingImage = m_Specification.ExistingImages[attachmentIndex];
-					SEDX_CORE_ASSERT(!Utils::IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach depth image as color attachment");
+					SEDX_CORE_ASSERT(!IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach depth image as color attachment");
 					colorAttachment = existingImage.As<Image2D>();
 					attachmentImages[attachmentIndex] = existingImage;
 				}
@@ -511,10 +511,10 @@ namespace SceneryEditorX
 						spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
 						colorAttachment = image.As<Image2D>();
 						if (colorAttachment->GetSpecification().Layers == 1)
-							colorAttachment->RT_Invalidate(); // Create immediately
+							colorAttachment->Invalidate_RenderThread(); // Create immediately
 						else if (attachmentIndex == 0 && m_Specification.ExistingImageLayers[0] == 0)// Only invalidate the first layer from only the first framebuffer
 						{
-							colorAttachment->RT_Invalidate(); // Create immediately
+							colorAttachment->Invalidate_RenderThread(); // Create immediately
 							colorAttachment->RT_CreatePerSpecificLayerImageViews(m_Specification.ExistingImageLayers);
 						}
 						else if (attachmentIndex == 0)

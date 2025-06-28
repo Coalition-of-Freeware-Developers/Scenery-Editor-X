@@ -92,7 +92,7 @@ namespace SceneryEditorX
 
         VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
-        VkImageAspectFlags aspectMask = Utils::IsDepthFormat(m_Specification.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+        VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
         if (m_Specification.Format == ImageFormat::DEPTH24STENCIL8)
             aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
@@ -122,7 +122,7 @@ namespace SceneryEditorX
 
         VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
-        VkImageAspectFlags aspectMask = Utils::IsDepthFormat(m_Specification.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+        VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
         if (m_Specification.Format == ImageFormat::DEPTH24STENCIL8)
             aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
@@ -314,8 +314,8 @@ namespace SceneryEditorX
 #if MEM_INFO
         VkMemoryRequirements memReqs;
         vkGetImageMemoryRequirements(vulkanDevice, m_Info.Image, &memReqs);
-        HZ_CORE_WARN("MemReq = {} ({})", memReqs.size, memReqs.alignment);
-        HZ_CORE_WARN("Expected size = {}", bufferSize);
+        SEDX_CORE_WARN("MemReq = {} ({})", memReqs.size, memReqs.alignment);
+        SEDX_CORE_WARN("Expected size = {}", bufferSize);
 #endif
 
         VkBuffer stagingBuffer;
@@ -398,10 +398,10 @@ namespace SceneryEditorX
     void ImageView::Invalidate()
     {
         Ref<ImageView> instance = this;
-        Renderer::Submit([instance]() mutable { instance->RT_Invalidate(); });
+        Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
     }
 
-    void ImageView::RT_Invalidate()
+    void ImageView::Invalidate_RenderThread()
     {
         auto device = RenderContext::GetCurrentDevice();
         VkDevice vulkanDevice = device->GetDevice();

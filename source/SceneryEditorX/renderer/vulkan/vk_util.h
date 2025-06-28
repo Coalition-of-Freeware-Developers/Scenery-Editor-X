@@ -294,7 +294,6 @@ static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType ob
 	VK_CHECK_RESULT(fpSetDebugUtilsObjectNameEXT(device, &nameInfo))
 }
 
-
 /**
  * @brief Get the string representation of a Vulkan object type.
  * @param objectType The Vulkan object type.
@@ -303,5 +302,4 @@ static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType ob
 const char *VkObjectTypeToString(VkObjectType objectType);
 
 /// -------------------------------------------------------
-
 

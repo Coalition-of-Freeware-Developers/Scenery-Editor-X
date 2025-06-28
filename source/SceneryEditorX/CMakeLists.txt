@@ -111,6 +111,8 @@ ADD_LIBRARY(AppCore
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
 	# --------------------------------
+	renderer/buffers/framebuffer.cpp
+	renderer/buffers/framebuffer.h
 	renderer/buffers/index_buffer.h
 	renderer/buffers/index_buffer.cpp
 	renderer/buffers/storage_buffer.cpp
@@ -192,6 +194,8 @@ SOURCE_GROUP("Serialization" FILES
 	core/serializer.hpp
 )
 SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
+	renderer/buffers/framebuffer.cpp
+	renderer/buffers/framebuffer.h
 	renderer/buffers/index_buffer.h
 	renderer/buffers/index_buffer.cpp
 	renderer/buffers/storage_buffer.cpp
