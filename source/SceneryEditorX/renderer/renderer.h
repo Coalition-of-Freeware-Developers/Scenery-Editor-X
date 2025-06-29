@@ -16,8 +16,7 @@
 #include <SceneryEditorX/core/threading/thread_manager.h>
 #include <SceneryEditorX/platform/platform_states.h>
 #include <SceneryEditorX/renderer/command_queue.h>
-
-#include "vulkan/render_data.h"
+#include <SceneryEditorX/renderer/render_data.h>
 
 /// -------------------------------------------------------
 
@@ -105,7 +104,8 @@ namespace SceneryEditorX
 		GLOBAL void SwapQueues();
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
-    
+        VkSampler CreateSampler(VkSamplerCreateInfo samplerCreateInfo);
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Render Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

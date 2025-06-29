@@ -302,7 +302,7 @@ TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/s
 SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET FormatTester MemoryAllocatorTests RefTests SettingsTest PROPERTY FOLDER "Tests")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
-SET_PROPERTY(TARGET glfw docs uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
+SET_PROPERTY(TARGET glfw uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
 SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
 SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
 SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")

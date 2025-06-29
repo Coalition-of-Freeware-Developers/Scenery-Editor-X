@@ -425,6 +425,14 @@ namespace SceneryEditorX
 
 		/// --------------------------------------------------------
 
+		uint32_t s_RenderQueueIndex = 0;
+        uint32_t s_RenderQueueSubmissionIndex = 0;
+        uint32_t s_CurrentFrameIndex = 0;
+        constexpr LOCAL uint32_t s_cmdQueueCount = 2;
+        LOCAL CommandQueue *s_cmdQueue[s_cmdQueueCount];
+        std::atomic<uint32_t> s_cmdQueueSubmissionIdx = 0;
+        std::vector<uint32_t> DescriptorPoolAllocationCount;
+
         /**
 		 * @brief Minimum supported Vulkan API version.
 		 * The application requires at least this Vulkan version to run properly.

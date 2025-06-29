@@ -760,3 +760,13 @@ const char *VkObjectTypeToString(const VkObjectType objectType)
 }
 
 /// -------------------------------------------------------
+
+namespace SceneryEditorX::Util
+{
+	LOCAL ResourceAllocationCounts s_ResourceAllocationCounts;
+    ResourceAllocationCounts &GetResourceAllocationCounts()
+    {
+        return s_ResourceAllocationCounts;
+    }
+
+}

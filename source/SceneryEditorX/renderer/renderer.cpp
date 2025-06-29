@@ -15,19 +15,14 @@
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
+#include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /// Static variables
-    LOCAL uint32_t s_RenderQueueIndex = 0;
-    LOCAL uint32_t s_RenderQueueSubmissionIndex = 0;
-    LOCAL uint32_t s_CurrentFrameIndex = 0;
-    constexpr LOCAL uint32_t s_cmdQueueCount = 2;
-    LOCAL CommandQueue *s_cmdQueue[s_cmdQueueCount];
-    LOCAL std::atomic<uint32_t> s_cmdQueueSubmissionIdx = 0;
-    LOCAL RenderData m_renderData;
+    /// Static variable
+    LOCAL RenderData *m_renderData = nullptr;
 
     /// -------------------------------------------------------
 
@@ -47,9 +42,9 @@ namespace SceneryEditorX
             context->Init();
 
         /// Initialize render queue indices
-        s_RenderQueueIndex = 0;
-        s_RenderQueueSubmissionIndex = 0;
-        s_CurrentFrameIndex = 0;
+        m_renderData->s_RenderQueueIndex = 0;
+        m_renderData->s_RenderQueueSubmissionIndex = 0;
+        m_renderData->s_CurrentFrameIndex = 0;
     }
 
     void Renderer::Shutdown()
@@ -83,27 +78,27 @@ namespace SceneryEditorX
 
     uint32_t Renderer::GetRenderQueueIndex()
     {
-        return s_RenderQueueIndex;
+        return m_renderData->s_RenderQueueIndex;
     }
 
     uint32_t Renderer::GetRenderQueueSubmissionIndex()
     {
-        return s_RenderQueueSubmissionIndex;
+        return m_renderData->s_RenderQueueSubmissionIndex;
     }
 
     uint32_t Renderer::GetCurrentFrameIndex()
     {
-        return s_CurrentFrameIndex;
+        return m_renderData->s_CurrentFrameIndex;
     }
 
     RenderData &Renderer::GetRenderData()
     {
-        return m_renderData;
+        return *m_renderData;
     }
 
 	void Renderer::SetRenderData(const RenderData &renderData)
     {
-        m_renderData = renderData;
+        *m_renderData = renderData;
     }
 
     void Renderer::RenderThreadFunc(ThreadManager *renderThread)
@@ -116,7 +111,7 @@ namespace SceneryEditorX
     void Renderer::WaitAndRender(ThreadManager *renderThread)
     {
         renderThread->WaitAndSet(ThreadManager::State::Kick, ThreadManager::State::Busy);
-        s_cmdQueue[GetRenderQueueIndex()]->Execute();
+        m_renderData->s_cmdQueue[GetRenderQueueIndex()]->Execute();
 
 		/// Rendering has completed, set state to idle
         renderThread->Set(ThreadManager::State::Idle);
@@ -126,7 +121,7 @@ namespace SceneryEditorX
 
     void Renderer::SwapQueues()
     {
-        s_cmdQueueSubmissionIdx = (s_cmdQueueSubmissionIdx + 1) % s_cmdQueueCount;
+        m_renderData->s_cmdQueueSubmissionIdx = (m_renderData->s_cmdQueueSubmissionIdx + 1) % m_renderData->s_cmdQueueCount;
     }
 
     uint32_t Renderer::GetCurrentRenderThreadFrameIndex()
@@ -137,7 +132,19 @@ namespace SceneryEditorX
 
     uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex)
     {
-        return m_renderData.DescriptorPoolAllocationCount[frameIndex];
+        return m_renderData->DescriptorPoolAllocationCount[frameIndex];
+    }
+
+    VkSampler Renderer::CreateSampler(VkSamplerCreateInfo samplerCreateInfo)
+    {
+        auto device = RenderContext::GetCurrentDevice();
+
+		VkSampler sampler;
+        vkCreateSampler(device->GetDevice(), &samplerCreateInfo, nullptr, &sampler);
+
+		SceneryEditorX::Util::GetResourceAllocationCounts().Samplers++;
+
+		return sampler;
     }
 
     /// -------------------------------------------------------
