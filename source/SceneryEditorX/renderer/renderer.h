@@ -16,7 +16,9 @@
 #include <SceneryEditorX/core/threading/thread_manager.h>
 #include <SceneryEditorX/platform/platform_states.h>
 #include <SceneryEditorX/renderer/command_queue.h>
-#include <SceneryEditorX/renderer/render_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_data.h>
+
+#include "vulkan/image_data.h"
 
 /// -------------------------------------------------------
 
@@ -34,6 +36,7 @@ namespace SceneryEditorX
 
 		GLOBAL Ref<RenderContext> GetContext();
 
+        Ref<Image> && GetBRDFLutTexture();
         GLOBAL void Init();
 		GLOBAL void Shutdown();
         GLOBAL void BeginFrame();

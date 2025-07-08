@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
@@ -36,11 +37,11 @@ namespace SceneryEditorX
     {
         Ref<Shader> shader;
         Ref<Framebuffer> dstFramebuffer;
-        VertexBufferLayout layout;
-        VertexBufferLayout instanceLayout;
-        VertexBufferLayout boneInfluenceLayout;
-        PrimitiveTopology topology = PrimitiveTopology::Triangles;
-        DepthCompareOperator depthOperator = DepthCompareOperator::GreaterOrEqual;
+        //VertexBufferLayout layout;
+        //VertexBufferLayout instanceLayout;
+        //VertexBufferLayout boneInfluenceLayout;
+        //PrimitiveTopology topology = PrimitiveTopology::Triangles;
+        //DepthCompareOperator depthOperator = DepthCompareOperator::GreaterOrEqual;
         bool backfaceCulling = true;
         bool depthTest = true;
         bool depthWrite = true;
@@ -78,10 +79,10 @@ namespace SceneryEditorX
         PipelineType point;
         std::vector<Stage> stages;
         std::string name;
-        std::vector<ImageFormat> vertexAttributes;
-        std::vector<ImageFormat> colorFormats;
+        std::vector<VkFormat> vertexAttributes;
+        std::vector<VkFormat> colorFormats;
         bool useDepth = false;
-        ImageFormat depthFormat;
+        VkFormat depthFormat;
         bool cullFront = false;
         bool lineTopology = false;
 

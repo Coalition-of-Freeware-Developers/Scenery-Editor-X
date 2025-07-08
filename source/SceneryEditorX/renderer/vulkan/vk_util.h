@@ -301,9 +301,13 @@ static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType ob
  */
 const char *VkObjectTypeToString(VkObjectType objectType);
 
+void SetDeviceVendorName(const uint32_t vendorID);
+
+void GetDeviceName(const std::string &deviceName);
+
 namespace SceneryEditorX::Util
 {
-	
+
 	struct ResourceAllocationCounts
 	{
 	    uint32_t Samplers = 0;

@@ -13,6 +13,7 @@
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 #include <vulkan/vulkan_core.h>
 
 /// -------------------------------------------------------
@@ -49,21 +50,21 @@ namespace SceneryEditorX
         bool fullDrawIndexUint32					 = VK_FALSE; // Specifies the full 32-bit range of indices is supported for indexed draw.
         bool imageCubeArray							 = VK_FALSE; // Specifies whether image views with a VkImageViewType of VK_IMAGE_VIEW_TYPE_CUBE_ARRAY can be created.
         bool independentBlend						 = VK_TRUE;  // Specifies whether the VkPipelineColorBlendAttachmentState settings are controlled independently per-attachment.
-        bool geometryShader							 = VK_TRUE;  // Geometry shader support
+        bool geometryShader							 = VK_TRUE; // Geometry shader support
         bool tessellationShader						 = VK_FALSE; // Tessellation shader support
         bool sampleRateShading						 = VK_FALSE; // Specifies whether Sample Shading and multi-sample interpolation are supported.
         bool dualSrcBlend							 = VK_FALSE; // Specifies whether blend operations which take two sources are supported.
-        bool logicOp								 = VK_TRUE;  // Specifies whether logic operations are supported.
+        bool logicOp								 = VK_TRUE; // Specifies whether logic operations are supported.
         bool multiDrawIndirect						 = VK_FALSE; // Specifies whether multiple draw indirect is supported.
         bool drawIndirectFirstInstance				 = VK_FALSE; // Specifies whether indirect drawing calls support the firstInstance parameter.
-        bool depthClamp								 = VK_TRUE;  // Specifies whether depth clamping is supported.
+        bool depthClamp								 = VK_TRUE; // Specifies whether depth clamping is supported.
         bool depthBiasClamp							 = VK_FALSE; // Specifies whether depth bias clamping is supported.
         bool fillModeNonSolid						 = VK_TRUE;  // Enable wireframe and point rendering modes. Specifies whether point and wireframe fill modes are supported.
         bool depthBounds							 = VK_FALSE; // Specifies whether depth bounds tests are supported.
         bool wideLines								 = VK_TRUE;  // Enable wide lines for rendering. Specifies whether lines with width other than 1.0 are supported.
         bool largePoints							 = VK_FALSE; // Specifies whether points with size greater than 1.0 are supported.
         bool alphaToOne								 = VK_FALSE; // Specifies whether the impl is able to replace the alpha value of the fragment shader color output in the Multisample Coverage fragment operation.
-        bool multiViewport							 = VK_TRUE;  // Specifies whether more than one viewport is supported.
+        bool multiViewport							 = VK_TRUE; // Specifies whether more than one viewport is supported.
         bool samplerAnisotropy						 = VK_TRUE;  // Enable anisotropic filtering for textures.
         bool textureCompressionETC2					 = VK_FALSE; // Specifies whether all the ETC2 and EAC compressed texture formats are supported.
         bool textureCompressionASTC_LDR				 = VK_FALSE; // Specifies whether all the ASTC LDR compressed texture formats are supported.
@@ -178,11 +179,6 @@ namespace SceneryEditorX
 	*/
     struct Extensions
     {
-        /**
-         * @brief Indicates which extensions are active (true) or inactive (false).
-         * @result A vector of booleans where each index corresponds to an extension.
-         */
-        std::vector<bool> activeExtensions;
 
         /**
          * @brief List of extension names that are required by the application
@@ -196,11 +192,7 @@ namespace SceneryEditorX
 			VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME
         };
 
-        /**
-         * @brief List of extensions available on the physical device.
-         * @result A vector of VkExtensionProperties containing information about each available extension.
-         */
-        std::vector<VkExtensionProperties> availableExtensions;
+        const char* availableExtensions = {};
 
         /**
          * @brief List of extensions available at the instance level.
@@ -213,41 +205,6 @@ namespace SceneryEditorX
          * @result The number of available extensions on the physical device.
          */
         uint32_t extensionCount = 0;
-    };
-
-	/**
-	 * @struct Layers
-	 * @brief Manages Vulkan validation layers for debugging and validation purposes
-	 * 
-	 * This structure contains information about available and active Vulkan validation layers.
-	 * Validation layers provide debug information, error checking, and validation during
-	 * development to help catch API usage errors and performance issues.
-	 */
-    struct Layers
-    {
-        /** @brief Tracks which validation layers are active (true) or inactive (false) */
-        std::vector<bool> activeLayers;
-
-        /** @brief Standard validation layer for Vulkan debugging
-         *
-		 * Includes the Khronos validation layer which contains most validation functionality:
-		 *
-		 * - Parameter validation
-		 * - Object lifetime tracking
-		 * - Thread safety validation
-		 * - API state validation
-		 * - Shader validation
-		 */
-        std::vector<const char *> validationLayer = {"VK_LAYER_KHRONOS_validation"};
-
-        /** @brief Names of layers that are currently activated in the application */
-        std::vector<const char *> activeLayersNames;
-
-        /** @brief Properties of all available Vulkan validation layers on the system */
-        std::vector<VkLayerProperties> layers;
-
-        /** @brief Count of available validation layers */
-        uint32_t layerCount = 0;
     };
 
     /// -----------------------------------------------------------
@@ -349,7 +306,10 @@ namespace SceneryEditorX
 		 * @brief Retrieves the current viewport position
 		 * @return The x and y coordinates of the viewport as a float vector
 		 */
-		[[nodiscard]] Viewport GetViewportPosition() const { return {x, y}; }
+		[[nodiscard]] Viewport GetViewportPosition() const
+		{
+            return {x, y};
+		}
 
         /**
          * @fn GetViewportSize
@@ -404,6 +364,7 @@ namespace SceneryEditorX
         bool viewportResized = false;
     };
 
+
     /// -------------------------------------------------------
 
     /**
@@ -425,6 +386,7 @@ namespace SceneryEditorX
         /** @brief Number of samples used for shadow map filtering/anti-aliasing */
         int shadowMapSamples = 4;
     };
+
 
     /// -------------------------------------------------------
 
@@ -455,7 +417,7 @@ namespace SceneryEditorX
 	 * This structure is shared across different components of the renderer to ensure
 	 * consistent access to rendering parameters and state.
 	 */
-    struct RenderData
+    struct RenderData : RefCounted
     {
         [[nodiscard]] uint32_t GetWidth() const { return width; }
         [[nodiscard]] uint32_t GetHeight() const { return height; }
@@ -463,14 +425,12 @@ namespace SceneryEditorX
 
 		/// --------------------------------------------------------
 
-		//const char *defaultValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
-
-        VkDescriptorSet ActiveRendererDescriptorSet = nullptr;
-
-        std::vector<VkDescriptorPool> DescriptorPools;
-
-        VkDescriptorPool MaterialDescriptorPool;
-
+		uint32_t s_RenderQueueIndex = 0;
+        uint32_t s_RenderQueueSubmissionIndex = 0;
+        uint32_t s_CurrentFrameIndex = 0;
+        constexpr LOCAL uint32_t s_cmdQueueCount = 2;
+        //LOCAL CommandQueue *s_cmdQueue[s_cmdQueueCount];
+        std::atomic<uint32_t> s_cmdQueueSubmissionIdx = 0;
         std::vector<uint32_t> DescriptorPoolAllocationCount;
 
         /**
@@ -518,17 +478,15 @@ namespace SceneryEditorX
         /** @brief Hardware vendor name of the GPU device */
         std::string Vendor;
 
-	    /** @brief Driver version information */
-        std::string Version;
-
-        /** @brief Name of the GPU device being used */
+	    /** @brief Name of the GPU device being used */
         std::string Device;
 
-		/** @brief  */
-		void SetDeviceVendorName(const uint32_t vendorID) { Vendor = VendorIDToString(vendorID); }
+		void SetDeviceVendorName(uint32_t vendorID) { Vendor = VendorIDToString(vendorID); }
 
-		/** @brief  */
 		void SetDeviceName(const std::string &deviceName) { Device = deviceName; }
+
+        /** @brief Driver version information */
+        std::string Version;
 
         /** @brief Vulkan API version supported by the device */
         struct apiVersion
@@ -593,6 +551,9 @@ namespace SceneryEditorX
         /** @brief Flag indicating if temporal anti-aliasing should use reconstruction */
         bool taaReconstruct = false;
 
+		/** @brief Vulkan Validation layers */
+		bool khronosAvailable = false;
+
         /**
 		 * @brief Check if the renderer has all required queue families
 		 * @return True if both graphics and present queue families are available
@@ -610,11 +571,6 @@ namespace SceneryEditorX
         GLOBAL bool HasStencilComponent(const VkFormat format)
         {
             return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-        }
-
-        GLOBAL uint32_t CalculateMipCount(uint32_t width, uint32_t height)
-        {
-            return (uint32_t)glm::floor(glm::log2(glm::min(width, height))) + 1;
         }
 
     };

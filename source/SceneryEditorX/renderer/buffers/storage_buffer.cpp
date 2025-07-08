@@ -19,7 +19,7 @@ namespace SceneryEditorX
 {
 	StorageBuffer::StorageBuffer(uint32_t size, StorageBufferSpec spec) : m_spec(std::move(spec)), size(size)
 	{
-        Ref<StorageBuffer> instance = this;
+        Ref<StorageBuffer> instance(this);
         Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
 	}
 	
@@ -31,7 +31,7 @@ namespace SceneryEditorX
 	void StorageBuffer::SetData(const void *data, uint32_t size, uint32_t offset)
 	{
         memcpy(localStorage, data, size);
-        Ref<StorageBuffer> instance = this;
+        Ref<StorageBuffer> instance(this);
         Renderer::Submit([instance, size, offset]() mutable { instance->SetData_RenderThread(instance->localStorage, size, offset); });
 	}
 	
@@ -64,7 +64,7 @@ namespace SceneryEditorX
 	void StorageBuffer::Resize(uint32_t newSize)
 	{
         size = newSize;
-        Ref<StorageBuffer> instance = this;
+        Ref<StorageBuffer> instance(this);
         Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
 	}
 	

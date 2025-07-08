@@ -11,8 +11,9 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/application.h>
-#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/buffers/framebuffer.h>
+#include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/vk_image.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
@@ -35,10 +36,10 @@ namespace SceneryEditorX
 		}
 
 		///< Create all image objects immediately so we can start referencing them elsewhere
-		uint32_t attachmentIndex = 0;
-		if (!m_Specification.ExistingFramebuffer)
-		{
-			for (auto& attachmentSpec : m_Specification.Attachments.Attachments)
+        if (!m_Specification.ExistingFramebuffer)
+        {
+            uint32_t attachmentIndex = 0;
+            for (const auto& attachmentSpec : m_Specification.Attachments.Attachments)
 			{
 				if (m_Specification.ExistingImage)
 				{
@@ -58,23 +59,23 @@ namespace SceneryEditorX
 				{
 					Image spec;
 					spec.format = attachmentSpec.Format;
-					spec.usage = ImageUsage::Attachment;
+					spec.usage = ImageUsage::DepthAttachment;
 					spec.transfer = m_Specification.Transfer;
 					spec.width = (uint32_t)(m_Width * m_Specification.Scale);
 					spec.height = (uint32_t)(m_Height * m_Specification.Scale);
 					spec.resource->name = std::format("{0}-DepthAttachment{1}", m_Specification.DebugName.empty() ? "Unnamed FB" : m_Specification.DebugName, attachmentIndex);
-					m_DepthAttachmentImage = Image2D::Create(spec);
+                    m_DepthAttachmentImage = CreateRef<Image2D>(spec);
 				}
 				else
 				{
 					Image spec;
 					spec.format = attachmentSpec.Format;
-					spec.usage = ImageUsage::Attachment;
+					spec.usage = ImageUsage::ColorAttachment;
 					spec.transfer = m_Specification.Transfer;
 					spec.width = (uint32_t)(m_Width * m_Specification.Scale);
 					spec.height = (uint32_t)(m_Height * m_Specification.Scale);
 					spec.resource->name = std::format("{0}-ColorAttachment{1}", m_Specification.DebugName.empty() ? "Unnamed FB" : m_Specification.DebugName, attachmentIndex);
-					m_AttachmentImages.emplace_back(Image2D::Create(spec));
+                    m_AttachmentImages.emplace_back(CreateRef<Image2D>(spec));
 				}
 				attachmentIndex++;
 			}
@@ -102,7 +103,7 @@ namespace SceneryEditorX
         if (!forceRecreate && (m_Width == width && m_Height == height))
             return;
 
-        Ref<Framebuffer> instance = this;
+        Ref<Framebuffer> instance = CreateRef<Framebuffer>(this);
         Renderer::Submit([instance, width, height]() mutable
         {
             instance->m_Width = (uint32_t)(width * instance->m_Specification.Scale);
@@ -115,12 +116,12 @@ namespace SceneryEditorX
                 instance->m_RenderPass = swapChain.GetRenderPass();
 
                 instance->m_ClearValues.clear();
-                instance->m_ClearValues.emplace_back().color = {0.0f, 0.0f, 0.0f, 1.0f};
+                instance->m_ClearValues.emplace_back().color = {{0.0f, 0.0f, 0.0f, 1.0f}};
             }
         });
 
-        for (auto &callback : m_ResizeCallbacks)
-            callback(this);
+		for (auto &callback : m_ResizeCallbacks)
+		    callback(CreateRef<Framebuffer>(this));
 	}
 	
 	void Framebuffer::AddResizeCallback(const std::function<void(Ref<Framebuffer>)> &func)
@@ -130,7 +131,7 @@ namespace SceneryEditorX
 	
 	void Framebuffer::Invalidate()
 	{
-        Ref<Framebuffer> instance = this;
+        Ref<Framebuffer> instance = CreateRef<Framebuffer>(this);
         Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
 	}
 	
@@ -166,10 +167,10 @@ namespace SceneryEditorX
                     Ref<Framebuffer> existingFramebuffer = m_Specification.ExistingFramebuffer.As<Framebuffer>();
                     m_DepthAttachmentImage = existingFramebuffer->GetDepthImage();
                 }
-                else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
+                else if (m_Specification.ExistingImages.contains(attachmentIndex))
                 {
                     Ref<Image2D> existingImage = m_Specification.ExistingImages.at(attachmentIndex);
-                    SEDX_CORE_ASSERT(IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach non-depth image as depth attachment");
+                    SEDX_CORE_ASSERT(IsDepthFormat(existingImage->GetSpecification().format), "Trying to attach non-depth image as depth attachment");
                     m_DepthAttachmentImage = existingImage;
                 }
                 else
@@ -194,7 +195,8 @@ namespace SceneryEditorX
                 {
                     attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;	///< TODO: if not sampling
                     attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;	///< TODO: if sampling
-                    depthAttachmentReference = {attachmentIndex, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+                    depthAttachmentReference = {.attachment = attachmentIndex,
+                                                .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
                 }
                 else
                 {
@@ -203,7 +205,7 @@ namespace SceneryEditorX
                     depthAttachmentReference = {attachmentIndex, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL};
                 }
 
-                m_ClearValues[attachmentIndex].depthStencil = {m_Specification.DepthClearValue, 0};
+                m_ClearValues[attachmentIndex].depthStencil = {.depth = m_Specification.DepthClearValue,.stencil = 0};
             }
             else
             {
@@ -214,10 +216,10 @@ namespace SceneryEditorX
                     Ref<Image2D> existingImage = existingFramebuffer->GetImage(attachmentIndex);
                     colorAttachment = m_AttachmentImages.emplace_back(existingImage).As<Image2D>();
                 }
-                else if (m_Specification.ExistingImages.find(attachmentIndex) != m_Specification.ExistingImages.end())
+                else if (m_Specification.ExistingImages.contains(attachmentIndex))
                 {
                     Ref<Image2D> existingImage = m_Specification.ExistingImages[attachmentIndex];
-                    SEDX_CORE_ASSERT(!IsDepthFormat(existingImage->GetSpecification().Format), "Trying to attach depth image as color attachment");
+                    SEDX_CORE_ASSERT(!IsDepthFormat(existingImage->GetSpecification().format), "Trying to attach depth image as color attachment");
                     colorAttachment = existingImage.As<Image2D>();
                     m_AttachmentImages[attachmentIndex] = existingImage;
                 }
@@ -227,11 +229,11 @@ namespace SceneryEditorX
                     {
                         Image spec;
                         spec.format = attachmentSpec.Format;
-                        spec.usage = ImageUsage::Attachment;
+                        spec.usage = ImageUsage::ColorAttachment;
                         spec.transfer = m_Specification.Transfer;
                         spec.width = (uint32_t)(m_Width * m_Specification.Scale);
                         spec.height = (uint32_t)(m_Height * m_Specification.Scale);
-                        colorAttachment = m_AttachmentImages.emplace_back(Image2D::Create(spec)).As<Image2D>();
+                        colorAttachment = m_AttachmentImages.emplace_back(CreateRef<Image2D>(spec)).As<Image2D>();
                         SEDX_CORE_VERIFY(false);
                     }
                     else
@@ -241,7 +243,7 @@ namespace SceneryEditorX
                         spec.width = (uint32_t)(m_Width * m_Specification.Scale);
                         spec.height = (uint32_t)(m_Height * m_Specification.Scale);
                         colorAttachment = image.As<Image2D>();
-                        if (colorAttachment->GetSpecification().Layers == 1)
+                        if (colorAttachment->GetSpecification().layers == 1)
                             colorAttachment->Invalidate_RenderThread(); ///< Create immediately
                         else if (attachmentIndex == 0 && m_Specification.ExistingImageLayers[0] == 0) ///< Only invalidate the first layer from only the first framebuffer
                         {
@@ -283,7 +285,7 @@ namespace SceneryEditorX
         /// Use subpass dependencies for layout transitions
         std::vector<VkSubpassDependency> dependencies;
 
-        if (m_AttachmentImages.size())
+        if (!m_AttachmentImages.empty())
         {
             {
                 VkSubpassDependency &depedency = dependencies.emplace_back();
@@ -342,28 +344,28 @@ namespace SceneryEditorX
         renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
         renderPassInfo.pDependencies = dependencies.data();
 
-        VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_RenderPass));
+        VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_RenderPass))
         SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_RENDER_PASS, m_Specification.DebugName, m_RenderPass);
 
         std::vector<VkImageView> attachments(m_AttachmentImages.size());
         for (uint32_t i = 0; i < m_AttachmentImages.size(); i++)
         {
-            if (Ref<Image2D> image = m_AttachmentImages[i].As<Image2D>(); image->GetSpecification().Layers > 1)
+            if (Ref<Image2D> image = m_AttachmentImages[i].As<Image2D>(); image->GetSpecification().layers > 1)
                 attachments[i] = image->GetLayerImageView(m_Specification.ExistingImageLayers[i]);
             else
-                attachments[i] = image->GetImageInfo().ImageView;
+                attachments[i] = image->GetImageInfo().view;
             SEDX_CORE_ASSERT(attachments[i]);
         }
 
         if (m_DepthAttachmentImage)
         {
-            if (Ref<Image2D> image = m_DepthAttachmentImage.As<Image2D>(); m_Specification.ExistingImage && image->GetSpecification().Layers > 1)
+            if (Ref<Image2D> image = m_DepthAttachmentImage.As<Image2D>(); m_Specification.ExistingImage && image->GetSpecification().layers > 1)
             {
                 SEDX_CORE_ASSERT(m_Specification.ExistingImageLayers.size() == 1, "Depth attachments do not support deinterleaving");
                 attachments.emplace_back(image->GetLayerImageView(m_Specification.ExistingImageLayers[0]));
             }
             else
-                attachments.emplace_back(image->GetImageInfo().ImageView);
+                attachments.emplace_back(image->GetImageInfo().view);
 
             SEDX_CORE_ASSERT(attachments.back());
         }
@@ -377,12 +379,12 @@ namespace SceneryEditorX
         framebufferCreateInfo.height = m_Height;
         framebufferCreateInfo.layers = 1;
 
-        VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &m_Framebuffer));
+        VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &m_Framebuffer))
         SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_FRAMEBUFFER, m_Specification.DebugName, m_Framebuffer);
     }
 	
-	void Framebuffer::Release()
-	{
+	void Framebuffer::Release() const
+    {
         if (m_Framebuffer)
         {
             VkFramebuffer framebuffer = m_Framebuffer;
@@ -396,13 +398,13 @@ namespace SceneryEditorX
             if (!m_Specification.ExistingFramebuffer)
             {
                 uint32_t attachmentIndex = 0;
-                for (Ref<Image2D> image : m_AttachmentImages)
+                for (const Ref<Image2D> &image : m_AttachmentImages)
                 {
                     if (m_Specification.ExistingImages.contains(attachmentIndex))
                         continue;
 
                     ///< Only destroy deinterleaved image once and prevent clearing layer views on second framebuffer invalidation
-                    if (image->GetSpecification().Layers == 1 || attachmentIndex == 0 && !image->GetLayerImageView(0))
+                    if (image->GetSpecification().layers == 1 || attachmentIndex == 0 && !image->GetLayerImageView(0))
                         image->Release();
                     attachmentIndex++;
                 }

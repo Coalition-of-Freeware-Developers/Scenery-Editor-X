@@ -18,12 +18,15 @@
 namespace SceneryEditorX
 {
 
+	/*
 	Pipeline::Pipeline()
 	{
 		//SEDX_CORE_ASSERT()
         Create();
 	}
+	*/
 
+    /*
     Pipeline::~Pipeline()
     {
         /*
@@ -47,14 +50,16 @@ namespace SceneryEditorX
                 pipelineCache = VK_NULL_HANDLE;
             }
         }
-        */
+        #1#
 
         const auto device = RenderContext::GetCurrentDevice()->GetDevice();
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineCache(device, pipelineCache, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     }
+    */
 
+    /*
     void Pipeline::Create()
 	{
         Pipeline &pipeline = *this; /// Reference to the current pipeline instance
@@ -162,15 +167,15 @@ namespace SceneryEditorX
                 attributeDescs[i].location = i;
                 attributeDescs[i].format = (VkFormat)vertexAttributes[i];
                 attributeDescs[i].offset = attributeSize;
-                if (vertexAttributes[i] == ImageFormat::RG32_sfloat)
+                if (vertexAttributes[i] == VkFormat::RG32_sfloat)
                 {
                     attributeSize += 2 * sizeof(float);
                 }
-                else if (vertexAttributes[i] == ImageFormat::RGB32_sfloat)
+                else if (vertexAttributes[i] == VkFormat::RGB32_sfloat)
                 {
                     attributeSize += 3 * sizeof(float);
                 }
-                else if (vertexAttributes[i] == ImageFormat::RGBA32_sfloat)
+                else if (vertexAttributes[i] == VkFormat::RGBA32_sfloat)
                 {
                     attributeSize += 4 * sizeof(float);
                 }
@@ -428,7 +433,7 @@ namespace SceneryEditorX
         /// Get the bindless descriptor set layout from the device
         if (device->GetBindlessResources().bindlessDescriptorSetLayout != VK_NULL_HANDLE)
             layouts.push_back(device->GetBindlessResources().bindlessDescriptorSetLayout);
-        #1#
+        #2#
 
             /// Create the graphics pipeline layout
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -468,8 +473,9 @@ namespace SceneryEditorX
             shaderPtr.Reset();
             //vkDestroyShaderModule(device->GetDevice(), fragShaderModule, nullptr);
             //vkDestroyShaderModule(device->GetDevice(), vertShaderModule, nullptr);
-        }*/
+        }#1#
 	}
+	*/
 
     // Changed to utilize Shader class for shader module creation
     /*
@@ -494,11 +500,13 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    /*
     VkExtent2D Pipeline::GetFloatSwapExtent() const
     {
         auto extent = vkSwapChain->GetSwapExtent();
         return extent;
     }
+    */
 
     /*
 	bool Pipeline::dynamicLineWidth() const

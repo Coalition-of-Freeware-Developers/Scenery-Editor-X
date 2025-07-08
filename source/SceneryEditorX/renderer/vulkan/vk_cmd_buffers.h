@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/render_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 
 /// -------------------------------------------------------
@@ -57,7 +57,7 @@ namespace SceneryEditorX
 	private:
         Ref<CommandBuffer> cmdBuffers;
         Ref<VulkanDevice> vkDevice;
-        Ref<SwapChain> swapChain;
+        SwapChain swapChain;
         VkCommandBuffer activeCmdBuffer = nullptr;
         VkCommandPool cmdPool = nullptr;
 

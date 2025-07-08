@@ -30,8 +30,12 @@ namespace SceneryEditorX
     VertexBuffer::VertexBuffer(void *data, uint64_t size, VertexBufferType usage) : m_Size(size)
     {
         m_LocalData.Allocate(size);
+        if (data)
+            m_LocalData.Write(data, size, 0);
 
         Ref<VertexBuffer> instance = this;
+        /// Create a shared reference to this instance for the render thread
+        Ref<VertexBuffer> instance(this);
         Renderer::Submit([instance]() mutable {
             auto device = RenderContext::GetCurrentDevice();
             MemoryAllocator allocator("VertexBuffer");
@@ -43,7 +47,13 @@ namespace SceneryEditorX
 
             instance->m_MemoryAllocation =
                 allocator.AllocateBuffer(vertexBufferCreateInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, instance->m_VulkanBuffer);
+            instance->m_MemoryAllocation = allocator.AllocateBuffer(vertexBufferCreateInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, instance->m_VulkanBuffer);
         });
+    }
+
+    Ref<VertexBuffer> VertexBuffer::CreateBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity)
+    {
+        return CreateRef<VertexBuffer>(CreateBuffer(type, vertexFormat, initialCapacity));
     }
 
     VertexBuffer::~VertexBuffer()
@@ -97,26 +107,12 @@ namespace SceneryEditorX
 
     Buffer VertexBuffer::Create() const
     {
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-        VkBuffer stagingBuffer = nullptr;
-        VmaAllocation stagingBufferAllocation = nullptr;
 
-	    /// --------------------------------------
-
-        CreateBuffer(bufferSize, BufferUsage::TransferSrc, CPU, "VertexStagingBuffer#");
-        void *data = allocator->MapMemory<void>(stagingBufferAllocation);
-        memcpy(data, vertices.data(), (size_t)bufferSize);
-        MemoryAllocator::UnmapMemory(stagingBufferAllocation);
-
-		/// --------------------------------------
-
-        CreateBuffer(bufferSize, BufferUsage::Vertex | BufferUsage::TransferDst, GPU, "VertexBuffer#");
-        CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-		/// --------------------------------------
-
-        allocator->DestroyBuffer(stagingBuffer, stagingBufferAllocation);
-        return {};
+    Ref<VertexBuffer> VertexBuffer::Create(const void* data, uint64_t size, VertexBufferType usage)
+    {
+        /// Create a new VertexBuffer instance
+        Ref<VertexBuffer> vertexBuffer = CreateRef<VertexBuffer>(data, size, usage);
+        return vertexBuffer;
     }
 
 } // namespace SceneryEditorX

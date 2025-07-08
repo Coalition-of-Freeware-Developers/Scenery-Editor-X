@@ -96,20 +96,26 @@ namespace SceneryEditorX
     {
     }
 
+    /*
     Ref<Image2D> RenderPass::GetOutput(uint32_t index)
     {
         return {};
     }
+    */
 
+    /*
     Ref<Image2D> RenderPass::GetDepthOutput()
     {
         return {};
     }
+    */
 
+    /*
     uint32_t RenderPass::GetFirstSetIndex() const
     {
         return 0;
     }
+    */
 
     Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const
     {
@@ -193,6 +199,7 @@ namespace SceneryEditorX
 	 * @note The created render pass handle is stored in the renderPass member.
 	 * @throws Logs an error if vkCreateRenderPass fails.
 	 */
+	/*
 	void RenderPass::CreateRenderPass()
 	{
 	    VkAttachmentDescription colorAttachment{};
@@ -261,6 +268,7 @@ namespace SceneryEditorX
 	    if (vkCreateRenderPass(device, &renderPassInfo, RenderContext::Get()->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
 	        SEDX_CORE_ERROR("Failed to create render pass!");
 	}
+	*/
 
 	/*
 	void RenderPass::CreateDescriptorSets() const
@@ -349,6 +357,7 @@ namespace SceneryEditorX
      * - The method ends the command buffer and submits it for execution after mipmap generation.
      * - If the image format does not support linear blitting, an error is logged.
      */
+    /*
     void RenderPass::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const
     {
         Ref<VulkanPhysicalDevice> physicalDevice;
@@ -467,6 +476,7 @@ namespace SceneryEditorX
 
         cmdBuffer->End(submitInfo);
     }
+    */
 
 	/**
 	 * @brief Creates a Vulkan image and allocates memory for it.
@@ -491,6 +501,7 @@ namespace SceneryEditorX
 	 * @note The created image is initialized with VK_IMAGE_LAYOUT_UNDEFINED.
 	 * @note The image is created with exclusive sharing mode.
 	 */
+	/*
 	void RenderPass::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels,
 	                             VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
 	                             VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const
@@ -527,6 +538,7 @@ namespace SceneryEditorX
 	
 	    vkBindImageMemory(device, image, imageMemory, 0);
 	}
+	*/
 
 } // namespace SceneryEditorX
 

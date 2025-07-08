@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
@@ -73,8 +74,8 @@ namespace SceneryEditorX
 
         void CreateRenderPass();
 		
-		virtual Ref<Image2D> GetOutput(uint32_t index);
-        virtual Ref<Image2D> GetDepthOutput();
+		//virtual Ref<Image2D> GetOutput(uint32_t index);
+        //virtual Ref<Image2D> GetDepthOutput();
         virtual uint32_t GetFirstSetIndex() const;
 
         virtual Ref<Framebuffer> GetTargetFramebuffer() const;

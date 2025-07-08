@@ -226,7 +226,7 @@ namespace SceneryEditorX
         const auto &cmd = GetCurrentCommandResources();
 
         constexpr VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        auto swapchain = swapChain->GetSwapchain();
+        const VkSwapchainKHR swapchain = swapChain.GetSwapchain();
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

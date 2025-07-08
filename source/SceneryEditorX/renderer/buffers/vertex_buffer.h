@@ -45,11 +45,6 @@ namespace SceneryEditorX
             Vec2 texCoord; ///< Texture coordinates of the vertex.
 
             /**
-             * @brief Default constructor
-             */
-            Vertex() = default;
-
-            /**
              * @brief Constructor with position.
              *
              * @param position 3D position of the vertex.
@@ -126,7 +121,6 @@ namespace SceneryEditorX
             }
         };
 
-		
 		/**
 		 * @enum VertexBufferType
 		 * @brief Defines the type and usage pattern of vertex buffer.
@@ -196,8 +190,21 @@ namespace SceneryEditorX
          */
         std::vector<VkVertexInputAttributeDescription> CreateAttributeDescriptions(uint32_t binding) const;
 
+        /**
+         * @brief Creates and initializes the internal Vulkan buffer
+         * @return Buffer wrapper containing the created buffer
+         */
         Buffer Create() const;
         Buffer Release() const;
+
+        /**
+         * @brief Static factory method to create a vertex buffer with raw data
+         * @param data Pointer to vertex data
+         * @param size Size of the data in bytes
+         * @param usage Buffer usage type (default: Static)
+         * @return Ref<VertexBuffer> Smart pointer to the created vertex buffer
+         */
+        static Ref<VertexBuffer> Create(const void* data, uint64_t size, VertexBufferType usage = VertexBufferType::Static);
 
         /**
          * @brief Gets the Vulkan buffer handle
@@ -292,7 +299,7 @@ namespace SceneryEditorX
         VkBuffer vertexBuffer = VK_NULL_HANDLE;             ///< Handle to the Vulkan vertex buffer
         VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE; ///< Handle to the allocated memory for the vertex buffer
         VmaAllocation vertexBuffersAllocation;              ///< Allocation handle for uniform buffers
-        BufferResource internalBuffer;						///< Buffer wrapper 
+        BufferResource internalBuffer;						///< Buffer wrapper
         uint32_t capacity = 0;								///< Capacity in number of vertices
         bool isInitialized = false;							///< Whether the buffer has been initialized
 

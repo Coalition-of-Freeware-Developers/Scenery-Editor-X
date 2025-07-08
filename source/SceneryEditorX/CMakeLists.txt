@@ -94,7 +94,7 @@ ADD_LIBRARY(AppCore
 	renderer/primitives.h
 	renderer/renderer.cpp
 	renderer/renderer.h
-	renderer/render_data.h
+	#renderer/render_data.h
 	renderer/render_context.cpp
 	renderer/render_context.h
 	renderer/render_config.h
@@ -232,7 +232,7 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/primitives.h
 	renderer/renderer.cpp
 	renderer/renderer.h
-	renderer/render_data.h
+	#renderer/render_data.h
 	renderer/render_context.cpp
 	renderer/render_context.h
 	renderer/render_config.h

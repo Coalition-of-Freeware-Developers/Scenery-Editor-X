@@ -127,6 +127,22 @@ namespace SceneryEditorX
             VulkanMemoryUtils::DestroyBuffer(buffer, allocation);
         }
 
+		/**
+		 * @brief Provides descriptor information for the buffer resource
+		 * 
+		 * This method returns a ResourceDescriptorInfo that contains the necessary
+		 * information for binding this buffer resource in a Vulkan pipeline.
+		 * 
+		 * @return ResourceDescriptorInfo Opaque pointer containing resource-specific
+		 *         descriptor information. The actual type and content depend on the
+		 *         specific resource implementation (e.g., VkDescriptorBufferInfo).
+		 */
+        virtual ResourceDescriptorInfo GetDescriptorInfo() const override
+        {
+            // Provide a valid descriptor info for the buffer
+            return nullptr;
+        }  
+
     };
 
     /// -------------------------------------------------------

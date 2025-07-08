@@ -68,6 +68,24 @@ namespace SceneryEditorX
         indexBufferAllocation = nullptr;
     }
 
+    Ref<IndexBuffer> IndexBuffer::Create(const void* data, uint64_t size)
+    {
+        // Create a new IndexBuffer instance
+        Ref<IndexBuffer> indexBuffer = CreateRef<IndexBuffer>();
+        
+        // Set up the indices data from the raw data
+        const uint32_t* indexData = static_cast<const uint32_t*>(data);
+        uint32_t indexCount = static_cast<uint32_t>(size / sizeof(uint32_t));
+        
+        indexBuffer->indices.resize(indexCount);
+        memcpy(indexBuffer->indices.data(), indexData, size);
+        
+        // Create the actual buffer on the GPU
+        indexBuffer->Create();
+        
+        return indexBuffer;
+    }
+
 }
 
 /// --------------------------------------------

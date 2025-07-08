@@ -13,6 +13,7 @@
 #pragma once
 #include <glm/gtc/integer.hpp>
 #include <imgui/imgui.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h> /// Used by VmaAllocation in struct. !MUST KEEP!
 
@@ -58,6 +59,7 @@ namespace SceneryEditorX
 	    };
     }
 
+    /*
 	enum ImageFormat : uint8_t
     {
         RGBA8_unorm			= 37,
@@ -68,6 +70,7 @@ namespace SceneryEditorX
         D32_sfloat			= 126,
         D24_unorm_S8_uint	= 129,
     };
+	*/
 
     inline void GetVkFormat()
     {
@@ -127,6 +130,7 @@ namespace SceneryEditorX
 		bool fromSwapchain = false;
 		std::vector<VkImageView> layersView;
 		std::vector<ImTextureID> imguiRIDs;
+        virtual ResourceDescriptorInfo GetDescriptorInfo() const override;
 
     };
 
@@ -139,7 +143,7 @@ namespace SceneryEditorX
 	    uint32_t height = 0;
         uint32_t mips = 1;
         uint32_t layers = 1;
-        ImageFormat format;
+        VkFormat format;
         ImageUsageFlags usage;
         Layout::ImageLayout layout;
         AspectFlags aspect;
@@ -152,7 +156,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    inline bool IsDepthFormat(const ImageFormat format)
+    inline bool IsDepthFormat(const VkFormat format)
     {
         if (format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D32_SFLOAT_S8_UINT)
             return true;
@@ -165,7 +169,7 @@ namespace SceneryEditorX
     struct ImageDescriptions
     {
         std::string name;
-        ImageFormat format;
+        VkFormat format;
         ImageUsageFlags usage;
         uint32_t width = 1;
         uint32_t height = 1;

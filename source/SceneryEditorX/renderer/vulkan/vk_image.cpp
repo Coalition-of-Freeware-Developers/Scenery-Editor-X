@@ -20,12 +20,13 @@
 namespace SceneryEditorX
 {
 
+	/*
 	static std::map<VkImage, WeakRef<Image2D>> s_ImageReferences;
 
     /**
 	 * @brief 
 	 * @param specification 
-	 */
+	 #1#
 	Image2D::Image2D(const Image& specification) : m_Specification(specification)
 	{
 		SEDX_CORE_VERIFY(m_Specification.width > 0 && m_Specification.height > 0);
@@ -132,7 +133,7 @@ namespace SceneryEditorX
 		if (m_Specification.format == ImageFormat::DEPTH24STENCIL8)
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		VkFormat vulkanFormat = ImageFormat(m_Specification.format);
+		VkFormat vulkanFormat = VkFormat(m_Specification.format);
 
 		VmaMemoryUsage memoryUsage = m_Specification.usage == ImageUsage::HostRead ? VMA_MEMORY_USAGE_GPU_TO_CPU : VMA_MEMORY_USAGE_GPU_ONLY;
 
@@ -256,10 +257,10 @@ namespace SceneryEditorX
 		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-		if (m_Specification.format == ImageFormat::DEPTH24STENCIL8)
+		if (m_Specification.format == VkFormat::DEPTH24STENCIL8)
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		const VkFormat vulkanFormat = Utils::ImageFormat(m_Specification.format);
+		const VkFormat vulkanFormat = Utils::VkFormat(m_Specification.format);
 
 		m_PerLayerImageViews.resize(m_Specification.layers);
 		for (uint32_t layer = 0; layer < m_Specification.layers; layer++)
@@ -304,7 +305,7 @@ namespace SceneryEditorX
 		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-		if (m_Specification.format == ImageFormat::DEPTH24STENCIL8)
+		if (m_Specification.format == VkFormat::DEPTH24STENCIL8)
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
 		VkFormat vulkanFormat = Utils::VulkanImageFormat(m_Specification.format);
@@ -334,7 +335,7 @@ namespace SceneryEditorX
 		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-		if (m_Specification.format == ImageFormat::DEPTH24STENCIL8)
+		if (m_Specification.format == VkFormat::DEPTH24STENCIL8)
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
 		const VkFormat vulkanFormat = Utils::VulkanImageFormat(m_Specification.format);
@@ -365,7 +366,7 @@ namespace SceneryEditorX
 
 	void Image2D::UpdateDescriptor()
 	{
-		if (m_Specification.format == ImageFormat::DEPTH24STENCIL8 || m_Specification.format == ImageFormat::DEPTH32F || m_Specification.format == ImageFormat::DEPTH32FSTENCIL8UINT)
+		if (m_Specification.format == VkFormat::DEPTH24STENCIL8 || m_Specification.format == VkFormat::DEPTH32F || m_Specification.format == VkFormat::DEPTH32FSTENCIL8UINT)
 			m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 		else if (m_Specification.usage == ImageUsage::Storage)
 			m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -597,7 +598,6 @@ namespace SceneryEditorX
 		allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
 	}
 
-
 	ImageView::ImageView(ImageViewData spec) : m_Specification(std::move(spec))
 	{
 		Invalidate();
@@ -624,7 +624,6 @@ namespace SceneryEditorX
 		    instance->Invalidate_RenderThread();
 		});
 	}
-
 
 	void ImageView::Invalidate_RenderThread()
 	{
@@ -658,6 +657,7 @@ namespace SceneryEditorX
 		m_DescriptorImageInfo = vulkanImage->GetDescriptorInfoVulkan();
 		m_DescriptorImageInfo.imageView = m_ImageView;
 	}
+	*/
 
 }
 

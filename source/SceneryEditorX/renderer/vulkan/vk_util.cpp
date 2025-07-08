@@ -12,6 +12,7 @@
 */
 #include <cstdlib>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include <SceneryEditorX/renderer/vulkan/vk_data.h>
 
 /// -------------------------------------------------------
 
@@ -757,6 +758,38 @@ const char *VkObjectTypeToString(const VkObjectType objectType)
 
     SEDX_CORE_ASSERT(false);
     return "";
+}
+
+
+GLOBAL const char* VendorIDToString(const uint32_t vendorID)
+{
+    // ReSharper disable once CppDefaultCaseNotHandledInSwitchStatement
+    switch (vendorID)
+    {
+    case 0x10DE: return "NVIDIA";
+    case 0x1002: return "AMD";
+    case 0x8086: return "INTEL";
+    case 0x13B5: return "ARM";
+    }
+    return "Unknown";
+}
+
+void SetDeviceVendorName(const uint32_t vendorID)
+{
+    VendorIDToString(vendorID);
+}
+
+void GetDeviceName(const std::string &deviceName)
+{
+	if (deviceName.empty())
+	{
+		SEDX_CORE_ERROR("Device name is empty!");
+		return;
+	}
+
+	SceneryEditorX::RenderData deviceData;
+    deviceData.Device = deviceName;
+
 }
 
 /// -------------------------------------------------------

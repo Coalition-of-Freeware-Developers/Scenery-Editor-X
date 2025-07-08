@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/vulkan/image_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_image.h>
 
 
 /// ---------------------------------------------------------
@@ -23,9 +24,9 @@ namespace SceneryEditorX
     struct FramebufferTextureSpecification
     {
         FramebufferTextureSpecification() = default;
-        FramebufferTextureSpecification(ImageFormat format) : Format(format) {}
+        FramebufferTextureSpecification(VkFormat format) : Format(format) {}
 
-        ImageFormat Format;
+        VkFormat Format;
         bool Blend = true;
         FramebufferBlendMode BlendMode = FramebufferBlendMode::SrcAlphaOneMinusSrcAlpha;
         AttachmentLoadOp LoadOp = AttachmentLoadOp::Inherit;
@@ -112,7 +113,7 @@ namespace SceneryEditorX
 		virtual const FramebufferSpecification& GetSpecification() const { return m_Specification; }
         void Invalidate();
         void Invalidate_RenderThread();
-        void Release();
+        void Release() const;
 	private:
         FramebufferSpecification m_Specification;
         ResourceID m_ResourceID = 0;

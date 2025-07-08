@@ -27,7 +27,7 @@ namespace SceneryEditorX
      * Index buffers store the indices that define how vertices are connected
      * to form geometry primitives (triangles).
      */
-    class IndexBuffer
+    class IndexBuffer : public RefCounted
     {
     public:
         /**
@@ -54,8 +54,15 @@ namespace SceneryEditorX
          */
         void Create() const;
 
+        void Release() const;
 
-		void Release() const;
+        /**
+         * @brief Static factory method to create an index buffer with raw data
+         * @param data Pointer to index data
+         * @param size Size of the data in bytes
+         * @return Ref<IndexBuffer> Smart pointer to the created index buffer
+         */
+        static Ref<IndexBuffer> Create(const void* data, uint64_t size);
 
     private:
         Ref<MemoryAllocator> allocator;		 ///< Reference to the memory allocator

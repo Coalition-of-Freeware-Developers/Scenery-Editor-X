@@ -30,7 +30,7 @@ namespace SceneryEditorX
 
     /// -----------------------------------------------------------
 
-    class Image2D
+    class Image2D : Resource
     {
     public:
         Image2D(const Image &ImageSpec);
@@ -86,7 +86,7 @@ namespace SceneryEditorX
 		ImageResource& GetImageInfo() { return m_Info; }
 		[[nodiscard]] const ImageResource &GetImageInfo() const { return m_Info; }
 
-		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
+		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
 		[[nodiscard]] const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
 
         [[nodiscard]] virtual Buffer GetBuffer() const { return m_ImageData; }

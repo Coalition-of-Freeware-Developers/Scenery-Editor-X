@@ -156,12 +156,11 @@ namespace SceneryEditorX
 	    SEDX_ASSERT(vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, &resource->buffer, &resource->allocation, nullptr));
 	    
 	    /// Create and populate the buffer wrapper
-	    Buffer buffer = {
-	        .resource = resource,
-	        .size = size,
-	        .usage = usage,
-	        .memory = memory,
-	    };
+	    Buffer buffer;
+	    buffer.resource = resource;
+	    buffer.size = size;
+	    buffer.usage = usage;
+	    buffer.memory = memory;
 
 	    /// Handle storage buffer descriptors for bindless access
 	    if (usage & BufferUsage::Storage)
@@ -237,23 +236,24 @@ namespace SceneryEditorX
         return CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU, name.empty() ? "Staging Buffer" : name);
     }
 
-    /*
-    GLOBAL void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
-        Ref<CommandBuffer> commandBuffer = GraphicsEngine::Get()->GetCommandBuffer();
-        //VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+        // Get device and command buffer from render context
+        const auto device = RenderContext::Get()->GetLogicDevice();
+        VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
         VkBufferCopy copyRegion{};
         copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer->GetActiveCmdBuffer(), srcBuffer, dstBuffer, 1, &copyRegion);
+        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-        EndCommands(commandBuffer->GetActiveCmdBuffer());
+        device->FlushCmdBuffer(commandBuffer);
     }
 
-    GLOBAL void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
     {
-        Ref<CommandBuffer> commandBuffer = GraphicsEngine::Get()->GetCommandBuffer();
-        //VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+        /// Get device and command buffer from render context
+        const auto device = RenderContext::Get()->GetLogicDevice();
+        const VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
         VkBufferImageCopy region;
         region.bufferOffset = 0;
@@ -263,17 +263,13 @@ namespace SceneryEditorX
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
-        region.imageOffset = {.x = 0, .y = 0, .z = 0};
-        /// Assuming WindowData::width and WindowData::height are accessible and are the intended values.
-        /// If width and height parameters are intended, use them instead.
-        /// For now, using the parameters passed to the function.
-        region.imageExtent = {.width = width, .height = height, .depth = 1};
+        region.imageOffset = {.x = 0,.y = 0,.z = 0};
+        region.imageExtent = {.width = width,.height = height,.depth = 1};
 
-        vkCmdCopyBufferToImage(commandBuffer->GetActiveCmdBuffer(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        EndCommands(commandBuffer->GetActiveCmdBuffer());
+        device->FlushCmdBuffer(commandBuffer);
     }
-    */
 
     /// ----------------------------------------------------------
 

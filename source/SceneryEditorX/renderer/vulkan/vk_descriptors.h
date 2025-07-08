@@ -117,7 +117,7 @@ namespace SceneryEditorX
         VkDescriptorSet     targetDescriptorSet;
         uint32_t            targetDescriptorBinding;
         uint32_t            targetArrayElement;
-	    /* -----------------------------------*/
+	    ///----------------------------------------///
         VkDescriptorSet     sourceDescriptorSet;
         uint32_t            sourceDescriptorBinding;
         uint32_t            sourceArrayElement;
@@ -321,11 +321,11 @@ namespace SceneryEditorX
 
         RenderPassInput(Ref<StorageBufferSet> storageBufferSet) : Type(ResourceType::StorageBufferSet), Input(std::vector<Ref<RefCounted>>(1, storageBufferSet)) {}
 
-        RenderPassInput(Ref<Texture2D> texture) : Type(ResourceType::Texture2D), Input(std::vector<Ref<RefCounted>>(1, texture)) {}
+        //RenderPassInput(Ref<Texture2D> texture) : Type(ResourceType::Texture2D), Input(std::vector<Ref<RefCounted>>(1, texture)) {}
 
-        RenderPassInput(Ref<TextureCube> texture) : Type(ResourceType::TextureCube), Input(std::vector<Ref<RefCounted>>(1, texture)) {}
+        //RenderPassInput(Ref<TextureCube> texture) : Type(ResourceType::TextureCube), Input(std::vector<Ref<RefCounted>>(1, texture)) {}
 
-        RenderPassInput(Ref<Image2D> image) : Type(ResourceType::Image2D), Input(std::vector<Ref<RefCounted>>(1, image)) {}
+        //RenderPassInput(Ref<Image2D> image) : Type(ResourceType::Image2D), Input(std::vector<Ref<RefCounted>>(1, image)) {}
 
         void Set(Ref<UniformBuffer> uniformBuffer, uint32_t index = 0)
         {
@@ -351,36 +351,42 @@ namespace SceneryEditorX
             Input[index] = storageBufferSet;
         }
 
+        /*
         void Set(Ref<Texture2D> texture, uint32_t index = 0)
         {
             Type = ResourceType::Texture2D;
             Input[index] = texture;
         }
+        */
 
+        /*
         void Set(Ref<TextureCube> texture, uint32_t index = 0)
         {
             Type = ResourceType::TextureCube;
             Input[index] = texture;
         }
+        */
 
+        /*
         void Set(Ref<Image2D> image, uint32_t index = 0)
         {
             Type = ResourceType::Image2D;
             Input[index] = image;
-        }
+        }*/
 
+        /*
         void Set(Ref<ImageView> image, uint32_t index = 0)
         {
             Type = ResourceType::Image2D;
             Input[index] = image;
-        }
+        }*/
     };
 
     /// -------------------------------------------------------
 
     struct RenderPassInputDeclaration
     {
-        RenderPassInputType Type = RenderPassInputType::None;
+        //RenderPassInputType Type = RenderPassInputType::None;
         uint32_t Set = 0;
         uint32_t Binding = 0;
         uint32_t Count = 0;
@@ -392,7 +398,7 @@ namespace SceneryEditorX
         Ref<Shader> Shader;
         std::string DebugName;
 
-        // Which descriptor sets should be managed
+        /// Which descriptor sets should be managed
         uint32_t StartSet = 0, EndSet = 3;
 
         bool DefaultResources = false;
@@ -434,8 +440,8 @@ namespace SceneryEditorX
         void AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer);
         //void AddInput(std::string_view name, Ref<Texture2D> texture, uint32_t index = 0);
         //void AddInput(std::string_view name, Ref<TextureCube> textureCube);
-        void AddInput(std::string_view name, Ref<Image2D> image);
-        void AddInput(std::string_view name, Ref<ImageView> image);
+        //void AddInput(std::string_view name, Ref<Image2D> image);
+        //void AddInput(std::string_view name, Ref<ImageView> image);
 
         template <typename T>
         Ref<T> GetInput(std::string_view name)
