@@ -481,7 +481,7 @@ namespace SceneryEditorX
         uint32_t frameIndex = 0;
 
         /** @brief Maximum number of frames that can be processed simultaneously (triple buffering) */
-        uint32_t framesInFlight = 3;
+        mutable uint32_t framesInFlight = 3;
 
         /** @brief Maximum number of images that can be used in the swap chain */
         uint32_t maxImageCount;

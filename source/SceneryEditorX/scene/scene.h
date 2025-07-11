@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/scene/asset.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/node.h>
@@ -19,6 +20,23 @@
 
 namespace SceneryEditorX
 {
+
+
+	class Environment : public Asset
+	{
+	public:
+		Ref<TextureCube> RadianceMap;
+		Ref<TextureCube> IrradianceMap;
+
+		Environment() = default;
+		Environment(const Ref<TextureCube>& radianceMap, const Ref<TextureCube>& irradianceMap)
+			: RadianceMap(radianceMap), IrradianceMap(irradianceMap) {}
+
+		static ObjectType GetStaticType() { return ObjectType::EnvMap; }
+		virtual ObjectType GetAssetType() const override { return GetStaticType(); }
+
+	};
+
     /*
     struct Serializer;
 	class EditorConfig;

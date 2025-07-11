@@ -10,7 +10,10 @@
 * Created: 18/3/2025
 * -------------------------------------------------------
 */
+// ReSharper disable StringLiteralTypo
 #include <cstdlib>
+
+#include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
 
@@ -802,4 +805,7 @@ namespace SceneryEditorX::Util
         return s_ResourceAllocationCounts;
     }
 
+
 }
+
+/// -------------------------------------------------------

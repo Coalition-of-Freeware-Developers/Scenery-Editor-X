@@ -12,17 +12,17 @@
 */
 #include <SceneryEditorX/core/application.h>
 #include <SceneryEditorX/logging/profiler.hpp>
+#include <SceneryEditorX/renderer/buffers/index_buffer.h>
+#include <SceneryEditorX/renderer/buffers/storage_buffer.h>
+#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
+#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
-
-#include "buffers/index_buffer.h"
-#include "buffers/storage_buffer.h"
-#include "buffers/uniform_buffer.h"
-#include "buffers/vertex_buffer.h"
-
-#include "shaders/shader.h"
+#include <SceneryEditorX/scene/scene.h>
 
 /// -------------------------------------------------------
 
@@ -34,8 +34,8 @@ namespace SceneryEditorX
         Ref<VertexBuffer> QuadVertexBuffer;
         Ref<IndexBuffer> QuadIndexBuffer;
 
-        Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
-        std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
+        //Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
+        //std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
         VkDescriptorSet ActiveRendererDescriptorSet = nullptr;
         std::vector<VkDescriptorPool> DescriptorPools;
         VkDescriptorPool MaterialDescriptorPool;
@@ -67,6 +67,8 @@ namespace SceneryEditorX
     /// Static variable
     LOCAL RendererProperties *s_Data = nullptr;
     LOCAL RenderData* m_renderData = nullptr;
+    constexpr static uint32_t s_RenderCommandQueueCount = 2;
+    static CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
 
     /// -------------------------------------------------------
 
@@ -75,22 +77,29 @@ namespace SceneryEditorX
         return RenderContext::Get();
     }
 
+    /*
     Ref<Image> && Renderer::GetBRDFLutTexture()
     {
         return s_Data->BRDFLutTexture;
     }
+    */
 
     void Renderer::Init()
     {
         /// Initialize the rendering system. This includes setting up the render context, command buffers, etc.
 
-        /// Get the render context
-        /// Initialize the context if needed
+        /// Get the render context (Initialize the context if needed)
         if (const auto context = GetContext())
             context->Init();
 
 		s_Data = hnew RendererProperties;
+        s_CommandQueue[0] = hnew CommandQueue();
+        s_CommandQueue[1] = hnew CommandQueue();
+
         const auto &config = GetRenderData();
+        // Make sure we don't have more frames in flight than swapchain images
+        config.framesInFlight = glm::min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
+
         s_Data->DescriptorPools.resize(config.framesInFlight);
         s_Data->DescriptorPoolAllocationCount.resize(config.framesInFlight);
 
@@ -131,9 +140,10 @@ namespace SceneryEditorX
 
 		
 		/// Create fullscreen quad
-		float x = -1;
-		float y = -1;
-		float width = 2, height = 2;
+        constexpr float x = -1;
+        constexpr float y = -1;
+        constexpr float width = 2;
+        constexpr float height = 2;
 		struct QuadVertex
 		{
 			glm::vec3 Position;
@@ -158,7 +168,27 @@ namespace SceneryEditorX
 		uint32_t indices[6] = { 0, 1, 2, 2, 3, 0, };
 		s_Data->QuadIndexBuffer = IndexBuffer::Create(indices, 6 * sizeof(uint32_t));
 
-		s_Data->BRDFLut = Renderer::GetBRDFLutTexture();
+		//s_Data->BRDFLut = Renderer::GetBRDFLutTexture();
+
+        uint32_t whiteTextureData = 0xffffffff;
+        TextureSpecification spec;
+        spec.Format = VK_FORMAT_R8G8B8A8_UNORM;
+		spec.Width = 1;
+		spec.Height = 1;
+		s_Data->WhiteTexture = Texture2D::Create(spec, Buffer(&whiteTextureData, sizeof(uint32_t)));
+
+		constexpr uint32_t blackTextureData = 0xff000000;
+		s_Data->BlackTexture = Texture2D::Create(spec, Buffer(&blackTextureData, sizeof(uint32_t)));
+
+		{
+			TextureSpecification spec;
+			spec.SamplerWrap = UVWrap::Clamp;
+			s_Data->BRDFLutTexture = Texture2D::Create(spec, std::filesystem::path("assets/Renderer/BRDF_LUT.png"));
+		}
+
+		constexpr uint32_t blackCubeTextureData[6] = { 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000 };
+        s_Data->BlackCubeTexture = CreateRef<TextureCube>(spec, Buffer(blackCubeTextureData, sizeof(blackCubeTextureData)));
+
     }
 
     void Renderer::Shutdown()
@@ -190,15 +220,19 @@ namespace SceneryEditorX
         return resourceFreeQueue[index];
     }
 
+    /*
     uint32_t Renderer::GetRenderQueueIndex()
     {
         return m_renderData->s_RenderQueueIndex;
     }
+    */
 
+    /*
     uint32_t Renderer::GetRenderQueueSubmissionIndex()
     {
         return m_renderData->s_RenderQueueSubmissionIndex;
     }
+    */
 
     uint32_t Renderer::GetCurrentFrameIndex()
     {
@@ -225,7 +259,7 @@ namespace SceneryEditorX
     void Renderer::WaitAndRender(ThreadManager *renderThread)
     {
         renderThread->WaitAndSet(ThreadManager::State::Kick, ThreadManager::State::Busy);
-        m_renderData->s_cmdQueue[GetRenderQueueIndex()]->Execute();
+        m_renderData->s_CommandQueue[GetRenderQueueIndex()]->Execute();
 
 		/// Rendering has completed, set state to idle
         renderThread->Set(ThreadManager::State::Idle);
@@ -233,10 +267,12 @@ namespace SceneryEditorX
         SubmitFrame();
     }
 
+    /*
     void Renderer::SwapQueues()
     {
         m_renderData->s_cmdQueueSubmissionIdx = (m_renderData->s_cmdQueueSubmissionIdx + 1) % m_renderData->s_cmdQueueCount;
     }
+    */
 
     uint32_t Renderer::GetCurrentRenderThreadFrameIndex()
     {
@@ -249,20 +285,20 @@ namespace SceneryEditorX
         return m_renderData->DescriptorPoolAllocationCount[frameIndex];
     }
 
-    VkSampler Renderer::CreateSampler(VkSamplerCreateInfo samplerCreateInfo)
+    VkSampler Renderer::CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo)
     {
-        auto device = RenderContext::GetCurrentDevice();
+        const auto device = RenderContext::GetCurrentDevice();
 
 		VkSampler sampler;
         vkCreateSampler(device->GetDevice(), &samplerCreateInfo, nullptr, &sampler);
 
-		SceneryEditorX::Util::GetResourceAllocationCounts().Samplers++;
+		Util::GetResourceAllocationCounts().Samplers++;
 
 		return sampler;
     }
 
     /// -------------------------------------------------------
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

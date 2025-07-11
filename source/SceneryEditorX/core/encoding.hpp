@@ -87,7 +87,7 @@ namespace SceneryEditorX
         void HashCombine(uint32_t &h, const T &v)
         {
 			std::hash<T> hash;
-			uint64_t temp = static_cast<uint64_t>(hash(v)) + 0x9e3779b9 + (static_cast<uint64_t>(h) << 6) + (static_cast<uint64_t>(h) >> 2);
+			const uint64_t temp = static_cast<uint64_t>(hash(v)) + 0x9e3779b9 + (static_cast<uint64_t>(h) << 6) + (static_cast<uint64_t>(h) >> 2);
 			h ^= static_cast<uint32_t>(temp); /// Cast back to uint32_t after the calculation
         }
 

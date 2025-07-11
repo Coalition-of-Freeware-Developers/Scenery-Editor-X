@@ -7,11 +7,12 @@ MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
 
-FILE(GLOB LOGGER logging/*.cpp logging//*.h logging//*.hpp)
+FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
 FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
+FILE(GLOB REFLECTION_FILES utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
 FILE(GLOB SCENE scene/*.cpp scene/*.h scene/*.hpp)
-FILE(GLOB UTILITIES_FILES utils/*.cpp utils/*.h utils/*.hpp)
 FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.comp shaders/*.geom shaders/*.tesc shaders/*.tese)
+FILE(GLOB SERIALIZER_FILES serialization/*.h serialization/*.cpp serialization/*.hpp)
 FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
 FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
 FILE(GLOB GFX_DEBUG renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
@@ -35,8 +36,9 @@ ADD_LIBRARY(AppCore
 	${SCENE}
 	${ASSET_FILES}
 	${PROJECT_CONFIG_FILES}
-	${UTILITIES_FILES}
+	${SERIALIZER_FILES}
 	${SCENE_FILES}
+	${REFLECTION_FILES}
 	${SHADER_FILES}
 	${VULKAN_FILES}
 	${GFX_DEBUG}
@@ -56,9 +58,8 @@ ADD_LIBRARY(AppCore
 	core/modules/module_stage.h
 	core/memory.cpp
 	core/memory.h
-	core/pointers.cpp
+
 	core/pointers.h
-	core/serializer.hpp
 	core/steam_parser.cpp
 	core/steam_parser.h
 	core/threading/thread.cpp
@@ -94,11 +95,14 @@ ADD_LIBRARY(AppCore
 	renderer/primitives.h
 	renderer/renderer.cpp
 	renderer/renderer.h
-	#renderer/render_data.h
+	renderer/image_data.cpp
+	renderer/image_data.h
 	renderer/render_context.cpp
 	renderer/render_context.h
 	renderer/render_config.h
 	renderer/stb_image_impl.cpp
+	renderer/texture.cpp
+	renderer/texture.h
 	renderer/xp_pbr.cpp
 	renderer/xp_pbr.h
 	renderer/xp_texture.cpp
@@ -106,10 +110,14 @@ ADD_LIBRARY(AppCore
 	# --------------------------------
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
-	renderer/shaders/shader_resource.cpp
-	renderer/shaders/shader_resource.h
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
+	renderer/shaders/shader_module.h
+	renderer/shaders/shader_pack.cpp
+	renderer/shaders/shader_pack.h
+	renderer/shaders/shader_resource.cpp
+	renderer/shaders/shader_resource.h
+	renderer/shaders/shader_uniforms.h
 	# --------------------------------
 	renderer/buffers/framebuffer.cpp
 	renderer/buffers/framebuffer.h
@@ -139,6 +147,12 @@ ADD_LIBRARY(AppCore
 	#ui/actions/modals.cpp
 	#ui/actions/viewports.cpp
     # --------------------------------
+	utils/conversions.cpp
+	utils/conversions.h
+	utils/formatter.h
+	utils/string.cpp
+	utils/string.h
+	utils/string_utils.h
     resource.h
 )
 
@@ -155,7 +169,6 @@ SOURCE_GROUP("Core" FILES
 	core/base.hpp
 	core/memory.cpp
 	core/memory.h
-	core/pointers.cpp
 	core/pointers.h
 	core/module.cpp
 	core/module.h
@@ -191,7 +204,7 @@ SOURCE_GROUP("Encoding" FILES
 	core/encoding.hpp
 )
 SOURCE_GROUP("Serialization" FILES
-	core/serializer.hpp
+	${SERIALIZER_FILES}
 )
 SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	renderer/buffers/framebuffer.cpp
@@ -232,11 +245,14 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/primitives.h
 	renderer/renderer.cpp
 	renderer/renderer.h
-	#renderer/render_data.h
+	renderer/image_data.cpp
+	renderer/image_data.h
 	renderer/render_context.cpp
 	renderer/render_context.h
 	renderer/render_config.h
 	renderer/stb_image_impl.cpp
+	renderer/texture.cpp
+	renderer/texture.h
 	renderer/xp_pbr.cpp
 	renderer/xp_pbr.h
 	renderer/xp_texture.cpp
@@ -255,13 +271,25 @@ SOURCE_GROUP("Scene" FILES
 SOURCE_GROUP("Renderer/Shaders" FILES
 	renderer/shaders/shader.cpp
 	renderer/shaders/shader.h
-	renderer/shaders/shader_resource.cpp
-	renderer/shaders/shader_resource.h
 	renderer/shaders/shader_compiler.cpp
 	renderer/shaders/shader_compiler.h
+	renderer/shaders/shader_module.h
+	renderer/shaders/shader_pack.cpp
+	renderer/shaders/shader_pack.h
+	renderer/shaders/shader_resource.cpp
+	renderer/shaders/shader_resource.h
+	renderer/shaders/shader_uniforms.h
 )
 SOURCE_GROUP("Utilities" FILES
-	${UTILITIES_FILES}
+	utils/conversions.cpp
+	utils/conversions.h
+	utils/formatter.h
+	utils/string.cpp
+	utils/string.h
+	utils/string_utils.h
+)
+SOURCE_GROUP("Utilities/Reflection" FILES
+	${REFLECTION_FILES}
 )
 SOURCE_GROUP("Renderer/UI" FILES
 	ui/colors.h

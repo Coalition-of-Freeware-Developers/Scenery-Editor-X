@@ -12,7 +12,7 @@
 */
 #include <random>
 #include <SceneryEditorX/core/encoding.hpp>
-#include <SceneryEditorX/core/serializer.hpp>
+#include <SceneryEditorX/serialization/serializer.hpp>
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/core/time.h>
 #include <SceneryEditorX/scene/asset.h>

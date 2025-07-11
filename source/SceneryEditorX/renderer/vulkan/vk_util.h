@@ -314,7 +314,7 @@ namespace SceneryEditorX::Util
 	};
 	
 	ResourceAllocationCounts &GetResourceAllocationCounts();
-		
+
 }
 
 /// -------------------------------------------------------

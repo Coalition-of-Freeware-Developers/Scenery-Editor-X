@@ -16,9 +16,9 @@
 #include <SceneryEditorX/core/threading/thread_manager.h>
 #include <SceneryEditorX/platform/platform_states.h>
 #include <SceneryEditorX/renderer/command_queue.h>
+#include <SceneryEditorX/renderer/image_data.h>
+#include <SceneryEditorX/renderer/shaders/shader_library.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
-
-#include "vulkan/image_data.h"
 
 /// -------------------------------------------------------
 
@@ -95,7 +95,7 @@ namespace SceneryEditorX
 			}
 		}
 
-		//GLOBAL Ref<ShaderLibrary> GetShaderLibrary();
+		GLOBAL Ref<ShaderLibrary> GetShaderLibrary();
         GLOBAL CommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
         GLOBAL uint32_t GetRenderQueueIndex();
         GLOBAL uint32_t GetRenderQueueSubmissionIndex();
@@ -107,7 +107,7 @@ namespace SceneryEditorX
 		GLOBAL void SwapQueues();
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
-        VkSampler CreateSampler(VkSamplerCreateInfo samplerCreateInfo);
+        VkSampler CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Render Pass

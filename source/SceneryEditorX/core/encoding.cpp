@@ -32,10 +32,10 @@ namespace SceneryEditorX
      */
     LOCAL bool IsBase64(const unsigned char c)
     {
-        return (c == 43 ||              // +
-                (c >= 47 && c <= 57) || // /-9
-                (c >= 65 && c <= 90) || // A-Z
-                (c >= 97 && c <= 122)); // a-z
+        return (c == 43 ||              /// +
+                (c >= 47 && c <= 57) || /// /-9
+                (c >= 65 && c <= 90) || /// A-Z
+                (c >= 97 && c <= 122)); /// a-z
     }
 
     /**
@@ -168,9 +168,8 @@ namespace SceneryEditorX
         std::ranges::sort(vec);
         std::size_t seed = vec.size();
         for (const auto &value : vec)
-        {
             seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        }
+
         return seed;
     }
 
