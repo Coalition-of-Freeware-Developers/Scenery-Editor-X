@@ -2,8 +2,6 @@
 
 ---
 
-
-
 ## Overview
 
 The Scenery Editor X threading system provides a comprehensive multi-platform threading framework designed specifically for high-performance Vulkan-based 3D rendering applications. The system consists of four core components that work together to manage thread creation, synchronization, and render thread coordination.
@@ -28,8 +26,6 @@ The threading system is built around four main components:
 - **Performance Focus**: Optimized for high-frequency render loop operations
 
 ---
-
-
 
 ## File Documentation
 
@@ -136,8 +132,6 @@ ThreadSignal::ThreadSignal(const std::string &name, const bool manualReset)
 
 ---
 
-
-
 ### thread_manager.h
 
 Defines the high-level thread management system for coordinating application and render threads.
@@ -207,8 +201,6 @@ private:
 
 ---
 
-
-
 ### thread_manager.cpp
 
 Contains the implementation of thread coordination logic and render pipeline management.
@@ -250,8 +242,6 @@ void ThreadManager::WaitAndSet(State waitForState, State setToState)
 
 ---
 
-
-
 ## Usage Examples and Patterns
 
 ### Basic Thread Creation
@@ -281,10 +271,10 @@ ThreadSignal frameStartSignal("FrameStart", true);
 void WorkerThreadFunc() {
     while (running) {
         frameStartSignal.Wait();
-      
+    
         // Perform rendering work
         RenderFrame();
-      
+    
         // Signal completion
         renderCompleteSignal.Signal();
     }
@@ -339,17 +329,17 @@ public:
         // Geometry pass
         m_threadManager.Kick();
         m_geometryReady.Wait();
-      
+    
         // Lighting pass
         PrepareLightingData();
         m_threadManager.Set(ThreadManager::State::Kick);
         m_lightingReady.Wait();
-      
+    
         // Post-processing
         PreparePostProcessData();
         m_threadManager.Set(ThreadManager::State::Kick);
         m_postProcessReady.Wait();
-      
+    
         // Present
         m_threadManager.BlockUntilRenderComplete();
     }
@@ -374,7 +364,7 @@ public:
     void LoadTextureAsync(const std::string& path) {
         m_workerThread.Dispatch([this, path]() {
             auto texture = CreateRef<Texture>(path);
-          
+        
             std::lock_guard<std::mutex> lock(m_resourceMutex);
             m_pendingTextures.push_back(texture);
         });
@@ -397,12 +387,12 @@ public:
     Ref<T> AllocateAsync(Args&&... args) {
         auto promise = std::make_shared<std::promise<Ref<T>>>();
         auto future = promise->get_future();
-      
+    
         m_allocationThread.Dispatch([promise, args...]() {
             auto object = CreateRef<T>(std::forward<Args>(args)...);
             promise->set_value(object);
         });
-      
+    
         return future.get();
     }
 };
@@ -441,7 +431,7 @@ private:
 public:
     void ProcessBatch() {
         std::vector<std::function<void()>> batch;
-      
+    
         {
             std::lock_guard<std::mutex> lock(m_queueMutex);
             while (!m_workQueue.empty()) {
@@ -449,7 +439,7 @@ public:
                 m_workQueue.pop();
             }
         }
-      
+    
         // Process entire batch without interruption
         for (auto& work : batch) {
             work();
@@ -473,18 +463,18 @@ void RenderLoop() {
     while (applicationRunning) {
         // Application thread: Update logic
         UpdateScene();
-      
+    
         // Prepare render commands
         CommandBuffer cmd = AcquireCommandBuffer();
         RecordRenderCommands(cmd);
-      
+    
         // Submit to render thread
         threadManager.NextFrame();
         threadManager.Kick();
-      
+    
         // Wait for GPU completion
         threadManager.BlockUntilRenderComplete();
-      
+    
         // Present frame
         SwapBuffers();
     }
@@ -511,7 +501,7 @@ public:
                 PerformTextureUpload(texture);
                 m_uploadComplete.Signal();
             });
-          
+        
             // Wait for completion
             m_uploadComplete.Wait();
             m_uploadComplete.Reset();
@@ -552,19 +542,19 @@ class ThreadProfiler {
 public:
     static void ProfileRenderThread() {
         Thread profileThread("Profiler");
-      
+    
         profileThread.Dispatch([]() {
             SEDX_PROFILE_THREAD("Render Thread Profiler");
-          
+        
             while (profilingActive) {
                 auto start = std::chrono::high_resolution_clock::now();
-              
+            
                 // Wait for render thread state change
                 ThreadManager::WaitForState(ThreadManager::State::Busy);
-              
+            
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-              
+            
                 SEDX_PROFILE_SCOPE_DURATION("Frame Time", duration.count());
             }
         });

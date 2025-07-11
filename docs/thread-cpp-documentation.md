@@ -1,5 +1,7 @@
 # Thread.cpp - Implementation Documentation
 
+---
+
 ## Overview
 
 The `thread.cpp` file contains the Windows-specific implementation of the Thread and ThreadSignal classes. It provides optimized thread management with debugging support, thread affinity settings, and efficient event-based synchronization using Windows API primitives.
@@ -45,11 +47,13 @@ Thread::Thread(const std::string &name)
 **Purpose**: Initializes a Thread object with the specified name. The actual thread is not created until `Dispatch()` is called.
 
 **Implementation Notes**:
+
 - Simple member initialization
 - No OS resources allocated at construction time
 - Follows RAII principles for delayed resource acquisition
 
 **Memory Management**:
+
 - No dynamic allocation in constructor
 - Thread-safe construction process
 - Exception-safe initialization
@@ -72,59 +76,68 @@ void Thread::SetName(const std::string &name)
 **Implementation Breakdown**:
 
 1. **Native Handle Acquisition**:
+
    ```cpp
    HANDLE threadHandle = mem_thread.native_handle();
    ```
+
    - Retrieves the Windows HANDLE from the std::thread
    - Enables access to Windows-specific thread APIs
    - Handle is valid only after thread creation
-
 2. **String Conversion**:
+
    ```cpp
    std::wstring str(name.begin(), name.end());
    ```
+
    - Converts UTF-8 string to wide string (UTF-16)
    - Required for Windows Unicode API compatibility
    - Handles international characters properly
-
 3. **Thread Description Setting**:
+
    ```cpp
    SetThreadDescription(threadHandle, str.c_str());
    ```
+
    - Uses Windows 10 Version 1607+ API
    - Visible in debuggers (Visual Studio, WinDbg)
    - Appears in profiling tools (Intel VTune, Process Explorer)
    - No-op on older Windows versions (graceful degradation)
-
 4. **Thread Affinity Configuration**:
+
    ```cpp
    SetThreadAffinityMask(threadHandle, 8);
    ```
+
    - Sets thread affinity to CPU core 8 (bit mask: 0x08)
    - Provides consistent performance characteristics
    - Reduces context switching overhead
    - Optimal for render threads in multi-core systems
-
 5. **Internal State Update**:
+
    ```cpp
    this->name = name;
    ```
+
    - Updates internal name storage
    - Maintains consistency with OS-level naming
 
 **Performance Considerations**:
+
 - Thread affinity setting improves cache locality
 - Reduces CPU migration overhead
 - Core 8 selection based on typical Intel CPU topology
 - May need adjustment for different CPU architectures
 
 **Debugging Benefits**:
+
 - Thread names appear in Visual Studio debugger threads window
 - RenderDoc captures show named threads
 - Process Explorer displays thread names
 - Simplifies multi-threaded debugging workflows
 
 **Usage Example with Error Handling**:
+
 ```cpp
 void SafeSetName(Thread& thread, const std::string& name) {
     try {
@@ -149,28 +162,31 @@ void Thread::Join()
 **Purpose**: Safely waits for thread completion with proper state checking.
 
 **Implementation Details**:
+
 - **Joinability Check**: Prevents exceptions from calling join() on non-joinable threads
 - **Thread Safety**: Safe to call multiple times
 - **Exception Safety**: No exceptions thrown if thread is not joinable
 
 **Thread States and Joinability**:
+
 - **Joinable**: Thread was created and hasn't been joined or detached
 - **Non-Joinable**: Thread was never started, already joined, or detached
 
 **Best Practices Integration**:
+
 ```cpp
 // RAII pattern for automatic joining
 class ScopedThread {
 private:
     Thread m_thread;
-    
+  
 public:
     ScopedThread(const std::string& name) : m_thread(name) {}
-    
+  
     ~ScopedThread() {
         m_thread.Join();  // Safe automatic cleanup
     }
-    
+  
     template<typename Func, typename... Args>
     void Start(Func&& func, Args&&... args) {
         m_thread.Dispatch(std::forward<Func>(func), std::forward<Args>(args)...);
@@ -190,11 +206,13 @@ std::thread::id Thread::GetThreadID() const
 **Purpose**: Returns the unique thread identifier for debugging and thread comparison.
 
 **Implementation Notes**:
+
 - Returns `std::thread::id` for type safety
 - const-qualified for read-only access
 - Thread-safe operation
 
 **Usage Patterns**:
+
 ```cpp
 // Thread identification in logging
 Thread workerThread("Data Processor");
@@ -229,43 +247,49 @@ ThreadSignal::ThreadSignal(const std::string &name, const bool manualReset)
 **Implementation Breakdown**:
 
 1. **String Conversion**:
+
    ```cpp
    std::wstring str(name.begin(), name.end());
    ```
+
    - Converts to wide string for Windows Unicode API
    - Handles international characters in event names
    - Consistent with Windows naming conventions
-
 2. **Event Creation**:
+
    ```cpp
    signalHandle = CreateEventW(nullptr, manualReset ? TRUE : FALSE, FALSE, str.c_str());
    ```
 
 **CreateEventW Parameters**:
+
 - **Security Attributes** (`nullptr`): Default security, not inheritable
 - **Manual Reset** (`manualReset ? TRUE : FALSE`): Controls reset behavior
 - **Initial State** (`FALSE`): Event starts in non-signaled state
 - **Name** (`str.c_str()`): Named event for debugging and system monitoring
 
 **Event Types**:
+
 - **Auto-Reset Events** (`manualReset = false`):
+
   - Automatically reset after releasing one waiting thread
   - Ideal for single-threaded notifications
   - Producer-consumer scenarios
-
 - **Manual-Reset Events** (`manualReset = true`):
+
   - Remain signaled until explicitly reset
   - Release all waiting threads simultaneously
   - Barrier synchronization scenarios
 
 **Error Handling Considerations**:
+
 ```cpp
 // Enhanced constructor with error handling
 ThreadSignal::ThreadSignal(const std::string &name, const bool manualReset)
 {
     std::wstring str(name.begin(), name.end());
     signalHandle = CreateEventW(nullptr, manualReset ? TRUE : FALSE, FALSE, str.c_str());
-    
+  
     if (signalHandle == nullptr) {
         DWORD error = GetLastError();
         SEDX_CORE_ERROR("Failed to create event '{}': Windows error {}", name, error);
@@ -286,22 +310,25 @@ void ThreadSignal::Wait()
 **Purpose**: Blocks the calling thread until the event is signaled.
 
 **Implementation Details**:
+
 - **WaitForSingleObject**: Efficient kernel-level wait
 - **INFINITE Timeout**: Blocks indefinitely until signaled
 - **Return Value**: Ignored (assumes success for simplicity)
 
 **Performance Characteristics**:
+
 - **Kernel Transition**: Thread switches to kernel mode for waiting
 - **CPU Efficiency**: Thread yields CPU while waiting
 - **Wake-up Latency**: Minimal latency when event is signaled
 - **Memory Usage**: No busy-waiting, minimal memory overhead
 
 **Enhanced Implementation with Error Handling**:
+
 ```cpp
 void ThreadSignal::Wait()
 {
     DWORD result = WaitForSingleObject(signalHandle, INFINITE);
-    
+  
     switch (result) {
         case WAIT_OBJECT_0:
             // Success - event was signaled
@@ -318,12 +345,13 @@ void ThreadSignal::Wait()
 ```
 
 **Timeout Variant Implementation**:
+
 ```cpp
 bool ThreadSignal::WaitTimeout(std::chrono::milliseconds timeout)
 {
     DWORD timeoutMs = static_cast<DWORD>(timeout.count());
     DWORD result = WaitForSingleObject(signalHandle, timeoutMs);
-    
+  
     switch (result) {
         case WAIT_OBJECT_0:
             return true;  // Signaled
@@ -351,15 +379,18 @@ void ThreadSignal::Signal()
 **Purpose**: Sets the event to signaled state, releasing waiting threads.
 
 **Implementation Details**:
+
 - **SetEvent**: Windows API for event signaling
 - **Atomic Operation**: Thread-safe signaling
 - **Return Value**: Ignored for simplicity
 
 **Behavior by Event Type**:
+
 - **Auto-Reset**: Releases one waiting thread, then automatically resets
 - **Manual-Reset**: Releases all waiting threads, remains signaled
 
 **Enhanced Implementation**:
+
 ```cpp
 void ThreadSignal::Signal()
 {
@@ -371,6 +402,7 @@ void ThreadSignal::Signal()
 ```
 
 **Performance Considerations**:
+
 - **Kernel Call Overhead**: Minimal system call overhead
 - **Thread Wake-up**: Immediate wake-up of waiting threads
 - **Scalability**: Efficient with multiple waiting threads
@@ -387,11 +419,13 @@ void ThreadSignal::Reset()
 **Purpose**: Manually resets the event to non-signaled state.
 
 **Implementation Details**:
+
 - **ResetEvent**: Windows API for manual reset
 - **Manual-Reset Events**: Primarily used with manual-reset events
 - **Auto-Reset Events**: Usually not needed (automatic reset)
 
 **Usage Patterns**:
+
 ```cpp
 // Barrier pattern with manual-reset event
 ThreadSignal barrier("Thread Barrier", true);
@@ -407,6 +441,7 @@ barrier.Reset();
 ```
 
 **Enhanced Implementation**:
+
 ```cpp
 void ThreadSignal::Reset()
 {
@@ -428,7 +463,7 @@ void ThreadSignal::Reset()
 void Thread::SetName(const std::string &name)
 {
     // ... existing implementation ...
-    
+  
     // Additional debugging support
     #ifdef _DEBUG
     // Set thread name for Visual Studio debugger (legacy method)
@@ -439,13 +474,13 @@ void Thread::SetName(const std::string &name)
         DWORD dwThreadID; // Thread ID (-1=caller thread)
         DWORD dwFlags;    // Reserved for future use, must be zero
     };
-    
+  
     THREADNAME_INFO info;
     info.dwType = 0x1000;
     info.szName = name.c_str();
     info.dwThreadID = GetCurrentThreadId();
     info.dwFlags = 0;
-    
+  
     __try {
         RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
     }
@@ -464,12 +499,12 @@ class ThreadPerformanceMonitor {
 private:
     HANDLE m_threadHandle;
     std::string m_threadName;
-    
+  
 public:
     ThreadPerformanceMonitor(const Thread& thread) 
         : m_threadHandle(thread.GetNativeHandle())
         , m_threadName(thread.GetName()) {}
-    
+  
     double GetCPUUsage() {
         FILETIME creationTime, exitTime, kernelTime, userTime;
         if (GetThreadTimes(m_threadHandle, &creationTime, &exitTime, &kernelTime, &userTime)) {
@@ -478,7 +513,7 @@ public:
         }
         return 0.0;
     }
-    
+  
     void LogPerformanceStats() {
         SEDX_CORE_INFO("Thread '{}' CPU usage: {:.2f}%", m_threadName, GetCPUUsage());
     }
@@ -528,7 +563,7 @@ private:
     Thread m_thread;
     std::atomic<bool> m_hasException{false};
     std::exception_ptr m_exceptionPtr;
-    
+  
 public:
     template<typename Func, typename... Args>
     void DispatchSafe(Func&& func, Args&&... args) {
@@ -542,7 +577,7 @@ public:
             }
         });
     }
-    
+  
     void JoinAndRethrow() {
         m_thread.Join();
         if (m_hasException && m_exceptionPtr) {
@@ -559,29 +594,29 @@ public:
 class ThreadSignalRAII {
 private:
     void* m_handle;
-    
+  
 public:
     ThreadSignalRAII(const std::string& name, bool manualReset = false) {
         std::wstring wName(name.begin(), name.end());
         m_handle = CreateEventW(nullptr, manualReset ? TRUE : FALSE, FALSE, wName.c_str());
-        
+      
         if (m_handle == nullptr) {
             throw std::runtime_error("Failed to create event: " + name);
         }
     }
-    
+  
     ~ThreadSignalRAII() {
         if (m_handle != nullptr) {
             CloseHandle(m_handle);
         }
     }
-    
+  
     // Move semantics
     ThreadSignalRAII(ThreadSignalRAII&& other) noexcept
         : m_handle(other.m_handle) {
         other.m_handle = nullptr;
     }
-    
+  
     ThreadSignalRAII& operator=(ThreadSignalRAII&& other) noexcept {
         if (this != &other) {
             if (m_handle != nullptr) {
@@ -592,7 +627,7 @@ public:
         }
         return *this;
     }
-    
+  
     // Delete copy operations
     ThreadSignalRAII(const ThreadSignalRAII&) = delete;
     ThreadSignalRAII& operator=(const ThreadSignalRAII&) = delete;
@@ -611,40 +646,40 @@ private:
     ThreadSignal m_frameStart;
     ThreadSignal m_commandsReady;
     ThreadSignal m_renderComplete;
-    
+  
 public:
     VulkanRenderCoordinator() 
         : m_renderThread("Vulkan Render Thread")
         , m_frameStart("Frame Start")
         , m_commandsReady("Commands Ready") 
         , m_renderComplete("Render Complete") {
-        
+      
         m_renderThread.Dispatch([this]() {
             VulkanRenderLoop();
         });
     }
-    
+  
 private:
     void VulkanRenderLoop() {
         // Set thread name for RenderDoc captures
         m_renderThread.SetName("Vulkan Render Thread");
-        
+      
         while (m_running) {
             m_frameStart.Wait();
-            
+          
             // Record command buffers
             RecordCommandBuffers();
             m_commandsReady.Signal();
-            
+          
             // Submit to GPU
             SubmitToGPU();
-            
+          
             // Wait for GPU completion
             WaitForGPU();
             m_renderComplete.Signal();
         }
     }
-    
+  
 public:
     void RenderFrame() {
         m_frameStart.Signal();
@@ -664,31 +699,31 @@ private:
     ThreadSignal m_loadRequest;
     ThreadSignal m_loadComplete;
     std::atomic<float> m_progress{0.0f};
-    
+  
 public:
     Ref<Asset> LoadAssetAsync(const std::string& path) {
         auto assetPromise = CreateRef<std::promise<Ref<Asset>>>();
         auto assetFuture = assetPromise->get_future();
-        
+      
         m_loaderThread.Dispatch([this, path, assetPromise]() {
             try {
                 SEDX_PROFILE_THREAD("Asset Loader");
-                
+              
                 auto asset = LoadAssetFromDisk(path);
                 UpdateProgress(1.0f);
-                
+              
                 assetPromise->set_value(asset);
                 m_loadComplete.Signal();
-                
+              
             } catch (const std::exception& e) {
                 SEDX_CORE_ERROR("Asset loading failed: {}", e.what());
                 assetPromise->set_exception(std::current_exception());
             }
         });
-        
+      
         return assetFuture.get();
     }
-    
+  
 private:
     void UpdateProgress(float progress) {
         m_progress = progress;

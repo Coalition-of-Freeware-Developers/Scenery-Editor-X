@@ -1,4 +1,6 @@
-# Scenery Editor X Assert System Documentation
+# Scenery Editor X - Assert System Documentation
+
+---
 
 ## Overview
 
@@ -129,7 +131,7 @@ class CustomModule : public Module
     void OnUpdate() override
     {
         SEDX_ASSERT(m_IsInitialized, "Module {} not properly initialized", GetName());
-      
+  
         // Update logic...
     }
 };
@@ -224,14 +226,14 @@ public:
     void OnAttach() override
     {
         SEDX_CORE_INFO("=== Initializing {} ===", GetName());
-      
+  
         // Critical initialization - use ASSERT
         SEDX_CORE_ASSERT(InitializeVulkan(), "Failed to initialize Vulkan");
         SEDX_CORE_ASSERT(CreateSwapChain(), "Failed to create swap chain");
-      
+  
         // Non-critical features - use VERIFY
         SEDX_CORE_VERIFY(LoadOptionalExtensions(), "Some optional extensions unavailable");
-      
+  
         m_IsInitialized = true;
         SEDX_CORE_INFO_TAG("INIT", "Renderer module initialized successfully");
     }
@@ -239,12 +241,12 @@ public:
     void OnUpdate() override
     {
         if (!m_IsInitialized) return;
-      
+  
         SEDX_PROFILE_SCOPE("RendererModule::OnUpdate");
-      
+  
         // Runtime validation
         SEDX_CORE_ASSERT(m_Device->IsValid(), "Vulkan device became invalid");
-      
+  
         RenderFrame();
     }
   
@@ -265,17 +267,17 @@ public:
         SEDX_CORE_ASSERT(count > 0, "Cannot allocate zero elements");
         SEDX_CORE_ASSERT(count <= MAX_ALLOCATION_SIZE, 
                          "Allocation size {} exceeds maximum {}", count, MAX_ALLOCATION_SIZE);
-      
+  
         T* ptr = static_cast<T*>(std::malloc(count * sizeof(T)));
         SEDX_CORE_VERIFY(ptr != nullptr, "Memory allocation failed for {} elements", count);
-      
+  
         return ptr;
     }
   
     void Deallocate(T* ptr, size_t count)
     {
         SEDX_CORE_ASSERT(ptr != nullptr, "Cannot deallocate null pointer");
-      
+  
         std::free(ptr);
     }
 };
@@ -292,7 +294,7 @@ public:
         // Input validation with assertions
         SEDX_CORE_ASSERT(size > 0, "Buffer size must be greater than zero");
         SEDX_CORE_ASSERT(usage != 0, "Buffer usage flags cannot be empty");
-      
+  
         // Adjust usage flags based on buffer type
         if (usage & BufferUsage::Vertex)
         {
@@ -300,17 +302,17 @@ public:
             SEDX_CORE_VERIFY(size % sizeof(Vertex) == 0, 
                            "Vertex buffer size {} not aligned to vertex size", size);
         }
-      
+  
         // Create buffer with validation
         const auto device = RenderContext::Get()->GetLogicDevice();
         SEDX_CORE_ASSERT(device != nullptr, "No valid logical device available");
-      
+  
         VkBuffer bufferHandle;
         VkResult result = CreateVulkanBuffer(device, size, usage, &bufferHandle);
-      
+  
         SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan buffer: {}", 
                          VkResultToString(result));
-      
+  
         return Buffer{bufferHandle, size, usage, memory};
     }
 };
@@ -608,5 +610,3 @@ SEDX_CORE_ASSERT(condition, "Validation failed: {}", GetContextInfo());
 3. **Add parameter validation**: Systematically add input validation
 4. **Expand to edge cases**: Add assertions for boundary conditions
 5. **Performance tune**: Review and optimize assertion placement
-
-This assert system provides a foundation for robust, maintainable code that catches errors early in development while maintaining optimal performance in production builds.

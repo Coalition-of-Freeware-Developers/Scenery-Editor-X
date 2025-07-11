@@ -1,5 +1,7 @@
 # Scenery Editor X - Module System Documentation
 
+---
+
 ## Overview
 
 The Module System in Scenery Editor X provides a flexible, component-based architecture for organizing different functional components of the application. This system allows for modular development where each component can be attached, detached, and updated independently, promoting code reusability, maintainability, and clear separation of concerns.
@@ -83,16 +85,16 @@ public:
     void OnAttach() override
     {
         SEDX_CORE_INFO("=== Initializing {} ===", GetName());
-        
+      
         try
         {
             // Critical initialization - use ASSERT for required components
             SEDX_CORE_ASSERT(LoadTerrainShaders(), "Failed to load terrain shaders");
             SEDX_CORE_ASSERT(CreateTerrainBuffers(), "Failed to create terrain buffers");
-            
+          
             // Non-critical features - use VERIFY for graceful degradation
             SEDX_CORE_VERIFY(LoadDefaultTerrain(), "Failed to load default terrain, using fallback");
-            
+          
             m_IsInitialized = true;
             SEDX_CORE_INFO_TAG("INIT", "Terrain module initialized successfully");
         }
@@ -106,31 +108,31 @@ public:
     void OnDetach() override
     {
         SEDX_CORE_INFO("=== Cleaning up {} ===", GetName());
-      
+    
         // Cleanup terrain resources
         CleanupTerrainBuffers();
         UnloadTerrainShaders();
-        
+      
         // Verify cleanup completed successfully
         SEDX_CORE_VERIFY(m_ActiveTerrainChunks.empty(), 
                          "{} terrain chunks leaked during shutdown", m_ActiveTerrainChunks.size());
-      
+    
         m_IsInitialized = false;
     }
   
     void OnUpdate() override
     {
         if (!m_IsEnabled) return;
-        
+      
         SEDX_CORE_ASSERT(m_IsInitialized, "Terrain module update called before initialization");
         SEDX_PROFILE_SCOPE("TerrainModule::OnUpdate");
-      
+    
         // Update terrain LOD based on camera position
         UpdateTerrainLOD();
-      
+    
         // Update terrain streaming
         UpdateTerrainStreaming();
-      
+    
         // Update terrain physics
         UpdateTerrainPhysics();
     }
@@ -138,18 +140,18 @@ public:
     void OnUIRender() override
     {
         if (!m_IsInitialized) return;
-      
+    
         if (ImGui::Begin("Terrain Settings"))
         {
             ImGui::SliderFloat("LOD Distance", &m_LodDistance, 100.0f, 10000.0f);
             ImGui::SliderInt("Max Terrain Chunks", &m_MaxChunks, 16, 256);
-          
+        
             if (ImGui::Button("Regenerate Terrain"))
             {
                 // Validate terrain parameters before regeneration
                 SEDX_ASSERT(m_LodDistance > 0.0f, "LOD distance must be positive");
                 SEDX_ASSERT(m_MaxChunks > 0, "Max chunks must be greater than zero");
-                
+              
                 RegenerateTerrain();
             }
         }
@@ -192,15 +194,15 @@ public:
     void OnAttach() override
     {
         SEDX_CORE_INFO("=== Initializing {} ===", GetName());
-        
+      
         try
         {
             // Critical initialization
             SEDX_ASSERT(LoadSceneryDatabase(), "Failed to load scenery database");
-            
+          
             // Non-critical features with graceful degradation
             SEDX_VERIFY(InitializeFileWatchers(), "File watching disabled - manual refresh required");
-            
+          
             m_IsVisible = true;
             SEDX_CORE_INFO_TAG("INIT", "Scenery browser module initialized successfully");
         }
@@ -214,10 +216,10 @@ public:
     void OnDetach() override
     {
         SEDX_CORE_INFO("=== Cleaning up {} ===", GetName());
-        
+      
         // Cleanup file watchers
         CleanupFileWatchers();
-        
+      
         // Save user preferences with validation
         SEDX_VERIFY(SaveBrowserPreferences(), "Failed to save browser preferences");
     }
@@ -226,7 +228,7 @@ public:
     {
         // Update file watcher events
         ProcessFileWatcherEvents();
-      
+    
         // Update scenery loading status
         UpdateSceneryLoadingStatus();
     }
@@ -234,15 +236,15 @@ public:
     void OnUIRender() override
     {
         if (!m_IsVisible) return;
-      
+    
         if (ImGui::Begin("Scenery Browser", &m_IsVisible))
         {
             // Search bar
             ImGui::InputText("Search", m_SearchBuffer, sizeof(m_SearchBuffer));
-          
+        
             // Category filter
             ImGui::Combo("Category", &m_SelectedCategory, m_Categories, m_CategoryCount);
-          
+        
             // Scenery list
             if (ImGui::BeginChild("SceneryList"))
             {
@@ -252,7 +254,7 @@ public:
                     {
                         OnScenerySelected(scenery);
                     }
-                  
+                
                     // Right-click context menu
                     if (ImGui::BeginPopupContextItem())
                     {
@@ -315,43 +317,43 @@ public:
     void OnAttach() override
     {
         SEDX_CORE_INFO("Lighting module attached - initializing lighting systems");
-      
+    
         // Initialize lighting shaders
         LoadLightingShaders();
-      
+    
         // Create lighting uniform buffers
         CreateLightingBuffers();
-      
+    
         // Set up default lighting
         SetupDefaultLighting();
-      
+    
         m_IsEnabled = true;
     }
   
     void OnDetach() override
     {
         SEDX_CORE_INFO("Lighting module detached - cleaning up lighting resources");
-      
+    
         // Cleanup lighting resources
         CleanupLightingBuffers();
         UnloadLightingShaders();
-      
+    
         m_IsEnabled = false;
     }
   
     void OnUpdate() override
     {
         if (!m_IsEnabled) return;
-      
+    
         // Update dynamic lighting
         UpdateDynamicLights();
-      
+    
         // Update shadow maps
         UpdateShadowMaps();
-      
+    
         // Update lighting uniforms
         UpdateLightingUniforms();
-      
+    
         // Update time-of-day lighting
         UpdateTimeOfDayLighting();
     }
@@ -359,7 +361,7 @@ public:
     void OnUIRender() override
     {
         if (!m_IsEnabled) return;
-      
+    
         if (ImGui::Begin("Lighting Controls"))
         {
             // Sun settings
@@ -370,7 +372,7 @@ public:
                 ImGui::ColorEdit3("Sun Color", &m_SunColor.x);
                 ImGui::SliderFloat("Sun Intensity", &m_SunIntensity, 0.0f, 10.0f);
             }
-          
+        
             // Environment settings
             if (ImGui::CollapsingHeader("Environment"))
             {
@@ -378,7 +380,7 @@ public:
                 ImGui::ColorEdit3("Sky Color", &m_SkyColor.x);
                 ImGui::SliderFloat("Fog Density", &m_FogDensity, 0.0f, 1.0f);
             }
-          
+        
             // Shadow settings
             if (ImGui::CollapsingHeader("Shadows"))
             {

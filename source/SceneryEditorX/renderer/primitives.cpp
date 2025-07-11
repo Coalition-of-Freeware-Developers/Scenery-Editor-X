@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * primitives.cpp
@@ -19,7 +19,7 @@
 
 namespace SceneryEditorX
 {
-	
+
 	/*
 	ObjectType Primitives::CreateBox(const glm::vec3 &size)
 	{
@@ -61,7 +61,7 @@ namespace SceneryEditorX
 		//ObjectType meshSource = Model::CreateMesh(vertices, indices, glm::mat4(1.0f));
 	    return {};
 	}
-	
+
 	ObjectType Primitives::CreateSphere(const float radius)
 	{
         std::vector<MeshVertex> vertices;
@@ -103,7 +103,7 @@ namespace SceneryEditorX
 
         return{};
 	}
-	
+
 	ObjectType Primitives::CreateCylinder(float radius, float height)
 	{
 		std::vector<MeshVertex> vertices;
@@ -141,7 +141,7 @@ namespace SceneryEditorX
 				.tangent = {1.0f, 0.0f, 0.0f, 0.0f},
 				.texCoord = {0.0f, 0.0f}
 			});
-			
+
             vertices.push_back({
                 .position = {x, -height / 2, z},
                 .color = {x, 0, z},
@@ -161,13 +161,8 @@ namespace SceneryEditorX
 
 	    return {};
 	}
-	
+
 	ObjectType Primitives::CreatePlane(const Vec2 &size)
-	{
-	    return {};
-	}
-	
-	ObjectType Primitives::CreatePyramid(const Vec3 &baseSize, float height)
 	{
 	    return {};
 	}

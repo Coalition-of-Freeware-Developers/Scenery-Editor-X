@@ -211,7 +211,8 @@ namespace SceneryEditorX
 		template<typename T>
 		T* MapMemory(const VmaAllocation allocation)
 		{
-			T* mappedMemory;
+            void *mappedMemory = nullptr;
+			//T* mappedMemory;
             vmaMapMemory(GetAllocator(), allocation, static_cast<void **>(&mappedMemory));
 			return mappedMemory;
 		}

@@ -21,6 +21,23 @@
 
 namespace SceneryEditorX
 {
+	namespace Util
+	{
+	    inline VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification& specification, const FramebufferTextureSpecification& attachmentSpecification)
+		{
+			if (attachmentSpecification.LoadOp == AttachmentLoadOp::Inherit)
+			{
+				if (IsDepthFormat(attachmentSpecification.Format))
+					return specification.ClearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+				
+				return specification.ClearColorOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+			}
+	
+			return attachmentSpecification.LoadOp == AttachmentLoadOp::Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+		}
+    }
+
+    /// ---------------------------------------------------------
 
 	Framebuffer::Framebuffer(const FramebufferSpecification &specification) : m_Specification(specification)
 	{
@@ -186,7 +203,7 @@ namespace SceneryEditorX
                 attachmentDescription.flags = 0;
                 attachmentDescription.format = attachmentSpec.Format;
                 attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-                attachmentDescription.loadOp = GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
+                attachmentDescription.loadOp = Util::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
                 attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
                 attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -248,10 +265,10 @@ namespace SceneryEditorX
                         else if (attachmentIndex == 0 && m_Specification.ExistingImageLayers[0] == 0) ///< Only invalidate the first layer from only the first framebuffer
                         {
                             colorAttachment->Invalidate_RenderThread(); ///< Create immediately
-                            colorAttachment->RT_CreatePerSpecificLayerImageViews(m_Specification.ExistingImageLayers);
+                            colorAttachment->CreatePerSpecificLayerImageViews_RenderThread(m_Specification.ExistingImageLayers);
                         }
                         else if (attachmentIndex == 0)
-                            colorAttachment->RT_CreatePerSpecificLayerImageViews(m_Specification.ExistingImageLayers);
+                            colorAttachment->CreatePerSpecificLayerImageViews_RenderThread(m_Specification.ExistingImageLayers);
                     }
                 }
 
@@ -259,7 +276,7 @@ namespace SceneryEditorX
                 attachmentDescription.flags = 0;
                 attachmentDescription.format = attachmentSpec.Format;
                 attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-                attachmentDescription.loadOp = GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
+                attachmentDescription.loadOp = Util::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
                 attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
                 attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -276,7 +293,7 @@ namespace SceneryEditorX
 
         VkSubpassDescription subpassDescription = {};
         subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpassDescription.colorAttachmentCount = uint32_t(colorAttachmentReferences.size());
+        subpassDescription.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentReferences.size());
         subpassDescription.pColorAttachments = colorAttachmentReferences.data();
         if (m_DepthAttachmentImage)
             subpassDescription.pDepthStencilAttachment = &depthAttachmentReference;

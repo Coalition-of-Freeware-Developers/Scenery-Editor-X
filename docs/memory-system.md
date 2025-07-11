@@ -1,5 +1,7 @@
 # Scenery Editor X - Memory System - Development Instructions
 
+---
+
 ## Overview
 
 The memory system contains comprehensive memory allocation tracking, statistics collection, and debugging capabilities for the Scenery Editor X application. This system is designed to help developers monitor memory usage, detect memory leaks, and optimize memory allocation patterns throughout the application lifecycle.
@@ -517,7 +519,7 @@ public:
 };
 ```
 
-## AI Code Generation Rules Summary
+## Code Rules Summary
 
 ### MUST DO:
 
@@ -542,5 +544,3 @@ public:
 - Use appropriate category strings that match the component hierarchy
 - Add debug-only memory usage reporting for new subsystems
 - Follow the existing patterns in the codebase for consistency
-
-This memory system is designed to provide comprehensive tracking without significantly impacting development productivity. Follow these patterns consistently to maintain memory tracking coverage across the entire codebase.

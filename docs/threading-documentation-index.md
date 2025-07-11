@@ -1,5 +1,9 @@
 # Scenery Editor X - Threading Documentation Index
 
+---
+
+
+
 ## Overview
 
 This documentation provides comprehensive coverage of the Scenery Editor X threading system, designed specifically for high-performance Vulkan-based 3D rendering applications. The threading system consists of four core files that work together to provide sophisticated multi-threaded coordination.
@@ -181,7 +185,7 @@ public:
     Ref<Texture> LoadTextureAsync(const std::string& path) {
         auto promise = CreateRef<std::promise<Ref<Texture>>>();
         auto future = promise->get_future();
-      
+    
         m_loaderThread.Dispatch([promise, path]() {
             try {
                 auto texture = CreateRef<Texture>(path);
@@ -190,7 +194,7 @@ public:
                 promise->set_exception(std::current_exception());
             }
         });
-      
+    
         return future.get();
     }
 };
@@ -206,7 +210,7 @@ void ThreadedOperation() {
     workerThread.Dispatch([]() {
         SEDX_PROFILE_THREAD("Worker Thread");
         SEDX_CORE_INFO("Worker thread started");
-      
+    
         try {
             PerformWork();
             SEDX_CORE_INFO("Work completed successfully");
@@ -231,17 +235,17 @@ public:
     void RenderFrame() {
         // Record command buffers on application thread
         RecordCommandBuffers();
-      
+    
         // Coordinate with render thread
         m_threadManager.NextFrame();
         m_threadManager.Kick();
-      
+    
         // Parallel work while render thread processes
         UpdateApplicationState();
-      
+    
         // Wait for render completion
         m_threadManager.BlockUntilRenderComplete();
-      
+    
         // Present frame
         PresentToSwapchain();
     }
@@ -307,7 +311,7 @@ public:
 1. **Use project threading classes** instead of standard library equivalents
 2. **Follow naming conventions** for threads and signals
 3. **Check ThreadingPolicy** before synchronization operations
-4. **Integrate with memory management** system (Ref`<T>`, Scope`<T>`)
+4. **Integrate with memory management** system (Ref `<T>`, Scope `<T>`)
 5. **Use project logging macros** in threaded contexts
 
 ## File Dependencies

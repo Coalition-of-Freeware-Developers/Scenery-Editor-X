@@ -1,4 +1,6 @@
-# Type Utils System Documentation
+# Scenery Editor X - Type Utils System Documentation
+
+---
 
 ## Overview
 
@@ -35,8 +37,9 @@ namespace member_pointer
 ```
 
 **Supported Member Pointer Types:**
+
 - **Member Functions**: `Return(Object::*)(Args...)` → `Return`
-- **Const Member Functions**: `Return(Object::*)(Args...) const` → `Return`  
+- **Const Member Functions**: `Return(Object::*)(Args...) const` → `Return`
 - **Member Objects**: `Return Object::*` → `Return`
 
 ### Template Specialization Detection
@@ -240,7 +243,7 @@ struct MemberList
     using TMemberType = typename member_pointer::return_type<
         std::remove_cvref_t<decltype(std::get<Index>(std::tuple(MemberPointers...)))>
     >::type;
-    
+  
     // Create variant type excluding void (for function return types)
     using TVariant = std::variant<filter_void_t<TMemberType<Indices>>...>;
 };
@@ -282,11 +285,11 @@ template<typename Object, auto MemberPtr>
 void ProcessMember(Object& obj)
 {
     using MemberType = typename member_pointer::return_type<decltype(MemberPtr)>::type;
-    
+  
     if constexpr (std::is_member_object_pointer_v<decltype(MemberPtr)>) {
         // Data member processing
         auto& memberValue = obj.*MemberPtr;
-        
+    
         if constexpr (is_array_v<MemberType>) {
             ProcessArrayData(memberValue);
         } else if constexpr (is_streamable_v<MemberType>) {
@@ -328,7 +331,7 @@ private:
             RenderProperty(object, memberName);
         });
     }
-    
+  
     void RenderFallbackEditor(T& object)
     {
         ImGui::Text("Type '%s' is not reflectable", type_name<T>().data());
@@ -351,12 +354,12 @@ struct TypeFilter
     using StreamableTypes = std::tuple<
         std::conditional_t<is_streamable_v<Types>, Types, void>...
     >;
-    
+  
     // Filter to only array types
     using ArrayTypes = std::tuple<
         std::conditional_t<is_array_v<Types>, Types, void>...
     >;
-    
+  
     // Create variant from valid types (excluding void)
     using ValidVariant = std::variant<filter_void_t<Types>...>;
 };
@@ -369,7 +372,7 @@ void ProcessAllMembers(T& object)
     using FilteredTypes = TypeFilter<
         typename member_pointer::return_type<decltype(Desc::MemberPointers)>::type...
     >;
-    
+  
     typename FilteredTypes::ValidVariant memberValue;
     // Process each member...
 }
@@ -408,6 +411,7 @@ void ProcessAllMembersOptimized(T& object)
 ## Best Practices
 
 ### 1. Prefer Compile-Time Evaluation
+
 ```cpp
 // ✅ Good: Compile-time type checking
 template<typename T>
@@ -433,6 +437,7 @@ void ProcessValueRuntime(const T& value)
 ```
 
 ### 2. Use Type Traits for Template Constraints
+
 ```cpp
 // ✅ Good: Enable template only for valid types
 template<typename T>
@@ -451,6 +456,7 @@ void ProcessArrayType(const T& container)
 ```
 
 ### 3. Combine Utilities for Complex Operations
+
 ```cpp
 // ✅ Good: Combine multiple utilities for robust type handling
 template<typename T>
@@ -471,6 +477,7 @@ auto GetDisplayValue(const T& value) -> std::string
 ```
 
 ### 4. Handle Edge Cases Gracefully
+
 ```cpp
 // ✅ Good: Robust handling of void and other special types
 template<typename T>
@@ -489,6 +496,7 @@ using member_return_type = safe_return_type<
 ## Common Use Cases
 
 ### 1. Generic Serialization Framework
+
 ```cpp
 template<typename T>
 class GenericSerializer
@@ -497,7 +505,7 @@ public:
     nlohmann::json Serialize(const T& object)
     {
         nlohmann::json result;
-        
+    
         if constexpr (is_specialized<Description<T>>::value) {
             SerializeReflected(object, result);
         } else if constexpr (is_streamable_v<T>) {
@@ -507,7 +515,7 @@ public:
         } else {
             result["__error"] = "Type not serializable";
         }
-        
+    
         return result;
     }
 
@@ -522,12 +530,13 @@ private:
             }
         });
     }
-    
+  
     // Additional serialization methods...
 };
 ```
 
 ### 2. Property Inspector System
+
 ```cpp
 template<typename T>
 class PropertyInspector
@@ -536,16 +545,16 @@ public:
     void Inspect(T& object, std::string_view objectName)
     {
         ImGui::Begin(fmt::format("Inspector: {}", objectName).c_str());
-        
+    
         DisplayTypeInfo<T>();
         ImGui::Separator();
-        
+    
         if constexpr (is_specialized<Description<T>>::value) {
             InspectReflectedMembers(object);
         } else {
             InspectFallback(object);
         }
-        
+    
         ImGui::End();
     }
 
@@ -559,7 +568,7 @@ private:
         ImGui::Text("Array-like: %s", is_array_v<U> ? "Yes" : "No");
         ImGui::Text("Described: %s", is_specialized<Description<U>>::value ? "Yes" : "No");
     }
-    
+  
     void InspectReflectedMembers(T& object)
     {
         using Desc = Description<T>;
@@ -568,12 +577,13 @@ private:
             InspectMember(object, memberName, i);
         }
     }
-    
+  
     // Additional inspection methods...
 };
 ```
 
 ### 3. Type-Safe Configuration System
+
 ```cpp
 template<typename T>
 class TypedConfiguration
@@ -587,7 +597,7 @@ public:
         nlohmann::json json;
         json["__type"] = type_name_keep_namespace<T>();
         json["__version"] = GetTypeVersion<T>();
-        
+    
         using Desc = Description<T>;
         for_each_tuple(Desc::MemberNames, [&](auto memberName) {
             auto value = Desc::GetMemberValueByName(memberName, config);
@@ -595,21 +605,21 @@ public:
                 json["data"][std::string{memberName}] = *value;
             }
         });
-        
+    
         std::ofstream file{std::string{filename}};
         file << json.dump(2);
     }
-    
+  
     std::optional<T> Load(std::string_view filename)
     {
         std::ifstream file{std::string{filename}};
         if (!file.is_open()) return std::nullopt;
-        
+    
         nlohmann::json json;
         file >> json;
-        
+    
         if (!ValidateConfigVersion(json)) return std::nullopt;
-        
+    
         T config{};
         LoadConfigData(config, json["data"]);
         return config;
@@ -621,7 +631,7 @@ private:
     {
         return is_streamable_v<U> || is_array_v<U> || is_specialized<Description<U>>::value;
     }
-    
+  
     // Additional configuration methods...
 };
 ```
@@ -629,6 +639,7 @@ private:
 ## Debugging and Troubleshooting
 
 ### Template Instantiation Issues
+
 ```cpp
 // Debug macro to examine template instantiations
 #define DEBUG_TYPE_TRAITS(T) \
@@ -649,7 +660,7 @@ void DiagnoseType()
     std::cout << "Streamable: " << is_streamable_v<T> << "\n";
     std::cout << "Array-like: " << is_array_v<T> << "\n";
     std::cout << "Described: " << is_specialized<Description<T>>::value << "\n";
-    
+  
     if constexpr (is_specialized<Description<T>>::value) {
         std::cout << "Member count: " << Description<T>::NumberOfMembers << "\n";
     }
@@ -657,6 +668,7 @@ void DiagnoseType()
 ```
 
 ### Common Compilation Errors
+
 ```cpp
 // Issue: Member pointer type deduction failure
 // template<auto MemberPtr>
@@ -687,6 +699,7 @@ void ProcessComplex(const T& value) {
 
 This comprehensive type utilities system provides the essential building blocks for the entire Scenery Editor X reflection framework, enabling sophisticated compile-time type manipulation while maintaining excellent performance and broad compiler compatibility.
 auto third = nth_element<2>(10, 20, 30, 40); // Returns 30
+
 ```
 
 ### Compile-Time Loop Unrolling
@@ -751,7 +764,7 @@ template<typename T>
 void ProcessContainer(const T& container)
 {
     static_assert(is_array_v<T>, "Function requires array-like container");
-    
+  
     // Process container elements...
 }
 ```
@@ -819,10 +832,10 @@ public:
     static constexpr bool IsDescribed = is_specialized<Description<T>>::value;
     static constexpr bool IsStreamable = is_streamable_v<T>;
     static constexpr bool IsContainer = is_array_v<T>;
-    
+  
     template<auto MemberPtr>
     using MemberReturnType = typename member_pointer::return_type<decltype(MemberPtr)>::type;
-    
+  
     static void PrintTypeInfo()
     {
         std::cout << "Type: " << type_name<T>() << std::endl;
@@ -845,20 +858,20 @@ class SafeMemberAccessor
 private:
     using MemberType = typename member_pointer::return_type<decltype(MemberPtr)>::type;
     static constexpr bool IsFunction = std::is_member_function_pointer_v<decltype(MemberPtr)>;
-    
+  
 public:
     template<typename ObjectType>
     static auto GetValue(const ObjectType& obj) -> std::enable_if_t<!IsFunction, MemberType>
     {
         return obj.*MemberPtr;
     }
-    
+  
     template<typename ObjectType>
     static auto CallFunction(ObjectType& obj) -> std::enable_if_t<IsFunction, MemberType>
     {
         return (obj.*MemberPtr)();
     }
-    
+  
     static constexpr bool CanGetValue() { return !IsFunction; }
     static constexpr bool CanCall() { return IsFunction; }
     static constexpr size_t GetSize() { return IsFunction ? 0 : sizeof(MemberType); }
@@ -888,7 +901,7 @@ void ProcessIfContainer(const T& item)
 {
     if constexpr (is_array_v<T>) {
         std::cout << "Processing container with " << item.size() << " elements:" << std::endl;
-        
+    
         for (const auto& element : item) {
             if constexpr (is_streamable_v<std::decay_t<decltype(element)>>) {
                 std::cout << "  " << element << std::endl;
@@ -922,25 +935,25 @@ class TypeList
 {
 public:
     static constexpr size_t Count = sizeof...(Types);
-    
+  
     template<size_t Index>
     using TypeAt = std::decay_t<decltype(nth_element<Index>(std::declval<Types>()...))>;
-    
+  
     template<template<typename> class Predicate>
     static constexpr size_t CountIf()
     {
         return (static_cast<size_t>(Predicate<Types>::value) + ...);
     }
-    
+  
     template<typename Visitor>
     static void VisitTypes(Visitor&& visitor)
     {
         (visitor.template operator()<Types>(), ...);
     }
-    
+  
     // Get all streamable types
     static constexpr size_t StreamableCount = CountIf<is_streamable>();
-    
+  
     // Get all container types
     static constexpr size_t ContainerCount = CountIf<is_array>();
 };
@@ -964,7 +977,7 @@ void ProcessTupleElements(const TupleType& tuple, Processor&& processor)
 {
     for_each_tuple(tuple, [&processor](const auto& element) {
         using ElementType = std::decay_t<decltype(element)>;
-        
+    
         if constexpr (is_streamable_v<ElementType>) {
             processor.ProcessStreamable(element);
         } else {
@@ -982,7 +995,7 @@ struct TupleProcessor
     void ProcessStreamable(const T& value) {
         std::cout << "Streamable: " << value << std::endl;
     }
-    
+  
     template<typename T>
     void ProcessNonStreamable(const T& value) {
         std::cout << "Non-streamable: " << type_name<T>() << std::endl;
@@ -1016,14 +1029,14 @@ template<typename T>
 Ref<T> CreateSafeObject()
 {
     static_assert(!std::is_void_v<T>, "Cannot create void objects");
-    
+  
     auto obj = CreateRef<T>();
-    
+  
     if constexpr (is_specialized<Description<T>>::value) {
         SEDX_CORE_INFO_TAG("MEMORY", "Created described object: {}", type_name<T>());
         // Could add automatic registration to reflection system
     }
-    
+  
     return obj;
 }
 ```
@@ -1035,14 +1048,14 @@ class TypeUtilsModule : public Module
 {
 public:
     explicit TypeUtilsModule() : Module("TypeUtilsModule") {}
-    
+  
     void OnAttach() override
     {
         SEDX_CORE_INFO("=== Initializing Type Utils Module ===");
-        
+    
         // Validate utilities with common types
         ValidateUtilities();
-        
+    
         SEDX_CORE_INFO("Type Utils module initialized successfully");
     }
 
@@ -1054,12 +1067,12 @@ private:
             member_pointer::return_type<decltype(&std::string::size)>::type,
             size_t
         >);
-        
+    
         // Test type detection
         static_assert(is_streamable_v<int>);
         static_assert(is_array_v<std::vector<int>>);
         static_assert(!is_array_v<int>);
-        
+    
         SEDX_CORE_INFO_TAG("TYPE_UTILS", "All utility validations passed");
     }
 };
@@ -1068,16 +1081,19 @@ private:
 ## Performance Considerations
 
 ### Compile-Time Optimization
+
 - All type traits are evaluated at compile time
 - Template specializations are cached by the compiler
 - No runtime overhead for type classification
 
 ### Template Instantiation
+
 - Use `static_assert` to catch issues early
 - Prefer `constexpr` over runtime checks where possible
 - Cache expensive template computations in type aliases
 
 ### Memory Usage
+
 - Type traits have zero runtime memory footprint
 - Template specializations may increase binary size
 - Use explicit instantiation for frequently used patterns
@@ -1085,21 +1101,23 @@ private:
 ## Best Practices
 
 ### 1. Type Safety
+
 ```cpp
 template<typename T>
 void ProcessMember(T& obj, auto memberPtr)
 {
     using MemberType = typename member_pointer::return_type<decltype(memberPtr)>::type;
-    
+  
     static_assert(!std::is_void_v<MemberType> || 
                   std::is_member_function_pointer_v<decltype(memberPtr)>,
                   "Non-function members cannot have void type");
-    
+  
     // Safe processing...
 }
 ```
 
 ### 2. Error Messages
+
 ```cpp
 template<typename T>
 void RequireStreamable()
@@ -1111,6 +1129,7 @@ void RequireStreamable()
 ```
 
 ### 3. Conditional Compilation
+
 ```cpp
 template<typename T>
 void OptionallyPrint(const T& value)
@@ -1122,5 +1141,3 @@ void OptionallyPrint(const T& value)
     }
 }
 ```
-
-The Type Utils system provides the foundational metaprogramming infrastructure that enables the sophisticated reflection and type manipulation capabilities throughout Scenery Editor X, ensuring type safety, performance, and cross-platform compatibility.

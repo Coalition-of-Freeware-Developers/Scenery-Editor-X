@@ -203,13 +203,13 @@ namespace SceneryEditorX
 		template<typename T>
 		T& Read(const uint64_t offset = 0)
 		{
-			return *(T*)(static_cast<byte *>(data) + offset);
+			return *static_cast<T *>(static_cast<byte *>(data) + offset);
 		}
 
 		template<typename T>
 		const T& Read(const uint64_t offset = 0) const
 		{
-			return *(T*)(static_cast<byte *>(data) + offset);
+			return *static_cast<T *>(static_cast<byte *>(data) + offset);
 		}
 
         [[nodiscard]] byte* ReadBytes(const uint64_t size, const uint64_t offset) const
@@ -244,7 +244,7 @@ namespace SceneryEditorX
 		template<typename T>
 		T* As() const
 		{
-			return (T*)data;
+			return static_cast<T *>(data);
 		}
 
         [[nodiscard]] uint64_t GetSize() const { return size; }
@@ -331,7 +331,7 @@ namespace SceneryEditorX
      * 
      * @see UnmapBuffer() to unmap the memory when operations are complete
      */
-    void *MapBuffer(BufferResource &buffer);
+    void* MapBuffer(BufferResource &buffer);
 
 	/**
 	 * @brief Unmaps a Vulkan buffer from host-accessible memory

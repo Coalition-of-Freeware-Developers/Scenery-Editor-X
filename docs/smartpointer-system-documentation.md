@@ -1,6 +1,9 @@
 # Scenery Editor X - Smart Pointer System Documentation
 
+---
+
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [Core Components](#core-components)
 3. [Usage Guidelines for GitHub Copilot](#usage-guidelines-for-github-copilot)
@@ -17,6 +20,7 @@
 The Scenery Editor X smart pointer system (`pointers.h`) provides a comprehensive reference counting and weak reference implementation optimized for 3D rendering applications. This system is designed to replace standard library smart pointers in scenarios where fine-grained control over memory management is required.
 
 ### Key Features
+
 - **Thread-safe reference counting** using atomic operations
 - **Weak references** for breaking circular dependencies
 - **Type-safe conversions** with compile-time checks
@@ -25,6 +29,7 @@ The Scenery Editor X smart pointer system (`pointers.h`) provides a comprehensiv
 - **Vulkan-optimized** for high-performance rendering workloads
 
 ### When to Use This System
+
 - ✅ Vulkan resource management (textures, buffers, pipelines)
 - ✅ Scene graph hierarchies with parent-child relationships
 - ✅ Asset caching systems
@@ -45,25 +50,27 @@ public:
     MyRenderObject(int id) : m_Id(id) {
         // Constructor logic
     }
-    
+  
     int GetId() const { return m_Id; }
-    
+  
 private:
     int m_Id;
 };
 ```
 
 **Key Points for GitHub Copilot:**
+
 - Always inherit publicly from `RefCounted` for shared objects
 - The destructor is automatically virtual
 - Reference count starts at 0 and is managed automatically
 - Copy/move operations don't affect the reference count
 
-### 2. Ref<T> - Strong References
+### 2. Ref `<T>` - Strong References
 
 Primary smart pointer for shared ownership with automatic memory management.
 
 #### Creation Patterns
+
 ```cpp
 // PREFERRED: Use CreateRef for new objects
 Ref<Texture> texture = CreateRef<Texture>("diffuse.png", 512, 512);
@@ -83,6 +90,7 @@ Ref<Texture> movedTexture = std::move(texture);
 ```
 
 #### Access Patterns
+
 ```cpp
 // Check validity before use
 if (texture) {
@@ -101,6 +109,7 @@ Texture* rawPtr = texture.Get();
 ```
 
 #### Type Conversions
+
 ```cpp
 // Static cast (compile-time checked)
 Ref<BaseTexture> base = texture.As<BaseTexture>();
@@ -112,11 +121,12 @@ if (special) {
 }
 ```
 
-### 3. WeakRef<T> - Weak References
+### 3. WeakRef `<T>` - Weak References
 
 Non-owning observation of `Ref<T>` managed objects. Essential for breaking circular dependencies.
 
 #### Creation and Usage
+
 ```cpp
 // Create from strong reference
 Ref<SceneNode> node = CreateRef<SceneNode>();
@@ -137,16 +147,17 @@ if (locked) {
 ```
 
 #### Observer Pattern Implementation
+
 ```cpp
 class TextureManager {
 private:
     std::unordered_map<std::string, WeakRef<Texture>> m_TextureCache;
-    
+  
 public:
     void RegisterTexture(const std::string& name, Ref<Texture> texture) {
         m_TextureCache[name] = texture; // Store weak reference
     }
-    
+  
     Ref<Texture> GetTexture(const std::string& name) {
         auto it = m_TextureCache.find(name);
         if (it != m_TextureCache.end()) {
@@ -158,7 +169,7 @@ public:
         }
         return nullptr;
     }
-    
+  
     void CleanExpired() {
         for (auto it = m_TextureCache.begin(); it != m_TextureCache.end();) {
             if (it->second.Expired()) {
@@ -171,7 +182,7 @@ public:
 };
 ```
 
-### 4. Scope<T> - Unique Ownership
+### 4. Scope `<T>` - Unique Ownership
 
 Alias for `std::unique_ptr` providing exclusive ownership semantics.
 
@@ -211,29 +222,31 @@ std::weak_ptr<Material> material = strongMaterial;
 ### 2. Class Design Patterns
 
 **For shared objects:**
+
 ```cpp
 class RenderTarget : public RefCounted {
 public:
     static Ref<RenderTarget> Create(uint32_t width, uint32_t height) {
         return CreateRef<RenderTarget>(width, height);
     }
-    
+  
 private:
     RenderTarget(uint32_t width, uint32_t height) 
         : m_Width(width), m_Height(height) {}
-    
+  
     uint32_t m_Width, m_Height;
 };
 ```
 
 **For unique objects:**
+
 ```cpp
 class CommandList {
 public:
     static Scope<CommandList> Create() {
         return CreateScope<CommandList>();
     }
-    
+  
 private:
     CommandList() = default;
 };
@@ -242,6 +255,7 @@ private:
 ### 3. Relationship Management
 
 **Parent-Child Relationships (avoiding cycles):**
+
 ```cpp
 class SceneNode : public RefCounted {
 public:
@@ -249,7 +263,7 @@ public:
         m_Children.push_back(child);           // Strong reference
         child->m_Parent = WeakRef<SceneNode>(*this); // Weak reference breaks cycle
     }
-    
+  
     void RemoveChild(Ref<SceneNode> child) {
         auto it = std::find(m_Children.begin(), m_Children.end(), child);
         if (it != m_Children.end()) {
@@ -257,11 +271,11 @@ public:
             m_Children.erase(it);
         }
     }
-    
+  
     Ref<SceneNode> GetParent() const {
         return m_Parent.Lock(); // Safe access to parent
     }
-    
+  
 private:
     std::vector<Ref<SceneNode>> m_Children;  // Own children
     WeakRef<SceneNode> m_Parent;             // Observe parent
@@ -271,6 +285,7 @@ private:
 ### 4. Resource Ownership
 
 **Clear ownership semantics:**
+
 ```cpp
 class Mesh : public RefCounted {
 public:
@@ -278,17 +293,17 @@ public:
     void SetMaterial(Ref<Material> material) {
         m_Material = std::move(material);
     }
-    
+  
     // Mesh observes its parent (parent owns mesh)
     void SetParent(Ref<SceneNode> parent) {
         m_Parent = parent;
     }
-    
+  
     // Mesh shares vertex buffer with other meshes
     void SetVertexBuffer(Ref<VertexBuffer> buffer) {
         m_VertexBuffer = buffer;
     }
-    
+  
 private:
     Ref<Material> m_Material;        // Owned resource
     WeakRef<SceneNode> m_Parent;     // Observer relationship
@@ -299,6 +314,7 @@ private:
 ### 5. Function Signatures
 
 **Parameter passing guidelines:**
+
 ```cpp
 // For input parameters that won't be stored
 void ProcessTexture(const Ref<Texture>& texture);
@@ -332,7 +348,7 @@ public:
         }
         return texture;
     }
-    
+  
     static Ref<RenderTexture> CreateRenderTexture(uint32_t width, uint32_t height) {
         return CreateRef<RenderTexture>(width, height);
     }
@@ -351,11 +367,11 @@ private:
     std::unordered_map<std::string, WeakRef<Texture>> m_TextureCache;
     std::unordered_map<std::string, WeakRef<Mesh>> m_MeshCache;
     mutable std::mutex m_CacheMutex;
-    
+  
 public:
     Ref<Texture> LoadTexture(const std::string& path) {
         std::lock_guard<std::mutex> lock(m_CacheMutex);
-        
+  
         // Check cache first
         auto it = m_TextureCache.find(path);
         if (it != m_TextureCache.end()) {
@@ -365,20 +381,20 @@ public:
             // Remove expired entry
             m_TextureCache.erase(it);
         }
-        
+  
         // Load new texture
         auto texture = CreateRef<Texture>();
         if (texture->LoadFromFile(path)) {
             m_TextureCache[path] = texture; // Cache weak reference
             return texture;
         }
-        
+  
         return nullptr; // Failed to load
     }
-    
+  
     void CleanCache() {
         std::lock_guard<std::mutex> lock(m_CacheMutex);
-        
+  
         // Clean texture cache
         for (auto it = m_TextureCache.begin(); it != m_TextureCache.end();) {
             if (it->second.Expired()) {
@@ -387,7 +403,7 @@ public:
                 ++it;
             }
         }
-        
+  
         // Clean mesh cache
         for (auto it = m_MeshCache.begin(); it != m_MeshCache.end();) {
             if (it->second.Expired()) {
@@ -413,7 +429,7 @@ class DrawMeshCommand : public RenderCommand {
 public:
     DrawMeshCommand(Ref<Mesh> mesh, Ref<Material> material)
         : m_Mesh(std::move(mesh)), m_Material(std::move(material)) {}
-    
+  
     void Execute() override {
         if (m_Mesh && m_Material) {
             // Execute rendering
@@ -421,7 +437,7 @@ public:
             m_Mesh->Draw();
         }
     }
-    
+  
 private:
     Ref<Mesh> m_Mesh;
     Ref<Material> m_Material;
@@ -430,12 +446,12 @@ private:
 class CommandQueue {
 private:
     std::vector<Ref<RenderCommand>> m_Commands;
-    
+  
 public:
     void AddCommand(Ref<RenderCommand> command) {
         m_Commands.push_back(std::move(command));
     }
-    
+  
     void ExecuteAll() {
         for (auto& command : m_Commands) {
             command->Execute();
@@ -458,12 +474,12 @@ public:
 class RenderEventDispatcher {
 private:
     std::vector<WeakRef<RenderEventObserver>> m_Observers;
-    
+  
 public:
     void AddObserver(Ref<RenderEventObserver> observer) {
         m_Observers.push_back(observer);
     }
-    
+  
     void NotifyTextureLoaded(Ref<Texture> texture) {
         // Clean expired observers and notify active ones
         for (auto it = m_Observers.begin(); it != m_Observers.end();) {
@@ -475,7 +491,7 @@ public:
             }
         }
     }
-    
+  
     void NotifyMeshUpdated(Ref<Mesh> mesh) {
         for (auto it = m_Observers.begin(); it != m_Observers.end();) {
             if (auto observer = it->Lock()) {
@@ -503,7 +519,7 @@ public:
         }
         return texture;
     }
-    
+  
     ~VulkanTexture() {
         if (m_Image != VK_NULL_HANDLE) {
             vkDestroyImage(m_Device, m_Image, nullptr);
@@ -512,16 +528,16 @@ public:
             vkFreeMemory(m_Device, m_Memory, nullptr);
         }
     }
-    
+  
 private:
     VulkanTexture(VkDevice device, uint32_t width, uint32_t height)
         : m_Device(device), m_Width(width), m_Height(height) {}
-    
+  
     bool Initialize() {
         // Vulkan texture creation logic
         return true;
     }
-    
+  
     VkDevice m_Device;
     VkImage m_Image = VK_NULL_HANDLE;
     VkDeviceMemory m_Memory = VK_NULL_HANDLE;
@@ -537,7 +553,7 @@ public:
         }
         return buffer;
     }
-    
+  
     ~VulkanBuffer() {
         if (m_Buffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(m_Device, m_Buffer, nullptr);
@@ -546,16 +562,16 @@ public:
             vkFreeMemory(m_Device, m_Memory, nullptr);
         }
     }
-    
+  
 private:
     VulkanBuffer(VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage)
         : m_Device(device), m_Size(size), m_Usage(usage) {}
-    
+  
     bool Initialize() {
         // Vulkan buffer creation logic
         return true;
     }
-    
+  
     VkDevice m_Device;
     VkBuffer m_Buffer = VK_NULL_HANDLE;
     VkDeviceMemory m_Memory = VK_NULL_HANDLE;
@@ -572,13 +588,13 @@ public:
     void SetPosition(const glm::vec3& position) { m_Position = position; }
     void SetRotation(const glm::quat& rotation) { m_Rotation = rotation; }
     void SetScale(const glm::vec3& scale) { m_Scale = scale; }
-    
+  
     glm::mat4 GetMatrix() const {
         return glm::translate(glm::mat4(1.0f), m_Position) *
                glm::mat4_cast(m_Rotation) *
                glm::scale(glm::mat4(1.0f), m_Scale);
     }
-    
+  
 private:
     glm::vec3 m_Position = glm::vec3(0.0f);
     glm::quat m_Rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
@@ -588,12 +604,12 @@ private:
 class SceneNode : public RefCounted {
 public:
     SceneNode() : m_Transform(CreateRef<Transform>()) {}
-    
+  
     void AddChild(Ref<SceneNode> child) {
         child->m_Parent = WeakRef<SceneNode>(*this);
         m_Children.push_back(std::move(child));
     }
-    
+  
     void RemoveChild(Ref<SceneNode> child) {
         auto it = std::find(m_Children.begin(), m_Children.end(), child);
         if (it != m_Children.end()) {
@@ -601,11 +617,11 @@ public:
             m_Children.erase(it);
         }
     }
-    
+  
     void SetMesh(Ref<Mesh> mesh) {
         m_Mesh = std::move(mesh);
     }
-    
+  
     glm::mat4 GetWorldMatrix() const {
         glm::mat4 worldMatrix = m_Transform->GetMatrix();
         if (auto parent = m_Parent.Lock()) {
@@ -613,33 +629,33 @@ public:
         }
         return worldMatrix;
     }
-    
+  
     void Update(float deltaTime) {
         // Update this node
         OnUpdate(deltaTime);
-        
+  
         // Update children
         for (auto& child : m_Children) {
             child->Update(deltaTime);
         }
     }
-    
+  
     void Render(const RenderContext& context) {
         if (m_Mesh) {
             RenderParams params;
             params.worldMatrix = GetWorldMatrix();
             m_Mesh->Render(context, params);
         }
-        
+  
         // Render children
         for (auto& child : m_Children) {
             child->Render(context);
         }
     }
-    
+  
 protected:
     virtual void OnUpdate(float deltaTime) {}
-    
+  
 private:
     Ref<Transform> m_Transform;
     Ref<Mesh> m_Mesh;
@@ -659,17 +675,17 @@ public:
         Loaded,
         Failed
     };
-    
+  
     virtual ~Asset() = default;
     virtual bool Load() = 0;
     virtual void Unload() = 0;
-    
+  
     State GetState() const { return m_State; }
     const std::string& GetPath() const { return m_Path; }
-    
+  
 protected:
     Asset(const std::string& path) : m_Path(path), m_State(State::Unloaded) {}
-    
+  
     std::string m_Path;
     State m_State;
 };
@@ -678,14 +694,14 @@ class AssetManager {
 private:
     std::unordered_map<std::string, WeakRef<Asset>> m_AssetCache;
     mutable std::mutex m_CacheMutex;
-    
+  
 public:
     template<typename T, typename... Args>
     Ref<T> LoadAsset(const std::string& path, Args&&... args) {
         static_assert(std::is_base_of_v<Asset, T>, "T must inherit from Asset");
-        
+  
         std::lock_guard<std::mutex> lock(m_CacheMutex);
-        
+  
         // Check cache
         auto it = m_AssetCache.find(path);
         if (it != m_AssetCache.end()) {
@@ -698,20 +714,20 @@ public:
             // Remove expired or wrong type
             m_AssetCache.erase(it);
         }
-        
+  
         // Create new asset
         auto asset = CreateRef<T>(path, std::forward<Args>(args)...);
         if (asset->Load()) {
             m_AssetCache[path] = asset;
             return asset;
         }
-        
+  
         return nullptr;
     }
-    
+  
     void UnloadUnused() {
         std::lock_guard<std::mutex> lock(m_CacheMutex);
-        
+  
         for (auto it = m_AssetCache.begin(); it != m_AssetCache.end();) {
             if (auto asset = it->second.Lock()) {
                 // Check if only the cache holds a reference
@@ -758,7 +774,7 @@ public:
     void SetDiffuseTexture(Ref<Texture> texture) {
         m_DiffuseTexture = std::move(texture); // Move, no ref count change
     }
-    
+  
 private:
     Ref<Texture> m_DiffuseTexture;
 };
@@ -769,7 +785,7 @@ public:
     void SetDiffuseTexture(const Ref<Texture>& texture) {
         m_DiffuseTexture = texture; // Copy increases ref count
     }
-    
+  
 private:
     Ref<Texture> m_DiffuseTexture;
 };
@@ -806,10 +822,10 @@ The reference counting operations are fully thread-safe:
 void ThreadSafeFunction(Ref<Texture> texture) {
     // Copying Ref is thread-safe
     Ref<Texture> localCopy = texture;
-    
+  
     // Moving Ref is thread-safe
     auto moved = std::move(texture);
-    
+  
     // Accessing object requires external synchronization
     // texture->GetWidth(); // Requires synchronization if object is mutable
 }
@@ -822,24 +838,24 @@ class ThreadSafeCache {
 private:
     std::unordered_map<std::string, WeakRef<Asset>> m_Cache;
     mutable std::shared_mutex m_CacheMutex;
-    
+  
 public:
     Ref<Asset> GetAsset(const std::string& id) {
         // Read lock for cache access
         std::shared_lock<std::shared_mutex> readLock(m_CacheMutex);
-        
+  
         auto it = m_Cache.find(id);
         if (it != m_Cache.end()) {
             if (auto asset = it->second.Lock()) { // Thread-safe
                 return asset;
             }
         }
-        
+  
         readLock.unlock();
-        
+  
         // Write lock for cache modification
         std::unique_lock<std::shared_mutex> writeLock(m_CacheMutex);
-        
+  
         // Double-check pattern
         it = m_Cache.find(id);
         if (it != m_Cache.end()) {
@@ -848,13 +864,13 @@ public:
             }
             m_Cache.erase(it); // Clean expired entry
         }
-        
+  
         // Load new asset...
         auto newAsset = LoadAssetFromDisk(id);
         if (newAsset) {
             m_Cache[id] = newAsset;
         }
-        
+  
         return newAsset;
     }
 };
@@ -871,12 +887,12 @@ void SafeFunction(Ref<Texture> texture) {
         LogError("Null texture passed to SafeFunction");
         return;
     }
-    
+  
     if (!texture.IsValid()) {
         LogError("Invalid texture passed to SafeFunction");
         return;
     }
-    
+  
     // Safe to use
     texture->Bind();
 }
@@ -885,7 +901,7 @@ void SafeFunction(Ref<Texture> texture) {
 void InternalFunction(Ref<Texture> texture) {
     assert(texture && "Texture must not be null");
     assert(texture.IsValid() && "Texture must be valid");
-    
+  
     // Safe to use in debug builds
     texture->Bind();
 }
@@ -897,7 +913,7 @@ void InternalFunction(Ref<Texture> texture) {
 class RenderSystem {
 private:
     std::vector<WeakRef<RenderObject>> m_RenderObjects;
-    
+  
 public:
     void RenderFrame() {
         // Process valid objects and clean expired ones
@@ -967,7 +983,7 @@ class OldRenderer {
 private:
     std::shared_ptr<Texture> m_Texture;
     std::vector<std::shared_ptr<Mesh>> m_Meshes;
-    
+  
 public:
     void SetTexture(std::shared_ptr<Texture> texture) {
         m_Texture = texture;
@@ -979,7 +995,7 @@ class NewRenderer {
 private:
     Ref<Texture> m_Texture;
     std::vector<Ref<Mesh>> m_Meshes;
-    
+  
 public:
     void SetTexture(Ref<Texture> texture) {
         m_Texture = std::move(texture);
@@ -994,12 +1010,12 @@ public:
 class OldMaterial {
 private:
     Texture* m_DiffuseTexture = nullptr;
-    
+  
 public:
     ~OldMaterial() {
         delete m_DiffuseTexture; // Manual memory management
     }
-    
+  
     void SetTexture(Texture* texture) {
         delete m_DiffuseTexture;
         m_DiffuseTexture = texture;
@@ -1010,10 +1026,10 @@ public:
 class NewMaterial : public RefCounted {
 private:
     Ref<Texture> m_DiffuseTexture;
-    
+  
 public:
     // Automatic cleanup, no manual delete needed
-    
+  
     void SetTexture(Ref<Texture> texture) {
         m_DiffuseTexture = std::move(texture);
     }
@@ -1036,31 +1052,33 @@ When generating code for Scenery Editor X:
 10. **Use const references**: For parameters that won't be stored
 
 This smart pointer system is the foundation of memory management in Scenery Editor X. Following these guidelines ensures safe, efficient, and maintainable code.
+
 ```cpp
 class RefCounted
 {
 public:
     RefCounted() = default;
     virtual ~RefCounted() = default;
-    
+  
     uint32_t IncRefCount() const noexcept;
     uint32_t DecRefCount() const noexcept;
     uint32_t GetRefCount() const noexcept;
-    
+  
 private:
     mutable std::atomic<uint32_t> m_RefCount{0};
 };
 ```
 
 ### Usage Example
+
 ```cpp
 class Texture : public RefCounted
 {
 public:
     Texture(const std::string& path) : m_Path(path) {}
-    
+  
     const std::string& GetPath() const { return m_Path; }
-    
+  
 private:
     std::string m_Path;
 };
@@ -1069,12 +1087,14 @@ private:
 Ref<Texture> texture = CreateRef<Texture>("assets/diffuse.png");
 ```
 
-## Ref<T> - Strong References
+## Ref `<T>` - Strong References
 
 ### Purpose
+
 `Ref<T>` is the primary smart pointer for shared ownership. It automatically manages the lifetime of objects through reference counting.
 
 ### Key Features
+
 - Automatic memory management
 - Thread-safe reference counting
 - Type conversion support
@@ -1082,6 +1102,7 @@ Ref<Texture> texture = CreateRef<Texture>("assets/diffuse.png");
 - Move semantics for performance
 
 ### Construction Examples
+
 ```cpp
 // Create new object
 Ref<Texture> texture = CreateRef<Texture>("texture.png");
@@ -1102,6 +1123,7 @@ Ref<Texture> texture4(sharedTexture);
 ```
 
 ### Common Operations
+
 ```cpp
 // Check if valid
 if (texture) {
@@ -1127,6 +1149,7 @@ texture.Reset(new Texture("new_texture.png"));
 ```
 
 ### Type Conversions
+
 ```cpp
 // Static cast (compile-time)
 Ref<BaseTexture> base = texture.As<BaseTexture>();
@@ -1138,18 +1161,21 @@ if (derived) {
 }
 ```
 
-## WeakRef<T> - Weak References
+## WeakRef `<T>` - Weak References
 
 ### Purpose
+
 `WeakRef<T>` provides non-owning observation of objects managed by `Ref<T>`. It's essential for breaking circular dependencies and safe observation patterns.
 
 ### Key Features
+
 - Non-owning observation
 - Automatic expiration detection
 - Thread-safe access
 - Conversion to strong references
 
 ### Usage Examples
+
 ```cpp
 // Create from strong reference
 Ref<Texture> texture = CreateRef<Texture>("texture.png");
@@ -1170,12 +1196,12 @@ class TextureManager
 {
 private:
     std::vector<WeakRef<Texture>> m_ObservedTextures;
-    
+  
 public:
     void RegisterTexture(const Ref<Texture>& texture) {
         m_ObservedTextures.push_back(texture);
     }
-    
+  
     void CleanupExpiredTextures() {
         m_ObservedTextures.erase(
             std::remove_if(m_ObservedTextures.begin(), m_ObservedTextures.end(),
@@ -1187,6 +1213,7 @@ public:
 ```
 
 ### Circular Dependency Prevention
+
 ```cpp
 class SceneNode : public RefCounted
 {
@@ -1195,23 +1222,25 @@ public:
         m_Children.push_back(child);
         child->m_Parent = WeakRef<SceneNode>(*this); // Weak reference to parent
     }
-    
+  
     Ref<SceneNode> GetParent() const {
         return m_Parent.Lock(); // Convert to strong reference when needed
     }
-    
+  
 private:
     std::vector<Ref<SceneNode>> m_Children;     // Strong references to children
     WeakRef<SceneNode> m_Parent;                // Weak reference to parent
 };
 ```
 
-## Scope<T> - Unique Ownership
+## Scope `<T>` - Unique Ownership
 
 ### Purpose
+
 `Scope<T>` is an alias for `std::unique_ptr<T>` providing exclusive ownership semantics.
 
 ### Usage
+
 ```cpp
 // Create unique object
 Scope<Buffer> buffer = CreateScope<Buffer>(1024);
@@ -1226,6 +1255,7 @@ buffer2->Write(data, size);
 ## Control Block System
 
 ### Internal Architecture
+
 The weak reference system uses a control block registry to manage the lifetime of weak references independently from the objects they observe.
 
 ```cpp
@@ -1235,7 +1265,7 @@ namespace Internal {
         T* m_Ptr;                          // Pointer to object (nullable)
         std::atomic<uint32_t> m_WeakCount; // Number of weak references
     };
-    
+  
     template<typename T>
     class ControlBlockRegistry {
         std::unordered_map<T*, ControlBlock<T>*> m_Blocks;
@@ -1245,6 +1275,7 @@ namespace Internal {
 ```
 
 ### Lifecycle Management
+
 1. When first `WeakRef<T>` is created, a control block is allocated
 2. Control block tracks weak reference count
 3. When object is destroyed, control block pointer is set to nullptr
@@ -1255,18 +1286,21 @@ namespace Internal {
 ### When to Use Each Type
 
 #### Use `Ref<T>` when:
+
 - You need shared ownership
 - Object lifetime depends on multiple owners
 - Working with polymorphic objects
 - Interfacing with existing Ref-based APIs
 
 #### Use `WeakRef<T>` when:
+
 - You need to observe an object without owning it
 - Breaking circular dependencies
 - Implementing observer patterns
 - Caching references that might become invalid
 
 #### Use `Scope<T>` when:
+
 - You need exclusive ownership
 - Object has clear single owner
 - RAII semantics are sufficient
@@ -1282,11 +1316,11 @@ public:
     void SetMaterial(const Ref<Material>& material) {
         m_Material = material; // Strong reference - mesh owns material
     }
-    
+  
     void SetParentNode(const Ref<SceneNode>& parent) {
         m_ParentNode = parent; // Weak reference - node owns mesh
     }
-    
+  
 private:
     Ref<Material> m_Material;      // Owned resource
     WeakRef<SceneNode> m_ParentNode; // Observer relationship
@@ -1296,16 +1330,19 @@ private:
 ## Performance Considerations
 
 ### Reference Counting Overhead
+
 - Atomic operations have small but measurable cost
 - Prefer move semantics when transferring ownership
 - Consider `Scope<T>` for performance-critical single-owner scenarios
 
 ### Memory Overhead
+
 - `Ref<T>`: One pointer (8 bytes on x64)
 - `WeakRef<T>`: One pointer to control block (8 bytes on x64)
 - Control blocks: Allocated on-demand, shared among weak references
 
 ### Optimization Tips
+
 ```cpp
 // Prefer move construction/assignment
 Ref<Texture> texture = std::move(sourceTexture);
@@ -1322,12 +1359,14 @@ Ref<Texture> texture(new Texture(args...));         // Works but less clear
 ## Thread Safety
 
 ### Guarantees
+
 - Reference counting operations are atomic and thread-safe
 - Multiple threads can safely copy/destroy `Ref<T>` instances
 - Control block operations are protected by mutex
 - Object destruction is thread-safe
 
 ### Safe Patterns
+
 ```cpp
 // Safe: Multiple threads can copy references
 std::vector<std::thread> threads;
@@ -1353,6 +1392,7 @@ void BackgroundThread(WeakRef<Texture> weakTexture) {
 ```
 
 ### Unsafe Patterns to Avoid
+
 ```cpp
 // UNSAFE: Racing on raw pointer access
 Ref<Texture> texture = GetTexture();
@@ -1370,6 +1410,7 @@ if (auto localTexture = texture) {
 ## Examples and Best Practices
 
 ### Resource Management Example
+
 ```cpp
 class RenderContext : public RefCounted
 {
@@ -1379,7 +1420,7 @@ public:
         m_Buffers.push_back(buffer); // Strong reference for tracking
         return buffer;
     }
-    
+  
     void CleanupUnusedBuffers() {
         m_Buffers.erase(
             std::remove_if(m_Buffers.begin(), m_Buffers.end(),
@@ -1387,13 +1428,14 @@ public:
             m_Buffers.end()
         );
     }
-    
+  
 private:
     std::vector<WeakRef<Buffer>> m_Buffers; // Weak references for cleanup
 };
 ```
 
 ### Asset Management Example
+
 ```cpp
 class AssetManager : public RefCounted
 {
@@ -1407,19 +1449,20 @@ public:
             }
             m_TextureCache.erase(it); // Clean up expired entry
         }
-        
+  
         // Load new texture
         auto texture = CreateRef<Texture>(path);
         m_TextureCache[path] = texture; // Cache as weak reference
         return texture;
     }
-    
+  
 private:
     std::unordered_map<std::string, WeakRef<Texture>> m_TextureCache;
 };
 ```
 
 ### Scene Graph Example
+
 ```cpp
 class SceneNode : public RefCounted
 {
@@ -1428,7 +1471,7 @@ public:
         m_Children.push_back(child);
         child->m_Parent = WeakRef<SceneNode>(*this);
     }
-    
+  
     void RemoveChild(const Ref<SceneNode>& child) {
         auto it = std::find(m_Children.begin(), m_Children.end(), child);
         if (it != m_Children.end()) {
@@ -1436,15 +1479,15 @@ public:
             m_Children.erase(it);
         }
     }
-    
+  
     Ref<SceneNode> GetParent() const {
         return m_Parent.Lock();
     }
-    
+  
     const std::vector<Ref<SceneNode>>& GetChildren() const {
         return m_Children;
     }
-    
+  
 private:
     std::vector<Ref<SceneNode>> m_Children;
     WeakRef<SceneNode> m_Parent;
@@ -1458,6 +1501,7 @@ private:
 When GitHub Copilot generates code for the Scenery Editor X project, follow these guidelines:
 
 #### 1. **Always Use Project Smart Pointers**
+
 ```cpp
 // CORRECT: Use project smart pointers
 Ref<Texture> texture = CreateRef<Texture>("path.png");
@@ -1470,6 +1514,7 @@ std::unique_ptr<Buffer> buffer = std::make_unique<Buffer>(size);
 ```
 
 #### 2. **Inheritance from RefCounted**
+
 ```cpp
 // CORRECT: All shared objects inherit from RefCounted
 class RenderPass : public RefCounted
@@ -1493,6 +1538,7 @@ public:
 ```
 
 #### 3. **Factory Pattern Usage**
+
 ```cpp
 // CORRECT: Use CreateRef for object creation
 class TextureFactory
@@ -1501,7 +1547,7 @@ public:
     static Ref<Texture> CreateTexture2D(uint32_t width, uint32_t height) {
         return CreateRef<Texture2D>(width, height);
     }
-    
+  
     static Ref<Texture> LoadFromFile(const std::string& path) {
         return CreateRef<FileTexture>(path);
     }
@@ -1509,6 +1555,7 @@ public:
 ```
 
 #### 4. **Ownership Semantics**
+
 ```cpp
 // CORRECT: Clear ownership relationships
 class Mesh : public RefCounted
@@ -1516,7 +1563,7 @@ class Mesh : public RefCounted
 public:
     void SetMaterial(const Ref<Material>& material) { m_Material = material; }
     void SetParentNode(const WeakRef<SceneNode>& parent) { m_Parent = parent; }
-    
+  
 private:
     Ref<Material> m_Material;        // Mesh owns its material
     WeakRef<SceneNode> m_Parent;     // Mesh observes its parent
@@ -1524,6 +1571,7 @@ private:
 ```
 
 #### 5. **Error Handling Patterns**
+
 ```cpp
 // CORRECT: Check validity before use
 bool ProcessTexture(const WeakRef<Texture>& weakTexture) {
@@ -1532,7 +1580,7 @@ bool ProcessTexture(const WeakRef<Texture>& weakTexture) {
         SEDX_LOG_WARNING("Texture reference expired");
         return false;
     }
-    
+  
     // Safe to use texture
     texture->Bind();
     return true;
@@ -1540,6 +1588,7 @@ bool ProcessTexture(const WeakRef<Texture>& weakTexture) {
 ```
 
 #### 6. **Collection Management**
+
 ```cpp
 // CORRECT: Use appropriate reference type for collections
 class RenderQueue
@@ -1548,11 +1597,11 @@ public:
     void AddMesh(const Ref<Mesh>& mesh) {
         m_Meshes.push_back(mesh); // Strong reference - queue owns meshes
     }
-    
+  
     void AddObserver(const Ref<RenderObserver>& observer) {
         m_Observers.push_back(observer); // Weak reference - don't own observers
     }
-    
+  
 private:
     std::vector<Ref<Mesh>> m_Meshes;
     std::vector<WeakRef<RenderObserver>> m_Observers;
@@ -1560,6 +1609,7 @@ private:
 ```
 
 #### 7. **Thread Safety Considerations**
+
 ```cpp
 // CORRECT: Thread-safe access patterns
 class ThreadSafeResourceCache
@@ -1567,7 +1617,7 @@ class ThreadSafeResourceCache
 public:
     Ref<Resource> GetResource(const std::string& id) {
         std::lock_guard<std::mutex> lock(m_Mutex);
-        
+  
         auto it = m_Cache.find(id);
         if (it != m_Cache.end()) {
             if (auto resource = it->second.Lock()) {
@@ -1575,10 +1625,10 @@ public:
             }
             m_Cache.erase(it); // Clean up expired entry
         }
-        
+  
         return nullptr;
     }
-    
+  
 private:
     std::mutex m_Mutex;
     std::unordered_map<std::string, WeakRef<Resource>> m_Cache;
@@ -1586,6 +1636,7 @@ private:
 ```
 
 #### 8. **Documentation Standards**
+
 When generating new classes, always include proper Doxygen documentation:
 
 ```cpp
@@ -1611,20 +1662,3 @@ class VulkanTexture : public RefCounted
     // Implementation
 };
 ```
-
-### Code Review Checklist for Copilot
-
-When reviewing or generating code, ensure:
-
-- [ ] All shared objects inherit from `RefCounted`
-- [ ] Use `CreateRef<T>()` for object creation
-- [ ] Prefer `WeakRef<T>` for observer relationships
-- [ ] Use `Scope<T>` for single-owner scenarios
-- [ ] Check weak references before use with `.Lock()`
-- [ ] Proper const-correctness in reference parameters
-- [ ] Thread-safe patterns for multi-threaded code
-- [ ] Appropriate documentation with usage examples
-- [ ] Clear ownership semantics in class design
-- [ ] Error handling for expired references
-
-This comprehensive system provides a robust foundation for memory management in the Scenery Editor X project, ensuring both performance and safety in complex 3D rendering scenarios.

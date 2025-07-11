@@ -1,6 +1,8 @@
-# Type Descriptors System Documentation
+# Scenery Editor X - Type Descriptors System Documentation
 
-## Overview
+---
+
+# Overview
 
 The Type Descriptors system (`type_descriptors.h`) provides a powerful compile-time reflection mechanism for C++ classes in Scenery Editor X. This system enables introspection, serialization, debug printing, and runtime manipulation of class members through a clean, macro-based interface.
 
@@ -289,7 +291,7 @@ void PrintTypeInfo()
         auto memberName = Desc::MemberNames[i];
         auto size = Desc::GetMemberSizeByIndex(i);
         auto isFunc = Desc::IsFunctionByIndex(i);
-      
+  
         std::cout << "  " << (isFunc ? "function" : "data") << " " 
                   << typeName << " " << memberName;
         if (!isFunc) std::cout << " [" << size << " bytes]";
@@ -416,10 +418,10 @@ void DrawPropertyEditor(T& object)
   
     for (size_t i = 0; i < Desc::NumberOfMembers; ++i) {
         if (*Desc::IsFunctionByIndex(i)) continue; // Skip functions
-      
+  
         std::string memberName{Desc::MemberNames[i]};
         auto typeName = *Desc::GetTypeNameByIndex(i);
-      
+  
         if (typeName == "float") {
             auto value = Desc::template GetMemberValueOfType<float>(i, object);
             if (value && ImGui::SliderFloat(memberName.c_str(), &*value, 0.0f, 1.0f)) {
@@ -464,10 +466,10 @@ void InspectObject(const T& object, const std::string& objectName)
   
     for (size_t i = 0; i < Desc::NumberOfMembers; ++i) {
         if (*Desc::IsFunctionByIndex(i)) continue;
-      
+  
         auto name = Desc::MemberNames[i];
         auto variant = Desc::GetMemberValueVariantByIndex(i, object);
-      
+  
         std::cout << name << ": ";
         if (variant) {
             std::cout << *variant;
@@ -565,7 +567,6 @@ bool success = Description::SetMemberValue(0, newValue, myObject);
 // By member name
 bool success = Description::SetMemberValueByName("memberName", newValue, myObject);
 ```
-
 
 ### 2. Type Information Queries
 
@@ -706,9 +707,9 @@ void PrintObjectDebugInfo(const T& obj)
         auto memberName = Desc::GetMemberName(i);
         auto typeName = Desc::GetTypeName(i);
         auto isFunction = Desc::IsFunction(i);
-      
+  
         std::cout << *typeName << " " << *memberName;
-      
+  
         if (*isFunction) {
             std::cout << " (function)";
         } else {
@@ -732,15 +733,15 @@ public:
     void EditObject(T& obj)
     {
         static_assert(Described<T>::value, "Type must be described for editing");
-      
+  
         using Desc = Description<T>;
-      
+  
         ImGui::Text("Editing: %s", std::string(Desc::ClassName).c_str());
-      
+  
         for (size_t i = 0; i < Desc::Count(); ++i) {
             auto memberName = *Desc::GetMemberName(i);
             auto isFunction = *Desc::IsFunction(i);
-          
+      
             if (!isFunction) {
                 ImGui::PushID(static_cast<int>(i));
                 EditMemberByIndex<T>(i, obj, memberName);
@@ -754,7 +755,7 @@ private:
     void EditMemberByIndex(size_t index, T& obj, std::string_view memberName)
     {
         using Desc = Description<T>;
-      
+  
         // Try common types
         if (auto value = Desc::template GetMemberValueOfType<float>(index, obj)) {
             float f = *value;
@@ -879,7 +880,7 @@ void SerializeDescribed(StreamWriter* writer, const T& obj)
     for (size_t i = 0; i < Desc::Count(); ++i) {
         if (!*Desc::IsFunction(i)) {
             writer->Write(std::string(*Desc::GetMemberName(i)));
-          
+      
             // Use variant system for type-erased serialization
             auto variant = Desc::GetMemberValue<typename Desc::TVariant>(i, obj);
             SerializeVariant(writer, variant);
@@ -898,17 +899,17 @@ public:
     void RegisterType()
     {
         static_assert(Described<T>::value);
-      
+  
         using Desc = Description<T>;
-      
+  
         TypeInfo info;
         info.name = Desc::ClassName;
         info.size = sizeof(T);
         info.memberCount = Desc::Count();
-      
+  
         // Store reflection information for runtime access
         m_TypeRegistry[std::string(Desc::ClassName)] = std::move(info);
-      
+  
         SEDX_CORE_INFO_TAG("REFLECTION", "Registered type: {}", Desc::ClassName);
     }
   
@@ -955,5 +956,3 @@ void LoadConfigFromFile(const std::string& filename, ConfigType& config)
     // This allows configuration files to be robust against member reordering
 }
 ```
-
-This comprehensive reflection system enables powerful metaprogramming capabilities while maintaining type safety and performance. It integrates seamlessly with the rest of the Scenery Editor X architecture, particularly the Module system, logging, and serialization frameworks.

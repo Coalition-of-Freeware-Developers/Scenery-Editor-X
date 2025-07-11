@@ -1,4 +1,6 @@
-# Type Structs System Documentation
+# Scenery Editor X - Type Structs System Documentation
+
+---
 
 ## Overview
 
@@ -18,18 +20,19 @@ struct Member
     std::string Name;        // Member name (e.g., "position", "GetTransform")
     size_t Size;            // Size in bytes (0 for functions)
     std::string TypeName;   // Type name (e.g., "Vec3", "float", "bool")
-    
+  
     enum EType : uint8_t
     {
         Function,           // Member function
         Data               // Data member (variable)
     } Type;
-    
+  
     bool operator==(const Member& other) const;
 };
 ```
 
 **Member Properties:**
+
 - **Name**: The exact identifier as it appears in code
 - **Size**: Memory footprint for data members, 0 for functions
 - **TypeName**: Human-readable type identifier (uses type_name<> system)
@@ -45,15 +48,16 @@ struct ClassInfo
     std::string Name;               // Class name (without namespace)
     size_t Size;                   // sizeof(T) - total class size in bytes
     std::vector<Member> Members;   // All described members (data and functions)
-    
+  
     template<class T>
     static ClassInfo Of();         // Generate ClassInfo from described type
-    
+  
     bool operator==(const ClassInfo& other) const;
 };
 ```
 
 **ClassInfo Properties:**
+
 - **Name**: Short class name for display purposes
 - **Size**: Total memory footprint of the class
 - **Members**: Ordered list of all members defined in DESCRIBED macro
@@ -73,7 +77,7 @@ struct Transform
     Vec3 scale{1.0f, 1.0f, 1.0f};
     bool visible = true;
     float opacity = 1.0f;
-    
+  
     void Reset() { *this = Transform{}; }
     bool IsIdentity() const { return position == Vec3{} && rotation == Vec3{} && scale == Vec3{1,1,1}; }
     Vec3 GetWorldPosition() const { return position; }
@@ -149,21 +153,21 @@ template<class T>
 static ClassInfo Of()
 {
     static_assert(Types::Described<T>::value, "Type must be 'Described'.");
-    
+  
     ClassInfo info;
     using Descr = Types::Description<T>;
-    
+  
     // Use type_name<> for class name extraction
     info.Name = Descr::ClassName;  // Automatically extracted from namespace
     info.Size = sizeof(T);
-    
+  
     // Process each member defined in DESCRIBED macro
     for (const auto& memberName : Descr::MemberNames)
     {
         const bool isFunction = *Descr::IsFunctionByName(memberName);
         const auto typeName = *Descr::GetTypeNameByName(memberName);
         const auto memberSize = *Descr::GetMemberSizeByName(memberName);
-        
+    
         info.Members.push_back(Member{
             .Name = std::string{memberName},
             .Size = memberSize * !isFunction,  // 0 for functions
@@ -171,7 +175,7 @@ static ClassInfo Of()
             .Type = isFunction ? Member::Function : Member::Data
         });
     }
-    
+  
     return info;
 }
 ```
@@ -186,17 +190,17 @@ void InspectClass(const ClassInfo& info)
     std::cout << "=== Class: " << info.Name << " ===\n";
     std::cout << "Total size: " << info.Size << " bytes\n";
     std::cout << "Member count: " << info.Members.size() << "\n\n";
-    
+  
     size_t dataMembers = 0;
     size_t functionMembers = 0;
     size_t totalDataSize = 0;
-    
+  
     for (const auto& member : info.Members)
     {
         std::cout << (member.Type == Member::Data ? "Data" : "Func") 
                   << " | " << member.TypeName 
                   << " | " << member.Name;
-        
+    
         if (member.Type == Member::Data) {
             std::cout << " (" << member.Size << " bytes)";
             dataMembers++;
@@ -206,7 +210,7 @@ void InspectClass(const ClassInfo& info)
         }
         std::cout << "\n";
     }
-    
+  
     std::cout << "\nSummary:\n";
     std::cout << "  Data members: " << dataMembers << " (" << totalDataSize << " bytes)\n";
     std::cout << "  Function members: " << functionMembers << "\n";
@@ -220,40 +224,40 @@ template<typename T>
 class RuntimePropertyEditor
 {
     ClassInfo m_classInfo;
-    
+  
 public:
     RuntimePropertyEditor() : m_classInfo(ClassInfo::Of<T>()) {}
-    
+  
     void RenderEditor(T& object)
     {
         ImGui::Begin(fmt::format("Editor: {}", m_classInfo.Name).c_str());
-        
+    
         // Display class metadata
         ImGui::Text("Type: %s", m_classInfo.Name.c_str());
         ImGui::Text("Size: %zu bytes", m_classInfo.Size);
         ImGui::Separator();
-        
+    
         // Render editors for each data member
         for (const auto& member : m_classInfo.Members)
         {
             if (member.Type == Member::Function) continue; // Skip functions
-            
+        
             RenderMemberEditor(object, member);
         }
-        
+    
         // Display function information
         ImGui::Separator();
         ImGui::Text("Available Functions:");
         for (const auto& member : m_classInfo.Members)
         {
             if (member.Type == Member::Data) continue; // Skip data
-            
+        
             if (ImGui::Button(fmt::format("{}() -> {}", member.Name, member.TypeName).c_str()))
             {
                 CallMemberFunction(object, member.Name);
             }
         }
-        
+    
         ImGui::End();
     }
 
@@ -261,7 +265,7 @@ private:
     void RenderMemberEditor(T& object, const Member& member)
     {
         using Desc = Description<T>;
-        
+    
         if (member.TypeName == "float") {
             auto value = Desc::template GetMemberValueOfType<float>(member.Name, object);
             if (value) {
@@ -291,7 +295,7 @@ private:
             ImGui::Text("%s: %s [%zu bytes]", member.Name.c_str(), member.TypeName.c_str(), member.Size);
         }
     }
-    
+  
     void CallMemberFunction(T& object, const std::string& functionName)
     {
         // Implementation would use Description<T> to call the function
@@ -306,33 +310,33 @@ private:
 class SerializationRegistry
 {
     std::unordered_map<std::string, ClassInfo> m_classInfo;
-    
+  
 public:
     template<typename T>
     void RegisterClass()
     {
         static_assert(Described<T>::value, "Type must be described");
-        
+    
         ClassInfo info = ClassInfo::Of<T>();
         m_classInfo[info.Name] = std::move(info);
     }
-    
+  
     std::optional<ClassInfo> GetClassInfo(const std::string& className) const
     {
         auto it = m_classInfo.find(className);
         return it != m_classInfo.end() ? std::make_optional(it->second) : std::nullopt;
     }
-    
+  
     nlohmann::json SerializeSchema() const
     {
         nlohmann::json schema;
-        
+    
         for (const auto& [className, info] : m_classInfo)
         {
             nlohmann::json classSchema;
             classSchema["name"] = info.Name;
             classSchema["size"] = info.Size;
-            
+        
             for (const auto& member : info.Members)
             {
                 nlohmann::json memberSchema;
@@ -340,13 +344,13 @@ public:
                 memberSchema["type"] = member.TypeName;
                 memberSchema["size"] = member.Size;
                 memberSchema["category"] = (member.Type == Member::Data) ? "data" : "function";
-                
+            
                 classSchema["members"].push_back(memberSchema);
             }
-            
+        
             schema["classes"][className] = classSchema;
         }
-        
+    
         return schema;
     }
 };
@@ -372,7 +376,7 @@ namespace Reflection
     bool ClassInfoTest()
     {
         static const ClassInfo cl = ClassInfo::Of<TestStruct>();
-        
+    
         // Expected structure for validation
         static const ClassInfo ExpectedInfo
         {
@@ -418,29 +422,29 @@ namespace Reflection
                 }
             }
         };
-        
+    
         // Validate generated reflection data matches expected
         return cl == ExpectedInfo;
     }
-    
+  
     // Runtime validation helper
     template<typename T>
     bool ValidateClassInfo()
     {
         try {
             ClassInfo info = ClassInfo::Of<T>();
-            
+        
             // Basic validation checks
             if (info.Name.empty()) return false;
             if (info.Size != sizeof(T)) return false;
             if (info.Members.empty()) return false;
-            
+        
             // Validate member consistency
             size_t dataSize = 0;
             for (const auto& member : info.Members) {
                 if (member.Name.empty()) return false;
                 if (member.TypeName.empty()) return false;
-                
+            
                 if (member.Type == Member::Data) {
                     if (member.Size == 0) return false; // Data members must have size
                     dataSize += member.Size;
@@ -448,9 +452,9 @@ namespace Reflection
                     if (member.Size != 0) return false; // Functions must have zero size
                 }
             }
-            
+        
             // Note: dataSize may be less than sizeof(T) due to padding/alignment
-            
+        
             return true;
         } catch (...) {
             return false;
@@ -468,17 +472,17 @@ template<typename ComponentType>
 class ComponentWrapper
 {
     ClassInfo m_info;
-    
+  
 public:
     ComponentWrapper() : m_info(ClassInfo::Of<ComponentType>()) {}
-    
+  
     const ClassInfo& GetInfo() const { return m_info; }
-    
+  
     nlohmann::json Serialize(const ComponentType& component) const
     {
         nlohmann::json result;
         result["__type"] = m_info.Name;
-        
+    
         for (const auto& member : m_info.Members) {
             if (member.Type == Member::Data) {
                 auto value = GetMemberValueAsJson(component, member);
@@ -487,22 +491,22 @@ public:
                 }
             }
         }
-        
+    
         return result;
     }
-    
+  
     std::optional<ComponentType> Deserialize(const nlohmann::json& json) const
     {
         if (json["__type"] != m_info.Name) return std::nullopt;
-        
+    
         ComponentType component{};
-        
+    
         for (const auto& member : m_info.Members) {
             if (member.Type == Member::Data && json["data"].contains(member.Name)) {
                 SetMemberValueFromJson(component, member, json["data"][member.Name]);
             }
         }
-        
+    
         return component;
     }
 };
@@ -514,7 +518,7 @@ public:
 class AssetMetadata
 {
     std::unordered_map<std::string, ClassInfo> m_assetTypes;
-    
+  
 public:
     template<typename AssetType>
     void RegisterAssetType()
@@ -522,7 +526,7 @@ public:
         ClassInfo info = ClassInfo::Of<AssetType>();
         m_assetTypes[info.Name] = std::move(info);
     }
-    
+  
     std::vector<std::string> GetRegisteredAssetTypes() const
     {
         std::vector<std::string> types;
@@ -531,13 +535,13 @@ public:
         }
         return types;
     }
-    
+  
     std::optional<size_t> GetAssetSize(const std::string& typeName) const
     {
         auto it = m_assetTypes.find(typeName);
         return it != m_assetTypes.end() ? std::make_optional(it->second.Size) : std::nullopt;
     }
-    
+  
     std::vector<Member> GetAssetProperties(const std::string& typeName) const
     {
         auto it = m_assetTypes.find(typeName);
@@ -556,10 +560,10 @@ public:
     void ExposeTypeToScript(lua_State* L)
     {
         ClassInfo info = ClassInfo::Of<T>();
-        
+    
         // Create Lua table for the type
         lua_newtable(L);
-        
+    
         // Expose data members as properties
         for (const auto& member : info.Members) {
             if (member.Type == Member::Data) {
@@ -568,7 +572,7 @@ public:
                 ExposeFunctionMember<T>(L, member);
             }
         }
-        
+    
         // Register the table globally
         lua_setglobal(L, info.Name.c_str());
     }
@@ -580,14 +584,14 @@ private:
         // Create getter/setter functions for the member
         std::string getterName = "get_" + member.Name;
         std::string setterName = "set_" + member.Name;
-        
+    
         // Register getter
         lua_pushcfunction(L, [](lua_State* L) -> int {
             // Implementation would use Description<T> to get member value
             return 1; // Return count
         });
         lua_setfield(L, -2, getterName.c_str());
-        
+    
         // Register setter  
         lua_pushcfunction(L, [](lua_State* L) -> int {
             // Implementation would use Description<T> to set member value
@@ -601,6 +605,7 @@ private:
 ## Best Practices
 
 ### 1. Efficient ClassInfo Usage
+
 ```cpp
 // ✅ Good: Cache ClassInfo for repeated use
 template<typename T>
@@ -611,7 +616,7 @@ class TypedPropertyEditor
         static ClassInfo info = ClassInfo::Of<T>();
         return info;
     }
-    
+  
 public:
     void RenderEditor(T& object)
     {
@@ -630,6 +635,7 @@ void ProcessType(T& object)
 ```
 
 ### 2. Member Type Handling
+
 ```cpp
 // ✅ Good: Type-safe member processing
 void ProcessMember(const Member& member, auto& object)
@@ -654,6 +660,7 @@ void ProcessMemberUnsafe(const Member& member, auto& object)
 ```
 
 ### 3. Error Handling
+
 ```cpp
 // ✅ Good: Robust error handling
 template<typename T>
@@ -674,6 +681,7 @@ std::optional<ClassInfo> SafeGetClassInfo()
 ```
 
 ### 4. Performance Considerations
+
 ```cpp
 // ✅ Good: Static initialization for frequently used types
 template<typename T>
@@ -698,6 +706,7 @@ const ClassInfo& GetLazyClassInfo()
 ## Testing and Validation
 
 ### Unit Test Framework
+
 ```cpp
 class ReflectionTests
 {
@@ -718,18 +727,18 @@ private:
             int value;
             void Method() {}
         };
-        
+    
         DESCRIBED(SimpleStruct, &SimpleStruct::value, &SimpleStruct::Method);
-        
+    
         ClassInfo info = ClassInfo::Of<SimpleStruct>();
-        
+    
         return info.Name == "SimpleStruct" &&
                info.Size == sizeof(SimpleStruct) &&
                info.Members.size() == 2 &&
                info.Members[0].Type == Member::Data &&
                info.Members[1].Type == Member::Function;
     }
-    
+  
     // Additional test methods...
 };
 ```
@@ -756,23 +765,23 @@ template<typename T>
 void InspectType()
 {
     static_assert(Described<T>::value, "Type must be described");
-    
+  
     const ClassInfo info = ClassInfo::Of<T>();
-    
+  
     std::cout << "Class: " << info.Name << std::endl;
     std::cout << "Size: " << info.Size << " bytes" << std::endl;
     std::cout << "Members (" << info.Members.size() << "):" << std::endl;
-    
+  
     for (const auto& member : info.Members) {
         std::cout << "  ";
-        
+    
         if (member.Type == Member::Function) {
             std::cout << member.TypeName << " " << member.Name << "() [FUNCTION]";
         } else {
             std::cout << member.TypeName << " " << member.Name 
                      << " [" << member.Size << " bytes]";
         }
-        
+    
         std::cout << std::endl;
     }
 }
@@ -802,29 +811,29 @@ public:
     void RegisterType()
     {
         static_assert(Described<T>::value);
-        
+    
         const ClassInfo info = ClassInfo::Of<T>();
-        
+    
         // Store only data members for serialization
         std::vector<Member> dataMembers;
         std::copy_if(info.Members.begin(), info.Members.end(),
                     std::back_inserter(dataMembers),
                     [](const Member& m) { return m.Type == Member::Data; });
-        
+    
         SerializationInfo serInfo{
             .className = info.Name,
             .totalSize = info.Size,
             .dataMembers = std::move(dataMembers),
             .version = 1 // For versioning support
         };
-        
+    
         m_SerializationData[info.Name] = std::move(serInfo);
-        
+    
         SEDX_CORE_INFO_TAG("SERIALIZATION", 
             "Registered type '{}' with {} data members", 
             info.Name, dataMembers.size());
     }
-    
+  
     std::optional<SerializationInfo> GetSerializationInfo(const std::string& typeName) const
     {
         auto it = m_SerializationData.find(typeName);
@@ -840,7 +849,7 @@ private:
         std::vector<Member> dataMembers;
         uint32_t version;
     };
-    
+  
     std::unordered_map<std::string, SerializationInfo> m_SerializationData;
 };
 ```
@@ -855,10 +864,10 @@ public:
     void RegisterProperties()
     {
         const ClassInfo info = ClassInfo::Of<T>();
-        
+    
         PropertyGroup group;
         group.typeName = info.Name;
-        
+    
         for (const auto& member : info.Members) {
             if (member.Type == Member::Data) {
                 PropertyDescriptor prop{
@@ -867,14 +876,14 @@ public:
                     .size = member.Size,
                     .isReadOnly = false // Could be enhanced with const detection
                 };
-                
+            
                 group.properties.push_back(std::move(prop));
             }
         }
-        
+    
         m_PropertyGroups[info.Name] = std::move(group);
     }
-    
+  
     const PropertyGroup* GetProperties(const std::string& typeName) const
     {
         auto it = m_PropertyGroups.find(typeName);
@@ -889,13 +898,13 @@ private:
         size_t size;
         bool isReadOnly;
     };
-    
+  
     struct PropertyGroup
     {
         std::string typeName;
         std::vector<PropertyDescriptor> properties;
     };
-    
+  
     std::unordered_map<std::string, PropertyGroup> m_PropertyGroups;
 };
 ```
@@ -910,15 +919,15 @@ public:
     std::string GenerateDebugInfo()
     {
         const ClassInfo info = ClassInfo::Of<T>();
-        
+    
         std::ostringstream oss;
         oss << "=== DEBUG INFO: " << info.Name << " ===" << std::endl;
         oss << "Total Size: " << info.Size << " bytes" << std::endl;
         oss << std::endl;
-        
+    
         // Separate data and function members
         std::vector<Member> dataMembers, functionMembers;
-        
+    
         for (const auto& member : info.Members) {
             if (member.Type == Member::Data) {
                 dataMembers.push_back(member);
@@ -926,39 +935,39 @@ public:
                 functionMembers.push_back(member);
             }
         }
-        
+    
         // Data members section
         if (!dataMembers.empty()) {
             oss << "Data Members (" << dataMembers.size() << "):" << std::endl;
             size_t totalDataSize = 0;
-            
+        
             for (const auto& member : dataMembers) {
                 oss << "  " << member.TypeName << " " << member.Name 
                     << " [" << member.Size << " bytes]" << std::endl;
                 totalDataSize += member.Size;
             }
-            
+        
             oss << "  Total Data Size: " << totalDataSize << " bytes" << std::endl;
-            
+        
             if (totalDataSize < info.Size) {
                 oss << "  Padding/Alignment: " << (info.Size - totalDataSize) 
                     << " bytes" << std::endl;
             }
             oss << std::endl;
         }
-        
+    
         // Function members section  
         if (!functionMembers.empty()) {
             oss << "Function Members (" << functionMembers.size() << "):" << std::endl;
-            
+        
             for (const auto& member : functionMembers) {
                 oss << "  " << member.TypeName << " " << member.Name << "()" << std::endl;
             }
             oss << std::endl;
         }
-        
+    
         oss << "=== END DEBUG INFO ===" << std::endl;
-        
+    
         return oss.str();
     }
 };
@@ -979,19 +988,19 @@ public:
     LayoutAnalysis AnalyzeLayout()
     {
         const ClassInfo info = ClassInfo::Of<T>();
-        
+    
         LayoutAnalysis analysis;
         analysis.className = info.Name;
         analysis.totalSize = info.Size;
-        
+    
         size_t dataSize = 0;
         size_t largestMember = 0;
-        
+    
         for (const auto& member : info.Members) {
             if (member.Type == Member::Data) {
                 dataSize += member.Size;
                 largestMember = std::max(largestMember, member.Size);
-                
+            
                 analysis.dataMembers.push_back({
                     .name = member.Name,
                     .type = member.TypeName,
@@ -999,18 +1008,18 @@ public:
                 });
             }
         }
-        
+    
         analysis.totalDataSize = dataSize;
         analysis.paddingBytes = info.Size - dataSize;
         analysis.wastedSpace = static_cast<float>(analysis.paddingBytes) / info.Size * 100.0f;
         analysis.largestMemberSize = largestMember;
-        
+    
         // Basic alignment analysis
         if (analysis.paddingBytes > 0) {
             analysis.hasAlignment = true;
             analysis.suggestedAlignment = largestMember; // Simplified heuristic
         }
-        
+    
         return analysis;
     }
 
@@ -1021,7 +1030,7 @@ private:
         std::string type;
         size_t size;
     };
-    
+  
     struct LayoutAnalysis
     {
         std::string className;
@@ -1048,7 +1057,7 @@ public:
     void RenderUI()
     {
         ImGui::Begin("Type Browser");
-        
+    
         // Type selection combo
         if (ImGui::BeginCombo("Select Type", m_SelectedType.c_str())) {
             for (const auto& [typeName, info] : m_RegisteredTypes) {
@@ -1058,16 +1067,16 @@ public:
             }
             ImGui::EndCombo();
         }
-        
+    
         // Display selected type info
         if (!m_SelectedType.empty()) {
             const auto& info = m_RegisteredTypes[m_SelectedType];
             RenderTypeInfo(info);
         }
-        
+    
         ImGui::End();
     }
-    
+  
     template<typename T>
     void RegisterType()
     {
@@ -1080,13 +1089,13 @@ private:
     {
         ImGui::Text("Class: %s", info.Name.c_str());
         ImGui::Text("Size: %zu bytes", info.Size);
-        
+    
         ImGui::Separator();
-        
+    
         if (ImGui::TreeNode("Members")) {
             for (const auto& member : info.Members) {
                 ImGui::PushID(member.Name.c_str());
-                
+            
                 if (member.Type == Member::Function) {
                     ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), 
                         "%s %s() [FUNCTION]", 
@@ -1095,13 +1104,13 @@ private:
                     ImGui::Text("%s %s [%zu bytes]", 
                         member.TypeName.c_str(), member.Name.c_str(), member.Size);
                 }
-                
+            
                 ImGui::PopID();
             }
             ImGui::TreePop();
         }
     }
-    
+  
     std::unordered_map<std::string, ClassInfo> m_RegisteredTypes;
     std::string m_SelectedType;
 };
@@ -1117,11 +1126,11 @@ public:
     ValidationResult ValidateConfig(const nlohmann::json& config)
     {
         const ClassInfo info = ClassInfo::Of<ConfigType>();
-        
+    
         ValidationResult result;
         result.typeName = info.Name;
         result.isValid = true;
-        
+    
         // Check that all data members have corresponding JSON fields
         for (const auto& member : info.Members) {
             if (member.Type == Member::Data) {
@@ -1136,7 +1145,7 @@ public:
                 }
             }
         }
-        
+    
         // Check for unknown fields in JSON
         for (auto& [key, value] : config.items()) {
             bool found = false;
@@ -1146,13 +1155,13 @@ public:
                     break;
                 }
             }
-            
+        
             if (!found) {
                 result.warnings.push_back(fmt::format(
                     "Unknown field in config: '{}'", key));
             }
         }
-        
+    
         return result;
     }
 
@@ -1175,41 +1184,41 @@ class ReflectionModule : public Module
 {
 public:
     explicit ReflectionModule() : Module("ReflectionModule") {}
-    
+  
     void OnAttach() override
     {
         SEDX_CORE_INFO("=== Initializing Reflection Module ===");
-        
+    
         // Register core types
         RegisterCoreTypes();
-        
+    
         // Validate reflection system
         if (!RunValidationTests()) {
             SEDX_CORE_ERROR("Reflection system validation failed!");
             return;
         }
-        
+    
         SEDX_CORE_INFO("Reflection module initialized with {} types", 
             m_TypeRegistry.size());
     }
-    
+  
     template<typename T>
     void RegisterType()
     {
         static_assert(Described<T>::value, "Type must be described");
-        
+    
         const ClassInfo info = ClassInfo::Of<T>();
         m_TypeRegistry[info.Name] = info;
-        
+    
         SEDX_CORE_INFO_TAG("REFLECTION", "Registered type: {}", info.Name);
     }
-    
+  
     const ClassInfo* GetTypeInfo(const std::string& typeName) const
     {
         auto it = m_TypeRegistry.find(typeName);
         return (it != m_TypeRegistry.end()) ? &it->second : nullptr;
     }
-    
+  
     void OnUIRender() override
     {
         if (m_ShowDebugWindow) {
@@ -1223,24 +1232,24 @@ private:
         RegisterType<TestStruct>(); // From the example in type_structs.h
         // Register other core types...
     }
-    
+  
     bool RunValidationTests()
     {
         return Types::Reflection::ClassInfoTest();
     }
-    
+  
     void RenderDebugUI()
     {
         ImGui::Begin("Reflection Debug", &m_ShowDebugWindow);
-        
+    
         ImGui::Text("Registered Types: %zu", m_TypeRegistry.size());
-        
+    
         if (ImGui::TreeNode("Type Registry")) {
             for (const auto& [name, info] : m_TypeRegistry) {
                 if (ImGui::TreeNode(name.c_str())) {
                     ImGui::Text("Size: %zu bytes", info.Size);
                     ImGui::Text("Members: %zu", info.Members.size());
-                    
+                
                     if (ImGui::TreeNode("Member Details")) {
                         for (const auto& member : info.Members) {
                             const char* typeStr = (member.Type == Member::Function) ? "FUNC" : "DATA";
@@ -1250,16 +1259,16 @@ private:
                         }
                         ImGui::TreePop();
                     }
-                    
+                
                     ImGui::TreePop();
                 }
             }
             ImGui::TreePop();
         }
-        
+    
         ImGui::End();
     }
-    
+  
     std::unordered_map<std::string, ClassInfo> m_TypeRegistry;
     bool m_ShowDebugWindow = false;
 };
@@ -1268,6 +1277,7 @@ private:
 ## Best Practices
 
 ### 1. Type Registration Strategy
+
 ```cpp
 // Register types in module initialization
 void MyModule::OnAttach() override
@@ -1280,19 +1290,20 @@ void MyModule::OnAttach() override
 ```
 
 ### 2. Validation and Error Handling
+
 ```cpp
 template<typename T>
 ClassInfo SafeGetClassInfo()
 {
     static_assert(Described<T>::value, "Type must be described for reflection");
-    
+  
     try {
         return ClassInfo::Of<T>();
     } catch (const std::exception& e) {
         SEDX_CORE_ERROR_TAG("REFLECTION", 
             "Failed to generate ClassInfo for {}: {}", 
             type_name<T>(), e.what());
-        
+    
         // Return minimal info for error recovery
         return ClassInfo{
             .Name = std::string(type_name<T>()),
@@ -1304,6 +1315,7 @@ ClassInfo SafeGetClassInfo()
 ```
 
 ### 3. Performance Considerations
+
 ```cpp
 // Cache ClassInfo for frequently used types
 template<typename T>
@@ -1313,5 +1325,3 @@ const ClassInfo& GetCachedClassInfo()
     return info;
 }
 ```
-
-The Type Structs system provides the runtime foundation for reflection, enabling dynamic type inspection, serialization, debugging, and editor integration while maintaining seamless integration with the compile-time type descriptor system.

@@ -1,4 +1,6 @@
-# Scenery Editor X Logging System Documentation
+# Scenery Editor X - Logging System Documentation
+
+---
 
 ## Overview
 
@@ -17,24 +19,28 @@ The Scenery Editor X logging system provides a comprehensive, multi-channel logg
 ### Logger Types
 
 #### Core Logger (`CoreLogger`)
+
 - **Purpose**: Core application and engine logging
 - **Usage**: Internal engine operations, system initialization, critical errors
 - **File Output**: `../logs/SceneryEditorX.log`
 - **Console Output**: Colored console output with timestamps
 
-#### Editor Logger (`EditorLogger`) 
+#### Editor Logger (`EditorLogger`)
+
 - **Purpose**: Editor-specific functionality and user interactions
 - **Usage**: UI operations, editor tools, user-facing messages
 - **File Output**: `../logs/SceneryEditorX.log` (shared with Core)
 - **Console Output**: Colored console output with timestamps
 
 #### Editor Console Logger (`EditorConsoleLogger`)
+
 - **Purpose**: In-editor debug console output
 - **Usage**: Debug information displayed within the editor's UI console
 - **File Output**: `../logs/EditorConsoleOut.log`
 - **Console Output**: Raw output without timestamps for UI display
 
 #### Launcher Logger (`LauncherLogger`)
+
 - **Purpose**: Application launcher and startup logging
 - **Usage**: Launcher operations, application startup, pre-initialization
 - **File Output**: `../logs/Launcher.log`
@@ -53,9 +59,11 @@ The system supports five logging levels in order of severity:
 ## Tag-based Filtering System
 
 ### Overview
+
 The tag system allows fine-grained control over what gets logged from different subsystems. Each tag can be individually enabled/disabled and have its own minimum log level.
 
 ### Default Tags Configuration
+
 ```cpp
 // Example of default tag configuration
 std::map<std::string, Log::TagDetails> DefaultTagDetails_ = {
@@ -68,6 +76,7 @@ std::map<std::string, Log::TagDetails> DefaultTagDetails_ = {
 ```
 
 ### TagDetails Structure
+
 ```cpp
 struct TagDetails {
     bool Enabled = true;        // Whether the tag is enabled for logging
@@ -128,6 +137,7 @@ EDITOR_ERROR_TAG("Scene", "Failed to serialize scene: {}", error);
 ### Advanced Usage Patterns
 
 #### Conditional Logging
+
 ```cpp
 // Check if a tag is enabled before expensive operations
 if (Log::HasTag("Performance")) {
@@ -140,6 +150,7 @@ if (Log::HasTag("Performance")) {
 ```
 
 #### Dynamic Tag Configuration
+
 ```cpp
 // Enable/disable tags at runtime
 auto& tags = Log::EnabledTags();
@@ -154,6 +165,7 @@ if (Log::HasTag("Renderer")) {
 ```
 
 #### Vulkan-specific Logging
+
 ```cpp
 // The system provides special handling for Vulkan debug output
 void vulkanDebugCallback(/* vulkan debug parameters */) {
@@ -167,6 +179,7 @@ Log::LogVulkanResult(result, "vkCreateBuffer"); // Logs success/failure appropri
 ```
 
 #### Editor Console Integration
+
 ```cpp
 // Direct logging to the in-editor console (bypasses tag filtering)
 EDITOR_CONSOLE_LOG_INFO("Build completed successfully");
@@ -179,6 +192,7 @@ EDITOR_CONSOLE_LOG_ERROR("Build failed: {}", errorMessage);
 The logging system is tightly integrated with the assertion system defined in `asserts.h`:
 
 ### Assert Macros
+
 ```cpp
 // Core assertions (for engine code)
 SEDX_CORE_ASSERT(ptr != nullptr, "Pointer cannot be null");
@@ -190,6 +204,7 @@ SEDX_VERIFY(file.is_open(), "Failed to open file: {}", filename);
 ```
 
 ### Assert vs Verify
+
 - **Assert**: Only active in debug builds (`SEDX_DEBUG`)
 - **Verify**: Always active (can be disabled with `SEDX_ENABLE_VERIFY`)
 
@@ -198,6 +213,7 @@ Both use the logging system to output formatted error messages before triggering
 ## File Organization and Output
 
 ### Log File Structure
+
 ```
 logs/
 ├── SceneryEditorX.log      # Core and Editor output
@@ -206,11 +222,13 @@ logs/
 ```
 
 ### Log File Patterns
+
 - **File Pattern**: `[timestamp] [level] logger_name: message`
 - **Console Pattern**: `[timestamp] logger_name: message` (with colors)
 - **Editor Console Pattern**: `message` (raw output for UI display)
 
 ### Example Log Output
+
 ```
 [14:32:15] [info] Core: Vulkan renderer initialized
 [14:32:15] [warn] Core: [Renderer] Falling back to software rendering
@@ -221,6 +239,7 @@ logs/
 ## Best Practices
 
 ### 1. Use Tagged Logging
+
 Always prefer tagged logging macros over untagged ones:
 
 ```cpp
@@ -232,6 +251,7 @@ SEDX_CORE_INFO("Initializing Vulkan with {} extensions", extensionCount);
 ```
 
 ### 2. Choose Appropriate Log Levels
+
 - **Trace**: Very detailed debugging information, performance metrics
 - **Info**: Important state changes, successful operations
 - **Warn**: Recoverable issues, deprecated usage, fallback behavior
@@ -239,6 +259,7 @@ SEDX_CORE_INFO("Initializing Vulkan with {} extensions", extensionCount);
 - **Fatal**: Critical errors that may cause application termination
 
 ### 3. Use Meaningful Tags
+
 Create descriptive, hierarchical tags:
 
 ```cpp
@@ -251,6 +272,7 @@ SEDX_CORE_INFO_TAG("System", "Loading model: {}", path);
 ```
 
 ### 4. Format Messages Consistently
+
 Use consistent formatting patterns:
 
 ```cpp
@@ -264,6 +286,7 @@ SEDX_CORE_ERROR_TAG("AssetManager", "Asset load failure - {} ({})", errorMessage
 ```
 
 ### 5. Performance Considerations
+
 - Avoid expensive operations in trace-level logs in release builds
 - Use conditional logging for performance-critical sections
 - Prefer compile-time format strings when possible
@@ -281,6 +304,7 @@ SEDX_CORE_TRACE_TAG("Performance", "Debug report: {}", expensiveDebugInfo);
 ```
 
 ### 6. Error Context
+
 Provide sufficient context in error messages:
 
 ```cpp
@@ -295,16 +319,17 @@ SEDX_CORE_ERROR_TAG("FileSystem", "File open failed");
 ## Initialization and Shutdown
 
 ### System Initialization
+
 ```cpp
 int main() {
     // Initialize logging system early in application startup
     SceneryEditorX::Log::Init();
-    
+  
     // Log system information
     SceneryEditorX::Log::LogHeader();
-    
+  
     // Your application code here...
-    
+  
     // Shutdown logging system before exit
     SceneryEditorX::Log::ShutDown();
     return 0;
@@ -312,10 +337,11 @@ int main() {
 ```
 
 ### Custom Tag Configuration
+
 ```cpp
 void configureLoggingTags() {
     auto& tags = SceneryEditorX::Log::EnabledTags();
-    
+  
     // Enable detailed renderer logging in debug builds
     #ifdef SEDX_DEBUG
     tags["Renderer"] = {true, SceneryEditorX::Log::Level::Trace};
@@ -324,7 +350,7 @@ void configureLoggingTags() {
     tags["Renderer"] = {true, SceneryEditorX::Log::Level::Info};
     tags["Memory"] = {true, SceneryEditorX::Log::Level::Error};
     #endif
-    
+  
     // Disable verbose subsystems in release
     #ifdef SEDX_RELEASE
     tags["Animation"] = {false, SceneryEditorX::Log::Level::Trace};
@@ -367,6 +393,7 @@ void Log::Init() {
 ## Platform Considerations
 
 The system is designed to work across multiple platforms:
+
 - **Windows**: Supports Windows-specific debugging features and message boxes for assertions
 - **Linux/Mac**: Uses appropriate debug break mechanisms for each platform
 - **Multi-platform**: File paths and system information adapt to the target platform
@@ -374,9 +401,8 @@ The system is designed to work across multiple platforms:
 ## Future Extensions
 
 The logging system is designed to be extensible:
+
 - Additional logger types can be easily added
 - New output sinks (network, database, etc.) can be integrated
 - Custom formatters can be implemented
 - Additional metadata (thread ID, process ID, etc.) can be added to log patterns
-
-This documentation provides comprehensive guidance for GitHub Copilot and other AI agents to understand and properly utilize the Scenery Editor X logging system according to the established patterns and best practices.

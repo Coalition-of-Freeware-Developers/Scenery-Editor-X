@@ -1,4 +1,6 @@
-# Formatter System Documentation
+# Scenery Editor X - Formatter System Documentation
+
+---
 
 ## Overview
 
@@ -40,7 +42,7 @@ This dual approach ensures compatibility with both modern C++ standards and the 
 All vector types in Scenery Editor X are supported through GLM type aliases:
 
 - **Vec2** (`glm::vec2`): 2D floating-point vector
-- **Vec3** (`glm::vec3`): 3D floating-point vector  
+- **Vec3** (`glm::vec3`): 3D floating-point vector
 - **Vec4** (`glm::vec4`): 4D floating-point vector
 
 ### Standard Library Types
@@ -53,10 +55,10 @@ All vector types in Scenery Editor X are supported through GLM type aliases:
 
 Vector types support two presentation formats:
 
-| Format | Description | Example Output |
-|--------|-------------|----------------|
-| `f` (default) | Fixed-point notation with 3 decimal places | `(1.235, 6.789)` |
-| `e` | Scientific notation with 3 decimal places | `(1.235e+00, 6.789e+00)` |
+| Format          | Description                                | Example Output             |
+| --------------- | ------------------------------------------ | -------------------------- |
+| `f` (default) | Fixed-point notation with 3 decimal places | `(1.235, 6.789)`         |
+| `e`           | Scientific notation with 3 decimal places  | `(1.235e+00, 6.789e+00)` |
 
 ### Path Format Specifications
 
@@ -129,13 +131,13 @@ public:
     void OnUpdate() override
     {
         SEDX_PROFILE_SCOPE("TerrainModule::OnUpdate");
-        
+  
         // Update terrain chunks based on camera position
         Vec3 cameraPos = GetCameraPosition();
-        
+  
         // Log camera position for debugging
         SEDX_CORE_INFO_TAG("TERRAIN", "Camera position: {}", cameraPos);
-        
+  
         // Check if we need to update visible chunks
         if (ShouldUpdateChunks(cameraPos))
         {
@@ -143,18 +145,18 @@ public:
             UpdateVisibleChunks(cameraPos);
         }
     }
-    
+  
 private:
     void LoadHeightmapFromFile(const std::filesystem::path& heightmapPath)
     {
         SEDX_CORE_INFO_TAG("TERRAIN", "Loading heightmap from: {}", heightmapPath);
-        
+  
         if (!std::filesystem::exists(heightmapPath))
         {
             SEDX_CORE_ERROR_TAG("TERRAIN", "Heightmap not found: {}", heightmapPath);
             return;
         }
-        
+  
         // Load heightmap...
     }
 };
@@ -173,10 +175,10 @@ public:
             // Display formatted vector information
             Vec3 playerPos = GetPlayerPosition();
             Vec3 playerVel = GetPlayerVelocity();
-            
+    
             ImGui::Text("Position: %s", std::format("{}", playerPos).c_str());
             ImGui::Text("Velocity: %s", std::format("{:e}", playerVel).c_str());
-            
+    
             // Display path information
             auto currentPath = std::filesystem::current_path();
             ImGui::Text("Working Directory: %s", std::format("{}", currentPath).c_str());
@@ -246,10 +248,10 @@ The formatter system integrates seamlessly with Scenery Editor X's logging syste
 void ModelLoaderModule::OnAttach() override
 {
     SEDX_CORE_INFO("=== Initializing {} ===", GetName());
-    
+  
     auto assetsPath = std::filesystem::current_path() / "assets" / "models";
     SEDX_CORE_INFO_TAG("INIT", "Models directory: {}", assetsPath);
-    
+  
     // Load default models
     for (const auto& modelFile : std::filesystem::directory_iterator(assetsPath))
     {
@@ -264,12 +266,12 @@ void ModelLoaderModule::OnAttach() override
 void PhysicsModule::OnUpdate() override
 {
     SEDX_PROFILE_SCOPE("PhysicsModule::OnUpdate");
-    
+  
     for (auto& entity : m_PhysicsEntities)
     {
         Vec3 oldPos = entity.position;
         entity.UpdatePhysics(GetDeltaTime());
-        
+  
         // Log significant position changes
         Vec3 deltaPos = entity.position - oldPos;
         if (glm::length(deltaPos) > SIGNIFICANT_MOVEMENT_THRESHOLD)
@@ -290,18 +292,18 @@ public:
     void OnUpdate() override
     {
         SEDX_PROFILE_SCOPE("PerformanceMonitor::OnUpdate");
-        
+  
         // Monitor memory usage
         auto memUsage = GetMemoryUsage();
         if (memUsage.physicalUsed > HIGH_MEMORY_THRESHOLD)
         {
             SEDX_CORE_WARN_TAG("MEMORY", "High memory usage: {} MB", memUsage.physicalUsed / 1024 / 1024);
         }
-        
+  
         // Monitor render performance
         Vec3 cameraPos = GetMainCamera().GetPosition();
         float frameTime = GetFrameTime();
-        
+  
         if (frameTime > TARGET_FRAME_TIME * 1.5f)
         {
             SEDX_CORE_WARN_TAG("RENDER", "Frame time spike: {:.3f}ms at camera position: {}", 
@@ -325,10 +327,10 @@ constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
     auto it = ctx.begin(), end = ctx.end();
     if (it != end && (*it == 'f' || *it == 'e'))
         presentation = *it++;
-    
+  
     if (it != end && *it != '}')
         throw format_error("invalid format");
-        
+  
     return it;
 }
 ```
@@ -368,15 +370,15 @@ The formatters include comprehensive error detection:
 constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
 {
     auto it = ctx.begin(), end = ctx.end();
-    
+  
     // Validate format specification
     if (it != end && (*it == 'f' || *it == 'e'))
         presentation = *it++;
-    
+  
     // Ensure format string is properly terminated
     if (it != end && *it != '}')
         throw format_error("invalid format");
-    
+  
     return it;
 }
 ```
@@ -441,10 +443,10 @@ struct std::formatter<Mat4>
         auto it = ctx.begin(), end = ctx.end();
         if (it != end && (*it == 'c' || *it == 'f'))
             presentation = *it++;
-        
+  
         if (it != end && *it != '}')
             throw format_error("invalid format");
-            
+    
         return it;
     }
 
@@ -471,7 +473,7 @@ struct std::formatter<Mat4>
                 mat[3][0], mat[3][1], mat[3][2], mat[3][3]);
         }
     }
-    
+  
 private:
     char presentation = 'f';
 };
@@ -516,9 +518,3 @@ When using the formatter system in your modules:
 3. **Choose appropriate precision**: Use scientific notation for extreme values, fixed-point for typical game data
 4. **Profile when necessary**: Use `SEDX_PROFILE_SCOPE` in performance-critical formatting sections
 5. **Handle errors gracefully**: Wrap formatting in try-catch blocks during development and testing
-
-## Conclusion
-
-The formatter system provides a robust, extensible foundation for string formatting in Scenery Editor X. By leveraging both standard library and fmt library capabilities, it ensures consistent, readable output across the entire application while maintaining high performance and type safety.
-
-The system integrates seamlessly with the module architecture, logging system, and overall coding standards, making it an essential tool for debugging, logging, and user interface development.

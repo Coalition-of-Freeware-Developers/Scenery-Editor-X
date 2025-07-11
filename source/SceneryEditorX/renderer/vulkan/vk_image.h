@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "image_data.h"
+#include <SceneryEditorX/renderer/image_data.h>
 
 /// -----------------------------------------------------------
 
@@ -28,17 +28,30 @@ namespace SceneryEditorX
 	    std::string name;
 	};
 
+	struct ImageSpecification
+    {
+        std::string DebugName;
+
+        VkFormat Format = VK_FORMAT_R8G8B8A8_UNORM;
+        ImageUsageFlags Usage;
+        bool Transfer = false; // Will it be used for transfer ops?
+        uint32_t Width = 1;
+        uint32_t Height = 1;
+        uint32_t Mips = 1;
+        uint32_t Layers = 1;
+        bool CreateSampler = true;
+    };
+
     /// -----------------------------------------------------------
 
-    class Image2D : Resource
+    class Image2D : public Resource
     {
     public:
         Image2D(const Image &ImageSpec);
         virtual ~Image2D();
 
-        //static Ref<Image2D> Create(const ImageDescriptions &desc, const std::string &name = "Image2D");
-        //virtual void Resize(const glm::uvec2 &size) = 0;
-        [[nodiscard]] virtual bool Valid() const = 0;
+        GLOBAL Ref<Image2D> Create(const ImageDescriptions &desc, const std::string &name = "Image2D");
+        //[[nodiscard]] virtual bool Valid() const = 0;
 
         virtual void Resize(const glm::uvec2& size)
         {
@@ -59,29 +72,26 @@ namespace SceneryEditorX
 		[[nodiscard]] virtual uint32_t GetHeight() const { return m_Specification.height; }
 		[[nodiscard]] virtual glm::uvec2 GetSize() const { return { m_Specification.width, m_Specification.height };}
 		[[nodiscard]] virtual bool HasMips() const { return m_Specification.mips > 1; }
-
 		[[nodiscard]] virtual float GetAspectRatio() const { return (float)m_Specification.width / (float)m_Specification.height; }
-		
 		[[nodiscard]] int GetClosestMipLevel(uint32_t width, uint32_t height) const;
         [[nodiscard]] std::pair<uint32_t, uint32_t> GetMipLevelSize(int mipLevel) const;
-
-		virtual Image& GetSpecification() { return m_Specification; }
 		[[nodiscard]] virtual const Image& GetSpecification() const { return m_Specification; }
 
+        virtual Image& GetSpecification() { return m_Specification; }
 		void Invalidate_RenderThread();
 
 		virtual void CreatePerLayerImageViews();
-		void RT_CreatePerLayerImageViews();
-		void RT_CreatePerSpecificLayerImageViews(const std::vector<uint32_t>& layerIndices);
+        void CreatePerLayerImageViews_RenderThread();
+        void CreatePerSpecificLayerImageViews_RenderThread(const std::vector<uint32_t> &layerIndices);
 
-		virtual VkImageView GetLayerImageView(uint32_t layer)
+		virtual VkImageView GetLayerImageView(const uint32_t layer)
 		{
 			SEDX_CORE_ASSERT(layer < m_PerLayerImageViews.size());
 			return m_PerLayerImageViews[layer];
 		}
 
 		VkImageView GetMipImageView(uint32_t mip);
-		VkImageView RT_GetMipImageView(uint32_t mip);
+        VkImageView GetRenderThreadMipImageView(uint32_t mip);
 
 		ImageResource& GetImageInfo() { return m_Info; }
 		[[nodiscard]] const ImageResource &GetImageInfo() const { return m_Info; }
@@ -112,19 +122,19 @@ namespace SceneryEditorX
         VkDescriptorImageInfo m_DescriptorImageInfo = {};
     };
 
-	class ImageView
+	class ImageView : Resource
 	{
 	public:
         ImageView(ImageViewData spec);
-        virtual ~ImageView();
+        virtual ~ImageView() = default;
 		
 		void Invalidate();
 		void Invalidate_RenderThread();
 
 		[[nodiscard]] VkImageView GetImageView() const { return m_ImageView; }
 
-		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
-		[[nodiscard]] const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
+		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
+		[[nodiscard]] const VkDescriptorImageInfo &GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
 	private:
 		ImageViewData m_Specification;
 		VkImageView m_ImageView = nullptr;

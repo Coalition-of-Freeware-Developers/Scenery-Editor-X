@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * shader_compiler.h
@@ -20,7 +20,7 @@ namespace SceneryEditorX
     {
     public:
         /// -------------------------------------------------------
-        /// Path to the glslangValidator executable
+        /// Path to the glslang Validator executable
         /// -------------------------------------------------------
 
         //static const std::string_view GLSL_VALIDATOR;
@@ -36,6 +36,8 @@ namespace SceneryEditorX
 
     };
 
-} // namespace SceneryEditorX
+    /// -------------------------------------------------------
+
+}
 
 /// -------------------------------------------------------

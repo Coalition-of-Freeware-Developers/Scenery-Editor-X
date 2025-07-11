@@ -1,4 +1,6 @@
-# Type Names System Documentation
+# Scenery Editor X - Type Names System Documentation
+
+---
 
 ## Overview
 
@@ -13,12 +15,13 @@ This system is fundamental to the reflection framework, providing the type name 
 The system leverages compiler-specific function signature introspection to extract type names at compile time using template metaprogramming and compile-time string manipulation:
 
 - **Clang**: Uses `__PRETTY_FUNCTION__` with pattern `"T = TypeName"`
-- **GCC**: Uses `__PRETTY_FUNCTION__` with pattern `"; T = TypeName"`  
+- **GCC**: Uses `__PRETTY_FUNCTION__` with pattern `"; T = TypeName"`
 - **MSVC**: Uses `__FUNCSIG__` with pattern `"e,TypeName>(void)"`
 
 ### Template Metaprogramming Foundation
 
 The implementation uses advanced template metaprogramming techniques:
+
 - `std::string_view` for zero-overhead compile-time string operations
 - `std::index_sequence` for compile-time array generation
 - Template specialization for compiler-specific handling
@@ -29,6 +32,7 @@ The implementation uses advanced template metaprogramming techniques:
 ### Primary Functions
 
 #### `type_name<T>()`
+
 ```cpp
 template <typename T>
 constexpr std::string_view type_name()
@@ -37,6 +41,7 @@ constexpr std::string_view type_name()
 Returns the type name without namespace qualifiers. This is the most commonly used function for type identification.
 
 **Examples:**
+
 ```cpp
 // Basic types
 static_assert(type_name<int>() == "int");
@@ -72,6 +77,7 @@ static_assert(type_name<MyTemplate<int>>() == "MyTemplate<int>");
 ```
 
 #### `type_name_keep_namespace<T>()`
+
 ```cpp
 template <typename T>
 constexpr std::string_view type_name_keep_namespace()
@@ -80,6 +86,7 @@ constexpr std::string_view type_name_keep_namespace()
 Returns the fully qualified type name including all namespace information. Essential for debugging and serialization where full type identification is needed.
 
 **Examples:**
+
 ```cpp
 // Custom types with full namespace preservation
 static_assert(type_name_keep_namespace<SceneryEditorX::Transform>() == "SceneryEditorX::Transform");
@@ -140,7 +147,7 @@ constexpr auto type_name_array()
     constexpr auto start = function.find(prefix) + prefix.size();
     constexpr auto end = function.rfind(suffix);
     constexpr auto name = function.substr(start, (end - start));
-    
+  
     // Namespace handling
     if constexpr (keep_namespace) {
         return substring_as_array(name, std::make_index_sequence<name.size()>{});
@@ -188,7 +195,7 @@ template<typename T>
 void ProcessType(const T& value)
 {
     constexpr auto typeName = type_name<T>();
-    
+  
     if constexpr (typeName == "float" || typeName == "double") {
         // Floating-point processing
         ProcessFloat(value);
@@ -228,7 +235,7 @@ std::string GetRuntimeTypeName()
 class TypeRegistry 
 {
     std::unordered_map<std::string, std::unique_ptr<TypeInfo>> m_types;
-    
+  
 public:
     template<typename T>
     void RegisterType()
@@ -236,7 +243,7 @@ public:
         auto typeName = GetRuntimeTypeName<T>();
         m_types[typeName] = std::make_unique<TypeInfoImpl<T>>();
     }
-    
+  
     TypeInfo* GetType(std::string_view typeName) const
     {
         auto it = m_types.find(std::string{typeName});
@@ -256,7 +263,7 @@ void LogValue(const T& value, std::string_view variableName)
 {
     constexpr auto typeName = type_name<T>();
     constexpr auto fullTypeName = type_name_keep_namespace<T>();
-    
+  
     if constexpr (is_streamable_v<T>) {
         LOG_DEBUG("Variable '{}' of type '{}' ({}): {}", 
                   variableName, typeName, fullTypeName, value);
@@ -284,7 +291,7 @@ nlohmann::json SerializeWithTypeInfo(const T& value)
 {
     nlohmann::json result;
     result["__type"] = type_name_keep_namespace<T>();
-    
+  
     if constexpr (Described<T>::value) {
         // Use reflection for described types
         result["data"] = SerializeReflected(value);
@@ -297,7 +304,7 @@ nlohmann::json SerializeWithTypeInfo(const T& value)
         result["data"] = nullptr;
         result["__error"] = "Type not serializable";
     }
-    
+  
     return result;
 }
 
@@ -308,14 +315,14 @@ std::optional<T> DeserializeFromTypeInfo(const nlohmann::json& json)
     if (!json.contains("__type") || !json.contains("data")) {
         return std::nullopt;
     }
-    
+  
     std::string expectedType = type_name_keep_namespace<T>();
     if (json["__type"] != expectedType) {
         LOG_WARNING("Type mismatch: expected '{}', got '{}'", 
                    expectedType, json["__type"].get<std::string>());
         return std::nullopt;
     }
-    
+  
     return DeserializeData<T>(json["data"]);
 }
 ```
@@ -342,7 +349,7 @@ static ClassInfo Of()
 {
     ClassInfo info;
     info.Name = type_name<T>(); // ← Short name for class name
-    
+  
     for (const auto& memberName : Description<T>::MemberNames) {
         auto typeName = GetTypeNameByName(memberName); // ← Uses type_name<> internally
         info.Members.push_back(Member{
@@ -350,7 +357,7 @@ static ClassInfo Of()
             .TypeName = std::string{typeName.data(), typeName.size()}
         });
     }
-    
+  
     return info;
 }
 ```
@@ -365,7 +372,7 @@ struct Shader
     std::string name;
     ShaderType type;
     std::vector<Uniform> uniforms;
-    
+  
     void Compile();
     bool IsCompiled() const;
 };
@@ -406,6 +413,7 @@ struct TypeNameStorage
 ### Memory Usage
 
 Type names are stored efficiently:
+
 - **Compile-time**: No memory usage, values computed during compilation
 - **Runtime storage**: Only when explicitly requested, stored as `std::string_view` pointing to static data
 - **Caching**: Template specialization ensures each type's name is computed only once
@@ -430,6 +438,7 @@ std::string RuntimeConversion()
 ## Best Practices
 
 ### 1. Prefer Compile-Time Access
+
 ```cpp
 // ✅ Good: Compile-time type checking
 template<typename T>
@@ -453,6 +462,7 @@ void ProcessSpecificTypeRuntime(const T& value)
 ```
 
 ### 2. Use Appropriate Namespace Version
+
 ```cpp
 // ✅ Good: Use short names for user-facing display
 void ShowPropertyEditor(std::string_view typeName)
@@ -468,6 +478,7 @@ void SerializeType(const auto& value)
 ```
 
 ### 3. Leverage Template Specialization
+
 ```cpp
 // ✅ Good: Specialize behavior based on type names
 template<typename T>
@@ -492,12 +503,13 @@ struct Serializer<T>
 ```
 
 ### 4. Error Handling for Unknown Types
+
 ```cpp
 template<typename T>
 std::optional<std::string> GetDisplayName()
 {
     constexpr auto name = type_name<T>();
-    
+  
     // Handle known type mappings
     if constexpr (name == "basic_string<char>") {
         return "String";
@@ -515,21 +527,22 @@ std::optional<std::string> GetDisplayName()
 ## Common Use Cases
 
 ### 1. Dynamic Type Registry
+
 ```cpp
 class ComponentRegistry
 {
     std::unordered_map<std::string, std::function<std::unique_ptr<Component>()>> m_factories;
-    
+  
 public:
     template<typename T>
     void RegisterComponent()
     {
         static_assert(std::is_base_of_v<Component, T>);
-        
+    
         std::string typeName{type_name<T>()};
         m_factories[typeName] = []() { return std::make_unique<T>(); };
     }
-    
+  
     std::unique_ptr<Component> CreateComponent(std::string_view typeName)
     {
         auto it = m_factories.find(std::string{typeName});
@@ -539,6 +552,7 @@ public:
 ```
 
 ### 2. Configuration System
+
 ```cpp
 template<typename T>
 void SaveToConfig(const T& value, std::string_view key)
@@ -554,27 +568,28 @@ std::optional<T> LoadFromConfig(std::string_view key)
 {
     Config config;
     config.Load();
-    
+  
     auto storedType = config.GetType(std::string{key});
     auto expectedType = type_name_keep_namespace<T>();
-    
+  
     if (storedType != expectedType) {
         LOG_WARNING("Config type mismatch for key '{}': expected '{}', got '{}'",
                    key, expectedType, storedType);
         return std::nullopt;
     }
-    
+  
     return config.Get<T>(std::string{key});
 }
 ```
 
 ### 3. ImGui Property Display
+
 ```cpp
 template<typename T>
 void DisplayProperty(const T& value, std::string_view name)
 {
     constexpr auto typeName = type_name<T>();
-    
+  
     if constexpr (typeName == "bool") {
         bool mutableValue = value;
         ImGui::Checkbox(std::string{name}.c_str(), &mutableValue);
@@ -596,32 +611,33 @@ void DisplayProperty(const T& value, std::string_view name)
 ### Common Compiler Issues
 
 1. **Template instantiation depth**
+
    ```cpp
    // Issue: Deep template recursion with complex types
    using ComplexType = std::map<std::string, std::vector<std::shared_ptr<MyClass>>>;
    auto name = type_name<ComplexType>(); // May hit instantiation limits
-   
+
    // Solution: Increase template depth or simplify types
    #pragma GCC optimize("-ftemplate-depth=1024")
    ```
-
 2. **Compiler-specific differences**
+
    ```cpp
    // MSVC may produce: "class std::basic_string<char>"
    // GCC/Clang may produce: "std::basic_string<char>"
-   
+
    // Solution: Use consistent string matching
    constexpr bool IsString(std::string_view typeName) {
        return typeName.ends_with("basic_string<char>") || 
               typeName.ends_with("string");
    }
    ```
-
 3. **Template parameter formatting**
+
    ```cpp
    // Different compilers may format template parameters differently
    // "vector<int>" vs "vector<int >" vs "std::vector<int, std::allocator<int>>"
-   
+
    // Solution: Use prefix/suffix matching for template types
    constexpr bool IsVector(std::string_view typeName) {
        return typeName.starts_with("vector<") || 
@@ -708,7 +724,7 @@ void WriteTypeHeader(StreamWriter* writer, const T& obj)
     // Write type name for versioning and debugging
     const auto typeName = type_name<T>();
     writer->WriteString(std::string(typeName));
-    
+  
     SEDX_CORE_DEBUG_TAG("SERIALIZATION", "Serializing type: {}", typeName);
 }
 
@@ -717,13 +733,13 @@ bool ReadTypeHeader(StreamReader* reader)
 {
     const auto expectedType = type_name<T>();
     const auto actualType = reader->ReadString();
-    
+  
     if (actualType != expectedType) {
         SEDX_CORE_ERROR_TAG("SERIALIZATION", 
             "Type mismatch: expected {}, got {}", expectedType, actualType);
         return false;
     }
-    
+  
     return true;
 }
 ```
@@ -750,7 +766,7 @@ template<typename T>
 void ProcessCustomType(const T& obj)
 {
     static_assert(IsSceneryEditorXType<T>(), "Function only accepts SceneryEditorX types");
-    
+  
     SEDX_CORE_INFO("Processing custom type: {}", type_name<T>());
     // ...
 }
@@ -764,7 +780,7 @@ void ThrowTypeMismatchError()
 {
     const auto expectedName = type_name<Expected>();
     const auto actualName = type_name<Actual>();
-    
+  
     throw std::runtime_error(fmt::format(
         "Type mismatch: expected '{}', but got '{}'", 
         expectedName, actualName
@@ -791,20 +807,20 @@ public:
     {
         const auto typeName = type_name<T>();
         const auto fullTypeName = type_name_keep_namespace<T>();
-        
+    
         TypeData data{
             .name = std::string(typeName),
             .fullName = std::string(fullTypeName),
             .size = sizeof(T),
             .alignment = alignof(T)
         };
-        
+    
         m_Types[std::string(typeName)] = std::move(data);
-        
+    
         SEDX_CORE_INFO_TAG("REGISTRY", "Registered type: {} ({})", 
             typeName, fullTypeName);
     }
-    
+  
     std::optional<TypeData> GetTypeInfo(std::string_view name) const
     {
         auto it = m_Types.find(std::string(name));
@@ -819,7 +835,7 @@ private:
         size_t size;
         size_t alignment;
     };
-    
+  
     std::unordered_map<std::string, TypeData> m_Types;
 };
 ```
@@ -842,7 +858,7 @@ void SerializeNamedType(StreamWriter* writer, const T& obj)
 {
     static_assert(HasValidTypeName<T>(), 
         "Type must have a valid name for serialization");
-    
+  
     WriteTypeHeader(writer, obj);
     // ... serialize object
 }
@@ -858,22 +874,22 @@ public:
     void RegisterComponent()
     {
         static_assert(std::is_base_of_v<Component, T>);
-        
+    
         const auto typeName = type_name<T>();
         m_Creators[std::string(typeName)] = []() -> std::unique_ptr<Component> {
             return std::make_unique<T>();
         };
-        
+    
         SEDX_CORE_INFO_TAG("FACTORY", "Registered component type: {}", typeName);
     }
-    
+  
     std::unique_ptr<Component> CreateComponent(std::string_view typeName) const
     {
         auto it = m_Creators.find(std::string(typeName));
         if (it != m_Creators.end()) {
             return it->second();
         }
-        
+    
         SEDX_CORE_WARN_TAG("FACTORY", "Unknown component type: {}", typeName);
         return nullptr;
     }
@@ -901,11 +917,11 @@ public:
     {
         constexpr auto typeName = type_name<T>();
         m_ProfileName = fmt::format("{}::{}", typeName, __FUNCTION__);
-        
+    
         SEDX_PROFILE_BEGIN(m_ProfileName.c_str());
         SEDX_CORE_TRACE_TAG("PROFILER", "Begin profiling: {}", m_ProfileName);
     }
-    
+  
     ~ScopedProfiler()
     {
         SEDX_PROFILE_END();
@@ -921,7 +937,7 @@ template<typename T>
 void ProcessComplexOperation(const T& data)
 {
     ScopedProfiler<T> profiler; // Automatically names profile scope with type
-    
+  
     // ... complex processing
 }
 ```
@@ -929,16 +945,19 @@ void ProcessComplexOperation(const T& data)
 ## Performance Considerations
 
 ### Compile-Time Efficiency
+
 - All operations are performed at compile time
 - Results are cached in template specializations
 - No runtime overhead for type name retrieval
 
 ### Memory Usage
+
 - Type names are stored as `constexpr` arrays
 - Minimal memory footprint per unique type
 - String views provide zero-copy access
 
 ### Compilation Impact
+
 - May increase compilation time for large numbers of types
 - Template instantiation cost is proportional to type complexity
 - Consider explicit instantiation for frequently used types
@@ -946,6 +965,7 @@ void ProcessComplexOperation(const T& data)
 ## Integration Guidelines
 
 ### With Logging System
+
 ```cpp
 #define SEDX_LOG_TYPE_INFO(type, message, ...) \
     SEDX_CORE_INFO_TAG(type_name<type>(), message, ##__VA_ARGS__)
@@ -959,19 +979,20 @@ SEDX_LOG_TYPE_ERROR(Renderer, "Failed to create render target");
 ```
 
 ### With Module System
+
 ```cpp
 template<typename ModuleType>
 class TypedModule : public Module
 {
 public:
     TypedModule() : Module(std::string(type_name<ModuleType>())) {}
-    
+  
     void OnAttach() override
     {
         SEDX_CORE_INFO_TAG("MODULE", "Attaching module: {}", type_name<ModuleType>());
         static_cast<ModuleType*>(this)->OnModuleAttach();
     }
-    
+  
 protected:
     virtual void OnModuleAttach() = 0;
 };
@@ -995,5 +1016,3 @@ protected:
 3. **Cache type names in hot paths** - Even though compile-time, avoid redundant template instantiation
 4. **Combine with static_assert for validation** - Ensure type names meet requirements at compile time
 5. **Integrate with logging tags** - Use type names as structured logging categories
-
-The Type Names system provides a foundation for runtime type identification and debugging while maintaining zero runtime overhead and full compile-time safety.

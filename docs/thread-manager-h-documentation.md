@@ -1,6 +1,8 @@
 # Thread_Manager.h - High-Level Thread Coordination Documentation
 
-## Overview
+---
+
+# Overview
 
 The `thread_manager.h` header defines the high-level thread coordination system for Scenery Editor X. It provides sophisticated frame synchronization, render thread management, and application-render thread coordination specifically designed for Vulkan-based 3D rendering applications.
 
@@ -25,9 +27,9 @@ The `thread_manager.h` header defines the high-level thread coordination system 
 namespace SceneryEditorX
 {
     struct RenderThreadData;
-    
+  
     enum class ThreadingPolicy : uint8_t { /* ... */ };
-    
+  
     class ThreadManager { /* ... */ };
 }
 ```
@@ -43,6 +45,7 @@ struct RenderThreadData;
 **Purpose**: Forward declaration of internal synchronization data structure used by ThreadManager.
 
 **Implementation Details**:
+
 - Contains Windows-specific synchronization primitives
 - Manages thread state coordination
 - Implemented in thread_manager.cpp for encapsulation
@@ -65,18 +68,21 @@ enum class ThreadingPolicy : uint8_t
 #### Policy Descriptions
 
 ##### None (0)
+
 - **Behavior**: All rendering operations execute on the main thread
 - **Use Cases**: Debugging, single-core systems, minimal overhead scenarios
 - **Performance**: No thread coordination overhead, but blocks main thread
 - **Debugging**: Simplifies debugging by eliminating thread synchronization
 
-##### SingleThreaded (1)  
+##### SingleThreaded (1)
+
 - **Behavior**: All operations run on main thread with simplified coordination
 - **Use Cases**: Development debugging, profiling, compatibility testing
 - **Performance**: No thread switching overhead, sequential execution
 - **Resource Usage**: Minimal memory footprint, single call stack
 
 ##### MultiThreaded (2)
+
 - **Behavior**: Separate dedicated render thread with full coordination
 - **Use Cases**: Production builds, multi-core systems, optimal performance
 - **Performance**: Parallel execution, optimal CPU utilization
@@ -94,7 +100,7 @@ ThreadManager prodManager(ThreadingPolicy::MultiThreaded);
 // Conditional policy based on hardware
 ThreadingPolicy SelectOptimalPolicy() {
     uint32_t coreCount = std::thread::hardware_concurrency();
-    
+  
     if (coreCount <= 2) {
         SEDX_CORE_INFO("Using single-threaded rendering for low core count: {}", coreCount);
         return ThreadingPolicy::SingleThreaded;
@@ -108,11 +114,11 @@ ThreadingPolicy SelectOptimalPolicy() {
 ThreadingPolicy LoadPolicyFromConfig() {
     Config config;
     std::string policyStr = config.Get<std::string>("threading.policy", "MultiThreaded");
-    
+  
     if (policyStr == "None") return ThreadingPolicy::None;
     if (policyStr == "SingleThreaded") return ThreadingPolicy::SingleThreaded;
     if (policyStr == "MultiThreaded") return ThreadingPolicy::MultiThreaded;
-    
+  
     SEDX_CORE_WARN("Unknown threading policy '{}', defaulting to MultiThreaded", policyStr);
     return ThreadingPolicy::MultiThreaded;
 }
@@ -130,12 +136,12 @@ public:
         Busy,
         Kick
     };
-    
+  
     ThreadManager(ThreadingPolicy policy);
     ~ThreadManager();
 
     static bool checkRenderThread();
-    
+  
     void Run();
     bool isRunning() const { return m_isRunning; }
     void Terminate();
@@ -174,16 +180,19 @@ enum class State : uint8_t
 ##### State Descriptions
 
 ###### Idle (0)
+
 - **Meaning**: Render thread is waiting for work
 - **Usage**: Application can safely prepare next frame
 - **Transitions**: From Busy after render completion, to Kick when work available
 
-###### Busy (1)  
+###### Busy (1)
+
 - **Meaning**: Render thread is actively processing
 - **Usage**: Application should not submit new render commands
 - **Transitions**: From Kick when work starts, to Idle when work completes
 
 ###### Kick (2)
+
 - **Meaning**: Signal to start render thread processing
 - **Usage**: Trigger render thread to begin frame processing
 - **Transitions**: From Idle when new work is ready, to Busy when processing starts
@@ -207,15 +216,18 @@ ThreadManager(ThreadingPolicy policy);
 **Purpose**: Initializes the thread management system with the specified threading policy.
 
 **Parameters**:
+
 - `policy`: Threading strategy to use (None, SingleThreaded, or MultiThreaded)
 
 **Initialization Process**:
+
 1. Allocates RenderThreadData structure
 2. Initializes synchronization primitives (for MultiThreaded policy)
 3. Sets up internal state tracking
 4. Prepares render thread (doesn't start until Run() is called)
 
 **Usage Examples**:
+
 ```cpp
 // Basic initialization
 ThreadManager manager(ThreadingPolicy::MultiThreaded);
@@ -224,25 +236,25 @@ ThreadManager manager(ThreadingPolicy::MultiThreaded);
 class RenderEngine {
 private:
     ThreadManager m_threadManager;
-    
+  
 public:
     RenderEngine(const EngineConfig& config) 
         : m_threadManager(DetermineThreadingPolicy(config)) {
-        
+      
         SEDX_CORE_INFO("Render engine initialized with threading policy: {}", 
                        ThreadingPolicyToString(config.threadingPolicy));
     }
-    
+  
 private:
     ThreadingPolicy DetermineThreadingPolicy(const EngineConfig& config) {
         if (config.debugMode) {
             return ThreadingPolicy::SingleThreaded;  // Easier debugging
         }
-        
+      
         if (config.targetPlatform == Platform::Mobile) {
             return ThreadingPolicy::SingleThreaded;  // Power efficiency
         }
-        
+      
         return ThreadingPolicy::MultiThreaded;  // Optimal performance
     }
 };
@@ -257,6 +269,7 @@ private:
 **Purpose**: Ensures proper cleanup of threading resources and thread termination.
 
 **Cleanup Process**:
+
 1. Terminates render thread if running
 2. Releases synchronization primitives
 3. Cleans up RenderThreadData structure
@@ -279,6 +292,7 @@ static bool checkRenderThread();
 **Thread Safety**: Thread-safe, can be called from any thread
 
 **Usage Patterns**:
+
 ```cpp
 // Conditional execution based on thread context
 void PerformRenderOperation() {
@@ -297,7 +311,7 @@ void PerformRenderOperation() {
 void UpdateVulkanDescriptorSets() {
     SEDX_ASSERT(ThreadManager::checkRenderThread(), 
                 "Vulkan descriptor updates must be performed on render thread");
-    
+  
     // Safe to update descriptors
     vkUpdateDescriptorSets(device, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 }
@@ -314,7 +328,7 @@ public:
                 static_cast<const uint8_t*>(data), 
                 static_cast<const uint8_t*>(data) + size
             );
-            
+          
             Renderer::Submit([buffer, dataCopy]() {
                 UpdateBufferDirect(buffer, dataCopy->data(), dataCopy->size());
             });
@@ -332,15 +346,18 @@ void Run();
 **Purpose**: Starts the thread management system and begins render thread execution.
 
 **Behavior by Policy**:
+
 - **SingleThreaded/None**: Sets up state tracking only
 - **MultiThreaded**: Creates and starts dedicated render thread
 
 **Implementation Details**:
+
 - Sets `m_isRunning = true`
 - For MultiThreaded: Dispatches `Renderer::RenderThreadFunc` to render thread
 - Registers render thread ID for `checkRenderThread()` functionality
 
 **Usage Examples**:
+
 ```cpp
 // Basic startup sequence
 ThreadManager manager(ThreadingPolicy::MultiThreaded);
@@ -350,14 +367,14 @@ manager.Run();
 class Application {
 private:
     ThreadManager m_threadManager;
-    
+  
 public:
     void Initialize() {
         SEDX_CORE_INFO("Starting thread manager...");
         m_threadManager.Run();
         SEDX_CORE_INFO("Thread manager started successfully");
     }
-    
+  
     void Shutdown() {
         SEDX_CORE_INFO("Shutting down thread manager...");
         m_threadManager.Terminate();
@@ -390,6 +407,7 @@ bool isRunning() const { return m_isRunning; }
 **Thread Safety**: Atomic read operation, safe from any thread
 
 **Usage Examples**:
+
 ```cpp
 // Main application loop
 while (manager.isRunning() && !shouldExit) {
@@ -411,7 +429,7 @@ void ConditionalRender(ThreadManager& manager) {
 class ThreadManagerMonitor {
 private:
     ThreadManager& m_manager;
-    
+  
 public:
     void LogStatus() {
         SEDX_CORE_INFO("Thread manager status: {}", 
@@ -429,6 +447,7 @@ void Terminate();
 **Purpose**: Gracefully shuts down the thread management system and waits for render thread completion.
 
 **Shutdown Process**:
+
 1. Sets `m_isRunning = false`
 2. Signals render thread to exit via `Pump()`
 3. Waits for render thread completion via `Join()`
@@ -437,6 +456,7 @@ void Terminate();
 **Thread Safety**: Safe to call from main thread, blocks until completion
 
 **Usage Examples**:
+
 ```cpp
 // Graceful application shutdown
 class Application {
@@ -461,17 +481,17 @@ void SafeShutdown(ThreadManager& manager) {
 // Timeout-based shutdown (conceptual)
 bool ShutdownWithTimeout(ThreadManager& manager, std::chrono::milliseconds timeout) {
     auto start = std::chrono::high_resolution_clock::now();
-    
+  
     // Note: Actual implementation would need async termination
     manager.Terminate();
-    
+  
     auto elapsed = std::chrono::high_resolution_clock::now() - start;
     bool completedInTime = elapsed < timeout;
-    
+  
     if (!completedInTime) {
         SEDX_CORE_WARN("Thread manager shutdown exceeded timeout of {}ms", timeout.count());
     }
-    
+  
     return completedInTime;
 }
 ```
@@ -487,13 +507,16 @@ void Wait(State waitForState);
 **Purpose**: Blocks the calling thread until the render thread reaches the specified state.
 
 **Parameters**:
+
 - `waitForState`: The target state to wait for (Idle, Busy, or Kick)
 
 **Behavior by Policy**:
+
 - **SingleThreaded/None**: Returns immediately (no-op)
 - **MultiThreaded**: Blocks using condition variable until state matches
 
 **Usage Examples**:
+
 ```cpp
 // Wait for render thread to become idle
 manager.Wait(ThreadManager::State::Idle);
@@ -503,10 +526,10 @@ SEDX_CORE_INFO("Render thread is now idle, safe to update resources");
 void SynchronizedResourceUpdate(ThreadManager& manager) {
     // Ensure render thread is idle before modifying shared resources
     manager.Wait(ThreadManager::State::Idle);
-    
+  
     // Safe to update shared resources
     UpdateSharedRenderResources();
-    
+  
     // Kick render thread to process updates
     manager.Set(ThreadManager::State::Kick);
 }
@@ -530,12 +553,14 @@ void WaitAndSet(State waitForState, State setToState);
 **Purpose**: Atomically waits for a specific state and then transitions to a new state.
 
 **Parameters**:
+
 - `waitForState`: State to wait for before proceeding
 - `setToState`: State to transition to after wait completes
 
 **Atomicity**: The wait and set operations are performed atomically under mutex protection
 
 **Usage Examples**:
+
 ```cpp
 // Atomic state transition for frame processing
 manager.WaitAndSet(ThreadManager::State::Idle, ThreadManager::State::Kick);
@@ -544,10 +569,10 @@ manager.WaitAndSet(ThreadManager::State::Idle, ThreadManager::State::Kick);
 void RenderFrameCoordinated(ThreadManager& manager) {
     // Prepare frame data
     PrepareFrameData();
-    
+  
     // Atomically wait for idle and start processing
     manager.WaitAndSet(ThreadManager::State::Idle, ThreadManager::State::Kick);
-    
+  
     // Continue with other application work while render thread processes
     UpdateApplicationLogic();
 }
@@ -580,11 +605,13 @@ void Set(State setToState);
 **Purpose**: Immediately sets the render thread state without waiting.
 
 **Parameters**:
+
 - `setToState`: Target state to transition to
 
 **Non-blocking**: Returns immediately after setting state
 
 **Usage Examples**:
+
 ```cpp
 // Immediate state change
 manager.Set(ThreadManager::State::Kick);  // Start render processing
@@ -617,11 +644,13 @@ void NextFrame();
 **Purpose**: Advances the frame counter and swaps command queues for double-buffered rendering.
 
 **Implementation Details**:
+
 - Increments atomic frame counter
 - Calls `Renderer::SwapQueues()` for command buffer management
 - Prepares system for next frame's render commands
 
 **Usage Examples**:
+
 ```cpp
 // Standard frame advancement
 void GameLoop(ThreadManager& manager) {
@@ -638,16 +667,16 @@ void GameLoop(ThreadManager& manager) {
 class FrameRateLimiter {
 private:
     std::chrono::milliseconds m_targetFrameTime{16};  // 60 FPS
-    
+  
 public:
     void LimitedNextFrame(ThreadManager& manager) {
         auto frameStart = std::chrono::high_resolution_clock::now();
-        
+      
         manager.NextFrame();
-        
+      
         auto frameEnd = std::chrono::high_resolution_clock::now();
         auto frameTime = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
-        
+      
         if (frameTime < m_targetFrameTime) {
             std::this_thread::sleep_for(m_targetFrameTime - frameTime);
         }
@@ -664,10 +693,12 @@ void BlockUntilRenderComplete();
 **Purpose**: Blocks the calling thread until the render thread completes its current work.
 
 **Behavior by Policy**:
+
 - **SingleThreaded/None**: Returns immediately
 - **MultiThreaded**: Blocks until render thread state becomes Idle
 
 **Usage Examples**:
+
 ```cpp
 // Frame synchronization
 void SynchronizedFrame(ThreadManager& manager) {
@@ -689,13 +720,13 @@ class RenderPerformanceProfiler {
 public:
     void ProfileFrame(ThreadManager& manager) {
         auto start = std::chrono::high_resolution_clock::now();
-        
+      
         manager.Kick();
         manager.BlockUntilRenderComplete();
-        
+      
         auto end = std::chrono::high_resolution_clock::now();
         auto renderTime = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        
+      
         SEDX_CORE_INFO("Render time: {}μs", renderTime.count());
     }
 };
@@ -710,10 +741,12 @@ void Kick();
 **Purpose**: Initiates render thread processing for the current frame.
 
 **Behavior by Policy**:
+
 - **SingleThreaded/None**: Directly calls `Renderer::WaitAndRender()`
 - **MultiThreaded**: Sets state to Kick, waking render thread
 
 **Usage Examples**:
+
 ```cpp
 // Basic frame rendering
 manager.Kick();  // Start render processing
@@ -748,6 +781,7 @@ void Pump();
 **Purpose**: High-level convenience method that performs a complete frame cycle: advance frame, start rendering, and wait for completion.
 
 **Equivalent to**:
+
 ```cpp
 void Pump() {
     NextFrame();
@@ -757,6 +791,7 @@ void Pump() {
 ```
 
 **Usage Examples**:
+
 ```cpp
 // Simplified main loop
 void SimpleGameLoop(ThreadManager& manager) {
@@ -779,14 +814,14 @@ class FrameBenchmark {
 public:
     void BenchmarkFrames(ThreadManager& manager, uint32_t frameCount) {
         auto start = std::chrono::high_resolution_clock::now();
-        
+      
         for (uint32_t i = 0; i < frameCount; ++i) {
             manager.Pump();
         }
-        
+      
         auto end = std::chrono::high_resolution_clock::now();
         auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        
+      
         double avgFrameTime = static_cast<double>(totalTime.count()) / frameCount;
         SEDX_CORE_INFO("Average frame time: {:.2f}ms over {} frames", avgFrameTime, frameCount);
     }
@@ -801,26 +836,26 @@ public:
 class VulkanApplication {
 private:
     ThreadManager m_threadManager;
-    
+  
 public:
     VulkanApplication() : m_threadManager(ThreadingPolicy::MultiThreaded) {}
-    
+  
     void Initialize() {
         InitializeVulkan();
         m_threadManager.Run();
     }
-    
+  
     void MainLoop() {
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
-            
+          
             UpdateApplicationLogic();
             RecordCommandBuffers();
-            
+          
             m_threadManager.Pump();  // Complete frame
         }
     }
-    
+  
     void Cleanup() {
         m_threadManager.Terminate();
         CleanupVulkan();
@@ -837,10 +872,10 @@ public:
     void ProduceCommands(ThreadManager& manager) {
         // Ensure render thread is idle
         manager.Wait(ThreadManager::State::Idle);
-        
+      
         // Produce render commands
         RecordRenderCommands();
-        
+      
         // Signal render thread to process
         manager.Set(ThreadManager::State::Kick);
     }

@@ -1,10 +1,10 @@
 # Scenery Editor X - ModuleStage System Documentation
 
+---
+
 ## Overview
 
 The `ModuleStage` class is a sophisticated container and manager for Module instances in Scenery Editor X. It provides an ordered collection system that distinguishes between regular modules and overlay modules, enabling proper layering and execution order management. This system is crucial for maintaining the correct initialization, update, and rendering order of application components.
-
----
 
 ## ModuleStage Class Documentation
 
@@ -153,7 +153,7 @@ public:
         SetupRenderingModules();
         SetupUIOverlays();
         AttachAllModules();
-      
+  
         SEDX_CORE_INFO("Application initialized with {} modules", 
                        m_ModuleStage.Size());
     }
@@ -204,13 +204,13 @@ private:
         m_PhysicsModule = CreateRef<PhysicsModule>();
         m_LightingModule = CreateRef<LightingModule>();
         m_AudioModule = CreateRef<AudioModule>();
-      
+  
         // Add to stage in dependency order
         m_ModuleStage.PushModule(m_TerrainModule.get());   // Index 0
         m_ModuleStage.PushModule(m_PhysicsModule.get());   // Index 1
         m_ModuleStage.PushModule(m_LightingModule.get());  // Index 2
         m_ModuleStage.PushModule(m_AudioModule.get());     // Index 3
-      
+  
         SEDX_CORE_INFO("Core modules added to stage");
     }
   
@@ -219,10 +219,10 @@ private:
         // Add rendering modules that depend on core modules
         auto renderModule = CreateRef<RenderModule>();
         auto postProcessModule = CreateRef<PostProcessModule>();
-      
+  
         m_ModuleStage.PushModule(renderModule.get());      // Index 4
         m_ModuleStage.PushModule(postProcessModule.get()); // Index 5
-      
+  
         SEDX_CORE_INFO("Rendering modules added to stage");
     }
   
@@ -233,13 +233,13 @@ private:
         m_SceneHierarchy = CreateRef<SceneHierarchy>();
         m_PropertyPanel = CreateRef<PropertyPanel>();
         m_AssetBrowser = CreateRef<AssetBrowser>();
-      
+  
         // Add as overlays (will be appended to end)
         m_ModuleStage.PushOverlay(m_DebugOverlay.get());
         m_ModuleStage.PushOverlay(m_SceneHierarchy.get());
         m_ModuleStage.PushOverlay(m_PropertyPanel.get());
         m_ModuleStage.PushOverlay(m_AssetBrowser.get());
-      
+  
         SEDX_CORE_INFO("UI overlays added to stage");
     }
   
@@ -266,10 +266,10 @@ private:
         while (m_ModuleStage.Size() > 0)
         {
             auto* lastModule = m_ModuleStage[m_ModuleStage.Size() - 1];
-          
+      
             // Determine if it's an overlay or regular module
             bool isOverlay = /* logic to determine overlay status */;
-          
+      
             if (isOverlay)
                 m_ModuleStage.PopOverlay(lastModule);
             else
@@ -292,14 +292,14 @@ public:
     {
         auto module = CreateRef<ModuleType>(std::forward<Args>(args)...);
         ModuleType* modulePtr = module.get();
-      
+  
         // Store for lifetime management
         m_ManagedModules.push_back(module);
-      
+  
         // Add to stage
         m_ModuleStage.PushModule(modulePtr);
         modulePtr->OnAttach();
-      
+  
         SEDX_CORE_INFO("Created and added module: {}", typeid(ModuleType).name());
         return modulePtr;
     }
@@ -309,14 +309,14 @@ public:
     {
         auto overlay = CreateRef<OverlayType>(std::forward<Args>(args)...);
         OverlayType* overlayPtr = overlay.get();
-      
+  
         // Store for lifetime management
         m_ManagedModules.push_back(overlay);
-      
+  
         // Add to stage
         m_ModuleStage.PushOverlay(overlayPtr);
         overlayPtr->OnAttach();
-      
+  
         SEDX_CORE_INFO("Created and added overlay: {}", typeid(OverlayType).name());
         return overlayPtr;
     }
@@ -325,10 +325,10 @@ public:
     {
         // Detach first
         module->OnDetach();
-      
+  
         // Remove from stage
         m_ModuleStage.PopModule(module);
-      
+  
         // Remove from managed modules
         m_ManagedModules.erase(
             std::remove_if(m_ManagedModules.begin(), m_ManagedModules.end(),
@@ -337,7 +337,7 @@ public:
                 }),
             m_ManagedModules.end()
         );
-      
+  
         SEDX_CORE_INFO("Removed module from stage");
     }
   
@@ -345,10 +345,10 @@ public:
     {
         // Detach first
         overlay->OnDetach();
-      
+  
         // Remove from stage
         m_ModuleStage.PopOverlay(overlay);
-      
+  
         // Remove from managed modules
         m_ManagedModules.erase(
             std::remove_if(m_ManagedModules.begin(), m_ManagedModules.end(),
@@ -357,7 +357,7 @@ public:
                 }),
             m_ManagedModules.end()
         );
-      
+  
         SEDX_CORE_INFO("Removed overlay from stage");
     }
   
@@ -375,7 +375,7 @@ public:
     void PrintModuleStageInfo()
     {
         SEDX_CORE_INFO("ModuleStage contains {} modules:", m_ModuleStage.Size());
-      
+  
         for (size_t i = 0; i < m_ModuleStage.Size(); ++i)
         {
             auto* module = m_ModuleStage[i];
@@ -436,14 +436,14 @@ public:
     {
         // Process events in reverse order (overlays first)
         // This allows UI overlays to consume events before core modules
-      
+  
         for (auto it = m_ModuleStage.end() - 1; it >= m_ModuleStage.begin(); --it)
         {
             auto* module = *it;
-          
+      
             // Allow module to process event
             module->OnEvent(event);
-          
+      
             // Check if event was consumed
             if (event.IsConsumed())
             {
@@ -524,16 +524,16 @@ public:
         m_ModuleStage.PushModule(CreateRef<RenderModule>().get());
         m_ModuleStage.PushModule(CreateRef<InputModule>().get());
         m_ModuleStage.PushModule(CreateRef<AudioModule>().get());
-      
+  
         // Game-specific modules
         m_ModuleStage.PushModule(CreateRef<TerrainModule>().get());
         m_ModuleStage.PushModule(CreateRef<SceneryModule>().get());
         m_ModuleStage.PushModule(CreateRef<WeatherModule>().get());
-      
+  
         // UI overlays
         m_ModuleStage.PushOverlay(CreateRef<EditorUI>().get());
         m_ModuleStage.PushOverlay(CreateRef<DebugOverlay>().get());
-      
+  
         AttachAllModules();
     }
   
@@ -542,5 +542,3 @@ private:
     std::vector<Ref<Module>> m_ModuleStorage; // Lifetime management
 };
 ```
-
-This comprehensive documentation provides detailed guidance for effectively using the ModuleStage system in Scenery Editor X, ensuring proper module organization, lifecycle management, and performance optimization.

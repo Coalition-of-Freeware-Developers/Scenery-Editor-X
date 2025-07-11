@@ -1,5 +1,7 @@
 # Scenery Editor X - Memory System - Inline Code Examples and Use Cases
 
+---
+
 ## Quick Reference Examples
 
 This document provides immediate, copy-paste examples for common memory management scenarios in SceneryEditorX.
@@ -38,7 +40,7 @@ int main() {
         // Your application code
         Application app;
         int result = app.Run();
-      
+  
         // Optional: Debug memory leak checking
         #ifndef SEDX_DIST
         const auto& stats = SceneryEditorX::Memory::GetAllocationStats();
@@ -47,7 +49,7 @@ int main() {
             SEDX_CORE_WARN("Memory leak detected: {} bytes", leaked);
         }
         #endif
-      
+  
         return result;
     }
     catch (const std::exception& e) {
@@ -154,7 +156,7 @@ public:
     static void ReportGlobalUsage() {
         const auto& stats = SceneryEditorX::Memory::GetAllocationStats();
         size_t currentUsage = stats.TotalAllocated - stats.TotalFreed;
-      
+  
         SEDX_CORE_INFO("Global Memory Usage:");
         SEDX_CORE_INFO("  Allocated: {} bytes", stats.TotalAllocated);
         SEDX_CORE_INFO("  Freed: {} bytes", stats.TotalFreed);
@@ -164,10 +166,10 @@ public:
     // Report memory usage by category/subsystem
     static void ReportCategoryUsage(const std::string& prefix = "") {
         const auto& stats = SceneryEditorX::Allocator::GetAllocationStats();
-      
+  
         SEDX_CORE_INFO("Memory Usage by Category{}:", 
                        prefix.empty() ? "" : (" (filter: " + prefix + ")"));
-      
+  
         size_t totalFiltered = 0;
         for (const auto& [category, allocation] : stats) {
             if (prefix.empty() || std::string(category).find(prefix) == 0) {
@@ -178,7 +180,7 @@ public:
                 }
             }
         }
-      
+  
         if (!prefix.empty()) {
             SEDX_CORE_INFO("Total for '{}': {} bytes", prefix, totalFiltered);
         }
@@ -188,11 +190,11 @@ public:
     static bool CheckForLeaks(const std::string& categoryPrefix = "") {
         const auto& stats = SceneryEditorX::Allocator::GetAllocationStats();
         bool leaksFound = false;
-      
+  
         for (const auto& [category, allocation] : stats) {
             if (categoryPrefix.empty() || 
                 std::string(category).find(categoryPrefix) == 0) {
-              
+          
                 size_t leaked = allocation.TotalAllocated - allocation.TotalFreed;
                 if (leaked > 0) {
                     SEDX_CORE_WARN("Memory leak in '{}': {} bytes", category, leaked);
@@ -200,7 +202,7 @@ public:
                 }
             }
         }
-      
+  
         return leaksFound;
     }
 };
@@ -236,7 +238,7 @@ protected:
 public:
     explicit MemoryTrackedComponent(const char* category) 
         : componentCategory_(category) {}
-      
+  
     virtual ~MemoryTrackedComponent() = default;
   
     // Get memory usage for this component category
@@ -263,7 +265,7 @@ public:
         // Allocate renderer resources with category tracking
         vertexBuffers_ = AllocateComponentMemory<VkBuffer[]>(MAX_VERTEX_BUFFERS);
         textures_ = AllocateComponentMemory<VkImage[]>(MAX_TEXTURES);
-      
+  
         SEDX_CORE_INFO("VulkanRenderer initialized with category tracking");
     }
   
@@ -271,7 +273,7 @@ public:
         // Cleanup tracked resources
         FreeComponentMemory(vertexBuffers_);
         FreeComponentMemory(textures_);
-      
+  
         // Report any remaining memory in this category
         size_t remaining = GetCategoryMemoryUsage();
         if (remaining > 0) {
@@ -302,16 +304,16 @@ private:
 public:
     TrackedMemoryPool(size_t poolSize, const char* category) 
         : poolSize_(poolSize), currentOffset_(0), poolCategory_(category) {
-      
+  
         // Single large allocation for the entire pool
         poolMemory_ = new(poolCategory_) uint8_t[poolSize_];
-      
+  
         SEDX_CORE_INFO("Memory pool '{}' created with {} bytes", category, poolSize);
     }
   
     ~TrackedMemoryPool() {
         hdelete[] static_cast<uint8_t*>(poolMemory_);
-      
+  
         SEDX_CORE_INFO("Memory pool '{}' destroyed. {} allocations were made.", 
                        poolCategory_, allocatedSizes_.size());
     }
@@ -319,20 +321,20 @@ public:
     void* Allocate(size_t size) {
         // Align to 8-byte boundary
         size_t alignedSize = (size + 7) & ~7;
-      
+  
         if (currentOffset_ + alignedSize > poolSize_) {
             SEDX_CORE_ERROR("Pool '{}' allocation failed: {} bytes requested, {} available", 
                            poolCategory_, alignedSize, poolSize_ - currentOffset_);
             return nullptr;
         }
-      
+  
         void* result = static_cast<uint8_t*>(poolMemory_) + currentOffset_;
         currentOffset_ += alignedSize;
         allocatedSizes_.push_back(alignedSize);
-      
+  
         SEDX_CORE_TRACE("Pool '{}' allocated {} bytes (total used: {})", 
                         poolCategory_, alignedSize, currentOffset_);
-      
+  
         return result;
     }
   
@@ -378,18 +380,18 @@ public:
     template<typename... Args>
     SafeTrackedAllocation(const char* category, Args&&... args) 
         : ptr_(nullptr), category_(category) {
-      
+  
         try {
             ptr_ = new(category) T(std::forward<Args>(args)...);
         }
         catch (const std::bad_alloc& e) {
             SEDX_CORE_ERROR("Memory allocation failed for category '{}': {}", category, e.what());
-          
+      
             // Report current memory state to help debug
             const auto& stats = SceneryEditorX::Memory::GetAllocationStats();
             size_t currentUsage = stats.TotalAllocated - stats.TotalFreed;
             SEDX_CORE_ERROR("Current total memory usage: {} bytes", currentUsage);
-          
+      
             throw; // Re-throw for caller to handle
         }
         catch (...) {
@@ -440,10 +442,10 @@ public:
 void ExampleExceptionSafeUsage() {
     try {
         SafeTrackedAllocation<LargeObject> obj("Examples::LargeObjects", constructorArgs);
-      
+  
         // Use obj->Method() or (*obj).Method()
         obj->ProcessData();
-      
+  
         // Automatic cleanup when obj goes out of scope
     }
     catch (const std::bad_alloc& e) {
@@ -518,7 +520,7 @@ public:
     template<typename Derived, typename... Args>
     Base* Create(Args&&... args) {
         static_assert(std::is_base_of_v<Base, Derived>, "Derived must inherit from Base");
-      
+  
         std::string fullCategory = std::string(factoryCategory_) + "::" + typeid(Derived).name();
         return new(fullCategory.c_str()) Derived(std::forward<Args>(args)...);
     }
@@ -561,13 +563,13 @@ public:
     ~PerformanceMonitor() {
         auto endTime = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime_);
-      
+  
         const auto& finalStats = SceneryEditorX::Memory::GetAllocationStats();
-      
+  
         size_t allocatedDuring = finalStats.TotalAllocated - initialStats_.TotalAllocated;
         size_t freedDuring = finalStats.TotalFreed - initialStats_.TotalFreed;
         size_t netChange = allocatedDuring - freedDuring;
-      
+  
         SEDX_CORE_INFO("Performance Report for '{}':", operationName_);
         SEDX_CORE_INFO("  Duration: {} μs", duration.count());
         SEDX_CORE_INFO("  Memory allocated: {} bytes", allocatedDuring);
@@ -580,12 +582,12 @@ public:
 void ExamplePerformanceMonitoring() {
     {
         PerformanceMonitor monitor("Complex Algorithm");
-      
+  
         // Perform memory-intensive operations
         auto* data = hnew uint8_t[1024 * 1024]; // 1MB allocation
         ProcessData(data);
         hdelete[] data;
-      
+  
         // Monitor reports performance and memory usage automatically
     }
 }
@@ -604,5 +606,3 @@ void ExampleMacroUsage() {
     // Performance report generated automatically at scope exit
 }
 ```
-
-This collection of examples and patterns provides comprehensive guidance for integrating with the SceneryEditorX memory management system. Use these patterns as templates for new code development and as references when working with the existing codebase.

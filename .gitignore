@@ -196,3 +196,4 @@ _pkginfo.txt
 .vscode/launch.json
 .vscode/settings.json
 
+*.sln

@@ -27,13 +27,12 @@ namespace SceneryEditorX
 	{
 	}
 
-    VertexBuffer::VertexBuffer(void *data, uint64_t size, VertexBufferType usage) : m_Size(size)
+    VertexBuffer::VertexBuffer(const void *data, uint64_t size, VertexBufferType usage) : m_Size(size)
     {
         m_LocalData.Allocate(size);
         if (data)
             m_LocalData.Write(data, size, 0);
 
-        Ref<VertexBuffer> instance = this;
         /// Create a shared reference to this instance for the render thread
         Ref<VertexBuffer> instance(this);
         Renderer::Submit([instance]() mutable {
@@ -45,9 +44,8 @@ namespace SceneryEditorX
             vertexBufferCreateInfo.size = instance->m_Size;
             vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-            instance->m_MemoryAllocation =
-                allocator.AllocateBuffer(vertexBufferCreateInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, instance->m_VulkanBuffer);
             instance->m_MemoryAllocation = allocator.AllocateBuffer(vertexBufferCreateInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, instance->m_VulkanBuffer);
+
         });
     }
 
@@ -92,7 +90,7 @@ namespace SceneryEditorX
         return {};
     }
 
-    //TODO: Move to primitive creation code. -> Renderer/primitives.cpp
+    //TODO: Move to primitive creation code. -> renderer/primitives.cpp
     /*
     Ref<VertexBuffer> VertexBuffer::CreatePrimitive(PrimitiveType type, const Vec3 &size, const Vec3 &color)
     {
@@ -107,13 +105,8 @@ namespace SceneryEditorX
 
     Buffer VertexBuffer::Create() const
     {
-
-    Ref<VertexBuffer> VertexBuffer::Create(const void* data, uint64_t size, VertexBufferType usage)
-    {
-        /// Create a new VertexBuffer instance
-        Ref<VertexBuffer> vertexBuffer = CreateRef<VertexBuffer>(data, size, usage);
-        return vertexBuffer;
-    }
+        return CreateRef<VertexBuffer>(Create());
+	}
 
 } // namespace SceneryEditorX
 

@@ -170,8 +170,9 @@ namespace SceneryEditorX
          */
         explicit VertexBuffer(const std::vector<Vertex>& initialVertices,VertexBufferType type = VertexBufferType::Static);
 
-        VertexBuffer(void *data, uint64_t size, VertexBufferType usage = VertexBufferType::Static);
-        explicit VertexBuffer(uint64_t size, VertexBufferType usage = VertexBufferType::Dynamic);
+        VertexBuffer(const void *data, uint64_t size, VertexBufferType usage = VertexBufferType::Static);
+        Ref<VertexBuffer> CreateBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity);
+        //VertexBuffer(uint64_t size, VertexBufferType usage = VertexBufferType::Dynamic);
 
         /**
          * @brief Destructor for VertexBuffer

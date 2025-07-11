@@ -1,5 +1,7 @@
 # Scenery Editor X - Memory Management System Documentation
 
+---
+
 ## Overview
 
 The SceneryEditorX Memory Management System provides comprehensive memory allocation tracking, statistics collection, and debugging capabilities for the Scenery Editor X application. This system is designed to help developers monitor memory usage, detect memory leaks, and optimize memory allocation patterns throughout the application lifecycle.
@@ -225,7 +227,7 @@ public:
   
     void ReportMemoryUsage() {
         const auto& stats = Allocator::GetAllocationStats();
-      
+  
         for (const auto& [category, allocation] : stats) {
             if (strstr(category, "Renderer::") == category) {
                 size_t usage = allocation.TotalAllocated - allocation.TotalFreed;
@@ -255,7 +257,7 @@ public:
             SEDX_CORE_WARN("Resource already allocated");
             return;
         }
-      
+  
         // Use category-based allocation
         resource = new(category) T[count];
         SEDX_CORE_TRACE("Allocated {} {} objects in category {}", 
@@ -313,7 +315,7 @@ public:
             hdelete[] static_cast<char*>(block);
         }
         allocatedBlocks.clear();
-      
+  
         SEDX_CORE_INFO("Freed all memory in pool category: {}", poolCategory);
     }
   
@@ -341,18 +343,18 @@ public:
     static void CompareSnapshots(const std::string& before, const std::string& after) {
         auto beforeIt = snapshots.find(before);
         auto afterIt = snapshots.find(after);
-      
+  
         if (beforeIt == snapshots.end() || afterIt == snapshots.end()) {
             SEDX_CORE_ERROR("Snapshot not found for comparison");
             return;
         }
-      
+  
         const auto& beforeStats = beforeIt->second;
         const auto& afterStats = afterIt->second;
-      
+  
         size_t beforeUsage = beforeStats.TotalAllocated - beforeStats.TotalFreed;
         size_t afterUsage = afterStats.TotalAllocated - afterStats.TotalFreed;
-      
+  
         if (afterUsage > beforeUsage) {
             SEDX_CORE_WARN("Memory usage increased by {} bytes between '{}' and '{}'",
                            afterUsage - beforeUsage, before, after);
@@ -361,7 +363,7 @@ public:
   
     static void DetectCategoryLeaks() {
         const auto& stats = Allocator::GetAllocationStats();
-      
+  
         for (const auto& [category, allocation] : stats) {
             size_t currentUsage = allocation.TotalAllocated - allocation.TotalFreed;
             if (currentUsage > 0) {
@@ -543,10 +545,10 @@ public:
     static void CheckForLeaks() {
         const auto& stats = SceneryEditorX::Memory::GetAllocationStats();
         size_t totalLeaked = stats.TotalAllocated - stats.TotalFreed;
-      
+  
         if (totalLeaked > 0) {
             SEDX_CORE_ERROR("Memory leak detected: {} bytes", totalLeaked);
-          
+      
             // Report category-specific leaks
             const auto& categoryStats = SceneryEditorX::Allocator::GetAllocationStats();
             for (const auto& [category, catStats] : categoryStats) {
@@ -594,13 +596,13 @@ public:
     static void GenerateReport() {
         const auto& globalStats = SceneryEditorX::Memory::GetAllocationStats();
         const auto& categoryStats = SceneryEditorX::Allocator::GetAllocationStats();
-      
+  
         SEDX_CORE_INFO("=== Memory Usage Report ===");
         SEDX_CORE_INFO("Global - Allocated: {} bytes, Freed: {} bytes, Current: {} bytes",
                        globalStats.TotalAllocated,
                        globalStats.TotalFreed,
                        globalStats.TotalAllocated - globalStats.TotalFreed);
-      
+  
         SEDX_CORE_INFO("=== Category Breakdown ===");
         for (const auto& [category, stats] : categoryStats) {
             size_t current = stats.TotalAllocated - stats.TotalFreed;
@@ -615,21 +617,19 @@ public:
         json report;
         const auto& globalStats = SceneryEditorX::Memory::GetAllocationStats();
         const auto& categoryStats = SceneryEditorX::Allocator::GetAllocationStats();
-      
+  
         report["global"]["allocated"] = globalStats.TotalAllocated;
         report["global"]["freed"] = globalStats.TotalFreed;
         report["global"]["current"] = globalStats.TotalAllocated - globalStats.TotalFreed;
-      
+  
         for (const auto& [category, stats] : categoryStats) {
             report["categories"][category]["allocated"] = stats.TotalAllocated;
             report["categories"][category]["freed"] = stats.TotalFreed;
             report["categories"][category]["current"] = stats.TotalAllocated - stats.TotalFreed;
         }
-      
+  
         std::ofstream file(filename);
         file << report.dump(4);
     }
 };
 ```
-
-This comprehensive memory management system provides the foundation for robust memory tracking and debugging in the SceneryEditorX application. Follow the patterns and practices outlined above to ensure optimal memory usage and easier debugging of memory-related issues.

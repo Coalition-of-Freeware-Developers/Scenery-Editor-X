@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * asset.h
@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	    CameraNode,
 	    Count,
 	};
-	
+
 	inline std::string ObjectTypeName[] = {
 	    "Invalid",
 	    "Texture",
@@ -60,7 +60,7 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
-	struct Object : RefCounted
+	struct Object : public RefCounted
 	{
 	    std::string name = "Uninitialized";
 	    uint32_t uuid = 0;
@@ -75,7 +75,7 @@ namespace SceneryEditorX
 	        gpuDirty = true;
 	        return *this;
 	    }
-	
+
 	    virtual ~Object() override;
 	    virtual void Serialize(SerializeWriter &ser) = 0;
 	};

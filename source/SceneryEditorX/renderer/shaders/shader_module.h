@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * shader_module.h
@@ -25,7 +25,7 @@ namespace SceneryEditorX
 	    /**
 	     * @enum Stage
 	     * @brief Defines the various shader stages in the Vulkan graphics/compute pipeline.
-	     * 
+	     *
 	     * These values match Vulkan's VkShaderStageFlagBits and can be combined
 	     * using bitwise operations to specify multiple stages.
 	     */

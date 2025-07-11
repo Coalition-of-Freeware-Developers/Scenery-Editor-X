@@ -2,6 +2,8 @@
 
 This document outlines the coding style and formatting requirements for the Scenery Editor X project. All code contributions must adhere to these guidelines to maintain consistency and readability throughout the codebase.
 
+---
+
 ## Overview
 
 The project uses automated formatting tools to ensure consistent code style:

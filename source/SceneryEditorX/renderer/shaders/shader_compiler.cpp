@@ -39,8 +39,7 @@ namespace SceneryEditorX
 	        std::cin.get();
 	    }
 	
-	    // 'ate' specify to start reading at the end of the file
-	    // then we can use the read position to determine the size of the file
+	    /// 'ate' specify to start reading at the end of the file then we can use the read position to determine the size of the file
 	    std::ifstream file(outpath, std::ios::ate | std::ios::binary);
 	    if (!file.is_open())
 	    {
@@ -55,11 +54,11 @@ namespace SceneryEditorX
 	    return buffer;
 	}
 
-    // ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
     //const std::string_view ShaderCompiler::GLSL_VALIDATOR = R"(glslangValidator)";
 
 } // namespace SceneryEditorX
 
-// ---------------------------------------------------------
+/// ---------------------------------------------------------
 
