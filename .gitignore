@@ -8,12 +8,21 @@ shader_tests/
 source/_archive/
 source/SceneryEditorX/reference/
 
+# Repository specific directories
+docs/doxygen
+docs/other-docs
+docs/dependency manuals
+/.idea
+RenderDoc/
+
 # User-specific files
 *.rsuser
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
+CMake_Gen.log
+.mypy_cache/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -180,25 +189,10 @@ _pkginfo.txt
 *.msix
 *.msm
 *.msp
-SceneryEditorX/.vscode/c_cpp_properties.json
-SceneryEditorX/.vscode/launch.json
-SceneryEditorX/.vscode/settings.json
-/VulkanInstallers
-/Vulkan/.vs
-/Vulkan/src/first_app.hpp
 
 # Other File Formats
 *.psd
-CMake_Gen.log
-docs/doxygen
-docs/docs
-assets/shaders/XPlane12 Shaders
-assets/MisterX_Library_2.0c
-docs/vulkanised_2023_setting_up_a_bindless_rendering_pipeline.pdf
-source/usage_example.cpp
-source/steam_game_finder.h
-source/steam_game_finder.cpp
-docs/tracy.pdf
-/.idea
-/docs
-RenderDoc
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/settings.json
+
