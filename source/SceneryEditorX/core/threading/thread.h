@@ -21,7 +21,7 @@ namespace SceneryEditorX
 	class Thread
 	{
 	public:
-		Thread(const std::string &name);
+        explicit Thread(const std::string &name);
 
 		template<typename Func, typename... Args>
         void Dispatch(Func &&func, Args &&...args)
@@ -42,7 +42,7 @@ namespace SceneryEditorX
     class ThreadSignal
     {
     public:
-        ThreadSignal(const std::string &name, bool manualReset = false);
+        explicit ThreadSignal(const std::string &name, bool manualReset = false);
 
 		void Wait() const;
         void Signal() const;

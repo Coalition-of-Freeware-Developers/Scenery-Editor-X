@@ -11,14 +11,14 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/initializer.h>
 #include <SceneryEditorX/logging/asserts.h>
 
 /// ----------------------------------------------------
 
 extern SceneryEditorX::Application *CreateApplication(int argc, char** argv);
-bool appRunning = true;
+inline bool appRunning = true;
 
 /// ----------------------------------------------------
 

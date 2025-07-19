@@ -15,6 +15,8 @@
 #include <SceneryEditorX/logging/logging.hpp>
 #include <sysinfoapi.h>
 #include <timezoneapi.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
@@ -36,25 +38,25 @@ namespace SceneryEditorX
 	 */
 	std::map<std::string, Log::TagDetails> Log::DefaultTagDetails_ =
 	{
-	    {"Animation",			    TagDetails{true, Level::Warn}},
-	    {"Asset Pack",			TagDetails{true, Level::Warn}},
-	    {"AssetManager",		    TagDetails{true, Level::Info}},
-	    {"LibraryManager",		TagDetails{true, Level::Info}},
-		{"AssetLoader",			TagDetails{true, Level::Warn}},
-		{"AssetLoaderGLTF",		TagDetails{true, Level::Warn}},
-		{"AssetLoaderOBJ",		TagDetails{true, Level::Warn}},
-		{"AssetLoaderFBX",		TagDetails{true, Level::Warn}},
-	    {"AssetSystem",			TagDetails{true, Level::Info}},
-	    {"Assimp",				TagDetails{true, Level::Error}},
-	    {"Core",					TagDetails{true, Level::Trace}},
-	    {"GLFW",					TagDetails{true, Level::Error}},
-	    {"Memory",				TagDetails{true, Level::Error}},
-	    {"Mesh",				    TagDetails{true, Level::Warn}},
-	    {"Project",				TagDetails{true, Level::Warn}},
-	    {"Renderer",				TagDetails{true, Level::Info}},
-	    {"Scene",					TagDetails{true, Level::Info}},
-	    {"Scripting",				TagDetails{true, Level::Warn}},
-	    {"Timer",					TagDetails{false, Level::Trace}},
+	    {"Animation",			    TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+	    {"Asset Pack",			TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+	    {"AssetManager",		    TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
+	    {"LibraryManager",		TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
+		{"AssetLoader",			TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+		{"AssetLoaderGLTF",		TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+		{"AssetLoaderOBJ",		TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+		{"AssetLoaderFBX",		TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+	    {"AssetSystem",			TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
+	    {"Assimp",				TagDetails{.Enabled = true,.LevelFilter = Level::Error}},
+	    {"Core",					TagDetails{.Enabled = true,.LevelFilter = Level::Trace}},
+	    {"GLFW",					TagDetails{.Enabled = true,.LevelFilter = Level::Error}},
+	    {"Memory",				TagDetails{.Enabled = true,.LevelFilter = Level::Error}},
+	    {"Mesh",				    TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+	    {"Project",				TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+	    {"Renderer",				TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
+	    {"Scene",					TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
+	    {"Scripting",				TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
+	    {"Timer",					TagDetails{.Enabled = false,.LevelFilter = Level::Trace}},
 	};
 	
 	/**
@@ -242,22 +244,20 @@ namespace SceneryEditorX
 	{
         AppData stats;
 		/// -------------------------------------------------------
-		// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
+		/// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
 		SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
 	
 		/// -------------------------------------------------------
-		// TODO:
 		SYSTEMTIME systemTime;
 		GetSystemTime(&systemTime);
 	
 		/// -------------------------------------------------------
 	
-		// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
+		/// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
 		TIME_ZONE_INFORMATION timeZoneInfo;
 		GetTimeZoneInformation(&timeZoneInfo);
-		std::wstring timeZoneName =
-			(timeZoneInfo.StandardName[0] != L'\0') ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
+		std::wstring timeZoneName = timeZoneInfo.StandardName[0] != L'\0' ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
 	
 		/// -------------------------------------------------------
 	
@@ -328,72 +328,47 @@ namespace SceneryEditorX
 	/// -------------------------------------------------------
 
 	/// taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c
-    [[maybe_unused]] static const char* vkErrorString(VkResult result)
+    [[maybe_unused]] static const char* vkErrorString(const VkResult result)
 	{
 		switch (static_cast<int>(result))
 		{
-		case VK_SUCCESS:
-			return "VK_SUCCESS";
-		case VK_NOT_READY:
-			return "VK_NOT_READY";
-		case VK_TIMEOUT:
-			return "VK_TIMEOUT";
-		case VK_EVENT_SET:
-			return "VK_EVENT_SET";
-		case VK_EVENT_RESET:
-			return "VK_EVENT_RESET";
-		case VK_INCOMPLETE:
-			return "VK_INCOMPLETE";
-		case VK_ERROR_OUT_OF_HOST_MEMORY:
-			return "VK_ERROR_OUT_OF_HOST_MEMORY";
-		case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-			return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-		case VK_ERROR_INITIALIZATION_FAILED:
-			return "VK_ERROR_INITIALIZATION_FAILED";
-		case VK_ERROR_DEVICE_LOST:
-			return "VK_ERROR_DEVICE_LOST";
-		case VK_ERROR_MEMORY_MAP_FAILED:
-			return "VK_ERROR_MEMORY_MAP_FAILED";
-		case VK_ERROR_LAYER_NOT_PRESENT:
-			return "VK_ERROR_LAYER_NOT_PRESENT";
-		case VK_ERROR_EXTENSION_NOT_PRESENT:
-			return "VK_ERROR_EXTENSION_NOT_PRESENT";
-		case VK_ERROR_FEATURE_NOT_PRESENT:
-			return "VK_ERROR_FEATURE_NOT_PRESENT";
-		case VK_ERROR_INCOMPATIBLE_DRIVER:
-			return "VK_ERROR_INCOMPATIBLE_DRIVER";
-		case VK_ERROR_TOO_MANY_OBJECTS:
-			return "VK_ERROR_TOO_MANY_OBJECTS";
-		case VK_ERROR_FORMAT_NOT_SUPPORTED:
-			return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-		case VK_ERROR_FRAGMENTED_POOL:
-			return "VK_ERROR_FRAGMENTED_POOL";
-		case VK_ERROR_SURFACE_LOST_KHR:
-			return "VK_ERROR_SURFACE_LOST_KHR";
-		case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
-			return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-		case VK_SUBOPTIMAL_KHR:
-			return "VK_SUBOPTIMAL_KHR";
-		case VK_ERROR_OUT_OF_DATE_KHR:
-			return "VK_ERROR_OUT_OF_DATE_KHR";
-		case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
-			return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-		case VK_ERROR_VALIDATION_FAILED_EXT:
-			return "VK_ERROR_VALIDATION_FAILED_EXT";
-		case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
-			return "VK_ERROR_OUT_OF_POOL_MEMORY_KHR";
-		case VK_ERROR_INVALID_SHADER_NV:
-			return "VK_ERROR_INVALID_SHADER_NV";
+		case VK_SUCCESS:						return "VK_SUCCESS";
+		case VK_NOT_READY:						return "VK_NOT_READY";
+		case VK_TIMEOUT:						return "VK_TIMEOUT";
+		case VK_EVENT_SET:						return "VK_EVENT_SET";
+		case VK_EVENT_RESET:					return "VK_EVENT_RESET";
+		case VK_INCOMPLETE:						return "VK_INCOMPLETE";
+		case VK_ERROR_OUT_OF_HOST_MEMORY:		return "VK_ERROR_OUT_OF_HOST_MEMORY";
+		case VK_ERROR_OUT_OF_DEVICE_MEMORY:		return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+		case VK_ERROR_INITIALIZATION_FAILED:	return "VK_ERROR_INITIALIZATION_FAILED";
+		case VK_ERROR_DEVICE_LOST:				return "VK_ERROR_DEVICE_LOST";
+		case VK_ERROR_MEMORY_MAP_FAILED:		return "VK_ERROR_MEMORY_MAP_FAILED";
+		case VK_ERROR_LAYER_NOT_PRESENT:		return "VK_ERROR_LAYER_NOT_PRESENT";
+		case VK_ERROR_EXTENSION_NOT_PRESENT:	return "VK_ERROR_EXTENSION_NOT_PRESENT";
+		case VK_ERROR_FEATURE_NOT_PRESENT:		return "VK_ERROR_FEATURE_NOT_PRESENT";
+		case VK_ERROR_INCOMPATIBLE_DRIVER:		return "VK_ERROR_INCOMPATIBLE_DRIVER";
+		case VK_ERROR_TOO_MANY_OBJECTS:			return "VK_ERROR_TOO_MANY_OBJECTS";
+		case VK_ERROR_FORMAT_NOT_SUPPORTED:		return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+		case VK_ERROR_FRAGMENTED_POOL:			return "VK_ERROR_FRAGMENTED_POOL";
+		case VK_ERROR_SURFACE_LOST_KHR:			return "VK_ERROR_SURFACE_LOST_KHR";
+		case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+		case VK_SUBOPTIMAL_KHR:					return "VK_SUBOPTIMAL_KHR";
+		case VK_ERROR_OUT_OF_DATE_KHR:			return "VK_ERROR_OUT_OF_DATE_KHR";
+		case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR: return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+		case VK_ERROR_VALIDATION_FAILED_EXT:	return "VK_ERROR_VALIDATION_FAILED_EXT";
+		case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:	return "VK_ERROR_OUT_OF_POOL_MEMORY_KHR";
+		case VK_ERROR_INVALID_SHADER_NV:		return "VK_ERROR_INVALID_SHADER_NV";
 		default:
 			break;
 		}
 		if (result < 0)
 			return "VK_ERROR_<Unknown>";
+
 		return "VK_<Unknown>";
 	}
 
 	/// -------------------------------------------------------
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

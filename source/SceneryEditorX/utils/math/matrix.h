@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <format>
+#include <format>
 
 /// -------------------------------------------------------
 
@@ -197,9 +198,11 @@ namespace SceneryEditorX
 }
 
 /// fmt user-defined Formatter for CE::Matrix4x4
-template <> struct fmt::formatter<SceneryEditorX::Matrix4x4> {
+template <>
+struct fmt::formatter<SceneryEditorX::Matrix4x4>
+{
     /// Parses format specifications of the form ['f' | 'e'].
-    static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
+    static constexpr auto parse(const format_parse_context &ctx) -> decltype(ctx.begin())
     {
         /// Return an iterator past the end of the parsed range:
         return ctx.end();
@@ -208,10 +211,11 @@ template <> struct fmt::formatter<SceneryEditorX::Matrix4x4> {
     /// Formats the point p using the parsed format specification (presentation)
     /// stored in this formatter.
     template <typename FormatContext>
-    auto format(const SceneryEditorX::Matrix4x4& mat, FormatContext& ctx) const -> decltype(ctx.out()) {
+    auto format(const SceneryEditorX::Matrix4x4 &mat, FormatContext &ctx) const -> decltype(ctx.out())
+    {
         /// ctx.out() is an output iterator to write to.
         return fmt::format_to(ctx.out(), "{}", mat.ToString());
     }
-}
+};
 
 /// -------------------------------------------------------

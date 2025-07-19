@@ -11,10 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/utils/reflection/type_descriptors.h>
+#include <SceneryEditorX/utils/string_utils.h>
 #include <string>
 #include <type_traits>
 #include <vector>
-#include "type_descriptors.h"
 
 /// -------------------------------------------------------
 

@@ -198,6 +198,11 @@ ADD_SUBDIRECTORY(dependency/libconfig)
 ADD_SUBDIRECTORY(dependency/Catch2)
 
 # --------------------------------
+# EnTT
+# --------------------------------
+ADD_SUBDIRECTORY(dependency/entt)
+
+# --------------------------------
 # MSDF-Atlas-Generator
 # --------------------------------
 #ADD_SUBDIRECTORY(dependency/msdf-atlas-gen)

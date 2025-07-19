@@ -229,7 +229,9 @@ namespace SceneryEditorX
 				if (ft)
 				{
 					if (font)
-						msdfgen::destroyFont(font);
+					{
+					    msdfgen::destroyFont(font);
+					}
 
 					msdfgen::deinitializeFreetype(ft);
 				}
@@ -241,7 +243,7 @@ namespace SceneryEditorX
 				{
 					if (font)
 						msdfgen::destroyFont(font);
-					if ((font = msdfgen::loadFontData(ft, buffer.As<const msdfgen::byte>(), int(buffer.size))))
+					if ((font = msdfgen::loadFontData(ft, buffer.As<const msdfgen::byte>(), static_cast<int>(buffer.size))))
 						return true;
 				}
 				return false;
@@ -286,10 +288,10 @@ namespace SceneryEditorX
 		switch (fontInput.glyphIdentifierType)
 		{
 			case GlyphIdentifierType::GLYPH_INDEX:
-				glyphsLoaded = m_MSDFData->FontGeometry.loadGlyphset(font, fontInput.fontScale, charset);
+				glyphsLoaded = m_MSDFData->FontGeometry.loadGlyphset(static_cast<msdfgen::FontHandle *>(font), fontInput.fontScale, charset);
 				break;
 			case GlyphIdentifierType::UNICODE_CODEPOINT:
-				glyphsLoaded = m_MSDFData->FontGeometry.loadCharset(font, fontInput.fontScale, charset);
+				glyphsLoaded = m_MSDFData->FontGeometry.loadCharset(static_cast<msdfgen::FontHandle *>(font), fontInput.fontScale, charset);
 				anyCodepointsAvailable |= glyphsLoaded > 0;
 				break;
 		}
@@ -442,7 +444,7 @@ namespace SceneryEditorX
 		if (textComponent.FontHandle == s_DefaultFont->Handle || !AssetManager::IsAssetHandleValid(textComponent.FontHandle))
             return s_DefaultFont;
 
-        return AssetManager::GetAsset<Font>(textComponent.FontHandle);
+        return AssetManager::Get<Font>(textComponent.FontHandle);
 	}
 
     /// -------------------------------------------------------

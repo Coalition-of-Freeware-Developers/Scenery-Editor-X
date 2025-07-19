@@ -16,6 +16,7 @@
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/node.h>
 #include <SceneryEditorX/serialization/serializer.hpp>
+#include <entt/src/entt/entt.hpp>
 
 /// -------------------------------------------------------
 
@@ -84,9 +85,9 @@ namespace SceneryEditorX
         uint32_t m_ViewportBottom = 0;
 
         EntityMap m_EntityIDMap;
-        DirLight m_Light;
+        //DirectionalLight m_Light;
         float m_LightMultiplier = 0.3f;
-        LightEnvironment m_LightEnvironment;
+        //LightEnvironment m_LightEnvironment;
 
         Ref<Environment> m_Environment;
         float m_EnvironmentIntensity = 0.0f;

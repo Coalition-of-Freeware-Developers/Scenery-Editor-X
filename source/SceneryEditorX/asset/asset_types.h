@@ -69,7 +69,7 @@ namespace SceneryEditorX
 			return AssetType::None;
 		}
 
-		inline const char* AssetTypeToString(AssetType assetType)
+		inline const char* AssetTypeToString(const AssetType assetType)
 		{
 			switch (assetType)
 			{

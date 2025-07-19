@@ -66,62 +66,44 @@ namespace SceneryEditorX::Utils
         static uint16_t ToFloat16(float floatValue)
         {
             float* ptr = &floatValue;
-            unsigned int fltInt32 = *((uint32_t*)ptr);
+            const unsigned int fltInt32 = *reinterpret_cast<uint32_t *>(ptr);
 
             uint16_t fltInt16 = (fltInt32 >> 31) << 5;
-            uint16_t tmp = (fltInt32 >> 23) & 0xff;
-            tmp = (tmp - 0x70) & ((unsigned int)((int)(0x70 - tmp) >> 4) >> 27);
+            uint16_t tmp = fltInt32 >> 23 & 0xff;
+            tmp = tmp - 0x70 & static_cast<unsigned int>(0x70 - tmp >> 4) >> 27;
             fltInt16 = (fltInt16 | tmp) << 10;
-            fltInt16 |= (fltInt32 >> 13) & 0x3ff;
+            fltInt16 |= fltInt32 >> 13 & 0x3ff;
 
             return fltInt16;
         }
 
-        // Needs to be tested!
-        static float ToFloat32(uint16_t float16)
-        {
-            uint32_t t1;
-            uint32_t t2;
-            uint32_t t3;
-
-            t1 = float16 & 0x7fffu;                       // Non-sign bits
-            t2 = float16 & 0x8000u;                       // Sign bit
-            t3 = float16 & 0x7c00u;                       // Exponent
-
-            t1 <<= 13u;                              // Align mantissa on MSB
-            t2 <<= 16u;                              // Shift sign bit into position
-            t1 += 0x38000000;                       // Adjust bias
-            t1 = (t3 == 0 ? 0 : t1);                // Denormals-as-zero
-            t1 |= t2;                               // Re-insert sign bit
-
-            return *(float*)(&t1);
-        }
-
-    	static bool ApproxEquals(float a, float b) { return fpclassify(a - b) == FP_ZERO; }
-    	static bool ApproxEquals(double a, double b) { return fpclassify(a - b) == FP_ZERO; }
-    	static bool ApproxEquals(int32_t a, int32_t b) { return a == b; }
+        ///< Needs to be tested!
+        static float ToFloat32(uint16_t float16);
+        static bool ApproxEquals(const float a, const float b) { return fpclassify(a - b) == FP_ZERO; }
+    	static bool ApproxEquals(const double a, const double b) { return fpclassify(a - b) == FP_ZERO; }
+    	static bool ApproxEquals(const int32_t a, const int32_t b) { return a == b; }
 
     	static constexpr float Infinity() { return NumericLimits<float>::Infinity(); }
 
-    	inline static float ToDegrees(float radians) { return TO_DEGREES(radians); }
-    	inline static float ToRadians(float degrees) { return TO_RADIANS(degrees); }
-    	inline static float Sin(float radians) { return sin(radians); }
-    	inline static float ASin(float sine) { return asin(sine); }
-    	inline static float Cos(float radians) { return cos(radians); }
-    	inline static float ACos(float cosine) { return acos(cosine); }
-    	inline static float Tan(float radians) { return tan(radians); }
-    	inline static float ATan(float tangent) { return atan(tangent); }
-    	inline static float Abs(float value) { return abs(value); }
-    	inline static double Abs(double value) { return abs(value); }
-    	inline static int32_t Abs(int32_t value) { return abs(value); }
-    	inline static int64_t Abs(int64_t value) { return abs(value); }
-    	inline static float Sqrt(float value) { return sqrt(value); }
+        static float ToDegrees(float radians) { return RAD_TO_DEG(radians); }
+        static float ToRadians(float degrees) { return DEG_TO_RAD(degrees); }
+        static float Sin(const float radians) { return sin(radians); }
+        static float ASin(const float sine) { return asin(sine); }
+        static float Cos(const float radians) { return cos(radians); }
+        static float ACos(const float cosine) { return acos(cosine); }
+        static float Tan(const float radians) { return tan(radians); }
+        static float ATan(const float tangent) { return atan(tangent); }
+        static float Abs(const float value) { return abs(value); }
+        static double Abs(const double value) { return abs(value); }
+        static int32_t Abs(const int32_t value) { return abs(value); }
+        static int64_t Abs(const int64_t value) { return abs(value); }
+        static float Sqrt(const float value) { return sqrt(value); }
 
     	template<typename T1, typename T2>
-    	inline static auto Pow(T1 base, T2 power) { return pow(base, power); }
+        static auto Pow(T1 base, T2 power) { return pow(base, power); }
 
     	template<typename T>
-    	inline static T Min(std::initializer_list<T> list)
+        static T Min(std::initializer_list<T> list)
     	{
     	    auto min = std::numeric_limits<T>::max();
 
@@ -135,7 +117,7 @@ namespace SceneryEditorX::Utils
     	}
 
     	template<typename T>
-    	inline static T Max(std::initializer_list<T> list)
+        static T Max(std::initializer_list<T> list)
     	{
     	    auto max = std::numeric_limits<T>::min();
     	    for (auto entry : list)
@@ -147,27 +129,27 @@ namespace SceneryEditorX::Utils
     	    return max;
     	}
 
-    	static float Round(float value)  { return std::round(value); }
-    	static double Round(double value) { return std::round(value); }
-    	static int32_t RoundToInt(float value) { return std::lround(value); }
-    	static int64_t RoundToInt64(float value) { return std::llround(value); }
-    	static int32_t RoundToInt(double value) { return std::lround(value); }
-    	static int64_t RoundToInt64(double value) { return std::llround(value); }
+    	static float Round(const float value)  { return std::round(value); }
+    	static double Round(const double value) { return std::round(value); }
+    	static int32_t RoundToInt(const float value) { return std::lround(value); }
+    	static int64_t RoundToInt64(const float value) { return std::llround(value); }
+    	static int32_t RoundToInt(const double value) { return std::lround(value); }
+    	static int64_t RoundToInt64(const double value) { return std::llround(value); }
 
     	template<typename T>
-    	inline static T Min(T a, T b)
+        static T Min(T a, T b)
     	{
     	    return a < b ? a : b;
     	}
 
     	template<typename T>
-    	inline static T Max(T a, T b)
+        static T Max(T a, T b)
     	{
     	    return a > b ? a : b;
     	}
 
     	template<typename T>
-    	inline static T Clamp(T value, T min, T max)
+        static T Clamp(T value, T min, T max)
     	{
     	    if (min > max)
     	        std::swap(min, max);
@@ -175,15 +157,31 @@ namespace SceneryEditorX::Utils
     	}
 
     	template<typename T>
-    	inline static T Clamp01(T value) { return Clamp<T>(value, 0, 1); }
+        static T Clamp01(T value) { return Clamp<T>(value, 0, 1); }
 
-    	inline static float Lerp(float from, float to, float t) { return from * (1 - Clamp01(t)) + to * Clamp01(t); }
-    	inline static float LerpUnclamped(float from, float to, float t) { return from * (1 - t) + to * (t); }
+    	static float Lerp(const float from, const float to, const float t) { return from * (1 - Clamp01(t)) + to * Clamp01(t); }
+    	static float LerpUnclamped(const float from, const float to, const float t) { return from * (1 - t) + to * (t); }
 
     };
 
+    inline float Math::ToFloat32(const uint16_t float16)
+    {
+
+        uint32_t t1 = float16 & 0x7fffu;       // Non-sign bits
+        uint32_t t2 = float16 & 0x8000u;       // Sign bit
+        const uint32_t t3 = float16 & 0x7c00u; // Exponent
+
+        t1 <<= 13u;            // Align mantissa on MSB
+        t2 <<= 16u;            // Shift sign a bit into position
+        t1 += 0x38000000;      // Adjust bias
+        t1 = t3 == 0 ? 0 : t1; // Denormals-as-zero
+        t1 |= t2;              // Re-insert sign bit
+
+        return *reinterpret_cast<float *>(&t1);
+    }
+
 	template<typename T>
-	inline bool IsNan(T value)
+    bool IsNan(T value)
 	{
 		return std::isnan(value);
 	}

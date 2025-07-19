@@ -23,7 +23,9 @@
 #include <SceneryEditorX/utils/string_utils.h>
 #include <sstream>
 
-// Platform-specific includes for regional settings
+/// -------------------------------------------------------
+
+///< Platform-specific includes for regional settings
 #ifdef SEDX_PLATFORM_WINDOWS
 	#include <windows.h>
 	#include <winnls.h>
@@ -67,30 +69,31 @@ namespace SceneryEditorX
 	                    std::string fullTimeFormat(timeFormat);
 	
 	                    // Replace Windows format specifiers with strftime equivalents
-	                    dateFormat = StringUtils::replace(dateFormat,
-	                        "dddd", "%A",    // Full weekday name
-	                        "ddd", "%a",     // Abbreviated weekday name
-	                        "dd", "%d",      // Day of month (01-31)
-	                        "d", "%#d",      // Day of month (1-31) no leading zero
-	                        "MMMM", "%B",    // Full month name
-	                        "MMM", "%b",     // Abbreviated month name
-	                        "MM", "%m",      // Month (01-12)
-	                        "M", "%#m",      // Month (1-12) no leading zero
-	                        "yyyy", "%Y",    // Full year (e.g., 2025)
-	                        "yy", "%y"       // Two-digit year (e.g., 25)
-	                    );
+                        dateFormat = Utils::replace(
+                            dateFormat,
+                            "dddd", "%A",    // Full weekday name
+                            "ddd", "%a",     // Abbreviated weekday name
+                            "dd", "%d",      // Day of month (01-31)
+                            "d", "%#d",      // Day of month (1-31) no leading zero
+                            "MMMM", "%B",    // Full month name
+                            "MMM", "%b",     // Abbreviated month name
+                            "MM", "%m",      // Month (01-12)
+                            "M", "%#m",      // Month (1-12) no leading zero
+                            "yyyy", "%Y",    // Full year (e.g., 2025)
+                            "yy", "%y"       // Two-digit year (e.g., 25)
+                        );
 	
-	                    fullTimeFormat = StringUtils::replace(fullTimeFormat,
-	                        "HH", "%H",      // Hour 24-hour format (00-23)
-	                        "H", "%#H",      // Hour 24-hour format (0-23) no leading zero
-	                        "hh", "%I",      // Hour 12-hour format (01-12)
-	                        "h", "%#I",      // Hour 12-hour format (1-12) no leading zero
-	                        "mm", "%M",      // Minutes (00-59)
-	                        "m", "%#M",      // Minutes (0-59) no leading zero
-	                        "ss", "%S",      // Seconds (00-59)
-	                        "s", "%#S",      // Seconds (0-59) no leading zero
-	                        "tt", "%p",      // AM/PM indicator
-	                        "t", "%p"        // AM/PM indicator (single char)
+	                    fullTimeFormat = Utils::replace(fullTimeFormat,
+	                        "HH", "%H",    //< Hour 24-hour format (00-23)
+	                        "H", "%#H",					//< Hour 24-hour format (0-23) no leading zero
+	                        "hh", "%I",					//< Hour 12-hour format (01-12)
+	                        "h", "%#I",					//< Hour 12-hour format (1-12) no leading zero
+	                        "mm", "%M",					//< Minutes (00-59)
+	                        "m", "%#M",					//< Minutes (0-59) no leading zero
+	                        "ss", "%S",					//< Seconds (00-59)
+	                        "s", "%#S",					//< Seconds (0-59) no leading zero
+	                        "tt", "%p",					//< AM/PM indicator
+	                        "t", "%p"					//< AM/PM indicator (single char)
 	                    );
 	
 	                    std::string systemFormat = dateFormat + " " + fullTimeFormat;
@@ -163,7 +166,7 @@ namespace SceneryEditorX
 	            {
 	                std::string format(timeFormat);
 	                // Check for AM/PM indicator
-	                return format.find("tt") != std::string::npos || format.find("t") != std::string::npos;
+	                return format.find("tt") != std::string::npos || format.find('t') != std::string::npos;
 	            }
 	        }
 	#elif defined(SEDX_PLATFORM_LINUX) || defined(SEDX_PLATFORM_MAC)

@@ -24,16 +24,15 @@ namespace SceneryEditorX
 
     DateTime::DateTime()
     {
-        auto now = std::chrono::system_clock::now();
-
-        time_t timeUtc = std::chrono::system_clock::to_time_t(now);
+        const auto now = std::chrono::system_clock::now();
+        const time_t timeUtc = std::chrono::system_clock::to_time_t(now);
 
         timeInfo = *std::localtime(&timeUtc);
     }
 
     DateTime::~DateTime() = default;
 
-    DateTime::DateTime(FileTime fileTime)
+    DateTime::DateTime(const FileTime fileTime)
     {
         //const auto systemTime = std::chrono::clock_cast<std::chrono::system_clock>(fileTime);
         const auto systemTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(fileTime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
@@ -43,9 +42,8 @@ namespace SceneryEditorX
 
     DateTime DateTime::Now()
     {
-        auto now = std::chrono::system_clock::now();
-
-        time_t timeUtc = std::chrono::system_clock::to_time_t(now);
+        const auto now = std::chrono::system_clock::now();
+        const time_t timeUtc = std::chrono::system_clock::to_time_t(now);
 
         DateTime result{};
         result.timeInfo = *std::localtime(&timeUtc);
@@ -55,9 +53,8 @@ namespace SceneryEditorX
 
     DateTime DateTime::UtcNow()
     {
-        auto now = std::chrono::system_clock::now();
-
-        time_t timeUtc = std::chrono::system_clock::to_time_t(now);
+        const auto now = std::chrono::system_clock::now();
+        const time_t timeUtc = std::chrono::system_clock::to_time_t(now);
 
         DateTime result{};
         result.timeInfo = *std::gmtime(&timeUtc);
@@ -65,7 +62,7 @@ namespace SceneryEditorX
         return result;
     }
 
-    void DateTime::AddSeconds(int seconds)
+    void DateTime::AddSeconds(const int seconds)
     {
         if (seconds == 0)
             return;
@@ -74,7 +71,7 @@ namespace SceneryEditorX
         std::mktime(&timeInfo);
     }
 
-    void DateTime::AddMinutes(int minutes)
+    void DateTime::AddMinutes(const int minutes)
     {
         if (minutes == 0)
             return;
@@ -83,7 +80,7 @@ namespace SceneryEditorX
         std::mktime(&timeInfo);
     }
 
-    void DateTime::AddHours(int hours)
+    void DateTime::AddHours(const int hours)
     {
         if (hours == 0)
             return;
@@ -92,7 +89,7 @@ namespace SceneryEditorX
         std::mktime(&timeInfo);
     }
 
-    void DateTime::AddDays(int days)
+    void DateTime::AddDays(const int days)
     {
         if (days == 0)
             return;
@@ -101,7 +98,7 @@ namespace SceneryEditorX
         std::mktime(&timeInfo);
     }
 
-    void DateTime::AddMonths(int months)
+    void DateTime::AddMonths(const int months)
     {
         if (months == 0)
             return;
@@ -110,7 +107,7 @@ namespace SceneryEditorX
         std::mktime(&timeInfo);
     }
 
-    void DateTime::AddYears(int years)
+    void DateTime::AddYears(const int years)
     {
         if (years == 0)
             return;
@@ -132,34 +129,34 @@ namespace SceneryEditorX
         return packed.finalValue;
     }
 
-    DateTime DateTime::FromNumber(u64 number)
+    DateTime DateTime::FromNumber(const uint64_t number)
     {
         PackedDateTime packed{};
         packed.finalValue = number;
 
         DateTime result{};
-        result.timeInfo.tm_year = (int)packed.year - 1900;
-        result.timeInfo.tm_mon = (int)packed.month - 1;
-        result.timeInfo.tm_mday = (int)packed.day;
-        result.timeInfo.tm_hour = (int)packed.hour;
-        result.timeInfo.tm_min = (int)packed.minute;
-        result.timeInfo.tm_sec = (int)packed.second;
+        result.timeInfo.tm_year = static_cast<int>(packed.year) - 1900;
+        result.timeInfo.tm_mon = static_cast<int>(packed.month) - 1;
+        result.timeInfo.tm_mday = static_cast<int>(packed.day);
+        result.timeInfo.tm_hour = static_cast<int>(packed.hour);
+        result.timeInfo.tm_min = static_cast<int>(packed.minute);
+        result.timeInfo.tm_sec = static_cast<int>(packed.second);
 
         return result;
     }
 
-    String DateTime::ToString() const
+    std::string DateTime::ToString() const
     {
         constexpr const char* defaultFormat = "{:%Y-%m-%d %H:%M:%S}";
         return fmt::format(defaultFormat, timeInfo);
     }
 
-    DateTime DateTime::Parse(const String& string)
+    DateTime DateTime::Parse(const std::string &input)
     {
         constexpr const char* defaultFormat = "%Y-%m-%d %H:%M:%S";
         DateTime result = {};
 
-        std::istringstream iss(string.GetCString());
+        std::istringstream iss(input.c_str());
         iss >> std::get_time(&result.timeInfo, defaultFormat);
 
         return result;

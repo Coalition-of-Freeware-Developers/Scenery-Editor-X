@@ -27,7 +27,7 @@ namespace SceneryEditorX::Utils
 			Color value{};
             float position{};
 
-			size_t GetHash() const
+            [[nodiscard]] size_t GetHash() const
 			{
 				size_t hash = value.GetHash();
 				CombineHash(hash, position);
@@ -37,26 +37,26 @@ namespace SceneryEditorX::Utils
 
         Gradient();
 		Gradient(std::initializer_list<Key> list, float degrees = 0);
-		Gradient(const Array<Key>& list, float degrees = 0);
+        explicit Gradient(const Array<Key>& list, float degrees = 0);
 
-		float GetDegrees() const { return degrees; }
+		[[nodiscard]] float GetDegrees() const { return degrees; }
 
-		void SetDegrees(float degrees) { this->degrees = degrees; }
+		void SetDegrees(const float degrees) { this->degrees = degrees; }
 
-		uint32_t GetNumKeys() const { return keys.GetSize(); }
-		const Array<Key>& GetKeys() const { return keys; }
-		const Key& GetKeyAt(uint32_t index) const { return keys[index]; }
+		[[nodiscard]] uint32_t GetNumKeys() const { return keys.GetSize(); }
+		[[nodiscard]] const Array<Key>& GetKeys() const { return keys; }
+        [[nodiscard]] const Key& GetKeyAt(uint32_t index) const { return keys[index]; }
 
 		Key& GetKeyAt(uint32_t index) { return keys[index]; }
 
-		Color Evaluate(float position) const;
+        [[nodiscard]] Color Evaluate(float position) const;
 
 		void Clear();
 		void AddKey(const Key& key);
 		void AddKey(float position, const Color& color);
 		void RemoveKeyAt(uint32_t index);
 
-		size_t GetHash() const;
+        [[nodiscard]] size_t GetHash() const;
 
 		bool operator==(const Gradient& rhs) const { return GetHash() == rhs.GetHash(); }
 		bool operator!=(const Gradient& rhs) const { return !operator==(rhs); }

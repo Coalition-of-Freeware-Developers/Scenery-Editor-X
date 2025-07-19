@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	     * @brief Gets the current time in seconds since GLFW initialization.
 	     * @return float The current system time in seconds.
 	     */
-	    float GetTime();
+        static float GetTime();
 
 		/**
 		 * @brief Gets the current date and time as a 64-bit unsigned integer.
@@ -60,7 +60,7 @@ namespace SceneryEditorX
         struct TimeLog
         {
             std::string title;
-            TimeLog(const std::string &title,  bool logged = false)
+            explicit TimeLog(const std::string &title, const bool logged = false)
             {
                 this->title = title;
                 start = std::chrono::high_resolution_clock::now();
@@ -70,14 +70,14 @@ namespace SceneryEditorX
             ~TimeLog()
             {
                 std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
-                float elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count() / 1000.0f;
+                const float elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count() / 1000.0f;
                 if (logged)
                 {
                     SEDX_CORE_INFO("{} took {} seconds", title.c_str(), elapsed / 1000.0f);
                 }
                 else
                 {
-                    if (auto it = _timings.find(title); it == _timings.end())
+                    if (const auto it = _timings.find(title); it == _timings.end())
                     {
                         _timings[title] = elapsed;
                     }
@@ -100,52 +100,52 @@ namespace SceneryEditorX
 	     * @brief Initializes the Time system.
 	     * Should be called at application startup.
 	     */
-	    void Init();
+        static void Init();
 
 	    /**
 	     * @brief Updates the time-related variables each frame.
 	     * Should be called once per frame.
 	     */
-        void Update(DeltaTime dt);
+        static void Update(DeltaTime dt);
 
 	    /**
 	     * @brief Get the time elapsed since application start in seconds.
 	     * @return float Application runtime in seconds.
 	     */
-	    float GetApplicationTime();
+        static float GetApplicationTime();
 
 	    /**
 	     * @brief Get the time elapsed since application start in milliseconds.
 	     * @return float Application runtime in milliseconds.
 	     */
-	    float GetApplicationTimeMs();
+        static float GetApplicationTimeMs();
 
 	    /**
 	     * @brief Get the current frames per second.
 	     * @return float Current FPS value.
 	     */
-	    float GetFPS();
+        static float GetFPS();
 
 	    /**
 	     * @brief Create a new timer with a specific duration.
 	     * @param durationSeconds Timer duration in seconds.
 	     * @return uint32_t Timer ID that can be used to check the timer's status.
 	     */
-	    uint32_t CreateTimer(float durationSeconds);
+        static uint32_t CreateTimer(float durationSeconds);
 
 	    /**
 	     * @brief Check if a timer has completed.
 	     * @param timerID ID of the timer to check.
 	     * @return bool True if timer has completed, false otherwise.
 	     */
-	    bool IsTimerComplete(uint32_t timerID);
+        static bool IsTimerComplete(uint32_t timerID);
 
 	    /**
 	     * @brief Reset an existing timer.
 	     * @param timerID ID of the timer to reset.
 	     * @param newDurationSeconds Optional new duration in seconds.
 	     */
-	    void ResetTimer(uint32_t timerID, float newDurationSeconds = -1.0f);
+        static void ResetTimer(uint32_t timerID, float newDurationSeconds = -1.0f);
 
 	private:
 	    struct Timer
@@ -193,14 +193,21 @@ namespace SceneryEditorX
 		 * @brief Get the time elapsed since the last frame in microseconds.
 		 * @return float Delta time in microseconds.
 		 */
-		operator float() const { return dt; }
+        explicit operator float() const { return dt; }
 
-	private:
+        /**
+         * @brief Compare DeltaTime with another DeltaTime object.
+         * @param x The DeltaTime object to compare with.
+         * @return std::strong_ordering Result of the comparison.
+         */
+        auto operator<=>(float x) const;
+
+    private:
         float dt = 0.0f;
 
 		friend class Time;
 	};
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

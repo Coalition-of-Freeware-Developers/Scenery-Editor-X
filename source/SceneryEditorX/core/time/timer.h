@@ -22,8 +22,8 @@ namespace SceneryEditorX
 	public:
 		SEDX_FORCE_INLINE Timer() { Reset(); }
 		SEDX_FORCE_INLINE void Reset() { m_Start = std::chrono::high_resolution_clock::now(); }
-		SEDX_FORCE_INLINE float Elapsed() { return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_Start).count() * 0.001f * 0.001f; }
-		SEDX_FORCE_INLINE float ElapsedMillis() { return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_Start).count() * 0.001f; }
+		SEDX_FORCE_INLINE float Elapsed() const { return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_Start).count() * 0.001f * 0.001f; }
+		SEDX_FORCE_INLINE float ElapsedMillis() const { return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - m_Start).count() * 0.001f; }
 	private:
 		std::chrono::time_point<std::chrono::high_resolution_clock> m_Start;
 	};
@@ -51,16 +51,18 @@ namespace SceneryEditorX
 			uint32_t Samples = 0;
 
 			PerFrameData() = default;
-			PerFrameData(float time) : Time(time) {}
+            explicit PerFrameData(const float time) : Time(time) {}
 
-			operator float() const { return Time; }
-			inline PerFrameData& operator+=(float time)
+            explicit operator float() const { return Time; }
+			inline PerFrameData& operator+=(const float time)
 			{
 				Time += time;
 			}
-		};
-	public:
-		void SetPerFrameTiming(const char* name, float time)
+
+            std::unordered_map<const char *,PerFrameData>::mapped_type &operator=(float x);
+        };
+
+		void SetPerFrameTiming(const char* name, const float time)
 		{
 			std::scoped_lock<std::mutex> lock(m_PerFrameDataMutex);
 
@@ -91,7 +93,7 @@ namespace SceneryEditorX
 
 		~ScopePerfTimer()
 		{
-			float time = m_Timer.ElapsedMillis();
+			const float time = m_Timer.ElapsedMillis();
 			m_Profiler->SetPerFrameTiming(m_Name, time);
 		}
 	private:

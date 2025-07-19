@@ -35,7 +35,8 @@ namespace SceneryEditorX
             Busy,
             Kick
         };
-        ThreadManager(ThreadingPolicy policy);
+
+        explicit ThreadManager(ThreadingPolicy policy);
         ~ThreadManager();
 
         GLOBAL bool checkRenderThread();

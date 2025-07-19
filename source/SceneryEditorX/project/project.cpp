@@ -18,18 +18,18 @@ namespace SceneryEditorX
 {
 	Project::Project()
 	{
-	    // Initialize the project
+	    ///< TODO: Initialize the project
 	}
 	Project::~Project()
 	{
-	    // Cleanup the project
+	    ///< TODO: Cleanup the project
 	}
 
     void Project::SetActive(const Ref<Project> &project)
     {
         if (activeProject)
 		{
-            //TODO: Add code to handle the previous active project if needed
+            ///< TODO: Add code to handle the previous active project if needed
 		}
 
 		activeProject = project;

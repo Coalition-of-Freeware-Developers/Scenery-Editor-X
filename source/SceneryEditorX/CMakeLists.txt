@@ -32,8 +32,7 @@ FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
 
 FILE(GLOB UTILS_MATH utils/math/*.cpp utils/math/*.h utils/math/*.hpp)
 FILE(GLOB UTILS_REFLECTION utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
-FILE(GLOB UTILS_CONVERSIONS utils/conversions/*.cpp utils/conversions/*.h utils/conversions/*.hpp
-)
+FILE(GLOB UTILS_CONVERSIONS utils/conversions/*.cpp utils/conversions/*.h utils/conversions/*.hpp)
 FILE(GLOB VULKAN_BUFFERS renderer/buffers/*.h renderer/buffers/*.cpp)
 FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
 FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h renderer/shaders/*.hpp)

@@ -64,14 +64,14 @@ namespace SceneryEditorX::Utils
     std::vector<std::string> SplitString(std::string_view string, char delimiter);
 
 	// Helper functions
-	inline bool isWhitespace(char c) { return c == ' ' || (c <= 13 && c >= 9); }
-	inline bool isDigit(char c) { return static_cast<uint32_t>(c - '0') < 10; }
+	inline bool isWhitespace(const char c) { return c == ' ' || (c <= 13 && c >= 9); }
+	inline bool isDigit(const char c) { return static_cast<uint32_t>(c - '0') < 10; }
 
 	/// Replaces all occurrences of a one or more substrings.
 	/// The arguments must be a sequence of pairs of strings, where the first of each pair is the string to
 	/// look for, followed by its replacement.
 	template <typename StringType, typename... OtherReplacements>
-	std::string replace(StringType textToSearch, std::string_view firstSubstringToReplace, std::string_view firstReplacement, OtherReplacements&&... otherPairsOfStringsToReplace);
+	std::string replace(StringType textToSearch, std::string_view firstToReplace, std::string_view firstReplacement, OtherReplacements&&... otherPairsOfStringsToReplace);
 
 	/// Returns a string with any whitespace trimmed from its start and end.
 	std::string trim(std::string textToTrim);
@@ -161,7 +161,6 @@ namespace SceneryEditorX::Utils
 	/// it might choose different units such as GB, MB, KB or just bytes.
 	std::string getByteSizeDescription(uint64_t sizeInBytes);
 
-
     /// ==============================================================================
 
     template <class... Durations, class DurationIn>
@@ -204,19 +203,20 @@ namespace SceneryEditorX::Utils
     /// ==============================================================================
 
     /// constexpr utilities
-    constexpr bool StartsWith(std::string_view t, std::string_view s)
+    constexpr bool StartsWith(const std::string_view t, const std::string_view s)
     {
-        auto len = s.length();
+        const auto len = s.length();
         return t.length() >= len && t.substr(0, len) == s;
     }
 
-    constexpr bool EndsWith(std::string_view t, std::string_view s)
+    constexpr bool EndsWith(const std::string_view t, const std::string_view s)
     {
-        auto len1 = t.length(), len2 = s.length();
+        const auto len1 = t.length();
+        const auto len2 = s.length();
         return len1 >= len2 && t.substr(len1 - len2) == s;
     }
 
-    constexpr size_t GetNumberOfTokens(std::string_view source, std::string_view delimiter)
+    constexpr size_t GetNumberOfTokens(std::string_view source, const std::string_view delimiter)
     {
         size_t count = 1;
         auto pos = source.begin();
@@ -233,7 +233,7 @@ namespace SceneryEditorX::Utils
     /// ==============================================================================
 
     template <size_t N>
-    constexpr std::array<std::string_view, N> SplitString(std::string_view source, std::string_view delimiter)
+    constexpr std::array<std::string_view, N> SplitString(std::string_view source, const std::string_view delimiter)
     {
         std::array<std::string_view, N> tokens;
 
@@ -251,7 +251,9 @@ namespace SceneryEditorX::Utils
                 ++i;
             }
             else
+            {
                 ++pos;
+            }
         }
 
         if (pos != source.begin())
@@ -260,16 +262,15 @@ namespace SceneryEditorX::Utils
         return tokens;
     }
 
-    constexpr std::string_view RemoveNamespace(std::string_view name)
+    constexpr std::string_view RemoveNamespace(const std::string_view name)
     {
-        const auto pos = name.find_last_of(':');
-        if (pos == std::string_view::npos)
+        if (const auto pos = name.find_last_of(':'); pos == std::string_view::npos)
             return name;
 
         return name.substr(name.find_last_of(':') + 1);
     }
 
-    constexpr std::string_view RemoveOuterNamespace(std::string_view name)
+    constexpr std::string_view RemoveOuterNamespace(const std::string_view name)
     {
         const auto first = name.find_first_of(':');
         if (first == std::string_view::npos)
@@ -320,11 +321,11 @@ namespace SceneryEditorX::Utils
 	///
 	///==============================================================================
 
-	inline int hexToInt(uint32_t unicodeChar)
+	inline int hexToInt(const uint32_t unicodeChar)
 	{
-	    auto d1 = unicodeChar - static_cast<uint32_t>('0'); if (d1 < 10u)  return static_cast<int>(d1);
-	    auto d2 = d1 + static_cast<uint32_t>('0' - 'a'); if (d2 < 6u)   return static_cast<int>(d2 + 10);
-	    auto d3 = d2 + static_cast<uint32_t>('a' - 'A'); if (d3 < 6u)   return static_cast<int>(d3 + 10);
+	    const auto d1 = unicodeChar - static_cast<uint32_t>('0'); if (d1 < 10u)  return static_cast<int>(d1);
+	    const auto d2 = d1 + static_cast<uint32_t>('0' - 'a'); if (d2 < 6u)   return static_cast<int>(d2 + 10);
+        if (const auto d3 = d2 + static_cast<uint32_t>('a' - 'A'); d3 < 6u)   return static_cast<int>(d3 + 10);
 	    return -1;
 	}
 
@@ -377,38 +378,38 @@ namespace SceneryEditorX::Utils
             return replace(replace(std::move(textToSearch), firstToReplace, firstReplacement), std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
     }
 
-	inline std::string      trim(std::string      text)     { return trimStart(trimEnd(std::move(text))); }
-	inline std::string_view trim(std::string_view text)     { return trimStart(trimEnd(text)); }
-	inline std::string_view trim      (const char* text)    { return trim      (std::string_view(text)); }
-	inline std::string_view trimStart (const char* text)    { return trimStart (std::string_view(text)); }
-	inline std::string_view trimEnd   (const char* text)    { return trimEnd   (std::string_view(text)); }
+	inline std::string      trim      (std::string      textToTrim)			{ return trimStart(trimEnd(std::move(textToTrim))); }
+	inline std::string_view trim	  (const std::string_view textToTrim)   { return trimStart(trimEnd(textToTrim)); }
+	inline std::string_view trim      (const char* textToTrim)				{ return trim      (std::string_view(textToTrim)); }
+	inline std::string_view trimStart (const char* textToTrim)				{ return trimStart (std::string_view(textToTrim)); }
+	inline std::string_view trimEnd   (const char* textToTrim)				{ return trimEnd   (std::string_view(textToTrim)); }
 
-	inline std::string trimStart(std::string text)
+	inline std::string trimStart(std::string textToTrim)
 	{
-	    auto i = text.begin();
+	    auto i = textToTrim.begin();
 
-	    if (i == text.end())        return {};
-	    if (!isWhitespace(*i))    return text;
+	    if (i == textToTrim.end())        return {};
+	    if (!isWhitespace(*i))    return textToTrim;
 
 	    for (;;)
 	    {
 	        ++i;
 
-	        if (i == text.end())        return {};
-	        if (!isWhitespace(*i))    return { i, text.end() };
+	        if (i == textToTrim.end())        return {};
+	        if (!isWhitespace(*i))    return { i, textToTrim.end() };
 	    }
 	}
 
-	inline std::string_view trimStart(std::string_view text)
+	inline std::string_view trimStart(std::string_view textToTrim)
 	{
 	    size_t i = 0;
 
-	    for (auto c : text)
+	    for (const auto c : textToTrim)
 	    {
 	        if (!isWhitespace(c))
 	        {
-	            text.remove_prefix(i);
-	            return text;
+	            textToTrim.remove_prefix(i);
+	            return textToTrim;
 	        }
 
 	        ++i;
@@ -417,38 +418,38 @@ namespace SceneryEditorX::Utils
 	    return {};
 	}
 
-	inline std::string trimEnd(std::string text)
+	inline std::string trimEnd(std::string textToTrim)
 	{
-	    for (auto i = text.end();;)
+	    for (auto i = textToTrim.end();;)
 	    {
-	        if (i == text.begin())
+	        if (i == textToTrim.begin())
 	            return {};
 
 	        --i;
 
 	        if (!isWhitespace(*i))
 	        {
-	            text.erase(i + 1, text.end());
-	            return text;
+	            textToTrim.erase(i + 1, textToTrim.end());
+	            return textToTrim;
 	        }
 	    }
 	}
 
-	inline std::string_view trimEnd(std::string_view text)
+	inline std::string_view trimEnd(const std::string_view textToTrim)
 	{
-	    for (auto i = text.length(); i != 0; --i)
-	        if (!isWhitespace(text[i - 1]))
-	            return text.substr(0, i);
+	    for (auto i = textToTrim.length(); i != 0; --i)
+	        if (!isWhitespace(textToTrim[i - 1]))
+	            return textToTrim.substr(0, i);
 
 	    return {};
 	}
 
-	inline std::string removeOuterCharacter(std::string t, char outerChar)
+	inline std::string removeOuterCharacter(std::string text, const char outerChar)
 	{
-	    if (t.length() >= 2 && t.front() == outerChar && t.back() == outerChar)
-	        return t.substr(1, t.length() - 2);
+	    if (text.length() >= 2 && text.front() == outerChar && text.back() == outerChar)
+	        return text.substr(1, text.length() - 2);
 
-	    return t;
+	    return text;
 	}
 
 	inline std::string toLowerCase(std::string s)
@@ -464,23 +465,23 @@ namespace SceneryEditorX::Utils
 	}
 
 	template <typename CharStartsDelimiter, typename CharIsInDelimiterBody>
-	std::vector<std::string> splitString(std::string_view source, CharStartsDelimiter&& isDelimiterStart, CharIsInDelimiterBody&& isDelimiterBody, bool keepDelimiters)
+	std::vector<std::string> splitString(std::string_view textToSplit, CharStartsDelimiter&& isDelimiterStart, CharIsInDelimiterBody&& isDelimiterBody, const bool includeDelimitersInResult)
 	{
 	    std::vector<std::string> tokens;
-	    auto tokenStart = source.begin();
+	    auto tokenStart = textToSplit.begin();
 	    auto pos = tokenStart;
 
-	    while (pos != source.end())
+	    while (pos != textToSplit.end())
 	    {
 	        if (isDelimiterStart(*pos))
 	        {
 	            auto delimiterStart = pos++;
 
-	            while (pos != source.end() && isDelimiterBody(*pos))
+	            while (pos != textToSplit.end() && isDelimiterBody(*pos))
 	                ++pos;
 
-	            if (pos != source.begin())
-	                tokens.emplace_back(tokenStart, keepDelimiters ? pos : delimiterStart);
+	            if (pos != textToSplit.begin())
+	                tokens.emplace_back(tokenStart, includeDelimitersInResult ? pos : delimiterStart);
 
 	            tokenStart = pos;
 	        }
@@ -490,24 +491,24 @@ namespace SceneryEditorX::Utils
 	        }
 	    }
 
-	    if (pos != source.begin())
+	    if (pos != textToSplit.begin())
 	        tokens.emplace_back(tokenStart, pos);
 
 	    return tokens;
 	}
 
 	template <typename IsDelimiterChar>
-	std::vector<std::string> splitString(std::string_view source, IsDelimiterChar&& isDelimiterChar, bool keepDelimiters)
+	std::vector<std::string> splitString(std::string_view textToSplit, IsDelimiterChar&& isDelimiterChar, const bool includeDelimitersInResult)
 	{
 	    std::vector<std::string> tokens;
-	    auto tokenStart = source.begin();
+	    auto tokenStart = textToSplit.begin();
 	    auto pos = tokenStart;
 
-	    while (pos != source.end())
+	    while (pos != textToSplit.end())
 	    {
 	        if (isDelimiterChar(*pos))
 	        {
-	            tokens.emplace_back(tokenStart, keepDelimiters ? pos + 1 : pos);
+	            tokens.emplace_back(tokenStart, includeDelimitersInResult ? pos + 1 : pos);
 	            tokenStart = ++pos;
 	        }
 	        else
@@ -516,36 +517,36 @@ namespace SceneryEditorX::Utils
 	        }
 	    }
 
-	    if (pos != source.begin())
+	    if (pos != textToSplit.begin())
 	        tokens.emplace_back(tokenStart, pos);
 
 	    return tokens;
 	}
 
-	inline std::vector<std::string> splitString(std::string_view text, char delimiterCharacter, bool keepDelimiters)
+	inline std::vector<std::string> splitString(const std::string_view textToSplit, const char delimiterCharacter, const bool includeDelimitersInResult)
 	{
-	    return splitString(text, [=](char c) { return c == delimiterCharacter; }, keepDelimiters);
+	    return splitString(textToSplit, [=](const char c) { return c == delimiterCharacter; }, includeDelimitersInResult);
 	}
 
-	inline std::vector<std::string> splitAtWhitespace(std::string_view text, bool keepDelimiters)
+	inline std::vector<std::string> splitAtWhitespace(const std::string_view text, const bool keepDelimiters)
 	{
 	    return splitString(text,
-	                      [](char c) { return isWhitespace(c); },
-	                      [](char c) { return isWhitespace(c); }, keepDelimiters);
+	                      [](const char c) { return isWhitespace(c); },
+	                      [](const char c) { return isWhitespace(c); }, keepDelimiters);
 	}
 
-	inline std::vector<std::string> splitIntoLines(std::string_view text, bool includeNewLinesInResult)
+	inline std::vector<std::string> splitIntoLines(const std::string_view text, const bool includeNewLinesInResult)
 	{
 	    return splitString(text, '\n', includeNewLinesInResult);
 	}
 
 	template <typename ArrayOfStrings>
-    std::string joinStrings(const ArrayOfStrings& strings, std::string_view sep)
+    std::string joinStrings(const ArrayOfStrings& strings, const std::string_view separator)
 	{
 	    if (strings.empty())
 	        return {};
 
-	    auto spaceNeeded = sep.length() * strings.size();
+	    auto spaceNeeded = separator.length() * strings.size();
 
 	    for (auto& s : strings)
 	        spaceNeeded += s.length();
@@ -555,31 +556,31 @@ namespace SceneryEditorX::Utils
 
 	    for (size_t i = 1; i < strings.size(); ++i)
 	    {
-	        result += sep;
+	        result += separator;
 	        result += strings[i];
 	    }
 
 	    return result;
 	}
 
-	inline bool contains(std::string_view t, std::string_view s)   { return t.find(s) != std::string::npos; }
-	inline bool startsWith(std::string_view t, char s)             { return !t.empty() && t.front() == s; }
-	inline bool endsWith(std::string_view t, char s)               { return !t.empty() && t.back() == s; }
+	inline bool contains(const std::string_view text, const std::string_view possibleSubstring)   { return text.find(possibleSubstring) != std::string::npos; }
+	inline bool startsWith(const std::string_view text, const char possibleStart)             { return !text.empty() && text.front() == possibleStart; }
+	inline bool endsWith(const std::string_view text, const char possibleEnd)               { return !text.empty() && text.back() == possibleEnd; }
 
-	inline bool startsWith(std::string_view t, std::string_view s)
+	inline bool startsWith(const std::string_view text, const std::string_view possibleStart)
 	{
-	    auto len = s.length();
-	    return t.length() >= len && t.substr(0, len) == s;
+	    const auto len = possibleStart.length();
+	    return text.length() >= len && text.substr(0, len) == possibleStart;
 	}
 
-	inline bool endsWith(std::string_view t, std::string_view s)
+	inline bool endsWith(const std::string_view text, const std::string_view possibleEnd)
 	{
-	    const auto len1 = t.length();
-        const auto len2 = s.length();
-        return len1 >= len2 && t.substr(len1 - len2) == s;
+	    const auto len1 = text.length();
+        const auto len2 = possibleEnd.length();
+        return len1 >= len2 && text.substr(len1 - len2) == possibleEnd;
 	}
 
-	inline std::string getDurationDescription(std::chrono::duration<double, std::micro> d)
+	inline std::string getDurationDescription(const std::chrono::duration<double, std::micro> d)
 	{
 	    const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(d).count();
 
@@ -588,7 +589,7 @@ namespace SceneryEditorX::Utils
 
 	    std::string result;
 
-	    auto addLevel = [&](int64_t size, std::string_view units, int64_t decimalScale, int64_t modulo) -> bool
+	    auto addLevel = [&](const int64_t size, const std::string_view units, const int64_t decimalScale, const int64_t modulo) -> bool
 	    {
 	        if (microseconds < size)
 	            return false;
@@ -639,7 +640,7 @@ namespace SceneryEditorX::Utils
 	    if (string1.empty())  return string2.length();
 	    if (string2.empty())  return string1.length();
 
-	    auto calculate = [](size_t* costs, size_t numCosts, const StringType& s1, const StringType& s2) -> size_t
+	    auto calculate = [](size_t* costs, const size_t numCosts, const StringType& s1, const StringType& s2) -> size_t
 	    {
 	        for (size_t i = 0; i < numCosts; ++i)
 	            costs[i] = i;
@@ -679,9 +680,9 @@ namespace SceneryEditorX::Utils
 	    return calculate(costs.get(), sizeNeeded, string1, string2);
 	}
 
-	inline std::string getByteSizeDescription(uint64_t size)
+	inline std::string getByteSizeDescription(const uint64_t sizeInBytes)
 	{
-	    auto intToStringWith1DecPlace = [](uint64_t n, uint64_t divisor) -> std::string
+	    auto intToStringWith1DecPlace = [](const uint64_t n, const uint64_t divisor) -> std::string
 	    {
 	        const auto scaled = (n * 10 + divisor / 2) / divisor;
 	        auto result = std::to_string(scaled / 10);
@@ -697,16 +698,16 @@ namespace SceneryEditorX::Utils
 
 	    static constexpr uint64_t maxValue = std::numeric_limits<uint64_t>::max() / 10;
 
-	    if (size >= 0x40000000)  return intToStringWith1DecPlace(std::min(maxValue, size), 0x40000000) + " GB";
-	    if (size >= 0x100000)    return intToStringWith1DecPlace(size, 0x100000) + " MB";
-	    if (size >= 0x400)       return intToStringWith1DecPlace(size, 0x400)    + " KB";
-	    if (size != 1)           return std::to_string(size) + " bytes";
+	    if (sizeInBytes >= 0x40000000)  return intToStringWith1DecPlace(std::min(maxValue, sizeInBytes), 0x40000000) + " GB";
+	    if (sizeInBytes >= 0x100000)    return intToStringWith1DecPlace(sizeInBytes, 0x100000) + " MB";
+	    if (sizeInBytes >= 0x400)       return intToStringWith1DecPlace(sizeInBytes, 0x400)    + " KB";
+	    if (sizeInBytes != 1)           return std::to_string(sizeInBytes) + " bytes";
 
 	    return "1 byte";
 	}
 
     /// -------------------------------------------------------
 
-} // namespace SceneryEditorX::StringUtils
+}
 
 /// -------------------------------------------------------

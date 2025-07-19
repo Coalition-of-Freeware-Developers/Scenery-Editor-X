@@ -12,8 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/core/identifiers/hash.h>
-
-#include "math_utils.h"
+#include <SceneryEditorX/utils/math/math_utils.h>
 
 /// -------------------------------------------------------
 
@@ -28,16 +27,16 @@ namespace SceneryEditorX::Utils
     template<typename T>
     class TVector4;
 
-    typedef TVector2<float> Vec2;
-    typedef TVector3<float> Vec3;
-    typedef TVector4<float> Vec4;
+    using Vec2 = TVector2<float>;
+    using Vec3 = TVector3<float>;
+    using Vec4 = TVector4<float>;
 
-    typedef TVector2<int32_t> Vec2i;
-    typedef TVector3<int32_t> Vec3i;
-    typedef TVector4<int32_t> Vec4i;
+    using Vec2i = TVector2<int32_t>;
+    using Vec3i = TVector3<int32_t>;
+    using Vec4i = TVector4<int32_t>;
 
-	typedef Vec2 Range;
-	typedef Vec2i RangeInt;
+	using Range = Vec2;
+	using RangeInt = Vec2i;
 
     /**
      * @brief Checks if two floating-point numbers are approximately equal.
@@ -49,7 +48,7 @@ namespace SceneryEditorX::Utils
      * @param rhs 
      * @return Returns true if the two numbers are approximately equal, false otherwise.
      */
-    inline bool ApproxEquals(float lhs, float rhs)
+    inline bool ApproxEquals(const float lhs, const float rhs)
     {
         return std::abs(lhs - rhs) < std::numeric_limits<float>::epsilon();
     }
@@ -67,8 +66,8 @@ namespace SceneryEditorX::Utils
 
         TVector2(T x, T y) : x(x), y(y) {}
 
-        TVector2(TVector3<T> vec3);
-        TVector2(TVector4<T> vec4);
+        explicit TVector2(TVector3<T> vec3);
+        explicit TVector2(TVector4<T> vec4);
 
         union
         {
@@ -157,7 +156,7 @@ namespace SceneryEditorX::Utils
         inline float GetMagnitude() const { return sqrt(GetSqrMagnitude()); }
         inline TVector2 GetNormalized() const { return *this / GetMagnitude(); }
 
-        float GetMax() const { return Math::Max({x, y}); }
+        [[nodiscard]] float GetMax() const { return Math::Max({x, y}); }
 
         static float SqrDistance(TVector2 a, TVector2 b) { return (b - a).GetSqrMagnitude(); }
         static float Distance(TVector2 a, TVector2 b) { return (b - a).GetMagnitude(); }
@@ -165,10 +164,10 @@ namespace SceneryEditorX::Utils
         inline float Dot(TVector2 b) const { return x * b.x + y * b.y; }
 
         /// Signed angle in radians between 2 vectors. ///TODO 
-        inline static float SignedAngle(TVector2 a, TVector2 b) { return Math::ACos(Dot(a, b) / (a.GetMagnitude() * b.GetMagnitude())); } 
+        inline static float SignedAngle(const TVector2 a, const TVector2 b) { return Math::ACos(Dot(a, b) / (a.GetMagnitude() * b.GetMagnitude())); } 
 
         /// Signed angle in radians between 2 vectors
-        inline float SignedAngle(TVector2 b) const { return SignedAngle(*this, b); }
+        inline float SignedAngle(const TVector2 b) const { return SignedAngle(*this, b); }
 
         inline static TVector2<float> Lerp(TVector2 from, TVector2 to, float t)
         { return TVector2<float>(Math::Lerp(from.x, to.x, t), Math::Lerp(from.y, to.y, t));  }
@@ -190,34 +189,31 @@ namespace SceneryEditorX::Utils
     {
     public:
 
-        TVector3() : x(0), y(0), z(0)
-        {}
+        TVector3() : x(0), y(0), z(0) {}
+        TVector3(T x, T y) : x(x), y(y), z(0) {}
+        TVector3(T x, T y, T z) : x(x), y(y), z(z) {}
 
-        TVector3(T x, T y) : x(x), y(y), z(0)
-        {}
+        explicit TVector3(TVector2<T> vec2);
+        explicit TVector3(TVector4<T> vec4);
 
-        TVector3(T x, T y, T z) : x(x), y(y), z(z)
-        {}
-
-        TVector3(TVector2<T> vec2);
-        TVector3(TVector4<T> vec4);
-
-        union {
-            struct {
+        union
+        {
+            struct
+            {
                 T x, y, z;
             };
-            T xyz[4]; // size/alignment is same as Vector4
+            T xyz[4]; ///< size/alignment is same as Vector4
         };
 
 		inline size_t GetHash() const { return GetCombinedHashes({ SceneryEditorX::GetHash(x), SceneryEditorX::GetHash(y), SceneryEditorX::GetHash(z) }); }
         inline T operator[](int index) const { return xyz[index]; }
 
-        Vec3 ToVec3() const
+        [[nodiscard]] Vec3 ToVec3() const
         {
             return Vec3(x, y, z);
         }
 
-        TVector3<int32_t> ToVec3i() const
+        [[nodiscard]] TVector3<int32_t> ToVec3i() const
         {
             return {(int32_t)x, (int32_t)y, (int32_t)z};
         }
@@ -334,7 +330,7 @@ namespace SceneryEditorX::Utils
             return *this / GetMagnitude();
         }
 
-        float GetMax() const
+        [[nodiscard]] float GetMax() const
         {
             return Math::Max({x, y, z});
         }
@@ -360,13 +356,13 @@ namespace SceneryEditorX::Utils
         }
 
         /// Signed angle in radians between 2 vectors
-        inline static float SignedAngle(TVector3 a, TVector3 b)
+        inline static float SignedAngle(const TVector3 a, const TVector3 b)
         {
             return Math::ACos(Dot(a, b) / (a.GetMagnitude() * b.GetMagnitude())); // TODO
         }
 
         /// Signed angle in radians between 2 vectors
-        inline float SignedAngle(TVector3 b) const
+        inline float SignedAngle(const TVector3 b) const
         {
             return SignedAngle(*this, b);
         }
@@ -407,16 +403,13 @@ namespace SceneryEditorX::Utils
     public:
 
         TVector4() : x(0), y(0), z(0), w(0) {}
-
         TVector4(T x, T y) : x(x), y(y), z(0), w(0) {}
-
         TVector4(T x, T y, T z) : x(x), y(y), z(z), w(0) {}
-
 		TVector4(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
 
-        TVector4(TVector2<T> vec2);
+        explicit TVector4(TVector2<T> vec2);
 		TVector4(TVector2<T> xy, TVector2<T> zw);
-        TVector4(TVector3<T> vec3);
+        explicit TVector4(TVector3<T> vec3);
 
 
         TVector4(TVector3<T> vec3, T w) : x(vec3.x), y(vec3.y), z(vec3.z), w(w) {}
@@ -452,12 +445,12 @@ namespace SceneryEditorX::Utils
 			return GetCombinedHashes({ SceneryEditorX::GetHash(x), SceneryEditorX::GetHash(y), SceneryEditorX::GetHash(z), SceneryEditorX::GetHash(w) });
 		}
 
-        Vec4 ToVec4() const
+        [[nodiscard]] Vec4 ToVec4() const
         {
             return Vec4(x, y, z, w);
         }
 
-        TVector4<int32_t> ToVec4i() const
+        [[nodiscard]] TVector4<int32_t> ToVec4i() const
         {
             return {(int32_t)x, (int32_t)y, (int32_t)z, (int32_t)z};
         }
@@ -584,7 +577,7 @@ namespace SceneryEditorX::Utils
             return *this / GetMagnitude();
         }
 
-        float GetMax() const
+        [[nodiscard]] float GetMax() const
 		{
             return Math::Max({x, y, z, w});
 		}
@@ -670,7 +663,7 @@ namespace SceneryEditorX::Utils
          * @brief Creates a rectangle from a Vec4 representation.
          * @param vec 
          */
-        Rect(const Vec4& vec) : left(vec.left), top(vec.top), right(vec.right), bottom(vec.bottom) {}
+        explicit Rect(const Vec4& vec) : left(vec.left), top(vec.top), right(vec.right), bottom(vec.bottom) {}
 
         /**
          * @brief Creates a rectangle from its minimum and maximum points.
@@ -715,7 +708,7 @@ namespace SceneryEditorX::Utils
          * @param h 
          * @return Returns a Rect object representing the rectangle defined by the position and size.
          */
-        static Rect FromSize(float x, float y, float w, float h)
+        static Rect FromSize(float x, float y, const float w, const float h)
         {
             return {x, y, x + w, y + h};
         }
@@ -729,7 +722,7 @@ namespace SceneryEditorX::Utils
          * @param point The point to check for containment within the rectangle.
          * @return Returns true if the point is contained within the rectangle, false otherwise.
          */
-        [[nodiscard]] bool Contains(Vec2 point) const
+        [[nodiscard]] bool Contains(const Vec2 point) const
         {
             return point.x >= min.x && point.y >= min.y && point.x <= max.x && point.y <= max.y;
         }
@@ -821,10 +814,10 @@ namespace SceneryEditorX::Utils
          * @param scale A vector representing the scale factors for the x and y dimensions.
          * @return Returns a new rectangle that is scaled by the given vector.
          */
-        [[nodiscard]] Rect Scale(Vec2 scale) const
+        [[nodiscard]] Rect Scale(const Vec2 scale) const
         {
-            Vec2 size = GetSize();
-            Vec2 center = (min + max) * 0.5f;
+            const Vec2 size = GetSize();
+            const Vec2 center = (min + max) * 0.5f;
             return Rect(center - size / 2.0f * scale, center + size / 2.0f * scale);
         }
 
@@ -838,7 +831,7 @@ namespace SceneryEditorX::Utils
          * @param scale 
          * @return Returns a new rectangle that is scaled uniformly by the given factor.
          */
-        [[nodiscard]] Rect Scale(float scale) const
+        [[nodiscard]] Rect Scale(const float scale) const
         {
             return Scale(Vec2(scale, scale));
         }
@@ -853,9 +846,9 @@ namespace SceneryEditorX::Utils
          * @param translation 
          * @return Returns a new rectangle that is translated by the given vector.
          */
-        [[nodiscard]] Rect Translate(Vec2 translation) const
+        [[nodiscard]] Rect Translate(const Vec2 translation) const
         {
-            Vec2 size = GetSize();
+            const Vec2 size = GetSize();
             return FromSize(min + translation, size);
         }
 
@@ -909,11 +902,11 @@ namespace SceneryEditorX::Utils
          * @param newX 
          * @param newY 
          */
-        static void RotatePoint(float x, float y, float centerX, float centerY, double angle, float& newX, float& newY)
+        static void RotatePoint(const float x, const float y, const float centerX, const float centerY, const double angle, float& newX, float& newY)
         {
-            float radians = angle * (M_PI / 180.0); ///< Convert degrees to radians
-            float cosine = std::cos(radians);
-            float sine = std::sin(radians);
+            const float radians = angle * (M_PI / 180.0); ///< Convert degrees to radians
+            const float cosine = std::cos(radians);
+            const float sine = std::sin(radians);
 
             newX = centerX + (x - centerX) * cosine - (y - centerY) * sine;
             newY = centerY + (x - centerX) * sine + (y - centerY) * cosine;
@@ -932,14 +925,14 @@ namespace SceneryEditorX::Utils
          */
         static Rect ComputeBoundingBox(const Rect& rectangle, const float angle)
         {
-            float x1 = rectangle.min.x;
-            float y1 = rectangle.min.y;
-            float x2 = rectangle.max.x;
-            float y2 = rectangle.min.y;
-            float x3 = rectangle.max.x;
-            float y3 = rectangle.max.y;
-            float x4 = rectangle.min.x;
-            float y4 = rectangle.max.y;
+            const float x1 = rectangle.min.x;
+            const float y1 = rectangle.min.y;
+            const float x2 = rectangle.max.x;
+            const float y2 = rectangle.min.y;
+            const float x3 = rectangle.max.x;
+            const float y3 = rectangle.max.y;
+            const float x4 = rectangle.min.x;
+            const float y4 = rectangle.max.y;
 
             const float centerX = (rectangle.min.x + rectangle.max.x) / 2.0f;
             const float centerY = (rectangle.min.y + rectangle.max.y) / 2.0f;
@@ -951,10 +944,10 @@ namespace SceneryEditorX::Utils
             RotatePoint(x3, y3, centerX, centerY, angle, newX3, newY3);
             RotatePoint(x4, y4, centerX, centerY, angle, newX4, newY4);
 
-            float minX = std::min({ newX1, newX2, newX3, newX4 });
-            float maxX = std::max({ newX1, newX2, newX3, newX4 });
-            float minY = std::min({ newY1, newY2, newY3, newY4 });
-            float maxY = std::max({ newY1, newY2, newY3, newY4 });
+            const float minX = std::min({ newX1, newX2, newX3, newX4 });
+            const float maxX = std::max({ newX1, newX2, newX3, newX4 });
+            const float minY = std::min({ newY1, newY2, newY3, newY4 });
+            const float maxY = std::max({ newY1, newY2, newY3, newY4 });
 
             const Rect boundingBox = { minX, minY, maxX - minX, maxY - minY };
             return boundingBox;
@@ -1009,12 +1002,10 @@ namespace SceneryEditorX::Utils
     };
 
     template<typename T>
-    TVector2<T>::TVector2(TVector3<T> vec3) : x(vec3.x), y(vec3.y)
-    {}
+    TVector2<T>::TVector2(TVector3<T> vec3) : x(vec3.x), y(vec3.y) {}
 
     template<typename T>
-    TVector2<T>::TVector2(TVector4<T> vec4) : x(vec4.x), y(vec4.y)
-    {}
+    TVector2<T>::TVector2(TVector4<T> vec4) : x(vec4.x), y(vec4.y) {}
 
     template<typename T>
     TVector3<T>::TVector3(TVector4<T> vec4) : x(vec4.x), y(vec4.y), z(vec4.z)
@@ -1029,16 +1020,13 @@ namespace SceneryEditorX::Utils
     }
 
     template<typename T>
-    TVector4<T>::TVector4(TVector2<T> vec2) : x(vec2.x), y(vec2.y), z(0), w(0)
-    {}
+    TVector4<T>::TVector4(TVector2<T> vec2) : x(vec2.x), y(vec2.y), z(0), w(0) {}
 
 	template<typename T>
-	TVector4<T>::TVector4(TVector2<T> xy, TVector2<T> zw) : x(xy.x), y(xy.y), z(zw.x), w(zw.y)
-	{}
+	TVector4<T>::TVector4(TVector2<T> xy, TVector2<T> zw) : x(xy.x), y(xy.y), z(zw.x), w(zw.y) {}
 
     template<typename T>
-    TVector4<T>::TVector4(TVector3<T> vec3) : x(vec3.x), y(vec3.y), z(vec3.z), w(0)
-    {}
+    TVector4<T>::TVector4(TVector3<T> vec3) : x(vec3.x), y(vec3.y), z(vec3.z), w(0) {}
 
     template<typename T>
     inline TVector2<T> operator*(int32_t lhs, TVector2<T> rhs)

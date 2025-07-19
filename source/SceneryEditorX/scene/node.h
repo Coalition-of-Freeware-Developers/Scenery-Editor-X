@@ -38,8 +38,14 @@ namespace SceneryEditorX
 	    Vec3 position = Vec3(0.0f);
 	    Vec3 rotation = Vec3(0.0f);
 	    Vec3 scale = Vec3(1.0f);
+        UUID ID;
+        std::string State;
+        ImColor Color;
+        ImVec2 Size;
+        uint16_t Inputs;
+        uint16_t Outputs;
 
-		/// -------------------------------------------------------
+        /// -------------------------------------------------------
 	
 	    template <typename T>
 	    void GetAll(ObjectType type, std::vector<Ref<T>> &all)

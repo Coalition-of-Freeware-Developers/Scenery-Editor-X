@@ -13,17 +13,18 @@
 #include <SceneryEditorX/utils/math/math_utils.h>
 #include <SceneryEditorX/utils/math/matrix.h>
 #include <SceneryEditorX/utils/math/quat.h>
+#include <tracy/Tracy.hpp>
 
 /// -----------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	Quat::Quat() : w(1), x(0), y(0), z(0) {}
+	Quat::Quat() : x(0), y(0), z(0), w(1) {}
 
-	Quat::Quat(float w, float x, float y, float z) : w(w), x(x), y(y), z(z) {}
+	Quat::Quat(const float w, const float x, const float y, const float z) : x(x), y(y), z(z), w(w) {}
 
-	Quat::Quat(const Vec4& vec4) : w(vec4.w), x(vec4.x), y(vec4.y), z(vec4.z) {}
+	Quat::Quat(const Vec4& vec4) : x(vec4.x), y(vec4.y), z(vec4.z), w(vec4.w) {}
 
 	Quat::Quat(const Quat& q)
 	{
@@ -75,7 +76,7 @@ namespace SceneryEditorX
 		return q;
 	}
 
-	Quat Quat::operator*(float rhs) const { return {w * rhs, x * rhs, y * rhs, z * rhs}; }
+	Quat Quat::operator*(const float rhs) const { return {w * rhs, x * rhs, y * rhs, z * rhs}; }
 	Quat Quat::operator+(const Quat& rhs) const { return {w + rhs.w, x + rhs.x, y + rhs.y, z + rhs.z}; }
 	Quat Quat::operator-(const Quat& rhs) const { return {w - rhs.w, x - rhs.x, y - rhs.y, z - rhs.z}; }
 	Vec4 Quat::operator*(const Vec4& rhs) const { return ToMatrix(*this) * rhs; }
@@ -99,22 +100,22 @@ namespace SceneryEditorX
 
 	Quat Quat::Conjugate() { return {w, -x, -y, -z}; }
 
-	void Quat::SetEulerDegrees(float x, float y, float z)
+	void Quat::SetEulerDegrees(float X, float Y, float Z)
 	{
-		x *= 0.0174532925f; // To radians!
-		y *= 0.0174532925f; // To radians!
-		z *= 0.0174532925f; // To radians!
+		X *= 0.0174532925f; ///< To radians!
+		Y *= 0.0174532925f; ///< To radians!
+		Z *= 0.0174532925f; ///< To radians!
 
-		x *= 0.5f;
-		y *= 0.5f;
-		z *= 0.5f;
+		X *= 0.5f;
+		Y *= 0.5f;
+		Z *= 0.5f;
 
-		float sinx = sinf(x);
-		float siny = sinf(y);
-		float sinz = sinf(z);
-		float cosx = cosf(x);
-		float cosy = cosf(y);
-		float cosz = cosf(z);
+		const float sinx = sinf(X);
+		const float siny = sinf(Y);
+		const float sinz = sinf(Z);
+		const float cosx = cosf(X);
+		const float cosy = cosf(Y);
+		const float cosz = cosf(Z);
 
 		w = cosx * cosy * cosz + sinx * siny * sinz;
 		this->x = sinx * cosy * cosz + cosx * siny * sinz;
@@ -138,66 +139,74 @@ namespace SceneryEditorX
 		float scale = w > 0 ? 1.0 / w : 0;
 
 		if (dot >= 1.0f)
-            return {}; // identity
+            return {}; ///< identity
 
         if (dot <= -1.0f)
         {
-            // If the two vectors are pointing in opposite directions then we
-            // need to supply a quaternion corresponding to a rotation of
-            // PI-radians about an axis orthogonal to the fromDirection.
+            /**
+             * If the two vectors are pointing in opposite directions then we
+             * need to supply a quaternion corresponding to a rotation of
+             * PI-radians about an axis orthogonal to the fromDirection.
+             */
             Vec3 axis = Vec3::Cross(unitFrom, Vec3(1, 0, 0));
             if (axis.GetSqrMagnitude() < 1e-6)
             {
-                // Bad luck. The x-axis and fromDirection are linearly
-                // dependent (collinear). We'll take the axis as the vector
-                // orthogonal to both the y-axis and fromDirection instead.
-                // The y-axis and fromDirection will clearly not be linearly
-                // dependent.
+                /**
+                 * Bad luck. The x-axis and fromDirection are linearly
+                 * dependent (collinear). We'll take the axis as the vector
+                 * orthogonal to both the y-axis and fromDirection instead.
+                 * The y-axis and fromDirection will clearly not be linearly
+                 * dependent.
+                 */
                 axis = Vec3::Cross(unitFrom, Vec3(0, 1, 0));
             }
 
-            // Note that we need to normalize the axis as the cross product of
-            // two unit vectors is not necessarily a unit vector.
-            return Quat::AngleAxis(180, axis.GetNormalized()); // 180 Degrees = PI radians
+            ///< Note that we need to normalize the axis as the cross product of two unit vectors is not necessarily a unit vector.
+            return Quat::AngleAxis(180, axis.GetNormalized()); ///< 180 Degrees = PI radians
         }
 
-        // Scalar component.
+        ///< Scalar component.
         const float s = sqrt(unitFrom.GetSqrMagnitude() * unitTo.GetSqrMagnitude()) + Vec3::Dot(unitFrom, unitTo);
 
-        // Vector component.
+        ///< Vector component.
         Vec3 v = Vec3::Cross(unitFrom, unitTo);
         v.x *= -1;
         v.y *= -1;
 
-        // Return the normalized quaternion rotation.
+        ///< Return the normalized quaternion rotation.
         return Quat(Vec4(v, s)).GetNormalized();
     }
 
-	Quat Quat::LookRotation(const Vec3& lookAt) { return Quat::FromToRotation(Vec3(0, 0, 1), lookAt); }
+	Quat Quat::LookRotation(const Vec3& lookAt) { return FromToRotation(Vec3(0, 0, 1), lookAt); }
 
-	// TODO: Modify LookRotation entries after modifying the original function
+	///< TODO: Modify LookRotation entries after modifying the original function
 	Quat Quat::LookRotation(const Vec3& lookAt, const Vec3& upDirection)
 	{
-		// Calculate the unit quaternion that rotates Vector3::FORWARD to face
-		// in the specified forward direction.
-		const Quat q1 = Quat::LookRotation(lookAt);
+		///< Calculate the unit quaternion that rotates Vector3::FORWARD to face in the specified forward direction.
+		const Quat q1 = LookRotation(lookAt);
 
-		// We can't preserve the upwards direction if the forward and upwards
-		// vectors are linearly dependent (collinear).
+		/**
+		 * We can't preserve the upwards direction if the forward and upwards
+		 * vectors are linearly dependent (collinear).
+		 */
 		if (Vec3::Cross(lookAt, upDirection).GetSqrMagnitude() < 1e-6)
             return q1;
 
-        // Determine the upwards direction obtained after applying q1.
+        ///< Determine the upwards direction obtained after applying q1.
 		const Vec3 newUp = q1 * Vec3(0, 1, 0);
 
-		// Calculate the unit quaternion rotation that rotates the newUp
-		// direction to look in the specified upward direction.
-		const Quat q2 = Quat::FromToRotation(newUp, upDirection);
+		/**
+		 * Calculate the unit quaternion rotation that rotates the newUp
+		 * direction to look in the specified upward direction.
+		 */
+		const Quat q2 = FromToRotation(newUp, upDirection);
 
-		// Return the combined rotation so that we first rotate to look in the
-		// forward direction and then rotate to align Vector3::UPWARD with the
-		// specified upward direction. There is no need to normalize the result
-		// as both q1 and q2 are unit quaternions.
+		/**
+		 * Return the combined rotation so that we first rotate to look in the
+		 * forward direction and then rotate to align Vector3::UPWARD with the
+		 * specified upward direction. There is no need to normalize the result
+		 * as both q1 and q2 are unit quaternions.
+		 */
 		return q2 * q1;
 	}
 
@@ -213,7 +222,7 @@ namespace SceneryEditorX
 		return result;
 	}
 
-	Quat Quat::Slerp(const Quat& from, const Quat& to, float t)
+	Quat Quat::Slerp(const Quat& from, const Quat& to, const float t)
 	{
 		float cosTheta = Quat::Dot(from, to);
 		Quat temp(to);
@@ -224,16 +233,16 @@ namespace SceneryEditorX
 			temp = temp * -1.0f;
 		}
 
-		float theta = acosf(cosTheta);
-		float sinTheta = 1.0f / sinf(theta);
+		const float theta = acosf(cosTheta);
+		const float sinTheta = 1.0f / sinf(theta);
 
 		return sinTheta * (((Quat)(from * sinf(theta * (1.0f - t)))) + ((Quat)(temp * sinf(t * theta))));
 	}
 
-	Quat Quat::Lerp(const Quat& from, const Quat& to, float t)
+	Quat Quat::Lerp(const Quat& from, const Quat& to, const float t)
 	{
-		Quat src = from * (1.0f - t);
-		Quat dst = to * t;
+		const Quat src = from * (1.0f - t);
+		const Quat dst = to * t;
 
 		Quat q = src + dst;
 		return q;
@@ -241,7 +250,7 @@ namespace SceneryEditorX
 
 	float Quat::Angle(const Quat& a, const Quat& b)
 	{
-		float degrees = acosf((b * a.GetInverse()).w) * 2.0f * 57.2957795f;
+		const float degrees = acosf((b * a.GetInverse()).w) * 2.0f * 57.2957795f;
 		if (degrees > 180.0f)
 			return 360.0f - degrees;
 		return degrees;
@@ -251,11 +260,11 @@ namespace SceneryEditorX
 
 	Quat Quat::AngleAxis(float angle, const Vec4& axis)
 	{
-		Vec4 vn = axis.GetNormalized();
+		const Vec4 vn = axis.GetNormalized();
 
-		angle *= 0.0174532925f; // To radians!
+		angle *= 0.0174532925f; ///< To radians!
 		angle *= 0.5f;
-		float sinAngle = sin(angle);
+		const float sinAngle = sin(angle);
 
 		return {cos(angle), vn.x * sinAngle, vn.y * sinAngle, vn.z * sinAngle};
 	}
@@ -270,22 +279,22 @@ namespace SceneryEditorX
 
 	Quat Quat::EulerDegrees(float X, float Y, float Z)
 	{
-		X *= 0.0174532925f; // To radians!
-		Y *= 0.0174532925f; // To radians!
-		Z *= 0.0174532925f; // To radians!
+		X *= 0.0174532925f; ///< To radians!
+		Y *= 0.0174532925f; ///< To radians!
+		Z *= 0.0174532925f; ///< To radians!
 
 		return EulerRadians(X, Y, Z);
 	}
 
 	Quat Quat::EulerRadians(float X, float Y, float Z)
 	{
-		// NEW
-		float cy = cos(Z * 0.5);
-		float sy = sin(Z * 0.5);
-		float cp = cos(Y * 0.5);
-		float sp = sin(Y * 0.5);
-		float cr = cos(X * 0.5);
-		float sr = sin(X * 0.5);
+		///< NEW
+		const float cy = cos(Z * 0.5);
+		const float sy = sin(Z * 0.5);
+		const float cp = cos(Y * 0.5);
+		const float sp = sin(Y * 0.5);
+		const float cr = cos(X * 0.5);
+		const float sr = sin(X * 0.5);
 
 		float qw = cr * cp * cy + sr * sp * sy;
 		float qx = -sr * cp * cy + cr * sp * sy;
@@ -294,7 +303,7 @@ namespace SceneryEditorX
 
 		//return Quat(qw, qx, qy, qz);
 
-		// OLD
+		///< OLD
 		X *= 0.5f;
 		Y *= 0.5f;
 		Z *= 0.5f;
@@ -320,11 +329,11 @@ namespace SceneryEditorX
 	{
 		ZoneScoped;
 
-		float sqw = q.w * q.w;
-		float sqx = q.x * q.x;
-		float sqy = q.y * q.y;
-		float sqz = q.z * q.z;
-		float invs = 1.0f / (sqx + sqy + sqz + sqw);
+		const float sqw = q.w * q.w;
+		const float sqx = q.x * q.x;
+		const float sqy = q.y * q.y;
+		const float sqz = q.z * q.z;
+		const float invs = 1.0f / (sqx + sqy + sqz + sqw);
 
 		Matrix4x4 matrix = Matrix4x4::Identity();
 
@@ -356,41 +365,41 @@ namespace SceneryEditorX
 	{
 		//const Quat& q = *this;
 
-		double sqw = w * w;
-		double sqx = x * x;
-		double sqy = y * y;
-		double sqz = z * z;
-		double unit = sqx + sqy + sqz + sqw;
-		double test = x * y + z * w;
+		const double sqw = w * w;
+		const double sqx = x * x;
+		const double sqy = y * y;
+		const double sqz = z * z;
+		const double unit = sqx + sqy + sqz + sqw;
+		const double test = x * y + z * w;
 		Vec3 euler;
 
 		if (test > 0.499 * unit)
-		{ // Singularity at north pole
+		{ ///< Singularity at north pole
 			euler.y = 2 * atan2(x, w);
 			euler.x = M_PI / 2;
 			euler.z = 0;
 			return euler;
 		}
 		if (test < -0.499 * unit)
-		{ // Singularity at south pole
+		{ ///< Singularity at south pole
 			euler.y = -2 * atan2(x, w);
 			euler.x = -M_PI / 2;
 			euler.z = 0;
 			return euler;
 		}
-		euler.y = atan2(2 * y * w + 2 * x * z, sqw - sqx - sqy + sqz); // Yaw
-		euler.x = asin(-2 * (x * z - y * w) / unit); // Pitch
-		euler.z = atan2(2 * x * w + 2 * y * z, sqw + sqx - sqy - sqz); // Roll
+		euler.y = atan2(2 * y * w + 2 * x * z, sqw - sqx - sqy + sqz);	/// Yaw
+		euler.x = asin(-2 * (x * z - y * w) / unit);								/// Pitch
+		euler.z = atan2(2 * x * w + 2 * y * z, sqw + sqx - sqy - sqz);	/// Roll
 
 		return euler;
 	}
 
 	/// -----------------------------------------------------
 
-	Vec3 Quat::ToEulerDegrees() const { return ToEulerRadians() * Utils::Math::RAD_TO_DEG; }
+	Vec3 Quat::ToEulerDegrees() const { return ToEulerRadians() * Utils::RAD_TO_DEG; }
 	Vec4 operator*(const Vec4& v, const Quat& m) { return Quat::ToMatrix(m) * v; }
 	Vec3 operator*(const Vec3& v, const Quat& m) { return Quat::ToMatrix(m) * Vec4(v, 1.0f); }
-	Quat operator*(float f, const Quat& m) { return {m.w * f, m.x * f, m.y * f, m.z * f}; }
+	Quat operator*(const float f, const Quat& m) { return {m.w * f, m.x * f, m.y * f, m.z * f}; }
 
 	/// -----------------------------------------------------
 

@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "threading/thread.h"
+#include <SceneryEditorX/core/threading/thread.h>
 
 /// -------------------------------------------------------
 
@@ -31,14 +31,14 @@ namespace SceneryEditorX
 	class RenderThread
 	{
 	public:
-		enum class State
+        enum class State : uint8_t
 		{
 			Idle = 0,
 			Busy,
 			Kick
 		};
-	public:
-		RenderThread(ThreadingPolicy coreThreadingPolicy);
+
+        explicit RenderThread(ThreadingPolicy coreThreadingPolicy);
 		~RenderThread();
 
 		void Run();

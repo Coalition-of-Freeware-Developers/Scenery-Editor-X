@@ -21,6 +21,7 @@
 namespace SceneryEditorX
 {
 
+    /*
     #define DECL_HASH(Type)                                                                                            \
     template <>                                                                                                        \
     inline size_t GetHash<Type>(const Type &value)                                                                     \
@@ -40,7 +41,7 @@ namespace SceneryEditorX
      *       evaluation and improved performance.
      *
      * @see UUID, Identifier classes for usage examples
-     */
+     #1#
     class Hash
 	{
 	public:
@@ -73,7 +74,7 @@ namespace SceneryEditorX
          * constexpr uint32_t shaderHash = Hash::GenerateFNVHash("vertex_shader", 13);
          * uint32_t dynamicHash = Hash::GenerateFNVHash(shaderName.c_str(), shaderName.length());
          * @endcode
-         */
+         #1#
         static constexpr uint32_t GenerateFNVHash(const char* str, size_t length)
 		{
 			constexpr uint32_t FNV_PRIME = 16777619u;
@@ -109,7 +110,7 @@ namespace SceneryEditorX
          * std::string shaderName = "fragment_shader";
          * uint32_t nameHash = Hash::GenerateFNVHash(shaderName);
          * @endcode
-         */
+         #1#
         static uint32_t GenerateFNVHash(const std::string& str)
         {
             return GenerateFNVHash(str.c_str(), str.length());
@@ -138,7 +139,7 @@ namespace SceneryEditorX
          * uint32_t fileHash = Hash::CRC32("scene_data.edx");
          * uint32_t nameHash = Hash::CRC32(objectName.c_str());
          * @endcode
-         */
+         #1#
 		static uint32_t CRC32(const char* str);
 
         /**
@@ -158,7 +159,7 @@ namespace SceneryEditorX
          * std::string assetPath = "models/building.obj";
          * uint32_t pathHash = Hash::CRC32(assetPath);
          * @endcode
-         */
+         #1#
 		static uint32_t CRC32(const std::string& string);
 	};
 
@@ -245,6 +246,7 @@ namespace SceneryEditorX
 			return GetHash(value);
 		}
 	};
+	*/
 
 
 

@@ -1874,6 +1874,6 @@ namespace SceneryEditorX
 	 */
     template class WeakRef<RefCounted>;
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

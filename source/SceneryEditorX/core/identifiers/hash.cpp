@@ -16,6 +16,7 @@
 
 namespace SceneryEditorX
 {
+    /*
     Hash128 CalculateHash128(const void *data, size_t length)
 	{
 		XXH128_hash_t hash = XXH3_128bits(data, length);
@@ -58,6 +59,7 @@ namespace SceneryEditorX
 
 		return hash;
 	}
+	*/
 
 
 }

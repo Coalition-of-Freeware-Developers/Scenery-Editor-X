@@ -23,7 +23,7 @@ namespace SceneryEditorX::Memory
 		uint64_t size = 0;
 
 		Buffer() = default;
-		Buffer(const void* data, const uint64_t size = 0) : data(const_cast<void *>(data)), size(size) { }
+        explicit Buffer(const void* data, const uint64_t size = 0) : data(const_cast<void *>(data)), size(size) { }
 
 		static Buffer Copy(const Buffer& other)
 		{
@@ -69,42 +69,42 @@ namespace SceneryEditorX::Memory
 		template<typename T>
 		T& Read(const uint64_t offset = 0)
 		{
-			return *(T*)((byte*)data + offset);
+			return *(T*)(static_cast<byte *>(data) + offset);
 		}
 
 		template<typename T>
 		const T& Read(const uint64_t offset = 0) const
 		{
-			return *(T*)((byte*)data + offset);
+			return *(T*)(static_cast<byte *>(data) + offset);
 		}
 
-        [[nodiscard]] byte* ReadBytes(uint64_t fsize, uint64_t offset) const
+        [[nodiscard]] byte* ReadBytes(const uint64_t fsize, const uint64_t offset) const
 		{
 			SEDX_CORE_ASSERT(offset + fsize <= size, "Buffer overflow!");
 			byte* buffer = hnew byte[fsize];
-			memcpy(buffer, (byte*)data + offset, fsize);
+			memcpy(buffer, static_cast<byte *>(data) + offset, fsize);
 			return buffer;
 		}
 
-		void Write(const void* fdata, uint64_t fsize, uint64_t offset = 0) const
+		void Write(const void* fdata, const uint64_t fsize, const uint64_t offset = 0) const
         {
 			SEDX_CORE_ASSERT(offset + fsize <= size, "Buffer overflow!");
-			memcpy((byte*)data + offset, fdata, fsize);
+			memcpy(static_cast<byte *>(data) + offset, fdata, fsize);
 		}
 
-		operator bool() const
+        explicit operator bool() const
 		{
-			return (bool)data;
+			return static_cast<bool>(data);
 		}
 
-		byte& operator[](int index)
+		byte& operator[](const int index)
 		{
-			return ((byte*)data)[index];
+			return static_cast<byte *>(data)[index];
 		}
 
-		byte operator[](int index) const
+		byte operator[](const int index) const
 		{
-			return ((byte*)data)[index];
+			return static_cast<byte *>(data)[index];
 		}
 
 		template<typename T>

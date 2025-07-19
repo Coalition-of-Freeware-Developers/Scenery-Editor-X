@@ -13,6 +13,7 @@
 #pragma once
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/asset/asset_metadata.h>
+#include <SceneryEditorX/asset/asset_pack_header.h>
 #include <SceneryEditorX/filestreaming/file_streaming.h>
 
 /// -------------------------------------------------------

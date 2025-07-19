@@ -22,7 +22,7 @@ namespace SceneryEditorX
 	public:
 		constexpr Identifier() = default;
 
-        explicit constexpr Identifier(const std::string_view name) noexcept : hash(Hash::GenerateFNVHash(name.data())), dbgName(name) {}
+        //explicit constexpr Identifier(const std::string_view name) noexcept : hash(Hash::GenerateFNVHash(name.data())), dbgName(name) {}
         explicit constexpr Identifier(const uint32_t hash) noexcept : hash(hash) {}
 
 		constexpr bool operator==(const Identifier& other) const noexcept { return hash == other.hash; }

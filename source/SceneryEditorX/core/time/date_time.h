@@ -28,26 +28,26 @@ namespace SceneryEditorX
         DateTime();
         ~DateTime();
 
-        DateTime(FileTime fileTime);
+        explicit DateTime(FileTime fileTime);
 
         static DateTime Now();
 
         static DateTime UtcNow();
 
-        inline int Second() const { return timeInfo.tm_sec; }
-        inline int Minute() const { return timeInfo.tm_min; }
-        inline int Hour() const { return timeInfo.tm_hour; }
-        inline int Day() const { return timeInfo.tm_mday; }
-        inline int Month() const { return timeInfo.tm_mon + 1; }
-        inline int Year() const { return timeInfo.tm_year + 1900; }
+        [[nodiscard]] int Second() const { return timeInfo.tm_sec; }
+        [[nodiscard]] int Minute() const { return timeInfo.tm_min; }
+        [[nodiscard]] int Hour() const { return timeInfo.tm_hour; }
+        [[nodiscard]] int Day() const { return timeInfo.tm_mday; }
+        [[nodiscard]] int Month() const { return timeInfo.tm_mon + 1; }
+        [[nodiscard]] int Year() const { return timeInfo.tm_year + 1900; }
 
-        inline bool operator==(const DateTime& rhs) const
+        bool operator==(const DateTime& rhs) const
         {
             return Second() == rhs.Second() && Minute() == rhs.Minute() && Hour() == rhs.Hour() &&
                 Day() == rhs.Day() && Month() == rhs.Month() && Year() == rhs.Year();
         }
 
-        inline bool operator!=(const DateTime& rhs) const { return !(*this == rhs); }
+        bool operator!=(const DateTime& rhs) const { return !(*this == rhs); }
 
         void AddSeconds(int seconds);
         void AddMinutes(int minutes);
@@ -56,24 +56,26 @@ namespace SceneryEditorX
         void AddMonths(int months);
         void AddYears(int years);
 
-        uint64_t ToNumber() const;
+        [[nodiscard]] uint64_t ToNumber() const;
         static DateTime FromNumber(uint64_t number);
 
-        std::string ToString() const;
+        [[nodiscard]] std::string ToString() const;
         static DateTime Parse(const std::string &input);
 
     private:
 
         struct PackedDateTime
         {
-            union {
-                struct {
-                    uint64_t year : 16;   // 16 bits for year (up to 65535)
-                    uint64_t month : 4;    // 4 bits for month (up to 12)
-                    uint64_t day : 5;    // 5 bits for day (up to 31)
-                    uint64_t hour : 5;    // 5 bits for hour (up to 23)
-                    uint64_t minute : 6;    // 6 bits for minute (up to 60)
-                    uint64_t second : 6;    // 6 bits for second (up to 60)
+            union
+            {
+                struct
+                {
+                    uint64_t year	: 16; ///< 16 bits for year (up to 65535)
+                    uint64_t month	: 4;  ///< 4 bits for month (up to 12)
+                    uint64_t day	: 5;  ///< 5 bits for day (up to 31)
+                    uint64_t hour   : 5;  ///< 5 bits for hour (up to 23)
+                    uint64_t minute : 6;  ///< 6 bits for minute (up to 60)
+                    uint64_t second : 6;  ///< 6 bits for second (up to 60)
                 };
 
                 uint64_t finalValue = 0;

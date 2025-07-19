@@ -28,3 +28,6 @@
 [submodule "dependency/json"]
 	path = dependency/json
 	url = git@github.com:nlohmann/json.git
+[submodule "dependency/entt"]
+	path = dependency/entt
+	url = git@github.com:skypjack/entt.git

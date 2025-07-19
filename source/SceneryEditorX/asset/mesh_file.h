@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "aabb.h"
 #include <cstdint>
+#include <SceneryEditorX/utils/math/aabb.h>
 
 /// -----------------------------------------------------
 
@@ -31,7 +31,7 @@ namespace SceneryEditorX
 		struct Metadata
 		{
 			uint32_t Flags;
-			AABB BoundingBox;
+            Utils::AABB BoundingBox;
 
 			uint64_t NodeArrayOffset;
 			uint64_t NodeArraySize;

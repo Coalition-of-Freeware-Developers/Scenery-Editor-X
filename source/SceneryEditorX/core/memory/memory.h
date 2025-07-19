@@ -108,7 +108,8 @@ namespace SceneryEditorX
 		 * @tparam U The type of the other allocator
 		 * @param The other allocator to copy from
 		 */
-		template <class U> constexpr Mallocator(const Mallocator <U>&) noexcept {}
+		template <class U>
+        explicit constexpr Mallocator(const Mallocator <U>&) noexcept {}
 
 		/**
 		 * @brief Allocate memory for n objects of type T.
@@ -117,17 +118,16 @@ namespace SceneryEditorX
 		 * @throws std::bad_array_new_length If allocation size would overflow
 		 * @throws std::bad_alloc If allocation fails
 		 */
-		T* allocate(std::size_t n)
+		T* allocate(const std::size_t n)
 		{
         #undef max
 			if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
 				throw std::bad_array_new_length();
 
-			if (auto p = static_cast<T*>(std::malloc(n * sizeof(T)))) {
-				return p;
-			}
+			if (auto p = static_cast<T*>(std::malloc(n * sizeof(T))))
+                return p;
 
-			throw std::bad_alloc();
+            throw std::bad_alloc();
 		}
 
 		/**
@@ -135,7 +135,8 @@ namespace SceneryEditorX
 		 * @param p Pointer to the memory to deallocate
 		 * @param n Number of objects that were allocated (unused)
 		 */
-        static void deallocate(T* p, std::size_t n) noexcept {
+        static void deallocate(T* p, std::size_t n) noexcept
+	    {
 			std::free(p);
 		}
 	};

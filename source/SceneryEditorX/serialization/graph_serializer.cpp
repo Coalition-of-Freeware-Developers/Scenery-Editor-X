@@ -190,7 +190,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	[[nodiscard]] std::optional<std::vector<PinCandidate>> TryLoadOutputs(const nlohmann::json& outputs, const NodeCandidate& node)
+	[[nodiscard]] static std::optional<std::vector<PinCandidate>> TryLoadOutputs(const nlohmann::json& outputs, const NodeCandidate& node)
 	{
 		if (!outputs.is_array())
 			return {};
@@ -318,7 +318,7 @@ namespace SceneryEditorX
 
 				// Factory Node might have changed, and we've deserialized an old version of the Node
 				//throw std::runtime_error("Deserialized Node topology doesn't match factory Node '" + candidate.Name + "'.");
-				SEDX_CONSOLE_LOG_WARN("Deserialized Node topology doesn't match factory Node '" + candidate.Name + "'.");
+				//SEDX_CONSOLE_LOG_WARN("Deserialized Node topology doesn't match factory Node '" + candidate.Name + "'.");
 			}
 
 			// Implementation specific construction and/or validation of Node Pins

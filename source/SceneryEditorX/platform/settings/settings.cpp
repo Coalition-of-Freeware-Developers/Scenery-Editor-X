@@ -211,12 +211,9 @@ namespace SceneryEditorX
         try
         {
             /// Split the key by dots to navigate the config hierarchy
-            size_t pos = 0;
             std::string section = key;
             std::string name = key;
-
-            pos = key.find_last_of('.');
-            if (pos != std::string::npos)
+            if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
             {
                 section = key.substr(0, pos);
                 name = key.substr(pos + 1);
@@ -246,7 +243,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            /// If direct update fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+            ///< TODO: If direct update fails, we'll rely on UpdateConfigFromData() during WriteSettings()
         }
     }
 
@@ -290,7 +287,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            /// If direct removal fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+            ///< TODO: If direct removal fails, we'll rely on UpdateConfigFromData() during WriteSettings()
         }
     }
 
@@ -492,13 +489,12 @@ namespace SceneryEditorX
     {
         try
         {
-            std::string value;
-            if (cfg.lookupValue(path, value))
+            if (std::string value; cfg.lookupValue(path, value))
                 return value;
         }
         catch (...)
         {
-            /// Fallthrough to default
+            ///< TODO: Better handing instead of just a fallthrough to default
         }
         return defaultValue;
     }
@@ -523,8 +519,8 @@ namespace SceneryEditorX
     #ifdef SEDX_PLATFORM_WINDOWS
         /// Common Windows installation paths
         // Add more potential drive letters
-        std::vector<std::string> driveLetters = {"C:", "D:", "E:", "F:", "G:", "H:"};
-        std::vector<std::string> pathPatterns = {
+        const std::vector<std::string> driveLetters = {"C:", "D:", "E:", "F:", "G:", "H:"};
+        const std::vector<std::string> pathPatterns = {
             "\\X-Plane 12",
             "\\Program Files\\X-Plane 12",
             "\\Program Files (x86)\\X-Plane 12",
@@ -677,7 +673,7 @@ namespace SceneryEditorX
         /// Check if this is a Steam installation by examining the path
         /// Path typically contains "steamapps/common" for Steam installations
         std::string pathStr = basePath.string();
-        std::ranges::transform(pathStr, pathStr.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::ranges::transform(pathStr, pathStr.begin(), [](const unsigned char c) { return std::tolower(c); });
                       
         xPlaneStats.isSteam = pathStr.find("steamapps") != std::string::npos || 
                               (pathStr.find("steam") != std::string::npos && pathStr.find("common") != std::string::npos);
@@ -1018,6 +1014,6 @@ namespace SceneryEditorX
 	}
 	*/
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

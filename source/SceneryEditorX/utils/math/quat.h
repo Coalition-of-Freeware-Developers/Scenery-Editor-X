@@ -64,8 +64,8 @@ namespace SceneryEditorX
 		static float Dot(const Quat& a, const Quat& b);
 		static Quat AngleAxis(float angle, const Vec4& axis);
         [[nodiscard]] Quat GetInverse() const;
-		static Quat EulerDegrees(float x, float y, float z);
-		static Quat EulerRadians(float x, float y, float z);
+		static Quat EulerDegrees(float X, float Y, float Z);
+		static Quat EulerRadians(float X, float Y, float Z);
 		static Matrix4x4 ToMatrix(const Quat& q);
 
         [[nodiscard]] Vec3 ToEulerRadians() const;

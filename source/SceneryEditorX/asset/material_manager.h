@@ -20,7 +20,6 @@
 
 namespace SceneryEditorX
 {
-
 	class MaterialManager
 	{
 	public:
@@ -34,6 +33,6 @@ namespace SceneryEditorX
 	    std::unordered_map<std::string, std::shared_ptr<MaterialAsset>> materials;
 	};
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

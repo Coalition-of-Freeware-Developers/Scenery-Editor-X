@@ -14,13 +14,15 @@
 #include <SceneryEditorX/utils/math/matrix.h>
 #include <SceneryEditorX/utils/math/quat.h>
 
+#include <tracy/Tracy.hpp>
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    Matrix4x4 Matrix4x4::PerspectiveProjection(float aspect, float fieldOfView, float n, float f)
+    Matrix4x4 Matrix4x4::PerspectiveProjection(const float aspect, const float fieldOfView, const float n, const float f)
     {
-		float tanHalfFOV = tan(Utils::Math::Math::ToRadians(fieldOfView / 2.0f));
+		const float tanHalfFOV = tan(Utils::Math::Math::ToRadians(fieldOfView / 2.0f));
 
         return Matrix4x4({
 			{ 1 / (aspect * tanHalfFOV), 0, 0, 0 },
@@ -40,7 +42,7 @@ namespace SceneryEditorX
 		});
 	}
 
-	Matrix4x4 Matrix4x4::Angle(float degrees) { return Quat::EulerDegrees(0, 0, degrees).ToMatrix(); }
+	Matrix4x4 Matrix4x4::Angle(const float degrees) { return Quat::EulerDegrees(0, 0, degrees).ToMatrix(); }
 
 	Matrix4x4 Matrix4x4::RotationDegrees(const Vec3& eulerDegrees) { return Quat::EulerDegrees(eulerDegrees).ToMatrix(); }
 
@@ -84,7 +86,7 @@ namespace SceneryEditorX
 		return result;
 	}
 
-	Matrix4x4 Matrix4x4::operator/(float rhs) const
+	Matrix4x4 Matrix4x4::operator/(const float rhs) const
 	{
 		ZoneScoped;
 
@@ -157,7 +159,7 @@ namespace SceneryEditorX
 		return result;
 	}
 
-	void Matrix4x4::GetCofactor(const Matrix4x4& mat, Matrix4x4& cofactor, s32 p, s32 q, s32 n)
+	void Matrix4x4::GetCofactor(const Matrix4x4 &mat, Matrix4x4 &cofactor, const int32_t p, const int32_t q, const int32_t n)
 	{
 		ZoneScoped;
 
@@ -183,7 +185,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	int Matrix4x4::GetDeterminant(const Matrix4x4& mat, int32_t n)
+	int Matrix4x4::GetDeterminant(const Matrix4x4& mat, const int32_t n)
 	{
 		ZoneScoped;
 
@@ -197,7 +199,7 @@ namespace SceneryEditorX
 		int sign = 1;
 
 		// Iterate for each element of first row
-		for (s32 f = 0; f < n; f++) 
+		for (int32_t f = 0; f < n; f++) 
 		{
 			// Getting Cofactor of A[0][f]
 			GetCofactor(mat, temp, 0, f, n);
@@ -241,22 +243,22 @@ namespace SceneryEditorX
 		return adj;
 	}
 
-	Matrix4x4 Matrix4x4::GetInverse(const Matrix4x4& m)
+	Matrix4x4 Matrix4x4::GetInverse(const Matrix4x4& matx)
 	{
 		ZoneScoped;
 
-		float n11 = m[0][0], n12 = m[1][0], n13 = m[2][0], n14 = m[3][0];
-		float n21 = m[0][1], n22 = m[1][1], n23 = m[2][1], n24 = m[3][1];
-		float n31 = m[0][2], n32 = m[1][2], n33 = m[2][2], n34 = m[3][2];
-		float n41 = m[0][3], n42 = m[1][3], n43 = m[2][3], n44 = m[3][3];
+		const float n11 = matx[0][0], n12 = matx[1][0], n13 = matx[2][0], n14 = matx[3][0];
+		const float n21 = matx[0][1], n22 = matx[1][1], n23 = matx[2][1], n24 = matx[3][1];
+		const float n31 = matx[0][2], n32 = matx[1][2], n33 = matx[2][2], n34 = matx[3][2];
+		const float n41 = matx[0][3], n42 = matx[1][3], n43 = matx[2][3], n44 = matx[3][3];
 
-		float t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44;
-		float t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44;
-		float t13 = n13 * n24 * n42 - n14 * n23 * n42 + n14 * n22 * n43 - n12 * n24 * n43 - n13 * n22 * n44 + n12 * n23 * n44;
-		float t14 = n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34;
+		const float t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44;
+		const float t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44;
+		const float t13 = n13 * n24 * n42 - n14 * n23 * n42 + n14 * n22 * n43 - n12 * n24 * n43 - n13 * n22 * n44 + n12 * n23 * n44;
+		const float t14 = n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34;
 
-		float det = n11 * t11 + n21 * t12 + n31 * t13 + n41 * t14;
-		float idet = 1.0f / det;
+		const float det = n11 * t11 + n21 * t12 + n31 * t13 + n41 * t14;
+		const float idet = 1.0f / det;
 
 		Matrix4x4 ret;
 

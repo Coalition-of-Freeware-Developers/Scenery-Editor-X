@@ -84,13 +84,13 @@ namespace SceneryEditorX
 		if (!AssetManager::IsAssetHandleValid(handle))
 			return false;
 
-		if (auto asset = AssetManager::GetAsset<Asset>(handle); !asset)
+		if (auto asset = AssetManager::Get<Asset>(handle); !asset)
 		{
 			SEDX_CORE_WARN("Failed to get asset with handle {0}", handle);
 			return false;
 		}
 
-		AssetType type = AssetManager::GetAssetType(handle);
+		const AssetType type = AssetManager::Get(handle);
 		if (!s_Serializers.contains(type))
 		{
 			const auto& metadata = Project::GetEditorAssetManager()->GetMetadata(handle);
@@ -112,11 +112,11 @@ namespace SceneryEditorX
 
 	Ref<Scene> AssetImporter::DeserializeSceneFromAssetPack(FileStreamReader& stream, const AssetPackFile::SceneInfo& sceneInfo)
 	{
-		AssetType assetType = AssetType::Scene;
+        constexpr AssetType assetType = AssetType::Scene;
 		if (!s_Serializers.contains(assetType))
 			return nullptr;
 
-		SceneAssetSerializer* sceneAssetSerializer = (SceneAssetSerializer*)s_Serializers[assetType].get();
+		const SceneAssetSerializer *sceneAssetSerializer = static_cast<SceneAssetSerializer *>(s_Serializers[assetType].get());
 		return sceneAssetSerializer->DeserializeSceneFromAssetPack(stream, sceneInfo);
 	}
 

@@ -32,7 +32,7 @@ namespace SceneryEditorX
         DeltaTime();
     }
 
-    void Time::Update(DeltaTime dt)
+    void Time::Update(const DeltaTime dt)
     {
         /// Calculate delta time
         const float currentTime = GetTime();
@@ -41,7 +41,7 @@ namespace SceneryEditorX
         /// Update FPS counter
         if (dt > 0.0f)
 		{
-            s_FrameTimes.push_back(dt);
+            s_FrameTimes.push_back(static_cast<float>(dt));
 
             /// Keep only the most recent samples
             while (s_FrameTimes.size() > s_MaxFrameTimesSamples)
@@ -64,7 +64,7 @@ namespace SceneryEditorX
 
     uint32_t Time::CreateTimer(const float durationSeconds)
     {
-        uint32_t timerID = s_NextTimerID++;
+        const uint32_t timerID = s_NextTimerID++;
 
         Timer newTimer;
         newTimer.duration = durationSeconds;
@@ -89,18 +89,18 @@ namespace SceneryEditorX
         return timerID;
     }
 
-    bool Time::IsTimerComplete(uint32_t timerID)
+    bool Time::IsTimerComplete(const uint32_t timerID)
     {
         if (timerID >= s_Timers.size() || timerID == 0 || !s_Timers[timerID].isActive)
             return false;
 
         const Timer& timer = s_Timers[timerID];
-        float currentTime = GetTime();
+        const float currentTime = GetTime();
 
-        return (currentTime - timer.startTime) >= timer.duration;
+        return currentTime - timer.startTime >= timer.duration;
     }
 
-    void Time::ResetTimer(uint32_t timerID, float newDurationSeconds)
+    void Time::ResetTimer(const uint32_t timerID, const float newDurationSeconds)
     {
         if (timerID >= s_Timers.size() || timerID == 0 || !s_Timers[timerID].isActive)
             return;
@@ -114,14 +114,14 @@ namespace SceneryEditorX
 
 	uint64_t Time::GetCurrentDateTimeU64()
 	{
-		std::string string = GetCurrentDateTimeString();
+		const std::string string = GetCurrentDateTimeString();
 		return std::stoull(string);
 	}
 
 	std::string Time::GetCurrentDateTimeString()
 	{
-		std::time_t currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-		std::tm* localTime = std::localtime(&currentTime);
+		const std::time_t currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		const std::tm* localTime = std::localtime(&currentTime);
 
 		int year = localTime->tm_year + 1900;
 		int month = localTime->tm_mon + 1;
@@ -135,7 +135,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    DeltaTime::DeltaTime(float time) : dt(time) {}
+    DeltaTime::DeltaTime(const float time) : dt(time) {}
 
     /// -------------------------------------------------------
 

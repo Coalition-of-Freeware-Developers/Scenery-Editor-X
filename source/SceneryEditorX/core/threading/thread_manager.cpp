@@ -72,7 +72,7 @@ namespace SceneryEditorX
         s_threadID = std::thread::id();
 	}
 
-	void ThreadManager::Wait(State waitForState) const
+	void ThreadManager::Wait(const State waitForState) const
     {
         if (m_policy == ThreadingPolicy::SingleThreaded)
             return;
@@ -86,7 +86,7 @@ namespace SceneryEditorX
         LeaveCriticalSection(&m_Data->m_CriticalSection);
 	}
 
-	void ThreadManager::WaitAndSet(State waitForState, State setToState) const
+	void ThreadManager::WaitAndSet(const State waitForState, const State setToState) const
     {
         if (m_policy == ThreadingPolicy::SingleThreaded)
             return;
@@ -100,7 +100,7 @@ namespace SceneryEditorX
         LeaveCriticalSection(&m_Data->m_CriticalSection);
 	}
 
-	void ThreadManager::Set(State setToState) const
+	void ThreadManager::Set(const State setToState) const
     {
         if (m_policy == ThreadingPolicy::SingleThreaded)
             return;

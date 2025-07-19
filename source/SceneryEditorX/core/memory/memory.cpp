@@ -131,10 +131,10 @@ namespace SceneryEditorX
         void *memory = malloc(size);
 	    {
 	        std::scoped_lock lock(Data_->Mutex_);
-            Allocation &alloc = Data_->AllocationMap[memory];
-	        alloc.Memory = memory;
-	        alloc.Size = size;
-	        alloc.Category = desc;
+            auto &[Memory, Size, Category] = Data_->AllocationMap[memory];
+	        Memory = memory;
+	        Size = size;
+	        Category = desc;
 	
 	        GlobalStats.TotalAllocated += size;
 	        if (desc)
@@ -179,10 +179,10 @@ namespace SceneryEditorX
 	
 	    {
 	        std::scoped_lock lock(Data_->Mutex_);
-            Allocation &alloc = Data_->AllocationMap[memory];
-	        alloc.Memory = memory;
-	        alloc.Size = size;
-	        alloc.Category = file;
+            auto &[Memory, Size, Category] = Data_->AllocationMap[memory];
+	        Memory = memory;
+	        Size = size;
+	        Category = file;
 	
 	        GlobalStats.TotalAllocated += size;
 	        Data_->AllocStatsMap[file].TotalAllocated += size;
@@ -222,7 +222,7 @@ namespace SceneryEditorX
 	        bool found = false;
 	        {
 	            std::scoped_lock lock(Data_->Mutex_);
-                auto allocMapIt = Data_->AllocationMap.find(memory);
+                const auto allocMapIt = Data_->AllocationMap.find(memory);
                 found = allocMapIt != Data_->AllocationMap.end();
 	            if (found)
 	            {

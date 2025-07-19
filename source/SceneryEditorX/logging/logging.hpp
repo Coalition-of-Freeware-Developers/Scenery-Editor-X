@@ -19,7 +19,6 @@
 /// -------------------------------------------------------
 
 #define SEDX_ASSERT_MESSAGE_BOX (!SEDX_RELEASE && SEDX_PLATFORM_WINDOWS)
-
 #if defined SEDX_ASSERT_MESSAGE_BOX
 	#ifdef SEDX_PLATFORM_WINDOWS
 	#include <Windows.h>

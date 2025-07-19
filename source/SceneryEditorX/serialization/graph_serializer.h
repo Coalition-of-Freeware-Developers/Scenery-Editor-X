@@ -11,14 +11,98 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <cstdint>
+#include <functional>
 #include <nlohmann/json.hpp>
-#include <SceneryEditorX/scene/node.h>
+#include <optional>
 #include <SceneryEditorX/serialization/asset_serializer.h>
+#include <SceneryEditorX/utils/pointers.h>
+#include <string_view>
+#include <vector>
+
+#include <SceneryEditorX/utils/reflection/type_values.h>
+
+// Forward declarations for missing types
+namespace choc::value { class Value; }
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    ///< Type definitions that need to be declared before use
+    enum class StorageKind
+    {
+        Value,
+        Reference,
+        Array
+    };
+
+    enum class NodeType
+    {
+        Simple,
+        Complex,
+        Input,
+        Output
+    };
+
+    enum class PinKind
+    {
+        Input,
+        Output
+    };
+
+    ///< Forward declarations
+    struct Pin;
+    struct Link;
+    
+    ///< Graph Node class (different from scene Node)
+    class Node
+    {
+    public:
+        UUID ID;
+        std::string Category;
+        std::string Name;
+        std::string Description;
+        std::string State;
+        NodeType Type;
+        ImColor Color;
+        ImVec2 Size;
+        std::vector<Pin*> Inputs;
+        std::vector<Pin*> Outputs;
+        
+        Node() = default;
+        virtual ~Node() = default;
+    };
+
+    ///< Basic Pin structure declaration
+    struct Pin
+    {
+        UUID ID;
+        UUID NodeID;
+        std::string Name;
+        StorageKind Storage;
+        PinKind Kind;
+        Types::Value Value;
+
+        Pin() = default;
+        Pin(const Pin&) = default;
+        Pin& operator=(const Pin&) = default;
+        
+        virtual ~Pin() = default;
+        [[nodiscard]] virtual std::string_view GetTypeString() const { return "Pin"; }
+    };
+
+    // Basic Link structure declaration  
+    struct Link
+    {
+        UUID ID;
+        UUID StartPinID;
+        UUID EndPinID;
+        ImColor Color;
+
+        Link() = default;
+        Link(const UUID startPin, const UUID endPin) : ID(), StartPinID(startPin), EndPinID(endPin) {}
+    };
 
 	namespace Utils
     {
@@ -29,7 +113,6 @@ namespace SceneryEditorX
 		NodeType NodeTypeFromString(const std::string_view& nodeTypeStr);
 
 	}
-
 
 	/// -------------------------------------------------------
 
@@ -65,7 +148,7 @@ namespace SceneryEditorX
 				std::string TypeString;	///< implementation specific
 
                 static int GetType() { return -1; }
-                [[nodiscard]] std::string_view GetTypeString() const { return TypeString; }
+                [[nodiscard]] virtual std::string_view GetTypeString() const override { return TypeString; }
 			};
 
 			///< Deserialized info about a Node, may or may not be valid
@@ -105,7 +188,7 @@ namespace SceneryEditorX
 		 * Try to load graph Nodes from JSON. This function parses JSON into NodeCandidates and PinCandidates,
 		 * which are then passed to implementation provided factory to deserialize and validate.
 		 *
-		 * This function throws an exception if deserialization fails, the caller must handle it!
+		 * @note This function throws an exception if deserialization fails, the caller must handle it!
 		 */
 		static void TryLoadNodes(nlohmann::json& in, std::vector<Node*>& nodes, const DeserializationFactory& factory);
 		static void TryLoadLinks(nlohmann::json& in, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback = {});

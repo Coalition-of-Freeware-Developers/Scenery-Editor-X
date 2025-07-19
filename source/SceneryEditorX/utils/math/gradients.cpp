@@ -10,7 +10,6 @@
 * Created: 14/7/2025
 * -------------------------------------------------------
 */
-#pragma once
 #include <SceneryEditorX/utils/math/gradients.h>
 #include <SceneryEditorX/utils/math/math_utils.h>
 #include <initializer_list>
