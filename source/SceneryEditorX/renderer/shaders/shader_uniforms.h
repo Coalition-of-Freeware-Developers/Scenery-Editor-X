@@ -59,7 +59,7 @@ namespace SceneryEditorX
 		uint32_t m_Count = 0;
 	};
 
-	typedef std::vector<ShaderResourceDeclaration*> ShaderResourceList;
+	//typedef std::vector<ShaderResourceDeclaration*> ShaderResourceList;
 
 }
 

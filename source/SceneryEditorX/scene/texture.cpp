@@ -311,6 +311,6 @@ namespace SceneryEditorX
         return imageView;
     }
 
-} // namespace SceneryEditorX
+}
 
 /// ---------------------------------------------------------

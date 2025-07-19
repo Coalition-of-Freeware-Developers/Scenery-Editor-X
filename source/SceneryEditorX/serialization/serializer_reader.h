@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include <SceneryEditorX/core/memory/buffer.h>
 
 /// -------------------------------------------------------
 
@@ -29,7 +29,7 @@ namespace SceneryEditorX
 
         explicit operator bool() const { return IsStreamGood(); }
 
-		void ReadBuffer(Buffer& buffer, uint32_t size = 0);
+		void ReadBuffer(Memory::Buffer& buffer, uint32_t size = 0);
 		void ReadString(std::string& string);
 
 		template<typename T>

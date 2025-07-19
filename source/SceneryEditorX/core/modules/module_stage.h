@@ -17,10 +17,10 @@
 
 namespace SceneryEditorX
 {
-		
 	class ModuleStage
 	{
 	public:
+
         ModuleStage() = default;
         ~ModuleStage() = default;
 
@@ -29,13 +29,13 @@ namespace SceneryEditorX
         void PopModule(Module *module);
         void PopOverlay(Module *overlay);
 
-		Module *operator[](size_t index)
+		Module *operator[](const size_t index)
 		{
             SEDX_CORE_ASSERT(index >= 0 && index < moduleStage.size());
             return moduleStage[index];
 		}
 
-		const Module *operator[](size_t index) const
+		const Module *operator[](const size_t index) const
 		{
             SEDX_CORE_ASSERT(index >= 0 && index < moduleStage.size());
             return moduleStage[index];
@@ -45,6 +45,7 @@ namespace SceneryEditorX
 
 		std::vector<Module*>::iterator begin() { return moduleStage.begin(); }
 		std::vector<Module*>::iterator end() { return moduleStage.end(); }
+
 	private:
         std::vector<Module*> moduleStage;
         unsigned int moduleInsertIndex = 0;

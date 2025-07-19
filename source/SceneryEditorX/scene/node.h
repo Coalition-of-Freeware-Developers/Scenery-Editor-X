@@ -11,15 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/asset/asset.h>
+
+#include "material.h"
 
 /// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	//struct Serializer;
-	//class SceneAsset;
+	struct Serializer;
 
     /// -------------------------------------------------------
 
@@ -28,7 +29,7 @@ namespace SceneryEditorX
 	public:
 
         Node();
-        //virtual void Serialize(Serializer &ser) override;
+        virtual void Serialize(Serializer &ser);
 
 		/// -------------------------------------------------------
 
@@ -46,10 +47,9 @@ namespace SceneryEditorX
 	        for (auto &node : children)
 	        {
 	            if (node->type == type)
-	            {
-	                all.emplace_back(std::dynamic_pointer_cast<T>(node));
-	            }
-	            node->GetAll(type, all);
+                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
+
+				node->GetAll(type, all);
 	        }
 	    }
 	
@@ -60,10 +60,9 @@ namespace SceneryEditorX
 	        for (auto &node : children)
 	        {
 	            if (node->type == type)
-	            {
-	                all.emplace_back(std::dynamic_pointer_cast<T>(node));
-	            }
-	            node->GetAll(type, all);
+                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
+
+				node->GetAll(type, all);
 	        }
 	        return all;
 	    }
@@ -94,21 +93,20 @@ namespace SceneryEditorX
 	
 	    static Ref<Node> Clone(Ref<Node> &node);
 	
-	    glm::mat4 GetLocalTransform();
-	    glm::mat4 GetWorldTransform();
-	    Vec3 GetWorldPosition();
-	    glm::mat4 GetParentTransform();
-	    Vec3 GetWorldFront();
-	    static glm::mat4 ComposeTransform(const Vec3 &pos,
-	                                      const Vec3 &rot,
-	                                      const Vec3 &scl,
-										  const glm::mat4 &parent = glm::mat4(1));
+	    Mat4 GetLocalTransform() const;
+	    Mat4 GetWorldTransform() const;
+	    Vec3 GetWorldPosition() const;
+        Mat4 GetParentTransform() const;
+	    Vec3 GetWorldFront() const;
+        static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
 
 	private:
 
 		friend class AssetManager;
 	};
 
-} // namespace SceneryEditorX
+    /// -------------------------------------------------------
+
+}
 
 /// ------------------------------------------------

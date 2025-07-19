@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <chrono>
-#include <filesystem>
 #include <functional>
 #include <GLFW/glfw3.h>
+#include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/window/icon.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/render_context.h>
@@ -25,7 +25,9 @@
 
 namespace SceneryEditorX
 {
-	enum class WindowMode : uint8_t
+    class Window;
+
+    enum class WindowMode : uint8_t
 	{
 		Windowed,
 		WindowedFullScreen,
@@ -33,11 +35,11 @@ namespace SceneryEditorX
 	};
 
 	/// -------------------------------------------------------
-	
+
 	struct WindowData
     {
         GLOBAL inline WindowMode mode = WindowMode::Windowed;
-        GLOBAL GLFWwindow *window;
+        GLOBAL ::SceneryEditorX::Window &window;
         std::string title = "Scenery Editor X";
         uint32_t width = 1280;
         uint32_t height = 720;
@@ -56,9 +58,9 @@ namespace SceneryEditorX
         Vec2 mousePos = Vec2(.0f, .0f);
         Vec2 deltaMousePos = Vec2(.0f, .0f);
     };
-	
+
 	/// -------------------------------------------------------
-	
+
 	struct WindowCallbacks
     {
         void (*scrollCallback)(GLFWwindow *window, double x, double y) = nullptr;
@@ -77,39 +79,51 @@ namespace SceneryEditorX
         void (*windowSizeCallback)(GLFWwindow *window, int width, int height) = nullptr;
         void (*charCallback)(GLFWwindow *window, unsigned int codepoint) = nullptr;
     };
-	
+
 	/// -------------------------------------------------------
 
     class SwapChain;
 
     /// -------------------------------------------------------
-	
+
+    bool glfwGetKey(const Window & window, uint16_t key);
+    bool glfwGetMouseButton(const Window & window, uint16_t uint16);
+    bool glfwWindowShouldClose(const Window & window);
+
+    /// -------------------------------------------------------
+
 	class Window
 	{
 	public:
-        Window();
-        Window(WindowData winData);
+	    using EventCallbackFn = std::function<void(Event&)>;
+
+        explicit Window(const WindowData &winData);
         virtual ~Window();
 
         virtual void Init();
         virtual void Update();
-        virtual Ref<RenderContext> GetRenderContext() { return renderContext; }
+
         virtual void Maximize();
         virtual void CenterWindow();
+        virtual void SetResizable(bool resizable) const;
+
         virtual const std::string &GetTitle() const { return winData.title; }
         virtual void SetTitle(const std::string &title);
-        virtual void SetResizable(bool resizable) const;
+
+        GLOBAL Window GetWindow()	  { return WindowData::window; }
+	    uint32_t GetWidth()		const { return m_winSpecs.width; }
+		uint32_t GetHeight()	const { return m_winSpecs.height; }
+
+	    INTERNAL void ProcessEvents();
 		virtual void ChangeWindowMode();
         virtual void ApplyChanges();
         virtual VkExtent2D GetSize() const								{ return {m_winSpecs.width, m_winSpecs.height}; }
         virtual SwapChain &GetSwapChain();
+	    virtual Ref<RenderContext> GetRenderContext() { return renderContext; }
 
 	    RenderData			GetRenderData()								{ return renderData; }
 		IconData			GetIconData()								{ return iconData; }
 
-        GLOBAL void		   *GetWindow()									{ return WindowData::window; }
-	    uint32_t			GetWidth()									{ return m_winSpecs.width; }
-		uint32_t			GetHeight()									{ return m_winSpecs.height; }
         GLOBAL Window	   *Create(const WindowData &windowSpecs = WindowData());
         GLOBAL std::string  VideoModeText(const GLFWvidmode &mode);
 		void				UpdateFramebufferSize();
@@ -133,7 +147,7 @@ namespace SceneryEditorX
 
 		GLFWcursor *ImGuiMouseCursors[9] = { nullptr };
 
-        WindowData winData;
+        LOCAL WindowData winData;
         int leftAlt;
 
         struct WindowSpecs
@@ -170,7 +184,7 @@ namespace SceneryEditorX
 	    INTERNAL void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
 	};
 
-} /// namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------
 

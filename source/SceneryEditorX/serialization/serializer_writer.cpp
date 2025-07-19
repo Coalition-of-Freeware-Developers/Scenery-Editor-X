@@ -10,14 +10,14 @@
 * Created: 9/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include <SceneryEditorX/core/memory/buffer.h>
 #include <SceneryEditorX/serialization/serializer_writer.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	void SerializeWriter::WriteBuffer(Buffer buffer, const bool writeSize)
+	void SerializeWriter::WriteBuffer(Memory::Buffer buffer, const bool writeSize)
 	{
 		if (writeSize)
 			WriteData((char*)&buffer.size, sizeof(uint64_t));

@@ -11,58 +11,61 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/serialization/serializer_writer.h>
+#include <SceneryEditorX/core/identifiers/identifier.h>
 #include <SceneryEditorX/serialization/serializer_reader.h>
-#include <SceneryEditorX/utils/types.h>
+#include <SceneryEditorX/serialization/serializer_writer.h>
+#include <SceneryEditorX/utils/reflection/type_descriptors.h>
 
 /// -------------------------------------------------------
 	
-	/**  Non-intrusive Binary / Memory Serialization Interface.
-	
-		Add SERIALIZABLE macro in a header for class you need to be serialized
-		member by member. For example:
-	
-		SERIALIZABLE(MyClass,
-					&MyClass::MemberPrimitive,
-					&MyClass::MemberVector,
-					&MyClass::MemberAnotherSerializable);
-	
-		If there's no spatialization for the ..Impl (de)serialize function for any
-		of the listed in the macro members, it's going to call:
-		
-			T::Serialize(StreamWriter* writer, T& obj)
-		..or
-			T::Deserialize(StreamReader* reader, T& obj)
-	
-		..where T is the Types of the object that need to have Serialized and Deserialize
-		functions with this signature.
-	
-		Instead of adding intrusive interface as described above you can add to your
-		header specialization for the free template functions as follows:
-	
-		namespace SceneryEditorX::Spatialization::Impl
-		{
-			template<>
-			static inline bool SerializeImpl(StreamWriter* writer, const MyClass& v)
-			{
-				... some custom serialization routine ...
-				writer->WriteRaw(42069);
-				return true;
-			}
-	
-			template<>
-			static inline bool DeserializeImpl(StreamReader* reader, MyClass& v)
-			{
-				... some custom deserialization routine ...
-				reader->ReadRaw(v.MyVariable);
-				return true;
-			}
-		} // namespace SceneryEditorX::Spatialization::Impl
-	*/
-	#define SERIALIZABLE(Class, ...)                                                                                       \
-	    template <>                                                                                                        \
-	    struct SceneryEditorX::Types::Description<Class> : SceneryEditorX::Types::MemberList<__VA_ARGS__>                  \
-	    {};
+	/**
+	 *  Non-intrusive Binary / Memory Serialization Interface.
+	 *
+	 *	Add SERIALIZABLE macro in a header for class you need to be serialized
+	 *	member by member. For example:
+	 *
+	 *	SERIALIZABLE(MyClass,
+	 *				&MyClass::MemberPrimitive,
+	 *				&MyClass::MemberVector,
+	 *				&MyClass::MemberAnotherSerializable);
+	 *
+	 *	If there's no spatialization for the ..Impl (de)serialize function for any of the listed in the macro members, it's going to call:
+	 *
+	 *		T::Serialize(StreamWriter* writer, T& obj)
+	 *	..or
+	 *		T::Deserialize(StreamReader* reader, T& obj)
+	 *
+	 *	..where T is the Types of the object that need to have Serialized and Deserialize
+	 *	functions with this signature.
+	 *
+	 *	Instead of adding intrusive interface as described above you can add to your
+	 *	header specialization for the free template functions as follows:
+	 *
+	 *	@code
+	 *	namespace SceneryEditorX::Spatialization::Impl
+	 *	{
+	 *		template<>
+	 *		static inline bool SerializeImpl(StreamWriter* writer, const MyClass& v)
+	 *		{
+	 *			... some custom serialization routine ...
+	 *			writer->WriteRaw(42069);
+	 *			return true;
+	 *		}
+	 *
+	 *		template<>
+	 *		static inline bool DeserializeImpl(StreamReader* reader, MyClass& v)
+	 *		{
+	 *		... some custom deserialization routine ...
+	 *		reader->ReadRaw(v.MyVariable);
+	 *		return true;
+	 *		}
+	 *	}
+	 */
+
+#define SERIALIZABLE(Class, ...)                                                                                       \
+    template <>                                                                                                        \
+	struct SceneryEditorX::Types::Description<Class> : SceneryEditorX::Types::MemberList<__VA_ARGS__>                  \
+	{};
 	
 namespace SceneryEditorX::Serialization
 {
@@ -90,7 +93,7 @@ namespace SceneryEditorX::Serialization
 		template <>
 		SEDX_EXPLICIT_STATIC inline bool SerializeImpl(SerializeWriter *writer, const UUID &v)
 		{
-		    writer->WriteRaw((uint64_t)v);
+		    writer->WriteRaw((AssetHandle)v);
 		    return true;
 		}
 		
@@ -175,7 +178,7 @@ namespace SceneryEditorX::Serialization
 	template <>
     SEDX_EXPLICIT_STATIC inline bool DeserializeImpl(SerializeReader *reader, Identifier &v)
 	{
-	    uint32_t data;
+        Identifier data;
 	    reader->ReadRaw(data);
 	    v = data;
 	    return true;

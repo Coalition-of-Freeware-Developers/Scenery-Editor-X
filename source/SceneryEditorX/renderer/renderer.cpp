@@ -10,7 +10,7 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/renderer/buffers/index_buffer.h>
 #include <SceneryEditorX/renderer/buffers/storage_buffer.h>
@@ -175,10 +175,10 @@ namespace SceneryEditorX
         spec.Format = VK_FORMAT_R8G8B8A8_UNORM;
 		spec.Width = 1;
 		spec.Height = 1;
-		s_Data->WhiteTexture = Texture2D::Create(spec, Buffer(&whiteTextureData, sizeof(uint32_t)));
+        s_Data->WhiteTexture = CreateRef<Texture2D>(spec, Buffer(&whiteTextureData, sizeof(uint32_t)));
 
 		constexpr uint32_t blackTextureData = 0xff000000;
-		s_Data->BlackTexture = Texture2D::Create(spec, Buffer(&blackTextureData, sizeof(uint32_t)));
+        s_Data->BlackTexture = CreateRef<Texture2D>(spec, Buffer(&blackTextureData, sizeof(uint32_t)));
 
 		{
 			TextureSpecification spec;
@@ -249,14 +249,14 @@ namespace SceneryEditorX
         *m_renderData = renderData;
     }
 
-    void Renderer::RenderThreadFunc(ThreadManager *renderThread)
+    void Renderer::RenderThreadFunc(const ThreadManager *renderThread)
     {
         SEDX_PROFILE_THREAD("Render Thread");
         while (renderThread->isRunning())
             WaitAndRender(renderThread);
     }
 
-    void Renderer::WaitAndRender(ThreadManager *renderThread)
+    void Renderer::WaitAndRender(const ThreadManager *renderThread)
     {
         renderThread->WaitAndSet(ThreadManager::State::Kick, ThreadManager::State::Busy);
         m_renderData->s_CommandQueue[GetRenderQueueIndex()]->Execute();
@@ -292,7 +292,7 @@ namespace SceneryEditorX
 		VkSampler sampler;
         vkCreateSampler(device->GetDevice(), &samplerCreateInfo, nullptr, &sampler);
 
-		Util::GetResourceAllocationCounts().Samplers++;
+		Utils::GetResourceAllocationCounts().Samplers++;
 
 		return sampler;
     }

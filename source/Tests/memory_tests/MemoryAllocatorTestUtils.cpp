@@ -47,13 +47,10 @@ namespace SceneryEditorX
                 /// Create memory allocator
                 allocator = CreateRef<MemoryAllocator>("TestAllocator");
                 
-                // Initialize the allocator with the device
-                // Using standard init process instead of calling Init directly
+                ///< Initialize the allocator with the device
+                ///< Using standard init process instead of calling Init directly
                 if (allocator)
-                {
-                    // We don't have direct access to Init, so we're just ensuring the allocator is created
-                    REQUIRE(allocator != nullptr);
-                }
+                    REQUIRE(allocator != nullptr); ///< We don't have direct access to Init, so we're just ensuring the allocator is created
             } 
             catch (const std::exception& e)
             {
@@ -63,16 +60,14 @@ namespace SceneryEditorX
 
         void VulkanTestEnvironment::cleanup()
         {
-            // Clean up allocator
+            ///< Clean up allocator
             allocator = nullptr;
             
-            // Clean up device
+            ///< Clean up device
             device = nullptr;
         }
 
-        MockAllocationTracker::MockAllocationTracker() : allocation(nullptr), buffer(VK_NULL_HANDLE), image(VK_NULL_HANDLE) 
-        {
-        }
+        MockAllocationTracker::MockAllocationTracker() : allocation(nullptr), buffer(VK_NULL_HANDLE), image(VK_NULL_HANDLE) {}
         
         MockAllocationTracker::~MockAllocationTracker()
         {
@@ -85,15 +80,13 @@ namespace SceneryEditorX
                 return;
                 
             RenderContext renderContext;
-            auto deviceRef = renderContext.GetLogicDevice();
-            if (!deviceRef) return;
+            if (const auto deviceRef = renderContext.GetLogicDevice(); !deviceRef) return;
             
-            // Since we can't access memoryAllocator directly, we'll use our test allocator
-            // This assumes we have the allocator from the test fixture available
-            if (MemoryAllocatorTestFixture::environment && 
-                MemoryAllocatorTestFixture::environment->GetAllocator())
+            ///< Since we can't access memoryAllocator directly, we'll use our test allocator
+            ///< This assumes we have the allocator from the test fixture available
+            if (MemoryAllocatorTestFixture::environment && MemoryAllocatorTestFixture::environment->GetAllocator())
             {
-                auto allocator = MemoryAllocatorTestFixture::environment->GetAllocator();
+                const auto allocator = MemoryAllocatorTestFixture::environment->GetAllocator();
                 
                 if (buffer != VK_NULL_HANDLE && allocation != nullptr)
                 {
@@ -142,7 +135,8 @@ namespace SceneryEditorX
             return allocationTrackers.back();
         }
         
-    }  // namespace Tests
-}  // namespace SceneryEditorX
+    }
+
+}
 
 /// -------------------------------------------------------

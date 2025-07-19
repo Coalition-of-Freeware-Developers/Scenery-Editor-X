@@ -12,8 +12,8 @@
 */
 #pragma once
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/Module.h>
-#include <SceneryEditorX/platform/platform_states.h>
+#include <SceneryEditorX/core/modules/module.h>
+#include <SceneryEditorX/utils/static_states.h>
 
 /// -------------------------------------------------------
 

@@ -10,13 +10,14 @@
 * Created: 9/7/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/core/memory/buffer.h>
 #include <SceneryEditorX/serialization/serializer_reader.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    void SerializeReader::ReadBuffer(Buffer& buffer, uint32_t size)
+    void SerializeReader::ReadBuffer(Memory::Buffer& buffer, uint32_t size)
 	{
 		buffer.size = size;
 		if (size == 0)

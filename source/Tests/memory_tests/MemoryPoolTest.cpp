@@ -24,7 +24,7 @@ namespace SceneryEditorX
             SECTION("Small buffer pool allocations")
             {
                 /// Make multiple allocations of small buffer size to trigger pool creation
-                const int numAllocations = 10;
+                constexpr int numAllocations = 10;
                 std::vector<MockAllocationTracker> trackers(numAllocations);
                 
                 for (auto& tracker : trackers)
@@ -55,7 +55,7 @@ namespace SceneryEditorX
             SECTION("Medium buffer pool allocations")
             {
                 /// Make multiple allocations of medium buffer size to trigger pool creation
-                const int numAllocations = 5;
+                constexpr int numAllocations = 5;
                 std::vector<MockAllocationTracker> trackers(numAllocations);
                 
                 for (auto& tracker : trackers)
@@ -83,7 +83,7 @@ namespace SceneryEditorX
             SECTION("Large buffer pool allocations")
             {
                 /// Make a few allocations of large buffer size
-                const int numAllocations = 2;
+                constexpr int numAllocations = 2;
                 std::vector<MockAllocationTracker> trackers(numAllocations);
                 
                 for (auto& tracker : trackers)
@@ -391,7 +391,8 @@ namespace SceneryEditorX
                 }
             }
         }
-    }  // namespace Tests
-}  // namespace SceneryEditorX
+    }
+
+}
 
 /// -------------------------------------------------------

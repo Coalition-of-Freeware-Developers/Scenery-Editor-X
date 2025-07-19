@@ -95,7 +95,7 @@ static VkPhysicalDevice SetupVulkan_SelectPhysicalDevice()
     // If a number >1 of GPUs got reported, find discrete GPU if present, or use first one available. This covers
     // most common cases (multi-gpu/integrated+dedicated graphics). Handling more complicated setups (multiple
     // dedicated GPUs) is out of scope of this sample.
-    for (VkPhysicalDevice &device : gpus)
+    for (const VkPhysicalDevice &device : gpus)
     {
         VkPhysicalDeviceProperties properties;
         vkGetPhysicalDeviceProperties(device, &properties);
@@ -208,7 +208,7 @@ static void SetupVulkan(ImVector<const char *> instance_extensions)
             device_extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
 #endif
 
-        const float queue_priority[] = {1.0f};
+        constexpr float queue_priority[] = {1.0f};
         VkDeviceQueueCreateInfo queue_info[1] = {};
             queue_info[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queue_info[0].queueFamilyIndex = g_QueueFamily;
@@ -217,7 +217,7 @@ static void SetupVulkan(ImVector<const char *> instance_extensions)
 
         VkDeviceCreateInfo create_info = {};
             create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-            create_info.queueCreateInfoCount = sizeof(queue_info) / sizeof(queue_info[0]);
+            create_info.queueCreateInfoCount = std::size(queue_info);
             create_info.pQueueCreateInfos = queue_info;
             create_info.enabledExtensionCount = (uint32_t)device_extensions.Size;
             create_info.ppEnabledExtensionNames = device_extensions.Data;
@@ -246,7 +246,7 @@ static void SetupVulkan(ImVector<const char *> instance_extensions)
     }
 }
 
-static void SetupVulkanWindow(ImGui_ImplVulkanH_Window *wd, VkSurfaceKHR surface, int width, int height)
+static void SetupVulkanWindow(ImGui_ImplVulkanH_Window *wd, const VkSurfaceKHR surface, const int width, const int height)
 {
     wd->Surface = surface;
 
@@ -260,42 +260,25 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window *wd, VkSurfaceKHR surface
     }
 
     // Select Surface Format
-    const VkFormat requestSurfaceImageFormat[] = {VK_FORMAT_B8G8R8A8_UNORM,
-                                                  VK_FORMAT_R8G8B8A8_UNORM,
-                                                  VK_FORMAT_B8G8R8_UNORM,
-                                                  VK_FORMAT_R8G8B8_UNORM};
-    const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(g_PhysicalDevice,
-                                                              wd->Surface,
-                                                              requestSurfaceImageFormat,
-                                                              (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat),
-                                                              requestSurfaceColorSpace);
+    constexpr VkFormat requestSurfaceImageFormat[] = {VK_FORMAT_B8G8R8A8_UNORM,
+                                                      VK_FORMAT_R8G8B8A8_UNORM,
+                                                      VK_FORMAT_B8G8R8_UNORM,
+                                                      VK_FORMAT_R8G8B8_UNORM};
+    constexpr VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
 
     // Select Present Mode
 #ifdef APP_USE_UNLIMITED_FRAME_RATE
-    VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_MAILBOX_KHR,
-                                        VK_PRESENT_MODE_IMMEDIATE_KHR,
-                                        VK_PRESENT_MODE_FIFO_KHR};
+    VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR};
 #else
     VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_FIFO_KHR};
 #endif
-    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice,
-                                                          wd->Surface,
-                                                          &present_modes[0],
-                                                          IM_ARRAYSIZE(present_modes));
+    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
     //printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
 
     // Create SwapChain, RenderPass, Framebuffer, etc.
     IM_ASSERT(g_MinImageCount >= 2);
-    ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance,
-                                           g_PhysicalDevice,
-                                           g_Device,
-                                           wd,
-                                           g_QueueFamily,
-                                           g_Allocator,
-                                           width,
-                                           height,
-                                           g_MinImageCount);
+    ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, wd, g_QueueFamily, g_Allocator, width, height, g_MinImageCount);
 }
 
 static void CleanupVulkan()
@@ -320,16 +303,10 @@ static void CleanupVulkanWindow()
 
 static void FrameRender(ImGui_ImplVulkanH_Window *wd, ImDrawData *draw_data)
 {
-    VkResult error;
 
-    VkSemaphore image_acquired_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].ImageAcquiredSemaphore;
-    VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
-    error = vkAcquireNextImageKHR(g_Device,
-                                wd->Swapchain,
-                                UINT64_MAX,
-                                image_acquired_semaphore,
-                                VK_NULL_HANDLE,
-                                &wd->FrameIndex);
+    const VkSemaphore image_acquired_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].ImageAcquiredSemaphore;
+    const VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
+    VkResult error = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
     if (error == VK_ERROR_OUT_OF_DATE_KHR || error == VK_SUBOPTIMAL_KHR)
     {
         g_SwapChainRebuild = true;
@@ -337,13 +314,9 @@ static void FrameRender(ImGui_ImplVulkanH_Window *wd, ImDrawData *draw_data)
     }
     check_vk_result(error);
 
-    ImGui_ImplVulkanH_Frame *fd = &wd->Frames[wd->FrameIndex];
+    const ImGui_ImplVulkanH_Frame *fd = &wd->Frames[wd->FrameIndex];
     {
-        error = vkWaitForFences(g_Device,
-                              1,
-                              &fd->Fence,
-                              VK_TRUE,
-                              UINT64_MAX); // wait indefinitely instead of periodically checking
+        error = vkWaitForFences(g_Device,1,&fd->Fence, VK_TRUE,UINT64_MAX); // wait indefinitely instead of periodically checking
         check_vk_result(error);
 
         error = vkResetFences(g_Device, 1, &fd->Fence);
@@ -376,7 +349,7 @@ static void FrameRender(ImGui_ImplVulkanH_Window *wd, ImDrawData *draw_data)
     // Submit command buffer
     vkCmdEndRenderPass(fd->CommandBuffer);
     {
-        VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        constexpr VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         VkSubmitInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         info.waitSemaphoreCount = 1;
@@ -398,7 +371,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window *wd)
 {
     if (g_SwapChainRebuild)
         return;
-    VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
+    const VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
     VkPresentInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     info.waitSemaphoreCount = 1;
@@ -406,7 +379,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window *wd)
     info.swapchainCount = 1;
     info.pSwapchains = &wd->Swapchain;
     info.pImageIndices = &wd->FrameIndex;
-    VkResult error = vkQueuePresentKHR(g_Queue, &info);
+    const VkResult error = vkQueuePresentKHR(g_Queue, &info);
     if (error == VK_ERROR_OUT_OF_DATE_KHR || error == VK_SUBOPTIMAL_KHR)
     {
         g_SwapChainRebuild = true;
@@ -492,7 +465,7 @@ int main(int, char **)
 
     // Main loop
     ProjectFile::projectFile project = {"example", "New Scenery", "1.0", "12.00"};
-    std::string directory = std::filesystem::current_path().string();
+    const std::string directory = std::filesystem::current_path().string();
     char fileNameBuffer[256] = "example.edX";
 
     while (!glfwWindowShouldClose(window))
@@ -576,22 +549,17 @@ int main(int, char **)
 }
 
 // Vulkan setup functions (simplified)
-void CheckVkResult(VkResult error)
+static void CheckVkResult(VkResult error)
 {
     if (error != VK_SUCCESS)
     {
-        std::cerr << "Vulkan error: " << error << std::endl;
+        std::cerr << "Vulkan error: " << error << '\n';
         abort();
     }
 }
 
-void SetupVulkan(VkInstance &instance,
-                 VkDevice &device,
-                 VkPhysicalDevice &physicalDevice,
-                 VkQueue &queue,
-                 VkCommandPool &commandPool,
-                 VkDescriptorPool &descriptorPool,
-                 VkRenderPass &renderPass)
+static void SetupVulkan(VkInstance &instance, VkDevice &device, VkPhysicalDevice &physicalDevice, VkQueue &queue,
+						VkCommandPool &commandPool, VkDescriptorPool &descriptorPool, VkRenderPass &renderPass)
 {
     // Instance creation
     VkInstanceCreateInfo instanceCreateInfo = {};
@@ -603,7 +571,7 @@ void SetupVulkan(VkInstance &instance,
     CheckVkResult(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
     if (deviceCount == 0)
     {
-        std::cerr << "Failed to find GPUs with Vulkan support!" << std::endl;
+        std::cerr << "Failed to find GPUs with Vulkan support!" << '\n';
         exit(EXIT_FAILURE);
     }
 
@@ -686,54 +654,54 @@ void SetupVulkan(VkInstance &instance,
 
 
 // Function to strip the file extension if it exists
-std::string StripExtension(const std::string &filename)
+static std::string StripExtension(const std::string &filename)
 {
-    size_t last_dot = filename.find_last_of(".");
+    const size_t last_dot = filename.find_last_of('.');
     if (last_dot == std::string::npos)
         return filename;
     return filename.substr(0, last_dot);
 }
 
 // File save/load implementations
-void SaveProject(const std::string &directory, const ProjectFile::projectFile &project)
+static void SaveProject(const std::string &directory, const ProjectFile::projectFile &project)
 {
     std::string filename = StripExtension(project.filename) + ".edX";
     std::ofstream outFile(directory + "/" + filename);
     if (!outFile)
     {
-        std::cerr << "Failed to open file for writing!" << std::endl;
+        std::cerr << "Failed to open file for writing!" << '\n';
         return;
     }
     outFile << "SceneryName: " << project.sceneryName << "\n";
     outFile << "EditorVersion: " << project.editorVersion << "\n";
     outFile << "XPVersion: " << project.XPVersion << "\n";
     outFile.close();
-    std::cout << "File saved to " << directory + "/" + filename << std::endl;
+    std::cout << "File saved to " << directory + "/" + filename << '\n';
 }
 
-void LoadProject(const std::string &filePath, ProjectFile::projectFile &project)
+static void LoadProject(const std::string &filePath, ProjectFile::projectFile &project)
 {
     std::ifstream inFile(filePath);
     if (!inFile)
     {
-        std::cerr << "Failed to open file for reading!" << std::endl;
+        std::cerr << "Failed to open file for reading!" << '\n';
         return;
     }
     std::string line;
     while (std::getline(inFile, line))
     {
         if (line.find("SceneryName:") != std::string::npos)
-            project.sceneryName = line.substr(line.find(":") + 1);
+            project.sceneryName = line.substr(line.find(':') + 1);
         else if (line.find("EditorVersion:") != std::string::npos)
-            project.editorVersion = line.substr(line.find(":") + 1);
+            project.editorVersion = line.substr(line.find(':') + 1);
         else if (line.find("XPVersion:") != std::string::npos)
-            project.XPVersion = line.substr(line.find(":") + 1);
+            project.XPVersion = line.substr(line.find(':') + 1);
     }
     inFile.close();
-    std::cout << "File loaded from " << filePath << std::endl;
+    std::cout << "File loaded from " << filePath << '\n';
 }
 
-void CleanupVulkan(VkInstance instance, VkDevice device, VkCommandPool commandPool, VkDescriptorPool descriptorPool)
+static void CleanupVulkan(VkInstance instance, VkDevice device, VkCommandPool commandPool, VkDescriptorPool descriptorPool)
 {
     if (device != VK_NULL_HANDLE)
     {

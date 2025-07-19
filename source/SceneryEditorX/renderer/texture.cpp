@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * texture.cpp
@@ -12,9 +12,10 @@
 */
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <utility>
 
-#include "vulkan/vk_util.h"
+#include <SceneryEditorX/asset/texture_importer.h>
 
 /// -------------------------------------------------------
 
@@ -56,7 +57,7 @@ namespace SceneryEditorX
 		if (!m_ImageData)
 		{
 			SEDX_CORE_ERROR("Failed to load texture from file: {}", filepath);
-			m_ImageData = TextureImporter::ToBufferFromFile("Resources/Textures/ErrorTexture.png", m_Specification.Format, m_Specification.Width, m_Specification.Height);
+			m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/error_texture.png", m_Specification.Format, m_Specification.Width, m_Specification.Height);
 		}
 
 		ImageSpecification imageSpec;
@@ -81,7 +82,7 @@ namespace SceneryEditorX
 		if (!m_ImageData)
 		{
 			SEDX_CORE_ERROR("Failed to load texture from file: {}", filepath);
-			m_ImageData = TextureImporter::ToBufferFromFile("Resources/Textures/ErrorTexture.png", m_Specification.Format, m_Specification.Width, m_Specification.Height);
+			m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/error_texture.png", m_Specification.Format, m_Specification.Width, m_Specification.Height);
 		}
 
 		ImageSpecification imageSpec;
@@ -109,7 +110,7 @@ namespace SceneryEditorX
 			m_ImageData = TextureImporter::ToBufferFromMemory(Buffer(data.data, m_Specification.Width), m_Specification.Format, m_Specification.Width, m_Specification.Height);
 			if (!m_ImageData)
 			{
-				m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/ErrorTexture.png", m_Specification.Format, m_Specification.Width, m_Specification.Height);
+				m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/error_texture.png", m_Specification.Format, m_Specification.Width, m_Specification.Height);
 			}
 
 			Utils::ValidateSpecification(m_Specification);
@@ -546,7 +547,7 @@ namespace SceneryEditorX
 		imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-		/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
+		/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
 		/// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
 		/// Destination pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 		vkCmdPipelineBarrier(copyCmd,
@@ -583,7 +584,7 @@ namespace SceneryEditorX
 		imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-		/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
+		/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
 		/// Source pipeline stage, stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 		/// Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
 		vkCmdPipelineBarrier(
@@ -747,7 +748,7 @@ namespace SceneryEditorX
 			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-			/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
+			/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
 			/// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
 			/// Destination pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 			vkCmdPipelineBarrier(
@@ -1004,7 +1005,7 @@ namespace SceneryEditorX
 		bufferCreateInfo.size = m_GPUAllocationSize;
 		bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		
+
 		VkBuffer stagingBuffer;
 		VmaAllocation stagingBufferAllocation = allocator.AllocateBuffer(bufferCreateInfo, VMA_MEMORY_USAGE_GPU_TO_CPU, stagingBuffer);
 
@@ -1031,7 +1032,7 @@ namespace SceneryEditorX
 		imageMemoryBarrier.oldLayout = m_DescriptorImageInfo.imageLayout;
 		imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
-		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
+		// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
 		// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
 		// Destination pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 		vkCmdPipelineBarrier(
@@ -1113,7 +1114,7 @@ namespace SceneryEditorX
 		uint32_t mipWidth = m_Specification.Width, mipHeight = m_Specification.Height;
 
 		VkCommandBuffer copyCmd = device->GetCommandBuffer(true);
-		
+
 		VkImageSubresourceRange subresourceRange = {};
 		subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		subresourceRange.baseMipLevel = 0;
@@ -1216,7 +1217,7 @@ namespace SceneryEditorX
 			imageMemoryBarrier.oldLayout = m_DescriptorImageInfo.imageLayout;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-			/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
+			/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
 			/// Source pipeline stage is host write/read execution (VK_PIPELINE_STAGE_HOST_BIT)
 			/// Destination pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 			vkCmdPipelineBarrier(copyCmd,

@@ -1,15 +1,55 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X - edX File Format
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* edXConfig.h
+* -------------------------------------------------------
+* Created: 27/5/2025
+* Updated: 11/7/2025
+* -------------------------------------------------------
+*/
 #pragma once
-#ifndef EDX_CONFIG_H
-#define EDX_CONFIG_H
+#include <chrono>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include "../../dependency/json/single_include/nlohmann/json.hpp"
 
-// Define the export/import configuration for the library
-// Checks for windows platform and if the lib is not being built as a static lib.
-#if defined(_WINDOWS) || defined(_WIN32) || defined(SEDX_PLATFORM_WINDOWS) && !defined(SEDX_CORE_STATIC)
-#ifdef EDX_API
-#define EDX_API __declspec(dllexport)
+/// ----------------------------------------------------------------------------
+
+// Cross-platform DLL export/import macros
+#if defined(_WIN32) || defined(_WIN64)
+    #ifdef EDX_EXPORTS
+        #define EDX_API __declspec(dllexport)
+    #else
+        #define EDX_API __declspec(dllimport)
+    #endif
+#elif defined(__GNUC__) && __GNUC__ >= 4
+    #ifdef EDX_EXPORTS
+        #define EDX_API __attribute__((visibility("default")))
+    #else
+        #define EDX_API
+    #endif
 #else
-#define EDX_API __declspec(dllimport)
-#endif
+    #define EDX_API
 #endif
 
-#endif /* EDX_CONFIG_H */
+// JSON namespace alias for convenience
+using json = nlohmann::json;
+
+// Version information
+namespace edx {
+    constexpr const char* VERSION = "2.0.0";
+    constexpr int VERSION_MAJOR = 2;
+    constexpr int VERSION_MINOR = 0;
+    constexpr int VERSION_PATCH = 0;
+}
+
+/// ----------------------------------------------------------------------------
+

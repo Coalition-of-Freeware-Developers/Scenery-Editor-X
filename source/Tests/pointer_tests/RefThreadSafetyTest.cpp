@@ -16,9 +16,11 @@
 #include <chrono>
 #include <future>
 #include <random>
-#include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/utils/pointers.h>
 #include <thread>
 #include <vector>
+
+/// -------------------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -28,16 +30,19 @@ namespace SceneryEditorX
 		class ThreadTestObject : public RefCounted
 		{
 		public:
-		    explicit ThreadTestObject(int id = 0) : m_Id(id) {}
+		    explicit ThreadTestObject(const int id = 0) : m_Id(id) {}
 		    int GetId() const { return m_Id; }
-		    void SetId(int id) { m_Id = id; }
+		    void SetId(const int id) { m_Id = id; }
 		    
 		    // Atomic counter for tracking construction/destruction
 		    static std::atomic<int> s_InstanceCount;
 		    
-		    ThreadTestObject() { ++s_InstanceCount;}
-		    
-		    ~ThreadTestObject() override { --s_InstanceCount; }
+		    ThreadTestObject() : m_Id(0)
+            {
+                ++s_InstanceCount;
+            }
+
+            virtual ~ThreadTestObject() override { --s_InstanceCount; }
 		
 		private:
 		    int m_Id;
@@ -50,7 +55,7 @@ namespace SceneryEditorX
 		class ComplexThreadTestObject : public RefCounted
 		{
 		public:
-		    explicit ComplexThreadTestObject(int id = 0) : m_Id(id) {}
+		    explicit ComplexThreadTestObject(const int id = 0) : m_Id(id) {}
 		    
 		    void SetStrongNext(const Ref<ComplexThreadTestObject>& next)
 			{
@@ -80,9 +85,8 @@ namespace SceneryEditorX
 		    SECTION("Multiple threads creating and destroying Refs")
 			{
 		        constexpr int threadCount = 10;
-		        constexpr int objectsPerThread = 1000;
-		        
-		        // Reset the instance counter
+
+                // Reset the instance counter
 		        ThreadTestObject::s_InstanceCount = 0;
 		        
 		        // Create threads that will create and destroy objects
@@ -90,8 +94,9 @@ namespace SceneryEditorX
 		        threads.reserve(threadCount);
 		        
 		        for (int t = 0; t < threadCount; ++t)
-				{
-		            threads.emplace_back([t, objectsPerThread]()
+                {
+                    constexpr int objectsPerThread = 1000;
+                    threads.emplace_back([t, objectsPerThread]()
 					{
 		                std::vector<Ref<ThreadTestObject>> objects;
 		                objects.reserve(objectsPerThread);
@@ -142,9 +147,8 @@ namespace SceneryEditorX
 			{
 		        constexpr int threadCount = 10;
 		        constexpr int objectCount = 100;
-		        constexpr int operationsPerThread = 10000;
-		        
-		        // Create shared objects
+
+                // Create shared objects
 		        std::vector<Ref<ThreadTestObject>> sharedObjects;
 		        sharedObjects.reserve(objectCount);
 		        
@@ -161,8 +165,9 @@ namespace SceneryEditorX
 		        threads.reserve(threadCount);
 		        
 		        for (int t = 0; t < threadCount; ++t)
-				{
-		            threads.emplace_back([t, operationsPerThread, &sharedObjects, &sync_point]()
+                {
+                    constexpr int operationsPerThread = 10000;
+                    threads.emplace_back([t, operationsPerThread, &sharedObjects, &sync_point]()
 					{
 		                std::random_device rd;
 		                std::mt19937 gen(rd());
@@ -177,8 +182,8 @@ namespace SceneryEditorX
 		                
 		                for (int op = 0; op < operationsPerThread; ++op)
 						{
-		                    int action = op % 4;
-		                    int objectIndex = objectDist(gen);
+		                    const int action = op % 4;
+		                    const int objectIndex = objectDist(gen);
 		                    
 		                    switch (action)
 							{
@@ -191,7 +196,7 @@ namespace SceneryEditorX
 		                        case 1:
 								{
 		                            // Modify a shared object
-		                            int oldValue = sharedObjects[objectIndex]->GetId();
+		                            const int oldValue = sharedObjects[objectIndex]->GetId();
 		                            sharedObjects[objectIndex]->SetId(oldValue + 1);
 		                            sharedObjects[objectIndex]->SetId(oldValue); // Restore original value
 		                            break;
@@ -208,7 +213,7 @@ namespace SceneryEditorX
 		                            // Clear some local copies if we have any
 		                            if (!localCopies.empty())
 									{
-		                                int count = localCopies.size() / 2;
+		                                const int count = localCopies.size() / 2;
 		                                localCopies.resize(count);
 		                            }
 		                            break;
@@ -251,9 +256,8 @@ namespace SceneryEditorX
 			{
 		        constexpr int threadCount = 10;
 		        constexpr int objectCount = 100;
-		        constexpr int operationsPerThread = 10000;
-		        
-		        // Create objects
+
+                // Create objects
 		        std::vector<Ref<ThreadTestObject>> objects;
 		        std::vector<WeakRef<ThreadTestObject>> weakRefs;
 		        
@@ -263,7 +267,7 @@ namespace SceneryEditorX
 		        for (int i = 0; i < objectCount; ++i)
 				{
 		            objects.push_back(CreateRef<ThreadTestObject>(i));
-		            weakRefs.push_back(WeakRef<ThreadTestObject>(objects[i]));
+		            weakRefs.emplace_back(objects[i]);
 		        }
 		        
 		        // Use a barrier to ensure all threads start at the same time
@@ -274,8 +278,9 @@ namespace SceneryEditorX
 		        threads.reserve(threadCount);
 		        
 		        for (int t = 0; t < threadCount; ++t)
-				{
-		            threads.emplace_back([t, operationsPerThread, &objects, &weakRefs, &sync_point]()
+                {
+                    constexpr int operationsPerThread = 10000;
+                    threads.emplace_back([t, operationsPerThread, &objects, &weakRefs, &sync_point]()
 					{
 		                std::random_device rd;
 		                std::mt19937 gen(rd());
@@ -290,16 +295,15 @@ namespace SceneryEditorX
 		                
 		                for (int op = 0; op < operationsPerThread; ++op)
 						{
-		                    int action = op % 4;
-		                    int objectIndex = objectDist(gen);
+		                    const int action = op % 4;
+		                    const int objectIndex = objectDist(gen);
 		                    
 		                    switch (action)
 							{
 		                        case 0:
 								{
 		                            // Lock a weak reference
-		                            auto locked = weakRefs[objectIndex].Lock();
-		                            if (locked)
+                                    if (auto locked = weakRefs[objectIndex].Lock())
 									{
 		                                lockedRefs.push_back(locked);
 		                            }
@@ -316,7 +320,7 @@ namespace SceneryEditorX
 		                        case 2:
 								{
 		                            // Check if a weak reference is expired
-		                            bool expired = weakRefs[objectIndex].Expired();
+		                            const bool expired = weakRefs[objectIndex].Expired();
 		                            // It shouldn't be expired as long as objects are alive
 		                            REQUIRE_FALSE(expired);
 		                            break;
@@ -326,7 +330,7 @@ namespace SceneryEditorX
 		                            // Clear some locked refs if we have any
 		                            if (!lockedRefs.empty())
 									{
-		                                int count = lockedRefs.size() / 2;
+		                                const int count = lockedRefs.size() / 2;
 		                                lockedRefs.resize(count);
 		                            }
 		                            break;
@@ -382,10 +386,8 @@ namespace SceneryEditorX
 		    SECTION("Multiple threads creating and destroying objects with WeakRefs")
 			{
 		        constexpr int threadCount = 10;
-		        constexpr int objectsPerThread = 1000;
-		        constexpr int operationsPerObject = 10;
-		        
-		        // Reset the instance counter
+
+                // Reset the instance counter
 		        ThreadTestObject::s_InstanceCount = 0;
 		        
 		        // Use a barrier to ensure all threads start at the same time
@@ -396,8 +398,10 @@ namespace SceneryEditorX
 		        threads.reserve(threadCount);
 		        
 		        for (int t = 0; t < threadCount; ++t)
-				{
-		            threads.emplace_back([t, objectsPerThread, operationsPerObject, &sync_point]()
+                {
+                    constexpr int objectsPerThread = 1000;
+                    constexpr int operationsPerObject = 10;
+                    threads.emplace_back([t, objectsPerThread, operationsPerObject, &sync_point]()
 										 {
 		                // Wait for all threads to be ready
 		                sync_point.arrive_and_wait();
@@ -412,15 +416,13 @@ namespace SceneryEditorX
 		                    // Perform operations on the object and weak reference
 		                    for (int op = 0; op < operationsPerObject; ++op)
 							{
-		                        int action = op % 5;
-		                        
-		                        switch (action)
+
+                                switch (int action = op % 5)
 								{
 		                            case 0:
 									{
 		                                // Lock the weak reference
-		                                auto locked = weak.Lock();
-		                                if (locked)
+                                        if (auto locked = weak.Lock())
 										{
 		                                    REQUIRE(locked->GetId() == t * objectsPerThread + i);
 		                                }
@@ -456,7 +458,7 @@ namespace SceneryEditorX
 									{
 		                                // Create more weak references
 		                                WeakRef<ThreadTestObject> weak2(obj);
-		                                WeakRef<ThreadTestObject> weak3 = weak2;
+                                        const WeakRef<ThreadTestObject> &weak3 = weak2;
 		                                REQUIRE_FALSE(weak2.Expired());
 		                                REQUIRE_FALSE(weak3.Expired());
 		                                break;
@@ -508,8 +510,7 @@ namespace SceneryEditorX
 					{
 			            while (!stop)
 						{
-			                auto locked = weak.Lock();
-			                if (locked)
+                            if (auto locked = weak.Lock())
 							{
 			                    ++lockSuccesses;
 			                }
@@ -523,7 +524,7 @@ namespace SceneryEditorX
 			        // Thread 2: Keep setting the original reference to nullptr and back
 			        auto resetThread = std::thread([&obj, &stop]()
 					{
-			            auto backup = obj;
+			            const auto backup = obj;
 			            for (int i = 0; i < 100; ++i)
 						{
 			                obj = nullptr;
@@ -559,12 +560,12 @@ namespace SceneryEditorX
 			
 			SECTION("Race between WeakRef operations")
 			{
-			    constexpr int threadCount = 10;
-			    constexpr int iterations = 100;
+                constexpr int iterations = 100;
 			    
 			    for (int iter = 0; iter < iterations; ++iter)
 				{
-			        // Create shared data
+                    constexpr int threadCount = 10;
+                    // Create shared data
 			        auto obj = CreateRef<ThreadTestObject>(iter);
 			        std::vector<WeakRef<ThreadTestObject>> weakRefs(threadCount);
 			        
@@ -586,8 +587,7 @@ namespace SceneryEditorX
 			                        // Lock and unlock
 			                        for (int i = 0; i < 100; ++i)
 									{
-			                            auto locked = weakRefs[t].Lock();
-			                            if (locked)
+                                        if (const auto locked = weakRefs[t].Lock())
 										{
 			                                REQUIRE(locked->GetId() == weakRefs[t].Lock()->GetId());
 			                            }
@@ -669,9 +669,8 @@ namespace SceneryEditorX
 		    SECTION("Multiple threads creating and manipulating complex objects")
 			{
 		        constexpr int threadCount = 8;
-		        constexpr int objectsPerThread = 100;
-		        
-		        // Use a barrier to ensure all threads start at the same time
+
+                // Use a barrier to ensure all threads start at the same time
 		        std::barrier sync_point(threadCount + 1);
 		        
 		        // Shared collection of objects that threads can connect to
@@ -683,8 +682,9 @@ namespace SceneryEditorX
 		        threads.reserve(threadCount);
 		        
 		        for (int t = 0; t < threadCount; ++t)
-				{
-		            threads.emplace_back([t, objectsPerThread, &sharedObjects, &sharedObjectsMutex, &sync_point]()
+                {
+                    constexpr int objectsPerThread = 100;
+                    threads.emplace_back([t, objectsPerThread, &sharedObjects, &sharedObjectsMutex, &sync_point]()
 					{
 		                std::random_device rd;
 		                std::mt19937 gen(rd());
@@ -733,16 +733,14 @@ namespace SceneryEditorX
 		                for (int i = 0; i < objectsPerThread; ++i)
 						{
 		                    // Follow strong references
-		                    auto next = localObjects[i]->GetStrongNext();
-		                    if (next)
+                            if (auto next = localObjects[i]->GetStrongNext())
 							{
 		                        REQUIRE(next->GetId() >= t * objectsPerThread);
 		                        REQUIRE(next->GetId() < (t + 1) * objectsPerThread);
 		                    }
 		                    
 		                    // Follow weak references
-		                    auto weakNext = localObjects[i]->GetWeakNext();
-		                    if (weakNext)
+                            if (auto weakNext = localObjects[i]->GetWeakNext())
 							{
 		                        // The ID range for weak references is not predictable
 		                        // since they can point to objects from any thread
@@ -789,5 +787,10 @@ namespace SceneryEditorX
 		    }
 		}
 	
-	}  // namespace Tests
-}  // namespace SceneryEditorX
+	}
+
+    /// -------------------------------------------------------------------
+
+}
+
+/// -------------------------------------------------------------------

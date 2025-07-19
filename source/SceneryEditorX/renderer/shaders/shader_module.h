@@ -11,6 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <cstdint>
+#include <SceneryEditorX/logging/asserts.h>
 
 /// -------------------------------------------------------
 
@@ -48,11 +50,9 @@ namespace SceneryEditorX
         size_t dataSize = 0; /// if `dataSize` is non-zero, interpret `data` as binary shader data
         const char *debugName = "";
 
-		ShaderModule(const char *source, ShaderStage::Stage stage, const char *debugName)
-            : stage(stage), data(source), debugName(debugName) {}
+		ShaderModule(const char *source, ShaderStage::Stage stage, const char *debugName) : stage(stage), data(source), debugName(debugName) {}
 
-		ShaderModule(const void *data, size_t dataLength, ShaderStage::Stage stage, const char *debugName)
-			: stage(stage), data(static_cast<const char *>(data)), dataSize(dataLength), debugName(debugName)
+		ShaderModule(const void *data, size_t dataLength, ShaderStage::Stage stage, const char *debugName) : stage(stage), data(static_cast<const char *>(data)), dataSize(dataLength), debugName(debugName)
 		{
             SEDX_ASSERT(dataSize);
 		}

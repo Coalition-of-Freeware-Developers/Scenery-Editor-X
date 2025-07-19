@@ -10,8 +10,9 @@
 * Created: Current Date
 * -------------------------------------------------------
 */
-
 #include <SceneryEditorX/EntryPoint.h>
+
+/// -------------------------------------------------------
 
 /**
  * Main entry point for the application.
@@ -21,3 +22,5 @@ int main(int argc, char** argv)
 {
     return SceneryEditorX::Main(argc, argv);
 }
+
+/// -------------------------------------------------------

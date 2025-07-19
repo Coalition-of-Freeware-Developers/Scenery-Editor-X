@@ -12,10 +12,9 @@
 */
 // ReSharper disable StringLiteralTypo
 #include <cstdlib>
-
 #include <SceneryEditorX/renderer/buffers/framebuffer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
 /// -------------------------------------------------------
 
@@ -797,7 +796,7 @@ void GetDeviceName(const std::string &deviceName)
 
 /// -------------------------------------------------------
 
-namespace SceneryEditorX::Util
+namespace SceneryEditorX::Utils
 {
 	LOCAL ResourceAllocationCounts s_ResourceAllocationCounts;
     ResourceAllocationCounts &GetResourceAllocationCounts()

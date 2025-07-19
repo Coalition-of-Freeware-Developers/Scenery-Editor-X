@@ -163,10 +163,11 @@ SET(ICON_FILES
 )
 
 # --------------------------------
-# PACKAGES
+# PACKAGES VCPKG
 # --------------------------------
 FIND_PACKAGE(Vulkan                        REQUIRED)
 FIND_PACKAGE(glm                    CONFIG REQUIRED)
+FIND_PACKAGE(msdfgen				CONFIG REQUIRED)
 FIND_PACKAGE(spdlog                 CONFIG REQUIRED)
 FIND_PACKAGE(tracy				    CONFIG REQUIRED)
 FIND_PACKAGE(Stb                           REQUIRED)
@@ -195,6 +196,21 @@ ADD_SUBDIRECTORY(dependency/libconfig)
 # Catch2
 # --------------------------------
 ADD_SUBDIRECTORY(dependency/Catch2)
+
+# --------------------------------
+# MSDF-Atlas-Generator
+# --------------------------------
+#ADD_SUBDIRECTORY(dependency/msdf-atlas-gen)
+
+# --------------------------------
+# json-cpp-gen
+# --------------------------------
+ADD_SUBDIRECTORY(dependency/json-cpp-gen)
+
+# --------------------------------
+# nlohmann/json
+# --------------------------------
+ADD_SUBDIRECTORY(dependency/json)
 
 # --------------------------------
 # AppCore
@@ -300,14 +316,14 @@ TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEdit
 TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/startup_pch.h)
 
 SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
-SET_PROPERTY(TARGET FormatTester MemoryAllocatorTests RefTests SettingsTest PROPERTY FOLDER "Tests")
+SET_PROPERTY(TARGET FormatTester MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator PROPERTY FOLDER "Tests")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET imgui PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET imgui json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
 SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
 SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore FormatTester MemoryAllocatorTests RefTests SettingsTest CrashHandler Catch2 Catch2WithMain imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore FormatTester MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

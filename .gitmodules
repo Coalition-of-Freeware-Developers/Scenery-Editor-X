@@ -19,3 +19,12 @@
 [submodule "dependency/Catch2"]
 	path = dependency/Catch2
 	url = git@github.com:catchorg/Catch2.git
+[submodule "dependency/msdf-atlas-gen"]
+	path = dependency/msdf-atlas-gen
+	url = git@github.com:Chlumsky/msdf-atlas-gen.git
+[submodule "dependency/json-cpp-gen"]
+	path = dependency/json-cpp-gen
+	url = git@github.com:Chlumsky/json-cpp-gen.git
+[submodule "dependency/json"]
+	path = dependency/json
+	url = git@github.com:nlohmann/json.git

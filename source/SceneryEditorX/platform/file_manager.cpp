@@ -13,10 +13,10 @@
 #include <commdlg.h>
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
+#include <SceneryEditorX/asset/asset_manager.h>
 #include <SceneryEditorX/core/time.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/scene/asset_manager.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/model_asset.h>
 #include <SceneryEditorX/utils/string.h>
@@ -177,7 +177,7 @@ namespace SceneryEditorX::IO
                 return std::to_string(counter);
             }(); /// Pad with 0 if < 10;
 
-            std::string newFileName = std::format("{} ({})", RemoveExtension(filepath.filename().string()), counterStr);
+            std::string newFileName = std::format("{} ({})", Utils::RemoveExtension(filepath.filename().string()), counterStr);
 
             if (filepath.has_extension())
                 newFileName = std::format("{}{}", newFileName, filepath.extension().string());

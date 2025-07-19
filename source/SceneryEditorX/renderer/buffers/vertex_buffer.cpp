@@ -10,8 +10,8 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 
 /// ---------------------------------------------------------
@@ -102,11 +102,6 @@ namespace SceneryEditorX
     {
         return {};
     }
-
-    Buffer VertexBuffer::Create() const
-    {
-        return CreateRef<VertexBuffer>(Create());
-	}
 
 } // namespace SceneryEditorX
 

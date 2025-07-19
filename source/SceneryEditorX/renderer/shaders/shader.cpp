@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/shaders/shader_pack.h>
 
 /// -----------------------------------------

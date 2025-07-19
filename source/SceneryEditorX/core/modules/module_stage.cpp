@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * module_stage.cpp
@@ -21,12 +21,12 @@ namespace SceneryEditorX
         moduleStage.emplace(moduleStage.begin() + moduleInsertIndex, module);
         moduleInsertIndex++;
 	}
-	
+
 	void ModuleStage::PushOverlay(Module *overlay)
 	{
         moduleStage.emplace_back(overlay);
 	}
-	
+
 	void ModuleStage::PopModule(Module *module)
 	{
         if (const auto set = std::ranges::find(moduleStage, module); set != moduleStage.end())
@@ -37,7 +37,7 @@ namespace SceneryEditorX
 		else
             SEDX_CORE_ERROR("Module not found in stage");
     }
-	
+
 	void ModuleStage::PopOverlay(Module *overlay)
 	{
         if (const auto set = std::ranges::find(moduleStage.begin(), moduleStage.end(), overlay); set != moduleStage.end())

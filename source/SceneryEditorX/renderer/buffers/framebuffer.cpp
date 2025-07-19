@@ -10,7 +10,7 @@
 * Created: 26/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
@@ -21,7 +21,7 @@
 
 namespace SceneryEditorX
 {
-	namespace Util
+	namespace Utils
 	{
 	    inline VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification& specification, const FramebufferTextureSpecification& attachmentSpecification)
 		{
@@ -203,7 +203,7 @@ namespace SceneryEditorX
                 attachmentDescription.flags = 0;
                 attachmentDescription.format = attachmentSpec.Format;
                 attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-                attachmentDescription.loadOp = Util::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
+                attachmentDescription.loadOp = Utils::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
                 attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
                 attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -276,7 +276,7 @@ namespace SceneryEditorX
                 attachmentDescription.flags = 0;
                 attachmentDescription.format = attachmentSpec.Format;
                 attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-                attachmentDescription.loadOp = Util::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
+                attachmentDescription.loadOp = Utils::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
                 attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
                 attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

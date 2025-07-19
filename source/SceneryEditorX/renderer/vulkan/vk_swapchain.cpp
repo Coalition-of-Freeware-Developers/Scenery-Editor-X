@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/image_data.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>

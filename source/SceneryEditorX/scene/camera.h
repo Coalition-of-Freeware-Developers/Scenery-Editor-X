@@ -11,20 +11,23 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/serialization/serializer.hpp>
+#include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/scene/node.h>
 
-// -----------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    struct Serializer;
 
-	/*
-	enum CameraMode : uint8_t
+    enum CameraMode : uint8_t
 	{
 	    Orbit,
 	    Fly
 	};
+
+    /// -------------------------------------------------------
 	
 	enum class CameraType : uint8_t
 	{
@@ -32,7 +35,9 @@ namespace SceneryEditorX
 	    Orthographic
 	};
 
-	class CameraNode : public Node
+    /// -------------------------------------------------------
+
+    class CameraNode : public Node
     {
 	public:
         CameraNode();
@@ -41,7 +46,7 @@ namespace SceneryEditorX
 	    inline static const char* modeNames[] = { "Orbit", "Fly" };
 	    inline static const char* typeNames[] = { "Perspective", "Orthographic" };
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
 	    CameraType cameraType = CameraType::Perspective;
 	    CameraMode mode = Orbit;
@@ -50,7 +55,7 @@ namespace SceneryEditorX
 	    Vec3 center = Vec3(0);
 	    Vec3 rotation = Vec3(0);
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
 	    bool useJitter = true;
 	    float zoom = 10.0f;
@@ -64,21 +69,20 @@ namespace SceneryEditorX
 	
 	    Vec2 extent = Vec2(1.0f);
 
-	    glm::mat4 GetView();
-	    glm::mat4 GetProj();
-	    glm::mat4 GetProjJittered();
-	    glm::mat4 GetProj(float zNear, float zFar);
-	
+	    Mat4 GetView();
+	    Mat4 GetProj();
+	    Mat4 GetProjJittered();
+	    Mat4 GetProj(float zNear, float zFar);
 	    Vec2 GetJitter();
 	    void NextJitter();
+
 	private:
 	    Vec2 jitter = Vec2(0);
 	    uint32_t jitterIndex = 0;
 
 		friend class AssetManager;
 	};
-	*/
 
 } // namespace SceneryEditorX
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

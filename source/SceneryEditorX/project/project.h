@@ -12,9 +12,11 @@
 */
 #pragma once
 #include <filesystem>
+#include <SceneryEditorX/asset/asset_manager.h>
+#include <SceneryEditorX/asset/editor_asset_manager.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
-#include "project_settings.h"
+#include <SceneryEditorX/project/project_settings.h>
 
 /// -------------------------------------------------------
 
@@ -28,14 +30,19 @@ namespace SceneryEditorX
 
 	    /// -------------------------------------------------------
 
-		const ProjectSettings &GetConfig() const { return config; }
+		const ProjectConfig &GetConfig() const { return config; }
+        int GetActiveAssetDirectory();
 
-	    GLOBAL Ref<Project> GetActive() { return activeProject; }
-        GLOBAL void SetActive(Ref<Project> project);
+        GLOBAL Ref<Project> GetActive() { return activeProject; }
+        GLOBAL void SetActive(const Ref<Project> &project);
 
         void CreateProject(std::string name, std::filesystem::path path);
 	    void Load(const std::filesystem::path &InPath);
 	    void Save(const std::filesystem::path &InPath);
+
+
+        GLOBAL Ref<AssetManagerBase> GetAssetManager() { return s_AssetManager; }
+        GLOBAL Ref<EditorAssetManager> GetEditorAssetManager() { return s_AssetManager.As<EditorAssetManager>(); }
 
 	    /// -------------------------------------------------------
 
@@ -52,17 +59,17 @@ namespace SceneryEditorX
 		}
 
 	private:
-        ProjectSettings config;
+        ProjectConfig config;
         std::string projectName;
         std::filesystem::path projectPath;
         std::filesystem::path binPath;
 
-        inline static Ref<Project> activeProject;
-
-        /// -------------------------------------------------------
+        inline LOCAL Ref<Project> activeProject;
 
 	};
 
-} // namespace SceneryEditorX
+    /// -------------------------------------------------------
+
+}
 
 /// -------------------------------------------------------

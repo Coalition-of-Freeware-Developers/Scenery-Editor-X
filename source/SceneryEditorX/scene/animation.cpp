@@ -17,6 +17,6 @@
 namespace SceneryEditorX
 {
 
-} // namespace SceneryEditorX
+}
 
 /// ----------------------------------------

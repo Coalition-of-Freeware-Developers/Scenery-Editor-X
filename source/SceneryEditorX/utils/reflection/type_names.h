@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <array>   /// std::array
+#include <array>
 #include <string>
 #include <string_view>
-#include <utility> /// std::index_sequence
+#include <utility>
 
 /// https://bitwizeshift.github.io/posts/2021/03/09/getting-an-unmangled-type-name-at-compile-time/
 

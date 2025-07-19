@@ -15,9 +15,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <random>
-#include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/utils/pointers.h>
 #include <thread>
 #include <vector>
+
+/// -------------------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -247,9 +249,8 @@ namespace SceneryEditorX
 						{
 		                    for (size_t op = 0; op < operationsPerObject; ++op)
 							{
-		                        size_t action = op % 3;
-		                        
-		                        switch (action)
+
+                                switch (size_t action = op % 3)
 								{
 		                            case 0:
 									{
@@ -307,11 +308,11 @@ namespace SceneryEditorX
 		// Memory leak test for the reference counting system
 		TEST_CASE("Ref and WeakRef memory leak test", "[Ref][WeakRef][memory]")
 		{
-		    constexpr size_t iterations = 10000;
-		    
-		    SECTION("Creating and destroying objects with cycles")
+
+            SECTION("Creating and destroying objects with cycles")
 			{
-		        class Node : public RefCounted
+                constexpr size_t iterations = 10000;
+                class Node : public RefCounted
 				{
 		        public:
 		            void SetNext(const Ref<Node>& next) { m_Next = next; }
@@ -332,8 +333,8 @@ namespace SceneryEditorX
 				{
 		        public:
 		            explicit TrackedNode(size_t* counter) : m_Counter(counter) {}
-		            
-		            ~TrackedNode() override
+
+                    virtual ~TrackedNode() override
 					{
 		                if (m_Counter) {
 		                    ++(*m_Counter);
@@ -475,5 +476,10 @@ namespace SceneryEditorX
 		    }
 		}
 
-	}  // namespace Tests
-}  // namespace SceneryEditorX
+	}
+
+    /// -------------------------------------------------------------------
+
+}
+
+/// -------------------------------------------------------------------

@@ -105,6 +105,16 @@ namespace SceneryEditorX
     }
     */
 
-} // namespace SceneryEditorX
+    Scene::Scene(const std::string &name, bool isEditorScene, bool initialize) : m_SceneID()
+    {
+    }
+
+    Scene::~Scene()
+    {
+    }
+
+
+
+}
 
 /// ---------------------------------------------------------

@@ -20,9 +20,9 @@ namespace SceneryEditorX
 	{
 	    struct Albedo
 	    {
-	        float r;
-	        float g;
-	        float b;
+            float r; /// Red channel
+            float g; /// Green channel
+            float b; /// Blue channel
             float a; /// Alpha channel
 	        std::string name;
 	    };
@@ -31,7 +31,7 @@ namespace SceneryEditorX
 	    {
             float r; /// OpenGL Red
             float g; /// OpenGL Green
-	        float b; /// This channel is sometimes black
+	        float b; /// OpenGL Blue - This channel is sometimes black
 	        std::string name;
 	    };
 	
@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	    {
             float r; /// Metallic
             float g; /// Roughness
-	        float b; /// This channel is sometimes black
+	        float b; /// OpenGL Blue - This channel is sometimes black
             std::string name;
 	    };
 	};
@@ -52,13 +52,14 @@ namespace SceneryEditorX
         std::string name;
     };
 
+    /// X-Plane legacy texture format
 	struct LegacyTextures
 	{
         struct Albedo
         {
-            float r;
-            float g;
-            float b;
+            float r; /// Red channel
+            float g; /// Green channel
+            float b; /// Blue channel
             float a; /// Alpha channel
             std::string name;
         };

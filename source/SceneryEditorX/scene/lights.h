@@ -11,15 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/scene/asset.h>
 #include <SceneryEditorX/scene/node.h>
 
-// -----------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/*
+    /// -------------------------------------------------------
+
 	enum LightType : uint8_t
 	{
 	    Point = 0,
@@ -27,6 +27,8 @@ namespace SceneryEditorX
 	    Directional = 2,
 	    LightTypeCount = 3,
 	};
+
+    /// -------------------------------------------------------
 
 	enum VolumetricType : uint8_t
     {
@@ -36,13 +38,15 @@ namespace SceneryEditorX
         VolumetricLightCount = 3,
     };
 
+    /// -------------------------------------------------------
+
     class LightNode : public Node
     {
 	public:
         LightNode();
         virtual void Serialize(Serializer &ser) override;
 
-		// -------------------------------------------------------
+		/// -------------------------------------------------------
 
 		inline static const char* typeNames[] = { "Point", "Spot", "Directional" };
 		inline static const char* volumetricTypeNames[] = { "Disabled", "ScreenSpace", "ShadowMap"};
@@ -76,8 +80,7 @@ namespace SceneryEditorX
 	private:
         friend class AssetManager;
     };
-    */
 
-} // namespace SceneryEditorX
+} 
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

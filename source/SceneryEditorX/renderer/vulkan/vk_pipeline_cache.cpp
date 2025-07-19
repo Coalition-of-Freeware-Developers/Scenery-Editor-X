@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_pipeline_cache.cpp
@@ -10,11 +10,11 @@
 * Created: 20/6/2025
 * -------------------------------------------------------
 */
+#include <filesystem>
+#include <fstream>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_pipeline_cache.h>
-#include <fstream>
-#include <filesystem>
 
 /// -------------------------------------------------------
 
@@ -39,7 +39,7 @@ namespace SceneryEditorX
     {
         std::vector<uint8_t> cacheData;
         const std::string cacheFilePath = PIPELINE_CACHE_DIR + PIPELINE_CACHE_FILE;
-        
+
         /// Check if directory exists, create if not
         if (!std::filesystem::exists(PIPELINE_CACHE_DIR))
 		{
@@ -55,14 +55,14 @@ namespace SceneryEditorX
 				{
                     size_t fileSize = static_cast<size_t>(file.tellg());
                     SEDX_CORE_INFO("Found pipeline cache file, size: {} bytes", fileSize);
-                    
+
                     if (fileSize > 0)
 					{
                         cacheData.resize(fileSize);
                         file.seekg(0);
                         file.read(reinterpret_cast<char*>(cacheData.data()), fileSize);
                         file.close();
-                        
+
                         SEDX_CORE_INFO("Successfully loaded pipeline cache from file: {}", cacheFilePath);
                         return cacheData;
                     }
@@ -73,8 +73,8 @@ namespace SceneryEditorX
                 SEDX_CORE_WARN("Failed to load pipeline cache from file: {} - {}", cacheFilePath, e.what());
             }
         }
-        
-        /// If unable to load from file or already initialized, retreve from the current cache
+
+        /// If unable to load from file or already initialized, retrieve from the current cache
         if (pipelineCache != nullptr && RenderContext::GetCurrentDevice() != VK_NULL_HANDLE)
         {
             /// Get the size of the pipeline cache data
@@ -172,7 +172,7 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR("Failed to get pipeline cache data! Error code: {}", static_cast<int>(result));
             return;
         }
-        
+
         SEDX_ASSERT(result == VK_SUCCESS && "Failed to get pipeline cache data!");
 
         if (!std::filesystem::exists(PIPELINE_CACHE_DIR))
@@ -189,7 +189,7 @@ namespace SceneryEditorX
 			{
                 file.write(reinterpret_cast<const char*>(pipelineCacheData.data()), pipelineCacheData.size());
                 file.close();
-                
+
                 SEDX_CORE_INFO("Pipeline cache saved to file: {} ({} bytes)", cacheFilePath, pipelineCacheData.size());
             }
             else

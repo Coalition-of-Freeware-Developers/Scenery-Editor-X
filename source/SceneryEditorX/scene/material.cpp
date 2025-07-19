@@ -11,29 +11,28 @@
 * -------------------------------------------------------
 */
 #include <fstream>
-#include <json.hpp>
+#include <nlohmann/json.hpp>
+#include <SceneryEditorX/asset/texture_manager.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/platform/file_manager.hpp>
 #include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/scene/texture_manager.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    /*
     /// Use nlohmann json for parsing material files
     using json = nlohmann::json;
 
     MaterialAsset::MaterialAsset(const std::string &path)
     {
-        Load(path);
+        MaterialAsset::Load(path);
     }
 
     MaterialAsset::~MaterialAsset()
     {
-        Unload();
+        MaterialAsset::Unload();
     }
 
     void MaterialAsset::Serialize(Serializer &ser)
@@ -88,8 +87,7 @@ namespace SceneryEditorX
     {
         return materialName;
     }
-    */
 
-} // namespace SceneryEditorX
+}
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

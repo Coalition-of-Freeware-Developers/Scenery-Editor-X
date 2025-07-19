@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/shaders/shader_library.h>
 #include <SceneryEditorX/serialization/serializer_writer.h>
 
 /// -------------------------------------------------------
@@ -90,7 +89,7 @@ namespace SceneryEditorX
 		bool Contains(std::string_view name) const;
 
 		Ref<Shader> LoadShader(std::string_view name);
-		static Ref<ShaderPack> CreateFromLibrary(Ref<ShaderLibrary> shaderLibrary, const std::filesystem::path& path);
+		static Ref<ShaderPack> CreateFromLibrary(const Ref<ShaderLibrary> &shaderLibrary, const std::filesystem::path& path);
 
 	private:
 		bool m_Loaded = false;

@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #include <minwinbase.h>
-#include <SceneryEditorX/core/application_data.h>
+#include <SceneryEditorX/core/application/application_data.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <sysinfoapi.h>
 #include <timezoneapi.h>

@@ -1,14 +1,27 @@
+/**
+* -------------------------------------------------------
+* Scenery Editor X - edX File Format
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* edXLibraryWriter.cpp
+* -------------------------------------------------------
+* Created: 27/5/2025
+* -------------------------------------------------------
+*/
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
-
 #include "../X-PlaneSceneryLibrary/XPLibraryPath.h"
 #include "../edX/edXLibraryFile.h"
 
-using namespace ProjectLibrarys;
+/// ----------------------------------------------------------------------------
+
+using namespace edx;
 
 std::string generateUniqueId()
 {
@@ -16,10 +29,8 @@ std::string generateUniqueId()
 
     std::string uniqueId;
     do
-    {
-        // Generate a random hexadecimal value
-        uniqueId = generateRandomHexValue();
-    } while (uniqueIds.count(uniqueId) > 0); // Check if the generated uniqueId already exists
+        uniqueId = edx::generateRandomHexValue(); // Generate a random hexadecimal value
+    while (uniqueIds.contains(uniqueId));         // Check if the generated uniqueId already exists
 
     uniqueIds.insert(uniqueId); // Add the generated uniqueId to the set
 
@@ -31,13 +42,13 @@ void writeEdxLibFile(const std::string &filename,
                      const std::string &libraryVersion,
                      const std::string &libraryAuthor,
                      const std::string &libraryGit,
-                     const std::vector<LibraryObject> &objects)
+                     const std::vector<edx::LibraryObject> &objects)
 {
     std::ofstream file(filename);
 
     if (!file.is_open())
     {
-        std::cerr << "Error opening file for writing." << std::endl;
+        std::cerr << "Error opening file for writing." << '\n';
         return;
     }
 
@@ -55,3 +66,5 @@ void writeEdxLibFile(const std::string &filename,
              << "AssetType=" << object.assetType << "Properties=" << object.properties << "\n";
     }
 }
+
+/// ----------------------------------------------------------------------------

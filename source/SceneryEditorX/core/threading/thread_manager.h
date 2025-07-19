@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * thread_manager.h
@@ -39,18 +39,18 @@ namespace SceneryEditorX
         ~ThreadManager();
 
         GLOBAL bool checkRenderThread();
-		
+
 		void Run();
         bool isRunning() const { return m_isRunning; }
         void Terminate();
 
-        void Wait(State waitForState);
-        void WaitAndSet(State waitForState, State setToState);
-        void Set(State setToState);
+        void Wait(State waitForState) const;
+        void WaitAndSet(State waitForState, State setToState) const;
+        void Set(State setToState) const;
 
         void NextFrame();
-        void BlockUntilRenderComplete();
-        void Kick();
+        void BlockUntilRenderComplete() const;
+        void Kick() const;
         void Pump();
 
     private:

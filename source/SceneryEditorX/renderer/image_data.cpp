@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * image_data.cpp
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #include <imgui/imgui.h>
-#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/image_data.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
 /// -------------------------------------------------------
@@ -94,7 +94,7 @@ namespace SceneryEditorX
 
     void SetImageLayout(const VkCommandBuffer cmdbuffer, const VkImage image,
                         const VkImageLayout oldImageLayout, const VkImageLayout newImageLayout,
-                        const VkImageSubresourceRange &subresourceRange, 
+                        const VkImageSubresourceRange &subresourceRange,
                         const VkPipelineStageFlags srcStageMask, const VkPipelineStageFlags dstStageMask)
     {
         /// Create an image barrier object
@@ -409,7 +409,7 @@ namespace SceneryEditorX
 			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-			// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
+			// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
 			// Source pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 			// Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
 			vkCmdPipelineBarrier(
@@ -587,6 +587,6 @@ namespace SceneryEditorX
     }
     */
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

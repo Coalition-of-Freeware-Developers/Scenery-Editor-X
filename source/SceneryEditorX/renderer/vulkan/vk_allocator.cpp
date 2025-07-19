@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_allocator.cpp
@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #define VMA_IMPLEMENTATION
-#include <SceneryEditorX/core/application_data.h>
-#include <SceneryEditorX/core/memory.h>
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include <SceneryEditorX/core/application/application_data.h>
+#include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <vma/vk_mem_alloc.h>
 
 /// -------------------------------------------------------
@@ -29,7 +29,7 @@ namespace SceneryEditorX
 	/**
 	 * @struct VulkanAllocatorData
 	 * @brief Stores data about Vulkan memory allocations and usage statistics.
-	 * 
+	 *
 	 * This structure maintains the main VMA allocator object and tracks memory usage metrics
 	 * including allocated bytes, freed bytes, allocation counts, and peak memory usage.
 	 * It serves as the primary interface to the Vulkan Memory Allocator (VMA) library.
@@ -38,40 +38,40 @@ namespace SceneryEditorX
 	{
 	    /** @brief VMA allocator instance used for all memory operations */
 	    VmaAllocator Allocator = nullptr;
-	
+
 	    /** @brief Total bytes allocated across all memory heaps */
 	    uint64_t BytesAllocated = 0;
-	
+
 	    /** @brief Total bytes freed since allocator creation */
 	    uint64_t BytesFreed = 0;
-	
+
 	    /** @brief Number of currently active allocations */
 	    uint64_t CurrentAllocations = 0;
-	
+
 	    /** @brief Highest recorded memory usage in bytes */
 	    uint64_t PeakMemoryUsage = 0;
 	};
 
     /**
      * @brief Per memory type statistics tracking array.
-     * 
+     *
      * This array stores memory allocation statistics for each Vulkan memory type.
      * Each element corresponds to a specific memory type index (up to VK_MAX_MEMORY_TYPES)
      * and tracks metrics like bytes allocated, bytes freed, and allocation counts
      * for that specific memory type.
-     * 
-     * This data is used for detailed reporting, memory usage optimization, 
+     *
+     * This data is used for detailed reporting, memory usage optimization,
      * and identifying which memory types are under the most pressure.
      */
     GLOBAL std::array<VulkanAllocatorData, VK_MAX_MEMORY_TYPES> memoryTypeStats;
 
 	/**
 	 * @brief Static global instance of the Vulkan memory allocator data.
-	 * 
+	 *
 	 * This pointer holds the singleton instance of VulkanAllocatorData that contains
-	 * the VMA allocator and related memory statistics. It's initialized in the 
+	 * the VMA allocator and related memory statistics. It's initialized in the
 	 * MemoryAllocator::Init() method and destroyed in MemoryAllocator::Shutdown().
-	 * 
+	 *
 	 * The singleton pattern allows multiple components to access the same allocator
 	 * instance throughout the application without having to pass it explicitly.
 	 * This is particularly important for utility functions like those in the
@@ -83,7 +83,7 @@ namespace SceneryEditorX
 	/**
 	 * @enum AllocationType
 	 * @brief Categorizes the type of Vulkan memory allocation.
-	 * 
+	 *
 	 * This enumeration distinguishes between different types of GPU allocations,
 	 * which affects how they're tracked and managed by the memory allocator.
 	 * Different allocation types may have different memory requirements,
@@ -95,11 +95,11 @@ namespace SceneryEditorX
         Buffer = 1,		///< @brief Buffer allocation (uniform buffers, vertex buffers, etc.)
         Image  = 2		///< @brief Image allocation (textures, render targets, etc.)
     };
-	
+
 	/**
 	 * @struct AllocInfo
 	 * @brief Tracks information about a Vulkan memory allocation.
-	 * 
+	 *
 	 * This structure is used internally by the memory allocator to keep track of
 	 * metadata about each allocation, including its size and type (buffer or image).
 	 * This information is necessary for memory statistics, defragmentation decisions,
@@ -113,17 +113,17 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Global map tracking information about all active allocations.
-	 * 
+	 *
 	 * This map maintains a record of all current allocations managed by the VulkanMemoryAllocator.
 	 * Each entry maps a VmaAllocation handle to its corresponding AllocInfo structure,
 	 * which contains metadata about the allocation such as its size and type.
-	 * 
+	 *
 	 * The map is used for:
 	 * - Tracking memory usage statistics
 	 * - Properly cleaning up resources during deallocation
 	 * - Identifying candidate allocations for defragmentation
 	 * - Supporting debug and profiling operations
-	 * 
+	 *
 	 * This is a global static instance shared across all memory allocation operations.
 	 */
 	GLOBAL std::map<VmaAllocation, AllocInfo> AllocationMap;
@@ -132,24 +132,24 @@ namespace SceneryEditorX
 
     /**
      * @brief Constructs a memory allocator with the given tag.
-     * 
+     *
      * Creates a new memory allocator instance with a specified tag name
      * for identification and logging purposes. The tag helps track
      * allocations from different systems within the application.
-     * 
+     *
      * @param tag A string identifier for this allocator instance
      */
     MemoryAllocator::MemoryAllocator(std::string tag) : Tag_(std::move(tag)), currentStrategy() { }
 
     /**
      * @brief Destructor for the memory allocator.
-     * 
+     *
      * Cleans up all allocator resources by calling Shutdown() which:
      * - Releases any remaining allocations tracked by this allocator
      * - Destroys all memory pools created by this allocator
      * - Destroys the VMA allocator instance
      * - Releases all internal tracking structures
-     * 
+     *
      * This ensures proper cleanup of all Vulkan memory resources
      * to prevent memory leaks when the allocator is destroyed.
      */
@@ -162,11 +162,11 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Begins a defragmentation process for GPU memory.
-	 * 
+	 *
 	 * This function initiates the memory defragmentation process.
 	 * It creates a defragmentation context that can be used to optimize memory layout
 	 * and reduce fragmentation in GPU memory.
-	 * 
+	 *
 	 * @param flags Defragmentation flags to control the algorithm used
 	 */
     void MemoryAllocator::BeginDefragmentation(VmaDefragmentationFlags flags)
@@ -220,7 +220,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn EndDefragmentation
 	 * @brief Ends the defragmentation process and applies the optimizations.
-	 * 
+	 *
 	 * This function finalizes the defragmentation process by processing
 	 * all marked allocations and rearranging them to reduce fragmentation.
 	 */
@@ -282,7 +282,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn MarkForDefragmentation
 	 * @brief Marks an allocation to be included in the defragmentation process
-	 * 
+	 *
 	 * This function adds a specific allocation to the list of allocations
 	 * that will be considered for defragmentation when EndDefragmentation is called.
 	 *
@@ -408,7 +408,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn AllocateImage
 	 * @brief Allocates a GPU image with the specified properties.
-	 * 
+	 *
 	 * This function creates a Vulkan image and allocates memory for it using the VMA allocator.
 	 * It sets up the image creation info and allocation info, and returns the created image
 	 * and its associated allocation handle.
@@ -458,7 +458,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn Free
 	 * @brief Frees the memory associated with a Vulkan allocation.
-	 * 
+	 *
 	 * This function releases the memory allocated for a specific Vulkan resource
 	 * (buffer or image) and updates the internal tracking structures to reflect
 	 * the deallocation. It ensures that all resources are properly cleaned up
@@ -483,7 +483,7 @@ namespace SceneryEditorX
     /**
 	 * @fn DestroyImage
 	 * @brief Destroys a Vulkan image and its associated memory allocation.
-	 * 
+	 *
 	 * This function releases the Vulkan image and its memory allocation,
 	 * ensuring that all resources are properly cleaned up to prevent memory leaks.
 	 *
@@ -561,13 +561,13 @@ namespace SceneryEditorX
 
     /**
      * @brief Gets the current custom buffer size.
-     * 
+     *
      * This function returns the custom buffer size that has been set for the memory allocator,
      * or the default value if no custom size has been configured. The custom buffer size affects
      * how memory is allocated for larger buffers and can be optimized for specific workloads.
-     * 
+     *
      * @return The current custom buffer size in bytes.
-     * 
+     *
      * @note If customBufferSize is zero, this function will return DEFAULT_CUSTOM_BUFFER_SIZE.
      */
     VkDeviceSize MemoryAllocator::GetCustomBufferSize()
@@ -578,18 +578,18 @@ namespace SceneryEditorX
 
     /**
      * @brief Sets the custom buffer size for allocations if supported by the device
-     * 
+     *
      * This function configures the custom buffer size used by the memory allocator,
      * but only if the specified size meets the device's requirements. It validates
      * that:
      * 1. The buffer size is not zero
      * 2. The buffer size is properly aligned with the device's non-coherent atom size
      * 3. The device has at least one memory type with DEVICE_LOCAL_BIT property
-     * 
+     *
      * Setting a custom buffer size can optimize memory allocation patterns for specific
      * workloads and memory access patterns. The value affects how larger buffers are
      * allocated and managed by the allocator.
-     * 
+     *
      * @param size The desired buffer size in bytes.
      * @param device Reference to the Vulkan device for checking compatibility.
      * @return true if the custom buffer size was set successfully.
@@ -729,10 +729,10 @@ namespace SceneryEditorX
 
     /**
 	 * @brief Checks if memory usage is exceeding the warning threshold
-	 * 
+	 *
 	 * This function queries the VMA budget and determines if memory usage
 	 * exceeds the configured warning threshold.
-	 * 
+	 *
 	 * @return true if the memory is over budget (exceeding threshold)
 	 * @return false if memory usage is within acceptable limits
 	 */
@@ -839,7 +839,7 @@ namespace SceneryEditorX
         memAllocatorData = hnew VulkanAllocatorData();
 
         VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.vulkanApiVersion = apiVersion; 
+        allocatorInfo.vulkanApiVersion = apiVersion;
         allocatorInfo.physicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
         allocatorInfo.device = device->GetDevice();
         allocatorInfo.instance = RenderContext::GetInstance();
@@ -911,10 +911,10 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Gets the current memory allocation statistics.
-	 * 
+	 *
 	 * This function queries the VMA for current allocation statistics
 	 * and returns them in a structured format.
-	 * 
+	 *
 	 * @return AllocationStats containing memory usage information.
 	 */
     MemoryAllocator::AllocationStats MemoryAllocator::GetStats()
@@ -952,7 +952,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn PrintDetailedStats
 	 * @brief Prints detailed memory allocation statistics to the log
-	 * 
+	 *
 	 * This function outputs comprehensive memory usage information to help
 	 * with debugging and monitoring memory usage patterns.
 	 *
@@ -1029,7 +1029,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn ResetStats
 	 * @brief Resets memory allocation statistics tracking
-	 * 
+	 *
 	 * This function clears the statistics counters without affecting
 	 * actual memory allocations.
 	 *
@@ -1137,10 +1137,10 @@ namespace SceneryEditorX
 	/**
 	 * @fn GetMemoryBudget
 	 * @brief Gets the current memory budget information
-	 * 
+	 *
 	 * This function retrieves memory budget details from the VMA
 	 * to provide information about total memory and current usage.
-	 * 
+	 *
 	 * @return MemoryBudget containing memory usage and budget information
 	 */
     MemoryAllocator::MemoryBudget MemoryAllocator::GetMemoryBudget() const
@@ -1254,7 +1254,7 @@ namespace SceneryEditorX
      * allowing for more efficient memory allocation. It takes a vector of sizes,
      * a usage flag, and a memory usage type. The function returns a vector of
      * BatchBufferAllocation structures containing the allocated buffers and their sizes.
-     * 
+     *
      * @param sizes A vector of sizes for the buffers to be allocated
      * @param usage The usage flag for the buffers (e.g., VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
      * @param memoryUsage The memory usage type (e.g., VMA_MEMORY_USAGE_GPU_ONLY)
@@ -1317,13 +1317,13 @@ namespace SceneryEditorX
             }
 
             allocation.size = alignedSize;
-			
+
             /// Update allocation tracking
             totalAllocation += allocInfo.size;
             memAllocatorData->BytesAllocated += allocInfo.size;
             memAllocatorData->BytesAllocated++;
             memAllocatorData->CurrentAllocations++;
-			
+
             /// Update per-memory-type statistics
             const uint32_t memoryTypeIndex = allocInfo.memoryType;
             memoryTypeStats[memoryTypeIndex].BytesAllocated += allocInfo.size;

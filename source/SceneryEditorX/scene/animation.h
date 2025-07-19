@@ -11,14 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/asset/asset.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	/*
 	class Animation : public Asset
 	{
 	public:
@@ -27,18 +25,17 @@ namespace SceneryEditorX
 	
 	    /// -------------------------------------------------------
 	
-	    //virtual void Load(const std::string &path) override;
-	    //virtual void Unload() override;
-	    //virtual bool IsLoaded() const;
+	    virtual void Load(const std::string &path) override;
+	    virtual void Unload() override;
+	    virtual bool IsLoaded() const;
 	    virtual const std::string &GetPath() const;
 	    virtual const std::string &GetName() const;
-	    //virtual void SetName(const std::string &name) override;
+	    virtual void SetName(const std::string &name) override;
 
     private:
         friend class AssetManager;
 	};
-	*/
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <SceneryEditorX/scene/asset_manager.h>
+#include <SceneryEditorX/core/memory/buffer.h>
+#include <SceneryEditorX/asset/asset_manager.h>
 #ifdef CreateDirectory
 #undef CreateDirectory
 #undef DeleteFile

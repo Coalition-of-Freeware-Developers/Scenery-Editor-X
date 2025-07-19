@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * thread_manager.cpp
@@ -22,13 +22,13 @@ namespace SceneryEditorX
 	{
 	    CRITICAL_SECTION m_CriticalSection;
 	    CONDITION_VARIABLE m_ConditionVariable;
-	
+
 	    ThreadManager::State m_State = ThreadManager::State::Idle;
 	};
 
 	static std::thread::id s_threadID;
 
-	ThreadManager::ThreadManager(ThreadingPolicy policy) : renderThread("Render Thread"), m_policy(policy)
+	ThreadManager::ThreadManager(const ThreadingPolicy policy) : m_policy(policy), renderThread("Render Thread")
     {
         m_Data = new RenderThreadData();
 
@@ -46,12 +46,12 @@ namespace SceneryEditorX
 
         s_threadID = std::thread::id();
 	}
-	
+
 	bool ThreadManager::checkRenderThread()
 	{
         return s_threadID == std::this_thread::get_id();
 	}
-	
+
 	void ThreadManager::Run()
 	{
         m_isRunning = true;
@@ -60,7 +60,7 @@ namespace SceneryEditorX
 
         s_threadID = renderThread.GetThreadID();
 	}
-	
+
 	void ThreadManager::Terminate()
 	{
         m_isRunning = false;
@@ -71,9 +71,9 @@ namespace SceneryEditorX
 
         s_threadID = std::thread::id();
 	}
-	
-	void ThreadManager::Wait(State waitForState)
-	{
+
+	void ThreadManager::Wait(State waitForState) const
+    {
         if (m_policy == ThreadingPolicy::SingleThreaded)
             return;
 
@@ -85,9 +85,9 @@ namespace SceneryEditorX
         }
         LeaveCriticalSection(&m_Data->m_CriticalSection);
 	}
-	
-	void ThreadManager::WaitAndSet(State waitForState, State setToState)
-	{
+
+	void ThreadManager::WaitAndSet(State waitForState, State setToState) const
+    {
         if (m_policy == ThreadingPolicy::SingleThreaded)
             return;
 
@@ -99,9 +99,9 @@ namespace SceneryEditorX
         WakeAllConditionVariable(&m_Data->m_ConditionVariable);
         LeaveCriticalSection(&m_Data->m_CriticalSection);
 	}
-	
-	void ThreadManager::Set(State setToState)
-	{
+
+	void ThreadManager::Set(State setToState) const
+    {
         if (m_policy == ThreadingPolicy::SingleThreaded)
             return;
 
@@ -110,29 +110,29 @@ namespace SceneryEditorX
         WakeAllConditionVariable(&m_Data->m_ConditionVariable);
         LeaveCriticalSection(&m_Data->m_CriticalSection);
 	}
-	
+
 	void ThreadManager::NextFrame()
 	{
         ++appThreadFrame;
         Renderer::SwapQueues();
 	}
-	
-	void ThreadManager::BlockUntilRenderComplete()
-	{
+
+	void ThreadManager::BlockUntilRenderComplete() const
+    {
         if (m_policy == ThreadingPolicy::SingleThreaded)
             return;
 
         Wait(State::Idle);
 	}
-	
-	void ThreadManager::Kick()
-	{
+
+	void ThreadManager::Kick() const
+    {
         if (m_policy == ThreadingPolicy::MultiThreaded)
             Set(State::Kick);
         else
             Renderer::WaitAndRender(this);
     }
-	
+
 	void ThreadManager::Pump()
 	{
         NextFrame();

@@ -108,11 +108,11 @@
 */
 
 #include <SceneryEditorX/resource.h>
-#include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/utils/pointers.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/platform/platform_states.h>
+#include <SceneryEditorX/utils/static_states.h>
 
 /**
 ##########################################################
@@ -128,7 +128,6 @@
 	#include <SceneryEditorX/logging/profiler.hpp>
 	#define TRACY_ENABLE
 #endif
-
 
 /// -------------------------------------------------------
 
@@ -168,4 +167,4 @@ void ErrMsg(const T &errorMessage)
 #endif
 };
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

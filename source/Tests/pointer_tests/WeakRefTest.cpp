@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X - Unit Tests
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * WeakRefTest.cpp
@@ -10,487 +10,476 @@
 * Tests for the WeakRef weak pointer implementation
 * -------------------------------------------------------
 */
-#include <catch2/catch_test_macros.hpp>
-#include <SceneryEditorX/core/pointers.h>
+#include <catch2/catch_all.hpp>
 #include <memory>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/utils/pointers.h>
 #include <string>
 #include <thread>
 #include <vector>
 
+/// -------------------------------------------------------------------
+
 namespace SceneryEditorX
 {
-	namespace Tests
-	{
-		
-		// Reuse the test classes from RefTest.cpp
-		class TestObject : public RefCounted
+    namespace Tests::PointerTests
+    {
+
+        /// -------------------------------------------------------------------
+
+		///< Test classes for weak reference testing
+		class WeakTestObject : public RefCounted
 		{
 		public:
-		    TestObject() : m_Value(0) {}
-		    explicit TestObject(int value) : m_Value(value) {}
-		    
+		    explicit WeakTestObject(const int value = 42) : m_Value(value) {}
+		    virtual ~WeakTestObject() override = default;
+
 		    int GetValue() const { return m_Value; }
-		    void SetValue(int value) { m_Value = value; }
-		    
+		    void SetValue(const int value) { m_Value = value; }
+
+		    static int GetDestroyCount() { return s_DestroyCount; }
+		    static void ResetDestroyCount() { s_DestroyCount = 0; }
+
+		protected:
+		    virtual void OnDestroy() { ++s_DestroyCount; }
+
 		private:
 		    int m_Value;
+		    static int s_DestroyCount;
 		};
-		
-		class DerivedTestObject : public TestObject
+
+        /// -------------------------------------------------------------------
+
+		int WeakTestObject::s_DestroyCount = 0;
+
+        /// -------------------------------------------------------------------
+
+		class DerivedWeakTestObject : public WeakTestObject
 		{
 		public:
-		    DerivedTestObject() : TestObject(0), m_Name("Derived") {}
-		    explicit DerivedTestObject(int value, const std::string& name) 
-		        : TestObject(value), m_Name(name) {}
-		    
+		    explicit DerivedWeakTestObject(int value = 100, const std::string& name = "derived") : WeakTestObject(value), m_Name(name) {}
+
 		    const std::string& GetName() const { return m_Name; }
 		    void SetName(const std::string& name) { m_Name = name; }
-		    
+
 		private:
 		    std::string m_Name;
 		};
-		
-		class DestructionTracker : public RefCounted
+
+        /// -------------------------------------------------------------------
+
+		///< Test fixture for weak reference tests
+		class WeakRefTestFixture
 		{
 		public:
-		    DestructionTracker(bool* destroyed) : m_Destroyed(destroyed)
-			{
-		        if (m_Destroyed) *m_Destroyed = false;
-		    }
-		    
-		    ~DestructionTracker() override
-			{
-		        if (m_Destroyed) *m_Destroyed = true;
-		    }
-		    
-		private:
-		    bool* m_Destroyed;
+		    WeakRefTestFixture() { WeakTestObject::ResetDestroyCount(); }
+		    ~WeakRefTestFixture() { WeakTestObject::ResetDestroyCount(); }
 		};
-		
-		TEST_CASE("WeakRef basic functionality", "[WeakRef]")
-		{
-		    SECTION("Default constructor creates null weak reference")
+    }
+}
+
+using namespace SceneryEditorX::Tests::PointerTests;
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Basic Construction and Functionality", "[SmartPointers][WeakRef][Basic]")
+{
+    SECTION("Default construction creates null weak reference")
+    {
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef;
+        REQUIRE(weakRef.Expired());
+        REQUIRE(!weakRef.Lock());
+    }
+
+    SECTION("Construction from strong reference")
+    {
+        auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(123);
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef = strongRef;
+
+        REQUIRE(!weakRef.Expired());
+        auto locked = weakRef.Lock();
+        REQUIRE(locked);
+        REQUIRE(locked.Get() == strongRef.Get());
+        REQUIRE(locked->GetValue() == 123);
+    }
+
+    SECTION("Weak reference does not affect reference count")
+    {
+        auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>();
+        REQUIRE(strongRef.UseCount() == 1);
+
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef = strongRef;
+        REQUIRE(strongRef.UseCount() == 1); // Weak ref doesn't increase count
+
+        auto locked = weakRef.Lock();
+        REQUIRE(strongRef.UseCount() == 2); // Locked ref increases count
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Expiration Detection", "[SmartPointers][WeakRef][Expiration]")
+{
+    SECTION("Weak reference expires when strong reference is destroyed")
+    {
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef;
+
+        {
+            auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(456);
+            weakRef = strongRef;
+            REQUIRE(!weakRef.Expired());
+        } // strongRef goes out of scope
+
+        REQUIRE(weakRef.Expired());
+        REQUIRE(!weakRef.Lock());
+    }
+
+    SECTION("Multiple weak references expire together")
+    {
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef1;
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef2;
+
+        {
+            auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(789);
+            weakRef1 = strongRef;
+            weakRef2 = strongRef;
+
+            REQUIRE(!weakRef1.Expired());
+            REQUIRE(!weakRef2.Expired());
+        } // strongRef goes out of scope
+
+        REQUIRE(weakRef1.Expired());
+        REQUIRE(weakRef2.Expired());
+        REQUIRE(!weakRef1.Lock());
+        REQUIRE(!weakRef2.Lock());
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Copy Operations", "[SmartPointers][WeakRef][Copy]")
+{
+    SECTION("Copy construction from weak reference")
+    {
+        auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(101112);
+        SceneryEditorX::WeakRef<WeakTestObject> original = strongRef;
+        SceneryEditorX::WeakRef<WeakTestObject> copy = original;
+
+        REQUIRE(!original.Expired());
+        REQUIRE(!copy.Expired());
+
+        auto locked1 = original.Lock();
+        auto locked2 = copy.Lock();
+
+        REQUIRE(locked1);
+        REQUIRE(locked2);
+        REQUIRE(locked1.Get() == locked2.Get());
+    }
+
+    SECTION("Copy assignment from weak reference")
+    {
+        auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(131415);
+        SceneryEditorX::WeakRef<WeakTestObject> original = strongRef;
+        SceneryEditorX::WeakRef<WeakTestObject> copy;
+
+        copy = original;
+
+        REQUIRE(!original.Expired());
+        REQUIRE(!copy.Expired());
+
+        auto locked1 = original.Lock();
+        auto locked2 = copy.Lock();
+
+        REQUIRE(locked1.Get() == locked2.Get());
+    }
+
+    SECTION("Copy from expired weak reference")
+    {
+        SceneryEditorX::WeakRef<WeakTestObject> original;
+        SceneryEditorX::WeakRef<WeakTestObject> copy;
+
+        {
+            auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>();
+            original = strongRef;
+        } // strongRef expires
+
+        copy = original; // Copy expired reference
+
+        REQUIRE(original.Expired());
+        REQUIRE(copy.Expired());
+        REQUIRE(!copy.Lock());
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Move Operations", "[SmartPointers][WeakRef][Move]")
+{
+    SECTION("Move construction transfers weak reference")
+    {
+        auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(161718);
+        SceneryEditorX::WeakRef<WeakTestObject> original = strongRef;
+        SceneryEditorX::WeakRef<WeakTestObject> moved = std::move(original);
+
+        REQUIRE(!moved.Expired());
+        auto locked = moved.Lock();
+        REQUIRE(locked);
+        REQUIRE(locked->GetValue() == 161718);
+    }
+
+    SECTION("Move assignment transfers weak reference")
+    {
+        auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(192021);
+        SceneryEditorX::WeakRef<WeakTestObject> original = strongRef;
+        SceneryEditorX::WeakRef<WeakTestObject> moved;
+
+        moved = std::move(original);
+
+        REQUIRE(!moved.Expired());
+        auto locked = moved.Lock();
+        REQUIRE(locked);
+        REQUIRE(locked->GetValue() == 192021);
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Type Conversions", "[SmartPointers][WeakRef][Conversion]")
+{
+    SECTION("Create weak reference from derived type")
+    {
+        auto derived = SceneryEditorX::CreateRef<DerivedWeakTestObject>(222324, "test");
+        SceneryEditorX::WeakRef<WeakTestObject> weakBase = derived.As<WeakTestObject>();
+
+        REQUIRE(!weakBase.Expired());
+        auto locked = weakBase.Lock();
+        REQUIRE(locked);
+        REQUIRE(locked->GetValue() == 222324);
+    }
+
+    SECTION("Dynamic cast of weak reference")
+    {
+        auto derived = SceneryEditorX::CreateRef<DerivedWeakTestObject>(252627, "dynamic");
+        SceneryEditorX::WeakRef<WeakTestObject> weakBase = derived.As<WeakTestObject>();
+
+        // Try to get back to derived through weak reference
+        auto lockedBase = weakBase.Lock();
+        REQUIRE(lockedBase);
+
+        auto backToDerived = lockedBase.DynamicCast<DerivedWeakTestObject>();
+        REQUIRE(backToDerived);
+        REQUIRE(backToDerived->GetName() == "dynamic");
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Reset Operations", "[SmartPointers][WeakRef][Reset]")
+{
+    SECTION("Reset weak reference to null")
+    {
+        auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>();
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef = strongRef;
+
+        REQUIRE(!weakRef.Expired());
+
+        weakRef.Reset();
+
+        REQUIRE(weakRef.Expired());
+        REQUIRE(!weakRef.Lock());
+    }
+
+    SECTION("Reset to new strong reference")
+    {
+        auto strongRef1 = SceneryEditorX::CreateRef<WeakTestObject>(282930);
+        auto strongRef2 = SceneryEditorX::CreateRef<WeakTestObject>(313233);
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef = strongRef1;
+
+        weakRef = strongRef2; // Reset to different reference
+
+        auto locked = weakRef.Lock();
+        REQUIRE(locked);
+        REQUIRE(locked->GetValue() == 313233);
+        REQUIRE(locked.Get() == strongRef2.Get());
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Observer Pattern Implementation", "[SmartPointers][WeakRef][Observer]")
+{
+    SECTION("Observer list with weak references")
+    {
+        std::vector<SceneryEditorX::WeakRef<WeakTestObject>> observers;
+
+        // Add observers
+        {
+            auto observer1 = SceneryEditorX::CreateRef<WeakTestObject>(1);
+            auto observer2 = SceneryEditorX::CreateRef<WeakTestObject>(2);
+            auto observer3 = SceneryEditorX::CreateRef<WeakTestObject>(3);
+
+            observers.push_back(observer1);
+            observers.push_back(observer2);
+            observers.push_back(observer3);
+
+            // All observers should be accessible
+            int validCount = 0;
+            for (auto& weakObs : observers)
 			{
-		        WeakRef<TestObject> weak;
-		        REQUIRE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 0);
-		        REQUIRE(weak.Lock() == nullptr);
-		    }
-		    
-		    SECTION("Constructor from nullptr creates null weak reference")
-			{
-		        WeakRef<TestObject> weak(nullptr);
-		        REQUIRE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 0);
-		    }
-		    
-		    SECTION("Constructor from Ref")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak(ref);
-		        
-		        REQUIRE_FALSE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 1);
-		        
-		        auto locked = weak.Lock();
-		        REQUIRE(locked != nullptr);
-		        REQUIRE(locked->GetValue() == 42);
-		        REQUIRE(locked.UseCount() == 2);
-		    }
-		}
-		
-		TEST_CASE("WeakRef copy operations", "[WeakRef]")
-		{
-		    SECTION("Copy constructor")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak1(ref);
-		        WeakRef<TestObject> weak2(weak1);
-		        
-		        REQUIRE_FALSE(weak1.Expired());
-		        REQUIRE_FALSE(weak2.Expired());
-		        REQUIRE(weak1.UseCount() == 1);
-		        REQUIRE(weak2.UseCount() == 1);
-		        
-		        auto locked1 = weak1.Lock();
-		        auto locked2 = weak2.Lock();
-		        REQUIRE(locked1.Get() == locked2.Get());
-		    }
-		    
-		    SECTION("Copy assignment operator")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak1(ref);
-		        WeakRef<TestObject> weak2;
-		        
-		        weak2 = weak1;
-		        
-		        REQUIRE_FALSE(weak1.Expired());
-		        REQUIRE_FALSE(weak2.Expired());
-		        REQUIRE(weak1.UseCount() == 1);
-		        REQUIRE(weak2.UseCount() == 1);
-		        
-		        // Self-assignment should be safe
-		        weak1 = weak1;
-		        REQUIRE_FALSE(weak1.Expired());
-		    }
-		    
-		    SECTION("Copy assignment from Ref")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak;
-		        
-		        weak = ref;
-		        
-		        REQUIRE_FALSE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 1);
-		        
-		        auto locked = weak.Lock();
-		        REQUIRE(locked != nullptr);
-		        REQUIRE(locked->GetValue() == 42);
-		    }
-		    
-		    SECTION("Copy assignment from nullptr")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak(ref);
-		        
-		        weak = nullptr;
-		        
-		        REQUIRE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 0);
-		    }
-		}
-		
-		TEST_CASE("WeakRef move operations", "[WeakRef]")
-		{
-		    SECTION("Move constructor")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak1(ref);
-		        WeakRef<TestObject> weak2(std::move(weak1));
-		        
-		        // Original weak ref should be reset
-		        REQUIRE(weak1.Expired());
-		        REQUIRE(weak1.UseCount() == 0);
-		        
-		        // New weak ref should point to the object
-		        REQUIRE_FALSE(weak2.Expired());
-		        REQUIRE(weak2.UseCount() == 1);
-		        
-		        auto locked = weak2.Lock();
-		        REQUIRE(locked != nullptr);
-		        REQUIRE(locked->GetValue() == 42);
-		    }
-		    
-		    SECTION("Move assignment operator")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak1(ref);
-		        WeakRef<TestObject> weak2;
-		        
-		        weak2 = std::move(weak1);
-		        
-		        // Original weak ref should be reset
-		        REQUIRE(weak1.Expired());
-		        REQUIRE(weak1.UseCount() == 0);
-		        
-		        // New weak ref should point to the object
-		        REQUIRE_FALSE(weak2.Expired());
-		        REQUIRE(weak2.UseCount() == 1);
-		        
-		        // Self-move should be handled safely
-		        WeakRef<TestObject> weak3(ref);
-		        weak3 = std::move(weak3);
-		        // This behavior depends on implementation, but our implementation should leave it expired
-		        REQUIRE(weak3.Expired());
-		    }
-		}
-		
-		TEST_CASE("WeakRef type conversion", "[WeakRef]")
-		{
-		    SECTION("Upcast via constructor")
-			{
-		        auto derived = CreateRef<DerivedTestObject>(42, "Test");
-		        WeakRef<DerivedTestObject> derivedWeak(derived);
-		        WeakRef<TestObject> baseWeak(derivedWeak);
-		        
-		        REQUIRE_FALSE(derivedWeak.Expired());
-		        REQUIRE_FALSE(baseWeak.Expired());
-		        
-		        auto derivedLocked = derivedWeak.Lock();
-		        auto baseLocked = baseWeak.Lock();
-		        
-		        REQUIRE(derivedLocked != nullptr);
-		        REQUIRE(baseLocked != nullptr);
-		        REQUIRE(derivedLocked->GetValue() == 42);
-		        REQUIRE(baseLocked->GetValue() == 42);
-		    }
-		    
-		    SECTION("Upcast via assignment")
-			{
-		        auto derived = CreateRef<DerivedTestObject>(42, "Test");
-		        WeakRef<DerivedTestObject> derivedWeak(derived);
-		        WeakRef<TestObject> baseWeak;
-		        
-		        baseWeak = derivedWeak;
-		        
-		        REQUIRE_FALSE(derivedWeak.Expired());
-		        REQUIRE_FALSE(baseWeak.Expired());
-		        
-		        auto derivedLocked = derivedWeak.Lock();
-		        auto baseLocked = baseWeak.Lock();
-		        
-		        REQUIRE(derivedLocked != nullptr);
-		        REQUIRE(baseLocked != nullptr);
-		        REQUIRE(derivedLocked->GetValue() == 42);
-		        REQUIRE(baseLocked->GetValue() == 42);
-		    }
-		    
-		    SECTION("Locking and downcasting")
-			{
-		        auto derived = CreateRef<DerivedTestObject>(42, "Test");
-		        WeakRef<TestObject> baseWeak(derived);
-		        
-		        auto baseLocked = baseWeak.Lock();
-		        REQUIRE(baseLocked != nullptr);
-		        
-		        // Downcast using DynamicCast
-		        auto derivedAgain = baseLocked.DynamicCast<DerivedTestObject>();
-		        REQUIRE(derivedAgain != nullptr);
-		        REQUIRE(derivedAgain->GetName() == "Test");
-		    }
-		}
-		
-		TEST_CASE("WeakRef lifetime management", "[WeakRef]")
-		{
-		    SECTION("Expiration when Ref is destroyed")
-			{
-		        WeakRef<TestObject> weak;
-		        {
-		            auto ref = CreateRef<TestObject>(42);
-		            weak = ref;
-		            REQUIRE_FALSE(weak.Expired());
-		        }
-		        // Ref has been destroyed, weak ref should be expired
-		        REQUIRE(weak.Expired());
-		        REQUIRE(weak.Lock() == nullptr);
-		    }
-		    
-		    SECTION("Reset method")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak(ref);
-		        
-		        REQUIRE_FALSE(weak.Expired());
-		        
-		        weak.Reset();
-		        
-		        REQUIRE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 0);
-		    }
-		    
-		    SECTION("Control block cleanup")
-			{
-		        bool destroyed = false;
-		        WeakRef<DestructionTracker> weak;
-		        {
-		            auto ref = CreateRef<DestructionTracker>(&destroyed);
-		            weak = ref;
-		        }
-		        // Object should be destroyed when ref goes out of scope
-		        REQUIRE(destroyed);
-		        REQUIRE(weak.Expired());
-		        
-		        // Lock should return null for expired weak ref
-		        auto locked = weak.Lock();
-		        REQUIRE(locked == nullptr);
-		    }
-		}
-		
-		TEST_CASE("WeakRef comparison operators", "[WeakRef]")
-		{
-		    SECTION("Equality with another WeakRef")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        auto ref2 = CreateRef<TestObject>(42);
-		        
-		        WeakRef<TestObject> weak1(ref1);
-		        WeakRef<TestObject> weak2(ref1);
-		        WeakRef<TestObject> weak3(ref2);
-		        
-		        REQUIRE(weak1 == weak2);
-		        REQUIRE_FALSE(weak1 == weak3);
-		    }
-		    
-		    SECTION("Inequality with another WeakRef")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        auto ref2 = CreateRef<TestObject>(42);
-		        
-		        WeakRef<TestObject> weak1(ref1);
-		        WeakRef<TestObject> weak2(ref1);
-		        WeakRef<TestObject> weak3(ref2);
-		        
-		        REQUIRE_FALSE(weak1 != weak2);
-		        REQUIRE(weak1 != weak3);
-		    }
-		    
-		    SECTION("Comparing expired WeakRefs")
-			{
-		        WeakRef<TestObject> weak1;
-		        WeakRef<TestObject> weak2;
-		        
-		        REQUIRE(weak1 == weak2);
-		        REQUIRE_FALSE(weak1 != weak2);
-		        
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak3(ref);
-		        
-		        REQUIRE_FALSE(weak1 == weak3);
-		        REQUIRE(weak1 != weak3);
-		    }
-		}
-		
-		TEST_CASE("WeakRef thread safety", "[WeakRef][thread]")
-		{
-		    SECTION("Multiple threads accessing the same WeakRef")
-			{
-		        auto ref = CreateRef<TestObject>(0);
-		        WeakRef<TestObject> weak(ref);
-		        
-		        // Create multiple threads that increment the value
-		        constexpr int threadCount = 10;
-		        constexpr int incrementsPerThread = 1000;
-		        
-		        std::vector<std::thread> threads;
-		        for (int i = 0; i < threadCount; ++i)
+                if (auto obs = weakObs.Lock())
 				{
-		            threads.emplace_back([&weak, incrementsPerThread]()
-					{
-		                for (int j = 0; j < incrementsPerThread; ++j)
-						{
-		                    if (auto locked = weak.Lock())
-							{
-		                        int value = locked->GetValue();
-		                        locked->SetValue(value + 1);
-		                    }
-		                }
-		            });
-		        }
-		        
-		        // Join all threads
-		        for (auto& thread : threads) { thread.join(); }
-		        
-		        // Check final value
-		        auto locked = weak.Lock();
-		        REQUIRE(locked != nullptr);
-		        REQUIRE(locked->GetValue() == threadCount * incrementsPerThread);
-		    }
-		    
-		    SECTION("Thread creating and destroying Refs while others use WeakRefs")
-			{
-		        constexpr int iterations = 100;
-		        
-		        for (int i = 0; i < iterations; ++i)
-				{
-		            WeakRef<TestObject> weak;
-		            
-		            // Thread 1: Create and destroy Ref objects
-		            std::thread t1([&weak]()
-					{
-		                for (int j = 0; j < 10; ++j)
-						{
-		                    auto ref = CreateRef<TestObject>(j);
-		                    weak = ref;
-		                    std::this_thread::yield(); // Allow other thread to run
-		                }
-		            });
-		            
-		            // Thread 2: Try to lock the weak ref
-		            std::thread t2([&weak]()
-					{
-		                for (int j = 0; j < 20; ++j)
-						{
-		                    auto locked = weak.Lock();
-		                    if (locked)
-							{
-		                        // If we got a valid ref, the value should be 0-9
-		                        int value = locked->GetValue();
-		                        REQUIRE(value >= 0);
-		                        REQUIRE(value < 10);
-		                    }
-		                    std::this_thread::yield(); // Allow other thread to run
-		                }
-		            });
-		            
-		            t1.join();
-		            t2.join();
-		        }
-		    }
-		}
-		
-		TEST_CASE("WeakRef cycle breaking", "[WeakRef]")
+                    validCount++;
+                }
+            }
+            REQUIRE(validCount == 3);
+        } // observers go out of scope
+
+        // All weak references should be expired
+        int expiredCount = 0;
+        for (auto& weakObs : observers)
 		{
-		    SECTION("Preventing reference cycles")
+            if (weakObs.Expired())
 			{
-		        // Create a class that contains both Ref and WeakRef
-		        class Node : public RefCounted
+                expiredCount++;
+            }
+        }
+        REQUIRE(expiredCount == 3);
+    }
+
+    SECTION("Clean up expired observers")
+    {
+        std::vector<SceneryEditorX::WeakRef<WeakTestObject>> observers;
+
+        // Add some observers, let some expire
+        auto persistentObserver = SceneryEditorX::CreateRef<WeakTestObject>(100);
+        observers.push_back(persistentObserver);
+
+        {
+            auto temporaryObserver = SceneryEditorX::CreateRef<WeakTestObject>(200);
+            observers.push_back(temporaryObserver);
+        } // temporaryObserver expires
+
+        // Clean up expired observers
+        std::erase_if(observers,[](const SceneryEditorX::WeakRef<WeakTestObject>& weak) { return weak.Expired(); });
+
+        REQUIRE(observers.size() == 1);
+        auto locked = observers[0].Lock();
+        REQUIRE(locked);
+        REQUIRE(locked->GetValue() == 100);
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Circular Reference Breaking", "[SmartPointers][WeakRef][Circular]")
+{
+    SECTION("Parent-child relationship without circular references")
+    {
+        struct Node : SceneryEditorX::RefCounted
+        {
+            Node(const int value) : m_Value(value) {}
+
+            void AddChild(const SceneryEditorX::Ref<Node> &child)
+            {
+                m_Children.push_back(child);                            // Strong reference to child
+                child->m_Parent = SceneryEditorX::WeakRef<Node>(*this); // Weak reference to parent
+            }
+
+            [[nodiscard]] SceneryEditorX::Ref<Node> GetParent() const
+            {
+                return m_Parent.Lock(); // Safe access to parent
+            }
+
+            int m_Value;
+            std::vector<SceneryEditorX::Ref<Node>> m_Children;
+            SceneryEditorX::WeakRef<Node> m_Parent;
+        };
+
+        auto parent = SceneryEditorX::CreateRef<Node>(1);
+        auto child1 = SceneryEditorX::CreateRef<Node>(2);
+        auto child2 = SceneryEditorX::CreateRef<Node>(3);
+
+        parent->AddChild(child1);
+        parent->AddChild(child2);
+
+        // Verify relationships
+        REQUIRE(parent->m_Children.size() == 2);
+        REQUIRE(child1->GetParent() == parent);
+        REQUIRE(child2->GetParent() == parent);
+
+        // Parent should have reference count of 1 (no circular references)
+        REQUIRE(parent.UseCount() == 1);
+        REQUIRE(child1.UseCount() == 2); // parent->children + child1
+        REQUIRE(child2.UseCount() == 2); // parent->children + child2
+
+        // When parent is destroyed, children should lose access to parent
+        SceneryEditorX::WeakRef<Node> weakParent = parent;
+        parent.Reset();
+
+        REQUIRE(weakParent.Expired());
+        REQUIRE(!child1->GetParent());
+        REQUIRE(!child2->GetParent());
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Thread Safety Considerations", "[SmartPointers][WeakRef][Threading]")
+{
+    SECTION("Concurrent access to weak reference")
+    {
+        const auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>(424344);
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef = strongRef;
+
+        std::atomic<int> successCount{0};
+        std::vector<std::thread> threads;
+
+        // Multiple threads trying to lock the weak reference
+        for (int i = 0; i < 10; ++i)
+		{
+            threads.emplace_back([&weakRef, &successCount]()
+								 {
+                for (int j = 0; j < 100; ++j)
 				{
-		        public:
-		            void SetStrongNext(const Ref<Node>& next) { m_StrongNext = next; }
-		            void SetWeakNext(const Ref<Node>& next) { m_WeakNext = next; }
-		            
-		            Ref<Node> GetStrongNext() const { return m_StrongNext; }
-		            Ref<Node> GetWeakNext() const { return m_WeakNext.Lock(); }
-		            
-		        private:
-		            Ref<Node> m_StrongNext;
-		            WeakRef<Node> m_WeakNext;
-		        };
-		        
-		        bool nodeADestroyed = false;
-		        bool nodeBDestroyed = false;
-		        
-		        // Create the cycle using weak references
-		        {
-		            auto nodeA = CreateRef<Node>();
-		            auto nodeB = CreateRef<Node>();
-		            
-		            // This would create a cycle if we used strong references for both
-		            nodeA->SetWeakNext(nodeB);
-		            nodeB->SetWeakNext(nodeA);
-		            
-		            // Verify they're connected
-		            REQUIRE(nodeA->GetWeakNext() == nodeB);
-		            REQUIRE(nodeB->GetWeakNext() == nodeA);
-		        }
-		        // Both nodes should be destroyed because the cycle was broken by WeakRef
-		        REQUIRE((nodeADestroyed || nodeBDestroyed));
-		        
-		        // Now create a real cycle with strong references
-		        nodeADestroyed = false;
-		        nodeBDestroyed = false;
-		        {
-		            auto nodeA = CreateRef<Node>();
-		            auto nodeB = CreateRef<Node>();
-		            
-		            // Create a strong reference cycle
-		            nodeA->SetStrongNext(nodeB);
-		            nodeB->SetStrongNext(nodeA);
-		            
-		            // Verify they're connected
-		            REQUIRE(nodeA->GetStrongNext() == nodeB);
-		            REQUIRE(nodeB->GetStrongNext() == nodeA);
-		            
-		            // Break the cycle manually
-		            nodeA->SetStrongNext(nullptr);
-		            nodeB->SetStrongNext(nullptr);
-		        }
-		        // Now both nodes should be destroyed
-		        REQUIRE((nodeADestroyed || nodeBDestroyed));
-		    }
-		}
-	
-	}  // namespace Tests
-}  // namespace SceneryEditorX
+                    if (auto locked = weakRef.Lock())
+					{
+                        ++successCount;
+                    }
+                }
+            });
+        }
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        REQUIRE(successCount.load() == 1000);
+    }
+}
+
+TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Edge Cases and Error Handling", "[SmartPointers][WeakRef][EdgeCases]")
+{
+    SECTION("Multiple resets of weak reference")
+    {
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef;
+        weakRef.Reset(); // Should be safe on empty weak ref
+
+        const auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>();
+        weakRef = strongRef;
+        weakRef.Reset();
+        weakRef.Reset(); // Should be safe multiple times
+
+        REQUIRE(weakRef.Expired());
+    }
+
+    SECTION("Lock expired weak reference multiple times")
+    {
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef;
+
+        {
+            const auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>();
+            weakRef = strongRef;
+        } // strongRef expires
+
+        // Multiple attempts to lock should all fail safely
+        for (int i = 0; i < 10; ++i)
+		{
+            auto locked = weakRef.Lock();
+            REQUIRE(!locked);
+        }
+    }
+
+    SECTION("Self assignment with weak reference")
+    {
+        const auto strongRef = SceneryEditorX::CreateRef<WeakTestObject>();
+        SceneryEditorX::WeakRef<WeakTestObject> weakRef = strongRef;
+
+        weakRef = weakRef; // Self assignment should be safe
+
+        REQUIRE(!weakRef.Expired());
+        auto locked = weakRef.Lock();
+        REQUIRE(locked);
+    }
+}

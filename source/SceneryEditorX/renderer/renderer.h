@@ -12,13 +12,13 @@
 */
 #pragma once
 #include <cstdint>
-#include <SceneryEditorX/core/pointers.h>
 #include <SceneryEditorX/core/threading/thread_manager.h>
-#include <SceneryEditorX/platform/platform_states.h>
 #include <SceneryEditorX/renderer/command_queue.h>
 #include <SceneryEditorX/renderer/image_data.h>
-#include <SceneryEditorX/renderer/shaders/shader_library.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
+#include <SceneryEditorX/utils/pointers.h>
+#include <SceneryEditorX/utils/static_states.h>
 
 /// -------------------------------------------------------
 
@@ -102,8 +102,8 @@ namespace SceneryEditorX
         GLOBAL uint32_t GetCurrentFrameIndex();
         GLOBAL RenderData &GetRenderData();
         GLOBAL void SetRenderData(const RenderData &renderData);
-        GLOBAL void RenderThreadFunc(ThreadManager *renderThread);
-        GLOBAL void WaitAndRender(ThreadManager* renderThread);
+        GLOBAL void RenderThreadFunc(const ThreadManager *renderThread);
+        GLOBAL void WaitAndRender(const ThreadManager* renderThread);
 		GLOBAL void SwapQueues();
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);

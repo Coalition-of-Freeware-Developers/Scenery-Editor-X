@@ -211,8 +211,7 @@ namespace SceneryEditorX
 		template<typename T>
 		T* MapMemory(const VmaAllocation allocation)
 		{
-            void *mappedMemory = nullptr;
-			//T* mappedMemory;
+			T* mappedMemory;
             vmaMapMemory(GetAllocator(), allocation, static_cast<void **>(&mappedMemory));
 			return mappedMemory;
 		}
@@ -221,7 +220,6 @@ namespace SceneryEditorX
 
         GLOBAL void UnmapMemory(VmaAllocation allocation);
         GLOBAL VmaAllocator GetAllocator();
-
 		GLOBAL void Init(const Ref<VulkanDevice> &device, const uint32_t &apiVersion);
 		GLOBAL void Shutdown();
 
@@ -256,6 +254,6 @@ namespace SceneryEditorX
 		INTERNAL VkDeviceSize customBufferSize;
     };
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

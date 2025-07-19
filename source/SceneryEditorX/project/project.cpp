@@ -25,7 +25,7 @@ namespace SceneryEditorX
 	    // Cleanup the project
 	}
 
-    void Project::SetActive(Ref<Project> project)
+    void Project::SetActive(const Ref<Project> &project)
     {
         if (activeProject)
 		{
@@ -52,6 +52,6 @@ namespace SceneryEditorX
     {
     }
 
-} // namespace SceneryEditorX
+}
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

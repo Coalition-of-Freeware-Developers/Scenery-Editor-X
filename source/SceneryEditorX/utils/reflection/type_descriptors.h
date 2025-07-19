@@ -11,23 +11,18 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <array>
-#include <iostream>
 #include <optional>
+#include <SceneryEditorX/utils/reflection/type_names.h>
+#include <SceneryEditorX/utils/reflection/type_utils.h>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
-#include <vector>
-#include <SceneryEditorX/utils/string_utils.h>
-#include <SceneryEditorX/utils/reflection/type_names.h>
-#include <SceneryEditorX/utils/reflection/type_utils.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX::Types
 {
-
 	struct TDummyTag {};
 
 	template<typename T, typename TTag = TDummyTag>
@@ -35,8 +30,6 @@ namespace SceneryEditorX::Types
 
 	template<typename T, typename TTag = TDummyTag>
 	using Described = is_specialized<Description<std::remove_cvref_t<T>, TTag>>;
-
-    /// -------------------------------------------------------
 
 	/// -------------------------------------------------------
 	///		Utility wrapper to operate on a list of member pointers.
@@ -86,11 +79,12 @@ namespace SceneryEditorX::Types
 			return (ApplyIfMemberNotFunction(func, MemberPointers, obj), ...);
 		}
 
-		/** Apply function to default initialized variables for each member type.
-			This version does not require instance of the object of the described type.
-			@param f		- function to apply for each member type
-			@return		function return type
-		*/
+		/**
+		 * Apply function to default initialized variables for each member type.
+		 * This version does not require instance of the object of the described type.
+		 * @param f		- function to apply for each member type
+		 * @return		function return type
+		 */
 		template<typename TFunc>
 		static constexpr auto ApplyToStaticType(TFunc f)
 		{
@@ -187,9 +181,9 @@ namespace SceneryEditorX::Types
 			return valueSet;
 		}
 
-		//==============================================================================
+		/// -------------------------------------------------------
 		/// Set member values
-
+		/// -------------------------------------------------------
 		template<size_t MemberIndex, typename TObj>
 		static constexpr auto GetMemberValue(const TObj& obj)
 		{
@@ -275,7 +269,7 @@ namespace SceneryEditorX::Types
 				int memberCounter = 0;
 				auto unwrap = [&isFunction, memberIndex](auto memb, int counter)
 				{
-					if (counter == memberIndex)
+					if (std::cmp_equal(counter, memberIndex))
                         isFunction = std::is_member_function_pointer_v<decltype(memb)>;
                 };
 

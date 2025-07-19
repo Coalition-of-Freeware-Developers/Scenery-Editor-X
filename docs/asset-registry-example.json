@@ -1,0 +1,24 @@
+{
+  "Assets": [
+    {
+      "Handle": 1001,
+      "FilePath": "models/building1.obj",
+      "Type": "StaticMesh"
+    },
+    {
+      "Handle": 1002,
+      "FilePath": "textures/building1_diffuse.png",
+      "Type": "Texture2D"
+    },
+    {
+      "Handle": 1003,
+      "FilePath": "materials/building1_material.mat",
+      "Type": "Material"
+    },
+    {
+      "Handle": 1004,
+      "FilePath": "scenes/test_scene.scene",
+      "Type": "Scene"
+    }
+  ]
+}

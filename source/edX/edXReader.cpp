@@ -1,10 +1,23 @@
-/*
+/**
+* -------------------------------------------------------
+* Scenery Editor X - edX File Format
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* edXReader.cpp
+* -------------------------------------------------------
+* Created: 27/5/2025
+* -------------------------------------------------------
+*/
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 #include <vector>
+
+/// ----------------------------------------------------------------------------
 
 struct Asset
 {
@@ -23,7 +36,7 @@ void readEdxFile(const std::string &filename)
     std::ifstream file(filename);
     if (!file.is_open())
     {
-        std::cerr << "Error opening file for reading." << std::endl;
+        std::cerr << "Error opening file for reading." << '\n';
         return;
     }
 
@@ -54,8 +67,7 @@ void readEdxFile(const std::string &filename)
         // Parse lines based on current section
         if (section == "[Scenery]")
         {
-            size_t eqPos = line.find('=');
-            if (eqPos != std::string::npos)
+            if (size_t eqPos = line.find('='); eqPos != std::string::npos)
             {
                 std::string key = line.substr(0, eqPos);
                 std::string value = line.substr(eqPos + 1);
@@ -64,8 +76,7 @@ void readEdxFile(const std::string &filename)
         }
         else if (section == "[Airport]")
         {
-            size_t eqPos = line.find('=');
-            if (eqPos != std::string::npos)
+            if (size_t eqPos = line.find('='); eqPos != std::string::npos)
             {
                 std::string key = line.substr(0, eqPos);
                 std::string value = line.substr(eqPos + 1);
@@ -74,16 +85,14 @@ void readEdxFile(const std::string &filename)
         }
         else if (section == "[Libraries]")
         {
-            size_t eqPos = line.find('=');
-            if (eqPos != std::string::npos)
+            if (size_t eqPos = line.find('='); eqPos != std::string::npos)
             {
                 libraries.push_back(line.substr(eqPos + 1));
             }
         }
         else if (section == "[Assets]")
         {
-            size_t eqPos = line.find('=');
-            if (eqPos != std::string::npos)
+            if (size_t eqPos = line.find('='); eqPos != std::string::npos)
             {
                 std::string id = line.substr(0, eqPos);
                 std::string value = line.substr(eqPos + 1);
@@ -105,32 +114,35 @@ void readEdxFile(const std::string &filename)
     std::cout << "Scenery Data:\n";
     for (const auto &[key, value] : sceneryData)
     {
-        std::cout << key << " = " << value << std::endl;
+        std::cout << key << " = " << value << '\n';
     }
 
     std::cout << "\nAirport Data:\n";
     for (const auto &[key, value] : airportData)
     {
-        std::cout << key << " = " << value << std::endl;
+        std::cout << key << " = " << value << '\n';
     }
 
     std::cout << "\nLibraries:\n";
     for (const auto &library : libraries)
     {
-        std::cout << library << std::endl;
+        std::cout << library << '\n';
     }
 
     std::cout << "\nAssets:\n";
-    for (const auto &asset : assets)
+    for (const auto &[id, latitude, longitude, heading, properties] : assets)
     {
-        std::cout << asset.id << ": " << asset.latitude << ", " << asset.longitude << ", " << asset.heading << ", "
-                  << asset.properties << std::endl;
+        std::cout << id << ": " << latitude << ", " << longitude << ", " << heading << ", "
+                  << properties << '\n';
     }
 }
 
+/*
 int main()
 {
     readEdxFile("example.edX");
     return 0;
 }
 */
+
+/// ----------------------------------------------------------------------------

@@ -11,6 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/filestreaming/filestream_reader.h>
+#include <SceneryEditorX/filestreaming/filestream_writer.h>
+#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
+#include <SceneryEditorX/renderer/shaders/shader_resource.h>
+#include <SceneryEditorX/renderer/shaders/shader_uniforms.h>
 #include <SceneryEditorX/serialization/serializer_reader.h>
 #include <SceneryEditorX/serialization/serializer_writer.h>
 
@@ -88,7 +93,7 @@ namespace SceneryEditorX
 		uint32_t BindingPoint;
 		uint32_t Size;
 		uint32_t RendererID;
-		//std::vector<ShaderUniform> Uniforms;
+		std::vector<ShaderUniform> Uniforms;
 	};
 
 	struct ShaderBuffer
@@ -192,6 +197,7 @@ namespace SceneryEditorX
          */
         [[nodiscard]] virtual const std::string &GetName() const;
 
+
         /**
          * @brief Reload the shader from its source file.
          * @param forceCompile Whether to force recompilation even if a cached version exists
@@ -207,6 +213,7 @@ namespace SceneryEditorX
 	     * @return const char* Path to the shader directory
 	     */
 	    GLOBAL constexpr const char* GetShaderDirectoryPath() { return "assets/shaders/"; }
+	    const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageCreateInfos() const { return m_PipelineShaderStageCreateInfos; }
 
 	    /**
 	     * @brief Create a Vulkan shader module from compiled bytecode.
@@ -216,17 +223,81 @@ namespace SceneryEditorX
 	     */
 	    [[nodiscard]] VkShaderModule CreateShaderModule(const std::vector<char> &code) const;
 
+	    VkDescriptorSet GetDescriptorSet() const { return m_DescriptorSet; }
+		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) const { return m_DescriptorSetLayouts.at(set); }
+		std::vector<VkDescriptorSetLayout> GetAllDescriptorSetLayouts();
+
+		ShaderResource::UniformBuffer &GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0)
+		{
+		    SEDX_CORE_ASSERT(m_ReflectionData.ShaderDescriptorSets.at(set).UniformBuffers.size() > binding);
+		    return m_ReflectionData.ShaderDescriptorSets.at(set).UniformBuffers.at(binding);
+		}
+
+		uint32_t GetUniformBufferCount(const uint32_t set = 0) const
+        {
+			if (m_ReflectionData.ShaderDescriptorSets.size() < set)
+				return 0;
+
+			return (uint32_t)m_ReflectionData.ShaderDescriptorSets[set].UniformBuffers.size();
+		}
+
+		const std::vector<ShaderResource::ShaderDescriptorSet>& GetShaderDescriptorSets() const { return m_ReflectionData.ShaderDescriptorSets; }
+		bool HasDescriptorSet(uint32_t set) const { return m_TypeCounts.contains(set); }
+		const std::vector<ShaderResource::PushConstantRange> &GetPushConstantRanges() const { return m_ReflectionData.PushConstantRanges; }
+
+		struct ShaderMaterialDescriptorSet
+		{
+			VkDescriptorPool Pool = nullptr;
+			std::vector<VkDescriptorSet> DescriptorSets;
+		};
+
+        struct ReflectionData
+        {
+            std::vector<ShaderResource::ShaderDescriptorSet> ShaderDescriptorSets;
+            std::unordered_map<std::string, ShaderResourceDeclaration> Resources;
+            std::unordered_map<std::string, ShaderBuffer> ConstantBuffers;
+            std::vector<ShaderResource::PushConstantRange> PushConstantRanges;
+        };
+
+        bool TryReadReflectionData(StreamReader *serializer);
+        void SerializeReflectionData(StreamWriter *serializer);
+        void SetReflectionData(const ReflectionData &reflectionData);
+
+		ShaderMaterialDescriptorSet AllocateDescriptorSet(uint32_t set = 0);
+		ShaderMaterialDescriptorSet CreateDescriptorSets(uint32_t set = 0);
+		ShaderMaterialDescriptorSet CreateDescriptorSets(uint32_t set, uint32_t numberOfSets);
+		const VkWriteDescriptorSet* GetDescriptorSet(const std::string& name, uint32_t set = 0) const;
+
 	private:
         /** @brief Vulkan shader module handle */
         VkShaderModule shaderModule = VK_NULL_HANDLE;
-        
+
+        void LoadAndCreateShaders(const std::map<VkShaderStageFlagBits, std::vector<uint32_t>> &shaderData);
+        void CreateDescriptors();
+
         /** @brief List of callbacks to invoke when shader is reloaded */
         std::vector<ShaderReloadedCallback> reloadCallbacks;
         //ShaderModuleErrorCallback shaderModuleErrorCallback = nullptr;
 		std::string name;
-	};
+        std::vector<VkPipelineShaderStageCreateInfo> m_PipelineShaderStageCreateInfos;
+        std::unordered_map<uint32_t, std::vector<VkDescriptorPoolSize>> m_TypeCounts;
 
-	class ShaderPack;
+        std::filesystem::path m_AssetPath;
+        std::string m_Name;
+        bool m_DisableOptimization = false;
+
+		
+		std::map<VkShaderStageFlagBits, std::vector<uint32_t>> m_ShaderData;
+        ReflectionData m_ReflectionData;
+
+        std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
+        VkDescriptorSet m_DescriptorSet;
+
+	    friend class ShaderCache;
+        friend class ShaderPack;
+        friend class VulkanShaderCompiler;
+
+	};
 
     class ShaderLibrary : public RefCounted
 	{
@@ -244,6 +315,7 @@ namespace SceneryEditorX
 
 		std::unordered_map<std::string, Ref<Shader>>& GetShaders() { return m_Shaders; }
 		const std::unordered_map<std::string, Ref<Shader>>& GetShaders() const { return m_Shaders; }
+
 
 	private:
 		std::unordered_map<std::string, Ref<Shader>> m_Shaders;

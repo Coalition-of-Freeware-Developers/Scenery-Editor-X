@@ -305,7 +305,7 @@ void SetDeviceVendorName(const uint32_t vendorID);
 
 void GetDeviceName(const std::string &deviceName);
 
-namespace SceneryEditorX::Util
+namespace SceneryEditorX::Utils
 {
 
 	struct ResourceAllocationCounts

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * command_queue.cpp
@@ -10,7 +10,7 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/memory.h>
+#include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/renderer/command_queue.h>
 
 /// -------------------------------------------------------
@@ -47,7 +47,7 @@ namespace SceneryEditorX
     void CommandQueue::Execute()
     {
         byte *buffer = cmdBuffer;
-		
+
 		for (uint32_t i = 0; i < cmdCount; i++)
         {
             RenderCommandFn function = *(RenderCommandFn *)buffer;

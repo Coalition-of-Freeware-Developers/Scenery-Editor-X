@@ -14,7 +14,9 @@
 #include <SceneryEditorX/core/initializer.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/core/memory.h>
+#include <SceneryEditorX/core/memory/memory.h>
+
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -31,4 +33,6 @@ namespace SceneryEditorX
         Log::ShutDown();
     }
 
-} // namespace SceneryEditorX
+}
+
+/// -------------------------------------------------------

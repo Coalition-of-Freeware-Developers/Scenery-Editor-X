@@ -32,6 +32,7 @@ TARGET_INCLUDE_DIRECTORIES(RefTests PRIVATE
 # Link with Catch2
 TARGET_LINK_LIBRARIES(RefTests PRIVATE
     Catch2::Catch2WithMain
+    glm::glm-header-only
 )
 
 # Enable parallel compilation for MSVC
@@ -175,3 +176,76 @@ ENDIF()
 INCLUDE(CTest)
 INCLUDE(Catch)
 catch_discover_tests(SettingsTest)
+
+# --------------------------------
+# edX Format Tests
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating edX Format Tests")
+
+ADD_EXECUTABLE(EdxTests
+    edx_tests/EdxTestMain.cpp
+    edx_tests/EdxProjectFileTest.cpp
+    edx_tests/EdxLibraryFileTest.cpp
+    edx_tests/EdxManagerTest.cpp
+    edx_tests/EdxProjectFileComprehensiveTest.cpp
+)
+
+# Include directories
+TARGET_INCLUDE_DIRECTORIES(EdxTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+    ${CMAKE_SOURCE_DIR}/dependency
+)
+
+# Link with Catch2 and other dependencies
+TARGET_LINK_LIBRARIES(EdxTests PRIVATE
+    Catch2::Catch2WithMain
+    edX
+)
+
+# Enable parallel compilation for MSVC
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE /MP)
+ENDIF()
+
+# Enable warning level
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+# Register with CTest
+catch_discover_tests(EdxTests)
+
+# --------------------------------
+# edX Demo Generator (separate executable)
+# --------------------------------
+
+ADD_EXECUTABLE(EdxDemoGenerator
+    edx_tests/EdxDemoGenerator.cpp
+)
+
+# Include directories
+TARGET_INCLUDE_DIRECTORIES(EdxDemoGenerator PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+    ${CMAKE_SOURCE_DIR}/dependency
+)
+
+# Link with edX library
+TARGET_LINK_LIBRARIES(EdxDemoGenerator PRIVATE
+    edX
+)
+
+# Enable parallel compilation for MSVC
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE /MP)
+ENDIF()
+
+# Enable warning level
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()

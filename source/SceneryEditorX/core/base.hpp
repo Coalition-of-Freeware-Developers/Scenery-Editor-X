@@ -53,6 +53,7 @@ using Vec4 = glm::vec4; ///< 4D vector
 using Mat2 = glm::mat2; ///< 2x2 matrix
 using Mat3 = glm::mat3; ///< 3x3 matrix
 using Mat4 = glm::mat4; ///< 4x4 matrix
+using Quat = glm::quat; ///< Quaternion for rotation
 
 /// -------------------------------------------------------
 

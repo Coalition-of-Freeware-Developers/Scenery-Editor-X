@@ -14,7 +14,6 @@
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
-
 #include <utility>
 
 /// ----------------------------------------------------------
@@ -83,6 +82,7 @@ namespace SceneryEditorX
         /**
          * @brief Updates the contents of a uniform buffer for the current frame
          *
+         * @param index
          * @param currentImage Index of the current swap chain image/frame
          * 
          * Updates transformation matrices in the uniform buffer for the specified
@@ -95,7 +95,7 @@ namespace SceneryEditorX
          * @param index Index of the frame's buffer to retrieve
          * @return VkBuffer The uniform buffer handle, or VK_NULL_HANDLE if invalid index
          */
-        [[nodiscard]] VkBuffer GetBuffer(uint32_t index) const
+        [[nodiscard]] VkBuffer GetBuffer(const uint32_t index) const
         {
             if (index < uniformBuffers.size())
                 return uniformBuffers[index];

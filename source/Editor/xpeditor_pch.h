@@ -123,7 +123,7 @@
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/platform/platform_states.h>
+#include <SceneryEditorX/utils/static_states.h>
 
 /**
 ##########################################################

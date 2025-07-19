@@ -10,8 +10,8 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
 #include <SceneryEditorX/platform/file_manager.hpp>
+#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
 
 /// -------------------------------------------------------
 

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * thread.cpp
@@ -10,9 +10,8 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/threading/thread.h>
-
 #define GLFW_EXPOSE_NATIVE_WIN32
+#include <SceneryEditorX/core/threading/thread.h>
 
 /// -------------------------------------------------------
 
@@ -26,8 +25,8 @@ namespace SceneryEditorX
 
     void Thread::SetName(const std::string &name)
 	{
-	    HANDLE threadHandle = mem_thread.native_handle();
-		std::wstring str(name.begin(), name.end());
+	    const HANDLE threadHandle = mem_thread.native_handle();
+		const std::wstring str(name.begin(), name.end());
 		SetThreadDescription(threadHandle, str.c_str());
         SetThreadAffinityMask(threadHandle, 8);
         this->name = name;
@@ -41,21 +40,21 @@ namespace SceneryEditorX
 
     ThreadSignal::ThreadSignal(const std::string &name, const bool manualReset)
     {
-        std::wstring str(name.begin(), name.end());
+        const std::wstring str(name.begin(), name.end());
         signalHandle = CreateEventW(nullptr, manualReset ? TRUE : FALSE, FALSE, str.c_str());
     }
 
-    void ThreadSignal::Wait()
+    void ThreadSignal::Wait() const
     {
         WaitForSingleObject(signalHandle, INFINITE);
     }
-    
-    void ThreadSignal::Signal()
+
+    void ThreadSignal::Signal() const
     {
         SetEvent(signalHandle);
     }
-    
-    void ThreadSignal::Reset()
+
+    void ThreadSignal::Reset() const
     {
         ResetEvent(signalHandle);
     }

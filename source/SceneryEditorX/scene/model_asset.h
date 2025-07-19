@@ -13,7 +13,7 @@
 #pragma once
 #include <array>
 #include <glm/glm.hpp>
-#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/node.h>
 #include <vulkan/vulkan.h>
@@ -22,7 +22,7 @@
 
 namespace SceneryEditorX
 {
-	//struct Serializer;
+	struct Serializer;
 	
 	/// -------------------------------------------------------
 
@@ -34,11 +34,15 @@ namespace SceneryEditorX
         Vec4 tangent;
         Vec2 texCoord;
 
+        /// -------------------------------------------------------
+
         bool operator==(const MeshVertex &other) const
         {
             return position == other.position && normal == other.normal && texCoord == other.texCoord;
         }
-        
+
+        /// -------------------------------------------------------
+       
         static VkVertexInputBindingDescription getBindingDescription()
         {
             VkVertexInputBindingDescription bindingDescription{};
@@ -48,6 +52,8 @@ namespace SceneryEditorX
             
             return bindingDescription;
         }
+
+        /// -------------------------------------------------------
         
         static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions()
         {
@@ -109,7 +115,7 @@ namespace SceneryEditorX
             Triangle(const MeshVertex &v0, const MeshVertex &v1, const MeshVertex &v2) : V0(v0), V1(v1), V2(v2) {}
         };
 
-        //virtual void Serialize(Serializer &ser) override;
+        virtual void Serialize(Serializer &ser);
 
         std::vector<MeshVertex> vertices;
         std::vector<uint32_t> indices;
@@ -143,11 +149,11 @@ namespace SceneryEditorX
         bool IsRoot() const { return parent == 0xffffffff; }
 
         MeshNode();
-        //virtual void Serialize(Serializer &ser) override;
+        virtual void Serialize(Serializer &ser) override;
     };
 
 	/// ------------------------------------------------------- 
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

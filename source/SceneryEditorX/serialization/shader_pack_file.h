@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "serializer_reader.h"
-#include "serializer_writer.h"
+#include <SceneryEditorX/filestreaming/filestream_writer.h>
+#include <SceneryEditorX/serialization/serializer_reader.h>
 
 /// -------------------------------------------------------
 

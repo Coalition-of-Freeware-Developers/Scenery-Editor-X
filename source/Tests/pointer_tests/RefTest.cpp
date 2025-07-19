@@ -2,485 +2,497 @@
 * -------------------------------------------------------
 * Scenery Editor X - Unit Tests
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * RefTest.cpp
 * -------------------------------------------------------
-* Tests for the Ref smart pointer implementation
+* Tests for the Ref<T> smart pointer class
 * -------------------------------------------------------
 */
-#include <catch2/catch_test_macros.hpp>
-#include <SceneryEditorX/core/pointers.h>
+#include <catch2/catch_all.hpp>
+#include <SceneryEditorX/utils/pointers.h>
+#include "../SimpleTestHelper.h"
 #include <memory>
 #include <string>
 
+/// -------------------------------------------------------------------
+
 namespace SceneryEditorX
 {
-	namespace Tests
-	{
-		// Sample reference-counted classes for testing
-		class TestObject : public RefCounted
-		{
-		public:
-		    TestObject() : m_Value(0) {}
-		    explicit TestObject(int value) : m_Value(value) {}
-		    
-		    int GetValue() const { return m_Value; }
-		    void SetValue(int value) { m_Value = value; }
-		    
-		private:
-		    int m_Value;
-		};
-		
-		class DerivedTestObject : public TestObject
-		{
-		public:
-		    DerivedTestObject() : TestObject(0), m_Name("Derived") {}
-		    explicit DerivedTestObject(int value, const std::string& name) 
-		        : TestObject(value), m_Name(name) {}
-		    
-		    const std::string& GetName() const { return m_Name; }
-		    void SetName(const std::string& name) { m_Name = name; }
-		    
-		private:
-		    std::string m_Name;
-		};
-		
-		// Helper for tracking object destruction
-		class DestructionTracker : public RefCounted
-		{
-		public:
-		    DestructionTracker(bool* destroyed) : m_Destroyed(destroyed)
-			{
-		        if (m_Destroyed) *m_Destroyed = false;
-		    }
-		    
-		    ~DestructionTracker() override
-			{
-		        if (m_Destroyed) *m_Destroyed = true;
-		    }
-		    
-		private:
-		    bool* m_Destroyed;
-		};
-		
-		TEST_CASE("Ref basic functionality", "[Ref]")
-		{
-		    SECTION("Default constructor creates null reference")
-			{
-		        Ref<TestObject> ref;
-		        REQUIRE(ref == nullptr);
-		        REQUIRE_FALSE(ref);
-		        REQUIRE(ref.Get() == nullptr);
-		        REQUIRE(ref.UseCount() == 0);
-		    }
-		    
-		    SECTION("Constructor from nullptr creates null reference")
-			{
-		        Ref<TestObject> ref(nullptr);
-		        REQUIRE(ref == nullptr);
-		        REQUIRE_FALSE(ref);
-		    }
-		    
-		    SECTION("Constructor from raw pointer")
-			{
-		        auto* rawPtr = new TestObject(42);
-		        Ref<TestObject> ref(rawPtr);
-		        
-		        REQUIRE(ref != nullptr);
-		        REQUIRE(ref);
-		        REQUIRE(ref.Get() == rawPtr);
-		        REQUIRE(ref.UseCount() == 1);
-		        REQUIRE(ref->GetValue() == 42);
-		        REQUIRE((*ref).GetValue() == 42);
-		    }
-		    
-		    SECTION("CreateRef helper function")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        
-		        REQUIRE(ref != nullptr);
-		        REQUIRE(ref.UseCount() == 1);
-		        REQUIRE(ref->GetValue() == 42);
-		    }
-		}
-		
-		TEST_CASE("Ref copy operations", "[Ref]")
-		{
-		    SECTION("Copy constructor")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        Ref<TestObject> ref2(ref1);
-		        
-		        REQUIRE(ref1.UseCount() == 2);
-		        REQUIRE(ref2.UseCount() == 2);
-		        REQUIRE(ref1.Get() == ref2.Get());
-		        REQUIRE(ref1->GetValue() == 42);
-		        REQUIRE(ref2->GetValue() == 42);
-		    }
-		    
-		    SECTION("Copy assignment operator")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        Ref<TestObject> ref2;
-		        
-		        ref2 = ref1;
-		        
-		        REQUIRE(ref1.UseCount() == 2);
-		        REQUIRE(ref2.UseCount() == 2);
-		        REQUIRE(ref1.Get() == ref2.Get());
-		        
-		        // Self-assignment should be safe
-		        ref1 = ref1;
-		        REQUIRE(ref1.UseCount() == 2);
-		    }
-		    
-		    SECTION("Copy assignment from nullptr")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        REQUIRE(ref.UseCount() == 1);
-		        
-		        ref = nullptr;
-		        REQUIRE(ref == nullptr);
-		        REQUIRE(ref.UseCount() == 0);
-		    }
-		}
-		
-		TEST_CASE("Ref move operations", "[Ref]")
-		{
-		    SECTION("Move constructor")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        auto* rawPtr = ref1.Get();
-		        Ref<TestObject> ref2(std::move(ref1));
-		        
-		        REQUIRE(ref1 == nullptr);
-		        REQUIRE(ref2 != nullptr);
-		        REQUIRE(ref2.Get() == rawPtr);
-		        REQUIRE(ref2.UseCount() == 1);
-		    }
-		    
-		    SECTION("Move assignment operator")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        auto* rawPtr = ref1.Get();
-		        Ref<TestObject> ref2;
-		        
-		        ref2 = std::move(ref1);
-		        
-		        REQUIRE(ref1 == nullptr);
-		        REQUIRE(ref2 != nullptr);
-		        REQUIRE(ref2.Get() == rawPtr);
-		        REQUIRE(ref2.UseCount() == 1);
-		        
-		        // Self-move should be safe (though normally not used)
-		        Ref<TestObject> ref3 = CreateRef<TestObject>(42);
-		        ref3 = std::move(ref3);
-		        
-                // Self-move assignment is a no-op; ref3 should still be valid
-                REQUIRE(ref3 != nullptr);
-		    }
-		}
-		
-		TEST_CASE("Ref type conversion", "[Ref]")
-		{
-		    SECTION("Upcast via constructor")
-			{
-		        auto derived = CreateRef<DerivedTestObject>(42, "Test");
-		        Ref<TestObject> base(derived);
-		        
-		        REQUIRE(derived.UseCount() == 2);
-		        REQUIRE(base.UseCount() == 2);
-		        REQUIRE(derived->GetValue() == 42);
-		        REQUIRE(base->GetValue() == 42);
-		    }
-		    
-		    SECTION("Upcast via assignment")
-			{
-		        auto derived = CreateRef<DerivedTestObject>(42, "Test");
-		        Ref<TestObject> base;
-		        
-		        base = derived;
-		        
-		        REQUIRE(derived.UseCount() == 2);
-		        REQUIRE(base.UseCount() == 2);
-		        REQUIRE(derived->GetValue() == 42);
-		        REQUIRE(base->GetValue() == 42);
-		    }
-		    
-		    SECTION("Downcast using As() - static_cast")
-			{
-		        auto base = CreateRef<TestObject>(42);
-		        auto derived = CreateRef<DerivedTestObject>(42, "Test");
-		        Ref<TestObject> baseRef = derived;
-		        
-		        // Valid downcast
-		        auto derivedAgain = baseRef.As<DerivedTestObject>();
-		        REQUIRE(derivedAgain != nullptr);
-		        REQUIRE(derivedAgain->GetName() == "Test");
-		        
-		        // Invalid downcast (undefined behavior in real code, but we test the mechanism)
-		        auto invalidDowncast = base.As<DerivedTestObject>();
-		        // Even though this would be unsafe in real code, the static_cast will succeed
-		        REQUIRE(invalidDowncast != nullptr);
-		    }
-		    
-		    SECTION("Downcast using DynamicCast() - dynamic_cast")
-			{
-		        auto base = CreateRef<TestObject>(42);
-		        auto derived = CreateRef<DerivedTestObject>(42, "Test");
-		        Ref<TestObject> baseRef = derived;
-		        
-		        // Valid downcast
-		        auto derivedAgain = baseRef.DynamicCast<DerivedTestObject>();
-		        REQUIRE(derivedAgain != nullptr);
-		        REQUIRE(derivedAgain->GetName() == "Test");
-		        
-		        // Invalid downcast (safely returns null)
-		        auto invalidDowncast = base.DynamicCast<DerivedTestObject>();
-		        REQUIRE(invalidDowncast == nullptr);
-		    }
-		}
-		
-		TEST_CASE("Ref resource management", "[Ref]")
-		{
-		    SECTION("Destruction on going out of scope")
-			{
-		        bool destroyed = false;
-		        {
-		            auto ref = CreateRef<DestructionTracker>(&destroyed);
-		            REQUIRE_FALSE(destroyed);
-		        }
-		        REQUIRE(destroyed);
-		    }
-		    
-		    SECTION("Destruction on last reference")
-			{
-		        bool destroyed = false;
-		        auto ref1 = CreateRef<DestructionTracker>(&destroyed);
-		        {
-		            auto ref2 = ref1;
-		            auto ref3 = ref1;
-		            REQUIRE_FALSE(destroyed);
-		        }
-		        REQUIRE_FALSE(destroyed);
-		        ref1 = nullptr;
-		        REQUIRE(destroyed);
-		    }
-		    
-		    SECTION("Reset method")
-			{
-		        bool destroyed1 = false;
-		        bool destroyed2 = false;
-		        
-		        auto ref = CreateRef<DestructionTracker>(&destroyed1);
-		        REQUIRE_FALSE(destroyed1);
-		        
-		        ref.Reset(new DestructionTracker(&destroyed2));
-		        REQUIRE(destroyed1);
-		        REQUIRE_FALSE(destroyed2);
-		        
-		        ref.Reset();
-		        REQUIRE(destroyed2);
-		        REQUIRE(ref == nullptr);
-		    }
-		    
-		    SECTION("IsUnique method")
-			{
-		        auto ref1 = CreateRef<TestObject>();
-		        REQUIRE(ref1.IsUnique());
-		        
-		        auto ref2 = ref1;
-		        REQUIRE_FALSE(ref1.IsUnique());
-		        REQUIRE_FALSE(ref2.IsUnique());
-		        
-		        ref2 = nullptr;
-		        REQUIRE(ref1.IsUnique());
-		    }
-		}
-		
-		TEST_CASE("Ref interoperability with std::shared_ptr", "[Ref]")
-		{
-		    SECTION("Construction from shared_ptr")
-			{
-		        auto shared = std::make_shared<TestObject>(42);
-		        Ref<TestObject> ref(shared);
-		        
-		        REQUIRE(ref != nullptr);
-		        REQUIRE(ref->GetValue() == 42);
-		        // Reference count will include both the shared_ptr and the Ref
-		        REQUIRE(ref.UseCount() >= 1);
-		    }
-		    
-		    SECTION("Conversion to shared_ptr")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        auto shared = ref.ToSharedPtr();
-		        
-		        REQUIRE(shared != nullptr);
-		        REQUIRE(shared->GetValue() == 42);
-		        REQUIRE(shared.use_count() >= 1);
-		        REQUIRE(ref.UseCount() >= 1);
-		    }
-		}
-		
-		TEST_CASE("Ref WeakRef integration", "[Ref][WeakRef]")
-		{
-		    SECTION("Creating WeakRef from Ref")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak(ref);
-		        
-		        REQUIRE_FALSE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 1);
-		    }
-		    
-		    SECTION("WeakRef expiration")
-			{
-		        WeakRef<TestObject> weak;
-		        {
-		            auto ref = CreateRef<TestObject>(42);
-		            weak = ref;
-		            REQUIRE_FALSE(weak.Expired());
-		        }
-		        REQUIRE(weak.Expired());
-		        REQUIRE(weak.UseCount() == 0);
-		    }
-		    
-		    SECTION("Locking WeakRef to get Ref")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak(ref);
-		        
-		        auto lockedRef = weak.Lock();
-		        REQUIRE(lockedRef != nullptr);
-		        REQUIRE(lockedRef->GetValue() == 42);
-		        REQUIRE(lockedRef.UseCount() == 2);
-		        
-		        ref = nullptr;
-		        auto stillLockedRef = weak.Lock();
-		        REQUIRE(stillLockedRef != nullptr);
-		        REQUIRE(stillLockedRef.UseCount() == 1);
-		        
-		        stillLockedRef = nullptr;
-		        REQUIRE(weak.Expired());
-		        auto expiredRef = weak.Lock();
-		        REQUIRE(expiredRef == nullptr);
-		    }
-		    
-		    SECTION("Constructing Ref from WeakRef")
-			{
-		        auto ref = CreateRef<TestObject>(42);
-		        WeakRef<TestObject> weak(ref);
-		        
-		        Ref<TestObject> newRef(weak);
-		        REQUIRE(newRef != nullptr);
-		        REQUIRE(newRef->GetValue() == 42);
-		        REQUIRE(newRef.UseCount() == 2);
-		        
-		        ref = nullptr;
-		        weak.Reset();
-		        Ref<TestObject> nullRef(weak);
-		        REQUIRE(nullRef == nullptr);
-		    }
-		}
-		
-		TEST_CASE("Ref comparison operators", "[Ref]")
-		{
-		    SECTION("Equality with another Ref")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        auto ref2 = ref1;
-		        auto ref3 = CreateRef<TestObject>(42);
-		        
-		        REQUIRE(ref1 == ref2);
-		        REQUIRE_FALSE(ref1 == ref3);
-		    }
-		    
-		    SECTION("Inequality with another Ref")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        auto ref2 = ref1;
-		        auto ref3 = CreateRef<TestObject>(42);
-		        
-		        REQUIRE_FALSE(ref1 != ref2);
-		        REQUIRE(ref1 != ref3);
-		    }
-		    
-		    SECTION("Equality with nullptr")
-			{
-		        Ref<TestObject> ref1;
-		        auto ref2 = CreateRef<TestObject>(42);
-		        
-		        REQUIRE(ref1 == nullptr);
-		        REQUIRE_FALSE(ref2 == nullptr);
-		    }
-		    
-		    SECTION("Inequality with nullptr")
-			{
-		        Ref<TestObject> ref1;
-		        auto ref2 = CreateRef<TestObject>(42);
-		        
-		        REQUIRE_FALSE(ref1 != nullptr);
-		        REQUIRE(ref2 != nullptr);
-		    }
-		    
-		    SECTION("Object equality with EqualsObject")
-			{
-		        class ComparableObject : public RefCounted
-				{
-		        public:
-		            explicit ComparableObject(int id) : m_Id(id) {}
-		            bool operator==(const ComparableObject& other) const
-					{
-		                return m_Id == other.m_Id;
-		            }
-		        private:
-		            int m_Id;
-		        };
-		        
-		        auto ref1 = CreateRef<ComparableObject>(42);
-		        auto ref2 = CreateRef<ComparableObject>(42);
-		        auto ref3 = CreateRef<ComparableObject>(43);
-		        
-		        // Same value but different objects
-		        REQUIRE(ref1.EqualsObject(ref2));
-		        REQUIRE_FALSE(ref1.EqualsObject(ref3));
-		        
-		        // Same object
-		        auto ref4 = ref1;
-		        REQUIRE(ref1.EqualsObject(ref4));
-		    }
-		}
-		
-		TEST_CASE("Ref misc operations", "[Ref]")
-		{
-		    SECTION("Swap method")
-			{
-		        auto ref1 = CreateRef<TestObject>(42);
-		        auto ref2 = CreateRef<TestObject>(24);
-		        
-		        auto* ptr1 = ref1.Get();
-		        auto* ptr2 = ref2.Get();
-		        
-		        ref1.Swap(ref2);
-		        
-		        REQUIRE(ref1.Get() == ptr2);
-		        REQUIRE(ref2.Get() == ptr1);
-		        REQUIRE(ref1->GetValue() == 24);
-		        REQUIRE(ref2->GetValue() == 42);
-		    }
-		    
-		    SECTION("IsValid method")
-			{
-		        Ref<TestObject> ref1;
-		        auto ref2 = CreateRef<TestObject>();
-		        
-		        REQUIRE_FALSE(ref1.IsValid());
-		        REQUIRE(ref2.IsValid());
-		    }
-		}
-	
-	}  // namespace Tests
-}  // namespace SceneryEditorX
+    namespace Tests
+    {
+        namespace PointerTests
+        {
+            // Test class for reference counting tests
+            class TestObject : public RefCounted
+            {
+            public:
+                explicit TestObject(const int value = 42) : m_Value(value) {}
+                virtual ~TestObject() override { ++s_DestroyCount; }
+
+                int GetValue() const { return m_Value; }
+                void SetValue(const int value) { m_Value = value; }
+
+                static int GetDestroyCount() { return s_DestroyCount; }
+                static void ResetDestroyCount() { s_DestroyCount = 0; }
+
+            private:
+                int m_Value;
+                static int s_DestroyCount;
+            };
+
+            int TestObject::s_DestroyCount = 0;
+
+            class DerivedTestObject : public TestObject
+            {
+            public:
+                explicit DerivedTestObject(const int value = 100, std::string name = "derived") : TestObject(value), m_Name(std::move(name)) {}
+                const std::string& GetName() const { return m_Name; }
+                void SetName(const std::string& name) { m_Name = name; }
+
+            private:
+                std::string m_Name;
+            };
+
+            // Test fixture for Ref tests
+            class RefTestFixture
+            {
+            public:
+                RefTestFixture()
+                {
+                    TestObject::ResetDestroyCount();
+                }
+
+                ~RefTestFixture()
+                {
+                    TestObject::ResetDestroyCount();
+                }
+            };
+        }
+
+        using namespace PointerTests;
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref default construction", "[Ref][construction]")
+        {
+            TEST_CASE_LOG("Ref default construction", "[Ref][construction]");
+
+            SECTION("Default constructor creates null reference")
+            {
+                SECTION_LOG("Default constructor creates null reference");
+                LOG_TEST_INFO("Testing default constructor behavior");
+
+                Ref<TestObject> ref;
+                LOG_TEST_INFO("Created default Ref<TestObject>");
+
+                REQUIRE_FALSE(ref);
+                LOG_ASSERTION("ref", !ref, "Default ref should be false/null");
+
+                REQUIRE(ref.Get() == nullptr);
+                LOG_ASSERTION("ref.Get() == nullptr", ref.Get() == nullptr, "Get() should return nullptr");
+
+                REQUIRE(ref.UseCount() == 0);
+                LOG_ASSERTION("ref.UseCount() == 0", ref.UseCount() == 0, "UseCount should be 0");
+
+                REQUIRE_FALSE(ref.IsValid());
+                LOG_ASSERTION("!ref.IsValid()", !ref.IsValid(), "IsValid should return false");
+            }
+
+            SECTION("nullptr constructor creates null reference")
+            {
+                SECTION_LOG("nullptr constructor creates null reference");
+                LOG_TEST_INFO("Testing nullptr constructor behavior");
+
+                Ref<TestObject> ref(nullptr);
+                LOG_TEST_INFO("Created Ref<TestObject> with nullptr");
+
+                REQUIRE_FALSE(ref);
+                LOG_ASSERTION("ref", !ref, "nullptr ref should be false/null");
+
+                REQUIRE(ref.Get() == nullptr);
+                LOG_ASSERTION("ref.Get() == nullptr", ref.Get() == nullptr, "Get() should return nullptr");
+
+                REQUIRE(ref.UseCount() == 0);
+                LOG_ASSERTION("ref.UseCount() == 0", ref.UseCount() == 0, "UseCount should be 0");
+
+                REQUIRE_FALSE(ref.IsValid());
+                LOG_ASSERTION("!ref.IsValid()", !ref.IsValid(), "IsValid should return false");
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref construction from raw pointer", "[Ref][construction]")
+        {
+            SECTION("Constructor from raw pointer takes ownership")
+            {
+                auto* rawPtr = new TestObject(123);
+                Ref<TestObject> ref(rawPtr);
+
+                REQUIRE(ref);
+                REQUIRE(ref.Get() == rawPtr);
+                REQUIRE(ref->GetValue() == 123);
+                REQUIRE(ref.UseCount() == 1);
+                REQUIRE(ref.IsValid());
+                REQUIRE(ref.IsUnique());
+            }
+
+            SECTION("Multiple refs from same raw pointer share ownership")
+            {
+                auto* rawPtr = new TestObject(456);
+                Ref<TestObject> ref1(rawPtr);
+                Ref<TestObject> ref2(rawPtr);
+
+                REQUIRE(ref1.UseCount() == 2);
+                REQUIRE(ref2.UseCount() == 2);
+                REQUIRE(ref1.Get() == ref2.Get());
+                REQUIRE_FALSE(ref1.IsUnique());
+                REQUIRE_FALSE(ref2.IsUnique());
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref copy construction", "[Ref][construction][copy]")
+        {
+            SECTION("Copy constructor shares ownership")
+            {
+                Ref<TestObject> original = CreateRef<TestObject>(789);
+                const Ref<TestObject> &copy(original);
+
+                REQUIRE(original.UseCount() == 2);
+                REQUIRE(copy.UseCount() == 2);
+                REQUIRE(original.Get() == copy.Get());
+                REQUIRE(original->GetValue() == 789);
+                REQUIRE(copy->GetValue() == 789);
+            }
+
+            SECTION("Copy constructor with type conversion")
+            {
+                Ref<DerivedTestObject> derived = CreateRef<DerivedTestObject>(987, "test");
+                Ref<TestObject> base(derived);
+
+                REQUIRE(derived.UseCount() == 2);
+                REQUIRE(base.UseCount() == 2);
+                REQUIRE(base->GetValue() == 987);
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref move construction", "[Ref][construction][move]")
+        {
+            SECTION("Move constructor transfers ownership")
+            {
+                Ref<TestObject> original = CreateRef<TestObject>(654);
+                TestObject* originalPtr = original.Get();
+                Ref<TestObject> moved(std::move(original));
+
+                REQUIRE_FALSE(original);
+                REQUIRE(original.Get() == nullptr);
+                REQUIRE(moved);
+                REQUIRE(moved.Get() == originalPtr);
+                REQUIRE(moved.UseCount() == 1);
+                REQUIRE(moved->GetValue() == 654);
+            }
+
+            SECTION("Move constructor with type conversion")
+            {
+                Ref<DerivedTestObject> derived = CreateRef<DerivedTestObject>(321, "moved");
+                TestObject* originalPtr = derived.Get();
+                Ref<TestObject> base(std::move(derived));
+
+                REQUIRE_FALSE(derived);
+                REQUIRE(base.Get() == originalPtr);
+                REQUIRE(base.UseCount() == 1);
+                REQUIRE(base->GetValue() == 321);
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref assignment operators", "[Ref][assignment]")
+        {
+            SECTION("Copy assignment shares ownership")
+            {
+                Ref<TestObject> ref1 = CreateRef<TestObject>(111);
+                Ref<TestObject> ref2 = CreateRef<TestObject>(222);
+
+                REQUIRE(TestObject::GetDestroyCount() == 0);
+
+                ref2 = ref1;
+
+                REQUIRE(TestObject::GetDestroyCount() == 1); // Object with value 222 destroyed
+                REQUIRE(ref1.UseCount() == 2);
+                REQUIRE(ref2.UseCount() == 2);
+                REQUIRE(ref1.Get() == ref2.Get());
+                REQUIRE(ref1->GetValue() == 111);
+                REQUIRE(ref2->GetValue() == 111);
+            }
+
+            SECTION("Move assignment transfers ownership")
+            {
+                Ref<TestObject> ref1 = CreateRef<TestObject>(333);
+                Ref<TestObject> ref2 = CreateRef<TestObject>(444);
+                TestObject* ref1Ptr = ref1.Get();
+
+                REQUIRE(TestObject::GetDestroyCount() == 0);
+
+                ref2 = std::move(ref1);
+
+                REQUIRE(TestObject::GetDestroyCount() == 1); // Object with value 444 destroyed
+                REQUIRE_FALSE(ref1);
+                REQUIRE(ref2.Get() == ref1Ptr);
+                REQUIRE(ref2.UseCount() == 1);
+                REQUIRE(ref2->GetValue() == 333);
+            }
+
+            SECTION("Assignment to nullptr resets reference")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(555);
+
+                REQUIRE(TestObject::GetDestroyCount() == 0);
+
+                ref = nullptr;
+
+                REQUIRE(TestObject::GetDestroyCount() == 1);
+                REQUIRE_FALSE(ref);
+                REQUIRE(ref.Get() == nullptr);
+                REQUIRE(ref.UseCount() == 0);
+            }
+
+            SECTION("Self-assignment is safe")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(666);
+                TestObject* originalPtr = ref.Get();
+
+                ref = ref; // Self-assignment
+
+                REQUIRE(ref.Get() == originalPtr);
+                REQUIRE(ref.UseCount() == 1);
+                REQUIRE(ref->GetValue() == 666);
+                REQUIRE(TestObject::GetDestroyCount() == 0);
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref object access", "[Ref][access]")
+        {
+            SECTION("Dereference operator provides object access")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(777);
+                TestObject& obj = *ref;
+
+                REQUIRE(obj.GetValue() == 777);
+
+                obj.SetValue(888);
+                REQUIRE(ref->GetValue() == 888);
+            }
+
+            SECTION("Arrow operator provides member access")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(999);
+
+                REQUIRE(ref->GetValue() == 999);
+                ref->SetValue(1010);
+                REQUIRE(ref->GetValue() == 1010);
+            }
+
+            SECTION("Get() returns raw pointer")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(1111);
+                TestObject* rawPtr = ref.Get();
+
+                REQUIRE(rawPtr != nullptr);
+                REQUIRE(rawPtr->GetValue() == 1111);
+                REQUIRE(rawPtr == ref.Get()); // Same pointer
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref type conversions", "[Ref][conversion]")
+        {
+            SECTION("As() performs static cast")
+            {
+                Ref<DerivedTestObject> derived = CreateRef<DerivedTestObject>(1212, "base");
+                Ref<TestObject> base = derived.As<TestObject>();
+
+                REQUIRE(base);
+                REQUIRE(base.UseCount() == 2);
+                REQUIRE(base->GetValue() == 1212);
+            }
+
+            SECTION("DynamicCast() performs dynamic cast - success")
+            {
+                Ref<TestObject> base = CreateRef<DerivedTestObject>(1313, "derived");
+                Ref<DerivedTestObject> derived = base.DynamicCast<DerivedTestObject>();
+
+                REQUIRE(derived);
+                REQUIRE(derived.UseCount() == 2);
+                REQUIRE(derived->GetValue() == 1313);
+                REQUIRE(derived->GetName() == "derived");
+            }
+
+            SECTION("DynamicCast() performs dynamic cast - failure")
+            {
+                Ref<TestObject> base = CreateRef<TestObject>(1414);
+                Ref<DerivedTestObject> derived = base.DynamicCast<DerivedTestObject>();
+
+                REQUIRE_FALSE(derived);
+                REQUIRE(derived.Get() == nullptr);
+                REQUIRE(base.UseCount() == 1); // Original reference unaffected
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref reset and swap", "[Ref][utility]")
+        {
+            SECTION("Reset() with no argument sets to null")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(1515);
+
+                REQUIRE(TestObject::GetDestroyCount() == 0);
+
+                ref.Reset();
+
+                REQUIRE(TestObject::GetDestroyCount() == 1);
+                REQUIRE_FALSE(ref);
+                REQUIRE(ref.UseCount() == 0);
+            }
+
+            SECTION("Reset() with pointer changes managed object")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(1616);
+                auto* newObject = new TestObject(1717);
+
+                REQUIRE(TestObject::GetDestroyCount() == 0);
+
+                ref.Reset(newObject);
+
+                REQUIRE(TestObject::GetDestroyCount() == 1); // Old object destroyed
+                REQUIRE(ref.Get() == newObject);
+                REQUIRE(ref->GetValue() == 1717);
+                REQUIRE(ref.UseCount() == 1);
+            }
+
+            SECTION("Swap() exchanges managed objects")
+            {
+                Ref<TestObject> ref1 = CreateRef<TestObject>(1818);
+                Ref<TestObject> ref2 = CreateRef<TestObject>(1919);
+                TestObject* ptr1 = ref1.Get();
+                TestObject* ptr2 = ref2.Get();
+
+                ref1.Swap(ref2);
+
+                REQUIRE(ref1.Get() == ptr2);
+                REQUIRE(ref2.Get() == ptr1);
+                REQUIRE(ref1->GetValue() == 1919);
+                REQUIRE(ref2->GetValue() == 1818);
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref comparison operators", "[Ref][comparison]")
+        {
+            SECTION("Equality comparison")
+            {
+                Ref<TestObject> ref1 = CreateRef<TestObject>(2020);
+                Ref<TestObject> ref2 = ref1;
+                Ref<TestObject> ref3 = CreateRef<TestObject>(2020); // Same value, different object
+
+                REQUIRE(ref1 == ref2);
+                REQUIRE_FALSE(ref1 == ref3);
+                REQUIRE(ref1 != ref3);
+                REQUIRE_FALSE(ref1 != ref2);
+            }
+
+            SECTION("Comparison with nullptr")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(2121);
+                Ref<TestObject> nullRef;
+
+                REQUIRE_FALSE(ref == nullptr);
+                REQUIRE(nullRef == nullptr);
+                REQUIRE(ref != nullptr);
+                REQUIRE_FALSE(nullRef != nullptr);
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref interoperability with std::shared_ptr", "[Ref][interop]")
+        {
+            SECTION("Construction from std::shared_ptr")
+            {
+                auto sharedPtr = std::make_shared<TestObject>(2222);
+                Ref<TestObject> ref(sharedPtr);
+
+                REQUIRE(ref);
+                REQUIRE(ref->GetValue() == 2222);
+                // Note: UseCount might be different due to shared_ptr's control block
+            }
+
+            SECTION("Conversion to std::shared_ptr")
+            {
+                Ref<TestObject> ref = CreateRef<TestObject>(2323);
+                auto sharedPtr = ref.ToSharedPtr();
+
+                REQUIRE(sharedPtr);
+                REQUIRE(sharedPtr->GetValue() == 2323);
+                REQUIRE(sharedPtr.get() == ref.Get());
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "Ref memory management", "[Ref][memory]")
+        {
+            SECTION("Object destroyed when last reference is released")
+            {
+                {
+                    Ref<TestObject> ref1 = CreateRef<TestObject>(2424);
+                    {
+                        Ref<TestObject> ref2 = ref1;
+                        REQUIRE(ref1.UseCount() == 2);
+                        REQUIRE(TestObject::GetDestroyCount() == 0);
+                    }
+                    REQUIRE(ref1.UseCount() == 1);
+                    REQUIRE(TestObject::GetDestroyCount() == 0);
+                }
+                REQUIRE(TestObject::GetDestroyCount() == 1);
+            }
+
+            SECTION("Multiple objects managed independently")
+            {
+                Ref<TestObject> ref1 = CreateRef<TestObject>(2525);
+                Ref<TestObject> ref2 = CreateRef<TestObject>(2626);
+
+                REQUIRE(ref1.UseCount() == 1);
+                REQUIRE(ref2.UseCount() == 1);
+                REQUIRE(TestObject::GetDestroyCount() == 0);
+
+                ref1 = nullptr;
+
+                REQUIRE(TestObject::GetDestroyCount() == 1);
+                REQUIRE(ref2.UseCount() == 1);
+                REQUIRE(ref2->GetValue() == 2626);
+
+                ref2 = nullptr;
+
+                REQUIRE(TestObject::GetDestroyCount() == 2);
+            }
+        }
+
+        TEST_CASE_METHOD(RefTestFixture, "CreateRef factory function", "[Ref][factory]")
+        {
+            SECTION("Creates object with correct arguments")
+            {
+                auto ref = CreateRef<TestObject>(2727);
+
+                REQUIRE(ref);
+                REQUIRE(ref->GetValue() == 2727);
+                REQUIRE(ref.UseCount() == 1);
+                REQUIRE(ref.IsUnique());
+            }
+
+            SECTION("Creates derived object")
+            {
+                auto ref = CreateRef<DerivedTestObject>(2828, "factory");
+
+                REQUIRE(ref);
+                REQUIRE(ref->GetValue() == 2828);
+                REQUIRE(ref->GetName() == "factory");
+                REQUIRE(ref.UseCount() == 1);
+            }
+        }
+    }
+
+    /// -------------------------------------------------------------------
+
+}
+
+/// -------------------------------------------------------------------

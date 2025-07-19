@@ -10,7 +10,7 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/memory.h>
+#include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 
 /// --------------------------------------------

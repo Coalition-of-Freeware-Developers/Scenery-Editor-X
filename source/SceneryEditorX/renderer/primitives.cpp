@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #include <glm/glm.hpp>
-#include <SceneryEditorX/renderer/primitives.h>
 #include <numbers>
 #include <SceneryEditorX//scene/model_asset.h>
+#include <SceneryEditorX/renderer/primitives.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {

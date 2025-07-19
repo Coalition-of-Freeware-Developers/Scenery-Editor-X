@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/application_data.h>
+#include <SceneryEditorX/core/application/application_data.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
 #include <SceneryEditorX/renderer/vulkan/vk_pipeline_cache.h>

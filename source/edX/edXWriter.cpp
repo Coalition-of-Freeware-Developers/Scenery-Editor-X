@@ -1,18 +1,26 @@
-
+/**
+* -------------------------------------------------------
+* Scenery Editor X - edX File Format
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* edXWriter.cpp
+* -------------------------------------------------------
+* Created: 27/5/2025
+* -------------------------------------------------------
+*/
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <string>
 #include <vector>
-
-
 #include "../X-PlaneSceneryLibrary/XPLibraryPath.h"
 #include "../edX/edXProjectFile.h"
 
+/// ----------------------------------------------------------------------------
 
-using namespace ProjectFile;
-
-void writeEdxFile(const std::string &filename, // Add filename parameter
+void writeEdxFile(const std::string &filename,
                   const std::string &sceneryName,
                   const std::string &editorVersion,
                   const std::string &XPVersion,
@@ -36,25 +44,20 @@ void writeEdxFile(const std::string &filename, // Add filename parameter
                   double airportApproach,
                   double airportDeparture,
                   double airportClearance,
-                  std::vector<ProjectFile::Airport> &airport,
-                  std::vector<ProjectFile::usedLibrary> &libraries,
-                  std::vector<ProjectFile::sceneAssets> &assets)
+                  std::vector<edx::AirportInfo> &airport,
+                  std::vector<edx::LibraryReference> &libraries,
+                  std::vector<edx::SceneAsset> &assets)
 {
-    std::ofstream file(filename); // Use filename parameter
+    std::ofstream file(filename);
 
     if (!file.is_open())
     {
-        std::cerr << "Error opening file for writing." << std::endl;
+        std::cerr << "Error opening file for writing." << '\n';
         return;
     }
 
-
     /**
      * @brief Write the scenery section to the edX file.
-     * 
-     * @param sceneryName The name of the scenery.
-     * @param editorVersion The version of the editor.
-     * @param XPVersion The version of X-Plane.
      */
     file << "[Scenery]\n";
     file << "Name=" << sceneryName << "\n";
@@ -63,40 +66,16 @@ void writeEdxFile(const std::string &filename, // Add filename parameter
 
     /**
      * @brief Write the libraries section to the edX file.
-     * 
-     * @param libraries The vector of library names.
      */
     file << "[Libraries]\n";
     for (const auto &library : libraries)
     {
-        file << "Library=" << library << "\n";
+        file << "Library=" << library.name << "\n";
     }
     file << "\n";
 
-
     /**
      * @brief Write the airport data to the edX file.
-     * 
-     * @param airportName The name of the airport.
-     * @param airportICAO The ICAO code of the airport.
-     * @param airportIATA The IATA code of the airport.
-     * @param airportFAA The FAA code of the airport.
-     * @param airportCity The city where the airport is located.
-     * @param airportState The state where the airport is located.
-     * @param airportCountry The country where the airport is located.
-     * @param airportRegion The region code of the airport.
-     * @param airportLat The latitude of the airport.
-     * @param airportLon The longitude of the airport.
-     * @param airportTransAlt The transition altitude of the airport.
-     * @param airportTransLvl The transition level of the airport.
-     * @param airportElevation The elevation of the airport.
-     * @param airportCTAF The CTAF frequency of the airport.
-     * @param airportATIS The ATIS frequency of the airport.
-     * @param airportTower The tower frequency of the airport.
-     * @param airportGround The ground frequency of the airport.
-     * @param airportApproach The approach frequency of the airport.
-     * @param airportDeparture The departure frequency of the airport.
-     * @param airportClearance The clearance frequency of the airport.
      */
     file << "[Airport]\n";
     for (const auto &airportData : airport)
@@ -125,24 +104,13 @@ void writeEdxFile(const std::string &filename, // Add filename parameter
 
     /**
      * @brief Write the assets section to the edX file.
-     * 
-     * @param assets The vector of scene assets.
-     * @param uniqueId The unique identifier of the asset.
-     * @param datum_lat The latitude of the asset.
-     * @param datum_lon The longitude of the asset.
-     * @param heading The heading of the asset.
-     * @param altitude The altitude of the asset.
-     * @param locked The locked status of the asset.
-     * @param hidden The hidden status of the asset.
-     * @param groupId The group ID of the asset its parented to in a layer.
-     * @param properties The properties of the asset.
      */
     file << "[Assets]\n";
     for (const auto &asset : assets)
     {
-        file << asset.id << "=" << asset.uniqueId << ", " << asset.groupId << ", " << asset.datum_lat << ", "
-             << asset.datum_lon << ", " << asset.heading << ", " << asset.altitude << ", " << asset.locked << ", "
-             << asset.hidden << ", " << asset.properties << "\n";
+        file << asset.id << "=" << asset.uniqueId << ", " << asset.groupId << ", " << asset.latitude << ", "
+             << asset.longitude << ", " << asset.heading << ", " << asset.altitude << ", " << asset.locked << ", "
+             << asset.hidden << ", " << asset.otherProperties.dump() << "\n";
     }
 
     file.close();
@@ -150,47 +118,77 @@ void writeEdxFile(const std::string &filename, // Add filename parameter
 
 int projectMain()
 {
-    std::vector<ProjectFile::Airport> airportData = {};
+    std::vector<edx::AirportInfo> airportData;
 
-    std::vector<ProjectFile::usedLibrary> libraries = {{"Library1", "path/to/library1", 1},
-                                                       {"Library2", "path/to/library2", 2}};
-    std::vector<ProjectFile::sceneAssets> assets = {
-        {"Asset001", 1, 37.618999, -122.375, 0.0, 0.0, false, false, 0, "Building_Type=Terminal"},
-        {"Asset002", 2, 37.621, -122.379, 90.0, 0.0, false, false, 0, "Object_Type=Hangar"},
-        {"Asset003", 3, 37.6185, -122.380, 45.0, 0.0, false, false, 0, "Object_Type=ControlTower"}};
-    std::vector<ProjectFile::sceneLayers> layers = {};
+    std::vector<edx::LibraryReference> libraries;
+    edx::LibraryReference lib1;
+    lib1.name = "Library1";
+    lib1.localPath = "path/to/library1";
+    lib1.uuid = "uuid1";
+    lib1.shortId = "lib1";
+    lib1.entryCount = 1;
+    lib1.version = "1.0";
+    libraries.push_back(lib1);
 
-    /*
-    * @brief Writes the data to an edX file.
-    * 
-    * @param filename The name of the file to write.
-    * @param sceneryName The name of the scenery.
-    * @param editorVersion The version of the editor.
-    * @param XPVersion The version of X-Plane.
-    * @param airportName The name of the airport.
-    * @param airportICAO The ICAO code of the airport.
-    * @param airportIATA The IATA code of the airport.
-    * @param airportFAA The FAA code of the airport.
-    * @param airportCity The city where the airport is located.
-    * @param airportState The state where the airport is located.
-    * @param airportCountry The country where the airport is located.
-    * @param airportRegion The region code of the airport.
-    * @param airportLat The latitude of the airport.
-    * @param airportLon The longitude of the airport.
-    * @param airportTransAlt The transition altitude of the airport.
-    * @param airportTransLvl The transition level of the airport.
-    * @param airportElevation The elevation of the airport.
-    * @param airportCTAF The CTAF frequency of the airport.
-    * @param airportATIS The ATIS frequency of the airport.
-    * @param airportTower The tower frequency of the airport.
-    * @param airportGround The ground frequency of the airport.
-    * @param airportApproach The approach frequency of the airport.
-    * @param airportDeparture The departure frequency of the airport.
-    * @param airportClearance The clearance frequency of the airport.
-    * @param airport The vector of airport data.
-    * @param libraries The vector of library names.
-    * @param assets The vector of scene assets.
-    */
+    edx::LibraryReference lib2;
+    lib2.name = "Library2";
+    lib2.localPath = "path/to/library2";
+    lib2.uuid = "uuid2";
+    lib2.shortId = "lib2";
+    lib2.entryCount = 2;
+    lib2.version = "1.0";
+    libraries.push_back(lib2);
+    
+    std::vector<edx::SceneAsset> assets;
+    
+    edx::SceneAsset asset1;
+    asset1.id = "Asset001";
+    asset1.uniqueId = "unique1";
+    asset1.latitude = 37.618999;
+    asset1.longitude = -122.375;
+    asset1.altitude = 0.0;
+    asset1.heading = 0.0;
+    asset1.associatedLibrary = "Library1";
+    asset1.layerId = "layer1";
+    asset1.groupId = "group1";
+    asset1.locked = false;
+    asset1.hidden = false;
+    asset1.selected = false;
+    asset1.otherProperties = json{{"Building_Type", "Terminal"}};
+    assets.push_back(asset1);
+
+    edx::SceneAsset asset2;
+    asset2.id = "Asset002";
+    asset2.uniqueId = "unique2";
+    asset2.latitude = 37.621;
+    asset2.longitude = -122.379;
+    asset2.altitude = 0.0;
+    asset2.heading = 90.0;
+    asset2.associatedLibrary = "Library1";
+    asset2.layerId = "layer1";
+    asset2.groupId = "group1";
+    asset2.locked = false;
+    asset2.hidden = false;
+    asset2.selected = false;
+    asset2.otherProperties = json{{"Object_Type", "Hangar"}};
+    assets.push_back(asset2);
+
+    edx::SceneAsset asset3;
+    asset3.id = "Asset003";
+    asset3.uniqueId = "unique3";
+    asset3.latitude = 37.6185;
+    asset3.longitude = -122.380;
+    asset3.altitude = 0.0;
+    asset3.heading = 45.0;
+    asset3.associatedLibrary = "Library2";
+    asset3.layerId = "layer1";
+    asset3.groupId = "group1";
+    asset3.locked = false;
+    asset3.hidden = false;
+    asset3.selected = false;
+    asset3.otherProperties = json{{"Object_Type", "ControlTower"}};
+    assets.push_back(asset3);
+
     writeEdxFile("test.edx",
                  "San Francisco International",
                  "1.0",
@@ -221,3 +219,6 @@ int projectMain()
 
     return 0;
 }
+
+/// ----------------------------------------------------------------------------
+

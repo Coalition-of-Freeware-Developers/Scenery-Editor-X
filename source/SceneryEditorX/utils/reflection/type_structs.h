@@ -14,8 +14,10 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include "type_descriptors.h"
 
 /// -------------------------------------------------------
+
 namespace SceneryEditorX::Types
 {
 	namespace Reflection
@@ -52,7 +54,7 @@ namespace SceneryEditorX::Types
 			template<class T>
 			static ClassInfo Of()
 			{
-	            static_assert(Types::Described<T>::value, "Type must be 'Described'.");
+	            static_assert(Described<T>::value, "Type must be 'Described'.");
 	
 				/// Parse info using type Description
 	
@@ -97,9 +99,10 @@ namespace SceneryEditorX::Types
 		float f = 3.2f;
 		char ch = 'c';
 		int* pi = nullptr;
-	
-		void vfunc() {}
-	    [[nodiscard]] bool bfunc() const { return true; }
+
+        static void vfunc() {}
+	    [[nodiscard]] static bool bfunc()
+        { return true; }
 	};
 
     /// -------------------------------------------------------
@@ -113,7 +116,7 @@ namespace SceneryEditorX::Types
 
 	namespace Reflection
 	{
-		bool ClassInfoTest()
+        inline bool ClassInfoTest()
 		{
 			static const ClassInfo cl = ClassInfo::Of<TestStruct>();
 	

@@ -44,13 +44,13 @@ namespace SceneryEditorX
     public:
         ThreadSignal(const std::string &name, bool manualReset = false);
 
-		void Wait();
-        void Signal();
-        void Reset();
+		void Wait() const;
+        void Signal() const;
+        void Reset() const;
     private:
         void *signalHandle = nullptr;
     };
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

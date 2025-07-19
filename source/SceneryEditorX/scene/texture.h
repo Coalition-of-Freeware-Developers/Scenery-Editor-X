@@ -12,13 +12,14 @@
 */
 #pragma once
 #include <SceneryEditorX/platform/editor_config.hpp>
-#include <SceneryEditorX/scene/asset.h>
+#include <SceneryEditorX/asset/asset.h>
+#include <SceneryEditorX/serialization/graph_serializer.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	//struct Serializer;
+
 	
 	/// -------------------------------------------------------
 
@@ -30,17 +31,17 @@ namespace SceneryEditorX
                          textureImageView(VK_NULL_HANDLE), textureImageMemory(VK_NULL_HANDLE) {}
         explicit TextureAsset(const std::string &path);
         virtual ~TextureAsset() override;
-        //virtual void Serialize(Serializer &ser) override;
+        virtual void Serialize(Serializer &ser);
 
         /// -------------------------------------------------------
 
-        virtual void Load(const std::string &path);
+        virtual void Load(const std::string &path) override;
         virtual void Unload() override;
 
 		///TODO: Add these texture allocation functions
-        //GLOBAL void LoadWithAllocator();
-        //GLOBAL void UnloadWithAllocator();
-        //[[nodiscard]] virtual bool IsLoaded() const override;
+        GLOBAL void LoadWithAllocator();
+        GLOBAL void UnloadWithAllocator();
+        [[nodiscard]] virtual bool IsLoaded() const;
 
         [[nodiscard]] virtual const std::string &GetPath() const;
         [[nodiscard]] virtual const std::string &GetName() const;
@@ -55,8 +56,11 @@ namespace SceneryEditorX
         void CreateTextureImage();
         void CreateTextureImageView();
         void CreateTextureSampler();
-		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int i) const;
+		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int mipLevels) const;
         WeakRef<EditorConfig> config;
+
+        /// -------------------------------------------------------
+
         std::string texturePath;
         std::string textureName;
 
@@ -72,6 +76,6 @@ namespace SceneryEditorX
         friend class AssetManager;
     };
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

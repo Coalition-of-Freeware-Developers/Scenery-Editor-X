@@ -10,47 +10,48 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
+#include <algorithm>
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/memory.h>
+#include <SceneryEditorX/core/input/input.h>
+#include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/core/window/icon.h>
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <stb_image.h>
-#include <algorithm>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
     // Definition of the static member variable
-    GLFWwindow* WindowData::window = nullptr;
+    //LOCAL GLFWwindow* WindowData::window = nullptr;
 
     /**
      * @brief Global flag indicating whether GLFW has been initialized.
-     * 
+     *
      * This boolean tracks the initialization state of the GLFW library across the application.
      * When set to true, it indicates that glfwInit() has been successfully called.
      * This prevents multiple initialization attempts which could cause resource leaks.
      * The Window::Init() method checks this flag before calling glfwInit().
-     * 
+     *
      * @note This flag is reset to false in Window::Shutdown() when glfwTerminate() is called.
      */
     GLOBAL bool windowInit = false;
 
     /**
      * @brief Callback function for handling GLFW error events.
-     * 
+     *
      * This function is registered with GLFW to handle error events that occur during
-     * window operations. It specifically filters out joystick-related errors (which 
-     * commonly occur with GLFW_INVALID_ENUM code 0x10003) to prevent log spam when 
+     * window operations. It specifically filters out joystick-related errors (which
+     * commonly occur with GLFW_INVALID_ENUM code 0x10003) to prevent log spam when
      * flight simulator hardware is connected.
-     * 
+     *
      * All other GLFW errors are logged to the application's error logging system with
      * appropriate error code and description information.
-     * 
+     *
      * @param error The GLFW error code (e.g., GLFW_INVALID_ENUM, GLFW_INVALID_VALUE)
      * @param description A string describing the error that occurred
-     * 
+     *
      * @note This function is set as the GLFW error callback during Window::Init()
      */
     GLOBAL void WindowErrorCallback(int error, const char *description)
@@ -66,16 +67,16 @@ namespace SceneryEditorX
 
     /**
      * @brief Creates a new Window instance using the provided specifications.
-     * 
+     *
      * This static factory method encapsulates the creation of a Window object,
      * allowing for a consistent interface for window instantiation throughout the
      * application. It allocates a new Window instance on the heap using the
      * provided window specifications.
-     * 
+     *
      * @param windowSpecs The configuration data for the new window, including properties
      *                   like dimensions, title, and display mode.
      * @return A pointer to the newly created Window instance.
-     * 
+     *
      * @note The caller is responsible for managing the memory of the returned Window
      *       pointer, typically by using smart pointers or explicit deletion.
      * @note This method only creates the Window object but doesn't initialize it.
@@ -88,31 +89,31 @@ namespace SceneryEditorX
 
     /**
      * @brief Constructs a Window instance with default window data.
-     * 
+     *
      * This default constructor initializes a new Window object with default window data.
      * It sets up the WindowData structure with default values but doesn't create the actual
      * window yet - the window is created later when the Init() method is called.
-     * 
+     *
      * @note This is a lightweight constructor that only initializes default configuration.
      *       The actual window creation, monitor setup, and renderer initialization happens
      *       in the Init() method.
      */
-    Window::Window() : winData(WindowData{}) {}
+    Window::Window() {}
 
     /**
      * @brief Constructs a Window instance with the specified window data.
-     * 
+     *
      * This constructor initializes a new Window object using the provided window specifications.
      * It stores the configuration data but doesn't create the actual window yet - the window
      * is created later when the Init() method is called.
-     * 
+     *
      * @param winData The window configuration data containing properties like width, height,
      *                title, decoration status, and other window attributes.
-     * 
+     *
      * @note This is a lightweight constructor that only stores configuration. The actual window
      *       creation, monitor setup, and renderer initialization happens in the Init() method.
      */
-    Window::Window(WindowData winData) : winData(std::move(winData))
+    Window::Window(WindowData winData)
     {
     }
 
@@ -140,7 +141,7 @@ namespace SceneryEditorX
         m_winSpecs.title = winData.title;
         m_winSpecs.width = winData.width;
         m_winSpecs.height = winData.height;
-        
+
         /// Initialize GLFW if not already initialized
         if (!windowInit)
         {
@@ -159,7 +160,7 @@ namespace SceneryEditorX
         /// Set window hints
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, winData.resizable ? GLFW_TRUE : GLFW_FALSE);
-        
+
         if (!winData.decorated)
         {
             SEDX_CORE_INFO("Creating window without decorations");
@@ -169,7 +170,7 @@ namespace SceneryEditorX
         /// Initialize monitor data
         MonitorData monitorData;
         bool monitorInitSuccess = false;
-        
+
         try
 		{
             monitorData.RefreshMonitorList();
@@ -183,13 +184,13 @@ namespace SceneryEditorX
         }
 
         /// Create window based on mode
-        SEDX_CORE_INFO("Creating window: {}x{} - '{}'", 
-                       static_cast<int>(winData.width), 
-                       static_cast<int>(winData.height), 
+        SEDX_CORE_INFO("Creating window: {}x{} - '{}'",
+                       static_cast<int>(winData.width),
+                       static_cast<int>(winData.height),
                        winData.title);
-                       
+
         bool windowCreated = false;
-        
+
         /// First attempt - create with specified settings
         if (WindowData::mode == WindowMode::FullScreen && monitorInitSuccess)
         {
@@ -208,17 +209,17 @@ namespace SceneryEditorX
                 }
             }
         }
-        
+
         /// If fullscreen creation failed or not in fullscreen mode, create windowed
         if (!windowCreated) {
-            SEDX_CORE_INFO("Creating window in windowed mode: {}x{}", 
+            SEDX_CORE_INFO("Creating window in windowed mode: {}x{}",
                            static_cast<int>(winData.width), static_cast<int>(winData.height));
-            WindowData::window = glfwCreateWindow(static_cast<int>(winData.width), 
-                                                 static_cast<int>(winData.height), 
+            WindowData::window = glfwCreateWindow(static_cast<int>(winData.width),
+                                                 static_cast<int>(winData.height),
                                                  winData.title.c_str(), nullptr, nullptr);
             windowCreated = (WindowData::window != nullptr);
         }
-        
+
         // Final fallback - try creating a minimal window
         if (!windowCreated) {
             SEDX_CORE_WARN("Window creation failed with specified parameters, trying fallback settings");
@@ -226,11 +227,11 @@ namespace SceneryEditorX
             glfwDefaultWindowHints();
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-            
+
             // Try creating a basic window
             WindowData::window = glfwCreateWindow(800, 600, "Scenery Editor X (Fallback)", nullptr, nullptr);
             windowCreated = (WindowData::window != nullptr);
-            
+
             if (windowCreated) {
                 SEDX_CORE_INFO("Created fallback window successfully");
                 m_winSpecs.width = 800;
@@ -242,22 +243,22 @@ namespace SceneryEditorX
                 return;
             }
         }
-        
+
         SEDX_CORE_INFO("Window created successfully");
-        
+
         // Continue with window setup
         if (WindowData::window) {
             SetWindowIcon(WindowData::window);
             winData.dirty = false;
-            
+
             if (winData.maximized) {
                 SEDX_CORE_INFO("Maximizing window");
                 glfwMaximizeWindow(WindowData::window);
             }
-            
+
             renderContext = RenderContext::Get();
             renderContext->Init();
-            
+
             glfwSetWindowUserPointer(WindowData::window, &winData);
             DisableJoystickHandling();
 
@@ -269,7 +270,7 @@ namespace SceneryEditorX
             // Set up window callbacks
             glfwSetWindowSizeCallback(WindowData::window, [](GLFWwindow *window, int width, int height)
             {
-                auto &data = *((WindowData *)glfwGetWindowUserPointer(window));
+                auto &data = *(WindowData *)glfwGetWindowUserPointer(window);
                 data.width = width;
                 data.height = height;
             });
@@ -305,38 +306,38 @@ namespace SceneryEditorX
             glfwGetWindowSize(WindowData::window, &width, &height);
             m_winSpecs.width = width;
             m_winSpecs.height = height;
-            
+
             SEDX_CORE_INFO("Window setup complete: {}x{}", width, height);
         }
     }
 
     /**
      * @brief Releases all rendering resources and terminates the window system.
-     * 
+     *
      * This method performs a complete cleanup of all resources associated with the window:
      * 1. Destroys the swap chain by calling its Destroy() method
      * 2. Deallocates the swap chain object from memory
      * 3. Retrieves the Vulkan logical device from the render context and destroys it
      * 4. Terminates the GLFW library, releasing all window resources
      * 5. Resets the global window initialization flag
-     * 
+     *
      * This method should be called when the application is shutting down or
      * when the window is being closed to ensure proper cleanup of all GPU and
      * system resources.
-     * 
+     *
      * @note This must be called before the application exits to prevent resource leaks.
      */
     void Window::Shutdown()
     {
         if (WindowData::window) {
-            glfwDestroyWindow(WindowData::window);
+            glfwDestroyWindow(winData.window);
             WindowData::window = nullptr;
         }
-        
+
         if (renderContext) {
             renderContext.As<RenderContext>()->GetLogicDevice()->Destroy();
         }
-        
+
         if (windowInit) {
             glfwTerminate();
             windowInit = false;
@@ -350,13 +351,13 @@ namespace SceneryEditorX
 
     /**
      * @brief Retrieves the current window position.
-     * 
+     *
      * This method gets the current window position in screen coordinates using the GLFW API.
      * It updates the stored position values in the WindowData struct and returns them as a pair
      * of floating-point values for use in positioning calculations.
-     * 
+     *
      * @return A pair of floating-point values representing the window's x and y position in screen coordinates.
-     * 
+     *
      * @note The position coordinates are relative to the top-left corner of the screen, with positive y values
      *       moving downward and positive x values moving rightward.
      */
@@ -372,7 +373,7 @@ namespace SceneryEditorX
 
     /**
      * @brief Disables joystick handling to avoid errors with flight simulator hardware.
-     * 
+     *
      * This function disables all joystick-related callbacks and event processing
      * to prevent GLFW errors when dealing with complex flight simulator controllers.
      */
@@ -404,6 +405,20 @@ namespace SceneryEditorX
 
         //WindowData::scroll += x, WindowData::deltaScroll += y;
 	}
+
+    /**
+     * @brief Processes all pending events in the GLFW event queue.
+     *
+     * This function is called to handle all events that have occurred since the last call.
+     * It processes input events, updates the state of the window, and handles any user input.
+     *
+     * @note This function should be called regularly in the main application loop to ensure
+     */
+    void Window::ProcessEvents()
+    {
+        glfwPollEvents();
+        Input::Update();
+    }
 
     /**
 	 * @brief Callback function for handling mouse button events.
@@ -453,11 +468,11 @@ namespace SceneryEditorX
 	        SEDX_CORE_WARN("Cannot maximize window - window not created yet");
 	        return;
 	    }
-	    
+
 		auto &winData = *static_cast<WindowData *>(glfwGetWindowUserPointer(WindowData::window));
 		if (winData.maximized)
             return;
-            
+
 	    glfwMaximizeWindow(WindowData::window);
         winData.maximized = true;
         SEDX_CORE_INFO("Window Maximized");
@@ -480,13 +495,13 @@ namespace SceneryEditorX
 	        SEDX_CORE_WARN("Cannot center window - window not created yet");
 	        return;
 	    }
-	    
+
 	    const GLFWvidmode *videoMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 	    if (!videoMode) {
 	        SEDX_CORE_WARN("Cannot center window - failed to get primary monitor video mode");
 	        return;
 	    }
-	    
+
         const int x = videoMode->width / 2 - (m_winSpecs.width / 2);
         const int y = videoMode->height / 2 - (m_winSpecs.height / 2);
 	    glfwSetWindowPos(WindowData::window, x, y);
@@ -554,7 +569,7 @@ namespace SceneryEditorX
             SEDX_CORE_INFO("Window framebuffer resized to: {}x{}", width, height);
         }
 	}
-	
+
 	/**
 	 * @brief Callback function for handling window maximize events.
 	 *
@@ -599,7 +614,7 @@ namespace SceneryEditorX
             windowInstance->windowCallbacks.keyCallback(window, key, scancode, action, mods);
 
         }
-        
+
     }
 
 	/**
@@ -618,7 +633,7 @@ namespace SceneryEditorX
         windowInstance->winData.posX = x;
         windowInstance->winData.posY = y;
 	}
-	
+
 	/**
 	 * @brief Callback function for handling window drop events.
 	 *
@@ -651,10 +666,10 @@ namespace SceneryEditorX
 	        SEDX_CORE_WARN("Cannot apply window changes - window not created yet");
 	        return;
 	    }
-	    
+
         /// Create a MonitorData instance to access monitor information
         MonitorData monitorData;
-        
+
         try {
             monitorData.RefreshDisplayCount();
             monitorData.RefreshMonitorList();
@@ -662,7 +677,7 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR("Failed to refresh monitor data: {}", e.what());
             return;
         }
-        
+
         /// Get the current monitor
         GLFWmonitor* currentMonitor = monitorData.GetCurrentMonitor();
         if (!currentMonitor)
@@ -670,17 +685,17 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR("Failed to get current monitor");
             return;
         }
-        
+
         /// Ensure the monitor index is valid
         int currentMonitorIndex = monitorData.GetCurrentMonitorIndex();
         int monitorCount = monitorData.GetMonitorCount();
-        
+
         if (currentMonitorIndex >= monitorCount)
 		{
             SEDX_CORE_ERROR("Invalid monitor index: {} (total monitors: {})", currentMonitorIndex, monitorCount);
             return;
         }
-        
+
         /// Get current monitor's video mode
         const GLFWvidmode* monitorMode = monitorData.GetCurrentVideoMode();
         if (!monitorMode)
@@ -692,7 +707,7 @@ namespace SceneryEditorX
         /// Get video modes for the current monitor
         int modesCount = 0;
         const GLFWvidmode* videoModes = monitorData.GetVideoModes(currentMonitorIndex, &modesCount);
-        
+
         /// Validate video mode index
         int videoModeIndex = monitorData.GetVideoModeIndex();
         if (videoModeIndex >= modesCount)
@@ -700,14 +715,14 @@ namespace SceneryEditorX
             videoModeIndex = modesCount - 1;
             monitorData.SetVideoModeIndex(videoModeIndex);
         }
-        
+
         /// Apply window configuration based on current mode
         switch (mode)
         {
             case WindowMode::Windowed:
                 winData.posY = std::max(winData.posY, 31);
                 glfwSetWindowMonitor(WindowData::window, nullptr, winData.posX, winData.posY, m_winSpecs.width, m_winSpecs.height, GLFW_DONT_CARE);
-                
+
                 if (winData.maximized)
                     glfwMaximizeWindow(WindowData::window);
 
@@ -715,11 +730,11 @@ namespace SceneryEditorX
                 glfwSetWindowAttrib(WindowData::window, GLFW_RESIZABLE, winData.resizable ? GLFW_TRUE : GLFW_FALSE);
                 glfwSetWindowAttrib(WindowData::window, GLFW_DECORATED, winData.decorated ? GLFW_TRUE : GLFW_FALSE);
                 break;
-                
+
             case WindowMode::WindowedFullScreen:
                 glfwSetWindowMonitor(WindowData::window, currentMonitor, 0, 0, monitorMode->width, monitorMode->height, monitorMode->refreshRate);
                 break;
-                
+
             case WindowMode::FullScreen:
                 if (videoModes && videoModeIndex < modesCount)
 				{
@@ -731,7 +746,7 @@ namespace SceneryEditorX
 
                 break;
         }
-        
+
         winData.framebufferResized = false;
         winData.dirty = false;
     }
@@ -759,30 +774,30 @@ namespace SceneryEditorX
     {
 		/// Apply changes to the window based on the current mode
 		ApplyChanges();
-		
+
 		/// Update the swap chain if it exists
 		if (swapChain)
 		{
 			//swapChain->Present();
 		}
-		
+
 		SEDX_CORE_INFO("Window mode changed to: {}", static_cast<int>(mode));
     }
 
     /**
 	 * @brief Updates the window state for the current frame.
-	 * 
+	 *
 	 * This method is called once per frame to:
 	 * 1. Update the key state tracking buffer for all keyboard keys
 	 * 2. Reset the delta scroll value for the current frame
 	 * 3. Calculate the delta time between frames in milliseconds
 	 * 4. Update the current and delta mouse position values
 	 * 5. Process window events via glfwPollEvents()
-	 * 
+	 *
 	 * The delta time calculation converts microseconds to milliseconds for consistent
 	 * timing across different hardware. Mouse position is tracked to calculate movement
 	 * delta between frames for camera or UI interaction.
-	 * 
+	 *
 	 * This method should be called at the beginning of each frame's update cycle.
 	 */
 	void Window::Update()
@@ -791,7 +806,7 @@ namespace SceneryEditorX
 	        SEDX_CORE_WARN("Cannot update window - window not created yet");
 	        return;
 	    }
-	    
+
         for (auto i = 0; i < GLFW_KEY_LAST + 1; i++)
             lastKeyState[i] = static_cast<char>(glfwGetKey(WindowData::window, i));
 
@@ -808,13 +823,13 @@ namespace SceneryEditorX
         float prevY = winData.mousePos.y;
         winData.deltaMousePos.x = prevX - static_cast<float>(x);
         winData.deltaMousePos.y = prevY - static_cast<float>(y);
-        
+
         winData.mousePos.x = static_cast<float>(x);
         winData.mousePos.y = static_cast<float>(y);
 
 		glfwPollEvents();
 	}
-	
+
 	/**
 	 * @brief Generates a string representation of a video mode.
 	 *
@@ -834,7 +849,7 @@ namespace SceneryEditorX
 	 *
 	 * This function retrieves the current framebuffer size using GLFW, stores
 	 * the size in the WindowData structure, and resets the framebufferResized flag.
-	 * It properly handles the conversion between int (GLFW parameter type) and 
+	 * It properly handles the conversion between int (GLFW parameter type) and
 	 * uint32_t (WindowData storage type).
 	 */
     void Window::UpdateFramebufferSize()
@@ -843,7 +858,7 @@ namespace SceneryEditorX
             SEDX_CORE_WARN("Cannot update framebuffer size - window not created yet");
             return;
         }
-        
+
         int width, height;
         glfwGetFramebufferSize(WindowData::window, &width, &height);
         m_winSpecs.width = static_cast<uint32_t>(width);
@@ -861,7 +876,7 @@ namespace SceneryEditorX
 
     /**
 	 * @brief Sets the application window icon using a PNG image file.
-	 * 
+	 *
 	 * This method loads an icon from the predefined path in IconData and sets it as the
 	 * window's icon using GLFW. The process involves:
 	 * 1. Opening the icon file in binary mode
@@ -870,13 +885,13 @@ namespace SceneryEditorX
 	 * 4. Creating a GLFWimage structure with the decoded pixel data
 	 * 5. Setting the window icon using glfwSetWindowIcon
 	 * 6. Properly freeing the pixel data to prevent memory leaks
-	 * 
+	 *
 	 * The method includes error handling for file operations and image decoding.
 	 * If any step fails, appropriate error messages are logged and the function returns
 	 * without setting the icon.
-	 * 
+	 *
 	 * @param window The GLFW window handle for which to set the icon
-	 * 
+	 *
 	 * @note The icon file path is defined in the IconData structure, typically pointing
 	 *       to "..\\..\\assets\\icon.png"
 	 * @note This implementation uses stb_image for PNG decoding and requires it to be included
@@ -887,34 +902,34 @@ namespace SceneryEditorX
 	        SEDX_CORE_WARN("Cannot set window icon - window handle is null");
 	        return;
 	    }
-	    
+
 	    IconData iconData;
-	
+
 	    std::ifstream file(iconData.path, std::ios::binary | std::ios::ate);
 	    if (!file.is_open())
 	    {
 	        SEDX_CORE_ERROR("Failed to open icon file: {}", iconData.path);
 	        return;
 	    }
-	
+
 	    /// Get file size and read the data
 	    const std::streamsize size = file.tellg();
 	    file.seekg(0, std::ios::beg);
-	
+
 	    iconData.buffer.resize(size);
 	    if (!file.read(reinterpret_cast<char *>(iconData.buffer.data()), size))
 	    {
 	        SEDX_CORE_ERROR("Failed to read icon file data!");
 	        return;
 	    }
-	
+
 	    iconData.pixels = stbi_load_from_memory(iconData.buffer.data(),
 	                                            static_cast<int>(size),
 	                                            &iconData.width,
 	                                            &iconData.height,
 	                                            &iconData.channels,
 	                                            4);
-	
+
 	    if (iconData.pixels)
 	    {
 	        const GLFWimage icon = {iconData.width, iconData.height, iconData.pixels};
@@ -926,7 +941,7 @@ namespace SceneryEditorX
 	    else
             SEDX_CORE_ERROR("Failed to load window icon!");
     }
-	
+
 	/**
 	 * @brief Checks if a key is pressed.
 	 *
