@@ -21,6 +21,9 @@ FILE(GLOB CORE_WINDOW core/window/*.h core/window/*.hpp core/window/*.cpp)
 FILE(GLOB PLATFORM_FILES platform/files/*.h platform/files/*.hpp platform/files/*.cpp)
 FILE(GLOB PLATFORM_SETTINGS platform/settings/*.h platform/settings/*.hpp platform/settings/*.cpp)
 
+FILE(GLOB PLUGIN_CORE plugin/core/*.cpp plugin/core/*.h plugin/core/*.hpp)
+FILE(GLOB PLUGIN_FUNCTIONS plugin/functions/*.cpp plugin/functions/*.h plugin/functions/*.hpp)
+
 FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
 FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
 FILE(GLOB REFLECTION_FILES utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
@@ -64,6 +67,8 @@ ADD_LIBRARY(AppCore
 	${CORE_TIME}
 	${CORE_WINDOW}
 	${LOGGER}
+	${PLUGIN_CORE}
+	${PLUGIN_FUNCTIONS}
 	${PROJECT}
 	${PLATFORM_FILES}
 	${PLATFORM_SETTINGS}
@@ -225,6 +230,12 @@ SOURCE_GROUP("Utilities/Reflection" FILES
 SOURCE_GROUP("Utilities/Conversions" FILES
 	${UTILS_CONVERSIONS}
 )
+SOURCE_GROUP("Plugin/Core" FILES
+	${PLUGIN_CORE}
+)
+SOURCE_GROUP("Plugin/Functions" FILES
+	${PLUGIN_FUNCTIONS}
+)
 SOURCE_GROUP("Steam" FILES
 	platform/steam_parser.cpp
 	platform/steam_parser.h
@@ -356,6 +367,8 @@ TARGET_LINK_LIBRARIES(AppCore
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
+		#pybind11
+		#pybind11::embed
 		imgui
 		libconfig
 		libconfig++

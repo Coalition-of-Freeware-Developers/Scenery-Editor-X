@@ -70,6 +70,8 @@ IF(TRACY_ENABLE)
     ENDIF()
 ENDIF()
 
+SET(PYBIND11_FINDPYTHON ON)
+
 # --------------------------------
 # BUILD SYSTEM
 # --------------------------------
@@ -174,7 +176,7 @@ FIND_PACKAGE(Stb                           REQUIRED)
 FIND_PACKAGE(CURL                   CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen                          QUIET)
 FIND_PACKAGE(VulkanMemoryAllocator  CONFIG REQUIRED)
-
+FIND_PACKAGE(pybind11 				CONFIG REQUIRED)
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
 
 # --------------------------------
@@ -201,11 +203,6 @@ ADD_SUBDIRECTORY(dependency/Catch2)
 # EnTT
 # --------------------------------
 ADD_SUBDIRECTORY(dependency/entt)
-
-# --------------------------------
-# MSDF-Atlas-Generator
-# --------------------------------
-#ADD_SUBDIRECTORY(dependency/msdf-atlas-gen)
 
 # --------------------------------
 # json-cpp-gen

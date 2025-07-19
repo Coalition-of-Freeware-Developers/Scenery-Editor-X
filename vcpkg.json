@@ -7,6 +7,7 @@
         "spdlog",
         "stb",
 		"tracy",
+		"pybind11",
         { "name": "curl", "features": [ "http2", "idn", "ssl"] }
     ]
   }
