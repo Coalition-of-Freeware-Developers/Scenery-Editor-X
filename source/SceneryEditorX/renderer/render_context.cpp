@@ -26,7 +26,7 @@ namespace SceneryEditorX
 
     LOCAL const char* validationLayer[] = {"VK_LAYER_KHRONOS_validation"};
 
-    // Define whether validation layers are enabled - usually tied to debug mode
+    ///< Define whether validation layers are enabled - usually tied to debug mode
     #ifdef SEDX_DEBUG
     LOCAL constexpr bool enableValidationLayers = true;
     #else
@@ -172,23 +172,23 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Instance Extensions and Validation Layers
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            /// Get all available layers
+            ///< Get all available layers
             uint32_t layerCount = 0;
             vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-            std::vector<VkLayerProperties> layerNames(layerCount); /// @brief Properties of all available Vulkan validation layers on the system.
+            std::vector<VkLayerProperties> layerNames(layerCount); ///< @brief Properties of all available Vulkan validation layers on the system.
             vkEnumerateInstanceLayerProperties(&layerCount, layerNames.data());
             
-            // Check for validation layer availability
+            ///< Check for validation layer availability
             if (enableValidationLayers)
             {
-                // More thorough validation layer checking
+                ///< More thorough validation layer checking
                 VulkanChecks layerChecker;
                 
-                // Check for all validation layers and log available ones
+                ///< Check for all validation layers and log available ones
                 std::vector<const char*> layersToCheck = { validationLayer[0] };
                 layerChecker.CheckLayers(layersToCheck);
                 
-                // Specifically check for Khronos validation layer
+                ///< Specifically check for Khronos validation layer
                 khronosAvailable = layerChecker.CheckValidationLayerSupport();
                 
                 if (!khronosAvailable)

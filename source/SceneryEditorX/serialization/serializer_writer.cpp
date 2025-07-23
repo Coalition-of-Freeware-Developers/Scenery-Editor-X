@@ -17,6 +17,8 @@
 
 namespace SceneryEditorX
 {
+
+	/*
 	void SerializeWriter::WriteBuffer(Memory::Buffer buffer, const bool writeSize)
 	{
 		if (writeSize)
@@ -24,20 +26,25 @@ namespace SceneryEditorX
 
 		WriteData((char*)buffer.data, buffer.size);
 	}
+	*/
 
+	/*
 	void SerializeWriter::WriteZero(const uint64_t size)
 	{
         constexpr char zero = 0;
 		for (uint64_t i = 0; i < size; i++)
 			WriteData(&zero, 1);
 	}
+	*/
 
+	/*
 	void SerializeWriter::WriteString(const std::string& string)
 	{
 		size_t size = string.size();
 		WriteData((char*)&size, sizeof(size_t));
 		WriteData(string.data(), sizeof(char) * string.size());
 	}
+	*/
 
 }
 

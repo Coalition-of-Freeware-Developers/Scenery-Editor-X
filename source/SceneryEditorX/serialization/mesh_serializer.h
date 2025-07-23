@@ -22,6 +22,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	class MeshSourceSerializer : public AssetSerializer
 	{
 	public:
@@ -31,9 +32,11 @@ namespace SceneryEditorX
 		virtual bool SerializeToAssetPack(uint64_t handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo) const override;
 		virtual Ref<Asset> DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo) const override;
 	};
+	*/
 
 	/// -------------------------------------------------------
 
+	/*
 	class MeshSerializer : public AssetSerializer
 	{
 	public:
@@ -44,9 +47,11 @@ namespace SceneryEditorX
 		virtual bool SerializeToAssetPack(uint64_t handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo) const override;
 		virtual Ref<Asset> DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo) const override;
 	};
+	*/
 
 	/// -------------------------------------------------------
 
+	/*
 	class StaticMeshSerializer : public AssetSerializer
 	{
 	public:
@@ -57,6 +62,7 @@ namespace SceneryEditorX
 		virtual bool SerializeToAssetPack(uint64_t handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo) const override;
 		virtual Ref<Asset> DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo) const override;
 	};
+	*/
 
 }
 

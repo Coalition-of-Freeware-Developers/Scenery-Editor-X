@@ -127,6 +127,7 @@ namespace SceneryEditorX::Utils
 			};
 		}
 
+        /*
         [[nodiscard]] size_t GetHash() const
         {
             size_t hash = GetHash(r);
@@ -134,7 +135,7 @@ namespace SceneryEditorX::Utils
             CombineHash(hash, b);
             CombineHash(hash, a);
             return hash;
-        }
+        }*/
 
         [[nodiscard]] Color WithAlpha(float alpha) const { return {r, g, b, alpha}; }
 

@@ -142,12 +142,14 @@ namespace SceneryEditorX
         return modelName;
     }
     
+    /*
     void ModelAsset::Serialize(Serializer &ser)
     {
         // Implement serialization logic for ModelAsset
         // This will depend on the exact implementation of the Serializer class
         // For now, providing a minimal implementation
     }
+    */
 
     /// -------------------------------------------------------
 

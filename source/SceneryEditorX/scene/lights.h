@@ -44,7 +44,7 @@ namespace SceneryEditorX
     {
 	public:
         LightNode();
-        virtual void Serialize(Serializer &ser);
+        //virtual void Serialize(Serializer &ser);
 
 		/// -------------------------------------------------------
 

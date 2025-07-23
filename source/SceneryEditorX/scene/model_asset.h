@@ -115,7 +115,7 @@ namespace SceneryEditorX
             Triangle(const MeshVertex &v0, const MeshVertex &v1, const MeshVertex &v2) : V0(v0), V1(v1), V2(v2) {}
         };
 
-        virtual void Serialize(Serializer &ser);
+        //virtual void Serialize(Serializer &ser);
 
         std::vector<MeshVertex> vertices;
         std::vector<uint32_t> indices;
@@ -149,7 +149,7 @@ namespace SceneryEditorX
         bool IsRoot() const { return parent == 0xffffffff; }
 
         MeshNode();
-        virtual void Serialize(Serializer &ser);
+        //virtual void Serialize(Serializer &ser);
     };
 
 	/// ------------------------------------------------------- 

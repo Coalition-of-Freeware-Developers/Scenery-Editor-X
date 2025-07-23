@@ -26,15 +26,18 @@
 
 namespace SceneryEditorX
 {
+    /*
     namespace Utils
     {
         struct TransformComponent;
     }
+    */
 
     //////////////////////////////////////////////////////////////////////////////////
 	/// TextureSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	bool TextureSerializer::TryLoadData(const AssetMetadata& metadata, Ref<Asset>& asset) const
 	{
         asset = CreateRef<Texture2D>(TextureSpecification(), Project::GetEditorAssetManager()->GetFileSystemPathString(metadata));
@@ -46,11 +49,13 @@ namespace SceneryEditorX
 
 		return result;
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	/// FontSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	bool FontSerializer::TryLoadData(const AssetMetadata& metadata, Ref<Asset>& asset) const
 	{
 		asset = CreateRef<Font>(Project::GetEditorAssetManager()->GetFileSystemPathString(metadata));
@@ -91,11 +96,13 @@ namespace SceneryEditorX
 
 		return CreateRef<Font>(name, fontData);
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	/// MaterialAssetSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	void MaterialAssetSerializer::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset) const
 	{
 		const Ref<MaterialAsset> materialAsset = asset.As<MaterialAsset>();
@@ -152,7 +159,7 @@ namespace SceneryEditorX
 
 		/**
 		 * TODO: this should have shader UUID when that's a thing right now only supports PBR or Transparent shaders
-		 */
+		 #1#
 		Ref<Shader> transparentShader = Renderer::GetShaderLibrary()->Get("PBR_Transparent");
 		bool transparent = materialAsset->GetMaterial()->GetShader() == transparentShader;
 		SEDX_SERIALIZE_PROPERTY(Transparent, transparent, materialObject);
@@ -284,11 +291,13 @@ namespace SceneryEditorX
 
 		return true;
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	/// EnvironmentSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	bool EnvironmentSerializer::TryLoadData(const AssetMetadata& metadata, Ref<Asset>& asset) const
 	{
 		auto [radiance, irradiance] = Renderer::CreateEnvironmentMap(Project::GetEditorAssetManager()->GetFileSystemPathString(metadata));
@@ -300,11 +309,13 @@ namespace SceneryEditorX
 		asset->Handle = metadata.Handle;
 		return true;
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	/// PrefabSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	void PrefabSerializer::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset) const
 	{
 		const Ref<Prefab> prefab = asset.As<Prefab>();
@@ -351,7 +362,7 @@ namespace SceneryEditorX
 			/**
 			 * TODO: Replace with proper entity serialization
 			 * For now, just serialize basic entity data
-             */
+             #1#
 			auto& idComponent = entity.GetComponent<IDComponent>();
 			entityJson["ID"] = static_cast<uint64_t>(idComponent.ID);
 
@@ -394,7 +405,7 @@ namespace SceneryEditorX
         /**
          * TODO: Implement proper entity deserialization using binary serialization system
 		 * For now, create basic entities
-         */
+         #1#
 		for (nlohmann::json prefabArray = data["Prefab"]; const auto& entityJson : prefabArray)
 		{
 			Entity entity = prefab->m_Scene->CreateEntity();
@@ -451,11 +462,13 @@ namespace SceneryEditorX
 
 		return true;
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	/// SceneAssetSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	void SceneAssetSerializer::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset) const
 	{
 		/**
@@ -463,7 +476,7 @@ namespace SceneryEditorX
 		 * The actual serialization happens in AssetManager::SaveProject() which uses
 		 * the binary serialization system with SerializeWriter and the Serializer struct
 		 * For individual scene file export, we would use the binary system:
-		 */
+		 #1#
 
 		const Ref<Scene> sceneAsset = asset.As<Scene>();
 
@@ -500,7 +513,7 @@ namespace SceneryEditorX
 		/**
 		 * SceneAsset loading is handled by AssetManager::LoadProject() which uses the binary serialization
 		 * system with SerializeReader and the Serializer struct
-		 */
+		 #1#
 
 		/// For individual scene file loading, we would use the binary system:
 
@@ -614,11 +627,13 @@ namespace SceneryEditorX
 		sceneAsset->name = "Scene";
 		return sceneAsset;
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	/// MeshColliderSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	void MeshColliderSerializer::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset) const
 	{
 		const Ref<MeshColliderAsset> meshCollider = asset.As<MeshColliderAsset>();
@@ -755,11 +770,13 @@ namespace SceneryEditorX
 
 		return true;
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	/// ScriptFileSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	void ScriptFileSerializer::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset) const
 	{
 		std::ofstream stream(Project::GetEditorAssetManager()->GetFileSystemPath(metadata));
@@ -814,6 +831,8 @@ namespace SceneryEditorX
 	{
 		AssetManager::RegisterDependency(0, metadata.Handle);
 	}
+	*/
+
 }
 
 /// -------------------------------------------------------

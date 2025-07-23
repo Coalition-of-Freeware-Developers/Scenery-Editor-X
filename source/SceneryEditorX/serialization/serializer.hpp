@@ -18,6 +18,7 @@
 namespace SceneryEditorX
 {
 
+    /*
     template<typename T>
 	class SBuffer
 	{
@@ -26,7 +27,9 @@ namespace SceneryEditorX
 	private:
 		T* m_Buffer = nullptr;
 	};
+	*/
 
+	/*
 	template<typename T, bool SerializeSize = true>
 	class SArray
 	{
@@ -35,7 +38,9 @@ namespace SceneryEditorX
 	private:
 		std::vector<T> m_Array;
 	};
+	*/
 
+	/*
 	template<typename Key, typename Value, bool SerializeSize = true>
 	class SMap
 	{
@@ -44,6 +49,7 @@ namespace SceneryEditorX
 	private:
 		std::map<Key, Value> m_Map;
 	};
+	*/
 
 	/*using Json = nlohmann::json;
 
@@ -94,7 +100,7 @@ namespace SceneryEditorX
 	        return offset;
 	    }
 	
-	    void* Get(uint32_t offset)
+	    void* GetAsset(uint32_t offset)
 		{
 	        return data.data() + offset;
 	    }
@@ -186,7 +192,7 @@ namespace SceneryEditorX
 	            uint32_t offset = j[field]["offset"];
                 uint32_t count = j[field]["count"];
                 v.resize(count);
-                memcpy(v.data(), storage.Get(offset), size);
+                memcpy(v.data(), storage.GetAsset(offset), size);
 	        }
 	    }
 
@@ -239,7 +245,7 @@ namespace SceneryEditorX
 	        }
 			else if (j.contains(field) && j[field] != 0)
 			{
-	            object = manager.Get<T>(j[field]);
+	            object = manager.GetAsset<T>(j[field]);
 	        }
 	    }
 
@@ -261,7 +267,7 @@ namespace SceneryEditorX
 	        }
 			else if (j.contains(field) && j[field] != 0)
 			{
-	            node = scene->Get<T>(j[field]);
+	            node = scene->GetAsset<T>(j[field]);
 	        }
 	    }
 

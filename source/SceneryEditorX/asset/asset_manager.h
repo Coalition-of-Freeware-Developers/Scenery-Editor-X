@@ -84,15 +84,91 @@ namespace SceneryEditorX
          * @param assetHandle The asset handle to check.
          * @returns True if the asset referred to by assetHandle is valid.
          */
-        GLOBAL bool IsAssetValid(const AssetHandle &assetHandle) { return Project::GetAssetManager()->IsAssetValid(assetHandle); }
+        GLOBAL bool IsAssetValid(const AssetHandle &assetHandle)
+        {
+            return Project::GetAssetManager()->IsAssetValid(assetHandle);
+        }
 
-	    GLOBAL bool IsMemoryAsset(AssetHandle handle) { return Project::GetAssetManager()->IsMemoryAsset(handle); }
-        GLOBAL bool IsPhysicalAsset(AssetHandle handle) { return Project::GetAssetManager()->IsPhysicalAsset(handle); }
-        GLOBAL bool ReloadData(AssetHandle assetHandle) { return Project::GetAssetManager()->ReloadData(assetHandle); }
-        GLOBAL bool EnsureCurrent(AssetHandle assetHandle) { return Project::GetAssetManager()->EnsureCurrent(assetHandle); }
-        GLOBAL bool EnsureAllLoadedCurrent() { return Project::GetAssetManager()->EnsureAllLoadedCurrent(); }
-        GLOBAL AssetType GetAssetType(AssetHandle assetHandle) { return Project::GetAssetManager()->GetAssetType(assetHandle); }
+        /**
+         * @brief Checks if the asset referred to by handle is a memory asset or a physical asset.
+         *
+         * These assets are loaded into memory and do not have a physical file on disk.
+         *
+         * @param handle The asset handle to check.
+         * @return True if the asset is a memory asset, false if it is a physical asset.
+         */
+        GLOBAL bool IsMemoryAsset(const AssetHandle &handle)
+        {
+            return Project::GetAssetManager()->IsMemoryAsset(handle);
+        }
 
+		/**
+		 * @brief Checks if the asset referred to by handle is a physical asset.
+		 *
+		 * Physical assets are those that have a corresponding file on disk.
+		 *
+		 * @param handle The asset handle to check.
+		 * @return True if the asset is a physical asset, false if it is a memory asset.
+		 */
+        GLOBAL bool IsPhysicalAsset(const AssetHandle &handle)
+        {
+            return Project::GetAssetManager()->IsPhysicalAsset(handle);
+        }
+
+        /**
+         * @brief Reloads the asset data for the asset referred to by assetHandle.
+         *
+         * This function attempts to reload the asset data from disk or memory.
+         * If the asset is a memory asset, it will reload the data from the memory representation.
+         *
+         * @param assetHandle The asset handle to reload.
+         * @return True if the asset data was successfully reloaded, false otherwise.
+         */
+        GLOBAL bool ReloadData(const AssetHandle &assetHandle)
+        {
+            return Project::GetAssetManager()->ReloadData(assetHandle);
+        }
+
+        /**
+         * @brief Ensures that the asset referred to by assetHandle is current.
+         *
+         * This function checks if the asset is loaded and up-to-date.
+         * If the asset is not loaded, it will attempt to load it.
+         *
+         * @param assetHandle The asset handle to ensure current.
+         * @return True if the asset is current, false otherwise.
+         */
+        GLOBAL bool EnsureCurrent(const AssetHandle &assetHandle)
+        {
+            return Project::GetAssetManager()->EnsureCurrent(assetHandle);
+        }
+
+        /**
+         * @brief Ensures that all assets in the asset manager are loaded and current.
+         *
+         * This function checks all assets in the asset manager and attempts to load them if they are not already loaded.
+         * It will also ensure that all assets are up-to-date with their metadata.
+         *
+         * @return True if all assets are loaded and current, false if any asset failed to load or is not current.
+         */
+        GLOBAL bool EnsureAllLoadedCurrent()
+        {
+            return Project::GetAssetManager()->EnsureAllLoadedCurrent();
+        }
+
+        /**
+         * @brief Gets the type of the asset referred to by assetHandle.
+         *
+         * This function retrieves the type of the asset based on its handle.
+         * It checks the asset registry and returns the type of the asset.
+         *
+         * @param assetHandle The asset handle to check.
+         * @return The type of the asset referred to by assetHandle.
+         */
+        GLOBAL AssetType GetAssetType(const AssetHandle &assetHandle)
+        {
+            return Project::GetAssetManager()->GetAssetType(assetHandle);
+        }
 
 		/// -------------------------------------------------------
 
@@ -106,7 +182,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
 		template <typename T>
-        Ref<T> Get(uint32_t uuid)
+        Ref<T> GetAsset(uint32_t uuid)
         {
             return assets[uuid].DynamicCast<T>();
         }
@@ -138,7 +214,7 @@ namespace SceneryEditorX
 		}
 
 
-        Ref<Asset> Get(uint32_t uuid) { return assets[uuid]; }
+        Ref<Asset> GetAsset(uint32_t uuid) { return assets[uuid]; }
 		
 		GLOBAL Ref<Asset> GetMemoryAsset(const AssetHandle &handle)
 		{

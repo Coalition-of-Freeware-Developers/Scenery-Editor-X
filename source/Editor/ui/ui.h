@@ -14,13 +14,13 @@
 #include <IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
-#include <GraphicsEngine/vulkan/vk_core.h>
+#include <SceneryEditorX/renderer/render_context.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 struct Icons
 {
-    // Core UI icons
+    /// Core UI icons
     GLOBAL constexpr const char* ARROW_RIGHT = ICON_FA_ARROW_RIGHT;
     GLOBAL constexpr const char* ARROW_LEFT = ICON_FA_ARROW_LEFT;
     GLOBAL constexpr const char* ARROW_UP = ICON_FA_ARROW_UP;

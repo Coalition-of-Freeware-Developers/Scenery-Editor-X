@@ -42,7 +42,7 @@ namespace SceneryEditorX
     {
 	public:
         CameraNode();
-        virtual void Serialize(Serializer &ser) override;
+        //virtual void Serialize(Serializer &ser) override;
 
 	    inline static const char* modeNames[] = { "Orbit", "Fly" };
 	    inline static const char* typeNames[] = { "Perspective", "Orthographic" };

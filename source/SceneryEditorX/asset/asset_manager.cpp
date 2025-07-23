@@ -47,12 +47,13 @@ namespace SceneryEditorX
 	        SEDX_CORE_ERROR("Project file not found: {} {}", path.string(), binPath.string());
 	        return;
 	    }
-        BinaryStorage storage;
-	    int dir = Serializer::LOAD;
+        //BinaryStorage storage;
+	    //int dir = Serializer::LOAD;
         Json j = Json::parse(IO::FileManager::ReadFile(path.string()));
-        storage.data = IO::FileManager::ReadRawBytes(binPath);
+        //storage.data = IO::FileManager::ReadRawBytes(binPath);
 	    std::vector<uint32_t> uuids;
 
+	    /*
 	    for (auto& assetJson : j["assets"])
 		{
 	        Ref<Asset> asset;
@@ -60,7 +61,9 @@ namespace SceneryEditorX
 	        ser.Serialize(asset);
 	        uuids.push_back(asset->uuid);
 	    }
+	    */
 
+	    /*
 	    for (auto& assetJson : j["scenes"])
 		{
 	        Ref<Asset> asset;
@@ -68,6 +71,7 @@ namespace SceneryEditorX
 	        ser.Serialize(asset);
 	        uuids.push_back(asset->uuid);
 	    }
+	    */
 
 	    initialScene = j["initialScene"];
         for (auto &scene : GetAll<Scene>(ObjectType::Scene))
@@ -84,8 +88,8 @@ namespace SceneryEditorX
 	void AssetManager::SaveProject(const std::filesystem::path& path, const std::filesystem::path& binPath)
     {
 	    Time::TimeLog t("AssetManager::SaveProject");
-	    BinaryStorage storage;
-	    int dir = Serializer::SAVE;
+	    //BinaryStorage storage;
+	    //int dir = Serializer::SAVE;
 	    std::vector<Ref<Asset>> assetsOrdered;
 	    std::vector<uint32_t> assetsUUIDs;
 	    assetsOrdered.reserve(assets.size());
@@ -110,13 +114,11 @@ namespace SceneryEditorX
 	        for (const Ref<Asset> &asset : assetsOrdered)
 			{
 	            if (asset->type == ObjectType::Scene)
-				{
-	                continue;
-	            }
+                    continue;
 
-	            Json assetJson;
-                SceneAssetSerializer s = SceneAssetSerializer::Serialize(assetJson, storage, dir, *this);
-	            s.Serialize(asset);
+                Json assetJson;
+                //SceneAssetSerializer s = SceneAssetSerializer::Serialize(assetJson, storage, dir, *this);
+	            //s.Serialize(asset);
 	            j["assets"].push_back(assetJson);
 	        }
 
@@ -124,6 +126,7 @@ namespace SceneryEditorX
 	        impl->lastJson = std::move(j);
 	    }
 
+	    /*
 	    /// always serialize scenes
 	    for (auto& scene : GetAll<Scene>(ObjectType::Scene))
 		{
@@ -132,6 +135,7 @@ namespace SceneryEditorX
             SceneAssetSerializer s = SceneAssetSerializer::Serialize(assetJson, storage, dir, *this);
 	        s.Serialize(scene);
 	    }
+	    */
 
 	    impl->lastJson["initialScene"] = initialScene;
         const std::string jsonDump = impl->lastJson.dump();
@@ -156,6 +160,7 @@ namespace SceneryEditorX
     MeshNode::MeshNode() : localTransform() { auto type = ObjectType::Mesh; }
     LightNode::LightNode() { type = ObjectType::Light; }
 
+	/*
 	void TextureAsset::Serialize(TextureSerializer &ser)
 	{
         ser.vector("data", data);
@@ -163,13 +168,17 @@ namespace SceneryEditorX
 		ser("height", height);
 		ser("channels", channels);
 	}
+	*/
 
+	/*
 	void ModelAsset::Serialize(MeshSerializer &ser)
 	{
 		ser.vector("vertices", vertices);
 		ser.Vector("indices", indices);
 	}
+	*/
 
+	/*
 	void MaterialAsset::Serialize(MaterialAssetSerializer &ser)
 	{
 		ser("color", color);
@@ -182,7 +191,9 @@ namespace SceneryEditorX
 		ser.Asset("normalMap", normalMap);
 		ser.Asset("metallicRoughnessMap", metallicRoughnessMap);
 	}
+	*/
 
+	/*
 	void Scene::Serialize(Serializer &ser)
 	{
 		ser.VectorRef("nodes", nodes);
@@ -198,7 +209,9 @@ namespace SceneryEditorX
 		//ser("taaReconstruct", taaReconstruct);
 		ser.Node("mainCamera", mainCamera, this);
 	}
+	*/
 
+	/*
 	void Node::Serialize(Serializer &ser)
 	{
 		ser.VectorRef("children", children);
@@ -206,14 +219,18 @@ namespace SceneryEditorX
 		ser("rotation", rotation);
 		ser("scale", scale);
 	}
+	*/
 
+	/*
 	void MeshNode::Serialize(Serializer &ser)
 	{
 		Node::Serialize(ser);
 		ser.Asset("mesh", mesh);
 		ser.Asset("material", material);
 	}
+	*/
 
+	/*
 	void LightNode::Serialize(Serializer &ser)
 	{
 		Node::Serialize(ser);
@@ -235,6 +252,7 @@ namespace SceneryEditorX
 		ser("volumetricShadowDensity", volumetricShadowMapParams.density);
 		ser("volumetricShadowSamples", volumetricShadowMapParams.samples);
 	}
+	*/
 
 	AssetManager::AssetManager()
 	{
@@ -251,7 +269,7 @@ namespace SceneryEditorX
 		if (!initialScene)
             CreateAsset<Scene>("DefaultScene");
 
-        return Get<Scene>(initialScene);
+        return GetAsset<Scene>(initialScene);
 	}
 
     Ref<CameraNode> AssetManager::GetMainCamera(const Ref<Scene> &scene)
@@ -268,7 +286,7 @@ namespace SceneryEditorX
 
 	uint32_t AssetManager::NewUUID()
     {
-        // todo: replace with something actually UUID
+        ///< TODO: replace with something actually UUID
         static std::random_device rd;
         static std::mt19937_64 eng(rd());
         static std::uniform_int_distribution<uint64_t> dist(std::llround(std::pow(2, 61)), std::llround(std::pow(2, 62)));

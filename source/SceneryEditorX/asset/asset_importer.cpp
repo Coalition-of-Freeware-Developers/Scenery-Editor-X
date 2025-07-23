@@ -19,6 +19,7 @@
 
 namespace SceneryEditorX
 {
+	/*
 	void AssetImporter::Init()
 	{
 		s_Serializers.clear();
@@ -34,7 +35,9 @@ namespace SceneryEditorX
 		//s_Serializers[AssetType::AnimationGraph] = CreateScope<AnimationGraphAssetSerializer>();
 		s_Serializers[AssetType::ScriptFile] = CreateScope<ScriptFileSerializer>();
 	}
+	*/
 
+	/*
 	void AssetImporter::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset)
 	{
 		if (!s_Serializers.contains(metadata.Type))
@@ -45,13 +48,17 @@ namespace SceneryEditorX
 
 		s_Serializers[asset->GetAssetType()]->Serialize(metadata, asset);
 	}
+	*/
 
+	/*
 	void AssetImporter::Serialize(const Ref<Asset>& asset)
 	{
 		const AssetMetadata& metadata = Project::GetEditorAssetManager()->GetMetadata(asset->Handle);
 		Serialize(metadata, asset);
 	}
+	*/
 
+	/*
 	bool AssetImporter::TryLoadData(const AssetMetadata& metadata, Ref<Asset>& asset)
 	{
 		SEDX_PROFILE_FUNC("AssetImporter::TryLoadData");
@@ -65,7 +72,9 @@ namespace SceneryEditorX
 		// SEDX_CORE_TRACE("AssetImporter::TryLoadData - {}", metadata.FilePath);
 		return s_Serializers[metadata.Type]->TryLoadData(metadata, asset);
 	}
+	*/
 
+	/*
 	void AssetImporter::RegisterDependencies(const AssetMetadata& metadata)
 	{
 		if (!s_Serializers.contains(metadata.Type))
@@ -76,7 +85,9 @@ namespace SceneryEditorX
 
 		s_Serializers[metadata.Type]->RegisterDependencies(metadata);
 	}
+	*/
 
+	/*
 	bool AssetImporter::SerializeToAssetPack(AssetHandle handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo)
 	{
 		outInfo.Size = 0;
@@ -100,7 +111,9 @@ namespace SceneryEditorX
 
 		return s_Serializers[type]->SerializeToAssetPack(handle, stream, outInfo);
 	}
+	*/
 
+	/*
 	Ref<Asset> AssetImporter::DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo)
 	{
 		AssetType assetType = (AssetType)assetInfo.Type;
@@ -109,7 +122,9 @@ namespace SceneryEditorX
 
 		return s_Serializers[assetType]->DeserializeFromAssetPack(stream, assetInfo);
 	}
+	*/
 
+	/*
 	Ref<Scene> AssetImporter::DeserializeSceneFromAssetPack(FileStreamReader& stream, const AssetPackFile::SceneInfo& sceneInfo)
 	{
         constexpr AssetType assetType = AssetType::Scene;
@@ -121,6 +136,8 @@ namespace SceneryEditorX
 	}
 
 	std::unordered_map<AssetType, Scope<AssetSerializer>> AssetImporter::s_Serializers;
+	*/
+
 }
 
 /// -------------------------------------------------------

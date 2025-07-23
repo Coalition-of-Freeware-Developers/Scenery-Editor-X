@@ -128,7 +128,7 @@ namespace SceneryEditorX
         MaterialAsset() : color(1.0f), emission(0.0f), metallic(0.0f), roughness(1.0f) {}
         explicit MaterialAsset(const std::string & path);
         virtual ~MaterialAsset() override;
-        virtual void Serialize(Serializer &ser);
+        //virtual void Serialize(Serializer &ser);
 
         /// -------------------------------------------------------
 

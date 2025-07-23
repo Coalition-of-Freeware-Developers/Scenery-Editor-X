@@ -12,7 +12,7 @@
 */
 #include <Editor/core/editor.h>
 #include <SceneryEditorX/EntryPoint.h>
-#include <SceneryEditorX/platform/settings.h>
+#include <SceneryEditorX/platform/settings/settings.h>
 
 /// -------------------------------------------------------
 

@@ -120,7 +120,7 @@ namespace SceneryEditorX
 	    }
 
 	    virtual ~Object() override;
-	    virtual void Serialize(SerializeWriter &ser) = 0;
+	    //virtual void Serialize(SerializeWriter &ser) = 0;
 	};
 
     /// -------------------------------------------------------
@@ -141,7 +141,7 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 	    virtual void OnDependencyUpdated(uint64_t handle) {}
-        virtual void Serialize(SerializeWriter &ser) override = 0;
+        //virtual void Serialize(SerializeWriter &ser) override = 0;
         virtual void Load(const std::string &path) = 0;
         virtual void Unload() = 0;
         virtual void SetName(const std::string &name) = 0;

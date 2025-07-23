@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <SceneryEditorX/asset/asset.h>
-
 #include "material.h"
 
 /// ---------------------------------------------------------
@@ -27,7 +26,7 @@ namespace SceneryEditorX
 	public:
 
         Node();
-        virtual void Serialize(Serializer &ser);
+        //virtual void Serialize(Serializer &ser);
 
 		/// -------------------------------------------------------
 
@@ -105,7 +104,6 @@ namespace SceneryEditorX
         static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
 
 	private:
-
 		friend class AssetManager;
 	};
 

@@ -61,7 +61,9 @@ namespace SceneryEditorX
 		//ObjectType meshSource = Model::CreateMesh(vertices, indices, Mat4(1.0f));
 	    return {};
 	}
+    */
 
+	/*
 	ObjectType Primitives::CreateSphere(const float radius)
 	{
         std::vector<MeshVertex> vertices;
@@ -103,7 +105,10 @@ namespace SceneryEditorX
 
         return{};
 	}
+	*/
 
+
+	/*
 	ObjectType Primitives::CreateCylinder(float radius, float height)
 	{
 		std::vector<MeshVertex> vertices;
@@ -161,7 +166,9 @@ namespace SceneryEditorX
 
 	    return {};
 	}
+	*/
 
+	/*
 	ObjectType Primitives::CreatePlane(const Vec2 &size)
 	{
 	    return {};

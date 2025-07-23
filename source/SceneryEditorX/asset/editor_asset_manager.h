@@ -131,7 +131,7 @@ namespace SceneryEditorX
 			Ref<T> asset = Ref<T>::Create(std::forward<Args>(args)...);
 			asset->Handle = metadata.Handle;
 			m_LoadedAssets[asset->Handle] = asset;
-			AssetImporter::Serialize(metadata, asset);
+			//AssetImporter::Serialize(metadata, asset);
 
 			///< Read serialized timestamp
 			const auto absolutePath = GetFileSystemPath(metadata);
@@ -148,7 +148,7 @@ namespace SceneryEditorX
 			return asset;
 		}
 
-		void ReplaceLoadedAsset(const AssetHandle handle, const Ref<Asset> &newAsset) { m_LoadedAssets[handle] = newAsset; }
+		void ReplaceLoadedAsset(const AssetHandle &handle, const Ref<Asset> &newAsset) { m_LoadedAssets[handle] = newAsset; }
 
 
 	private:
@@ -168,19 +168,18 @@ namespace SceneryEditorX
 		///< NOTE: this collection is accessed only from the main thread, and so does not need any synchronization
         std::unordered_map<AssetHandle, Ref<Asset>> m_LoadedAssets;
 
-		// NOTE: this collection is accessed and modified from both the main thread and the asset thread, and so requires synchronization
+		///< NOTE: this collection is accessed and modified from both the main thread and the asset thread, and so requires synchronization
         std::unordered_map<AssetHandle, Ref<Asset>> m_MemoryAssets;
 		std::shared_mutex m_MemoryAssetsMutex;
-
-		std::unordered_map<AssetHandle, std::unordered_set<AssetHandle>> m_AssetDependents;   // asset handle -> assets that depend on it.
-		std::unordered_map<AssetHandle, std::unordered_set<AssetHandle>> m_AssetDependencies; // asset handle -> assets that it depends on.
+		std::unordered_map<AssetHandle, std::unordered_set<AssetHandle>> m_AssetDependents;   ///< Asset handle -> assets that depend on it.
+		std::unordered_map<AssetHandle, std::unordered_set<AssetHandle>> m_AssetDependencies; ///< Asset handle -> assets that it depends on.
 		std::shared_mutex m_AssetDependenciesMutex;
 
 		Ref<EditorAssetSystem> m_AssetThread;
 
-		// Asset registry is accessed from multiple threads.
-		// Access requires synchronization through m_AssetRegistryMutex
-		// It is _written to_ only by main thread, so reading in main thread can be done without mutex
+		///< Asset registry is accessed from multiple threads.
+		///< Access requires synchronization through m_AssetRegistryMutex
+		///< It is _written to_ only by main thread, so reading in main thread can be done without mutex
 		AssetRegistry m_AssetRegistry;
 		std::shared_mutex m_AssetRegistryMutex;
 

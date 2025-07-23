@@ -440,10 +440,10 @@ namespace SceneryEditorX
 	Ref<Font> Font::GetFontAssetForTextComponent(const TextComponent& textComponent)
 	{
         const UUID32 handle = textComponent.FontHandle;
-		if (handle == s_DefaultFont->Handle || !AssetManager::Get<Font>(static_cast<uint32_t>(handle)))
+		if (handle == s_DefaultFont->Handle || !AssetManager::GetAsset<Font>(static_cast<uint32_t>(handle)))
 			return s_DefaultFont;
 		
-		return AssetManager::Get<Font>(static_cast<uint32_t>(handle));
+		return AssetManager::GetAsset<Font>(static_cast<uint32_t>(handle));
 	}
 
     /// -------------------------------------------------------

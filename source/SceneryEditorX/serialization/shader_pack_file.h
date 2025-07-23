@@ -11,13 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/filestreaming/filestream_writer.h>
+//#include <SceneryEditorX/filestreaming/filestream_writer.h>
 #include <SceneryEditorX/serialization/serializer_reader.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/*
 	struct ShaderPackFile
 	{
 		struct ShaderReflectionInfo
@@ -29,13 +31,16 @@ namespace SceneryEditorX
 			// Storage Images
 		};
 
+		/*
 		struct ShaderData
 		{
 			uint8_t Stage;
 			ShaderReflectionInfo ReflectionInfo;
 			void* Data;
 		};
+		#1#
 
+		/*
 		struct ShaderModuleInfo
 		{
 			uint64_t PackedOffset;
@@ -46,6 +51,7 @@ namespace SceneryEditorX
 			static void Serialize(StreamWriter* writer, const ShaderModuleInfo& info) { writer->WriteRaw(info); }
 			static void Deserialize(SerializeReader* reader, ShaderModuleInfo& info) { reader->ReadRaw(info); }
 		};
+		#1#
 
 		struct ShaderProgramInfo
 		{
@@ -76,6 +82,7 @@ namespace SceneryEditorX
 		ShaderData* Data;
 
 	};
+	*/
 
 }
 

@@ -25,7 +25,7 @@ namespace SceneryEditorX
 	{
 	public:
 
-		// note: no non-const Get() function.  If you need to modify the metadata, use Set().
+		// note: no non-const GetAsset() function.  If you need to modify the metadata, use Set().
 		// This aids correct usage in a multithreaded environment.
         const AssetMetadata &Get(const AssetHandle handle) const;
         void Set(const AssetHandle handle, const AssetMetadata &metadata);

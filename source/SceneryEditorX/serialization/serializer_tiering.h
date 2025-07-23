@@ -59,6 +59,7 @@ namespace SceneryEditorX
 		 */
 		static bool Deserialize(Tiering::TieringSettings& outTieringSettings, const std::filesystem::path& filepath);
 	};
+
 }
 
 /// -------------------------------------------------------

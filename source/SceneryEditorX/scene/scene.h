@@ -43,7 +43,7 @@ namespace SceneryEditorX
         explicit Scene(const std::string &name = "UntitledProject", bool isEditorScene = false, bool initialize = true);
         virtual ~Scene() override;
 
-		virtual void Serialize(Serializer &s) override;
+		//virtual void Serialize(Serializer &s) override;
 		virtual void Load(const std::string& path) override;
 		virtual void Unload() override;
 		bool IsLoaded() const { return isLoaded; }
@@ -73,6 +73,7 @@ namespace SceneryEditorX
         std::size_t m_LastSerializeHash = 0; // used by auto-save to determine if scene has changed
         entt::entity m_SceneEntity = entt::null;
         entt::registry m_Registry;
+        std::string scenePath;
 
         std::function<void(AssetHandle)> m_OnSceneTransitionCallback;
         //std::function<void(Entity)> m_OnEntityDestroyedCallback;
@@ -103,8 +104,8 @@ namespace SceneryEditorX
         friend class Entity;
         friend class Prefab;
         friend class SceneRenderer;
-        friend class SceneSerializer;
-        friend class PrefabSerializer;
+        //friend class SceneSerializer;
+        //friend class PrefabSerializer;
         friend class SceneHierarchyPanel;
         friend class ECSDebugPanel;
     };
@@ -160,7 +161,7 @@ namespace SceneryEditorX
         void DeleteRecursive(const Ref<Node> &node);
 
 		template<typename T>
-		Ref<T> Get(uint32_t id)
+		Ref<T> GetAsset(uint32_t id)
 	    {
 		    // todo: search recursively
 		    for (auto& node : nodes)

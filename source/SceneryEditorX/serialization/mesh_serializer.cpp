@@ -15,13 +15,13 @@
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/scene/node.h>
 #include <SceneryEditorX/serialization/json_serializer.h>
-#include <SceneryEditorX/serialization/mesh_runtime_serializer.h>
 #include <SceneryEditorX/serialization/mesh_serializer.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	/*
 	static std::string GetJSON(const AssetMetadata& metadata)
 	{
 		std::ifstream stream(Project::GetActiveAssetDirectory() / metadata.FilePath);
@@ -30,11 +30,13 @@ namespace SceneryEditorX
 		strStream << stream.rdbuf();
 		return strStream.str();
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	// MeshSourceSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	std::string SerializeToJSON(Ref<Mesh> mesh)
 	{
 		nlohmann::json j;
@@ -50,7 +52,9 @@ namespace SceneryEditorX
 		j["Mesh"] = meshObj;
 		return j.dump(4); // Pretty print with 4-space indentation
 	}
+	*/
 
+	/*
 	bool DeserializeFromJSON(const nlohmann::json& data, Ref<Mesh>& targetMesh)
 	{
 		if (!data.contains("Mesh"))
@@ -82,7 +86,9 @@ namespace SceneryEditorX
 		targetMesh = Ref<Mesh>::Create(meshSource, submeshIndices, generateColliders);
 		return true;
 	}
+	*/
 
+	/*
 	void RegisterMeshDependenciesFromJSON(const nlohmann::json& data, AssetHandle handle)
 	{
 		Project::GetEditorAssetManager()->DeregisterDependencies(handle);
@@ -96,7 +102,9 @@ namespace SceneryEditorX
 		// must always register something, even if it's 0
 		Project::GetEditorAssetManager()->RegisterDependency(meshSourceHandle, handle);
 	}
+	*/
 
+	/*
 	bool MeshSourceSerializer::TryLoadData(const AssetMetadata& metadata, Ref<Asset>& asset) const
 	{
 		SEDX_PROFILE_FUNC("MeshSourceSerializer::TryLoadData");
@@ -110,12 +118,14 @@ namespace SceneryEditorX
 		asset->Handle = metadata.Handle;
 		return true;
 	}
+	*/
 
 
 	//////////////////////////////////////////////////////////////////////////////////
 	// MeshSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	void MeshSerializer::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset) const
 	{
 		Ref<Mesh> mesh = asset.As<Mesh>();
@@ -184,11 +194,13 @@ namespace SceneryEditorX
 
 		return mesh;
 	}
+	*/
 
 	//////////////////////////////////////////////////////////////////////////////////
 	// StaticMeshSerializer
 	//////////////////////////////////////////////////////////////////////////////////
 
+	/*
 	std::string SerializeToJSON(Ref<StaticMesh> staticMesh)
 	{
 		nlohmann::json j;
@@ -305,6 +317,7 @@ namespace SceneryEditorX
 
 		return staticMesh;
 	}
+	*/
 
  }
 

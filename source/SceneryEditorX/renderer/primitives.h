@@ -31,7 +31,6 @@ namespace SceneryEditorX
     };
 
 
-    /*
     /**
      * @class Primitives
      * @brief Utility class for creating primitive 3D and 2D objects
@@ -39,7 +38,9 @@ namespace SceneryEditorX
      * This class provides static methods to create various primitive shapes
      * that can be used as the foundation for more complex objects in the scene.
      * All methods return an ObjectType that can be further manipulated.
-     #1#
+     */
+
+    /// TODO: Add Primitive creation functionality 
     class Primitives
     {
     public:
@@ -47,33 +48,32 @@ namespace SceneryEditorX
          * @brief Creates a 3D box primitive
          * @param size The dimensions of the box (width, height, depth)
          * @return ObjectType representing the created box
-         #1#
-        GLOBAL ObjectType CreateBox(const Vec3 &size);
+         */
+        //GLOBAL ObjectType CreateBox(const Vec3 &size);
 
         /**
          * @brief Creates a 3D sphere primitive
          * @param radius The radius of the sphere
          * @return ObjectType representing the created sphere
-         #1#
-        GLOBAL ObjectType CreateSphere(float radius);
+         */
+        //GLOBAL ObjectType CreateSphere(float radius);
 
         /**
          * @brief Creates a 3D cylinder primitive
          * @param radius The radius of the cylinder's circular base
          * @param height The height of the cylinder
          * @return ObjectType representing the created cylinder
-         #1#
-        GLOBAL ObjectType CreateCylinder(float radius, float height);
+         */
+        //GLOBAL ObjectType CreateCylinder(float radius, float height);
 
         /**
          * @brief Creates a 2D plane primitive
          * @param size The dimensions of the plane (width, height)
          * @return ObjectType representing the created plane
-         #1#
-        GLOBAL ObjectType CreatePlane(const Vec2 &size);
+         */
+        //GLOBAL ObjectType CreatePlane(const Vec2 &size);
 
-    };
-    */
+    }; 
 
 }
 

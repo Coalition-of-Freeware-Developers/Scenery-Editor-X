@@ -17,6 +17,8 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     class SerializeReader
 	{
 	public:
@@ -135,6 +137,7 @@ namespace SceneryEditorX
 		for (uint32_t i = 0; i < size; i++)
 			ReadString(array[i]);
 	}
+	*/
 
 }
 

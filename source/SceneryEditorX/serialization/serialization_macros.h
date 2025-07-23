@@ -14,6 +14,7 @@
 
 /// ------------------------------------------------------
 
+/*
 #define SEDX_SERIALIZE_PROPERTY(propName, propVal, outputNode) outputNode[#propName] = propVal
 
 #define SEDX_SERIALIZE_PROPERTY_ASSET(propName, propVal, outputData) outputData[#propName] = ((propVal) ? static_cast<uint64_t>((propVal)->Handle) : 0)
@@ -55,6 +56,7 @@ else																				\
             SEDX_CORE_ERROR_TAG("AssetManager", "Tried to load invalid asset {0}.", #assetClass);								\
 		}																														\
 }		
+*/
 
 
 ///	------------------------------------------------------

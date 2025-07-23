@@ -37,11 +37,13 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    /*
     void MaterialAsset::Serialize(Serializer &ser)
     {
         /// TODO: Implement serialization
         /// This would store material properties in a specific format
     }
+    */
 
     void MaterialAsset::Load(const std::string &path)
     {
@@ -151,7 +153,7 @@ namespace SceneryEditorX
 			if (texture->Handle)
 			{
 				// Return sRGB version of the albedo texture, which is at Handle-1  (see SetAlbedoMap())
-				texture = AssetManager::Get<Texture2D>(texture->Handle - 1);
+				texture = AssetManager::GetAsset<Texture2D>(texture->Handle - 1);
 				SEDX_CORE_ASSERT(texture);
 			}
 		}
@@ -164,10 +166,10 @@ namespace SceneryEditorX
 		if (handle)
 		{
 			// Handle + 1 is the linear version of the texture
-			Ref<Texture2D> texture = AssetManager::Get<Texture2D>(handle + 1);
+			Ref<Texture2D> texture = AssetManager::GetAsset<Texture2D>(handle + 1);
 			if (!texture)
 			{
-				auto textureSRGB = AssetManager::Get<Texture2D>(handle);
+                auto textureSRGB = AssetManager::GetAsset<Texture2D>(handle);
 				SEDX_CORE_ASSERT(textureSRGB, "Could not find texture with handle {}", handle); // if this fires, you've passed the wrong handle.  Probably somewhere you retrieved the handle directly from shader.  You need to go through MaterialAsset::GetAlbedoMap()
 				if (textureSRGB)
 				{
@@ -296,22 +298,22 @@ namespace SceneryEditorX
 	{
 		if (m_Transparent)
 		{
-			// Set defaults
+			///< Set defaults
 			SetAlbedoColor(Vec3(0.8f));
 
-			// Maps
+			///< Maps
 			ClearAlbedoMap();
 		}
 		else
 		{
-			// Set defaults
+			///< Set defaults
 			SetAlbedoColor(Vec3(0.8f));
 			SetEmission(0.0f);
 			SetUseNormalMap(false);
 			SetMetalness(0.0f);
 			SetRoughness(0.4f);
 
-			// Maps
+			///< Maps
 			ClearAlbedoMap();
 			ClearNormalMap();
 			ClearMetalnessMap();
@@ -326,7 +328,7 @@ namespace SceneryEditorX
 
 	MaterialTable::MaterialTable(const Ref<MaterialTable> &other) : m_MaterialCount(other->m_MaterialCount)
 	{
-        for (const auto& meshMaterials = other->GetMaterials(); auto[index, materialAsset] : meshMaterials)
+        for (const auto& meshMaterials = other->GetMaterials(); const auto &[index, materialAsset] : meshMaterials)
 			SetMaterial(index, materialAsset);
 	}
 

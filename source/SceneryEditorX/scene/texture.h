@@ -14,7 +14,7 @@
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/serialization/graph_serializer.h>
-#include <SceneryEditorX/serialization/serializer.hpp>
+//#include <SceneryEditorX/serialization/serializer.hpp>
 
 /// -------------------------------------------------------
 
@@ -27,7 +27,7 @@ namespace SceneryEditorX
         TextureAsset() = default;
         explicit TextureAsset(const std::string &path);
         virtual ~TextureAsset() override;
-        virtual void Serialize(Serializer &ser);
+        //virtual void Serialize(Serializer &ser);
 
         /// -------------------------------------------------------
 

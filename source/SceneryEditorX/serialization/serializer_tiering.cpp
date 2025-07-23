@@ -17,6 +17,7 @@
 
 namespace SceneryEditorX
 {
+
     using namespace libconfig;
 
     /**

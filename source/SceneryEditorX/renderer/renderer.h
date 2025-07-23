@@ -16,12 +16,12 @@
 #include <SceneryEditorX/renderer/command_queue.h>
 #include <SceneryEditorX/renderer/image_data.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <SceneryEditorX/utils/static_states.h>
-
-#include "texture.h"
 
 /// -------------------------------------------------------
 
@@ -38,7 +38,6 @@ namespace SceneryEditorX
         typedef void (*RenderCommandFn)(void *);
 
 		GLOBAL Ref<RenderContext> GetContext();
-
 
         GLOBAL void Init();
 		GLOBAL void Shutdown();

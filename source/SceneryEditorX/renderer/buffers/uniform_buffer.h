@@ -164,6 +164,6 @@ namespace SceneryEditorX
 
     };
 
-} // namespace SceneryEditorX
+}
 
 /// ----------------------------------------------------------

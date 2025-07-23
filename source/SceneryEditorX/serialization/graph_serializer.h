@@ -23,6 +23,8 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     ///< Type definitions that need to be declared before use
     enum class StorageKind : uint8_t
     {
@@ -30,7 +32,9 @@ namespace SceneryEditorX
         Reference,
         Array
     };
+    */
 
+    /*
     enum class NodeType : uint8_t
     {
         Simple,
@@ -38,17 +42,23 @@ namespace SceneryEditorX
         Input,
         Output
     };
+    */
 
+    /*
     enum class PinKind : uint8_t
     {
         Input,
         Output
     };
+    */
 
+    /*
     ///< Forward declarations
     struct Pin;
     struct Link;
+    */
     
+    /*
     ///< Graph Node class (different from scene Node)
     class GraphNode
     {
@@ -67,7 +77,9 @@ namespace SceneryEditorX
         GraphNode() = default;
         virtual ~GraphNode() = default;
     };
+    */
 
+    /*
     ///< Basic Pin structure declaration
     struct Pin
     {
@@ -85,7 +97,9 @@ namespace SceneryEditorX
         virtual ~Pin() = default;
         [[nodiscard]] virtual std::string_view GetTypeString() const { return "Pin"; }
     };
+    */
 
+    /*
     ///< Basic Link structure declaration  
     struct Link
     {
@@ -97,7 +111,9 @@ namespace SceneryEditorX
         Link() = default;
         Link(const UUID &startPin, const UUID &endPin) : ID(), StartPinID(startPin), EndPinID(endPin) {}
     };
+    */
 
+	/*
 	namespace Utils
     {
 		std::string StorageKindToString(StorageKind storageKind);
@@ -107,6 +123,7 @@ namespace SceneryEditorX
 		NodeType NodeTypeFromString(const std::string_view& nodeTypeStr);
 
 	}
+	*/
 
 	/// -------------------------------------------------------
 
@@ -119,6 +136,8 @@ namespace SceneryEditorX
 	 * Node and Pins and then passes this info to the implementation factory callbacks
 	 * to handle concrete construction and validation.
 	 */
+
+	/*
 	class DefaultGraphSerializer : public AssetSerializer
 	{
 	public:
@@ -131,7 +150,7 @@ namespace SceneryEditorX
 		/**
 		 * Implementation must provide this factory to deserialize nodes with static
 		 * TryLoadNodes() function.
-		 */
+		 #1#
 		struct DeserializationFactory
 		{
 			///< Deserialized info about a Pin of a Node, may or may not be valid
@@ -160,19 +179,19 @@ namespace SceneryEditorX
 			/**
 			 * This factory function should construct a Node with default Input and Output pins
 			 * as well as assign default and deserialized values from the candidate if required.
-			 */
+			 #1#
 			std::function<GraphNode*(const NodeCandidate& candidate, const std::optional<std::vector<PinCandidate>>& inputs, const std::optional<std::vector<PinCandidate>>& outputs)> ConstructNode;
 
 			/**
 			 * This factory function should deserialize values from the candidate to the previously
 			 * constructed default factory pin as well as do any required validation.
-			 */
+			 #1#
 			std::function<bool(const PinCandidate& candidate, Pin* factoryPin, const NodeCandidate& nodeCandidate)> DeserializePin;
 
 			/**
 			 * This factory function should perform any extra post node-construction work
 			 * For example, deserializing derived type data members
-			 */
+			 #1#
             std::function<void(nlohmann::json &node, GraphNode *newNode)> PostConstructNode;
 		};
 
@@ -181,10 +200,11 @@ namespace SceneryEditorX
 		 * which are then passed to implementation provided factory to deserialize and validate.
 		 *
 		 * @note This function throws an exception if deserialization fails, the caller must handle it!
-		 */
+		 #1#
 		static void TryLoadNodes(nlohmann::json &data, std::vector<GraphNode*> &nodes, const DeserializationFactory &factory);
 		static void TryLoadLinks(nlohmann::json &data, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback = {});
 	};
+	*/
 
 
 }

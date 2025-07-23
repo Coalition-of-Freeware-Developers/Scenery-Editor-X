@@ -10,7 +10,7 @@
 * Created: 25/3/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imconfig.h>

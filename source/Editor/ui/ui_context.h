@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/Module.h>
+#include <SceneryEditorX/core/modules/module.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
@@ -50,6 +50,6 @@ namespace SceneryEditorX::UI
 	
 	};
 
-} // namespace SceneryEditorX
+}
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

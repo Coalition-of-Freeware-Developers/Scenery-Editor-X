@@ -259,7 +259,7 @@ namespace SceneryEditorX
     void Renderer::WaitAndRender(const ThreadManager *renderThread)
     {
         renderThread->WaitAndSet(ThreadManager::State::Kick, ThreadManager::State::Busy);
-        m_renderData->s_CommandQueue[GetRenderQueueIndex()]->Execute();
+        s_CommandQueue[GetRenderQueueIndex()]->Execute();
 
 		/// Rendering has completed, set state to idle
         renderThread->Set(ThreadManager::State::Idle);
@@ -282,7 +282,7 @@ namespace SceneryEditorX
 
     uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex)
     {
-        return m_renderData->DescriptorPoolAllocationCount[frameIndex];
+        return s_Data->DescriptorPoolAllocationCount[frameIndex];
     }
 
     VkSampler Renderer::CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo)

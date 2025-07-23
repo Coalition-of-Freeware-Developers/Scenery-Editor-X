@@ -17,6 +17,8 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     void SerializeReader::ReadBuffer(Memory::Buffer& buffer, uint32_t size)
 	{
 		buffer.size = size;
@@ -26,7 +28,9 @@ namespace SceneryEditorX
 		buffer.Allocate(buffer.size);
 		ReadData((char*)buffer.data, buffer.size);
 	}
+	*/
 
+	/*
 	void SerializeReader::ReadString(std::string& string)
 	{
 		size_t size;
@@ -35,6 +39,7 @@ namespace SceneryEditorX
 		string.resize(size);
 		ReadData(string.data(), sizeof(char) * size);
 	}
+	*/
 
 }
 

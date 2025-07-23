@@ -13,7 +13,7 @@
 #pragma once
 #include <curl/curl.h>
 #include <functional>
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 /// -----------------------------------------
@@ -202,6 +202,6 @@ namespace SceneryEditorX
         } downloadStatus_;
     };
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

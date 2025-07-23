@@ -176,7 +176,7 @@ namespace SceneryEditorX
 
         [[nodiscard]] std::string ToString() const
         {
-            return std::string::Format("[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]",
+            return fmt::format("[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]",
                 rows[0][0], rows[0][1], rows[0][2], rows[0][3],
                 rows[1][0], rows[1][1], rows[1][2], rows[1][3],
                 rows[2][0], rows[2][1], rows[2][2], rows[2][3],
@@ -193,7 +193,7 @@ namespace SceneryEditorX
 
 }
 
-/// fmt user-defined Formatter for CE::Matrix4x4
+/// fmt user-defined Formatter for SceneryEditorX::Matrix4x4
 template <>
 struct fmt::formatter<SceneryEditorX::Matrix4x4>
 {

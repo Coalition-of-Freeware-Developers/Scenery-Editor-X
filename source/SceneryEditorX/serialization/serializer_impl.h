@@ -62,13 +62,16 @@
 	 *	}
 	 */
 
+/*
 #define SERIALIZABLE(Class, ...)                                                                                       \
     template <>                                                                                                        \
 	struct SceneryEditorX::Types::Description<Class> : SceneryEditorX::Types::MemberList<__VA_ARGS__>                  \
 	{};
+	*/
 	
 namespace SceneryEditorX::Serialization
-{
+{/*
+
 	/// Serialization
 	template <typename... Ts>
     static bool Serialize(SerializeWriter *writer, const Ts &...vs);
@@ -229,6 +232,7 @@ namespace SceneryEditorX::Serialization
 	}
 
     /// -----------------------------------------------------------------------------
+    */
 
 }
 

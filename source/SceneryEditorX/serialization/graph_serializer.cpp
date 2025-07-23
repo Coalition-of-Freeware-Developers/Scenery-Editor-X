@@ -21,6 +21,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	namespace Utils
     {
 		std::string StorageKindToString(StorageKind storageKind)
@@ -52,9 +53,11 @@ namespace SceneryEditorX
 		}
 
 	}
+	*/
 
     /// -------------------------------------------------------
 
+	/*
 	void DefaultGraphSerializer::SerializeNodes(nlohmann::json& out, const std::vector<GraphNode*>& nodes, std::function<void(nlohmann::json&, const GraphNode*)> nodeCallback)
 	{
 		nlohmann::json nodesArray = nlohmann::json::array();
@@ -117,9 +120,11 @@ namespace SceneryEditorX
 		}
 		out["Nodes"] = nodesArray;
 	}
+	*/
 
     /// -------------------------------------------------------
 
+	/*
 	void DefaultGraphSerializer::SerializeLinks(nlohmann::json& out, const std::vector<Link>& links, std::function<void(nlohmann::json&, const Link&)> linkCallback)
 	{
 		nlohmann::json linksArray = nlohmann::json::array();
@@ -143,9 +148,11 @@ namespace SceneryEditorX
 		}
 		out["Links"] = linksArray;
 	}
+	*/
 
     /// -------------------------------------------------------
 
+	/*
 	using PinCandidate = DefaultGraphSerializer::DeserializationFactory::PinCandidate;
 	using NodeCandidate = DefaultGraphSerializer::DeserializationFactory::NodeCandidate;
 
@@ -188,9 +195,11 @@ namespace SceneryEditorX
 
 		return list;
 	}
+	*/
 
     /// -------------------------------------------------------
 
+	/*
 	[[nodiscard]] static std::optional<std::vector<PinCandidate>> TryLoadOutputs(const nlohmann::json& outputs, const NodeCandidate& node)
 	{
 		if (!outputs.is_array())
@@ -228,15 +237,17 @@ namespace SceneryEditorX
 
 		return list;
 	}
+	*/
 
     /// -------------------------------------------------------
 
+	/*
 	void DefaultGraphSerializer::TryLoadNodes(nlohmann::json& data, std::vector<GraphNode*>& nodes, const DeserializationFactory& factory)
 	{
 		/*
 		 * TODO: Remove exceptions when we implement a dummy "invalid" node/pin types to display to the user?
 		 * for now, we just stop loading the whole graph if there's any error in the JSON document and/or node fabrication
-		 */
+		 #1#
 		if (!data.contains("Nodes") || !data["Nodes"].is_array())
 			return;
 
@@ -407,9 +418,11 @@ namespace SceneryEditorX
             nodes.push_back(newNode);
 		}
 	}
+	*/
 
     /// -------------------------------------------------------
 
+	/*
 	void DefaultGraphSerializer::TryLoadLinks(nlohmann::json &data, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback)
 	{
 		if (!data.contains("Links") || !data["Links"].is_array())
@@ -442,6 +455,7 @@ namespace SceneryEditorX
 			}
 		}
 	}
+	*/
 
     /// -------------------------------------------------------
 

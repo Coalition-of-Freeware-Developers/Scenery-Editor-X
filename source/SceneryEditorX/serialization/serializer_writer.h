@@ -17,6 +17,8 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     class SerializeWriter
 	{
 	public:
@@ -119,7 +121,10 @@ namespace SceneryEditorX
 		}
 
 	};
+	*/
 
+
+	/*
 	template<>
 	inline void SerializeWriter::WriteArray(const std::vector<std::string>& array, const bool writeSize)
 	{
@@ -129,6 +134,7 @@ namespace SceneryEditorX
 		for (const auto& element : array)
 			WriteString(element);
 	}
+	*/
 
 }
 
