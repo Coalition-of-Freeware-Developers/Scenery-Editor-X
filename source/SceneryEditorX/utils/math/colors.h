@@ -117,7 +117,7 @@ namespace SceneryEditorX::Utils
         [[nodiscard]] Vec4 ToVec4() const;
         [[nodiscard]] Vec3 ToHSV() const;
 
-        static Color Lerp(const Color& from, const Color& to, float t)
+        static Color Lerp(const Color& from, const Color& to, const float t)
 		{
 			return {
 			    Math::Lerp(from.r, to.r, t),

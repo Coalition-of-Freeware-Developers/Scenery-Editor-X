@@ -12,8 +12,6 @@
 */
 
 /**
- *
- *
  * Comprehensive smart pointer system optimized for 3D rendering applications
  *
  * This file provides a complete reference counting and weak reference system

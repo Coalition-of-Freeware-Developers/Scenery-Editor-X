@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	class Texture : public Resource
 	{
 	public:
-		virtual ~Texture() {}
+		virtual ~Texture() override {}
 
 		virtual void Bind(uint32_t slot = 0) const = 0;
 
@@ -76,7 +76,7 @@ namespace SceneryEditorX
         virtual void CreateFromBuffer(const TextureSpecification &specification, Memory::Buffer data = Memory::Buffer());
 
 		virtual void Resize(const glm::uvec2 &size);
-        virtual void Resize(const uint32_t width, const uint32_t height);
+        virtual void Resize(uint32_t width, uint32_t height);
 
 		void Invalidate();
 

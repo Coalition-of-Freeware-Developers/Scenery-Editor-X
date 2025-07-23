@@ -247,11 +247,13 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("Window created successfully");
 
         // Continue with window setup
-        if (WindowData::window) {
+        if (WindowData::window)
+		{
             SetWindowIcon(WindowData::window);
             winData.dirty = false;
 
-            if (winData.maximized) {
+            if (winData.maximized)
+			{
                 SEDX_CORE_INFO("Maximizing window");
                 glfwMaximizeWindow(WindowData::window);
             }

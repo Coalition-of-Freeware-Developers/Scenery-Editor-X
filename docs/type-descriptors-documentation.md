@@ -70,11 +70,11 @@ struct DescriptionInterface
 };
 ```
 
-## The DESCRIBED Macro System
+## The SERIALIZABLE Macro System
 
 ### Basic Usage
 
-The `DESCRIBED` macro is the primary interface for making types reflectable:
+The `SERIALIZABLE` macro is the primary interface for making types reflectable and serializable:
 
 ```cpp
 struct Transform
@@ -88,15 +88,16 @@ struct Transform
     bool IsIdentity() const { return position == Vec3{} && rotation == Vec3{} && scale == Vec3{1,1,1}; }
 };
 
-// Make the type reflectable
-DESCRIBED(Transform,
+// Make the type serializable and reflectable
+SERIALIZABLE(Transform,
     &Transform::position,
     &Transform::rotation,
     &Transform::scale,
-    &Transform::visible,
-    &Transform::Reset,
-    &Transform::IsIdentity
+    &Transform::visible
 );
+
+// Note: Methods like Reset() and IsIdentity() are not included in serialization
+// but can still be called normally on the type
 ```
 
 ### Tagged Descriptions
@@ -524,14 +525,14 @@ The `DESCRIBED` macro must be placed at global scope and the type must be comple
 
 ### Common Errors
 
-1. **"Type must be 'Described'"**
+1. **"Type must be 'Serializable'"**
 
    ```cpp
-   // Error: Missing DESCRIBED macro
+   // Error: Missing SERIALIZABLE macro
    ClassInfo info = ClassInfo::Of<MyClass>(); // ❌
 
-   // Fix: Add description
-   DESCRIBED(MyClass, &MyClass::member1, &MyClass::member2);
+   // Fix: Add serialization
+   SERIALIZABLE(MyClass, &MyClass::member1, &MyClass::member2);
    ClassInfo info = ClassInfo::Of<MyClass>(); // ✅
    ```
 2. **"No member named..."**

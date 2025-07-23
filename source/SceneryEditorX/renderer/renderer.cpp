@@ -146,23 +146,23 @@ namespace SceneryEditorX
         constexpr float height = 2;
 		struct QuadVertex
 		{
-			glm::vec3 Position;
-			glm::vec2 TexCoord;
+			Vec3 Position;
+			Vec2 TexCoord;
 		};
 
 		QuadVertex* data = hnew QuadVertex[4];
 
-		data[0].Position = glm::vec3(x, y, 0.0f);
-		data[0].TexCoord = glm::vec2(0, 0);
+		data[0].Position = Vec3(x, y, 0.0f);
+		data[0].TexCoord = Vec2(0, 0);
 
-		data[1].Position = glm::vec3(x + width, y, 0.0f);
-		data[1].TexCoord = glm::vec2(1, 0);
+		data[1].Position = Vec3(x + width, y, 0.0f);
+		data[1].TexCoord = Vec2(1, 0);
 
-		data[2].Position = glm::vec3(x + width, y + height, 0.0f);
-		data[2].TexCoord = glm::vec2(1, 1);
+		data[2].Position = Vec3(x + width, y + height, 0.0f);
+		data[2].TexCoord = Vec2(1, 1);
 
-		data[3].Position = glm::vec3(x, y + height, 0.0f);
-		data[3].TexCoord = glm::vec2(0, 1);
+		data[3].Position = Vec3(x, y + height, 0.0f);
+		data[3].TexCoord = Vec2(0, 1);
 
 		s_Data->QuadVertexBuffer = VertexBuffer::Create(data, 4 * sizeof(QuadVertex));
 		uint32_t indices[6] = { 0, 1, 2, 2, 3, 0, };
@@ -296,6 +296,37 @@ namespace SceneryEditorX
 
 		return sampler;
     }
+
+	Ref<Texture2D> Renderer::GetWhiteTexture()
+    {
+        return s_Data->WhiteTexture;
+    }
+
+    Ref<Texture2D> Renderer::GetBlackTexture()
+    {
+        return s_Data->BlackTexture;
+    }
+
+    Ref<Texture2D> Renderer::GetHilbertLut()
+    {
+        return s_Data->HilbertLut;
+    }
+
+    Ref<Texture2D> Renderer::GetBRDFLutTexture()
+    {
+        return s_Data->BRDFLutTexture;
+    }
+
+    Ref<TextureCube> Renderer::GetBlackCubeTexture()
+    {
+        return s_Data->BlackCubeTexture;
+    }
+
+    Ref<Environment> Renderer::GetEmptyEnvironment()
+    {
+        return s_Data->EmptyEnvironment;
+    }
+
 
     /// -------------------------------------------------------
 

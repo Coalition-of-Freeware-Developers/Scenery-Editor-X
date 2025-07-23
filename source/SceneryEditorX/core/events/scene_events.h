@@ -96,7 +96,7 @@ namespace SceneryEditorX
 	class SelectionChangedEvent : public Event
 	{
 	public:
-		SelectionChangedEvent(const UUID contextID, const UUID selectionID, const bool selected) : m_ContextID(contextID), m_SelectionID(selectionID), m_Selected(selected) {}
+		SelectionChangedEvent(const UUID &contextID, const UUID &selectionID, const bool selected) : m_ContextID(contextID), m_SelectionID(selectionID), m_Selected(selected) {}
 
         [[nodiscard]] UUID GetContextID() const { return m_ContextID; }
         [[nodiscard]] UUID GetSelectionID() const { return m_SelectionID; }

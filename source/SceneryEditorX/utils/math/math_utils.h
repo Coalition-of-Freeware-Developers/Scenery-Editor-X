@@ -19,18 +19,18 @@
 
 namespace SceneryEditorX::Utils
 {
-    // Constants
+    ///< Constants
     constexpr float PI = 3.14159265358979323846f;
     constexpr float TWO_PI = 2.0f * PI;
     constexpr float HALF_PI = PI * 0.5f;
     constexpr float DEG_TO_RAD = PI / 180.0f;
     constexpr float RAD_TO_DEG = 180.0f / PI;
 
-    // Angle conversions
-    constexpr float ToRadians(float degrees) { return degrees * DEG_TO_RAD; }
-    constexpr float ToDegrees(float radians) { return radians * RAD_TO_DEG; }
+    ///< Angle conversions
+    //constexpr float ToRadians(const float degrees) { return degrees * DEG_TO_RAD; }
+    //constexpr float ToDegrees(const float radians) { return radians * RAD_TO_DEG; }
 
-    // Utility functions
+    ///< Utility functions
     template<typename T>
     constexpr T Clamp(const T& value, const T& min, const T& max)
     {
@@ -43,11 +43,11 @@ namespace SceneryEditorX::Utils
         return a + t * (b - a);
     }
 
-    // Comparison functions
+    ///< Comparison functions
     bool IsEqual(float a, float b, float epsilon = 1e-6f);
     bool IsZero(float value, float epsilon = 1e-6f);
 
-    // Vector operations (complement to transforms.h)
+    ///< Vector operations (complement to transforms.h)
     float Distance(const Vec3& a, const Vec3& b);
     Vec3 Normalize(const Vec3& vector);
     float Dot(const Vec3& a, const Vec3& b);
@@ -83,7 +83,8 @@ namespace SceneryEditorX::Utils
     	static bool ApproxEquals(const double a, const double b) { return fpclassify(a - b) == FP_ZERO; }
     	static bool ApproxEquals(const int32_t a, const int32_t b) { return a == b; }
 
-    	static constexpr float Infinity() { return NumericLimits<float>::Infinity(); }
+		///< TODO: Implement infinity operations later
+    	//static constexpr float Infinity() { return NumericLimits<float>::Infinity(); }
 
         static float ToDegrees(float radians) { return RAD_TO_DEG(radians); }
         static float ToRadians(float degrees) { return DEG_TO_RAD(degrees); }

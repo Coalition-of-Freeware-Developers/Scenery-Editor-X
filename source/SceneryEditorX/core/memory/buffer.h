@@ -118,12 +118,9 @@ namespace SceneryEditorX::Memory
 
 	struct BufferSafe : Buffer
 	{
-		~BufferSafe()
-		{
-			Release();
-		}
+		~BufferSafe();
 
-		static BufferSafe Copy(const void* fdata, const uint64_t fsize)
+        static BufferSafe Copy(const void* fdata, const uint64_t fsize)
 		{
 			BufferSafe buffer;
 			buffer.Allocate(fsize);
@@ -131,6 +128,11 @@ namespace SceneryEditorX::Memory
 			return buffer;
 		}
 	};
+
+    inline BufferSafe::~BufferSafe()
+    {
+        Release();
+    }
 
 }
 

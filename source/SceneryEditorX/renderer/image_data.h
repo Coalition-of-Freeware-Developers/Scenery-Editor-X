@@ -102,8 +102,8 @@ namespace SceneryEditorX
 
     union ImageClearValue
     {
-        glm::vec4 FloatValues;
-        glm::ivec4 IntValues;
+        Vec4 FloatValues;
+        iVec4 IntValues;
         glm::uvec4 UIntValues;
     };
 

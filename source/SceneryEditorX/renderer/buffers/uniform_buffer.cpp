@@ -80,7 +80,7 @@ namespace SceneryEditorX
 	    const float time = std::chrono::duration<float>(currentTime - startTime).count();
 	
 	    UBO uniformBuff = {};
-	    uniformBuff.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), Vec3(0.0f, 0.0f, 1.0f));
+	    uniformBuff.model = glm::rotate(Mat4(1.0f), time * glm::radians(90.0f), Vec3(0.0f, 0.0f, 1.0f));
 	    uniformBuff.view = glm::lookAt(Vec3(2.0f, 2.0f, 2.0f),
 									   Vec3(0.0f, 0.0f, 0.0f),
 									   Vec3(0.0f, 0.0f, 1.0f));

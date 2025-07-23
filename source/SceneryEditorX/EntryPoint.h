@@ -38,7 +38,7 @@ namespace SceneryEditorX
         return 0;
 	}
 
-} // namespace SceneryEditorX
+}
 
 /// ----------------------------------------------------
 

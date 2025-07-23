@@ -2,16 +2,12 @@
 //Author:	Connor Russell
 //Date:		10/12/2024 2:32:18 PM
 //Purpose:	Implements XPLibrarySystem.h
-
-//Compile once
-#pragma once
-
-//Include necessary headers
 #include "XPLibrarySystem.h"
 #include "TextUtils.h"
 #include <algorithm>
 #include <fstream>
 #include <map>
+#include <ranges>
 #include <sstream>
 
 
@@ -24,35 +20,43 @@ namespace fs = std::filesystem; //I'm lazy, so less typing
 * @param InCurrentPackagePath
 * @param InCustomSceneryPacks = A vector of paths to custom scenery packs. These should be ordered based on the scenery_packs.ini, with the first element being the highest priority scenery
 */
-void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRootPath,
-                                                  std::filesystem::path InCurrentPackagePath,
-                                                  std::vector<std::filesystem::path> InCustomSceneryPacks)
+void XPLibrary::VirtualFileSystem::LoadFileSystem(const std::filesystem::path &InXpRootPath, const std::filesystem::path &InCurrentPackagePath, const std::vector<std::filesystem::path> &InCustomSceneryPacks)
 {
-    //Define our seasons
+    ///< Define our seasons
     const std::string SUM = "sum";
     const std::string WIN = "win";
     const std::string SPR = "spr";
     const std::string FAL = "fal";
 
-    std::map<std::string, XPLibrary::Definition> mTempDefinitions;
+    std::map<std::string, Definition> mTempDefinitions;
 
-    //Define a list of acceptable extensions to add to the library.txt
-    std::vector<std::string> vctXPExtensions =
-        {".lin", ".pol", ".str", ".ter", ".net", ".obj", ".agb", ".ags", ".agp", ".bch"};
-    std::sort(vctXPExtensions.begin(), vctXPExtensions.end());
+    ///< Define a list of acceptable extensions to add to the library.txt
+    std::vector<std::string> vctXPExtensions = {
+        ".lin",
+        ".pol",
+        ".str",
+        ".ter",
+        ".net",
+        ".obj",
+        ".agb",
+        ".ags",
+        ".agp",
+        ".bch"
+    };
+    std::ranges::sort(vctXPExtensions);
 
-    //We will first add a new region, region_all, which contains everything that is not regionalized.
-    XPLibrary::Region Region_All;
+    ///< We will first add a new region, region_all, which contains everything that is not regionalized.
+    Region Region_All;
     mRegions.insert(std::make_pair("region_all", Region_All));
 
-    //Lambda to get an iterator to a definition, or add it if it doesn't exist
-    auto GetIteratorToDefinition = [&](std::string InPath) -> std::map<std::string, XPLibrary::Definition>::iterator {
-        //Find the definition
+    ///< Lambda to get an iterator to a definition, or add it if it doesn't exist
+    auto GetIteratorToDefinition = [&](const std::string &InPath) -> std::map<std::string, Definition>::iterator {
+        ///< Find the definition
         auto it = mTempDefinitions.find(InPath);
         if (it == mTempDefinitions.end())
         {
-            //Create the definition
-            XPLibrary::Definition Def;
+            ///< Create the definition
+            Definition Def;
             Def.pVirtual = InPath;
             mTempDefinitions.insert(std::make_pair(InPath, Def));
 
@@ -63,9 +67,9 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
     };
 
     //First load all the real files from the Current Package
-    for (auto p : fs::recursive_directory_iterator(InCurrentPackagePath))
+    for (const auto &p : fs::recursive_directory_iterator(InCurrentPackagePath))
     {
-        if (std::binary_search(vctXPExtensions.begin(), vctXPExtensions.end(), p.path().extension().string()))
+        if (std::ranges::binary_search(vctXPExtensions, p.path().extension().string()))
         {
             //Define a new DefinitionPath
             DefinitionPath DefPath;
@@ -88,9 +92,7 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
             for (auto &p2 : fs::recursive_directory_iterator(p, fs::directory_options::skip_permission_denied))
             {
                 if (p2.path().filename() == "library.txt")
-                {
-                    vctLibs.push_back(std::make_pair(p2.path().parent_path(), p2.path()));
-                }
+                    vctLibs.emplace_back(p2.path().parent_path(), p2.path());
             }
         }
 
@@ -98,22 +100,20 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                                                         fs::directory_options::skip_permission_denied))
         {
             if (p.path().filename() == "library.txt")
-            {
-                vctLibs.push_back(std::make_pair(p.path().parent_path(), p.path()));
-            }
+                vctLibs.emplace_back(p.path().parent_path(), p.path());
         }
     }
 
     //Now we will process the library.txt files
-    for (auto &l : vctLibs)
+    for (auto &[fst, snd] : vctLibs)
     {
         //Open the file
-        std::ifstream ifsLib(l.second);
+        std::ifstream ifsLib(snd);
 
         //Buffers
         std::string strBuffer;
         std::stringstream ssLineBuffer;
-        XPLibrary::Region CurrentRegion;
+        Region CurrentRegion;
         std::string strCurrentRegionDefName;
         std::string strCurrentRegionName = "region_all";
         bool bInPrivate = false;
@@ -134,32 +134,27 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
 
             //Skip non-commands
             if (strBuffer.starts_with("#"))
-            {
                 continue;
-            } //Comments
-            else if (tokens.size() == 0)
-            {
+            //Comments
+            if (tokens.empty())
                 continue;
-            } //Empty lines
+            //Empty lines
 
             //Reset this command state
             bThisCommandWasRegion = false;
 
             //Check the command
-            if ((tokens[0] == "EXPORT" || tokens[0] == "EXPORT_EXTEND") &&
-                tokens.size() >=
-                    3) //EXPORT and EXPORT_EXTEND actually behave pretty much identically in sim, so we will save the complexity and treat them the same here.
+            if ((tokens[0] == "EXPORT" || tokens[0] == "EXPORT_EXTEND") && tokens.size() >= 3) //EXPORT and EXPORT_EXTEND actually behave pretty much identically in sim, so we will save the complexity and treat them the same here.
             {
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[1]);
                 if (bInPrivate)
-                {
                     it->second.bIsPrivate = true;
-                } //Set the private flag if we are in a private block
+
+                //Set the private flag if we are in a private block
 
                 //Get the index of the current RegionalDefinition in this definition
-                auto &RegionalDef =
-                    it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
+                auto &RegionalDef = it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
 
                 //Now we need to get the real path. We do this by removing the first 2 tokens from the stream, then we can getline
                 ssLineBuffer >> strBuffer >> strBuffer;
@@ -168,8 +163,8 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 strBuffer = TextUtils::TrimWhitespace(strBuffer);
 
                 //Define our definition path
-                XPLibrary::DefinitionPath DefPath;
-                DefPath.SetPath(l.first, strBuffer);
+                DefinitionPath DefPath;
+                DefPath.SetPath(fst, strBuffer);
 
                 //This is a default path, so now we just need to add it as an option to the default definition
                 RegionalDef.dDefault.AddOption(DefPath);
@@ -179,13 +174,11 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[1]);
                 if (bInPrivate)
-                {
                     it->second.bIsPrivate = true;
-                } //Set the private flag if we are in a private block
+                //Set the private flag if we are in a private block
 
                 //Get the index of the current RegionalDefinition in this definition
-                auto &RegionalDef =
-                    it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
+                auto &RegionalDef = it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
 
                 //Now we need to get the real path. We do this by removing the first 2 tokens from the stream, then we can getline
                 ssLineBuffer >> strBuffer >> strBuffer;
@@ -194,8 +187,8 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 strBuffer = TextUtils::TrimWhitespace(strBuffer);
 
                 //Define our definition path
-                XPLibrary::DefinitionPath DefPath;
-                DefPath.SetPath(l.first, strBuffer);
+                DefinitionPath DefPath;
+                DefPath.SetPath(fst, strBuffer);
 
                 //This is a backup path, so now we just need to add it as an option to the default definition
                 RegionalDef.dBackup.AddOption(DefPath);
@@ -206,13 +199,11 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[2]);
                 if (bInPrivate)
-                {
                     it->second.bIsPrivate = true;
-                } //Set the private flag if we are in a private block
+                //Set the private flag if we are in a private block
 
                 //Get the index of the current RegionalDefinition in this definition
-                auto &RegionalDef =
-                    it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
+                auto &RegionalDef = it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
 
                 //Now we need to get the real path. We do this by removing the first 3 tokens from the stream, then we can getline
                 ssLineBuffer >> strBuffer >> strBuffer >> strBuffer;
@@ -221,8 +212,8 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 strBuffer = TextUtils::TrimWhitespace(strBuffer);
 
                 //Define our definition path
-                XPLibrary::DefinitionPath DefPath;
-                DefPath.SetPath(l.first, strBuffer);
+                DefinitionPath DefPath;
+                DefPath.SetPath(fst, strBuffer);
 
                 //Get the ratio
                 double dblRatio = 1;
@@ -243,13 +234,11 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[1]);
                 if (bInPrivate)
-                {
                     it->second.bIsPrivate = true;
-                } //Set the private flag if we are in a private block
+                //Set the private flag if we are in a private block
 
                 //Get the index of the current RegionalDefinition in this definition
-                auto &RegionalDef =
-                    it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
+                auto &RegionalDef = it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
 
                 //Now we need to get the real path. We do this by removing the first 2 tokens from the stream, then we can getline
                 ssLineBuffer >> strBuffer >> strBuffer;
@@ -258,8 +247,8 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 strBuffer = TextUtils::TrimWhitespace(strBuffer);
 
                 //Define our definition path
-                XPLibrary::DefinitionPath DefPath;
-                DefPath.SetPath(l.first, strBuffer);
+                DefinitionPath DefPath;
+                DefPath.SetPath(fst, strBuffer);
 
                 //Since this is an exclude, we need to reset the options first
                 RegionalDef.dDefault.ResetOptions();
@@ -269,8 +258,8 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
             }
             else if (tokens[0] == "REGION_DEFINE" && tokens.size() == 2)
             {
-                CurrentRegion = XPLibrary::Region(); //Reset the region
-                strCurrentRegionDefName = l.first.string() + ":" + tokens[1];
+                CurrentRegion = Region(); //Reset the region
+                strCurrentRegionDefName = fst.string() + ":" + tokens[1];
 
                 bLastCommandWasRegion = true;
                 bThisCommandWasRegion = true;
@@ -310,15 +299,14 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
             else if (tokens[0] == "REGION_DREF" &&
                      tokens.size() == 4) //I don't *think* datarefs can have spaces? So there should be exactly 4 tokens
             {
-                CurrentRegion.Conditions.push_back(
-                    {tokens[1], tokens[2], tokens[3]}); //The conditions are a tuple with 3 strings
+                CurrentRegion.Conditions.emplace_back(tokens[1], tokens[2], tokens[3]); //The conditions are a tuple with 3 strings
                 bLastCommandWasRegion = true;
                 bThisCommandWasRegion = true;
             }
             else if (tokens[0] == "REGION" && tokens.size() == 2)
             {
                 //Check if there is an un-added region (we can tell by the name not being empty). If so, add it
-                if (strCurrentRegionDefName != "")
+                if (!strCurrentRegionDefName.empty())
                 {
                     //Save the region and reset the name
                     mRegions.insert(std::make_pair(strCurrentRegionDefName, CurrentRegion));
@@ -326,7 +314,7 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 }
 
                 //Set the current region
-                strCurrentRegionName = l.first.string() + ":" + tokens[1];
+                strCurrentRegionName = fst.string() + ":" + tokens[1];
             }
             else if ((tokens[0] == "EXPORT_SEASON" || tokens[0] == "EXPORT_EXTEND_SEASON") && tokens.size() >= 4)
             {
@@ -334,13 +322,11 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[2]);
                 if (bInPrivate)
-                {
                     it->second.bIsPrivate = true;
-                } //Set the private flag if we are in a private block
+                //Set the private flag if we are in a private block
 
                 //Get the index of the current RegionalDefinition in this definition
-                auto &RegionalDef =
-                    it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
+                auto &RegionalDef = it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
 
                 //Now we need to get the real path. We do this by removing the first 3 tokens from the stream, then we can getline
                 ssLineBuffer >> strBuffer >> strBuffer >> strBuffer;
@@ -349,40 +335,30 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 strBuffer = TextUtils::TrimWhitespace(strBuffer);
 
                 //Define our definition path
-                XPLibrary::DefinitionPath DefPath;
-                DefPath.SetPath(l.first, strBuffer);
+                DefinitionPath DefPath;
+                DefPath.SetPath(fst, strBuffer);
 
                 //Add this path to the options for the appropriate seasons
                 if (tokens[1].find(SUM) != std::string::npos)
-                {
                     RegionalDef.dSummer.AddOption(DefPath);
-                }
                 if (tokens[1].find(WIN) != std::string::npos)
-                {
                     RegionalDef.dWinter.AddOption(DefPath);
-                }
                 if (tokens[1].find(SPR) != std::string::npos)
-                {
                     RegionalDef.dSpring.AddOption(DefPath);
-                }
                 if (tokens[1].find(FAL) != std::string::npos)
-                {
                     RegionalDef.dFall.AddOption(DefPath);
-                }
             }
             else if (tokens[0] == "EXPORT_RATIO_SEASON" && tokens.size() >= 5)
             {
-                //Format: EXPORT_RATIO_SEASON <seasons (comma delimited)> <ratio> <virtual path> <real path>
+                //Format: EXPORT_RATIO_SEASON <seasons (comma-delimited)> <ratio> <virtual path> <real path>
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[3]);
                 if (bInPrivate)
-                {
                     it->second.bIsPrivate = true;
-                } //Set the private flag if we are in a private block
+                //Set the private flag if we are in a private block
 
                 //Get the index of the current RegionalDefinition in this definition
-                auto &RegionalDef =
-                    it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
+                auto &RegionalDef = it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
 
                 //Now we need to get the real path. We do this by removing the first 4 tokens from the stream, then we can getline
                 ssLineBuffer >> strBuffer >> strBuffer >> strBuffer >> strBuffer;
@@ -391,13 +367,13 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 strBuffer = TextUtils::TrimWhitespace(strBuffer);
 
                 //Define our definition path
-                XPLibrary::DefinitionPath DefPath;
-                DefPath.SetPath(l.first, strBuffer);
+                DefinitionPath DefPath;
+                DefPath.SetPath(fst, strBuffer);
 
                 //Get the ratio
-                double dblRatio = 1;
                 try
                 {
+                    double dblRatio = 1;
                     dblRatio = std::stod(tokens[2]);
                 }
                 catch (...)
@@ -407,21 +383,13 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
 
                 //Add this path to the options for the appropriate seasons
                 if (tokens[1].find(SUM) != std::string::npos)
-                {
                     RegionalDef.dSummer.AddOption(DefPath);
-                }
                 if (tokens[1].find(WIN) != std::string::npos)
-                {
                     RegionalDef.dWinter.AddOption(DefPath);
-                }
                 if (tokens[1].find(SPR) != std::string::npos)
-                {
                     RegionalDef.dSpring.AddOption(DefPath);
-                }
                 if (tokens[1].find(FAL) != std::string::npos)
-                {
                     RegionalDef.dFall.AddOption(DefPath);
-                }
             }
             else if (tokens[0] == "EXPORT_EXCLUDE_SEASON" && tokens.size() >= 4)
             {
@@ -429,13 +397,11 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 //Create (or get) the definition for the virtual path
                 auto it = GetIteratorToDefinition(tokens[2]);
                 if (bInPrivate)
-                {
                     it->second.bIsPrivate = true;
-                } //Set the private flag if we are in a private block
+                //Set the private flag if we are in a private block
 
                 //Get the index of the current RegionalDefinition in this definition
-                auto &RegionalDef =
-                    it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
+                auto &RegionalDef = it->second.vctRegionalDefs[it->second.GetRegionalDefinitionIdx(strCurrentRegionName)];
 
                 //Now we need to get the real path. We do this by removing the first 3 tokens from the stream, then we can getline
                 ssLineBuffer >> strBuffer >> strBuffer >> strBuffer;
@@ -444,29 +410,21 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
                 strBuffer = TextUtils::TrimWhitespace(strBuffer);
 
                 //Define our definition path
-                XPLibrary::DefinitionPath DefPath;
-                DefPath.SetPath(l.first, strBuffer);
+                DefinitionPath DefPath;
+                DefPath.SetPath(fst, strBuffer);
 
                 //Since this is an exclude, we need to reset the options first
                 RegionalDef.dDefault.ResetOptions();
 
                 //Add this path to the options for the appropriate seasons
                 if (tokens[1].find(SUM) != std::string::npos)
-                {
                     RegionalDef.dSummer.AddOption(DefPath);
-                }
                 if (tokens[1].find(WIN) != std::string::npos)
-                {
                     RegionalDef.dWinter.AddOption(DefPath);
-                }
                 if (tokens[1].find(SPR) != std::string::npos)
-                {
                     RegionalDef.dSpring.AddOption(DefPath);
-                }
                 if (tokens[1].find(FAL) != std::string::npos)
-                {
                     RegionalDef.dFall.AddOption(DefPath);
-                }
             }
             else if (tokens[0] == "PUBLIC")
             {
@@ -496,9 +454,9 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
     //Add the temp definitions to the main definitions
     vctDefinitions.clear();
     vctDefinitions.reserve(mTempDefinitions.size());
-    for (auto &d : mTempDefinitions)
+    for (auto &val : mTempDefinitions | std::views::values)
     {
-        vctDefinitions.push_back(d.second);
+        vctDefinitions.push_back(val);
     }
 }
 
@@ -511,15 +469,11 @@ void XPLibrary::VirtualFileSystem::LoadFileSystem(std::filesystem::path InXpRoot
 XPLibrary::Definition XPLibrary::VirtualFileSystem::GetDefinition(const std::string &InPath)
 {
     //Find the definition
-    auto itDef = std::lower_bound(vctDefinitions.begin(), vctDefinitions.end(), InPath);
-
-    if (itDef->pVirtual == InPath)
-    {
+    if (const auto itDef = std::lower_bound(vctDefinitions.begin(), vctDefinitions.end(), InPath); itDef->pVirtual == InPath)
         return *itDef;
-    }
 
     //Return an empty definition
-    return XPLibrary::Definition();
+    return {};
 }
 
 /**
@@ -528,11 +482,11 @@ XPLibrary::Definition XPLibrary::VirtualFileSystem::GetDefinition(const std::str
 * @param InPath = The path to get the region of
 * @return Copy of the region of the given path. An empty region will be returned if the region does not exist
 */
-XPLibrary::Region XPLibrary::VirtualFileSystem::GetRegion(const std::string &InPath)
+XPLibrary::Region XPLibrary::VirtualFileSystem::GetRegion(const std::string &InPath) const
 {
     //Find the definition
     auto itDef = mRegions.at(InPath);
 
     //Return an empty region
-    return XPLibrary::Region();
+    return {};
 }

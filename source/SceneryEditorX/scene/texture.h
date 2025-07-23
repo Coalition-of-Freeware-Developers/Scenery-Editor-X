@@ -11,24 +11,20 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/asset/asset.h>
+#include <SceneryEditorX/platform/editor_config.hpp>
 #include <SceneryEditorX/serialization/graph_serializer.h>
+#include <SceneryEditorX/serialization/serializer.hpp>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	
-	/// -------------------------------------------------------
-
 	class TextureAsset : public Asset
     {
     public:
-        TextureAsset() : channels(0), width(0), height(0),
-                         textureImage(VK_NULL_HANDLE), textureSampler(VK_NULL_HANDLE),
-                         textureImageView(VK_NULL_HANDLE), textureImageMemory(VK_NULL_HANDLE) {}
+        TextureAsset() = default;
         explicit TextureAsset(const std::string &path);
         virtual ~TextureAsset() override;
         virtual void Serialize(Serializer &ser);
@@ -56,7 +52,7 @@ namespace SceneryEditorX
         void CreateTextureImage();
         void CreateTextureImageView();
         void CreateTextureSampler();
-		VkImageView CreateImageView(VkImage vkImage, VkFormat vkFormat, VkImageAspectFlagBits vkImageAspectFlagBits, int mipLevels) const;
+		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, int mipLevels) const;
         WeakRef<EditorConfig> config;
 
         /// -------------------------------------------------------

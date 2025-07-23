@@ -28,6 +28,7 @@ namespace SceneryEditorX
     {                                                                                                                  \
         return std::hash<Type>()(value);                                                                               \
     }
+    */
 
     /**
      * @class Hash
@@ -41,7 +42,9 @@ namespace SceneryEditorX
      *       evaluation and improved performance.
      *
      * @see UUID, Identifier classes for usage examples
-     #1#
+     */
+
+    /*
     class Hash
 	{
 	public:
@@ -75,6 +78,8 @@ namespace SceneryEditorX
          * uint32_t dynamicHash = Hash::GenerateFNVHash(shaderName.c_str(), shaderName.length());
          * @endcode
          #1#
+
+        /*
         static constexpr uint32_t GenerateFNVHash(const char* str, size_t length)
 		{
 			constexpr uint32_t FNV_PRIME = 16777619u;
@@ -92,6 +97,7 @@ namespace SceneryEditorX
 
 			return hash;
 		}
+		#1#
 
         /**
          * @brief Generates a 32-bit FNV-1a hash from a std::string.
@@ -111,10 +117,13 @@ namespace SceneryEditorX
          * uint32_t nameHash = Hash::GenerateFNVHash(shaderName);
          * @endcode
          #1#
+
+        /*
         static uint32_t GenerateFNVHash(const std::string& str)
         {
             return GenerateFNVHash(str.c_str(), str.length());
         }
+        #1#
 
         /**
          * @brief Generates a 32-bit CRC32 hash from a C-style string.
@@ -140,7 +149,7 @@ namespace SceneryEditorX
          * uint32_t nameHash = Hash::CRC32(objectName.c_str());
          * @endcode
          #1#
-		static uint32_t CRC32(const char* str);
+		//static uint32_t CRC32(const char* str);
 
         /**
          * @brief Generates a 32-bit CRC32 hash from a std::string.
@@ -160,9 +169,11 @@ namespace SceneryEditorX
          * uint32_t pathHash = Hash::CRC32(assetPath);
          * @endcode
          #1#
-		static uint32_t CRC32(const std::string& string);
+		//static uint32_t CRC32(const std::string& string);
 	};
+	*/
 
+	/*
 	template<typename T>
 	class Array;
 
@@ -247,8 +258,6 @@ namespace SceneryEditorX
 		}
 	};
 	*/
-
-
 
 }
 

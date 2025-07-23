@@ -26,6 +26,8 @@ namespace SceneryEditorX
 	    MultiThreaded	/// MultiThreaded will run on a separate thread
 	};
 
+    /// -------------------------------------------------------
+
     class ThreadManager
     {
     public:

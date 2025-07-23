@@ -11,9 +11,8 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/identifiers/hash.h>
-#include <SceneryEditorX/filestreaming/file_streaming.h>
 #include <SceneryEditorX/renderer/shaders/shader_pack.h>
-
+#include <SceneryEditorX/utils/filestreaming/file_streaming.h>
 #include <utility>
 
 /// -------------------------------------------------------

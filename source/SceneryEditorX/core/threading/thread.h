@@ -39,6 +39,8 @@ namespace SceneryEditorX
         std::thread mem_thread;
 	};
 
+    /// -------------------------------------------------------
+
     class ThreadSignal
     {
     public:

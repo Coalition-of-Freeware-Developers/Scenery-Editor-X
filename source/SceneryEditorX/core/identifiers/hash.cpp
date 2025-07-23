@@ -11,11 +11,13 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/identifiers/hash.h>
+#include <functional>
 
 /// ---------------------------------------------
 
 namespace SceneryEditorX
 {
+
     /*
     Hash128 CalculateHash128(const void *data, size_t length)
 	{
@@ -25,7 +27,9 @@ namespace SceneryEditorX
 		out.low64 = hash.low64;
 		return out;
 	}
+	*/
 
+	/*
 	size_t CalculateHash(const void *data, size_t length)
 	{
 #if IS_64BIT
@@ -34,7 +38,9 @@ namespace SceneryEditorX
 		return XXH32(data, length, 0);
 #endif
 	}
+	*/
 
+	/*
 	uint32_t CalculateCRC(const void *data, size_t size)
 	{
 		return CRC::Calculate(data, size, CRC::CRC_32());
@@ -44,7 +50,9 @@ namespace SceneryEditorX
 	{
 		return CRC::Calculate(data, size, CRC::CRC_32(), crc);
 	}
+	*/
 
+    /*
     size_t GetCombinedHashes(const Array<size_t> &hashes)
 	{
 		if (hashes.GetSize() == 0)
@@ -58,7 +66,7 @@ namespace SceneryEditorX
 		}
 
 		return hash;
-	}
+	} 
 	*/
 
 

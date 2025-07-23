@@ -40,9 +40,9 @@ namespace SceneryEditorX
          */
         struct UBO
         {
-            alignas(16) glm::mat4 model; ///< Model transformation matrix
-            alignas(16) glm::mat4 view;  ///< View transformation matrix
-            alignas(16) glm::mat4 proj;  ///< Projection transformation matrix
+            alignas(16) Mat4 model; ///< Model transformation matrix
+            alignas(16) Mat4 view;  ///< View transformation matrix
+            alignas(16) Mat4 proj;  ///< Projection transformation matrix
         };
 
         /**

@@ -112,30 +112,28 @@ namespace SceneryEditorX
 		return pressed;
 	}
 
-	bool Input::IsKeyReleased(const KeyCode key)
+	bool Input::IsKeyReleased(const KeyCode keycode)
 	{
-		return s_KeyData.contains(key) && s_KeyData[key].State == KeyState::Released;
+		return s_KeyData.contains(keycode) && s_KeyData[keycode].State == KeyState::Released;
 	}
 
-	bool Input::IsKeyToggledOn(const KeyCode key)
+	bool Input::IsKeyToggledOn(const KeyCode keycode)
 	{
-		/*
-		if (key == KeyCode::CapsLock)
-		{
-			return (s_Mods & KeyMods::CapsLock) != KeyMods::None;
-		}
 
-		if(key == KeyCode::NumLock)
+		if (keycode == KeyCode::CapsLock)
+            return (s_Mods & KeyMods::CapsLock) != KeyMods::None;
+
+        if (keycode == KeyCode::NumLock)
+            return (s_Mods & KeyMods::NumLock) != KeyMods::None;
+
+
+        // not (yet) supported by GLFW.  Refer GLFW GitHub issue 1727
+        /*
+        if (keycode == KeyCode::ScrollLock)
 		{
-			return (s_Mods & KeyMods::NumLock) != KeyMods::None;
+			return (s_Mods & KeyMods::ScrollLock) != KeyMods::None;
 		}
 		*/
-
-		// not (yet) supported by GLFW.  Refer GLFW github issue 1727
-		//if(key == KeyCode::ScrollLock)
-		//{
-		//	return (s_Mods & KeyMods::ScrollLock) != KeyMods::None;
-		//}
 
 		return false;
 	}
@@ -170,8 +168,7 @@ namespace SceneryEditorX
 			if (!windowHandle)
 				continue;
 
-			auto state = glfwGetMouseButton(static_cast<GLFWwindow*>(windowHandle), static_cast<int32_t>(button));
-			if (state == GLFW_PRESS || state == GLFW_REPEAT)
+            if (auto state = glfwGetMouseButton(static_cast<GLFWwindow*>(windowHandle), static_cast<int32_t>(button)); state == GLFW_PRESS || state == GLFW_REPEAT)
 			{
 				pressed = true;
 				break;
@@ -206,7 +203,7 @@ namespace SceneryEditorX
 		return { (float)x, (float)y };
 	}
 
-	/// TODO: A better way to do this is to handle it internally, and simply move the cursor the opposite side of the screen when it reaches the edge
+	///< TODO: A better way to do this is to handle it internally, and simply move the cursor the opposite side of the screen when it reaches the edge
 
     /*
     void Input::SetCursorMode(CursorMode mode)
@@ -282,6 +279,7 @@ namespace SceneryEditorX
 				UpdateButtonState(button, KeyState::None);
 		}
 	}
+
 }
 
 /// -------------------------------------------------------

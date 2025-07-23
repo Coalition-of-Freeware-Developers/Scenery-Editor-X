@@ -11,33 +11,27 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <cstdint>
 #include <functional>
-#include <nlohmann/json.hpp>
+#include <imgui.h>
 #include <optional>
 #include <SceneryEditorX/serialization/asset_serializer.h>
-#include <SceneryEditorX/utils/pointers.h>
+#include <SceneryEditorX/utils/reflection/type_values.h>
 #include <string_view>
 #include <vector>
-
-#include <SceneryEditorX/utils/reflection/type_values.h>
-
-// Forward declarations for missing types
-namespace choc::value { class Value; }
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
     ///< Type definitions that need to be declared before use
-    enum class StorageKind
+    enum class StorageKind : uint8_t
     {
         Value,
         Reference,
         Array
     };
 
-    enum class NodeType
+    enum class NodeType : uint8_t
     {
         Simple,
         Complex,
@@ -45,7 +39,7 @@ namespace SceneryEditorX
         Output
     };
 
-    enum class PinKind
+    enum class PinKind : uint8_t
     {
         Input,
         Output
@@ -56,7 +50,7 @@ namespace SceneryEditorX
     struct Link;
     
     ///< Graph Node class (different from scene Node)
-    class Node
+    class GraphNode
     {
     public:
         UUID ID;
@@ -70,8 +64,8 @@ namespace SceneryEditorX
         std::vector<Pin*> Inputs;
         std::vector<Pin*> Outputs;
         
-        Node() = default;
-        virtual ~Node() = default;
+        GraphNode() = default;
+        virtual ~GraphNode() = default;
     };
 
     ///< Basic Pin structure declaration
@@ -82,7 +76,7 @@ namespace SceneryEditorX
         std::string Name;
         StorageKind Storage;
         PinKind Kind;
-        Types::Value Value;
+        Values::Value Value;
 
         Pin() = default;
         Pin(const Pin&) = default;
@@ -92,7 +86,7 @@ namespace SceneryEditorX
         [[nodiscard]] virtual std::string_view GetTypeString() const { return "Pin"; }
     };
 
-    // Basic Link structure declaration  
+    ///< Basic Link structure declaration  
     struct Link
     {
         UUID ID;
@@ -101,7 +95,7 @@ namespace SceneryEditorX
         ImColor Color;
 
         Link() = default;
-        Link(const UUID startPin, const UUID endPin) : ID(), StartPinID(startPin), EndPinID(endPin) {}
+        Link(const UUID &startPin, const UUID &endPin) : ID(), StartPinID(startPin), EndPinID(endPin) {}
     };
 
 	namespace Utils
@@ -129,7 +123,7 @@ namespace SceneryEditorX
 	{
 	public:
 
-		static void SerializeNodes(nlohmann::json& out, const std::vector<Node*>& nodes, std::function<void(nlohmann::json&, const Node*)> nodeCallBack = {});
+		static void SerializeNodes(nlohmann::json& out, const std::vector<GraphNode*>& nodes, std::function<void(nlohmann::json&, const GraphNode*)> nodeCallBack = {});
 		static void SerializeLinks(nlohmann::json& out, const std::vector<Link>& links, std::function<void(nlohmann::json&, const Link&)> linkCallBack = {});
 
 		/// -------------------------------------------------------------------------------
@@ -167,9 +161,7 @@ namespace SceneryEditorX
 			 * This factory function should construct a Node with default Input and Output pins
 			 * as well as assign default and deserialized values from the candidate if required.
 			 */
-			std::function<Node*(const NodeCandidate& candidate,
-								const std::optional<std::vector<PinCandidate>>& inputs,
-								const std::optional<std::vector<PinCandidate>>& outputs)> ConstructNode;
+			std::function<GraphNode*(const NodeCandidate& candidate, const std::optional<std::vector<PinCandidate>>& inputs, const std::optional<std::vector<PinCandidate>>& outputs)> ConstructNode;
 
 			/**
 			 * This factory function should deserialize values from the candidate to the previously
@@ -181,7 +173,7 @@ namespace SceneryEditorX
 			 * This factory function should perform any extra post node-construction work
 			 * For example, deserializing derived type data members
 			 */
-			std::function<void(nlohmann::json& node, Node* newNode)> PostConstructNode;
+            std::function<void(nlohmann::json &node, GraphNode *newNode)> PostConstructNode;
 		};
 
 		/**
@@ -190,8 +182,8 @@ namespace SceneryEditorX
 		 *
 		 * @note This function throws an exception if deserialization fails, the caller must handle it!
 		 */
-		static void TryLoadNodes(nlohmann::json& in, std::vector<Node*>& nodes, const DeserializationFactory& factory);
-		static void TryLoadLinks(nlohmann::json& in, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback = {});
+		static void TryLoadNodes(nlohmann::json &data, std::vector<GraphNode*> &nodes, const DeserializationFactory &factory);
+		static void TryLoadLinks(nlohmann::json &data, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback = {});
 	};
 
 

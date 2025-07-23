@@ -18,6 +18,9 @@
 
 namespace SceneryEditorX
 {
+
+    /// -------------------------------------------------------
+
 	struct RenderThreadData
 	{
 	    CRITICAL_SECTION m_CriticalSection;
@@ -26,7 +29,9 @@ namespace SceneryEditorX
 	    ThreadManager::State m_State = ThreadManager::State::Idle;
 	};
 
-	static std::thread::id s_threadID;
+	LOCAL std::thread::id s_threadID;
+
+    /// -------------------------------------------------------
 
 	ThreadManager::ThreadManager(const ThreadingPolicy policy) : m_policy(policy), renderThread("Render Thread")
     {
@@ -38,6 +43,8 @@ namespace SceneryEditorX
             InitializeConditionVariable(&m_Data->m_ConditionVariable);
         }
     }
+
+    /// -------------------------------------------------------
 
     ThreadManager::~ThreadManager()
 	{
@@ -78,11 +85,9 @@ namespace SceneryEditorX
             return;
 
         EnterCriticalSection(&m_Data->m_CriticalSection);
-        while (m_Data->m_State != waitForState)
-        {
-            // This releases the CS so that another thread can wake it
+        while (m_Data->m_State != waitForState) // This releases the CS so that another thread can wake it
             SleepConditionVariableCS(&m_Data->m_ConditionVariable, &m_Data->m_CriticalSection, INFINITE);
-        }
+
         LeaveCriticalSection(&m_Data->m_CriticalSection);
 	}
 
@@ -140,10 +145,7 @@ namespace SceneryEditorX
         BlockUntilRenderComplete();
 	}
 
-	std::thread::id Thread::GetThreadID() const
-    {
-        return mem_thread.get_id();
-    }
+	std::thread::id Thread::GetThreadID() const { return mem_thread.get_id(); }
 
 }
 

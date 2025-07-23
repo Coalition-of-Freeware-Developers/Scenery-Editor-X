@@ -8,7 +8,6 @@ MESSAGE(STATUS "Generating Application Core")
 # --------------------------------
 FILE(GLOB ASSET_FILES  asset/*.h asset/*.hpp asset/*.cpp)
 FILE(GLOB CORE_APP core/application/*.h core/application/*.hpp core/application/*.cpp)
-FILE(GLOB CORE_ENCODING core/encoding/*.h core/encoding/*.hpp core/encoding/*.cpp)
 FILE(GLOB CORE_EVENTS core/events/*.h core/events/*.hpp core/events/*.cpp)
 FILE(GLOB CORE_IDENTIFIERS core/identifiers/*.h core/identifiers/*.hpp core/identifiers/*.cpp)
 FILE(GLOB CORE_INPUT core/input/*.h core/input/*.hpp core/input/*.cpp)
@@ -25,7 +24,6 @@ FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
 FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
 FILE(GLOB REFLECTION_FILES utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
 FILE(GLOB SCENE scene/*.cpp scene/*.h scene/*.hpp)
-FILE(GLOB FILESTREAM_FILES filestreaming/*.cpp filestreaming/*.h filestreaming/*.hpp)
 FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.comp shaders/*.geom shaders/*.tesc shaders/*.tese)
 FILE(GLOB SERIALIZER_FILES serialization/*.h serialization/*.cpp serialization/*.hpp)
 FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
@@ -33,10 +31,13 @@ FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
 FILE(GLOB UTILS_MATH utils/math/*.cpp utils/math/*.h utils/math/*.hpp)
 FILE(GLOB UTILS_REFLECTION utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
 FILE(GLOB UTILS_CONVERSIONS utils/conversions/*.cpp utils/conversions/*.h utils/conversions/*.hpp)
+FILE(GLOB UTILS_FILESTREAM utils/filestreaming/*.cpp utils/filestreaming/*.h utils/filestreaming/*.hpp)
+
 FILE(GLOB VULKAN_BUFFERS renderer/buffers/*.h renderer/buffers/*.cpp)
 FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
 FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h renderer/shaders/*.hpp)
 FILE(GLOB VULKAN_DEBUG renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
+
 FILE(GLOB FONT_CODE renderer/fonts/*.h renderer/fonts/*.hpp renderer/fonts/*.cpp)
 
 SET (PROJECT_CONFIG_FILES
@@ -54,7 +55,6 @@ SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VAL
 ADD_LIBRARY(AppCore
 	${ASSET_FILES}
 	${CORE_APP}
-	${CORE_ENCODING}
 	${CORE_EVENTS}
 	${CORE_IDENTIFIERS}
 	${CORE_INPUT}
@@ -71,7 +71,6 @@ ADD_LIBRARY(AppCore
 	${PROJECT_CONFIG_FILES}
 	${SERIALIZER_FILES}
 	${SCENE_FILES}
-	${FILESTREAM_FILES}
 	${REFLECTION_FILES}
 	${SHADER_FILES}
 	${VULKAN_FILES}
@@ -82,6 +81,7 @@ ADD_LIBRARY(AppCore
 	${UTILS_MATH}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
+	${UTILS_FILESTREAM}
 
     # --------------------------------
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
@@ -156,9 +156,6 @@ SOURCE_GROUP("Core" FILES
 SOURCE_GROUP("Core/Application" FILES
 	${CORE_APP}
 )
-SOURCE_GROUP("Core/Encoding" FILES
-	${CORE_ENCODING}
-)
 SOURCE_GROUP("Core/Events" FILES
 	${CORE_EVENTS}
 )
@@ -201,9 +198,6 @@ SOURCE_GROUP("Platform/Settings" FILES
 SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
-SOURCE_GROUP("Serialization/File Streaming" FILES
-	${FILESTREAM_FILES}
-)
 SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	${VULKAN_BUFFERS}
 )
@@ -218,6 +212,9 @@ SOURCE_GROUP("Utilities" FILES
 )
 SOURCE_GROUP("Utilities/Math" FILES
 	${UTILS_MATH}
+)
+SOURCE_GROUP("Utilities/File Streaming" FILES
+	${UTILS_FILESTREAM}
 )
 SOURCE_GROUP("Utilities/Reflection" FILES
 	${UTILS_REFLECTION}

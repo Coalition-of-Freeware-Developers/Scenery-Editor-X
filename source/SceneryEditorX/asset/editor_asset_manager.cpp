@@ -65,7 +65,7 @@ namespace SceneryEditorX
 	Ref<Asset> EditorAssetManager::GetAsset(AssetHandle assetHandle)
 	{
 		SEDX_PROFILE_FUNC();
-		SEDX_SCOPE_PERF("AssetManager::GetAsset")
+		//SEDX_SCOPE_PERF("AssetManager::GetAsset")
 
 		Ref<Asset> asset = GetAssetIncludingInvalid(assetHandle);
 		return asset && asset->IsValid() ? asset : nullptr;
@@ -82,7 +82,7 @@ namespace SceneryEditorX
 
 		auto metadata = GetMetadata(assetHandle);
 		if (!metadata.IsValid())
-			return { nullptr }; // TODO(Yan): return special error asset
+			return { nullptr }; // TODO: return special error asset
 
 		Ref<Asset> asset = nullptr;
 		if (metadata.IsDataLoaded)
@@ -108,7 +108,7 @@ namespace SceneryEditorX
 
 	void EditorAssetManager::AddMemoryOnlyAsset(const Ref<Asset> asset)
 	{
-		// Memory-only assets are not added to m_AssetRegistry (because that would require full thread synchronization for access to registry, we would like to avoid that)
+		///< Memory-only assets are not added to m_AssetRegistry (because that would require full thread synchronization for access to registry, we would like to avoid that)
 		std::scoped_lock lock(m_MemoryAssetsMutex);
 		m_MemoryAssets[asset->Handle] = asset;
 	}
@@ -117,8 +117,11 @@ namespace SceneryEditorX
 	{
         std::unordered_set<AssetHandle> result;
 
-		// loop over memory only assets
-		// This needs a lock because asset thread can create memory only assets
+		/**
+		 * @brief Loop over memory only assets.
+		 *
+		 * @note: This needs a lock because asset thread can create memory only assets
+		 */
 		{
 			std::shared_lock lock(m_MemoryAssetsMutex);
 			for (const auto& [handle, asset] : m_MemoryAssets)

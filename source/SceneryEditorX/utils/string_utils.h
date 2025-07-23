@@ -63,7 +63,7 @@ namespace SceneryEditorX::Utils
     std::vector<std::string> SplitString(std::string_view string, const std::string_view &delimiters);
     std::vector<std::string> SplitString(std::string_view string, char delimiter);
 
-	// Helper functions
+	///< Helper functions
 	inline bool isWhitespace(const char c) { return c == ' ' || (c <= 13 && c >= 9); }
 	inline bool isDigit(const char c) { return static_cast<uint32_t>(c - '0') < 10; }
 

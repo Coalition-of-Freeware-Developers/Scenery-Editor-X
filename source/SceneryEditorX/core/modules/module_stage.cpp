@@ -45,6 +45,19 @@ namespace SceneryEditorX
         else
             SEDX_CORE_ERROR("Overlay not found in stage");
 	}
+
+    Module * ModuleStage::operator[](const size_t index)
+    {
+        SEDX_CORE_ASSERT(index < moduleStage.size());
+        return moduleStage[index];
+    }
+
+    const Module * ModuleStage::operator[](const size_t index) const
+    {
+        SEDX_CORE_ASSERT(index < moduleStage.size());
+        return moduleStage[index];
+    }
+
 }
 
 /// -------------------------------------------------------

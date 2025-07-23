@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <format>
-#include <format>
 
 /// -------------------------------------------------------
 
@@ -30,20 +29,20 @@ namespace SceneryEditorX
                 this->rows[i] = rows[i];
         }
 
-        Matrix4x4(std::initializer_list<Vec4> rows)
+        Matrix4x4(const std::initializer_list<Vec4> rows)
         {
             for (int i = 0; i < 4; i++)
                 this->rows[i] = *(rows.begin() + i);
         }
 
-		Matrix4x4(std::initializer_list<float> cells)
+		Matrix4x4(const std::initializer_list<float> cells)
 		{
 			memset(rows, 0, sizeof(rows));
 
 			for (int i = 0; i < cells.size(); i++)
 			{
-				int row = cells.size() / 4;
-				int col = cells.size() % 4;
+				const int row = cells.size() / 4;
+				const int col = cells.size() % 4;
 
 				rows[row][col] = *(cells.begin() + i);
 			}
@@ -53,7 +52,7 @@ namespace SceneryEditorX
 
 		static Matrix4x4 PerspectiveProjection(float aspect, float fieldOfView, float nearPlane, float farPlane);
 		static Matrix4x4 OrthographicProjection(float left, float right, float top, float bottom, float nearPlane, float farPlane);
-        static Matrix4x4 OrthographicProjection(float aspect, float nearPlane, float farPlane) { return OrthographicProjection(-aspect, aspect, -1, 1, nearPlane, farPlane); }
+        static Matrix4x4 OrthographicProjection(const float aspect, const float nearPlane, const float farPlane) { return OrthographicProjection(-aspect, aspect, -1, 1, nearPlane, farPlane); }
 
         static Matrix4x4 Translation(const Vec3& translation)
         {
@@ -64,6 +63,8 @@ namespace SceneryEditorX
                 { 0, 0, 0, 1          }
             });
         }
+
+        Vec4 rows[4];
 
         //! @brief 2D angle in Z axis in degrees.
         static Matrix4x4 Angle(float degrees);
@@ -118,8 +119,8 @@ namespace SceneryEditorX
             return {rows};
         }
 
-        Vec4& operator[](int index) { return rows[index]; }
-        const Vec4& operator[](int index) const { return rows[index]; }
+        Vec4& operator[](const int index) { return rows[index]; }
+        const Vec4& operator[](const int index) const { return rows[index]; }
 
         Matrix4x4 operator+(const Matrix4x4& rhs) const;
         Matrix4x4 operator-(const Matrix4x4& rhs) const;
@@ -139,13 +140,13 @@ namespace SceneryEditorX
         Matrix4x4 operator*(float rhs) const;
         Matrix4x4 operator/(float rhs) const;
 
-        Matrix4x4 operator*=(float rhs)
+        Matrix4x4 operator*=(const float rhs)
         {
             *this = *this * rhs;
             return *this;
         }
 
-        Matrix4x4 operator/=(float rhs)
+        Matrix4x4 operator/=(const float rhs)
         {
             *this = *this / rhs;
             return *this;
@@ -154,7 +155,6 @@ namespace SceneryEditorX
         Matrix4x4 operator*(const Matrix4x4& rhs) const { return Multiply(*this, rhs); }
         
         Vec4 operator*(const Vec4& rhs) const { return Multiply(*this, rhs); }
-
 		Vec4 operator*(const Vec3& rhs) const { return Multiply(*this, Vec4(rhs, 1.0f)); }
 
         Matrix4x4 operator*=(const Matrix4x4& rhs)
@@ -169,12 +169,12 @@ namespace SceneryEditorX
         static Matrix4x4 Multiply(const Matrix4x4& lhs, const Matrix4x4& rhs);
         static Vec4 Multiply(const Matrix4x4& lhs, const Vec4& rhs);
         static Matrix4x4 GetTranspose(const Matrix4x4& mat);
-        Matrix4x4 GetTranspose() const { return GetTranspose(*this); }
         void Transpose() { *this = GetTranspose(*this); }
-        Matrix4x4 GetInverse() const { return GetInverse(*this); }
+        [[nodiscard]] Matrix4x4 GetTranspose() const { return GetTranspose(*this); }
+        [[nodiscard]] Matrix4x4 GetInverse() const { return GetInverse(*this); }
         void Invert() { *this = GetInverse(*this); }
 
-        std::string ToString() const
+        [[nodiscard]] std::string ToString() const
         {
             return std::string::Format("[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]",
                 rows[0][0], rows[0][1], rows[0][2], rows[0][3],
@@ -189,10 +189,6 @@ namespace SceneryEditorX
         static int GetDeterminant(const Matrix4x4 &mat, int32_t n);
         static Matrix4x4 GetAdjoint(const Matrix4x4 &mat);
         static Matrix4x4 GetInverse(const Matrix4x4 &mat);
-        
-    public:
-
-        Vec4 rows[4];
     };
 
 }

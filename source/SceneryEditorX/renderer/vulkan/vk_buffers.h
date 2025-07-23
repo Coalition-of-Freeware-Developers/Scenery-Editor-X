@@ -385,7 +385,7 @@ namespace SceneryEditorX
         float scale = 1.0f;
         uint32_t width = 0;
         uint32_t height = 0;
-        glm::vec4 clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        Vec4 clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
         float depthClearValue = 0.0f;
         bool clearColorOnLoad = true;
         bool clearDepthOnLoad = true;

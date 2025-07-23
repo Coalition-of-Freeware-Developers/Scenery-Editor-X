@@ -11,13 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/filestreaming/filestream_reader.h>
-#include <SceneryEditorX/filestreaming/filestream_writer.h>
 #include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 #include <SceneryEditorX/renderer/shaders/shader_resource.h>
 #include <SceneryEditorX/renderer/shaders/shader_uniforms.h>
 #include <SceneryEditorX/serialization/serializer_reader.h>
 #include <SceneryEditorX/serialization/serializer_writer.h>
+#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
+#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
 
 /// -------------------------------------------------------
 

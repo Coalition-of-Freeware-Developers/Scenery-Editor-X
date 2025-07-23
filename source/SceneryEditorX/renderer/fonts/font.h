@@ -14,8 +14,11 @@
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/asset/asset_types.h>
 #include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/utils/pointers.h>
+#include <SceneryEditorX/core/memory/buffer.h>
 #undef INFINITE
 #include <msdf-atlas-gen/msdf-atlas-gen/msdf-atlas-gen.h>
+#include <SceneryEditorX/asset/ecs.h>
 
 /// -------------------------------------------------------
 
@@ -33,7 +36,7 @@ namespace SceneryEditorX
 	{
 	public:
         explicit Font(const std::filesystem::path& filepath);
-        Font(const std::string &name, Buffer buffer);
+        Font(std::string name, Memory::Buffer buffer);
 		virtual ~Font() override;
 
 		Ref<Texture2D> GetFontAtlas() const { return m_TextureAtlas; }
@@ -45,16 +48,16 @@ namespace SceneryEditorX
 		static Ref<Font> GetDefaultMonoSpacedFont();
 		static Ref<Font> GetFontAssetForTextComponent(const TextComponent& textComponent);
 
-		static AssetType GetStaticType() { return AssetType::Font; }
-		virtual AssetType GetAssetType() const override { return GetStaticType(); }
+		static ObjectType GetStaticType() { return ObjectType::Font; }
+		virtual ObjectType GetAssetType() const override { return GetStaticType(); }
 
 		const std::string& GetName() const { return m_Name; }
 	private:
-		void CreateAtlas(Buffer buffer);
+		void CreateAtlas(Memory::Buffer buffer);
 		std::string m_Name;
 		Ref<Texture2D> m_TextureAtlas;
 		MSDFData* m_MSDFData = nullptr;
-        Buffer buffer;
+        Memory::Buffer buffer;
 
 		inline static Ref<Font> s_DefaultFont, s_DefaultMonoSpacedFont;
 	};

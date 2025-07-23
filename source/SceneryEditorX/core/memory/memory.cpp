@@ -268,9 +268,9 @@ namespace SceneryEditorX
 		 *         allocation statistics
 		 */
 		const AllocationStats &GetAllocationStats() { return GlobalStats; }
-	} // namespace Memory
+	}
 
-} // namespace SceneryEditorX
+}
 
 #if defined(SEDX_TRACK_MEMORY) && defined(SEDX_PLATFORM_WINDOWS)
 

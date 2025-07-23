@@ -75,7 +75,7 @@ namespace SceneryEditorX
 	{
 	public:
 		bool Handled = false;
-		bool Synced = false; // Queued events are only processed if this is true.  It is set true when asset thread syncs with main thread.
+		bool Synced = false; ///< Queued events are only processed if this is true.  It is set true when asset thread syncs with main thread.
 
 		virtual ~Event() = default;
         [[nodiscard]] virtual EventType GetEventType() const = 0;
@@ -83,7 +83,7 @@ namespace SceneryEditorX
         [[nodiscard]] virtual int GetCategoryFlags() const = 0;
         [[nodiscard]] virtual std::string ToString() const { return GetName(); }
 
-		inline bool IsInCategory(EventCategory category) const
+		inline bool IsInCategory(const EventCategory category) const
         {
 			return GetCategoryFlags() & category;
 		}

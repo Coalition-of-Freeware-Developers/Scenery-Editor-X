@@ -45,11 +45,6 @@ namespace SceneryEditorX
 		Ref<Asset> Asset;
 	};
 
-	struct RuntimeAssetLoadRequest
-	{
-		uint64_t SceneHandle = 0;
-		uint64_t Handle = 0;
-	};
 }
 
 /// -------------------------------------------------------

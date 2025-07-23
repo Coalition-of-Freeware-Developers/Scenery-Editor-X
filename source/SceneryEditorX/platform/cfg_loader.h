@@ -61,6 +61,6 @@ namespace SceneryEditorX::IO
 		std::map<std::string, std::string>		m_loggerMap;
 	};
 
-} // namespace SceneryEditorX::IO
+}
 
 /// ---------------------------------------------------------

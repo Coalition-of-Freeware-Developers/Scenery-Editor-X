@@ -22,12 +22,12 @@
 #include <SceneryEditorX/scene/texture.h>
 #include <vector>
 
+#include <SceneryEditorX/project/project.h>
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	struct Serializer;
 
 	/// -------------------------------------------------------
 		
@@ -50,7 +50,49 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
 		Ref<Scene> GetInitialScene();
-        static Ref<CameraNode> GetMainCamera(const Ref<Scene> &scene);
+        GLOBAL Ref<CameraNode> GetMainCamera(const Ref<Scene> &scene);
+
+        /**
+         * @brief Checks if the asset referred to by assetHandle could potentially be valid.
+         *
+         * This function checks if the asset handle is valid, but does not guarantee that the asset is loaded or exists on disk.
+         * An asset handle is considered potentially valid if:
+         * - The asset handle is not empty
+         * - The asset type is known and registered in the asset manager
+         * - The asset metadata exists in the asset registry
+         * This function does not check if the asset file exists on disk or if the asset can be loaded successfully.
+         *
+         * @param assetHandle The asset handle to check.
+         * @returns True if assetHandle could potentially be valid.
+         */
+        GLOBAL bool IsAssetHandleValid(const AssetHandle &assetHandle)
+        {
+            return Project::GetAssetManager()->IsAssetHandleValid(assetHandle);
+        }
+
+        /**
+         * @brief Checks if the asset referred to by assetHandle is valid.
+         *
+         * This function checks if the asset handle is valid and if the asset can be loaded successfully.
+         * An asset is invalid if any of the following are true:
+         * - The asset handle is invalid
+         * - The file referred to by asset metadata is missing
+         * - The asset could not be loaded from file
+         *
+         * @note This will attempt to load the asset if it is not already loaded.
+         *
+         * @param assetHandle The asset handle to check.
+         * @returns True if the asset referred to by assetHandle is valid.
+         */
+        GLOBAL bool IsAssetValid(const AssetHandle &assetHandle) { return Project::GetAssetManager()->IsAssetValid(assetHandle); }
+
+	    GLOBAL bool IsMemoryAsset(AssetHandle handle) { return Project::GetAssetManager()->IsMemoryAsset(handle); }
+        GLOBAL bool IsPhysicalAsset(AssetHandle handle) { return Project::GetAssetManager()->IsPhysicalAsset(handle); }
+        GLOBAL bool ReloadData(AssetHandle assetHandle) { return Project::GetAssetManager()->ReloadData(assetHandle); }
+        GLOBAL bool EnsureCurrent(AssetHandle assetHandle) { return Project::GetAssetManager()->EnsureCurrent(assetHandle); }
+        GLOBAL bool EnsureAllLoadedCurrent() { return Project::GetAssetManager()->EnsureAllLoadedCurrent(); }
+        GLOBAL AssetType GetAssetType(AssetHandle assetHandle) { return Project::GetAssetManager()->GetAssetType(assetHandle); }
+
 
 		/// -------------------------------------------------------
 
@@ -71,10 +113,60 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
-        Ref<Asset> Get(uint32_t uuid)
-        {
-            return assets[uuid];
-        }
+	    template<typename T>
+        GLOBAL std::unordered_set<AssetHandle> GetAllAssetsWithType()
+		{
+			return Project::GetAssetManager()->GetAllAssetsWithType(T::GetStaticType());
+		}
+
+		static const std::unordered_map<AssetHandle, Ref<Asset>>& GetLoadedAssets() { return Project::GetAssetManager()->GetLoadedAssets(); }
+
+		/**
+		 * @note The memory-only asset must be fully initialised before you AddMemoryOnlyAsset()
+		 * Assets are not themselves thread-safe, but can potentially be accessed from multiple threads.
+		 * Thread safety therefore depends on the assets being immutable once they've been added to the asset manager.
+         */
+		template<typename TAsset>
+        GLOBAL AssetHandle AddMemoryOnlyAsset(Ref<TAsset> asset)
+		{
+			static_assert(std::is_base_of_v<Asset, TAsset>, "AddMemoryOnlyAsset only works for types derived from Asset");
+			if (!asset->Handle)
+                asset->Handle = AssetHandle(); ///< @note: should handle generation happen here?
+
+		    Project::GetAssetManager()->AddMemoryOnlyAsset(asset);
+			return asset->Handle;
+		}
+
+
+        Ref<Asset> Get(uint32_t uuid) { return assets[uuid]; }
+		
+		GLOBAL Ref<Asset> GetMemoryAsset(const AssetHandle &handle)
+		{
+		    return Project::GetAssetManager()->GetMemoryAsset(handle);
+		}
+
+		///< Handle is dependent on dependency.  e.g. handle could be a material, and dependency could be a texture that the material uses.
+		GLOBAL void RegisterDependency(const AssetHandle &dependency, const AssetHandle &handle)
+		{
+		    return Project::GetAssetManager()->RegisterDependency(dependency, handle);
+		}
+
+		///< Remove dependency of handle on dependency
+		GLOBAL void DeregisterDependency(const AssetHandle &dependency, const AssetHandle &handle)
+		{
+		    return Project::GetAssetManager()->DeregisterDependency(dependency, handle);
+		}
+
+		/** Remove all dependencies of handle */
+		GLOBAL void DeregisterDependencies(const AssetHandle &handle)
+		{
+		    return Project::GetAssetManager()->DeregisterDependencies(handle);
+		}
+
+		GLOBAL void RemoveAsset(const AssetHandle &handle)
+		{
+		    Project::GetAssetManager()->RemoveAsset(handle);
+		}
 
 		/// -------------------------------------------------------
 
@@ -85,9 +177,7 @@ namespace SceneryEditorX
             for (const auto &asset : assets | std::views::values)
             {
                 if (asset->type == type)
-                {
                     all.emplace_back(asset.DynamicCast<T>());
-                }
             }
             return all;
         }
@@ -95,12 +185,11 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
 		template <typename T>
-        static Ref<T> CreateObject(const std::string &name, uint32_t uuid = 0)
+        GLOBAL Ref<T> CreateObject(const std::string &name, uint32_t uuid = 0)
         {
             if (uuid == 0)
-            {
                 uuid = NewUUID();
-            }
+
             Ref<T> a = CreateRef<T>();
             a->name = name;
             a->uuid = uuid;
@@ -113,17 +202,15 @@ namespace SceneryEditorX
         Ref<T> CreateAsset(const std::string &name, uint32_t uuid = 0)
         {
             if (uuid == 0)
-            {
                 uuid = NewUUID();
-            }
+
             Ref<T> a = CreateRef<T>();
             a->name = name;
             a->uuid = uuid;
             assets[a->uuid] = a;
             if (a->type == ObjectType::Scene && !initialScene)
-            {
                 initialScene = a->uuid;
-            }
+
             return a;
         }
 
@@ -147,7 +234,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
         template <typename T>
-        static Ref<Object> CloneObject(const Ref<Object> &rhs)
+        GLOBAL Ref<Object> CloneObject(const Ref<Object> &rhs)
         {
             Ref<T> object = CreateObject<T>(rhs->name, 0);
             *object = *rhs.DynamicCast<T>();
@@ -166,6 +253,7 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
+        /*
         Ref<Object> CloneAsset(ObjectType type, const Ref<Object> &rhs)
         {
             switch (type)
@@ -176,17 +264,17 @@ namespace SceneryEditorX
                 return nullptr;
             }
         }
+        */
 
 		/// -------------------------------------------------------
 
-        static Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
+        GLOBAL Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
         {
             switch (type)
             {
                 case ObjectType::Node: return CloneObject<Node>(rhs);
                 case ObjectType::Mesh: return CloneObject<MeshNode>(rhs);
                 case ObjectType::Light: return CloneObject<LightNode>(rhs);
-                case ObjectType::Camera: return CloneObject<CameraNode>(rhs);
                 default:
                     return nullptr;
             }
@@ -212,12 +300,14 @@ namespace SceneryEditorX
 	    struct AssetManagerImpl *impl;
         std::unordered_map<uint32_t, Ref<Asset>> assets;
 
+		
+        /// -------------------------------------------------------
+
     private:
         RenderData renderData;
-        static uint32_t NewUUID();
+        LOCAL uint32_t NewUUID();
         uint32_t initialScene = 0;
         std::vector<Ref<Node>> nodes;
-
 
         friend class GraphicsEngine;
     };

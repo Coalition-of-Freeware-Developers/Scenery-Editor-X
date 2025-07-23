@@ -40,11 +40,11 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    class LightNode : public Node
+    class LightNode : public Object
     {
 	public:
         LightNode();
-        virtual void Serialize(Serializer &ser) override;
+        virtual void Serialize(Serializer &ser);
 
 		/// -------------------------------------------------------
 

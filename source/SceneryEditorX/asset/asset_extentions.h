@@ -12,13 +12,16 @@
 */
 #pragma once
 #include <SceneryEditorX/asset/asset_types.h>
+#include <string>
+#include <unordered_map>
+#include <variant>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	inline static std::unordered_map<std::string, AssetType> s_AssetExtensionMap =
+	inline static std::unordered_map<std::string, std::variant<AssetType, XPlaneAssetType>> s_AssetExtensionMap =
 	{
 		///< Scenery Editor X - extension types
 		{ ".edX.proj", 	AssetType::Scene },
@@ -28,43 +31,43 @@ namespace SceneryEditorX
 		{ ".edX.lib",		AssetType::Library },
 
 		///< X-Plane Scenery extensions
-		{ ".dsf", AssetType::Dsf },
-		{ ".pol", AssetType::Polygon },
-		{ ".obj", AssetType::Object },
-		{ ".ter", AssetType::Terrain },
-		{ ".for", AssetType::Forest },
-		{ ".dat", AssetType::AirportData },
-		{ ".ags", AssetType::AutogenString },
-		{ ".agb", AssetType::AutogenBlock },
-		{ ".lin", AssetType::Line },
-		{ ".fac", AssetType::Facade },
-		{ ".net", AssetType::RoadNetwork },
-		{ ".str", AssetType::ObjString },
+		{ ".dsf",		XPlaneAssetType::DSF },
+		{ ".pol",		XPlaneAssetType::Polygon },
+		{ ".obj",		XPlaneAssetType::Object },
+		{ ".ter",		XPlaneAssetType::Terrain },
+		{ ".for",		XPlaneAssetType::Forest },
+		{ ".dat",		XPlaneAssetType::AirportData },
+		{ ".ags",		XPlaneAssetType::AutogenString },
+		{ ".agb",		XPlaneAssetType::AutogenBlock },
+		{ ".lin",		XPlaneAssetType::Line },
+		{ ".fac",		XPlaneAssetType::Facade },
+		{ ".net",		XPlaneAssetType::RoadNetwork },
+		{ ".str",		XPlaneAssetType::ObjString },
 
 		///< Python Plugin Script Extensions
-		{ ".py", AssetType::ScriptFile },
+		{ ".py",		AssetType::ScriptFile },
 
 		///< Non X-Plane Mesh/animation extensions
-		{ ".fbx", AssetType::MeshSource },
-		{ ".gltf", AssetType::MeshSource },
-		{ ".glb", AssetType::MeshSource },
-		{ ".obj", AssetType::MeshSource },
-		{ ".dae", AssetType::MeshSource },
-		{ ".usd", AssetType::MeshSource },
+		{ ".fbx",		AssetType::MeshSource },
+		{ ".gltf",	AssetType::MeshSource },
+		{ ".glb",		AssetType::MeshSource },
+		{ ".obj",		AssetType::MeshSource },
+		{ ".dae",		AssetType::MeshSource },
+		{ ".usd",		AssetType::MeshSource },
 
 		///< Textures
-		{ ".png", AssetType::Texture },
-		{ ".jpg", AssetType::Texture },
-		{ ".jpeg", AssetType::Texture },
-		{ ".bmp", AssetType::Texture },
-		{ ".tga", AssetType::Texture },
-		{ ".hdr", AssetType::Texture },
-		{ ".dds", AssetType::Texture },
+		{ ".png",		AssetType::Texture },
+		{ ".jpg",		AssetType::Texture },
+		{ ".jpeg",	AssetType::Texture },
+		{ ".bmp",		AssetType::Texture },
+		{ ".tga",		AssetType::Texture },
+		{ ".hdr",		AssetType::Texture },
+		{ ".dds",		AssetType::Texture },
 
 		///< Fonts
-		{ ".ttf", AssetType::Font },
-		{ ".ttc", AssetType::Font },
-		{ ".otf", AssetType::Font },
+		{ ".ttf",		AssetType::Font },
+		{ ".ttc",		AssetType::Font },
+		{ ".otf",		AssetType::Font },
 
 	};
 

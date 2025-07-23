@@ -23,14 +23,14 @@ namespace nlohmann
 {
 	/// GLM vector type JSON conversions
 	template<>
-	struct adl_serializer<glm::ivec2>
+	struct adl_serializer<iVec2>
 	{
-		static void to_json(json& j, const glm::ivec2& v)
+		static void to_json(json& j, const iVec2& v)
 		{
 			j = json::array({v.x, v.y});
 		}
 
-		static void from_json(const json& j, glm::ivec2& v)
+		static void from_json(const json& j, iVec2& v)
 		{
 			if (j.is_array() && j.size() == 2)
 			{
@@ -43,14 +43,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<glm::ivec3>
+	struct adl_serializer<iVec3>
 	{
-		static void to_json(json& j, const glm::ivec3& v)
+		static void to_json(json& j, const iVec3& v)
 		{
 			j = json::array({v.x, v.y, v.z});
 		}
 
-		static void from_json(const json& j, glm::ivec3& v)
+		static void from_json(const json& j, iVec3& v)
 		{
 			if (j.is_array() && j.size() == 3)
 			{
@@ -64,14 +64,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<glm::ivec4>
+	struct adl_serializer<iVec4>
 	{
-		static void to_json(json& j, const glm::ivec4& v)
+		static void to_json(json& j, const iVec4& v)
 		{
 			j = json::array({v.x, v.y, v.z, v.w});
 		}
 
-		static void from_json(const json& j, glm::ivec4& v)
+		static void from_json(const json& j, iVec4& v)
 		{
 			if (j.is_array() && j.size() == 4)
 			{
@@ -149,14 +149,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<glm::vec2>
+	struct adl_serializer<Vec2>
 	{
-		static void to_json(json& j, const glm::vec2& v)
+		static void to_json(json& j, const Vec2& v)
 		{
 			j = json::array({v.x, v.y});
 		}
 
-		static void from_json(const json& j, glm::vec2& v)
+		static void from_json(const json& j, Vec2& v)
 		{
 			if (j.is_array() && j.size() == 2)
 			{
@@ -169,14 +169,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<glm::vec3>
+	struct adl_serializer<Vec3>
 	{
-		static void to_json(json& j, const glm::vec3& v)
+		static void to_json(json& j, const Vec3& v)
 		{
 			j = json::array({v.x, v.y, v.z});
 		}
 
-		static void from_json(const json& j, glm::vec3& v)
+		static void from_json(const json& j, Vec3& v)
 		{
 			if (j.is_array() && j.size() == 3)
 			{
@@ -190,14 +190,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<glm::vec4>
+	struct adl_serializer<Vec4>
 	{
-		static void to_json(json& j, const glm::vec4& v)
+		static void to_json(json& j, const Vec4& v)
 		{
 			j = json::array({v.x, v.y, v.z, v.w});
 		}
 
-		static void from_json(const json& j, glm::vec4& v)
+		static void from_json(const json& j, Vec4& v)
 		{
 			if (j.is_array() && j.size() == 4)
 			{
@@ -212,14 +212,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<glm::quat>
+	struct adl_serializer<Quat>
 	{
-		static void to_json(json& j, const glm::quat& v)
+		static void to_json(json& j, const Quat& v)
 		{
 			j = json::array({v.w, v.x, v.y, v.z});
 		}
 
-		static void from_json(const json& j, glm::quat& v)
+		static void from_json(const json& j, Quat& v)
 		{
 			if (j.is_array() && j.size() == 4)
 			{

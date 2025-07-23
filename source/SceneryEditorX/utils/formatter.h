@@ -89,7 +89,7 @@ namespace std
 		 * @return Iterator pointing past the end of the formatted output
 		 */
 	    template <typename FormatContext>
-	    typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
+        FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
 	    {
 	        return formatter<string>::format(path.string(), ctx);
 	    }
@@ -126,8 +126,9 @@ namespace std
 		 */
 	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
 	    {
-	        auto it = ctx.begin(), end = ctx.end();
-	        if (it != end && (*it == 'f' || *it == 'e'))
+	        auto it = ctx.begin();
+            const auto end = ctx.end();
+            if (it != end && (*it == 'f' || *it == 'e'))
 	            presentation = *it++;
 
 	        if (it != end && *it != '}')
@@ -185,8 +186,9 @@ namespace std
 		 */
 	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
 	    {
-	        auto it = ctx.begin(), end = ctx.end();
-	        if (it != end && (*it == 'f' || *it == 'e'))
+	        auto it = ctx.begin();
+            const auto end = ctx.end();
+            if (it != end && (*it == 'f' || *it == 'e'))
 	            presentation = *it++;
 
 	        if (it != end && *it != '}')
@@ -244,8 +246,9 @@ namespace std
 		 */
 	    constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin())
 	    {
-	        auto it = ctx.begin(), end = ctx.end();
-	        if (it != end && (*it == 'f' || *it == 'e'))
+	        auto it = ctx.begin();
+            const auto end = ctx.end();
+            if (it != end && (*it == 'f' || *it == 'e'))
 	            presentation = *it++;
 
 	        if (it != end && *it != '}')

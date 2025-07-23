@@ -156,7 +156,7 @@ namespace SceneryEditorX::IO
         GLOBAL bool OpenExternally(const std::filesystem::path &path);
 
         GLOBAL bool WriteBytes(const std::filesystem::path &filepath, const BufferResource &buffer);
-        GLOBAL Buffer ReadBytes(const std::filesystem::path &filepath);
+        GLOBAL Memory::Buffer ReadBytes(const std::filesystem::path& filepath);
 
         GLOBAL std::filesystem::path GetUniqueFileName(const std::filesystem::path &filepath);
         GLOBAL uint64_t GetLastWriteTime(const std::filesystem::path &filepath);

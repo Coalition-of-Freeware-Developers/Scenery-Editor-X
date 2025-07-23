@@ -10,6 +10,7 @@
 * Created: 14/7/2025
 * -------------------------------------------------------
 */
+// ReSharper disable IdentifierTypo
 #include <SceneryEditorX/utils/math/math_utils.h>
 #include <SceneryEditorX/utils/math/matrix.h>
 #include <SceneryEditorX/utils/math/quat.h>

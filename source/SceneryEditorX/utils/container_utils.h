@@ -18,7 +18,7 @@
 
 /// -------------------------------------------------------
 
-namespace SceneryEditorX::Utils
+namespace SceneryEditorX
 {
     /// Search operations
     template<typename Container, typename T>

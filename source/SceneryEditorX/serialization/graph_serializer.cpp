@@ -11,9 +11,10 @@
 * -------------------------------------------------------
 */
 #include <imgui.h>
+#include <nlohmann/json.hpp>
 #include <SceneryEditorX/serialization/graph_serializer.h>
-#include <SceneryEditorX/utils/string_utils.h>
 #include <SceneryEditorX/serialization/serialization_macros.h>
+#include <SceneryEditorX/utils/string_utils.h>
 
 /// -----------------------------------------------------------
 
@@ -54,7 +55,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	void DefaultGraphSerializer::SerializeNodes(nlohmann::json& out, const std::vector<Node*>& nodes, std::function<void(nlohmann::json&, const Node*)> nodeCallback)
+	void DefaultGraphSerializer::SerializeNodes(nlohmann::json& out, const std::vector<GraphNode*>& nodes, std::function<void(nlohmann::json&, const GraphNode*)> nodeCallback)
 	{
 		nlohmann::json nodesArray = nlohmann::json::array();
 
@@ -64,8 +65,8 @@ namespace SceneryEditorX
 
 			const ImVec4& nodeCol = node->Color.Value;
 			const ImVec2& nodeSize = node->Size;
-			const glm::vec4 nodeColOut(nodeCol.x, nodeCol.y, nodeCol.z, nodeCol.w);
-			const glm::vec2 nodeSizeOut(nodeSize.x, nodeSize.y);
+			const Vec4 nodeColOut(nodeCol.x, nodeCol.y, nodeCol.z, nodeCol.w);
+			const Vec2 nodeSizeOut(nodeSize.x, nodeSize.y);
 
 			SEDX_SERIALIZE_PROPERTY(ID, node->ID, nodeObj);
 			SEDX_SERIALIZE_PROPERTY(Category, node->Category, nodeObj);
@@ -95,15 +96,15 @@ namespace SceneryEditorX
 			nodeObj["Inputs"] = inputsArray;
 
 			nlohmann::json outputsArray = nlohmann::json::array();
-			for (auto outp : node->Outputs)
+			for (auto output : node->Outputs)
 			{
 				nlohmann::json outputObj = nlohmann::json::object();
 
-				SEDX_SERIALIZE_PROPERTY(ID, outp->ID, outputObj);
-				SEDX_SERIALIZE_PROPERTY(Name, outp->Name, outputObj);
-				SEDX_SERIALIZE_PROPERTY(Type, std::string(outp->GetTypeString()), outputObj);
-				SEDX_SERIALIZE_PROPERTY(Storage, Utils::StorageKindToString(outp->Storage), outputObj);
-				SEDX_SERIALIZE_PROPERTY(Value, outp->Value, outputObj);
+				SEDX_SERIALIZE_PROPERTY(ID, output->ID, outputObj);
+				SEDX_SERIALIZE_PROPERTY(Name, output->Name, outputObj);
+				SEDX_SERIALIZE_PROPERTY(Type, std::string(output->GetTypeString()), outputObj);
+				SEDX_SERIALIZE_PROPERTY(Storage, Utils::StorageKindToString(output->Storage), outputObj);
+				SEDX_SERIALIZE_PROPERTY(Value, output->Value, outputObj);
 
 				outputsArray.push_back(outputObj);
 			}
@@ -128,7 +129,7 @@ namespace SceneryEditorX
 			nlohmann::json linkObj = nlohmann::json::object();
 
 			const auto& col = link.Color.Value;
-			const glm::vec4 colOut(col.x, col.y, col.z, col.w);
+			const Vec4 colOut(col.x, col.y, col.z, col.w);
 
 			SEDX_SERIALIZE_PROPERTY(ID, link.ID, linkObj);
 			SEDX_SERIALIZE_PROPERTY(StartPinID, link.StartPinID, linkObj);
@@ -148,7 +149,7 @@ namespace SceneryEditorX
 	using PinCandidate = DefaultGraphSerializer::DeserializationFactory::PinCandidate;
 	using NodeCandidate = DefaultGraphSerializer::DeserializationFactory::NodeCandidate;
 
-	[[nodiscard]] std::optional<std::vector<PinCandidate>> TryLoadInputs(const nlohmann::json& inputs, const NodeCandidate& node)
+	[[nodiscard]] static std::optional<std::vector<PinCandidate>> TryLoadInputs(const nlohmann::json& inputs, const NodeCandidate& node)
 	{
 		if (!inputs.is_array())
 			return {};
@@ -160,17 +161,17 @@ namespace SceneryEditorX
 		{
 			UUID ID;
 			std::string pinName;
-			//std::string valueStr;
-			choc::value::Value value;
+			std::string valueStr;
+            Values::Value value;
 			std::string pinType;
 			std::string pinStorage;
 
-			SEDX_DESERIALIZE_PROPERTY(ID, ID, in, uint64_t(0));
-			SEDX_DESERIALIZE_PROPERTY(Name, pinName, in, std::string());
-			SEDX_DESERIALIZE_PROPERTY(Type, pinType, in, std::string());
-			SEDX_DESERIALIZE_PROPERTY(Storage, pinStorage, in, std::string());
-			//SEDX_DESERIALIZE_PROPERTY(Value, valueStr, in, std::string());
-			SEDX_DESERIALIZE_PROPERTY(Value, value, in, choc::value::Value());
+			SEDX_DESERIALIZE_PROPERTY(ID, ID, in, uint64_t(0))
+			SEDX_DESERIALIZE_PROPERTY(Name, pinName, in, std::string())
+			SEDX_DESERIALIZE_PROPERTY(Type, pinType, in, std::string())
+			SEDX_DESERIALIZE_PROPERTY(Storage, pinStorage, in, std::string())
+			SEDX_DESERIALIZE_PROPERTY(Value, valueStr, in, std::string())
+            SEDX_DESERIALIZE_PROPERTY(Value, value, in, Values::Value())
 
 			// TODO: load legacy saved valueStr, or manually rewrite JSON files for the new format?
 
@@ -202,17 +203,17 @@ namespace SceneryEditorX
 		{
 			UUID ID;
 			std::string pinName;
-			//std::string valueStr;
-			choc::value::Value value;
+			std::string valueStr;
+            Values::Value value;
 			std::string pinType;
 			std::string pinStorage;
 
-			SEDX_DESERIALIZE_PROPERTY(ID, ID, out, uint64_t(0));
-			SEDX_DESERIALIZE_PROPERTY(Name, pinName, out, std::string());
-			SEDX_DESERIALIZE_PROPERTY(Type, pinType, out, std::string());
-			SEDX_DESERIALIZE_PROPERTY(Storage, pinStorage, out, std::string());
-			//SEDX_DESERIALIZE_PROPERTY(Value, valueStr, out, std::string());
-			SEDX_DESERIALIZE_PROPERTY(Value, value, out, choc::value::Value());
+			SEDX_DESERIALIZE_PROPERTY(ID, ID, out, uint64_t(0))
+			SEDX_DESERIALIZE_PROPERTY(Name, pinName, out, std::string())
+			SEDX_DESERIALIZE_PROPERTY(Type, pinType, out, std::string())
+			SEDX_DESERIALIZE_PROPERTY(Storage, pinStorage, out, std::string())
+			SEDX_DESERIALIZE_PROPERTY(Value, valueStr, out, std::string());
+			SEDX_DESERIALIZE_PROPERTY(Value, value, out, Values::Value())
 
 			PinCandidate candidate;
 			candidate.ID = ID;
@@ -230,7 +231,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	void DefaultGraphSerializer::TryLoadNodes(nlohmann::json& data, std::vector<Node*>& nodes, const DeserializationFactory& factory)
+	void DefaultGraphSerializer::TryLoadNodes(nlohmann::json& data, std::vector<GraphNode*>& nodes, const DeserializationFactory& factory)
 	{
 		/*
 		 * TODO: Remove exceptions when we implement a dummy "invalid" node/pin types to display to the user?
@@ -247,8 +248,8 @@ namespace SceneryEditorX
 			std::string nodeDesc;
 			std::string location;
 			std::string nodeTypeStr;
-			glm::vec4 nodeColor;
-			glm::vec2 nodeSize;
+			Vec4 nodeColor;
+			Vec2 nodeSize;
 
 			SEDX_DESERIALIZE_PROPERTY(ID, nodeID, node, uint64_t(0));
 			SEDX_DESERIALIZE_PROPERTY(Category, nodeCategory, node, std::string());
@@ -302,7 +303,7 @@ namespace SceneryEditorX
 
 			///< This is not going to load old Node configurations and enforce old to new Topology compatibility
 			///< TODO: Might want to still load old topology as an "invalid" dummy node to display it to the user
-			Node* newNode = factory.ConstructNode(candidate, candidateInputs, candidateOutputs);
+			GraphNode* newNode = factory.ConstructNode(candidate, candidateInputs, candidateOutputs);
 
 			if (!newNode)
                 throw std::runtime_error("Failed to construct deserialized Node '" + candidate.Name + "'.");
@@ -419,7 +420,7 @@ namespace SceneryEditorX
 			UUID ID;
 			UUID StartPinID;
 			UUID EndPinID;
-			glm::vec4 color;
+			Vec4 color;
 
 			SEDX_DESERIALIZE_PROPERTY(ID, ID, link, uint64_t(0));
 			SEDX_DESERIALIZE_PROPERTY(StartPinID, StartPinID, link, uint64_t(0));

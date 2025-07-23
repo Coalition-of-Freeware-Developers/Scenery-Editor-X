@@ -37,7 +37,7 @@ namespace SceneryEditorX
 
 	bool TextureSerializer::TryLoadData(const AssetMetadata& metadata, Ref<Asset>& asset) const
 	{
-		asset = Texture2D::Create(TextureSpecification(), Project::GetEditorAssetManager()->GetFileSystemPathString(metadata));
+        asset = CreateRef<Texture2D>(TextureSpecification(), Project::GetEditorAssetManager()->GetFileSystemPathString(metadata));
 		asset->Handle = metadata.Handle;
 
 		const bool result = asset.As<Texture2D>()->Loaded();
@@ -45,22 +45,6 @@ namespace SceneryEditorX
 			asset->SetFlag(AssetFlag::Invalid, true);
 
 		return result;
-	}
-
-	bool TextureSerializer::SerializeToAssetPack(AssetHandle handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo) const
-	{
-		outInfo.Offset = stream.GetStreamPosition();
-
-		auto metadata = Project::GetEditorAssetManager()->GetMetadata(handle);
-		Ref<Texture2D> texture = AssetManager::Get<Texture2D>(handle);
-		outInfo.Size = TextureRuntimeSerializer::SerializeTexture2DToFile(texture, stream);
-		return true;
-	}
-
-	Ref<Asset> TextureSerializer::DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo) const
-	{
-		stream.SetStreamPosition(assetInfo.PackedOffset);
-		return TextureRuntimeSerializer::DeserializeTexture2D(stream);
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +244,7 @@ namespace SceneryEditorX
 		targetMaterialAsset = CreateRef<MaterialAsset>(transparent);
 		targetMaterialAsset->Handle = handle;
 
-		SEDX_DESERIALIZE_PROPERTY(AlbedoColor, targetMaterialAsset->GetAlbedoColor(), materialNode, glm::vec3(0.8f))
+		SEDX_DESERIALIZE_PROPERTY(AlbedoColor, targetMaterialAsset->GetAlbedoColor(), materialNode, Vec3(0.8f))
 		SEDX_DESERIALIZE_PROPERTY(Emission, targetMaterialAsset->GetEmission(), materialNode, 0.0f)
 
 		if (!transparent)
@@ -317,33 +301,6 @@ namespace SceneryEditorX
 		return true;
 	}
 
-	bool EnvironmentSerializer::SerializeToAssetPack(AssetHandle handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo) const
-	{
-		outInfo.Offset = stream.GetStreamPosition();
-
-		const Ref<Environment> environment = AssetManager::Get<Environment>(handle);
-		uint64_t size = TextureRuntimeSerializer::SerializeToFile(environment->RadianceMap, stream);
-		size = TextureRuntimeSerializer::SerializeToFile(environment->IrradianceMap, stream);
-
-		///< Serialize as just generic TextureCube maybe?
-		struct EnvironmentMapMetadata
-		{
-			uint64_t RadianceMapOffset, RadianceMapSize;
-			uint64_t IrradianceMapOffset, IrradianceMapSize;
-		};
-
-		outInfo.Size = stream.GetStreamPosition() - outInfo.Offset;
-		return true;
-	}
-
-	Ref<Asset> EnvironmentSerializer::DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo) const
-	{
-		stream.SetStreamPosition(assetInfo.PackedOffset);
-		Ref<TextureCube> radianceMap = TextureRuntimeSerializer::DeserializeTextureCube(stream);
-		Ref<TextureCube> irradianceMap = TextureRuntimeSerializer::DeserializeTextureCube(stream);
-        return CreateRef<Environment>(radianceMap, irradianceMap);
-	}
-
 	//////////////////////////////////////////////////////////////////////////////////
 	/// PrefabSerializer
 	//////////////////////////////////////////////////////////////////////////////////
@@ -372,29 +329,6 @@ namespace SceneryEditorX
 		asset = prefab;
 		asset->Handle = metadata.Handle;
 		return true;
-	}
-
-	bool PrefabSerializer::SerializeToAssetPack(AssetHandle handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo) const
-	{
-		const Ref<Prefab> prefab = AssetManager::Get<Prefab>(handle);
-		const std::string jsonString = SerializeToJSON(prefab);
-		outInfo.Offset = stream.GetStreamPosition();
-		stream.WriteString(jsonString);
-		outInfo.Size = stream.GetStreamPosition() - outInfo.Offset;
-		return true;
-	}
-
-	Ref<Asset> PrefabSerializer::DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo) const
-	{
-		stream.SetStreamPosition(assetInfo.PackedOffset);
-		std::string jsonString;
-		stream.ReadString(jsonString);
-
-		Ref<Prefab> prefab = CreateRef<Prefab>();
-        if (const bool result = DeserializeFromJSON(jsonString, prefab); !result)
-			return nullptr;
-
-		return prefab;
 	}
 
 	std::string PrefabSerializer::SerializeToJSON(const Ref<Prefab> &prefab) const

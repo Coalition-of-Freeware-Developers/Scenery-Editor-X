@@ -74,7 +74,7 @@ namespace SceneryEditorX
 		//   - asset pack builder to report missing mesh source (as opposed to just silently skipping this mesh)
 		//
 		//if (!AssetManager::GetAsset<MeshSource>(meshSource))
-		//	return false; // TODO(Yan): feedback to the user
+		//	return false; // TODO: feedback to the user
 
 		auto submeshIndices = rootNode["SubmeshIndices"].get<std::vector<uint32_t>>();
 		auto generateColliders = rootNode.value("GenerateColliders", false);
@@ -111,18 +111,6 @@ namespace SceneryEditorX
 		return true;
 	}
 
-	bool MeshSourceSerializer::SerializeToAssetPack(AssetHandle handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo) const
-	{
-		MeshRuntimeSerializer serializer;
-		serializer.SerializeToAssetPack(handle, stream, outInfo);
-		return true;
-	}
-
-	Ref<Asset> MeshSourceSerializer::DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo) const
-	{
-		MeshRuntimeSerializer serializer;
-		return serializer.DeserializeFromAssetPack(stream, assetInfo);
-	}
 
 	//////////////////////////////////////////////////////////////////////////////////
 	// MeshSerializer

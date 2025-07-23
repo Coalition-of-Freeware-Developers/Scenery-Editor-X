@@ -10,9 +10,14 @@
 * Created: 12/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/fonts/font.h>
 #include <SceneryEditorX/asset/asset_manager.h>
 #include <SceneryEditorX/platform/file_manager.hpp>
+#include <SceneryEditorX/renderer/fonts/font.h>
+#include <SceneryEditorX/asset/ecs.h>
+#include <SceneryEditorX/utils/pointers.h>
+#include <SceneryEditorX/core/memory/buffer.h>
+#include <msdf-atlas-gen/msdf-atlas-gen/msdf-atlas-gen.h>
+#include <msdf-atlas-gen/msdf-atlas-gen/TightAtlasPacker.h>
 #include <utility>
 
 /// -------------------------------------------------------
@@ -86,7 +91,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	static bool TryReadFontAtlasFromCache(const std::string& fontName, float fontSize, AtlasHeader& header, void*& pixels, Buffer& storageBuffer)
+	static bool TryReadFontAtlasFromCache(const std::string& fontName, float fontSize, AtlasHeader& header, void*& pixels, Memory::Buffer& storageBuffer)
 	{
 		const std::string filename = std::format("{0}-{1}.fCache", fontName, fontSize);
 
@@ -165,8 +170,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	Font::Font(const std::filesystem::path& filepath)
-		: m_MSDFData(new MSDFData())
+	Font::Font(const std::filesystem::path& filepath) : m_MSDFData(new MSDFData())
 	{
 		m_Name = filepath.stem().string();
 
@@ -178,7 +182,7 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
 	Font::Font(std::string name, Memory::Buffer buffer) : m_Name(std::move(name)), m_MSDFData(new MSDFData()), buffer(buffer)
-    {
+	{
 		CreateAtlas(buffer);
 	}
 
@@ -193,7 +197,6 @@ namespace SceneryEditorX
 
 	void Font::CreateAtlas(Memory::Buffer buffer)
 	{
-		int result = 0;
 		FontInput fontInput = { };
 		Configuration config = { };
 		fontInput.fontData = buffer;
@@ -209,7 +212,7 @@ namespace SceneryEditorX
 		config.generatorAttributes.scanlinePass = true;
 		double minEmSize = 0;
 		double rangeValue = 2.0;
-		TightAtlasPacker::DimensionsConstraint atlasSizeConstraint = TightAtlasPacker::DimensionsConstraint::MULTIPLE_OF_FOUR_SQUARE;
+		DimensionsConstraint atlasSizeConstraint = DimensionsConstraint::MULTIPLE_OF_FOUR_SQUARE;
 		config.angleThreshold = DEFAULT_ANGLE_THRESHOLD;
 		config.miterLimit = DEFAULT_MITER_LIMIT;
 		config.imageType = ImageType::MTSDF;
@@ -223,21 +226,18 @@ namespace SceneryEditorX
 			msdfgen::FontHandle* font;
 		public:
 			FontHolder() : ft(msdfgen::initializeFreetype()), font(nullptr) {}
-
 			~FontHolder()
 			{
 				if (ft)
 				{
 					if (font)
-					{
-					    msdfgen::destroyFont(font);
-					}
+                        msdfgen::destroyFont(font);
 
-					msdfgen::deinitializeFreetype(ft);
+                    msdfgen::deinitializeFreetype(ft);
 				}
 			}
 
-			bool load(const Buffer &buffer)
+			bool load(const Memory::Buffer &buffer)
 			{
 				if (ft && buffer)
 				{
@@ -249,10 +249,7 @@ namespace SceneryEditorX
 				return false;
 			}
 
-            explicit operator msdfgen::FontHandle* () const
-			{
-				return font;
-			}
+            explicit operator msdfgen::FontHandle* () const { return font; }
 
 		} font;
 
@@ -300,11 +297,9 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Renderer", "Loaded geometry of {} out of {} glyphs", glyphsLoaded, (int)charset.size());
 		///< List missing glyphs
 		if (std::cmp_less(glyphsLoaded, charset.size()))
-		{
-			SEDX_CORE_WARN_TAG("Renderer", "Font {} is missing {} {}", m_Name, (int)charset.size() - glyphsLoaded, fontInput.glyphIdentifierType == GlyphIdentifierType::UNICODE_CODEPOINT ? "codepoints" : "glyphs");
-		}
+            SEDX_CORE_WARN_TAG("Renderer", "Font {} is missing {} {}", m_Name, (int)charset.size() - glyphsLoaded, fontInput.glyphIdentifierType == GlyphIdentifierType::UNICODE_CODEPOINT ? "codepoints" : "glyphs");
 
-		if (fontInput.fontName)
+        if (fontInput.fontName)
 			m_MSDFData->FontGeometry.setName(fontInput.fontName);
 
 		/**
@@ -321,13 +316,12 @@ namespace SceneryEditorX
 			atlasPacker.setDimensions(fixedWidth, fixedHeight);
 		else
 			atlasPacker.setDimensionsConstraint(atlasSizeConstraint);
-		atlasPacker.setPadding(config.imageType == ImageType::MSDF || config.imageType == ImageType::MTSDF ? 0 : -1);
-		///< TODO: In this case (if padding is -1), the border pixels of each glyph are black, but still computed. For floating-point output, this may play a role.
+		atlasPacker.setSpacing(0);
 		if (fixedScale)
 			atlasPacker.setScale(config.emSize);
 		else
 			atlasPacker.setMinimumScale(minEmSize);
-		atlasPacker.setPixelRange(pxRange);
+		atlasPacker.setPixelRange(msdfgen::Range(pxRange));
 		atlasPacker.setMiterLimit(config.miterLimit);
 		if (int remaining = atlasPacker.pack(m_MSDFData->Glyphs.data(), (int)m_MSDFData->Glyphs.size()))
 		{
@@ -344,7 +338,7 @@ namespace SceneryEditorX
 		atlasPacker.getDimensions(config.width, config.height);
 		SEDX_CORE_ASSERT(config.width > 0 && config.height > 0);
 		config.emSize = atlasPacker.getScale();
-		config.pxRange = atlasPacker.getPixelRange();
+		config.pxRange = atlasPacker.getPixelRange().lower; // Use .lower for double
 		if (!fixedScale)
 			SEDX_CORE_TRACE_TAG("Renderer", "Glyph size: {0} pixels/EM", config.emSize);
 		if (!fixedDimensions)
@@ -377,7 +371,7 @@ namespace SceneryEditorX
 		/// Check cache here
 		Memory::Buffer storageBuffer;
         void* pixels;
-		if (AtlasHeader header; TryReadFontAtlasFromCache(m_Name, (float)config.emSize, header, pixels, storageBuffer))
+		if (AtlasHeader header; TryReadFontAtlasFromCache(m_Name, static_cast<float>(config.emSize), header, pixels, storageBuffer))
 		{
 			m_TextureAtlas = CreateCachedAtlas(header, pixels);
 			storageBuffer.Release();
@@ -390,16 +384,24 @@ namespace SceneryEditorX
 			{
 				case ImageType::MSDF:
 					if (floatingPointFormat)
-						texture = CreateAndCacheAtlas<float, float, 3, msdfGenerator>(m_Name, (float)config.emSize, m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
+						texture = CreateAndCacheAtlas<float, float, 3, msdfGenerator>(m_Name, static_cast<float>(config.emSize), m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
 					else
-						texture = CreateAndCacheAtlas<byte, float, 3, msdfGenerator>(m_Name, (float)config.emSize, m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
+						texture = CreateAndCacheAtlas<byte, float, 3, msdfGenerator>(m_Name, static_cast<float>(config.emSize), m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
 					break;
 				case ImageType::MTSDF:
 					if (floatingPointFormat)
-						texture = CreateAndCacheAtlas<float, float, 4, mtsdfGenerator>(m_Name, (float)config.emSize, m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
+						texture = CreateAndCacheAtlas<float, float, 4, mtsdfGenerator>(m_Name, static_cast<float>(config.emSize), m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
 					else
-						texture = CreateAndCacheAtlas<byte, float, 4, mtsdfGenerator>(m_Name, (float)config.emSize, m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
+						texture = CreateAndCacheAtlas<byte, float, 4, mtsdfGenerator>(m_Name, static_cast<float>(config.emSize), m_MSDFData->Glyphs, m_MSDFData->FontGeometry, config);
 					break;
+                case ImageType::HARD_MASK:
+                    break;
+                case ImageType::SOFT_MASK:
+                    break;
+                case ImageType::SDF:
+                    break;
+                case ImageType::PSDF:
+                    break;
                 default: ;
             }
 
@@ -430,21 +432,18 @@ namespace SceneryEditorX
 		return s_DefaultFont;
 	}
 
-    /// -------------------------------------------------------
-
 	Ref<Font> Font::GetDefaultMonoSpacedFont()
 	{
 		return s_DefaultMonoSpacedFont;
 	}
 
-    /// -------------------------------------------------------
-
 	Ref<Font> Font::GetFontAssetForTextComponent(const TextComponent& textComponent)
 	{
-		if (textComponent.FontHandle == s_DefaultFont->Handle || !AssetManager::IsAssetHandleValid(textComponent.FontHandle))
-            return s_DefaultFont;
-
-        return AssetManager::Get<Font>(textComponent.FontHandle);
+        const UUID32 handle = textComponent.FontHandle;
+		if (handle == s_DefaultFont->Handle || !AssetManager::Get<Font>(static_cast<uint32_t>(handle)))
+			return s_DefaultFont;
+		
+		return AssetManager::Get<Font>(static_cast<uint32_t>(handle));
 	}
 
     /// -------------------------------------------------------

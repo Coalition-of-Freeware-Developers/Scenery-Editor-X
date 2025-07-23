@@ -45,7 +45,7 @@ namespace SceneryEditorX::Utils
 	     * Euler angle convention with the order: Y (rotation.y), X (rotation.x),
 	     * Z (rotation.z).
 	     *
-	     * @return glm::mat4 The resulting 4x4 transformation matrix
+	     * @return Mat4 The resulting 4x4 transformation matrix
 	     */
 	    Mat4 mat4()
 	    {
@@ -58,7 +58,7 @@ namespace SceneryEditorX::Utils
 	        const float c1 = glm::cos(rotation.y);
 	        const float s1 = glm::sin(rotation.y);
 	        /// -------------------------------------------------------
-	        return glm::mat4 {
+	        return Mat4 {
 	            {
 	                scale.x * (c1 * c3 + s1 * s2 * s3),
 	                scale.x * (c2 * s3),

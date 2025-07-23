@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	struct WindowData
     {
         GLOBAL inline WindowMode mode = WindowMode::Windowed;
-        GLOBAL ::SceneryEditorX::Window &window;
+        GLOBAL Window &window;
         std::string title = "Scenery Editor X";
         uint32_t width = 1280;
         uint32_t height = 720;
@@ -84,8 +84,6 @@ namespace SceneryEditorX
 
     class SwapChain;
 
-    /// -------------------------------------------------------
-
     bool glfwGetKey(const Window & window, uint16_t key);
     bool glfwGetMouseButton(const Window & window, uint16_t uint16);
     bool glfwWindowShouldClose(const Window & window);
@@ -102,7 +100,6 @@ namespace SceneryEditorX
 
         virtual void Init();
         virtual void Update();
-
         virtual void Maximize();
         virtual void CenterWindow();
         virtual void SetResizable(bool resizable) const;

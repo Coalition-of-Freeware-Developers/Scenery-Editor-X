@@ -22,7 +22,7 @@
 
 namespace SceneryEditorX
 {
-	struct Serializer;
+	//struct Serializer;
 	
 	/// -------------------------------------------------------
 
@@ -136,7 +136,7 @@ namespace SceneryEditorX
         bool loaded = false;
 	};
 
-    struct MeshNode : Node
+    struct MeshNode : GraphNode
     {
         uint32_t parent = 0xffffffff;
         Ref<ModelAsset> mesh;
@@ -144,12 +144,12 @@ namespace SceneryEditorX
         std::vector<uint32_t> children;
         std::vector<uint32_t> submeshes;
         std::string name;
-        glm::mat4 localTransform;
+        Mat4 localTransform;
 
         bool IsRoot() const { return parent == 0xffffffff; }
 
         MeshNode();
-        virtual void Serialize(Serializer &ser) override;
+        virtual void Serialize(Serializer &ser);
     };
 
 	/// ------------------------------------------------------- 

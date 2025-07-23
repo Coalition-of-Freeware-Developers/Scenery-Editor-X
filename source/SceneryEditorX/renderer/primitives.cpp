@@ -21,7 +21,7 @@ namespace SceneryEditorX
 {
 
 	/*
-	ObjectType Primitives::CreateBox(const glm::vec3 &size)
+	ObjectType Primitives::CreateBox(const Vec3 &size)
 	{
         std::vector<MeshVertex> vertices;
 		vertices.resize(8);
@@ -58,7 +58,7 @@ namespace SceneryEditorX
 		indices[10] = {.V1 = 3,.V2 = 2,.V3 = 6 };
 		indices[11] = {.V1 = 6,.V2 = 7,.V3 = 3 };
 
-		//ObjectType meshSource = Model::CreateMesh(vertices, indices, glm::mat4(1.0f));
+		//ObjectType meshSource = Model::CreateMesh(vertices, indices, Mat4(1.0f));
 	    return {};
 	}
 

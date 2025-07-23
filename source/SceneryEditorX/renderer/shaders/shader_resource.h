@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
+#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
 #include <unordered_map>
-#include <SceneryEditorX/filestreaming/filestream_reader.h>
-#include <SceneryEditorX/filestreaming/filestream_writer.h>
 
 /// -------------------------------------------------------
 

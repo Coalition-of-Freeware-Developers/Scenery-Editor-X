@@ -12,9 +12,19 @@
 */
 #pragma once
 #include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/utils/reflection/value_system.h>
+#include <SceneryEditorX/utils/reflection/type_values.h>
 
 /// -------------------------------------------------------
+
+namespace SceneryEditorX::Values
+{
+	class Value;
+	class ValueView;
+	class StringDictionary;
+	struct MemberNameAndType;
+	struct MemberNameAndValue;
+	struct ElementTypeAndOffset;
+}
 
 namespace SceneryEditorX::Types
 {
@@ -32,10 +42,7 @@ namespace SceneryEditorX::Types
 		explicit Type(const std::string_view &typeName) : Name(typeName) {}
 		std::string Name;  ///< The name of the type
 		int ID = -1;       ///< Unique identifier for the type, -1 if not set
-        bool IsValid() const
-        {
-            return !Name.empty();
-        }
+        [[nodiscard]] bool IsValid() const { return !Name.empty(); }
 
 	    /**
 	     * If the type is an array or vector with a uniform element type, this returns it;
@@ -166,8 +173,8 @@ namespace SceneryEditorX::Types
 
             [[nodiscard]] size_t getElementSize() const;
             [[nodiscard]] size_t getValueDataSize() const;
-            ElementTypeAndOffset getElementInfo(uint32_t) const;
-            ElementTypeAndOffset getElementRangeInfo(uint32_t start, uint32_t length) const;
+            [[nodiscard]] Values::ElementTypeAndOffset getElementInfo(uint32_t) const;
+            [[nodiscard]] Values::ElementTypeAndOffset getElementRangeInfo(uint32_t start, uint32_t length) const;
             bool operator==(const Vector &) const;
         };
 
@@ -179,8 +186,8 @@ namespace SceneryEditorX::Types
             [[nodiscard]] Type getElementType() const;
             [[nodiscard]] size_t getElementSize() const;
             [[nodiscard]] size_t getValueDataSize() const;
-            ElementTypeAndOffset getElementInfo(uint32_t) const;
-            ElementTypeAndOffset getElementRangeInfo(uint32_t start, uint32_t length) const;
+            [[nodiscard]] Values::ElementTypeAndOffset getElementInfo(uint32_t) const;
+            [[nodiscard]] Values::ElementTypeAndOffset getElementRangeInfo(uint32_t start, uint32_t length) const;
             bool operator==(const PrimitiveArray &) const;
         };
 

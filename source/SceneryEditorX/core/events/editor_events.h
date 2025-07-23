@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	class AssetReloadedEvent : public Event
 	{
 	public:
-        explicit AssetReloadedEvent(const AssetHandle assetHandle) : AssetHandle(assetHandle) {}
+        explicit AssetReloadedEvent(const AssetHandle &assetHandle) : AssetHandle(assetHandle) {}
 
         [[nodiscard]] virtual std::string ToString() const override
 		{

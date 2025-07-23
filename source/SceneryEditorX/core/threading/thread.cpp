@@ -17,11 +17,7 @@
 
 namespace SceneryEditorX
 {
-
-	Thread::Thread(const std::string &name)
-	{
-        this->name = name;
-	}
+	Thread::Thread(const std::string &name) { this->name = name; }
 
     void Thread::SetName(const std::string &name)
 	{
@@ -44,25 +40,10 @@ namespace SceneryEditorX
         signalHandle = CreateEventW(nullptr, manualReset ? TRUE : FALSE, FALSE, str.c_str());
     }
 
-    void ThreadSignal::Wait() const
-    {
-        WaitForSingleObject(signalHandle, INFINITE);
-    }
-
-    void ThreadSignal::Signal() const
-    {
-        SetEvent(signalHandle);
-    }
-
-    void ThreadSignal::Reset() const
-    {
-        ResetEvent(signalHandle);
-    }
-
-    std::thread::id Thread::GetThreadID() const
-	{
-		return mem_thread.get_id();
-    }
+    void ThreadSignal::Wait() const { WaitForSingleObject(signalHandle, INFINITE); }
+    void ThreadSignal::Signal() const { SetEvent(signalHandle); }
+    void ThreadSignal::Reset() const { ResetEvent(signalHandle); }
+    std::thread::id Thread::GetThreadID() const { return mem_thread.get_id(); }
 
 }
 

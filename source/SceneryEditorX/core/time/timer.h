@@ -27,6 +27,8 @@ namespace SceneryEditorX
 	private:
 		std::chrono::time_point<std::chrono::high_resolution_clock> m_Start;
 	};
+
+    /// -------------------------------------------------------
 	
 	class ScopedTimer
 	{
@@ -42,6 +44,8 @@ namespace SceneryEditorX
 		Timer m_Timer;
 	};
 
+    /// -------------------------------------------------------
+
 	class PerformanceProfiler
 	{
 	public:
@@ -54,7 +58,8 @@ namespace SceneryEditorX
             explicit PerFrameData(const float time) : Time(time) {}
 
             explicit operator float() const { return Time; }
-			inline PerFrameData& operator+=(const float time)
+
+            PerFrameData& operator+=(const float time)
 			{
 				Time += time;
 			}
@@ -86,6 +91,8 @@ namespace SceneryEditorX
 		inline static std::mutex m_PerFrameDataMutex;
 	};
 
+    /// -------------------------------------------------------
+
 	class ScopePerfTimer
 	{
 	public:
@@ -112,6 +119,7 @@ namespace SceneryEditorX
 	#define SEDX_SCOPE_PERF(name)
 	#define SEDX_SCOPE_TIMER(name)
 #endif
+
 }
 
 /// -------------------------------------------------------

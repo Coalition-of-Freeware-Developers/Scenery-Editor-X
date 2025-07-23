@@ -11,15 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/serialization/serializer.hpp>
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/scene/node.h>
+#include <SceneryEditorX/serialization/serializer.hpp>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    struct Serializer;
+
+    ///struct Serializer;
 
     enum CameraMode : uint8_t
 	{
@@ -37,7 +38,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    class CameraNode : public Node
+    class CameraNode : public GraphNode
     {
 	public:
         CameraNode();

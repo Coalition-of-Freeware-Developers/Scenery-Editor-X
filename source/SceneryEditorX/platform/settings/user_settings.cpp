@@ -47,53 +47,53 @@ namespace SceneryEditorX
 	
 	std::string GetSystemDateTimeFormat()
 	{
-	    // Default format: DD/MM/YYYY HH:MM:SS
+	    ///< Default format: DD/MM/YYYY HH:MM:SS
 	    std::string defaultFormat = "%d/%m/%Y %H:%M:%S";
 	
 	    try
 	    {
-	#ifdef SEDX_PLATFORM_WINDOWS
+	    #ifdef SEDX_PLATFORM_WINDOWS
 	        {
-	            // Get Windows regional settings
+	            ///< Get Windows regional settings
 	            char shortDateFormat[256] = {};
 	            char timeFormat[256] = {};
 	
-	            // Get short date format
+	            ///< Get short date format
 	            if (GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_SSHORTDATE, shortDateFormat, sizeof(shortDateFormat)) > 0)
 	            {
-	                // Get time format
+	                ///< Get time format
 	                if (GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_STIMEFORMAT, timeFormat, sizeof(timeFormat)) > 0)
 	                {
-	                    // Convert Windows format to strftime format
+	                    ///< Convert Windows format to strftime format
 	                    std::string dateFormat(shortDateFormat);
 	                    std::string fullTimeFormat(timeFormat);
 	
-	                    // Replace Windows format specifiers with strftime equivalents
+	                    ///< Replace Windows format specifiers with strftime equivalents
                         dateFormat = Utils::replace(
                             dateFormat,
-                            "dddd", "%A",    // Full weekday name
-                            "ddd", "%a",     // Abbreviated weekday name
-                            "dd", "%d",      // Day of month (01-31)
-                            "d", "%#d",      // Day of month (1-31) no leading zero
-                            "MMMM", "%B",    // Full month name
-                            "MMM", "%b",     // Abbreviated month name
-                            "MM", "%m",      // Month (01-12)
-                            "M", "%#m",      // Month (1-12) no leading zero
-                            "yyyy", "%Y",    // Full year (e.g., 2025)
-                            "yy", "%y"       // Two-digit year (e.g., 25)
+                            "dddd", "%A",  ///< Full weekday name
+                            "ddd", "%a",				///< Abbreviated weekday name
+                            "dd", "%d",					///< Day of month (01-31)
+                            "d", "%#d",					///< Day of month (1-31) no leading zero
+                            "MMMM", "%B",				///< Full month name
+                            "MMM", "%b",				///< Abbreviated month name
+                            "MM", "%m",					///< Month (01-12)
+                            "M", "%#m",					///< Month (1-12) no leading zero
+                            "yyyy", "%Y",				///< Full year (e.g., 2025)
+                            "yy", "%y"					///< Two-digit year (e.g., 25)
                         );
 	
 	                    fullTimeFormat = Utils::replace(fullTimeFormat,
-	                        "HH", "%H",    //< Hour 24-hour format (00-23)
-	                        "H", "%#H",					//< Hour 24-hour format (0-23) no leading zero
-	                        "hh", "%I",					//< Hour 12-hour format (01-12)
-	                        "h", "%#I",					//< Hour 12-hour format (1-12) no leading zero
-	                        "mm", "%M",					//< Minutes (00-59)
-	                        "m", "%#M",					//< Minutes (0-59) no leading zero
-	                        "ss", "%S",					//< Seconds (00-59)
-	                        "s", "%#S",					//< Seconds (0-59) no leading zero
-	                        "tt", "%p",					//< AM/PM indicator
-	                        "t", "%p"					//< AM/PM indicator (single char)
+	                        "HH", "%H",    ///< Hour 24-hour format (00-23)
+	                        "H", "%#H",					///< Hour 24-hour format (0-23) no leading zero
+	                        "hh", "%I",					///< Hour 12-hour format (01-12)
+	                        "h", "%#I",					///< Hour 12-hour format (1-12) no leading zero
+	                        "mm", "%M",					///< Minutes (00-59)
+	                        "m", "%#M",					///< Minutes (0-59) no leading zero
+	                        "ss", "%S",					///< Seconds (00-59)
+	                        "s", "%#S",					///< Seconds (0-59) no leading zero
+	                        "tt", "%p",					///< AM/PM indicator
+	                        "t", "%p"					///< AM/PM indicator (single char)
 	                    );
 	
 	                    std::string systemFormat = dateFormat + " " + fullTimeFormat;
@@ -105,7 +105,7 @@ namespace SceneryEditorX
 	        }
 	#elif defined(SEDX_PLATFORM_LINUX)
 	{
-	    // Use locale-specific format on Linux
+	    ///< Use locale-specific format on Linux
 	    setlocale(LC_TIME, "");
 	    char* dateFormat = nl_langinfo(D_FMT);
 	    char* timeFormat = nl_langinfo(T_FMT);
@@ -120,7 +120,7 @@ namespace SceneryEditorX
 	}
 	#elif defined(SEDX_PLATFORM_MAC)
 	{
-	    // Use Core Foundation on macOS
+	    ///< Use Core Foundation on macOS
 	    CFLocaleRef currentLocale = CFLocaleCopyCurrent();
 	    CFDateFormatterRef formatter = CFDateFormatterCreate(NULL, currentLocale, kCFDateFormatterShortStyle, kCFDateFormatterMediumStyle);
 	
@@ -165,7 +165,7 @@ namespace SceneryEditorX
 	            if (GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_STIMEFORMAT, timeFormat, sizeof(timeFormat)) > 0)
 	            {
 	                std::string format(timeFormat);
-	                // Check for AM/PM indicator
+	                ///< Check for AM/PM indicator
 	                return format.find("tt") != std::string::npos || format.find('t') != std::string::npos;
 	            }
 	        }
@@ -176,7 +176,7 @@ namespace SceneryEditorX
 	    if (timeFormat)
 	    {
 	        std::string format(timeFormat);
-	        // Check for AM/PM indicators
+	        ///< Check for AM/PM indicators
 	        return format.find("%p") != std::string::npos || format.find("%P") != std::string::npos;
 	    }
 	}
@@ -187,7 +187,7 @@ namespace SceneryEditorX
 	        SEDX_CORE_ERROR_TAG("USER_PREFS", "Exception checking time format: {}", e.what());
 	    }
 	
-	    // Default to 24-hour format
+	    ///< Default to 24-hour format
 	    return false;
 	}
 	
@@ -209,13 +209,13 @@ namespace SceneryEditorX
 	
 	        if (useSystemFormat)
 	        {
-	            // Try to use system format
+	            ///< Try to use system format
 	            const std::string systemFormat = GetSystemDateTimeFormat();
 	            ss << std::put_time(timeInfo, systemFormat.c_str());
 	        }
 	        else
 	        {
-	            // Use our standard DD/MM/YYYY HH:MM:SS format
+	            ///< Use our standard DD/MM/YYYY HH:MM:SS format
 	            ss << std::put_time(timeInfo, "%d/%m/%Y %H:%M:%S");
 	        }
 	

@@ -10,7 +10,6 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-
 /**
  *	Based on:
  *	- original work by Sergey Ryazanov (MIT)
@@ -172,9 +171,9 @@ namespace SceneryEditorX::Utils
 	class MulticastDelegate<TReturn(TArgs...)>
 	{
 	    using TDelegate = Delegate<TReturn(TArgs...)>;
-	    using TInstancePtr = typename TDelegate::TInstancePtr;
-	    using TInternalFunction = typename TDelegate::TInternalFunction;
-	    using InvocationElement = typename TDelegate::InvocationElement;
+	    using TInstancePtr = TDelegate::TInstancePtr;
+	    using TInternalFunction = TDelegate::TInternalFunction;
+	    using InvocationElement = TDelegate::InvocationElement;
 
 	public:
 	    MulticastDelegate() = default;

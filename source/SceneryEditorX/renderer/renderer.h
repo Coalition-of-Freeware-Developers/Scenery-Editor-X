@@ -17,8 +17,11 @@
 #include <SceneryEditorX/renderer/image_data.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
+#include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <SceneryEditorX/utils/static_states.h>
+
+#include "texture.h"
 
 /// -------------------------------------------------------
 
@@ -36,7 +39,7 @@ namespace SceneryEditorX
 
 		GLOBAL Ref<RenderContext> GetContext();
 
-        Ref<Image> && GetBRDFLutTexture();
+
         GLOBAL void Init();
 		GLOBAL void Shutdown();
         GLOBAL void BeginFrame();
@@ -108,6 +111,12 @@ namespace SceneryEditorX
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
         VkSampler CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo);
+        GLOBAL Ref<Texture2D> GetWhiteTexture();
+        GLOBAL Ref<Texture2D> GetBlackTexture();
+        GLOBAL Ref<Texture2D> GetHilbertLut();
+        GLOBAL Ref<Texture2D> GetBRDFLutTexture();
+        GLOBAL Ref<TextureCube> GetBlackCubeTexture();
+        GLOBAL Ref<Environment> GetEmptyEnvironment();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Render Pass

@@ -20,8 +20,6 @@
 namespace SceneryEditorX
 {
 
-	struct Serializer;
-
     /// -------------------------------------------------------
 
 	class Node : public Object

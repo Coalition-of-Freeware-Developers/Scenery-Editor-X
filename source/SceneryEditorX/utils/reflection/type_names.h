@@ -12,11 +12,12 @@
 */
 #pragma once
 #include <array>
-#include <string>
 #include <string_view>
 #include <utility>
-
-/// https://bitwizeshift.github.io/posts/2021/03/09/getting-an-unmangled-type-name-at-compile-time/
+// ReSharper disable once CommentTypo
+/**
+ * @link https://bitwizeshift.github.io/posts/2021/03/09/getting-an-unmangled-type-name-at-compile-time/
+ */
 
 /// -------------------------------------------------------
 

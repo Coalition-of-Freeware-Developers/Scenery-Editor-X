@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/core/identifiers/uuid.h>
 #include <SceneryEditorX/serialization/serializer_writer.h>
 #include <SceneryEditorX/utils/pointers.h>
 
@@ -19,9 +20,12 @@
 namespace SceneryEditorX
 {
 
-    using AssetHandle = UUID;
+	// ReSharper disable once CppRedundantQualifier
+	using AssetHandle = SceneryEditorX::UUID;
 
-	enum class ObjectType : uint16_t
+    /// -------------------------------------------------------
+
+	enum class ObjectType : uint16_t  // NOLINT(performance-enum-size)
 	{
 		None = 0,
 		Scene,
@@ -29,38 +33,68 @@ namespace SceneryEditorX
 		Prefab,
 		Mesh,
 		StaticMesh,
-		Camera,
 		Light,
 		MeshSource,
 		Material,
 		Texture,
 		EnvMap,
-		Audio,
-		SoundConfig,
-		SpatializationConfig,
 		Font,
 		Script,
 		ScriptFile,
 		MeshCollider,
-		SoundGraphSound,
 		Animation,
 		AnimationGraph
 	};
 
-	inline std::string ObjectTypeName[] = {
-	    "Invalid",
-	    "Texture",
-	    "Mesh",
-	    "Material",
-	    "Scene",
-	    "Node",
-	    "MeshNode",
-	    "LightNode",
-	    "CameraNode",
-	    "Count",
-	};
+	inline ObjectType ObjectTypeName(std::string_view objectType)
+    {
+	        if (objectType == "None")                return ObjectType::None;
+			if (objectType == "Scene")               return ObjectType::Scene;
+			if (objectType == "Prefab")              return ObjectType::Prefab;
+			if (objectType == "Mesh")                return ObjectType::Mesh;
+			if (objectType == "StaticMesh")          return ObjectType::StaticMesh;
+			if (objectType == "MeshSource")          return ObjectType::MeshSource;
+			if (objectType == "Material")            return ObjectType::Material;
+			if (objectType == "Texture")             return ObjectType::Texture;
+			if (objectType == "EnvMap")              return ObjectType::EnvMap;
+			if (objectType == "Font")                return ObjectType::Font;
+			if (objectType == "Script")              return ObjectType::Script;
+			if (objectType == "ScriptFile")          return ObjectType::ScriptFile;
+			if (objectType == "MeshCollider")        return ObjectType::MeshCollider;
+			if (objectType == "Animation")           return ObjectType::Animation;
+			if (objectType == "AnimationGraph")      return ObjectType::AnimationGraph;
 
-	enum class AssetFlag : uint16_t
+			return ObjectType::None;
+	}
+
+    inline const char* ObjectTypeToString(ObjectType type)
+	{
+		switch (type)
+		{
+			case ObjectType::None:           return "None";
+			case ObjectType::Scene:          return "Scene";
+			case ObjectType::Node:           return "Node";
+			case ObjectType::Prefab:         return "Prefab";
+			case ObjectType::Mesh:           return "Mesh";
+			case ObjectType::StaticMesh:     return "StaticMesh";
+			case ObjectType::Light:          return "Light";
+			case ObjectType::MeshSource:     return "MeshSource";
+			case ObjectType::Material:       return "Material";
+			case ObjectType::Texture:        return "Texture";
+			case ObjectType::EnvMap:         return "EnvMap";
+			case ObjectType::Font:           return "Font";
+			case ObjectType::Script:         return "Script";
+			case ObjectType::ScriptFile:     return "ScriptFile";
+			case ObjectType::MeshCollider:   return "MeshCollider";
+			case ObjectType::Animation:      return "Animation";
+			case ObjectType::AnimationGraph: return "AnimationGraph";
+		}
+
+        SEDX_CORE_ASSERT(false, "Unknown Asset Type");
+        return "None";
+    }
+
+    enum class AssetFlag : uint16_t  // NOLINT(performance-enum-size)
     {
         None = 0,
         Missing = BIT(0),
@@ -91,8 +125,6 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	using AssetHandle = UUID;
-
 	class Asset : public Object
 	{
 	public:
@@ -101,10 +133,12 @@ namespace SceneryEditorX
         virtual ~Asset() override;
 
 		GLOBAL ObjectType GetStaticType() { return ObjectType::None; }
-        [[nodiscard]] virtual ObjectType GetAssetType() const { return ObjectType::None; }
+        virtual ObjectType GetAssetType() const { return ObjectType::None; }
 
-        [[nodiscard]] virtual bool operator!=(const Asset& other) const { return !(*this == other); }
-	    [[nodiscard]] virtual bool operator==(const Asset &other) const { return Handle == other.Handle;}
+        virtual bool operator!=(const Asset& other) const { return !(*this == other); }
+        virtual bool operator==(const Asset &other) const { return Handle == other.Handle; }
+
+        /// -------------------------------------------------------
 
 	    virtual void OnDependencyUpdated(uint64_t handle) {}
         virtual void Serialize(SerializeWriter &ser) override = 0;
@@ -112,20 +146,32 @@ namespace SceneryEditorX
         virtual void Unload() = 0;
         virtual void SetName(const std::string &name) = 0;
 
+        /// -------------------------------------------------------
+
 	private:
         friend class EditorAssetManager;
+        friend class TextureSerializer;
         friend class TextureAsset;
 
-	    bool IsValid() const { return (Flags & (uint16_t)AssetFlag::Missing | Flags & (uint16_t)AssetFlag::Invalid) == 0; }
-		bool IsFlagSet(AssetFlag flag) const { return (uint16_t)flag & Flags; }
+	    bool IsValid() const
+	    {
+            // ReSharper disable once CppRedundantParentheses
+            return ((Flags & (uint16_t)(AssetFlag::Missing)) | (Flags & (uint16_t)(AssetFlag::Invalid))) == 0;
+	    }
+
+		bool IsFlagSet(AssetFlag flag) const { return static_cast<uint16_t>(flag) & Flags; }
+
 		void SetFlag(AssetFlag flag, const bool value = true)
 		{
 			if (value)
-				Flags |= (uint16_t)flag;
+				Flags |= static_cast<uint16_t>(flag);
 			else
-				Flags &= ~(uint16_t)flag;
+				Flags &= ~static_cast<uint16_t>(flag);
 		}
+
     };
+
+    /// -------------------------------------------------------
 
 	template<typename T>
 	struct AsyncAssetResult
@@ -136,14 +182,16 @@ namespace SceneryEditorX
 		AsyncAssetResult() = default;
 		AsyncAssetResult(const AsyncAssetResult<T>& other) = default;
 
-		AsyncAssetResult(Ref<T> asset, const bool isReady = false) : Asset(asset), IsReady(isReady) {}
+        explicit AsyncAssetResult(Ref<T> asset, const bool isReady = false) : Asset(asset), IsReady(isReady) {}
 
 		template<typename T2>
-		AsyncAssetResult(const AsyncAssetResult<T2>& other) : Asset(other.Asset.template As<T>()), IsReady(other.IsReady) {}
+        explicit AsyncAssetResult(const AsyncAssetResult<T2>& other) : Asset(other.Asset.template As<T>()), IsReady(other.IsReady) {}
 
-		operator Ref<T>() const { return Asset; }
-		operator bool() const { return IsReady; }
+        explicit operator Ref<T>() const { return Asset; }
+        explicit operator bool() const { return IsReady; }
 	};
+
+    /// -------------------------------------------------------
 
 }
 

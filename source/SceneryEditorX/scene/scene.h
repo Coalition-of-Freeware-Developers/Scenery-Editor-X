@@ -11,12 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <entt/src/entt/entt.hpp>
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/node.h>
 #include <SceneryEditorX/serialization/serializer.hpp>
-#include <entt/src/entt/entt.hpp>
 
 /// -------------------------------------------------------
 
@@ -43,18 +43,18 @@ namespace SceneryEditorX
         explicit Scene(const std::string &name = "UntitledProject", bool isEditorScene = false, bool initialize = true);
         virtual ~Scene() override;
 
-		virtual void Serialize(Serializer& s);
+		virtual void Serialize(Serializer &s) override;
 		virtual void Load(const std::string& path) override;
 		virtual void Unload() override;
 		bool IsLoaded() const { return isLoaded; }
-		//const std::string& GetPath() const { return scenePath; }
+		const std::string& GetPath() const { return scenePath; }
 		const std::string& GetName() const { return m_Name; }
 		virtual void SetName(const std::string& name) override;
         void Add(const Ref<CameraNode> & ref);
 
         static Ref<Scene> CreateEmpty();
 
-		std::vector<Ref<Node>> nodes;
+		std::vector<Ref<GraphNode>> nodes;
 		Vec3 ambientLightColor = Vec3(1);
 		float ambientLight = 0.01f;
 		int aoSamples = 4;
@@ -75,7 +75,7 @@ namespace SceneryEditorX
         entt::registry m_Registry;
 
         std::function<void(AssetHandle)> m_OnSceneTransitionCallback;
-        std::function<void(Entity)> m_OnEntityDestroyedCallback;
+        //std::function<void(Entity)> m_OnEntityDestroyedCallback;
         bool isLoaded = false;
         std::string m_Name;
         bool m_IsEditorScene = false;
@@ -84,7 +84,7 @@ namespace SceneryEditorX
         uint32_t m_ViewportRight = 0;
         uint32_t m_ViewportBottom = 0;
 
-        EntityMap m_EntityIDMap;
+        //EntityMap m_EntityIDMap;
         //DirectionalLight m_Light;
         float m_LightMultiplier = 0.3f;
         //LightEnvironment m_LightEnvironment;

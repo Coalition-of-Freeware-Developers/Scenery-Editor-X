@@ -10,6 +10,7 @@
 * Created: 14/7/2025
 * -------------------------------------------------------
 */
+// ReSharper disable CommentTypo
 #pragma once
 #include "colors.h"
 #include <algorithm>
@@ -32,12 +33,12 @@ namespace SceneryEditorX::Utils
 
 	Color Color::RGBHex(const uint32_t hex)
 	{
-		return RGBA8((uint8_t)(hex >> 16), (uint8_t)(hex >> 8), (uint8_t)(hex));
+		return RGBA8(static_cast<uint8_t>(hex >> 16), static_cast<uint8_t>(hex >> 8), static_cast<uint8_t>(hex));
 	}
 
 	Color Color::RGBAHex(const uint32_t hex)
 	{
-		return RGBA8((uint8_t)(hex >> 24), (uint8_t)(hex >> 16), (uint8_t)(hex >> 8), (uint8_t)(hex));
+		return RGBA8(static_cast<uint8_t>(hex >> 24), static_cast<uint8_t>(hex >> 16), static_cast<uint8_t>(hex >> 8), static_cast<uint8_t>(hex));
 	}
 
 	Color Color::HSV(float h, float s, float v)
@@ -48,12 +49,12 @@ namespace SceneryEditorX::Utils
 		if (h >= 360)
 			h = 359.999f;
 
-		float rgbRange = v * s;
-		float maxRGB = v;
-		float minRGB = v - rgbRange;
-		float hPrime = h / 60.0;
-		float x1 = fmod(hPrime, 1.0);
-		float x2 = 1.0 - fmod(hPrime, 1.0);
+		const float rgbRange = v * s;
+		const float maxRGB = v;
+		const float minRGB = v - rgbRange;
+		const float hPrime = h / 60.0;
+		const float x1 = fmod(hPrime, 1.0);
+		const float x2 = 1.0 - fmod(hPrime, 1.0);
 
 		if ((hPrime >= 0) && (hPrime < 1))
 		{
@@ -97,43 +98,43 @@ namespace SceneryEditorX::Utils
 
 	uint32_t Color::ToU32() const
     {
-		return ((uint32_t)(r * 255)) | ((uint32_t)(g * 255) << 8) | ((uint32_t)(b * 255) << 16) | ((uint32_t)(a * 255) << 24);
+		return static_cast<uint32_t>(r * 255) | (static_cast<uint32_t>(g * 255) << 8) | (static_cast<uint32_t>(b * 255) << 16) | (static_cast<uint32_t>(a * 255) << 24);
     }
 
     Vec4 Color::ToVec4() const { return {r, g, b, a}; }
 
     Vec3 Color::ToHSV() const
     {
-        float cmax = std::max({r,g, b}); ///< maximum of r, g, b
-        float cmin = std::min({r,g, b}); ///< minimum of r, g, b
-        float diff = cmax - cmin;             ///< diff of cmax and cmin.
+        const float cmax = std::max({r,g, b}); ///< maximum of r, g, b
+        const float cmin = std::min({r,g, b}); ///< minimum of r, g, b
+        const float diff = cmax - cmin;             ///< diff of cmax and cmin.
         float h = -1, s = -1;
 
-        // if cmax and cmax are equal then h = 0
+        ///< if cmax and cmax are equal then h = 0
         if (cmax == cmin)
             h = 0;
 
-        // if cmax equal r then compute h
+        ///< if cmax equal r then compute h
         else if (cmax == r)
             h = fmod(60 * ((g - b) / diff) + 360, 360);
 
-        // if cmax equal g then compute h
+        ///< if cmax equal g then compute h
         else if (cmax == g)
             h = fmod(60 * ((b - r) / diff) + 120, 360);
 
-        // if cmax equal b then compute h
+        ///< if cmax equal b then compute h
         else if (cmax == b)
             h = fmod(60 * ((r - g) / diff) + 240, 360);
 
-        // if cmax equal zero
+        ///< if cmax equal zero
         if (cmax == 0)
             s = 0;
         else
             s = (diff / cmax) * 100;
 
-        float v = cmax * 100;
+        const float v = cmax * 100;
 
-        return Vec3(h, s / 100.0f, v / 100.0f);
+        return {h, s / 100.0f, v / 100.0f};
     }
 
 }

@@ -47,13 +47,16 @@ using ResourceID = u32;      ///< Resource Identifier, alias for unsigned 32-bit
 
 /// -------------------------------------------------------
 
-using Vec2 = glm::vec2; ///< 2D vector
-using Vec3 = glm::vec3; ///< 3D vector
-using Vec4 = glm::vec4; ///< 4D vector
-using Mat2 = glm::mat2; ///< 2x2 matrix
-using Mat3 = glm::mat3; ///< 3x3 matrix
-using Mat4 = glm::mat4; ///< 4x4 matrix
-using Quat = glm::quat; ///< Quaternion for rotation
+using Vec2	=	glm::vec2;	///< 2D vector
+using Vec3	=	glm::vec3;	///< 3D vector
+using Vec4	=	glm::vec4;	///< 4D vector
+using iVec2 =	glm::ivec2; ///< 2D integer vector
+using iVec3 =	glm::ivec3; ///< 3D integer vector
+using iVec4 =	glm::ivec4; ///< 4D integer vector
+using Mat2	=	glm::mat2;	///< 2x2 matrix
+using Mat3	=	glm::mat3;	///< 3x3 matrix
+using Mat4	=	glm::mat4;	///< 4x4 matrix
+using Quat	=	glm::quat;	///< Quaternion for rotation
 
 /// -------------------------------------------------------
 

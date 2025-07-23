@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-// Core reflection components
 #include <SceneryEditorX/utils/reflection/type_descriptors.h>
 #include <SceneryEditorX/utils/reflection/type_names.h>
 #include <SceneryEditorX/utils/reflection/type_structs.h>
