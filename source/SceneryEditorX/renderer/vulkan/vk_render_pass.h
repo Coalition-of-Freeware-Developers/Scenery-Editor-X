@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_render_pass.h
@@ -11,19 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/buffers/framebuffer.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
-#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
+#include <SceneryEditorX/renderer/vulkan/vk_descriptor_set_manager.h>
 #include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
-#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
-#include <SceneryEditorX/scene/texture.h>
+#include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
 	/**
 	 * @struct RenderSpec
 	 * @brief Specifies the configuration for a Vulkan render pass.
@@ -42,7 +38,7 @@ namespace SceneryEditorX
          * @brief Reference to the Vulkan swap chain used for rendering.
          */
         Vec4 idColor;
-	
+
 	    /**
 	     * @brief Debug name for identifying the render pass instance.
 	     */
@@ -66,34 +62,37 @@ namespace SceneryEditorX
         explicit RenderPass(const RenderSpec &spec);
 	    virtual ~RenderPass() override;
 
-		void AddInput(std::string_view name, Ref<UniformBufferSet> uniformBufferSet);
-        void AddInput(std::string_view name, Ref<UniformBuffer> uniformBuffer);
-	    void AddInput(std::string_view name, Ref<StorageBufferSet> storageBufferSet);
-        void AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer);
-		void AddInput(std::string_view name, Ref<TextureAsset> texture);
+		virtual RenderSpec& GetSpecification() { return renderSpec; }
+		virtual const RenderSpec& GetSpecification() const { return renderSpec; }
+
+        //void AddInput(std::string_view name, const Ref<UniformBufferSet> &uniformBufferSet);
+        void AddInput(std::string_view name, const Ref<UniformBuffer> &uniformBuffer);
+        //void AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet);
+        void AddInput(std::string_view name, const Ref<StorageBuffer> &storageBuffer);
+        //void AddInput(std::string_view name, const Ref<TextureAsset> &texture);
 
         void CreateRenderPass();
-		
-		//virtual Ref<Image2D> GetOutput(uint32_t index);
-        //virtual Ref<Image2D> GetDepthOutput();
+
+		virtual Ref<Image2D> GetOutput(uint32_t index);
+        virtual Ref<Image2D> GetDepthOutput();
         virtual uint32_t GetFirstSetIndex() const;
 
         virtual Ref<Framebuffer> GetTargetFramebuffer() const;
         virtual Ref<Pipeline> GetPipeline() const;
 
-        //[[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
+        [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
 		//VkDescriptorPool GetDescriptorPool() const { return descriptors->descriptorPool; }
 
 	    virtual bool Validate();
 		virtual void Bake();
-		virtual bool Baked() const { return (bool)m_DescriptorSetManager.GetDescriptorPool(); }
+		//virtual bool Baked() const { return static_cast<bool>(m_DescriptorSetManager.GetDescriptorPool()); }
 		virtual void Prepare();
 
 		bool HasDescriptorSets() const;
 		const std::vector<VkDescriptorSet>& GetDescriptorSets(uint32_t frameIndex) const;
 
 		bool IsInputValid(std::string_view name) const;
-		const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name) const;
+		//const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name);
 
 	private:
         //Ref<SwapChain> vkSwapChain;			///< Reference to the Vulkan swap chain
@@ -102,7 +101,7 @@ namespace SceneryEditorX
         //Ref<CommandBuffer> cmdBuffer;			///< Reference to the Vulkan command buffer manager
         //Ref<UniformBuffer> uniformBuffer;		///< Reference to the uniform buffer used in the render pass
         RenderData renderData;					///< Render data containing information about the render pass
-        //VkRenderPass renderPass = nullptr;	///< Vulkan render pass handle
+        VkRenderPass renderPass = nullptr;		///< Vulkan render pass handle
 
 		/// ----------------------------------
 
@@ -110,23 +109,22 @@ namespace SceneryEditorX
         VkQueue presentQueue = nullptr;
 
         RenderSpec renderSpec;
-        DescriptorSetManager m_DescriptorSetManager;
+        //DescriptorSetManager m_DescriptorSetManager;
 
 		/// ----------------------------------
 
         void CreateDescriptorSets() const;
-
         bool IsInvalidated(uint32_t set, uint32_t binding) const;
         [[nodiscard]] VkCommandBuffer BeginSingleTimeCommands() const;
-        //void EndSingleTimeCommands(VkCommandBuffer commandBuffer) const;
-        //void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const;
-        //void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const;
+        void EndSingleTimeCommands(VkCommandBuffer commandBuffer) const;
+        void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) const;
+        void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const;
         void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const;
         void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
 						 VkImage &image, VkDeviceMemory &imageMemory) const;
 
 	};
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

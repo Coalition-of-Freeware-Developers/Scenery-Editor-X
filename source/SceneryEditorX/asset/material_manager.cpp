@@ -10,7 +10,6 @@
 * Created: 8/5/2025
 * -------------------------------------------------------
 */
-#include <memory>
 #include <SceneryEditorX/asset/material_manager.h>
 
 /// -------------------------------------------------------
@@ -18,6 +17,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	std::shared_ptr<MaterialAsset> MaterialManager::LoadMaterial(const std::string &path)
 	{
         if (const auto it = materials.find(path); it != materials.end())
@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	        materials.erase(it);
 	    }
 	}
-
+	*/
 
 }
 

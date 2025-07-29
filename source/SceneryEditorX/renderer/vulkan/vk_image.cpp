@@ -10,27 +10,27 @@
 * Created: 27/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+
+#include "vk_sampler.h"
+#include "vk_util.h"
 
 /// -----------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	/*
 	static std::map<VkImage, WeakRef<Image2D>> s_ImageReferences;
 
     /**
 	 * @brief 
-	 * @param specification 
-	 #1#
-	Image2D::Image2D(const Image& specification) : m_Specification(specification)
-	{
-		SEDX_CORE_VERIFY(m_Specification.width > 0 && m_Specification.height > 0);
-	}
+	 * @param specification
+	 */
+
+	Image2D::Image2D(const ImageSpecification &specification) : m_Specification(specification)
+    {
+        SEDX_CORE_VERIFY(m_Specification.width > 0 && m_Specification.height > 0);
+    }
 
 	Image2D::~Image2D()
 	{
@@ -60,7 +60,7 @@ namespace SceneryEditorX
 		{
 			const auto vulkanDevice = RenderContext::GetCurrentDevice()->GetDevice();
 			vkDestroyImageView(vulkanDevice, info.view, nullptr);
-			Vulkan::DestroySampler(info.sampler);
+			DestroySampler(info.sampler);
 
 			for (auto& view : mipViews)
 			{
@@ -113,29 +113,36 @@ namespace SceneryEditorX
 		MemoryAllocator allocator("Image2D");
 
 		VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT; // TODO: this (probably) shouldn't be implied
-		if (m_Specification.usage == ImageUsage::Attachment)
+		if (m_Specification.usage == ImageUsage::DepthAttachment)
 		{
 			if (IsDepthFormat(m_Specification.format))
 				usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 			else
 				usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		}
-		if (m_Specification.transfer || m_Specification.usage == ImageUsage::Texture)
+        if (m_Specification.usage == ImageUsage::ColorAttachment)
+        {
+            usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        }
+		if (m_Specification.transfer || m_Specification.usage == ImageUsage::TransferSrc)
 		{
-			usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		}
+        if (m_Specification.transfer || m_Specification.usage == ImageUsage::TransferDst)
+        {
+            usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
 		if (m_Specification.usage == ImageUsage::Storage)
 		{
-			usage |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 		}
 
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-		if (m_Specification.format == ImageFormat::DEPTH24STENCIL8)
+        if (m_Specification.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat())
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		VkFormat vulkanFormat = VkFormat(m_Specification.format);
-
-		VmaMemoryUsage memoryUsage = m_Specification.usage == ImageUsage::HostRead ? VMA_MEMORY_USAGE_GPU_TO_CPU : VMA_MEMORY_USAGE_GPU_ONLY;
+		VkFormat vulkanFormat = m_Specification.format;
+		VmaMemoryUsage memoryUsage = m_Specification.usage == ImageUsage::TransferSrc ? VMA_MEMORY_USAGE_GPU_TO_CPU : VMA_MEMORY_USAGE_GPU_ONLY;
 
 		VkImageCreateInfo imageCreateInfo = {};
 		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -147,11 +154,12 @@ namespace SceneryEditorX
 		imageCreateInfo.mipLevels = m_Specification.mips;
 		imageCreateInfo.arrayLayers = m_Specification.layers;
 		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		imageCreateInfo.tiling = m_Specification.usage == ImageUsage::HostRead ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+        /// TODO: Evaluate later a better way to determine tiling
+		imageCreateInfo.tiling = m_Specification.usage == ImageUsage::TransferSrc? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
 		imageCreateInfo.usage = usage;
 		m_Info.allocation = allocator.AllocateImage(imageCreateInfo, memoryUsage, m_Info.image, &m_GPUAllocationSize);
-		s_ImageReferences[m_Info.image] = this;
-		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE, m_Specification.resource->name, m_Info.image);
+		s_ImageReferences[m_Info.image] = CreateRef<Image2D>(this);
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE, m_Specification.debugName, m_Info.image);
 
 		/// Create a default image view
 		VkImageViewCreateInfo imageViewCreateInfo = {};
@@ -166,8 +174,8 @@ namespace SceneryEditorX
 		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		imageViewCreateInfo.subresourceRange.layerCount = m_Specification.layers;
 		imageViewCreateInfo.image = m_Info.image;
-		VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_Info.view));
-		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} default image view", m_Specification.resource->name), m_Info.view);
+		VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_Info.view))
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} default image view", m_Specification.debugName), m_Info.view);
 
 		// TODO: Renderer should contain some kind of sampler cache
 		if (m_Specification.createSampler)
@@ -175,7 +183,7 @@ namespace SceneryEditorX
 			VkSamplerCreateInfo samplerCreateInfo = {};
 			samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 			samplerCreateInfo.maxAnisotropy = 1.0f;
-			if (Utils::IsIntegerBased(m_Specification.format))
+			if (IsIntegerBased(m_Specification.format))
 			{
 				samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
 				samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
@@ -196,10 +204,10 @@ namespace SceneryEditorX
 			samplerCreateInfo.maxLod = 100.0f;
 			samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 			m_Info.sampler = CreateSampler(samplerCreateInfo);
-			SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_SAMPLER, std::format("{} default sampler", m_Specification.resource->name), m_Info.sampler);
+			SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_SAMPLER, std::format("{} default sampler", m_Specification.debugName), m_Info.sampler);
 		}
 
-		if (m_Specification.usage == ImageUsage::Storage)
+		if (m_Specification.usage == Layout::ImageLayout::General)
 		{
 			/// Transition image to GENERAL layout
 			VkCommandBuffer commandBuffer = RenderContext::GetCurrentDevice()->GetCommandBuffer(true);
@@ -210,7 +218,7 @@ namespace SceneryEditorX
 			subresourceRange.levelCount = m_Specification.mips;
 			subresourceRange.layerCount = m_Specification.layers;
 
-			Utils::InsertImageMemoryBarrier(commandBuffer, m_Info.image,
+			InsertImageMemoryBarrier(commandBuffer, m_Info.image,
 				0, 0,
 				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
 				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -218,7 +226,7 @@ namespace SceneryEditorX
 
 			RenderContext::GetCurrentDevice()->FlushCmdBuffer(commandBuffer);
 		}
-		else if (m_Specification.usage == ImageUsage::HostRead)
+        else if (m_Specification.usage == Layout::ImageLayout::TransferDst)
 		{
 			/// Transition image to TRANSFER_DST layout
 			VkCommandBuffer commandBuffer = RenderContext::GetCurrentDevice()->GetCommandBuffer(true);
@@ -229,7 +237,7 @@ namespace SceneryEditorX
 			subresourceRange.levelCount = m_Specification.mips;
 			subresourceRange.layerCount = m_Specification.layers;
 
-			Utils::InsertImageMemoryBarrier(commandBuffer, m_Info.image,
+			InsertImageMemoryBarrier(commandBuffer, m_Info.image,
 				0, 0,
 				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -241,26 +249,18 @@ namespace SceneryEditorX
 		UpdateDescriptor();
 	}
 
-	void Image2D::CreatePerLayerImageViews()
-	{
-		Ref<Image2D> instance = this;
-		Renderer::Submit([instance]() mutable
-		{
-			instance->RT_CreatePerLayerImageViews();
-		});
-	}
 
-	void Image2D::RT_CreatePerLayerImageViews()
+	void Image2D::CreatePerLayerImageViews_RenderThread()
 	{
 		SEDX_CORE_ASSERT(m_Specification.layers > 1);
 
 		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-		if (m_Specification.format == VkFormat::DEPTH24STENCIL8)
+		if (m_Specification.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat())
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		const VkFormat vulkanFormat = Utils::VkFormat(m_Specification.format);
+		const VkFormat vulkanFormat = m_Specification.format;
 
 		m_PerLayerImageViews.resize(m_Specification.layers);
 		for (uint32_t layer = 0; layer < m_Specification.layers; layer++)
@@ -278,26 +278,17 @@ namespace SceneryEditorX
 			imageViewCreateInfo.subresourceRange.layerCount = 1;
 			imageViewCreateInfo.image = m_Info.image;
 			VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_PerLayerImageViews[layer]));
-			SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view layer: {}", m_Specification.resource->name, layer), m_PerLayerImageViews[layer]);
+			SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view layer: {}", m_Specification.debugName, layer), m_PerLayerImageViews[layer]);
 		}
 	}
 
-	VkImageView Image2D::GetMipImageView(uint32_t mip)
-	{
-		if (!m_PerMipImageViews.contains(mip))
-		{
-			Ref<Image2D> instance = this;
-			Renderer::Submit([instance, mip]() mutable
-				{
-					instance->RT_GetMipImageView(mip);
-				});
-			return nullptr;
-		}
+    void Image2D::CreatePerLayerImageViews()
+    {
+        Ref<Image2D> instance(this);
+        Renderer::Submit([instance]() mutable { instance->CreatePerLayerImageViews_RenderThread(); });
+    }
 
-		return m_PerMipImageViews.at(mip);
-	}
-
-	VkImageView Image2D::RT_GetMipImageView(const uint32_t mip)
+	VkImageView Image2D::GetRenderThreadMipImageView(const uint32_t mip)
 	{
         if (const auto it = m_PerMipImageViews.find(mip); it != m_PerMipImageViews.end())
 			return it->second;
@@ -305,10 +296,10 @@ namespace SceneryEditorX
 		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-		if (m_Specification.format == VkFormat::DEPTH24STENCIL8)
+        if (m_Specification.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat())
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		VkFormat vulkanFormat = Utils::VulkanImageFormat(m_Specification.format);
+		VkFormat vulkanFormat = m_Specification.format;
 
 		VkImageViewCreateInfo imageViewCreateInfo = {};
 		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -323,24 +314,36 @@ namespace SceneryEditorX
 		imageViewCreateInfo.subresourceRange.layerCount = 1;
 		imageViewCreateInfo.image = m_Info.image;
 
-		VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_PerMipImageViews[mip]));
-		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view mip: {}", m_Specification.resource->name, mip), m_PerMipImageViews[mip]);
+		VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_PerMipImageViews[mip]))
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view mip: {}", m_Specification.debugName, mip), m_PerMipImageViews[mip]);
 		return m_PerMipImageViews.at(mip);
 	}
 
-	void Image2D::RT_CreatePerSpecificLayerImageViews(const std::vector<uint32_t>& layerIndices)
+    VkImageView Image2D::GetMipImageView(uint32_t mip)
+    {
+        if (!m_PerMipImageViews.contains(mip))
+        {
+            Ref<Image2D> instance(this);
+            Renderer::Submit([instance, mip]() mutable { instance->GetRenderThreadMipImageView(mip); });
+            return nullptr;
+        }
+
+        return m_PerMipImageViews.at(mip);
+    }
+
+	void Image2D::CreatePerSpecificLayerImageViews_RenderThread(const std::vector<uint32_t> &layerIndices)
 	{
 		SEDX_CORE_ASSERT(m_Specification.layers > 1);
 
 		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-		if (m_Specification.format == VkFormat::DEPTH24STENCIL8)
+        if (m_Specification.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat())
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		const VkFormat vulkanFormat = Utils::VulkanImageFormat(m_Specification.format);
+		const VkFormat vulkanFormat = m_Specification.format;
 
-		//SEDX_CORE_ASSERT(m_PerLayerImageViews.size() == m_Specification.Layers);
+		SEDX_CORE_ASSERT(m_PerLayerImageViews.size() == m_Specification.layers);
 		if (m_PerLayerImageViews.empty())
 			m_PerLayerImageViews.resize(m_Specification.layers);
 
@@ -359,14 +362,16 @@ namespace SceneryEditorX
 			imageViewCreateInfo.subresourceRange.layerCount = 1;
 			imageViewCreateInfo.image = m_Info.image;
 			VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_PerLayerImageViews[layer]));
-			SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view layer: {}", m_Specification.resource->name, layer), m_PerLayerImageViews[layer]);
+			SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view layer: {}", m_Specification.debugName, layer), m_PerLayerImageViews[layer]);
 		}
 
 	}
 
 	void Image2D::UpdateDescriptor()
 	{
-		if (m_Specification.format == VkFormat::DEPTH24STENCIL8 || m_Specification.format == VkFormat::DEPTH32F || m_Specification.format == VkFormat::DEPTH32FSTENCIL8UINT)
+        if (m_Specification.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat() ||
+            m_Specification.format == VkFormat::VK_FORMAT_D32_SFLOAT ||
+            m_Specification.format == VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT)
 			m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 		else if (m_Specification.usage == ImageUsage::Storage)
 			m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -375,7 +380,7 @@ namespace SceneryEditorX
 
 		if (m_Specification.usage == ImageUsage::Storage)
 			m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-		else if (m_Specification.usage == ImageUsage::HostRead)
+        else if (m_Specification.usage == Layout::ImageLayout::TransferDst)
 			m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
 		m_DescriptorImageInfo.imageView = m_Info.view;
@@ -389,21 +394,21 @@ namespace SceneryEditorX
 		return s_ImageReferences;
 	}
 
-	void Image2D::SetData(Buffer buffer)
+	void Image2D::SetData(const Buffer buffer)
 	{
 		SEDX_CORE_VERIFY(m_Specification.transfer, "Image must be created with ImageSpecification::Transfer enabled!");
 
 		if (buffer)
 		{
-			Ref<VulkanDevice> device = RenderContext::GetCurrentDevice();
-
-			VkDeviceSize size = buffer.size;
+			const Ref<VulkanDevice> device = RenderContext::GetCurrentDevice();
+			const VkDeviceSize size = buffer.size;
 
 			VkMemoryAllocateInfo memAllocInfo{};
 			memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 
 			MemoryAllocator allocator("Image2D");
 
+			///TODO: Replace with  
 			/// Create staging buffer
 			VkBufferCreateInfo bufferCreateInfo{};
 			bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -482,9 +487,11 @@ namespace SceneryEditorX
 			imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-			/// Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
-			/// Source pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
-			/// Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+			/**
+			 * Insert a memory dependency at the proper pipeline stages that will execute the image layout transition 
+			 * Source pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
+			 * Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+             */
 			vkCmdPipelineBarrier(
 				copyCmd,
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -496,7 +503,7 @@ namespace SceneryEditorX
 
 #endif
 
-			Utils::InsertImageMemoryBarrier(copyCmd, m_Info.image,
+			InsertImageMemoryBarrier(copyCmd, m_Info.image,
 				VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_DescriptorImageInfo.imageLayout,
 				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -548,11 +555,10 @@ namespace SceneryEditorX
 		subresourceRange.levelCount = mipCount;
 		subresourceRange.layerCount = 1;
 
-		InsertImageMemoryBarrier(copyCmd, m_Info.image,
-										VK_ACCESS_TRANSFER_READ_BIT, 0,
-										m_DescriptorImageInfo.imageLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-										VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-										subresourceRange);
+		InsertImageMemoryBarrier(copyCmd, m_Info.image,VK_ACCESS_TRANSFER_READ_BIT, 0,m_DescriptorImageInfo.imageLayout,
+								 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+								 VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+								 VK_PIPELINE_STAGE_TRANSFER_BIT,subresourceRange);
 
 		uint64_t mipDataOffset = 0;
 		for (uint32_t mip = 0; mip < mipCount; mip++)
@@ -567,13 +573,7 @@ namespace SceneryEditorX
 			bufferCopyRegion.imageExtent.depth = 1;
 			bufferCopyRegion.bufferOffset = mipDataOffset;
 
-			vkCmdCopyImageToBuffer(
-				copyCmd,
-				m_Info.image,
-				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				stagingBuffer,
-				1,
-				&bufferCopyRegion);
+			vkCmdCopyImageToBuffer(copyCmd,m_Info.image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,stagingBuffer,1,&bufferCopyRegion);
 
 			uint64_t mipDataSize = mipWidth * mipHeight * sizeof(float) * 4 * 6;
 			mipDataOffset += mipDataSize;
@@ -607,10 +607,8 @@ namespace SceneryEditorX
 	{
 		Renderer::SubmitResourceFree([imageView = m_ImageView]() mutable
 		{
-			auto device = RenderContext::GetCurrentDevice();
-			VkDevice vulkanDevice = device->GetDevice();
-
-			vkDestroyImageView(vulkanDevice, imageView, nullptr);
+			const auto device = RenderContext::GetCurrentDevice()->GetDevice();
+			vkDestroyImageView(device, imageView, nullptr);
 		});
 
 		m_ImageView = nullptr;
@@ -618,7 +616,7 @@ namespace SceneryEditorX
 
 	void ImageView::Invalidate()
 	{
-		Ref<ImageView> instance = this;
+        Ref<ImageView> instance(this);
 		Renderer::Submit([instance]() mutable
 		{
 		    instance->Invalidate_RenderThread();
@@ -627,9 +625,7 @@ namespace SceneryEditorX
 
 	void ImageView::Invalidate_RenderThread()
 	{
-		auto device = RenderContext::GetCurrentDevice();
-		VkDevice vulkanDevice = device->GetDevice();
-
+		const auto device = RenderContext::GetCurrentDevice()->GetDevice();
 		Ref<Image2D> vulkanImage = m_Specification.image.As<Image2D>();
 		const auto& imageSpec = vulkanImage->GetSpecification();
 
@@ -637,8 +633,7 @@ namespace SceneryEditorX
         if (imageSpec.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat())
 			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-		VkFormat vulkanFormat = VulkanImageFormat(imageSpec.format);
-
+		VkFormat vulkanFormat = imageSpec.format;
 		VkImageViewCreateInfo imageViewCreateInfo = {};
 		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		imageViewCreateInfo.viewType = imageSpec.layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
@@ -651,13 +646,12 @@ namespace SceneryEditorX
 		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 		imageViewCreateInfo.subresourceRange.layerCount = imageSpec.layers;
 		imageViewCreateInfo.image = vulkanImage->GetImageInfo().image;
-		VK_CHECK_RESULT(vkCreateImageView(vulkanDevice, &imageViewCreateInfo, nullptr, &m_ImageView))
-		SetDebugUtilsObjectName(vulkanDevice, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} default image view", m_Specification.name), m_ImageView);
+        VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageView))
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} default image view", m_Specification.debugName), m_ImageView);
 
 		m_DescriptorImageInfo = vulkanImage->GetDescriptorInfoVulkan();
 		m_DescriptorImageInfo.imageView = m_ImageView;
 	}
-	*/
 
 }
 

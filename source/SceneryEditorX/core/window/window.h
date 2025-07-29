@@ -11,8 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <chrono>
-#include <functional>
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/window/icon.h>
@@ -38,13 +36,13 @@ namespace SceneryEditorX
 
 	struct WindowData
     {
-        GLOBAL inline WindowMode mode = WindowMode::Windowed;
-        GLOBAL Window &window;
+        GLOBAL inline GLFWwindow* window;
         std::string title = "Scenery Editor X";
         uint32_t width = 1280;
         uint32_t height = 720;
         int posX = 0;
         int posY = 30;
+        WindowMode mode = WindowMode::Windowed;
         bool framebufferResized = false;
         bool dirty = true;
         bool resizable = true;
@@ -84,9 +82,9 @@ namespace SceneryEditorX
 
     class SwapChain;
 
-    bool glfwGetKey(const Window & window, uint16_t key);
-    bool glfwGetMouseButton(const Window & window, uint16_t uint16);
-    bool glfwWindowShouldClose(const Window & window);
+    //bool glfwGetKey(GLFWwindow* window, uint16_t key);
+    //bool glfwGetMouseButton(GLFWwindow* window, uint16_t uint16);
+    //bool glfwWindowShouldClose(GLFWwindow* window);
 
     /// -------------------------------------------------------
 
@@ -95,7 +93,8 @@ namespace SceneryEditorX
 	public:
 	    using EventCallbackFn = std::function<void(Event&)>;
 
-        explicit Window(const WindowData &winData);
+        Window();
+        Window(WindowData winData);
         virtual ~Window();
 
         virtual void Init();
@@ -107,35 +106,36 @@ namespace SceneryEditorX
         virtual const std::string &GetTitle() const { return winData.title; }
         virtual void SetTitle(const std::string &title);
 
-        GLOBAL Window GetWindow()	  { return WindowData::window; }
+        GLFWwindow* GetWindow() const { return m_window; }
 	    uint32_t GetWidth()		const { return m_winSpecs.width; }
 		uint32_t GetHeight()	const { return m_winSpecs.height; }
 
 	    INTERNAL void ProcessEvents();
 		virtual void ChangeWindowMode();
         virtual void ApplyChanges();
-        virtual VkExtent2D GetSize() const								{ return {m_winSpecs.width, m_winSpecs.height}; }
         virtual SwapChain &GetSwapChain();
-	    virtual Ref<RenderContext> GetRenderContext() { return renderContext; }
+        virtual VkExtent2D GetSize() const								{ return {m_winSpecs.width, m_winSpecs.height}; }
+	    virtual Ref<RenderContext> GetRenderContext()                   { return renderContext; }
 
 	    RenderData			GetRenderData()								{ return renderData; }
 		IconData			GetIconData()								{ return iconData; }
 
-        GLOBAL Window	   *Create(const WindowData &windowSpecs = WindowData());
+        GLOBAL Window*		Create(const WindowData &windowSpecs = WindowData());
         GLOBAL std::string  VideoModeText(const GLFWvidmode &mode);
 		void				UpdateFramebufferSize();
-	    void				SetFramebufferResized(const bool resized)   { winData.framebufferResized = resized; }
-		GLOBAL void			WaitEvents()								{ glfwWaitEvents(); }
-	    Vec2				GetDeltaMouse()								{ return winData.deltaMousePos; }
-		bool				GetFramebufferResized()						{ return winData.framebufferResized; }
-		bool				IsKeyDown(uint16_t keyCode)					{ return glfwGetKey(WindowData::window,keyCode); }
-		bool				IsMouseDown(uint16_t buttonCode)			{ return glfwGetMouseButton(WindowData::window,buttonCode); }
+        void			    SetFramebufferResized(const bool resized)   { winData.framebufferResized = resized; }
+		void			    WaitEvents()								{ glfwWaitEvents(); }
+	    Vec2			    GetDeltaMouse()								{ return winData.deltaMousePos; }
+        bool			    GetFramebufferResized()						{ return winData.framebufferResized; }
+		bool				IsKeyDown(uint16_t keyCode) const			{ return glfwGetKey(m_window, keyCode); }
+		bool				IsMouseDown(uint16_t buttonCode) const		{ return glfwGetMouseButton(m_window, buttonCode); }
         bool				IsDirty()									{ return winData.dirty; }
 	    bool				IsKeyPressed(uint16_t keyCode) const;
-	    bool				GetShouldClose()							{ return glfwWindowShouldClose(WindowData::window); }
+	    bool				GetShouldClose() const						{ return glfwWindowShouldClose(m_window); }
 	    GLOBAL float		GetDeltaTime()								{ return deltaTime; }
 
 	private:
+        GLFWwindow* m_window = nullptr;
         IconData iconData;
         SwapChain *swapChain;
         RenderData renderData;
@@ -144,7 +144,7 @@ namespace SceneryEditorX
 
 		GLFWcursor *ImGuiMouseCursors[9] = { nullptr };
 
-        LOCAL WindowData winData;
+        WindowData winData;
         int leftAlt;
 
         struct WindowSpecs
@@ -163,12 +163,11 @@ namespace SceneryEditorX
         virtual void SwapBuffers();
         virtual std::pair<float, float> GetWindowPos() const;
 
-        INTERNAL inline std::chrono::high_resolution_clock::time_point lastTime;
-        INTERNAL inline std::vector<std::string> pathsDrop;
-        INTERNAL inline float deltaTime = .0f;
-        INTERNAL inline char lastKeyState[GLFW_KEY_LAST + 1];
-        INTERNAL inline WindowMode mode = WindowMode::Windowed;
-
+        INTERNAL std::chrono::high_resolution_clock::time_point lastTime;
+        INTERNAL std::vector<std::string> pathsDrop;
+        INTERNAL float deltaTime;
+        INTERNAL char lastKeyState[GLFW_KEY_LAST + 1];
+        INTERNAL WindowMode mode;
         INTERNAL void SetWindowIcon(GLFWwindow *window);
         INTERNAL void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
         INTERNAL void ScrollCallback(GLFWwindow *window, double x, double y);

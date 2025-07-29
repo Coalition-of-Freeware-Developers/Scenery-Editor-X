@@ -51,11 +51,11 @@ namespace SceneryEditorX
     /// ---------------------------------------------------------
 
     /// Constants for common sizes
-    constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;       // 256KB
-    constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024; // 1MB
-    constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024; // 16MB
+    constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;					/// 256KB
+    constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024;			/// 1MB
+    constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024;			/// 16MB
     /// This is a default value and will be overridden by users settings.
-    constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024; // 16MB
+    constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024;	/// 16MB
 
     /// ---------------------------------------------------------
 
@@ -212,8 +212,8 @@ namespace SceneryEditorX
 		T* MapMemory(const VmaAllocation allocation)
 		{
 			T* mappedMemory;
-            vmaMapMemory(GetAllocator(), allocation, static_cast<void **>(&mappedMemory));
-			return mappedMemory;
+            vmaMapMemory(GetAllocator(), allocation, reinterpret_cast<void **>(&mappedMemory));
+            return mappedMemory;
 		}
 
 		/// ---------------------------------------------------------
@@ -226,7 +226,7 @@ namespace SceneryEditorX
 		/// ---------------------------------------------------------
 
     private:
-        std::string Tag_;
+        std::string tag_;
         std::vector<VmaAllocation> defragmentationCandidates;
         VmaDefragmentationContext defragmentationContext = nullptr;
         AllocationStrategy currentStrategy = AllocationStrategy::Default;

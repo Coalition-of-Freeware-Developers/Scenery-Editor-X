@@ -12,15 +12,10 @@
 */
 #pragma once
 #include <algorithm>
-#include <cstring>
 #include <exception>
 #include <memory>
-#include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/utils/reflection/type_core.h>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <vector>
 

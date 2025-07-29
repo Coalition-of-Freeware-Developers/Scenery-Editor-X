@@ -18,8 +18,6 @@
 namespace SceneryEditorX
 {
 
-    /// -------------------------------------------------------
-
     VkDescriptorSet CreateDescriptor(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout)
     {
         /// Create Descriptor Set:
@@ -103,7 +101,7 @@ namespace SceneryEditorX
         bindingFlags.pBindingFlags = flags;
 
         ///< Create the descriptor set layout
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        VkDescriptorSetLayoutCreateInfo layoutInfo;
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = 3;
         layoutInfo.pBindings = bindings;
@@ -150,7 +148,7 @@ namespace SceneryEditorX
         
         VkDescriptorPool descriptorPool;
 
-        if (VkResult result = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool); result != VK_SUCCESS)
+        if (const VkResult result = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool); result != VK_SUCCESS)
 		{
             SEDX_CORE_ERROR("Failed to create bindless descriptor pool!");
             return VK_NULL_HANDLE;
@@ -161,7 +159,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    void InitializeBindlessResources(VkDevice device, BindlessResources &bindlessResources)
+    void InitializeBindlessResources(const VkDevice device, BindlessResources &bindlessResources)
     {
         /// Create descriptor set layout for bindless resources
         bindlessResources.bindlessDescriptorLayout = CreateBindlessDescriptorSetLayout(device);
@@ -176,7 +174,7 @@ namespace SceneryEditorX
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &bindlessResources.bindlessDescriptorLayout;
 
-        if (VkResult result = vkAllocateDescriptorSets(device, &allocInfo, &bindlessResources.bindlessDescriptorSet); result != VK_SUCCESS)
+        if (const VkResult result = vkAllocateDescriptorSets(device, &allocInfo, &bindlessResources.bindlessDescriptorSet); result != VK_SUCCESS)
 		{
             SEDX_CORE_ERROR("Failed to allocate bindless descriptor set!");
             return;
@@ -187,7 +185,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    void CleanupBindlessResources(VkDevice device, BindlessResources &bindlessResources)
+    void CleanupBindlessResources(const VkDevice device, BindlessResources &bindlessResources)
     {
         if (bindlessResources.bindlessDescriptorPool != VK_NULL_HANDLE)
 		{
@@ -206,7 +204,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    void UpdateBindlessTexture(VkDevice device, const BindlessResources &bindlessResources, uint32_t arrayElement, VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout)
+    void UpdateBindlessTexture(const VkDevice device, const BindlessResources &bindlessResources, uint32_t arrayElement, VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout)
     {
         /// Early check if we have a valid descriptor set
         if (bindlessResources.bindlessDescriptorSet == VK_NULL_HANDLE)
@@ -223,7 +221,7 @@ namespace SceneryEditorX
         }
         
         /// Set up the descriptor image info
-        VkDescriptorImageInfo imageInfo{};
+        VkDescriptorImageInfo imageInfo;
         imageInfo.sampler = sampler;
         imageInfo.imageView = imageView;
         imageInfo.imageLayout = imageLayout;
@@ -244,7 +242,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    void UpdateBindlessStorageBuffer(VkDevice device, const BindlessResources& bindlessResources, uint32_t arrayElement, VkBuffer buffer,  VkDeviceSize offset, VkDeviceSize range)
+    void UpdateBindlessStorageBuffer(const VkDevice device, const BindlessResources& bindlessResources, uint32_t arrayElement, VkBuffer buffer,  VkDeviceSize offset, VkDeviceSize range)
     {
         /// Early check if we have a valid descriptor set
         if (bindlessResources.bindlessDescriptorSet == VK_NULL_HANDLE)
@@ -261,7 +259,7 @@ namespace SceneryEditorX
         }
         
         /// Set up the descriptor buffer info
-        VkDescriptorBufferInfo bufferInfo = {};
+        VkDescriptorBufferInfo bufferInfo;
         bufferInfo.buffer = buffer;
         bufferInfo.offset = offset;
         bufferInfo.range = range;
@@ -317,8 +315,6 @@ namespace SceneryEditorX
         vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
 
-    /// -------------------------------------------------------
-
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

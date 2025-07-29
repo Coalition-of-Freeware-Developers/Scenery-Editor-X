@@ -50,9 +50,11 @@ namespace SceneryEditorX
         virtual void End(VkSubmitInfo submitInfo);
         virtual void Submit();
 
-        [[nodiscard]] CommandResources &GetCurrentCommandResources() const;
+        [[nodiscard]] static CommandResources &GetCurrentCommandResources();
         [[nodiscard]] VkCommandBuffer GetActiveCmdBuffer() const { return activeCmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
+
+		GLOBAL Ref<CommandBuffer> CreateFromSwapChain(const std::string &debugName = "");
 
 	private:
         Ref<CommandBuffer> cmdBuffers;
@@ -82,8 +84,6 @@ namespace SceneryEditorX
         friend class RenderContext;
 	};
 
-	/// ---------------------------------------------------------
-
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

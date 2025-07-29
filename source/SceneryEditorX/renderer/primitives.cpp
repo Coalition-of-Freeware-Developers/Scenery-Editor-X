@@ -10,9 +10,6 @@
 * Created: 20/5/2025
 * -------------------------------------------------------
 */
-#include <glm/glm.hpp>
-#include <numbers>
-#include <SceneryEditorX//scene/model_asset.h>
 #include <SceneryEditorX/renderer/primitives.h>
 
 /// -------------------------------------------------------

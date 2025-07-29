@@ -12,8 +12,6 @@
 */
 #pragma once
 #include <SceneryEditorX/core/identifiers/uuid.h>
-#include <SceneryEditorX/serialization/serializer_writer.h>
-#include <SceneryEditorX/utils/pointers.h>
 
 /// -------------------------------------------------------
 
@@ -21,7 +19,7 @@ namespace SceneryEditorX
 {
 
 	// ReSharper disable once CppRedundantQualifier
-	using AssetHandle = SceneryEditorX::UUID;
+	using AssetHandle = UUID;
 
     /// -------------------------------------------------------
 
@@ -108,7 +106,8 @@ namespace SceneryEditorX
 	    std::string name = "Uninitialized";
         UUID uuid = UUID();
 	    ObjectType type = ObjectType::None;
-	    //TODO: rethink this gpu dirty flag...
+
+	    // TODO: rethink this gpu dirty flag...
 	    bool gpuDirty = true;
 
         Object &operator=(const Object &rhs)

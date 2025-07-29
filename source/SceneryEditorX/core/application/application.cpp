@@ -45,7 +45,7 @@ namespace SceneryEditorX
             /// Update window properties if provided
             // m_Window->winData.width = appData.WinWidth;
             // m_Window->winData.height = appData.WinHeight;
-            // Use public API to set window size if available
+            // Use public API to set window size if available.
             // If not, set via m_winSpecs (public struct)
             // But m_winSpecs is private, so use SetSize if exists
             // Otherwise, fallback to constructor or expose a setter
@@ -154,7 +154,7 @@ namespace SceneryEditorX
 	void Application::OnEvent(Event& event)
 	{
 		EventDispatcher dispatcher(event);
-		dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& e) { return OnWindowResize(e); });
+		dispatcher.Dispatch<WindowResizeEvent>([this](const WindowResizeEvent& e) { return OnWindowResize(e); });
 		dispatcher.Dispatch<WindowMinimizeEvent>([this](const WindowMinimizeEvent& e) { return OnWindowMinimize(e); });
 		dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& e) { return OnWindowClose(e); });
 
@@ -181,7 +181,7 @@ namespace SceneryEditorX
 
 	}
 
-	bool Application::OnWindowResize(WindowResizeEvent& e)
+	bool Application::OnWindowResize(const WindowResizeEvent& e)
 	{
 		const uint32_t width = e.GetWidth(), height = e.GetHeight();
 		if (width == 0 || height == 0)

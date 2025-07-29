@@ -111,7 +111,7 @@ namespace SceneryEditorX
                 SEDX_CORE_INFO("No pipeline cache data found, creating a new empty cache");
         }
 
-        VkPipelineCacheCreateInfo cacheCreateInfo = {};
+        VkPipelineCacheCreateInfo cacheCreateInfo;
         cacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
         cacheCreateInfo.pNext = nullptr;
         cacheCreateInfo.flags = 0;

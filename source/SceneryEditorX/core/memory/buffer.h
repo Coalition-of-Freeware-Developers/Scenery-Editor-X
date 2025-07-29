@@ -116,6 +116,8 @@ namespace SceneryEditorX::Memory
         [[nodiscard]] uint64_t GetSize() const { return size; }
 	};
 
+    /// -------------------------------------------------------
+
 	struct BufferSafe : Buffer
 	{
 		~BufferSafe();
@@ -129,10 +131,9 @@ namespace SceneryEditorX::Memory
 		}
 	};
 
-    inline BufferSafe::~BufferSafe()
-    {
-        Release();
-    }
+    /// -------------------------------------------------------
+
+    inline BufferSafe::~BufferSafe() { Release(); }
 
 }
 

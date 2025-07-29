@@ -31,7 +31,9 @@ namespace SceneryEditorX
 	    /// -------------------------------------------------------
 
 		const ProjectConfig &GetConfig() const { return config; }
-        int GetActiveAssetDirectory();
+
+        GLOBAL void GetAssetRegistryPath();
+        GLOBAL int GetActiveAssetDirectory();
 
         GLOBAL Ref<Project> GetActive() { return activeProject; }
         GLOBAL void SetActive(const Ref<Project> &project);
@@ -40,8 +42,12 @@ namespace SceneryEditorX
 	    void Load(const std::filesystem::path &InPath);
 	    void Save(const std::filesystem::path &InPath);
 
+        /*
         GLOBAL Ref<AssetManager> GetAssetManager() { return s_AssetManager; }
         GLOBAL Ref<EditorAssetManager> GetEditorAssetManager() { return s_AssetManager.As<EditorAssetManager>(); }
+        */
+
+        std::filesystem::path &GetAssetDirectory();
 
 	    /// -------------------------------------------------------
 
@@ -63,7 +69,7 @@ namespace SceneryEditorX
         std::filesystem::path projectPath;
         std::filesystem::path binPath;
 
-	    static Ref<AssetManager> s_AssetManager;
+	    //static Ref<AssetManager> s_AssetManager;
         inline LOCAL Ref<Project> activeProject;
 
 	};

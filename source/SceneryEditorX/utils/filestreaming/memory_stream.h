@@ -25,12 +25,12 @@ namespace SceneryEditorX
 	public:
 		MemoryStreamWriter(Memory::Buffer& buffer, size_t size);
 		MemoryStreamWriter(const MemoryStreamWriter&) = delete;
-		~MemoryStreamWriter();
+        virtual ~MemoryStreamWriter() override;
 
-		bool IsStreamGood() const final { return m_WritePos < m_Buffer.size; }
-		uint64_t GetStreamPosition() final { return m_WritePos; }
-		void SetStreamPosition(uint64_t position) final { m_WritePos = position; }
-		bool WriteData(const char* data, size_t size) final;
+        [[nodiscard]] virtual bool IsStreamGood() const override final { return m_WritePos < m_Buffer.size; }
+        virtual uint64_t GetStreamPosition() override final { return m_WritePos; }
+        virtual void SetStreamPosition(uint64_t position) override final { m_WritePos = position; }
+        virtual bool WriteData(const char* data, size_t size) override final;
 
 	private:
         Memory::Buffer& m_Buffer;
@@ -45,12 +45,12 @@ namespace SceneryEditorX
 	public:
 		MemoryStreamReader(const Memory::Buffer& buffer);
 		MemoryStreamReader(const MemoryStreamReader&) = delete;
-		~MemoryStreamReader();
+        virtual ~MemoryStreamReader() override;
 
-		bool IsStreamGood() const final { return m_ReadPos < m_Buffer.size; }
-		uint64_t GetStreamPosition() final { return m_ReadPos; }
-		void SetStreamPosition(uint64_t position) final { m_ReadPos = position; }
-		bool ReadData(char* destination, size_t size) final;
+        [[nodiscard]] virtual bool IsStreamGood() const override final { return m_ReadPos < m_Buffer.size; }
+        virtual uint64_t GetStreamPosition() override final { return m_ReadPos; }
+        virtual void SetStreamPosition(uint64_t position) override final { m_ReadPos = position; }
+        virtual bool ReadData(char* destination, size_t size) override final;
 
 	private:
 		const Memory::Buffer& m_Buffer;

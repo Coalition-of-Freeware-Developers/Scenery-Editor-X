@@ -10,12 +10,6 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <nlohmann/json.hpp>
-#include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/scene/node.h>
-#include <SceneryEditorX/serialization/json_serializer.h>
-#include <SceneryEditorX/serialization/mesh_serializer.h>
 
 /// -------------------------------------------------------
 

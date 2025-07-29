@@ -11,10 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_checks.h>
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <vector>
 
 /// -------------------------------------------------------
 
@@ -22,9 +19,6 @@ struct GLFWwindow;
 
 namespace SceneryEditorX
 {
-    /// Forward declaration
-    //class Renderer;
-
     class RenderContext : public RefCounted
 	{
 	public:

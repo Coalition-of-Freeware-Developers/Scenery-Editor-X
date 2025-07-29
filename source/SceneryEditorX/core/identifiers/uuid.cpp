@@ -20,14 +20,10 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/identifiers/uuid.h>
-#include <SceneryEditorX/utils/static_states.h>
 #include <random>
 #include <algorithm>
 #include <string>
-#include <string_view>
 #include <stdexcept>
-#include <cstring>
-#include <vector>
 #include <array>
 
 /// -------------------------------------------------------
@@ -67,6 +63,7 @@ namespace SceneryEditorX
 	// UUIDUtilities Implementation
 	// -------------------------------------------------------
 
+	/*
 	std::string UUIDUtilities::EncodeBase64(const unsigned char* input, size_t length)
 	{
 		std::string ret;
@@ -177,6 +174,7 @@ namespace SceneryEditorX
 	{
 		h = static_cast<uint32_t>(std::hash<std::string_view>()(std::string_view(static_cast<char*>(ptr), size)));
 	}
+	*/
 
 	// -------------------------------------------------------
 	// UUID128 Implementation
@@ -194,6 +192,7 @@ namespace SceneryEditorX
 
 	UUID128::UUID128(const UUID128& other) = default;
 
+	/*
 	std::string UUID128::ToBase64() const
 	{
 		return UUIDUtilities::EncodeBase64(reinterpret_cast<const unsigned char*>(m_UUID.data()), sizeof(m_UUID));
@@ -213,6 +212,7 @@ namespace SceneryEditorX
 
 		return UUID128(values);
 	}
+	*/
 
 	// -------------------------------------------------------
 	// UUID (64-bit) Implementation

@@ -86,7 +86,7 @@ namespace SceneryEditorX
 
         EnterCriticalSection(&m_Data->m_CriticalSection);
         while (m_Data->m_State != waitForState) // This releases the CS so that another thread can wake it
-            SleepConditionVariableCS(&m_Data->m_ConditionVariable, &m_Data->m_CriticalSection, INFINITE);
+            SleepConditionVariableCS(&m_Data->m_ConditionVariable, &m_Data->m_CriticalSection, INFINITY);
 
         LeaveCriticalSection(&m_Data->m_CriticalSection);
 	}
@@ -98,7 +98,7 @@ namespace SceneryEditorX
 
         EnterCriticalSection(&m_Data->m_CriticalSection);
         while (m_Data->m_State != waitForState)
-            SleepConditionVariableCS(&m_Data->m_ConditionVariable, &m_Data->m_CriticalSection, INFINITE);
+            SleepConditionVariableCS(&m_Data->m_ConditionVariable, &m_Data->m_CriticalSection, INFINITY);
 
 	    m_Data->m_State = setToState;
         WakeAllConditionVariable(&m_Data->m_ConditionVariable);

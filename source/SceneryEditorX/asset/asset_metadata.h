@@ -16,7 +16,8 @@
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
-{
+{/*
+
 	enum class AssetStatus : uint8_t
 	{
 		None = 0,
@@ -27,13 +28,13 @@ namespace SceneryEditorX
 
 	struct AssetMetadata
 	{
-        AssetHandle Handle = 0;
+        AssetHandle Handle;
 		AssetType Type;
 		std::filesystem::path FilePath;
 
 		AssetStatus Status = AssetStatus::None;
 
-		uint64_t FileLastWriteTime = 0; // TODO: this is the last write time of the file WE LOADED
+		uint64_t FileLastWriteTime = 0; /// TODO: this is the last write time of the file WE LOADED
 		bool IsDataLoaded = false;
 
 		bool IsValid() const { return Handle != 0; }
@@ -44,6 +45,7 @@ namespace SceneryEditorX
 		AssetMetadata Metadata;
 		Ref<Asset> Asset;
 	};
+	*/
 
 }
 

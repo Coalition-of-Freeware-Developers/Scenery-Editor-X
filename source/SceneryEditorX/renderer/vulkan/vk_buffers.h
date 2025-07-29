@@ -14,7 +14,6 @@
 #include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <SceneryEditorX/renderer/vulkan/vk_enums.h>
-#include <SceneryEditorX/utils/pointers.h>
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------
@@ -22,13 +21,9 @@
 namespace SceneryEditorX
 {
 	using Flags = uint32_t;
-
-	enum MemoryType : uint8_t
-    {
-	    GPU = 0x00000001,
-	    CPU = 0x00000002 | 0x00000004,
-	};
 	using MemoryFlags = Flags;
+
+    /// -------------------------------------------------------
 
     // ReSharper disable twice IdentifierTypo
     namespace BufferUsage
@@ -139,7 +134,7 @@ namespace SceneryEditorX
 		 */
         virtual ResourceDescriptorInfo GetDescriptorInfo() const override
         {
-            // Provide a valid descriptor info for the buffer
+            /// Provide a valid descriptor info for the buffer
             return nullptr;
         }  
 
@@ -147,14 +142,22 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    /**
+	 * @struct Buffer
+	 * @brief Represents a Vulkan buffer with memory management and utility functions
+	 * 
+	 * The Buffer struct encapsulates a Vulkan buffer resource, providing methods for
+	 * allocation, copying, reading, writing, and zero-initialization. It also includes
+	 * utility functions for buffer management and data manipulation.
+	 */
     struct Buffer
     {
-        void *data = nullptr;               ///< Pointer to the mapped memory region for CPU access, if applicable
-        Ref<BufferResource> resource;		///< The Vulkan buffer resource
-        uint64_t size = 0;					///< Size of the buffer in bytes
-        BufferUsageFlags usage;				///< Usage flags for the buffer (e.g., vertex, index, uniform)
-        MemoryFlags memory;					///< Memory type flags indicating where the buffer is allocated (e.g., GPU, CPU)
-        [[nodiscard]] uint32_t ID() const;  ///< Unique identifier for the buffer, used for tracking and debugging
+        void *data = nullptr;               /// Pointer to the mapped memory region for CPU access, if applicable
+        Ref<BufferResource> resource;		/// The Vulkan buffer resource
+        uint64_t size = 0;					/// Size of the buffer in bytes
+        BufferUsageFlags usage;				/// Usage flags for the buffer (e.g., vertex, index, uniform)
+        MemoryFlags memory;					/// Memory type flags indicating where the buffer is allocated (e.g., GPU, CPU)
+        [[nodiscard]] uint32_t ID() const;  /// Unique identifier for the buffer, used for tracking and debugging
 
 		Buffer() = default;
         explicit Buffer(const void* data, const uint64_t size = 0) : data(const_cast<void *>(data)), size(size), usage(0), memory(0) {}

@@ -23,7 +23,8 @@
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
-{
+{/*
+
     class EditorAssetSystem;
 
     class EditorAssetManager : public RefCounted
@@ -33,28 +34,28 @@ namespace SceneryEditorX
 
 		virtual void Shutdown();
 
-		virtual AssetType GetAssetType(AssetHandle assetHandle);
-        virtual Ref<Asset> GetAsset(AssetHandle assetHandle);
-        virtual AsyncAssetResult<Asset> GetAssetAsync(AssetHandle assetHandle);
+		virtual AssetType GetAssetType(const AssetHandle &assetHandle);
+        virtual Ref<Asset> GetAsset(const AssetHandle &assetHandle);
+        virtual AsyncAssetResult<Asset> GetAssetAsync(const AssetHandle &assetHandle);
 
-		virtual void AddMemoryOnlyAsset(Ref<Asset> asset);
-		virtual bool ReloadData(AssetHandle assetHandle);
-        virtual void ReloadDataAsync(AssetHandle assetHandle);
-        virtual bool EnsureCurrent(AssetHandle assetHandle);
+		virtual void AddMemoryOnlyAsset(const Ref<Asset> &asset);
+		virtual bool ReloadData(AssetHandle &assetHandle);
+        virtual void ReloadDataAsync(const AssetHandle &assetHandle);
+        virtual bool EnsureCurrent(const AssetHandle &assetHandle);
 		virtual bool EnsureAllLoadedCurrent();
 		virtual bool IsAssetHandleValid(AssetHandle assetHandle) { return GetMemoryAsset(assetHandle) || GetMetadata(assetHandle).IsValid(); }
-        virtual Ref<Asset> GetMemoryAsset(AssetHandle handle);
-        virtual bool IsAssetLoaded(AssetHandle handle);
-        virtual bool IsAssetValid(AssetHandle handle);
-        virtual bool IsAssetMissing(AssetHandle handle);
-        virtual bool IsMemoryAsset(AssetHandle handle);
-        virtual bool IsPhysicalAsset(AssetHandle handle);
-        virtual void RemoveAsset(AssetHandle handle);
+        virtual Ref<Asset> GetMemoryAsset(const AssetHandle &handle);
+        virtual bool IsAssetLoaded(const AssetHandle &handle);
+        virtual bool IsAssetValid(const AssetHandle &handle);
+        virtual bool IsAssetMissing(const AssetHandle &handle);
+        virtual bool IsMemoryAsset(const AssetHandle &handle);
+        virtual bool IsPhysicalAsset(const AssetHandle &handle);
+        virtual void RemoveAsset(const AssetHandle &handle);
 
-		virtual void RegisterDependency(AssetHandle dependency, AssetHandle handle);
-        virtual void DeregisterDependency(AssetHandle dependency, AssetHandle handle);
-        virtual void DeregisterDependencies(AssetHandle handle);
-        virtual std::unordered_set<AssetHandle> GetDependencies(AssetHandle handle);
+		virtual void RegisterDependency(const AssetHandle &dependency, const AssetHandle &handle);
+        virtual void DeregisterDependency(const AssetHandle &dependency, const AssetHandle &handle);
+        virtual void DeregisterDependencies(const AssetHandle &handle);
+        virtual std::unordered_set<AssetHandle> GetDependencies(const AssetHandle &handle);
 
 		virtual void SyncWithAssetThread();
 
@@ -78,12 +79,12 @@ namespace SceneryEditorX
 		// thread-safe access to metadata
 		// This function returns an AssetMetadata (specifically not a reference) as with references there is no guarantee
 		// that the referred to data doesn't get modified (or even destroyed) by another thread
-        AssetMetadata GetMetadata(AssetHandle handle);
+        AssetMetadata GetMetadata(const AssetHandle &handle);
 		// note: do NOT add non-const version of GetMetadata().  For thread-safety you must modify through SetMetaData()
 
 		// thread-safe modification of metadata
 		// TODO: don't really need the handle parameter since handle is in metadata anyway
-        void SetMetadata(AssetHandle handle, const AssetMetadata &metadata);
+        void SetMetadata(const AssetHandle &handle, const AssetMetadata &metadata);
 
 		AssetHandle ImportAsset(const std::filesystem::path &filepath);
 		AssetHandle GetAssetHandleFromFilePath(const std::filesystem::path &filepath);
@@ -92,7 +93,7 @@ namespace SceneryEditorX
 		std::string GetDefaultExtensionForAssetType(AssetType type);
 		AssetType GetAssetTypeFromPath(const std::filesystem::path& path);
 
-		std::filesystem::path GetFileSystemPath(AssetHandle handle);
+		std::filesystem::path GetFileSystemPath(const AssetHandle &handle);
 		std::filesystem::path GetFileSystemPath(const AssetMetadata& metadata);
 		std::string GetFileSystemPathString(const AssetMetadata& metadata);
 		std::filesystem::path GetRelativePath(const std::filesystem::path& filepath);
@@ -142,7 +143,7 @@ namespace SceneryEditorX
 			{
 				SEDX_CORE_INFO_TAG("AssetManager", "Replaced asset {}", metadata.FilePath.string());
 				UpdateDependents(metadata.Handle);
-				Application::Get().DispatchEvent<AssetReloadedEvent, /*DispatchImmediately=*/true>(metadata.Handle);
+				Application::Get().DispatchEvent<AssetReloadedEvent, /*DispatchImmediately=#1#true>(metadata.Handle);
 			}
 
 			return asset;
@@ -152,17 +153,17 @@ namespace SceneryEditorX
 
 
 	private:
-        Ref<Asset> GetAssetIncludingInvalid(AssetHandle assetHandle);
+        Ref<Asset> GetAssetIncludingInvalid(const AssetHandle &assetHandle);
 
 		void LoadAssetRegistry();
 		void ProcessDirectory(const std::filesystem::path& directoryPath);
 		void ReloadAssets();
 		void WriteRegistryToFile();
 
-		void OnAssetRenamed(AssetHandle assetHandle, const std::filesystem::path &newFilePath);
-        void OnAssetDeleted(AssetHandle assetHandle);
+		void OnAssetRenamed(const AssetHandle &assetHandle, const std::filesystem::path &newFilePath);
+        void OnAssetDeleted(const AssetHandle &assetHandle);
 
-		void UpdateDependents(AssetHandle handle);
+		void UpdateDependents(const AssetHandle &handle);
 
 		///< TODO: move to AssetSystem
 		///< NOTE: this collection is accessed only from the main thread, and so does not need any synchronization
@@ -188,6 +189,7 @@ namespace SceneryEditorX
 		friend class ContentBrowserDirectory;
 		friend class EditorAssetSystem;
 	};
+	*/
 
 }
 

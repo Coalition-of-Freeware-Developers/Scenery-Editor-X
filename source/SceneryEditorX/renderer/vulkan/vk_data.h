@@ -12,6 +12,7 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
+#include <glm/gtc/integer.hpp>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 #include <vulkan/vulkan_core.h>
 
@@ -341,8 +342,8 @@ namespace SceneryEditorX
 		/**
 		 * @brief Constructor for initializing the viewport with default values
 		 */
-		constexpr Viewport() : x(0.0f), y(0.0f) {}
-		constexpr Viewport(const float _x, const float _y) : x(_x), y(_y) {}
+		constexpr Viewport() = default;
+        constexpr Viewport(const float _x, const float _y) : x(_x), y(_y) {}
 
 		/**
 		 * @fn GetViewportPosition
@@ -640,6 +641,6 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

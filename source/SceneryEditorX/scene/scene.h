@@ -15,8 +15,6 @@
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/scene/camera.h>
-#include <SceneryEditorX/scene/node.h>
-#include <SceneryEditorX/serialization/serializer.hpp>
 
 /// -------------------------------------------------------
 
@@ -54,7 +52,7 @@ namespace SceneryEditorX
 
         static Ref<Scene> CreateEmpty();
 
-		std::vector<Ref<GraphNode>> nodes;
+		//std::vector<Ref<GraphNode>> nodes;
 		Vec3 ambientLightColor = Vec3(1);
 		float ambientLight = 0.01f;
 		int aoSamples = 4;

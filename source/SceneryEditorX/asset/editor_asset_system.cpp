@@ -10,20 +10,21 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/asset_importer.h>
+//#include <SceneryEditorX/asset/asset_importer.h>
 #include <SceneryEditorX/asset/editor_asset_system.h>
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/events/editor_events.h>
-#include <SceneryEditorX/core/time/timer.h>
-#include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/project/project.h>
+//#include <SceneryEditorX/core/application/application.h>
+//#include <SceneryEditorX/core/events/editor_events.h>
+//#include <SceneryEditorX/core/time/timer.h>
+//#include <SceneryEditorX/logging/profiler.hpp>
+//#include <SceneryEditorX/platform/file_manager.hpp>
+//#include <SceneryEditorX/project/project.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+	/*
 	EditorAssetSystem::EditorAssetSystem() : m_Thread("Asset Thread")
 	{
 		m_Thread.Dispatch([this]() { AssetThreadFunc(); });
@@ -186,7 +187,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	void EditorAssetSystem::EnsureCurrent(AssetHandle assetHandle)
+	void EditorAssetSystem::EnsureCurrent(const AssetHandle &assetHandle)
 	{
 		auto metadata = Project::GetEditorAssetManager()->GetMetadata(assetHandle);
 
@@ -237,7 +238,7 @@ namespace SceneryEditorX
 			auto absolutePath = GetFileSystemPath(metadata);
 
 			// Note: There's a small hole here.  Other thread could start writing to asset's file in the exact instant that TryLoadData() has finished with it.
-			//            GetLastWriteTime() then blocks until the write has finished, but now we have a new write time - not the one that was relevant for TryLoadData()
+			//            GetLastWriteTime() then blocks until the data write has finished, but now we have a new write time - not the one that was relevant for TryLoadData()
 			//            To resolve this, you basically need to lock the metadata until both the TryLoadData() _and_ the GetLastWriteTime() have completed.
 			//            Or you need to update the last write time while you still have the file locked during TryLoadData()
 			metadata.FileLastWriteTime = IO::FileSystem::GetLastWriteTime(absolutePath);
@@ -249,7 +250,7 @@ namespace SceneryEditorX
 				// 1) DispatchEvent() is only thread-safe when DispatchImmediately is false.
 				// 2) Events must be handled carefully so that we are sure that the assets have been synced back to main thread _before_ this event is processed.
 				//    That's why we are dispatching event while we hold a lock on m_LoadedAssetsMutex (see RetrieveReadyAssets())
-				Application::Get().DispatchEvent<AssetReloadedEvent, /*DispatchImmediately=*/false>(metadata.Handle);
+				Application::Get().DispatchEvent<AssetReloadedEvent, /*DispatchImmediately=#1#false>(metadata.Handle);
 			}
 
 			SEDX_CORE_INFO_TAG("AssetSystem", "Finished loading asset {}", metadata.FilePath.string());
@@ -261,6 +262,7 @@ namespace SceneryEditorX
 
 		return asset;
 	}
+	*/
 
 }
 

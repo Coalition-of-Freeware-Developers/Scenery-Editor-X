@@ -219,7 +219,7 @@ namespace SceneryEditorX
             return;
 
         {
-	        bool found = false;
+	        bool found;
 	        {
 	            std::scoped_lock lock(Data_->Mutex_);
                 const auto allocMapIt = Data_->AllocationMap.find(memory);

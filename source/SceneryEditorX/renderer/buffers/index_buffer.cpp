@@ -12,6 +12,7 @@
 */
 #include <SceneryEditorX/renderer/buffers/index_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include <SceneryEditorX/renderer/vulkan/vk_data.h>
 
 /// --------------------------------------------
 

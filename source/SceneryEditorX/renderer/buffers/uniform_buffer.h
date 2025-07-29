@@ -11,10 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
-#include <utility>
 
 /// ----------------------------------------------------------
 
@@ -68,6 +65,28 @@ namespace SceneryEditorX
          */
         void CreateUniformBuffers();
 
+		/**
+		 * @brief Sets the data for the uniform buffer
+		 *
+		 * Copies data into the uniform buffer for the current frame.
+		 *
+		 * @param data Pointer to the data to be copied into the uniform buffer
+		 * @param size Size of the data in bytes to be copied
+		 * @param offset Offset in bytes where the data should be copied within the buffer
+		 */
+		void SetData(const void *data, uint32_t size, uint32_t offset = 0);
+
+        /**
+         * @brief Sets the data for the uniform buffer on the render thread
+         *
+         * Copies data into the uniform buffer for the current frame.
+         *
+         * @param data Pointer to the data to be copied into the uniform buffer
+         * @param size Size of the data in bytes to be copied
+         * @param offset Offset in bytes where the data should be copied within the buffer
+         */
+        void SetRenderThreadData(const void *data, uint32_t size, uint32_t offset = 0);
+
         /**
          * @brief Creates a Vulkan buffer with specified parameters
          *
@@ -78,6 +97,13 @@ namespace SceneryEditorX
          * @param bufferMemory Reference to store the allocated memory handle
          */
         GLOBAL void Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
+
+        /**
+         * @brief Gets the name of the uniform buffer instance
+         *
+         * @return uint32_t The unique identifier for the uniform buffer instance
+         */
+        const VkDescriptorBufferInfo& GetDescriptorBufferInfo() const { return descriptorInfo; }
 
         /**
          * @brief Updates the contents of a uniform buffer for the current frame
@@ -99,17 +125,22 @@ namespace SceneryEditorX
         {
             if (index < uniformBuffers.size())
                 return uniformBuffers[index];
+
             return VK_NULL_HANDLE;
         }
 
         /**
          * @brief Gets the total number of uniform buffers managed by this instance
+         *
          * @return size_t The number of uniform buffers
          */
-        [[nodiscard]] size_t GetBufferCount() const { return uniformBuffers.size(); }
+        [[nodiscard]] size_t GetBufferCount() const
+        {
+            return uniformBuffers.size();
+        }
 
     private:
-        uint32_t name;										///< Unique identifier for the uniform buffer instance
+        uint32_t name = 0;									///< Unique identifier for the uniform buffer instance
         uint32_t size = 0;                                  ///< Size of the uniform buffer in bytes
         uint8_t *localMemAlloc = nullptr;					///< Pointer to local memory allocation for the uniform buffer
         VmaAllocation allocation = nullptr;                 ///< Reference to the memory allocator
@@ -117,51 +148,6 @@ namespace SceneryEditorX
         std::vector<VkBuffer> uniformBuffers;				///< Array of uniform buffer handles (one per frame)
         std::vector<VkDeviceMemory> uniformBuffersMemory;	///< Array of memory handles for uniform buffers
         std::vector<VmaAllocation> uniformBuffersAllocation;///< Array of allocation handles for uniform buffers (one per frame)
-    };
-
-	class UniformBufferSet : public RefCounted
-    {
-	public:
-        UniformBufferSet(uint32_t size, uint32_t framesInFlight) : m_framesInFlight(framesInFlight)
-        {
-            if (framesInFlight == 0)
-                m_framesInFlight = Renderer::GetRenderData().framesInFlight;
-
-            for (uint32_t frame = 0; frame < m_framesInFlight; frame++)
-                m_UniformBuffers[frame] = CreateRef<UniformBuffer>(size);
-        }
-
-	    virtual ~UniformBufferSet() override = default;
-
-		/// ----------------------------------------------------------
-
-        virtual Ref<UniformBuffer> Get()
-        {
-            const uint32_t frame = Renderer::GetCurrentFrameIndex();
-            return Get(frame);
-        }
-
-        virtual Ref<UniformBuffer> Get_RenderThread()
-        {
-            const uint32_t frame = Renderer::GetCurrentRenderThreadFrameIndex();
-            return Get(frame);
-        }
-
-		virtual Ref<UniformBuffer> Get(uint32_t frame)
-        {
-            SEDX_CORE_ASSERT(m_UniformBuffers.contains(frame));
-            return m_UniformBuffers.at(frame);
-        }
-
-        virtual void Set(Ref<UniformBuffer> uniformBuffer, uint32_t frame = 0)
-        {
-            m_UniformBuffers[frame] = std::move(uniformBuffer);
-        }
-
-	private:
-        uint32_t m_framesInFlight = 0;
-        std::map<uint32_t, Ref<UniformBuffer>> m_UniformBuffers;
-
     };
 
 }

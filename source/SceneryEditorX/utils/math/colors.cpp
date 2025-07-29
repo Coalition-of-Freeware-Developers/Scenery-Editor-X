@@ -15,12 +15,18 @@
 #include "colors.h"
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 
 /// -----------------------------------------------------
 
 namespace SceneryEditorX::Utils
 {
+	/**
+	 * @brief Predefined hue values for HSV color wheel calculations
+	 *
+	 * These values represent the primary and secondary colors at specific
+	 * hue positions on the color wheel, used internally by the HSV conversion
+	 * algorithm to interpolate between color segments.
+	 */
 	static const Color hueValues[] = {
 		Color(1, 0, 0), Color(1, 1, 0), Color(0, 1, 0),
     	Color(0, 1, 1), Color(0, 0, 1), Color(1, 0, 1),
@@ -46,48 +52,56 @@ namespace SceneryEditorX::Utils
         Color rgb{};
         rgb.a = 1.0f;
 
+		// Clamp hue to valid range [0, 360)
 		if (h >= 360)
 			h = 359.999f;
 
-		const float rgbRange = v * s;
-		const float maxRGB = v;
-		const float minRGB = v - rgbRange;
-		const float hPrime = h / 60.0;
-		const float x1 = fmod(hPrime, 1.0);
-		const float x2 = 1.0 - fmod(hPrime, 1.0);
+		const float rgbRange = v * s;      // Chroma (color intensity)
+		const float maxRGB = v;            // Maximum RGB component (brightness)
+		const float minRGB = v - rgbRange; // Minimum RGB component
+		const float hPrime = h / 60.0;     // Hue sector [0, 6)
+		const float x1 = fmod(hPrime, 1.0);     // Rising interpolation factor
+		const float x2 = 1.0 - fmod(hPrime, 1.0); // Falling interpolation factor
 
+		// Determine RGB values based on hue sector
 		if ((hPrime >= 0) && (hPrime < 1))
 		{
+			// Red to Yellow sector
 			rgb.r = maxRGB;
 			rgb.g = (x1 * rgbRange) + minRGB;
 			rgb.b = minRGB;
 		}
 		else if ((hPrime >= 1) && (hPrime < 2))
 		{
+			// Yellow to Green sector
 			rgb.r = (x2 * rgbRange) + minRGB;
 			rgb.g = maxRGB;
 			rgb.b = minRGB;
 		}
 		else if ((hPrime >= 2) && (hPrime < 3))
 		{
+			// Green to Cyan sector
 			rgb.r = minRGB;
 			rgb.g = maxRGB;
 			rgb.b = (x1 * rgbRange) + minRGB;
 		}
 		else if ((hPrime >= 3) && (hPrime < 4))
 		{
+			// Cyan to Blue sector
 			rgb.r = minRGB;
 			rgb.g = (x2 * rgbRange) + minRGB;
 			rgb.b = maxRGB;
 		}
 		else if ((hPrime >= 4) && (hPrime < 5))
 		{
+			// Blue to Magenta sector
 			rgb.r = (x1 * rgbRange) + minRGB;
 			rgb.g = minRGB;
 			rgb.b = maxRGB;
 		}
 		else if ((hPrime >= 5) && (hPrime < 6))
 		{
+			// Magenta to Red sector
 			rgb.r = maxRGB;
 			rgb.g = minRGB;
 			rgb.b = (x2 * rgbRange) + minRGB;
@@ -105,35 +119,49 @@ namespace SceneryEditorX::Utils
 
     Vec3 Color::ToHSV() const
     {
-        const float cmax = std::max({r,g, b}); ///< maximum of r, g, b
-        const float cmin = std::min({r,g, b}); ///< minimum of r, g, b
-        const float diff = cmax - cmin;             ///< diff of cmax and cmin.
-        float h = -1, s = -1;
+        const float cmax = std::max({r,g, b});	/// Maximum RGB component
+        const float cmin = std::min({r,g, b});	/// Minimum RGB component
+        const float diff = cmax - cmin;				/// Chroma (difference between max and min)
+        float h = -1, s;
 
-        ///< if cmax and cmax are equal then h = 0
+        /// Calculate Hue
         if (cmax == cmin)
+        {
+        	/// Achromatic (gray) - no hue
             h = 0;
-
-        ///< if cmax equal r then compute h
+        }
         else if (cmax == r)
+        {
+        	/// Red is dominant - hue in red-yellow-green range
             h = fmod(60 * ((g - b) / diff) + 360, 360);
-
-        ///< if cmax equal g then compute h
+        }
         else if (cmax == g)
+        {
+        	/// Green is dominant - hue in green-cyan-blue range
             h = fmod(60 * ((b - r) / diff) + 120, 360);
-
-        ///< if cmax equal b then compute h
+        }
         else if (cmax == b)
+        {
+        	/// Blue is dominant - hue in blue-magenta-red range
             h = fmod(60 * ((r - g) / diff) + 240, 360);
+        }
 
-        ///< if cmax equal zero
+        /// Calculate Saturation
         if (cmax == 0)
+        {
+        	/// Black color - no saturation
             s = 0;
+        }
         else
+        {
+        	/// Saturation as ratio of chroma to value
             s = (diff / cmax) * 100;
+        }
 
+        /// Calculate Value (brightness)
         const float v = cmax * 100;
 
+        /// Return HSV with saturation and value normalized to [0,1]
         return {h, s / 100.0f, v / 100.0f};
     }
 

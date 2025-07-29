@@ -12,6 +12,7 @@
 */
 #include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/renderer/command_queue.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
 
 /// -------------------------------------------------------
 
@@ -35,10 +36,10 @@ namespace SceneryEditorX
         cmdBufferPtr += alignof(RenderCommandFn);
 
         *(uint32_t *)cmdBufferPtr = size;
-        cmdBufferPtr += RoundUp(sizeof(uint32_t), alignof(RenderCommandFn));
+        cmdBufferPtr += Utils::RoundUp(sizeof(uint32_t), alignof(RenderCommandFn));
 
         void *memory = cmdBufferPtr;
-        cmdBufferPtr += RoundUp<size_t>(size, alignof(RenderCommandFn));
+        cmdBufferPtr += Utils::RoundUp<size_t>(size, alignof(RenderCommandFn));
 
         cmdCount++;
         return memory;
@@ -54,10 +55,10 @@ namespace SceneryEditorX
             buffer += sizeof(RenderCommandFn);
 
             uint32_t size = *(uint32_t *)buffer;
-            buffer += RoundUp(sizeof(uint32_t), alignof(RenderCommandFn));
+            buffer += Utils::RoundUp(sizeof(uint32_t), alignof(RenderCommandFn));
 
             function(buffer);
-            buffer += RoundUp<size_t>(size, alignof(RenderCommandFn));
+            buffer += Utils::RoundUp<size_t>(size, alignof(RenderCommandFn));
         }
 
         cmdBufferPtr = cmdBuffer;

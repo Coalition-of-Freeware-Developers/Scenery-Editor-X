@@ -40,7 +40,7 @@ namespace SceneryEditorX::Types
 				return Name == other.Name
 					&& Size == other.Size
 					&& TypeName == other.TypeName
-					&& Type == other.Type;
+					&& Type == other.type;
 			}
 		};
 
@@ -75,7 +75,7 @@ namespace SceneryEditorX::Types
 							/*.Name*/{ memberName },
 							/*.Size*/{ *Descr::GetMemberSizeByName(memberName) * !isFunction },
 							/*.TypeName*/{ std::string_view(typeName.data(), typeName.size())},
-							/*.Type*/{ isFunction ? Member::Function : Member::Data }
+							/*.type*/{ isFunction ? Member::Function : Member::Data }
 						});
 				}
 	
@@ -134,42 +134,42 @@ namespace SceneryEditorX::Types
 					    /*.Name =*/ .Name = "i",
 					    /*.Size =*/ .Size = 4,
 					    /*.TypeName =*/ .TypeName = "int",
-					    /*.Type =*/.Type = Member::Data
+					    /*.type =*/.type = Member::Data
 					},
 	
 					{
 					    /*.Name =*/ .Name = "f",
 					    /*.Size =*/ .Size = 4,
 					    /*.TypeName =*/ .TypeName = "float",
-					    /*.Type =*/ .Type = Member::Data
+					    /*.type =*/ .type = Member::Data
 					},
 	
 					{
 					    /*.Name =*/ .Name = "ch",
 					    /*.Size =*/ .Size = 1,
 					    /*.TypeName =*/ .TypeName = "char",
-					    /*.Type =*/ .Type = Member::Data
+					    /*.type =*/ .type = Member::Data
 					},
 	
 					{
 					    /*.Name =*/ .Name = "pi",
 					    /*.Size =*/ .Size = 8,
 					    /*.TypeName =*/ .TypeName = "int*",
-					    /*.Type =*/ .Type = Member::Data
+					    /*.type =*/ .type = Member::Data
 					},
 	
 					{
 					    /*.Name =*/ .Name = "vfunc",
 					    /*.Size =*/ .Size = 0,
 					    /*.TypeName =*/ .TypeName = "void",
-					    /*.Type =*/ .Type = Member::EType::Function
+					    /*.type =*/ .type = Member::EType::Function
 					},
 	
 					{
 					    /*.Name =*/ .Name = "bfunc",
 					    /*.Size =*/ .Size = 0,
 					    /*.TypeName =*/ .TypeName = "bool",
-					    /*.Type =*/ .Type = Member::EType::Function
+					    /*.type =*/ .type = Member::EType::Function
 					},
 				}
 			};

@@ -10,19 +10,21 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include <nlohmann/json.hpp>
-#include <SceneryEditorX/asset/texture_manager.h>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/platform/file_manager.hpp>
+//#include <nlohmann/json.hpp>
+//#include <SceneryEditorX/asset/texture_manager.h>
+//#include <SceneryEditorX/logging/logging.hpp>
+//#include <SceneryEditorX/platform/file_manager.hpp>
+//#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/scene/material.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    /*
     /// Use nlohmann json for parsing material files
     using json = nlohmann::json;
-
+    */
     /// -------------------------------------------------------
 
     MaterialAsset::MaterialAsset(const std::string &path)
@@ -37,13 +39,29 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+
+	/*
+	static const std::string s_AlbedoColorUniform = "u_MaterialUniforms.AlbedoColor";
+    static const std::string s_UseNormalMapUniform = "u_MaterialUniforms.UseNormalMap";
+    static const std::string s_MetalnessUniform = "u_MaterialUniforms.Metalness";
+    static const std::string s_RoughnessUniform = "u_MaterialUniforms.Roughness";
+    static const std::string s_EmissionUniform = "u_MaterialUniforms.Emission";
+    static const std::string s_TransparencyUniform = "u_MaterialUniforms.Transparency";
+
+    static const std::string s_AlbedoMapUniform = "u_AlbedoTexture";
+    static const std::string s_NormalMapUniform = "u_NormalTexture";
+    static const std::string s_MetalnessMapUniform = "u_MetalnessTexture";
+    static const std::string s_RoughnessMapUniform = "u_RoughnessTexture";
+    */
+
+
     /*
     void MaterialAsset::Serialize(Serializer &ser)
     {
         /// TODO: Implement serialization
         /// This would store material properties in a specific format
     }
-    */
+    #1#
 
     void MaterialAsset::Load(const std::string &path)
     {
@@ -81,7 +99,7 @@ namespace SceneryEditorX
     const std::string &MaterialAsset::GetPath() const { return materialPath; }
     const std::string &MaterialAsset::GetName() const { return materialName; }
 
-    void MaterialAsset::OnDependencyUpdated(AssetHandle handle)
+    void MaterialAsset::OnDependencyUpdated(const AssetHandle &handle)
 	{
 		if (handle == m_Maps.AlbedoMap)
 		{
@@ -103,43 +121,43 @@ namespace SceneryEditorX
 		}
 	}
 
-	Vec3& MaterialAsset::GetAlbedoColor()
-	{
+	Vec3& MaterialAsset::GetAlbedoColor() const
+    {
 		return m_Material->GetVector3(s_AlbedoColorUniform);
 	}
 
-	void MaterialAsset::SetAlbedoColor(const Vec3& color)
-	{
+	void MaterialAsset::SetAlbedoColor(const Vec3& color) const
+    {
 		m_Material->Set(s_AlbedoColorUniform, color);
 	}
 
-	float& MaterialAsset::GetMetalness()
-	{
+	float& MaterialAsset::GetMetalness() const
+    {
 		return m_Material->GetFloat(s_MetalnessUniform);
 	}
 
-	void MaterialAsset::SetMetalness(float value)
-	{
+	void MaterialAsset::SetMetalness(float value) const
+    {
 		m_Material->Set(s_MetalnessUniform, value);
 	}
 
-	float& MaterialAsset::GetRoughness()
-	{
+	float& MaterialAsset::GetRoughness() const
+    {
 		return m_Material->GetFloat(s_RoughnessUniform);
 	}
 
-	void MaterialAsset::SetRoughness(float value)
-	{
+	void MaterialAsset::SetRoughness(float value) const
+    {
 		m_Material->Set(s_RoughnessUniform, value);
 	}
 
-	float& MaterialAsset::GetEmission()
-	{
+	float& MaterialAsset::GetEmission() const
+    {
 		return m_Material->GetFloat(s_EmissionUniform);
 	}
 
-	void MaterialAsset::SetEmission(float value)
-	{
+	void MaterialAsset::SetEmission(float value) const
+    {
 		m_Material->Set(s_EmissionUniform, value);
 	}
 
@@ -150,10 +168,10 @@ namespace SceneryEditorX
 		auto texture = m_Material->TryGetTexture2D(s_AlbedoMapUniform);
 		if (!texture.EqualsObject(Renderer::GetWhiteTexture()))
 		{
-			if (texture->Handle)
+			if (texture->handle)
 			{
 				// Return sRGB version of the albedo texture, which is at Handle-1  (see SetAlbedoMap())
-				texture = AssetManager::GetAsset<Texture2D>(texture->Handle - 1);
+				texture = AssetManager::GetAsset<Texture2D>(texture->handle - 1);
 				SEDX_CORE_ASSERT(texture);
 			}
 		}
@@ -174,7 +192,7 @@ namespace SceneryEditorX
 				if (textureSRGB)
 				{
 					texture = Texture2D::CreateFromSRGB(textureSRGB);
-					texture->Handle = handle + 1;
+					texture->handle = handle + 1;
 					AssetManager::AddMemoryOnlyAsset(texture);
 				}
 			}
@@ -187,18 +205,18 @@ namespace SceneryEditorX
 		}
 	}
 
-	void MaterialAsset::ClearAlbedoMap()
-	{
+	void MaterialAsset::ClearAlbedoMap() const
+    {
 		AssetManager::DeregisterDependency(m_Maps.AlbedoMap, Handle);
 		m_Material->Set(s_AlbedoMapUniform, Renderer::GetWhiteTexture());
 	}
 
-	Ref<Texture2D> MaterialAsset::GetNormalMap()
-	{
+	Ref<Texture2D> MaterialAsset::GetNormalMap() const
+    {
 		return m_Material->TryGetTexture2D(s_NormalMapUniform);
 	}
 
-	void MaterialAsset::SetNormalMap(AssetHandle handle)
+	void MaterialAsset::SetNormalMap(const AssetHandle &handle)
 	{
 		m_Maps.NormalMap = handle;
 
@@ -214,34 +232,34 @@ namespace SceneryEditorX
 		}
 	}
 
-	bool MaterialAsset::IsUsingNormalMap()
-	{
+	bool MaterialAsset::IsUsingNormalMap() const
+    {
 		return m_Material->GetBool(s_UseNormalMapUniform);
 	}
 
-	void MaterialAsset::SetUseNormalMap(bool value)
-	{
+	void MaterialAsset::SetUseNormalMap(bool value) const
+    {
 		m_Material->Set(s_UseNormalMapUniform, value);
 	}
 
-	void MaterialAsset::ClearNormalMap()
-	{
+	void MaterialAsset::ClearNormalMap() const
+    {
 		AssetManager::DeregisterDependency(m_Maps.NormalMap, Handle);
 		m_Material->Set(s_NormalMapUniform, Renderer::GetWhiteTexture());
 	}
 
-	Ref<Texture2D> MaterialAsset::GetMetalnessMap()
-	{
+	Ref<Texture2D> MaterialAsset::GetMetalnessMap() const
+    {
 		return m_Material->TryGetTexture2D(s_MetalnessMapUniform);
 	}
 
-	void MaterialAsset::SetMetalnessMap(AssetHandle handle)
+	void MaterialAsset::SetMetalnessMap(const AssetHandle &handle)
 	{
 		m_Maps.MetalnessMap = handle;
 
 		if (handle)
 		{
-			Ref<Texture2D> texture = AssetManager::GetAsset<Texture2D>(handle);
+			const Ref<Texture2D> texture = AssetManager::GetAsset<Texture2D>(handle);
 			m_Material->Set(s_MetalnessMapUniform, texture);
 			AssetManager::RegisterDependency(handle, Handle);
 		}
@@ -251,18 +269,18 @@ namespace SceneryEditorX
 		}
 	}
 
-	void MaterialAsset::ClearMetalnessMap()
-	{
+	void MaterialAsset::ClearMetalnessMap() const
+    {
 		AssetManager::DeregisterDependency(m_Maps.MetalnessMap, Handle);
 		m_Material->Set(s_MetalnessMapUniform, Renderer::GetWhiteTexture());
 	}
 
-	Ref<Texture2D> MaterialAsset::GetRoughnessMap()
-	{
+	Ref<Texture2D> MaterialAsset::GetRoughnessMap() const
+    {
 		return m_Material->TryGetTexture2D(s_RoughnessMapUniform);
 	}
 
-	void MaterialAsset::SetRoughnessMap(AssetHandle handle)
+	void MaterialAsset::SetRoughnessMap(const AssetHandle &handle)
 	{
 		m_Maps.RoughnessMap = handle;
 
@@ -278,24 +296,24 @@ namespace SceneryEditorX
 		}
 	}
 
-	void MaterialAsset::ClearRoughnessMap()
-	{
+	void MaterialAsset::ClearRoughnessMap() const
+    {
 		AssetManager::DeregisterDependency(m_Maps.RoughnessMap, Handle);
 		m_Material->Set(s_RoughnessMapUniform, Renderer::GetWhiteTexture());
 	}
 
-	float& MaterialAsset::GetTransparency()
-	{
+	float& MaterialAsset::GetTransparency() const
+    {
 		return m_Material->GetFloat(s_TransparencyUniform);
 	}
 
-	void MaterialAsset::SetTransparency(float transparency)
-	{
+	void MaterialAsset::SetTransparency(float transparency) const
+    {
 		m_Material->Set(s_TransparencyUniform, transparency);
 	}
 
-	void MaterialAsset::SetDefaults()
-	{
+	void MaterialAsset::SetDefaults() const
+    {
 		if (m_Transparent)
 		{
 			///< Set defaults
@@ -351,6 +369,7 @@ namespace SceneryEditorX
 	{
 		m_Materials.clear();
 	}
+	*/
 
 }
 

@@ -107,7 +107,7 @@ namespace SceneryEditorX::Types
 	};
 
 	template<class T>
-	using filter_void_t = typename filter_void<T>::type;
+	using filter_void_t = filter_void<T>::type;
 
 	/// --------------------------------------------------------
 

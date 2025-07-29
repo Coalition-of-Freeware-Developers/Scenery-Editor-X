@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/core/identifiers/hash.h>
-#include <functional>
 
 /// ---------------------------------------------
 

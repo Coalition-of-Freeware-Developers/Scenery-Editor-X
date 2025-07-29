@@ -11,13 +11,14 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/asset/asset_registry.h>
-#include <SceneryEditorX/core/application/application.h>
+//#include <SceneryEditorX/core/application/application.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+/*
 #define SEDX_ASSETREGISTRY_LOG 0
 #if SEDX_ASSETREGISTRY_LOG
 #define ASSET_LOG(...) SEDX_CORE_TRACE_TAG("ASSET", __VA_ARGS__)
@@ -25,14 +26,14 @@ namespace SceneryEditorX
 #define ASSET_LOG(...)
 #endif
 
-	const AssetMetadata &AssetRegistry::Get(const AssetHandle handle) const
+	const AssetMetadata &AssetRegistry::Get(const AssetHandle &handle) const
 	{
         SEDX_CORE_ASSERT(m_AssetRegistry.contains(handle));
 		ASSET_LOG("Retrieving const handle {}", handle);
 		return m_AssetRegistry.at(handle);
 	}
 
-	void AssetRegistry::Set(const AssetHandle handle, const AssetMetadata &metadata)
+	void AssetRegistry::Set(const AssetHandle &handle, const AssetMetadata &metadata)
 	{
 		SEDX_CORE_ASSERT(metadata.Handle == handle);
 		SEDX_CORE_ASSERT(handle != 0);
@@ -40,13 +41,13 @@ namespace SceneryEditorX
 		m_AssetRegistry[handle] = metadata;
 	}
 
-	bool AssetRegistry::Contains(const AssetHandle handle) const
+	bool AssetRegistry::Contains(const AssetHandle &handle) const
 	{
 		ASSET_LOG("Contains handle {}", handle);
 		return m_AssetRegistry.contains(handle);
 	}
 
-	size_t AssetRegistry::Remove(const AssetHandle handle)
+	size_t AssetRegistry::Remove(const AssetHandle &handle)
 	{
 		ASSET_LOG("Removing handle", handle);
 		return m_AssetRegistry.erase(handle);
@@ -57,6 +58,7 @@ namespace SceneryEditorX
 		ASSET_LOG("Clearing registry");
 		m_AssetRegistry.clear();
 	}
+	*/
 
 }
 

@@ -285,7 +285,7 @@ namespace SceneryEditorX
 			candidate.Category = nodeCategory;
 			candidate.Name = nodeName;
 			candidate.Description = nodeDesc;
-			candidate.Type = nodeType;
+			candidate.type = nodeType;
 			candidate.NumInputs = node.contains("Inputs") && node["Inputs"].is_array() ? static_cast<uint32_t>(node["Inputs"].size()) : 0;
 			candidate.NumOutputs = node.contains("Outputs") && node["Outputs"].is_array() ? static_cast<uint32_t>(node["Outputs"].size()) : 0;
 

@@ -10,10 +10,8 @@
 * Created: 9/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/identifiers/hash.h>
 #include <SceneryEditorX/renderer/shaders/shader_pack.h>
 #include <SceneryEditorX/utils/filestreaming/file_streaming.h>
-#include <utility>
 
 /// -------------------------------------------------------
 
@@ -101,6 +99,7 @@ namespace SceneryEditorX
 		}
 	}
 
+	/*
 	ShaderPack::ShaderPack(const std::filesystem::path& path) : m_Path(path)
 	{
 		/// Read index
@@ -122,7 +121,9 @@ namespace SceneryEditorX
 		serializer.GetStreamPosition();
 		serializer.ReadArray(m_File.Index.ShaderModules, m_File.Header.ShaderModuleCount);
 	}
+	*/
 
+	/*
 	bool ShaderPack::Contains(const std::string_view name) const
 	{
         return m_File.Index.ShaderPrograms.contains(Hash::GenerateFNVHash(std::string(name)));
@@ -167,7 +168,9 @@ namespace SceneryEditorX
 		//Renderer::OnShaderReloaded(vulkanShader->GetHash());
 		return vulkanShader;
 	}
+	*/
 
+	/*
 	Ref<ShaderPack> ShaderPack::CreateFromLibrary(const Ref<ShaderLibrary> &shaderLibrary, const std::filesystem::path& path)
 	{
 		Ref<ShaderPack> shaderPack = CreateRef<ShaderPack>();
@@ -257,6 +260,7 @@ namespace SceneryEditorX
 	{
 	}
 #endif
+*/
 
 }
 

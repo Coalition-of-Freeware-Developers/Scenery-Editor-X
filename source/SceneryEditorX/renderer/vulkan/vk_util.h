@@ -205,8 +205,6 @@ inline void VulkanCheckResult(const VkResult result, const char *file, int line)
  */
 extern int getBPP(VkFormat format);
 
-/// -------------------------------------------------------
-
 /**
  * @brief Get the string representation of a Vulkan debug message severity.
  * @param severity The Vulkan debug message severity.
@@ -265,6 +263,13 @@ const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags);
 
 /// -------------------------------------------------------
 
+/**
+ * @brief Generate a Halton sequence value for a given index and base.
+ *
+ * @param i The index in the Halton sequence.
+ * @param b The base for the Halton sequence.
+ * @return The Halton sequence value at index i with base b.
+ */
 inline float HaltonSeq(uint32_t i, const uint32_t b)
 {
     float f = 1.0f;
@@ -301,7 +306,7 @@ static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType ob
  */
 const char *VkObjectTypeToString(VkObjectType objectType);
 
-void SetDeviceVendorName(const uint32_t vendorID);
+void SetDeviceVendorName(uint32_t vendorID);
 
 void GetDeviceName(const std::string &deviceName);
 

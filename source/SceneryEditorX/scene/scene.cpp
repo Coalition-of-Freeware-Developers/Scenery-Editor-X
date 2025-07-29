@@ -11,8 +11,6 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/scene/scene.h>
-#include <SceneryEditorX/serialization/serializer.hpp>
-#include <algorithm> /// For std::remove
 
 /// -------------------------------------------------------
 

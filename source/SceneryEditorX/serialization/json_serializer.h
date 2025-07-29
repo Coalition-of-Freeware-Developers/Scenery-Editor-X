@@ -21,6 +21,8 @@
 
 namespace nlohmann
 {
+
+	/*
 	/// GLM vector type JSON conversions
 	template<>
 	struct adl_serializer<iVec2>
@@ -249,6 +251,7 @@ namespace nlohmann
 			}
 		}
 	};
+	*/
 
     /// -------------------------------------------------------
 

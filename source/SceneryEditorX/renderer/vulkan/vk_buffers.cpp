@@ -332,7 +332,7 @@ namespace SceneryEditorX
 					spec.Transfer = m_Specification.Transfer;
                     spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
 					spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
-					spec.DebugName = std::format("{0}-DepthAttachment{1}", m_Specification.DebugName.empty() ? "Unnamed FB" : m_Specification.DebugName, attachmentIndex);
+					spec.debugName = std::format("{0}-DepthAttachment{1}", m_Specification.debugName.empty() ? "Unnamed FB" : m_Specification.debugName, attachmentIndex);
 					depthAttachmentImage = Image2D::Create(spec);
 				}
 				else
@@ -343,7 +343,7 @@ namespace SceneryEditorX
 					spec.Transfer = m_Specification.Transfer;
                     spec.Width = (uint32_t)(fb_width * m_Specification.Scale);
 					spec.Height = (uint32_t)(fb_height * m_Specification.Scale);
-					spec.DebugName = std::format("{0}-ColorAttachment{1}", m_Specification.DebugName.empty() ? "Unnamed FB" : m_Specification.DebugName, attachmentIndex);
+					spec.debugName = std::format("{0}-ColorAttachment{1}", m_Specification.debugName.empty() ? "Unnamed FB" : m_Specification.debugName, attachmentIndex);
 					attachmentImages.emplace_back(Image2D::Create(spec));
 				}
 				attachmentIndex++;
@@ -554,49 +554,49 @@ namespace SceneryEditorX
 		if (attachmentImages.size())
 		{
 			{
-				VkSubpassDependency& depedency = dependencies.emplace_back();
-				depedency.srcSubpass = VK_SUBPASS_EXTERNAL;
-				depedency.dstSubpass = 0;
-				depedency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-				depedency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				depedency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				depedency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+				VkSubpassDependency& dependency = dependencies.emplace_back();
+				dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				dependency.dstSubpass = 0;
+				dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				dependency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 			}
 			{
-				VkSubpassDependency& depedency = dependencies.emplace_back();
-				depedency.srcSubpass = 0;
-				depedency.dstSubpass = VK_SUBPASS_EXTERNAL;
-				depedency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-				depedency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				depedency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-				depedency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+				VkSubpassDependency& dependency = dependencies.emplace_back();
+				dependency.srcSubpass = 0;
+				dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+				dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 			}
 		}
 
 		if (depthAttachmentImage)
 		{
 			{
-				VkSubpassDependency& depedency = dependencies.emplace_back();
-				depedency.srcSubpass = VK_SUBPASS_EXTERNAL;
-				depedency.dstSubpass = 0;
-				depedency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-				depedency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-				depedency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				depedency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+				VkSubpassDependency& dependency = dependencies.emplace_back();
+				dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				dependency.dstSubpass = 0;
+				dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+				dependency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 			}
 
 			{
-				VkSubpassDependency& depedency = dependencies.emplace_back();
-				depedency.srcSubpass = 0;
-				depedency.dstSubpass = VK_SUBPASS_EXTERNAL;
-				depedency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-				depedency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-				depedency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-				depedency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+				VkSubpassDependency& dependency = dependencies.emplace_back();
+				dependency.srcSubpass = 0;
+				dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+				dependency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 			}
 		}
 
@@ -611,7 +611,7 @@ namespace SceneryEditorX
 		renderPassInfo.pDependencies = dependencies.data();
 
 		VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
-		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_RENDER_PASS, m_Specification.DebugName, renderPass);
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_RENDER_PASS, m_Specification.debugName, renderPass);
 
 		std::vector<VkImageView> attachments(attachmentImages.size());
 		for (uint32_t i = 0; i < attachmentImages.size(); i++)
@@ -648,7 +648,7 @@ namespace SceneryEditorX
 		framebufferCreateInfo.layers = 1;
 
 		VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffer));
-		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_FRAMEBUFFER, m_Specification.DebugName, framebuffer);
+		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_FRAMEBUFFER, m_Specification.debugName, framebuffer);
 	}
 	*/
 

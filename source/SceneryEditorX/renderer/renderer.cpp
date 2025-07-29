@@ -13,8 +13,6 @@
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/renderer/buffers/index_buffer.h>
-#include <SceneryEditorX/renderer/buffers/storage_buffer.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 #include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
@@ -22,6 +20,7 @@
 #include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/scene.h>
 
 /// -------------------------------------------------------
@@ -30,7 +29,7 @@ namespace SceneryEditorX
 {
     struct RendererProperties
     {
-        Ref<Image> BRDFLut;
+        //Ref<Image> BRDFLut;
         Ref<VertexBuffer> QuadVertexBuffer;
         Ref<IndexBuffer> QuadIndexBuffer;
 
@@ -42,8 +41,8 @@ namespace SceneryEditorX
         std::vector<uint32_t> DescriptorPoolAllocationCount;
 
         /// UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor
-		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
-		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
+		//std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
+		//std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
 
         /// Default samplers
         VkSampler SamplerClamp = nullptr;
@@ -54,19 +53,19 @@ namespace SceneryEditorX
 
         Ref<ShaderLibrary> m_ShaderLibrary;
 
-        Ref<Texture2D> WhiteTexture;
-        Ref<Texture2D> BlackTexture;
-        Ref<Texture2D> BRDFLutTexture;
-        Ref<Texture2D> HilbertLut;
-        Ref<TextureCube> BlackCubeTexture;
-        Ref<Environment> EmptyEnvironment;
+        //Ref<Texture2D> WhiteTexture;
+        //Ref<Texture2D> BlackTexture;
+        //Ref<Texture2D> BRDFLutTexture;
+        //Ref<Texture2D> HilbertLut;
+        //Ref<TextureCube> BlackCubeTexture;
+        //Ref<Environment> EmptyEnvironment;
 
         std::unordered_map<std::string, std::string> GlobalShaderMacros;
     };
 
     /// Static variable
     LOCAL RendererProperties *s_Data = nullptr;
-    LOCAL RenderData* m_renderData = nullptr;
+    LOCAL RenderData *m_renderData;
     constexpr static uint32_t s_RenderCommandQueueCount = 2;
     static CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
 
@@ -170,24 +169,26 @@ namespace SceneryEditorX
 
 		//s_Data->BRDFLut = Renderer::GetBRDFLutTexture();
 
+        /*
         uint32_t whiteTextureData = 0xffffffff;
         TextureSpecification spec;
-        spec.Format = VK_FORMAT_R8G8B8A8_UNORM;
-		spec.Width = 1;
-		spec.Height = 1;
+        spec.format = VK_FORMAT_R8G8B8A8_UNORM;
+		spec.width = 1;
+		spec.height = 1;
         s_Data->WhiteTexture = CreateRef<Texture2D>(spec, Buffer(&whiteTextureData, sizeof(uint32_t)));
 
 		constexpr uint32_t blackTextureData = 0xff000000;
         s_Data->BlackTexture = CreateRef<Texture2D>(spec, Buffer(&blackTextureData, sizeof(uint32_t)));
 
 		{
-			TextureSpecification spec;
-			spec.SamplerWrap = UVWrap::Clamp;
-			s_Data->BRDFLutTexture = Texture2D::Create(spec, std::filesystem::path("assets/Renderer/BRDF_LUT.png"));
+			TextureSpecification textureSpec;
+			textureSpec.samplerWrap = SamplerWrap::Clamp;
+			s_Data->BRDFLutTexture = Texture2D::Create(textureSpec, std::filesystem::path("assets/Renderer/BRDF_LUT.png"));
 		}
 
 		constexpr uint32_t blackCubeTextureData[6] = { 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000 };
         s_Data->BlackCubeTexture = CreateRef<TextureCube>(spec, Buffer(blackCubeTextureData, sizeof(blackCubeTextureData)));
+        */
 
     }
 
@@ -297,7 +298,15 @@ namespace SceneryEditorX
 		return sampler;
     }
 
-	Ref<Texture2D> Renderer::GetWhiteTexture()
+    /*
+    void Renderer::RenderGeometry(const Ref<CommandBuffer> &ref, const Ref<Pipeline> &pipeline, const Ref<Material> &material,
+        std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> &indexBuffer, const Mat4 &transform, uint32_t indexCount)
+    {
+        RenderGeometry(ref, pipeline, material, vertexBuffer, indexBuffer, transform, indexCount);
+
+    }
+
+    Ref<Texture2D> Renderer::GetWhiteTexture()
     {
         return s_Data->WhiteTexture;
     }
@@ -326,9 +335,97 @@ namespace SceneryEditorX
     {
         return s_Data->EmptyEnvironment;
     }
-
+    */
 
     /// -------------------------------------------------------
+
+	struct ShaderDependencies
+    {
+        //std::vector<Ref<ComputePipeline>> ComputePipelines;
+        std::vector<Ref<Pipeline>> Pipelines;
+        std::vector<Ref<Material>> Materials;
+    };
+
+    /// -------------------------------------------------------
+
+    static std::unordered_map<size_t, ShaderDependencies> s_ShaderDependencies;
+    static std::shared_mutex s_ShaderDependenciesMutex; /// ShaderDependencies can be accessed (and modified) from multiple threads, hence require synchronization
+
+    /// -------------------------------------------------------
+
+	struct GlobalShaderInfo
+	{
+		/// Macro name, set of shaders with that macro.
+		std::unordered_map<std::string, std::unordered_map<size_t, WeakRef<Shader>>> ShaderGlobalMacrosMap;
+		/// Shaders waiting to be reloaded.
+		//std::unordered_set<WeakRef<Shader>> DirtyShaders;
+	};
+
+	static GlobalShaderInfo s_GlobalShaderInfo;
+
+    /// -------------------------------------------------------
+
+	/*
+	void Renderer::RegisterShaderDependency(const Ref<Shader> &shader, const Ref<ComputePipeline> &computePipeline)
+	{
+		std::scoped_lock lock(s_ShaderDependenciesMutex);
+		s_ShaderDependencies[shader->GetHash()].ComputePipelines.push_back(computePipeline);
+	}
+
+	void Renderer::RegisterShaderDependency(const Ref<Shader> &shader, const Ref<Pipeline> &pipeline)
+	{
+		std::scoped_lock lock(s_ShaderDependenciesMutex);
+		s_ShaderDependencies[shader->GetHash()].Pipelines.push_back(pipeline);
+	}
+
+	void Renderer::RegisterShaderDependency(const Ref<Shader> &shader, const Ref<Material> &material)
+	{
+		std::scoped_lock lock(s_ShaderDependenciesMutex);
+		s_ShaderDependencies[shader->GetHash()].Materials.push_back(material);
+	}
+	*/
+
+	/*
+	void Renderer::OnShaderReloaded(const size_t hash)
+	{
+		ShaderDependencies dependencies;
+		{
+			std::shared_lock lock(s_ShaderDependenciesMutex);
+			if (const auto it = s_ShaderDependencies.find(hash); it != s_ShaderDependencies.end())
+			{
+				dependencies = it->second; /// expensive to copy, but we need to release the lock (in particular to avoid potential deadlock if things like material->OnShaderReloaded() happen to ask for the lock)
+			}
+		}
+
+		for (const auto &pipeline : dependencies.Pipelines)
+            pipeline->Invalidate();
+
+        for (auto &computePipeline : dependencies.ComputePipelines)
+            computePipeline.As<ComputePipeline>()->CreatePipeline();
+
+        for (const auto &material : dependencies.Materials)
+            material->OnShaderReloaded();
+    }
+    */
+
+    /*
+    bool Renderer::UpdateDirtyShaders()
+    {
+        const bool updatedAnyShaders = s_GlobalShaderInfo.DirtyShaders.size();
+        for (const WeakRef<Shader> &weakShader : s_GlobalShaderInfo.DirtyShaders)
+        {
+            if (auto shader = weakShader.Lock())
+                shader->ReloadRenderThreadShaders(true);
+            else
+                SEDX_CORE_WARN_TAG("SHADER", "Shader was deleted before reload could complete");
+        }
+
+        s_GlobalShaderInfo.DirtyShaders.clear();
+
+        return updatedAnyShaders;
+    }
+    */
+
 
 }
 

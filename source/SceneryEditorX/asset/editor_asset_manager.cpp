@@ -10,23 +10,22 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <nlohmann/json.hpp>
-#include <SceneryEditorX/asset/asset_importer.h>
+//#include <nlohmann/json.hpp>
+//#include <SceneryEditorX/asset/asset_importer.h>
 #include <SceneryEditorX/asset/editor_asset_manager.h>
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/events/editor_events.h>
-#include <SceneryEditorX/core/time/timer.h>
-#include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/utils/string_utils.h>
-#include "asset_extentions.h"
-#include "asset_types.h"
+//#include <SceneryEditorX/core/application/application.h>
+//#include <SceneryEditorX/core/events/editor_events.h>
+//#include <SceneryEditorX/core/time/timer.h>
+//#include <SceneryEditorX/logging/profiler.hpp>
+//#include <SceneryEditorX/platform/file_manager.hpp>
+//#include <SceneryEditorX/project/project.h>
+//#include <SceneryEditorX/utils/string_utils.h>
+
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
-{
+{/*
 
 	static AssetMetadata s_NullMetadata;
 
@@ -50,7 +49,7 @@ namespace SceneryEditorX
 		WriteRegistryToFile();
 	}
 
-	AssetType EditorAssetManager::GetAssetType(AssetHandle assetHandle)
+	AssetType EditorAssetManager::GetAssetType(const AssetHandle &assetHandle)
 	{
 		if (!IsAssetHandleValid(assetHandle))
 			return AssetType::None;
@@ -62,7 +61,7 @@ namespace SceneryEditorX
 		return metadata.Type;
 	}
 
-	Ref<Asset> EditorAssetManager::GetAsset(AssetHandle assetHandle)
+	Ref<Asset> EditorAssetManager::GetAsset(const AssetHandle &assetHandle)
 	{
 		SEDX_PROFILE_FUNC();
 		//SEDX_SCOPE_PERF("AssetManager::GetAsset")
@@ -71,7 +70,7 @@ namespace SceneryEditorX
 		return asset && asset->IsValid() ? asset : nullptr;
 	}
 
-	AsyncAssetResult<Asset> EditorAssetManager::GetAssetAsync(AssetHandle assetHandle)
+	AsyncAssetResult<Asset> EditorAssetManager::GetAssetAsync(const AssetHandle &assetHandle)
 	{
 #if ASYNC_ASSETS
 		SEDX_PROFILE_FUNC();
@@ -100,13 +99,13 @@ namespace SceneryEditorX
 			m_AssetThread->QueueAssetLoad(metadata);
 		}
 
-		return AssetManager::GetPlaceholderAsset(metadata.Type);
+		return AssetManager::GetPlaceholderAsset(metadata.type);
 #else
 		return { GetAsset(assetHandle), true };
 #endif
 	}
 
-	void EditorAssetManager::AddMemoryOnlyAsset(const Ref<Asset> asset)
+	void EditorAssetManager::AddMemoryOnlyAsset(const Ref<Asset> &asset)
 	{
 		///< Memory-only assets are not added to m_AssetRegistry (because that would require full thread synchronization for access to registry, we would like to avoid that)
 		std::scoped_lock lock(m_MemoryAssetsMutex);
@@ -121,7 +120,7 @@ namespace SceneryEditorX
 		 * @brief Loop over memory only assets.
 		 *
 		 * @note: This needs a lock because asset thread can create memory only assets
-		 */
+		 #1#
 		{
 			std::shared_lock lock(m_MemoryAssetsMutex);
 			for (const auto& [handle, asset] : m_MemoryAssets)
@@ -148,7 +147,7 @@ namespace SceneryEditorX
 		return m_MemoryAssets;
 	}
 
-	AssetMetadata EditorAssetManager::GetMetadata(AssetHandle handle)
+	AssetMetadata EditorAssetManager::GetMetadata(const AssetHandle &handle)
 	{
 		std::shared_lock lock(m_AssetRegistryMutex);
 
@@ -158,7 +157,7 @@ namespace SceneryEditorX
 		return s_NullMetadata;
 	}
 
-	void EditorAssetManager::SetMetadata(AssetHandle handle, const AssetMetadata &metadata)
+	void EditorAssetManager::SetMetadata(const AssetHandle &handle, const AssetMetadata &metadata)
 	{
 		std::unique_lock lock(m_AssetRegistryMutex);
 		m_AssetRegistry.Set(handle, metadata);
@@ -172,10 +171,8 @@ namespace SceneryEditorX
 		for (auto &metadata : m_AssetRegistry | std::views::values)
 		{
 			if (metadata.FilePath == relativePath)
-			{
-				return metadata.Handle;
-			}
-		}
+                return metadata.Handle;
+        }
 		return 0;
 	}
 
@@ -209,7 +206,7 @@ namespace SceneryEditorX
 		return Project::GetActiveAssetDirectory() / metadata.FilePath;
 	}
 
-	std::filesystem::path EditorAssetManager::GetFileSystemPath(AssetHandle handle)
+	std::filesystem::path EditorAssetManager::GetFileSystemPath(const AssetHandle &handle)
 	{
 		return GetFileSystemPathString(GetMetadata(handle));
 	}
@@ -222,15 +219,12 @@ namespace SceneryEditorX
 	std::filesystem::path EditorAssetManager::GetRelativePath(const std::filesystem::path& filepath)
 	{
 		std::filesystem::path relativePath = filepath.lexically_normal();
-		std::string temp = filepath.string();
-		if (temp.find(Project::GetActiveAssetDirectory().string()) != std::string::npos)
+        if (std::string temp = filepath.string(); temp.find(std::to_string(Project::GetActiveAssetDirectory())) != std::string::npos)
 		{
 			relativePath = std::filesystem::relative(filepath, Project::GetActiveAssetDirectory());
 			if (relativePath.empty())
-			{
-				relativePath = filepath.lexically_normal();
-			}
-		}
+                relativePath = filepath.lexically_normal();
+        }
 		return relativePath;
 	}
 
@@ -239,7 +233,7 @@ namespace SceneryEditorX
 		return IO::FileSystem::Exists(Project::GetActive()->GetAssetDirectory() / metadata.FilePath);
 	}
 
-	bool EditorAssetManager::ReloadData(AssetHandle assetHandle)
+	bool EditorAssetManager::ReloadData(AssetHandle &assetHandle)
 	{
 		auto metadata = GetMetadata(assetHandle);
 		if (!metadata.IsValid())
@@ -252,20 +246,20 @@ namespace SceneryEditorX
 
 		// If the asset is a Mesh, StaticMesh, Rig, or Animation, then instead of reloading the mesh we reload
 		// the underlying mesh source.
-		// (the assumption being that its the mesh source that's likely changed (e.g. via DCC authoring tool) and
-		// its that content that the user wishes to reload)
-		// The Mesh/StaticMesh/Rig/Animation ends up getting reloaded anyway due asset dependencies)
-		if (metadata.Type == AssetType::StaticMesh && asset)
+		// (the assumption being that it's the mesh source that's likely changed (e.g. via DCC authoring tool) and
+		// it's that content that the user wishes to reload)
+		// The Mesh/StaticMesh/Rig/Animation ends up getting reloaded anyway due asset dependencies.
+		if (metadata.type == AssetType::StaticMesh && asset)
 		{
 			auto mesh = asset.As<StaticMesh>();
 			return ReloadData(mesh->GetMeshSource());
 		}
-		if (metadata.Type == AssetType::Mesh && asset)
+		if (metadata.type == AssetType::Mesh && asset)
 		{
 			auto mesh = asset.As<Mesh>();
 			return ReloadData(mesh->GetMeshSource());
 		}
-        if (metadata.Type == AssetType::Animation && asset)
+        if (metadata.type == AssetType::Animation && asset)
         {
             auto animation = asset.As<AnimationAsset>();
             auto mesh = AssetManager::GetAsset<Mesh>(animation->GetMeshHandle());
@@ -276,30 +270,28 @@ namespace SceneryEditorX
             }
             return reloaded;
         }
+
+        SEDX_CORE_INFO_TAG("AssetManager", "RELOADING ASSET - {}", metadata.FilePath.string());
+        metadata.IsDataLoaded = AssetImporter::TryLoadData(metadata, asset);
+        if (metadata.IsDataLoaded)
+        {
+            const auto absolutePath = GetFileSystemPath(metadata);
+            metadata.FileLastWriteTime = IO::FileSystem::GetLastWriteTime(absolutePath);
+            m_LoadedAssets[assetHandle] = asset;
+            SetMetadata(assetHandle, metadata);
+            SEDX_CORE_INFO_TAG("AssetManager", "Finished reloading asset {}", metadata.FilePath.string());
+            UpdateDependents(assetHandle);
+            Application::Get().DispatchEvent<AssetReloadedEvent, /*DispatchImmediately=#1#true>(assetHandle);
+        }
         else
         {
-            SEDX_CORE_INFO_TAG("AssetManager", "RELOADING ASSET - {}", metadata.FilePath.string());
-            metadata.IsDataLoaded = AssetImporter::TryLoadData(metadata, asset);
-            if (metadata.IsDataLoaded)
-            {
-                const auto absolutePath = GetFileSystemPath(metadata);
-                metadata.FileLastWriteTime = IO::FileSystem::GetLastWriteTime(absolutePath);
-                m_LoadedAssets[assetHandle] = asset;
-                SetMetadata(assetHandle, metadata);
-                SEDX_CORE_INFO_TAG("AssetManager", "Finished reloading asset {}", metadata.FilePath.string());
-                UpdateDependents(assetHandle);
-                Application::Get().DispatchEvent<AssetReloadedEvent, /*DispatchImmediately=*/true>(assetHandle);
-            }
-            else
-            {
-                SEDX_CORE_ERROR_TAG("AssetManager", "Failed to reload asset {}", metadata.FilePath.string());
-            }
+            SEDX_CORE_ERROR_TAG("AssetManager", "Failed to reload asset {}", metadata.FilePath.string());
         }
 
         return metadata.IsDataLoaded;
 	}
 
-	void EditorAssetManager::ReloadDataAsync(AssetHandle assetHandle)
+	void EditorAssetManager::ReloadDataAsync(const AssetHandle &assetHandle)
 	{
 #if ASYNC_ASSETS
 		// Queue load (if not already)
@@ -322,18 +314,16 @@ namespace SceneryEditorX
 	}
 
 	// Returns true if asset was reloaded
-    bool EditorAssetManager::EnsureCurrent(AssetHandle assetHandle)
+    bool EditorAssetManager::EnsureCurrent(const AssetHandle &assetHandle)
 	{
 		const auto& metadata = GetMetadata(assetHandle);
-		auto absolutePath = GetFileSystemPath(metadata);
+		const auto absolutePath = GetFileSystemPath(metadata);
 
 		if (!IO::FileSystem::Exists(absolutePath))
 			return false;
 
-		AssetHandle actualLastWriteTime = IO::FileSystem::GetLastWriteTime(absolutePath);
-        AssetHandle recordedLastWriteTime = metadata.FileLastWriteTime;
-
-		if (actualLastWriteTime == recordedLastWriteTime)
+		const AssetHandle actualLastWriteTime = IO::FileSystem::GetLastWriteTime(absolutePath);
+        if (const AssetHandle recordedLastWriteTime = metadata.FileLastWriteTime; actualLastWriteTime == recordedLastWriteTime)
 			return false;
 
 		return ReloadData(assetHandle);
@@ -351,7 +341,7 @@ namespace SceneryEditorX
 		return loaded;
 	}
 
-	Ref<Asset> EditorAssetManager::GetMemoryAsset(AssetHandle handle)
+	Ref<Asset> EditorAssetManager::GetMemoryAsset(const AssetHandle &handle)
 	{
 		std::shared_lock lock(m_MemoryAssetsMutex);
 		if (const auto it = m_MemoryAssets.find(handle); it != m_MemoryAssets.end())
@@ -360,12 +350,12 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
-	bool EditorAssetManager::IsAssetLoaded(AssetHandle handle)
+	bool EditorAssetManager::IsAssetLoaded(const AssetHandle &handle)
 	{
 		return m_LoadedAssets.contains(handle);
 	}
 
-	bool EditorAssetManager::IsAssetValid(AssetHandle handle)
+	bool EditorAssetManager::IsAssetValid(const AssetHandle &handle)
 	{
 		SEDX_PROFILE_FUNC();
 		SEDX_SCOPE_PERF("AssetManager::IsAssetValid")
@@ -374,7 +364,7 @@ namespace SceneryEditorX
 		return asset && asset->IsValid();
 	}
 
-	bool EditorAssetManager::IsAssetMissing(AssetHandle handle)
+	bool EditorAssetManager::IsAssetMissing(const AssetHandle &handle)
 	{
 		SEDX_PROFILE_FUNC();
 		SEDX_SCOPE_PERF("AssetManager::IsAssetMissing")
@@ -386,18 +376,18 @@ namespace SceneryEditorX
 		return !IO::FileSystem::Exists(Project::GetActive()->GetAssetDirectory() / metadata.FilePath);
 	}
 
-	bool EditorAssetManager::IsMemoryAsset(AssetHandle handle)
+	bool EditorAssetManager::IsMemoryAsset(const AssetHandle &handle)
 	{
 		std::scoped_lock lock(m_MemoryAssetsMutex);
 		return m_MemoryAssets.contains(handle);
 	}
 
-	bool EditorAssetManager::IsPhysicalAsset(AssetHandle handle)
+	bool EditorAssetManager::IsPhysicalAsset(const AssetHandle &handle)
 	{
 		return !IsMemoryAsset(handle);
 	}
 
-	void EditorAssetManager::RemoveAsset(AssetHandle handle)
+	void EditorAssetManager::RemoveAsset(const AssetHandle &handle)
 	{
 		{
 			std::scoped_lock lock(m_MemoryAssetsMutex);
@@ -416,7 +406,7 @@ namespace SceneryEditorX
 	}
 
 	// handle is dependent on dependency
-    void EditorAssetManager::RegisterDependency(AssetHandle dependency, AssetHandle handle)
+    void EditorAssetManager::RegisterDependency(const AssetHandle &dependency,const AssetHandle &handle)
 	{
 		std::scoped_lock lock(m_AssetDependenciesMutex);
 
@@ -436,7 +426,7 @@ namespace SceneryEditorX
 	}
 
 	// handle is no longer dependent on dependency
-    void EditorAssetManager::DeregisterDependency(AssetHandle dependency, AssetHandle handle)
+    void EditorAssetManager::DeregisterDependency(const AssetHandle &dependency, const AssetHandle &handle)
 	{
 		std::scoped_lock lock(m_AssetDependenciesMutex);
 		if (dependency != 0)
@@ -446,12 +436,12 @@ namespace SceneryEditorX
 		}
 	}
 
-	void EditorAssetManager::DeregisterDependencies(AssetHandle handle)
+	void EditorAssetManager::DeregisterDependencies(const AssetHandle &handle)
 	{
 		std::scoped_lock lock(m_AssetDependenciesMutex);
 		if (auto it = m_AssetDependencies.find(handle); it != m_AssetDependencies.end())
 		{
-            for (AssetHandle dependency : it->second)
+            for (const AssetHandle &dependency : it->second)
 			{
 				m_AssetDependents[dependency].erase(handle);
 			}
@@ -459,7 +449,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	std::unordered_set<AssetHandle> EditorAssetManager::GetDependencies(AssetHandle handle)
+	std::unordered_set<AssetHandle> EditorAssetManager::GetDependencies(const AssetHandle &handle)
 	{
 		bool registered = false;
         std::unordered_set<AssetHandle> result;
@@ -497,7 +487,7 @@ namespace SceneryEditorX
 		return result;
 	}
 
-	void EditorAssetManager::UpdateDependents(AssetHandle handle)
+	void EditorAssetManager::UpdateDependents(const AssetHandle &handle)
 	{
         std::unordered_set<AssetHandle> dependents;
 		{
@@ -505,14 +495,13 @@ namespace SceneryEditorX
 			if (auto it = m_AssetDependents.find(handle); it != m_AssetDependents.end())
 				dependents = it->second;
 		}
-        for (AssetHandle dependent : dependents)
+        for (const AssetHandle &dependent : dependents)
 		{
-			if(IsAssetLoaded(dependent)) {
+			if(IsAssetLoaded(dependent))
+			{
                 if (Ref<Asset> asset = GetAsset(dependent))
-				{
-					asset->OnDependencyUpdated(handle);
-				}
-			}
+                    asset->OnDependencyUpdated(handle);
+            }
 		}
 	}
 
@@ -548,17 +537,13 @@ namespace SceneryEditorX
 		const std::filesystem::path path = GetRelativePath(filepath);
 
 		if (auto handle = GetAssetHandleFromFilePath(path); handle)
-		{
-			return handle;
-		}
+            return handle;
 
-		const AssetType type = GetAssetTypeFromPath(path);
+        const AssetType type = GetAssetTypeFromPath(path);
 		if (type == AssetType::None)
-		{
-			return 0;
-		}
+            return 0;
 
-		AssetMetadata metadata;
+        AssetMetadata metadata;
         metadata.Handle = AssetHandle();
 		metadata.FilePath = path;
 		metadata.Type = type;
@@ -570,7 +555,7 @@ namespace SceneryEditorX
 		return metadata.Handle;
 	}
 
-	Ref<Asset> EditorAssetManager::GetAssetIncludingInvalid(AssetHandle assetHandle)
+	Ref<Asset> EditorAssetManager::GetAssetIncludingInvalid(const AssetHandle &assetHandle)
 	{
 		if (auto asset = GetMemoryAsset(assetHandle); asset)
 			return asset;
@@ -620,7 +605,7 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_INFO("[AssetManager] Loading Asset Registry");
 
-		const auto& assetRegistryPath = Project::GetAssetRegistryPath();
+        const void &assetRegistryPath = Project::GetAssetRegistryPath();
 		if (!IO::FileSystem::Exists(assetRegistryPath))
 			return;
 
@@ -702,8 +687,7 @@ namespace SceneryEditorX
 
 					if (bestScore > 0 && score == bestScore)
 					{
-						// TODO: How do we handle this?
-						// Probably prompt the user at this point?
+						/// TODO: How do we handle this? Probably prompt the user at this point?
 					}
 
 					if (score <= bestScore)
@@ -765,13 +749,13 @@ namespace SceneryEditorX
 
 	void EditorAssetManager::ReloadAssets()
 	{
-		ProcessDirectory(Project::GetActiveAssetDirectory().string());
+		ProcessDirectory(std::to_string(Project::GetActiveAssetDirectory()));
 		WriteRegistryToFile();
 	}
 
 	void EditorAssetManager::WriteRegistryToFile()
 	{
-		// Sort assets by UUID to make project management easier
+		/// Sort assets by UUID to make project management easier
 		struct AssetRegistryEntry
 		{
 			std::string FilePath;
@@ -784,9 +768,9 @@ namespace SceneryEditorX
 				continue;
 
 			std::string pathToSerialize = metadata.FilePath.string();
-			// NOTE: if Windows
+			/// NOTE: if Windows
 			std::ranges::replace(pathToSerialize, '\\', '/');
-			sortedMap[metadata.Handle] = { pathToSerialize, metadata.Type };
+			sortedMap[metadata.Handle] = {.FilePath = pathToSerialize,.Type = metadata.Type };
 		}
 
 		SEDX_CORE_INFO("[AssetManager] serializing asset registry with {0} entries", sortedMap.size());
@@ -805,12 +789,12 @@ namespace SceneryEditorX
 
 		registryJson["Assets"] = assetsArray;
 
-		const std::string& assetRegistryPath = Project::GetAssetRegistryPath().string();
+		const std::string& assetRegistryPath = Project::GetAssetRegistryPath();
 		std::ofstream fout(assetRegistryPath);
 		fout << registryJson.dump(2); // Pretty print with 2-space indentation
 	}
 
-	void EditorAssetManager::OnAssetRenamed(AssetHandle assetHandle, const std::filesystem::path &newFilePath)
+	void EditorAssetManager::OnAssetRenamed(const AssetHandle &assetHandle, const std::filesystem::path &newFilePath)
 	{
 		AssetMetadata metadata = GetMetadata(assetHandle);
 		if (!metadata.IsValid())
@@ -821,11 +805,12 @@ namespace SceneryEditorX
 		WriteRegistryToFile();
 	}
 
-	void EditorAssetManager::OnAssetDeleted(AssetHandle assetHandle)
+	void EditorAssetManager::OnAssetDeleted(const AssetHandle &assetHandle)
 	{
 		RemoveAsset(assetHandle);
 		WriteRegistryToFile();
 	}
+	*/
 
 }
 

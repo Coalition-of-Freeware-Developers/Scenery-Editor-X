@@ -19,6 +19,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	// WARNING: The AssetRegistry is not itself thread-safe, so if accessing AssetRegistry
 	// via multiple threads, you must take care to provide your own synchronization.
 	class AssetRegistry
@@ -27,12 +28,12 @@ namespace SceneryEditorX
 
 		// note: no non-const GetAsset() function.  If you need to modify the metadata, use Set().
 		// This aids correct usage in a multithreaded environment.
-        const AssetMetadata &Get(const AssetHandle handle) const;
-        void Set(const AssetHandle handle, const AssetMetadata &metadata);
+        const AssetMetadata &Get(const AssetHandle &handle) const;
+        void Set(const AssetHandle &handle, const AssetMetadata &metadata);
 
 		size_t Count() const { return m_AssetRegistry.size(); }
-        bool Contains(const AssetHandle handle) const;
-        size_t Remove(const AssetHandle handle);
+        bool Contains(const AssetHandle &handle) const;
+        size_t Remove(const AssetHandle &handle);
 		void Clear();
 
 		auto begin() { return m_AssetRegistry.begin(); }
@@ -42,6 +43,8 @@ namespace SceneryEditorX
 	private:
         std::unordered_map<AssetHandle, AssetMetadata> m_AssetRegistry;
 	};
+	*/
+
 }
 
 /// -------------------------------------------------------

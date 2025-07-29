@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * input.h
@@ -30,6 +30,45 @@ namespace SceneryEditorX
 		CapsLock = BIT(4),
 		NumLock = BIT(5)
 	};
+
+	// Bitwise operators for KeyMods enum
+	inline KeyMods operator&(KeyMods lhs, KeyMods rhs)
+	{
+		return static_cast<KeyMods>(static_cast<int>(lhs) & static_cast<int>(rhs));
+	}
+
+	inline KeyMods operator|(KeyMods lhs, KeyMods rhs)
+	{
+		return static_cast<KeyMods>(static_cast<int>(lhs) | static_cast<int>(rhs));
+	}
+
+	inline KeyMods operator^(KeyMods lhs, KeyMods rhs)
+	{
+		return static_cast<KeyMods>(static_cast<int>(lhs) ^ static_cast<int>(rhs));
+	}
+
+	inline KeyMods operator~(KeyMods rhs)
+	{
+		return static_cast<KeyMods>(~static_cast<int>(rhs));
+	}
+
+	inline KeyMods& operator&=(KeyMods& lhs, KeyMods rhs)
+	{
+		lhs = lhs & rhs;
+		return lhs;
+	}
+
+	inline KeyMods& operator|=(KeyMods& lhs, KeyMods rhs)
+	{
+		lhs = lhs | rhs;
+		return lhs;
+	}
+
+	inline KeyMods& operator^=(KeyMods& lhs, KeyMods rhs)
+	{
+		lhs = lhs ^ rhs;
+		return lhs;
+	}
 
 	struct KeyData
 	{

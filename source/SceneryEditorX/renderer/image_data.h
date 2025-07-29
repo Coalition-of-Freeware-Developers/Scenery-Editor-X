@@ -59,38 +59,39 @@ namespace SceneryEditorX
 	    };
     }
 
-    /*
-	enum ImageFormat : uint8_t
-    {
-        RGBA8_unorm			= 37,
-        BGRA8_unorm			= 44,
-        RG32_sfloat			= 103,
-        RGB32_sfloat		= 106,
-        RGBA32_sfloat		= 109,
-        D32_sfloat			= 126,
-        D24_unorm_S8_uint	= 129,
-    };
-	*/
+    inline bool IsIntegerBased(const VkFormat format)
+	{
+        switch (format)
+        {
+        case VK_FORMAT_R16_UINT:
+        case VK_FORMAT_R32_UINT:
+        case VK_FORMAT_R8_UINT:
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:
+            return true;
+        case VK_FORMAT_D32_SFLOAT:
+        case VK_FORMAT_R8_UNORM:
+        case VK_FORMAT_R32G32B32A32_SFLOAT:
+        case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+        case VK_FORMAT_R16G16_SFLOAT:
+        case VK_FORMAT_R32G32_SFLOAT:
+        case VK_FORMAT_R32_SFLOAT:
+        case VK_FORMAT_R8G8_UNORM:
+        case VK_FORMAT_R8G8B8A8_UNORM:
+        case VK_FORMAT_R16G16B16A16_SFLOAT:
+        case VK_FORMAT_R8G8B8_UNORM:
+        case VK_FORMAT_R8G8B8_SRGB:
+        case VK_FORMAT_R8G8B8A8_SRGB:
+        case VK_FORMAT_UNDEFINED:
+            return false;
+        }
+        SEDX_CORE_ASSERT(false);
+        return false;
+	}
 
-    inline void GetVkFormat()
+    inline void GetDepthFormat()
     {
 		RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat();
     }
-
-    enum class UVWrap : uint8_t
-    {
-        None = 0,
-        Clamp,
-        Repeat
-    };
-
-    enum class ImageFilter : uint8_t
-    {
-        None = 0,
-        Linear,
-        Nearest,
-        Cubic
-    };
 
     struct ImageSubresourceRange
     {
@@ -165,7 +166,9 @@ namespace SceneryEditorX
 
     inline bool IsDepthFormat(const VkFormat format)
     {
-        if (format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+        if (format == VK_FORMAT_D24_UNORM_S8_UINT ||
+			format == VK_FORMAT_D32_SFLOAT ||
+			format == VK_FORMAT_D32_SFLOAT_S8_UINT)
             return true;
 
         return false;

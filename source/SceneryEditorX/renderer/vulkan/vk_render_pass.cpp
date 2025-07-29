@@ -32,16 +32,19 @@ namespace SceneryEditorX
 	 * @note The renderData member is default-initialized.
 	 * @throws Assertion failure if spec.vkPipeline is not valid.
 	 */
-	RenderPass::RenderPass(const RenderSpec &spec) : renderSpec(spec)
-	{
-	    SEDX_CORE_VERIFY(spec.Pipeline);
 
-	    DescriptorSetManagerSpecification dmSpec;
-        dmSpec.DebugName = spec.debugName;
-        dmSpec.Shader = spec.Pipeline->GetSpecification().shader.As<Shader>();
-        dmSpec.StartSet = 1;
+	/*
+	RenderPass::RenderPass(const RenderSpec &spec) : renderData(), renderSpec(spec)
+    {
+        SEDX_CORE_VERIFY(spec.Pipeline);
+
+        DescriptorSetManagerSpecification dmSpec;
+        dmSpec.debugName = spec.debugName;
+        dmSpec.shader = spec.Pipeline->GetSpecification().shader.As<Shader>();
+        dmSpec.startSet = 1;
         m_DescriptorSetManager = DescriptorSetManager(dmSpec);
-	}
+    }
+    */
 
 	/**
 	 * @brief Destructor for the RenderPass class.
@@ -60,41 +63,49 @@ namespace SceneryEditorX
 	 *   classes as members of RenderPass and letting their destructors handle cleanup automatically,
 	 *   or provide explicit cleanup methods to be called here.
 	 */
+
+	/*
 	RenderPass::~RenderPass()
 	{
-		/*
+
         if (renderPass != VK_NULL_HANDLE && RenderContext::Get()->GetLogicDevice())
 	    {
             const auto device = RenderContext::Get()->GetLogicDevice();
             vkDestroyRenderPass(device, renderPass, RenderContext::Get()->GetAllocatorCallback() : nullptr);
 	        renderPass = VK_NULL_HANDLE;
 	    }
-        */
+
 	}
 
-    void RenderPass::AddInput(std::string_view name, Ref<UniformBuffer> uniformBuffer)
+    void RenderPass::AddInput(std::string_view name, const Ref<UniformBuffer> &uniformBuffer)
     {
         m_DescriptorSetManager.AddInput(name, uniformBuffer);
     }
 
-    void RenderPass::AddInput(std::string_view name, Ref<UniformBufferSet> uniformBufferSet)
+
+    void RenderPass::AddInput(std::string_view name, const Ref<UniformBufferSet> &uniformBufferSet)
     {
         m_DescriptorSetManager.AddInput(name, uniformBufferSet);
     }
 
-	void RenderPass::AddInput(std::string_view name, Ref<StorageBufferSet> storageBufferSet)
+
+	void RenderPass::AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet)
     {
         m_DescriptorSetManager.AddInput(name, storageBufferSet);
     }
 
-    void RenderPass::AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer)
+    void RenderPass::AddInput(std::string_view name, const Ref<StorageBuffer> &storageBuffer)
     {
         m_DescriptorSetManager.AddInput(name, storageBuffer);
     }
+    */
 
-    void RenderPass::AddInput(std::string_view name, Ref<TextureAsset> texture)
+    /*
+    void RenderPass::AddInput(std::string_view name, const Ref<TextureAsset> &texture)
     {
+        //m_DescriptorSetManager.AddInput(name, texture);
     }
+    */
 
     /*
     Ref<Image2D> RenderPass::GetOutput(uint32_t index)
@@ -127,6 +138,7 @@ namespace SceneryEditorX
         return renderSpec.Pipeline;
     }
 
+    /*
     bool RenderPass::Validate()
     {
         return m_DescriptorSetManager.Validate();
@@ -157,17 +169,18 @@ namespace SceneryEditorX
     bool RenderPass::IsInputValid(std::string_view name) const
     {
         std::string nameStr(name);
-        return m_DescriptorSetManager.InputDeclarations.contains(nameStr);
+        return m_DescriptorSetManager.inputDeclarations.contains(nameStr);
     }
 
-	const RenderPassInputDeclaration *RenderPass::GetInputDeclaration(std::string_view name) const
+	const RenderPassInputDeclaration *RenderPass::GetInputDeclaration(std::string_view name)
     {
         std::string nameStr(name);
-        if (!m_DescriptorSetManager.InputDeclarations.contains(nameStr))
+        if (!m_DescriptorSetManager.inputDeclarations.contains(nameStr))
             return nullptr;
-        const RenderPassInputDeclaration &decl = m_DescriptorSetManager.InputDeclarations.at(nameStr);
+        const RenderPassInputDeclaration &decl = m_DescriptorSetManager.inputDeclarations.at(nameStr);
         return &decl;
     }
+    */
 
     void RenderPass::CreateDescriptorSets() const
     {

@@ -11,10 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 #include <optional>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
@@ -277,7 +276,6 @@ namespace SceneryEditorX
         [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
         [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
 		[[nodiscard]] VkDevice GetDevice() const { return device; }
-
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
@@ -324,9 +322,7 @@ namespace SceneryEditorX
          * @return A new command buffer.
          */
         VkCommandBuffer CreateUICmdBuffer(const char *debugName);
-
         Ref<CommandPool> GetThreadLocalCommandPool();
-
         Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
 
         /**

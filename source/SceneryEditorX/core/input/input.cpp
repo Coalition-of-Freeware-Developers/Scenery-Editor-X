@@ -13,6 +13,7 @@
 #include <GLFW/glfw3.h>
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/window/window.h>
 #include "input.h"
 #include "key_codes.h"
 //#include <magic_enum.hpp>
@@ -84,8 +85,8 @@ namespace SceneryEditorX
 	{
         if (const bool enableImGui = Application::Get().GetAppData().EnableImGui; !enableImGui)
 		{
-			auto &window = WindowData::window;
-			auto state = glfwGetKey(static_cast<GLFWwindow*>(window), static_cast<int32_t>(keycode));
+			Window window = Application::Get().GetWindow();
+			auto state = glfwGetKey(window.GetWindow(), static_cast<int32_t>(keycode));
 			return state == GLFW_PRESS || state == GLFW_REPEAT;
 		}
 
@@ -152,8 +153,8 @@ namespace SceneryEditorX
 	{
         if (bool enableImGui = Application::Get().GetAppData().EnableImGui; !enableImGui)
 		{
-            auto &window = WindowData::window;
-			auto state = glfwGetMouseButton(static_cast<GLFWwindow*>(window.GetWindow()), static_cast<int32_t>(button));
+			Window window = Application::Get().GetWindow();
+			auto state = glfwGetMouseButton(window.GetWindow(), static_cast<int32_t>(button));
 			return state == GLFW_PRESS;
 		}
 
@@ -196,10 +197,10 @@ namespace SceneryEditorX
 
 	std::pair<float, float> Input::GetMousePosition()
 	{
-        auto &window = static_cast<Window &>(WindowData::window);
+        Window window = Application::Get().GetWindow();
 
 		double x, y;
-		glfwGetCursorPos(static_cast<GLFWwindow*>(window), &x, &y);
+		glfwGetCursorPos(window.GetWindow(), &x, &y);
 		return { (float)x, (float)y };
 	}
 
@@ -218,8 +219,8 @@ namespace SceneryEditorX
 
 	CursorMode Input::GetCursorMode()
 	{
-        auto &window = static_cast<Window &>(WindowData::window);
-		return (CursorMode)(glfwGetInputMode(static_cast<GLFWwindow*>(window), GLFW_CURSOR) - GLFW_CURSOR_NORMAL);
+        Window window = Application::Get().GetWindow();
+		return (CursorMode)(glfwGetInputMode(window.GetWindow(), GLFW_CURSOR) - GLFW_CURSOR_NORMAL);
 	}
 
 	void Input::TransitionPressedKeys()

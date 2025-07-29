@@ -11,19 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_types.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/core/memory/buffer.h>
-#undef INFINITE
-#include <msdf-atlas-gen/msdf-atlas-gen/msdf-atlas-gen.h>
-#include <SceneryEditorX/asset/ecs.h>
+//#include <SceneryEditorX/renderer/texture.h>
+//#undef INFINITE
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/*
 	struct MSDFData
 	{
 	    msdf_atlas::FontGeometry FontGeometry;
@@ -46,7 +42,7 @@ namespace SceneryEditorX
 		static void Shutdown();
 		static Ref<Font> GetDefaultFont();
 		static Ref<Font> GetDefaultMonoSpacedFont();
-		static Ref<Font> GetFontAssetForTextComponent(const TextComponent& textComponent);
+		//static Ref<Font> GetFontAssetForTextComponent(const TextComponent& textComponent);
 
 		static ObjectType GetStaticType() { return ObjectType::Font; }
 		virtual ObjectType GetAssetType() const override { return GetStaticType(); }
@@ -61,6 +57,7 @@ namespace SceneryEditorX
 
 		inline static Ref<Font> s_DefaultFont, s_DefaultMonoSpacedFont;
 	};
+	*/
 
 }
 

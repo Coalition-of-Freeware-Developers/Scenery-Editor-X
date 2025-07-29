@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/utils/reflection/type_values.h>
 
 /// -------------------------------------------------------
 
@@ -32,10 +31,10 @@ namespace SceneryEditorX::Types
 	{
 	public:
 		Type() = default;
-        Type(Type &&);
+        Type(Type &&) noexcept;
 		Type(const Type &);
         Type(Allocator* , const Type &);
-        Type &operator=(Type &&);
+        Type &operator=(Type &&) noexcept;
 		Type &operator= (const Type &);
         ~Type() noexcept;
 
@@ -145,7 +144,7 @@ namespace SceneryEditorX::Types
             int64          = 0x00 + sizeof(int64_t),
             float32        = 0x10 + sizeof(float),
             float64        = 0x10 + sizeof(double),
-            boolean        = 0x30 + sizeof(Values::BoolStorageType),
+            /*boolean        = 0x30 + sizeof(Values::BoolStorageType),*/
             string         = 0x40 + sizeof(uint32_t),
             vector         = 0x50,
             primitiveArray = 0x60,

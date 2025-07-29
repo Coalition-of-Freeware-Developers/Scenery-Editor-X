@@ -180,6 +180,7 @@ namespace SceneryEditorX
 		 */
         inline bool isXPlaneAssetType(const std::string &assetType)
         {
+            /*
             switch (assetType)
             {
                 case AssetTypeFromString(assetType) != AssetType::None: return false;
@@ -187,6 +188,7 @@ namespace SceneryEditorX
                 default:
                     return false;
             }
+            */
 
         }
 

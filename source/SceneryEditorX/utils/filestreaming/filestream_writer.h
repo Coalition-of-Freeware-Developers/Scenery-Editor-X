@@ -120,6 +120,8 @@ namespace SceneryEditorX
 
 	};
 
+    /// -------------------------------------------------------
+
 	template<>
 	inline void StreamWriter::WriteArray(const std::vector<std::string>& array, bool writeSize)
 	{

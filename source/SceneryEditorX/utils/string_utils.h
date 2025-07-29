@@ -13,9 +13,7 @@
 #pragma once
 #include <algorithm>
 #include <cassert>
-#include <cctype>
 #include <chrono>
-#include <cmath>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -320,7 +318,7 @@ namespace SceneryEditorX::Utils
 	std::string createHexString(IntegerType value, int minNumDigits)
 	{
 	    static_assert(std::is_integral_v<IntegerType>, "Need to pass integers into this method");
-	    auto value = static_cast<std::make_unsigned_t<IntegerType>>(value);
+	    auto intvalue = static_cast<std::make_unsigned_t<IntegerType>>(intvalue);
 	    assert(minNumDigits <= 32);
 
 	    char hex[40];
@@ -330,11 +328,11 @@ namespace SceneryEditorX::Utils
 
 	    for (;;)
 	    {
-	        *--d = "0123456789abcdef"[static_cast<uint32_t>(value) & 15u];
-	        value = static_cast<decltype(value)>(value >> 4);
+	        *--d = "0123456789abcdef"[static_cast<uint32_t>(intvalue) & 15u];
+	        intvalue = static_cast<decltype(intvalue)>(intvalue >> 4);
 	        --minNumDigits;
 
-	        if (value == 0 && minNumDigits <= 0)
+	        if (intvalue == 0 && minNumDigits <= 0)
 	            return std::string(d, end);
 	    }
 	}

@@ -19,7 +19,7 @@
 
 namespace SceneryEditorX
 {
-    CommandResources& CommandBuffer::GetCurrentCommandResources() const
+    CommandResources& CommandBuffer::GetCurrentCommandResources()
     {
         RenderData renderData;
         return queues[currentQueue].commands[renderData.swapChainCurrentFrame];
@@ -71,13 +71,13 @@ namespace SceneryEditorX
     }
     */
 
-    CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : debugName(std::move(debugName))
+    CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : swapChain(), data(), debugName(std::move(debugName))
     {
         /// Get the device from graphics engine
         const auto device = vkDevice;
 
         if (count == 0)
-            count = data.framesInFlight;	/// 0 = one per frame in flight
+            count = data.framesInFlight; /// 0 = one per frame in flight
 
         SEDX_CORE_VERIFY(count > 0, "CommandBuffer count must be greater than 0");
 
@@ -112,10 +112,10 @@ namespace SceneryEditorX
 
     CommandBuffer::~CommandBuffer()
     {
-        VkCommandPool commandPool = cmdPool;
+        const VkCommandPool commandPool = cmdPool;
         if (!commandBuffer.empty())
         {
-            auto device = vkDevice;
+            const auto device = vkDevice;
             vkDestroyCommandPool(device->GetDevice(), commandPool, nullptr);
             commandBuffer.clear();
         }
@@ -144,8 +144,8 @@ namespace SceneryEditorX
         Ref<CommandBuffer> cmdBufferInst;
 
         auto &cmd = GetCurrentCommandResources();
-        auto device = vkDevice->GetDevice();
-        auto vkPhysDevice = vkDevice->GetPhysicalDevice();
+        const auto device = vkDevice->GetDevice();
+        const auto vkPhysDevice = vkDevice->GetPhysicalDevice();
 
         vkWaitForFences(device, 1, &cmd.fence, VK_TRUE, UINT64_MAX);
         vkResetFences(device, 1, &cmd.fence);
@@ -180,14 +180,14 @@ namespace SceneryEditorX
 
     void CommandBuffer::End(VkSubmitInfo submitInfo)
     {
-        auto &cmd = GetCurrentCommandResources();
+        const auto &cmd = GetCurrentCommandResources();
 
         vkEndCommandBuffer(cmd.buffer);
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmd.buffer;
 
-        auto result = vkQueueSubmit(queues[currentQueue].queue, 1, &submitInfo, cmd.fence);
+        const auto result = vkQueueSubmit(queues[currentQueue].queue, 1, &submitInfo, cmd.fence);
         SEDX_ASSERT(result != VK_SUCCESS, "Failed to submit command buffer to queue");
     }
 
@@ -228,7 +228,7 @@ namespace SceneryEditorX
         constexpr VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         const VkSwapchainKHR swapchain = swapChain.GetSwapchain();
 
-        VkSubmitInfo submitInfo{};
+        VkSubmitInfo submitInfo;
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = &imageAvailableSemaphores[renderData.swapChainCurrentFrame];
@@ -238,7 +238,7 @@ namespace SceneryEditorX
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = &renderFinishedSemaphores[renderData.swapChainCurrentFrame];
 
-        VkPresentInfoKHR presentInfo{};
+        VkPresentInfoKHR presentInfo;
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = submitInfo.pSignalSemaphores;
@@ -248,6 +248,6 @@ namespace SceneryEditorX
         presentInfo.pResults = nullptr;
     }
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

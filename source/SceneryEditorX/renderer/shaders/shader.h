@@ -14,8 +14,6 @@
 #include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 #include <SceneryEditorX/renderer/shaders/shader_resource.h>
 #include <SceneryEditorX/renderer/shaders/shader_uniforms.h>
-#include <SceneryEditorX/serialization/serializer_reader.h>
-#include <SceneryEditorX/serialization/serializer_writer.h>
 #include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
 #include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
 
@@ -54,6 +52,7 @@ namespace SceneryEditorX
 
 		static constexpr std::string_view UniformTypeToString(ShaderUniformType type);
 
+		/*
 		static void Serialize(SerializeWriter* serializer, const ShaderUniform& instance)
 		{
 			serializer->WriteString(instance.m_Name);
@@ -69,6 +68,8 @@ namespace SceneryEditorX
 			deserializer->ReadRaw(instance.m_Size);
 			deserializer->ReadRaw(instance.m_Offset);
 		}
+		*/
+
 	private:
 		std::string m_Name;
 		ShaderUniformType m_Type = ShaderUniformType::None;
@@ -102,6 +103,7 @@ namespace SceneryEditorX
 		uint32_t Size = 0;
 		std::unordered_map<std::string, ShaderUniform> Uniforms;
 
+		/*
 		static void Serialize(SerializeWriter *serializer, const ShaderBuffer &instance)
 		{
 			serializer->WriteString(instance.Name);
@@ -115,6 +117,8 @@ namespace SceneryEditorX
 			deserializer->ReadRaw(instance.Size);
 			deserializer->ReadMap(instance.Uniforms);
 		}
+		*/
+
 	};
 
 	/**
@@ -227,23 +231,27 @@ namespace SceneryEditorX
 		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) const { return m_DescriptorSetLayouts.at(set); }
 		std::vector<VkDescriptorSetLayout> GetAllDescriptorSetLayouts();
 
-		ShaderResource::UniformBuffer &GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0)
-		{
-		    SEDX_CORE_ASSERT(m_ReflectionData.ShaderDescriptorSets.at(set).UniformBuffers.size() > binding);
-		    return m_ReflectionData.ShaderDescriptorSets.at(set).UniformBuffers.at(binding);
-		}
+        /*
+        ShaderResource::UniformBuffer GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0)
+        {
+            SEDX_CORE_ASSERT(m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.size() > binding);
+            return m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.at(binding);
+        }
+        */
 
+		/*
 		uint32_t GetUniformBufferCount(const uint32_t set = 0) const
         {
 			if (m_ReflectionData.ShaderDescriptorSets.size() < set)
 				return 0;
 
-			return (uint32_t)m_ReflectionData.ShaderDescriptorSets[set].UniformBuffers.size();
+			return (uint32_t)m_ReflectionData.ShaderDescriptorSets[set].uniformBuffers.size();
 		}
+		*/
 
-		const std::vector<ShaderResource::ShaderDescriptorSet>& GetShaderDescriptorSets() const { return m_ReflectionData.ShaderDescriptorSets; }
-		bool HasDescriptorSet(uint32_t set) const { return m_TypeCounts.contains(set); }
-		const std::vector<ShaderResource::PushConstantRange> &GetPushConstantRanges() const { return m_ReflectionData.PushConstantRanges; }
+		//const std::vector<ShaderResource::ShaderDescriptorSet>& GetShaderDescriptorSets() const { return m_ReflectionData.ShaderDescriptorSets; }
+		//bool HasDescriptorSet(uint32_t set) const { return m_TypeCounts.contains(set); }
+		//const std::vector<ShaderResource::PushConstantRange> &GetPushConstantRanges() const { return m_ReflectionData.PushConstantRanges; }
 
 		struct ShaderMaterialDescriptorSet
 		{
@@ -251,6 +259,7 @@ namespace SceneryEditorX
 			std::vector<VkDescriptorSet> DescriptorSets;
 		};
 
+        /*
         struct ReflectionData
         {
             std::vector<ShaderResource::ShaderDescriptorSet> ShaderDescriptorSets;
@@ -258,10 +267,13 @@ namespace SceneryEditorX
             std::unordered_map<std::string, ShaderBuffer> ConstantBuffers;
             std::vector<ShaderResource::PushConstantRange> PushConstantRanges;
         };
+        */
 
+        /*
         bool TryReadReflectionData(StreamReader *serializer);
         void SerializeReflectionData(StreamWriter *serializer);
         void SetReflectionData(const ReflectionData &reflectionData);
+        */
 
 		ShaderMaterialDescriptorSet AllocateDescriptorSet(uint32_t set = 0);
 		ShaderMaterialDescriptorSet CreateDescriptorSets(uint32_t set = 0);
@@ -285,10 +297,9 @@ namespace SceneryEditorX
         std::filesystem::path m_AssetPath;
         std::string m_Name;
         bool m_DisableOptimization = false;
-
 		
 		std::map<VkShaderStageFlagBits, std::vector<uint32_t>> m_ShaderData;
-        ReflectionData m_ReflectionData;
+        //ReflectionData m_ReflectionData;
 
         std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
         VkDescriptorSet m_DescriptorSet;
@@ -316,14 +327,11 @@ namespace SceneryEditorX
 		std::unordered_map<std::string, Ref<Shader>>& GetShaders() { return m_Shaders; }
 		const std::unordered_map<std::string, Ref<Shader>>& GetShaders() const { return m_Shaders; }
 
-
 	private:
 		std::unordered_map<std::string, Ref<Shader>> m_Shaders;
 		Ref<ShaderPack> m_ShaderPack;
 	};
 
-
-
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

@@ -11,11 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <array>
-#include <glm/glm.hpp>
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/scene/node.h>
+//#include <SceneryEditorX/scene/node.h>
 #include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
@@ -45,7 +43,7 @@ namespace SceneryEditorX
        
         static VkVertexInputBindingDescription getBindingDescription()
         {
-            VkVertexInputBindingDescription bindingDescription{};
+            VkVertexInputBindingDescription bindingDescription;
             bindingDescription.binding = 0;
             bindingDescription.stride = sizeof(MeshVertex);
             bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -136,11 +134,11 @@ namespace SceneryEditorX
         bool loaded = false;
 	};
 
-    struct MeshNode : GraphNode
+    struct MeshNode /*: GraphNode*/
     {
         uint32_t parent = 0xffffffff;
         Ref<ModelAsset> mesh;
-        Ref<MaterialAsset> material;
+        //Ref<MaterialAsset> material;
         std::vector<uint32_t> children;
         std::vector<uint32_t> submeshes;
         std::string name;

@@ -22,6 +22,8 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     struct EntityID
     {
         ///< Use explicit UUID constructor for zero value
@@ -84,6 +86,7 @@ namespace SceneryEditorX
 		bool DynamicSky = false;
 		Vec3 TurbidityAzimuthInclination = { 2.0, 0.0, 0.0 };
 	};
+	*/
 
 }
 

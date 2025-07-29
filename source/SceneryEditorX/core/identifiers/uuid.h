@@ -9,7 +9,9 @@
 * -------------------------------------------------------
 * Created: 13/7/2025
 * -------------------------------------------------------
-*
+*/
+
+/**
 * This file provides UUID (Universally Unique Identifier) functionality for the
 * Scenery Editor X application. It implements 32-bit, 64-bit, and 128-bit UUID variants
 * to optimize memory usage and performance for different use cases.
@@ -52,13 +54,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <cstdint>
 #include <functional>
 #include <vector>
 #include <string>
 #include <array>
-
-#include <SceneryEditorX/asset/asset.h>
 
 /// -------------------------------------------------------
 
@@ -227,7 +226,7 @@ namespace SceneryEditorX
              * UUIDUtilities::HashCombine(hash, &data, sizeof(data));
              * @endcode
              */
-	        static void HashCombine(uint32_t& h, void* ptr, const uint32_t size);
+	        static void HashCombine(uint32_t& h, void* ptr, uint32_t size);
 	    };
     }
 
@@ -251,7 +250,7 @@ namespace SceneryEditorX
 	 *
 	 * @example
 	 * @code
-	 * // Generate random UUID128
+	 * // Generate random UUID128.
 	 * UUID128 assetId;
 	 *
 	 * // Create from explicit value
@@ -280,8 +279,8 @@ namespace SceneryEditorX
 		 *
 		 * @example
 		 * @code
-		 * UUID128 assetId;      // Generates random UUID128
-		 * UUID128 anotherId;    // Generates different random UUID128
+		 * UUID128 assetId;      // Generates random UUID128.
+		 * UUID128 anotherId;    // Generates different random UUID128.
 		 * @endcode
 		 */
 		UUID128();
@@ -808,7 +807,7 @@ namespace SceneryEditorX
 
     private:
 		friend struct std::hash<UUID32>;  ///< Allow hash specialization access
-		uint32_t m_UUID;                 ///< The underlying 32-bit identifier value
+		uint32_t m_UUID;                  ///< The underlying 32-bit identifier value
 	};
 
 }
@@ -868,8 +867,8 @@ namespace std
 		 * @note The hash value is deterministic - the same UUID will always
 		 *       produce the same hash value within a single program execution.
 		 */
-		std::size_t operator()(const SceneryEditorX::UUID &uuid) const
-		{
+		std::size_t operator()(const SceneryEditorX::UUID &uuid) const noexcept
+        {
 			// uuid is already a randomly generated number, and is suitable as a hash key as-is.
 			// this may change in future, in which case return hash<uint64_t>{}(uuid); might be more appropriate
 			return static_cast<std::size_t>(static_cast<uint64_t>(uuid));
@@ -918,8 +917,8 @@ namespace std
 		 * @note The hash value is deterministic - the same UUID32 will always
 		 *       produce the same hash value within a single program execution.
 		 */
-		std::size_t operator()(const SceneryEditorX::UUID32 &uuid) const
-		{
+		std::size_t operator()(const SceneryEditorX::UUID32 &uuid) const noexcept
+        {
 			return hash<uint32_t>()(static_cast<uint32_t>(uuid));
 		}
 	};
@@ -966,8 +965,8 @@ namespace std
 		 * @note The hash value is deterministic - the same UUID128 will always
 		 *       produce the same hash value within a single program execution.
 		 */
-		std::size_t operator()(const SceneryEditorX::UUID128 &uuid) const
-		{
+		std::size_t operator()(const SceneryEditorX::UUID128 &uuid) const noexcept
+        {
 			const auto& components = static_cast<std::array<uint32_t, 4>>(uuid);
 
 			// Combine hash values of all components using a hash combination algorithm

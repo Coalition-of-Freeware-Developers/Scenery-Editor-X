@@ -34,6 +34,6 @@ namespace SceneryEditorX
 	    std::unordered_map<std::string, std::shared_ptr<TextureAsset>> textures;
 	};
 	
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

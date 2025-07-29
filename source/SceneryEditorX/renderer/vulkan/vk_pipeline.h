@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/buffers/framebuffer.h>
-#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/vulkan/resource.h>
+#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 
 /// -------------------------------------------------------
 
@@ -37,17 +37,17 @@ namespace SceneryEditorX
     {
         Ref<Shader> shader;
         Ref<Framebuffer> dstFramebuffer;
-        //VertexBufferLayout layout;
-        //VertexBufferLayout instanceLayout;
-        //VertexBufferLayout boneInfluenceLayout;
-        //PrimitiveTopology topology = PrimitiveTopology::Triangles;
-        //DepthCompareOperator depthOperator = DepthCompareOperator::GreaterOrEqual;
+        VertexBufferLayout layout;
+        VertexBufferLayout instanceLayout;
+        VertexBufferLayout boneInfluenceLayout;
+        Topology topology = Topology::Triangles;
+        DepthCompareOperator depthOperator = DepthCompareOperator::GreaterOrEqual;
         bool backfaceCulling = true;
         bool depthTest = true;
         bool depthWrite = true;
         bool wireframe = false;
         float lineWidth = 1.0f;
-        std::string name;
+        std::string debugName;
     };
 
 	class Pipeline : public RefCounted
@@ -68,8 +68,6 @@ namespace SceneryEditorX
             std::filesystem::path path;
             std::string entryPoint = "main";
         };
-
-	    void Create();
 
         VkExtent2D GetFloatSwapExtent() const;
         VkPipeline GetPipeline() const { return pipeline; }

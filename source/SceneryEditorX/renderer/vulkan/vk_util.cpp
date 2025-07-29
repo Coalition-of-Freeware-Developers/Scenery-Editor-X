@@ -11,13 +11,21 @@
 * -------------------------------------------------------
 */
 // ReSharper disable StringLiteralTypo
-#include <cstdlib>
-#include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
 /// -------------------------------------------------------
 
+/**
+ * @brief Get the string representation of a Vulkan physical device type.
+ *
+ * This function returns a string representation of the given Vulkan physical device type.
+ * It is used for debugging purposes to identify the type of physical device being used.
+ *
+ * @param type The Vulkan physical device type.
+ * @return const char* A string representation of the physical device type.
+ */
+// ReSharper disable once CppNotAllPathsReturnValue
 const char* vkDeviceTypeString(const VkPhysicalDeviceType type)
 {
     switch (type)
@@ -33,6 +41,15 @@ const char* vkDeviceTypeString(const VkPhysicalDeviceType type)
     }
 }
 
+/**
+ * @brief Get the string representation of a Vulkan color space.
+ *
+ * This function returns a string representation of the given Vulkan color space.
+ * It is used for debugging purposes to identify the color space used in Vulkan operations.
+ *
+ * @param colorSpace The Vulkan color space.
+ * @return const char* A string representation of the color space.
+ */
 const char* vkColorSpaceString(const VkColorSpaceKHR colorSpace)
 {
     switch (colorSpace)
@@ -57,7 +74,16 @@ const char* vkColorSpaceString(const VkColorSpaceKHR colorSpace)
     default :											return "Unknown";
     }
 }
-		    
+
+/**
+ * @brief Get the string representation of Vulkan queue flags.
+ *
+ * This function returns a string representation of the given Vulkan queue flags.
+ * It is used for debugging purposes to identify the capabilities of a Vulkan queue.
+ *
+ * @param flags The Vulkan queue flags.
+ * @return const char* A string representation of the queue flags.
+ */
 const char* vkQueueFlagsString(const VkQueueFlags flags)
 {
     switch (flags)
@@ -70,7 +96,16 @@ const char* vkQueueFlagsString(const VkQueueFlags flags)
     default :							return "Unknown";
     }
 }
-		    
+
+/**
+ * @brief Get the string representation of Vulkan memory property flags.
+ *
+ * This function returns a string representation of the given Vulkan memory property flags.
+ * It is used for debugging purposes to identify the properties of memory allocations.
+ *
+ * @param flags The Vulkan memory property flags.
+ * @return const char* A string representation of the memory property flags.
+ */
 const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags)
 {
     switch (flags)
@@ -88,7 +123,16 @@ const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags)
     default :											return "Unknown";
     }
 }
-		    
+
+/**
+ * @brief Get the string representation of a Vulkan debug message severity.
+ *
+ * This function returns a string representation of the given Vulkan debug message severity.
+ * It is used for debugging purposes to identify the severity level of messages being logged.
+ *
+ * @param severity The Vulkan debug message severity flags.
+ * @return const char* A string representation of the debug message severity.
+ */
 const char* vkDebugSeverityString(const VkDebugUtilsMessageSeverityFlagBitsEXT severity)
 {
     switch (severity)
@@ -103,7 +147,16 @@ const char* vkDebugSeverityString(const VkDebugUtilsMessageSeverityFlagBitsEXT s
 
     return "No Known Severity";
 }
-		    
+
+/**
+ * @brief Get the string representation of a Vulkan debug message type.
+ *
+ * This function returns a string representation of the given Vulkan debug message type.
+ * It is used for debugging purposes to identify the type of message being logged.
+ *
+ * @param type The Vulkan debug message type flags.
+ * @return const char* A string representation of the debug message type.
+ */
 const char* vkDebugType(const VkDebugUtilsMessageTypeFlagsEXT type)
 {
     switch (type)
@@ -123,16 +176,21 @@ const char* vkDebugType(const VkDebugUtilsMessageTypeFlagsEXT type)
 
 /// -------------------------------------------------------
 
+/**
+ * @brief Load Vulkan debug utils extensions.
+ *
+ * This function loads the Vulkan debug utils extensions by retrieving
+ * function pointers for various debug utilities functions.
+ * If the function pointers cannot be retrieved, it assigns
+ * default no-op implementations to ensure the application can still run without debug utilities.
+ *
+ * @param instance The Vulkan instance from which to load the debug utils extensions.
+ */
 void VulkanLoadDebugUtilsExtensions(const VkInstance instance)
 {
     fpSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT");
     if (fpSetDebugUtilsObjectNameEXT == nullptr)
-    {
-        fpSetDebugUtilsObjectNameEXT = [](VkDevice device, const VkDebugUtilsObjectNameInfoEXT *pNameInfo)
-        {
-            return VK_SUCCESS;
-        };
-    }
+        fpSetDebugUtilsObjectNameEXT = [](VkDevice device, const VkDebugUtilsObjectNameInfoEXT *pNameInfo) { return VK_SUCCESS; };
 
     fpCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT");
     if (fpCmdBeginDebugUtilsLabelEXT == nullptr)
@@ -381,6 +439,14 @@ VkPipelineStageFlags VK_PIPELINE_STAGE_FLAGS(const VkImageLayout layout)
     }
 }
 
+/**
+ * @brief Get the string representation of a Vulkan format.
+ *
+ * This function returns a string representation of a given Vulkan format.
+ *
+ * @param format The Vulkan format.
+ * @return const char* The string representation of the format.
+ */
 const char *vkFormatString(const VkFormat format)
 {
     switch (format)
@@ -641,9 +707,10 @@ const char *vkFormatString(const VkFormat format)
 }
 
 /**
- * @brief 
- * @param errorCode 
- * @return 
+ * @brief Get the string representation of a Vulkan result code.
+ *
+ * @param errorCode The Vulkan result code.
+ * @return The string representation of the result code.
  */
 const char *vkErrorString(const VkResult errorCode)
 {
@@ -705,6 +772,7 @@ const char *vkErrorString(const VkResult errorCode)
 
 /**
  * @brief Get the string representation of a Vulkan object type.
+ *
  * @param objectType The Vulkan object type.
  * @return The string representation of the object type.
  */
@@ -781,17 +849,56 @@ void SetDeviceVendorName(const uint32_t vendorID)
     VendorIDToString(vendorID);
 }
 
+/**
+ * @brief Sets the graphics device name for the current rendering context.
+ *
+ * This function validates and stores the graphics device name in the global render data structure.
+ * It performs input validation to ensure the device name is not empty and logs the operation
+ * for debugging purposes. The device name is typically obtained from Vulkan physical device
+ * properties and used for display in UI, logging, and debugging information.
+ *
+ * The function performs the following operations:
+ * 1. Validates the input device name is not empty
+ * 2. Creates or updates the global RenderData structure
+ * 3. Stores the device name in the render data
+ * 4. Logs the operation with appropriate tags for debugging
+ *
+ * @param deviceName The name of the graphics device (e.g., "NVIDIA GeForce RTX 4080", "AMD Radeon RX 7900 XTX")
+ *                   Must not be empty or the function will log an error and return early
+ *
+ * @note This function is typically called during Vulkan device initialization to store
+ *       the selected physical device name for later reference in the application.
+ *
+ * @warning If the device name is empty, the function will log an error using SEDX_CORE_ERROR_TAG
+ *          and return without setting any device information.
+ *
+ * @see VendorIDToString() for converting vendor IDs to readable vendor names
+ * @see SetDeviceVendorName() for setting vendor-specific information
+ *
+ * @example
+ * @code
+ * // During Vulkan device enumeration
+ * VkPhysicalDeviceProperties deviceProperties;
+ * vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+ * GetDeviceName(std::string(deviceProperties.deviceName));
+ * @endcode 
+ */
 void GetDeviceName(const std::string &deviceName)
 {
+	///< Validate input parameters
 	if (deviceName.empty())
-	{
-		SEDX_CORE_ERROR("Device name is empty!");
-		return;
-	}
+        return;
 
+    SEDX_CORE_INFO_TAG("VULKAN", "Setting graphics device name: '{}'", deviceName);
+
+	///< Create or update the global render data structure
 	SceneryEditorX::RenderData deviceData;
-    deviceData.Device = deviceName;
+	deviceData.Device = deviceName;
 
+	//SEDX_CORE_DEBUG_TAG("VULKAN", "Device name successfully stored in render data structure");
+	
+	///< TODO: Consider storing this in a global render context or device manager
+	///< for persistent access throughout the application lifecycle
 }
 
 /// -------------------------------------------------------
@@ -799,11 +906,12 @@ void GetDeviceName(const std::string &deviceName)
 namespace SceneryEditorX::Utils
 {
 	LOCAL ResourceAllocationCounts s_ResourceAllocationCounts;
+
+
     ResourceAllocationCounts &GetResourceAllocationCounts()
     {
         return s_ResourceAllocationCounts;
     }
-
 
 }
 

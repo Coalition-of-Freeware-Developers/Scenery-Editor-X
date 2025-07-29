@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <ctime>
 #include <filesystem>
 #include <map>
 #include <SceneryEditorX/utils/pointers.h>

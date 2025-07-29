@@ -11,8 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/serialization/serializer_reader.h>
-#include <SceneryEditorX/serialization/serializer_writer.h>
+
 
 /// -------------------------------------------------------
 
@@ -37,6 +36,7 @@ namespace SceneryEditorX
 		[[nodiscard]] virtual uint32_t GetRegister() const { return m_Register; }
 		[[nodiscard]] virtual uint32_t GetCount() const { return m_Count; }
 
+		/*
 		static void Serialize(SerializeWriter* serializer, const ShaderResourceDeclaration& instance)
 		{
 			serializer->WriteString(instance.m_Name);
@@ -51,7 +51,7 @@ namespace SceneryEditorX
 			deserializer->ReadRaw(instance.m_Set);
 			deserializer->ReadRaw(instance.m_Register);
 			deserializer->ReadRaw(instance.m_Count);
-		}
+		}*/
 	private:
 		std::string m_Name;
 		uint32_t m_Set = 0;

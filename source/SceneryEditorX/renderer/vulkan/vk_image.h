@@ -17,29 +17,18 @@
 
 namespace SceneryEditorX
 {
-    class Image2D;
-
-    /// -----------------------------------------------------------
-
-	struct ImageViewData
-	{
-	    Ref<Image2D> image;
-	    uint32_t mip = 0;
-	    std::string name;
-	};
 
 	struct ImageSpecification
     {
-        std::string DebugName;
-
-        VkFormat Format = VK_FORMAT_R8G8B8A8_UNORM;
-        ImageUsageFlags Usage;
-        bool Transfer = false; // Will it be used for transfer ops?
-        uint32_t Width = 1;
-        uint32_t Height = 1;
-        uint32_t Mips = 1;
-        uint32_t Layers = 1;
-        bool CreateSampler = true;
+        std::string debugName;
+        VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+        ImageUsageFlags usage;
+        bool transfer = false; ///< Will it be used for transfer ops?
+        uint32_t width = 1;
+        uint32_t height = 1;
+        uint32_t mips = 1;
+        uint32_t layers = 1;
+        bool createSampler = true;
     };
 
     /// -----------------------------------------------------------
@@ -47,8 +36,10 @@ namespace SceneryEditorX
     class Image2D : public Resource
     {
     public:
-        Image2D(const Image &ImageSpec);
-        virtual ~Image2D();
+        Image2D() = default;
+        Image2D(const ImageSpecification &specification);
+        //Image2D(const Image &specification);
+        virtual ~Image2D() override;
 
         GLOBAL Ref<Image2D> Create(const ImageDescriptions &desc, const std::string &name = "Image2D");
         //[[nodiscard]] virtual bool Valid() const = 0;
@@ -75,12 +66,12 @@ namespace SceneryEditorX
 		[[nodiscard]] virtual float GetAspectRatio() const { return (float)m_Specification.width / (float)m_Specification.height; }
 		[[nodiscard]] int GetClosestMipLevel(uint32_t width, uint32_t height) const;
         [[nodiscard]] std::pair<uint32_t, uint32_t> GetMipLevelSize(int mipLevel) const;
-		[[nodiscard]] virtual const Image& GetSpecification() const { return m_Specification; }
+		[[nodiscard]] virtual const ImageSpecification& GetSpecification() const { return m_Specification; }
 
-        virtual Image& GetSpecification() { return m_Specification; }
+        virtual ImageSpecification& GetSpecification() { return m_Specification; }
 		void Invalidate_RenderThread();
 
-		virtual void CreatePerLayerImageViews();
+        virtual void CreatePerLayerImageViews();
         void CreatePerLayerImageViews_RenderThread();
         void CreatePerSpecificLayerImageViews_RenderThread(const std::vector<uint32_t> &layerIndices);
 
@@ -93,14 +84,14 @@ namespace SceneryEditorX
 		VkImageView GetMipImageView(uint32_t mip);
         VkImageView GetRenderThreadMipImageView(uint32_t mip);
 
-		ImageResource& GetImageInfo() { return m_Info; }
+		ImageResource &GetImageInfo() { return m_Info; }
 		[[nodiscard]] const ImageResource &GetImageInfo() const { return m_Info; }
 
 		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
 		[[nodiscard]] const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
 
         [[nodiscard]] virtual Buffer GetBuffer() const { return m_ImageData; }
-		[[nodiscard]] virtual Buffer& GetBuffer() { return m_ImageData; }
+		[[nodiscard]] virtual Buffer &GetBuffer() { return m_ImageData; }
 
 		[[nodiscard]] virtual uint64_t GetGPUMemoryUsage() const { return m_GPUAllocationSize; }
 		[[nodiscard]] virtual uint64_t GetHash() const { return (uint64_t)m_Info.image; }
@@ -110,9 +101,9 @@ namespace SceneryEditorX
 		/// Debug
 		static const std::map<VkImage, WeakRef<Image2D>>& GetImageRefs();
 		virtual void SetData(Buffer buffer);
-		virtual void CopyToHostBuffer(Buffer& buffer) const;
+        virtual void CopyToHostBuffer(Buffer &buffer) const;
     private:
-        Image m_Specification;
+        ImageSpecification m_Specification;
         Buffer m_ImageData;
         ImageResource m_Info;
         VkDeviceSize m_GPUAllocationSize = 0;
@@ -122,11 +113,20 @@ namespace SceneryEditorX
         VkDescriptorImageInfo m_DescriptorImageInfo = {};
     };
 
+    /// -----------------------------------------------------------
+
+    struct ImageViewData
+    {
+        Ref<Image2D> image;
+        uint32_t mip = 0;
+        std::string debugName;
+    };
+
 	class ImageView : Resource
 	{
 	public:
         ImageView(ImageViewData spec);
-        virtual ~ImageView() = default;
+        virtual ~ImageView();
 		
 		void Invalidate();
 		void Invalidate_RenderThread();

@@ -11,8 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
-#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
 #include <unordered_map>
 
 /// -------------------------------------------------------
@@ -21,7 +19,38 @@ namespace SceneryEditorX
 {
 	class UniformBuffer;
 	class StorageBuffer;
-	class ImageSampler;
+
+    /// -------------------------------------------------
+
+    /**
+     * @brief Represents an image sampler resource used in shaders
+     * 
+     * This structure contains information about image samplers including
+     * their dimensionality and binding information for shader reflection.
+     */
+    struct ImageSampler
+    {
+        uint32_t Dimension = 2;                                      ///< Texture dimension (1D, 2D, 3D, Cube)
+        uint32_t bindingPoint = 0;                                   ///< Binding point in shader
+        std::string name;                                            ///< Name of the sampler in shader
+        VkShaderStageFlagBits shaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; ///< Shader stage flags
+        VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; ///< Descriptor type
+        
+        /**
+         * @brief Default constructor for ImageSampler
+         */
+        ImageSampler() = default;
+        
+        /**
+         * @brief Constructor with parameters
+         * @param dimension Texture dimension (1, 2, 3 for 1D, 2D, 3D respectively)
+         * @param binding Binding point in shader
+         * @param samplerName Name of the sampler
+         * @param stage Shader stage where this sampler is used
+         */
+        ImageSampler(uint32_t dimension, uint32_t binding, std::string samplerName, VkShaderStageFlagBits stage)
+            : Dimension(dimension), bindingPoint(binding), name(std::move(samplerName)), shaderStage(stage) {}
+    };
 
     /// -------------------------------------------------
 
@@ -39,38 +68,40 @@ namespace SceneryEditorX
 		
 		struct PushConstantRange
 		{
-			VkShaderStageFlagBits ShaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-			uint32_t Offset = 0;
-			uint32_t Size = 0;
+			VkShaderStageFlagBits shaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+			uint32_t offset = 0;
+			uint32_t size = 0;
 
-			static void Serialize(StreamWriter* writer, const PushConstantRange& range) { writer->WriteRaw(range); }
-			static void Deserialize(StreamReader* reader, PushConstantRange& range) { reader->ReadRaw(range); }
+			//static void Serialize(StreamWriter* writer, const PushConstantRange& range) { writer->WriteRaw(range); }
+			//static void Deserialize(StreamReader* reader, PushConstantRange& range) { reader->ReadRaw(range); }
 		};
 
+        /*
         struct ShaderDescriptorSet
 		{
-			std::unordered_map<uint32_t, UniformBuffer> UniformBuffers;
-			std::unordered_map<uint32_t, StorageBuffer> StorageBuffers;
-			std::unordered_map<uint32_t, ImageSampler> ImageSamplers;
-			std::unordered_map<uint32_t, ImageSampler> StorageImages;
-			std::unordered_map<uint32_t, ImageSampler> SeparateTextures; // Not really an image sampler.
-			std::unordered_map<uint32_t, ImageSampler> SeparateSamplers;
+			std::unordered_map<uint32_t, UniformBuffer> uniformBuffers;
+			std::unordered_map<uint32_t, StorageBuffer> storageBuffers;
+			std::unordered_map<uint32_t, ImageSampler> imageSamplers;
+			std::unordered_map<uint32_t, ImageSampler> storageImages;
+			std::unordered_map<uint32_t, ImageSampler> separateTextures; // Not really an image sampler.
+			std::unordered_map<uint32_t, ImageSampler> separateSamplers;
 
-			std::unordered_map<std::string, VkWriteDescriptorSet> WriteDescriptorSets;
+			std::unordered_map<std::string, VkWriteDescriptorSet> writeDescriptorSets;
 
-            explicit operator bool() const { return !(StorageBuffers.empty() && UniformBuffers.empty() && ImageSamplers.empty() && StorageImages.empty() && SeparateTextures.empty() && SeparateSamplers.empty()); }
-		};
+            explicit operator bool() const { return !(storageBuffers.empty() && uniformBuffers.empty() && imageSamplers.empty() && storageImages.empty() && separateTextures.empty() && separateSamplers.empty()); }
+		};*/
 
         /// -------------------------------------------------
 
         struct UniformBuffer
         {
-            VkDescriptorBufferInfo Descriptor;
-            uint32_t Size = 0;
-            uint32_t BindingPoint = 0;
-            std::string Name;
+            VkDescriptorBufferInfo descriptor;
+            uint32_t size = 0;
+            uint32_t bindingPoint = 0;
+            std::string name;
             VkShaderStageFlagBits ShaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 
+            /*
             static void Serialize(StreamWriter *serializer, const UniformBuffer &instance)
             {
                 serializer->WriteRaw(instance.Descriptor);
@@ -88,6 +119,8 @@ namespace SceneryEditorX
                 deserializer->ReadString(instance.Name);
                 deserializer->ReadRaw(instance.ShaderStage);
             }
+            */
+
         };
     private:
         std::string name;

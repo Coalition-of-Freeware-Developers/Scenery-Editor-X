@@ -10,15 +10,11 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
-#include <set>
-#include <utility>
-#include <vector>
 
 /// -------------------------------------------------------
 
@@ -544,7 +540,7 @@ namespace SceneryEditorX
 		}
 		
 		/// Only process the selected device (or first device if none selected)
-		uint32_t deviceIdx = (deviceIndex >= 0 && deviceIndex < static_cast<int>(devices.size())) ? deviceIndex : 0;
+		uint32_t deviceIdx = deviceIndex >= 0 && deviceIndex < static_cast<int>(devices.size()) ? deviceIndex : 0;
 		const VkPhysicalDevice vkDevice = devices[deviceIdx].physicalDevice;
 		
 		/// Get queue family properties for the device
@@ -1167,7 +1163,6 @@ namespace SceneryEditorX
 	}
 
 	/**
-	 * 
 	 * @brief Locks a queue for thread-safe access
 	 * 
 	 * This method provides exclusive access to either the graphics or compute queue
@@ -1648,7 +1643,6 @@ namespace SceneryEditorX
      * Once initialized, all Vulkan memory allocations should be handled through this allocator
      * rather than directly through vkAllocateMemory for optimal performance and resource management.
      */
-
     /*
     void VulkanDevice::InitializeMemoryAllocator()
     {
@@ -1839,7 +1833,7 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create graphics command pool! Error: {}", static_cast<int>(result));
 
         /// Create compute command pool if compute queue is available
-        if (queueIndices.GetComputeFamily() >= 0)
+        if (queueIndices.computeFamily.has_value())
         {
             cmdPoolInfo.queueFamilyIndex = queueIndices.GetComputeFamily();
 

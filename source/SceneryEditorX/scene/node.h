@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <imgui/imgui.h>
 #include <SceneryEditorX/asset/asset.h>
-#include "material.h"
 
 /// ---------------------------------------------------------
 
@@ -75,7 +75,8 @@ namespace SceneryEditorX
 	        if (child->parent)
 	        {
 	            const Ref<Node> oldParent = child->parent;
-	            const auto it = std::ranges::find_if(oldParent->children, [&](auto &n) {
+	            const auto it = std::ranges::find_if(oldParent->children, [&](auto &n)
+	            {
 	                return child->uuid == n->uuid;
 	            });
 	            SEDX_ASSERT(it != oldParent->children.end(), "Child not found in children vector");

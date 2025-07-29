@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/asset/asset_importer.h>
-#include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/serialization/mesh_serializer.h>
+//#include <SceneryEditorX/logging/profiler.hpp>
+//#include <SceneryEditorX/project/project.h>
+//#include <SceneryEditorX/serialization/mesh_serializer.h>
 
 /// -------------------------------------------------------
 
@@ -40,7 +40,7 @@ namespace SceneryEditorX
 	/*
 	void AssetImporter::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset)
 	{
-		if (!s_Serializers.contains(metadata.Type))
+		if (!s_Serializers.contains(metadata.type))
 		{
 			SEDX_CORE_WARN("There's currently no importer for assets of type {0}", metadata.FilePath.stem().string());
 			return;
@@ -63,27 +63,27 @@ namespace SceneryEditorX
 	{
 		SEDX_PROFILE_FUNC("AssetImporter::TryLoadData");
 
-		if (!s_Serializers.contains(metadata.Type))
+		if (!s_Serializers.contains(metadata.type))
 		{
 			SEDX_CORE_WARN("There's currently no importer for assets of type {0}", metadata.FilePath.stem().string());
 			return false;
 		}
 
 		// SEDX_CORE_TRACE("AssetImporter::TryLoadData - {}", metadata.FilePath);
-		return s_Serializers[metadata.Type]->TryLoadData(metadata, asset);
+		return s_Serializers[metadata.type]->TryLoadData(metadata, asset);
 	}
 	*/
 
 	/*
 	void AssetImporter::RegisterDependencies(const AssetMetadata& metadata)
 	{
-		if (!s_Serializers.contains(metadata.Type))
+		if (!s_Serializers.contains(metadata.type))
 		{
 			SEDX_CORE_WARN("There's currently no importer for assets of type {0}", metadata.FilePath.stem().string());
 			return;
 		}
 
-		s_Serializers[metadata.Type]->RegisterDependencies(metadata);
+		s_Serializers[metadata.type]->RegisterDependencies(metadata);
 	}
 	*/
 
@@ -116,7 +116,7 @@ namespace SceneryEditorX
 	/*
 	Ref<Asset> AssetImporter::DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo)
 	{
-		AssetType assetType = (AssetType)assetInfo.Type;
+		AssetType assetType = (AssetType)assetInfo.type;
 		if (!s_Serializers.contains(assetType))
 			return nullptr;
 

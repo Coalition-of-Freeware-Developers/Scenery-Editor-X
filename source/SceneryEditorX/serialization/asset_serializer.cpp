@@ -10,17 +10,6 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <cstring>
-#include <filesystem>
-#include <SceneryEditorX/asset/asset_pack_header.h>
-#include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/renderer/fonts/font.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/serialization/asset_serializer.h>
-#include <SceneryEditorX/serialization/json_serializer.h>
-#include <SceneryEditorX/serialization/serialization_macros.h>
 
 /// -------------------------------------------------------
 

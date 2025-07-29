@@ -39,7 +39,7 @@ namespace SceneryEditorX
         s_LastFrameTime = currentTime;
 
         /// Update FPS counter
-        if (dt > 0.0f)
+        if (static_cast<float>(dt) > 0.0f)
 		{
             s_FrameTimes.push_back(static_cast<float>(dt));
 

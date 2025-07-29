@@ -12,15 +12,16 @@
 */
 #include <SceneryEditorX/renderer/buffers/storage_buffer.h>
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/renderer.h>
 
 /// -----------------------------------
 
 namespace SceneryEditorX
 {
-	StorageBuffer::StorageBuffer(uint32_t size, StorageBufferSpec spec) : m_spec(std::move(spec)), size(size)
+	StorageBuffer::StorageBuffer(uint32_t size, StorageBufferSpec &spec) : m_spec(std::move(spec)), size(size)
 	{
         Ref<StorageBuffer> instance(this);
-        Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
+        Renderer::Submit([instance]() mutable { instance->InvalidateRenderThread(); });
 	}
 	
 	StorageBuffer::~StorageBuffer()
@@ -32,19 +33,19 @@ namespace SceneryEditorX
 	{
         memcpy(localStorage, data, size);
         Ref<StorageBuffer> instance(this);
-        Renderer::Submit([instance, size, offset]() mutable { instance->SetData_RenderThread(instance->localStorage, size, offset); });
+        Renderer::Submit([instance, size, offset]() mutable { instance->SetRenderThreadData(instance->localStorage, size, offset); });
 	}
 	
-	void StorageBuffer::SetData_RenderThread(const void *data, uint32_t size, uint32_t offset)
-	{
+	void StorageBuffer::SetRenderThreadData(const void *data, uint32_t size, uint32_t offset) const
+    {
         /// Cannot call SetData if GPU only
         SEDX_CORE_VERIFY(!m_spec.GPUOnly);
 
 	#if NO_STAGING
 	        MemoryAllocator allocator("StorageBuffer");
-	        uint8_t *pData = allocator.MapMemory<uint8_t>(memAlloc);
+	        uint8_t *pData = allocator.MapMemory<uint8_t>(alloctor);
 	        memcpy(pData, data, size);
-	        MemoryAllocator::UnmapMemory(memAlloc);
+	        MemoryAllocator::UnmapMemory(alloctor);
 	#else
 	
 	        MemoryAllocator allocator("Staging");
@@ -53,7 +54,6 @@ namespace SceneryEditorX
 	        MemoryAllocator::UnmapMemory(m_StagingAlloc);
 	
 	        VkCommandBuffer commandBuffer = RenderContext::GetCurrentDevice()->GetCommandBuffer(true);
-	
 	        VkBufferCopy copyRegion = {0, offset, size};
 	        vkCmdCopyBuffer(commandBuffer, stagingBuffer, m_buffer, 1, &copyRegion);
 	
@@ -65,15 +65,15 @@ namespace SceneryEditorX
 	{
         size = newSize;
         Ref<StorageBuffer> instance(this);
-        Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
+        Renderer::Submit([instance]() mutable { instance->InvalidateRenderThread(); });
 	}
 	
 	void StorageBuffer::Release()
 	{
-        if (!memAlloc)
+        if (!alloctor)
             return;
 
-        Renderer::SubmitResourceFree([buffer = m_buffer, memoryAlloc = memAlloc, stagingAlloc = m_StagingAlloc, stagingBuffer = stagingBuffer]() {
+        Renderer::SubmitResourceFree([buffer = m_buffer, memoryAlloc = alloctor, stagingAlloc = m_StagingAlloc, stagingBuffer = stagingBuffer]() {
             MemoryAllocator allocator("StorageBuffer");
             allocator.DestroyBuffer(buffer, memoryAlloc);
             if (stagingBuffer)
@@ -81,10 +81,10 @@ namespace SceneryEditorX
         });
 
         m_buffer = nullptr;
-        memAlloc = nullptr;
+        alloctor = nullptr;
 	}
 	
-	void StorageBuffer::Invalidate_RenderThread()
+	void StorageBuffer::InvalidateRenderThread()
 	{
         Release();
 
@@ -94,7 +94,7 @@ namespace SceneryEditorX
         bufferInfo.size = size;
 
         MemoryAllocator allocator("StorageBuffer");
-        memAlloc = allocator.AllocateBuffer(bufferInfo, m_spec.GPUOnly ? VMA_MEMORY_USAGE_GPU_ONLY : VMA_MEMORY_USAGE_CPU_TO_GPU, m_buffer);
+        alloctor = allocator.AllocateBuffer(bufferInfo, m_spec.GPUOnly ? VMA_MEMORY_USAGE_GPU_ONLY : VMA_MEMORY_USAGE_CPU_TO_GPU, m_buffer);
 
         m_descriptInfo.buffer = m_buffer;
         m_descriptInfo.offset = 0;
@@ -109,7 +109,6 @@ namespace SceneryEditorX
 		m_StagingAlloc = allocator.AllocateBuffer(stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer);
 #endif
 	}
-	
 	
 }
 

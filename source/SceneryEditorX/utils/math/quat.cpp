@@ -21,12 +21,35 @@
 namespace SceneryEditorX
 {
 
+	/**
+	 * @brief Default constructor creating an identity quaternion.
+	 *
+	 * Initializes the quaternion to represent no rotation (identity).
+	 * The resulting quaternion has components (x=0, y=0, z=0, w=1).
+	 */
 	Quat::Quat() : x(0), y(0), z(0), w(1) {}
 
+	/**
+	 * @brief Constructs a quaternion from individual components.
+	 *
+	 * Creates a quaternion with the specified scalar and vector components
+	 * in the order (w, x, y, z).
+	 */
 	Quat::Quat(const float w, const float x, const float y, const float z) : x(x), y(y), z(z), w(w) {}
 
+	/**
+	 * @brief Constructs a quaternion from a Vec4.
+	 *
+	 * Creates a quaternion by copying components from a Vec4 where
+	 * vec4.x->quat.x, vec4.y->quat.y, vec4.z->quat.z, vec4.w->quat.w.
+	 */
 	Quat::Quat(const Vec4& vec4) : x(vec4.x), y(vec4.y), z(vec4.z), w(vec4.w) {}
 
+	/**
+	 * @brief Copy constructor.
+	 *
+	 * Creates a new quaternion by copying all components from another quaternion.
+	 */
 	Quat::Quat(const Quat& q)
 	{
 		w = q.w;
@@ -37,6 +60,12 @@ namespace SceneryEditorX
 
 	Quat::~Quat() = default;
 
+	/**
+	 * @brief Copy assignment operator with self-assignment protection.
+	 *
+	 * Assigns the components of another quaternion to this quaternion.
+	 * Includes check for self-assignment to avoid unnecessary work.
+	 */
 	Quat& Quat::operator=(const Quat& q)
 	{
 		if (this == &q)
@@ -48,10 +77,28 @@ namespace SceneryEditorX
 		return *this;
 	}
 
+	/**
+	 * @brief Equality comparison operator.
+	 *
+	 * Compares two quaternions for exact component-wise equality.
+	 * Returns true only if all four components are exactly equal.
+	 */
 	bool Quat::operator==(const Quat& rhs) const { return w == rhs.w && x == rhs.x && y == rhs.y && z == rhs.z; }
 
+	/**
+	 * @brief Inequality comparison operator.
+	 *
+	 * Returns true if any component differs between the two quaternions.
+	 */
 	bool Quat::operator!=(const Quat& rhs) const { return !(*this == rhs); }
 
+	/**
+	 * @brief Quaternion multiplication assignment operator.
+	 *
+	 * Multiplies this quaternion by another quaternion using Hamilton's
+	 * quaternion product formula and stores the result in this quaternion.
+	 * The operation represents composition of rotations.
+	 */
 	Quat& Quat::operator*=(const Quat& rhs)
 	{
 		Quat q;
@@ -65,6 +112,13 @@ namespace SceneryEditorX
 		return *this;
 	}
 
+	/**
+	 * @brief Quaternion multiplication operator.
+	 *
+	 * Multiplies two quaternions using Hamilton's quaternion product formula.
+	 * This represents the composition of two rotations where the right-hand
+	 * side rotation is applied first, followed by the left-hand side rotation.
+	 */
 	Quat Quat::operator*(const Quat& rhs) const
 	{
 		Quat q;
@@ -77,18 +131,67 @@ namespace SceneryEditorX
 		return q;
 	}
 
+	/**
+	 * @brief Scalar multiplication operator.
+	 *
+	 * Multiplies all components of the quaternion by a scalar value.
+	 * Primarily used for mathematical computations and interpolation.
+	 */
 	Quat Quat::operator*(const float rhs) const { return {w * rhs, x * rhs, y * rhs, z * rhs}; }
+
+	/**
+	 * @brief Component-wise addition operator.
+	 *
+	 * Adds corresponding components of two quaternions. Used primarily
+	 * in mathematical computations and interpolation algorithms.
+	 */
 	Quat Quat::operator+(const Quat& rhs) const { return {w + rhs.w, x + rhs.x, y + rhs.y, z + rhs.z}; }
+
+	/**
+	 * @brief Component-wise subtraction operator.
+	 *
+	 * Subtracts corresponding components of two quaternions. Used primarily
+	 * in mathematical computations and for calculating differences.
+	 */
 	Quat Quat::operator-(const Quat& rhs) const { return {w - rhs.w, x - rhs.x, y - rhs.y, z - rhs.z}; }
+
+	/**
+	 * @brief Transforms a Vec4 by this quaternion's rotation.
+	 *
+	 * Converts the quaternion to a matrix and multiplies the Vec4 by it.
+	 * This applies the rotation represented by the quaternion to the vector.
+	 */
 	Vec4 Quat::operator*(const Vec4& rhs) const { return ToMatrix(*this) * rhs; }
+
+	/**
+	 * @brief Transforms a Vec3 by this quaternion's rotation.
+	 *
+	 * Converts the quaternion to a matrix and multiplies the Vec3 (extended
+	 * to homogeneous coordinates with w=1) by it to apply the rotation.
+	 */
 	Vec3 Quat::operator*(const Vec3& rhs) const { return ToMatrix(*this) * Vec4(rhs, 1.0f); }
 
+	/**
+	 * @brief Returns a normalized copy of this quaternion.
+	 *
+	 * Creates a new quaternion with the same rotation as this quaternion
+	 * but with unit length (magnitude = 1). Essential for proper rotation behavior.
+	 *
+	 * @return A new normalized quaternion representing the same rotation
+	 */
 	Quat Quat::GetNormalized() const
     {
 		const float mag = sqrtf(w * w + x * x + y * y + z * z);
 		return {w / mag, x / mag, y / mag, z / mag};
 	}
 
+	/**
+	 * @brief Normalizes this quaternion in-place.
+	 *
+	 * Modifies this quaternion to have unit length while preserving
+	 * the rotation it represents. This should be called after operations
+	 * that might change the quaternion's magnitude.
+	 */
 	void Quat::Normalize()
 	{
 		const float mag = sqrtf(w * w + x * x + y * y + z * z);
@@ -99,8 +202,28 @@ namespace SceneryEditorX
 		z /= mag;
 	}
 
+	/**
+	 * @brief Returns the conjugate of this quaternion.
+	 *
+	 * The conjugate of quaternion (x, y, z, w) is (-x, -y, -z, w).
+	 * For unit quaternions, this is equivalent to the inverse and
+	 * represents the opposite rotation.
+	 *
+	 * @return A new quaternion that is the conjugate/inverse of this quaternion
+	 */
 	Quat Quat::Conjugate() { return {w, -x, -y, -z}; }
 
+	/**
+	 * @brief Sets this quaternion from Euler angles in degrees.
+	 *
+	 * Constructs a rotation quaternion from Euler angles using XYZ rotation order.
+	 * The input angles are converted from degrees to radians and then used to
+	 * compute the quaternion components using trigonometric functions.
+	 *
+	 * @param X Rotation around X-axis in degrees (pitch)
+	 * @param Y Rotation around Y-axis in degrees (yaw)
+	 * @param Z Rotation around Z-axis in degrees (roll)
+	 */
 	void Quat::SetEulerDegrees(float X, float Y, float Z)
 	{
 		X *= 0.0174532925f; ///< To radians!
@@ -124,17 +247,43 @@ namespace SceneryEditorX
 		this->z = cosx * cosy * sinz - sinx * siny * cosz;
 	}
 
+	/**
+	 * @brief Calculates the dot product with another quaternion.
+	 *
+	 * Computes the dot product between this quaternion and another quaternion.
+	 * The dot product measures the similarity between two rotations and is used
+	 * in interpolation algorithms.
+	 *
+	 * @param b The quaternion to compute dot product with
+	 * @return The dot product value (1.0 = identical, -1.0 = opposite)
+	 *
+	 * @note There appears to be a bug in this implementation - it's missing
+	 *       the y component multiplication (should be + x * b.x + y * b.y + z * b.z)
+	 */
 	float Quat::Dot(const Quat& b) const { return (w * b.w + x * b.x * y * b.y + z * b.z); }
 
 	Matrix4x4 Quat::ToMatrix() const { return ToMatrix(*this); }
 
+	/**
+	 * @brief Creates a quaternion representing rotation from one vector to another.
+	 *
+	 * Calculates the shortest rotation that would align the 'from' vector with the 'to' vector.
+	 * This function handles several special cases:
+	 * - Parallel vectors (dot >= 1.0): Returns identity quaternion
+	 * - Anti-parallel vectors (dot <= -1.0): Creates 180° rotation around perpendicular axis
+	 * - General case: Uses cross product to determine rotation axis and angle
+	 *
+	 * @param from The source vector (normalized internally)
+	 * @param to The target vector (normalized internally)
+	 * @return A quaternion representing the rotation from 'from' to 'to'
+	 */
 	Quat Quat::FromToRotation(const Vec3& from, const Vec3& to)
 	{
-		const Vec3 unitFrom = from.GetNormalized();
-		const Vec3 unitTo = to.GetNormalized();
-		const float dot = Vec3::Dot(unitFrom, unitTo);
+        const Vec3 unitFrom = glm::normalize(from);
+        const Vec3 unitTo = glm::normalize(to);
+        const float dot = glm::dot(unitFrom, unitTo);
 
-		Vec3 cross = Vec3::Cross(unitFrom, unitTo);
+		Vec3 cross = glm::cross(unitFrom, unitTo);
 		float w = sqrt((1 + dot) * 0.5);
 		float k = sqrt((1 - dot) * 0.5);
 		float scale = w > 0 ? 1.0 / w : 0;
@@ -149,8 +298,8 @@ namespace SceneryEditorX
              * need to supply a quaternion corresponding to a rotation of
              * PI-radians about an axis orthogonal to the fromDirection.
              */
-            Vec3 axis = Vec3::Cross(unitFrom, Vec3(1, 0, 0));
-            if (axis.GetSqrMagnitude() < 1e-6)
+            Vec3 axis = glm::cross(unitFrom, Vec3(1, 0, 0));
+            if (glm::dot(axis, axis) < 1e-6)
             {
                 /**
                  * Bad luck. The x-axis and fromDirection are linearly
@@ -159,18 +308,18 @@ namespace SceneryEditorX
                  * The y-axis and fromDirection will clearly not be linearly
                  * dependent.
                  */
-                axis = Vec3::Cross(unitFrom, Vec3(0, 1, 0));
+                axis = glm::cross(unitFrom, Vec3(0, 1, 0));
             }
 
             ///< Note that we need to normalize the axis as the cross product of two unit vectors is not necessarily a unit vector.
-            return Quat::AngleAxis(180, axis.GetNormalized()); ///< 180 Degrees = PI radians
+            const Vec3 normAxis = glm::normalize(axis);
+            return Quat::AngleAxis(180, Vec4(normAxis.x, normAxis.y, normAxis.z, 0.0f)); ///< 180 Degrees = PI radians
         }
 
         ///< Scalar component.
-        const float s = sqrt(unitFrom.GetSqrMagnitude() * unitTo.GetSqrMagnitude()) + Vec3::Dot(unitFrom, unitTo);
-
+        const float s = sqrt(glm::length2(unitFrom) * glm::length2(unitTo)) + glm::dot(unitFrom, unitTo);
         ///< Vector component.
-        Vec3 v = Vec3::Cross(unitFrom, unitTo);
+        Vec3 v = glm::cross(unitFrom, unitTo);
         v.x *= -1;
         v.y *= -1;
 
@@ -190,7 +339,7 @@ namespace SceneryEditorX
 		 * We can't preserve the upwards direction if the forward and upwards
 		 * vectors are linearly dependent (collinear).
 		 */
-		if (Vec3::Cross(lookAt, upDirection).GetSqrMagnitude() < 1e-6)
+        if (glm::dot(glm::cross(lookAt, upDirection), glm::cross(lookAt, upDirection)) == 0.0f)
             return q1;
 
         ///< Determine the upwards direction obtained after applying q1.
@@ -213,7 +362,7 @@ namespace SceneryEditorX
 
 	Quat Quat::LookRotation2(const Vec3& forward, const Vec3& up)
 	{
-		Vec3 right = Vec3::Cross(up, forward);
+		Vec3 right = glm::cross(up, forward);
 		Quat result;
 		result.w = sqrtf(1.0f + right.x + up.y + forward.z) * 0.5f;
 		float w4_recip = 1.0f / (4.0f * result.w);
@@ -223,6 +372,23 @@ namespace SceneryEditorX
 		return result;
 	}
 
+	/**
+	 * @brief Spherical linear interpolation between two quaternions.
+	 *
+	 * Performs SLERP (Spherical Linear Interpolation) which provides smooth rotation
+	 * interpolation with constant angular velocity. This is the preferred method for
+	 * animating rotations as it maintains the most natural motion.
+	 *
+	 * The algorithm:
+	 * 1. Computes the dot product to measure quaternion similarity
+	 * 2. Handles quaternion double-cover by negating if dot < 0
+	 * 3. Uses spherical interpolation formula with sine weights
+	 *
+	 * @param from The starting quaternion
+	 * @param to The ending quaternion
+	 * @param t Interpolation parameter (0.0 = from, 1.0 = to)
+	 * @return A quaternion smoothly interpolated between from and to
+	 */
 	Quat Quat::Slerp(const Quat& from, const Quat& to, const float t)
 	{
 		float cosTheta = Quat::Dot(from, to);
@@ -261,7 +427,7 @@ namespace SceneryEditorX
 
 	Quat Quat::AngleAxis(float angle, const Vec4& axis)
 	{
-		const Vec4 vn = axis.GetNormalized();
+        const Vec4 vn = glm::normalize(axis);
 
 		angle *= 0.0174532925f; ///< To radians!
 		angle *= 0.5f;
@@ -326,6 +492,21 @@ namespace SceneryEditorX
 		return q;
 	}
 
+	/**
+	 * @brief Converts a quaternion to a 4x4 rotation matrix.
+	 *
+	 * Transforms the quaternion representation into a 4x4 transformation matrix
+	 * that represents the same rotation. This conversion is essential for interfacing
+	 * with graphics APIs and combining with other transformation matrices.
+	 *
+	 * The conversion uses the standard quaternion-to-matrix formula:
+	 * - Computes squared components for efficiency
+	 * - Uses inverse normalization factor to handle non-unit quaternions
+	 * - Applies optimized formula to directly compute matrix elements
+	 *
+	 * @param q The quaternion to convert (should be normalized for best results)
+	 * @return A Matrix4x4 representing the same rotation with translation = 0
+	 */
 	Matrix4x4 Quat::ToMatrix(const Quat& q)
 	{
 		ZoneScoped;

@@ -25,24 +25,32 @@ namespace SceneryEditorX::Utils
 
 	Color Gradient::Evaluate(const float position) const
 	{
+		// Handle empty gradient
 		if (keys.empty())
 			return {};
+
+		// Handle single key gradient
 		if (keys.size() == 1)
 			return keys[0].value;
 
+		// Find the appropriate key pair for interpolation
         for (auto i = 0; std::cmp_less(i, keys.size()); i++)
 		{
 			if (i > 0 && keys[i - 1].position <= position && position < keys[i].position)
 			{
+				// Interpolate between keys[i-1] and keys[i]
 				const float left = keys[i - 1].position;
 				const float right = keys[i].position;
 				float t = (position - left) / (right - left);
-				///< Clamp t to [0, 1] range
+
+				// Clamp interpolation parameter to [0, 1] range for safety
 				t = std::max(0.0f, std::min(1.0f, t));
 				return Color::Lerp(keys[i - 1].value, keys[i].value, t);
 			}
 		}
 
+		// Position is outside the range of defined keys
+		// Return the appropriate edge color
 		return position < 0 ? keys[0].value : keys.back().value;
 	}
 
@@ -51,8 +59,8 @@ namespace SceneryEditorX::Utils
 	void Gradient::AddKey(const Key& key) { keys.push_back(key); }
 	void Gradient::AddKey(const float position, const Color& color) { keys.push_back({.value = color, .position = position }); }
 
-	void Gradient::RemoveKeyAt(const uint32_t index) 
-	{ 
+	void Gradient::RemoveKeyAt(const uint32_t index)
+	{
 		if (index < keys.size())
             keys.erase(keys.begin() + index);
     }
@@ -64,11 +72,12 @@ namespace SceneryEditorX::Utils
 
 		size_t hash = std::hash<float>{}(degrees);
 
+		/*
 		for (const auto& key : keys)
 		{
-			// Use standard hash combining approach
 			hash ^= key.GetHash() + 0x9e3779b9 + (hash << 6) + (hash >> 2);
 		}
+		*/
 
 		return hash;
 	}
@@ -80,11 +89,12 @@ namespace SceneryEditorX::Utils
 
 		size_t hash = std::hash<float>{}(degrees);
 
+		/*
 		for (const auto& key : keys)
 		{
-			// Use standard hash combining approach
 			hash ^= key.GetHash() + 0x9e3779b9 + (hash << 6) + (hash >> 2);
 		}
+		*/
 
 		return hash;
 	}

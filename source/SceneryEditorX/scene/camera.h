@@ -11,9 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/scene/node.h>
-#include <SceneryEditorX/serialization/serializer.hpp>
 
 /// -------------------------------------------------------
 
@@ -38,7 +36,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    class CameraNode : public GraphNode
+    class CameraNode : public Node
     {
 	public:
         CameraNode();
@@ -54,6 +52,7 @@ namespace SceneryEditorX
 	
 	    Vec3 eye = Vec3(0);
 	    Vec3 center = Vec3(0);
+        Vec2 extent = Vec2(1.0f);
 	    Vec3 rotation = Vec3(0);
 
 		/// -------------------------------------------------------
@@ -64,11 +63,9 @@ namespace SceneryEditorX
 	    float farDistance = 1000.0f;
 	    float nearDistance = 0.01f;
 	    float horizontalFov = 60.0f;
-	
+
 	    float orthoFarDistance = 10.0f;
 	    float orthoNearDistance = -100.0f;
-	
-	    Vec2 extent = Vec2(1.0f);
 
 	    Mat4 GetView();
 	    Mat4 GetProj();
@@ -84,6 +81,6 @@ namespace SceneryEditorX
 		friend class AssetManager;
 	};
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

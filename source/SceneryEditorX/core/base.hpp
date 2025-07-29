@@ -56,7 +56,7 @@ using iVec4 =	glm::ivec4; ///< 4D integer vector
 using Mat2	=	glm::mat2;	///< 2x2 matrix
 using Mat3	=	glm::mat3;	///< 3x3 matrix
 using Mat4	=	glm::mat4;	///< 4x4 matrix
-using Quat	=	glm::quat;	///< Quaternion for rotation
+//using Quat	=	glm::quat;	///< Quaternion for rotation
 
 /// -------------------------------------------------------
 
@@ -169,34 +169,6 @@ using Quat	=	glm::quat;	///< Quaternion for rotation
 
 namespace SceneryEditorX
 {
-	/**
-	 * @brief Rounds a value down to the nearest multiple of the specified factor.
-	 * 
-	 * This function rounds down the input value to the nearest multiple of the given factor
-	 * using integer division followed by multiplication. For example, RoundDown(17, 5) = 15.
-	 * 
-	 * @tparam T The numeric type of both the value and factor (int, float, etc.)
-	 * @param x The value to round down
-	 * @param fac The factor to which x should be rounded (must be non-zero)
-	 * @return T The value of x rounded down to the nearest multiple of fac
-	 */
-	template<typename T>
-	T RoundDown(T x, T fac) { return x / fac * fac; }
-
-	/**
-	 * @brief Rounds a value up to the nearest multiple of the specified factor.
-	 * 
-	 * This function rounds up the input value to the nearest multiple of the given factor.
-	 * It adds (fac - 1) to x before rounding down to ensure rounding up.
-	 * For example, RoundUp(17, 5) = 20.
-	 * 
-	 * @tparam T The numeric type of both the value and factor (int, float, etc.)
-	 * @param x The value to round up
-	 * @param fac The factor to which x should be rounded (must be non-zero)
-	 * @return T The value of x rounded up to the nearest multiple of fac
-	 */
-	template<typename T>
-	T RoundUp(T x, T fac) { return RoundDown(x + fac - 1, fac); }
 
     /**
      * @brief Alias for unsigned 8-bit integer, providing a type named 'byte'.
@@ -296,8 +268,7 @@ namespace SceneryEditorX
 	    std::atomic_flag flag; ///< The underlying atomic flag that stores the state
 	};
 
-
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
 	/**
 	 * @struct Flag

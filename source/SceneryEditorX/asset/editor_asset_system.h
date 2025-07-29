@@ -21,7 +21,8 @@
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
-{
+{/*
+
 	class EditorAssetSystem : public RefCounted
 	{
 	public:
@@ -56,7 +57,7 @@ namespace SceneryEditorX
 		std::filesystem::path GetFileSystemPath(const AssetMetadata& metadata);
 
 		void EnsureAllLoadedCurrent();
-		void EnsureCurrent(AssetHandle assetHandle);
+		void EnsureCurrent(const AssetHandle &assetHandle);
 		Ref<Asset> TryLoadData(AssetMetadata metadata);
 
 	private:
@@ -76,6 +77,7 @@ namespace SceneryEditorX
 		// Asset Monitoring
 		float m_AssetUpdatePerf = 0.0f;
 	};
+	*/
 
 }
 

@@ -666,7 +666,7 @@ namespace SceneryEditorX
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
 		Ref& operator=(const Ref<U>& other) noexcept
 		{
-		    // Self-assignment or assigning same pointer: do nothing
+		    /// Self-assignment or assigning same pointer: do nothing
 		    if (static_cast<const void*>(this) == static_cast<const void*>(&other) || m_Ptr == other.Get())
 		        return *this;
 		    InternalRelease();
@@ -1147,7 +1147,7 @@ namespace SceneryEditorX
 	Ref<T> CreateRef(Args&&... args)
 	{
 		static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted");
-		return Ref<T>(new T(std::forward<Args>(args)...));
+        return Ref<T>(new T(std::forward<Args>(args)...));
 	}
 
     /**

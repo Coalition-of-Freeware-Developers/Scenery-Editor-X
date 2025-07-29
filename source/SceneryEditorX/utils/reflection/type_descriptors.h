@@ -44,10 +44,10 @@ namespace SceneryEditorX::Types
 
 	private:
 		template<size_t MemberIndex>
-		using TMemberType = typename member_pointer::return_type<std::remove_cvref_t<decltype(std::get<MemberIndex>(TTuple()))>>::type;
+		using TMemberType = member_pointer::return_type<std::remove_cvref_t<decltype(std::get<MemberIndex>(TTuple()))>>::type;
 
 		template<typename TMemberPtr>
-		using TMemberPtrType = typename member_pointer::return_type<std::remove_cvref_t<TMemberPtr>>::type;
+		using TMemberPtrType = member_pointer::return_type<std::remove_cvref_t<TMemberPtr>>::type;
 
 	public:
 		using TVariant = std::variant<filter_void_t<TMemberPtrType<decltype(MemberPointers)>>...>;

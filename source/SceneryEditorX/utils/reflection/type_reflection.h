@@ -12,9 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/utils/reflection/type_descriptors.h>
-#include <SceneryEditorX/utils/reflection/type_names.h>
 #include <SceneryEditorX/utils/reflection/type_structs.h>
-#include <SceneryEditorX/utils/reflection/type_utils.h>
 
 /// -------------------------------------------------------
 

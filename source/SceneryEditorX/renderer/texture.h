@@ -12,8 +12,7 @@
 */
 #pragma once
 #include <filesystem>
-#include <glm/vec2.hpp>
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
 
 /// -------------------------------------------------------
@@ -29,25 +28,28 @@ namespace SceneryEditorX
 
 	struct TextureSpecification
 	{
-		VkFormat Format;
-		uint32_t Width = 1;
-		uint32_t Height = 1;
-		UVWrap SamplerWrap = UVWrap::Repeat;
-		ImageFilter SamplerFilter = ImageFilter::Linear;
+		VkFormat format;
+		uint32_t width = 1;
+		uint32_t height = 1;
+		SamplerWrap samplerWrap = SamplerWrap::Repeat;
+		SamplerFilter samplerFilter = SamplerFilter::Linear;
 
-		bool GenerateMips = true;
-		bool Storage = false;
-		bool StoreLocally = false;
+		bool generateMips = true;
+		bool storage = false;
+		bool storeLocally = false;
 
-		std::string DebugName;
+		std::string debugName;
 	};
+
+    /// -------------------------------------------------------
 
 	class Texture : public Resource
 	{
 	public:
-		virtual ~Texture() override {}
+        AssetHandle handle = AssetHandle(0);
 
-		virtual void Bind(uint32_t slot = 0) const = 0;
+		virtual ~Texture() override = default;
+        virtual void Bind(uint32_t slot = 0) const = 0;
 
 		virtual VkFormat GetFormat() const = 0;
 		virtual uint32_t GetWidth() const = 0;
@@ -58,32 +60,42 @@ namespace SceneryEditorX
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const = 0;
 
 		virtual uint64_t GetHash() const = 0;
-		virtual TextureType GetType() const = 0;
+		//virtual TextureType GetType() const = 0;
 	};
+
+    /// -------------------------------------------------------
 
 	class Texture2D : public Texture
 	{
 	public:
-		static Ref<Texture2D> Create(const TextureSpecification& specification);
-		static Ref<Texture2D> Create(const TextureSpecification& specification, const std::filesystem::path& filepath);
-        static Ref<Texture2D> Create(const TextureSpecification &specification, const Memory::Buffer &imagedata = Memory::Buffer());
+        Texture2D() = default;
 
-		// reinterpret the given texture's data as if it was sRGB
+        explicit Texture2D(const TextureSpecification &specification);
+        Texture2D(const TextureSpecification &specification, const std::filesystem::path &filepath);
+        Texture2D(const TextureSpecification &specification, const Buffer &imagedata);
+        
+		static Ref<Texture2D> Create(const TextureSpecification &specification);
+		static Ref<Texture2D> Create(const TextureSpecification &specification, const std::filesystem::path& filepath);
+        static Ref<Texture2D> Create(const TextureSpecification &specification, const Buffer &imagedata = Buffer());
+
+		///< reinterpret the given texture's data as if it was sRGB
 		static Ref<Texture2D> CreateFromSRGB(const Ref<Texture2D> &texture);
 
-		virtual void CreateFromFile(const TextureSpecification& specification, const std::filesystem::path& filepath);
+		virtual void CreateFromFile(const TextureSpecification &specification, const std::filesystem::path& filepath);
         virtual void ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filepath);
-        virtual void CreateFromBuffer(const TextureSpecification &specification, Memory::Buffer data = Memory::Buffer());
+        virtual void CreateFromBuffer(const TextureSpecification &specification, Buffer data = Buffer());
 
-		virtual void Resize(const glm::uvec2 &size);
+		//void CreateFromBuffer(const TextureSpecification &specification, const Buffer &data);
+
+        virtual void Resize(const glm::uvec2 &size);
         virtual void Resize(uint32_t width, uint32_t height);
 
 		void Invalidate();
 
-		virtual VkFormat GetFormat() const override { return m_Specification.Format; }
-		virtual uint32_t GetWidth() const override { return m_Specification.Width; }
-		virtual uint32_t GetHeight() const override { return m_Specification.Height; }
-		virtual glm::uvec2 GetSize() const override { return { m_Specification.Width, m_Specification.Height }; }
+		virtual VkFormat GetFormat() const override { return m_Specification.format; }
+		virtual uint32_t GetWidth() const override { return m_Specification.width; }
+		virtual uint32_t GetHeight() const override { return m_Specification.height; }
+		virtual glm::uvec2 GetSize() const override { return { m_Specification.width, m_Specification.height }; }
 
 		virtual void Bind(uint32_t slot = 0) const override;
 
@@ -94,7 +106,7 @@ namespace SceneryEditorX
 		void Lock();
 		void Unlock();
 
-		Memory::Buffer GetWriteableBuffer();
+		Buffer GetWriteableBuffer() const;
 		bool Loaded() const { return m_Image && m_Image->IsValid(); }
 		const std::filesystem::path& GetPath() const;
         virtual uint32_t GetMipLevelCount() const override;
@@ -102,31 +114,33 @@ namespace SceneryEditorX
 
 		void GenerateMips();
 		virtual uint64_t GetHash() const override { return (uint64_t)m_Image.As<Image2D>()->GetDescriptorInfoVulkan().imageView; }
-        void CopyToHostBuffer(Memory::Buffer &buffer) const;
+        void CopyToHostBuffer(Buffer &buffer) const;
 
     private:
+        void SetData(const Buffer &buffer);
+
         TextureSpecification m_Specification;
         std::filesystem::path m_Path;
-        Memory::Buffer m_ImageData = {};
+        Buffer m_ImageData = {};
         Ref<Image2D> m_Image;
 
-	    void SetData(const Memory::Buffer &buffer);
-	};
+    };
+
+    /// -------------------------------------------------------
 
 	class TextureCube : public Texture
 	{
 	public:
-        TextureCube(TextureSpecification specification, const Memory::Buffer &data);
-		virtual ~TextureCube();
-
+        TextureCube(TextureSpecification specification, const Buffer &data);
+		virtual ~TextureCube() override;
 		void Release();
 
 		virtual void Bind(uint32_t slot = 0) const override {}
 
-		virtual VkFormat GetFormat() const override { return m_Specification.Format; }
-		virtual uint32_t GetWidth() const override{ return m_Specification.Width; }
-		virtual uint32_t GetHeight() const override { return m_Specification.Height; }
-		virtual glm::uvec2 GetSize() const override { return { m_Specification.Width, m_Specification.Height}; }
+		virtual VkFormat GetFormat() const override { return m_Specification.format; }
+		virtual uint32_t GetWidth() const override{ return m_Specification.width; }
+		virtual uint32_t GetHeight() const override { return m_Specification.height; }
+		virtual glm::uvec2 GetSize() const override { return { m_Specification.width, m_Specification.height}; }
 
 		virtual uint32_t GetMipLevelCount() const override;
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const override;
@@ -139,21 +153,20 @@ namespace SceneryEditorX
 		VkImageView CreateImageViewSingleMip(uint32_t mip);
 
 		void GenerateMips(bool readonly = false);
-        void CopyToHostBuffer(Memory::Buffer &buffer) const;
-        void CopyFromBuffer(const Memory::Buffer &buffer, uint32_t mips) const;
+        void CopyToHostBuffer(Buffer &buffer) const;
+        void CopyFromBuffer(const Buffer &buffer, uint32_t mips) const;
 	private:
 		void Invalidate();
 		TextureSpecification m_Specification;
 
 		bool m_MipsGenerated = false;
 
-		Memory::Buffer m_LocalStorage;
+		Buffer m_LocalStorage;
 		VmaAllocation m_MemoryAlloc;
 		uint64_t m_GPUAllocationSize = 0;
 		VkImage m_Image { nullptr };
 		VkDescriptorImageInfo m_DescriptorImageInfo = {};
 	};
-
 
 }
 

@@ -25,6 +25,7 @@ namespace SceneryEditorX
 	private:
 		const std::filesystem::path m_Path;
 	};
+
 }
 
 /// -------------------------------------------------------

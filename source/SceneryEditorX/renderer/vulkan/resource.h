@@ -33,7 +33,7 @@ namespace SceneryEditorX
 	struct Resource : public RefCounted
 	{
 	    /** @brief Descriptive name of the resource for debugging and tracking */
-	    std::string name;
+	    std::string debugName;
 
 		/**
 		 * @brief Retrieves descriptor information required for GPU resource binding.
@@ -58,6 +58,46 @@ namespace SceneryEditorX
 		 *       rendering threads simultaneously.
 		 */
 	    virtual ResourceDescriptorInfo GetDescriptorInfo() const = 0;
+
+		/**
+		 * @brief Gets the unique hash identifier for this resource.
+		 *
+		 * This pure virtual method must be implemented by all derived resource classes
+		 * to provide a unique hash value that can be used for resource identification,
+		 * comparison, and caching operations.
+		 *
+		 * @return uint64_t Unique hash value for this resource
+		 *
+		 * @note The hash value should remain constant for the lifetime of the resource
+		 * @note Different resource instances should have different hash values
+		 */
+		//virtual uint64_t GetHash() const = 0;
+
+		/**
+		 * @brief Compares two resources for equality using their hash values.
+		 *
+		 * @param other The resource to compare against
+		 * @return true if both resources have the same hash, false otherwise
+		 */
+		/*
+		virtual bool operator==(const Resource& other) const
+		{
+			return GetHash() == other.GetHash();
+		}
+		*/
+
+		/**
+		 * @brief Compares two resources for inequality using their hash values.
+		 *
+		 * @param other The resource to compare against  
+		 * @return true if the resources have different hashes, false otherwise
+		 */
+		/*
+		virtual bool operator!=(const Resource& other) const
+		{
+			return !(*this == other);
+		}
+		*/
 
 	    /** @brief Unique identifier for the resource (-1 indicates unassigned) */
 	    int32_t resourceID = -1;

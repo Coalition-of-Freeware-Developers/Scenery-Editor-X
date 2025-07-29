@@ -37,6 +37,7 @@ FILE(GLOB VULKAN_BUFFERS renderer/buffers/*.h renderer/buffers/*.cpp)
 FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
 FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h renderer/shaders/*.hpp)
 FILE(GLOB VULKAN_DEBUG renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
+FILE(GLOB VULKAN_SCENE renderer/scene/*.cpp renderer/scene/*.h renderer/scene/*.hpp)
 
 FILE(GLOB FONT_CODE renderer/fonts/*.h renderer/fonts/*.hpp renderer/fonts/*.cpp)
 
@@ -77,12 +78,12 @@ ADD_LIBRARY(AppCore
 	${VULKAN_BUFFERS}
 	${VULKAN_SHADER_CODE}
 	${VULKAN_DEBUG}
+	${VULKAN_SCENE}
 	${FONT_CODE}
 	${UTILS_MATH}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
 	${UTILS_FILESTREAM}
-
     # --------------------------------
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 	core/base.hpp
@@ -95,10 +96,15 @@ ADD_LIBRARY(AppCore
 	platform/editor_config.hpp
 	platform/system_detection.h
 	# --------------------------------
+	renderer/2d_renderer.cpp
+	renderer/2d_renderer.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
+	renderer/compute_pass.h
+	renderer/dds.h
 	renderer/image_data.cpp
 	renderer/image_data.h
+	renderer/mesh.h
 	renderer/primitives.cpp
 	renderer/primitives.h
 	renderer/render_config.h
@@ -201,6 +207,9 @@ SOURCE_GROUP("Serialization" FILES
 SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	${VULKAN_BUFFERS}
 )
+SOURCE_GROUP("Renderer/Scene" FILES
+	${VULKAN_SCENE}
+)
 SOURCE_GROUP("Utilities" FILES
 	utils/container_utils.h
 	utils/delegations.h
@@ -230,14 +239,20 @@ SOURCE_GROUP("Project" FILES
 	${PROJECT}
 )
 SOURCE_GROUP("Renderer" FILES
+	renderer/2d_renderer.cpp
+	renderer/2d_renderer.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
+	renderer/compute_pass.cpp
+	renderer/compute_pass.h
+	renderer/dds.h
+	renderer/image_data.cpp
+	renderer/image_data.h
+	renderer/mesh.h
 	renderer/primitives.cpp
 	renderer/primitives.h
 	renderer/renderer.cpp
 	renderer/renderer.h
-	renderer/image_data.cpp
-	renderer/image_data.h
 	renderer/render_context.cpp
 	renderer/render_context.h
 	renderer/render_config.h

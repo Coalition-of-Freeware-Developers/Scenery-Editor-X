@@ -51,6 +51,14 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+	enum MemoryType : uint8_t
+    {
+        GPU = 0x00000001,
+        CPU = 0x00000002 | 0x00000004,
+    };
+
+    /// -------------------------------------------------------
+
     namespace ShaderStage
     {
         enum class Stage
@@ -127,24 +135,25 @@ namespace SceneryEditorX
 
     /// ----------------------------------------------------------
 
-    enum SamplerFilter : uint8_t
+    enum class SamplerFilter : uint8_t
     {
-        SamplerFilter_Nearest = 0,
-        SamplerFilter_Linear
+        Nearest,
+        Linear,
+		Cubic
     };
 
-    enum SamplerMip : uint8_t
+    enum class SamplerMip : uint8_t
     {
-        SamplerMip_Disabled = 0,
-        SamplerMip_Nearest,
-        SamplerMip_Linear
+        Disabled = 0,
+        Nearest,
+        Linear
     };
 
-    enum SamplerWrap : uint8_t
+    enum class SamplerWrap : uint8_t
     {
-        SamplerWrap_Repeat = 0,
-        SamplerWrap_Clamp,
-        SamplerWrap_MirrorRepeat
+        Repeat = 0,
+        Clamp,
+        MirrorRepeat
     };
 
     enum PolygonMode : uint8_t
@@ -190,7 +199,7 @@ namespace SceneryEditorX
         StorageBuffer,
         ImageSampler1D,
         ImageSampler2D,
-        ImageSampler3D,
+        ImageSampler3D, ///TODO: Clarify if this is a 3D sampler or Cube sampler
         StorageImage1D,
         StorageImage2D,
         StorageImage3D	    
@@ -210,6 +219,30 @@ namespace SceneryEditorX
         Inherit = 0,
         Clear	= 1,
         Load	= 2
+    };
+
+	enum class Topology : uint8_t
+    {
+        None = 0,
+        Points,
+        Lines,
+        Triangles,
+        LineStrip,
+        TriangleStrip,
+        TriangleFan
+    };
+
+    enum class DepthCompareOperator : uint8_t
+    {
+        None = 0,
+        Never,
+        NotEqual,
+        Less,
+        LessOrEqual,
+        Greater,
+        GreaterOrEqual,
+        Equal,
+        Always,
     };
 
 }

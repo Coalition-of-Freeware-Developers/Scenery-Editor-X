@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/image_data.h>
+#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
 
 /// ---------------------------------------------------------
@@ -42,44 +43,43 @@ namespace SceneryEditorX
     };
     struct FramebufferSpecification
 	{
-		float Scale = 1.0f;
-		uint32_t Width = 0;
-		uint32_t Height = 0;
-		Vec4 ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		float DepthClearValue = 0.0f;
-		bool ClearColorOnLoad = true;
-		bool ClearDepthOnLoad = true;
+		float scale = 1.0f;
+		uint32_t width = 0;
+		uint32_t height = 0;
+		Vec4 clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		float depthClearValue = 0.0f;
+		bool clearColorOnLoad = true;
+		bool clearDepthOnLoad = true;
 
-		FramebufferAttachmentSpecification Attachments;
-		uint32_t Samples = 1; // multisampling
+		FramebufferAttachmentSpecification attachments;
+		uint32_t samples = 1; ///< multisampling
 
-		// TODO: Temp, needs scale
-		bool NoResize = false;
+		///< TODO: Temp, needs scale
+		bool noResize = false;
 
-		// Master switch (individual attachments can be disabled in FramebufferTextureSpecification)
-		bool Blend = true;
-		// None means use BlendMode in FramebufferTextureSpecification
-		FramebufferBlendMode BlendMode = FramebufferBlendMode::None;
+		///< Master switch (individual attachments can be disabled in FramebufferTextureSpecification)
+		bool blend = true;
 
-		// SwapChainTarget = screen buffer (i.e. no framebuffer)
-		bool SwapChainTarget = false;
+		///< None means use BlendMode in FramebufferTextureSpecification
+		FramebufferBlendMode blendMode = FramebufferBlendMode::None;
 
-		// Will it be used for transfer ops?
-		bool Transfer = false;
+		///< SwapChainTarget = screen buffer (i.e. no framebuffer)
+		bool swapChainTarget = false;
 
-		// Note: these are used to attach multi-layered color/depth images 
-		Ref<Image2D> ExistingImage;
-		std::vector<uint32_t> ExistingImageLayers;
+		///< Will it be used for transfer ops?
+		bool transfer = false;
+
+		/// Note: these are used to attach multi-layered color/depth images 
+		Ref<Image2D> existingImage;
+		std::vector<uint32_t> existingImageLayers;
 		
-		// Specify existing images to attach instead of creating
-		// new images. attachment index -> image
-		std::map<uint32_t, Ref<Image2D>> ExistingImages;
+		///< Specify existing images to attach instead of creating new images. attachment index -> image
+		std::map<uint32_t, Ref<Image2D>> existingImages;
 
-		// At the moment this will just create a new render pass
-		// with an existing framebuffer
-		Ref<Framebuffer> ExistingFramebuffer;
+		///< At the moment this will just create a new render pass with an existing framebuffer
+		Ref<Framebuffer> existingFramebuffer;
 
-		std::string DebugName;
+		std::string debugName;
 	};
 
     class Framebuffer : public RefCounted
@@ -103,7 +103,7 @@ namespace SceneryEditorX
 				
 		virtual Ref<Image2D> GetImage(uint32_t attachmentIndex = 0) const  { SEDX_CORE_ASSERT(attachmentIndex < m_AttachmentImages.size()); return m_AttachmentImages[attachmentIndex]; }
 		virtual Ref<Image2D> GetDepthImage() const { return m_DepthAttachmentImage; }
-		virtual size_t GetColorAttachmentCount() const { return m_Specification.SwapChainTarget ? 1 : m_AttachmentImages.size(); }
+		virtual size_t GetColorAttachmentCount() const { return m_Specification.swapChainTarget ? 1 : m_AttachmentImages.size(); }
 		virtual bool HasDepthAttachment() const { return (bool)m_DepthAttachmentImage; }
 		VkRenderPass GetRenderPass() const { return m_RenderPass; }
 		VkFramebuffer GetVulkanFramebuffer() const { return m_Framebuffer; }

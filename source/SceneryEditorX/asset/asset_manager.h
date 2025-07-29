@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * asset_manager.h
@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/asset/asset.h>
+#include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <SceneryEditorX/scene/camera.h>
 #include <SceneryEditorX/scene/lights.h>
@@ -22,15 +23,14 @@
 #include <SceneryEditorX/scene/texture.h>
 #include <vector>
 
-#include <SceneryEditorX/project/project.h>
-
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+	/*
 	/// -------------------------------------------------------
-		
+
 	inline std::string ShadowTypeNames[] = {"Disabled", "RayTraced", "Map"};
 
 	/// -------------------------------------------------------
@@ -64,7 +64,7 @@ namespace SceneryEditorX
          *
          * @param assetHandle The asset handle to check.
          * @returns True if assetHandle could potentially be valid.
-         */
+         #1#
         GLOBAL bool IsAssetHandleValid(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->IsAssetHandleValid(assetHandle);
@@ -83,7 +83,7 @@ namespace SceneryEditorX
          *
          * @param assetHandle The asset handle to check.
          * @returns True if the asset referred to by assetHandle is valid.
-         */
+         #1#
         GLOBAL bool IsAssetValid(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->IsAssetValid(assetHandle);
@@ -96,7 +96,7 @@ namespace SceneryEditorX
          *
          * @param handle The asset handle to check.
          * @return True if the asset is a memory asset, false if it is a physical asset.
-         */
+         #1#
         GLOBAL bool IsMemoryAsset(const AssetHandle &handle)
         {
             return Project::GetAssetManager()->IsMemoryAsset(handle);
@@ -109,7 +109,7 @@ namespace SceneryEditorX
 		 *
 		 * @param handle The asset handle to check.
 		 * @return True if the asset is a physical asset, false if it is a memory asset.
-		 */
+		 #1#
         GLOBAL bool IsPhysicalAsset(const AssetHandle &handle)
         {
             return Project::GetAssetManager()->IsPhysicalAsset(handle);
@@ -123,7 +123,7 @@ namespace SceneryEditorX
          *
          * @param assetHandle The asset handle to reload.
          * @return True if the asset data was successfully reloaded, false otherwise.
-         */
+         #1#
         GLOBAL bool ReloadData(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->ReloadData(assetHandle);
@@ -137,7 +137,7 @@ namespace SceneryEditorX
          *
          * @param assetHandle The asset handle to ensure current.
          * @return True if the asset is current, false otherwise.
-         */
+         #1#
         GLOBAL bool EnsureCurrent(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->EnsureCurrent(assetHandle);
@@ -150,7 +150,7 @@ namespace SceneryEditorX
          * It will also ensure that all assets are up-to-date with their metadata.
          *
          * @return True if all assets are loaded and current, false if any asset failed to load or is not current.
-         */
+         #1#
         GLOBAL bool EnsureAllLoadedCurrent()
         {
             return Project::GetAssetManager()->EnsureAllLoadedCurrent();
@@ -164,7 +164,7 @@ namespace SceneryEditorX
          *
          * @param assetHandle The asset handle to check.
          * @return The type of the asset referred to by assetHandle.
-         */
+         #1#
         GLOBAL AssetType GetAssetType(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->GetAssetType(assetHandle);
@@ -181,6 +181,15 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
+		/**
+		 * @brief Gets the asset with the specified UUID.
+		 *
+		 * This function retrieves the asset from the asset manager using its UUID.
+		 * It returns a reference to the asset if it exists, or nullptr if it does not.
+		 *
+		 * @param uuid The UUID of the asset to retrieve.
+		 * @return A reference to the asset with the specified UUID, or nullptr if it does not exist.
+		 #1#
 		template <typename T>
         Ref<T> GetAsset(uint32_t uuid)
         {
@@ -189,19 +198,39 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
+		/**
+		 * @brief Gets all assets of a specific type.
+		 *
+		 * This function retrieves all assets of the specified type from the asset manager.
+		 * It uses the static type of the asset to filter the assets.
+		 *
+		 * @param T The type of the asset to retrieve.
+		 * @return A set of asset handles for all assets of the specified type.
+		 #1#
 	    template<typename T>
         GLOBAL std::unordered_set<AssetHandle> GetAllAssetsWithType()
 		{
 			return Project::GetAssetManager()->GetAllAssetsWithType(T::GetStaticType());
 		}
 
-		static const std::unordered_map<AssetHandle, Ref<Asset>>& GetLoadedAssets() { return Project::GetAssetManager()->GetLoadedAssets(); }
+        /**
+         * @brief Gets all loaded assets in the asset manager.
+         *
+         * This function returns a map of all loaded assets, where the key is the asset handle
+         * and the value is a reference to the asset object.
+         *
+         * @return A constant reference to the map of loaded assets.
+         #1#
+        static const std::unordered_map<AssetHandle, Ref<Asset>>& GetLoadedAssets()
+		{
+		    return Project::GetAssetManager()->GetLoadedAssets();
+		}
 
 		/**
 		 * @note The memory-only asset must be fully initialised before you AddMemoryOnlyAsset()
 		 * Assets are not themselves thread-safe, but can potentially be accessed from multiple threads.
 		 * Thread safety therefore depends on the assets being immutable once they've been added to the asset manager.
-         */
+         #1#
 		template<typename TAsset>
         GLOBAL AssetHandle AddMemoryOnlyAsset(Ref<TAsset> asset)
 		{
@@ -215,7 +244,15 @@ namespace SceneryEditorX
 
 
         Ref<Asset> GetAsset(uint32_t uuid) { return assets[uuid]; }
-		
+
+		/// Static template method for getting typed assets by handle
+		template<typename T>
+		GLOBAL Ref<T> GetAsset(const AssetHandle &handle)
+		{
+		    auto asset = Project::GetAssetManager()->GetAsset(handle);
+		    return asset ? asset.DynamicCast<T>() : nullptr;
+		}
+
 		GLOBAL Ref<Asset> GetMemoryAsset(const AssetHandle &handle)
 		{
 		    return Project::GetAssetManager()->GetMemoryAsset(handle);
@@ -233,7 +270,7 @@ namespace SceneryEditorX
 		    return Project::GetAssetManager()->DeregisterDependency(dependency, handle);
 		}
 
-		/** Remove all dependencies of handle */
+		/** Remove all dependencies of handle #1#
 		GLOBAL void DeregisterDependencies(const AssetHandle &handle)
 		{
 		    return Project::GetAssetManager()->DeregisterDependencies(handle);
@@ -296,12 +333,12 @@ namespace SceneryEditorX
         {
             switch (type)
             {
-                case ObjectType::Texture: return CreateAsset<TextureAsset>(name, uuid);
-                case ObjectType::Material: return CreateAsset<MaterialAsset>(name, uuid);
-                case ObjectType::Mesh: return CreateAsset<ModelAsset>(name, uuid);
-                case ObjectType::Scene: return CreateAsset<Scene>(name, uuid);
-                case ObjectType::Node: return CreateObject<Node>(name, uuid);
-                case ObjectType::Light: return CreateObject<LightNode>(name, uuid);
+                case ObjectType::Texture:	return CreateAsset<TextureAsset>(name, uuid);
+                case ObjectType::Material:	return CreateAsset<MaterialAsset>(name, uuid);
+                case ObjectType::Mesh:		return CreateAsset<ModelAsset>(name, uuid);
+                case ObjectType::Scene:		return CreateAsset<Scene>(name, uuid);
+                case ObjectType::Node:		return CreateObject<Node>(name, uuid);
+                case ObjectType::Light:		return CreateObject<LightNode>(name, uuid);
                 default:
                     return nullptr;
             }
@@ -340,7 +377,7 @@ namespace SceneryEditorX
                 return nullptr;
             }
         }
-        */
+        #1#
 
 		/// -------------------------------------------------------
 
@@ -376,7 +413,7 @@ namespace SceneryEditorX
 	    struct AssetManagerImpl *impl;
         std::unordered_map<uint32_t, Ref<Asset>> assets;
 
-		
+
         /// -------------------------------------------------------
 
     private:
@@ -387,6 +424,7 @@ namespace SceneryEditorX
 
         friend class GraphicsEngine;
     };
+    */
 
 }
 

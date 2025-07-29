@@ -10,16 +10,17 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include <Editor/core/editor.h>
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/ui/ui_context.h>
+//#include <Editor/core/editor.h>
+//#include <SceneryEditorX/core/application/application.h>
+//#include <SceneryEditorX/renderer/renderer.h>
+//#include <SceneryEditorX/ui/ui.h>
+//#include <SceneryEditorX/ui/ui_context.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
-{
+{/*
+
     EditorApplication::EditorApplication()
     {
         // Initialize member variables
@@ -57,7 +58,7 @@ namespace SceneryEditorX
 
         // Check if window has been resized
         // If so, recreate frame resources
-        if (/* window resized condition */)
+        if (/* window resized condition #1#)
         {
             RecreateFrameResources();
         }
@@ -93,7 +94,7 @@ namespace SceneryEditorX
         // Main application loop
 
         // Loop until window is closed
-        while (/* window not closed condition */)
+        while (/* window not closed condition #1#)
         {
             // Update editor state
             Update();
@@ -115,6 +116,7 @@ namespace SceneryEditorX
 
         // Update viewport size in UI
     }
+    */
 
 } // namespace SceneryEditorX
 

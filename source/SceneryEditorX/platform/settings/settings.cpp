@@ -919,8 +919,7 @@ namespace SceneryEditorX
         /// Split the path by dots
         std::vector<std::string> parts;
         std::string temp = path;
-        size_t pos = 0;
-
+        size_t pos;
         while ((pos = temp.find('.')) != std::string::npos)
         {
             parts.push_back(temp.substr(0, pos));

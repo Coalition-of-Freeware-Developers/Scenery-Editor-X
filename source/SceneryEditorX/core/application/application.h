@@ -17,6 +17,7 @@
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/modules/module_stage.h>
 #include <SceneryEditorX/core/time/time.h>
+#include <SceneryEditorX/core/time/timer.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/platform/settings/settings.h>
 #include <SceneryEditorX/utils/pointers.h>
@@ -30,6 +31,22 @@ namespace SceneryEditorX
     {
     public:
 	    using EventCallbackFn = std::function<void(Event&)>;
+
+        /// -------------------------------------------------------
+
+        struct PerformanceTimers
+        {
+            float MainThreadWorkTime = 0.0f;
+            float MainThreadWaitTime = 0.0f;
+            float RenderThreadWorkTime = 0.0f;
+            float RenderThreadWaitTime = 0.0f;
+            float RenderThreadGPUWaitTime = 0.0f;
+            float ScriptUpdate = 0.0f;
+            //float PhysicsStepTime = 0.0f;
+        };
+
+        /// -------------------------------------------------------
+
         Application(const AppData &appData);
         virtual ~Application();
 
@@ -40,16 +57,21 @@ namespace SceneryEditorX
         virtual void OnUpdate() {}
         virtual void OnShutdown();
 
-        float GetTime() const;
+		DeltaTime GetDeltaTime() const { return m_deltaTime; }
+		DeltaTime GetFrametime() const { return m_frametime; }
+		float GetTime() const; /// TODO: This should be in "Platform"
 
+	    PerformanceProfiler* GetPerformanceProfiler() const { return m_profiler; }
         Window GetWindow() const { return *m_Window; }
         uint32_t GetCurrentFrameIndex() const { return currentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
+
         GLOBAL Application &Get() { return *appInstance; }
 	    GLOBAL const char* GetConfigurationName();
         GLOBAL const char *GetPlatformName();
         GLOBAL std::thread::id GetMainThreadID();
         GLOBAL bool IsMainThread();
+
         ApplicationSettings &GetSettings() { return settings; }
         [[nodiscard]] const ApplicationSettings &GetSettings() const { return settings;}
         void RenderUI();
@@ -59,7 +81,7 @@ namespace SceneryEditorX
         void SyncEvents();
         void ProcessEvents();
         void OnEvent(Event &event);
-        bool OnWindowResize(WindowResizeEvent &e);
+        bool OnWindowResize(const WindowResizeEvent &e);
         bool OnWindowMinimize(const WindowMinimizeEvent &e);
         bool OnWindowClose(WindowCloseEvent &e);
 
@@ -102,20 +124,23 @@ namespace SceneryEditorX
         AppData m_AppData;
         ModuleStage m_ModuleStage;
 
+		DeltaTime m_deltaTime;
+		DeltaTime m_frametime;
 	    bool isRunning = true;
         bool isMinimized = false;
         bool m_ShowStats = true;
 
         ApplicationSettings settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
         INTERNAL Application *appInstance;
-
+        PerformanceProfiler *m_profiler = nullptr; /// TODO: Should be null in Dist
+        std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;
         std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
         std::mutex m_EventQueueMutex;
         std::vector<EventCallbackFn> m_EventCallbacks;
 
 		uint32_t currentFrameIndex = 0;
-        friend class RenderContext;
-        friend class Renderer;
+        //friend class RenderContext;
+        //friend class Renderer;
     protected:
         inline LOCAL bool isRuntime = false;
     };

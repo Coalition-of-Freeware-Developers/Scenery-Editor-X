@@ -44,8 +44,8 @@ namespace SceneryEditorX
 			uint8_t Version;
 			uint8_t Stage;
 			uint32_t Flags = 0;
-			static void Serialize(SerializeWriter* writer, const ShaderModuleInfo& info) { writer->WriteRaw(info); }
-			static void Deserialize(SerializeReader* reader, ShaderModuleInfo& info) { reader->ReadRaw(info); }
+			//static void Serialize(SerializeWriter* writer, const ShaderModuleInfo& info) { writer->WriteRaw(info); }
+			//static void Deserialize(SerializeReader* reader, ShaderModuleInfo& info) { reader->ReadRaw(info); }
 		};
 
 		struct ShaderProgramInfo

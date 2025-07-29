@@ -10,10 +10,9 @@
 * Created: 11/5/2025
 * -------------------------------------------------------
 */
+// ReSharper disable CommentTypo
 #include <imgui/imgui.h>
 #include <SceneryEditorX/renderer/image_data.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
 /// -------------------------------------------------------
 
@@ -231,7 +230,9 @@ namespace SceneryEditorX
 
         return m_PerMipImageViews.at(mip);
     }
+    */
 
+	/*
     VkImageView Image2D::RT_GetMipImageView(const uint32_t mip)
     {
         auto it = m_PerMipImageViews.find(mip);
@@ -241,7 +242,7 @@ namespace SceneryEditorX
         VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
         VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        if (m_Specification.Format == ImageFormat::DEPTH24STENCIL8)
+        if (m_Specification.Format == VkFormat::DEPTH24STENCIL8)
             aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
         VkFormat vulkanFormat = Utils::VulkanImageFormat(m_Specification.Format);
@@ -260,10 +261,12 @@ namespace SceneryEditorX
         imageViewCreateInfo.image = m_Info.Image;
 
         VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_PerMipImageViews[mip]));
-        SetDebugUtilsObjectName(device,VK_OBJECT_TYPE_IMAGE_VIEW,std::format("{} image view mip: {}", m_Specification.DebugName, mip), m_PerMipImageViews[mip]);
+        SetDebugUtilsObjectName(device,VK_OBJECT_TYPE_IMAGE_VIEW,std::format("{} image view mip: {}", m_Specification.debugName, mip), m_PerMipImageViews[mip]);
         return m_PerMipImageViews.at(mip);
     }
+    */
 
+    /*
     void Image2D::RT_CreatePerSpecificLayerImageViews(const std::vector<uint32_t> &layerIndices)
     {
         SEDX_CORE_ASSERT(m_Specification.Layers > 1);
@@ -271,10 +274,10 @@ namespace SceneryEditorX
         VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
         VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        if (m_Specification.Format == ImageFormat::DEPTH24STENCIL8)
+        if (m_Specification.Format == VkFormat::DEPTH24STENCIL8)
             aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-        const VkFormat vulkanFormat = ImageFormat(m_Specification.Format);
+        const VkFormat vulkanFormat = VkFormat(m_Specification.Format);
 
         if (m_PerLayerImageViews.empty())
             m_PerLayerImageViews.resize(m_Specification.Layers);
@@ -294,14 +297,16 @@ namespace SceneryEditorX
             imageViewCreateInfo.subresourceRange.layerCount = 1;
             imageViewCreateInfo.image = m_Info.Image;
             VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_PerLayerImageViews[layer]));
-            SetDebugUtilsObjectName(device,VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view layer: {}", m_Specification.DebugName, layer), m_PerLayerImageViews[layer]);
+            SetDebugUtilsObjectName(device,VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} image view layer: {}", m_Specification.debugName, layer), m_PerLayerImageViews[layer]);
         }
     }
+    */
 
+    /*
     void Image2D::UpdateDescriptor()
     {
-        if (m_Specification.Format == ImageFormat::DEPTH24STENCIL8 || m_Specification.Format == ImageFormat::DEPTH32F ||
-            m_Specification.Format == ImageFormat::DEPTH32FSTENCIL8UINT)
+        if (m_Specification.Format == VkFormat::DEPTH24STENCIL8 || m_Specification.Format == VkFormat::DEPTH32F ||
+            m_Specification.Format == VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT)
             m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
         else if (m_Specification.Usage == ImageUsage::Storage)
             m_DescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -316,9 +321,16 @@ namespace SceneryEditorX
         m_DescriptorImageInfo.imageView = m_Info.ImageView;
         m_DescriptorImageInfo.sampler = m_Info.Sampler;
     }
+    */
 
-    const std::map<VkImage, WeakRef<Image2D>> &Image2D::GetImageRefs() { return s_ImageReferences; }
+    /*
+    const std::map<VkImage, WeakRef<Image2D>> &Image2D::GetImageRefs()
+    {
+        return s_ImageReferences;
+    }
+    */
 
+    /*
     void Image2D::SetData(Buffer buffer)
     {
         SEDX_CORE_VERIFY(m_Specification.Transfer, "Image must be created with ImageSpecification::Transfer enabled!");
@@ -442,7 +454,9 @@ namespace SceneryEditorX
             UpdateDescriptor();
         }
     }
+    */
 
+    /*
     void Image2D::CopyToHostBuffer(Buffer &buffer) const
     {
         auto device = RenderContext::GetCurrentDevice();
@@ -525,12 +539,16 @@ namespace SceneryEditorX
 
         allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
     }
+    */
 
-    ImageView::ImageView(const ImageViewSpecification &specification) : m_Specification(specification)
+    /*
+    ImageView::ImageView(const ImageViewData &specification) : m_Specification(specification)
     {
         Invalidate();
     }
+    */
 
+    /*
     ImageView::~ImageView()
     {
         Renderer::SubmitResourceFree([imageView = m_ImageView]() mutable {
@@ -542,13 +560,17 @@ namespace SceneryEditorX
 
         m_ImageView = nullptr;
     }
+    */
 
+    /*
     void ImageView::Invalidate()
     {
         Ref<ImageView> instance = this;
         Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
     }
+    */
 
+    /*
     void ImageView::Invalidate_RenderThread()
     {
         auto device = RenderContext::GetCurrentDevice();
@@ -559,10 +581,10 @@ namespace SceneryEditorX
 
         VkImageAspectFlags aspectMask =
 			DepthFormat(imageSpec.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        if (imageSpec.Format == ImageFormat::DEPTH24STENCIL8)
+        if (imageSpec.Format == VkFormat::DEPTH24STENCIL8)
             aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-        VkFormat vulkanFormat = ImageFormat(imageSpec.Format);
+        VkFormat vulkanFormat = VkFormat(imageSpec.Format);
 
         VkImageViewCreateInfo imageViewCreateInfo = {};
         imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -579,7 +601,7 @@ namespace SceneryEditorX
         VK_CHECK_RESULT(vkCreateImageView(vulkanDevice, &imageViewCreateInfo, nullptr, &m_ImageView));
         VKUtils::SetDebugUtilsObjectName(vulkanDevice,
                                          VK_OBJECT_TYPE_IMAGE_VIEW,
-                                         std::format("{} default image view", m_Specification.DebugName),
+                                         std::format("{} default image view", m_Specification.debugName),
                                          m_ImageView);
 
         m_DescriptorImageInfo = vulkanImage->GetDescriptorInfoVulkan();

@@ -13,8 +13,6 @@
 #pragma once
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/platform/editor_config.hpp>
-#include <SceneryEditorX/serialization/graph_serializer.h>
-//#include <SceneryEditorX/serialization/serializer.hpp>
 
 /// -------------------------------------------------------
 

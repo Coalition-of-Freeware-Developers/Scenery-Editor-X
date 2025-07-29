@@ -15,12 +15,13 @@
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/scene/texture.h>
-#include <SceneryEditorX/serialization/serializer.hpp>
+//#include <SceneryEditorX/serialization/serializer.hpp>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
 	/// -------------------------------------------------------
 
     enum class MaterialFlag  // NOLINT(performance-enum-size)
@@ -121,7 +122,9 @@ namespace SceneryEditorX
 		virtual Ref<Shader> GetShader() = 0;
 		virtual const std::string& GetName() const = 0;
 	};
-    
+
+    /// -------------------------------------------------------
+
     class MaterialAsset : public Asset
     {
     public:
@@ -138,39 +141,39 @@ namespace SceneryEditorX
         [[nodiscard]] virtual bool IsLoaded() const;
         [[nodiscard]] virtual const std::string &GetPath() const;
         [[nodiscard]] virtual const std::string &GetName() const;
-        void OnDependencyUpdated(AssetHandle handle);
-        bool IsUsingNormalMap();
-        void SetUseNormalMap(bool value);
+        void OnDependencyUpdated(const AssetHandle &handle);
+        bool IsUsingNormalMap() const;
+        void SetUseNormalMap(bool value) const;
 
         /// -------------------------------------------------------
 
-        Vec3 &GetAlbedoColor();
-        float &GetMetalness();
-        float &GetTransparency();
-        float &GetRoughness();
-        float &GetEmission();
+        Vec3 &GetAlbedoColor() const;
+        float &GetMetalness() const;
+        float &GetTransparency() const;
+        float &GetRoughness() const;
+        float &GetEmission() const;
 
-        void SetAlbedoColor(const Vec3 &color);
+        void SetAlbedoColor(const Vec3 &color) const;
         void SetAlbedoMap(AssetHandle handle);
-        void SetNormalMap(AssetHandle handle);
-        void SetMetalness(float value);
-        void SetMetalnessMap(AssetHandle handle);
-        void SetRoughness(float value);
-        void SetRoughnessMap(AssetHandle handle);
-        void SetTransparency(float transparency);
-        void SetEmission(float value);
+        void SetNormalMap(const AssetHandle &handle);
+        void SetMetalness(float value) const;
+        void SetMetalnessMap(const AssetHandle &handle);
+        void SetRoughness(float value) const;
+        void SetRoughnessMap(const AssetHandle &handle);
+        void SetTransparency(float transparency) const;
+        void SetEmission(float value) const;
 
-        void ClearAlbedoMap();
-        void ClearRoughnessMap();
-        void ClearMetalnessMap();
-        void ClearNormalMap();
+        void ClearAlbedoMap() const;
+        void ClearRoughnessMap() const;
+        void ClearMetalnessMap() const;
+        void ClearNormalMap() const;
 
         /// -------------------------------------------------------
 
         Ref<Texture2D> GetAlbedoMap();
-        Ref<Texture2D> GetRoughnessMap();
-        Ref<Texture2D> GetMetalnessMap();
-        Ref<Texture2D> GetNormalMap();
+        Ref<Texture2D> GetRoughnessMap() const;
+        Ref<Texture2D> GetMetalnessMap() const;
+        Ref<Texture2D> GetNormalMap() const;
 
         Ref<Material> GetMaterial() const { return m_Material; }
         void SetMaterial(const Ref<Material> &material) { m_Material = material; }
@@ -189,17 +192,17 @@ namespace SceneryEditorX
         Ref<TextureAsset> metallicRoughnessMap;
 
     private:
-        void SetDefaults();
+        void SetDefaults() const;
         std::string materialPath;
         std::string materialName;
         Ref<Material> m_Material;
 
         struct MapAssets
 		{
-			AssetHandle AlbedoMap = 0;
-			AssetHandle NormalMap = 0;
-			AssetHandle MetalnessMap = 0;
-			AssetHandle RoughnessMap = 0;
+			AssetHandle AlbedoMap;
+			AssetHandle NormalMap;
+			AssetHandle MetalnessMap;
+			AssetHandle RoughnessMap;
 		} m_Maps;
 
         bool m_Transparent = false;
@@ -207,6 +210,7 @@ namespace SceneryEditorX
         friend class AssetManager;
     };
 
+    /// -------------------------------------------------------
 
 	class MaterialTable : public RefCounted
 	{

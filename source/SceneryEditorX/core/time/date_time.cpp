@@ -13,7 +13,6 @@
 #pragma once
 #include <chrono>
 #include <ctime>
-#include <spdlog/fmt/chrono.h>
 #include <SceneryEditorX/core/time/date_time.h>
 
 /// -----------------------------------------------------
@@ -116,9 +115,9 @@ namespace SceneryEditorX
         std::mktime(&timeInfo);
     }
 
-    u64 DateTime::ToNumber() const
+    uint64_t DateTime::ToNumber() const
     {
-        PackedDateTime packed{};
+        PackedDateTime packed;
         packed.year = Year();
         packed.month = Month();
         packed.day = Day();
@@ -131,7 +130,7 @@ namespace SceneryEditorX
 
     DateTime DateTime::FromNumber(const uint64_t number)
     {
-        PackedDateTime packed{};
+        PackedDateTime packed;
         packed.finalValue = number;
 
         DateTime result{};
@@ -147,8 +146,10 @@ namespace SceneryEditorX
 
     std::string DateTime::ToString() const
     {
-        constexpr const char* defaultFormat = "{:%Y-%m-%d %H:%M:%S}";
-        return fmt::format(defaultFormat, timeInfo);
+        constexpr const char *defaultFormat = "%Y-%m-%d %H:%M:%S";
+        std::ostringstream oss;
+        oss << std::put_time(&timeInfo, defaultFormat);
+        return oss.str();
     }
 
     DateTime DateTime::Parse(const std::string &input)

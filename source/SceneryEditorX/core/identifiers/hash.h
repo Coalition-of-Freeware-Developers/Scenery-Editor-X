@@ -48,7 +48,7 @@ namespace SceneryEditorX
     class Hash
 	{
 	public:
-
+    */
         /**
          * @brief Generates a 32-bit FNV-1a hash from a string and length at compile time.
          *
@@ -77,7 +77,7 @@ namespace SceneryEditorX
          * constexpr uint32_t shaderHash = Hash::GenerateFNVHash("vertex_shader", 13);
          * uint32_t dynamicHash = Hash::GenerateFNVHash(shaderName.c_str(), shaderName.length());
          * @endcode
-         #1#
+         */
 
         /*
         static constexpr uint32_t GenerateFNVHash(const char* str, size_t length)
@@ -97,7 +97,7 @@ namespace SceneryEditorX
 
 			return hash;
 		}
-		#1#
+		*/
 
         /**
          * @brief Generates a 32-bit FNV-1a hash from a std::string.
@@ -116,14 +116,14 @@ namespace SceneryEditorX
          * std::string shaderName = "fragment_shader";
          * uint32_t nameHash = Hash::GenerateFNVHash(shaderName);
          * @endcode
-         #1#
+         */
 
         /*
         static uint32_t GenerateFNVHash(const std::string& str)
         {
             return GenerateFNVHash(str.c_str(), str.length());
         }
-        #1#
+        */
 
         /**
          * @brief Generates a 32-bit CRC32 hash from a C-style string.
@@ -148,7 +148,8 @@ namespace SceneryEditorX
          * uint32_t fileHash = Hash::CRC32("scene_data.edx");
          * uint32_t nameHash = Hash::CRC32(objectName.c_str());
          * @endcode
-         #1#
+         */
+
 		//static uint32_t CRC32(const char* str);
 
         /**
@@ -168,10 +169,11 @@ namespace SceneryEditorX
          * std::string assetPath = "models/building.obj";
          * uint32_t pathHash = Hash::CRC32(assetPath);
          * @endcode
-         #1#
+         */
+
 		//static uint32_t CRC32(const std::string& string);
 	};
-	*/
+
 
 	/*
 	template<typename T>
@@ -186,8 +188,10 @@ namespace SceneryEditorX
 	Hash128 CalculateHash128(const void *data, size_t length);
 
 	size_t CalculateHash(const void *data, size_t length);
+    */
 
-    /// Default implementation does not have any 'special' code other than for pointers. Specializations do all the work.
+    /** Default implementation does not have any 'special' code other than for pointers. Specializations do all the work. */
+    /*
     template <typename T>
     size_t GetHash(const T &value)
     {
@@ -209,7 +213,9 @@ namespace SceneryEditorX
 			return std::hash<T>()(value);
         }
     }
+    */
 
+    /*
 	template <class T>
     inline void CombineHash(size_t &seed, const T &v)
 	{
@@ -257,8 +263,9 @@ namespace SceneryEditorX
 			return GetHash(value);
 		}
 	};
-	*/
+
 
 }
+*/
 
 /// ---------------------------------------------

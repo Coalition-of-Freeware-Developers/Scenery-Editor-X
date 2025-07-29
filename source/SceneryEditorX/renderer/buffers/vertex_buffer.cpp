@@ -19,6 +19,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	VertexBuffer::VertexBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity)
 	{
 	}
@@ -26,6 +27,7 @@ namespace SceneryEditorX
 	VertexBuffer::VertexBuffer(const std::vector<Vertex> &initialVertices, VertexBufferType type)
 	{
 	}
+	*/
 
     VertexBuffer::VertexBuffer(const void *data, uint64_t size, VertexBufferType usage) : m_Size(size)
     {
@@ -49,10 +51,12 @@ namespace SceneryEditorX
         });
     }
 
+    /*
     Ref<VertexBuffer> VertexBuffer::CreateBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity)
     {
         return CreateRef<VertexBuffer>(CreateBuffer(type, vertexFormat, initialCapacity));
     }
+    */
 
     VertexBuffer::~VertexBuffer()
     {
@@ -103,6 +107,6 @@ namespace SceneryEditorX
         return {};
     }
 
-} // namespace SceneryEditorX
+}
 
 /// ---------------------------------------------------------

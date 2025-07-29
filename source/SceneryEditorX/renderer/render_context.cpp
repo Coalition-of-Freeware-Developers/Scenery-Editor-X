@@ -286,10 +286,10 @@ namespace SceneryEditorX
     
     		#if defined(VK_EXT_layer_settings) && VK_EXT_layer_settings
     				/// https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Configuration_Parameters.md
-    				const int useMetalArgumentBuffers = 1;
-    				const VkBool32 gpuav_descriptor_checks = VK_FALSE; /// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8688
-    				const VkBool32 gpuav_indirect_draws_buffers = VK_FALSE; /// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
-    				const VkBool32 gpuav_post_process_descriptor_indexing = VK_FALSE; /// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
+                    constexpr int useMetalArgumentBuffers = 1;
+                    constexpr VkBool32 gpuav_descriptor_checks = VK_FALSE;					/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8688
+                    constexpr VkBool32 gpuav_indirect_draws_buffers = VK_FALSE;				/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
+                    constexpr VkBool32 gpuav_post_process_descriptor_indexing = VK_FALSE;	/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
     		
     		    #define LAYER_SETTINGS_BOOL32(name, var)											\
     				VkLayerSettingEXT                                                               \

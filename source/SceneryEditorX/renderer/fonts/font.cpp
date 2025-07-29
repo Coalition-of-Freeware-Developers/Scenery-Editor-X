@@ -10,20 +10,21 @@
 * Created: 12/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/asset_manager.h>
-#include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/renderer/fonts/font.h>
-#include <SceneryEditorX/asset/ecs.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/core/memory/buffer.h>
-#include <msdf-atlas-gen/msdf-atlas-gen/msdf-atlas-gen.h>
-#include <msdf-atlas-gen/msdf-atlas-gen/TightAtlasPacker.h>
-#include <utility>
+//#include <msdf-atlas-gen/msdf-atlas-gen/msdf-atlas-gen.h>
+//#include <msdf-atlas-gen/msdf-atlas-gen/TightAtlasPacker.h>
+//#include <SceneryEditorX/asset/asset_manager.h>
+//#include <SceneryEditorX/core/memory/buffer.h>
+//#include <SceneryEditorX/platform/file_manager.hpp>
+//#include <SceneryEditorX/renderer/fonts/font.h>
+//#include <SceneryEditorX/utils/pointers.h>
+//#include <utility>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/*
 	using namespace msdf_atlas;
 
     /// -------------------------------------------------------
@@ -85,8 +86,9 @@ namespace SceneryEditorX
 
 	struct AtlasHeader
 	{
-		uint32_t Type = 0;
-		uint32_t Width = 0, Height = 0;
+		uint32_t type = 0;
+        uint32_t width = 0;
+        uint32_t height = 0;
 	};
 
     /// -------------------------------------------------------
@@ -122,7 +124,7 @@ namespace SceneryEditorX
 		}
 
 		stream.write((char*)&header, sizeof(AtlasHeader));
-		stream.write((char*)pixels, header.Width * header.Height * sizeof(float) * 4);
+		stream.write((char*)pixels, header.width * header.height * sizeof(float) * 4);
 	}
 
     /// -------------------------------------------------------
@@ -138,17 +140,17 @@ namespace SceneryEditorX
 		msdfgen::BitmapConstRef<T, N> bitmap = (msdfgen::BitmapConstRef<T, N>) generator.atlasStorage();
 
 		AtlasHeader header;
-		header.Width = bitmap.width;
-		header.Height = bitmap.height;
+		header.width = bitmap.width;
+		header.height = bitmap.height;
 		CacheFontAtlas(fontName, fontSize, header, bitmap.pixels);
 
 		TextureSpecification spec;
-        spec.Format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
-		spec.Width = header.Width;
-		spec.Height = header.Height;
-		spec.GenerateMips = false;
-		spec.SamplerWrap = UVWrap::Clamp;
-		spec.DebugName = "FontAtlas";
+        spec.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
+		spec.width = header.width;
+		spec.height = header.height;
+		spec.generateMips = false;
+		spec.samplerWrap = SamplerWrap::Clamp;
+		spec.debugName = "FontAtlas";
 		Ref<Texture2D> texture = Texture2D::Create(spec, bitmap.pixels);
 		return texture;
 	}
@@ -158,12 +160,12 @@ namespace SceneryEditorX
 	static Ref<Texture2D> CreateCachedAtlas(AtlasHeader header, const void* pixels)
 	{
 		TextureSpecification spec;
-        spec.Format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
-		spec.Width = header.Width;
-		spec.Height = header.Height;
-		spec.GenerateMips = false;
-		spec.SamplerWrap = UVWrap::Clamp;
-		spec.DebugName = "FontAtlas";
+        spec.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
+		spec.width = header.width;
+		spec.height = header.height;
+		spec.generateMips = false;
+		spec.samplerWrap = SamplerWrap::Clamp;
+		spec.debugName = "FontAtlas";
         Ref<Texture2D> texture = CreateRef<Texture2D>(spec, pixels);
 		return texture;
 	}
@@ -303,10 +305,10 @@ namespace SceneryEditorX
 			m_MSDFData->FontGeometry.setName(fontInput.fontName);
 
 		/**
-		 * NOTE: we still need to "pack" the font to determine atlas metadata, though this could also be cached.
+		 * @note: We still need to "pack" the font to determine atlas metadata, though this could also be cached.
 		 * The most intensive part is the actual atlas generation, which is what we do cache - it takes
 		 * around 96% of total time spent in this Font constructor.
-		 */
+		 #1#
 	    ///< Determine final atlas dimensions, scale and range, pack glyphs
 		double pxRange = rangeValue;
 		bool fixedDimensions = fixedWidth >= 0 && fixedHeight >= 0;
@@ -321,6 +323,7 @@ namespace SceneryEditorX
 			atlasPacker.setScale(config.emSize);
 		else
 			atlasPacker.setMinimumScale(minEmSize);
+
 		atlasPacker.setPixelRange(msdfgen::Range(pxRange));
 		atlasPacker.setMiterLimit(config.miterLimit);
 		if (int remaining = atlasPacker.pack(m_MSDFData->Glyphs.data(), (int)m_MSDFData->Glyphs.size()))
@@ -338,7 +341,7 @@ namespace SceneryEditorX
 		atlasPacker.getDimensions(config.width, config.height);
 		SEDX_CORE_ASSERT(config.width > 0 && config.height > 0);
 		config.emSize = atlasPacker.getScale();
-		config.pxRange = atlasPacker.getPixelRange().lower; // Use .lower for double
+		config.pxRange = atlasPacker.getPixelRange().lower; ///< Use .lower for double
 		if (!fixedScale)
 			SEDX_CORE_TRACE_TAG("Renderer", "Glyph size: {0} pixels/EM", config.emSize);
 		if (!fixedDimensions)
@@ -437,16 +440,17 @@ namespace SceneryEditorX
 		return s_DefaultMonoSpacedFont;
 	}
 
+	/*
 	Ref<Font> Font::GetFontAssetForTextComponent(const TextComponent& textComponent)
 	{
-        const UUID32 handle = textComponent.FontHandle;
-		if (handle == s_DefaultFont->Handle || !AssetManager::GetAsset<Font>(static_cast<uint32_t>(handle)))
+        const AssetHandle handle = AssetHandle(static_cast<uint64_t>(static_cast<uint32_t>(textComponent.FontHandle)));
+		if (handle == s_DefaultFont->Handle || !AssetManager::GetAsset<Font>(handle))
 			return s_DefaultFont;
-		
-		return AssetManager::GetAsset<Font>(static_cast<uint32_t>(handle));
-	}
 
-    /// -------------------------------------------------------
+		return AssetManager::GetAsset<Font>(handle);
+	}
+	#1#
+	*/
 
 }
 
