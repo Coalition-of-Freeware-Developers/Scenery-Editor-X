@@ -36,7 +36,6 @@ namespace SceneryEditorX
 		VK_CHECK_RESULT(vkCreateSampler(vulkanDevice, &samplerCreateInfo, nullptr, &sampler))
 
 		Utils::GetResourceAllocationCounts().Samplers++;
-
 		return sampler;
 	}
 

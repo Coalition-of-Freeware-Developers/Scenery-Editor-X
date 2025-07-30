@@ -218,6 +218,6 @@ namespace SceneryEditorX
         //void RecreateFrameResources();
     };
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

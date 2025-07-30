@@ -6,7 +6,7 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
-FILE(GLOB ASSET_FILES  asset/*.h asset/*.hpp asset/*.cpp)
+FILE(GLOB ASSET_FILES asset/*.h asset/*.hpp asset/*.cpp)
 FILE(GLOB CORE_APP core/application/*.h core/application/*.hpp core/application/*.cpp)
 FILE(GLOB CORE_EVENTS core/events/*.h core/events/*.hpp core/events/*.cpp)
 FILE(GLOB CORE_IDENTIFIERS core/identifiers/*.h core/identifiers/*.hpp core/identifiers/*.cpp)

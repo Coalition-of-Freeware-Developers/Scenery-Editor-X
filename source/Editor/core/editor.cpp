@@ -12,9 +12,9 @@
 */
 #include <Editor/core/editor.h>
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/application.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/platform/settings.h>
+#include <SceneryEditorX/platform/settings/settings.h>
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/ui/ui.h>

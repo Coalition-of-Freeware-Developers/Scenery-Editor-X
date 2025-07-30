@@ -73,24 +73,24 @@ namespace SceneryEditorX
 				}
 				else if (IsDepthFormat(attachmentSpec.Format))
 				{
-					Image spec;
+                    ImageSpecification spec;
 					spec.format = attachmentSpec.Format;
 					spec.usage = ImageUsage::DepthAttachment;
 					spec.transfer = m_Specification.transfer;
 					spec.width = (uint32_t)(m_Width * m_Specification.scale);
 					spec.height = (uint32_t)(m_Height * m_Specification.scale);
-					spec.resource->debugName = std::format("{0}-DepthAttachment{1}", m_Specification.debugName.empty() ? "Unnamed FB" : m_Specification.debugName, attachmentIndex);
+					spec.debugName = std::format("{0}-DepthAttachment{1}", m_Specification.debugName.empty() ? "Unnamed FB" : m_Specification.debugName, attachmentIndex);
                     m_DepthAttachmentImage = CreateRef<Image2D>(spec);
 				}
 				else
 				{
-					Image spec;
+                    ImageSpecification spec;
 					spec.format = attachmentSpec.Format;
 					spec.usage = ImageUsage::ColorAttachment;
 					spec.transfer = m_Specification.transfer;
 					spec.width = (uint32_t)(m_Width * m_Specification.scale);
 					spec.height = (uint32_t)(m_Height * m_Specification.scale);
-					spec.resource->debugName = std::format("{0}-ColorAttachment{1}", m_Specification.debugName.empty() ? "Unnamed FB" : m_Specification.debugName, attachmentIndex);
+					spec.debugName = std::format("{0}-ColorAttachment{1}", m_Specification.debugName.empty() ? "Unnamed FB" : m_Specification.debugName, attachmentIndex);
                     m_AttachmentImages.emplace_back(CreateRef<Image2D>(spec));
 				}
 				attachmentIndex++;
@@ -243,7 +243,7 @@ namespace SceneryEditorX
                 {
                     if (createImages)
                     {
-                        Image spec;
+                        ImageSpecification spec;
                         spec.format = attachmentSpec.Format;
                         spec.usage = ImageUsage::ColorAttachment;
                         spec.transfer = m_Specification.transfer;

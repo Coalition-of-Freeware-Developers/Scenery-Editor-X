@@ -88,10 +88,12 @@ namespace SceneryEditorX
         return false;
 	}
 
+    /*
     inline void GetDepthFormat()
     {
 		RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat();
     }
+    */
 
     struct ImageSubresourceRange
     {

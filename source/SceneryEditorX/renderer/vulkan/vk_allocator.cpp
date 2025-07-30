@@ -438,11 +438,9 @@ namespace SceneryEditorX
 		VmaAllocationInfo allocInfo;
 		vmaGetAllocationInfo(memAllocatorData->allocator, allocation, &allocInfo);
         if (allocatedSize)
-        {
-			*allocatedSize = allocInfo.size;
-        }
+            *allocatedSize = allocInfo.size;
 
-	    memAllocatorData->bytesAllocated += allocInfo.size;
+        memAllocatorData->bytesAllocated += allocInfo.size;
 
         /// Store allocation tracking information
         AllocInfo info;
@@ -853,8 +851,8 @@ namespace SceneryEditorX
         /// We'll avoid using the buffer device address extension for now since we
         /// don't have access to check if it's available
 
-        VkResult result = vmaCreateAllocator(&allocatorInfo, &memAllocatorData->allocator);
-        if (result != VK_SUCCESS) {
+        if (VkResult result = vmaCreateAllocator(&allocatorInfo, &memAllocatorData->allocator); result != VK_SUCCESS)
+		{
             SEDX_CORE_ERROR("Failed to create Vulkan Memory Allocator. Error code: {}", static_cast<int>(result));
             hdelete memAllocatorData;
             memAllocatorData = nullptr;
@@ -1227,7 +1225,7 @@ namespace SceneryEditorX
         std::lock_guard<std::mutex> lock(allocationMutex);
 
         /// Ensure alignment is a power of 2
-        if (alignment & (alignment - 1))
+        if (alignment & alignment - 1)
         {
             SEDX_CORE_WARN_TAG("VulkanAllocator", "Buffer alignment must be a power of 2, got {}", alignment);
 
@@ -1310,9 +1308,7 @@ namespace SceneryEditorX
 
             if (vkResult != VK_SUCCESS)
             {
-                SEDX_CORE_ERROR_TAG("VulkanAllocator",
-                                    "Failed to allocate buffer in batch, error: {}",
-                                    static_cast<int>(vkResult));
+                SEDX_CORE_ERROR_TAG("VulkanAllocator", "Failed to allocate buffer in batch, error: {}", static_cast<int>(vkResult));
                 continue;
             }
 
@@ -1343,8 +1339,7 @@ namespace SceneryEditorX
 
         if (!allocations.empty())
         {
-            SEDX_CORE_INFO_TAG("VulkanAllocator", "Allocated batch of {} buffers totaling {} MB",
-                               allocations.size(), static_cast<double>(totalAllocation) / (1024.0 * 1024.0));
+            SEDX_CORE_INFO_TAG("VulkanAllocator", "Allocated batch of {} buffers totaling {} MB", allocations.size(), static_cast<double>(totalAllocation) / (1024.0 * 1024.0));
         }
 
         return allocations;
@@ -1401,6 +1396,6 @@ namespace SceneryEditorX
         }
     }
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

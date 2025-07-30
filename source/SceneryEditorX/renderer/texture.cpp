@@ -16,8 +16,6 @@
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <utility>
 
-#include "vulkan/vk_sampler.h"
-
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
@@ -87,13 +85,13 @@ namespace SceneryEditorX
         // Initialize with empty data
         CreateFromBuffer(specification, Buffer());
     }
-    
+
     Texture2D::Texture2D(const TextureSpecification& specification, const std::filesystem::path& filepath) : m_Specification(specification), m_Path(filepath)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from file: {}", filepath.string());
         CreateFromFile(specification, filepath);
     }
-    
+
     Texture2D::Texture2D(const TextureSpecification& specification, const Buffer& imagedata) : m_Specification(specification), m_ImageData(imagedata)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from buffer data: {} bytes", imagedata.size);
@@ -140,6 +138,7 @@ namespace SceneryEditorX
 
 		ImageSpecification imageSpec;
 		imageSpec.format = m_Specification.format;
+		imageSpec.usage = ImageUsage::Sampled | ImageUsage::TransferDst;
 		imageSpec.width = m_Specification.width;
 		imageSpec.height = m_Specification.height;
 		imageSpec.mips = specification.generateMips ? GetMipLevelCount() : 1;
@@ -165,6 +164,7 @@ namespace SceneryEditorX
 
 		ImageSpecification imageSpec;
 		imageSpec.format = m_Specification.format;
+		imageSpec.usage = ImageUsage::Sampled | ImageUsage::TransferDst;
 		imageSpec.width = m_Specification.width;
 		imageSpec.height = m_Specification.height;
 		imageSpec.mips = specification.generateMips ? GetMipLevelCount() : 1;
@@ -184,7 +184,7 @@ namespace SceneryEditorX
     void Texture2D::CreateFromBuffer(const TextureSpecification &specification, Buffer data)
     {
         Utils::ValidateSpecification(specification);
-        
+
         if (data.size == 0)
         {
             // Create empty buffer with appropriate size
@@ -200,6 +200,7 @@ namespace SceneryEditorX
 
         ImageSpecification imageSpec;
         imageSpec.format = specification.format;
+        imageSpec.usage = ImageUsage::Sampled | ImageUsage::TransferDst;
         imageSpec.width = specification.width;
         imageSpec.height = specification.height;
         imageSpec.mips = specification.generateMips ? GetMipLevelCount() : 1;
@@ -241,6 +242,7 @@ namespace SceneryEditorX
 
 		ImageSpecification imageSpec;
 		imageSpec.format = m_Specification.format;
+		imageSpec.usage = ImageUsage::Sampled | ImageUsage::TransferDst;
 		imageSpec.width = m_Specification.width;
 		imageSpec.height = m_Specification.height;
 		imageSpec.mips = specification.generateMips ? Texture2D::GetMipLevelCount() : 1;
