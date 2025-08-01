@@ -62,7 +62,7 @@ namespace SceneryEditorX
 		float GetTime() const; /// TODO: This should be in "Platform"
 
 	    PerformanceProfiler* GetPerformanceProfiler() const { return m_profiler; }
-        Window GetWindow() const { return *m_Window; }
+        inline Window& GetWindow() { return *m_Window; }
         uint32_t GetCurrentFrameIndex() const { return currentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
 

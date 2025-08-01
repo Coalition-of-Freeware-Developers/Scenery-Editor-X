@@ -14,7 +14,7 @@
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/ui/ui.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace UI
 {
@@ -24,7 +24,7 @@ namespace UI
     extern bool showAboutModal;
     extern bool showSettingsPanel;
 
-    // -------------------------------------------------------
+    /// -------------------------------------------------------
 
     void SetDarkThemeColors();
 
@@ -43,7 +43,7 @@ namespace UI
         GLOBAL void ViewportWindow(glm::ivec2& viewportSize, bool& viewportHovered, VkImageView imageView);
     };
 
-} // namespace UI
+}
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 

@@ -931,7 +931,9 @@ namespace SceneryEditorX
 		    if (!m_Ptr || !other.m_Ptr)
 		        return false;
 
-		    return CompareObjectsImpl(*m_Ptr, *other.m_Ptr, HasEqualityOperator<T>(0));
+		    // Use compile-time type trait detection instead of runtime function calls
+		    using HasEquality = decltype(HasEqualityOperator<T>(0));
+		    return CompareObjectsImpl(*m_Ptr, *other.m_Ptr, HasEquality{});
 		 }
 
 	private:
@@ -1480,7 +1482,7 @@ namespace SceneryEditorX
 	 * @brief Move conversion assignment operator for weak references of different but compatible types.
 	 *
 	 * This operator moves a WeakRef<U> to a WeakRef<T> where U is convertible to T
-	 * (typically through inheritance relationships). Unlike the regular move constructor,
+	 * (typically through inheritance relationships). Unlike the regular move assignment operator,
 	 * this operator performs a type conversion which requires finding or creating a
 	 * control block for the target type.
 	 *
@@ -1612,11 +1614,6 @@ namespace SceneryEditorX
 	 * and returns a new Ref<T> pointing to that object, which increments the reference
 	 * count of the object. If the object has been destroyed, it returns an empty Ref<T>.
 	 *
-	 * The implementation:
-	 * 1. Checks if the control block exists and the object is still alive
-	 * 2. If both conditions are met, creates a new strong reference to the object
-	 * 3. Otherwise, returns an empty (null) strong reference
-	 *
 	 * @tparam T The type of the referenced object
 	 * @return Ref<T> A strong reference to the object if it's still alive, or an empty reference otherwise
 	 */
@@ -1710,7 +1707,7 @@ namespace SceneryEditorX
 	 * @brief Inequality comparison operator for WeakRef objects.
 	 *
 	 * This operator determines if two WeakRef objects reference different underlying objects.
-	 * It is implemented by calling the equality operator and negating the result.
+	 * It is implemented by negating the result of the equality operator.
 	 *
 	 * Two WeakRef objects are considered not equal if:
 	 * 1. They reference different objects, or

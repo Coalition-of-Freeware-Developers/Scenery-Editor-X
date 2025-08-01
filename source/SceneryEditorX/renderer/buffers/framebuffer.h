@@ -19,6 +19,7 @@
 
 namespace SceneryEditorX
 {
+    /// Forward declarations
     class Framebuffer;
 
     struct FramebufferTextureSpecification
@@ -30,17 +31,21 @@ namespace SceneryEditorX
         bool Blend = true;
         FramebufferBlendMode BlendMode = FramebufferBlendMode::SrcAlphaOneMinusSrcAlpha;
         AttachmentLoadOp LoadOp = AttachmentLoadOp::Inherit;
-        // TODO: filtering/wrap
+        /// TODO: filtering/wrap
     };
+
+    /// ---------------------------------------------------------
 
     struct FramebufferAttachmentSpecification
     {
         FramebufferAttachmentSpecification() = default;
-        FramebufferAttachmentSpecification(const std::initializer_list<FramebufferTextureSpecification> &attachments)
-            : Attachments(attachments) {}
+        FramebufferAttachmentSpecification(const std::initializer_list<FramebufferTextureSpecification> &attachments) : Attachments(attachments) {}
 
         std::vector<FramebufferTextureSpecification> Attachments;
     };
+
+	/// ---------------------------------------------------------
+
     struct FramebufferSpecification
 	{
 		float scale = 1.0f;
@@ -52,7 +57,7 @@ namespace SceneryEditorX
 		bool clearDepthOnLoad = true;
 
 		FramebufferAttachmentSpecification attachments;
-		uint32_t samples = 1; ///< multisampling
+		uint32_t samples = 1; ///< Multi-Sampling
 
 		///< TODO: Temp, needs scale
 		bool noResize = false;
@@ -82,6 +87,8 @@ namespace SceneryEditorX
 		std::string debugName;
 	};
 
+    /// ---------------------------------------------------------
+
     class Framebuffer : public RefCounted
 	{
 	public:
@@ -108,15 +115,16 @@ namespace SceneryEditorX
 		VkRenderPass GetRenderPass() const { return m_RenderPass; }
 		VkFramebuffer GetVulkanFramebuffer() const { return m_Framebuffer; }
 		const std::vector<VkClearValue>& GetVulkanClearValues() const { return m_ClearValues; }
-
 		virtual const FramebufferSpecification& GetSpecification() const { return m_Specification; }
+
         void Invalidate();
         void Invalidate_RenderThread();
         void Release() const;
 	private:
         FramebufferSpecification m_Specification;
         ResourceID m_ResourceID = 0;
-        uint32_t m_Width = 0, m_Height = 0;
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
 
         std::vector<Ref<Image2D>> m_AttachmentImages;
         Ref<Image2D> m_DepthAttachmentImage;

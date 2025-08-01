@@ -51,6 +51,6 @@ namespace SceneryEditorX::UI
 	
 	};
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	     * 
 	     * @return An optional string containing the path to X-Plane 12 if found, empty otherwise
 	     */
-	    GLOBAL std::optional<std::string> findXPlane12();
+	    GLOBAL std::optional<std::string> FindXPlane12();
 	
 	    /**
 	     * @brief Saves the discovered X-Plane path to the config file
@@ -46,7 +46,7 @@ namespace SceneryEditorX
 	     * @param configFile Path to the configuration file
 	     * @return true if the path was successfully saved to the config file, false otherwise
 	     */
-	    GLOBAL bool savePathToConfig(const std::string &path, const std::string &configFile);
+	    GLOBAL bool SavePathToConfig(const std::string &path, const std::string &configFile);
 	
 	    /**
 		 * @brief Validates if a path contains a valid X-Plane 12 installation
@@ -57,7 +57,7 @@ namespace SceneryEditorX
 		 * @param path Path to validate as an X-Plane 12 installation directory
 		 * @return true if the path contains a valid X-Plane 12 installation, false otherwise
 		 */
-	    GLOBAL bool validateXPlanePath(const std::string &path);
+	    GLOBAL bool ValidateXPlanePath(const std::string &path);
 	
 	private:
 	    /**
@@ -68,7 +68,7 @@ namespace SceneryEditorX
 	     * 
 	     * @return String containing the default Steam installation directory path
 	     */
-	    LOCAL std::string getSteamDirectory();
+	    LOCAL std::string GetSteamDirectory();
 	
 	    /**
 	     * @brief Retrieves all configured Steam library folders
@@ -79,7 +79,7 @@ namespace SceneryEditorX
 	     * @param steamPath Path to the main Steam installation directory
 	     * @return Vector of strings containing paths to all Steam library folders
 	     */
-	    LOCAL std::vector<std::string> getSteamLibraryFolders(const std::string &steamPath);
+	    LOCAL std::vector<std::string> GetSteamLibraryFolders(const std::string &steamPath);
 
 	    /**
 	     * @brief Platform-specific directory separator character

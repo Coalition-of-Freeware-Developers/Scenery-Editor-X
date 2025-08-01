@@ -10,26 +10,28 @@
 * Created: 25/3/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application.h>
-
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 #include <imgui/imconfig.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
+#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <SceneryEditorX/ui/ui.h>
 
 /// -------------------------------------------------------
 
-// Implementation of missing ImGui functions to fix linker errors
-// Note: This is a compatibility layer to ensure ImGui works correctly
-
-// This implementation may need to be adjusted based on your ImGui version
-// It provides stubs for functionality that might be missing in your current build
+/**
+ * Implementation of missing ImGui functions to fix linker errors
+ * @note: This is a compatibility layer to ensure ImGui works correctly
+ *
+ * This implementation may need to be adjusted based on your ImGui version.
+ * It provides stubs for functionality that might be missing in your current build.
+ */
 
 /*
 extern "C"
@@ -78,8 +80,8 @@ namespace SceneryEditorX::UI
 	/// Additional ImGui initialization functions can be placed here if needed
 	void initImGuiExtensions()
 	{
-	    // This function can be called from main ImGui setup to initialize any extensions
-	    // Currently empty, but could be expanded if more ImGui features need integration
+	    /// This function can be called from main ImGui setup to initialize any extensions
+	    /// Currently empty, but could be expanded if more ImGui features need integration
 	}
 	
     GUI::GUI() = default;
@@ -192,8 +194,8 @@ namespace SceneryEditorX::UI
         io.ConfigWindowsMoveFromTitleBarOnly = false;			/// Allow moving windows from anywhere
 
         /// Set ImGui style and fonts
-        GUI::SetStyle();
-        GUI::SetFonts();
+        SetStyle();
+        SetFonts();
 
         /// Initialize GLFW backend
         ImGui_ImplGlfw_InitForVulkan(window, true);
@@ -704,6 +706,6 @@ namespace SceneryEditorX::UI
         io.Fonts->Build();
     }
 
-} // namespace SceneryEditorX::UI
+}
 
 /// -------------------------------------------------------

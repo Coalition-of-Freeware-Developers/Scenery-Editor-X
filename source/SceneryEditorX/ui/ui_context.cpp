@@ -15,7 +15,7 @@
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
@@ -75,7 +75,7 @@ namespace SceneryEditorX::UI
         auto &style  = ImGui::GetStyle();
         auto &colors = ImGui::GetStyle().Colors;
 
-        //========================================================
+        ///========================================================
 
         /// Headers
         colors[ImGuiCol_Header] = ImGui::ColorConvertU32ToFloat4(Colors::Theme::groupHeader);
@@ -146,8 +146,9 @@ namespace SceneryEditorX::UI
         /// Menu-bar
         colors[ImGuiCol_MenuBarBg] = ImVec4{0.0f, 0.0f, 0.0f, 0.0f};
 
-        //========================================================
-        /// Style
+        ///========================================================
+
+	    /// Style
         style.FrameRounding = 2.5f;
         style.FrameBorderSize = 1.0f;
         style.IndentSpacing = 11.0f;
@@ -162,14 +163,11 @@ namespace SceneryEditorX::UI
             io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
             io.ConfigFlags &= ~ImGuiConfigFlags_NoKeyboard;
         }
-        else
-        {
-            io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
-            io.ConfigFlags |= ImGuiConfigFlags_NoKeyboard;
-        }
+
+	    io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+	    io.ConfigFlags |= ImGuiConfigFlags_NoKeyboard;
     }
 
+}
 
-} // namespace UI
-
-// -------------------------------------------------------
+/// -------------------------------------------------------

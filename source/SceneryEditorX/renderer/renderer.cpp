@@ -67,7 +67,8 @@ namespace SceneryEditorX
     LOCAL RendererProperties *s_Data = nullptr;
     LOCAL RenderData *m_renderData;
     constexpr static uint32_t s_RenderCommandQueueCount = 2;
-    static CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
+    INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
+    INTERNAL CommandQueue resourceFreeQueue[3];
 
     /// -------------------------------------------------------
 
@@ -250,20 +251,20 @@ namespace SceneryEditorX
         *m_renderData = renderData;
     }
 
-    void Renderer::RenderThreadFunc(const ThreadManager *renderThread)
+    void Renderer::RenderThreadFunc(RenderThread *renderThread)
     {
         SEDX_PROFILE_THREAD("Render Thread");
-        while (renderThread->isRunning())
+        while (renderThread->IsRunning())
             WaitAndRender(renderThread);
     }
 
-    void Renderer::WaitAndRender(const ThreadManager *renderThread)
+    void Renderer::WaitAndRender(RenderThread *renderThread)
     {
-        renderThread->WaitAndSet(ThreadManager::State::Kick, ThreadManager::State::Busy);
+        renderThread->WaitAndSet(RenderThread::State::Kick, RenderThread::State::Busy);
         s_CommandQueue[GetRenderQueueIndex()]->Execute();
 
 		/// Rendering has completed, set state to idle
-        renderThread->Set(ThreadManager::State::Idle);
+        renderThread->Set(RenderThread::State::Idle);
 
         SubmitFrame();
     }

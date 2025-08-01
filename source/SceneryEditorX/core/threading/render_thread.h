@@ -17,15 +17,13 @@
 
 namespace SceneryEditorX
 {
-	
 	struct RenderThreadData;
 
-	enum class ThreadingPolicy
+	enum class ThreadingPolicy : uint8_t
 	{
-		// MultiThreaded will create a Render Thread
 		None = 0,
 	    SingleThreaded,
-	    MultiThreaded
+	    MultiThreaded /// MultiThreaded will create a Render Thread
 	};
 
 	class RenderThread

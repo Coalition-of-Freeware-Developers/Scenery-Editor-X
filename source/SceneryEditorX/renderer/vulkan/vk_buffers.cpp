@@ -98,7 +98,7 @@ namespace SceneryEditorX
 	 * @param memory Memory property flags for the buffer allocation
 	 * @param name   Optional name for the buffer (for debugging purposes)
 	 * 
-	 * @return       A Buffer structure containing the created buffer and its metadata
+	 * @return A Buffer structure containing the created buffer and its metadata
 	 */
     Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
@@ -194,6 +194,12 @@ namespace SceneryEditorX
 	    return buffer;
 	}
 
+    /**
+     * @brief Maps a Vulkan buffer to CPU-accessible memory
+     *
+     * @param buffer The buffer resource to map to CPU-accessible memory
+     * @return void* Pointer to the mapped memory region
+     */
     void *MapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
     {
         const auto device = RenderContext::Get()->GetLogicDevice();
@@ -203,6 +209,11 @@ namespace SceneryEditorX
         return data;
 	}
 
+    /**
+     * @brief Unmaps a Vulkan buffer from CPU-accessible memory
+     *
+     * @param buffer The buffer resource to unmap from CPU-accessible memory
+     */
     void UnmapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
     {
         const auto device = RenderContext::Get()->GetLogicDevice();
@@ -236,9 +247,16 @@ namespace SceneryEditorX
         return CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU, name.empty() ? "Staging Buffer" : name);
     }
 
+    /**
+     * @brief Copies data from one Vulkan buffer to another
+     *
+     * @param srcBuffer 
+     * @param dstBuffer 
+     * @param size 
+     */
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
-        // Get device and command buffer from render context
+        /// Get device and command buffer from render context
         const auto device = RenderContext::Get()->GetLogicDevice();
         VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
@@ -249,6 +267,14 @@ namespace SceneryEditorX
         device->FlushCmdBuffer(commandBuffer);
     }
 
+    /**
+	 * @brief Copies data from a Vulkan buffer to a Vulkan image
+	 *
+	 * @param buffer The source buffer containing the data to copy
+	 * @param image The destination image to copy the data into
+	 * @param width The width of the image in pixels
+	 * @param height The height of the image in pixels
+	 */
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
     {
         /// Get device and command buffer from render context
@@ -267,7 +293,6 @@ namespace SceneryEditorX
         region.imageExtent = {.width = width,.height = height,.depth = 1};
 
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
         device->FlushCmdBuffer(commandBuffer);
     }
 
@@ -652,7 +677,6 @@ namespace SceneryEditorX
 	}
 	*/
 
-
-} // namespace SceneryEditorX
+}
 
 /// ----------------------------------------------------------

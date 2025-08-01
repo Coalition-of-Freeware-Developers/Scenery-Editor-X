@@ -5,22 +5,36 @@
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* ui_globals.cpp
+* ui_fonts.h
 * -------------------------------------------------------
-* Created: 30/3/2025
+* Created: 31/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/ui/ui_manager.h>
+#pragma once
+#include <imgui/imgui.h>
 
 /// -------------------------------------------------------
- 
-namespace UI
+
+namespace SceneryEditorX::UI
 {
-	bool showViewport = true;
-	bool showCreateProjectModal = false;
-	bool showExitModal = false;
-	bool showAboutModal = false;
-	bool showSettingsPanel = false;
+	
+	struct FontConfiguration
+	{
+		std::string FontName;
+		std::string_view FilePath;
+		float Size = 16.0f;
+		const ImWchar* GlyphRanges = nullptr;
+		bool MergeWithLast = false;
+	};
+
+	class Fonts
+	{
+	public:
+		static void Add(const FontConfiguration& config, bool isDefault = false);
+		static void PushFont(const std::string& fontName);
+		static void PopFont();
+		static ImFont* Get(const std::string& fontName);
+	};
 
 }
 

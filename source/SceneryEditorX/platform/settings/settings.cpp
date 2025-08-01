@@ -14,7 +14,7 @@
 #include <libconfig.h++>
 #include <SceneryEditorX/core/application/application_data.h>
 #include <SceneryEditorX/platform/settings/settings.h>
-#include <SceneryEditorX/platform/steam_parser.h>
+#include <SceneryEditorX/platform/settings/steam_parser.h>
 
 /// -------------------------------------------------------
 
@@ -503,7 +503,7 @@ namespace SceneryEditorX
     {
         /// First try to find X-Plane through Steam
         SEDX_CORE_TRACE_TAG("SETTINGS", "Attempting to detect X-Plane 12 via Steam...");
-        if (const auto steamPath = SteamGameFinder::findXPlane12())
+        if (const auto steamPath = SteamGameFinder::FindXPlane12())
         {
             SEDX_CORE_INFO_TAG("SETTINGS", "Found X-Plane 12 via Steam: {}", *steamPath);
             xPlaneStats.isSteam = true;
@@ -518,7 +518,7 @@ namespace SceneryEditorX
         
     #ifdef SEDX_PLATFORM_WINDOWS
         /// Common Windows installation paths
-        // Add more potential drive letters
+        /// Add more potential drive letters
         const std::vector<std::string> driveLetters = {"C:", "D:", "E:", "F:", "G:", "H:"};
         const std::vector<std::string> pathPatterns = {
             "\\X-Plane 12",
@@ -556,7 +556,7 @@ namespace SceneryEditorX
         for (const auto& path : commonPaths)
         {
             SEDX_CORE_TRACE_TAG("SETTINGS", "Checking potential X-Plane path: {}", path);
-            if (SteamGameFinder::validateXPlanePath(path))
+            if (SteamGameFinder::ValidateXPlanePath(path))
             {
                 SEDX_CORE_INFO_TAG("SETTINGS", "Found X-Plane 12 at common path: {}", path);
                 return SetXPlanePath(path);
@@ -586,7 +586,7 @@ namespace SceneryEditorX
             return false;
         }
 
-        if (!SteamGameFinder::validateXPlanePath(path))
+        if (!SteamGameFinder::ValidateXPlanePath(path))
         {
             SEDX_CORE_ERROR_TAG("SETTINGS", "Invalid X-Plane 12 path: {}", path);
             return false;
@@ -651,7 +651,7 @@ namespace SceneryEditorX
         if (xPlaneStats.xPlanePath.empty())
             return false;
         
-        return SteamGameFinder::validateXPlanePath(xPlaneStats.xPlanePath);
+        return SteamGameFinder::ValidateXPlanePath(xPlaneStats.xPlanePath);
     }
 
     void ApplicationSettings::UpdateDerivedXPlanePaths()

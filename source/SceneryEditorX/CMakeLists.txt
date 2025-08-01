@@ -39,6 +39,8 @@ FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h rendere
 FILE(GLOB VULKAN_DEBUG renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
 FILE(GLOB VULKAN_SCENE renderer/scene/*.cpp renderer/scene/*.h renderer/scene/*.hpp)
 
+FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
+FILE(GLOB UI_PANELS ui/panels/*.cpp ui/panels/*.h ui/panels/*.hpp)
 FILE(GLOB FONT_CODE renderer/fonts/*.h renderer/fonts/*.hpp renderer/fonts/*.cpp)
 
 SET (PROJECT_CONFIG_FILES
@@ -80,6 +82,8 @@ ADD_LIBRARY(AppCore
 	${VULKAN_DEBUG}
 	${VULKAN_SCENE}
 	${FONT_CODE}
+	${UI_PANELS}
+	${UI_ACTIONS}
 	${UTILS_MATH}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
@@ -120,22 +124,17 @@ ADD_LIBRARY(AppCore
 	renderer/xp_texture.cpp
 	renderer/xp_texture.h
 	# --------------------------------
-	#ui/colors.h
-	#ui/fonts.h
-	#ui/ui_context.cpp
-	#ui/ui_context.h
-	#ui/styles.cpp
-	#ui/ui.cpp
-	#ui/ui.h
-	#ui/ui_manager.h
-	#ui/ui_globals.cpp
-	#ui/panels/content_browser.cpp
-	#ui/panels/layer_stack.cpp
-	#ui/panels/loading_radial.cpp
-	#ui/panels/menu_bar.cpp
-	#ui/panels/settings_panel.cpp
-	#ui/actions/modals.cpp
-	#ui/actions/viewports.cpp
+	ui/colors.h
+	ui/fonts.h
+	ui/styles.cpp
+	ui/ui.cpp
+	ui/ui.h
+	ui/ui_context.cpp
+	ui/ui_context.h
+	ui/ui_globals.cpp
+	ui/ui_manager.h
+	ui/ui_renderer.cpp
+	ui/ui_renderer.h
     # --------------------------------
 	utils/container_utils.h
 	utils/delegations.h
@@ -294,28 +293,24 @@ SOURCE_GROUP("Utilities" FILES
 SOURCE_GROUP("Utilities/Reflection" FILES
 	${REFLECTION_FILES}
 )
-SOURCE_GROUP("Renderer/UI" FILES
+SOURCE_GROUP("UI" FILES
 	ui/colors.h
 	ui/fonts.h
-	ui/ui_context.cpp
-	ui/ui_context.h
 	ui/styles.cpp
 	ui/ui.cpp
 	ui/ui.h
-	ui/ui_manager.h
+	ui/ui_context.cpp
+	ui/ui_context.h
 	ui/ui_globals.cpp
+	ui/ui_manager.h
+	ui/ui_renderer.cpp
+	ui/ui_renderer.h
 )
-SOURCE_GROUP("Renderer/UI/Panels" FILES
-	ui/panels/about.cpp
-	ui/panels/content_browser.cpp
-	ui/panels/layer_stack.cpp
-	ui/panels/loading_radial.cpp
-	ui/panels/menu_bar.cpp
-	ui/panels/settings_panel.cpp
+SOURCE_GROUP("UI/Panels" FILES
+	${UI_PANELS}
 )
-SOURCE_GROUP("Renderer/UI/Actions" FILES
-	ui/actions/modals.cpp
-	ui/actions/viewports.cpp
+SOURCE_GROUP("UI/Actions" FILES
+	${UI_ACTIONS}
 )
 SOURCE_GROUP("Resources" FILES
     resource.h

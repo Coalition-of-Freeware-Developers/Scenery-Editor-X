@@ -322,6 +322,7 @@ namespace SceneryEditorX
          * @return A new command buffer.
          */
         VkCommandBuffer CreateUICmdBuffer(const char *debugName);
+
         Ref<CommandPool> GetThreadLocalCommandPool();
         Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
 

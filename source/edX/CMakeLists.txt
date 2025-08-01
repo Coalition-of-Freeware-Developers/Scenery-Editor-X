@@ -49,9 +49,7 @@ ADD_LIBRARY(edX
 # Optional: Build example executable
 OPTION(EDX_BUILD_EXAMPLES "Build edX format examples" OFF)
 IF(EDX_BUILD_EXAMPLES)
-    ADD_EXECUTABLE(edXExample
-        ${EDX_EXAMPLE_FILES}
-    )
+    ADD_EXECUTABLE(edXExample ${EDX_EXAMPLE_FILES})
     TARGET_LINK_LIBRARIES(edXExample PRIVATE edX)
     TARGET_COMPILE_FEATURES(edXExample PRIVATE cxx_std_17)
 ENDIF()

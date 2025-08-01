@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/threading/thread_manager.h>
+#include <SceneryEditorX/core/threading/render_thread.h>
 #include <SceneryEditorX/renderer/command_queue.h>
 //#include <SceneryEditorX/renderer/compute_pass.h>
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
@@ -77,7 +77,7 @@ namespace SceneryEditorX
 				pFunc->~FuncT();
 			};
 
-			if (ThreadManager::checkRenderThread())
+			if (RenderThread::IsCurrentThreadRT())
 			{
 				const uint32_t index = GetCurrentFrameIndex();
 				auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
@@ -101,8 +101,8 @@ namespace SceneryEditorX
         GLOBAL uint32_t GetCurrentFrameIndex();
         GLOBAL RenderData &GetRenderData();
         GLOBAL void SetRenderData(const RenderData &renderData);
-        GLOBAL void RenderThreadFunc(const ThreadManager *renderThread);
-        GLOBAL void WaitAndRender(const ThreadManager* renderThread);
+        GLOBAL void RenderThreadFunc(RenderThread *renderThread);
+        GLOBAL void WaitAndRender(RenderThread* renderThread);
 		GLOBAL void SwapQueues();
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
@@ -141,7 +141,6 @@ namespace SceneryEditorX
         //GLOBAL CommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
     private:
         INTERNAL CommandQueue &GetCommandQueue();
-        INTERNAL CommandQueue resourceFreeQueue[3];
 
 	};
 

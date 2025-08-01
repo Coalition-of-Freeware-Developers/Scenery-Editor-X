@@ -14,7 +14,7 @@
 #include <fstream>
 #include <libconfig.h++>
 #include <regex>
-#include <SceneryEditorX/core/steam_parser.h>
+#include <SceneryEditorX/platform/settings/steam_parser.h>
 
 /// -------------------------------------------------------
 
@@ -54,7 +54,7 @@ namespace SceneryEditorX
 	    }
 	#endif
 
-    bool SteamGameFinder::validateXPlanePath(const std::string &path)
+    bool SteamGameFinder::ValidateXPlanePath(const std::string &path)
     {
         if (path.empty())
 		{
@@ -141,7 +141,7 @@ namespace SceneryEditorX
         return true;
     }
 
-    std::string SteamGameFinder::getSteamDirectory()
+    std::string SteamGameFinder::GetSteamDirectory()
     {
         std::string steamPath;
 
@@ -213,7 +213,7 @@ namespace SceneryEditorX
         return steamPath;
     }
 
-    std::vector<std::string> SteamGameFinder::getSteamLibraryFolders(const std::string &steamPath)
+    std::vector<std::string> SteamGameFinder::GetSteamLibraryFolders(const std::string &steamPath)
     {
         std::vector<std::string> libraries;
 
@@ -342,9 +342,9 @@ namespace SceneryEditorX
         return libraries;
     }
 
-    std::optional<std::string> SteamGameFinder::findXPlane12()
+    std::optional<std::string> SteamGameFinder::FindXPlane12()
     {
-        std::string steamPath = getSteamDirectory();
+        std::string steamPath = GetSteamDirectory();
         if (steamPath.empty())
 		{
             SEDX_CORE_WARN_TAG("Settings", "Could not locate Steam installation directory");
@@ -353,7 +353,7 @@ namespace SceneryEditorX
 
         SEDX_CORE_TRACE_TAG("Settings", "Found Steam installation at: {}", steamPath);
 
-        std::vector<std::string> libraries = getSteamLibraryFolders(steamPath);
+        std::vector<std::string> libraries = GetSteamLibraryFolders(steamPath);
 
         if (libraries.empty())
 		{
@@ -388,7 +388,7 @@ namespace SceneryEditorX
 
                     if (fs::exists(xplanePath))
 					{
-                        if (validateXPlanePath(xplanePath))
+                        if (ValidateXPlanePath(xplanePath))
 						{
                             SEDX_CORE_INFO_TAG("Settings", "Found X-Plane 12 using common name pattern: {}", xplanePath);
                             return xplanePath;
@@ -449,7 +449,7 @@ namespace SceneryEditorX
 
                                     if (fs::exists(fullPath))
 									{
-                                        if (validateXPlanePath(fullPath))
+                                        if (ValidateXPlanePath(fullPath))
 										{
                                             SEDX_CORE_INFO_TAG("Settings", "Found valid X-Plane 12 installation: {}", fullPath);
                                             return fullPath;
@@ -477,7 +477,7 @@ namespace SceneryEditorX
         return std::nullopt;
     }
 
-    bool SteamGameFinder::savePathToConfig(const std::string &path, const std::string &configFile)
+    bool SteamGameFinder::SavePathToConfig(const std::string &path, const std::string &configFile)
     {
         Config cfg;
 
