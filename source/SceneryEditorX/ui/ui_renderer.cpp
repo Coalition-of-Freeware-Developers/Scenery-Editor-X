@@ -12,7 +12,7 @@
 */
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
-#include <ImGuizmo/ImGuizmo.h>
+#include <ImGuizmo.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/input/key_codes.h>
@@ -24,9 +24,10 @@
 #include <SceneryEditorX/ui/ui_renderer.h>
 
 #ifndef IMGUI_IMPL_API
-#define IMGUI_IMPL_API
+    #define IMGUI_IMPL_API
 #endif
 #include <GLFW/glfw3.h>
+
 
 /// ---------------------------------------------------------
 
@@ -277,7 +278,7 @@ namespace SceneryEditorX
 				//ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
 				RenderContext->GetCurrentDevice()->FlushCmdBuffer(commandBuffer);
 
-				VK_CHECK_RESULT(vkDeviceWaitIdle(device));
+				VK_CHECK_RESULT(vkDeviceWaitIdle(device))
 				//ImGui_ImplVulkan_DestroyFontUploadObjects();
 			}
 

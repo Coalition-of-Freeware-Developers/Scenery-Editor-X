@@ -103,7 +103,7 @@ namespace SceneryEditorX
          *
          * Manages Vulkan resources, rendering operations, and the window surface.
          */
-        GraphicsEngine gfxEngine;
+        GLOBAL GraphicsEngine gfxEngine;
 
         /**
          * @brief Command buffer for rendering operations.

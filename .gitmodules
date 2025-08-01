@@ -1,9 +1,6 @@
 [submodule "dependency/imgui"]
 	path = dependency/imgui
 	url = git@github.com:ocornut/imgui.git
-[submodule "dependency/ImGuizmo"]
-	path = dependency/ImGuizmo
-	url = git@github.com:CedricGuillemet/ImGuizmo.git
 [submodule "dependency/glfw"]
 	path = dependency/glfw
 	url = git@github.com:glfw/glfw.git

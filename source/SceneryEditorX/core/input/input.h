@@ -108,7 +108,7 @@ namespace SceneryEditorX
 		LOCAL void SetCursorMode(CursorMode mode);
 		INTERNAL CursorMode GetCursorMode();
 
-		// Internal use only...
+		/// Internal use only...
 		INTERNAL void TransitionPressedKeys();
 		INTERNAL void TransitionPressedButtons();
 		INTERNAL void UpdateKeyState(KeyCode key, KeyState newState);

@@ -35,6 +35,10 @@ namespace SceneryEditorX
         typedef void (*RenderCommandFn)(void *);
 
 		GLOBAL Ref<RenderContext> GetContext();
+        GLOBAL Ref<Window> GetWindowContext()
+        {
+            //return Application::GetWindow().GetWindow();
+        }
 
         GLOBAL void Init();
 		GLOBAL void Shutdown();

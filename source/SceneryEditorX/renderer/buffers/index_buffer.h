@@ -30,20 +30,17 @@ namespace SceneryEditorX
     class IndexBuffer : public RefCounted
     {
     public:
-        /**
-         * @brief Constructor for IndexBuffer
-         *
-         * Initializes the IndexBuffer instance by getting references to required
-         * graphics engine components.
-         */
-        IndexBuffer();
+
+        IndexBuffer(uint64_t size);
+
+		IndexBuffer(void *data, uint64_t size = 0);
 
         /**
          * @brief Destructor for IndexBuffer
          *
          * Cleans up index buffer resources and associated memory.
          */
-        ~IndexBuffer();
+        virtual ~IndexBuffer();
 
         /**
          * @brief Creates and initializes the index buffer on the GPU
@@ -52,10 +49,9 @@ namespace SceneryEditorX
          * The buffer is created with appropriate usage flags for index data access
          * during rendering.
          */
-        void Create() const;
-
-        void Release() const;
-
+        //void Create() const;
+        //void Release() const;
+		
         /**
          * @brief Static factory method to create an index buffer with raw data
          * @param data Pointer to index data
@@ -65,10 +61,11 @@ namespace SceneryEditorX
         static Ref<IndexBuffer> Create(const void* data, uint64_t size);
 
     private:
-        Ref<MemoryAllocator> allocator;		 ///< Reference to the memory allocator
-        std::vector<uint32_t> indices;		 ///< Storage for index data
-        VkBuffer indexBuffer;				 ///< Handle to the Vulkan index buffer
-        VmaAllocation indexBufferAllocation; ///< Handle to the allocated memory for the index buffer
+        Buffer m_LocalData;						///< Local buffer for index data
+        VkBuffer indexBuffer;					///< Handle to the Vulkan index buffer
+        Ref<MemoryAllocator> allocator;			///< Reference to the memory allocator
+        std::vector<uint32_t> indices;			///< Storage for index data
+        VmaAllocation indexBufferAllocation;	///< Handle to the allocated memory for the index buffer
     };
 
 }

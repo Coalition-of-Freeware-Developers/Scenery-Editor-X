@@ -70,6 +70,7 @@ namespace SceneryEditorX
 
             /**
              * @brief Provides the vertex binding description for Vulkan.
+             *
              * @param binding Binding index to use.
              * @param inputRate Vertex input rate (vertex or instance).
              * @return VkVertexInputBindingDescription describing how to bind vertex data.
@@ -85,6 +86,7 @@ namespace SceneryEditorX
 
             /**
              * @brief Provides attribute descriptions for vertex data components.
+             *
              * @param binding The binding index these attributes are associated with.
              * @return Array of attribute descriptions for position, color, and texture coordinates.
              */
@@ -112,6 +114,7 @@ namespace SceneryEditorX
 
             /**
              * @brief Equality comparison operator for vertices.
+             *
              * @param other The vertex to compare against.
              * @return true if vertices are equal, false otherwise.
              */
@@ -124,6 +127,11 @@ namespace SceneryEditorX
 		/**
 		 * @enum VertexBufferType
 		 * @brief Defines the type and usage pattern of vertex buffer.
+		 *
+		 * This enum specifies how the vertex buffer is intended to be used,
+		 * which can affect performance optimizations and memory management.
+		 *
+		 * @note The values are designed to be compatible with Vulkan buffer usage flags.
 		 */
         enum class VertexBufferType : uint8_t
         {
@@ -137,6 +145,12 @@ namespace SceneryEditorX
         /**
 		 * @enum VertexFormat
 		 * @brief Standard vertex data formats.
+		 *
+		 * This enum defines various vertex formats that can be used in the vertex buffer.
+		 * Each format specifies the components included in the vertex data,
+		 * allowing for flexibility in rendering different types of geometry.
+		 *
+		 * @note The values are designed to be compatible with Vulkan vertex input attribute descriptions.
 		 */
         enum class VertexFormat : uint8_t
         {
@@ -170,21 +184,61 @@ namespace SceneryEditorX
          */
         explicit VertexBuffer(const std::vector<Vertex>& initialVertices,VertexBufferType type = VertexBufferType::Static);
 
+		/**
+		 * @brief Constructor for VertexBuffer with raw data.
+		 * 
+		 * @param data Pointer to vertex data.
+		 * @param size Size of the data in bytes.
+		 * @param usage Buffer usage type (default: Static).
+		 */
         VertexBuffer(const void *data, uint64_t size, VertexBufferType usage = VertexBufferType::Static);
-        Ref<VertexBuffer> CreateBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity);
+        //Ref<VertexBuffer> CreateBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity);
         //VertexBuffer(uint64_t size, VertexBufferType usage = VertexBufferType::Dynamic);
 
         /**
          * @brief Destructor for VertexBuffer
+         *
+         * Releases the Vulkan buffer and associated memory.
+         * This is a virtual destructor to ensure proper cleanup in derived classes.
+         *
          */
         virtual ~VertexBuffer() override;
 
+        /**
+         * @brief Sets the vertex data in the buffer.
+         *
+         * @param buffer Pointer to the vertex data buffer.
+         * @param size Size of the data in bytes.
+         * @param offset Offset in bytes where the data should be written (default: 0).
+         */
         virtual void SetData(void* buffer, uint64_t size, uint64_t offset = 0);
-		virtual void Set_RenderThreadData(void* buffer, uint64_t size, uint64_t offset = 0);
-		virtual void Bind() const {}
 
-		virtual unsigned int GetSize() const { return m_Size; }
-		virtual uint32_t GetRendererID() const { return 0; }
+        /**
+         * @brief Sets the render thread data for the vertex buffer.
+         *
+         * @param buffer Pointer to the data buffer.
+         * @param size Size of the data in bytes.
+         * @param offset Offset in bytes where the data should be written (default: 0).
+         */
+        virtual void Set_RenderThreadData(void* buffer, uint64_t size, uint64_t offset = 0);
+
+        /**
+         * @brief Binds the vertex buffer for rendering.
+         */
+        virtual void Bind() const {}
+
+        /**
+         * @brief Unbinds the vertex buffer.
+         * @return True if the buffer was successfully unbound, false otherwise.
+         */
+        virtual unsigned int GetSize() const { return m_Size; }
+
+        /**
+         * @brief Gets the renderer ID of the vertex buffer.
+         *
+         * @return Renderer ID of the vertex buffer.
+         */
+        virtual uint32_t GetRendererID() const { return 0; }
 
         /**
          * @brief Creates vertex attribute descriptions based on the vertex format
@@ -195,11 +249,14 @@ namespace SceneryEditorX
          * @brief Creates and initializes the internal Vulkan buffer
          * @return Buffer wrapper containing the created buffer
          */
-        Buffer Create() const;
-        Buffer Release() const;
+        //Buffer Create() const;
+        //Buffer Release() const;
 
         /**
          * @brief Static factory method to create a vertex buffer with raw data
+         *
+         * This method creates a vertex buffer from raw data, allowing for immediate GPU upload.
+         *
          * @param data Pointer to vertex data
          * @param size Size of the data in bytes
          * @param usage Buffer usage type (default: Static)
@@ -209,6 +266,7 @@ namespace SceneryEditorX
 
         /**
          * @brief Gets the Vulkan buffer handle
+         *
          * @return VkBuffer handle to the vertex buffer
          */
         [[nodiscard]] VkBuffer GetBuffer() const { return vertexBuffer; }
@@ -221,6 +279,7 @@ namespace SceneryEditorX
         
         /**
          * @brief Gets the number of vertices in the buffer
+         *
          * @return Count of vertices
          */
         [[nodiscard]] size_t GetVertexCount() const { return vertices.size(); }
@@ -272,7 +331,7 @@ namespace SceneryEditorX
          * @return VkVertexInputBindingDescription structure
          */
         [[nodiscard]] VkVertexInputBindingDescription GetBindingDescription(uint32_t binding = 0, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX) const;
-            
+
         /**
          * @brief Gets attribute descriptions for this vertex buffer
          * 
@@ -304,14 +363,18 @@ namespace SceneryEditorX
         uint32_t capacity = 0;								///< Capacity in number of vertices
         bool isInitialized = false;							///< Whether the buffer has been initialized
 
-        uint64_t m_Size = 0;
-        Buffer m_LocalData;
-        VkBuffer m_VulkanBuffer = VK_NULL_HANDLE;
-        VmaAllocation m_MemoryAllocation;
+        uint64_t m_Size = 0;                                ///< Size of the vertex buffer in bytes
+        Buffer m_LocalData;                                 ///< Local data buffer for CPU access
+        VkBuffer m_VulkanBuffer = VK_NULL_HANDLE;           ///< Vulkan buffer handle
+        VmaAllocation m_MemoryAllocation;                   ///< Vulkan memory allocation handle
     };
 
     /// ----------------------------------------------------------
 
+	/**
+	 * @enum ShaderDataType
+	 * @brief Represents the data types used in shaders.
+	 */
 	enum class ShaderDataType : uint8_t
 	{
 		None = 0,
@@ -328,7 +391,13 @@ namespace SceneryEditorX
 	    Bool
 	};
 
-	static uint32_t ShaderDataTypeSize(ShaderDataType type)
+    /**
+     * @brief Returns the size in bytes of a given shader data type.
+     *
+     * @param type The shader data type for which to get the size.
+     * @return Size in bytes of the specified shader data type.
+     */
+    static uint32_t ShaderDataTypeSize(ShaderDataType type)
 	{
 		switch (type)
 		{
@@ -349,19 +418,34 @@ namespace SceneryEditorX
 		return 0;
 	}
 
+    /**
+     * @brief Represents a single element in a vertex buffer layout.
+     */
     struct VertexBufferElement
 	{
-		std::string name;
-		ShaderDataType type;
-		uint32_t size;
-		uint32_t offset;
-		bool normalized;
+        std::string name;       ///< Name of the element, typically used in shaders.
+        ShaderDataType type;    ///< Shader data type of the element.
+        uint32_t size;          ///< Size of the element in bytes, calculated based on the shader data type.
+        uint32_t offset;        ///< Offset of the element in the vertex buffer, used for layout calculations.
+		bool normalized;        ///< Whether the data should be normalized when accessed in shaders.
 
         VertexBufferElement() = default;
 
+        /**
+         * @brief Constructs a VertexBufferElement with specified type, name, and normalization.
+         *
+         * @param type The shader data type of the element.
+         * @param name The name of the element, typically used in shaders.
+         * @param normalized Whether the data should be normalized when accessed in shaders.
+         */
         VertexBufferElement(const ShaderDataType type, std::string name, const bool normalized = false) :
             name(std::move(name)), type(type), size(ShaderDataTypeSize(type)), offset(0), normalized(normalized) {}
 
+        /**
+         * @brief Returns the number of components in this shader data type.
+         *
+         * @return Number of components in the shader data type.
+         */
         [[nodiscard]] uint32_t GetComponentCount() const
 		{
 			switch (type)
@@ -386,11 +470,32 @@ namespace SceneryEditorX
 		}
 	};
 
-	class VertexBufferLayout
+    /**
+     * @brief Represents a layout of vertex buffer elements.
+     * This class is used to define the structure of vertex data
+     * and how it should be interpreted by the graphics pipeline.
+     */
+    class VertexBufferLayout
 	{
 	public:
         VertexBufferLayout() = default;
 
+		/**
+		 * @brief Constructs a VertexBufferLayout with a list of elements.
+		 *
+		 * This constructor initializes the layout with the provided elements
+		 * and calculates their offsets and total stride.
+		 *
+		 * @param elements Initializer list of VertexBufferElement objects.
+		 * @note The elements should be defined in the order they will be used in the vertex buffer.
+		 * @example
+		 * @code
+		 * VertexBufferLayout layout = {
+		 *	{ShaderDataType::Float3, "a_Position"},
+		 *	{ShaderDataType::Float3, "b_Position"}
+		 * }
+		 * @endcode
+		 */
 		VertexBufferLayout(const std::initializer_list<VertexBufferElement> &elements) : m_Elements(elements)
 		{
 			CalculateOffsetsAndStride();
@@ -405,6 +510,12 @@ namespace SceneryEditorX
 		[[nodiscard]] std::vector<VertexBufferElement>::const_iterator begin() const { return m_Elements.begin(); }
 		[[nodiscard]] std::vector<VertexBufferElement>::const_iterator end() const { return m_Elements.end(); }
 	private:
+
+		/**
+		 * @brief Calculates the offsets and stride of the vertex buffer elements.
+		 * This function iterates through the elements and sets their offsets
+		 * based on their sizes, also calculating the total stride of the layout.
+		 */
 		void CalculateOffsetsAndStride()
 		{
 			uint32_t offset = 0;

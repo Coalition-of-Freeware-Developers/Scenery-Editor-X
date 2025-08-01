@@ -73,7 +73,7 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
+        ${CMAKE_SOURCE_DIR}/source/Gizmo
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
         ${Stb_INCLUDE_DIR}
@@ -92,6 +92,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         CURL::libcurl
         Vulkan::Vulkan
 		imgui
+		imguizmo
 		libconfig
 		libconfig++
 		X-PlaneSceneryLibrary

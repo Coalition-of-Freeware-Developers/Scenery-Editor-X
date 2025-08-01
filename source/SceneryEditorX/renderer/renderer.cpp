@@ -22,6 +22,7 @@
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/scene.h>
+#include <SceneryEditorX/renderer/vulkan/vk_sampler.h>
 
 /// -------------------------------------------------------
 
@@ -68,6 +69,7 @@ namespace SceneryEditorX
     LOCAL RenderData *m_renderData;
     constexpr static uint32_t s_RenderCommandQueueCount = 2;
     INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
+    static std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
     INTERNAL CommandQueue resourceFreeQueue[3];
 
     /// -------------------------------------------------------
@@ -195,20 +197,76 @@ namespace SceneryEditorX
 
     void Renderer::Shutdown()
     {
-        // Shutdown the rendering system
-        // Clean up resources, destroy Vulkan objects, etc.
+        VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+        vkDeviceWaitIdle(device);
+
+        if (s_Data->SamplerPoint)
+        {
+            DestroySampler(s_Data->SamplerPoint);
+            s_Data->SamplerPoint = nullptr;
+        }
+
+        if (s_Data->SamplerClamp)
+        {
+            DestroySampler(s_Data->SamplerClamp);
+            s_Data->SamplerClamp = nullptr;
+        }
+
+#if SEDX_HAS_SHADER_COMPILER
+        VulkanShaderCompiler::ClearUniformBuffers();
+#endif
+        delete s_Data;
+
+        /// Resource release queue
+        for (uint32_t i = 0; i < m_renderData->framesInFlight; i++)
+        {
+            auto &queue = GetRenderResourceReleaseQueue(i);
+            queue.Execute();
+        }
+
+        delete s_CommandQueue[0];
+        delete s_CommandQueue[1];
     }
 
     void Renderer::BeginFrame()
     {
-        // Begin a new frame
-        // This would typically involve waiting for fences, acquiring swapchain images, etc.
+        Submit([]() {
+            SEDX_PROFILE_FUNC("VulkanRenderer::BeginFrame");
+
+            SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
+
+            /// Reset descriptor pools here
+            VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+            uint32_t bufferIndex = swapChain.GetCurrentBufferIndex();
+            vkResetDescriptorPool(device, s_Data->DescriptorPools[bufferIndex], 0);
+            memset(s_Data->DescriptorPoolAllocationCount.data(),0,
+                   s_Data->DescriptorPoolAllocationCount.size() * sizeof(uint32_t));
+
+            s_Data->DrawCallCount = 0;
+
+#if 0
+			VkCommandBufferBeginInfo cmdBufInfo = {};
+			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			cmdBufInfo.pNext = nullptr;
+
+			VkCommandBuffer drawCommandBuffer = swapChain.GetCurrentDrawCommandBuffer();
+			commandBuffer = drawCommandBuffer;
+			SEDX_CORE_ASSERT(commandBuffer);
+			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &cmdBufInfo));
+#endif
+        });
     }
 
     void Renderer::EndFrame()
     {
-        // End the current frame
-        // This would typically involve submitting command buffers, presenting images, etc.
+#if 0
+		Renderer::Submit([]()
+		{
+			VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+			commandBuffer = nullptr;
+		});
+#endif
     }
 
     void Renderer::SubmitFrame()
@@ -269,12 +327,20 @@ namespace SceneryEditorX
         SubmitFrame();
     }
 
-    /*
     void Renderer::SwapQueues()
     {
-        m_renderData->s_cmdQueueSubmissionIdx = (m_renderData->s_cmdQueueSubmissionIdx + 1) % m_renderData->s_cmdQueueCount;
+        s_RenderCommandQueueSubmissionIndex = (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
     }
-    */
+
+    uint32_t Renderer::GetRenderQueueIndex()
+    {
+        return (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
+    }
+
+    uint32_t Renderer::GetRenderQueueSubmissionIndex()
+    {
+        return s_RenderCommandQueueSubmissionIndex;
+    }
 
     uint32_t Renderer::GetCurrentRenderThreadFrameIndex()
     {

@@ -219,7 +219,7 @@ namespace SceneryEditorX
 
 	CursorMode Input::GetCursorMode()
 	{
-        auto &window = static_cast<Window &>(SceneryEditorX::Application::Get().GetWindow());
+        auto &window = static_cast<Window &>(Application::Get().GetWindow());
 		return (CursorMode)(glfwGetInputMode(window.GetWindow(), GLFW_CURSOR) - GLFW_CURSOR_NORMAL);
 	}
 

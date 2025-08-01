@@ -253,7 +253,8 @@ ADD_SUBDIRECTORY(source/CrashHandler)
 ADD_SUBDIRECTORY(source/X-PlaneSceneryLibrary)
 
 # --------------------------------
-
+# ImGui
+# --------------------------------
 ADD_LIBRARY(imgui
 	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui.cpp
 	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_draw.cpp
@@ -277,6 +278,36 @@ TARGET_LINK_LIBRARIES(imgui
 		glm::glm-header-only
 		GPUOpen::VulkanMemoryAllocator
 )
+
+# --------------------------------
+# ImGuizmo
+# --------------------------------
+ADD_LIBRARY(imguizmo
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.cpp
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.h
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImZoomSlider.h
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.cpp
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.h
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.cpp
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.h
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.cpp
+	${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.h
+	${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.cpp
+	${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.h
+)
+TARGET_INCLUDE_DIRECTORIES(imguizmo
+	PRIVATE
+		${CMAKE_SOURCE_DIR}/source/Gizmo
+		${CMAKE_SOURCE_DIR}/dependency/imgui
+		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+)
+TARGET_LINK_LIBRARIES(imguizmo
+	PRIVATE
+		imgui
+)
+
+# --------------------------------
 
 IF(TARGET WIN32)
 	FOREACH(TARGET IN ITEMS SceneryEditorX
@@ -320,15 +351,27 @@ TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Edit
 TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_pch.h)
 TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/startup_pch.h)
 
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.h 			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.cpp 			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImZoomSlider.h 		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.h 		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.cpp 		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.h			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.cpp		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.h			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.cpp		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.h			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.cpp		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
+
 SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator PROPERTY FOLDER "Tests")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET imgui json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET imgui imguizmo json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
 SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
 SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui imguizmo libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

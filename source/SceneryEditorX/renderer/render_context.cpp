@@ -416,6 +416,6 @@ namespace SceneryEditorX
         return s_Instance->instance;
     }
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------
