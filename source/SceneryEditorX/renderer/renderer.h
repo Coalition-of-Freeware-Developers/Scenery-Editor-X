@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -16,6 +16,7 @@
 //#include <SceneryEditorX/renderer/compute_pass.h>
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
+#include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/scene.h>
 
 /// -------------------------------------------------------
@@ -35,10 +36,6 @@ namespace SceneryEditorX
         typedef void (*RenderCommandFn)(void *);
 
 		GLOBAL Ref<RenderContext> GetContext();
-        GLOBAL Ref<Window> GetWindowContext()
-        {
-            //return Application::GetWindow().GetWindow();
-        }
 
         GLOBAL void Init();
 		GLOBAL void Shutdown();
@@ -51,7 +48,8 @@ namespace SceneryEditorX
         template<typename FuncT>
 		static void Submit(FuncT&& func)
 		{
-			auto renderCmd = [](void* ptr) {
+			auto renderCmd = [](void* ptr)
+            {
 				auto pFunc = (FuncT*)ptr;
 				(*pFunc)();
 
@@ -69,7 +67,8 @@ namespace SceneryEditorX
 		template<typename FuncT>
 		static void SubmitResourceFree(FuncT&& func)
 		{
-			auto renderCmd = [](void* ptr) {
+			auto renderCmd = [](void* ptr)
+            {
 				auto pFunc = (FuncT*)ptr;
 				(*pFunc)();
 
@@ -111,15 +110,14 @@ namespace SceneryEditorX
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
         VkSampler CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo);
-        /*GLOBAL void RenderGeometry(const Ref<CommandBuffer> &ref, const Ref<Pipeline> &pipeline, const Ref<Material> &material,
-                           std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> & indexBuffer, const Mat4 &transform, uint32_t indexCount);*/
+        //GLOBAL void RenderGeometry(const Ref<CommandBuffer> &ref, const Ref<Pipeline> &pipeline, const Ref<Material> &material, std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> & indexBuffer, const Mat4 &transform, uint32_t indexCount);
         //GLOBAL void SubmitFullscreenQuad(const Ref<CommandBuffer> & ref, const Ref<Pipeline> & pipeline, const Ref<Material> & material);
-        //GLOBAL Ref<Texture2D> GetWhiteTexture();
-        //GLOBAL Ref<Texture2D> GetBlackTexture();
-        //GLOBAL Ref<Texture2D> GetHilbertLut();
-        //GLOBAL Ref<Texture2D> GetBRDFLutTexture();
-        //GLOBAL Ref<TextureCube> GetBlackCubeTexture();
-        //GLOBAL Ref<Environment> GetEmptyEnvironment();
+        GLOBAL Ref<Texture2D> GetWhiteTexture();
+        GLOBAL Ref<Texture2D> GetBlackTexture();
+        GLOBAL Ref<Texture2D> GetHilbertLut();
+        GLOBAL Ref<Texture2D> GetBRDFLutTexture();
+        GLOBAL Ref<TextureCube> GetBlackCubeTexture();
+        GLOBAL Ref<Environment> GetEmptyEnvironment();
 
         //void RegisterShaderDependency(const Ref<Shader> &shader, const Ref<Pipeline> &pipeline);
         //void RegisterShaderDependency(const Ref<Shader> &shader, const Ref<Material> &material);

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -23,7 +23,7 @@ namespace SceneryEditorX
     class StorageBufferSet : public RefCounted
     {
     public:
-        explicit StorageBufferSet(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight) : m_spec(spec), m_framesInFlight(framesInFlight)
+        explicit StorageBufferSet(StorageBufferSpec spec, uint32_t size, uint32_t framesInFlight) : m_spec(std::move(spec)), m_framesInFlight(framesInFlight)
         {
             if (framesInFlight == 0)
                 m_framesInFlight = Renderer::GetRenderData().framesInFlight;
@@ -34,17 +34,23 @@ namespace SceneryEditorX
 
         virtual ~StorageBufferSet() override = default;
 
+        /// -------------------------------------------------------
+
         Ref<StorageBuffer> Get()
         {
             const uint32_t frame = Renderer::GetCurrentFrameIndex();
             return Get(frame);
         }
 
+        /// -------------------------------------------------------
+
         Ref<StorageBuffer> GetRenderThread()
         {
-            const uint32_t frame = Renderer::RT_GetCurrentFrameIndex();
+            const uint32_t frame = Renderer::GetCurrentRenderThreadFrameIndex();
             return Get(frame);
         }
+
+        /// -------------------------------------------------------
 
         Ref<StorageBuffer> Get(uint32_t frame)
         {
@@ -52,10 +58,14 @@ namespace SceneryEditorX
             return storageBuffers.at(frame);
         }
 
+        /// -------------------------------------------------------
+
         void Set(Ref<StorageBuffer> storageBuffer, uint32_t frame)
         {
             storageBuffers[frame] = std::move(storageBuffer);
         }
+
+        /// -------------------------------------------------------
 
         void Resize(uint32_t newSize)
         {
@@ -63,7 +73,11 @@ namespace SceneryEditorX
                 storageBuffers.at(frame)->Resize(newSize);
         }
 
+        /// -------------------------------------------------------
+
         static Ref<StorageBufferSet> Create(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight = 0);
+
+        /// -------------------------------------------------------
 
     private:
         StorageBufferSpec m_spec;

@@ -1,8 +1,8 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vertex_buffer.h
@@ -77,7 +77,7 @@ namespace SceneryEditorX
              */
             static VkVertexInputBindingDescription GetBindingDescription( uint32_t binding = 0, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX)
             {
-                VkVertexInputBindingDescription bindingDescription;
+                VkVertexInputBindingDescription bindingDescription{};
                 bindingDescription.binding = binding;
                 bindingDescription.stride = sizeof(Vertex);
                 bindingDescription.inputRate = inputRate;
@@ -169,7 +169,7 @@ namespace SceneryEditorX
 
         /**
          * @brief Constructor for VertexBuffer.
-         * 
+         *
          * @param type The type of vertex buffer (Static, Dynamic, etc.)
          * @param vertexFormat The format of vertices to be stored.
          * @param initialCapacity Initial buffer capacity in vertices (optional).
@@ -178,7 +178,7 @@ namespace SceneryEditorX
 
         /**
          * @brief Constructor for VertexBuffer with initial data.
-         * 
+         *
          * @param initialVertices Vector of vertices to initialize the buffer with.
          * @param type The type of vertex buffer (Static, Dynamic, etc.).
          */
@@ -186,14 +186,12 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Constructor for VertexBuffer with raw data.
-		 * 
+		 *
 		 * @param data Pointer to vertex data.
 		 * @param size Size of the data in bytes.
 		 * @param usage Buffer usage type (default: Static).
 		 */
         VertexBuffer(const void *data, uint64_t size, VertexBufferType usage = VertexBufferType::Static);
-        //Ref<VertexBuffer> CreateBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity);
-        //VertexBuffer(uint64_t size, VertexBufferType usage = VertexBufferType::Dynamic);
 
         /**
          * @brief Destructor for VertexBuffer
@@ -231,7 +229,7 @@ namespace SceneryEditorX
          * @brief Unbinds the vertex buffer.
          * @return True if the buffer was successfully unbound, false otherwise.
          */
-        virtual unsigned int GetSize() const { return m_Size; }
+        virtual uint64_t GetSize() const { return m_Size; }
 
         /**
          * @brief Gets the renderer ID of the vertex buffer.
@@ -246,13 +244,6 @@ namespace SceneryEditorX
         std::vector<VkVertexInputAttributeDescription> CreateAttributeDescriptions(uint32_t binding) const;
 
         /**
-         * @brief Creates and initializes the internal Vulkan buffer
-         * @return Buffer wrapper containing the created buffer
-         */
-        //Buffer Create() const;
-        //Buffer Release() const;
-
-        /**
          * @brief Static factory method to create a vertex buffer with raw data
          *
          * This method creates a vertex buffer from raw data, allowing for immediate GPU upload.
@@ -260,72 +251,73 @@ namespace SceneryEditorX
          * @param data Pointer to vertex data
          * @param size Size of the data in bytes
          * @param usage Buffer usage type (default: Static)
+         * @param debugName Optional debug name for the vertex buffer
          * @return Ref<VertexBuffer> Smart pointer to the created vertex buffer
          */
-        static Ref<VertexBuffer> Create(const void* data, uint64_t size, VertexBufferType usage = VertexBufferType::Static);
+        static Ref<VertexBuffer> Create(const void* data, uint64_t size, VertexBufferType usage = VertexBufferType::Static, const std::string& debugName = "");
 
         /**
          * @brief Gets the Vulkan buffer handle
          *
          * @return VkBuffer handle to the vertex buffer
          */
-        [[nodiscard]] VkBuffer GetBuffer() const { return vertexBuffer; }
-        
+        [[nodiscard]] VkBuffer GetBuffer() const { return m_VertexBuffer.resource->buffer; }
+
         /**
          * @brief Gets the size of the vertex buffer in bytes
          * @return Size of the buffer in bytes
          */
-        //[[nodiscard]] VkDeviceSize GetBufferSize() const { return internalBuffer.buffer; }
-        
+        [[nodiscard]] uint64_t GetBufferSize() const { return m_VertexBuffer.size; }
+
         /**
          * @brief Gets the number of vertices in the buffer
          *
          * @return Count of vertices
          */
-        [[nodiscard]] size_t GetVertexCount() const { return vertices.size(); }
-        
+        [[nodiscard]] size_t GetVertexCount() const { return m_Vertices.size(); }
+
         /**
          * @brief Sets new vertex data, replacing existing data
-         * 
+         *
          * @param newVertices Vector of new vertices
          * @param recreateBuffer Whether to recreate the buffer immediately
          */
         void SetData(const std::vector<Vertex>& newVertices, bool recreateBuffer = true);
-        
+
         /**
          * @brief Adds vertices to the buffer
-         * 
+         *
          * @param additionalVertices Vector of vertices to add
          * @param recreateBuffer Whether to recreate the buffer immediately
          */
         void AppendData(const std::vector<Vertex>& additionalVertices, bool recreateBuffer = true);
-        
+
         /**
          * @brief Updates a subset of vertices in the buffer
-         * 
+         *
          * @param startIndex Starting index to update
          * @param updatedVertices Vector of vertices with new data
          */
         void UpdateData(uint32_t startIndex, const std::vector<Vertex>& updatedVertices);
-        
+
         /**
          * @brief Clears all vertex data
-         * 
+         *
          * @param releaseBuffer Whether to also release the GPU buffer
          */
         void ClearData(bool releaseBuffer = false);
-        
+
         /**
          * @brief Resizes the buffer to accommodate a specific number of vertices
-         * 
+         *
          * @param newCapacity The new capacity in vertices
          * @param preserveData Whether to preserve existing vertex data
          */
         void Reserve(uint32_t newCapacity, bool preserveData = true);
-        
+
         /**
          * @brief Gets the binding description for this vertex buffer
-         * 
+         *
          * @param binding Binding index to use
          * @param inputRate Vertex input rate (vertex or instance)
          * @return VkVertexInputBindingDescription structure
@@ -334,7 +326,7 @@ namespace SceneryEditorX
 
         /**
          * @brief Gets attribute descriptions for this vertex buffer
-         * 
+         *
          * @param binding The binding index these attributes are associated with
          * @return Array of VkVertexInputAttributeDescription structures
          */
@@ -342,31 +334,108 @@ namespace SceneryEditorX
 
         /**
          * @brief Creates a vertex buffer representing a primitive geometry
+         *
+         * This method creates a vertex buffer containing the geometric data for the specified
+         * primitive type. It leverages helper functions to generate the mesh data in the correct
+         * VertexBuffer::Vertex format and creates a GPU-ready buffer.
+         *
+         * The method provides a convenient way to generate common geometric primitives that can
+         * be used for 3D scene objects, UI elements, or debugging visualization.
+         *
+         * @param type Type of primitive shape to create (Cube, Sphere, Cylinder, Plane)
+         * @param size Size of the primitive - interpretation depends on primitive type:
+         *             - Cube: Vec3(width, height, depth) - all components used for box dimensions
+         *             - Sphere: Vec3(radius, 0, 0) - only x component used as radius
+         *             - Cylinder: Vec3(radius, height, 0) - x=radius, y=height
+         *             - Plane: Vec3(width, height, 0) - x=width, y=height (z ignored)
+         * @param color Color to apply to all primitive vertices (default: white Vec3(1,1,1))
+         * @return Ref<VertexBuffer> Reference to the created vertex buffer, or nullptr if creation failed
+         *
+         * @note The generated vertices include position, color, and texture coordinates.
+         *       All primitives are centered at the origin with the specified dimensions.
+         * @note For best performance, consider caching returned vertex buffers for reuse.
+         *
+         * @example Usage:
+         * @code
+         * // Create a cube with dimensions 2x3x4
+         * auto cubeBuffer = VertexBuffer::CreatePrimitive(PrimitiveType::Cube, Vec3(2.0f, 3.0f, 4.0f));
          * 
-         * @param type Type of primitive shape to create
-         * @param size Size of the primitive
-         * @param color Color to apply to the primitive vertices
-         * @return Ref<VertexBuffer> Reference to the created vertex buffer
+         * // Create a red sphere with radius 1.5
+         * auto sphereBuffer = VertexBuffer::CreatePrimitive(PrimitiveType::Sphere, Vec3(1.5f), Vec3(1.0f, 0.0f, 0.0f));
+         * 
+         * // Create a plane for ground representation
+         * auto groundBuffer = VertexBuffer::CreatePrimitive(PrimitiveType::Plane, Vec3(10.0f, 10.0f, 0.0f));
+         * @endcode
          */
         static Ref<VertexBuffer> CreatePrimitive(PrimitiveType type, const Vec3& size = Vec3(1.0f), const Vec3& color = Vec3(1.0f));
-		
-    private:
-        Ref<MemoryAllocator> allocator;						///< Reference to the memory allocator
-        std::vector<Vertex> vertices;						///< Storage for vertex data
-        RenderData renderData;								///< Render data reference
-        VertexBufferType bufferType;						///< Type of vertex buffer
-        VertexFormat format;								///< Format of vertices
-        VkBuffer vertexBuffer = VK_NULL_HANDLE;             ///< Handle to the Vulkan vertex buffer
-        VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE; ///< Handle to the allocated memory for the vertex buffer
-        VmaAllocation vertexBuffersAllocation;              ///< Allocation handle for uniform buffers
-        BufferResource internalBuffer;						///< Buffer wrapper
-        uint32_t capacity = 0;								///< Capacity in number of vertices
-        bool isInitialized = false;							///< Whether the buffer has been initialized
 
-        uint64_t m_Size = 0;                                ///< Size of the vertex buffer in bytes
-        Buffer m_LocalData;                                 ///< Local data buffer for CPU access
-        VkBuffer m_VulkanBuffer = VK_NULL_HANDLE;           ///< Vulkan buffer handle
-        VmaAllocation m_MemoryAllocation;                   ///< Vulkan memory allocation handle
+    private:
+        std::vector<Vertex> m_Vertices;						///< Storage for vertex data
+        VertexBufferType m_BufferType;						///< Type of vertex buffer
+        VertexFormat m_Format;								///< Format of vertices
+        Buffer m_VertexBuffer;								///< Vulkan buffer wrapper using project buffer system
+        Buffer m_LocalData;									///< Local data buffer for CPU access
+        uint32_t m_Capacity = 0;							///< Capacity in number of vertices
+        uint64_t m_Size = 0;								///< Size of the vertex buffer in bytes
+        bool m_IsInitialized = false;						///< Whether the buffer has been initialized
+
+        /**
+         * @brief Creates the internal GPU buffer using the MemoryAllocator system
+         */
+        void CreateVertexBuffer();
+
+        /**
+         * @brief Uploads vertex data to the GPU buffer using the MemoryAllocator
+         */
+        void UploadVertexData();
+
+        /**
+         * @brief Uploads partial vertex data to the GPU buffer with offset support
+         *
+         * @param offset Byte offset in the buffer
+         * @param size Number of bytes to upload
+         */
+        void UploadPartialVertexData(uint64_t offset, uint64_t size) const;
+
+        /// ---- Primitive Generation Helper Methods ----
+
+        /**
+         * @brief Generates vertices for a cube primitive
+         * @param size Dimensions of the cube (width, height, depth)
+         * @param color Color to apply to all vertices
+         * @return Vector of vertices representing the cube
+         */
+        static std::vector<Vertex> GenerateCubeVertices(const Vec3& size, const Vec3& color);
+
+        /**
+         * @brief Generates vertices for a sphere primitive
+         * @param radius Radius of the sphere
+         * @param color Color to apply to all vertices
+         * @return Vector of vertices representing the sphere
+         */
+        static std::vector<Vertex> GenerateSphereVertices(float radius, const Vec3& color);
+
+        /**
+         * @brief Generates vertices for a cylinder primitive
+         * @param radius Radius of the cylinder's circular base
+         * @param height Height of the cylinder
+         * @param color Color to apply to all vertices
+         * @return Vector of vertices representing the cylinder
+         */
+        static std::vector<Vertex> GenerateCylinderVertices(float radius, float height, const Vec3& color);
+
+        /**
+         * @brief Generates vertices for a plane primitive
+         * @param size Dimensions of the plane (width, height)
+         * @param color Color to apply to all vertices
+         * @return Vector of vertices representing the plane
+         */
+        static std::vector<Vertex> GeneratePlaneVertices(const Vec2& size, const Vec3& color);
+
+        /**
+         * @brief Memory allocator instance for this vertex buffer
+         */
+        mutable Ref<MemoryAllocator> m_MemoryAllocator;
     };
 
     /// ----------------------------------------------------------
@@ -401,18 +470,19 @@ namespace SceneryEditorX
 	{
 		switch (type)
 		{
-			case ShaderDataType::Float:    return 4;
-			case ShaderDataType::Float2:   return 4 * 2;
-			case ShaderDataType::Float3:   return 4 * 3;
-			case ShaderDataType::Float4:   return 4 * 4;
-			case ShaderDataType::Mat3:     return 4 * 3 * 3;
-			case ShaderDataType::Mat4:     return 4 * 4 * 4;
-			case ShaderDataType::Int:      return 4;
-			case ShaderDataType::Int2:     return 4 * 2;
-			case ShaderDataType::Int3:     return 4 * 3;
-			case ShaderDataType::Int4:     return 4 * 4;
-			case ShaderDataType::Bool:     return 1;
-		}
+			case ShaderDataType::Float:		return 4;
+			case ShaderDataType::Float2:	return 4 * 2;
+			case ShaderDataType::Float3:	return 4 * 3;
+			case ShaderDataType::Float4:	return 4 * 4;
+			case ShaderDataType::Mat3:		return 4 * 3 * 3;
+			case ShaderDataType::Mat4:		return 4 * 4 * 4;
+			case ShaderDataType::Int:		return 4;
+			case ShaderDataType::Int2:		return 4 * 2;
+			case ShaderDataType::Int3:		return 4 * 3;
+			case ShaderDataType::Int4:		return 4 * 4;
+			case ShaderDataType::Bool:		return 1;
+            case ShaderDataType::None:		break;
+        }
 
 		SEDX_CORE_ASSERT(false, "Unknown ShaderDataType!");
 		return 0;

@@ -10,9 +10,6 @@
 * Created: 31/7/2025
 * -------------------------------------------------------
 */
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
-#include <ImGuizmo.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/core/input/key_codes.h>
@@ -22,12 +19,13 @@
 #include <SceneryEditorX/ui/ui_fonts.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <SceneryEditorX/ui/ui_renderer.h>
-
 #ifndef IMGUI_IMPL_API
     #define IMGUI_IMPL_API
 #endif
+#include <ImGuizmo.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 #include <GLFW/glfw3.h>
-
 
 /// ---------------------------------------------------------
 
@@ -209,7 +207,7 @@ namespace SceneryEditorX
 
 		/// Setup Dear ImGui style
 		ImGui::StyleColorsDark();
-        ::UI::SetDarkThemeColors();
+        UI::SetDarkThemeColors();
 
 		/// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
 		ImGuiStyle& style = ImGui::GetStyle();
@@ -293,7 +291,7 @@ namespace SceneryEditorX
     {
         Renderer::Submit([]()
         {
-			auto device = RenderContext::GetCurrentDevice()->GetDevice();
+			const auto device = RenderContext::GetCurrentDevice()->GetDevice();
             VK_CHECK_RESULT(vkDeviceWaitIdle(device))
 
             ImGui_ImplVulkan_Shutdown();

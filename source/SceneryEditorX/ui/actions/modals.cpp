@@ -10,7 +10,7 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/imgui.h>
+#include <Editor/ui/ui_manager.h>
 #include <SceneryEditorX/ui/ui.h>
 
 /// -------------------------------------------------------
@@ -19,7 +19,7 @@
 //bool UI::showAboutModal = false;
 //bool UI::showCreateProjectModal = false;
 
-namespace UI
+namespace SceneryEditorX::UI
 {
 	/// Define projectName and projectLocation variables
     INTERNAL char projectName[128];
@@ -30,8 +30,7 @@ namespace UI
     void UIManager::ExitConfirmationModal(GLFWwindow *window)
     {
         ImGui::SetNextWindowSize(ImVec2(400, 150), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-                                ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
         
         if (ImGui::BeginPopupModal("Exit Confirmation", &showExitModal))
         {
@@ -51,10 +50,8 @@ namespace UI
             ImGui::SameLine();
             
             if (ImGui::Button("Cancel", ImVec2(85, 0)))
-            {
                 showExitModal = false;
-            }
-            
+
             ImGui::EndPopup();
         }
         else
@@ -83,34 +80,31 @@ namespace UI
 
                 /// Buttons
                 if (ImGui::Button("Create", ImVec2(100.0f, 0.0f)))
-                {
-                    showCreateProjectModal = false; // Close the modal
-                }
+                    showCreateProjectModal = false; /// Close the modal
+
                 ImGui::SameLine();
+
                 if (ImGui::Button("Cancel", ImVec2(100.0f, 0.0f)))
-                {
                     showCreateProjectModal = false; /// Close the modal without creating a new project
-                }
 
                 ImGui::EndPopup();
             }
         }
     }
 
-    //TODO: Implement the ability to close the modal popup by clicking outside the Modal
+    ///TODO: Implement the ability to close the modal popup by clicking outside the Modal
     void UIManager::AboutModal()
     {
         ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-                                ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
         
         if (ImGui::BeginPopupModal("About Scenery Editor X", &showAboutModal))
         {
             ImGui::Text("Scenery Editor X");
             ImGui::Text("Version 1.0.0");
             ImGui::Separator();
-            ImGui::Text(R"(© 2025 Thomas Ray)");
-            ImGui::Text(R"(© 2025 Coalition of Freeware Developers)");
+            ImGui::Text("© 2025 Thomas Ray");
+            ImGui::Text("© 2025 Coalition of Freeware Developers");
             ImGui::Separator();
             ImGui::Text("Powered by Vulkan and Dear ImGui");
             
@@ -118,10 +112,8 @@ namespace UI
             
             ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 85) * 0.5f);
             if (ImGui::Button("Close", ImVec2(85, 0)))
-            {
                 showAboutModal = false;
-            }
-            
+
             ImGui::EndPopup();
         }
         else
@@ -130,6 +122,6 @@ namespace UI
         }
     }
 
-} // namespace UI
+}
 
 /// -------------------------------------------------------

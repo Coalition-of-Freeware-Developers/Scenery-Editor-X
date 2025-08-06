@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptor_set_manager.h>
 #include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
+#include <SceneryEditorX/scene/texture.h>
 #include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
@@ -32,7 +34,7 @@ namespace SceneryEditorX
 	    /**
 	     * @brief Reference to the Vulkan pipeline used by this render pass.
 	     */
-	    Ref<Pipeline> Pipeline;
+	    //Ref<Pipeline> Pipeline;
 
         /**
          * @brief Reference to the Vulkan swap chain used for rendering.
@@ -69,7 +71,7 @@ namespace SceneryEditorX
         void AddInput(std::string_view name, const Ref<UniformBuffer> &uniformBuffer);
         //void AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet);
         void AddInput(std::string_view name, const Ref<StorageBuffer> &storageBuffer);
-        //void AddInput(std::string_view name, const Ref<TextureAsset> &texture);
+        void AddInput(std::string_view name, const Ref<TextureAsset> &texture);
 
         void CreateRenderPass();
 
@@ -78,7 +80,7 @@ namespace SceneryEditorX
         virtual uint32_t GetFirstSetIndex() const;
 
         virtual Ref<Framebuffer> GetTargetFramebuffer() const;
-        virtual Ref<Pipeline> GetPipeline() const;
+        //virtual Ref<Pipeline> GetPipeline() const;
 
         [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
 		//VkDescriptorPool GetDescriptorPool() const { return descriptors->descriptorPool; }

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,10 +12,9 @@
 */
 #pragma once
 #include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/scene/texture.h>
-//#include <SceneryEditorX/serialization/serializer.hpp>
+#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/vulkan/vk_image.h>
 
 /// -------------------------------------------------------
 

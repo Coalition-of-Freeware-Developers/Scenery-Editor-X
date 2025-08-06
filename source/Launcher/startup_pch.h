@@ -117,8 +117,7 @@
                      Project Includes
 ##########################################################
 */
-
-#include <SceneryEditorX/core/pointers.h>
+#include <SceneryEditorX/utils/pointers.h>
 
 /**
 ##########################################################
@@ -126,7 +125,7 @@
 */
 
 #ifdef SEDX_DEBUG
-	std::filesystem::path workingDir = std::filesystem::current_path();
+	inline std::filesystem::path workingDir = std::filesystem::current_path();
 #endif
 
 namespace fs = std::filesystem;

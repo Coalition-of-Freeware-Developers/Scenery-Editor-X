@@ -199,7 +199,7 @@ namespace SceneryEditorX
         StorageBuffer,
         ImageSampler1D,
         ImageSampler2D,
-        ImageSampler3D, ///TODO: Clarify if this is a 3D sampler or Cube sampler
+        ImageSampler3D, /// TODO: Clarify if this is a 3D sampler or Cube sampler
         StorageImage1D,
         StorageImage2D,
         StorageImage3D	    

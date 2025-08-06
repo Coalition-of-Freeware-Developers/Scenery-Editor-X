@@ -104,7 +104,7 @@ namespace SceneryEditorX
 	 * @return Matrix4x4 A 4x4 transformation matrix representing rotation around the Z-axis.
 	 *
 	 * @note This function internally creates a quaternion and converts it to a matrix.
-	 * @note For multiple rotations, consider using Quat directly for better performance.
+	 * @note For multiple rotations, consider using glm::quat directly for better performance.
 	 *
 	 * @example
 	 * @code
@@ -113,7 +113,7 @@ namespace SceneryEditorX
 	 */
 	Matrix4x4 Matrix4x4::Angle(const float degrees)
     {
-		return Quat::EulerDegrees(0, 0, degrees).ToMatrix();
+        return Quat::EulerDegrees(0, 0, degrees).ToMatrix();
     }
 
 	/**
@@ -166,7 +166,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 rotMatrix = Matrix4x4::RotationRadians(rotation);
 	 * @endcode
 	 */
-	Matrix4x4 Matrix4x4::RotationRadians(const Vec3& eulerRadians)
+	Matrix4x4 Matrix4x4::RotationRadians(const Vec3 &eulerRadians)
     {
         return Quat::EulerRadians(eulerRadians).ToMatrix();
     }
@@ -571,7 +571,7 @@ namespace SceneryEditorX
 	 * The implementation uses an optimized algorithm that directly calculates all elements
 	 * of the inverse matrix using determinant ratios and cofactor relationships.
 	 *
-	 * @param matx The matrix to invert.
+	 * @param matrix The matrix to invert.
 	 *
 	 * @return Matrix4x4 The inverse of the input matrix.
 	 *
@@ -587,14 +587,14 @@ namespace SceneryEditorX
 	 * Matrix4x4 identity = Matrix4x4::Multiply(original, inverse); // Should be identity
 	 * @endcode
 	 */
-	Matrix4x4 Matrix4x4::GetInverse(const Matrix4x4& matx)
+	Matrix4x4 Matrix4x4::GetInverse(const Matrix4x4& matrix)
 	{
 		ZoneScoped;
 
-		const float n11 = matx[0][0], n12 = matx[1][0], n13 = matx[2][0], n14 = matx[3][0];
-		const float n21 = matx[0][1], n22 = matx[1][1], n23 = matx[2][1], n24 = matx[3][1];
-		const float n31 = matx[0][2], n32 = matx[1][2], n33 = matx[2][2], n34 = matx[3][2];
-		const float n41 = matx[0][3], n42 = matx[1][3], n43 = matx[2][3], n44 = matx[3][3];
+		const float n11 = matrix[0][0], n12 = matrix[1][0], n13 = matrix[2][0], n14 = matrix[3][0];
+		const float n21 = matrix[0][1], n22 = matrix[1][1], n23 = matrix[2][1], n24 = matrix[3][1];
+		const float n31 = matrix[0][2], n32 = matrix[1][2], n33 = matrix[2][2], n34 = matrix[3][2];
+		const float n41 = matrix[0][3], n42 = matrix[1][3], n43 = matrix[2][3], n44 = matrix[3][3];
 
 		const float t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44;
 		const float t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44;

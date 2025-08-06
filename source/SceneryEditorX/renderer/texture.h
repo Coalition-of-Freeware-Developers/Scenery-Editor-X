@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,13 +12,23 @@
 */
 #pragma once
 #include <filesystem>
+#include <vulkan/vulkan.h>
+#include <vma/vk_mem_alloc.h>
+#include <glm/glm.hpp>
 #include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/renderer/vulkan/vk_image.h>
+#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
+#include <SceneryEditorX/renderer/vulkan/resource.h>
+#include <SceneryEditorX/core/memory/buffer.h>
+
+#include "vulkan/vk_buffers.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	// Forward declarations
+	class Image2D;
+
 	enum class TextureType : uint8_t
 	{
 	    None = 0,
@@ -60,7 +70,7 @@ namespace SceneryEditorX
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const = 0;
 
 		virtual uint64_t GetHash() const = 0;
-		//virtual TextureType GetType() const = 0;
+		virtual TextureType GetType() const = 0;
 	};
 
     /// -------------------------------------------------------
@@ -73,7 +83,7 @@ namespace SceneryEditorX
         explicit Texture2D(const TextureSpecification &specification);
         Texture2D(const TextureSpecification &specification, const std::filesystem::path &filepath);
         Texture2D(const TextureSpecification &specification, const Buffer &imagedata);
-        
+
 		static Ref<Texture2D> Create(const TextureSpecification &specification);
 		static Ref<Texture2D> Create(const TextureSpecification &specification, const std::filesystem::path& filepath);
         static Ref<Texture2D> Create(const TextureSpecification &specification, const Buffer &imagedata = Buffer());
@@ -85,7 +95,7 @@ namespace SceneryEditorX
         virtual void ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filepath);
         virtual void CreateFromBuffer(const TextureSpecification &specification, Buffer data = Buffer());
 
-		//void CreateFromBuffer(const TextureSpecification &specification, const Buffer &data);
+		void CreateFromBuffer(const TextureSpecification &specification, const Buffer &data);
 
         virtual void Resize(const glm::uvec2 &size);
         virtual void Resize(uint32_t width, uint32_t height);
@@ -100,20 +110,20 @@ namespace SceneryEditorX
 		virtual void Bind(uint32_t slot = 0) const override;
 
 		virtual Ref<Image2D> GetImage() const { return m_Image; }
-		virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return m_Image.As<Image2D>()->GetDescriptorInfo(); }
-		const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
+		virtual ResourceDescriptorInfo GetDescriptorInfo() const override;
+		const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const;
 
 		void Lock();
 		void Unlock();
 
 		Buffer GetWriteableBuffer() const;
-		bool Loaded() const { return m_Image && m_Image->IsValid(); }
+		bool Loaded() const;
 		const std::filesystem::path& GetPath() const;
         virtual uint32_t GetMipLevelCount() const override;
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const override;
 
 		void GenerateMips();
-		virtual uint64_t GetHash() const override { return (uint64_t)m_Image.As<Image2D>()->GetDescriptorInfoVulkan().imageView; }
+		virtual uint64_t GetHash() const override;
         void CopyToHostBuffer(Buffer &buffer) const;
 
     private:

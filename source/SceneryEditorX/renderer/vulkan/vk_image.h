@@ -74,7 +74,7 @@ namespace SceneryEditorX
         void CreatePerLayerImageViews_RenderThread();
         void CreatePerSpecificLayerImageViews_RenderThread(const std::vector<uint32_t> &layerIndices);
 
-		VkImageView GetLayerImageView(uint32_t layer)
+		VkImageView GetLayerImageView(uint32_t layer) const
         {
 			SEDX_CORE_ASSERT(layer < m_PerLayerImageViews.size());
 			return m_PerLayerImageViews[layer];

@@ -16,7 +16,7 @@
 
 /// -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
     extern bool showViewport;
     extern bool showCreateProjectModal;
@@ -27,6 +27,8 @@ namespace UI
     /// -------------------------------------------------------
 
     void SetDarkThemeColors();
+
+    /// -------------------------------------------------------
 
 	class UIManager
     {

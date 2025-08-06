@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,20 +11,21 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include <SceneryEditorX/renderer/buffers/index_buffer.h>
-//#include <SceneryEditorX/renderer/fonts/font.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
-//#include <SceneryEditorX/utils/math/aabb.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/buffers/index_buffer.h>
+#include <SceneryEditorX/renderer/fonts/font.h>
+#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
+#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
+#include <SceneryEditorX/utils/math/aabb.h>
+#include <SceneryEditorX/renderer/buffers/uniform_buffer_set.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    /*
     /// Forward declarations to avoid circular dependencies
     class CommandBuffer;
-    class UniformBufferSet;
     class Material;
     class Pipeline;
 
@@ -47,11 +48,12 @@ namespace SceneryEditorX
 
 		void Init();
 		void Shutdown() const;
+
 		void BeginScene(const Mat4& viewProj, const Mat4& view, bool depthTest = true);
 		void EndScene();
 
 		Ref<RenderPass> GetTargetRenderPass();
-		void SetTargetFramebuffer(const Ref<Framebuffer> &framebuffer);
+		void SetTargetFramebuffer(Ref<Framebuffer> &framebuffer);
 		void OnRecreateSwapchain();
 
         /// -------------------------------------------------------
@@ -87,10 +89,10 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 		///< Thickness is between 0 and 1
-		void DrawCircle(const Vec3& p0, const Vec3& rotation, float radius, const Vec4& color, bool onTop = false);
+		void DrawCircle(const Vec3& position, const Vec3& rotation, float radius, const Vec4& color, bool onTop = false);
 		void DrawCircle(const Mat4& transform, const Vec4& color, bool onTop = false);
-		void FillCircle(const Vec2& p0, float radius, const Vec4& color, float thickness = 0.05f);
-		void FillCircle(const Vec3& p0, float radius, const Vec4& color, float thickness = 0.05f);
+		void FillCircle(const Vec2& position, float radius, const Vec4& color, float thickness = 0.05f);
+		void FillCircle(const Vec3& position, float radius, const Vec4& color, float thickness = 0.05f);
 
         /// -------------------------------------------------------
 
@@ -283,7 +285,6 @@ namespace SceneryEditorX
 			Mat4 ViewProjection;
 		};
 	};
-	*/
 
 
 }

@@ -48,7 +48,6 @@ SOURCE_GROUP("UI/Panels" FILES
 )
 SOURCE_GROUP("UI/Actions" FILES
 	${CMAKE_SOURCE_DIR}/source/ui/actions/modals.cpp
-	${CMAKE_SOURCE_DIR}/source/ui/actions/viewports.cpp
 )
 SOURCE_GROUP("Settings" FILES
 	${SETTINGS}

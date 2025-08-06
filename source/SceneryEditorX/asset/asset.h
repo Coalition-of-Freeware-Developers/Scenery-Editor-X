@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -48,6 +48,7 @@ namespace SceneryEditorX
     {
 	        if (objectType == "None")                return ObjectType::None;
 			if (objectType == "Scene")               return ObjectType::Scene;
+			if (objectType == "Node")                return ObjectType::Node;
 			if (objectType == "Prefab")              return ObjectType::Prefab;
 			if (objectType == "Mesh")                return ObjectType::Mesh;
 			if (objectType == "StaticMesh")          return ObjectType::StaticMesh;
@@ -107,7 +108,7 @@ namespace SceneryEditorX
         UUID uuid = UUID();
 	    ObjectType type = ObjectType::None;
 
-	    // TODO: rethink this gpu dirty flag...
+	    /// TODO: rethink this gpu dirty flag...
 	    bool gpuDirty = true;
 
         Object &operator=(const Object &rhs)
@@ -149,7 +150,7 @@ namespace SceneryEditorX
 
 	private:
         friend class EditorAssetManager;
-        friend class TextureSerializer;
+        //friend class TextureSerializer;
         friend class TextureAsset;
 
 	    bool IsValid() const
@@ -189,8 +190,6 @@ namespace SceneryEditorX
         explicit operator Ref<T>() const { return Asset; }
         explicit operator bool() const { return IsReady; }
 	};
-
-    /// -------------------------------------------------------
 
 }
 

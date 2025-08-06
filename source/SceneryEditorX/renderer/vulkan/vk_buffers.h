@@ -27,7 +27,7 @@ namespace SceneryEditorX
 
     // ReSharper disable twice IdentifierTypo
     namespace BufferUsage
-    { 
+    {
 		enum BufferUsageFlags
 		{
 		    TransferSrc					= 0x00000001,
@@ -62,11 +62,11 @@ namespace SceneryEditorX
 
     /**
      * @brief Safely destroys a Vulkan buffer and frees its associated memory allocation
-     * 
+     *
      * This utility function handles the clean destruction of a VkBuffer object and its
      * associated VMA allocation. It performs safety checks to ensure valid resources
      * before attempting destruction.
-     * 
+     *
      * @param buffer The VkBuffer handle to destroy
      * @param allocation The VmaAllocation associated with the buffer to free
      */
@@ -80,7 +80,7 @@ namespace SceneryEditorX
     /**
      * @struct BufferResource
      * @brief Resource wrapper for Vulkan buffers with memory management
-     * 
+     *
      * BufferResource encapsulates a Vulkan buffer handle and its associated memory allocation.
      * It inherits from Resource to integrate with the engine's resource management system
      * and provides automatic cleanup through the destructor.
@@ -89,21 +89,21 @@ namespace SceneryEditorX
     {
         /**
          * @brief Vulkan buffer handle
-         * 
+         *
          * The underlying VkBuffer object used by the graphics API
          */
         VkBuffer buffer = VK_NULL_HANDLE;
 
         /**
          * @brief VMA memory allocation associated with this buffer
-         * 
+         *
          * Managed by the Vulkan Memory Allocator (VMA) library
          */
         VmaAllocation allocation;
 
         /**
          * @brief Native Vulkan device memory handle
-         * 
+         *
          * Direct reference to the underlying VkDeviceMemory, typically managed by VMA
          */
         VkDeviceMemory memory = VK_NULL_HANDLE;
@@ -124,10 +124,10 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Provides descriptor information for the buffer resource
-		 * 
+		 *
 		 * This method returns a ResourceDescriptorInfo that contains the necessary
 		 * information for binding this buffer resource in a Vulkan pipeline.
-		 * 
+		 *
 		 * @return ResourceDescriptorInfo Opaque pointer containing resource-specific
 		 *         descriptor information. The actual type and content depend on the
 		 *         specific resource implementation (e.g., VkDescriptorBufferInfo).
@@ -136,7 +136,7 @@ namespace SceneryEditorX
         {
             /// Provide a valid descriptor info for the buffer
             return nullptr;
-        }  
+        }
 
     };
 
@@ -145,7 +145,7 @@ namespace SceneryEditorX
     /**
 	 * @struct Buffer
 	 * @brief Represents a Vulkan buffer with memory management and utility functions
-	 * 
+	 *
 	 * The Buffer struct encapsulates a Vulkan buffer resource, providing methods for
 	 * allocation, copying, reading, writing, and zero-initialization. It also includes
 	 * utility functions for buffer management and data manipulation.
@@ -222,7 +222,7 @@ namespace SceneryEditorX
 			memcpy(buffer, static_cast<byte *>(data) + offset, size);
 			return buffer;
 		}
-				
+
 		void Write(const void* data, const uint64_t size, const uint64_t offset = 0) const
         {
 			SEDX_CORE_ASSERT(offset + size <= this->size, "Buffer overflow!");
@@ -252,62 +252,78 @@ namespace SceneryEditorX
 
         [[nodiscard]] uint64_t GetSize() const { return size; }
     };
-	 
+
 	/// -------------------------------------------------------
 
     /**
      * @brief Begins a single-use command buffer for immediate execution
-     * 
+     *
      * @return VkCommandBuffer A command buffer ready to record commands
-     * 
+     *
      * This function allocates a command buffer from a command pool and begins recording.
      * It's designed for operations that need to be executed immediately and only once,
      * such as resource transfers or one-time initialization tasks.
-     * 
+     *
      * The command buffer must be ended and submitted using EndSingleTimeCommands()
      * after recording the desired commands.
-     * 
+     *
      * @see EndSingleTimeCommands() to complete the execution
      */
     VkCommandBuffer BeginCommands();
 
     /**
      * @brief Creates a Vulkan buffer with specified parameters
-     * 
+     *
      * @param size Size of the buffer in bytes
      * @param usage Flags specifying how the buffer will be used (vertex, index, uniform, etc.)
      * @param memory Memory type flags indicating where the buffer should be allocated (GPU, CPU, etc.)
      * @param name Optional debug name for the buffer resource
      * @return Buffer A buffer object containing the Vulkan buffer handle and allocation information
-     * 
+     *
      * This function creates a Vulkan buffer with the specified size and usage flags,
      * allocating it in the appropriate memory type based on the memory parameter.
      * It abstracts away the details of buffer creation and memory allocation in Vulkan.
      */
     Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory = MemoryType::GPU, const std::string& name = "");
-    
+
     /**
      * @brief Copies data between two Vulkan buffers
-     * 
+     *
      * @param srcBuffer Source buffer to copy from
      * @param dstBuffer Destination buffer to copy to
      * @param size Number of bytes to copy
-     * 
+     *
      * This function performs a buffer-to-buffer copy operation through a command buffer,
      * typically used to transfer data from a staging buffer to a device-local buffer.
      * The operation is completed synchronously by creating, executing and destroying
      * a single-use command buffer.
      */
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    
+
+    /**
+     * @brief Copies data between two Vulkan buffers with offset support
+     *
+     * @param srcBuffer Source buffer to copy from
+     * @param dstBuffer Destination buffer to copy to
+     * @param size Number of bytes to copy
+     * @param srcOffset Offset in the source buffer (in bytes)
+     * @param dstOffset Offset in the destination buffer (in bytes)
+     *
+     * This enhanced version of CopyBuffer supports specifying offsets for both
+     * source and destination buffers, enabling partial buffer copies and updates.
+     * This is essential for dynamic vertex buffers that need partial updates.
+     */
+    void CopyBufferRegion(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
+                         VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0);
+
     /**
      * @brief Copies buffer data to an image
-     * 
+     *
      * @param buffer Source buffer containing image data
      * @param image Destination image to copy data to
      * @param width Width of the image in pixels
      * @param height Height of the image in pixels
-     * 
+     *
      * This function transfers data from a buffer to an image, typically used when
      * loading texture data. It handles the necessary image layout transitions and
      * submits a copy command to the graphics queue. The image should be in the
@@ -317,21 +333,21 @@ namespace SceneryEditorX
 
 	/**
      * @brief Maps a Vulkan buffer to host-accessible memory
-     * 
+     *
      * @param buffer The buffer to map to CPU-accessible memory
      * @return void* A pointer to the mapped memory region
-     * 
+     *
      * This function maps the specified Vulkan buffer to memory that can be
      * accessed by the CPU. It allows direct reading from or writing to the buffer
      * from the host application.
-     * 
+     *
      * The buffer must have been created with appropriate memory flags that
      * support host access (e.g., MemoryType::CPU_VISIBLE). The function returns
      * a pointer to the mapped memory region which can be used for data transfer.
-     * 
+     *
      * @note The caller is responsible for ensuring proper synchronization when
      * accessing the mapped memory. The memory should be unmapped when no longer needed.
-     * 
+     *
      * @see UnmapBuffer() to unmap the memory when operations are complete
      */
     void* MapBuffer(BufferResource &buffer);

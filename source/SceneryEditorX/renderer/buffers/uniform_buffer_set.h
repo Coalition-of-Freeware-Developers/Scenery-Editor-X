@@ -18,8 +18,7 @@
 
 namespace SceneryEditorX
 {
-	
-	/*
+
 	class UniformBufferSet : public RefCounted
     {
 	public:
@@ -64,7 +63,6 @@ namespace SceneryEditorX
         std::map<uint32_t, Ref<UniformBuffer>> m_UniformBuffers;
 
     };
-    */
 
 }
 

@@ -591,6 +591,15 @@ namespace SceneryEditorX
 
     };
 
+
+    /// -------------------------------------------------------
+
+    /*
+    struct RenderConfig
+    {
+        
+    };*/
+
     /// -------------------------------------------------------
 
     /// Taken from the Vulkan 3D Graphics Cookbook Second Edition.

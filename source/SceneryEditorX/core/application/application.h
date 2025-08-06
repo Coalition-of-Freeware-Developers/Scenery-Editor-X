@@ -42,7 +42,6 @@ namespace SceneryEditorX
             float RenderThreadWaitTime = 0.0f;
             float RenderThreadGPUWaitTime = 0.0f;
             float ScriptUpdate = 0.0f;
-            //float PhysicsStepTime = 0.0f;
         };
 
         /// -------------------------------------------------------

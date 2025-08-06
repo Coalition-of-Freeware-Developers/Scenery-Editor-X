@@ -10,11 +10,6 @@
 * Created: 25/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/backends/imgui_impl_glfw.h>
-#include <imgui/backends/imgui_impl_vulkan.h>
-#include <imgui/imconfig.h>
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/render_context.h>
@@ -22,6 +17,11 @@
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <imgui/imconfig.h>
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
 
 /// -------------------------------------------------------
 

@@ -102,6 +102,8 @@ ADD_LIBRARY(AppCore
 	# --------------------------------
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
+	renderer/camera.cpp
+	renderer/camera.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
 	renderer/compute_pass.h
@@ -131,10 +133,16 @@ ADD_LIBRARY(AppCore
 	ui/ui.h
 	ui/ui_context.cpp
 	ui/ui_context.h
+	ui/ui_fonts.cpp
+	ui/ui_fonts.h
 	ui/ui_globals.cpp
+	ui/ui_icons.h
+	ui/ui_manager.cpp
 	ui/ui_manager.h
 	ui/ui_renderer.cpp
 	ui/ui_renderer.h
+	ui/ui_utils.cpp
+	ui/ui_utils.h
     # --------------------------------
 	utils/container_utils.h
 	utils/delegations.h
@@ -240,6 +248,8 @@ SOURCE_GROUP("Project" FILES
 SOURCE_GROUP("Renderer" FILES
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
+	renderer/camera.cpp
+	renderer/camera.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
 	renderer/compute_pass.cpp
@@ -301,10 +311,16 @@ SOURCE_GROUP("UI" FILES
 	ui/ui.h
 	ui/ui_context.cpp
 	ui/ui_context.h
+	ui/ui_fonts.cpp
+	ui/ui_fonts.h
 	ui/ui_globals.cpp
+	ui/ui_icons.h
+	ui/ui_manager.cpp
 	ui/ui_manager.h
 	ui/ui_renderer.cpp
 	ui/ui_renderer.h
+	ui/ui_utils.cpp
+	ui/ui_utils.h
 )
 SOURCE_GROUP("UI/Panels" FILES
 	${UI_PANELS}

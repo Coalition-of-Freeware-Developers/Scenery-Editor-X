@@ -17,6 +17,9 @@
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
+#include <SceneryEditorX/core/events/key_events.h>
+#include <SceneryEditorX/core/events/mouse_events.h>
+#include <SceneryEditorX/platform/settings/user_settings.h>
 
 /// ---------------------------------------------------------
 
@@ -36,6 +39,145 @@ namespace SceneryEditorX
 	 * UI system, asset management, and viewport rendering. It handles initialization,
 	 * main loop execution, frame rendering, and resource management.
 	 */
+
+    class Editor : public Module
+    {
+    public:
+        Editor(const Ref<UserPreferences> &userPreferences);
+        virtual ~Editor() override;
+        virtual void OnAttach() override;
+        virtual void OnDetach() override;
+        virtual void OnUpdate(DeltaTime dt) override;
+
+        virtual void OnUIRender() override;
+        virtual void OnEvent(Event &event) override;
+
+        bool OnKeyPressedEvent(KeyPressedEvent& e);
+		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
+
+		void OpenProject();
+		void OpenProject(const std::filesystem::path& filepath);
+
+        void CreateProject(const std::filesystem::path &projectPath);
+		void EmptyProject();
+		void UpdateCurrentProject();
+		void SaveProject();
+		void CloseProject(bool unloadProject = true);
+		void NewScene(const std::string& name = "UntitledAirport");
+		bool OpenScene();
+		bool OpenScene(const std::filesystem::path& filepath, const bool checkAutoSave = true);
+		void SaveScene();
+		void SaveSceneAuto();
+		void SaveSceneAs();
+
+        //void OnCreateMeshFromMeshSource(Entity entity, Ref<MeshSource> meshSource);
+        //void SceneHierarchyInvalidMetadataCallback(Entity entity, AssetHandle handle);
+        //void SceneHierarchySetEditorCameraTransform(Entity entity);
+    private:
+        //friend class Viewport;
+
+        void UpdateWindowTitle(const std::string &sceneName);
+        void UI_DrawMenubar();
+        /// Returns titlebar height
+        float UI_DrawTitlebar();
+        void UI_HandleManualWindowResize();
+        bool UI_TitleBarHitTest(int x, int y) const;
+
+        /// Popups
+        void UI_ShowNewProjectPopup();
+        void UI_ShowLoadAutoSavePopup();
+        void UI_ShowCreateAssetsFromMeshSourcePopup();
+        void UI_ShowInvalidAssetMetadataPopup();
+        void UI_ShowNoMeshPopup();
+        void UI_ShowNoSkeletonPopup();
+        void UI_ShowNoAnimationPopup();
+        void UI_ShowNewScenePopup();
+        void UI_ShowWelcomePopup();
+        void UI_ShowAboutPopup();
+
+        void UI_BuildAssetPackDialog();
+
+        /// Viewports
+        Ref<Viewport> GetMainViewport();
+        void SetMainViewport(const std::string &viewportName);
+
+        /// Statistics Panel Rendering
+        void UI_StatisticsPanel();
+
+        float GetSnapValue();
+
+        //void DeleteEntity(Entity entity);
+
+        void QueueSceneTransition(AssetHandle scene);
+
+        void BuildProjectData();
+        void BuildShaderPack();
+        void BuildSoundBank();
+        void BuildAssetPack();
+        void BuildAll();
+        void RegenerateProjectScriptSolution(const std::filesystem::path &projectPath);
+        void ReloadCSharp();
+        void FocusLogPanel();
+
+        Ref<UserPreferences> m_UserPreferences;
+
+        //Scope<PanelManager> m_PanelManager;
+        //Ref<EditorConsolePanel> m_ConsolePanel;
+        bool m_ShowStatisticsPanel = false;
+
+        std::vector<Ref<Viewport>> m_EditorViewports;
+
+        Ref<Scene> m_RuntimeScene, m_EditorScene, m_SimulationScene, m_CurrentScene;
+        std::string m_SceneFilePath;
+
+        float m_AssetUpdatePerf = 0.0f;
+
+        bool m_TitleBarHovered = false;
+        uint32_t m_TitleBarTargetColor;
+        uint32_t m_TitleBarActiveColor;
+        uint32_t m_TitleBarPreviousColor;
+        bool m_AnimateTitleBarColor = true;
+
+        int m_GizmoType = -1; /// -1 = no gizmo
+        bool m_GizmoWorldOrientation = true;
+
+        /// ImGui Tools
+        bool m_ShowMetricsTool = false;
+        bool m_ShowStackTool = false;
+        bool m_ShowStyleEditor = false;
+
+        bool m_EditorCameraInRuntime = false;
+
+        std::atomic_bool m_ShouldReloadCSharp = false;
+
+        struct LoadAutoSavePopupData
+        {
+            std::string FilePath;
+            std::string FilePathAuto;
+        } m_LoadAutoSavePopupData;
+		
+		float m_TimeSinceLastSave = 0.0f; /// time (in seconds) since scene was last saved.  Counts up only when scene is in Edit mode. If exceeds 300s then scene is automatically saved
+
+		float m_RequiredProjectVersion = 0.0f;
+		bool m_ProjectUpdateNeeded = false;
+		bool m_ShowProjectUpdatedPopup = false;
+
+		std::thread m_AssetPackThread;
+		//std::future<Ref<AssetPack>> m_AssetPackFuture;
+		std::atomic<float> m_AssetPackBuildProgress = 0.0f;
+		std::string m_AssetPackBuildMessage;
+		bool m_BuildAllInProgress = false;
+		bool m_AssetPackBuiltOK = false;
+		
+#ifdef SEDX_PLATFORM_WINDOWS
+		using WatcherString = std::wstring;
+#else
+		using WatcherString = std::string;
+#endif
+		//std::unique_ptr<filewatch::FileWatch<WatcherString>> m_ScriptFileWatcher = nullptr;
+    };
+
+
 	class EditorApplication
 	{
 	public:
@@ -91,7 +233,12 @@ namespace SceneryEditorX
          *
          * @return A reference to the Window object managed by the graphics engine.
          */
-        //Ref<Window> GetWindow() { return GraphicsEngine::GetContext(). GetWindow(); }
+        /*
+        Ref<Window> GetWindow()
+        {
+            return GraphicsEngine::GetWindowContext();
+        }
+        */
 
 
 	private:

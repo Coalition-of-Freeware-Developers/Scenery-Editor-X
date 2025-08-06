@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -17,48 +17,41 @@
 namespace SceneryEditorX
 {
 
-	/*
-	Pipeline::Pipeline()
-	{
-		//SEDX_CORE_ASSERT()
-        Create();
-	}
-	*/
-
     /*
+    Pipeline::Pipeline(PipelineData &data)
+    {
+    }
+
     Pipeline::~Pipeline()
     {
-        /*
-        if (device)
+        if (VkDevice device = RenderContext::GetCurrentDevice()->GetDevice())
         {
-            if (pipeline != VK_NULL_HANDLE)
+            if (pipeline != nullptr)
             {
-                vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
-                pipeline = VK_NULL_HANDLE;
+                vkDestroyPipeline(device, pipeline, nullptr);
+                pipeline = nullptr;
             }
 
-            if (pipelineLayout != VK_NULL_HANDLE)
+            if (pipelineLayout != nullptr)
             {
-                vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
-                pipelineLayout = VK_NULL_HANDLE;
+                vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+                pipelineLayout = nullptr;
             }
 
-            if (pipelineCache != VK_NULL_HANDLE)
+            if (pipelineCache != nullptr)
             {
-                vkDestroyPipelineCache(device->GetDevice(), pipelineCache, nullptr);
-                pipelineCache = VK_NULL_HANDLE;
+                vkDestroyPipelineCache(device, pipelineCache, nullptr);
+                pipelineCache = nullptr;
             }
         }
-        #1#
+
 
         const auto device = RenderContext::GetCurrentDevice()->GetDevice();
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineCache(device, pipelineCache, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     }
-    */
 
-    /*
     void Pipeline::Create()
 	{
         Pipeline &pipeline = *this; /// Reference to the current pipeline instance
@@ -166,22 +159,14 @@ namespace SceneryEditorX
                 attributeDescs[i].location = i;
                 attributeDescs[i].format = (VkFormat)vertexAttributes[i];
                 attributeDescs[i].offset = attributeSize;
-                if (vertexAttributes[i] == VkFormat::RG32_sfloat)
-                {
+                if (vertexAttributes[i] == VkFormat::VK_FORMAT_R32G32_SFLOAT)
                     attributeSize += 2 * sizeof(float);
-                }
-                else if (vertexAttributes[i] == VkFormat::RGB32_sfloat)
-                {
+                else if (vertexAttributes[i] == VkFormat::VK_FORMAT_R32G32_SFLOAT)
                     attributeSize += 3 * sizeof(float);
-                }
-                else if (vertexAttributes[i] == VkFormat::RGBA32_sfloat)
-                {
+                else if (vertexAttributes[i] == VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT)
                     attributeSize += 4 * sizeof(float);
-                }
                 else
-                {
                     SEDX_ASSERT(false, "Invalid Vertex Attribute");
-                }
             }
 
             VkVertexInputBindingDescription bindingDescription{};
@@ -269,22 +254,22 @@ namespace SceneryEditorX
             pipelineInfo.pColorBlendState = &colorBlendState;
             pipelineInfo.pDynamicState = &dynamicCreate;
             pipelineInfo.layout = pipeline.resource->layout;
-            pipelineInfo.renderPass = VK_NULL_HANDLE;
+            pipelineInfo.renderPass = nullptr;
             /// pipelineInfo.renderPass = SwapChain::GetRenderPass();
             pipelineInfo.subpass = 0;
             /// if we were creating this pipeline by deriving it from another we should specify here
-            pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+            pipelineInfo.basePipelineHandle = nullptr;
             pipelineInfo.basePipelineIndex = -1;
             pipelineInfo.pNext = &pipelineRendering;
 
-            result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, ctx->allocatorCallback, &pipeline.resource->pipeline);
+            result = vkCreateGraphicsPipelines(device, nullptr, 1, &pipelineInfo, ctx->allocatorCallback, &pipeline.resource->pipeline);
             SEDX_ASSERT(result, "Failed to create graphics pipeline!");
         }
 
         for (auto &shaderModule : shaderModules)
             vkDestroyShaderModule(device, shaderModule, ctx->allocatorCallback);
 
-        /*{
+        {
 
             std::string shaderPath(config.shaderFolder);
 
@@ -428,11 +413,10 @@ namespace SceneryEditorX
             /// Set up descriptor set layouts
             std::vector<VkDescriptorSetLayout> layouts;
 
-            /*
+
         /// Get the bindless descriptor set layout from the device
         if (device->GetBindlessResources().bindlessDescriptorSetLayout != VK_NULL_HANDLE)
             layouts.push_back(device->GetBindlessResources().bindlessDescriptorSetLayout);
-        #2#
 
             /// Create the graphics pipeline layout
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -441,7 +425,7 @@ namespace SceneryEditorX
             pipelineLayoutInfo.pSetLayouts = layouts.empty() ? nullptr : layouts.data();
 
             /// Create the pipeline layout
-            if (vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+            if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
                 SEDX_CORE_ERROR_TAG("Graphics Pipeline", "Failed to create pipeline layout!");
 
             /// Get the render pass from the swap chain
@@ -465,22 +449,22 @@ namespace SceneryEditorX
             pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
             /// Create the graphics pipeline
-            if (vkCreateGraphicsPipelines(device->GetDevice(), pipelineCache, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+            if (vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineInfo, nullptr, &pipeline.pipeline) != VK_SUCCESS)
                 SEDX_CORE_ERROR("Failed to create graphics pipeline!");
 
             /// Clean up shader modules
             shaderPtr.Reset();
             //vkDestroyShaderModule(device->GetDevice(), fragShaderModule, nullptr);
             //vkDestroyShaderModule(device->GetDevice(), vertShaderModule, nullptr);
-        }#1#
+        }
 	}
-	*/
 
     // Changed to utilize Shader class for shader module creation
+
     /*
     /// Helper function to create a shader module from shader code
     VkShaderModule Pipeline::CreateShaderModule(VkDevice device, const std::vector<char>& code)
-{
+    {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
@@ -495,26 +479,23 @@ namespace SceneryEditorX
         
         return shaderModule;
     }
-    */
+    #1#
 
     /// -------------------------------------------------------
 
-    /*
     VkExtent2D Pipeline::GetFloatSwapExtent() const
     {
         auto extent = vkSwapChain->GetSwapExtent();
         return extent;
     }
+
+	bool Pipeline::DynamicLineWidth() const
+    {
+        return pipelineSpecs.topology == Topology::Lines ||
+               pipelineSpecs.topology == Topology::LineStrip || pipelineSpecs.wireframe;
+    }
     */
 
-    /*
-	bool Pipeline::dynamicLineWidth() const
-    {
-        return m_Specification.Topology == PrimitiveTopology::Lines ||
-               m_Specification.Topology == PrimitiveTopology::LineStrip || m_Specification.Wireframe;
-    }
-	*/
-
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

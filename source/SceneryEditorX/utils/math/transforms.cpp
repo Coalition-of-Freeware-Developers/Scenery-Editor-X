@@ -42,7 +42,7 @@ namespace SceneryEditorX::Utils
 	    Vec3 scale{1.f, 1.f, 1.f};
 
 	    /** @brief The rotation of the object as a quaternion, defaults to identity (no rotation) */
-        Quat rotation{};
+        glm::quat rotation{};
 
 	    /**
 	     * @brief Generates a 4x4 transformation matrix from the component's values.
@@ -139,9 +139,89 @@ namespace SceneryEditorX::Utils
      * @note This function uses GLM's decompose functionality for robust matrix decomposition.
      * @warning The input matrix should not contain perspective or skew transformations.
      */
-    bool DecomposeTransform(const Mat4& transform, Vec3& translation, Quat& rotation, Vec3& scale)
+    bool DecomposeTransform(const Mat4 &transform, Vec3 &translation, glm::quat &rotation, Vec3 &scale)
     {
-        // Use GLM's built-in decompose function for robust decomposition
+        using T = float;
+        Mat4 LocalMatrix(transform);
+
+        if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+            return false;
+
+        /// Assume matrix is already normalized
+        SEDX_CORE_ASSERT(glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(1), static_cast<T>(0.00001)));
+
+	    /// Ignore perspective
+        SEDX_CORE_ASSERT(glm::epsilonEqual(LocalMatrix[0][3], static_cast<T>(0),
+			glm::epsilon<T>()) && glm::epsilonEqual(LocalMatrix[1][3], static_cast<T>(0),
+			glm::epsilon<T>()) && glm::epsilonEqual(LocalMatrix[2][3], static_cast<T>(0),
+			glm::epsilon<T>()));
+
+        /// perspectiveMatrix is used to solve for perspective, but it also provides
+        /// an easy way to test for singularity of the upper 3x3 component.
+
+	    /// Next take care of translation (easy).
+        translation = Vec3(LocalMatrix[3]);
+        LocalMatrix[3] = Vec4(0, 0, 0, LocalMatrix[3].w);
+
+        Vec3 Row[3];
+
+		/// Get scale and shear.
+		for (glm::length_t i = 0; i < 3; ++i)
+			for (glm::length_t j = 0; j < 3; ++j)
+				Row[i][j] = LocalMatrix[i][j];
+
+		/// Compute X scale factor and normalize first row.
+		scale.x = length(Row[0]);
+		Row[0] = Scale(Row[0], static_cast<T>(1));
+
+		/// Compute Y scale and normalize 2nd row.
+		scale.y = length(Row[1]);
+		Row[1] = Scale(Row[1], static_cast<T>(1));
+
+		/// Get Z scale and normalize 3rd row.
+		scale.z = length(Row[2]);
+		Row[2] = Scale(Row[2], static_cast<T>(1));
+
+#if _DEBUG
+		/// At this point, the matrix (in rows[]) is orthonormal.
+		/// Check for a coordinate system flip.  If the determinant
+		/// is -1, then negate the matrix and the scaling factors.
+		Vec3 Pdum3 = cross(Row[1], Row[2]);
+		SEDX_CORE_ASSERT(dot(Row[0], Pdum3) >= static_cast<T>(0));
+#endif
+
+        T root;
+		if (T trace = Row[0].x + Row[1].y + Row[2].z; trace > static_cast<T>(0))
+		{
+			root = sqrt(trace + static_cast<T>(1));
+			rotation.w = static_cast<T>(0.5) * root;
+			root = static_cast<T>(0.5) / root;
+			rotation.x = root * (Row[1].z - Row[2].y);
+			rotation.y = root * (Row[2].x - Row[0].z);
+			rotation.z = root * (Row[0].y - Row[1].x);
+		} /// End if > 0
+		else
+		{
+			static int Next[3] = { 1, 2, 0 };
+			int i = 0;
+			if (Row[1].y > Row[0].x) i = 1;
+			if (Row[2].z > Row[i][i]) i = 2;
+			int j = Next[i];
+			int k = Next[j];
+
+			root = sqrt(Row[i][i] - Row[j][j] - Row[k][k] + static_cast<T>(1.0));
+
+			rotation[i] = static_cast<T>(0.5) * root;
+			root = static_cast<T>(0.5) / root;
+			rotation[j] = root * (Row[i][j] + Row[j][i]);
+			rotation[k] = root * (Row[i][k] + Row[k][i]);
+			rotation.w = root * (Row[j][k] - Row[k][j]);
+		} /// End if <= 0
+
+		return true;
+
+        /*
+        /// Use GLM's built-in decompose function for robust decomposition
         Vec3 skew;
         Vec4 perspective;
         glm::quat glmRotation;
@@ -149,12 +229,10 @@ namespace SceneryEditorX::Utils
         bool success = glm::decompose(transform, scale, glmRotation, translation, skew, perspective);
 
         if (success)
-        {
-            // Convert GLM quaternion to our Quat type
-            rotation = Quat(glmRotation.w, glmRotation.x, glmRotation.y, glmRotation.z);
-        }
+            rotation = glm::quat(glmRotation.w, glmRotation.x, glmRotation.y, glmRotation.z);	/// Convert GLM quaternion to our Quat type
 
         return success;
+        */
     }
 
     /// -------------------------------------------------------
@@ -178,7 +256,7 @@ namespace SceneryEditorX::Utils
 	 * @note The transformation order is: Scale → Rotation → Translation.
 	 * @note This function uses GLM's matrix transformation functions for accuracy and performance.
 	 */
-    Mat4 ComposeTransform(const Vec3& translation, const Quat& rotation, const Vec3& scale)
+    Mat4 ComposeTransform(const Vec3& translation, const glm::quat& rotation, const Vec3& scale)
 	{
 		// Create GLM quaternion from our Quat type
 		glm::quat glmRotation(rotation.w, rotation.x, rotation.y, rotation.z);

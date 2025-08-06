@@ -13,7 +13,6 @@
 #pragma once
 #include <atomic>
 #include <cstdint>
-#include <glm/glm.hpp>
 #include <iosfwd>
 #include <SceneryEditorX/platform/system_detection.h>
 #include <sstream>

@@ -10,12 +10,14 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/imgui.h>
+#include <Editor/ui/ui_manager.h>
 #include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/ui/ui_manager.h>
+#include <imgui/imgui.h>
 
 /// -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
 	void UIManager::LayerStack()
     {
@@ -34,7 +36,7 @@ namespace UI
 		ImGui::End();
     }
 
-} // namespace UI
+}
 
 /// -------------------------------------------------------
 

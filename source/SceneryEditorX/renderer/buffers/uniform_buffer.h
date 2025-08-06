@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -134,10 +134,7 @@ namespace SceneryEditorX
          *
          * @return size_t The number of uniform buffers
          */
-        [[nodiscard]] size_t GetBufferCount() const
-        {
-            return uniformBuffers.size();
-        }
+        [[nodiscard]] size_t GetBufferCount() const { return uniformBuffers.size(); }
 
     private:
         uint32_t name = 0;									///< Unique identifier for the uniform buffer instance

@@ -209,6 +209,11 @@ namespace SceneryEditorX::Utils
         ~Math() = delete;
 
 		/**
+		 * @brief Decomposes a transformation matrix into translation, rotation, and scale components
+		 */
+        void DecomposeTransform(const Mat4 mat, Vec3 vec, glm::quat qua, Vec3 vec3);
+
+        /**
 		 * @brief Mathematical constant Pi (π)
 		 *
 		 * High-precision value of π for mathematical calculations.
@@ -271,10 +276,7 @@ namespace SceneryEditorX::Utils
          * @param b Second value
          * @return true if values are approximately equal
          */
-        static bool ApproxEquals(const float a, const float b)
-        {
-            return fpclassify(a - b) == FP_ZERO;
-        }
+        static bool ApproxEquals(const float a, const float b) { return fpclassify(a - b) == FP_ZERO; }
 
         /**
          * @brief Tests if two double values are approximately equal
@@ -283,10 +285,7 @@ namespace SceneryEditorX::Utils
          * @param b Second value
          * @return true if values are approximately equal
          */
-    	static bool ApproxEquals(const double a, const double b)
-        {
-            return fpclassify(a - b) == FP_ZERO;
-        }
+    	static bool ApproxEquals(const double a, const double b) { return fpclassify(a - b) == FP_ZERO; }
 
     	/**
     	 * @brief Tests if two integer values are equal
@@ -295,10 +294,7 @@ namespace SceneryEditorX::Utils
     	 * @param b Second value
     	 * @return true if values are exactly equal
     	 */
-    	static bool ApproxEquals(const int32_t a, const int32_t b)
-        {
-            return a == b;
-        }
+    	static bool ApproxEquals(const int32_t a, const int32_t b) { return a == b; }
 
 		/// TODO: Implement infinity operations later
     	//static constexpr float Infinity() { return NumericLimits<float>::Infinity(); }
@@ -339,10 +335,7 @@ namespace SceneryEditorX::Utils
          * @param radians Angle in radians
          * @return Sine value [-1.0, 1.0]
          */
-        static float Sin(const float radians)
-        {
-            return sin(radians);
-        }
+        static float Sin(const float radians) { return sin(radians); }
 
         /**
          * @brief Calculates arcsine (inverse sine) of a value
@@ -352,10 +345,7 @@ namespace SceneryEditorX::Utils
          *
          * @warning Input must be in range [-1.0, 1.0] or result is undefined
          */
-        static float ASin(const float sine)
-        {
-            return asin(sine);
-        }
+        static float ASin(const float sine) { return asin(sine); }
 
         /**
          * @brief Calculates cosine of an angle
@@ -363,10 +353,7 @@ namespace SceneryEditorX::Utils
          * @param radians Angle in radians
          * @return Cosine value [-1.0, 1.0]
          */
-        static float Cos(const float radians)
-        {
-            return cos(radians);
-        }
+        static float Cos(const float radians) { return cos(radians); }
 
         /**
          * @brief Calculates arccosine (inverse cosine) of a value
@@ -376,10 +363,7 @@ namespace SceneryEditorX::Utils
          *
          * @warning Input must be in range [-1.0, 1.0] or result is undefined
          */
-        static float ACos(const float cosine)
-        {
-            return acos(cosine);
-        }
+        static float ACos(const float cosine) { return acos(cosine); }
 
         /**
          * @brief Calculates tangent of an angle
@@ -389,10 +373,7 @@ namespace SceneryEditorX::Utils
          *
          * @warning Result is undefined for angles where cosine = 0 (e.g., π/2, 3π/2)
          */
-        static float Tan(const float radians)
-        {
-            return tan(radians);
-        }
+        static float Tan(const float radians) { return tan(radians); }
 
         /**
          * @brief Calculates arctangent (inverse tangent) of a value
@@ -400,10 +381,7 @@ namespace SceneryEditorX::Utils
          * @param tangent Tangent value
          * @return Angle in radians [-π/2, π/2]
          */
-        static float ATan(const float tangent)
-        {
-            return atan(tangent);
-        }
+        static float ATan(const float tangent) { return atan(tangent); }
 		
 	    ///////////////////////////////////////////////////////////
         ///				 Absolute Value Functions				///
@@ -415,10 +393,7 @@ namespace SceneryEditorX::Utils
          * @param value Input value
          * @return Non-negative absolute value
          */
-        static float Abs(const float value)
-        {
-            return abs(value);
-        }
+        static float Abs(const float value) { return abs(value); }
 
         /**
          * @brief Calculates absolute value of a double
@@ -426,10 +401,7 @@ namespace SceneryEditorX::Utils
          * @param value Input value
          * @return Non-negative absolute value
          */
-        static double Abs(const double value)
-        {
-            return abs(value);
-        }
+        static double Abs(const double value) { return abs(value); }
 
         /**
          * @brief Calculates absolute value of a 32-bit integer
@@ -437,10 +409,7 @@ namespace SceneryEditorX::Utils
          * @param value Input value
          * @return Non-negative absolute value
          */
-        static int32_t Abs(const int32_t value)
-        {
-            return abs(value);
-        }
+        static int32_t Abs(const int32_t value) { return abs(value); }
 
         /**
          * @brief Calculates absolute value of a 64-bit integer
@@ -448,10 +417,7 @@ namespace SceneryEditorX::Utils
          * @param value Input value
          * @return Non-negative absolute value
          */
-        static int64_t Abs(const int64_t value)
-        {
-            return abs(value);
-        }
+        static int64_t Abs(const int64_t value) { return abs(value); }
 
 	    ///////////////////////////////////////////////////////////
         ///				 Root and Power Functions				///
@@ -465,10 +431,7 @@ namespace SceneryEditorX::Utils
          *
          * @warning Input must be non-negative or result is undefined
          */
-        static float Sqrt(const float value)
-        {
-            return sqrt(value);
-        }
+        static float Sqrt(const float value) { return sqrt(value); }
 
         /**
          * @brief Calculates power of a base raised to an exponent
@@ -546,10 +509,7 @@ namespace SceneryEditorX::Utils
          * @param value Float value to round
          * @return Rounded float value
          */
-    	static float Round(const float value)
-        {
-            return std::round(value);
-        }
+    	static float Round(const float value) { return std::round(value); }
 
     	/**
     	 * @brief Rounds a double to the nearest integer value
@@ -557,10 +517,7 @@ namespace SceneryEditorX::Utils
     	 * @param value Double value to round
     	 * @return Rounded double value
     	 */
-    	static double Round(const double value)
-        {
-            return std::round(value);
-        }
+    	static double Round(const double value) { return std::round(value); }
 
     	/**
     	 * @brief Rounds a float to the nearest 32-bit integer
@@ -568,10 +525,7 @@ namespace SceneryEditorX::Utils
     	 * @param value Float value to round
     	 * @return Rounded 32-bit integer
     	 */
-    	static int32_t RoundToInt(const float value)
-        {
-            return std::lround(value);
-        }
+    	static int32_t RoundToInt(const float value) { return std::lround(value); }
 
     	/**
     	 * @brief Rounds a float to the nearest 64-bit integer
@@ -579,10 +533,7 @@ namespace SceneryEditorX::Utils
     	 * @param value Float value to round
     	 * @return Rounded 64-bit integer
     	 */
-    	static int64_t RoundToInt64(const float value)
-        {
-            return std::llround(value);
-        }
+    	static int64_t RoundToInt64(const float value) { return std::llround(value); }
 
     	/**
     	 * @brief Rounds a double to the nearest 32-bit integer
@@ -590,10 +541,7 @@ namespace SceneryEditorX::Utils
     	 * @param value Double value to round
     	 * @return Rounded 32-bit integer
     	 */
-    	static int32_t RoundToInt(const double value)
-        {
-            return std::lround(value);
-        }
+    	static int32_t RoundToInt(const double value) { return std::lround(value); }
 
     	/**
     	 * @brief Rounds a double to the nearest 64-bit integer
@@ -601,10 +549,7 @@ namespace SceneryEditorX::Utils
     	 * @param value Double value to round
     	 * @return Rounded 64-bit integer
     	 */
-    	static int64_t RoundToInt64(const double value)
-        {
-            return std::llround(value);
-        }
+    	static int64_t RoundToInt64(const double value) { return std::llround(value); }
 
 	    ///////////////////////////////////////////////////////////
         ///				 Binary Min/Max Functions				///

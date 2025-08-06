@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 
 /// --------------------------------------------
 
@@ -26,7 +26,6 @@ namespace SceneryEditorX
     UniformBuffer::UniformBuffer(uint32_t size) : size(size)
     {
         localMemAlloc = hnew uint8_t[size];
-
     }
 
     /**

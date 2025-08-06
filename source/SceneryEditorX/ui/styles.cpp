@@ -13,20 +13,20 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-// -------------------------------------------------------
+/// -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
     uint32_t GetActiveWidgetID()
     {
         return GImGui->ActiveId;
     }
 
-} // namespace UI
+}
 
 /// -------------------------------------------------------
 
-namespace Themes
+namespace SceneryEditorX::Themes
 {
 	void SetStyleDefault()
 	{

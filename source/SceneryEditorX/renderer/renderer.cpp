@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -30,7 +30,7 @@ namespace SceneryEditorX
 {
     struct RendererProperties
     {
-        //Ref<Image> BRDFLut;
+        Ref<Texture2D> BRDFLut;
         Ref<VertexBuffer> QuadVertexBuffer;
         Ref<IndexBuffer> QuadIndexBuffer;
 
@@ -54,22 +54,22 @@ namespace SceneryEditorX
 
         Ref<ShaderLibrary> m_ShaderLibrary;
 
-        //Ref<Texture2D> WhiteTexture;
-        //Ref<Texture2D> BlackTexture;
-        //Ref<Texture2D> BRDFLutTexture;
-        //Ref<Texture2D> HilbertLut;
-        //Ref<TextureCube> BlackCubeTexture;
-        //Ref<Environment> EmptyEnvironment;
+        Ref<Texture2D> WhiteTexture;
+        Ref<Texture2D> BlackTexture;
+        Ref<Texture2D> BRDFLutTexture;
+        Ref<Texture2D> HilbertLut;
+        Ref<TextureCube> BlackCubeTexture;
+        Ref<Environment> EmptyEnvironment;
 
         std::unordered_map<std::string, std::string> GlobalShaderMacros;
     };
 
     /// Static variable
+    LOCAL RenderData m_renderData;
     LOCAL RendererProperties *s_Data = nullptr;
-    LOCAL RenderData *m_renderData;
     constexpr static uint32_t s_RenderCommandQueueCount = 2;
     INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
-    static std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
+    INTERNAL std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
     INTERNAL CommandQueue resourceFreeQueue[3];
 
     /// -------------------------------------------------------
@@ -79,12 +79,14 @@ namespace SceneryEditorX
         return RenderContext::Get();
     }
 
+
     /*
-    Ref<Image> && Renderer::GetBRDFLutTexture()
+    Ref<Texture2D> && Renderer::GetBRDFLutTexture()
     {
         return s_Data->BRDFLutTexture;
     }
     */
+
 
     void Renderer::Init()
     {
@@ -170,9 +172,9 @@ namespace SceneryEditorX
 		uint32_t indices[6] = { 0, 1, 2, 2, 3, 0, };
 		s_Data->QuadIndexBuffer = IndexBuffer::Create(indices, 6 * sizeof(uint32_t));
 
-		//s_Data->BRDFLut = Renderer::GetBRDFLutTexture();
+		s_Data->BRDFLut = Renderer::GetBRDFLutTexture();
 
-        /*
+
         uint32_t whiteTextureData = 0xffffffff;
         TextureSpecification spec;
         spec.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -191,7 +193,6 @@ namespace SceneryEditorX
 
 		constexpr uint32_t blackCubeTextureData[6] = { 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000 };
         s_Data->BlackCubeTexture = CreateRef<TextureCube>(spec, Buffer(blackCubeTextureData, sizeof(blackCubeTextureData)));
-        */
 
     }
 
@@ -218,7 +219,7 @@ namespace SceneryEditorX
         delete s_Data;
 
         /// Resource release queue
-        for (uint32_t i = 0; i < m_renderData->framesInFlight; i++)
+        for (uint32_t i = 0; i < m_renderData.framesInFlight; i++)
         {
             auto &queue = GetRenderResourceReleaseQueue(i);
             queue.Execute();
@@ -296,17 +297,17 @@ namespace SceneryEditorX
 
     uint32_t Renderer::GetCurrentFrameIndex()
     {
-        return m_renderData->frameIndex;
+        return m_renderData.frameIndex;
     }
 
     RenderData &Renderer::GetRenderData()
     {
-        return *m_renderData;
+        return m_renderData;
     }
 
 	void Renderer::SetRenderData(const RenderData &renderData)
     {
-        *m_renderData = renderData;
+        m_renderData = renderData;
     }
 
     void Renderer::RenderThreadFunc(RenderThread *renderThread)
@@ -365,6 +366,7 @@ namespace SceneryEditorX
 		return sampler;
     }
 
+
     /*
     void Renderer::RenderGeometry(const Ref<CommandBuffer> &ref, const Ref<Pipeline> &pipeline, const Ref<Material> &material,
         std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> &indexBuffer, const Mat4 &transform, uint32_t indexCount)
@@ -372,6 +374,7 @@ namespace SceneryEditorX
         RenderGeometry(ref, pipeline, material, vertexBuffer, indexBuffer, transform, indexCount);
 
     }
+    */
 
     Ref<Texture2D> Renderer::GetWhiteTexture()
     {
@@ -402,14 +405,13 @@ namespace SceneryEditorX
     {
         return s_Data->EmptyEnvironment;
     }
-    */
 
     /// -------------------------------------------------------
 
 	struct ShaderDependencies
     {
         //std::vector<Ref<ComputePipeline>> ComputePipelines;
-        std::vector<Ref<Pipeline>> Pipelines;
+//        std::vector<Ref<Pipeline>> Pipelines;
         std::vector<Ref<Material>> Materials;
     };
 
@@ -492,7 +494,6 @@ namespace SceneryEditorX
         return updatedAnyShaders;
     }
     */
-
 
 }
 

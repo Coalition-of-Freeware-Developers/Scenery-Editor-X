@@ -148,7 +148,7 @@ namespace SceneryEditorX
 
 	Mat4 Node::ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent)
 	{
-		const Mat4 rotationMat = glm::toMat4(Quat(glm::radians(rot)));
+		const Mat4 rotationMat = glm::toMat4(glm::quat(glm::radians(rot)));
 		const Mat4 translationMat = glm::translate(Mat4(1.0f), pos);
 		const Mat4 scaleMat = glm::scale(scl);
 		return parent * (translationMat * rotationMat * scaleMat);

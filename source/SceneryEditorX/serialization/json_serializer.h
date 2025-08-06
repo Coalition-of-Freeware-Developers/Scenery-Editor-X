@@ -214,14 +214,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<Quat>
+	struct adl_serializer<glm::quat>
 	{
-		static void to_json(json& j, const Quat& v)
+		static void to_json(json& j, const glm::quat& v)
 		{
 			j = json::array({v.w, v.x, v.y, v.z});
 		}
 
-		static void from_json(const json& j, Quat& v)
+		static void from_json(const json& j, glm::quat& v)
 		{
 			if (j.is_array() && j.size() == 4)
 			{

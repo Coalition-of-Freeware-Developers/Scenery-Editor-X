@@ -16,7 +16,7 @@
 /// Forward declarations
 namespace SceneryEditorX
 {
-    class Quat;
+    //class Quat;
     class Matrix4x4;
 }
 
@@ -83,7 +83,7 @@ namespace SceneryEditorX::Utils
      * @code
      * Mat4 transformMatrix = GetObjectTransform();
      * Vec3 position, scale;
-     * Quat rotation;
+     * glm::quat rotation;
      *
      * if (DecomposeTransform(transformMatrix, position, rotation, scale))
      * {
@@ -93,7 +93,7 @@ namespace SceneryEditorX::Utils
      * }
      * @endcode
      */
-    bool DecomposeTransform(const Mat4 &transform, Vec3 &translation, Quat &rotation, Vec3 &scale);
+    bool DecomposeTransform(const Mat4 &transform, Vec3 &translation, glm::quat &rotation, Vec3 &scale);
 
 	/**
 	 * @brief Composes a transformation matrix from translation, rotation, and scale components.
@@ -126,14 +126,14 @@ namespace SceneryEditorX::Utils
 	 * @example
 	 * @code
 	 * Vec3 position(10.0f, 5.0f, 0.0f);           // 10 units right, 5 units up
-	 * Quat rotation = Quat::EulerDegrees(0, 45, 0); // 45 degree rotation around Y-axis
+	 * glm::quat rotation = glm::quat::EulerDegrees(0, 45, 0); // 45 degree rotation around Y-axis
 	 * Vec3 scale(2.0f, 1.0f, 2.0f);               // Twice as wide and deep, same height
 	 *
 	 * Mat4 objectTransform = ComposeTransform(position, rotation, scale);
 	 * // Use objectTransform to position and orient an object in the scene
 	 * @endcode
 	 */
-    Mat4 ComposeTransform(const Vec3 &translation, const Quat &rotation, const Vec3 &scale);
+    Mat4 ComposeTransform(const Vec3 &translation, const glm::quat &rotation, const Vec3 &scale);
 
 }
 

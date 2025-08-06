@@ -10,8 +10,10 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/imgui.h>
+#include <Editor/ui/ui_manager.h>
+
 #include <SceneryEditorX/ui/ui.h>
+#include <imgui/imgui.h>
 
 /// -------------------------------------------------------
 
@@ -20,7 +22,8 @@
 /// -------------------------------------------------------
 
 /// Settings state variables
-namespace UI
+///	TODO: Replace this entire thing with the actual settings config
+namespace SceneryEditorX::UI
 {
 	/// General settings
 	static int languageIndex = 0;
@@ -51,7 +54,7 @@ namespace UI
 
 /// -------------------------------------------------------
 
-namespace UI
+namespace SceneryEditorX::UI
 {
 	void UIManager::SettingsPanel()
 	{
@@ -204,14 +207,12 @@ namespace UI
 	    }
 	    ImGui::SameLine();
 	    if (ImGui::Button("Close", ImVec2(100.0f, 0.0f)))
-	    {
-	        showSettingsPanel = false;
-	    }
-	
-	    ImGui::End();
+            showSettingsPanel = false;
+
+        ImGui::End();
 	}
 
 
-} // namespace UI
+}
 
 /// -------------------------------------------------------

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -63,10 +63,8 @@ namespace SceneryEditorX
         MemoryAllocator::UnmapMemory(stagingBufferAllocation);
 
         ///TODO: Add back the UUID when fully implemented.
-        CreateBuffer(bufferSize,
-                     BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage,
-                     MemoryType::GPU,
-                     "IndexBuffer#" /*+ std::to_string(asset->uuid)*/);
+        CreateBuffer(bufferSize, BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage,
+			MemoryType::GPU,"IndexBuffer#" /*+ std::to_string(asset->uuid)*/);
 
         CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
@@ -75,7 +73,7 @@ namespace SceneryEditorX
 
     /// --------------------------------------------
 
-    IndexBuffer::IndexBuffer(void *data, uint64_t size) : indices(size)
+    IndexBuffer::IndexBuffer(const void *data, uint64_t size) : indices(size)
     {
         m_LocalData = Buffer::Copy(data, size);
 		Ref<IndexBuffer> instance(this);

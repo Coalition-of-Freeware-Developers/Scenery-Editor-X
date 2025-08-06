@@ -255,7 +255,7 @@ namespace SceneryEditorX
          * @return Matrix4x4 A 4x4 transformation matrix representing rotation around the Z-axis.
          *
          * @note This function internally creates a quaternion and converts it to a matrix.
-         * @note For multiple rotations, consider using Quat directly for better performance.
+         * @note For multiple rotations, consider using glm::quat directly for better performance.
          *
          * @example
          * @code

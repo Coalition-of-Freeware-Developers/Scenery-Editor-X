@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -195,7 +195,7 @@ namespace SceneryEditorX
                     auto &spec = depthAttachmentImage->GetSpecification();
                     spec.width = (uint32_t)(m_Width * m_Specification.scale);
                     spec.height = (uint32_t)(m_Height * m_Specification.scale);
-                    depthAttachmentImage->Invalidate_RenderThread(); // Create immediately
+                    depthAttachmentImage->Invalidate_RenderThread(); /// Create immediately
                 }
 
                 VkAttachmentDescription &attachmentDescription = attachmentDescriptions.emplace_back();
@@ -203,7 +203,7 @@ namespace SceneryEditorX
                 attachmentDescription.format = attachmentSpec.Format;
                 attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
                 attachmentDescription.loadOp = Utils::GetVkAttachmentLoadOp(m_Specification, attachmentSpec);
-                attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
+                attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE; /// TODO: if sampling, needs to be store (otherwise DONT_CARE is fine)
                 attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 attachmentDescription.initialLayout = attachmentDescription.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
@@ -211,8 +211,7 @@ namespace SceneryEditorX
                 {
                     attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;	///< TODO: if not sampling
                     attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;	///< TODO: if sampling
-                    depthAttachmentReference = {.attachment = attachmentIndex,
-                                                .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+                    depthAttachmentReference = {.attachment = attachmentIndex, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
                 }
                 else
                 {

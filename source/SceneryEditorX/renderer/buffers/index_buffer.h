@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -33,7 +33,7 @@ namespace SceneryEditorX
 
         IndexBuffer(uint64_t size);
 
-		IndexBuffer(void *data, uint64_t size = 0);
+		IndexBuffer(const void *data, uint64_t size = 0);
 
         /**
          * @brief Destructor for IndexBuffer

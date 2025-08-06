@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,7 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <cstdint>
 #include <SceneryEditorX/core/memory/memory.h>
+
+#ifndef SEDX_BYTE_DEFINED
+#define SEDX_BYTE_DEFINED
+using byte = unsigned char;
+#endif
 
 /// -------------------------------------------------------
 

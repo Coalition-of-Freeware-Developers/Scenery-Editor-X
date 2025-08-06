@@ -22,8 +22,9 @@ namespace SceneryEditorX
 
     enum CameraMode : uint8_t
 	{
-	    Orbit,
-	    Fly
+        NONE,
+	    ORBIT,
+	    FLY
 	};
 
     /// -------------------------------------------------------
@@ -42,13 +43,13 @@ namespace SceneryEditorX
         CameraNode();
         //virtual void Serialize(Serializer &ser) override;
 
-	    inline static const char* modeNames[] = { "Orbit", "Fly" };
+	    inline static const char* modeNames[] = { "ORBIT", "FLY" };
 	    inline static const char* typeNames[] = { "Perspective", "Orthographic" };
 
 		/// -------------------------------------------------------
 
 	    CameraType cameraType = CameraType::Perspective;
-	    CameraMode mode = Orbit;
+	    CameraMode mode = ORBIT;
 	
 	    Vec3 eye = Vec3(0);
 	    Vec3 center = Vec3(0);

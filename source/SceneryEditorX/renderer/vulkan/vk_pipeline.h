@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -21,6 +21,7 @@
 namespace SceneryEditorX
 {
 
+    /*
     struct PipelineResource : Resource
     {
         VkPipeline pipeline;
@@ -60,7 +61,7 @@ namespace SceneryEditorX
 		virtual const PipelineData &GetSpecification() const { return pipelineSpecs; }
         virtual void Invalidate();
 		virtual Ref<Shader> GetShader() const { return pipelineSpecs.shader; }
-        bool dynamicLineWidth() const;
+        bool DynamicLineWidth() const;
 
         struct Stage
         {
@@ -85,14 +86,15 @@ namespace SceneryEditorX
         bool lineTopology = false;
 
         PipelineData pipelineSpecs;
-        //Ref<PipelineResource> resource;
-        //std::vector<std::vector<char>> stageBytes;
+        Ref<PipelineResource> resource;
+        std::vector<std::vector<char>> stageBytes;
 
         VkPipeline pipeline = nullptr;
         VkPipelineLayout pipelineLayout = nullptr;
         VkPipelineCache pipelineCache = nullptr;
 	};
+	*/
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------
