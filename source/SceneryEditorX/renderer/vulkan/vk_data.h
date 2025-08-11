@@ -333,15 +333,17 @@ namespace SceneryEditorX
 	 * is used to configure and manage separate viewports for scene editing, allowing multiple 
 	 * views into the same scene with different perspectives or visualization modes.
 	 */
+
+    /*
     struct Viewport
     {
-        /** @brief Position of the viewport in the scene editor */
+        /** @brief Position of the viewport in the scene editor #1#
         float x = 0.0f;
         float y = 0.0f;
 
 		/**
 		 * @brief Constructor for initializing the viewport with default values
-		 */
+		 #1#
 		constexpr Viewport() = default;
         constexpr Viewport(const float _x, const float _y) : x(_x), y(_y) {}
 
@@ -349,7 +351,7 @@ namespace SceneryEditorX
 		 * @fn GetViewportPosition
 		 * @brief Retrieves the current viewport position
 		 * @return The x and y coordinates of the viewport as a float vector
-		 */
+		 #1#
 		[[nodiscard]] Viewport GetViewportPosition() const { return {x, y}; }
 
         /**
@@ -357,7 +359,7 @@ namespace SceneryEditorX
          *
 	     * @brief Retrieves the current viewport dimensions
 	     * @return The width and height of the viewport as a float vector
-	     */
+	     #1#
         [[nodiscard]] Viewport GetViewportSize() const
         {
             return {static_cast<float>(width), static_cast<float>(height)};
@@ -368,42 +370,43 @@ namespace SceneryEditorX
             return GetViewportSize();
         }
 
-        /** @brief Width of the viewport in pixels */
+        /** @brief Width of the viewport in pixels #1#
         uint32_t width = 0.0f;
 
-        /** @brief Height of the viewport in pixels */
+        /** @brief Height of the viewport in pixels #1#
         uint32_t height = 0.0f;
 
-        /** @brief Aspect ratio of the viewport (width/height) for camera projection */
+        /** @brief Aspect ratio of the viewport (width/height) for camera projection #1#
         float aspectRatio = 0.0f;
 
-        /** @brief minimum depth value for the viewport (near plane) */
+        /** @brief minimum depth value for the viewport (near plane) #1#
         float minDepth = 0.0f;
 
-        /** @brief maximum depth value for the viewport (far plane) */
+        /** @brief maximum depth value for the viewport (far plane) #1#
         float maxDepth = 1.0f;
 
-        /** @brief Vulkan image resource for rendering the viewport contents */
+        /** @brief Vulkan image resource for rendering the viewport contents #1#
         VkImage viewportImage = VK_NULL_HANDLE;
 
-        /** @brief View into the viewport image resource for shader access */
+        /** @brief View into the viewport image resource for shader access #1#
         VkImageView viewportImageView = VK_NULL_HANDLE;
 
-        /** @brief Vulkan render pass for rendering to this viewport */
+        /** @brief Vulkan render pass for rendering to this viewport #1#
         VkRenderPass viewportRenderPass = VK_NULL_HANDLE;
 
-        /** @brief Framebuffer associated with this viewport for rendering */
+        /** @brief Framebuffer associated with this viewport for rendering #1#
         VkFramebuffer viewportFramebuffer = VK_NULL_HANDLE;
 
-        /** @brief Device memory allocation for the viewport image */
+        /** @brief Device memory allocation for the viewport image #1#
         VkDeviceMemory viewportImageMemory = VK_NULL_HANDLE;
 
-        /** @brief Flag indicating whether the mouse is currently hovering over the viewport */
+        /** @brief Flag indicating whether the mouse is currently hovering over the viewport #1#
         bool viewportHovered = false;
 
-        /** @brief Flag indicating whether the viewport has been resized and needs updating */
+        /** @brief Flag indicating whether the viewport has been resized and needs updating #1#
         bool viewportResized = false;
     };
+    */
 
     /// -------------------------------------------------------
 

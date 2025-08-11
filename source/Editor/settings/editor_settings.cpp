@@ -17,11 +17,11 @@
 
 namespace SceneryEditorX
 {
-    static std::filesystem::path s_EditorSettingsPath;
+    INTERNAL std::filesystem::path s_EditorSettingsPath;
 
     EditorSettings &EditorSettings::Get()
     {
-        static EditorSettings s_Settings;
+        LOCAL EditorSettings s_Settings;
         return s_Settings;
     }
 

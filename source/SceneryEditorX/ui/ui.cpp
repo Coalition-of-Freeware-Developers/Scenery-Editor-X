@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,6 +10,8 @@
 * Created: 25/3/2025
 * -------------------------------------------------------
 */
+#include <Editor/core/viewport.h>
+
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/render_context.h>
@@ -495,7 +497,7 @@ namespace SceneryEditorX::UI
 
     /// -------------------------------------------------------
 
-    void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView) const
+    void GUI::ViewportWindow(ImVec2 &size, bool &hovered, VkImageView imageView) const
     {
         if (!initialized || !visible || !viewportInitialized)
             return;
@@ -506,7 +508,8 @@ namespace SceneryEditorX::UI
 
         /// Get content region size
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-        size = {viewportSize.x, viewportSize.y};
+        size.x = viewportSize.x;
+        size.y = viewportSize.y;
         hovered = ImGui::IsWindowHovered();
 
         /// Display the image view as a texture

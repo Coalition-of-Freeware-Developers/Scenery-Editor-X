@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -20,6 +20,7 @@
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/platform/settings/user_settings.h>
+#include <Editor/core/viewport.h>
 
 /// ---------------------------------------------------------
 
@@ -315,7 +316,7 @@ namespace SceneryEditorX
          *
          * Stores the target size for viewport recreation when dimensions change.
          */
-        Viewport newViewportSize = viewportData.GetViewportSize();
+        //Viewport newViewportSize = viewportData.GetViewportBounds();
 
 	    /**
 	     * @brief Counter for total frames rendered since application start.

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -55,6 +55,7 @@ namespace SceneryEditorX
         void OnEvent(Event &e);
         void ResetCamera();
         bool *GetIsVisibleMemory();
+        //Viewport GetViewportSize(){ return m_ViewportBounds; }
 
     private:
         void UI_DrawGizmos();

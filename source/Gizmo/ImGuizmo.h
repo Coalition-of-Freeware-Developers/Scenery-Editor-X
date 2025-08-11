@@ -1,4 +1,4 @@
-// https://github.com/CedricGuillemet/ImGuizmo
+﻿// https://github.com/CedricGuillemet/ImGuizmo
 // v1.91.3 WIP
 //
 // The MIT License(MIT)
@@ -42,6 +42,7 @@
 //
 // -------------------------------------------------------------------------------------------
 // Example
+#include <imgui.h>
 #if 0
 void EditTransform(const Camera& camera, matrix_t& matrix)
 {

@@ -25,10 +25,11 @@ namespace SceneryEditorX
 	    float ScaleSnapValue = 0.1f;       /// Snap by 0.1 units
 	    bool ShowColliders = false;
 	    bool ShowLights = true;
-	    bool ShowCameras = false;
 	    bool ShowGrid = true;
 	    bool EnableVSync = true;
 	    int MaxFPS = 144;
+
+		static EditorSettings &Get();
 	    /// Add more editor settings as needed
 	};
 

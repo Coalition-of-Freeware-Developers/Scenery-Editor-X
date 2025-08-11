@@ -413,7 +413,7 @@ namespace SceneryEditorX
 	* -------------------------------------------------------
 	*/
 	
-	//GLOBAL Scope<Window> g_Window;
+	GLOBAL Scope<Window> g_Window;
 	
 	/**
 	 * -------------------------------------------------------
@@ -492,16 +492,17 @@ namespace SceneryEditorX
 	void EditorApplication::MainLoop()
 	{
 
-
         vkDeviceWaitIdle(device);
 	}
 
     void EditorApplication::Update()
     {
+        /*
         /// Update the viewport size if it has changed
         if (viewportData.viewportResized)
             return;
             //RecreateFrameResources();
+            */
 
     }
 

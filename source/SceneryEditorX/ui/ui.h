@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <Editor/core/viewport.h>
 #include <IconsFontAwesome5.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/renderer/image_data.h>
@@ -156,7 +157,7 @@ namespace SceneryEditorX::UI
          * @param hovered Will be set to true if mouse is hovering the viewport
          * @param imageView Vulkan image view containing the rendered scene
          */
-        void ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView) const;
+        void ViewportWindow(ImVec2 &size, bool &hovered, VkImageView imageView) const;
 
         /**
          * @brief Set ImGui style (colors, sizes, etc.)
