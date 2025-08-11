@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -23,6 +23,7 @@ namespace SceneryEditorX
         std::string name;
 		std::string projectName;
 		std::string projectPath;
+        std::string assetRegistry;
 		std::string sceneryType;
         std::string sceneryVersion;
         std::string assetDir = "Assets";

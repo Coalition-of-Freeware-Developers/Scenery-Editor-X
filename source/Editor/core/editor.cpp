@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,7 +10,9 @@
 * Created: 13/4/2025
 * -------------------------------------------------------
 */
+#include <ImGuizmo.h>
 #include <Editor/core/editor.h>
+#include <Editor/settings/editor_settings.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/window/window.h>
@@ -25,25 +27,25 @@
 namespace SceneryEditorX
 {
 
-#define MAX_PROJECT_NAME_LENGTH 255
-#define MAX_PROJECT_FILEPATH_LENGTH 512
+	#define MAX_PROJECT_NAME_LENGTH 255
+	#define MAX_PROJECT_FILEPATH_LENGTH 512
 
-	static char* s_ProjectNameBuffer = new char[MAX_PROJECT_NAME_LENGTH];
-	static char* s_OpenProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
-	static char* s_NewProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
+	GLOBAL char* s_ProjectNameBuffer = new char[MAX_PROJECT_NAME_LENGTH];
+	GLOBAL char* s_OpenProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
+	GLOBAL char* s_NewProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
 
-#define SCENE_HIERARCHY_PANEL_ID "SceneHierarchyPanel"
-#define ECS_DEBUG_PANEL_ID "ECSDebugPanel"
-#define CONSOLE_PANEL_ID "EditorConsolePanel"
-#define CONTENT_BROWSER_PANEL_ID "ContentBrowserPanel"
-#define PROJECT_SETTINGS_PANEL_ID "ProjectSettingsPanel"
-#define ASSET_MANAGER_PANEL_ID "AssetManagerPanel"
-#define MATERIALS_PANEL_ID "MaterialsPanel"
-#define APPLICATION_SETTINGS_PANEL_ID "ApplicationSettingsPanel"
-#define SCRIPT_ENGINE_DEBUG_PANEL_ID "ScriptEngineDebugPanel"
-#define SCENE_RENDERER_PANEL_ID "SceneRendererPanel"
+	#define SCENE_HIERARCHY_PANEL_ID "SceneHierarchyPanel"
+	#define ECS_DEBUG_PANEL_ID "ECSDebugPanel"
+	#define CONSOLE_PANEL_ID "EditorConsolePanel"
+	#define CONTENT_BROWSER_PANEL_ID "ContentBrowserPanel"
+	#define PROJECT_SETTINGS_PANEL_ID "ProjectSettingsPanel"
+	#define ASSET_MANAGER_PANEL_ID "AssetManagerPanel"
+	#define MATERIALS_PANEL_ID "MaterialsPanel"
+	#define APPLICATION_SETTINGS_PANEL_ID "ApplicationSettingsPanel"
+	#define SCRIPT_ENGINE_DEBUG_PANEL_ID "ScriptEngineDebugPanel"
+	#define SCENE_RENDERER_PANEL_ID "SceneRendererPanel"
 
-    static std::filesystem::path s_ProjectSolutionPath = "";
+    GLOBAL std::filesystem::path s_ProjectSolutionPath = "";
 
     /// -------------------------------------------------------
 
@@ -336,7 +338,15 @@ namespace SceneryEditorX
 
     float Editor::GetSnapValue()
     {
-        return 0;
+		const auto& editorSettings = EditorSettings::Get();
+
+		switch (m_GizmoType)
+		{
+			case ImGuizmo::OPERATION::TRANSLATE: return editorSettings.TranslationSnapValue;
+			case ImGuizmo::OPERATION::ROTATE: return editorSettings.RotationSnapValue;
+			case ImGuizmo::OPERATION::SCALE: return editorSettings.ScaleSnapValue;
+		}
+		return 0.0f;
     }
 
     /*

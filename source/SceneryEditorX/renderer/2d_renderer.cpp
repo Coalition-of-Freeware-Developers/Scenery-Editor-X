@@ -42,7 +42,7 @@ namespace SceneryEditorX
 		else
             m_RenderCommandBuffer = CreateRef<CommandBuffer>(0, "Renderer2D");
 
-		m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(UBCamera));
+		m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(CameraUniformBuffer));
 
 		m_MemoryStats.TotalAllocated = 0;
 
@@ -55,10 +55,10 @@ namespace SceneryEditorX
 		framebufferSpec.clearColor = { 0.1f, 0.5f, 0.5f, 1.0f };
 		framebufferSpec.debugName = "Renderer2D Framebuffer";
 
-		/*
-		Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(framebufferSpec);
-		{
-			PipelineData pipelineSpecification;
+
+        {
+            Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+            PipelineData pipelineSpecification;
 			pipelineSpecification.debugName = "Renderer2D-Quad";
 			pipelineSpecification.shader = Renderer::GetShaderLibrary()->Get("Renderer2D");
 			pipelineSpecification.dstFramebuffer = framebuffer;
@@ -75,7 +75,7 @@ namespace SceneryEditorX
 			quadSpec.debugName = "Renderer2D-Quad";
             quadSpec.Pipeline = CreateRef<Pipeline>(pipelineSpecification);
             m_QuadPass = CreateRef<RenderPass>(quadSpec);
-			//m_QuadPass->AddInput("Camera", m_UBSCamera);
+			m_QuadPass->AddInput("Camera", m_UBSCamera->Get());
 			SEDX_CORE_VERIFY(m_QuadPass->Validate());
 			m_QuadPass->Bake();
 
@@ -115,7 +115,6 @@ namespace SceneryEditorX
 			}
 			hdelete[] quadIndices;
 		}
-		*/
 
 		m_WhiteTexture = Renderer::GetWhiteTexture();
 
@@ -327,7 +326,7 @@ namespace SceneryEditorX
 		Renderer::Submit([ubsCamera = m_UBSCamera, viewProj]() mutable
 		{
 			uint32_t bufferIndex = Renderer::GetCurrentRenderThreadFrameIndex();
-			ubsCamera->GetRenderThread()->SetRenderThreadData(&viewProj, sizeof(UBCamera));
+			ubsCamera->GetRenderThread()->SetRenderThreadData(&viewProj, sizeof(CameraUniformBuffer));
 		});
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Renderer2D::BeginScene frame {}", frameIndex);
@@ -549,7 +548,33 @@ namespace SceneryEditorX
 			m_RenderCommandBuffer = CommandBuffer::CreateFromSwapChain("Renderer2D");
 	}
 
-	void Renderer2D::AddQuadBuffer()
+    /**
+     * @brief Adds a new quad vertex buffer to the renderer.
+     *
+	 * @note: Previous errors occured here with constructors,
+	 * 'SceneryEditorX::UniformBufferSet::UniformBufferSet': no overloaded function could convert all the argument types
+	 * The fix is:
+	 * @code
+	 * VertexBuffer(uint64_t size);
+	 * @endcode 
+	 * Located in @file vertex_buffer.h
+	 *
+	 * @note: Alternatives to the fix can be used here to avoid the error:
+	 * Instead of:
+	 * @code
+	 * newVertexBuffer[i] = CreateRef<VertexBuffer>(allocationSize);
+	 * @endcode
+	 *
+	 * Use the raw data constructor:
+	 * @code
+	 * newVertexBuffer[i] = CreateRef<VertexBuffer>(nullptr, allocationSize, VertexBufferType::Dynamic);
+	 * @endcode
+	 * Or use the type/format constructor:
+	 * @code
+	 * newVertexBuffer[i] = CreateRef<VertexBuffer>(VertexBufferType::Dynamic, VertexFormat::Default, allocationSize / sizeof(Vertex));
+	 * @endcode
+     */
+    void Renderer2D::AddQuadBuffer()
 	{
 		uint32_t framesInFlight = Renderer::GetRenderData().framesInFlight;
 		VertexBufferPerFrame& newVertexBuffer = m_QuadVertexBuffers.emplace_back();

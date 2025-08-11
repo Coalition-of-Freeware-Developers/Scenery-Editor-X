@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -18,7 +18,7 @@
 namespace SceneryEditorX
 {
 
-	enum class AssetType : uint8_t
+	enum class AssetType : uint16_t
 	{
 		None = 0,
 		Scene,

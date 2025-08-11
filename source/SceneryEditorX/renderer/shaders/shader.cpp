@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,7 +10,7 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/platform/file_manager.hpp>
+#include <SceneryEditorX/platform/filesystem/file_manager.hpp>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/shaders/shader_pack.h>

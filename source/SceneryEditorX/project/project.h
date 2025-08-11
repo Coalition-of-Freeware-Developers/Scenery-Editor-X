@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,10 +12,10 @@
 */
 #pragma once
 #include <filesystem>
-#include <SceneryEditorX/asset/asset_manager.h>
-#include <SceneryEditorX/asset/editor_asset_manager.h>
+//#include <SceneryEditorX/asset/asset_manager.h>
+//#include <SceneryEditorX/asset/editor_asset_manager.h>
 #include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/platform/editor_config.hpp>
+#include <SceneryEditorX/platform/config/editor_config.hpp>
 #include <SceneryEditorX/project/project_settings.h>
 
 /// -------------------------------------------------------
@@ -26,28 +26,36 @@ namespace SceneryEditorX
 	{
 	public:
 	    Project();
-        virtual ~Project() override;
+	    ~Project();
 
 	    /// -------------------------------------------------------
 
 		const ProjectConfig &GetConfig() const { return config; }
 
-        GLOBAL void GetAssetRegistryPath();
-        GLOBAL int GetActiveAssetDirectory();
+        GLOBAL std::filesystem::path GetAssetRegistryPath()
+		{
+            SEDX_CORE_ASSERT(activeProject);
+            return std::filesystem::path(activeProject->GetConfig().projectPath) /
+                   activeProject->GetConfig().assetRegistry;
+		}
+
+        GLOBAL std::filesystem::path GetActiveAssetDirectory()
+		{
+            SEDX_CORE_ASSERT(activeProject);
+            return activeProject->GetAssetDirectory();
+		}
 
         GLOBAL Ref<Project> GetActive() { return activeProject; }
-        GLOBAL void SetActive(const Ref<Project> &project);
+        GLOBAL void SetActive(Ref<Project> &project);
 
         void CreateProject(std::string name, std::filesystem::path path);
 	    void Load(const std::filesystem::path &InPath);
 	    void Save(const std::filesystem::path &InPath);
 
-        /*
-        GLOBAL Ref<AssetManager> GetAssetManager() { return s_AssetManager; }
-        GLOBAL Ref<EditorAssetManager> GetEditorAssetManager() { return s_AssetManager.As<EditorAssetManager>(); }
-        */
+        //GLOBAL Ref<AssetManagerBase> GetAssetManager() { return s_AssetManager; }
+        //GLOBAL Ref<EditorAssetManager> GetEditorAssetManager() { return s_AssetManager.As<EditorAssetManager>(); }
 
-        std::filesystem::path &GetAssetDirectory();
+        std::filesystem::path GetAssetDirectory();
 
 	    /// -------------------------------------------------------
 
@@ -63,13 +71,19 @@ namespace SceneryEditorX
             return activeProject->GetConfig().projectPath;
 		}
 
+	    GLOBAL std::filesystem::path GetCacheDirectory()
+		{
+            SEDX_CORE_ASSERT(activeProject);
+            return std::filesystem::path(activeProject->GetConfig().projectPath) / "Cache";
+		}
+
 	private:
         ProjectConfig config;
         std::string projectName;
         std::filesystem::path projectPath;
         std::filesystem::path binPath;
 
-	    //static Ref<AssetManager> s_AssetManager;
+	    //LOCAL Ref<AssetManagerBase> s_AssetManager;
         inline LOCAL Ref<Project> activeProject;
 
 	};

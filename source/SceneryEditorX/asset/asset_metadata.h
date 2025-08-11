@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -16,7 +16,7 @@
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
-{/*
+{
 
 	enum class AssetStatus : uint8_t
 	{
@@ -37,7 +37,7 @@ namespace SceneryEditorX
 		uint64_t FileLastWriteTime = 0; /// TODO: this is the last write time of the file WE LOADED
 		bool IsDataLoaded = false;
 
-		bool IsValid() const { return Handle != 0; }
+		bool IsValid() const { return Handle != AssetHandle(0); }
 	};
 
 	struct EditorAssetLoadResponse
@@ -45,7 +45,6 @@ namespace SceneryEditorX
 		AssetMetadata Metadata;
 		Ref<Asset> Asset;
 	};
-	*/
 
 }
 

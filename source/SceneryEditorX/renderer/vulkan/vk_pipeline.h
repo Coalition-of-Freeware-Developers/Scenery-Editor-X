@@ -21,7 +21,6 @@
 namespace SceneryEditorX
 {
 
-    /*
     struct PipelineResource : Resource
     {
         VkPipeline pipeline;
@@ -41,7 +40,7 @@ namespace SceneryEditorX
         VertexBufferLayout layout;
         VertexBufferLayout instanceLayout;
         VertexBufferLayout boneInfluenceLayout;
-        Topology topology = Topology::Triangles;
+        PrimitiveTopology topology = PrimitiveTopology::Triangles;
         DepthCompareOperator depthOperator = DepthCompareOperator::GreaterOrEqual;
         bool backfaceCulling = true;
         bool depthTest = true;
@@ -70,7 +69,7 @@ namespace SceneryEditorX
             std::string entryPoint = "main";
         };
 
-        VkExtent2D GetFloatSwapExtent() const;
+        VkExtent2D GetFloatSwapExtent();
         VkPipeline GetPipeline() const { return pipeline; }
 		VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }
 
@@ -93,7 +92,6 @@ namespace SceneryEditorX
         VkPipelineLayout pipelineLayout = nullptr;
         VkPipelineCache pipelineCache = nullptr;
 	};
-	*/
 
 }
 

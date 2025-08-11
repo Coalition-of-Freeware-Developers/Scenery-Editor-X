@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -13,9 +13,9 @@
 //#include <nlohmann/json.hpp>
 //#include <random>
 //#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_manager.h>
+#include <SceneryEditorX/asset/managers/asset_manager.h>
 //#include <SceneryEditorX/core/identifiers/uuid.h>
-//#include <SceneryEditorX/core/time/time.h>
+#include <SceneryEditorX/core/time/time.h>
 //#include <SceneryEditorX/platform/file_manager.hpp>
 //#include <SceneryEditorX/scene/model_asset.h>
 //#include <SceneryEditorX/serialization/asset_serializer.h>
@@ -52,6 +52,7 @@ namespace SceneryEditorX
         //BinaryStorage storage;
 	    //int dir = Serializer::LOAD;
         Json j = Json::parse(IO::FileManager::ReadFile(path.string()));
+        Buffer storage;
         //storage.data = IO::FileManager::ReadRawBytes(binPath);
 	    std::vector<uint32_t> uuids;
 
@@ -87,7 +88,7 @@ namespace SceneryEditorX
 	    impl->currentBinPath = binPath;
 	}
 
-	void AssetManager::SaveProject(const std::filesystem::path& path, const std::filesystem::path& binPath)
+    void AssetManager::SaveProject(const std::filesystem::path &path, const std::filesystem::path &binPath)
     {
 	    Time::TimeLog t("AssetManager::SaveProject");
 	    //BinaryStorage storage;
@@ -103,8 +104,8 @@ namespace SceneryEditorX
         }
 
         UUID32 assetsHash = UUID32(UUID32(Utils::UUID::HashUUID(assetsUUIDs)));
-	    if (assetsHash != impl->lastAssetsHash)
-		{
+        if (assetsHash != impl->lastAssetsHash)
+        {
 	        SEDX_CORE_INFO("Serializing assets..");
 	        Json j;
 	        j["scenes"] = Json::object();
@@ -140,10 +141,10 @@ namespace SceneryEditorX
 	    }
 	    #1#
 
-	    impl->lastJson["initialScene"] = initialScene;
+        impl->lastJson["initialScene"] = initialScene;
         const std::string jsonDump = impl->lastJson.dump();
         IO::FileDialogs::WriteFile(path, jsonDump);
-	    impl->lastAssetsHash = assetsHash;
+        impl->lastAssetsHash = assetsHash;
 	}
 
 	Mat4 Node::ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent)
@@ -275,6 +276,7 @@ namespace SceneryEditorX
         return GetAsset<Scene>(initialScene);
 	}
 
+    /*
     Ref<CameraNode> AssetManager::GetMainCamera(const Ref<Scene> &scene)
     {
         if (!scene->mainCamera)
@@ -285,7 +287,7 @@ namespace SceneryEditorX
             return cam;
         }
         return scene->mainCamera;
-    }
+    }#1#
 
 	uint32_t AssetManager::NewUUID()
     {

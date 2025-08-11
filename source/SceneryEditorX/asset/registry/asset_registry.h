@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -19,15 +19,20 @@
 namespace SceneryEditorX
 {
 
-	/*
-	// WARNING: The AssetRegistry is not itself thread-safe, so if accessing AssetRegistry
-	// via multiple threads, you must take care to provide your own synchronization.
+	/**
+	 * @class AssetRegistry
+	 * @brief AssetRegistry is a thread-safe registry for managing asset metadata.
+	 * @warning The AssetRegistry is not itself thread-safe, so if accessing AssetRegistry
+	 * via multiple threads, you must take care to provide your own synchronization.
+     */
 	class AssetRegistry
 	{
 	public:
 
-		// note: no non-const GetAsset() function.  If you need to modify the metadata, use Set().
-		// This aids correct usage in a multithreaded environment.
+		/**
+		 * @note no non-const GetAsset() function.  If you need to modify the metadata, use Set().
+		 * This aids correct usage in a multithreaded environment.
+         */
         const AssetMetadata &Get(const AssetHandle &handle) const;
         void Set(const AssetHandle &handle, const AssetMetadata &metadata);
 
@@ -43,7 +48,6 @@ namespace SceneryEditorX
 	private:
         std::unordered_map<AssetHandle, AssetMetadata> m_AssetRegistry;
 	};
-	*/
 
 }
 

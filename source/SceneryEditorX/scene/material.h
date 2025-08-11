@@ -12,9 +12,10 @@
 */
 #pragma once
 #include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/vulkan/vk_image.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/vulkan/vk_image_view.h>
+#include <SceneryEditorX/scene/texture.h>
 
 /// -------------------------------------------------------
 
@@ -227,13 +228,13 @@ namespace SceneryEditorX
 			SEDX_CORE_VERIFY(HasMaterial(materialIndex));
 			return m_Materials.at(materialIndex);
 		}
-		std::map<uint32_t, AssetHandle>& GetMaterials() { return m_Materials; }
-		const std::map<uint32_t, AssetHandle>& GetMaterials() const { return m_Materials; }
+		std::map<uint32_t, AssetHandle> &GetMaterials() { return m_Materials; }
+		const std::map<uint32_t, AssetHandle> &GetMaterials() const { return m_Materials; }
 
 		uint32_t GetMaterialCount() const { return m_MaterialCount; }
 		void SetMaterialCount(const uint32_t materialCount) { m_MaterialCount = materialCount; }
-
 		void Clear();
+
 	private:
 		std::map<uint32_t, AssetHandle> m_Materials;
 		uint32_t m_MaterialCount;

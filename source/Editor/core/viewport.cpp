@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,16 +10,22 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-#include <Editor/core/viewport.h>
-#include <imgui_internal.h>
-#include <ImGuizmo.h>
-#include <SceneryEditorX/core/input/input.h>
+//#include <Editor/core/viewport.h>
+//#include <imgui_internal.h>
+//#include <ImGuizmo.h>
+//#include <SceneryEditorX/asset/asset_types.h>
+//#include <SceneryEditorX/core/input/input.h>
+//#include <SceneryEditorX/scene/components.h>
+//#include <SceneryEditorX/utils/math/aabb.h>
+//#include <SceneryEditorX/utils/math/math_utils.h>
+//#include "editor.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+	/*
 	Viewport::Viewport(std::string viewportName, Editor *editor) :
         m_Editor(editor), m_ViewportName(std::move(viewportName)), m_ViewportCamera(45.0f, 1280.0f, 720.0f, 0.1f, 1000.0f)
     {
@@ -130,14 +136,14 @@ namespace SceneryEditorX
 									for (uint32_t submeshIndex : submeshIndices)
 									{
 										Mat4 transform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
-										const AABB& aabb = submeshes[submeshIndex].BoundingBox;
+										const Utils::AABB& aabb = submeshes[submeshIndex].BoundingBox;
 										m_ViewportRenderer2D->DrawAABB(aabb, transform * submeshes[submeshIndex].Transform, Vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 									}
 								}
 								else
 								{
 									Mat4 transform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
-									const AABB& aabb = meshSource->GetBoundingBox();
+									const Utils::AABB& aabb = meshSource->GetBoundingBox();
 									m_ViewportRenderer2D->DrawAABB(aabb, transform, Vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 								}
 							}
@@ -145,9 +151,9 @@ namespace SceneryEditorX
 					}
 					else if (entity.HasComponent<StaticMeshComponent>())
 					{
-						if (auto mesh = AssetManager::GetAsset<StaticMesh>(entity.GetComponent<StaticMeshComponent>().StaticMesh); mesh)
+						if (auto mesh = AssetManager::GetAsset<ObjectType::StaticMesh>(entity.GetComponent<StaticMeshComponent>().StaticMesh); mesh)
 						{
-							if (auto meshSource = AssetManager::GetAsset<MeshSource>(mesh->GetMeshSource()); meshSource)
+							if (auto meshSource = AssetManager::GetAsset<AssetType::MeshSource>(mesh->GetMeshSource()); meshSource)
 							{
 								if (m_ShowBoundingBoxSubmeshes)
 								{
@@ -156,14 +162,14 @@ namespace SceneryEditorX
 									for (uint32_t submeshIndex : submeshIndices)
 									{
 										Mat4 transform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
-										const AABB& aabb = submeshes[submeshIndex].BoundingBox;
+										const Utils::AABB& aabb = submeshes[submeshIndex].BoundingBox;
 										m_ViewportRenderer2D->DrawAABB(aabb, transform * submeshes[submeshIndex].Transform, Vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 									}
 								}
 								else
 								{
 									Mat4 transform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
-									const AABB& aabb = meshSource->GetBoundingBox();
+									const Utils::AABB& aabb = meshSource->GetBoundingBox();
 									m_ViewportRenderer2D->DrawAABB(aabb, transform, Vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 								}
 							}
@@ -179,9 +185,9 @@ namespace SceneryEditorX
 					Mat4 transform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
 					if(auto mesh = AssetManager::GetAsset<Mesh>(entity.GetComponent<SubmeshComponent>().Mesh); mesh)
 					{
-						if (auto meshSource = AssetManager::GetAsset<MeshSource>(mesh->GetMeshSource()); meshSource)
+						if (auto meshSource = AssetManager::GetAsset<AssetType::MeshSource>(mesh->GetMeshSource()); meshSource)
 						{
-							const AABB& aabb = meshSource->GetBoundingBox();
+							const Utils::AABB& aabb = meshSource->GetBoundingBox();
 							m_ViewportRenderer2D->DrawAABB(aabb, transform, Vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 						}
 					}
@@ -191,11 +197,11 @@ namespace SceneryEditorX
 				{
 					Entity entity = { e, m_Editor->m_CurrentScene.Raw() };
 					Mat4 transform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
-					if(auto mesh = AssetManager::GetAsset<StaticMesh>(entity.GetComponent<StaticMeshComponent>().StaticMesh); mesh)
+					if(auto mesh = AssetManager::GetAsset<ObjectType::StaticMesh>(entity.GetComponent<StaticMeshComponent>().StaticMesh); mesh)
 					{
-						if (auto meshSource = AssetManager::GetAsset<MeshSource>(mesh->GetMeshSource()); meshSource)
+						if (auto meshSource = AssetManager::GetAsset<AssetType::MeshSource>(mesh->GetMeshSource()); meshSource)
 						{
-							const AABB& aabb = meshSource->GetBoundingBox();
+							const Utils::AABB& aabb = meshSource->GetBoundingBox();
 							m_ViewportRenderer2D->DrawAABB(aabb, transform, glm::vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 						}
 					}
@@ -351,7 +357,7 @@ namespace SceneryEditorX
 		ImGuizmo::SetDrawlist();
 		ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-		bool snap = Input::IsKeyDown(HZ_KEY_LEFT_CONTROL);
+		bool snap = Input::IsKeyDown(SEDX_KEY_LEFT_CONTROL);
 
 		float snapValue = m_Editor->GetSnapValue();
 		float snapValues[3] = { snapValue, snapValue, snapValue };
@@ -408,7 +414,7 @@ namespace SceneryEditorX
 				Vec3 translation;
 				glm::quat rotation;
 				Vec3 scale;
-				Math::DecomposeTransform(transform, translation, rotation, scale);
+                Utils::Math::DecomposeTransform(transform, translation, rotation, scale);
 
 				switch (m_Editor->m_GizmoType)
 				{
@@ -501,7 +507,7 @@ namespace SceneryEditorX
 					{
 						Vec3 deltaTranslation, deltaScale;
 						glm::quat deltaRotation;
-						Math::DecomposeTransform(deltaMatrix, deltaTranslation, deltaRotation, deltaScale);
+                        Utils::Math::DecomposeTransform(deltaMatrix, deltaTranslation, deltaRotation, deltaScale);
 
 						for (auto entityID : selections)
 						{
@@ -1250,6 +1256,7 @@ namespace SceneryEditorX
 
         return {rayPos, rayDir};
 	}
+	*/
 }
 
 /// -------------------------------------------------------

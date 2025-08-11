@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -63,7 +63,7 @@ PFN_vkGetQueueCheckpointDataNV fpGetQueueCheckpointDataNV;
 
 static uint32_t GetImageMemorySize(VkFormat format, uint32_t width, uint32_t height)
 {
-    return width * height * getBPP(format);
+    return width * height * SceneryEditorX::Utils::getBPP(format);
 }
 
 /// -------------------------------------------------------

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -14,10 +14,10 @@
 #include <atomic>
 #include <cstdint>
 #include <iosfwd>
-#include <SceneryEditorX/platform/system_detection.h>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <SceneryEditorX/utils/system_detection.h>
 
 /// -------------------------------------------------------
 

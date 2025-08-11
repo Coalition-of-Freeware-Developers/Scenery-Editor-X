@@ -280,7 +280,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-	    struct UBCamera
+	    struct CameraUniformBuffer
 		{
 			Mat4 ViewProjection;
 		};

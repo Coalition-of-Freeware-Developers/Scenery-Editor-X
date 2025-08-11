@@ -12,6 +12,10 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/shaders/shader_resource.h>
+#include <SceneryEditorX/renderer/shaders/shader_uniforms.h>
+#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
+#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
+#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 
 /// -------------------------------------------------------
 
@@ -34,6 +38,8 @@ namespace SceneryEditorX
 	    IVec3,
 	    IVec4
 	};
+
+    /// -------------------------------------------------------
 
 	class ShaderUniform
 	{
@@ -73,6 +79,8 @@ namespace SceneryEditorX
 		uint32_t m_Offset = 0;
 	};
 
+    /// -------------------------------------------------------
+
 	struct ShaderUniformBuffer
 	{
 		std::string Name;
@@ -83,6 +91,8 @@ namespace SceneryEditorX
 		std::vector<ShaderUniform> Uniforms;
 	};
 
+    /// -------------------------------------------------------
+
 	struct ShaderStorageBuffer
 	{
 		std::string Name;
@@ -92,6 +102,8 @@ namespace SceneryEditorX
 		uint32_t RendererID;
 		std::vector<ShaderUniform> Uniforms;
 	};
+
+    /// -------------------------------------------------------
 
 	struct ShaderBuffer
 	{
@@ -117,6 +129,8 @@ namespace SceneryEditorX
 
 	};
 
+    /// -------------------------------------------------------
+
 	/**
 	 * @class Shader
 	 * @brief Represents a Vulkan shader program.
@@ -128,6 +142,14 @@ namespace SceneryEditorX
 	class Shader : public RefCounted
 	{
 	public:
+
+        struct ReflectionData
+        {
+            std::vector<ShaderResource::ShaderDescriptorSet> ShaderDescriptorSets;
+            std::unordered_map<std::string, ShaderResourceDeclaration> Resources;
+            std::unordered_map<std::string, ShaderBuffer> ConstantBuffers;
+            std::vector<ShaderResource::PushConstantRange> PushConstantRanges;
+        };
 
 		/**
 		 * @typedef ShaderReloadedCallback.
@@ -227,15 +249,21 @@ namespace SceneryEditorX
 		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) const { return m_DescriptorSetLayouts.at(set); }
 		std::vector<VkDescriptorSetLayout> GetAllDescriptorSetLayouts();
 
-        /*
         ShaderResource::UniformBuffer GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0)
         {
             SEDX_CORE_ASSERT(m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.size() > binding);
-            return m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.at(binding);
-        }
-        */
+            const auto &ub = m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.at(binding);
 
-		/*
+            ShaderResource::UniformBuffer result;
+            result.descriptor = ub.GetDescriptorBufferInfo();
+            result.size = ub.GetBufferCount() > 0 ? ub.GetBufferCount() : ub.GetBufferCount(); /// You may want to set this to ub.size if available
+            result.bindingPoint = binding;
+            result.name = "";                                        /// If UniformBuffer has a name, set it here
+            result.ShaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; /// Set actual stage if available
+
+            return result;
+        }
+
 		uint32_t GetUniformBufferCount(const uint32_t set = 0) const
         {
 			if (m_ReflectionData.ShaderDescriptorSets.size() < set)
@@ -243,11 +271,10 @@ namespace SceneryEditorX
 
 			return (uint32_t)m_ReflectionData.ShaderDescriptorSets[set].uniformBuffers.size();
 		}
-		*/
 
-		//const std::vector<ShaderResource::ShaderDescriptorSet>& GetShaderDescriptorSets() const { return m_ReflectionData.ShaderDescriptorSets; }
-		//bool HasDescriptorSet(uint32_t set) const { return m_TypeCounts.contains(set); }
-		//const std::vector<ShaderResource::PushConstantRange> &GetPushConstantRanges() const { return m_ReflectionData.PushConstantRanges; }
+		const std::vector<ShaderResource::ShaderDescriptorSet>& GetShaderDescriptorSets() const { return m_ReflectionData.ShaderDescriptorSets; }
+		bool HasDescriptorSet(uint32_t set) const { return m_TypeCounts.contains(set); }
+		const std::vector<ShaderResource::PushConstantRange> &GetPushConstantRanges() const { return m_ReflectionData.PushConstantRanges; }
 
 		struct ShaderMaterialDescriptorSet
 		{
@@ -255,21 +282,9 @@ namespace SceneryEditorX
 			std::vector<VkDescriptorSet> DescriptorSets;
 		};
 
-        /*
-        struct ReflectionData
-        {
-            std::vector<ShaderResource::ShaderDescriptorSet> ShaderDescriptorSets;
-            std::unordered_map<std::string, ShaderResourceDeclaration> Resources;
-            std::unordered_map<std::string, ShaderBuffer> ConstantBuffers;
-            std::vector<ShaderResource::PushConstantRange> PushConstantRanges;
-        };
-        */
-
-        /*
         bool TryReadReflectionData(StreamReader *serializer);
         void SerializeReflectionData(StreamWriter *serializer);
         void SetReflectionData(const ReflectionData &reflectionData);
-        */
 
 		ShaderMaterialDescriptorSet AllocateDescriptorSet(uint32_t set = 0);
 		ShaderMaterialDescriptorSet CreateDescriptorSets(uint32_t set = 0);
@@ -295,7 +310,7 @@ namespace SceneryEditorX
         bool m_DisableOptimization = false;
 		
 		std::map<VkShaderStageFlagBits, std::vector<uint32_t>> m_ShaderData;
-        //ReflectionData m_ReflectionData;
+        ReflectionData m_ReflectionData;
 
         std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
         VkDescriptorSet m_DescriptorSet;
@@ -305,6 +320,8 @@ namespace SceneryEditorX
         friend class VulkanShaderCompiler;
 
 	};
+
+    /// -------------------------------------------------------
 
     class ShaderLibrary : public RefCounted
 	{

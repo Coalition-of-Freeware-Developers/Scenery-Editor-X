@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/memory/buffer.h>
-#include <SceneryEditorX/asset/asset_manager.h>
+
+#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+//#include <SceneryEditorX/asset/asset_manager.h>
 #ifdef CreateDirectory
 #undef CreateDirectory
 #undef DeleteFile
@@ -23,6 +24,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+
 
 /// -------------------------------------------------------
 
@@ -156,7 +158,7 @@ namespace SceneryEditorX::IO
         GLOBAL bool OpenExternally(const std::filesystem::path &path);
 
         GLOBAL bool WriteBytes(const std::filesystem::path &filepath, const BufferResource &buffer);
-        GLOBAL Memory::Buffer ReadBytes(const std::filesystem::path& filepath);
+        GLOBAL Buffer ReadBytes(const std::filesystem::path& filepath);
 
         GLOBAL std::filesystem::path GetUniqueFileName(const std::filesystem::path &filepath);
         GLOBAL uint64_t GetLastWriteTime(const std::filesystem::path &filepath);
@@ -172,6 +174,6 @@ namespace SceneryEditorX::IO
         static std::string GetEnvVariable(const std::string &key);
     };
 
-} // namespace SceneryEditorX::IO
+}
 
 /// -------------------------------------------------------

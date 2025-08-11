@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,9 +12,8 @@
 */
 //#include <nlohmann/json.hpp>
 //#include <SceneryEditorX/asset/texture_manager.h>
-//#include <SceneryEditorX/logging/logging.hpp>
 //#include <SceneryEditorX/platform/file_manager.hpp>
-//#include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/scene/material.h>
 
 /// -------------------------------------------------------
@@ -39,21 +38,16 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-
-	/*
-	static const std::string s_AlbedoColorUniform = "u_MaterialUniforms.AlbedoColor";
-    static const std::string s_UseNormalMapUniform = "u_MaterialUniforms.UseNormalMap";
-    static const std::string s_MetalnessUniform = "u_MaterialUniforms.Metalness";
-    static const std::string s_RoughnessUniform = "u_MaterialUniforms.Roughness";
-    static const std::string s_EmissionUniform = "u_MaterialUniforms.Emission";
-    static const std::string s_TransparencyUniform = "u_MaterialUniforms.Transparency";
-
-    static const std::string s_AlbedoMapUniform = "u_AlbedoTexture";
-    static const std::string s_NormalMapUniform = "u_NormalTexture";
-    static const std::string s_MetalnessMapUniform = "u_MetalnessTexture";
-    static const std::string s_RoughnessMapUniform = "u_RoughnessTexture";
-    */
-
+	LOCAL const std::string s_AlbedoColorUniform = "u_MaterialUniforms.AlbedoColor";
+    LOCAL const std::string s_UseNormalMapUniform = "u_MaterialUniforms.UseNormalMap";
+    LOCAL const std::string s_MetalnessUniform = "u_MaterialUniforms.Metalness";
+    LOCAL const std::string s_RoughnessUniform = "u_MaterialUniforms.Roughness";
+    LOCAL const std::string s_EmissionUniform = "u_MaterialUniforms.Emission";
+    LOCAL const std::string s_TransparencyUniform = "u_MaterialUniforms.Transparency";
+    LOCAL const std::string s_AlbedoMapUniform = "u_AlbedoTexture";
+    LOCAL const std::string s_NormalMapUniform = "u_NormalTexture";
+    LOCAL const std::string s_MetalnessMapUniform = "u_MetalnessTexture";
+    LOCAL const std::string s_RoughnessMapUniform = "u_RoughnessTexture";
 
     /*
     void MaterialAsset::Serialize(Serializer &ser)
@@ -61,7 +55,7 @@ namespace SceneryEditorX
         /// TODO: Implement serialization
         /// This would store material properties in a specific format
     }
-    #1#
+    */
 
     void MaterialAsset::Load(const std::string &path)
     {
@@ -99,10 +93,13 @@ namespace SceneryEditorX
     const std::string &MaterialAsset::GetPath() const { return materialPath; }
     const std::string &MaterialAsset::GetName() const { return materialName; }
 
+    /*
     void MaterialAsset::OnDependencyUpdated(const AssetHandle &handle)
 	{
+		///TODO: Evaluate if this can be changed to an all "if" statement
 		if (handle == m_Maps.AlbedoMap)
 		{
+			/// TODO: Add back when asset manager is implemented
 			AssetManager::RemoveAsset(handle + 1);
 			SetAlbedoMap(handle);
 		}
@@ -120,6 +117,7 @@ namespace SceneryEditorX
 			SetRoughnessMap(handle);
 		}
 	}
+	*/
 
 	Vec3& MaterialAsset::GetAlbedoColor() const
     {
@@ -161,6 +159,7 @@ namespace SceneryEditorX
 		m_Material->Set(s_EmissionUniform, value);
 	}
 
+	/*
 	Ref<Texture2D> MaterialAsset::GetAlbedoMap()
 	{
 		// QUESTION: Is there a reason we need to go to the material here?
@@ -177,7 +176,9 @@ namespace SceneryEditorX
 		}
 		return texture;
 	}
+	*/
 
+	/*
 	void MaterialAsset::SetAlbedoMap(AssetHandle handle)
 	{
 		m_Maps.AlbedoMap = handle;
@@ -204,18 +205,22 @@ namespace SceneryEditorX
 			ClearAlbedoMap();
 		}
 	}
+	*/
 
+	/*
 	void MaterialAsset::ClearAlbedoMap() const
     {
 		AssetManager::DeregisterDependency(m_Maps.AlbedoMap, Handle);
 		m_Material->Set(s_AlbedoMapUniform, Renderer::GetWhiteTexture());
 	}
+	*/
 
 	Ref<Texture2D> MaterialAsset::GetNormalMap() const
     {
 		return m_Material->TryGetTexture2D(s_NormalMapUniform);
 	}
 
+	/*
 	void MaterialAsset::SetNormalMap(const AssetHandle &handle)
 	{
 		m_Maps.NormalMap = handle;
@@ -231,6 +236,7 @@ namespace SceneryEditorX
 			ClearNormalMap();
 		}
 	}
+	*/
 
 	bool MaterialAsset::IsUsingNormalMap() const
     {
@@ -244,7 +250,7 @@ namespace SceneryEditorX
 
 	void MaterialAsset::ClearNormalMap() const
     {
-		AssetManager::DeregisterDependency(m_Maps.NormalMap, Handle);
+		//AssetManager::DeregisterDependency(m_Maps.NormalMap, Handle);
 		m_Material->Set(s_NormalMapUniform, Renderer::GetWhiteTexture());
 	}
 
@@ -253,6 +259,7 @@ namespace SceneryEditorX
 		return m_Material->TryGetTexture2D(s_MetalnessMapUniform);
 	}
 
+	/*
 	void MaterialAsset::SetMetalnessMap(const AssetHandle &handle)
 	{
 		m_Maps.MetalnessMap = handle;
@@ -268,18 +275,22 @@ namespace SceneryEditorX
 			ClearMetalnessMap();
 		}
 	}
+	*/
 
+	/*
 	void MaterialAsset::ClearMetalnessMap() const
     {
 		AssetManager::DeregisterDependency(m_Maps.MetalnessMap, Handle);
 		m_Material->Set(s_MetalnessMapUniform, Renderer::GetWhiteTexture());
 	}
+	*/
 
 	Ref<Texture2D> MaterialAsset::GetRoughnessMap() const
     {
 		return m_Material->TryGetTexture2D(s_RoughnessMapUniform);
 	}
 
+	/*
 	void MaterialAsset::SetRoughnessMap(const AssetHandle &handle)
 	{
 		m_Maps.RoughnessMap = handle;
@@ -295,12 +306,15 @@ namespace SceneryEditorX
 			ClearRoughnessMap();
 		}
 	}
+	*/
 
+	/*
 	void MaterialAsset::ClearRoughnessMap() const
     {
 		AssetManager::DeregisterDependency(m_Maps.RoughnessMap, Handle);
 		m_Material->Set(s_RoughnessMapUniform, Renderer::GetWhiteTexture());
 	}
+	*/
 
 	float& MaterialAsset::GetTransparency() const
     {
@@ -311,6 +325,7 @@ namespace SceneryEditorX
     {
 		m_Material->Set(s_TransparencyUniform, transparency);
 	}
+
 
 	void MaterialAsset::SetDefaults() const
     {
@@ -341,7 +356,6 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	
 	MaterialTable::MaterialTable(const uint32_t materialCount) : m_MaterialCount(materialCount) {}
 
 	MaterialTable::MaterialTable(const Ref<MaterialTable> &other) : m_MaterialCount(other->m_MaterialCount)
@@ -369,7 +383,6 @@ namespace SceneryEditorX
 	{
 		m_Materials.clear();
 	}
-	*/
 
 }
 

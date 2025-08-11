@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
 
 /// --------------------------------------------
@@ -26,6 +27,8 @@ namespace SceneryEditorX
     UniformBuffer::UniformBuffer(uint32_t size) : size(size)
     {
         localMemAlloc = hnew uint8_t[size];
+
+		InvalidateRenderThread();
     }
 
     /**
@@ -138,6 +141,8 @@ namespace SceneryEditorX
 	    }
 	}
 
+    // ReSharper disable once CppParameterMayBeConst
+    // ReSharper disable once CppMemberFunctionMayBeConst
     void UniformBuffer::SetRenderThreadData(const void *data, uint32_t size, uint32_t offset)
     {
         MemoryAllocator allocator("UniformBuffer");
@@ -200,6 +205,54 @@ namespace SceneryEditorX
 	
 	    vkBindBufferMemory(device, buffer, bufferMemory, 0);
 	}
+
+    void UniformBuffer::Release()
+    {
+        if (!allocation)
+            return;
+
+        Renderer::SubmitResourceFree([buffer = buffer, memoryAlloc = allocation]() {
+            MemoryAllocator allocator("UniformBuffer");
+            allocator.DestroyBuffer(buffer, memoryAlloc);
+        });
+
+        buffer = nullptr;
+        allocation = nullptr;
+
+        delete[] localMemAlloc;
+        localMemAlloc = nullptr;
+    }
+
+    void UniformBuffer::InvalidateRenderThread()
+	{
+        VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+
+        VkMemoryAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.pNext = nullptr;
+        allocInfo.allocationSize = 0;
+        allocInfo.memoryTypeIndex = 0;
+
+        VkBufferCreateInfo bufferInfo = {};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        bufferInfo.size = size;
+
+        MemoryAllocator allocator("UniformBuffer");
+        allocation = allocator.AllocateBuffer(bufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, buffer);
+
+        descriptorInfo.buffer = buffer;
+        descriptorInfo.offset = 0;
+        descriptorInfo.range = size;
+
+		/// Invalidate the render thread data to ensure it is up-to-date
+		if (localMemAlloc)
+		{
+			MemoryAllocator allocator("UniformBuffer");
+            MemoryAllocator::UnmapMemory(allocation);
+			allocation = nullptr;
+		}
+    }
 
 }
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -538,7 +538,7 @@ namespace SceneryEditorX
 		auto vulkanDevice = device->GetDevice();
 		MemoryAllocator allocator("Image2D");
 
-		uint64_t bufferSize = m_Specification.width * m_Specification.height * getBPP(m_Specification.format);
+		uint64_t bufferSize = m_Specification.width * m_Specification.height * Utils::getBPP(m_Specification.format);
 
 		/// Create staging buffer
 		VkBufferCreateInfo bufferCreateInfo{};
@@ -609,61 +609,6 @@ namespace SceneryEditorX
         MemoryAllocator::UnmapMemory(stagingBufferAllocation);
 
 		allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
-	}
-
-	ImageView::ImageView(const ImageViewData &spec) : m_Specification(spec)
-	{
-		Invalidate();
-	}
-
-	ImageView::~ImageView()
-	{
-		Renderer::SubmitResourceFree([imageView = m_ImageView]() mutable
-		{
-			auto device = RenderContext::GetCurrentDevice()->GetDevice();
-			vkDestroyImageView(device, imageView, nullptr);
-		});
-
-		m_ImageView = nullptr;
-	}
-
-	void ImageView::Invalidate()
-	{
-        Ref<ImageView> instance(this);
-		Renderer::Submit([instance]() mutable
-		{
-		    instance->Invalidate_RenderThread();
-		});
-	}
-
-	void ImageView::Invalidate_RenderThread()
-	{
-		auto device = RenderContext::GetCurrentDevice()->GetDevice();
-		Ref<Image2D> vulkanImage = m_Specification.image.As<Image2D>();
-		const auto &imageSpec = vulkanImage->GetSpecification();
-
-		VkImageAspectFlags aspectMask = IsDepthFormat(imageSpec.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-        if (imageSpec.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat())
-			aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-
-		VkFormat vulkanFormat = imageSpec.format;
-		VkImageViewCreateInfo imageViewCreateInfo = {};
-		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		imageViewCreateInfo.viewType = imageSpec.layers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
-		imageViewCreateInfo.format = vulkanFormat;
-		imageViewCreateInfo.flags = 0;
-		imageViewCreateInfo.subresourceRange = {};
-		imageViewCreateInfo.subresourceRange.aspectMask = aspectMask;
-		imageViewCreateInfo.subresourceRange.baseMipLevel = m_Specification.mip;
-		imageViewCreateInfo.subresourceRange.levelCount = 1;
-		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewCreateInfo.subresourceRange.layerCount = imageSpec.layers;
-		imageViewCreateInfo.image = vulkanImage->GetImageInfo().image;
-        VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &m_ImageView))
-		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("{} default image view", m_Specification.debugName), m_ImageView);
-
-		m_DescriptorImageInfo = vulkanImage->GetDescriptorInfoVulkan();
-		m_DescriptorImageInfo.imageView = m_ImageView;
 	}
 
 }

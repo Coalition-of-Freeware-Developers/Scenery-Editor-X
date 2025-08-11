@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,13 +12,13 @@
 */
 #pragma once
 #include <unordered_map>
+#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	class UniformBuffer;
-	class StorageBuffer;
 
     /// -------------------------------------------------
 
@@ -76,20 +76,19 @@ namespace SceneryEditorX
 			//static void Deserialize(StreamReader* reader, PushConstantRange& range) { reader->ReadRaw(range); }
 		};
 
-        /*
         struct ShaderDescriptorSet
 		{
 			std::unordered_map<uint32_t, UniformBuffer> uniformBuffers;
-			std::unordered_map<uint32_t, StorageBuffer> storageBuffers;
+            std::unordered_map<uint32_t, Ref<StorageBuffer>> storageBuffers;
 			std::unordered_map<uint32_t, ImageSampler> imageSamplers;
 			std::unordered_map<uint32_t, ImageSampler> storageImages;
-			std::unordered_map<uint32_t, ImageSampler> separateTextures; // Not really an image sampler.
+			std::unordered_map<uint32_t, ImageSampler> separateTextures; /// Not really an image sampler.
 			std::unordered_map<uint32_t, ImageSampler> separateSamplers;
 
 			std::unordered_map<std::string, VkWriteDescriptorSet> writeDescriptorSets;
 
             explicit operator bool() const { return !(storageBuffers.empty() && uniformBuffers.empty() && imageSamplers.empty() && storageImages.empty() && separateTextures.empty() && separateSamplers.empty()); }
-		};*/
+		};
 
         /// -------------------------------------------------
 
@@ -129,7 +128,7 @@ namespace SceneryEditorX
         uint32_t count = 0;
     };
 
-    typedef std::vector<ShaderResource *> ShaderResourceList;
+    //typedef std::vector<ShaderResource *> ShaderResourceList;
 
 }
 

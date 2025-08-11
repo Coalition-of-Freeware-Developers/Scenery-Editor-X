@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/asset_importer.h>
-//#include <SceneryEditorX/logging/profiler.hpp>
+#include <SceneryEditorX/asset/importers/asset_importer.h>
+#include <SceneryEditorX/logging/profiler.hpp>
 //#include <SceneryEditorX/project/project.h>
 //#include <SceneryEditorX/serialization/mesh_serializer.h>
 
@@ -19,23 +19,22 @@
 
 namespace SceneryEditorX
 {
-	/*
+
 	void AssetImporter::Init()
 	{
-		s_Serializers.clear();
-		s_Serializers[AssetType::Prefab] = CreateScope<PrefabSerializer>();
-		s_Serializers[AssetType::Texture] = CreateScope<TextureSerializer>();
-		s_Serializers[AssetType::Mesh] = CreateScope<MeshSerializer>();
-		s_Serializers[AssetType::MeshSource] = CreateScope<MeshSourceSerializer>();
-		s_Serializers[AssetType::Material] = CreateScope<MaterialAssetSerializer>();
-		s_Serializers[AssetType::EnvMap] = CreateScope<EnvironmentSerializer>();
-		s_Serializers[AssetType::Scene] = CreateScope<SceneAssetSerializer>();
-		s_Serializers[AssetType::Font] = CreateScope<FontSerializer>();
+		//s_Serializers.clear();
+		//s_Serializers[AssetType::Prefab] = CreateScope<PrefabSerializer>();
+		//s_Serializers[AssetType::Texture] = CreateScope<TextureSerializer>();
+		//s_Serializers[AssetType::Mesh] = CreateScope<MeshSerializer>();
+		//s_Serializers[AssetType::MeshSource] = CreateScope<MeshSourceSerializer>();
+		//s_Serializers[AssetType::Material] = CreateScope<MaterialAssetSerializer>();
+		//s_Serializers[AssetType::EnvMap] = CreateScope<EnvironmentSerializer>();
+		//s_Serializers[AssetType::Scene] = CreateScope<SceneAssetSerializer>();
+		//s_Serializers[AssetType::Font] = CreateScope<FontSerializer>();
 		//s_Serializers[AssetType::Animation] = CreateScope<AnimationAssetSerializer>();
 		//s_Serializers[AssetType::AnimationGraph] = CreateScope<AnimationGraphAssetSerializer>();
-		s_Serializers[AssetType::ScriptFile] = CreateScope<ScriptFileSerializer>();
+		//s_Serializers[AssetType::ScriptFile] = CreateScope<ScriptFileSerializer>();
 	}
-	*/
 
 	/*
 	void AssetImporter::Serialize(const AssetMetadata& metadata, const Ref<Asset>& asset)
@@ -69,7 +68,7 @@ namespace SceneryEditorX
 			return false;
 		}
 
-		// SEDX_CORE_TRACE("AssetImporter::TryLoadData - {}", metadata.FilePath);
+		SEDX_CORE_TRACE("AssetImporter::TryLoadData - {}", metadata.FilePath);
 		return s_Serializers[metadata.type]->TryLoadData(metadata, asset);
 	}
 	*/

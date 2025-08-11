@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,10 +10,10 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/scene/texture.h>
 #include <stb_image.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/scene/texture.h>
 
 /// -------------------------------------------------------
 
@@ -39,6 +39,9 @@ namespace SceneryEditorX
     }
     */
 
+    /// -------------------------------------------------------
+
+    /// TODO: Refactor this function with MemoryAllocator functions
 	void TextureAsset::Load(const std::string &path)
 	{
         texturePath = path;
@@ -49,16 +52,12 @@ namespace SceneryEditorX
         {
             std::string actualPath = path;
             if (!path.empty() && path[0] != '/' && path[0] != '\\' && (path.size() < 2 || path[1] != ':'))
-            {
-                /// Path is relative, prepend texture folder
-                actualPath = configPtr->textureFolder + "/" + path;
-            }
-            
-            SEDX_CORE_INFO("Loading texture from: {}", actualPath);
+                actualPath = configPtr->textureFolder + "/" + path; /// Path is relative, prepend texture folder
+
+            SEDX_CORE_TRACE_TAG("TextureAsset","Loading texture from: {}", actualPath);
             
             /// Load the image
             int texWidth, texHeight, texChannels;
-
             if (stbi_uc *pixels = stbi_load(actualPath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha))
             {
                 width = texWidth;
@@ -77,38 +76,47 @@ namespace SceneryEditorX
                 stbi_image_free(pixels);
             }
             else
-                SEDX_CORE_ERROR("Failed to load texture: {}", actualPath);
+            {
+                SEDX_CORE_ERROR_TAG("TextureAsset", "Failed to load texture: {}", actualPath);
+            }
+
         }
         else
+        {
             SEDX_CORE_ERROR("Failed to access EditorConfig: config is expired or null");
+        }
+
     }
 
+    /// -------------------------------------------------------
+
+    /// TODO: Refactor this. Could probably be done cleaner and more efficiently.
     void TextureAsset::Unload()
     {
         if (auto device = RenderContext::GetCurrentDevice()->GetDevice())
         {
-            if (textureSampler != VK_NULL_HANDLE)
+            if (textureSampler != nullptr)
             {
                 vkDestroySampler(device, textureSampler, nullptr);
-                textureSampler = VK_NULL_HANDLE;
+                textureSampler = nullptr;
             }
             
-            if (textureImageView != VK_NULL_HANDLE)
+            if (textureImageView != nullptr)
             {
                 vkDestroyImageView(device, textureImageView, nullptr);
-                textureImageView = VK_NULL_HANDLE;
+                textureImageView = nullptr;
             }
             
-            if (textureImage != VK_NULL_HANDLE)
+            if (textureImage != nullptr)
             {
                 vkDestroyImage(device, textureImage, nullptr);
-                textureImage = VK_NULL_HANDLE;
+                textureImage = nullptr;
             }
             
-            if (textureImageMemory != VK_NULL_HANDLE)
+            if (textureImageMemory != nullptr)
             {
                 vkFreeMemory(device, textureImageMemory, nullptr);
-                textureImageMemory = VK_NULL_HANDLE;
+                textureImageMemory = nullptr;
             }
         }
         
@@ -117,6 +125,13 @@ namespace SceneryEditorX
         width = 0;
         height = 0;
         channels = 0;
+    }
+
+    /// -------------------------------------------------------
+
+    bool TextureAsset::IsLoaded() const
+    {
+        return !data.empty() && textureImage != VK_NULL_HANDLE;
     }
 
     void TextureAsset::SetName(const std::string &name)
@@ -134,23 +149,23 @@ namespace SceneryEditorX
         return textureName;
     }
 
-    /*
+    /// -------------------------------------------------------
+
     void TextureAsset::LoadWithAllocator()
     {
-        // Load texture using the memory allocator
-        // This is a placeholder implementation
-        // Actual implementation will depend on the specific requirements and libraries used
+        /// Load texture using the memory allocator
+        /// This is a placeholder implementation
+        /// Actual implementation will depend on the specific requirements and libraries used
     }
-	*/
 
-    /*
     void TextureAsset::UnloadWithAllocator()
     {
-        // Unload texture using the memory allocator
-        // This is a placeholder implementation
-        // Actual implementation will depend on the specific requirements and libraries used
+        /// Unload texture using the memory allocator
+        /// This is a placeholder implementation
+        /// Actual implementation will depend on the specific requirements and libraries used
     }
-	*/
+
+    /// -------------------------------------------------------
 
     void TextureAsset::CreateTextureSampler()
 	{
@@ -173,16 +188,20 @@ namespace SceneryEditorX
 	    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-		auto device = RenderContext::GetCurrentDevice()->GetDevice();
-        if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
+        if (auto device = RenderContext::GetCurrentDevice()->GetDevice(); vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS)
             SEDX_CORE_ERROR("Failed to create texture sampler!");
     }
+
+    /// -------------------------------------------------------
 
     void TextureAsset::CreateTextureImageView()
     {
         textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 
+    /// -------------------------------------------------------
+
+    /// TODO: Refactor this function with MemoryAllocator functions
 	void TextureAsset::CreateTextureImage()
     {
         if (data.empty())
@@ -279,14 +298,15 @@ namespace SceneryEditorX
         
         vkBindImageMemory(device, textureImage, textureImageMemory, 0);
         
-        // TODO: Transition image layout, copy buffer to image, and generate mipmaps
-        // For now this is a simplified version without proper layout transitions
-        
+        /// TODO: Transition image layout, copy buffer to image, and generate mipmaps
+        /// For now this is a simplified version without proper layout transitions
         /// Clean up staging resources
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
 	}
-	
+
+    /// -------------------------------------------------------
+
 	VkImageView TextureAsset::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, int mipLevels) const
     {
         const auto device = RenderContext::GetCurrentDevice()->GetDevice();

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,7 +10,7 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/platform/editor_config.hpp>
+#include <SceneryEditorX/platform/config/editor_config.hpp>
 #include <SceneryEditorX/renderer/buffers/storage_buffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
 #include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>

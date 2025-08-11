@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,7 +10,7 @@
 * Created: 8/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/texture_importer.h>
+#include <SceneryEditorX/asset/importers/texture_importer.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
@@ -22,7 +22,6 @@ namespace SceneryEditorX
 {
     namespace Utils
     {
-
 		static VkSamplerAddressMode VulkanSamplerWrap(SamplerWrap wrap)
 		{
 			switch (wrap)
@@ -78,24 +77,26 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
 
-    // Texture2D Constructor Implementations
-    Texture2D::Texture2D(const TextureSpecification& specification) : m_Specification(specification)
+    /// Texture2D Constructor Implementations
+    /*
+    Texture2D::Texture2D(const TextureSpecification &specification) : m_Specification(specification)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D with specification: {}x{}", specification.width, specification.height);
-        // Initialize with empty data
-        CreateFromBuffer(specification, Buffer());
+        /// Initialize with empty data
+        Texture2D::CreateFromBuffer(specification);
+    }
+    */
+
+    Texture2D::Texture2D(const TextureSpecification& specification, const std::filesystem::path& filePath) : m_Specification(specification), m_Path(filePath)
+    {
+        SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from file: {}", filePath.string());
+        Texture2D::CreateFromFile(specification, filePath);
     }
 
-    Texture2D::Texture2D(const TextureSpecification& specification, const std::filesystem::path& filepath) : m_Specification(specification), m_Path(filepath)
+    Texture2D::Texture2D(const TextureSpecification& specification, const Buffer& imageData) : m_Specification(specification), m_ImageData(imageData)
     {
-        SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from file: {}", filepath.string());
-        CreateFromFile(specification, filepath);
-    }
-
-    Texture2D::Texture2D(const TextureSpecification& specification, const Buffer& imagedata) : m_Specification(specification), m_ImageData(imagedata)
-    {
-        SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from buffer data: {} bytes", imagedata.size);
-        CreateFromBuffer(specification, imagedata);
+        SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from buffer data: {} bytes", imageData.size);
+        CreateFromBuffer(specification, imageData);
     }
 
 	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification)
@@ -103,14 +104,14 @@ namespace SceneryEditorX
         return CreateRef<Texture2D>(specification);
 	}
 
-	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification, const std::filesystem::path &filepath)
+	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification, const std::filesystem::path &filePath)
 	{
-        return CreateRef<Texture2D>(specification, filepath);
+        return CreateRef<Texture2D>(specification, filePath);
 	}
 
-	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification, const Buffer &imagedata)
+	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification, const Buffer &imageData)
 	{
-        return CreateRef<Texture2D>(specification, imagedata);
+        return CreateRef<Texture2D>(specification, imageData);
 	}
 
     Ref<Texture2D> Texture2D::CreateFromSRGB(const Ref<Texture2D> &texture)
@@ -125,14 +126,14 @@ namespace SceneryEditorX
         return srgbTexture;
     }
 
-    void Texture2D::CreateFromFile(const TextureSpecification &specification, const std::filesystem::path &filepath)
+    void Texture2D::CreateFromFile(const TextureSpecification &specification, const std::filesystem::path &filePath)
     {
 		Utils::ValidateSpecification(specification);
 
-		m_ImageData = TextureImporter::ToBufferFromFile(filepath, m_Specification.format, m_Specification.width, m_Specification.height);
+		m_ImageData = TextureImporter::ToBufferFromFile(filePath, m_Specification.format, m_Specification.width, m_Specification.height);
 		if (!m_ImageData)
 		{
-			SEDX_CORE_ERROR("Failed to load texture from file: {}", filepath);
+			SEDX_CORE_ERROR("Failed to load texture from file: {}", filePath);
 			m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/error_texture.png", m_Specification.format, m_Specification.width, m_Specification.height);
 		}
 
@@ -151,14 +152,14 @@ namespace SceneryEditorX
 		Invalidate();
     }
 
-    void Texture2D::ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filepath)
+    void Texture2D::ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filePath)
     {
 	    Utils::ValidateSpecification(specification);
 
-		m_ImageData = TextureImporter::ToBufferFromFile(filepath, m_Specification.format, m_Specification.width, m_Specification.height);
+		m_ImageData = TextureImporter::ToBufferFromFile(filePath, m_Specification.format, m_Specification.width, m_Specification.height);
 		if (!m_ImageData)
 		{
-			SEDX_CORE_ERROR("Failed to load texture from file: {}", filepath);
+			SEDX_CORE_ERROR("Failed to load texture from file: {}", filePath);
 			m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/error_texture.png", m_Specification.format, m_Specification.width, m_Specification.height);
 		}
 
@@ -175,26 +176,23 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_Specification.format != VkFormat::VK_FORMAT_UNDEFINED);
 
 		Ref<Texture2D> instance(this);
-		Renderer::Submit([instance]() mutable
-		{
-			instance->Invalidate();
-		});
+		Renderer::Submit([instance]() mutable { instance->Invalidate(); });
     }
 
-    void Texture2D::CreateFromBuffer(const TextureSpecification &specification, Buffer data)
+    void Texture2D::CreateFromBuffer(const TextureSpecification &specification, const Buffer &data)
     {
         Utils::ValidateSpecification(specification);
 
         if (data.size == 0)
         {
-            // Create empty buffer with appropriate size
+            /// Create empty buffer with appropriate size
             auto size = (uint32_t)Utils::GetMemorySize(specification.format, specification.width, specification.height);
             m_ImageData.Allocate(size);
             m_ImageData.ZeroInitialize();
         }
         else
         {
-            // Copy provided data
+            /// Copy provided data
             m_ImageData = Buffer::Copy(data.data, data.size);
         }
 
@@ -416,7 +414,7 @@ namespace SceneryEditorX
     /*
     uint32_t Texture2D::GetMipLevelCount() const
     {
-        return Utils::CalculateMipCount(m_Specification.width, m_Specification.height);
+        return CalculateMipCount(m_Specification.width, m_Specification.height);
     }
     */
 
@@ -1043,9 +1041,9 @@ namespace SceneryEditorX
 
 				/// Prepare current mip level as image blit destination
 				InsertImageMemoryBarrier(blitCmd, m_Image,0, VK_ACCESS_TRANSFER_WRITE_BIT,
-												VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-												VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-												mipSubRange);
+											VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+											VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+											mipSubRange);
 
 				/// Blit from previous level
 				vkCmdBlitImage(blitCmd,
@@ -1054,11 +1052,9 @@ namespace SceneryEditorX
 					1, &imageBlit, VK_FILTER_LINEAR);
 
 				/// Prepare current mip level as image blit source for next level
-				InsertImageMemoryBarrier(blitCmd, m_Image,
-												VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-												VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-												VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-												mipSubRange);
+				InsertImageMemoryBarrier(blitCmd, m_Image,VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, mipSubRange);
 			}
 		}
 

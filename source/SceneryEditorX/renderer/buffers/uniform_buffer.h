@@ -33,7 +33,7 @@ namespace SceneryEditorX
          * @brief Uniform Buffer Object structure for shader uniforms
          *
          * Contains transformation matrices aligned for GPU memory access.
-         * The alignas specifier ensures proper memory alignment for GPU access.
+         * The align as specifier ensures proper memory alignment for GPU access.
          */
         struct UBO
         {
@@ -99,6 +99,16 @@ namespace SceneryEditorX
         GLOBAL void Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
 
         /**
+         * @brief 
+         */
+        void Release();
+
+        /**
+         * @brief 
+         */
+        void InvalidateRenderThread();
+
+        /**
          * @brief Gets the name of the uniform buffer instance
          *
          * @return uint32_t The unique identifier for the uniform buffer instance
@@ -126,7 +136,7 @@ namespace SceneryEditorX
             if (index < uniformBuffers.size())
                 return uniformBuffers[index];
 
-            return VK_NULL_HANDLE;
+            return nullptr;
         }
 
         /**
@@ -137,10 +147,12 @@ namespace SceneryEditorX
         [[nodiscard]] size_t GetBufferCount() const { return uniformBuffers.size(); }
 
     private:
+        VkShaderStageFlagBits m_ShaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
         uint32_t name = 0;									///< Unique identifier for the uniform buffer instance
         uint32_t size = 0;                                  ///< Size of the uniform buffer in bytes
         uint8_t *localMemAlloc = nullptr;					///< Pointer to local memory allocation for the uniform buffer
         VmaAllocation allocation = nullptr;                 ///< Reference to the memory allocator
+        VkBuffer buffer;									///< Vulkan buffer handle for the uniform buffer
         VkDescriptorBufferInfo descriptorInfo = {};			///< Descriptor buffer info for binding the uniform buffer
         std::vector<VkBuffer> uniformBuffers;				///< Array of uniform buffer handles (one per frame)
         std::vector<VkDeviceMemory> uniformBuffersMemory;	///< Array of memory handles for uniform buffers

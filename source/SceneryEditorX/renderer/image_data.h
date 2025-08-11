@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -101,13 +101,6 @@ namespace SceneryEditorX
         uint32_t mipCount = 0xffffffff;
         uint32_t layer = 0;
         uint32_t layerCount = 0xffffffff;
-    };
-
-    union ImageClearValue
-    {
-        Vec4 FloatValues;
-        iVec4 IntValues;
-        glm::uvec4 UIntValues;
     };
 
     namespace Aspect

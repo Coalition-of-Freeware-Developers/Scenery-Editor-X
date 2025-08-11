@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,6 +12,7 @@
 */
 #include <imgui_impl_vulkan.h>
 #include <imgui_internal.h>
+#include <SceneryEditorX/renderer/vulkan/vk_image.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 
 /// -------------------------------------------------------

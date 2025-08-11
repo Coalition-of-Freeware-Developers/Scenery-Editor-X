@@ -22,6 +22,21 @@
 namespace SceneryEditorX
 {
 
+    VertexBuffer::VertexBuffer(uint64_t size) 
+        : m_BufferType(VertexBufferType::Dynamic), 
+		m_Format(VertexFormat::Position3D_Color3), /// or whatever your default format is
+		m_Capacity(0), 
+		m_Size(size), 
+		m_IsInitialized(false)
+    {
+		SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating VertexBuffer with size: {} bytes", size);
+		
+		/// Initialize the buffer with the specified size
+		CreateVertexBuffer();
+		
+		m_IsInitialized = true;
+    }
+
     /**
      * @brief Constructor for VertexBuffer with buffer type and format.
      *
@@ -54,7 +69,7 @@ namespace SceneryEditorX
     {
         SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating vertex buffer with {} vertices", initialVertices.size());
 
-        // Initialize MemoryAllocator
+        /// Initialize MemoryAllocator
         m_MemoryAllocator = CreateRef<MemoryAllocator>("VertexBuffer");
 
         m_Size = m_Vertices.size() * sizeof(Vertex);

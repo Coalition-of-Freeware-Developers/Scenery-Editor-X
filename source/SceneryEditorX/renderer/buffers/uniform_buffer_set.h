@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -13,6 +13,7 @@
 #pragma once
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
+#include <SceneryEditorX/renderer/vulkan/vk_data.h>
 
 /// -------------------------------------------------------
 
@@ -22,7 +23,7 @@ namespace SceneryEditorX
 	class UniformBufferSet : public RefCounted
     {
 	public:
-        UniformBufferSet(uint32_t size, uint32_t framesInFlight) : m_framesInFlight(framesInFlight)
+        UniformBufferSet(uint32_t size, uint32_t framesInFlight = 0) : m_framesInFlight(framesInFlight)
         {
             if (framesInFlight == 0)
                 m_framesInFlight = Renderer::GetRenderData().framesInFlight;
@@ -31,7 +32,7 @@ namespace SceneryEditorX
                 m_UniformBuffers[frame] = CreateRef<UniformBuffer>(size);
         }
 
-	    virtual ~UniformBufferSet() override = default;
+	    virtual ~UniformBufferSet() = default;
 
 		/// ----------------------------------------------------------
 
@@ -55,7 +56,7 @@ namespace SceneryEditorX
 
         virtual void Set(Ref<UniformBuffer> uniformBuffer, uint32_t frame = 0)
         {
-            m_UniformBuffers[frame] = std::move(uniformBuffer);
+            m_UniformBuffers[frame] = uniformBuffer;
         }
 
 	private:

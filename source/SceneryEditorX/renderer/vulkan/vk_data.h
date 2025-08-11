@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -591,15 +591,6 @@ namespace SceneryEditorX
 
     };
 
-
-    /// -------------------------------------------------------
-
-    /*
-    struct RenderConfig
-    {
-        
-    };*/
-
     /// -------------------------------------------------------
 
     /// Taken from the Vulkan 3D Graphics Cookbook Second Edition.
@@ -608,19 +599,19 @@ namespace SceneryEditorX
         uint32_t width = 1;
         uint32_t height = 1;
         uint32_t depth = 1;
-        inline Dimensions divide1D(uint32_t v) const
+        Dimensions divide1D(uint32_t v) const
         {
             return {.width = width / v, .height = height, .depth = depth};
         }
-        inline Dimensions divide2D(uint32_t v) const
+        Dimensions divide2D(uint32_t v) const
         {
             return {.width = width / v, .height = height / v, .depth = depth};
         }
-        inline Dimensions divide3D(uint32_t v) const
+        Dimensions divide3D(uint32_t v) const
         {
             return {.width = width / v, .height = height / v, .depth = depth / v};
         }
-        inline bool operator==(const Dimensions &other) const
+        bool operator==(const Dimensions &other) const
         {
             return width == other.width && height == other.height && depth == other.depth;
         }
@@ -634,12 +625,38 @@ namespace SceneryEditorX
         uint32_t height = 0;
     };
 
+    /// -------------------------------------------------------
+
+    /**
+     * @brief ImageClearValue is a union that holds clear values for images in Vulkan.
+     * @union ImageClearValue
+     *
+     * This union can store either floating-point values (Vec4) or integer values (glm::ivec4, glm::uvec4)
+     * for clearing image data. It is used to specify the clear color or value when initializing or clearing images.
+     *
+     * @code
+     * ImageClearValue clearValue;
+     * clearValue.FloatValues = Vec4{1.0f, 0.0f, 0.0f, 1.0f};  // Red color
+     * clearValue.IntValues = glm::ivec4{255, 0, 0, 255};    // Integer red
+	 * @endcode
+     *
+     */
+    union ImageClearValue
+    {
+        Vec4 FloatValues;
+        glm::ivec4 IntValues;
+        glm::uvec4 UIntValues;
+    };
+
+	/// ClearColorValue is more compatible with C-style or raw data copying, practically identical to ImageClearValue
+	/*
 	union ClearColorValue
     {
         float float32[4];
         int32_t int32[4];
         uint32_t uint32[4];
     };
+    */
 
     struct Offset3D
     {

@@ -6,7 +6,11 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
-FILE(GLOB ASSET_FILES asset/*.h asset/*.hpp asset/*.cpp)
+FILE(GLOB ASSET_IMPORTER_FILES asset/importers/*.h asset/importers/*.hpp asset/importers/*.cpp)
+FILE(GLOB ASSET_EXPORTER_FILES asset/exporters/*.h asset/exporters/*.hpp asset/exporters/*.cpp)
+FILE(GLOB ASSET_MANAGER_FILES asset/managers/*.h asset/managers/*.hpp asset/managers/*.cpp)
+FILE(GLOB ASSET_REGISTRY_FILES asset/registry/*.h asset/registry/*.hpp asset/registry/*.cpp)
+
 FILE(GLOB CORE_APP core/application/*.h core/application/*.hpp core/application/*.cpp)
 FILE(GLOB CORE_EVENTS core/events/*.h core/events/*.hpp core/events/*.cpp)
 FILE(GLOB CORE_IDENTIFIERS core/identifiers/*.h core/identifiers/*.hpp core/identifiers/*.cpp)
@@ -17,7 +21,8 @@ FILE(GLOB CORE_THREADING core/threading/*.h core/threading/*.hpp core/threading/
 FILE(GLOB CORE_TIME core/time/*.h core/time/*.hpp core/time/*.cpp)
 FILE(GLOB CORE_WINDOW core/window/*.h core/window/*.hpp core/window/*.cpp)
 
-FILE(GLOB PLATFORM_FILES platform/files/*.h platform/files/*.hpp platform/files/*.cpp)
+FILE(GLOB PLATFORM_CONFIGFILES platform/config/*.h platform/config/*.hpp platform/config/*.cpp)
+FILE(GLOB PLATFORM_FILESYSTEM platform/filesystem/*.h platform/filesystem/*.hpp platform/filesystem/*.cpp)
 FILE(GLOB PLATFORM_SETTINGS platform/settings/*.h platform/settings/*.hpp platform/settings/*.cpp)
 
 FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
@@ -56,7 +61,10 @@ SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VAL
 # --------------------------------
 
 ADD_LIBRARY(AppCore
-	${ASSET_FILES}
+	${ASSET_IMPORTER_FILES}
+	${ASSET_EXPORTER_FILES}
+	${ASSET_MANAGER_FILES}
+	${ASSET_REGISTRY_FILES}
 	${CORE_APP}
 	${CORE_EVENTS}
 	${CORE_IDENTIFIERS}
@@ -68,7 +76,8 @@ ADD_LIBRARY(AppCore
 	${CORE_WINDOW}
 	${LOGGER}
 	${PROJECT}
-	${PLATFORM_FILES}
+	${PLATFORM_CONFIGFILES}
+	${PLATFORM_FILESYSTEM}
 	${PLATFORM_SETTINGS}
 	${SCENE}
 	${PROJECT_CONFIG_FILES}
@@ -89,16 +98,23 @@ ADD_LIBRARY(AppCore
 	${UTILS_CONVERSIONS}
 	${UTILS_FILESTREAM}
     # --------------------------------
+	asset/asset.cpp
+	asset/asset.h
+	asset/asset_extensions.h
+	asset/asset_metadata.h
+	asset/asset_pack_header.h
+	asset/asset_types.h
+	asset/ecs.cpp
+	asset/ecs.h
+	asset/mesh_file.h
+	asset/object.cpp
+	asset/object.h
+	# --------------------------------
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 	core/base.hpp
 	core/initializer.cpp
 	core/initializer.h
 	core/version.h
-	# --------------------------------
-	platform/cfg_loader.cpp
-	platform/cfg_loader.h
-	platform/editor_config.hpp
-	platform/system_detection.h
 	# --------------------------------
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
@@ -151,13 +167,37 @@ ADD_LIBRARY(AppCore
 	utils/static_states.h
 	utils/string_utils.cpp
 	utils/string_utils.h
+	utils/system_detection.h
     # --------------------------------
     resource.h
+	cpp.hint
 )
 
 # --------------------------------
 SOURCE_GROUP("Asset" FILES
-	${ASSET_FILES}
+	asset/asset.cpp
+	asset/asset.h
+	asset/asset_extensions.h
+	asset/asset_metadata.h
+	asset/asset_pack_header.h
+	asset/asset_types.h
+	asset/ecs.cpp
+	asset/ecs.h
+	asset/mesh_file.h
+	asset/object.cpp
+	asset/object.h
+)
+SOURCE_GROUP("Asset/Importers" FILES
+	${ASSET_IMPORTER_FILES}
+)
+SOURCE_GROUP("Asset/Exporters" FILES
+	${ASSET_EXPORTER_FILES}
+)
+SOURCE_GROUP("Asset/Managers" FILES
+	${ASSET_MANAGER_FILES}
+)
+SOURCE_GROUP("Asset/Registry" FILES
+	${ASSET_REGISTRY_FILES}
 )
 SOURCE_GROUP("Core" FILES
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
@@ -196,14 +236,11 @@ SOURCE_GROUP("Core/Time" FILES
 SOURCE_GROUP("Core/Window" FILES
 	${CORE_WINDOW}
 )
-SOURCE_GROUP("Platform" FILES
-	platform/cfg_loader.cpp
-	platform/cfg_loader.h
-	platform/editor_config.hpp
-	platform/system_detection.h
+SOURCE_GROUP("Platform/Config" FILES
+	${PLATFORM_CONFIGFILES}
 )
 SOURCE_GROUP("Platform/Files" FILES
-	${PLATFORM_FILES}
+	${PLATFORM_FILESYSTEM}
 )
 SOURCE_GROUP("Platform/Settings" FILES
 	${PLATFORM_SETTINGS}
@@ -225,6 +262,7 @@ SOURCE_GROUP("Utilities" FILES
 	utils/static_states.h
 	utils/string_utils.cpp
 	utils/string_utils.h
+	utils/system_detection.h
 )
 SOURCE_GROUP("Utilities/Math" FILES
 	${UTILS_MATH}
@@ -330,6 +368,7 @@ SOURCE_GROUP("UI/Actions" FILES
 )
 SOURCE_GROUP("Resources" FILES
     resource.h
+	cpp.hint
 )
 SOURCE_GROUP("Resources/Shaders" FILES
 	${SHADER_FILES}

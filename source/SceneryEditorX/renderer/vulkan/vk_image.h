@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -68,7 +68,6 @@ namespace SceneryEditorX
         ImageSpecification& GetSpecification() { return m_Specification; }
 		const ImageSpecification& GetSpecification() const { return m_Specification; }
 
-
         void Invalidate_RenderThread();
         void CreatePerLayerImageViews();
         void CreatePerLayerImageViews_RenderThread();
@@ -110,33 +109,6 @@ namespace SceneryEditorX
         std::map<uint32_t, VkImageView> m_PerMipImageViews;
         VkDescriptorImageInfo m_DescriptorImageInfo = {};
     };
-
-    /// -----------------------------------------------------------
-
-    struct ImageViewData
-    {
-        Ref<Image2D> image;
-        uint32_t mip = 0;
-        std::string debugName;
-    };
-
-	class ImageView : public Resource
-	{
-	public:
-        ImageView(const ImageViewData &spec);
-        virtual ~ImageView();
-		
-		void Invalidate();
-		void Invalidate_RenderThread();
-
-		[[nodiscard]] VkImageView GetImageView() const { return m_ImageView; }
-		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
-		[[nodiscard]] const VkDescriptorImageInfo &GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
-	private:
-		ImageViewData m_Specification;
-		VkImageView m_ImageView = nullptr;
-		VkDescriptorImageInfo m_DescriptorImageInfo = {};
-	};
 
 }
 

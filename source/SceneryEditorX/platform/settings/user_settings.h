@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <map>
 #include <SceneryEditorX/utils/pointers.h>
+#include <SceneryEditorX/project/project_settings.h>
 #include <string>
 
 /// -------------------------------------------------------
@@ -22,7 +23,6 @@ namespace SceneryEditorX
 {
 	/// Forward declarations
 	class ApplicationSettings;
-	struct RecentProject;
 
 	/// ----------------------------------------------------
 	/// Date/Time Formatting Utilities

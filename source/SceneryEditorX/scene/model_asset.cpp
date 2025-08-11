@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,10 +10,10 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/platform/editor_config.hpp>
-#include <SceneryEditorX/scene/model_asset.h>
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
+#include <SceneryEditorX/platform/config/editor_config.hpp>
+#include <SceneryEditorX/scene/model_asset.h>
 
 /// -------------------------------------------------------
 

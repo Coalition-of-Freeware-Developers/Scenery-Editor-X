@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <map>
+#include <SceneryEditorX/logging/asserts.h> 
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/buffers/storage_buffer.h>
 
@@ -67,7 +68,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-        void Resize(uint32_t newSize)
+        void Resize(uint32_t newSize) const
         {
             for (uint32_t frame = 0; frame < m_framesInFlight; frame++)
                 storageBuffers.at(frame)->Resize(newSize);

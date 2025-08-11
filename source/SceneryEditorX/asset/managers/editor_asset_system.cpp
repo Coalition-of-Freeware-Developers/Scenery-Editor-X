@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,9 +10,9 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/asset/asset_importer.h>
-#include <SceneryEditorX/asset/editor_asset_system.h>
-//#include <SceneryEditorX/core/application/application.h>
+ //#include <SceneryEditorX/asset//importers/asset_importer.h>
+ //#include <SceneryEditorX/asset/managers/editor_asset_system.h>
+ //#include <SceneryEditorX/core/application/application.h>
 //#include <SceneryEditorX/core/events/editor_events.h>
 //#include <SceneryEditorX/core/time/timer.h>
 //#include <SceneryEditorX/logging/profiler.hpp>
@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	void EditorAssetSystem::StopAndWait()
 	{
 		Stop();
-		SEDX_CORE_ASSERT(Application::IsMainThread(), "Attempting to stop asset system from other than main thread!"); // Possibly ref count on asset manager is not what you think, and its gone to zero (causing Shutdown()) on wrong thread.
+		SEDX_CORE_ASSERT(Application::IsMainThread(), "Attempting to stop asset system from other than main thread!"); /// Possibly ref count on asset manager is not what you think, and its gone to zero (causing Shutdown()) on wrong thread.
 		m_Thread.Join();
 	}
 
@@ -77,10 +77,10 @@ namespace SceneryEditorX
 					}
 				}
 
-				// If queueEmptyOrStop then metadata will be invalid (Handle == 0)
-				// We check metadata here (instead of just breaking straight away on queueEmptyOrStop)
-				// to deal with the edge case that other thread might queue requests for invalid assets.
-				// This way, we just pop those requests and ignore them.
+				/// If queueEmptyOrStop then metadata will be invalid (Handle == 0)
+				/// We check metadata here (instead of just breaking straight away on queueEmptyOrStop)
+				/// to deal with the edge case that other thread might queue requests for invalid assets.
+				/// This way, we just pop those requests and ignore them.
 				if (metadata.IsValid())
 				{
 					TryLoadData(metadata);
@@ -88,12 +88,12 @@ namespace SceneryEditorX
 			}
 
 			std::unique_lock<std::mutex> lock(m_AssetLoadingQueueMutex);
-			// need to check conditions again, since other thread could have changed them between releasing the lock (in the while loop above)
-			// and re-acquiring the lock here
+			/// need to check conditions again, since other thread could have changed them between releasing the lock (in the while loop above)
+			/// and re-acquiring the lock here
 			if (m_AssetLoadingQueue.empty() && m_Running)
 			{
-				// need to wake periodically (here 100ms) so that AssetMonitorUpdate() is called regularly to check for updated file timestamps
-				// (which kinda makes condition variable redundant. may as well just sleep(100ms))
+				/// need to wake periodically (here 100ms) so that AssetMonitorUpdate() is called regularly to check for updated file timestamps
+				/// (which kinda makes condition variable redundant. may as well just sleep(100ms))
 				m_AssetLoadingQueueCV.wait_for(lock, std::chrono::milliseconds(100), [this] {
 					return !m_Running || !m_AssetLoadingQueue.empty();
 				});
@@ -107,12 +107,13 @@ namespace SceneryEditorX
 			std::scoped_lock<std::mutex> lock(m_AssetLoadingQueueMutex);
 			m_AssetLoadingQueue.push(request);
 		}
+
 		m_AssetLoadingQueueCV.notify_one();
 	}
 
 	Ref<Asset> EditorAssetSystem::GetAsset(const AssetMetadata& request)
 	{
-		// Check if asset is already loaded in main asset manager
+		/// Check if asset is already loaded in main asset manager
 		{
 			std::scoped_lock<std::mutex> lock(m_AMLoadedAssetsMutex);
 			if (auto it = m_AMLoadedAssets.find(request.Handle); it != m_AMLoadedAssets.end())
@@ -121,7 +122,7 @@ namespace SceneryEditorX
 			}
 		}
 
-		// Check if asset has already been loaded but is pending sync back to asset manager.
+		/// Check if asset has already been loaded but is pending sync back to asset manager.
 		{
 			std::scoped_lock<std::mutex> lock(m_LoadedAssetsMutex);
 			for (const auto& [metadata, asset] : m_LoadedAssets)
@@ -133,18 +134,20 @@ namespace SceneryEditorX
 			}
 		}
 
-		// Note: There is a race condition here
-		// Another thread could try to GetAsset() the same asset while we are still in the process of
-		// loading it (i.e. _before_ it's put into m_LoadedAssets).
-		// This is a problem because each thread will end up with its own independently reference counted
-		// copy of the asset, and if that asset in turn has dependent in-memory assets, there will be
-		// multiple copies of those assets (with different handles).
-		//
-		// At the moment, I don't *think* there is ever a situation where two non-main thread threads
-		// can try to GetAsset() at the same time.
-		// Maybe it could happen if you were trying to update assets on-disk at the same time that you
-		// are building an asset pack, and you have the content-browser open at same directory
-		// of changed asset. !?
+		/**
+		 * @note: There is a race condition here
+		 * Another thread could try to GetAsset() the same asset while we are still in the process of
+		 * loading it (i.e. _before_ it's put into m_LoadedAssets).
+		 * This is a problem because each thread will end up with its own independently reference counted
+		 * copy of the asset, and if that asset in turn has dependent in-memory assets, there will be
+		 * multiple copies of those assets (with different handles).
+		 *
+		 * At the moment, I don't *think* there is ever a situation where two non-main thread threads
+		 * can try to GetAsset() at the same time.
+		 * Maybe it could happen if you were trying to update assets on-disk at the same time that you
+		 * are building an asset pack, and you have the content-browser open at same directory
+		 * of changed asset. !?
+         #1#
 		return TryLoadData(request);
 	}
 
@@ -154,9 +157,9 @@ namespace SceneryEditorX
 		std::scoped_lock lock(m_LoadedAssetsMutex);
 		std::swap(outAssetList, m_LoadedAssets);
 
-		// Now that we've synced assets, any events that were dispatched from TryLoadData() are safe to be processed
-		// This needs to be inside the m_LoadedAssetsMutex lock - we do not want any more evens to go into the queue before we've
-		// marked all these as synced
+		/// Now that we've synced assets, any events that were dispatched from TryLoadData() are safe to be processed
+		/// This needs to be inside the m_LoadedAssetsMutex lock - we do not want any more evens to go into the queue before we've
+		/// marked all these as synced
 		Application::Get().SyncEvents();
 
 		return !outAssetList.empty();
@@ -170,16 +173,16 @@ namespace SceneryEditorX
 
 	std::filesystem::path EditorAssetSystem::GetFileSystemPath(const AssetMetadata& metadata)
 	{
-		// TODO: This is not safe.  Project asset directory can be modified by other threads
+		/// TODO: This is not safe.  Project asset directory can be modified by other threads
 		return Project::GetActiveAssetDirectory() / metadata.FilePath;
 	}
 
 	void EditorAssetSystem::EnsureAllLoadedCurrent()
 	{
-		//SEDX_PROFILE_FUNC();
+		///SEDX_PROFILE_FUNC();
 
-		// This is a long time to hold a lock.
-		// However, copying the list of assets to iterate (so that we could then release the lock before iterating) is also expensive, so hard to tell which is better.
+		/// This is a long time to hold a lock.
+		/// However, copying the list of assets to iterate (so that we could then release the lock before iterating) is also expensive, so hard to tell which is better.
 		std::scoped_lock<std::mutex> lock(m_AMLoadedAssetsMutex);
 		for (const auto &handle : m_AMLoadedAssets | std::views::keys)
 		{
@@ -191,7 +194,7 @@ namespace SceneryEditorX
 	{
 		auto metadata = Project::GetEditorAssetManager()->GetMetadata(assetHandle);
 
-		// other thread could have deleted the asset since our asset list was last synced
+		/// other thread could have deleted the asset since our asset list was last synced
 		if(!metadata.IsValid()) return;
 
 		auto absolutePath = GetFileSystemPath(metadata);
@@ -208,17 +211,19 @@ namespace SceneryEditorX
 		if (actualLastWriteTime == 0 || recordedLastWriteTime == 0)
 			return;
 
-		// Queue here rather than TryLoad(), as we are holding a lock (in EnsureAllLoadedCurrent()) and want this function to return as quickly as possible
+		/// Queue here rather than TryLoad(), as we are holding a lock (in EnsureAllLoadedCurrent()) and want this function to return as quickly as possible
 		return QueueAssetLoad(metadata);
 	}
 
 
-//	// TODO (0x): delete once dependent assets are handled properly using asset dependencies
-//	bool EditorAssetSystem::ReloadData(uint64_t handle)
-//	{
-//		auto metadata = Project::GetEditorAssetManager()->GetMetadata(handle);
-//		return metadata.IsValid() && ReloadData(metadata);
-//	}
+ 	/// TODO: delete once dependent assets are handled properly using asset dependencies
+ 	/*
+ 	bool EditorAssetSystem::ReloadData(uint64_t handle)
+ 	{
+ 		auto metadata = Project::GetEditorAssetManager()->GetMetadata(handle);
+ 		return metadata.IsValid() && ReloadData(metadata);
+ 	}
+ 	#1#
 
 	Ref<Asset> EditorAssetSystem::TryLoadData(AssetMetadata metadata)
 	{
@@ -231,16 +236,18 @@ namespace SceneryEditorX
 
 		SEDX_CORE_INFO_TAG("AssetSystem", "{}LOADING ASSET - {}", metadata.IsDataLoaded? "RE" : "", metadata.FilePath.string());
 
-		// ASSUMPTION: AssetImporter serializers are immutable and re-entrant
+		/// ASSUMPTION: AssetImporter serializers are immutable and re-entrant
 		if (AssetImporter::TryLoadData(metadata, asset))
 		{
 			metadata.IsDataLoaded = true;
 			auto absolutePath = GetFileSystemPath(metadata);
 
-			// Note: There's a small hole here.  Other thread could start writing to asset's file in the exact instant that TryLoadData() has finished with it.
-			//            GetLastWriteTime() then blocks until the data write has finished, but now we have a new write time - not the one that was relevant for TryLoadData()
-			//            To resolve this, you basically need to lock the metadata until both the TryLoadData() _and_ the GetLastWriteTime() have completed.
-			//            Or you need to update the last write time while you still have the file locked during TryLoadData()
+			/**
+			 * @note There's a small hole here.  Other thread could start writing to asset's file in the exact instant that TryLoadData() has finished with it.
+			 *            GetLastWriteTime() then blocks until the data write has finished, but now we have a new write time - not the one that was relevant for TryLoadData()
+			 *            To resolve this, you basically need to lock the metadata until both the TryLoadData() _and_ the GetLastWriteTime() have completed.
+			 *            Or you need to update the last write time while you still have the file locked during TryLoadData()
+             #1#
 			metadata.FileLastWriteTime = IO::FileSystem::GetLastWriteTime(absolutePath);
 			{
 				std::scoped_lock<std::mutex> lock(m_LoadedAssetsMutex);

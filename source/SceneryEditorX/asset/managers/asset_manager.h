@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -21,7 +21,6 @@
 #include <SceneryEditorX/scene/node.h>
 #include <SceneryEditorX/scene/scene.h>
 #include <SceneryEditorX/scene/texture.h>
-#include <vector>
 
 /// -------------------------------------------------------
 
@@ -50,7 +49,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
 		Ref<Scene> GetInitialScene();
-        GLOBAL Ref<CameraNode> GetMainCamera(const Ref<Scene> &scene);
+        //GLOBAL Ref<CameraNode> GetMainCamera(const Ref<Scene> &scene);
 
         /**
          * @brief Checks if the asset referred to by assetHandle could potentially be valid.
@@ -165,7 +164,7 @@ namespace SceneryEditorX
          * @param assetHandle The asset handle to check.
          * @return The type of the asset referred to by assetHandle.
          #1#
-        GLOBAL AssetType GetAssetType(const AssetHandle &assetHandle)
+        GLOBAL AssetType GetAssetType(AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->GetAssetType(assetHandle);
         }
@@ -210,7 +209,7 @@ namespace SceneryEditorX
 	    template<typename T>
         GLOBAL std::unordered_set<AssetHandle> GetAllAssetsWithType()
 		{
-			return Project::GetAssetManager()->GetAllAssetsWithType(T::GetStaticType());
+            return Project::GetAssetManager()->GetAllAssetsWithType(T::GetStaticType());
 		}
 
         /**
@@ -305,7 +304,7 @@ namespace SceneryEditorX
 
             Ref<T> a = CreateRef<T>();
             a->name = name;
-            a->uuid = uuid;
+            a->uuid = UUID(uuid);
             return a;
         }
 
@@ -319,10 +318,10 @@ namespace SceneryEditorX
 
             Ref<T> a = CreateRef<T>();
             a->name = name;
-            a->uuid = uuid;
+            a->uuid = UUID(uuid);
             assets[a->uuid] = a;
             if (a->type == ObjectType::Scene && !initialScene)
-                initialScene = a->uuid;
+                initialScene = static_cast<uint32_t>(a->uuid);
 
             return a;
         }
@@ -366,7 +365,6 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
-        /*
         Ref<Object> CloneAsset(ObjectType type, const Ref<Object> &rhs)
         {
             switch (type)
@@ -377,7 +375,6 @@ namespace SceneryEditorX
                 return nullptr;
             }
         }
-        #1#
 
 		/// -------------------------------------------------------
 
@@ -411,8 +408,6 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 	    struct AssetManagerImpl *impl;
-        std::unordered_map<uint32_t, Ref<Asset>> assets;
-
 
         /// -------------------------------------------------------
 
@@ -421,10 +416,12 @@ namespace SceneryEditorX
         LOCAL uint32_t NewUUID();
         uint32_t initialScene = 0;
         std::vector<Ref<Node>> nodes;
+        std::unordered_map<uint32_t, Ref<Asset>> assets;
 
         friend class GraphicsEngine;
     };
     */
+
 
 }
 

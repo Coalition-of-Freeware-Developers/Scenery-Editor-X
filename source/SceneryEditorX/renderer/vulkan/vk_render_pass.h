@@ -34,7 +34,7 @@ namespace SceneryEditorX
 	    /**
 	     * @brief Reference to the Vulkan pipeline used by this render pass.
 	     */
-	    //Ref<Pipeline> Pipeline;
+	    Ref<Pipeline> Pipeline;
 
         /**
          * @brief Reference to the Vulkan swap chain used for rendering.
@@ -80,7 +80,7 @@ namespace SceneryEditorX
         virtual uint32_t GetFirstSetIndex() const;
 
         virtual Ref<Framebuffer> GetTargetFramebuffer() const;
-        //virtual Ref<Pipeline> GetPipeline() const;
+        virtual Ref<Pipeline> GetPipeline() const;
 
         [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
 		//VkDescriptorPool GetDescriptorPool() const { return descriptors->descriptorPool; }

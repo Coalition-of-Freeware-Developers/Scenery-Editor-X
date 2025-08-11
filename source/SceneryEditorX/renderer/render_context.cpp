@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -358,7 +358,7 @@ namespace SceneryEditorX
             SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created");
     
             #ifdef SEDX_DEBUG
-                VulkanLoadDebugUtilsExtensions(instance);
+                Utils::VulkanLoadDebugUtilsExtensions(instance);
             #endif
     
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

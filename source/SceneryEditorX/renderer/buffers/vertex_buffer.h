@@ -49,7 +49,7 @@ namespace SceneryEditorX
              *
              * @param position 3D position of the vertex.
              */
-            explicit Vertex(const Vec3& position) : pos(position), color(1.0f, 1.0f, 1.0f), texCoord(0.0f, 0.0f) {}
+            Vertex(const Vec3& position) : pos(position), color(1.0f, 1.0f, 1.0f), texCoord(0.0f, 0.0f) {}
 
             /**
              * @brief Constructor with position and color.
@@ -125,47 +125,14 @@ namespace SceneryEditorX
         };
 
 		/**
-		 * @enum VertexBufferType
-		 * @brief Defines the type and usage pattern of vertex buffer.
+		 * @brief Constructor for VertexBuffer with allocation size only.
 		 *
-		 * This enum specifies how the vertex buffer is intended to be used,
-		 * which can affect performance optimizations and memory management.
+		 * Creates a vertex buffer with the specified size in bytes.
+		 * Uses default vertex format and dynamic buffer type.
 		 *
-		 * @note The values are designed to be compatible with Vulkan buffer usage flags.
+		 * @param size Size of the buffer in bytes.
 		 */
-        enum class VertexBufferType : uint8_t
-        {
-            None		= 0,	///< No specific type defined.
-            Static		= 1,	///< Static data, rarely or never updated (GPU optimized).
-            Dynamic		= 2,	///< Frequently changed data (CPU-GPU shared memory).
-            Transient	= 3,	///< Single-use buffer that will be discarded after rendering.
-            Streaming	= 4		///< Continuously streamed data (e.g. particles).
-        };
-
-        /**
-		 * @enum VertexFormat
-		 * @brief Standard vertex data formats.
-		 *
-		 * This enum defines various vertex formats that can be used in the vertex buffer.
-		 * Each format specifies the components included in the vertex data,
-		 * allowing for flexibility in rendering different types of geometry.
-		 *
-		 * @note The values are designed to be compatible with Vulkan vertex input attribute descriptions.
-		 */
-        enum class VertexFormat : uint8_t
-        {
-            None								= 0,
-            Position2D							= 1,    ///< Vec2 position
-            Position3D							= 2,    ///< Vec3 position
-            Position3D_Color3					= 3,    ///< Vec3 position + Vec3 color
-            Position3D_Color4					= 4,    ///< Vec3 position + Vec4 color
-            Position3D_Normal					= 5,    ///< Vec3 position + Vec3 normal
-            Position3D_TexCoord					= 6,    ///< Vec3 position + Vec2 texcoord
-            Position3D_Color4_TexCoord			= 7,    ///< Vec3 position + Vec4 color + Vec2 texcoord
-            Position3D_Normal_TexCoord			= 8,    ///< Vec3 position + Vec3 normal + Vec2 texcoord
-            Position3D_Normal_TexCoord_Tangent	= 9,	///< Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
-            Custom = 255								///< Custom vertex format defined by user
-        };
+		VertexBuffer(uint64_t size);
 
         /**
          * @brief Constructor for VertexBuffer.
@@ -174,7 +141,7 @@ namespace SceneryEditorX
          * @param vertexFormat The format of vertices to be stored.
          * @param initialCapacity Initial buffer capacity in vertices (optional).
          */
-        explicit VertexBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity = 0);
+        VertexBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity = 0);
 
         /**
          * @brief Constructor for VertexBuffer with initial data.
@@ -182,7 +149,7 @@ namespace SceneryEditorX
          * @param initialVertices Vector of vertices to initialize the buffer with.
          * @param type The type of vertex buffer (Static, Dynamic, etc.).
          */
-        explicit VertexBuffer(const std::vector<Vertex>& initialVertices,VertexBufferType type = VertexBufferType::Static);
+        VertexBuffer(const std::vector<Vertex>& initialVertices,VertexBufferType type = VertexBufferType::Static);
 
 		/**
 		 * @brief Constructor for VertexBuffer with raw data.
@@ -439,26 +406,6 @@ namespace SceneryEditorX
     };
 
     /// ----------------------------------------------------------
-
-	/**
-	 * @enum ShaderDataType
-	 * @brief Represents the data types used in shaders.
-	 */
-	enum class ShaderDataType : uint8_t
-	{
-		None = 0,
-	    Float,
-	    Float2,
-	    Float3,
-	    Float4,
-	    Mat3,
-	    Mat4,
-	    Int,
-	    Int2,
-	    Int3,
-	    Int4,
-	    Bool
-	};
 
     /**
      * @brief Returns the size in bytes of a given shader data type.

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -17,7 +17,6 @@
 namespace SceneryEditorX
 {
 	Asset::~Asset() = default;
-    Object::~Object() = default;
 
 }
 

@@ -71,6 +71,16 @@ namespace SceneryEditorX
     INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
     INTERNAL std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
     INTERNAL CommandQueue resourceFreeQueue[3];
+    INTERNAL std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
+
+    /// -------------------------------------------------------
+
+    struct ShaderDependencies
+    {
+        //std::vector<Ref<ComputePipeline>> ComputePipelines;
+        std::vector<Ref<Pipeline>> Pipelines;
+        std::vector<Ref<Material>> Materials;
+    };
 
     /// -------------------------------------------------------
 
@@ -79,14 +89,12 @@ namespace SceneryEditorX
         return RenderContext::Get();
     }
 
-
     /*
     Ref<Texture2D> && Renderer::GetBRDFLutTexture()
     {
         return s_Data->BRDFLutTexture;
     }
     */
-
 
     void Renderer::Init()
     {
@@ -101,7 +109,7 @@ namespace SceneryEditorX
         s_CommandQueue[1] = hnew CommandQueue();
 
         const auto &config = GetRenderData();
-        // Make sure we don't have more frames in flight than swapchain images
+        /// Make sure we don't have more frames in flight than swapchain images
         config.framesInFlight = glm::min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
 
         s_Data->DescriptorPools.resize(config.framesInFlight);
@@ -245,7 +253,7 @@ namespace SceneryEditorX
 
             s_Data->DrawCallCount = 0;
 
-#if 0
+    #if 0
 			VkCommandBufferBeginInfo cmdBufInfo = {};
 			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -255,19 +263,19 @@ namespace SceneryEditorX
 			commandBuffer = drawCommandBuffer;
 			SEDX_CORE_ASSERT(commandBuffer);
 			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &cmdBufInfo));
-#endif
+    #endif
         });
     }
 
     void Renderer::EndFrame()
     {
-#if 0
+    #if 0
 		Renderer::Submit([]()
 		{
 			VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
 			commandBuffer = nullptr;
 		});
-#endif
+    #endif
     }
 
     void Renderer::SubmitFrame()
@@ -354,7 +362,7 @@ namespace SceneryEditorX
         return s_Data->DescriptorPoolAllocationCount[frameIndex];
     }
 
-    VkSampler Renderer::CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo)
+    VkSampler Renderer::CreateSampler(VkSamplerCreateInfo &samplerCreateInfo)
     {
         const auto device = RenderContext::GetCurrentDevice();
 
@@ -365,7 +373,6 @@ namespace SceneryEditorX
 
 		return sampler;
     }
-
 
     /*
     void Renderer::RenderGeometry(const Ref<CommandBuffer> &ref, const Ref<Pipeline> &pipeline, const Ref<Material> &material,
@@ -408,15 +415,6 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	struct ShaderDependencies
-    {
-        //std::vector<Ref<ComputePipeline>> ComputePipelines;
-//        std::vector<Ref<Pipeline>> Pipelines;
-        std::vector<Ref<Material>> Materials;
-    };
-
-    /// -------------------------------------------------------
-
     static std::unordered_map<size_t, ShaderDependencies> s_ShaderDependencies;
     static std::shared_mutex s_ShaderDependenciesMutex; /// ShaderDependencies can be accessed (and modified) from multiple threads, hence require synchronization
 
@@ -435,19 +433,21 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
 	/*
-	void Renderer::RegisterShaderDependency(const Ref<Shader> &shader, const Ref<ComputePipeline> &computePipeline)
+	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline)
 	{
 		std::scoped_lock lock(s_ShaderDependenciesMutex);
 		s_ShaderDependencies[shader->GetHash()].ComputePipelines.push_back(computePipeline);
 	}
+    */
 
-	void Renderer::RegisterShaderDependency(const Ref<Shader> &shader, const Ref<Pipeline> &pipeline)
+	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<Pipeline> &pipeline)
 	{
 		std::scoped_lock lock(s_ShaderDependenciesMutex);
 		s_ShaderDependencies[shader->GetHash()].Pipelines.push_back(pipeline);
 	}
 
-	void Renderer::RegisterShaderDependency(const Ref<Shader> &shader, const Ref<Material> &material)
+    /*
+	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material)
 	{
 		std::scoped_lock lock(s_ShaderDependenciesMutex);
 		s_ShaderDependencies[shader->GetHash()].Materials.push_back(material);

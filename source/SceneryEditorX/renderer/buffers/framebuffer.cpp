@@ -380,7 +380,9 @@ namespace SceneryEditorX
                 attachments.emplace_back(image->GetLayerImageView(m_Specification.existingImageLayers[0]));
             }
             else
+            {
                 attachments.emplace_back(image->GetImageInfo().view);
+            }
 
             SEDX_CORE_ASSERT(attachments.back());
         }
