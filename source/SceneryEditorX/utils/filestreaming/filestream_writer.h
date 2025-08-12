@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * filestream_writer.h
@@ -26,7 +26,7 @@ namespace SceneryEditorX
 		virtual uint64_t GetStreamPosition() = 0;
 		virtual void SetStreamPosition(uint64_t position) = 0;
 		virtual bool WriteData(const char* data, size_t size) = 0;
-		
+
 		operator bool() const { return IsStreamGood(); }
 
 		void WriteBuffer(Memory::Buffer buffer, bool writeSize = true);
