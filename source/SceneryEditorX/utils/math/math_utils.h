@@ -26,7 +26,7 @@ namespace SceneryEditorX::Utils
     constexpr float HALF_PI = PI * 0.5f;                 ///< Half pi (π/2)
     constexpr float DEG_TO_RAD = PI / 180.0f;            ///< Degrees to radians conversion factor
     constexpr float RAD_TO_DEG = 180.0f / PI;            ///< Radians to degrees conversion factor
-	
+
     ///////////////////////////////////////////////////////////
     ///				Angle Conversion Functions				///
     ///////////////////////////////////////////////////////////
@@ -99,7 +99,7 @@ namespace SceneryEditorX::Utils
      */
     bool IsZero(float value, float epsilon = 1e-6f);
 
-	
+
     ///////////////////////////////////////////////////////////
     ///					 Vector Operations					///
     ///////////////////////////////////////////////////////////
@@ -144,10 +144,10 @@ namespace SceneryEditorX::Utils
 
     /**
 	 * @brief Rounds a value down to the nearest multiple of the specified factor.
-	 * 
+	 *
 	 * This function rounds down the input value to the nearest multiple of the given factor
 	 * using integer division followed by multiplication. For example, RoundDown(17, 5) = 15.
-	 * 
+	 *
 	 * @tparam T The numeric type of both the value and factor (int, float, etc.)
 	 * @param x The value to round down
 	 * @param fac The factor to which x should be rounded (must be non-zero)
@@ -161,11 +161,11 @@ namespace SceneryEditorX::Utils
 
     /**
 	 * @brief Rounds a value up to the nearest multiple of the specified factor.
-	 * 
+	 *
 	 * This function rounds up the input value to the nearest multiple of the given factor.
 	 * It adds (fac - 1) to x before rounding down to ensure rounding up.
 	 * For example, RoundUp(17, 5) = 20.
-	 * 
+	 *
 	 * @tparam T The numeric type of both the value and factor (int, float, etc.)
 	 * @param x The value to round up
 	 * @param fac The factor to which x should be rounded (must be non-zero)
@@ -208,17 +208,18 @@ namespace SceneryEditorX::Utils
 	     */
         ~Math() = delete;
 
-		/**
-		 * @brief Decomposes a transformation matrix into translation, rotation, and scale components
-		 */
-        void DecomposeTransform(const Mat4 mat, Vec3 vec, glm::quat qua, Vec3 vec3);
+        /**
+         * @brief Decomposes a transformation matrix into translation, rotation, and scale components
+         * @note Declaration only; implementation provided elsewhere.
+         */
+    void DecomposeTransform(const Mat4 mat, Vec3 vec, glm::quat qua, Vec3 vec3);
 
         /**
 		 * @brief Mathematical constant Pi (π)
 		 *
 		 * High-precision value of π for mathematical calculations.
 		 */
-        static constexpr float PI = M_PI;
+    static constexpr float PI = 3.14159265358979323846f;
 
 	    ///////////////////////////////////////////////////////////
         ///			  Half-Precision Float Conversion			///
@@ -243,8 +244,8 @@ namespace SceneryEditorX::Utils
             const unsigned int fltInt32 = *reinterpret_cast<uint32_t *>(ptr);
 
             uint16_t fltInt16 = (fltInt32 >> 31) << 5;
-            uint16_t tmp = fltInt32 >> 23 & 0xff;
-            tmp = tmp - 0x70 & static_cast<unsigned int>(0x70 - tmp >> 4) >> 27;
+            uint16_t tmp = static_cast<uint16_t>((fltInt32 >> 23) & 0xff);
+            tmp = static_cast<uint16_t>((((tmp - 0x70) & (static_cast<unsigned int>((0x70 - tmp) >> 4)))) >> 27);
             fltInt16 = (fltInt16 | tmp) << 10;
             fltInt16 |= fltInt32 >> 13 & 0x3ff;
 
@@ -382,7 +383,7 @@ namespace SceneryEditorX::Utils
          * @return Angle in radians [-π/2, π/2]
          */
         static float ATan(const float tangent) { return atan(tangent); }
-		
+
 	    ///////////////////////////////////////////////////////////
         ///				 Absolute Value Functions				///
         ///////////////////////////////////////////////////////////
@@ -464,17 +465,16 @@ namespace SceneryEditorX::Utils
          */
     	template<typename T>
         static T Min(std::initializer_list<T> list)
-    	{
-    	    auto min = std::numeric_limits<T>::max();
-
-    	    for (auto entry : list)
-    	    {
-    	        if (entry < min)
-    	            min = entry;
-    	    }
-
-    	    return min;
-    	}
+		{
+            auto it = list.begin();
+            T minVal = *it;
+            ++it;
+            for (; it != list.end(); ++it)
+            {
+                if (*it < minVal) minVal = *it;
+            }
+            return minVal;
+        }
 
         /**
          * @brief Finds maximum value from an initializer list
@@ -488,16 +488,16 @@ namespace SceneryEditorX::Utils
          */
     	template<typename T>
         static T Max(std::initializer_list<T> list)
-    	{
-    	    auto max = std::numeric_limits<T>::min();
-    	    for (auto entry : list)
-    	    {
-    	        if (entry > max)
-    	            max = entry;
-    	    }
-
-    	    return max;
-    	}
+		{
+            auto it = list.begin();
+            T maxVal = *it;
+            ++it;
+            for (; it != list.end(); ++it)
+            {
+                if (*it > maxVal) maxVal = *it;
+            }
+            return maxVal;
+        }
 
 	    ///////////////////////////////////////////////////////////
         ///					Rounding Functions					///

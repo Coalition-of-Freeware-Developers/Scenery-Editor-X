@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -102,7 +102,7 @@ namespace SceneryEditorX
 	    Vec3 GetWorldPosition() const;
         Mat4 GetParentTransform() const;
 	    Vec3 GetWorldFront() const;
-        static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
+        //static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
 
 	private:
 		friend class AssetManager;

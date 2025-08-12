@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * editor.cpp
@@ -412,15 +412,15 @@ namespace SceneryEditorX
 	* EditorApplication Global Variables
 	* -------------------------------------------------------
 	*/
-	
+
 	GLOBAL Scope<Window> g_Window;
-	
+
 	/**
 	 * -------------------------------------------------------
 	 * FORWARD FUNCTION DECLARATIONS
 	 * -------------------------------------------------------
 	 */
-	
+
 	//INTERNAL void initVulkan(GraphicsEngine &gfxEngine);
 
 	/// -------------------------------------------------------
@@ -447,7 +447,7 @@ namespace SceneryEditorX
 	    /// Log header information immediately after init and flush to ensure it's written
 	    EDITOR_INFO("Scenery Editor X Graphics Engine is starting...");
 
-        gfxEngine.Init();
+        GraphicsEngine::Init();
 
 	    //Launcher::AdminCheck();
 	    //Launcher::Loader loader{};
@@ -460,7 +460,7 @@ namespace SceneryEditorX
 	    //scene = assetManager.GetInitialScene();
 	    //camera = assetManager.GetMainCamera(scene);
 	}
-	
+
 	void EditorApplication::Create()
 	{
         //auto physDevice = vkDevice->GetPhysicalDevice();
@@ -475,20 +475,20 @@ namespace SceneryEditorX
 
 	    //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         //gfxEngine.CreateInstance(editorWindow);
-	
+
 	    //createViewportResources();
-	
+
         /// Initialize UI components
         ui.InitGUI();
 
 	    //SceneryEditorX::CreateEditor();
-	
+
 	    //gfxEngine = CreateRef<GraphicsEngine>(*Window::GetWindow());
 	    //gfxEngine->CreateInstance();
-	
+
 	    //camera->extent = {viewportSize.x, viewportSize.y};
 	}
-	
+
 	void EditorApplication::MainLoop()
 	{
 
@@ -514,7 +514,7 @@ namespace SceneryEditorX
 
     /**
      * @brief Recreates frame-related resources.
-     * 
+     *
      * This method is called when the viewport size has changed to rebuild
      * swap chain images, framebuffers, and other resources needed for rendering.
      * It properly handles cleanup of old resources and initialization of new ones
@@ -538,8 +538,8 @@ namespace SceneryEditorX
         CreateViewportResources();
 
         // Log the viewport recreation
-        EDITOR_INFO("Viewport resources recreated with size: {}x{}", 
-            viewportData.GetViewportSize().width, 
+        EDITOR_INFO("Viewport resources recreated with size: {}x{}",
+            viewportData.GetViewportSize().width,
             viewportData.GetViewportSize().height);
     }
     */

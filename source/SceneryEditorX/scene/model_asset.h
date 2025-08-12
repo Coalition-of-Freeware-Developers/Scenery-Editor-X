@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -134,7 +134,8 @@ namespace SceneryEditorX
         bool loaded = false;
 	};
 
-    struct MeshNode /*: GraphNode*/
+    /*
+    struct MeshNode /*: GraphNode#1#
     {
         uint32_t parent = 0xffffffff;
         Ref<ModelAsset> mesh;
@@ -149,6 +150,7 @@ namespace SceneryEditorX
         MeshNode();
         //virtual void Serialize(Serializer &ser);
     };
+    */
 
 	/// ------------------------------------------------------- 
 

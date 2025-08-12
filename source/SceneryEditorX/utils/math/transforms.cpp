@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -182,13 +182,13 @@ namespace SceneryEditorX::Utils
 		scale.z = length(Row[2]);
 		Row[2] = Scale(Row[2], static_cast<T>(1));
 
-#if _DEBUG
+    #if _DEBUG
 		/// At this point, the matrix (in rows[]) is orthonormal.
 		/// Check for a coordinate system flip.  If the determinant
 		/// is -1, then negate the matrix and the scaling factors.
 		Vec3 Pdum3 = cross(Row[1], Row[2]);
 		SEDX_CORE_ASSERT(dot(Row[0], Pdum3) >= static_cast<T>(0));
-#endif
+    #endif
 
         T root;
 		if (T trace = Row[0].x + Row[1].y + Row[2].z; trace > static_cast<T>(0))
@@ -256,18 +256,15 @@ namespace SceneryEditorX::Utils
 	 * @note The transformation order is: Scale → Rotation → Translation.
 	 * @note This function uses GLM's matrix transformation functions for accuracy and performance.
 	 */
-    Mat4 ComposeTransform(const Vec3& translation, const glm::quat& rotation, const Vec3& scale)
+    Mat4 ComposeTransform(const Vec3 &translation, const glm::quat &rotation, const Vec3 &scale)
 	{
-		// Create GLM quaternion from our Quat type
+		/// Create GLM quaternion from our Quat type
 		glm::quat glmRotation(rotation.w, rotation.x, rotation.y, rotation.z);
 
-		// Compose the transformation matrix using GLM functions
-		// Order: Translation * Rotation * Scale
-		return glm::translate(Mat4(1.0f), translation) *
-		       glm::mat4_cast(glmRotation) *
-		       glm::scale(Mat4(1.0f), scale);
+		/// Compose the transformation matrix using GLM functions
+		/// Order: Translation * Rotation * Scale
+		return glm::translate(Mat4(1.0f), translation) * glm::mat4_cast(glmRotation) * glm::scale(Mat4(1.0f), scale);
 	}
-
 
 }
 

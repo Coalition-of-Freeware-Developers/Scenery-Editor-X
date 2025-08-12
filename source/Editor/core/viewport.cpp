@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * viewport.cpp
@@ -10,22 +10,27 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-//#include <Editor/core/viewport.h>
-//#include <imgui_internal.h>
-//#include <ImGuizmo.h>
-//#include <SceneryEditorX/asset/asset_types.h>
-//#include <SceneryEditorX/core/input/input.h>
-//#include <SceneryEditorX/scene/components.h>
-//#include <SceneryEditorX/utils/math/aabb.h>
-//#include <SceneryEditorX/utils/math/math_utils.h>
-//#include "editor.h"
+#include <Editor/core/editor.h>
+#include <Editor/core/selection_manager.h>
+#include <Editor/core/viewport.h>
+#include <Editor/ui/resources/editor_resources.h>
+#include <imgui_internal.h>
+#include <ImGuizmo.h>
+#include <SceneryEditorX/asset/asset_types.h>
+#include <SceneryEditorX/asset/managers/asset_manager.h>
+#include <SceneryEditorX/core/input/input.h>
+#include <SceneryEditorX/renderer/2d_renderer.h>
+#include <SceneryEditorX/renderer/scene/scene_renderer.h>
+#include <SceneryEditorX/scene/components.h>
+#include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/utils/math/aabb.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/*
 	Viewport::Viewport(std::string viewportName, Editor *editor) :
         m_Editor(editor), m_ViewportName(std::move(viewportName)), m_ViewportCamera(45.0f, 1280.0f, 720.0f, 0.1f, 1000.0f)
     {
@@ -35,22 +40,22 @@ namespace SceneryEditorX
 	{
         return m_ViewportName;
     }
-	
+
 	bool Viewport::IsViewportVisible() const
 	{
         return m_IsVisible;
 	}
-	
+
 	bool Viewport::IsMainViewport() const
 	{
         return m_IsMainViewport;
 	}
-	
+
 	Ref<SceneRenderer> Viewport::GetRenderer() const
 	{
         return m_ViewportRenderer;
 	}
-	
+
 	Ref<Renderer2D> Viewport::GetRenderer2D() const
 	{
         return m_ViewportRenderer2D;
@@ -65,26 +70,28 @@ namespace SceneryEditorX
 	{
         return m_ViewportBounds;
 	}
-	
+
 	void Viewport::Init(const Ref<Scene> &scene)
 	{
         m_ViewportRenderer = CreateRef<SceneRenderer>(scene);
         m_ViewportRenderer2D = Ref<Renderer2D>();
 
+        /// Set line width for both renderers
         m_ViewportRenderer2D->SetLineWidth(m_LineWidth);
-        m_ViewportRenderer->SetLineWidth(m_LineWidth);
+        /// SceneRenderer needs to have a SetLineWidth method implemented
+        // m_ViewportRenderer->SetLineWidth(m_LineWidth);
 	}
-	
+
 	void Viewport::SetIsMainViewport(bool isMain)
 	{
         m_IsMainViewport = isMain;
 	}
-	
+
 	void Viewport::SetIsVisible(bool visible)
 	{
         m_IsVisible = visible;
 	}
-	
+
 	void Viewport::OnUpdate(DeltaTime dt)
 	{
 	    if (m_IsVisible)
@@ -105,15 +112,16 @@ namespace SceneryEditorX
 			OnRender2D();
 		}
 	}
-	
+
 	void Viewport::OnRender2D()
 	{
-	    if (!m_ViewportRenderer->GetFinalPassImage())
-			return;
+        if (!m_ViewportRenderer || !m_ViewportRenderer->GetFinalPassImage())
+            return;
 
-		m_ViewportRenderer2D->BeginScene(m_ViewportCamera.GetViewProjection(), m_ViewportCamera.GetViewMatrix());
-		m_ViewportRenderer2D->SetTargetFramebuffer(m_ViewportRenderer->GetExternalCompositeFramebuffer());
+        m_ViewportRenderer2D->BeginScene(m_ViewportCamera.GetViewProjection(), m_ViewportCamera.GetViewMatrix());
+        m_ViewportRenderer2D->SetTargetFramebuffer(m_ViewportRenderer->GetExternalCompositeFramebuffer());
 
+		/*
 		if (m_DrawOnTopBoundingBoxes && m_ShowBoundingBoxes)
 		{
 			if (m_ShowBoundingBoxSelectedMeshOnly)
@@ -208,7 +216,9 @@ namespace SceneryEditorX
 				}
 			}
 		}
+		*/
 
+		/*
 		if (m_ShowIcons)
 		{
 			{
@@ -249,34 +259,7 @@ namespace SceneryEditorX
 			Entity entity = m_Editor->m_CurrentScene->GetEntityWithUUID(entityID);
 
 			if (!entity.HasComponent<PointLightComponent>())
-				continue;
 
-			const auto& plc = entity.GetComponent<PointLightComponent>();
-			Vec3 translation = m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translation;
-			m_ViewportRenderer2D->DrawCircle(translation, { 0.0f, 0.0f, 0.0f }, plc.Radius, Vec4(plc.Radiance, 1.0f));
-			m_ViewportRenderer2D->DrawCircle(translation, { glm::radians(90.0f), 0.0f, 0.0f }, plc.Radius, Vec4(plc.Radiance, 1.0f));
-			m_ViewportRenderer2D->DrawCircle(translation, { 0.0f, glm::radians(90.0f), 0.0f }, plc.Radius, Vec4(plc.Radiance, 1.0f));
-		}
-
-		m_ViewportRenderer2D->EndScene();
-	}
-	
-	void Viewport::OnUIRender()
-	{
-	    if (!m_IsVisible)
-            return;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(640.f, 360.f));
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
-		if (ImGui::Begin(m_ViewportName.c_str()))
-		{
-			m_IsMouseOver = ImGui::IsWindowHovered();
-			m_IsFocused = ImGui::IsWindowFocused();
-
-			if (m_IsFocused)
-                m_Editor->SetMainViewport(m_ViewportName);
-
-            auto windowSize = ImGui::GetWindowSize();
 			ImVec2 minBound = ImGui::GetWindowPos();
 			ImVec2 maxBound = { minBound.x + windowSize.x, minBound.y + windowSize.y };
 
@@ -314,10 +297,16 @@ namespace SceneryEditorX
 					UI_DrawGizmos();
 			}
 		}
-		ImGui::End();
+		*/
+
+	    ImGui::End();
 		ImGui::PopStyleVar(2);
+        /// Draw debug visuals for entities with mesh components
+        //RenderEntityDebugVisuals();
+
+        m_ViewportRenderer2D->EndScene();
 	}
-	
+
 	void Viewport::OnEvent(Event &e)
 	{
         if (m_IsMouseOver)
@@ -330,17 +319,17 @@ namespace SceneryEditorX
             dispatcher.Dispatch<MouseButtonPressedEvent>([this](MouseButtonPressedEvent &event) { return OnMouseButtonPressed(event); });
         }
 	}
-	
+
 	void Viewport::ResetCamera()
 	{
         m_ViewportCamera = EditorCamera(45.0f, 1280.0f, 720.0f, 0.1f, 1000.0f);
 	}
-	
+
 	bool * Viewport::GetIsVisibleMemory()
 	{
         return &m_IsVisible;
 	}
-	
+
 	void Viewport::UI_DrawGizmos()
 	{
 	    SEDX_PROFILE_FUNC();
@@ -362,7 +351,7 @@ namespace SceneryEditorX
 		float snapValue = m_Editor->GetSnapValue();
 		float snapValues[3] = { snapValue, snapValue, snapValue };
 
-		glm::mat4 projectionMatrix, viewMatrix;
+		Mat4 projectionMatrix, viewMatrix;
 		if (m_IsMainViewport && m_Editor->m_SceneState == Editor::SceneState::Play && !m_Editor->m_EditorCameraInRuntime)
 		{
 			Entity cameraEntity = m_Editor->m_CurrentScene->GetMainCameraEntity();
@@ -540,7 +529,7 @@ namespace SceneryEditorX
 			}
 		}
 	}
-	
+
 	void Viewport::UI_GizmosToolbar()
 	{
 	    if ((!m_ShowGizmosInPlayMode && m_IsMainViewport) && m_Editor->m_CurrentScene == m_Editor->m_RuntimeScene)
@@ -580,8 +569,8 @@ namespace SceneryEditorX
 			{
 				UI::ScopedStyle enableSpacing(ImGuiStyleVar_ItemSpacing, ImVec2(edgeOffset * 2.0f, 0));
 
-				const ImColor c_SelectedGizmoButtonColor = Colors::Theme::accent;
-				const ImColor c_UnselectedGizmoButtonColor = Colors::Theme::textBrighter;
+                constexpr ImColor c_SelectedGizmoButtonColor = Colors::Theme::accent;
+                constexpr ImColor c_UnselectedGizmoButtonColor = Colors::Theme::textBrighter;
 
 				auto gizmoButton = [&c_SelectedGizmoButtonColor, buttonSize](const Ref<Texture2D>& icon, const ImColor& tint, float paddingY = 0.0f)
 				{
@@ -669,7 +658,7 @@ namespace SceneryEditorX
 			ImGui::EndHorizontal();
 		}
 	}
-	
+
 	void Viewport::UI_CentralToolbar()
 	{
 	    if (!m_IsMainViewport)
@@ -764,7 +753,7 @@ namespace SceneryEditorX
 		ImGui::Spring();
 		ImGui::EndVertical();
 	}
-	
+
 	void Viewport::UI_ViewportSettings()
 	{
 	    UI::ScopedStyle disableSpacing(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
@@ -992,7 +981,7 @@ namespace SceneryEditorX
 			}
 		}
 	}
-	
+
 	void Viewport::UI_HandleAssetDrop()
 	{
 	    if (!ImGui::BeginDragDropTarget() || m_Editor->m_SceneState != Editor::SceneState::Edit)
@@ -1051,7 +1040,7 @@ namespace SceneryEditorX
 
 		ImGui::EndDragDropTarget();
 	}
-	
+
 	bool Viewport::OnKeyPressedEvent(KeyPressedEvent &e)
 	{
 		if (m_Editor->m_CurrentScene == m_Editor->m_RuntimeScene && IsMainViewport())
@@ -1110,7 +1099,7 @@ namespace SceneryEditorX
 
 		return false;
 	}
-	
+
 	bool Viewport::OnMouseButtonPressed(MouseButtonPressedEvent &e)
 	{
 		if (!m_IsMouseOver)
@@ -1230,7 +1219,7 @@ namespace SceneryEditorX
 
 		return false;
 	}
-	
+
 	std::pair<float, float> Viewport::GetMouseViewportSpace(bool primaryViewport) const
 	{
 		auto [mx, my] = ImGui::GetMousePos();
@@ -1242,7 +1231,7 @@ namespace SceneryEditorX
 
 		return { (mx / viewportWidth) * 2.0f - 1.0f, ((my / viewportHeight) * 2.0f - 1.0f) * -1.0f };
 	}
-	
+
 	std::pair<Vec3, Vec3> Viewport::CastRay(float mx, float my) const
 	{
         Vec4 mouseClipPos = {mx, my, -1.0f, 1.0f};
@@ -1256,7 +1245,7 @@ namespace SceneryEditorX
 
         return {rayPos, rayDir};
 	}
-	*/
+
 }
 
 /// -------------------------------------------------------

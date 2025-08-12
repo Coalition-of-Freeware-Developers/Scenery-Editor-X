@@ -6,9 +6,12 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
+FILE(GLOB ASSET_ANIMATION_FILES asset/animation/*.h asset/animation/*.hpp asset/animation/*.cpp)
 FILE(GLOB ASSET_IMPORTER_FILES asset/importers/*.h asset/importers/*.hpp asset/importers/*.cpp)
 FILE(GLOB ASSET_EXPORTER_FILES asset/exporters/*.h asset/exporters/*.hpp asset/exporters/*.cpp)
 FILE(GLOB ASSET_MANAGER_FILES asset/managers/*.h asset/managers/*.hpp asset/managers/*.cpp)
+FILE(GLOB ASSET_MATERIAL_FILES asset/material/*.h asset/material/*.hpp asset/material/*.cpp)
+FILE(GLOB ASSET_MESH_FILES asset/mesh/*.h asset/mesh/*.hpp asset/mesh/*.cpp)
 FILE(GLOB ASSET_REGISTRY_FILES asset/registry/*.h asset/registry/*.hpp asset/registry/*.cpp)
 
 FILE(GLOB CORE_APP core/application/*.h core/application/*.hpp core/application/*.cpp)
@@ -41,8 +44,6 @@ FILE(GLOB UTILS_FILESTREAM utils/filestreaming/*.cpp utils/filestreaming/*.h uti
 FILE(GLOB VULKAN_BUFFERS renderer/buffers/*.h renderer/buffers/*.cpp)
 FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
 FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h renderer/shaders/*.hpp)
-FILE(GLOB VULKAN_DEBUG renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
-FILE(GLOB VULKAN_SCENE renderer/scene/*.cpp renderer/scene/*.h renderer/scene/*.hpp)
 
 FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
 FILE(GLOB UI_PANELS ui/panels/*.cpp ui/panels/*.h ui/panels/*.hpp)
@@ -61,9 +62,12 @@ SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VAL
 # --------------------------------
 
 ADD_LIBRARY(AppCore
+	${ASSET_ANIMATION_FILES}
 	${ASSET_IMPORTER_FILES}
 	${ASSET_EXPORTER_FILES}
+	${ASSET_MATERIAL_FILES}
 	${ASSET_MANAGER_FILES}
+	${ASSET_MESH_FILES}
 	${ASSET_REGISTRY_FILES}
 	${CORE_APP}
 	${CORE_EVENTS}
@@ -88,8 +92,6 @@ ADD_LIBRARY(AppCore
 	${VULKAN_FILES}
 	${VULKAN_BUFFERS}
 	${VULKAN_SHADER_CODE}
-	${VULKAN_DEBUG}
-	${VULKAN_SCENE}
 	${FONT_CODE}
 	${UI_PANELS}
 	${UI_ACTIONS}
@@ -116,6 +118,8 @@ ADD_LIBRARY(AppCore
 	core/initializer.h
 	core/version.h
 	# --------------------------------
+	renderer/debug_renderer.cpp
+	renderer/debug_renderer.h
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
 	renderer/camera.cpp
@@ -126,7 +130,6 @@ ADD_LIBRARY(AppCore
 	renderer/dds.h
 	renderer/image_data.cpp
 	renderer/image_data.h
-	renderer/mesh.h
 	renderer/primitives.cpp
 	renderer/primitives.h
 	renderer/render_config.h
@@ -134,6 +137,8 @@ ADD_LIBRARY(AppCore
 	renderer/render_context.h
 	renderer/renderer.cpp
 	renderer/renderer.h
+	renderer/scene_renderer.cpp
+	renderer/scene_renderer.h
 	renderer/stb_image_impl.cpp
 	renderer/texture.cpp
 	renderer/texture.h
@@ -187,14 +192,23 @@ SOURCE_GROUP("Asset" FILES
 	asset/object.cpp
 	asset/object.h
 )
+SOURCE_GROUP("Asset/Animation" FILES
+	${ASSET_ANIMATION_FILES}
+)
 SOURCE_GROUP("Asset/Importers" FILES
 	${ASSET_IMPORTER_FILES}
 )
 SOURCE_GROUP("Asset/Exporters" FILES
 	${ASSET_EXPORTER_FILES}
 )
+SOURCE_GROUP("Asset/Material" FILES
+	${ASSET_MATERIAL_FILES}
+)
 SOURCE_GROUP("Asset/Managers" FILES
 	${ASSET_MANAGER_FILES}
+)
+SOURCE_GROUP("Asset/Mesh" FILES
+	${ASSET_MESH_FILES}
 )
 SOURCE_GROUP("Asset/Registry" FILES
 	${ASSET_REGISTRY_FILES}
@@ -251,9 +265,6 @@ SOURCE_GROUP("Serialization" FILES
 SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	${VULKAN_BUFFERS}
 )
-SOURCE_GROUP("Renderer/Scene" FILES
-	${VULKAN_SCENE}
-)
 SOURCE_GROUP("Utilities" FILES
 	utils/container_utils.h
 	utils/delegations.h
@@ -284,6 +295,8 @@ SOURCE_GROUP("Project" FILES
 	${PROJECT}
 )
 SOURCE_GROUP("Renderer" FILES
+	renderer/debug_renderer.cpp
+	renderer/debug_renderer.h
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
 	renderer/camera.cpp
@@ -295,7 +308,6 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/dds.h
 	renderer/image_data.cpp
 	renderer/image_data.h
-	renderer/mesh.h
 	renderer/primitives.cpp
 	renderer/primitives.h
 	renderer/renderer.cpp
@@ -303,6 +315,8 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/render_context.cpp
 	renderer/render_context.h
 	renderer/render_config.h
+	renderer/scene_renderer.cpp
+	renderer/scene_renderer.h
 	renderer/stb_image_impl.cpp
 	renderer/texture.cpp
 	renderer/texture.h
@@ -313,9 +327,6 @@ SOURCE_GROUP("Renderer" FILES
 )
 SOURCE_GROUP("Renderer/Vulkan" FILES
 	${VULKAN_FILES}
-)
-SOURCE_GROUP("Renderer/Debug" FILES
-	${VULKAN_DEBUG}
 )
 SOURCE_GROUP("Renderer/Fonts" FILES
 	${FONT_CODE}
@@ -397,10 +408,11 @@ TARGET_INCLUDE_DIRECTORIES(AppCore
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
+		${CMAKE_SOURCE_DIR}/dependency/entt/src
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/source/Gizmo
+        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
@@ -419,7 +431,6 @@ TARGET_LINK_LIBRARIES(AppCore
         CURL::libcurl
         Vulkan::Vulkan
 		imgui
-		imguizmo
 		libconfig
 		libconfig++
 		X-PlaneSceneryLibrary

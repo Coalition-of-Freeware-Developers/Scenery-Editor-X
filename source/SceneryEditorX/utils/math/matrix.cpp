@@ -10,9 +10,9 @@
 * Created: 15/7/2025
 * -------------------
 */
-#include <SceneryEditorX/utils/math/math_utils.h>
 #include <SceneryEditorX/utils/math/matrix.h>
 #include <SceneryEditorX/utils/math/quat.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
 #include <tracy/Tracy.hpp>
 
 /// -------------------------------------------------------
@@ -255,9 +255,9 @@ namespace SceneryEditorX
 
 		Matrix4x4 result{};
 
-		for (auto &row : result.rows)
+		for (int i = 0; i < 4; ++i)
         {
-            row *= rhs;
+			result.rows[i] = rows[i] * rhs;
 		}
 
 		return result;
@@ -288,9 +288,9 @@ namespace SceneryEditorX
 
 		Matrix4x4 result{};
 
-		for (auto &row : result.rows)
+		for (int i = 0; i < 4; ++i)
         {
-            row /= rhs;
+			result.rows[i] = rows[i] / rhs;
 		}
 
 		return result;
@@ -490,11 +490,11 @@ namespace SceneryEditorX
 	 * @note A determinant of 0 indicates the matrix is singular (non-invertible).
 	 * @note This function uses recursive calls and may be slower for large matrices.
 	 */
-	int Matrix4x4::GetDeterminant(const Matrix4x4& mat, const int32_t n)
+	float Matrix4x4::GetDeterminant(const Matrix4x4& mat, const int32_t n)
 	{
 		ZoneScoped;
 
-		int determinant = 0;
+		float determinant = 0.0f;
 
 		if (n == 1)
 			return mat[0][0];
@@ -508,7 +508,7 @@ namespace SceneryEditorX
 		{
 			/// Getting Cofactor of A[0][f]
 			GetCofactor(mat, temp, 0, f, n);
-			determinant += sign * mat[0][f] * GetDeterminant(temp, n - 1);
+			determinant += static_cast<float>(sign) * mat[0][f] * GetDeterminant(temp, n - 1);
 
 			/// terms are to be added with alternate sign
 			sign = -sign;

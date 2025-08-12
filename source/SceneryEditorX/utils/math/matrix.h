@@ -107,12 +107,12 @@ namespace SceneryEditorX
 		{
 			memset(rows, 0, sizeof(rows));
 
-			for (int i = 0; i < cells.size(); i++)
+            int i = 0;
+            for (auto it = cells.begin(); it != cells.end() && i < 16; ++it, ++i)
 			{
-				const int row = cells.size() / 4;
-				const int col = cells.size() % 4;
-
-				rows[row][col] = *(cells.begin() + i);
+                const int row = i / 4;
+                const int col = i % 4;
+                rows[row][col] = *it;
 			}
 		}
 
@@ -966,7 +966,7 @@ namespace SceneryEditorX
          *
          * @note A determinant of 0 indicates the matrix is singular (non-invertible).
          */
-        static int GetDeterminant(const Matrix4x4 &mat, int32_t n);
+    static float GetDeterminant(const Matrix4x4 &mat, int32_t n);
 
         /**
          * @brief Calculates the adjoint (adjugate) matrix.

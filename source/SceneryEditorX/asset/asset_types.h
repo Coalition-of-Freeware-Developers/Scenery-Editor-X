@@ -24,6 +24,7 @@ namespace SceneryEditorX
 		Scene,
 		Prefab,
 		Mesh,
+        StaticMesh,
 		MeshSource,
 		Material,
 		Texture,

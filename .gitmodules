@@ -28,3 +28,6 @@
 [submodule "dependency/entt"]
 	path = dependency/entt
 	url = git@github.com:skypjack/entt.git
+[submodule "dependency/ImGuizmo"]
+	path = dependency/ImGuizmo
+	url = git@github.com:CedricGuillemet/ImGuizmo.git

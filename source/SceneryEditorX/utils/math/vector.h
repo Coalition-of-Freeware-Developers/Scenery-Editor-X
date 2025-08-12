@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vector.h
@@ -11,15 +11,40 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/identifiers/hash.h>
+#include <algorithm>
+#include <limits>
+#include <string>
+#include <sstream>
+#include <cmath>
+#include <functional>
+#if defined(__has_include)
+#  if __has_include(<fmt/format.h>)
+#    include <fmt/format.h>
+#    define SEDX_HAS_FMT 1
+#  else
+#    define SEDX_HAS_FMT 0
+#  endif
+#else
+#  define SEDX_HAS_FMT 0
+#endif
 #include <SceneryEditorX/utils/math/math_utils.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX::Utils
 {
+    // Lightweight hash helpers to avoid dependency on commented-out global hash utilities
+    inline void HashCombine(std::size_t &seed, const std::size_t h) noexcept
+    {
+        seed ^= h + 0x9e3779b9 + (seed << 6U) + (seed >> 2U);
+    }
 
-    /*
+    template <typename T>
+    inline std::size_t HashOf(const T &v)
+    {
+        return std::hash<T>{}(v);
+    }
+
     template<typename T>
     class TVector2;
 
@@ -39,7 +64,6 @@ namespace SceneryEditorX::Utils
 
 	using Range = Vec2;
 	using RangeInt = Vec2i;
-	*/
 
     /**
      * @brief Checks if two floating-point numbers are approximately equal.
@@ -48,21 +72,20 @@ namespace SceneryEditorX::Utils
      * This is useful for comparing floating-point numbers where precision errors may occur.
      *
      * @param lhs
-     * @param rhs 
+     * @param rhs
      * @return Returns true if the two numbers are approximately equal, false otherwise.
      */
-    /*
+
     inline bool ApproxEquals(const float lhs, const float rhs)
     {
         return std::abs(lhs - rhs) < std::numeric_limits<float>::epsilon();
     }
-    */
 
     /**
      * @brief Represents a 2D vector or a point in 2D space.
-     * @tparam T 
+     * @tparam T
      */
-    /*
+
     template<typename T>
     class TVector2
     {
@@ -97,7 +120,9 @@ namespace SceneryEditorX::Utils
 
         inline size_t GetHash() const
 		{
-			return GetCombinedHashes({ GetHash(x), GetHash(y) });
+            size_t seed = HashOf(x);
+            HashCombine(seed, HashOf(y));
+			return seed;
 		}
 
         [[nodiscard]] Vec2 ToVec2() const { return Vec2(x, y); }
@@ -169,8 +194,8 @@ namespace SceneryEditorX::Utils
         inline static T Dot(TVector2 a, TVector2 b) { return a.x * b.x + a.y * b.y; }
         inline float Dot(TVector2 b) const { return x * b.x + y * b.y; }
 
-        /// Signed angle in radians between 2 vectors. ///TODO 
-        inline static float SignedAngle(const TVector2 a, const TVector2 b) { return Math::ACos(Dot(a, b) / (a.GetMagnitude() * b.GetMagnitude())); } 
+        /// Signed angle in radians between 2 vectors. ///TODO
+        inline static float SignedAngle(const TVector2 a, const TVector2 b) { return Math::ACos(Dot(a, b) / (a.GetMagnitude() * b.GetMagnitude())); }
 
         /// Signed angle in radians between 2 vectors
         inline float SignedAngle(const TVector2 b) const { return SignedAngle(*this, b); }
@@ -183,15 +208,13 @@ namespace SceneryEditorX::Utils
             return TVector2<float>(Math::LerpUnclamped(from.x, to.x, t), Math::LerpUnclamped(from.y, to.y, t));
         }
 
-        inline std::string ToString() const { return std::string ("({}, {})", x, y); }
+    inline std::string ToString() const { std::ostringstream oss; oss << "(" << x << ", " << y << ")"; return oss.str(); }
     };
-    */
 
     /**
      * @brief Represents a 3D vector or a point in 3D space.
-     * @tparam T 
+     * @tparam T
      */
-    /*
     template<typename T>
     class TVector3
     {
@@ -213,7 +236,12 @@ namespace SceneryEditorX::Utils
             T xyz[4]; ///< size/alignment is same as Vector4
         };
 
-		inline size_t GetHash() const { return GetCombinedHashes({ SceneryEditorX::GetHash(x), SceneryEditorX::GetHash(y), SceneryEditorX::GetHash(z) }); }
+		inline size_t GetHash() const {
+            size_t seed = HashOf(x);
+            HashCombine(seed, HashOf(y));
+            HashCombine(seed, HashOf(z));
+            return seed;
+        }
         inline T operator[](int index) const { return xyz[index]; }
 
         [[nodiscard]] Vec3 ToVec3() const
@@ -397,16 +425,15 @@ namespace SceneryEditorX::Utils
 
         inline std::string ToString() const
         {
-            return std::string ("({}, {}, {})", x, y, z);
+            std::ostringstream oss; oss << "(" << x << ", " << y << ", " << z << ")"; return oss.str();
         }
     };
-    */
+
 
     /**
      * @brief Represents a 4D vector or a rectangle defined by its four components.
      * @tparam T The type of the components (e.g., float, int).
      */
-    /*
     template<typename T>
     class TVector4
     {
@@ -452,7 +479,11 @@ namespace SceneryEditorX::Utils
 
 		inline size_t GetHash() const
 		{
-			return GetCombinedHashes({ SceneryEditorX::GetHash(x), SceneryEditorX::GetHash(y), SceneryEditorX::GetHash(z), SceneryEditorX::GetHash(w) });
+            size_t seed = HashOf(x);
+            HashCombine(seed, HashOf(y));
+            HashCombine(seed, HashOf(z));
+            HashCombine(seed, HashOf(w));
+			return seed;
 		}
 
         [[nodiscard]] Vec4 ToVec4() const
@@ -462,7 +493,7 @@ namespace SceneryEditorX::Utils
 
         [[nodiscard]] TVector4<int32_t> ToVec4i() const
         {
-            return {(int32_t)x, (int32_t)y, (int32_t)z, (int32_t)z};
+            return {(int32_t)x, (int32_t)y, (int32_t)z, (int32_t)w};
         }
 
         inline T& operator[](int index)
@@ -594,7 +625,7 @@ namespace SceneryEditorX::Utils
 
         inline static float Dot(TVector4 a, TVector4 b)
         {
-            return a.x * b.x + a.y * b.y + a.z * b.z;
+            return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
         }
 
         inline float Dot(TVector4 b) const
@@ -646,11 +677,9 @@ namespace SceneryEditorX::Utils
 
         inline std::string ToString() const
         {
-            return std::string ("({}, {}, {}, {})", x, y, z, w);
+            std::ostringstream oss; oss << "(" << x << ", " << y << ", " << z << ", " << w << ")"; return oss.str();
         }
     };
-    */
-
 
     /**
      * @brief Represents a rectangle defined by its minimum and maximum points or by its left, top, right, and bottom edges.
@@ -661,36 +690,35 @@ namespace SceneryEditorX::Utils
      *
      * @note The rectangle can be defined either by its minimum and maximum points (min, max) or by its edges (left, top, right, bottom).
      */
-    /*
     class Rect
     {
     public:
 
         /**
          * @brief Default constructor that initializes the rectangle to an empty state.
-         #1#
+         */
         Rect() : left(0), top(0), right(0), bottom(0) {}
 
         /**
          * @brief Creates a rectangle from a Vec4 representation.
-         * @param vec 
-         #1#
+         * @param vec
+         */
         explicit Rect(const Vec4& vec) : left(vec.left), top(vec.top), right(vec.right), bottom(vec.bottom) {}
 
         /**
          * @brief Creates a rectangle from its minimum and maximum points.
-         * @param min 
-         * @param max 
-         #1#
+         * @param min
+         * @param max
+         */
         Rect(const Vec2& min, const Vec2& max) : min(min), max(max) {}
 
         /**
          * @brief Creates a rectangle from its left, top, right, and bottom edges.
-         * @param left 
-         * @param top 
-         * @param right 
-         * @param bottom 
-         #1#
+         * @param left
+         * @param top
+         * @param right
+         * @param bottom
+         */
         Rect(float left, float top, float right, float bottom) : left(left), top(top), right(right), bottom(bottom) {}
 
         /**
@@ -698,10 +726,10 @@ namespace SceneryEditorX::Utils
          *
          * This function constructs a rectangle using the specified minimum point and size.
          *
-         * @param min 
-         * @param size 
+         * @param min
+         * @param size
          * @return Returns a Rect object representing the rectangle defined by the minimum point and size.
-         #1#
+         */
         static Rect FromSize(const Vec2& min, const Vec2& size)
         {
             return Rect(min, min + size);
@@ -714,12 +742,12 @@ namespace SceneryEditorX::Utils
          * It calculates the minimum and maximum points of the rectangle based on the position and size,
          * resulting in a rectangle that starts at (x, y) and extends to (x + w, y + h).
          *
-         * @param x 
-         * @param y 
-         * @param w 
-         * @param h 
+         * @param x
+         * @param y
+         * @param w
+         * @param h
          * @return Returns a Rect object representing the rectangle defined by the position and size.
-         #1#
+         */
         static Rect FromSize(float x, float y, const float w, const float h)
         {
             return {x, y, x + w, y + h};
@@ -733,7 +761,7 @@ namespace SceneryEditorX::Utils
          *
          * @param point The point to check for containment within the rectangle.
          * @return Returns true if the point is contained within the rectangle, false otherwise.
-         #1#
+         */
         [[nodiscard]] bool Contains(const Vec2 point) const
         {
             return point.x >= min.x && point.y >= min.y && point.x <= max.x && point.y <= max.y;
@@ -746,7 +774,7 @@ namespace SceneryEditorX::Utils
          *
          * @param other The rectangle to check for overlap with this rectangle.
          * @return Returns true if the rectangles overlap, false otherwise.
-         #1#
+         */
         [[nodiscard]] bool Overlaps(const Rect& other) const
         {
             return !(right < other.left || left > other.right || bottom < other.top || top > other.bottom);
@@ -775,7 +803,7 @@ namespace SceneryEditorX::Utils
          * This function computes the size of the rectangle by subtracting the minimum point from the maximum point.
          *
          * @return Returns a Vec2 object representing the width and height of the rectangle.
-         #1#
+         */
         inline Vec2 GetSize() const
         {
             return max - min;
@@ -787,7 +815,7 @@ namespace SceneryEditorX::Utils
 		 * This function computes the area of the rectangle by multiplying its width and height.
 		 *
 		 * @return Returns the area of the rectangle as a float.
-		 #1#
+		 */
         [[nodiscard]] float GetArea() const
         {
             return GetSize().width * GetSize().height;
@@ -800,7 +828,7 @@ namespace SceneryEditorX::Utils
          * and then rounding the result to the nearest integer.
          *
          * @return Returns the area of the rectangle as an integer.
-         #1#
+         */
         [[nodiscard]] int32_t GetAreaInt() const
         {
             return Math::RoundToInt(GetSize().width * GetSize().height);
@@ -811,7 +839,7 @@ namespace SceneryEditorX::Utils
          *
          * This function converts the rectangle's left, top, right, and bottom edges into a Vec4 object.
          * @return Returns a Vec4 object containing the rectangle's edges.
-         #1#
+         */
         inline Vec4 ToVec4() const
         {
             return {left, top, right, bottom};
@@ -825,7 +853,7 @@ namespace SceneryEditorX::Utils
          *
          * @param scale A vector representing the scale factors for the x and y dimensions.
          * @return Returns a new rectangle that is scaled by the given vector.
-         #1#
+         */
         [[nodiscard]] Rect Scale(const Vec2 scale) const
         {
             const Vec2 size = GetSize();
@@ -840,9 +868,9 @@ namespace SceneryEditorX::Utils
          * It calculates the new size by multiplying the current size by the scale factor,
          * and then computes the new minimum and maximum points based on the center of the rectangle.
          *
-         * @param scale 
+         * @param scale
          * @return Returns a new rectangle that is scaled uniformly by the given factor.
-         #1#
+         */
         [[nodiscard]] Rect Scale(const float scale) const
         {
             return Scale(Vec2(scale, scale));
@@ -855,9 +883,9 @@ namespace SceneryEditorX::Utils
          * It calculates the new minimum point by adding the translation vector to the current minimum point,
          * and keeps the size of the rectangle unchanged.
          *
-         * @param translation 
+         * @param translation
          * @return Returns a new rectangle that is translated by the given vector.
-         #1#
+         */
         [[nodiscard]] Rect Translate(const Vec2 translation) const
         {
             const Vec2 size = GetSize();
@@ -872,7 +900,7 @@ namespace SceneryEditorX::Utils
          *
          * @param point
          * @return Returns a new rectangle that encapsulates both this rectangle and the point.
-         #1#
+         */
         [[nodiscard]] Rect Encapsulate(const Vec2 &point) const
         {
             auto xmin = Math::Min({ min.x, max.x, point.x });
@@ -888,9 +916,9 @@ namespace SceneryEditorX::Utils
          * This function takes another rectangle and expands the current rectangle to include both its own area and the area of the other rectangle.
          * It calculates the minimum and maximum x and y coordinates from both rectangles to create a new rectangle that encompasses both.
          *
-         * @param other 
+         * @param other
          * @return Returns a new rectangle that encapsulates both this rectangle and the other rectangle.
-         #1#
+         */
         [[nodiscard]] Rect Encapsulate(const Rect &other) const
         {
 			auto xmin = Math::Min({ min.x, max.x, other.min.x, other.max.x });
@@ -907,13 +935,13 @@ namespace SceneryEditorX::Utils
          * It calculates the new position of the point after rotation using basic trigonometric functions.
          *
          * @param x
-         * @param y  
+         * @param y
          * @param centerX
-         * @param centerY 
-         * @param angle 
-         * @param newX 
-         * @param newY 
-         #1#
+         * @param centerY
+         * @param angle
+         * @param newX
+         * @param newY
+         */
         static void RotatePoint(const float x, const float y, const float centerX, const float centerY, const double angle, float& newX, float& newY)
         {
             const float radians = angle * (M_PI / 180.0); ///< Convert degrees to radians
@@ -934,8 +962,8 @@ namespace SceneryEditorX::Utils
          * @param rectangle The original rectangle to be rotated.
          * @param angle The angle in degrees by which to rotate the rectangle.
          * @return Returns a new rectangle representing the bounding box of the rotated rectangle.
-         #1#
-        static Rect ComputeBoundingBox(const Rect& rectangle, const float angle)
+         */
+    static Rect ComputeBoundingBox(const Rect& rectangle, const float angle)
         {
             const float x1 = rectangle.min.x;
             const float y1 = rectangle.min.y;
@@ -961,8 +989,8 @@ namespace SceneryEditorX::Utils
             const float minY = std::min({ newY1, newY2, newY3, newY4 });
             const float maxY = std::max({ newY1, newY2, newY3, newY4 });
 
-            const Rect boundingBox = { minX, minY, maxX - minX, maxY - minY };
-            return boundingBox;
+            // Return as edge-based rect: left, top, right, bottom
+            return { minX, minY, maxX, maxY };
         }
 
         inline bool operator==(const Rect& rhs) const
@@ -999,22 +1027,20 @@ namespace SceneryEditorX::Utils
 
         inline size_t GetHash() const
         {
-            size_t hash = GetHash(left);
-            CombineHash(hash, top);
-            CombineHash(hash, right);
-            CombineHash(hash, bottom);
-            return hash;
+            size_t seed = HashOf(left);
+            HashCombine(seed, HashOf(top));
+            HashCombine(seed, HashOf(right));
+            HashCombine(seed, HashOf(bottom));
+            return seed;
         }
 
         inline std::string ToString() const
         {
-            return fmt::format("({}, {}, {}, {})", left, top, right, bottom);
+            std::ostringstream oss; oss << "(" << left << ", " << top << ", " << right << ", " << bottom << ")"; return oss.str();
         }
-        
-    };
-    */
 
-    /*
+    };
+
     template<typename T>
     TVector2<T>::TVector2(TVector3<T> vec3) : x(vec3.x), y(vec3.y) {}
 
@@ -1053,9 +1079,27 @@ namespace SceneryEditorX::Utils
     {
         return rhs * lhs;
     }
-    
+
     template<typename T>
     inline TVector4<T> operator*(int32_t lhs, TVector4<T> rhs)
+    {
+        return rhs * lhs;
+    }
+
+    template<typename T>
+    inline TVector2<T> operator*(uint32_t lhs, TVector2<T> rhs)
+    {
+        return rhs * lhs;
+    }
+
+    template<typename T>
+    inline TVector3<T> operator*(uint32_t lhs, TVector3<T> rhs)
+    {
+        return rhs * lhs;
+    }
+
+    template<typename T>
+    inline TVector4<T> operator*(uint32_t lhs, TVector4<T> rhs)
     {
         return rhs * lhs;
     }
@@ -1077,12 +1121,12 @@ namespace SceneryEditorX::Utils
     {
         return rhs * lhs;
     }
-    */
 
 }
 
+#if SEDX_HAS_FMT
 /** fmt user-defined Formatter for SceneryEditorX::Vec2 */
-/*
+
 template <>
 struct fmt::formatter<SceneryEditorX::Utils::Vec2>
 {
@@ -1094,7 +1138,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec2>
      *
      * @param ctx The format parse context containing the range to parse.
      * @return Returns an iterator past the end of the parsed range.
-     #1#
+     */
     static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
     {
         ///< Return an iterator past the end of the parsed range:
@@ -1107,7 +1151,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec2>
      * @param vec2 The Vec2 object to format.
      * @param ctx The format context containing the output iterator.
      * @return Returns an output iterator to write to.
-     #1#
+     */
     template <typename FormatContext>
     auto format(const SceneryEditorX::Utils::Vec2 &vec2, FormatContext &ctx) const -> decltype(ctx.out())
     {
@@ -1115,10 +1159,9 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec2>
         return fmt::format_to(ctx.out(), "{}", vec2.ToString());
     }
 };
-*/
 
 /** fmt user-defined Formatter for SceneryEditorX::Vec3 */
-/*
+
 template <>
 struct fmt::formatter<SceneryEditorX::Utils::Vec3>
 {
@@ -1130,7 +1173,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec3>
      *
      * @param ctx The format parse context containing the range to parse.
      * @return Returns an iterator past the end of the parsed range.
-     #1#
+     */
     static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
     {
         ///< Return an iterator past the end of the parsed range:
@@ -1143,7 +1186,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec3>
      * @param vec3 The Vec3 object to format.
      * @param ctx The format context containing the output iterator.
      * @return Returns an output iterator to write to.
-     #1#
+     */
     template <typename FormatContext>
     auto format(const SceneryEditorX::Utils::Vec3 &vec3, FormatContext &ctx) const -> decltype(ctx.out())
     {
@@ -1151,10 +1194,9 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec3>
         return fmt::format_to(ctx.out(), "{}", vec3.ToString());
     }
 };
-*/
 
 /** fmt user-defined Formatter for SceneryEditorX::Vec4 */
-/*
+
 template <>
 struct fmt::formatter<SceneryEditorX::Utils::Vec4>
 {
@@ -1166,7 +1208,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec4>
      *
      * @param ctx The format parse context containing the range to parse.
      * @return Returns an iterator past the end of the parsed range.
-     #1#
+     */
     static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
     {
         ///< Return an iterator past the end of the parsed range:
@@ -1179,7 +1221,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec4>
      * @param vec4 The Vec4 object to format.
      * @param ctx The format context containing the output iterator.
      * @return Returns an output iterator to write to.
-     #1#
+     */
     template <typename FormatContext>
     auto format(const SceneryEditorX::Utils::Vec4 &vec4, FormatContext &ctx) const -> decltype(ctx.out())
     {
@@ -1187,10 +1229,9 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec4>
         return fmt::format_to(ctx.out(), "{}", vec4.ToString());
     }
 };
-*/
 
 /** fmt user-defined Formatter for SceneryEditorX::Utils::Vec2i */
-/*
+
 template <>
 struct fmt::formatter<SceneryEditorX::Utils::Vec2i>
 {
@@ -1202,7 +1243,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec2i>
      *
      * @param ctx The format parse context containing the range to parse.
      * @return Returns an iterator past the end of the parsed range.
-     #1#
+     */
     static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
     {
         ///< Return an iterator past the end of the parsed range:
@@ -1215,7 +1256,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec2i>
      * @param vec2 The Vec2i object to format.
      * @param ctx The format context containing the output iterator.
      * @return Returns an output iterator to write to.
-     #1#
+     */
     template <typename FormatContext>
     auto format(const SceneryEditorX::Utils::Vec2i &vec2, FormatContext &ctx) const -> decltype(ctx.out())
     {
@@ -1223,10 +1264,9 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec2i>
         return fmt::format_to(ctx.out(), "{}", vec2.ToString());
     }
 };
-*/
 
 /// fmt user-defined Formatter for SceneryEditorX::Utils::Vec3i
-/*
+
 template <>
 struct fmt::formatter<SceneryEditorX::Utils::Vec3i>
 {
@@ -1238,7 +1278,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec3i>
      *
      * @param ctx The format parse context containing the range to parse.
      * @return Returns an iterator past the end of the parsed range.
-    #1#
+     */
     static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
     {
         ///< Return an iterator past the end of the parsed range:
@@ -1251,7 +1291,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec3i>
      * @param vec3 The Vec3i object to format.
      * @param ctx The format context containing the output iterator.
      * @return Returns an output iterator to write to.
-    #1#
+     */
     template <typename FormatContext>
     auto format(const SceneryEditorX::Utils::Vec3i &vec3, FormatContext &ctx) const -> decltype(ctx.out())
     {
@@ -1259,10 +1299,9 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec3i>
         return fmt::format_to(ctx.out(), "{}", vec3.ToString());
     }
 };
-*/
 
 /** fmt user-defined Formatter for SceneryEditorX::Utils::Vec4i */
-/*
+
 template <>
 struct fmt::formatter<SceneryEditorX::Utils::Vec4i>
 {
@@ -1274,7 +1313,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec4i>
      *
      * @param ctx The format parse context containing the range to parse.
      * @return Returns an iterator past the end of the parsed range.
-     #1#
+     */
     static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
     {
         ///< Return an iterator past the end of the parsed range:
@@ -1283,11 +1322,11 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec4i>
 
     /**
      * @brief Formats the point p using the parsed format specification (presentation) stored in this formatter.
-     * 
+     *
      * @param vec4 The Vec4i object to format.
      * @param ctx The format context containing the output iterator.
      * @return Returns an output iterator to write to.
-     #1#
+     */
     template <typename FormatContext>
     auto format(const SceneryEditorX::Utils::Vec4i &vec4, FormatContext &ctx) const -> decltype(ctx.out())
     {
@@ -1295,9 +1334,8 @@ struct fmt::formatter<SceneryEditorX::Utils::Vec4i>
         return fmt::format_to(ctx.out(), "{}", vec4.ToString());
     }
 };
-*/
 
-/*
+
 template <>
 struct fmt::formatter<SceneryEditorX::Utils::Rect>
 {
@@ -1309,8 +1347,8 @@ struct fmt::formatter<SceneryEditorX::Utils::Rect>
      *
      * @param ctx The format parse context containing the range to parse.
      * @return Returns an iterator past the end of the parsed range.
-     #1#
-    static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin()) 
+     */
+    static constexpr auto parse(const format_parse_context& ctx) -> decltype(ctx.begin())
     {
         ///< Return an iterator past the end of the parsed range:
         return ctx.end();
@@ -1322,7 +1360,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Rect>
      * @param rect The Rect object to format.
      * @param ctx The format context containing the output iterator.
      * @return Returns an output iterator to write to.
-     #1#
+     */
     template <typename FormatContext>
     auto format(const SceneryEditorX::Utils::Rect &rect, FormatContext &ctx) const -> decltype(ctx.out())
     {
@@ -1331,6 +1369,7 @@ struct fmt::formatter<SceneryEditorX::Utils::Rect>
     }
 
 };
-*/
+
+#endif // SEDX_HAS_FMT
 
 /// -------------------------------------------------------

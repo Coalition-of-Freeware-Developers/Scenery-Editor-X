@@ -12,8 +12,8 @@
 */
 #pragma once
 #include <filesystem>
-//#include <SceneryEditorX/asset/asset_manager.h>
-//#include <SceneryEditorX/asset/editor_asset_manager.h>
+//#include <SceneryEditorX/asset/managers/asset_manager.h>
+//#include <SceneryEditorX/asset/managers/editor_asset_manager.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/platform/config/editor_config.hpp>
 #include <SceneryEditorX/project/project_settings.h>
@@ -52,7 +52,7 @@ namespace SceneryEditorX
 	    void Load(const std::filesystem::path &InPath);
 	    void Save(const std::filesystem::path &InPath);
 
-        //GLOBAL Ref<AssetManagerBase> GetAssetManager() { return s_AssetManager; }
+        //GLOBAL Ref<AssetManager> GetAssetManager() { return s_AssetManager; }
         //GLOBAL Ref<EditorAssetManager> GetEditorAssetManager() { return s_AssetManager.As<EditorAssetManager>(); }
 
         std::filesystem::path GetAssetDirectory();
@@ -83,7 +83,7 @@ namespace SceneryEditorX
         std::filesystem::path projectPath;
         std::filesystem::path binPath;
 
-	    //LOCAL Ref<AssetManagerBase> s_AssetManager;
+	    LOCAL Ref<AssetManager> s_AssetManager;
         inline LOCAL Ref<Project> activeProject;
 
 	};

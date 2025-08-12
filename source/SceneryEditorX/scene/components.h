@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -281,6 +281,8 @@ namespace SceneryEditorX
         TextComponent(const TextComponent &other) = default;
     };
 
+    /// Already defined in Lights.h
+    /*
     enum class LightType : uint8_t
     {
         None = 0,
@@ -288,6 +290,7 @@ namespace SceneryEditorX
         Point = 2,
         Spot = 3
     };
+    */
 
     struct DirectionalLightComponent
     {

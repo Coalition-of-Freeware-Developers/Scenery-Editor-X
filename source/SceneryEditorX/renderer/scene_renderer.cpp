@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,17 +10,17 @@
 * Created: 23/7/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/time/timer.h>
 #include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/renderer/debug/vk_debug.h>
-#include <SceneryEditorX/renderer/scene/scene_renderer.h>
+#include <SceneryEditorX/renderer/debug_renderer.h>
+#include <SceneryEditorX/renderer/scene_renderer.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/*
 	LOCAL std::vector<std::thread> s_ThreadPool;
 
 	SceneRenderer::SceneRenderer(const Ref<Scene> &scene, const SceneRendererSpecification &specification) : m_Scene(scene), m_Specification(specification)
@@ -49,10 +49,10 @@ namespace SceneryEditorX
 
 		///< Tiering
 		{
-			using namespace Tiering::Renderer;
+			//using namespace Tiering::Renderer;
 
 			const auto& tiering = m_Specification.Tiering;
-			RendererDataUB.SoftShadows = tiering.ShadowQuality == ShadowQualitySetting::High;
+			RendererDataUB.SoftShadows = tiering.ShadowQuality == Tiering::Renderer::ShadowQualitySetting::High;
 			m_Options.EnableGTAO = false;
 
 			switch (tiering.AOQuality)
@@ -116,7 +116,7 @@ namespace SceneryEditorX
 		/**
 		 * Create passes and specify "flow" -> this can (and should) include outputs and chain together,
 		 * for eg. shadow pass output goes into geo pass input
-		 #1#
+		 */
 		m_Renderer2D = CreateRef<Renderer2D>();
 		m_Renderer2DScreenSpace = CreateRef<Renderer2D>();
 		m_DebugRenderer = CreateRef<DebugRenderer>();
@@ -127,7 +127,7 @@ namespace SceneryEditorX
 		/**
 		 * Descriptor Set Layout
          * Light culling compute pipeline
-		 #1#
+		 */
 		{
 			StorageBufferSpec spec;
 			spec.debugName = "VisiblePointLightIndices";
@@ -223,7 +223,7 @@ namespace SceneryEditorX
 
 			/**
 			 * TODO m_BloomComputePrefilterMaterial = Material::Create(shader);
-             #1#
+             */
 		}
 
 		///< Directional Shadow pass
@@ -413,7 +413,7 @@ namespace SceneryEditorX
 				preDepthFramebufferSpec.debugName = "PreDepth-Opaque";
 
                 ///< Linear depth, reversed device depth
-                preDepthFramebufferSpec.attachments = {/*VkFormat::VK_FORMAT_R32_SFLOAT, #1# VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT};
+                preDepthFramebufferSpec.attachments = {/*VkFormat::VK_FORMAT_R32_SFLOAT, */ VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT};
 				preDepthFramebufferSpec.clearColor = { 0.0f, 0.0f, 0.0f, 0.0f };
 				preDepthFramebufferSpec.depthClearValue = 0.0f;
 			
@@ -476,7 +476,6 @@ namespace SceneryEditorX
 			}
 
 			///< Geometry
-		    /*
 		    {
 				ImageSpecification imageSpec;
 				imageSpec.width = Application::Get().GetWindow().GetWidth();
@@ -490,16 +489,16 @@ namespace SceneryEditorX
 				FramebufferSpecification geoFramebufferSpec;
 				geoFramebufferSpec.width = m_Specification.ViewportWidth;
 				geoFramebufferSpec.height = m_Specification.ViewportHeight;
-                geoFramebufferSpec.Attachments = {VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT,
+                geoFramebufferSpec.attachments = {VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT,
                                                   VkFormat::VK_FORMAT_R16G16_SFLOAT,
                                                   VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
                                                   VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT};
 				geoFramebufferSpec.existingImages[3] = m_PreDepthPass->GetDepthOutput();
 
 				///< Don't clear primary color attachment (skybox pass writes into it)
-				geoFramebufferSpec.Attachments.Attachments[0].LoadOp = AttachmentLoadOp::Load;
+				geoFramebufferSpec.attachments.Attachments[0].LoadOp = AttachmentLoadOp::Load;
                 ///< Don't blend with luminance in the alpha channel.
-				geoFramebufferSpec.Attachments.Attachments[1].Blend = false;
+				geoFramebufferSpec.attachments.Attachments[1].Blend = false;
 				geoFramebufferSpec.samples = 1;
 				geoFramebufferSpec.clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 				geoFramebufferSpec.debugName = "Geometry";
@@ -545,16 +544,14 @@ namespace SceneryEditorX
 
 				///< TODO: Need Transparent-Animated geometry pipeline
 			}
-			#1#
 
 			///< Selected Geometry isolation (for outline pass)
-		    /*
 		    {
 				FramebufferSpecification framebufferSpec;
 				framebufferSpec.width = m_Specification.ViewportWidth;
 				framebufferSpec.height = m_Specification.ViewportHeight;
 				framebufferSpec.debugName = "SelectedGeometry";
-                framebufferSpec.Attachments = {VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat()};
+                framebufferSpec.attachments = {VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat()};
 				framebufferSpec.samples = 1;
 				framebufferSpec.clearColor = { 0.0f, 0.0f, 0.0f, 0.0f };
 				framebufferSpec.depthClearValue = 1.0f;
@@ -591,9 +588,7 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_SelectedGeometryAnimPass->Validate());
 				m_SelectedGeometryAnimPass->Bake();
 			}
-			#1#
 
-		    /*
 			{
 				RenderSpec spec;
 				spec.debugName = "GeometryPass";
@@ -638,9 +633,7 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_GeometryPass->Validate());
 				m_GeometryPass->Bake();
 			}
-			#1#
 
-			/*
 			{
 				RenderSpec spec;
 				spec.debugName = "GeometryPass-Animated";
@@ -668,7 +661,6 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_GeometryAnimPass->Validate());
 				m_GeometryAnimPass->Bake();
 			}
-			#1#
 
 			/*
 			{
@@ -687,7 +679,7 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_LightCullingPass->Validate());
 				m_LightCullingPass->Bake();
 			}
-			#1#
+			*/
 
 #if 0
 			///< Render example
@@ -798,7 +790,6 @@ namespace SceneryEditorX
 		}
 
 		///< SSR Composite
-		/*
 		{
 			ImageSpecification imageSpec;
 			imageSpec.format = VkFormat::VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -823,7 +814,7 @@ namespace SceneryEditorX
 			framebufferSpec.width = m_Specification.ViewportWidth;
 			framebufferSpec.height = m_Specification.ViewportHeight;
 			framebufferSpec.clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-			framebufferSpec.Attachments.Attachments.emplace_back(VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT);
+			framebufferSpec.attachments.Attachments.emplace_back(VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT);
 			framebufferSpec.existingImages[0] = m_GeometryPass->GetOutput(0);
 			framebufferSpec.debugName = "SSR-Composite";
 			framebufferSpec.blendMode = FramebufferBlendMode::SrcAlphaOneMinusSrcAlpha;
@@ -838,7 +829,6 @@ namespace SceneryEditorX
 			SEDX_CORE_VERIFY(m_SSRCompositePass->Validate());
 			m_SSRCompositePass->Bake();
 		}
-		#1#
 
 		///< Pre-Integration
 		{
@@ -878,7 +868,6 @@ namespace SceneryEditorX
 		}
 
 		///< Edge Detection
-		/*
 		if (m_Specification.EnableEdgeOutlineEffect)
 		{
 			FramebufferSpecification compFramebufferSpec;
@@ -886,7 +875,7 @@ namespace SceneryEditorX
 			compFramebufferSpec.height = m_Specification.ViewportHeight;
 			compFramebufferSpec.debugName = "POST-EdgeDetection";
 			compFramebufferSpec.clearColor = { 0.5f, 0.1f, 0.1f, 1.0f };
-			compFramebufferSpec.Attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat() };
+			compFramebufferSpec.attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat() };
 			compFramebufferSpec.transfer = true;
 
 			Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(compFramebufferSpec);
@@ -912,17 +901,15 @@ namespace SceneryEditorX
 			SEDX_CORE_VERIFY(m_EdgeDetectionPass->Validate());
 			m_EdgeDetectionPass->Bake();
 		}
-		#1#
 
 		///< Composite
-		/*
 		{
 			FramebufferSpecification compFramebufferSpec;
 			compFramebufferSpec.width = m_Specification.ViewportWidth;
 			compFramebufferSpec.height = m_Specification.ViewportHeight;
 			compFramebufferSpec.debugName = "SceneComposite";
 			compFramebufferSpec.clearColor = { 0.5f, 0.1f, 0.1f, 1.0f };
-			compFramebufferSpec.Attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat() };
+			compFramebufferSpec.attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat() };
 			compFramebufferSpec.transfer = true;
 
 			Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(compFramebufferSpec);
@@ -950,24 +937,22 @@ namespace SceneryEditorX
 			m_CompositePass->AddInput("u_TransparentDepthTexture", m_PreDepthTransparentPass->GetDepthOutput());
 
 			if (m_Specification.EnableEdgeOutlineEffect)
-				//m_CompositePass->AddInput("u_EdgeTexture", m_EdgeDetectionPass->GetOutput(0));
+				m_CompositePass->AddInput("u_EdgeTexture", m_EdgeDetectionPass->GetOutput(0));
 			
 			m_CompositePass->AddInput("Camera", m_UBSCamera);
 
 			SEDX_CORE_VERIFY(m_CompositePass->Validate());
 			m_CompositePass->Bake();
 		}
-		#1#
 
 		// DOF
-		/*
 		{
 			FramebufferSpecification compFramebufferSpec;
 			compFramebufferSpec.width = m_Specification.ViewportWidth;
 			compFramebufferSpec.height = m_Specification.ViewportHeight;
 			compFramebufferSpec.debugName = "POST-DepthOfField";
 			compFramebufferSpec.clearColor = { 0.5f, 0.1f, 0.1f, 1.0f };
-			compFramebufferSpec.Attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat() };
+			compFramebufferSpec.attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT, RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat() };
 			compFramebufferSpec.transfer = true;
 
 			Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(compFramebufferSpec);
@@ -994,7 +979,6 @@ namespace SceneryEditorX
 			SEDX_CORE_VERIFY(m_DOFPass->Validate());
 			m_DOFPass->Bake();
 		}
-		#1#
 
 		FramebufferSpecification fbSpec;
 		fbSpec.width = m_Specification.ViewportWidth;
@@ -1059,7 +1043,6 @@ namespace SceneryEditorX
 		}
 
 		///< Read-back Image
-		/*
 		if (false) ///< WIP
 		{
 			ImageSpecification spec;
@@ -1069,7 +1052,6 @@ namespace SceneryEditorX
 			spec.debugName = "ReadBack";
             m_ReadBackImage = CreateRef<Image2D>(spec);
 		}
-		#1#
 
 		///< Temporary framebuffers for re-use
 		{
@@ -1087,7 +1069,6 @@ namespace SceneryEditorX
 		}
 
 		///< Jump Flood (outline)
-		/*
 		{
 			PipelineData pipelineSpecification;
 			pipelineSpecification.debugName = "JumpFlood-Init";
@@ -1130,7 +1111,7 @@ namespace SceneryEditorX
 				FramebufferSpecification fbSpec;
 				fbSpec.width = m_Specification.ViewportWidth;
 				fbSpec.height = m_Specification.ViewportHeight;
-				fbSpec.Attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT};
+				fbSpec.attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT};
 				fbSpec.existingImages[0] = m_CompositePass->GetOutput(0);
 				fbSpec.clearColorOnLoad = false;
 				pipelineSpecification.dstFramebuffer = CreateRef<Framebuffer>(fbSpec); // TODO: move this and skybox FB to be central, can use same
@@ -1146,7 +1127,6 @@ namespace SceneryEditorX
 				m_JumpFloodCompositeMaterial = CreateRef<Material>(pipelineSpecification.shader, pipelineSpecification.debugName);
 			}
 		}
-		#1#
 
 		///< Grid
 		{
@@ -1176,7 +1156,6 @@ namespace SceneryEditorX
 		}
 
 		///< Debug render
-		/*
 		m_SelectedBoneMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "SelectedBone");
 		m_SelectedBoneMaterial->Set("u_MaterialUniforms.Color", m_Options.SelectedBoneColor);
 		m_BoneMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "Bone");
@@ -1187,7 +1166,6 @@ namespace SceneryEditorX
 		m_SimpleColliderMaterial->Set("u_MaterialUniforms.Color", m_Options.SimplePhysicsCollidersColor);
 		m_ComplexColliderMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "ComplexCollider");
 		m_ComplexColliderMaterial->Set("u_MaterialUniforms.Color", m_Options.ComplexPhysicsCollidersColor);
-		#1#
 
 		m_WireframeMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "Wireframe");
 		m_WireframeMaterial->Set("u_MaterialUniforms.Color", Vec4{ 1.0f, 0.5f, 0.0f, 1.0f });
@@ -1238,7 +1216,7 @@ namespace SceneryEditorX
 
 		Renderer::Submit([instance = Ref(this)]() mutable { instance->m_ResourcesCreatedGPU = true; });
 
-		//InitOptions();
+		InitOptions();
 
 		////////////////////////////////////////
 		/// COMPUTE
@@ -1288,7 +1266,6 @@ namespace SceneryEditorX
 		}
 
 		///< GTAO Denoise
-		/*
 		{
 
 			{
@@ -1327,10 +1304,8 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_GTAODenoisePass[1]->Validate());
 				m_GTAODenoisePass[1]->Bake();
 			}
-			#1#
 
 			///< GTAO Composite
-			/*
 			 {
 				PipelineData aoCompositePipelineSpec;
 				aoCompositePipelineSpec.debugName = "AO-Composite";
@@ -1338,7 +1313,7 @@ namespace SceneryEditorX
 				framebufferSpec.width = m_Specification.ViewportWidth;
 				framebufferSpec.height = m_Specification.ViewportHeight;
 				framebufferSpec.debugName = "AO-Composite";
-				framebufferSpec.Attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT };
+				framebufferSpec.attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT };
 				framebufferSpec.existingImages[0] = m_GeometryPass->GetOutput(0);
 				framebufferSpec.blend = true;
 				framebufferSpec.clearColorOnLoad = false;
@@ -1365,12 +1340,10 @@ namespace SceneryEditorX
 			}
 
 		}
-		#1#
 
-		//m_GTAOFinalImage = m_Options.GTAODenoisePasses && m_Options.GTAODenoisePasses % 2 != 0 ? m_GTAODenoiseImage : m_GTAOOutputImage;
+		m_GTAOFinalImage = m_Options.GTAODenoisePasses && m_Options.GTAODenoisePasses % 2 != 0 ? m_GTAODenoiseImage : m_GTAOOutputImage;
 
 		///< SSR
-		/*
 		{
 			Ref<Shader> shader = Renderer::GetShaderLibrary()->Get("SSR");
 
@@ -1391,7 +1364,6 @@ namespace SceneryEditorX
 			SEDX_CORE_VERIFY(m_SSRPass->Validate());
 			m_SSRPass->Bake();
 		}
-		#1#
 
 	}
 
@@ -1402,7 +1374,7 @@ namespace SceneryEditorX
 			hdelete[] Data;
 	}
 
-	/*
+
 	void SceneRenderer::InitOptions()
 	{
         ///<TODO: Deserialization?
@@ -1416,9 +1388,7 @@ namespace SceneryEditorX
 		Renderer::SetGlobalMacroInShaders("__SEDX_REFLECTION_OCCLUSION_METHOD", std::format("{}", (int)m_Options.ReflectionOcclusionMethod));
         ///<Renderer::SetGlobalMacroInShaders("__SEDX_GTAO_COMPUTE_BENT_NORMALS", std::format("{}", (int)m_Options.GTAOBentNormals));
 	}
-	#1#
 
-	/*
 	void SceneRenderer::InsertGPUPerfMarker(Ref<CommandBuffer> renderCommandBuffer, const std::string& label, const Vec4& markerColor)
 	{
 		Renderer::Submit([=]
@@ -1426,9 +1396,7 @@ namespace SceneryEditorX
 			Renderer::RT_InsertGPUPerfMarker(renderCommandBuffer, label, markerColor);
 		});
 	}
-	#1#
 
-	/*
 	void SceneRenderer::BeginGPUPerfMarker(Ref<CommandBuffer> renderCommandBuffer, const std::string& label, const Vec4& markerColor)
 	{
 		Renderer::Submit([=]
@@ -1436,9 +1404,7 @@ namespace SceneryEditorX
 			Renderer::RT_BeginGPUPerfMarker(renderCommandBuffer, label, markerColor);
 		});
 	}
-	#1#
 
-	/*
 	void SceneRenderer::EndGPUPerfMarker(const Ref<CommandBuffer> &renderCommandBuffer)
 	{
 		Renderer::Submit([=]
@@ -1446,7 +1412,6 @@ namespace SceneryEditorX
 			Renderer::RT_EndGPUPerfMarker(renderCommandBuffer);
 		});
 	}
-	#1#
 
 	void SceneRenderer::SetScene(const Ref<Scene> &scene)
 	{
@@ -1469,7 +1434,6 @@ namespace SceneryEditorX
 		}
 	}
 
-	/*
 	///< Some other settings are directly set in gui
 	void SceneRenderer::UpdateGTAOData()
 	{
@@ -1478,9 +1442,7 @@ namespace SceneryEditorX
 		gtaoData.HZBUVFactor = m_SSROptions.HZBUvFactor;
 		gtaoData.ShadowTolerance = m_Options.AOShadowTolerance;
 	}
-	#1#
 
-	/*
 	void SceneRenderer::BeginScene(const SceneRendererCamera& camera)
 	{
 		SEDX_PROFILE_FUNC();
@@ -1708,13 +1670,13 @@ namespace SceneryEditorX
 		UBSpotShadowData& spotShadowData = SpotShadowDataUB;
 
 		auto& sceneCamera = m_SceneData.SceneCamera;
-		const auto viewProjection = sceneCamera.Camera.GetProjectionMatrix() * sceneCamera.ViewMatrix;
+		const auto viewProjection = sceneCamera.camera.GetProjectionMatrix() * sceneCamera.ViewMatrix;
 		const Mat4 viewInverse = glm::inverse(sceneCamera.ViewMatrix);
-		const Mat4 projectionInverse = glm::inverse(sceneCamera.Camera.GetProjectionMatrix());
+		const Mat4 projectionInverse = glm::inverse(sceneCamera.camera.GetProjectionMatrix());
 		const Vec3 cameraPosition = viewInverse[3];
 
 		cameraData.ViewProjection = viewProjection;
-		cameraData.Projection = sceneCamera.Camera.GetProjectionMatrix();
+		cameraData.Projection = sceneCamera.camera.GetProjectionMatrix();
 		cameraData.InverseProjection = projectionInverse;
 		cameraData.View = sceneCamera.ViewMatrix;
 		cameraData.InverseView = viewInverse;
@@ -1726,7 +1688,7 @@ namespace SceneryEditorX
 		if (depthLinearizeMul * depthLinearizeAdd < 0)
 			depthLinearizeAdd = -depthLinearizeAdd;
 		cameraData.DepthUnpackConsts = { depthLinearizeMul, depthLinearizeAdd };
-		const float* P = glm::value_ptr(m_SceneData.SceneCamera.Camera.GetProjectionMatrix());
+		const float* P = glm::value_ptr(m_SceneData.SceneCamera.camera.GetProjectionMatrix());
 		const Vec4 projInfoPerspective = {
 				 2.0f / (P[4 * 0 + 0]),                 ///< (x) * (R - L)/N
 				 2.0f / (P[4 * 1 + 1]),                 ///< (y) * (T - B)/N
@@ -1831,9 +1793,7 @@ namespace SceneryEditorX
 		///< 	m_ShadowPassPipelines[0]->GetSpecification().RenderPass->GetSpecification().dstFramebuffer->GetDepthImage(),
 		///< 	m_SpotShadowPassPipeline->GetSpecification().RenderPass->GetSpecification().dstFramebuffer->GetDepthImage());
 	}
-	#1#
 
-	/*
 	void SceneRenderer::EndScene()
 	{
 		SEDX_PROFILE_FUNC();
@@ -1850,7 +1810,6 @@ namespace SceneryEditorX
 
 		m_Active = false;
 	}
-	#1#
 
 	void SceneRenderer::WaitForThreads()
 	{
@@ -1860,7 +1819,6 @@ namespace SceneryEditorX
 		s_ThreadPool.clear();
 	}
 
-	/*
 	void SceneRenderer::SubmitMesh(Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, const Mat4& transform, const std::vector<Mat4>& boneTransforms, Ref<Material> overrideMaterial)
 	{
 		SEDX_PROFILE_FUNC();
@@ -1913,9 +1871,7 @@ namespace SceneryEditorX
 			dc.IsRigged = isRigged;
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SubmitStaticMesh(Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, const Ref<MaterialTable> &materialTable, const Mat4& transform, const Ref<Material> &overrideMaterial)
 	{
 		SEDX_PROFILE_FUNC();
@@ -1966,9 +1922,7 @@ namespace SceneryEditorX
 		}
 
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SubmitSelectedMesh(Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, const Mat4& transform, const std::vector<Mat4>& boneTransforms, Ref<Material> overrideMaterial)
 	{
 		SEDX_PROFILE_FUNC();
@@ -2039,9 +1993,7 @@ namespace SceneryEditorX
 			dc.IsRigged = isRigged;
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SubmitSelectedStaticMesh(Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, const Ref<MaterialTable> &materialTable, const Mat4& transform, const Ref<Material> &overrideMaterial)
 	{
 		SEDX_PROFILE_FUNC();
@@ -2101,9 +2053,7 @@ namespace SceneryEditorX
 			}
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SubmitPhysicsDebugMesh(Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, const Mat4& transform, const bool isSimpleCollider)
 	{
 		SEDX_CORE_VERIFY(mesh);
@@ -2128,9 +2078,7 @@ namespace SceneryEditorX
 			dc.InstanceCount++;
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SubmitAnimationDebugMesh(const Mat4& transform, const bool isSelected)
 	{
 		SubmitStaticDebugMesh(m_AnimationDebugDrawList, m_BoneMesh, m_BoneMeshSource, transform, isSelected ? m_SelectedBoneMaterial : m_BoneMaterial);
@@ -2140,16 +2088,12 @@ namespace SceneryEditorX
 		Vec3 p1 = transform * Vec4(0.0f, 1.0f, 0.0f, 1.0f);
 		GetDebugRenderer()->DrawLine(p0, p1, { 0.0f, 1.0f, 0.0f, 1.0f }, true);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SubmitPhysicsStaticDebugMesh(Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, const Mat4& transform, const bool isSimpleCollider)
 	{
 		SubmitStaticDebugMesh(m_StaticColliderDrawList, staticMesh, meshSource, transform, isSimpleCollider ? m_SimpleColliderMaterial : m_ComplexColliderMaterial);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SubmitStaticDebugMesh(std::map<SceneRenderer::MeshKey, SceneRenderer::StaticDrawCommand>& drawList, Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, const Mat4& transform, const Ref<Material> &material)
 	{
 		SEDX_PROFILE_FUNC();
@@ -2184,7 +2128,6 @@ namespace SceneryEditorX
 			}
 		}
 	}
-	#1#
 
 	void SceneRenderer::ClearPass(const Ref<RenderPass> &renderPass, bool explicitClear) const
     {
@@ -2193,7 +2136,6 @@ namespace SceneryEditorX
 		Renderer::EndFrame(m_CommandBuffer);
 	}
 
-	/*
 	void SceneRenderer::ShadowMapPass()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2256,9 +2198,7 @@ namespace SceneryEditorX
 
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.DirShadowMapPassQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SpotShadowMapPass()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2297,9 +2237,7 @@ namespace SceneryEditorX
 		Renderer::EndFrame(m_CommandBuffer);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.SpotShadowMapPassQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::PreDepthPass()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2334,7 +2272,7 @@ namespace SceneryEditorX
 
 		Renderer::EndFrame(m_CommandBuffer);
 
-#if 0
+    #if 0
 		Renderer::BeginRenderPass(m_CommandBuffer, m_PreDepthTransparentPass);
 		for (auto& [mk, dc] : m_TransparentStaticMeshDrawList)
 		{
@@ -2358,10 +2296,10 @@ namespace SceneryEditorX
 		}
 
 		Renderer::EndRenderPass(m_CommandBuffer);
-#endif
+    #endif
 		SceneRenderer::EndGPUPerfMarker(m_CommandBuffer);
 
-#if 0 // Is this necessary?
+    #if 0 // Is this necessary?
 		Renderer::Submit([cb = m_CommandBuffer, image = m_PreDepthPipeline->GetSpecification().RenderPass->GetSpecification().dstFramebuffer->GetDepthImage().As<VulkanImage2D>()]()
 		{
 			VkImageMemoryBarrier imageMemoryBarrier = {};
@@ -2381,14 +2319,12 @@ namespace SceneryEditorX
 				0, nullptr,
 				0, nullptr,
 				1, &imageMemoryBarrier);
-	});
-#endif
+	    });
+    #endif
 
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.DepthPrePassQuery);
-}
-#1#
+    }
 
-	/*
 	void SceneRenderer::Compute()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2448,9 +2384,7 @@ namespace SceneryEditorX
 		Renderer::EndComputePass(m_CommandBuffer, m_HierarchicalDepthPass);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.HierarchicalDepthQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::PreIntegration()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2501,9 +2435,7 @@ namespace SceneryEditorX
 
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.PreIntegrationQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::LightCullingPass()
 	{
 		m_GPUTimeQueries.LightCullingPassQuery = m_CommandBuffer->BeginTimestampQuery();
@@ -2525,7 +2457,6 @@ namespace SceneryEditorX
 		SceneRenderer::EndGPUPerfMarker(m_CommandBuffer);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.LightCullingPassQuery);
 	}
-	#1#
 
 	void SceneRenderer::SkyboxPass() const
     {
@@ -2546,7 +2477,6 @@ namespace SceneryEditorX
 		Renderer::EndFrame(m_CommandBuffer);
 	}
 
-	/*
 	void SceneRenderer::GeometryPass()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2601,7 +2531,7 @@ namespace SceneryEditorX
 		}
 		SceneRenderer::EndGPUPerfMarker(m_CommandBuffer);
 
-#if 0
+    #if 0
 		{
 			///< Render static meshes
 			SceneRenderer::BeginGPUPerfMarker(m_CommandBuffer, "Static Transparent Meshes");
@@ -2622,7 +2552,7 @@ namespace SceneryEditorX
 			}
 			SceneRenderer::EndGPUPerfMarker(m_CommandBuffer);
 		}
-#endif
+    #endif
 		Renderer::EndFrame(m_CommandBuffer);
 
 		Renderer::BeginFrame(m_CommandBuffer, m_GeometryAnimPass);
@@ -2637,9 +2567,7 @@ namespace SceneryEditorX
 		}
 		Renderer::EndFrame(m_CommandBuffer);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::PreConvolutionCompute()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2692,9 +2620,7 @@ namespace SceneryEditorX
 
 		Renderer::EndComputePass(m_CommandBuffer, m_PreConvolutionComputePass);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::GTAOCompute()
 	{
 		const Buffer pushConstantBuffer(&GTAODataCB, sizeof GTAODataCB);
@@ -2705,9 +2631,7 @@ namespace SceneryEditorX
 		Renderer::EndComputePass(m_CommandBuffer, m_GTAOComputePass);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.GTAOPassQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::GTAODenoiseCompute()
 	{
 		m_GTAODenoiseConstants.DenoiseBlurBeta = GTAODataCB.DenoiseBlurBeta;
@@ -2724,9 +2648,7 @@ namespace SceneryEditorX
 		}
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.GTAODenoisePassQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::AOComposite()
 	{
 		// if (m_Options.EnableHBAO)
@@ -2737,9 +2659,7 @@ namespace SceneryEditorX
 		Renderer::EndFrame(m_CommandBuffer);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.AOCompositePassQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::JumpFloodPass()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2775,9 +2695,7 @@ namespace SceneryEditorX
 		//m_JumpFloodCompositeMaterial->Set("u_Texture", m_TempFramebuffers[1]->GetImage());
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.JumpFloodPassQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SSRCompute()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2790,9 +2708,7 @@ namespace SceneryEditorX
 		Renderer::EndComputePass(m_CommandBuffer, m_SSRPass);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.SSRQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::SSRCompositePass()
 	{
 		///< Currently scales the SSR, renders with transparency.
@@ -2804,9 +2720,7 @@ namespace SceneryEditorX
 		Renderer::EndFrame(m_CommandBuffer);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.SSRCompositeQuery);
 	}
-	#1#
 
-	/*
 	void SceneRenderer::BloomCompute()
 	{
 		glm::uvec3 workGroups;
@@ -2892,7 +2806,6 @@ namespace SceneryEditorX
 		Renderer::EndComputePass(m_CommandBuffer, m_BloomComputePass);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.BloomComputePassQuery);
 	}
-	#1#
 	
 	void SceneRenderer::EdgeDetectionPass() const
     {
@@ -2901,7 +2814,6 @@ namespace SceneryEditorX
 		Renderer::EndFrame(m_CommandBuffer);
 	}
 
-	/*
 	void SceneRenderer::CompositePass()
 	{
 		SEDX_PROFILE_FUNC();
@@ -2961,7 +2873,7 @@ namespace SceneryEditorX
 				m_CompositePass->GetTargetFramebuffer()->GetImage());
 
 			///< WIP - will later be used for debugging/editor mouse picking
-#if 0
+    #if 0
 			if (m_ReadBackImage)
 			{
 				Renderer::CopyImage(m_CommandBuffer,
@@ -2978,7 +2890,7 @@ namespace SceneryEditorX
 					allocator.UnmapMemory(alloc);
 				}
 			}
-#endif
+    #endif
 		}
 
 		///< Grid
@@ -3104,9 +3016,7 @@ namespace SceneryEditorX
 			SceneRenderer::EndGPUPerfMarker(m_CommandBuffer);
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::FlushDrawList()
 	{
 		if (m_ResourcesCreated && m_ViewportWidth > 0 && m_ViewportHeight > 0)
@@ -3189,9 +3099,7 @@ namespace SceneryEditorX
 		m_MeshTransformMap.clear();
 		m_MeshBoneTransformsMap.clear();
 	}
-	#1#
 
-	/*
 	void SceneRenderer::PreRender()
 	{
 		SEDX_PROFILE_FUNC();
@@ -3229,9 +3137,7 @@ namespace SceneryEditorX
 			});
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::CopyToBoneTransformStorage(const MeshKey& meshKey, const Ref<MeshSource>& meshSource, const std::vector<Mat4>& boneTransforms)
 	{
 		auto& boneTransformsMap = m_MeshBoneTransformsMap[meshKey];
@@ -3251,7 +3157,6 @@ namespace SceneryEditorX
                 boneTransformsMap.BoneTransformsData.push_back(boneTransforms[meshSource->m_BoneInfo[i].BoneIndex] * meshSource->m_BoneInfo[i].InverseBindPose);
         }
 	}
-	#1#
 
 	void SceneRenderer::CreateBloomPassMaterials()
 	{
@@ -3312,7 +3217,6 @@ namespace SceneryEditorX
 
 	}
 
-	/*
 	void SceneRenderer::CreateXPlaneMaterialsPass()
 	{
 		constexpr uint32_t maxMipBatchSize = 4;
@@ -3348,7 +3252,6 @@ namespace SceneryEditorX
 			}
 		}
 	}
-	#1#
 
 	void SceneRenderer::CreatePreIntegrationPassMaterials()
 	{
@@ -3405,7 +3308,6 @@ namespace SceneryEditorX
 		return m_Options;
 	}
 
-	/*
 	void SceneRenderer::CalculateCascades(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3& lightDirection) const
 	{
         ///< TODO: Reversed Z projection?
@@ -3528,9 +3430,7 @@ namespace SceneryEditorX
 			lastSplitDist = cascadeSplits[i];
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::CalculateCascadesManualSplit(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3& lightDirection) const
 	{
         ///<TODO: Reversed Z projection?
@@ -3634,9 +3534,7 @@ namespace SceneryEditorX
 			lastSplitDist = m_ShadowCascadeSplits[0];
 		}
 	}
-	#1#
 
-	/*
 	void SceneRenderer::UpdateStatistics()
 	{
 		m_Statistics.DrawCalls = 0;
@@ -3676,7 +3574,6 @@ namespace SceneryEditorX
 		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 		m_Statistics.TotalGPUTime = m_CommandBuffer->GetExecutionGPUTime(frameIndex);
 	}
-	#1#
 
 	void SceneRenderer::SetLineWidth(const float width)
 	{
@@ -3694,7 +3591,6 @@ namespace SceneryEditorX
 		if (m_Renderer2D)
 			m_Renderer2D->SetLineWidth(width);
 	}
-	*/
 
 }
 

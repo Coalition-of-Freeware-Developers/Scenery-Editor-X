@@ -125,10 +125,12 @@ namespace SceneryEditorX
         //Scope<PanelManager> m_PanelManager;
         //Ref<EditorConsolePanel> m_ConsolePanel;
         bool m_ShowStatisticsPanel = false;
-
         std::vector<Ref<Viewport>> m_EditorViewports;
 
-        Ref<Scene> m_RuntimeScene, m_EditorScene, m_SimulationScene, m_CurrentScene;
+        Ref<Scene> m_RuntimeScene;
+        Ref<Scene> m_EditorScene;
+        Ref<Scene> m_SimulationScene;
+        Ref<Scene> m_CurrentScene;
         std::string m_SceneFilePath;
 
         float m_AssetUpdatePerf = 0.0f;

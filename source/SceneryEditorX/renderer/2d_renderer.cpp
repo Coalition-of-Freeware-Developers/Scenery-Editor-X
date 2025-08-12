@@ -55,7 +55,6 @@ namespace SceneryEditorX
 		framebufferSpec.clearColor = { 0.1f, 0.5f, 0.5f, 1.0f };
 		framebufferSpec.debugName = "Renderer2D Framebuffer";
 
-
         {
             Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(framebufferSpec);
             PipelineData pipelineSpecification;

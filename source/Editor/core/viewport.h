@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * viewport.h
@@ -33,7 +33,10 @@ namespace SceneryEditorX
     class Viewport : public RefCounted
     {
     public:
+		/// Default constructor to allow aggregate members to default-construct
+		Viewport() : m_ViewportCamera(45.0f, 1280.0f, 720.0f, 0.1f, 1000.0f) {}
         Viewport(std::string viewportName, Editor *editor);
+
         const std::string &GetName() const;
 
         bool IsViewportVisible() const;
@@ -41,7 +44,7 @@ namespace SceneryEditorX
 
         Ref<SceneRenderer> GetRenderer() const;
         Ref<Renderer2D> GetRenderer2D() const;
-		
+
 		EditorCamera &GetViewportCamera();
         std::array<Vec2, 2> GetViewportBounds() const;
 
@@ -70,14 +73,14 @@ namespace SceneryEditorX
         std::pair<float, float> GetMouseViewportSpace(bool primaryViewport) const;
         std::pair<Vec3, Vec3> CastRay(float mx, float my) const;
 
-        Editor *m_Editor;
-        std::string m_ViewportName;
+        Editor *m_Editor = nullptr;
+        EditorCamera m_ViewportCamera;
+        std::string m_ViewportName = "Viewport";
         Ref<SceneRenderer> m_ViewportRenderer;
         Ref<Renderer2D> m_ViewportRenderer2D;
-        EditorCamera m_ViewportCamera;
         std::array<Vec2, 2> m_ViewportBounds = {};
 
-		
+
 		/**
 		 * Main means the last active viewport.
 		 * If you click on any viewport, and it is focus this viewport will be main.
@@ -90,6 +93,7 @@ namespace SceneryEditorX
         bool m_ShowGizmos = true;
         bool m_ShowBoundingBoxSelectedMeshOnly = true;
         bool m_ShowBoundingBoxSubmeshes = false;
+        bool m_ShowGizmosInPlayMode = false;
         bool m_DrawOnTopBoundingBoxes = true;
         bool m_ShowBoundingBoxes = false;
         float m_LineWidth = 2.0f;

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,23 +11,24 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include <SceneryEditorX/project/project_settings.h>
-//#include <SceneryEditorX/renderer/2d_renderer.h>
-//#include <SceneryEditorX/renderer/buffers/framebuffer.h>
-//#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
-//#include <SceneryEditorX/renderer/compute_pass.h>
-//#include <SceneryEditorX/renderer/compute_pipeline.h>
-//#include <SceneryEditorX/renderer/texture.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_image.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
-//#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/project/project_settings.h>
+#include <SceneryEditorX/renderer/2d_renderer.h>
+#include <SceneryEditorX/renderer/camera.h>
+#include <SceneryEditorX/renderer/shaders/shader_definitions.h>
+#include <SceneryEditorX/renderer/buffers/framebuffer.h>
+#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
+#include <SceneryEditorX/renderer/compute_pass.h>
+#include <SceneryEditorX/renderer/compute_pipeline.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/vulkan/vk_image.h>
+#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
+#include <SceneryEditorX/scene/material.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	
-	/*
+
 	struct SceneRendererOptions
 	{
 		bool ShowGrid = true;
@@ -58,7 +59,7 @@ namespace SceneryEditorX
 
 	    ///< SSR
 		bool EnableSSR = false;
-		//ShaderDef::AOMethod ReflectionOcclusionMethod = ShaderDef::AOMethod::None;
+        ShaderSpecs::AOMethod ReflectionOcclusionMethod = ShaderSpecs::AOMethod::None;
 	};
 
     /// -------------------------------------------------------
@@ -85,7 +86,7 @@ namespace SceneryEditorX
 
 	struct SceneRendererCamera
 	{
-		//Camera camera;
+		Camera camera;
 		Mat4 ViewMatrix;
         float Near;
 	    float Far; ///<Non-reversed
@@ -186,7 +187,7 @@ namespace SceneryEditorX
 
 		static void InsertGPUPerfMarker(Ref<CommandBuffer> renderCommandBuffer, const std::string& label, const Vec4& markerColor = {});
 		static void BeginGPUPerfMarker(Ref<CommandBuffer> renderCommandBuffer, const std::string& label, const Vec4& markerColor = {});
-		static void EndGPUPerfMarker(const Ref<CommandBuffer> &renderCommandBuffer);/*
+		static void EndGPUPerfMarker(const Ref<CommandBuffer> &renderCommandBuffer);
 
 		void SubmitMesh(Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, const Mat4& transform = Mat4(1.0f), const std::vector<Mat4>& boneTransforms = {}, Ref<Material> overrideMaterial = nullptr);
 		void SubmitStaticMesh(Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, Ref<MaterialTable> materialTable, const Mat4& transform = Mat4(1.0f), Ref<Material> overrideMaterial = nullptr);
@@ -198,7 +199,7 @@ namespace SceneryEditorX
 
 		void SubmitPhysicsDebugMesh(Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, const Mat4& transform = Mat4(1.0f), const bool isSimpleCollider = true);
 		void SubmitPhysicsStaticDebugMesh(Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, const Mat4& transform = Mat4(1.0f), const bool isSimpleCollider = true);
-		#1#
+
 
 		Ref<Pipeline> GetFinalPipeline() const;
 		Ref<RenderPass> GetFinalRenderPass();
@@ -255,7 +256,7 @@ namespace SceneryEditorX
 		void FlushDrawList();
 		void PreRender();
 
-	    /*
+
 		struct MeshKey
 		{
 			AssetHandle MeshHandle;
@@ -289,14 +290,14 @@ namespace SceneryEditorX
 
 			}
 		};
-		#1#
+
 
         /// -------------------------------------------------------
 
 		struct DrawCommand
 		{
-			//Ref<Mesh> Mesh;
-			//Ref<MeshSource> MeshSource;
+			Ref<Mesh> Mesh;
+			Ref<MeshSource> MeshSource;
 			uint32_t SubmeshIndex;
 			Ref<MaterialTable> MaterialTable;
 			Ref<Material> OverrideMaterial;
@@ -310,8 +311,8 @@ namespace SceneryEditorX
 
 		struct StaticDrawCommand
 		{
-			//Ref<StaticMesh> StaticMesh;
-			//Ref<MeshSource> MeshSource;
+			Ref<StaticMesh> StaticMesh;
+			Ref<MeshSource> MeshSource;
 			uint32_t SubmeshIndex;
 			Ref<MaterialTable> MaterialTable;
 			Ref<Material> OverrideMaterial;
@@ -320,8 +321,8 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		//void SubmitStaticDebugMesh(std::map<SceneRenderer::MeshKey, SceneRenderer::StaticDrawCommand>& drawList, Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, const Mat4& transform, Ref<Material> material);
-		//void CopyToBoneTransformStorage(const MeshKey& meshKey, const Ref<MeshSource>& meshSource, const std::vector<Mat4>& boneTransforms);
+		void SubmitStaticDebugMesh(std::map<SceneRenderer::MeshKey, SceneRenderer::StaticDrawCommand>& drawList, Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, const Mat4& transform, Ref<Material> material);
+		void CopyToBoneTransformStorage(const MeshKey& meshKey, const Ref<MeshSource>& meshSource, const std::vector<Mat4>& boneTransforms);
 		void CreateBloomPassMaterials();
 		void CreatePreConvolutionPassMaterials();
 		void CreateXPlaneMaterialsPass();
@@ -381,8 +382,8 @@ namespace SceneryEditorX
 			Ref<Environment> SceneEnvironment;
 			float SkyboxLod = 0.0f;
 			float SceneEnvironmentIntensity;
-			//LightEnvironment SceneLightEnvironment;
-			//DirLight ActiveLight;
+			LightEnvironment SceneLightEnvironment;
+			DirLight ActiveLight;
 		} m_SceneData;
 
         /// -------------------------------------------------------
@@ -437,7 +438,7 @@ namespace SceneryEditorX
 		{
 			uint32_t Count { 0 };
 			Vec3 Padding {};
-			//PointLight PointLights[1024] {};
+			PointLight PointLights[1024] {};
 		} PointLightsUB;
 
         /// -------------------------------------------------------
@@ -446,7 +447,7 @@ namespace SceneryEditorX
 		{
 			uint32_t Count{ 0 };
 			Vec3 Padding{};
-			//SpotLight SpotLights[1000]{};
+			SpotLight SpotLights[1000]{};
 		} SpotLightUB;
 
         /// -------------------------------------------------------
@@ -530,8 +531,8 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		Ref<StorageBufferSet> m_SBSVisiblePointLightIndicesBuffer;
-		Ref<StorageBufferSet> m_SBSVisibleSpotLightIndicesBuffer;
+		//Ref<StorageBufferSet> m_SBSVisiblePointLightIndicesBuffer;
+		//Ref<StorageBufferSet> m_SBSVisibleSpotLightIndicesBuffer;
 
 		std::vector<Ref<RenderPass>> m_DirectionalShadowMapPass; ///< Per-cascade
 		std::vector<Ref<RenderPass>> m_DirectionalShadowMapAnimPass; ///< Per-cascade
@@ -542,7 +543,7 @@ namespace SceneryEditorX
 		Ref<RenderPass> m_DeinterleavingPass[2];
 		Ref<RenderPass> m_AOCompositePass;
 
-		Ref<ComputePass> m_LightCullingPass;
+		//Ref<ComputePass> m_LightCullingPass;
 
         /// -------------------------------------------------------
 
@@ -554,21 +555,21 @@ namespace SceneryEditorX
 		float m_ShadowCascadeSplits[4];
 		bool m_UseManualCascadeSplits = false;
 
-		Ref<ComputePass> m_HierarchicalDepthPass;
+		//Ref<ComputePass> m_HierarchicalDepthPass;
 
         /// -------------------------------------------------------
 
 		///< SSR
 		Ref<RenderPass> m_SSRCompositePass;
-		Ref<ComputePass> m_SSRPass;
-		Ref<ComputePass> m_PreConvolutionComputePass;
-		Ref<ComputePass> m_SSRUpscalePass;
+		//Ref<ComputePass> m_SSRPass;
+		//Ref<ComputePass> m_PreConvolutionComputePass;
+		//Ref<ComputePass> m_SSRUpscalePass;
 		Ref<Image2D> m_SSRImage;
 
         /// -------------------------------------------------------
 
 		///< Pre-Integration
-		Ref<ComputePass> m_PreIntegrationPass;
+		//Ref<ComputePass> m_PreIntegrationPass;
 		struct PreIntegrationVisibilityTexture
 		{
 			Ref<Texture2D> Texture;
@@ -650,7 +651,7 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 		///< Bloom compute
-		Ref<ComputePass> m_BloomComputePass;
+		//Ref<ComputePass> m_BloomComputePass;
 		uint32_t m_BloomComputeWorkgroupSize = 4;
 		Ref<ComputePipeline> m_BloomComputePipeline;
 
@@ -692,7 +693,7 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 		std::vector<TransformBuffer> m_SubmeshTransformBuffers;
-		Ref<StorageBufferSet> m_SBSBoneTransforms;
+		//Ref<StorageBufferSet> m_SBSBoneTransforms;
 		Mat4 *m_BoneTransformsData = nullptr;
 		std::vector<Ref<Framebuffer>> m_TempFramebuffers;
 
@@ -797,7 +798,6 @@ namespace SceneryEditorX
 		Statistics m_Statistics;
 		friend class SceneRendererPanel;
 	};
-	*/
 
 }
 

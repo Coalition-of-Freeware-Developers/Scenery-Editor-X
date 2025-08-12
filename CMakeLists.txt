@@ -193,6 +193,11 @@ OPTION(BUILD_FUZZERS "Enable fuzzers" OFF)
 ADD_SUBDIRECTORY(dependency/libconfig)
 
 # --------------------------------
+# Animation Compression Library - ACL
+# --------------------------------
+#ADD_SUBDIRECTORY(dependency/acl)
+
+# --------------------------------
 # Catch2
 # --------------------------------
 ADD_SUBDIRECTORY(dependency/Catch2)
@@ -264,47 +269,33 @@ ADD_LIBRARY(imgui
 	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
 	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_glfw.cpp
 	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGuizmo.cpp
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGuizmo.h
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImZoomSlider.h
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImSequencer.cpp
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImSequencer.h
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGradient.cpp
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGradient.h
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImCurveEdit.cpp
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImCurveEdit.h
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/GraphEditor.cpp
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/GraphEditor.h
 )
+
 TARGET_INCLUDE_DIRECTORIES(imgui
 	PRIVATE
 		${CMAKE_SOURCE_DIR}/dependency/imgui
 		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
 		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
 )
+
 TARGET_LINK_LIBRARIES(imgui
 	PRIVATE
 		glfw
 		Vulkan::Vulkan
 		glm::glm-header-only
 		GPUOpen::VulkanMemoryAllocator
-)
-
-# --------------------------------
-# ImGuizmo
-# --------------------------------
-ADD_LIBRARY(imguizmo
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.cpp
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.h
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImZoomSlider.h
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.cpp
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.h
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.cpp
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.h
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.cpp
-	${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.h
-	${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.cpp
-	${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.h
-)
-TARGET_INCLUDE_DIRECTORIES(imguizmo
-	PRIVATE
-		${CMAKE_SOURCE_DIR}/source/Gizmo
-		${CMAKE_SOURCE_DIR}/dependency/imgui
-		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-)
-TARGET_LINK_LIBRARIES(imguizmo
-	PRIVATE
-		imgui
 )
 
 # --------------------------------
@@ -351,27 +342,15 @@ TARGET_PRECOMPILE_HEADERS(SceneryEditorX PRIVATE ${CMAKE_SOURCE_DIR}/Source/Edit
 TARGET_PRECOMPILE_HEADERS(AppCore PRIVATE ${CMAKE_SOURCE_DIR}/Source/SceneryEditorX/app_pch.h)
 TARGET_PRECOMPILE_HEADERS(Launcher PRIVATE ${CMAKE_SOURCE_DIR}/Source/Launcher/startup_pch.h)
 
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.h 			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGuizmo.cpp 			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImZoomSlider.h 		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.h 		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImSequencer.cpp 		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.h			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImGradient.cpp		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.h			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/ImCurveEdit.cpp		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.h			PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-#SET_PROPERTY(SOURCE ${CMAKE_SOURCE_DIR}/source/Gizmo/GraphEditor.cpp		PROPERTY SKIP_PRECOMPILE_HEADERS ON)
-
 SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator PROPERTY FOLDER "Tests")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET imgui imguizmo json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET imgui json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
 SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
 SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui imguizmo libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore MemoryAllocatorTests RefTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

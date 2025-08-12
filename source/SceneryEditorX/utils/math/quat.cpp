@@ -11,9 +11,8 @@
 * -------------------------------------------------------
 */
 // ReSharper disable IdentifierTypo
-#include <SceneryEditorX/utils/math/math_utils.h>
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/quat.h>
+#include "quat.h"
+#include "math_utils.h"
 #include <tracy/Tracy.hpp>
 
 /// -----------------------------------------------------
@@ -260,7 +259,7 @@ namespace SceneryEditorX
 	 * @note There appears to be a bug in this implementation - it's missing
 	 *       the y component multiplication (should be + x * b.x + y * b.y + z * b.z)
 	 */
-	float Quat::Dot(const Quat& b) const { return (w * b.w + x * b.x * y * b.y + z * b.z); }
+	float Quat::Dot(const Quat& b) const { return (w * b.w + x * b.x + y * b.y + z * b.z); }
 
 	Matrix4x4 Quat::ToMatrix() const { return ToMatrix(*this); }
 
@@ -279,53 +278,36 @@ namespace SceneryEditorX
 	 */
 	Quat Quat::FromToRotation(const Vec3& from, const Vec3& to)
 	{
-        const Vec3 unitFrom = glm::normalize(from);
-        const Vec3 unitTo = glm::normalize(to);
-        const float dot = glm::dot(unitFrom, unitTo);
-
-		Vec3 cross = glm::cross(unitFrom, unitTo);
-		float w = sqrt((1 + dot) * 0.5);
-		float k = sqrt((1 - dot) * 0.5);
-		float scale = w > 0 ? 1.0 / w : 0;
+		using namespace SceneryEditorX::Utils;
+		const Vec3 unitFrom = Normalize(from);
+		const Vec3 unitTo = Normalize(to);
+		const float dot = Dot(unitFrom, unitTo);
 
 		if (dot >= 1.0f)
-            return {}; ///< identity
+			return {}; // identity
 
-        if (dot <= -1.0f)
-        {
-            /**
-             * If the two vectors are pointing in opposite directions then we
-             * need to supply a quaternion corresponding to a rotation of
-             * PI-radians about an axis orthogonal to the fromDirection.
-             */
-            Vec3 axis = glm::cross(unitFrom, Vec3(1, 0, 0));
-            if (glm::dot(axis, axis) < 1e-6)
-            {
-                /**
-                 * Bad luck. The x-axis and fromDirection are linearly
-                 * dependent (collinear). We'll take the axis as the vector
-                 * orthogonal to both the y-axis and fromDirection instead.
-                 * The y-axis and fromDirection will clearly not be linearly
-                 * dependent.
-                 */
-                axis = glm::cross(unitFrom, Vec3(0, 1, 0));
-            }
+		if (dot <= -1.0f)
+		{
+			// 180-degree rotation around any axis orthogonal to from
+			Vec3 axis = Cross(unitFrom, Vec3(1, 0, 0));
+			if (Dot(axis, axis) < 1e-6f)
+			{
+				axis = Cross(unitFrom, Vec3(0, 1, 0));
+			}
 
-            ///< Note that we need to normalize the axis as the cross product of two unit vectors is not necessarily a unit vector.
-            const Vec3 normAxis = glm::normalize(axis);
-            return Quat::AngleAxis(180, Vec4(normAxis.x, normAxis.y, normAxis.z, 0.0f)); ///< 180 Degrees = PI radians
-        }
+			const Vec3 normAxis = Normalize(axis);
+			return Quat::AngleAxis(180.0f, Vec4(normAxis.x, normAxis.y, normAxis.z, 0.0f));
+		}
 
-        ///< Scalar component.
-        const float s = sqrt(glm::length2(unitFrom) * glm::length2(unitTo)) + glm::dot(unitFrom, unitTo);
-        ///< Vector component.
-        Vec3 v = glm::cross(unitFrom, unitTo);
-        v.x *= -1;
-        v.y *= -1;
-
-        ///< Return the normalized quaternion rotation.
-        return Quat(Vec4(v, s)).GetNormalized();
-    }
+		// General case
+		const float s_from = Dot(unitFrom, unitFrom);
+		const float s_to = Dot(unitTo, unitTo);
+		const float s = sqrtf(s_from * s_to) + Dot(unitFrom, unitTo);
+		Vec3 v = Cross(unitFrom, unitTo);
+		v.x *= -1.0f;
+		v.y *= -1.0f;
+		return Quat(Vec4(v, s)).GetNormalized();
+	}
 
 	Quat Quat::LookRotation(const Vec3& lookAt) { return FromToRotation(Vec3(0, 0, 1), lookAt); }
 
@@ -339,11 +321,11 @@ namespace SceneryEditorX
 		 * We can't preserve the upwards direction if the forward and upwards
 		 * vectors are linearly dependent (collinear).
 		 */
-        if (glm::dot(glm::cross(lookAt, upDirection), glm::cross(lookAt, upDirection)) == 0.0f)
+	if (SceneryEditorX::Utils::Dot(SceneryEditorX::Utils::Cross(lookAt, upDirection), SceneryEditorX::Utils::Cross(lookAt, upDirection)) == 0.0f)
             return q1;
 
         ///< Determine the upwards direction obtained after applying q1.
-		const Vec3 newUp = q1 * Vec3(0, 1, 0);
+	const Vec3 newUp = q1 * Vec3(0, 1, 0);
 
 		/**
 		 * Calculate the unit quaternion rotation that rotates the newUp
@@ -362,7 +344,7 @@ namespace SceneryEditorX
 
 	Quat Quat::LookRotation2(const Vec3& forward, const Vec3& up)
 	{
-		Vec3 right = glm::cross(up, forward);
+	Vec3 right = SceneryEditorX::Utils::Cross(up, forward);
 		Quat result;
 		result.w = sqrtf(1.0f + right.x + up.y + forward.z) * 0.5f;
 		float w4_recip = 1.0f / (4.0f * result.w);
@@ -412,7 +394,7 @@ namespace SceneryEditorX
 		const Quat dst = to * t;
 
 		Quat q = src + dst;
-		return q;
+		return q.GetNormalized();
 	}
 
 	float Quat::Angle(const Quat& a, const Quat& b)
@@ -427,13 +409,20 @@ namespace SceneryEditorX
 
 	Quat Quat::AngleAxis(float angle, const Vec4& axis)
 	{
-        const Vec4 vn = glm::normalize(axis);
+		// Normalize axis (x, y, z only)
+		const float len = sqrtf(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+		Vec4 vn = axis;
+		if (len > 0.0f)
+		{
+			const float inv = 1.0f / len;
+			vn.x *= inv; vn.y *= inv; vn.z *= inv;
+		}
 
-		angle *= 0.0174532925f; ///< To radians!
+		angle *= 0.0174532925f; // degrees to radians
 		angle *= 0.5f;
-		const float sinAngle = sin(angle);
+		const float sinAngle = sinf(angle);
 
-		return {cos(angle), vn.x * sinAngle, vn.y * sinAngle, vn.z * sinAngle};
+		return {cosf(angle), vn.x * sinAngle, vn.y * sinAngle, vn.z * sinAngle};
 	}
 
 	Quat Quat::GetInverse() const
