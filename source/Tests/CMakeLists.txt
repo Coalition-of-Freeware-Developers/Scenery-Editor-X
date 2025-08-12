@@ -208,3 +208,35 @@ IF(MSVC)
 ELSE()
     TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE -Wall -Wextra -Wpedantic)
 ENDIF()
+
+# --------------------------------
+# Conversion Tests
+# --------------------------------
+
+MESSAGE(STATUS "=================================================")
+MESSAGE(STATUS "Generating Conversion Unit Tests")
+
+FILE(GLOB CONVERSION_TEST_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/conversion_tests/*.cpp
+)
+
+ADD_EXECUTABLE(ConversionTests
+    ${CONVERSION_TEST_SOURCES}
+)
+
+TARGET_INCLUDE_DIRECTORIES(ConversionTests PRIVATE
+    ${CMAKE_SOURCE_DIR}/source
+)
+
+TARGET_LINK_LIBRARIES(ConversionTests PRIVATE
+    Catch2::Catch2WithMain
+)
+
+IF(MSVC)
+    TARGET_COMPILE_OPTIONS(ConversionTests PRIVATE /MP /W4)
+ELSE()
+    TARGET_COMPILE_OPTIONS(ConversionTests PRIVATE -Wall -Wextra -Wpedantic)
+ENDIF()
+
+INCLUDE(Catch)
+catch_discover_tests(ConversionTests)
