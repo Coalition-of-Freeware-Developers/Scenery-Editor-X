@@ -5,15 +5,20 @@
 * Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* vector.h
+* math.h
 * -------------------------------------------------------
-* Created: 15/7/2025
+* Created: 12/8/2025
 * -------------------------------------------------------
 */
 #pragma once
 
-// Umbrella header for all vector types
+/// -------------------------------------------------------
 
-#include <SceneryEditorX/utils/math/vec2.h>
-#include <SceneryEditorX/utils/math/vec3.h>
-#include <SceneryEditorX/utils/math/vec4.h>
+// Top-level math umbrella header
+
+#include <SceneryEditorX/utils/math/constants.h>
+#include <SceneryEditorX/utils/math/vector.h>
+#include <SceneryEditorX/utils/math/matrix.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
+
+/// -------------------------------------------------------

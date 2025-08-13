@@ -13,7 +13,9 @@
 // ReSharper disable IdentifierTypo
 #include "quat.h"
 #include "math_utils.h"
+#if TRACY_ENABLE
 #include <tracy/Tracy.hpp>
+#endif
 
 /// -----------------------------------------------------
 
@@ -278,10 +280,9 @@ namespace SceneryEditorX
 	 */
 	Quat Quat::FromToRotation(const Vec3& from, const Vec3& to)
 	{
-		using namespace SceneryEditorX::Utils;
-		const Vec3 unitFrom = Normalize(from);
-		const Vec3 unitTo = Normalize(to);
-		const float dot = Dot(unitFrom, unitTo);
+		const Vec3 unitFrom = SceneryEditorX::Utils::Normalize(from);
+		const Vec3 unitTo = SceneryEditorX::Utils::Normalize(to);
+		const float dot = SceneryEditorX::Utils::Dot(unitFrom, unitTo);
 
 		if (dot >= 1.0f)
 			return {}; // identity
@@ -289,21 +290,21 @@ namespace SceneryEditorX
 		if (dot <= -1.0f)
 		{
 			// 180-degree rotation around any axis orthogonal to from
-			Vec3 axis = Cross(unitFrom, Vec3(1, 0, 0));
-			if (Dot(axis, axis) < 1e-6f)
+			Vec3 axis = SceneryEditorX::Utils::Cross(unitFrom, Vec3(1, 0, 0));
+			if (SceneryEditorX::Utils::Dot(axis, axis) < 1e-6f)
 			{
-				axis = Cross(unitFrom, Vec3(0, 1, 0));
+				axis = SceneryEditorX::Utils::Cross(unitFrom, Vec3(0, 1, 0));
 			}
 
-			const Vec3 normAxis = Normalize(axis);
+			const Vec3 normAxis = SceneryEditorX::Utils::Normalize(axis);
 			return Quat::AngleAxis(180.0f, Vec4(normAxis.x, normAxis.y, normAxis.z, 0.0f));
 		}
 
 		// General case
-		const float s_from = Dot(unitFrom, unitFrom);
-		const float s_to = Dot(unitTo, unitTo);
-		const float s = sqrtf(s_from * s_to) + Dot(unitFrom, unitTo);
-		Vec3 v = Cross(unitFrom, unitTo);
+		const float s_from = SceneryEditorX::Utils::Dot(unitFrom, unitFrom);
+		const float s_to = SceneryEditorX::Utils::Dot(unitTo, unitTo);
+		const float s = sqrtf(s_from * s_to) + SceneryEditorX::Utils::Dot(unitFrom, unitTo);
+		Vec3 v = SceneryEditorX::Utils::Cross(unitFrom, unitTo);
 		v.x *= -1.0f;
 		v.y *= -1.0f;
 		return Quat(Vec4(v, s)).GetNormalized();

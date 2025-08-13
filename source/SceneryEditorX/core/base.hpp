@@ -18,6 +18,9 @@
 #include <string>
 #include <vector>
 #include <SceneryEditorX/utils/system_detection.h>
+// Ensure GLM aliases below compile without relying on external PCHs
+#include <glm/mat2x2.hpp>
+#include <glm/mat3x3.hpp>
 
 /// -------------------------------------------------------
 
@@ -47,7 +50,7 @@ using ResourceID = u32;      ///< Resource Identifier, alias for unsigned 32-bit
 /// -------------------------------------------------------
 
 // Forward declarations to avoid heavy includes and cycles
-namespace SceneryEditorX { class Matrix4x4; class Quat; namespace Utils { template<typename T> class TVector2; template<typename T> class TVector3; template<typename T> class TVector4; } }
+namespace SceneryEditorX { class Matrix4x4; class Quat; namespace Utils { template<typename T> struct TVector2; template<typename T> struct TVector3; template<typename T> struct TVector4; } }
 
 using Vec2	=	SceneryEditorX::Utils::TVector2<float>;   ///< 2D vector
 using Vec3	=	SceneryEditorX::Utils::TVector3<float>;   ///< 3D vector

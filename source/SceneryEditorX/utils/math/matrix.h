@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,14 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
 #include <initializer_list>
+#include <string>
+#include <cstdint>
+#include <cstring>
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/utils/math/vector.h>
 
 /// -------------------------------------------------------
 
@@ -966,10 +972,10 @@ namespace SceneryEditorX
          *
          * @note A determinant of 0 indicates the matrix is singular (non-invertible).
          */
-    static float GetDeterminant(const Matrix4x4 &mat, int32_t n);
+    	static float GetDeterminant(const Matrix4x4 &mat, int32_t n);
 
         /**
-         * @brief Calculates the adjoint (adjugate) matrix.
+         * @brief Calculates the adjoint (adjudicate) matrix.
          *
          * The adjoint matrix is the transpose of the cofactor matrix. It's used
          * in the calculation of the matrix inverse using the formula:

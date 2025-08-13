@@ -13,7 +13,9 @@
 #include <SceneryEditorX/utils/math/matrix.h>
 #include <SceneryEditorX/utils/math/quat.h>
 #include <SceneryEditorX/utils/math/math_utils.h>
+#if TRACY_ENABLE
 #include <tracy/Tracy.hpp>
+#endif
 
 /// -------------------------------------------------------
 

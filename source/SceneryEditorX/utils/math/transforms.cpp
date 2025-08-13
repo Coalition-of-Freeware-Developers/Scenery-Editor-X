@@ -10,93 +10,20 @@
 * Created: 30/3/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/utils/math/quat.h>
+#include <SceneryEditorX/utils/math/vector.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
+#include <SceneryEditorX/utils/math/epsilon.h>
+#include <SceneryEditorX/logging/asserts.h>
+#include <cmath>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX::Utils
 {
 
-    /**
-	 * @struct TransformComponent
-	 * @brief Represents the spatial transformation properties of an object in the scene.
-	 *
-	 * This structure encapsulates the position, scale, and rotation of an object,
-	 * storing the fundamental transformation values needed to place and orient objects
-	 * in 3D space. It provides functionality to generate a transformation matrix
-	 * that can be used in rendering and spatial calculations.
-	 *
-	 * The TransformComponent uses a quaternion for rotation to avoid gimbal lock
-	 * and provide smooth interpolation between orientations. The scale component
-	 * supports non-uniform scaling along each axis.
-	 *
-	 * @note This structure is primarily used internally for transformation calculations
-	 * @note The quaternion rotation provides better mathematical properties than Euler angles
-	 */
-	struct TransformComponent
-	{
-	    /** @brief The position of the object in 3D space (translation vector) */
-	    Vec3 translation{};
-
-	    /** @brief The scale of the object along each axis, defaults to (1,1,1) meaning no scaling */
-	    Vec3 scale{1.f, 1.f, 1.f};
-
-	    /** @brief The rotation of the object as a quaternion, defaults to identity (no rotation) */
-        glm::quat rotation{};
-
-	    /**
-	     * @brief Generates a 4x4 transformation matrix from the component's values.
-	     *
-	     * Computes a combined transformation matrix that represents the translation,
-	     * rotation, and scaling defined in this component. The rotation is applied
-	     * using quaternion-to-matrix conversion with optimized trigonometric calculations.
-	     *
-	     * The matrix is constructed manually using Euler angle calculations extracted
-	     * from the quaternion components. The transformation order is Scale → Rotation → Translation.
-	     *
-	     * @return Mat4 The resulting 4x4 transformation matrix suitable for GPU rendering
-	     *
-	     * @note This implementation manually constructs the matrix for performance
-	     * @note The rotation order is YXZ (Yaw-Pitch-Roll) based on quaternion components
-	     * @warning There appears to be a potential bug in the matrix construction -
-	     *          the quaternion is used as if it contains Euler angles rather than quaternion components
-	     */
-	    Mat4 mat4()
-	    {
-	        const float c3 = glm::cos(rotation.z);
-	        const float s3 = glm::sin(rotation.z);
-	        /// -------------------------------------------------------
-	        const float c2 = glm::cos(rotation.x);
-	        const float s2 = glm::sin(rotation.x);
-	        /// -------------------------------------------------------
-	        const float c1 = glm::cos(rotation.y);
-	        const float s1 = glm::sin(rotation.y);
-	        /// -------------------------------------------------------
-	        return Mat4 {
-	            {
-	                scale.x * (c1 * c3 + s1 * s2 * s3),
-	                scale.x * (c2 * s3),
-	                scale.x * (c1 * s2 * s3 - c3 * s1),
-	                0.0f,
-	            },
-	            {
-	               scale.y * (c3 * s1 * s2 - c1 * s3),
-	               scale.y * (c2 * c3),
-	               scale.y * (c1 * c3 * s3 * s1 * s3),
-	               0.0f,
-	            },
-	            {
-	                scale.z * (c2 * s1),
-	                scale.z * (-s2),
-	                scale.z * (c1 * c2),
-	                0.0f,
-	            },
-	            {translation.x, translation.y, translation.z, 1.0f}
-	        };
-	    }
-	};
-
-    /// -------------------------------------------------------
+	/// -------------------------------------------------------
 
 	/**
 	 * @brief Scales a 3D vector to a desired length.
@@ -115,8 +42,9 @@ namespace SceneryEditorX::Utils
 	 */
 	Vec3 Scale(const Vec3& vector, float desiredLength)
 	{
-		float mag = glm::length(vector);
-		if (glm::epsilonEqual(mag, 0.0f, glm::epsilon<float>()))
+		// Compute magnitude without relying on GLM
+		const float mag = std::sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+		if (::SceneryEditorX::Utils::epsilonEqual(mag, 0.0f, ::SceneryEditorX::Utils::epsilon<float>()))
 			return Vec3(0.0f);
 
 		return vector * desiredLength / mag;
@@ -138,23 +66,23 @@ namespace SceneryEditorX::Utils
      *
      * @note This function uses GLM's decompose functionality for robust matrix decomposition.
      * @warning The input matrix should not contain perspective or skew transformations.
-     */
-    bool DecomposeTransform(const Mat4 &transform, Vec3 &translation, glm::quat &rotation, Vec3 &scale)
+	*/
+	bool DecomposeTransform(const Mat4 &transform, Vec3 &translation, Quat &rotation, Vec3 &scale)
     {
         using T = float;
         Mat4 LocalMatrix(transform);
 
-        if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+		if (::SceneryEditorX::Utils::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), ::SceneryEditorX::Utils::epsilon<T>()))
             return false;
 
         /// Assume matrix is already normalized
-        SEDX_CORE_ASSERT(glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(1), static_cast<T>(0.00001)));
+		SEDX_CORE_ASSERT(::SceneryEditorX::Utils::epsilonEqual(LocalMatrix[3][3], static_cast<T>(1), static_cast<T>(0.00001)));
 
 	    /// Ignore perspective
-        SEDX_CORE_ASSERT(glm::epsilonEqual(LocalMatrix[0][3], static_cast<T>(0),
-			glm::epsilon<T>()) && glm::epsilonEqual(LocalMatrix[1][3], static_cast<T>(0),
-			glm::epsilon<T>()) && glm::epsilonEqual(LocalMatrix[2][3], static_cast<T>(0),
-			glm::epsilon<T>()));
+        SEDX_CORE_ASSERT(::SceneryEditorX::Utils::epsilonEqual(LocalMatrix[0][3], static_cast<T>(0),
+			::SceneryEditorX::Utils::epsilon<T>()) && ::SceneryEditorX::Utils::epsilonEqual(LocalMatrix[1][3], static_cast<T>(0),
+			::SceneryEditorX::Utils::epsilon<T>()) && ::SceneryEditorX::Utils::epsilonEqual(LocalMatrix[2][3], static_cast<T>(0),
+			::SceneryEditorX::Utils::epsilon<T>()));
 
         /// perspectiveMatrix is used to solve for perspective, but it also provides
         /// an easy way to test for singularity of the upper 3x3 component.
@@ -163,42 +91,43 @@ namespace SceneryEditorX::Utils
         translation = Vec3(LocalMatrix[3]);
         LocalMatrix[3] = Vec4(0, 0, 0, LocalMatrix[3].w);
 
-        Vec3 Row[3];
+		Vec3 Row[3];
 
 		/// Get scale and shear.
-		for (glm::length_t i = 0; i < 3; ++i)
-			for (glm::length_t j = 0; j < 3; ++j)
+		for (int i = 0; i < 3; ++i)
+			for (int j = 0; j < 3; ++j)
 				Row[i][j] = LocalMatrix[i][j];
 
 		/// Compute X scale factor and normalize first row.
-		scale.x = length(Row[0]);
+		scale.x = std::sqrt(Row[0].x*Row[0].x + Row[0].y*Row[0].y + Row[0].z*Row[0].z);
 		Row[0] = Scale(Row[0], static_cast<T>(1));
 
 		/// Compute Y scale and normalize 2nd row.
-		scale.y = length(Row[1]);
+		scale.y = std::sqrt(Row[1].x*Row[1].x + Row[1].y*Row[1].y + Row[1].z*Row[1].z);
 		Row[1] = Scale(Row[1], static_cast<T>(1));
 
 		/// Get Z scale and normalize 3rd row.
-		scale.z = length(Row[2]);
+		scale.z = std::sqrt(Row[2].x*Row[2].x + Row[2].y*Row[2].y + Row[2].z*Row[2].z);
 		Row[2] = Scale(Row[2], static_cast<T>(1));
 
-    #if _DEBUG
+    	#if _DEBUG
 		/// At this point, the matrix (in rows[]) is orthonormal.
 		/// Check for a coordinate system flip.  If the determinant
 		/// is -1, then negate the matrix and the scaling factors.
-		Vec3 Pdum3 = cross(Row[1], Row[2]);
-		SEDX_CORE_ASSERT(dot(Row[0], Pdum3) >= static_cast<T>(0));
-    #endif
+		Vec3 Pdum3 = Cross(Row[1], Row[2]);
+		SEDX_CORE_ASSERT(Dot(Row[0], Pdum3) >= static_cast<T>(0));
+    	#endif
 
         T root;
+        float qx = 0.0f, qy = 0.0f, qz = 0.0f, qw = 1.0f;
 		if (T trace = Row[0].x + Row[1].y + Row[2].z; trace > static_cast<T>(0))
 		{
 			root = sqrt(trace + static_cast<T>(1));
-			rotation.w = static_cast<T>(0.5) * root;
+			qw = static_cast<T>(0.5) * root;
 			root = static_cast<T>(0.5) / root;
-			rotation.x = root * (Row[1].z - Row[2].y);
-			rotation.y = root * (Row[2].x - Row[0].z);
-			rotation.z = root * (Row[0].y - Row[1].x);
+			qx = root * (Row[1].z - Row[2].y);
+			qy = root * (Row[2].x - Row[0].z);
+			qz = root * (Row[0].y - Row[1].x);
 		} /// End if > 0
 		else
 		{
@@ -211,13 +140,16 @@ namespace SceneryEditorX::Utils
 
 			root = sqrt(Row[i][i] - Row[j][j] - Row[k][k] + static_cast<T>(1.0));
 
-			rotation[i] = static_cast<T>(0.5) * root;
+			float q[4]{}; // [x,y,z,w]
+			q[i] = static_cast<T>(0.5) * root;
 			root = static_cast<T>(0.5) / root;
-			rotation[j] = root * (Row[i][j] + Row[j][i]);
-			rotation[k] = root * (Row[i][k] + Row[k][i]);
-			rotation.w = root * (Row[j][k] - Row[k][j]);
+			q[j] = root * (Row[i][j] + Row[j][i]);
+			q[k] = root * (Row[i][k] + Row[k][i]);
+			qw = root * (Row[j][k] - Row[k][j]);
+			qx = q[0]; qy = q[1]; qz = q[2];
 		} /// End if <= 0
 
+		rotation = Quat(qw, qx, qy, qz);
 		return true;
 
         /*
@@ -256,14 +188,13 @@ namespace SceneryEditorX::Utils
 	 * @note The transformation order is: Scale → Rotation → Translation.
 	 * @note This function uses GLM's matrix transformation functions for accuracy and performance.
 	 */
-    Mat4 ComposeTransform(const Vec3 &translation, const glm::quat &rotation, const Vec3 &scale)
+    Mat4 ComposeTransform(const Vec3 &translation, const Quat &rotation, const Vec3 &scale)
 	{
-		/// Create GLM quaternion from our Quat type
-		glm::quat glmRotation(rotation.w, rotation.x, rotation.y, rotation.z);
-
-		/// Compose the transformation matrix using GLM functions
-		/// Order: Translation * Rotation * Scale
-		return glm::translate(Mat4(1.0f), translation) * glm::mat4_cast(glmRotation) * glm::scale(Mat4(1.0f), scale);
+		// Compose using our Matrix4x4 and Quat
+		const Mat4 T = Matrix4x4::Translation(translation);
+		const Mat4 R = rotation.ToMatrix();
+		const Mat4 S = Matrix4x4::Scale(scale);
+		return T * R * S;
 	}
 
 }

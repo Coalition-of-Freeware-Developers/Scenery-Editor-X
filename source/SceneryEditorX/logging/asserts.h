@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * asserts.h
@@ -12,7 +12,9 @@
 */
 #pragma once
 #include <SceneryEditorX/core/base.hpp>
+#if !defined(SEDX_NO_LOGGING)
 #include <SceneryEditorX/logging/logging.hpp>
+#endif
 
 /// -------------------------------------------------------
 
@@ -38,13 +40,23 @@
 
 #ifdef SEDX_ENABLE_ASSERTS
 	#ifdef SEDX_COMPILER_CLANG
-		#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
-		#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
+		#if !defined(SEDX_NO_LOGGING)
+			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
+			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
+		#else
+			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
+			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
+		#endif
 	#else
-		#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...)  ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
-		#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
+		#if !defined(SEDX_NO_LOGGING)
+			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...)  ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
+			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
+		#else
+			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
+			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
+		#endif
 	#endif
-	
+
 	#define SEDX_CORE_ASSERT(condition, ...) do { if (!(condition)) { SEDX_CORE_ASSERT_MESSAGE_INTERNAL(__VA_ARGS__); SEDX_DEBUG_BREAK; } } while (0)
 	#define SEDX_ASSERT(condition, ...) do { if (!(condition)) { SEDX_ASSERT_MESSAGE_INTERNAL(__VA_ARGS__); SEDX_DEBUG_BREAK; } } while (0)
 #else
@@ -55,12 +67,17 @@
 /// -------------------------------------------------------
 
 #ifdef SEDX_ENABLE_VERIFY
-	#ifdef SEDX_COMPILER_CLANG
-		#define SEDX_CORE_VERIFY_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
-		#define SEDX_VERIFY_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
+	#if !defined(SEDX_NO_LOGGING)
+		#ifdef SEDX_COMPILER_CLANG
+			#define SEDX_CORE_VERIFY_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
+			#define SEDX_VERIFY_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
+		#else
+			#define SEDX_CORE_VERIFY_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
+			#define SEDX_VERIFY_MESSAGE_INTERNAL(...)  ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
+		#endif
 	#else
-		#define SEDX_CORE_VERIFY_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
-		#define SEDX_VERIFY_MESSAGE_INTERNAL(...)  ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Verify Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
+		#define SEDX_CORE_VERIFY_MESSAGE_INTERNAL(...) ((void)0)
+		#define SEDX_VERIFY_MESSAGE_INTERNAL(...) ((void)0)
 	#endif
 
 	#define SEDX_CORE_VERIFY(condition, ...) do { if (!(condition)) { SEDX_CORE_VERIFY_MESSAGE_INTERNAL(__VA_ARGS__); SEDX_DEBUG_BREAK; } } while (0)
