@@ -424,7 +424,6 @@ TARGET_INCLUDE_DIRECTORIES(AppCore
 
 TARGET_LINK_LIBRARIES(AppCore
     PRIVATE
-        glm::glm-header-only
 		nlohmann_json::nlohmann_json
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator

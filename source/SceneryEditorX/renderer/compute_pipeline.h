@@ -32,7 +32,7 @@ namespace SceneryEditorX
 
 		virtual void Begin(Ref<CommandBuffer> commandBuffer = nullptr);
 		virtual void Begin_RenderThread(Ref<CommandBuffer> commandBuffer = nullptr);
-		void Dispatch(const glm::uvec3& workGroups) const;
+		void Dispatch(const UVec3& workGroups) const;
 		virtual void End();
 
 		[[nodiscard]] virtual Ref<Shader> GetShader() const { return m_Shader; }

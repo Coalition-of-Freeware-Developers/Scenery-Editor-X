@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -14,16 +14,16 @@
 
 /// -----------------------------------------------------
 
-#ifdef __cplusplus
-namespace SceneryEditorX { namespace Convert {
-
-	// Mass conversions centered on kilograms (kg) - header-only
-	namespace detail {
-		constexpr float KG_PER_LB    = 0.45359237f;   // exact
+namespace SceneryEditorX::Convert
+{
+	/// Mass conversions centered on kilograms (kg) - header-only
+	namespace detail
+    {
+		constexpr float KG_PER_LB    = 0.45359237f;			/// exact
 		constexpr float KG_PER_OZ    = KG_PER_LB / 16.0f;
-		constexpr float KG_PER_TON_US= 907.18474f;    // short ton (2000 lb)
-		constexpr float KG_PER_TON_UK= 1016.0469088f; // long ton (2240 lb)
-		constexpr float KG_PER_TONNE = 1000.0f;       // metric tonne
+		constexpr float KG_PER_TON_US= 907.18474f;			/// short ton (2000 lb)
+		constexpr float KG_PER_TON_UK= 1016.0469088f;		/// long ton (2240 lb)
+		constexpr float KG_PER_TONNE = 1000.0f;				/// metric tonne
 	}
 
 	inline float FromLb(const float lb)   { return lb * detail::KG_PER_LB; }
@@ -37,7 +37,6 @@ namespace SceneryEditorX { namespace Convert {
 	inline float FromTonne(const float t) { return t * detail::KG_PER_TONNE; }
 	inline float ToTonne(const float kg)  { return kg / detail::KG_PER_TONNE; }
 
-}} // namespace SceneryEditorX::Convert
-#endif // __cplusplus
+}
 
 /// -----------------------------------------------------

@@ -173,7 +173,6 @@ SET(ICON_FILES
 # PACKAGES VCPKG
 # --------------------------------
 FIND_PACKAGE(Vulkan                        REQUIRED)
-FIND_PACKAGE(glm                    CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen				CONFIG REQUIRED)
 FIND_PACKAGE(spdlog                 CONFIG REQUIRED)
 FIND_PACKAGE(tracy				    CONFIG REQUIRED)
@@ -301,7 +300,6 @@ TARGET_LINK_LIBRARIES(imgui
 	PRIVATE
 		glfw
 		Vulkan::Vulkan
-		glm::glm-header-only
 		GPUOpen::VulkanMemoryAllocator
 )
 

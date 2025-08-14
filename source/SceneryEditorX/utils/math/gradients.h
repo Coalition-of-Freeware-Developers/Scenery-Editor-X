@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,15 +12,14 @@
 */
 #pragma once
 #include <SceneryEditorX/utils/math/colors.h>
-#include <vector>
 
 /// -----------------------------------------------------
 
-namespace SceneryEditorX::Utils
+namespace SceneryEditorX
 {
 
 	/**
-	 * @brief Multi-color gradient system for smooth color transitions
+	 * @brief Multicolor gradient system for smooth color transitions
 	 *
 	 * The Gradient class provides a flexible system for creating smooth color transitions
 	 * between multiple color points (keys) along a normalized parameter space [0.0, 1.0].
@@ -40,7 +39,7 @@ namespace SceneryEditorX::Utils
 	 * - Particle system color animation
 	 * - Data visualization color mapping
 	 *
-	 * @note Color keys should be ordered by position for optimal performance,
+	 * @note - Color keys should be ordered by position for optimal performance,
 	 *       though the class will handle unordered keys correctly
 	 */
     class Gradient
@@ -79,7 +78,7 @@ namespace SceneryEditorX::Utils
 		/**
 		 * @brief Default constructor creating an empty gradient
 		 *
-		 * Creates a gradient with no color keys and 0 degree rotation.
+		 * Creates a gradient with no color keys and 0-degree  rotation.
 		 * An empty gradient will return a default color when evaluated.
 		 */
         Gradient();
@@ -116,7 +115,7 @@ namespace SceneryEditorX::Utils
 		 *
 		 * @param degrees New rotation angle in degrees [0.0, 360.0)
 		 *
-		 * @note Values outside [0, 360) are valid but may produce unexpected results
+		 * @note - Values outside [0, 360) are valid but may produce unexpected results
 		 */
 		void SetDegrees(const float degrees) { this->degrees = degrees; }
 
@@ -164,9 +163,9 @@ namespace SceneryEditorX::Utils
 		 * @param position Position along the gradient [0.0, 1.0]
 		 * @return Interpolated color at the specified position
 		 *
-		 * @note Positions outside [0.0, 1.0] are clamped to the nearest edge key
-		 * @note If no keys exist, returns a default-constructed Color
-		 * @note If only one key exists, returns that key's color regardless of position
+		 * @note - Positions outside [0.0, 1.0] are clamped to the nearest edge key
+		 * @note - If no keys exist, returns a default-constructed Color
+		 * @note - If only one key exists, returns that key's color regardless of position
 		 */
         [[nodiscard]] Color Evaluate(float position) const;
 
@@ -183,7 +182,7 @@ namespace SceneryEditorX::Utils
 		 *
 		 * @param key The gradient key to add
 		 *
-		 * @note Keys are not automatically sorted by position. For optimal
+		 * @note - Keys are not automatically sorted by position. For optimal
 		 *       performance, add keys in order of increasing position.
 		 */
 		void AddKey(const Key& key);
@@ -194,7 +193,7 @@ namespace SceneryEditorX::Utils
 		 * @param position Position along the gradient [0.0, 1.0]
 		 * @param color Color value at this position
 		 *
-		 * @note Keys are not automatically sorted by position. For optimal
+		 * @note - Keys are not automatically sorted by position. For optimal
 		 *       performance, add keys in order of increasing position.
 		 */
 		void AddKey(float position, const Color& color);
@@ -204,7 +203,7 @@ namespace SceneryEditorX::Utils
 		 *
 		 * @param index Index of the key to remove
 		 *
-		 * @note If index is out of bounds, the operation is silently ignored
+		 * @note - If index is out of bounds, the operation is silently ignored
 		 */
 		void RemoveKeyAt(uint32_t index);
 
@@ -221,7 +220,7 @@ namespace SceneryEditorX::Utils
          *
          * @return Hash value representing the gradient's current state
          *
-         * @note Hash includes all keys and the current rotation angle
+         * @note - Hash includes all keys and the current rotation angle
          */
         [[nodiscard]] size_t GetHash() const;
 
@@ -231,7 +230,7 @@ namespace SceneryEditorX::Utils
 		 * @param rhs Gradient to compare against
 		 * @return true if gradients have identical hash values, false otherwise
 		 *
-		 * @note Uses hash-based comparison for performance. Hash collisions
+		 * @note - Uses hash-based comparison for performance. Hash collisions
 		 *       are theoretically possible but extremely unlikely.
 		 */
 		bool operator==(const Gradient& rhs) const { return GetHash() == rhs.GetHash(); }

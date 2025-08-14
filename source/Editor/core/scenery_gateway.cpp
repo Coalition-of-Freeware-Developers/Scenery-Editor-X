@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * scenery_gateway.cpp
@@ -19,7 +19,7 @@
 
 namespace SceneryEditorX
 {
-	
+
 	/// libcurl write callback
 	size_t SceneryGateway::WriteCallback(const char *contents, size_t size, size_t nmemb, void *userdata)
 	{
@@ -34,17 +34,17 @@ namespace SceneryEditorX
 	    /// Avoid division by zero
 	    if (dltotal <= 0)
 	        return 0;
-	
+
 	    SceneryGateway *gateway = static_cast<SceneryGateway *>(clientp);
 	    if (gateway && gateway->downloadStatus_.progressCb)
 	    {
 	        double progress = dlnow / dltotal;
 	        gateway->downloadStatus_.progressCb(progress);
 	    }
-	
+
 	    return 0; /// Return 0 to continue, non-zero to abort
 	}
-	
+
     // ----------------------------------------
 
 	/// Utility function to URL encode a string
@@ -52,7 +52,7 @@ namespace SceneryEditorX
 	{
 	    CURL* curl = curl_easy_init();
 	    std::string result;
-	        
+
 	    if (curl)
 	    {
             if (char* encoded = curl_easy_escape(curl, input.c_str(), static_cast<int>(input.length())))
@@ -62,16 +62,16 @@ namespace SceneryEditorX
 	        }
 	        curl_easy_cleanup(curl);
 	    }
-	        
+
 	    return result;
 	}
-	
+
 	/// Utility function to build a full URL for an API endpoint
     INTERNAL std::string BuildUrl(const std::string &endpoint)
 	{
 	    return std::string(GATEWAY_API_URL) + endpoint;
 	}
-	
+
 	/// Utility function to format a URL with parameters
     INTERNAL std::string FormatUrl(const char *format, const std::string &param)
 	{
@@ -79,7 +79,7 @@ namespace SceneryEditorX
 	    snprintf(buffer, sizeof(buffer), format, param.c_str());
 	    return std::string(buffer);
 	}
-	
+
 	/// Clear all cached data in SceneryGatewayData
 	void SceneryGatewayData::ClearCache()
 	{
@@ -87,12 +87,12 @@ namespace SceneryEditorX
 	    sceneryPacks.clear();
 	    artists.clear();
 	}
-	
+
 	/// Create AirportInfo from JSON
 	AirportInfo AirportInfo::FromJson(const nlohmann::json& json)
 	{
 	    AirportInfo info;
-	        
+
 	    info.icao = json.value("icao", "");
 	    info.name = json.value("name", "");
 	    info.latitude = json.value("latitude", 0.0);
@@ -105,15 +105,15 @@ namespace SceneryEditorX
 	    info.dateApproved = json.value("dateApproved", "");
 	    info.totalSceneryPacks = json.value("totalSceneryPacks", 0);
 	    info.recommendedSceneryId = json.value("recommendedSceneryId", "");
-	        
+
 	    return info;
 	}
-	
+
 	/// Create SceneryPackInfo from JSON
 	SceneryPackInfo SceneryPackInfo::FromJson(const nlohmann::json& json)
 	{
 	    SceneryPackInfo info;
-	        
+
 	    info.id = json.value("id", 0);
 	    info.icao = json.value("icao", "");
 	    info.name = json.value("name", "");
@@ -125,20 +125,20 @@ namespace SceneryEditorX
 	    info.downloadUrl = json.value("downloadUrl", "");
 	    info.downloadCount = json.value("downloadCount", 0);
 	    info.fileSizeMB = json.value("fileSizeMB", 0.0);
-	        
+
 	    return info;
 	}
-	
+
 	/// Create ArtistInfo from JSON
 	ArtistInfo ArtistInfo::FromJson(const nlohmann::json& json)
 	{
 	    ArtistInfo info;
-	        
+
 	    info.id = json.value("id", 0);
 	    info.name = json.value("name", "");
 	    info.email = json.value("email", "");
 	    info.description = json.value("description", "");
-	        
+
 	    if (json.contains("contributions") && json["contributions"].is_array())
 	    {
 	        for (const auto& contribution : json["contributions"])
@@ -146,7 +146,7 @@ namespace SceneryEditorX
 	            info.contributions.push_back(contribution);
 	        }
 	    }
-	        
+
 	    return info;
 	}
 
@@ -242,7 +242,7 @@ namespace SceneryEditorX
     //////////////////////////////////////////////////////////////////////////////////
 	/// SceneryGateway Implementation
     ///////////////////////////////////////////////////////////////////////////////
-    
+
 	/// Constructor
 	SceneryGateway::SceneryGateway() : data_(std::make_unique<SceneryGatewayData>()), curl_(nullptr)
 	{
@@ -250,7 +250,7 @@ namespace SceneryEditorX
 	    curl_global_init(CURL_GLOBAL_DEFAULT);
 	    curl_ = curl_easy_init();
 	}
-	
+
 	/// Destructor
 	SceneryGateway::~SceneryGateway()
 	{
@@ -260,14 +260,14 @@ namespace SceneryEditorX
 	        fclose(downloadStatus_.fileHandle);
 	        downloadStatus_.fileHandle = nullptr;
 	    }
-	        
+
 	    /// Clean up libcurl
 	    if (curl_)
 	    {
 	        curl_easy_cleanup(curl_);
 	        curl_ = nullptr;
 	    }
-	        
+
 	    curl_global_cleanup();
 	}
 
@@ -280,29 +280,29 @@ namespace SceneryEditorX
 	    {
 	        return false;
 	    }
-	        
+
 	    /// Store login credentials if provided
 	    if (!login.empty() && !password.empty())
 	    {
 	        return Login(login, password);
 	    }
-	        
+
 	    return true;
 	}
-	
+
 	/// Login to the gateway
 	bool SceneryGateway::Login(const std::string& login, const std::string& password) const
     {
 	    data_->stats.userLogin = login;
 	    data_->stats.userPassword = password;
-	        
+
 	    /// Test authentication with a simple authenticated request
 	    ApiResponse response = MakeAuthenticatedRequest(ENDPOINT_AIRPORTS);
-	        
+
 	    data_->stats.isAuthenticated = (response.errorCode == GatewayErrorCode::Success);
 	    return data_->stats.isAuthenticated;
 	}
-	
+
 	/// Logout from the gateway
 	void SceneryGateway::Logout() const
     {
@@ -310,7 +310,7 @@ namespace SceneryEditorX
 	    data_->stats.userPassword.clear();
 	    data_->stats.isAuthenticated = false;
 	}
-	
+
 	/// Check if authenticated
 	bool SceneryGateway::IsAuthenticated() const
 	{
@@ -323,12 +323,12 @@ namespace SceneryEditorX
 	ApiResponse SceneryGateway::GetAirports() const
     {
 	    ApiResponse response = MakeRequest(ENDPOINT_AIRPORTS);
-	        
+
 	    if (response.errorCode == GatewayErrorCode::Success)
 	    {
 	        /// Parse the airports from the response
 	        data_->airports.clear();
-	            
+
 	        if (response.data.contains("airports") && response.data["airports"].is_array())
 	        {
 	            for (const auto& airportJson : response.data["airports"])
@@ -337,36 +337,36 @@ namespace SceneryEditorX
 	            }
 	        }
 	    }
-	        
+
 	    return response;
 	}
-	
+
 	/// Get information about a specific airport
 	ApiResponse SceneryGateway::GetAirport(const std::string& icao) const
     {
 	    std::string endpoint = FormatUrl(ENDPOINT_AIRPORT, icao);
 	    ApiResponse response = MakeRequest(endpoint);
-	        
+
 	    return response;
 	}
-	
+
 	/// Get a list of all scenery packs, optionally filtered by ICAO
 	ApiResponse SceneryGateway::GetSceneryPacks(const std::string& icaoFilter) const
     {
 	    std::string endpoint = ENDPOINT_SCENERY;
-	        
+
 	    if (!icaoFilter.empty())
 	    {
 	        endpoint += "?icao=" + UrlEncode(icaoFilter);
 	    }
-	        
+
 	    ApiResponse response = MakeRequest(endpoint);
-	        
+
 	    if (response.errorCode == GatewayErrorCode::Success)
 	    {
 	        /// Parse the scenery packs from the response
 	        data_->sceneryPacks.clear();
-	            
+
 	        if (response.data.contains("scenery") && response.data["scenery"].is_array())
 	        {
 	            for (const auto& sceneryJson : response.data["scenery"])
@@ -375,31 +375,31 @@ namespace SceneryEditorX
 	            }
 	        }
 	    }
-	        
+
 	    return response;
 	}
-	
+
 	/// Get information about a specific scenery pack
 	ApiResponse SceneryGateway::GetSceneryPack(int id) const
     {
 	    char buffer[64];
 	    snprintf(buffer, sizeof(buffer), ENDPOINT_SCENERY_PACK, id);
-	        
+
 	    ApiResponse response = MakeRequest(buffer);
-	        
+
 	    return response;
 	}
-	
+
 	/// Get a list of all artists
 	ApiResponse SceneryGateway::GetArtists() const
     {
 	    ApiResponse response = MakeRequest(ENDPOINT_ARTISTS);
-	        
+
 	    if (response.errorCode == GatewayErrorCode::Success)
 	    {
 	        /// Parse the artists from the response
 	        data_->artists.clear();
-	            
+
 	        if (response.data.contains("artists") && response.data["artists"].is_array())
 	        {
 	            for (const auto& artistJson : response.data["artists"])
@@ -408,29 +408,29 @@ namespace SceneryEditorX
 	            }
 	        }
 	    }
-	        
+
 	    return response;
 	}
-	
+
 	/// Get information about a specific artist
 	ApiResponse SceneryGateway::GetArtist(int id) const
     {
 	    char buffer[64];
 	    snprintf(buffer, sizeof(buffer), ENDPOINT_ARTIST, id);
-	        
+
 	    ApiResponse response = MakeRequest(buffer);
-	        
+
 	    return response;
 	}
-	
+
 	/// Get recommended scenery
 	ApiResponse SceneryGateway::GetRecommendedScenery() const
     {
 	    ApiResponse response = MakeRequest(ENDPOINT_RECOMMENDED);
-	        
+
 	    return response;
 	}
-	
+
     /// Download a scenery pack
     bool SceneryGateway::DownloadSceneryPack(int id, const std::string &saveDir, const SceneryEditorX::ProgressCallback &progressCb, const CompletionCallback &completionCb)
     {
@@ -565,31 +565,31 @@ namespace SceneryEditorX
     }
 
 	// -----------------------------------------------------------
-	
+
 	/// Get the cached airports
 	const std::vector<AirportInfo>& SceneryGateway::GetCachedAirports() const
 	{
 	    return data_->airports;
 	}
-	
+
 	/// Get the cached scenery packs
 	const std::vector<SceneryPackInfo>& SceneryGateway::GetCachedSceneryPacks() const
 	{
 	    return data_->sceneryPacks;
 	}
-	
+
 	/// Get the cached artists
 	const std::vector<ArtistInfo>& SceneryGateway::GetCachedArtists() const
 	{
 	    return data_->artists;
 	}
-	
+
 	/// Get the last error code
 	GatewayErrorCode SceneryGateway::GetLastErrorCode() const
 	{
 	    return data_->lastResponse.errorCode;
 	}
-	
+
 	/// Get the last error message
 	std::string SceneryGateway::GetLastErrorMessage() const
 	{

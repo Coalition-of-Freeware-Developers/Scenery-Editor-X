@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
+#include "vector.h"
 
 /// -----------------------------------------------------
 
-namespace SceneryEditorX::Utils
+namespace SceneryEditorX
 {
 
 	inline float Dot(const Vec2& a, const Vec2& b) noexcept

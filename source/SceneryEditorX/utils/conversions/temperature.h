@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,13 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
+#pragma once
+#ifdef __cplusplus
 
 /// -----------------------------------------------------
 
-#ifdef __cplusplus
-namespace SceneryEditorX { namespace Convert {
+namespace SceneryEditorX::Convert
+{
 
-	// Temperature conversions among Celsius, Fahrenheit, Kelvin (header-only)
+	/// Temperature conversions among Celsius, Fahrenheit, Kelvin (header-only)
 	inline float CToF(const float c) { return (c * 9.0f / 5.0f) + 32.0f; }
 	inline float FToC(const float f) { return (f - 32.0f) * 5.0f / 9.0f; }
 	inline float CToK(const float c) { return c + 273.15f; }
@@ -25,7 +27,7 @@ namespace SceneryEditorX { namespace Convert {
 	inline float FToK(const float f) { return CToK(FToC(f)); }
 	inline float KToF(const float k) { return CToF(KToC(k)); }
 
-}} // namespace SceneryEditorX::Convert
+}
 #endif // __cplusplus
 
 /// -----------------------------------------------------

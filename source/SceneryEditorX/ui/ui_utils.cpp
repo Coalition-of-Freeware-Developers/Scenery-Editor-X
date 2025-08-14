@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -59,7 +59,7 @@ namespace SceneryEditorX::UI
 		ImGui::EndPopup();
 	}
 
-    /// @note Moved to @file menu_bar.cpp
+    /// @note - Moved to @file menu_bar.cpp
 	/*
 	/// MenuBar which allows you to specify its rectangle
 	bool BeginMenuBar(const ImRect& barRectangle)
@@ -615,7 +615,7 @@ namespace SceneryEditorX::UI
         return changed;
     }
 
-    /// @note Moved to @file menu_bar.cpp
+    /// @note - Moved to @file menu_bar.cpp
     /*
     bool ContextMenuHeader(const char *label, ImGuiTreeNodeFlags flags)
     {

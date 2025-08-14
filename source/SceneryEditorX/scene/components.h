@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * components.h
@@ -11,22 +11,19 @@
 * -------------------------------------------------------
 */
 #pragma once
-
+#include <cmath>
+#include <string>
+#include <vector>
+#include <utility>
 #include <SceneryEditorX/core/identifiers/uuid.h>
 #include <SceneryEditorX/scene/material.h>
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/norm.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <SceneryEditorX/utils/math/transforms.h>
+#include <SceneryEditorX/utils/math/math.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	
+
 	struct IDComponent
 	{
         UUID ID = UUID(0);
@@ -86,7 +83,7 @@ namespace SceneryEditorX
          * methods.
 		 */
         Vec3 RotationEuler = {0.0f, 0.0f, 0.0f};
-        glm::quat Rotation = {1.0f, 0.0f, 0.0f, 0.0f};
+        Quat Rotation = {1.0f, 0.0f, 0.0f, 0.0f};
 
     public:
         TransformComponent() = default;
@@ -95,14 +92,15 @@ namespace SceneryEditorX
 
         [[nodiscard]] Mat4 GetTransform() const
         {
-            return glm::translate(Mat4(1.0f), Translation) * glm::toMat4(Rotation) *
-                   glm::scale(Mat4(1.0f), Scale);
+            // M = T * R * S
+            return Mat4::Translate(Translation) * Rotation.ToMatrix() * Mat4::Scale(Scale);
         }
 
         void SetTransform(const Mat4 &transform)
         {
-            Utils::DecomposeTransform(transform, Translation, Rotation, Scale);
-            RotationEuler = glm::eulerAngles(Rotation);
+            Transforms::Decompose(transform, Translation, Rotation, Scale);
+            // Store editor euler in radians
+            RotationEuler = Rotation.ToEulerRadians();
         }
 
         [[nodiscard]] Vec3 GetRotationEuler() const { return RotationEuler; }
@@ -110,47 +108,54 @@ namespace SceneryEditorX
         void SetRotationEuler(const Vec3 &euler)
         {
             RotationEuler = euler;
-            Rotation = glm::quat(RotationEuler);
+            // euler is in radians
+            Rotation = Quat::EulerRadians(RotationEuler);
         }
 
-        [[nodiscard]] glm::quat GetRotation() const { return Rotation; }
+        [[nodiscard]] Quat GetRotation() const { return Rotation; }
 
-        void SetRotation(const glm::quat &quat)
+        void SetRotation(const Quat &quat)
         {
             /// wrap given euler angles to range [-pi, pi]
             auto wrapToPi = [](Vec3 v)
             {
-                return glm::mod(v + glm::pi<float>(), 2.0f * glm::pi<float>()) - glm::pi<float>();
+                auto wrap = [](float a)
+                {
+                    // Wrap to [-PI, PI]
+                    a = std::fmod(a + PI, TWO_PI);
+                    if (a < 0.0f) a += TWO_PI;
+                    return a - PI;
+                };
+                return Vec3(wrap(v.x), wrap(v.y), wrap(v.z));
             };
 
             auto originalEuler = RotationEuler;
             Rotation = quat;
-            RotationEuler = glm::eulerAngles(Rotation);
+            RotationEuler = Rotation.ToEulerRadians();
 
-            // A given quat can be represented by many Euler angles (technically infinitely many),
-            // and glm::eulerAngles() can only give us one of them which may or may not be the one we want.
-            // Here we have a look at some likely alternatives and pick the one that is closest to the original Euler angles.
-            // This is an attempt to avoid sudden 180deg flips in the Euler angles when we SetRotation(quat).
+            // A given quaternion can be represented by many Euler angle triplets (technically infinitely many),
+            // and our ToEulerRadians() returns one canonical solution which may not match the previous user-facing angles.
+            // Evaluate a small set of equivalent alternatives and pick the one closest to the original to avoid visual 180° flips.
 
-            Vec3 alternate1 = {RotationEuler.x - glm::pi<float>(),
-                                    glm::pi<float>() - RotationEuler.y,
-                                    RotationEuler.z - glm::pi<float>()};
-            Vec3 alternate2 = {RotationEuler.x + glm::pi<float>(),
-                                    glm::pi<float>() - RotationEuler.y,
-                                    RotationEuler.z - glm::pi<float>()};
-            Vec3 alternate3 = {RotationEuler.x + glm::pi<float>(),
-                                    glm::pi<float>() - RotationEuler.y,
-                                    RotationEuler.z + glm::pi<float>()};
-            Vec3 alternate4 = {RotationEuler.x - glm::pi<float>(),
-                                    glm::pi<float>() - RotationEuler.y,
-                                    RotationEuler.z + glm::pi<float>()};
+            Vec3 alternate1 = {RotationEuler.x - PI,
+                               PI - RotationEuler.y,
+                               RotationEuler.z - PI};
+            Vec3 alternate2 = {RotationEuler.x + PI,
+                               PI - RotationEuler.y,
+                               RotationEuler.z - PI};
+            Vec3 alternate3 = {RotationEuler.x + PI,
+                               PI - RotationEuler.y,
+                               RotationEuler.z + PI};
+            Vec3 alternate4 = {RotationEuler.x - PI,
+                               PI - RotationEuler.y,
+                               RotationEuler.z + PI};
 
             /// We pick the alternative that is closest to the original value.
-            float distance0 = glm::length2(wrapToPi(RotationEuler - originalEuler));
-            float distance1 = glm::length2(wrapToPi(alternate1 - originalEuler));
-            float distance2 = glm::length2(wrapToPi(alternate2 - originalEuler));
-            float distance3 = glm::length2(wrapToPi(alternate3 - originalEuler));
-            float distance4 = glm::length2(wrapToPi(alternate4 - originalEuler));
+            float distance0 = Length2(wrapToPi(RotationEuler - originalEuler));
+            float distance1 = Length2(wrapToPi(alternate1 - originalEuler));
+            float distance2 = Length2(wrapToPi(alternate2 - originalEuler));
+            float distance3 = Length2(wrapToPi(alternate3 - originalEuler));
+            float distance4 = Length2(wrapToPi(alternate4 - originalEuler));
 
             float best = distance0;
             if (distance1 < best)

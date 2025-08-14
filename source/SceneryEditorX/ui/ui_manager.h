@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui_manager.h
@@ -41,7 +41,7 @@ namespace SceneryEditorX::UI
     GLOBAL void CreateProjectModal(GLFWwindow *window);
     GLOBAL void ExitConfirmationModal(GLFWwindow *window);
     GLOBAL void AboutModal();
-    GLOBAL void ViewportWindow(glm::ivec2& viewportSize, bool& viewportHovered, VkImageView imageView);
+	GLOBAL void ViewportWindow(iVec2& viewportSize, bool& viewportHovered, VkImageView imageView);
 
     /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,11 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
 
 /// -----------------------------------------------------
 
-namespace SceneryEditorX::Utils
+namespace SceneryEditorX
 {
 	/**
 	 * @brief Axis-Aligned Bounding Box (AABB) for efficient collision detection and spatial queries
@@ -27,12 +26,33 @@ namespace SceneryEditorX::Utils
 	 * The AABB is defined such that all points (x,y,z) within the box satisfy:
 	 * Min.x <= x <= Max.x, Min.y <= y <= Max.y, Min.z <= z <= Max.z
 	 *
-	 * @note For a valid AABB, Min should be component-wise less than or equal to Max
+	 * @note - For a valid AABB, Min should be component-wise less than or equal to Max
 	 * @warning Empty or invalid AABBs (where Min > Max in any component) may cause
 	 *          undefined behavior in some operations
 	 */
-	struct AABB
+	class AABB
 	{
+	public:
+
+        /**
+         * @enum Side
+         * @brief Enumeration for the six sides of the AABB
+         *
+         * Represents the six sides of the axis-aligned bounding box.
+         *
+         * Each side corresponds to one of the coordinate axes, allowing easy
+         * identification of which side a point or another AABB is relative to.
+         */
+        enum Side : uint8_t
+		{
+            Left = 0, ///< Left side of the AABB
+            Right,    ///< Right side of the AABB
+            Top,      ///< Top side of the AABB
+            Bottom,   ///< Bottom side of the AABB
+            Front,    ///< Front side of the AABB
+            Back      ///< Back side of the AABB
+		};
+
 		Vec3 Min; ///< Minimum corner point of the bounding box
 		Vec3 Max; ///< Maximum corner point of the bounding box
 
@@ -50,7 +70,7 @@ namespace SceneryEditorX::Utils
 		 * @param min The minimum corner point (should be component-wise <= max)
 		 * @param max The maximum corner point (should be component-wise >= min)
 		 *
-		 * @note No validation is performed to ensure min <= max. Users should
+		 * @note - No validation is performed to ensure min <= max. Users should
 		 *       ensure proper ordering for correct behavior.
 		 */
 		AABB(const Vec3& min, const Vec3& max) : Min(min), Max(max) {}
@@ -63,7 +83,7 @@ namespace SceneryEditorX::Utils
 		 *
 		 * @return Vec3 containing the width, height, and depth of the bounding box
 		 *
-		 * @note If Min > Max in any component, the corresponding size component will be negative
+		 * @note - If Min > Max in any component, the corresponding size component will be negative
 		 */
         [[nodiscard]] Vec3 Size() const { return Max - Min; }
 
@@ -75,11 +95,23 @@ namespace SceneryEditorX::Utils
          *
          * @return Vec3 representing the center point of the bounding box
          *
-         * @note The center is calculated as Min + (Max - Min) * 0.5, which is
+         * @note - The center is calculated as Min + (Max - Min) * 0.5, which is
          *       equivalent to (Min + Max) * 0.5 but more numerically stable
          */
         [[nodiscard]] Vec3 Center() const { return Min + Size() * 0.5f; }
+
+		/// TODO: For easy usability for future use add ability to get corners.
+		/*
+		[[nodiscard]] Vec3 Corner() const { return ; }
+		*/
+
+		/// TODO: For easy usability for future use add ability to get the top, bottom, left, right, front, and back sides.
+        /*
+		[[nodiscard]] Vec3 Side() const { return ; }
+		*/
+
 	};
+
 }
 
 /// -----------------------------------------------------

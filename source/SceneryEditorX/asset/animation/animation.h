@@ -17,6 +17,9 @@
 #include <SceneryEditorX/utils/math/transforms.h>
 #include <vector>
 
+#include <SceneryEditorX/utils/math/matrix.h>
+#include <SceneryEditorX/utils/math/quat.h>
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
@@ -57,14 +60,14 @@ namespace SceneryEditorX
 		const void* GetData() const { return m_Data; }
 
 		const Vec3& GetRootTranslationEnd() const { return m_RootTranslationEnd; }
-		const glm::quat& GetRootRotationEnd() const { return m_RootRotationEnd; }
+		const Quat& GetRootRotationEnd() const { return m_RootRotationEnd; }
 
 	private:
 		void* m_Data;               /// Animation owns this data, and deletes it on destruction
 		const Skeleton* m_Skeleton; /// non-owning pointer
 		Vec3 m_RootTranslationEnd;
 		float m_Duration;
-		glm::quat m_RootRotationEnd;
+		Quat m_RootRotationEnd;
 		uint32_t m_NumTracks;
 	};
 
@@ -80,7 +83,7 @@ namespace SceneryEditorX
 		AnimationAsset(AssetHandle animationSource, AssetHandle mesh, std::string_view animationName, bool extractRootMotion, uint32_t rootBoneIndex, const Vec3 &rootTranslationMask, const Vec3 &rootRotationMask, bool bDiscardRootMotion);
 
 		GLOBAL AssetType GetStaticType() { return AssetType::Animation; }
-		virtual AssetType GetAssetType() const override { return GetStaticType(); }
+		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 
 		AssetHandle GetAnimationSource() const;			/// mesh source (the source asset that contains animation data)
 		AssetHandle GetMeshHandle() const;				/// mesh (the mesh that this animation animates (maybe different from the source asset))
@@ -89,8 +92,8 @@ namespace SceneryEditorX
 		/// Parameters controlling extraction of root motion from the specified bone.
 		bool IsExtractRootMotion() const;					/// true if we want to extract root motion from the specified bone
 		uint32_t RootBoneIndex() const;						/// the index of the bone to extract root motion from
-		const glm::bvec3& GetRootTranslationMask() const;	/// mask for translation, true = extract that component, false = do not
-		const glm::bvec3& GetRootRotationMask() const;		/// mask for rotation, true = extract that component, false = do not
+		const Bool3& GetRootTranslationMask() const;	/// mask for translation, true = extract that component, false = do not
+		const Bool3& GetRootRotationMask() const;		/// mask for rotation, true = extract that component, false = do not
 
 		/// IsDiscardRootMotion() indicates what should happen with extracted root motion (if any).
 		/// True = discard extracted root motion. This converts an animation to "in place".
@@ -104,8 +107,8 @@ namespace SceneryEditorX
 		void OnDependencyUpdated(AssetHandle handle);
 
 	private:
-		glm::bvec3 m_RootTranslationMask;
-		glm::bvec3 m_RootRotationMask;
+		Bool3 m_RootTranslationMask;
+		Bool3 m_RootRotationMask;
 		AssetHandle m_AnimationSource; /// Animation clips don't necessarily have to come from the same DCC file as the mesh they are animating.
 		AssetHandle m_Mesh;            /// For example, the clips could be in one file, and the "skin" (aka, mesh, with skeleton) in a separate file.
 		std::string m_AnimationName;   /// The name of the animation within the DCC file (more robust against changes to the DCC than storing the index)
@@ -123,16 +126,16 @@ namespace SceneryEditorX
 	/// TODO: Consider switching animation to use rtm::qvsf directly and remove this Transform struct
 	struct Transform
 	{
-		Vec3 Translation = glm::zero<Vec3>();
+	Vec3 Translation = Vec3(0.0f, 0.0f, 0.0f);
 		float Scale = 1.0f;
-		glm::quat Rotation = glm::identity<glm::quat>();
+	Quat Rotation = Quat::Identity();
 
 		static const Transform Identity;
 
 		Transform Inverse() const
 		{
 			Transform result;
-			result.Rotation = glm::inverse(Rotation);
+			result.Rotation = Rotation.inverse();
 			result.Scale = 1.0f / Scale;
 			result.Translation = result.Rotation * (result.Scale * -Translation);
 			return result;
@@ -204,13 +207,13 @@ namespace SceneryEditorX::AnimationInternal
 	struct KeyframeVec3
 	{
 		float Time = 0.0f;
-		Vec3   Value = glm::zero<Vec3>();
+	Vec3   Value = Vec3(0.0f, 0.0f, 0.0f);
 	};
 
 	struct KeyframeQuat
 	{
 		float     Time = 0.0f;
-		glm::quat Value = glm::identity<glm::quat>();
+		Quat Value = Quat::Identity();
 	};
 
 	struct TrackTRS

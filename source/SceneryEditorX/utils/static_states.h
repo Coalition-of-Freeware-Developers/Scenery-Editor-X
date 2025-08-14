@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -23,7 +23,7 @@
 * - LOCAL int callCount = 0; - Local static variable in function
 * - GLOBAL const char* APP_NAME = "Scenery Editor X"; - Global static
 *
-* @note These macros do not change the behavior of static declarations,
+* @note - These macros do not change the behavior of static declarations,
 *       they only provide semantic clarity for code maintenance.
 * -------------------------------------------------------
 */
@@ -38,7 +38,7 @@
  * function or variable is not intended for use outside its defining
  * module.
  *
- * @note Equivalent to 'static' keyword but provides clearer intent
+ * @note - Equivalent to 'static' keyword but provides clearer intent
  */
 #define INTERNAL static 	/// For easier readability inside to determine if a static variable is internal to the module
 
@@ -50,7 +50,7 @@
  * function scope. These variables maintain their value between
  * function calls but are not accessible outside the function.
  *
- * @note Equivalent to 'static' keyword but provides clearer intent
+ * @note - Equivalent to 'static' keyword but provides clearer intent
  */
 #define LOCAL static 		/// For easier readability for local variables
 
@@ -62,6 +62,6 @@
  * scope within their compilation unit. These are accessible throughout
  * the entire source file but not externally linked.
  *
- * @note Equivalent to 'static' keyword but provides clearer intent
+ * @note - Equivalent to 'static' keyword but provides clearer intent
  */
 #define GLOBAL static 		/// For easier readability for global variables

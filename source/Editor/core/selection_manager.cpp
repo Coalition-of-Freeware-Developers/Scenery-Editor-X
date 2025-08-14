@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * selection_manager.cpp
@@ -13,14 +13,13 @@
 #include <Editor/core/selection_manager.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/events/scene_events.h>
-
 #include <algorithm>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	
+
 	void SelectionManager::Select(UUID contextID, UUID selectionID)
 	{
 		auto& contextSelections = s_Contexts[contextID];
@@ -32,7 +31,7 @@ namespace SceneryEditorX
 		contextSelections.push_back(selectionID);
 		Application::Get().DispatchEvent<SelectionChangedEvent>(contextID, selectionID, true);
 	}
-	
+
 	bool SelectionManager::IsSelected(UUID selectionID)
 	{
 		for (const auto &contextSelections : s_Contexts | std::views::values)
@@ -43,7 +42,7 @@ namespace SceneryEditorX
 
 		return false;
 	}
-	
+
 	bool SelectionManager::IsSelected(UUID contextID, UUID selectionID)
 	{
 		const auto& contextSelections = s_Contexts[contextID];
@@ -89,7 +88,7 @@ namespace SceneryEditorX
 			break;
 		}
 	}
-	
+
 	void SelectionManager::Deselect(UUID contextID, UUID selectionID)
 	{
 		auto& contextSelections = s_Contexts[contextID];

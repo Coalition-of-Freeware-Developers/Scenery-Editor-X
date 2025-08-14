@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -34,12 +34,15 @@ namespace SceneryEditorX
      * - Interpolation methods (SLERP, LERP)
      * - Rotation composition and mathematical operations
      *
-     * @note Quaternions are expected to be normalized for proper rotation behavior.
-     * @note This implementation follows the convention where w is the scalar component.
+     * @note - Quaternions are expected to be normalized for proper rotation behavior.
+     * @note - This implementation follows the convention where w is the scalar component.
      */
     class Quat
     {
     public:
+
+        /// Convenience creators
+        static Quat Identity() { return Quat(); }
 
         /**
          * @brief Default constructor creating an identity quaternion.
@@ -48,7 +51,6 @@ namespace SceneryEditorX
          * The resulting quaternion has components (0, 0, 0, 1) which represents
          * a rotation of 0 degrees around any axis.
          *
-         * @example
          * @code
          * Quat identity; // Creates identity quaternion (0, 0, 0, 1)
          * @endcode
@@ -68,9 +70,8 @@ namespace SceneryEditorX
          * @param y The y component of the vector part (axis.y * sin(θ/2))
          * @param z The z component of the vector part (axis.z * sin(θ/2))
          *
-         * @note For valid rotations, the quaternion should be normalized.
+         * @note - For valid rotations, the quaternion should be normalized.
          *
-         * @example
          * @code
          * Quat q(1.0f, 0.0f, 0.0f, 0.0f); // Identity quaternion
          * Quat rotation(0.707f, 0.707f, 0.0f, 0.0f); // 90° rotation around X-axis
@@ -89,7 +90,6 @@ namespace SceneryEditorX
          *
          * @param vec4 The Vec4 containing quaternion components (x, y, z, w)
          *
-         * @example
          * @code
          * Vec4 components(0.0f, 0.0f, 0.0f, 1.0f);
          * Quat q(components); // Creates quaternion from Vec4
@@ -104,7 +104,6 @@ namespace SceneryEditorX
          *
          * @param q The quaternion to copy from
          *
-         * @example
          * @code
          * Quat original = Quat::EulerDegrees(45, 0, 0);
          * Quat copy(original); // Creates a copy of the original quaternion
@@ -126,16 +125,15 @@ namespace SceneryEditorX
          * Assigns the components of another quaternion to this quaternion.
          * Includes self-assignment protection.
          *
-         * @param other The quaternion to copy from
+         * @param q The quaternion to copy from
          * @return Reference to this quaternion after assignment
          *
-         * @example
          * @code
          * Quat q1, q2 = Quat::EulerDegrees(90, 0, 0);
          * q1 = q2; // q1 now has the same rotation as q2
          * @endcode
          */
-		Quat& operator=(const Quat& other);
+		Quat& operator=(const Quat& q);
 
         /**
          * @brief Equality comparison operator.
@@ -146,11 +144,10 @@ namespace SceneryEditorX
          * @param rhs The quaternion to compare against
          * @return true if all components are equal, false otherwise
          *
-         * @note This performs exact floating-point comparison, which may not be
+         * @note - This performs exact floating-point comparison, which may not be
          *       suitable for quaternions that have undergone floating-point arithmetic.
          *       Consider using an epsilon-based comparison for such cases.
          *
-         * @example
          * @code
          * Quat q1 = Quat::EulerDegrees(45, 0, 0);
          * Quat q2 = Quat::EulerDegrees(45, 0, 0);
@@ -168,9 +165,8 @@ namespace SceneryEditorX
          * @param rhs The quaternion to compare against
          * @return true if any components are not equal, false if all are equal
          *
-         * @note This is the logical negation of the equality operator.
+         * @note - This is the logical negation of the equality operator.
          *
-         * @example
          * @code
          * Quat q1 = Quat::EulerDegrees(45, 0, 0);
          * Quat q2 = Quat::EulerDegrees(90, 0, 0);
@@ -190,10 +186,9 @@ namespace SceneryEditorX
          * @param rhs The quaternion to multiply by
          * @return Reference to this quaternion after multiplication
          *
-         * @note Quaternion multiplication is not commutative: A *= B ≠ B *= A
-         * @note The result represents applying rotation B first, then rotation A
+         * @note - Quaternion multiplication is not commutative: A *= B ≠ B *= A
+         * @note - The result represents applying rotation B first, then rotation A
          *
-         * @example
          * @code
          * Quat rotX = Quat::EulerDegrees(90, 0, 0);  // 90° around X
          * Quat rotY = Quat::EulerDegrees(0, 45, 0);  // 45° around Y
@@ -212,10 +207,9 @@ namespace SceneryEditorX
          * @param rhs The quaternion to multiply by
          * @return A new quaternion representing the composed rotation
          *
-         * @note Quaternion multiplication is not commutative: A * B ≠ B * A
-         * @note The mathematical formula used is Hamilton's quaternion product
+         * @note - Quaternion multiplication is not commutative: A * B ≠ B * A
+         * @note - The mathematical formula used is Hamilton's quaternion product
          *
-         * @example
          * @code
          * Quat rotX = Quat::EulerDegrees(90, 0, 0);
          * Quat rotY = Quat::EulerDegrees(0, 45, 0);
@@ -237,7 +231,6 @@ namespace SceneryEditorX
          * @warning Scaling a unit quaternion will make it non-unit, requiring
          *          normalization for proper rotation behavior.
          *
-         * @example
          * @code
          * Quat q = Quat::EulerDegrees(45, 0, 0);
          * Quat scaled = q * 0.5f; // Scale all components by 0.5
@@ -255,10 +248,9 @@ namespace SceneryEditorX
          * @param rhs The quaternion to add
          * @return A new quaternion with component-wise sum
          *
-         * @note For combining rotations, use multiplication (*) instead
+         * @note - For combining rotations, use multiplication (*) instead
          * @warning Adding quaternions typically produces non-unit quaternions
          *
-         * @example
          * @code
          * Quat q1(1, 0, 0, 0);
          * Quat q2(0, 1, 0, 0);
@@ -277,10 +269,9 @@ namespace SceneryEditorX
          * @param rhs The quaternion to subtract
          * @return A new quaternion with component-wise difference
          *
-         * @note This is not the same as inverse rotation composition
+         * @note - This is not the same as inverse rotation composition
          * @warning Subtracting quaternions typically produces non-unit quaternions
          *
-         * @example
          * @code
          * Quat q1(1, 1, 0, 0);
          * Quat q2(0, 1, 0, 0);
@@ -288,6 +279,16 @@ namespace SceneryEditorX
          * @endcode
          */
 		Quat operator-(const Quat& rhs) const;
+
+    	/**
+    	 * @brief Unary negation operator.
+    	 *
+    	 * Returns the additive inverse of this quaternion by negating all components.
+    	 * Note that q and -q represent the same rotation, but this is useful when
+    	 * ensuring the shortest path during interpolation (e.g., SLERP).
+    	 */
+    	Quat operator-() const;
+
         /**
          * @brief Transforms a Vec4 by this quaternion's rotation.
          *
@@ -298,10 +299,9 @@ namespace SceneryEditorX
          * @param rhs The Vec4 to transform
          * @return A new Vec4 containing the rotated vector
          *
-         * @note The w component of the Vec4 is preserved during rotation
-         * @note This operation treats the quaternion as a rotation matrix
+         * @note - The w component of the Vec4 is preserved during rotation
+         * @note - This operation treats the quaternion as a rotation matrix
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(90, 0, 0);
          * Vec4 vector(1, 0, 0, 1);
@@ -321,10 +321,9 @@ namespace SceneryEditorX
          * @param rhs The Vec3 to transform
          * @return A new Vec3 containing the rotated vector
          *
-         * @note This is the most common operation for rotating 3D vectors
-         * @note The vector is treated as a point (w=1) for transformation
+         * @note - This is the most common operation for rotating 3D vectors
+         * @note - The vector is treated as a point (w=1) for transformation
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(0, 90, 0); // 90° around Y-axis
          * Vec3 forward(0, 0, 1);
@@ -342,16 +341,18 @@ namespace SceneryEditorX
          *
          * @return A new normalized quaternion
          *
-         * @note This method does not modify the original quaternion
-         * @note If the quaternion has zero magnitude, the result is undefined
+         * @note - This method does not modify the original quaternion
+         * @note - If the quaternion has zero magnitude, the result is undefined
          *
-         * @example
          * @code
          * Quat q(2, 4, 6, 8); // Non-unit quaternion
          * Quat normalized = q.GetNormalized(); // Unit quaternion with same rotation
          * @endcode
          */
-		Quat GetNormalized() const;
+        [[nodiscard]] Quat GetNormalized() const;
+
+        /// GLM-style aliases that return new quaternions (do not modify this)
+        [[nodiscard]] Quat normalize() const;   /// alias for GetNormalized()
 
         /**
          * @brief Normalizes this quaternion in-place.
@@ -361,10 +362,9 @@ namespace SceneryEditorX
          * rotation behavior and should be called after operations that might
          * change the quaternion's magnitude.
          *
-         * @note This method modifies the quaternion in place
-         * @note If the quaternion has zero magnitude, the result is undefined
+         * @note - This method modifies the quaternion in place
+         * @note - If the quaternion has zero magnitude, the result is undefined
          *
-         * @example
          * @code
          * Quat q(2, 4, 6, 8); // Non-unit quaternion
          * q.Normalize(); // q is now a unit quaternion
@@ -381,16 +381,18 @@ namespace SceneryEditorX
          *
          * @return A new quaternion that is the conjugate of this quaternion
          *
-         * @note For unit quaternions: conjugate == inverse
-         * @note Conjugate of conjugate equals the original quaternion
+         * @note - For unit quaternions: conjugate == inverse
+         * @note - Conjugate of conjugate equals the original quaternion
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(45, 0, 0);
          * Quat opposite = rotation.Conjugate(); // -45° rotation around X-axis
          * @endcode
          */
-		Quat Conjugate(); // Same as inverse
+		Quat Conjugate(); /// Same as inverse
+
+    	/// Magnitude helpers
+        [[nodiscard]] float Length() const { return std::sqrt(GetSqrMagnitude()); }
 
         /**
          * @brief Sets this quaternion from Euler angles in degrees.
@@ -403,10 +405,9 @@ namespace SceneryEditorX
          * @param Y Rotation around the Y-axis in degrees
          * @param Z Rotation around the Z-axis in degrees
          *
-         * @note The rotation order affects the final result
-         * @note Angles are converted to radians internally
+         * @note - The rotation order affects the final result
+         * @note - Angles are converted to radians internally
          *
-         * @example
          * @code
          * Quat q;
          * q.SetEulerDegrees(90, 45, 30); // 90° X, 45° Y, 30° Z rotation
@@ -424,18 +425,17 @@ namespace SceneryEditorX
          * @param b The quaternion to compute dot product with
          * @return The dot product as a float value
          *
-         * @note Dot product of 1.0 indicates identical rotations
-         * @note Dot product of -1.0 indicates opposite rotations
-         * @note Used internally by Slerp and angle calculation functions
+         * @note - Dot product of 1.0 indicates identical rotations
+         * @note - Dot product of -1.0 indicates opposite rotations
+         * @note - Used internally by Slerp and angle calculation functions
          *
-         * @example
          * @code
          * Quat q1 = Quat::EulerDegrees(45, 0, 0);
          * Quat q2 = Quat::EulerDegrees(90, 0, 0);
          * float similarity = q1.Dot(q2);
          * @endcode
          */
-		float Dot(const Quat& b) const;
+        [[nodiscard]] float Dot(const Quat& b) const;
 
         /**
          * @brief Converts this quaternion to a 4x4 rotation matrix.
@@ -447,16 +447,15 @@ namespace SceneryEditorX
          *
          * @return A Matrix4x4 representing the same rotation
          *
-         * @note The quaternion should be normalized for accurate conversion
-         * @note The resulting matrix has translation components set to zero
+         * @note - The quaternion should be normalized for accurate conversion
+         * @note - The resulting matrix has translation components set to zero
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(45, 0, 0);
          * Matrix4x4 rotMatrix = rotation.ToMatrix();
          * @endcode
          */
-		Matrix4x4 ToMatrix() const;
+        [[nodiscard]] Mat4 ToMatrix() const;
 
         /**
          * @brief Creates a quaternion representing rotation from one vector to another.
@@ -469,11 +468,10 @@ namespace SceneryEditorX
          * @param to The target vector (will be normalized internally)
          * @return A quaternion representing the rotation from 'from' to 'to'
          *
-         * @note Handles special cases like parallel and anti-parallel vectors
-         * @note Both input vectors are normalized internally
-         * @note Returns identity quaternion if vectors are already aligned
+         * @note - Handles special cases like parallel and antiparallel vectors
+         * @note - Both input vectors are normalized internally
+         * @note - Returns identity quaternion if vectors are already aligned
          *
-         * @example
          * @code
          * Vec3 forward(0, 0, 1);
          * Vec3 target(1, 0, 0);
@@ -492,10 +490,9 @@ namespace SceneryEditorX
          * @param lookAt The direction to look towards (will be normalized)
          * @return A quaternion representing the look rotation
          *
-         * @note This is equivalent to FromToRotation(Vec3(0,0,1), lookAt)
-         * @note The up vector is not constrained, potentially causing roll
+         * @note - This is equivalent to FromToRotation(Vec3(0,0,1), lookAt)
+         * @note - The up vector is not constrained, potentially causing roll
          *
-         * @example
          * @code
          * Vec3 target(1, 0, 0); // Look towards positive X
          * Quat lookRotation = Quat::LookRotation(target);
@@ -503,7 +500,6 @@ namespace SceneryEditorX
          */
 		static Quat LookRotation(const Vec3& lookAt);
 
-		// Use LookRotation2 instead.
         /**
          * @brief Creates a quaternion that looks in a direction with up constraint.
          *
@@ -517,12 +513,12 @@ namespace SceneryEditorX
          * @param upDirection The desired up direction
          * @return A quaternion representing the constrained look rotation
          *
-         * @note This function may have issues with certain edge cases
-         * @note Consider using LookRotation2 for more robust behavior
+         * @note - This function may have issues with certain edge cases
+         * @note - Consider using LookRotation2 for more robust behavior
          */
 		static Quat LookRotation(const Vec3& lookAt, const Vec3& upDirection);
 
-		// New LookRotation function. Do not use old one.
+
         /**
          * @brief Creates a quaternion from forward and up directions (improved).
          *
@@ -530,14 +526,14 @@ namespace SceneryEditorX
          * forward and up directions. This is the recommended method for creating
          * look-at rotations with proper up vector constraints.
          *
+         * @deprecated New LookRotation function. Do not use old one.
          * @param forward The forward direction vector
          * @param up The up direction vector
          * @return A quaternion representing the orientation
          *
-         * @note This is the improved version of LookRotation with better edge case handling
-         * @note Input vectors should not be parallel for best results
+         * @note - This is the improved version of LookRotation with better edge case handling
+         * @note - Input vectors should not be parallel for best results
          *
-         * @example
          * @code
          * Vec3 forward(1, 0, 0);  // Look towards +X
          * Vec3 up(0, 1, 0);       // Keep +Y as up
@@ -558,11 +554,10 @@ namespace SceneryEditorX
          * @param t Interpolation parameter (0.0 = from, 1.0 = to)
          * @return A quaternion interpolated between from and to
          *
-         * @note SLERP provides constant angular velocity unlike linear interpolation
-         * @note t values outside [0,1] will extrapolate beyond the endpoints
-         * @note Automatically handles quaternion double-cover (chooses shortest path)
+         * @note - SLERP provides constant angular velocity unlike linear interpolation
+         * @note - t values outside [0,1] will extrapolate beyond the endpoints
+         * @note - Automatically handles quaternion double-cover (chooses shortest path)
          *
-         * @example
          * @code
          * Quat start = Quat::EulerDegrees(0, 0, 0);
          * Quat end = Quat::EulerDegrees(90, 0, 0);
@@ -584,11 +579,10 @@ namespace SceneryEditorX
          * @param t Interpolation parameter (0.0 = from, 1.0 = to)
          * @return A quaternion linearly interpolated between from and to
          *
-         * @note LERP is faster than SLERP but provides non-uniform angular velocity
-         * @note The result should be normalized for proper rotation behavior
-         * @note Use SLERP for high-quality rotation animation
+         * @note - LERP is faster than SLERP but provides non-uniform angular velocity
+         * @note - The result should be normalized for proper rotation behavior
+         * @note - Use SLERP for high-quality rotation animation
          *
-         * @example
          * @code
          * Quat start = Quat::EulerDegrees(0, 0, 0);
          * Quat end = Quat::EulerDegrees(90, 0, 0);
@@ -608,10 +602,9 @@ namespace SceneryEditorX
          * @param b The second quaternion
          * @return The angle between the quaternions in degrees [0, 180]
          *
-         * @note The result is always in the range [0, 180] degrees
-         * @note Both quaternions should be normalized for accurate results
+         * @note - The result is always in the range [0, 180] degrees
+         * @note - Both quaternions should be normalized for accurate results
          *
-         * @example
          * @code
          * Quat q1 = Quat::EulerDegrees(0, 0, 0);
          * Quat q2 = Quat::EulerDegrees(45, 0, 0);
@@ -631,11 +624,10 @@ namespace SceneryEditorX
          * @param b The second quaternion
          * @return The dot product as a float value
          *
-         * @note Dot product of 1.0 indicates identical rotations
-         * @note Dot product of -1.0 indicates opposite rotations
-         * @note Used internally by Slerp and Angle functions
+         * @note - Dot product of 1.0 indicates identical rotations
+         * @note - Dot product of -1.0 indicates opposite rotations
+         * @note - Used internally by Slerp and Angle functions
          *
-         * @example
          * @code
          * Quat q1 = Quat::EulerDegrees(45, 0, 0);
          * Quat q2 = Quat::EulerDegrees(90, 0, 0);
@@ -655,17 +647,37 @@ namespace SceneryEditorX
          * @param axis The axis of rotation as a Vec4 (will be normalized)
          * @return A quaternion representing the specified rotation
          *
-         * @note The angle is specified in degrees and converted to radians internally
-         * @note The axis vector is normalized automatically
-         * @note Only the x, y, z components of the Vec4 axis are used
+         * @note - The angle is specified in degrees and converted to radians internally
+         * @note - The axis vector is normalized automatically
+         * @note - Only the x, y, z components of the Vec4 axis are used
          *
-         * @example
          * @code
          * Vec4 xAxis(1, 0, 0, 0);
          * Quat rotation = Quat::AngleAxis(90.0f, xAxis); // 90° around X-axis
          * @endcode
          */
 		static Quat AngleAxis(float angle, const Vec4& axis);
+
+        /**
+         * @brief Creates a quaternion from an angle and axis of rotation in radians.
+         *
+         * Constructs a quaternion representing a rotation of the specified angle
+         * around the given axis, with the angle specified in radians. This method
+         * provides direct access to radian-based angle inputs without degree-to-radian
+         * conversion.
+         *
+         * @param angleRadians The rotation angle in radians
+         * @param axis The axis of rotation as a Vec3 (will be normalized)
+         * @return A quaternion representing the specified rotation
+         *
+         * @note - The axis vector is normalized automatically
+         *
+         * @code
+         * Vec3 axis(1, 0, 0);
+         * Quat rotation = Quat::AngleAxisRadians(M_PI_2, axis); // 90° around X-axis
+         * @endcode
+         */
+        static Quat AngleAxisRadians(float angleRadians, const Vec3& axis);
 
         /**
          * @brief Returns the inverse of this quaternion.
@@ -676,11 +688,10 @@ namespace SceneryEditorX
          *
          * @return The inverse quaternion
          *
-         * @note For unit quaternions: inverse == conjugate
-         * @note Multiplying a quaternion by its inverse yields identity
-         * @note The original quaternion is not modified
+         * @note - For unit quaternions: inverse == conjugate
+         * @note - Multiplying a quaternion by its inverse yields identity
+         * @note - The original quaternion is not modified
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(45, 0, 0);
          * Quat inverse = rotation.GetInverse(); // -45° rotation
@@ -688,6 +699,10 @@ namespace SceneryEditorX
          * @endcode
          */
         [[nodiscard]] Quat GetInverse() const;
+
+        /// GLM-style alias returning a new quaternion inverse
+        [[nodiscard]] Quat inverse() const;     /// alias for GetInverse()
+
         /**
          * @brief Creates a quaternion from Euler angles in degrees.
          *
@@ -700,11 +715,10 @@ namespace SceneryEditorX
          * @param Z Rotation around the Z-axis in degrees (roll)
          * @return A quaternion representing the combined rotation
          *
-         * @note Angles are applied in XYZ order: X first, then Y, then Z
-         * @note Input angles are converted to radians internally
-         * @note Euler angles can suffer from gimbal lock at certain orientations
+         * @note - Angles are applied in XYZ order: X first, then Y, then Z
+         * @note - Input angles are converted to radians internally
+         * @note - Euler angles can suffer from gimbal lock at certain orientations
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(90, 45, 30);
          * // 90° pitch, 45° yaw, 30° roll
@@ -724,10 +738,9 @@ namespace SceneryEditorX
          * @param Z Rotation around the Z-axis in radians
          * @return A quaternion representing the combined rotation
          *
-         * @note More precise than degree-based version for mathematical calculations
-         * @note No internal unit conversion is performed
+         * @note - More precise than degree-based version for mathematical calculations
+         * @note - No internal unit conversion is performed
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerRadians(M_PI_2, M_PI_4, M_PI_6);
          * // 90°, 45°, 30° in radians
@@ -745,16 +758,77 @@ namespace SceneryEditorX
          * @param q The quaternion to convert
          * @return A Matrix4x4 representing the same rotation
          *
-         * @note The quaternion should be normalized for accurate conversion
-         * @note Equivalent to calling q.ToMatrix()
+         * @note - The quaternion should be normalized for accurate conversion
+         * @note - Equivalent to calling q.ToMatrix()
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(45, 0, 0);
          * Matrix4x4 matrix = Quat::ToMatrix(rotation);
          * @endcode
          */
-		static Matrix4x4 ToMatrix(const Quat& q);
+		static Mat4 ToMatrix(const Quat& q);
+
+		/// Common helpers mirroring GLM free functions
+		static Quat Normalize(const Quat& q) { return q.GetNormalized(); }
+		static Quat Inverse(const Quat& q) { return q.GetInverse(); }
+
+        /**
+         * @brief Calculates the angle of rotation in radians.
+         *
+         * Computes the angle of rotation represented by the quaternion. This
+         * is useful for understanding how much rotation the quaternion represents
+         * without needing to convert to Euler angles.
+         *
+         * @param x The quaternion to calculate the angle from
+         * @return The angle of rotation in radians
+         *
+         * @note - The angle is calculated using the formula: angle = 2 * acos(w)
+         *
+         * @code
+         * Quat rotation = Quat::EulerDegrees(90, 0, 0);
+         * float angle = Quat::AngleRadians(rotation); // Should be 90° in radians
+         * @endcode
+         */
+        static float AngleRadians(const Quat& x);
+
+        /**
+         * @brief Calculates the axis of rotation from a quaternion.
+         *
+         * Extracts the axis of rotation represented by the quaternion.
+         *
+         * @param x The quaternion to extract the axis from 
+         * @return The axis of rotation as a Vec3
+         *
+         * @note - The axis is normalized internally
+         *
+         * @code
+         * Quat rotation = Quat::EulerDegrees(90, 0, 0);
+         * Vec3 axis = Quat::Axis(rotation); // Should be (1, 0, 0) for 90° around X
+         * @endcode
+         */
+        static Vec3  Axis(const Quat& x);
+
+		/**
+		 * @brief Rotates a quaternion by a specified angle around an axis.
+		 *
+		 * Creates a new quaternion that represents the rotation of the
+		 * given quaternion by the specified angle around the provided axis.
+		 *
+		 * @param q The quaternion to rotate
+		 * @param angleRadians The rotation angle in radians
+		 * @param axis The axis of rotation as a Vec3 (will be normalized)
+		 * @return A new quaternion representing the rotated orientation
+		 *
+		 * @note - The axis vector is normalized internally
+		 * @note - This is useful for applying additional rotations to an existing quaternion
+		 *
+		 * @code
+		 * Quat original = Quat::EulerDegrees(45, 0, 0);
+		 * Vec3 rotationAxis(0, 1, 0); // Rotate around Y-axis
+		 * Quat rotated = Quat::Rotate(original, M_PI_4, rotationAxis); // Rotate by 45° around Y
+		 * @endcode
+		 */
+		static Quat Rotate(const Quat& q, float angleRadians, const Vec3& axis);
 
         /**
          * @brief Converts this quaternion to Euler angles in radians.
@@ -765,11 +839,10 @@ namespace SceneryEditorX
          *
          * @return A Vec3 containing (X, Y, Z) Euler angles in radians
          *
-         * @note The quaternion should be normalized for accurate conversion
-         * @note May suffer from gimbal lock representation issues
-         * @note The result uses XYZ rotation order
+         * @note - The quaternion should be normalized for accurate conversion
+         * @note - May suffer from gimbal lock representation issues
+         * @note - The result uses XYZ rotation order
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerDegrees(90, 45, 30);
          * Vec3 angles = rotation.ToEulerRadians();
@@ -786,10 +859,9 @@ namespace SceneryEditorX
          *
          * @return A Vec3 containing (X, Y, Z) Euler angles in degrees
          *
-         * @note Convenience method that calls ToEulerRadians() and converts to degrees
-         * @note The quaternion should be normalized for accurate conversion
+         * @note - Convenience method that calls ToEulerRadians() and converts to degrees
+         * @note - The quaternion should be normalized for accurate conversion
          *
-         * @example
          * @code
          * Quat rotation = Quat::EulerRadians(M_PI_2, 0, 0);
          * Vec3 angles = rotation.ToEulerDegrees(); // Should be (90, 0, 0)
@@ -806,17 +878,16 @@ namespace SceneryEditorX
          *
          * @return The squared magnitude as a float
          *
-         * @note For unit quaternions, this should equal 1.0
-         * @note Useful for checking if normalization is needed
-         * @note Faster than calculating actual magnitude
+         * @note - For unit quaternions, this should equal 1.0
+         * @note - Useful for checking if normalization is needed
+         * @note - Faster than calculating actual magnitude
          *
-         * @example
          * @code
          * Quat q(1, 2, 3, 4);
          * float sqrMag = q.GetSqrMagnitude(); // 1 + 4 + 9 + 16 = 30
          * @endcode
          */
-        float GetSqrMagnitude() const { return x * x + y * y + z * z + w * w; }
+        [[nodiscard]] float GetSqrMagnitude() const { return x * x + y * y + z * z + w * w; }
 
         /**
          * @brief Convenience method for creating quaternion from Vec3 Euler degrees.
@@ -827,10 +898,9 @@ namespace SceneryEditorX
          * @param euler A Vec3 containing (X, Y, Z) Euler angles in degrees
          * @return A quaternion representing the combined rotation
          *
-         * @note Equivalent to EulerDegrees(euler.x, euler.y, euler.z)
-         * @note Convenient for passing Vec3 angle representations
+         * @note - Equivalent to EulerDegrees(euler.x, euler.y, euler.z)
+         * @note - Convenient for passing Vec3 angle representations
          *
-         * @example
          * @code
          * Vec3 angles(90, 45, 30);
          * Quat rotation = Quat::EulerDegrees(angles);
@@ -847,10 +917,9 @@ namespace SceneryEditorX
          * @param euler A Vec3 containing (X, Y, Z) Euler angles in radians
          * @return A quaternion representing the combined rotation
          *
-         * @note Equivalent to EulerRadians(euler.x, euler.y, euler.z)
-         * @note Convenient for passing Vec3 angle representations
+         * @note - Equivalent to EulerRadians(euler.x, euler.y, euler.z)
+         * @note - Convenient for passing Vec3 angle representations
          *
-         * @example
          * @code
          * Vec3 angles(M_PI_2, M_PI_4, M_PI_6);
          * Quat rotation = Quat::EulerRadians(angles);
@@ -870,17 +939,17 @@ namespace SceneryEditorX
          * - w: The scalar part of the quaternion (cos(θ/2))
          * - xyzw[]: Array access to all four components in order [x, y, z, w]
          *
-         * @note The components can be accessed either by name or by array index
-         * @note Array access follows the order: [0]=x, [1]=y, [2]=z, [3]=w
+         * @note - The components can be accessed either by name or by array index
+         * @note - Array access follows the order: [0]=x, [1]=y, [2]=z, [3]=w
          *
-         * @example
          * @code
          * Quat q(1, 2, 3, 4);
          * float x_val = q.x;        // Named access
          * float y_val = q.xyzw[1];  // Array access
          * @endcode
          */
-        union {
+        union
+        {
             struct { float x, y, z, w; };
             float xyzw[4];
         };
@@ -897,10 +966,9 @@ namespace SceneryEditorX
      * @param m The quaternion representing the rotation
      * @return A new Vec4 containing the rotated vector
      *
-     * @note This provides the same result as `m * v` but with reversed operand order
-     * @note Useful for chaining operations or when the syntax is more natural
+     * @note - This provides the same result as `m * v` but with reversed operand order
+     * @note - Useful for chaining operations or when the syntax is more natural
      *
-     * @example
      * @code
      * Vec4 vector(1, 0, 0, 1);
      * Quat rotation = Quat::EulerDegrees(90, 0, 0);
@@ -920,10 +988,9 @@ namespace SceneryEditorX
      * @param m The quaternion representing the rotation
      * @return A new Vec3 containing the rotated vector
      *
-     * @note This provides the same result as `m * v` but with reversed operand order
-     * @note The vector is treated as a point (w=1) for transformation
+     * @note - This provides the same result as `m * v` but with reversed operand order
+     * @note - The vector is treated as a point (w=1) for transformation
      *
-     * @example
      * @code
      * Vec3 forward(0, 0, 1);
      * Quat rotation = Quat::EulerDegrees(0, 90, 0);
@@ -942,10 +1009,9 @@ namespace SceneryEditorX
      * @param m The quaternion to scale
      * @return A new quaternion with all components scaled
      *
-     * @note This provides the same result as `m * f` but with reversed operand order
+     * @note - This provides the same result as `m * f` but with reversed operand order
      * @warning Scaling a unit quaternion will make it non-unit
      *
-     * @example
      * @code
      * Quat q = Quat::EulerDegrees(45, 0, 0);
      * Quat scaled = 0.5f * q; // Alternative to q * 0.5f

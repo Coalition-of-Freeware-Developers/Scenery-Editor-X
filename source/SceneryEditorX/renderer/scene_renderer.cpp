@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * scene_renderer.cpp
@@ -366,7 +366,7 @@ namespace SceneryEditorX
 			///<
 			///< A render pass should provide context and initiate (prepare) certain layout transitions for all
 			///< required resources. This should be easy to check and ensure everything is ready.
-			///< 
+			///<
 			///< Passes should be somewhat pre-baked to contain ready-to-go descriptors that aren't draw-call
 			///< specific. Hazel defines Set 0 as per-draw - so usually materials. Sets 1-3 are scene/renderer owned.
 			///<
@@ -377,7 +377,7 @@ namespace SceneryEditorX
 			///< API could look something like:
 
 			///< Ref<RenderPass> shadowMapRenderPass[4]; // Four shadow map passes, into single layered framebuffer
-			///< 
+			///<
 			///< {
 			///< 	for (int i = 0; i < 4; i++)
 			///< 	{
@@ -385,10 +385,10 @@ namespace SceneryEditorX
 			///< 		spec.debugName = "ShadowMapPass";
 			///< 		spec.Pipeline = m_ShadowPassPipelines[i];
 			///< 		//spec.dstFramebuffer = m_ShadowPassPipelines[i]->GetSpecification().RenderPass->GetSpecification().dstFramebuffer; // <- set framebuffer here
-			///< 
+			///<
 			///< 		shadowMapRenderPass[i] = RenderPass::Create(spec);
 			///< 		// shadowMapRenderPass[i]->GetRequiredInputs(); // Returns list of sets+bindings of required resources from descriptor layout
-			///< 
+			///<
 			///< 		// NOTE:
 			///< 		// AddInput needs to potentially take in the set + binding of the resource
 			///< 		// We (currently) don't store the actual variable name, just the struct type (eg. ShadowData and not u_ShadowData),
@@ -396,7 +396,7 @@ namespace SceneryEditorX
 			///< 		// I suspect clashes will be rare - usually we only have one input per type/buffer
 			///< 		shadowMapRenderPass[i]->AddInput("ShadowData", m_UBSShadow);
 			///< 		// Note: outputs are automatically set by framebuffer
-			///< 
+			///<
 			///< 		// Bake will create descriptor sets and ensure everything is ready for rendering
 			///< 		// If resources (eg. storage buffers/images) resize, passes need to be invalidated
 			///< 		// so we can re-create proper descriptors to the newly created replacement resources
@@ -416,7 +416,7 @@ namespace SceneryEditorX
                 preDepthFramebufferSpec.attachments = {/*VkFormat::VK_FORMAT_R32_SFLOAT, */ VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT};
 				preDepthFramebufferSpec.clearColor = { 0.0f, 0.0f, 0.0f, 0.0f };
 				preDepthFramebufferSpec.depthClearValue = 0.0f;
-			
+
 				Ref<Framebuffer> clearFramebuffer = CreateRef<Framebuffer>(preDepthFramebufferSpec);
 				preDepthFramebufferSpec.clearDepthOnLoad = false;
 				preDepthFramebufferSpec.existingImages[0] = clearFramebuffer->GetDepthImage();
@@ -606,7 +606,7 @@ namespace SceneryEditorX
 				m_GeometryPass->AddInput("SceneData", m_UBSScene);
 				m_GeometryPass->AddInput("VisiblePointLightIndicesBuffer", m_SBSVisiblePointLightIndicesBuffer);
 				m_GeometryPass->AddInput("VisibleSpotLightIndicesBuffer", m_SBSVisibleSpotLightIndicesBuffer);
-				
+
 				m_GeometryPass->AddInput("RendererData", m_UBSRendererData);
 
 				///< Some resources that are scene specific cannot be set before
@@ -710,7 +710,7 @@ namespace SceneryEditorX
 			Renderer::EndRenderPass(m_CommandBuffer);
 #endif
 		}
-	
+
 #if 0
 		///< Deinterleaving
 		{
@@ -938,7 +938,7 @@ namespace SceneryEditorX
 
 			if (m_Specification.EnableEdgeOutlineEffect)
 				m_CompositePass->AddInput("u_EdgeTexture", m_EdgeDetectionPass->GetOutput(0));
-			
+
 			m_CompositePass->AddInput("Camera", m_UBSCamera);
 
 			SEDX_CORE_VERIFY(m_CompositePass->Validate());
@@ -1238,7 +1238,7 @@ namespace SceneryEditorX
 			}
 
 			///< GTAO-Edges
-			{ 
+			{
 				ImageSpecification imageSpec;
 				imageSpec.format = VkFormat::VK_FORMAT_R8_UNORM;
 				imageSpec.usage = ImageUsage::Storage;
@@ -1326,7 +1326,7 @@ namespace SceneryEditorX
 					{ ShaderDataType::Float2, "a_TexCoord" },
 				};
 				aoCompositePipelineSpec.shader = Renderer::GetShaderLibrary()->Get("AO-Composite");
-				
+
 				///< Create RenderPass
 				RenderSpec renderPassSpec;
 				renderPassSpec.debugName = "AO-Composite";
@@ -1467,8 +1467,8 @@ namespace SceneryEditorX
 		m_SceneData.SkyboxLod = m_Scene->m_SkyboxLod;
 
 		m_GeometryPass->AddInput("u_EnvRadianceTex", m_SceneData.SceneEnvironment->RadianceMap);
-		m_GeometryPass->AddInput("u_EnvIrradianceTex", m_SceneData.SceneEnvironment->IrradianceMap);	
-		
+		m_GeometryPass->AddInput("u_EnvIrradianceTex", m_SceneData.SceneEnvironment->IrradianceMap);
+
 		m_GeometryAnimPass->AddInput("u_EnvRadianceTex", m_SceneData.SceneEnvironment->RadianceMap);
 		m_GeometryAnimPass->AddInput("u_EnvIrradianceTex", m_SceneData.SceneEnvironment->IrradianceMap);
 
@@ -1497,7 +1497,7 @@ namespace SceneryEditorX
 			m_SelectedGeometryAnimPass->GetTargetFramebuffer()->Resize(m_ViewportWidth, m_ViewportHeight);
 			m_GeometryPassColorAttachmentImage->Resize({ m_ViewportWidth, m_ViewportHeight });
 
-			///< Dependent on Geometry 
+			///< Dependent on Geometry
 			m_SSRCompositePass->GetTargetFramebuffer()->Resize(m_ViewportWidth, m_ViewportHeight);
 
 			m_PreIntegrationVisibilityTexture.Texture->Resize(m_ViewportWidth, m_ViewportHeight);
@@ -1671,8 +1671,8 @@ namespace SceneryEditorX
 
 		auto& sceneCamera = m_SceneData.SceneCamera;
 		const auto viewProjection = sceneCamera.camera.GetProjectionMatrix() * sceneCamera.ViewMatrix;
-		const Mat4 viewInverse = glm::inverse(sceneCamera.ViewMatrix);
-		const Mat4 projectionInverse = glm::inverse(sceneCamera.camera.GetProjectionMatrix());
+		const Mat4 viewInverse = sceneCamera.ViewMatrix.GetInverse();
+		const Mat4 projectionInverse = sceneCamera.camera.GetProjectionMatrix().GetInverse();
 		const Vec3 cameraPosition = viewInverse[3];
 
 		cameraData.ViewProjection = viewProjection;
@@ -1734,7 +1734,7 @@ namespace SceneryEditorX
 
 			Mat4 projection = glm::perspective(glm::radians(light.Angle), 1.f, 0.1f, light.Range);
             ///< NOTE: ShadowMatrices[0] because we only support ONE shadow casting spot light at the moment and it MUST be index 0
-			spotShadowData.ShadowMatrices[0] = projection * glm::lookAt(light.Position,  light.Position - light.Direction, Vec3(0.0f, 1.0f, 0.0f));
+			spotShadowData.ShadowMatrices[0] = projection * Mat4::LookAt(light.Position,  light.Position - light.Direction, Vec3(0.0f, 1.0f, 0.0f));
 		}
 
 		Renderer::Submit([instance, spotShadowData, spotLightsVec]() mutable
@@ -1804,7 +1804,7 @@ namespace SceneryEditorX
 		{
 			instance->FlushDrawList();
 		}));
-#else 
+#else
 		FlushDrawList();
 #endif
 
@@ -2285,7 +2285,7 @@ namespace SceneryEditorX
 			if (dc.IsRigged)
 			{
 				const auto& boneTransformsData = m_MeshBoneTransformsMap.at(mk);
-				
+
 				///< TODO: This needs to be pre-depth transparent-anim pipeline
 				Renderer::RenderMeshWithMaterial(m_CommandBuffer, m_PreDepthPipelineAnim, m_UniformBufferSet, nullptr, dc.Mesh, dc.SubmeshIndex, m_SubmeshTransformBuffers[frameIndex].Buffer, transformData.TransformOffset, m_BoneTransformStorageBuffers, boneTransformsData.BoneTransformsBaseIndex, boneTransformsData.BoneTransformsStride, dc.InstanceCount, m_PreDepthMaterial);
 			}
@@ -2369,7 +2369,7 @@ namespace SceneryEditorX
 		glm::ivec2 srcSize = m_PreDepthPass->GetDepthOutput()->GetSize();
 		ReduceHZB(0, 0, { 1.0f / Vec2{ srcSize } }, { (Vec2{ srcSize } - 0.5f) / Vec2{ srcSize } }, true);
 		Renderer::EndGPUPerfMarker(m_CommandBuffer);
-		
+
 		///< Reduce the next mips
 		for (uint32_t startDestMip = maxMipBatchSize; startDestMip < hzbMipCount; startDestMip += maxMipBatchSize)
 		{
@@ -2390,7 +2390,7 @@ namespace SceneryEditorX
 		SEDX_PROFILE_FUNC();
 
 		m_GPUTimeQueries.PreIntegrationQuery = m_CommandBuffer->BeginTimestampQuery();
-		Vec2 projectionParams = { m_SceneData.SceneCamera.Far, m_SceneData.SceneCamera.Near }; // Reversed 
+		Vec2 projectionParams = { m_SceneData.SceneCamera.Far, m_SceneData.SceneCamera.Near }; // Reversed
 
 		Ref<Texture2D> visibilityTexture = m_PreIntegrationVisibilityTexture.Texture;
 
@@ -2440,7 +2440,7 @@ namespace SceneryEditorX
 	{
 		m_GPUTimeQueries.LightCullingPassQuery = m_CommandBuffer->BeginTimestampQuery();
 		SceneRenderer::BeginGPUPerfMarker(m_CommandBuffer, "LightCulling", { 1.0f, 1.0f, 1.0f, 1.0f });
-		
+
 		Renderer::BeginComputePass(m_CommandBuffer, m_LightCullingPass);
 		Renderer::DispatchCompute(m_CommandBuffer, m_LightCullingPass, m_LightCullingMaterial, m_LightCullingWorkGroups);
 		Renderer::EndComputePass(m_CommandBuffer, m_LightCullingPass);
@@ -2733,7 +2733,7 @@ namespace SceneryEditorX
 		} bloomComputePushConstants;
 		bloomComputePushConstants.Params = { m_BloomSettings.Threshold, m_BloomSettings.Threshold - m_BloomSettings.Knee, m_BloomSettings.Knee * 2.0f, 0.25f / m_BloomSettings.Knee };
 		bloomComputePushConstants.Mode = 0;
-	
+
 		m_GPUTimeQueries.BloomComputePassQuery = m_CommandBuffer->BeginTimestampQuery();
 
 		Renderer::BeginComputePass(m_CommandBuffer, m_BloomComputePass);
@@ -2806,7 +2806,7 @@ namespace SceneryEditorX
 		Renderer::EndComputePass(m_CommandBuffer, m_BloomComputePass);
 		m_CommandBuffer->EndTimestampQuery(m_GPUTimeQueries.BloomComputePassQuery);
 	}
-	
+
 	void SceneRenderer::EdgeDetectionPass() const
     {
 		Renderer::BeginFrame(m_CommandBuffer, m_EdgeDetectionPass);
@@ -3038,7 +3038,7 @@ namespace SceneryEditorX
 			SkyboxPass();
 			GeometryPass();
 
-		
+
 			///< GTAO
 			if (m_Options.EnableGTAO)
 			{
@@ -3053,7 +3053,7 @@ namespace SceneryEditorX
 
 			///< Post-processing
 			if (m_Specification.JumpFloodPass)
-				JumpFloodPass();	
+				JumpFloodPass();
 
 			///< SSR
 			if (m_Options.EnableSSR)
@@ -3230,7 +3230,7 @@ namespace SceneryEditorX
 		{
             const Ref<Material> material = CreateRef<Material>(hzbShader);
 			m_HZBMaterials[materialIndex++] = material;
-			
+
 			if (startDestMip == 0)
 				material->Set("u_InputDepth", m_PreDepthPass->GetDepthOutput());
 			else
@@ -3371,7 +3371,7 @@ namespace SceneryEditorX
 			};
 
 			///< Project frustum corners into world space
-			Mat4 invCam = glm::inverse(viewProjection);
+			Mat4 invCam = viewProjection.GetInverse();
 			for (auto &frustumCorner : frustumCorners)
             {
 				Vec4 invCorner = invCam * Vec4(frustumCorner, 1.0f);
@@ -3406,7 +3406,7 @@ namespace SceneryEditorX
 			Vec3 minExtents = -maxExtents;
 
 			Vec3 lightDir = -lightDirection;
-			Mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, Vec3(0.0f, 0.0f, 1.0f));
+			Mat4 lightViewMatrix = Mat4::LookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, Vec3(0.0f, 0.0f, 1.0f));
 			Mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f + CascadeNearPlaneOffset, maxExtents.z - minExtents.z + CascadeFarPlaneOffset);
 
 			///< Offset to texel space to avoid shimmering (from https://stackoverflow.com/questions/33499053/cascaded-shadow-map-shimmering)
@@ -3475,7 +3475,7 @@ namespace SceneryEditorX
 			};
 
 			///< Project frustum corners into world space
-			Mat4 invCam = glm::inverse(viewProjection);
+			Mat4 invCam = viewProjection.GetInverse();
 			for (auto &frustumCorner : frustumCorners)
             {
 				Vec4 invCorner = invCam * Vec4(frustumCorner, 1.0f);
@@ -3511,7 +3511,7 @@ namespace SceneryEditorX
 			Vec3 minExtents = -maxExtents;
 
 			Vec3 lightDir = -lightDirection;
-			Mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, Vec3(0.0f, 0.0f, 1.0f));
+			Mat4 lightViewMatrix = Mat4::LookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, Vec3(0.0f, 0.0f, 1.0f));
 			Mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f + CascadeNearPlaneOffset, maxExtents.z - minExtents.z + CascadeFarPlaneOffset);
 
 			///< Offset to texel space to avoid shimmering (from https://stackoverflow.com/questions/33499053/cascaded-shadow-map-shimmering)

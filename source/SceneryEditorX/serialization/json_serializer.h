@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -13,17 +13,14 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include <SceneryEditorX/asset/asset.h>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
-#include <glm/glm.hpp>
 
 /// -------------------------------------------------------
 
 namespace nlohmann
 {
 
-	/*
-	/// GLM vector type JSON conversions
+    /*
+	/// (Legacy GLM vector type JSON conversions removed; using internal types.)
 	template<>
 	struct adl_serializer<iVec2>
 	{
@@ -42,7 +39,26 @@ namespace nlohmann
 		}
 	};
 
-    /// -------------------------------------------------------
+	/// -------------------------------------------------------
+
+	template<>
+	struct adl_serializer<Bool3>
+	{
+		static void to_json(json& j, const Bool3& v)
+		{
+			j = json::array({ v.x, v.y, v.z });
+		}
+
+		static void from_json(const json& j, Bool3& v)
+		{
+			if (j.is_array() && j.size() == 3)
+			{
+				v.x = j[0].get<bool>();
+				v.y = j[1].get<bool>();
+				v.z = j[2].get<bool>();
+			}
+		}
+	};
 
 	template<>
 	struct adl_serializer<iVec3>
@@ -87,68 +103,7 @@ namespace nlohmann
 
     /// -------------------------------------------------------
 
-	template<>
-	struct adl_serializer<glm::bvec2>
-	{
-		static void to_json(json& j, const glm::bvec2& v)
-		{
-			j = json::array({v.x, v.y});
-		}
-
-		static void from_json(const json& j, glm::bvec2& v)
-		{
-			if (j.is_array() && j.size() == 2)
-			{
-				v.x = j[0].get<bool>();
-				v.y = j[1].get<bool>();
-			}
-		}
-	};
-
-    /// -------------------------------------------------------
-
-	template<>
-	struct adl_serializer<glm::bvec3>
-	{
-		static void to_json(json& j, const glm::bvec3& v)
-		{
-			j = json::array({v.x, v.y, v.z});
-		}
-
-		static void from_json(const json& j, glm::bvec3& v)
-		{
-			if (j.is_array() && j.size() == 3)
-			{
-				v.x = j[0].get<bool>();
-				v.y = j[1].get<bool>();
-				v.z = j[2].get<bool>();
-			}
-		}
-	};
-
-    /// -------------------------------------------------------
-
-	template<>
-	struct adl_serializer<glm::bvec4>
-	{
-		static void to_json(json& j, const glm::bvec4& v)
-		{
-			j = json::array({v.x, v.y, v.z, v.w});
-		}
-
-		static void from_json(const json& j, glm::bvec4& v)
-		{
-			if (j.is_array() && j.size() == 4)
-			{
-				v.x = j[0].get<bool>();
-				v.y = j[1].get<bool>();
-				v.z = j[2].get<bool>();
-				v.w = j[3].get<bool>();
-			}
-		}
-	};
-
-    /// -------------------------------------------------------
+	// (Removed legacy glm::bvec2/3/4 serializers – replaced by Bool2/Bool3/Bool4.)
 
 	template<>
 	struct adl_serializer<Vec2>
@@ -214,14 +169,14 @@ namespace nlohmann
     /// -------------------------------------------------------
 
 	template<>
-	struct adl_serializer<glm::quat>
+	struct adl_serializer<Quat>
 	{
-		static void to_json(json& j, const glm::quat& v)
+		static void to_json(json& j, const Quat& v)
 		{
 			j = json::array({v.w, v.x, v.y, v.z});
 		}
 
-		static void from_json(const json& j, glm::quat& v)
+		static void from_json(const json& j, Quat& v)
 		{
 			if (j.is_array() && j.size() == 4)
 			{

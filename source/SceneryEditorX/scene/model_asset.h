@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * model.h
@@ -14,14 +14,14 @@
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/scene/material.h>
 //#include <SceneryEditorX/scene/node.h>
-#include <vulkan/vulkan.h>
+#include <SceneryEditorX/utils/vulkan/vk_includes.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	//struct Serializer;
-	
+
 	/// -------------------------------------------------------
 
     struct MeshVertex
@@ -40,53 +40,53 @@ namespace SceneryEditorX
         }
 
         /// -------------------------------------------------------
-       
+
         static VkVertexInputBindingDescription getBindingDescription()
         {
             VkVertexInputBindingDescription bindingDescription;
             bindingDescription.binding = 0;
             bindingDescription.stride = sizeof(MeshVertex);
             bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-            
+
             return bindingDescription;
         }
 
         /// -------------------------------------------------------
-        
+
         static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions()
         {
             std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
-            
+
             /// Position
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
             attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[0].offset = offsetof(MeshVertex, position);
-            
+
             /// Color
             attributeDescriptions[1].binding = 0;
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[1].offset = offsetof(MeshVertex, color);
-            
+
             /// Normal
             attributeDescriptions[2].binding = 0;
             attributeDescriptions[2].location = 2;
             attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[2].offset = offsetof(MeshVertex, normal);
-            
+
             /// Tangent
             attributeDescriptions[3].binding = 0;
             attributeDescriptions[3].location = 3;
             attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
             attributeDescriptions[3].offset = offsetof(MeshVertex, tangent);
-            
+
             /// Texture coordinates
             attributeDescriptions[4].binding = 0;
             attributeDescriptions[4].location = 4;
             attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
             attributeDescriptions[4].offset = offsetof(MeshVertex, texCoord);
-            
+
             return attributeDescriptions;
         }
     };
@@ -152,7 +152,7 @@ namespace SceneryEditorX
     };
     */
 
-	/// ------------------------------------------------------- 
+	/// -------------------------------------------------------
 
 }
 

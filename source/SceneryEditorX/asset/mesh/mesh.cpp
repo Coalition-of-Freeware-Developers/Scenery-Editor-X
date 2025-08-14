@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * mesh.cpp
@@ -18,7 +18,7 @@
 
 namespace SceneryEditorX
 {
-	
+
 #define MESH_DEBUG_LOG 0
 #if MESH_DEBUG_LOG
 #define SEDX_MESH_LOG(...) SEDX_CORE_TRACE_TAG("Mesh", __VA_ARGS__)
@@ -145,7 +145,7 @@ namespace SceneryEditorX
 
 
 	/*
-	const Animation* MeshSource::GetAnimation(const std::string& animationName, const Skeleton& skeleton, bool extractRootMotion, uint32_t rootBoneIndex, const glm::bvec3& rootTranslationMask, const glm::bvec3& rootRotationMask, bool discardRootMotion) const
+	const Animation* MeshSource::GetAnimation(const std::string& animationName, const Skeleton& skeleton, bool extractRootMotion, uint32_t rootBoneIndex, const Bool3& rootTranslationMask, const Bool3& rootRotationMask, bool discardRootMotion) const
 	{
 		std::size_t hash = 0;
 		auto& animation = m_Animations[hash];
@@ -180,7 +180,7 @@ namespace SceneryEditorX
 
 		/// Make sure to create material table even if meshsource asset cannot be retrieved
 		/// (this saves having to keep checking mesh->m_Materials is not null elsewhere in the code)
-		m_Materials = Ref<MaterialTable>::Create(0);
+		m_Materials = CreateRef<MaterialTable>(0);
 
 		/*
 		if (auto meshSourceAsset = AssetManager::GetAsset<MeshSource>(meshSource); meshSourceAsset)
@@ -202,7 +202,7 @@ namespace SceneryEditorX
 
 		/// Make sure to create material table even if meshsource asset cannot be retrieved
 		/// (this saves having to keep checking mesh->m_Materials is not null elsewhere in the code)
-		m_Materials = Ref<MaterialTable>::Create(0);
+		m_Materials = CreateRef<MaterialTable>(0);
 
 		/*
 		if (auto meshSourceAsset = AssetManager::GetAsset<MeshSource>(meshSource); meshSourceAsset)
@@ -260,7 +260,7 @@ namespace SceneryEditorX
 
 		/// Make sure to create material table even if meshsource asset cannot be retrieved
 		/// (this saves having to keep checking mesh->m_Materials is not null elsewhere in the code)
-		m_Materials = Ref<MaterialTable>::Create(0);
+        m_Materials = CreateRef<MaterialTable>(0);
 
 		/*
 		if(auto meshSourceAsset = AssetManager::GetAsset<MeshSource>(meshSource); meshSourceAsset)
@@ -283,7 +283,7 @@ namespace SceneryEditorX
 
 		/// Make sure to create material table even if meshsource asset cannot be retrieved
 		/// (this saves having to keep checking mesh->m_Materials is not null elsewhere in the code)
-		m_Materials = Ref<MaterialTable>::Create(0);
+        m_Materials = CreateRef<MaterialTable>(0);
 
 		/*
 		if (auto meshSourceAsset = AssetManager::GetAsset<MeshSource>(meshSource); meshSourceAsset)

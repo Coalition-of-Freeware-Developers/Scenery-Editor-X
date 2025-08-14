@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -724,10 +724,10 @@ namespace SceneryEditorX
 		}
 
 		targetMeshCollider->EnableVertexWelding = data.value("EnableVertexWelding", true);
-		targetMeshCollider->VertexWeldTolerance = glm::clamp<float>(data.value("VertexWeldTolerance", 0.1f), 0.05f, 1.0f);
+		targetMeshCollider->VertexWeldTolerance = Clamp(data.value("VertexWeldTolerance", 0.1f), 0.05f, 1.0f);
 		targetMeshCollider->FlipNormals = data.value("FlipNormals", false);
 		targetMeshCollider->CheckZeroAreaTriangles = data.value("CheckZeroAreaTriangles", false);
-		targetMeshCollider->AreaTestEpsilon = glm::max(0.06f, data.value("AreaTestEpsilon", 0.06f));
+		targetMeshCollider->AreaTestEpsilon = Utils::Math::Max(0.06f, data.value("AreaTestEpsilon", 0.06f));
 		targetMeshCollider->ShiftVerticesToOrigin = data.value("ShiftVerticesToOrigin", false);
 		targetMeshCollider->AlwaysShareShape = data.value("AlwaysShareShape", false);
 		targetMeshCollider->CollisionComplexity = static_cast<ECollisionComplexity>(data.value("CollisionComplexity", static_cast<uint8_t>(0)));

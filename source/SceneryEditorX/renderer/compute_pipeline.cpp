@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * compute_pipeline.cpp
@@ -19,7 +19,7 @@
 
 namespace SceneryEditorX
 {
-	
+
 	static VkFence s_ComputeFence = nullptr;
 
 	ComputePipeline::ComputePipeline(const Ref<Shader> &computeShader) : m_Shader(computeShader.As<Shader>())
@@ -234,7 +234,7 @@ namespace SceneryEditorX
 	}
 
 
-	void ComputePipeline::Dispatch(const glm::uvec3& workGroups) const
+	void ComputePipeline::Dispatch(const UVec3& workGroups) const
 	{
 		SEDX_CORE_ASSERT(m_ActiveComputeCommandBuffer);
 		vkCmdDispatch(m_ActiveComputeCommandBuffer, workGroups.x, workGroups.y, workGroups.z);

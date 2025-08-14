@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -14,14 +14,15 @@
 
 /// -----------------------------------------------------
 
-#ifdef __cplusplus
-namespace SceneryEditorX { namespace Convert {
+namespace SceneryEditorX::Convert
+{
 
-	// Energy conversions centered on joules (J) - header-only
-	namespace detail {
-		constexpr float J_PER_WH   = 3600.0f;       // 1 Wh = 3600 J
-		constexpr float J_PER_KWH  = 3'600'000.0f;  // 1 kWh = 3.6e6 J
-		constexpr float J_PER_BTU  = 1055.05585262f;// 1 BTU (IT) = 1055.05585262 J
+	/// Energy conversions centered on joules (J) - header-only
+	namespace detail
+    {
+		constexpr float J_PER_WH   = 3600.0f;			/// 1 Wh = 3600 J
+		constexpr float J_PER_KWH  = 3'600'000.0f;		/// 1 kWh = 3.6e6 J
+		constexpr float J_PER_BTU  = 1055.05585262f;	/// 1 BTU (IT) = 1055.05585262 J
 	}
 
 	inline float FromKJ(const float kilojoules) { return kilojoules * 1000.0f; }
@@ -36,7 +37,6 @@ namespace SceneryEditorX { namespace Convert {
 	inline float FromBTU(const float btu)       { return btu * detail::J_PER_BTU; }
 	inline float ToBTU(const float joules)      { return joules / detail::J_PER_BTU; }
 
-}} // namespace SceneryEditorX::Convert
-#endif // __cplusplus
+}
 
 /// -----------------------------------------------------

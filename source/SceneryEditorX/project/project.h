@@ -83,7 +83,7 @@ namespace SceneryEditorX
         std::filesystem::path projectPath;
         std::filesystem::path binPath;
 
-	    LOCAL Ref<AssetManager> s_AssetManager;
+	    //LOCAL Ref<AssetManager> s_AssetManager;
         inline LOCAL Ref<Project> activeProject;
 
 	};

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -13,11 +13,10 @@
 #include <algorithm>
 #include <initializer_list>
 #include <SceneryEditorX/utils/math/gradients.h>
-#include <utility>
 
 /// -----------------------------------------------------
 
-namespace SceneryEditorX::Utils
+namespace SceneryEditorX
 {
 	Gradient::Gradient() = default;
 	Gradient::Gradient(const std::initializer_list<Key> list, const float degrees) : keys(list), degrees(degrees) {}
@@ -25,32 +24,32 @@ namespace SceneryEditorX::Utils
 
 	Color Gradient::Evaluate(const float position) const
 	{
-		// Handle empty gradient
+		/// Handle empty gradient
 		if (keys.empty())
 			return {};
 
-		// Handle single key gradient
+		/// Handle single key gradient
 		if (keys.size() == 1)
 			return keys[0].value;
 
-		// Find the appropriate key pair for interpolation
+		/// Find the appropriate key pair for interpolation
         for (auto i = 0; std::cmp_less(i, keys.size()); i++)
 		{
 			if (i > 0 && keys[i - 1].position <= position && position < keys[i].position)
 			{
-				// Interpolate between keys[i-1] and keys[i]
+				/// Interpolate between keys[i-1] and keys[i]
 				const float left = keys[i - 1].position;
 				const float right = keys[i].position;
 				float t = (position - left) / (right - left);
 
-				// Clamp interpolation parameter to [0, 1] range for safety
+				/// Clamp interpolation parameter to [0, 1] range for safety
 				t = std::max(0.0f, std::min(1.0f, t));
 				return Color::Lerp(keys[i - 1].value, keys[i].value, t);
 			}
 		}
 
-		// Position is outside the range of defined keys
-		// Return the appropriate edge color
+		/// Position is outside the range of defined keys
+		/// Return the appropriate edge color
 		return position < 0 ? keys[0].value : keys.back().value;
 	}
 

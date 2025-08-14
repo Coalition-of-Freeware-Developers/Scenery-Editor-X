@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * mesh.h
@@ -24,7 +24,7 @@
 
 namespace SceneryEditorX
 {
-	
+
 	struct Vertex
 	{
 		Vec3 Position;
@@ -255,7 +255,7 @@ namespace SceneryEditorX
 
 		std::vector<std::string> GetAnimationNames() const;
 		/// note: can return nullptr (e.g. if named animation does not exist, or something goes wrong retrieving the animation)
-		const Animation* GetAnimation(const std::string& animationName, const Skeleton& skeleton, bool extractRootMotion, uint32_t rootBoneIndex, const glm::bvec3& rootTranslationMask, const glm::bvec3& rootRotationMask, bool discardRootMotion) const;
+		const Animation* GetAnimation(const std::string& animationName, const Skeleton& skeleton, bool extractRootMotion, uint32_t rootBoneIndex, const Bool3& rootTranslationMask, const Bool3& rootRotationMask, bool discardRootMotion) const;
 		const std::vector<BoneInfluence>& GetBoneInfluences() const { return m_BoneInfluences; }
 
 		std::vector<AssetHandle>& GetMaterials() { return m_Materials; }
@@ -269,7 +269,7 @@ namespace SceneryEditorX
 		Ref<IndexBuffer> GetIndexBuffer() { return m_IndexBuffer; }
 
 		static AssetType GetStaticType() { return AssetType::MeshSource; }
-		virtual AssetType GetAssetType() const override { return GetStaticType(); }
+		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 
 		const Utils::AABB& GetBoundingBox() const { return m_BoundingBox; }
 
@@ -339,7 +339,7 @@ namespace SceneryEditorX
 		bool ShouldGenerateColliders() const { return m_GenerateColliders; }
 
 		static AssetType GetStaticType() { return AssetType::Mesh; }
-		virtual AssetType GetAssetType() const override { return GetStaticType(); }
+		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 
 		const Skeleton* GetSkeleton() const;
 
@@ -381,7 +381,7 @@ namespace SceneryEditorX
 		bool ShouldGenerateColliders() const { return m_GenerateColliders; }
 
 		static AssetType GetStaticType() { return AssetType::StaticMesh; }
-		virtual AssetType GetAssetType() const override { return GetStaticType(); }
+		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 	private:
 		AssetHandle m_MeshSource;
 		std::vector<uint32_t> m_Submeshes; /// TODO: physics/render masks

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * mesh_skeleton.h
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <glm/gtc/quaternion.hpp>
-#include <glm/vec3.hpp>
+#include <SceneryEditorX/utils/math/quat.h>
+#include <SceneryEditorX/utils/math/vec3.h>
 #include <SceneryEditorX/asset/animation/animation.h>
 
 /// -------------------------------------------------------
@@ -64,7 +64,7 @@ namespace SceneryEditorX
 		/// transform is in model-space (i.e. relative to root bone)
 		const Transform& GetModelSpaceRestPoseInverseTransform(uint32_t boneIndex) const;
 
-		void SetBones(std::vector<std::string> boneNames, std::vector<uint32_t> parentBoneIndices, std::vector<Vec3> boneTranslations, std::vector<glm::quat> boneRotations, std::vector<float> boneScales);
+		void SetBones(std::vector<std::string> boneNames, std::vector<uint32_t> parentBoneIndices, std::vector<Vec3> boneTranslations, std::vector<Quat> boneRotations, std::vector<float> boneScales);
 
 		/// Compute various derived data once the skeleton is complete.
 		/// Such as:
@@ -81,16 +81,16 @@ namespace SceneryEditorX
 		/// Returns the rotation required that would orient the skeleton such that its first bone
 		/// (i.e. line from origin to first non-origin joint) is aligned with +Y.
 		/// This is important for re-targeting.  Even if both skeletons have the same rest pose, they might not be oriented on the same axis.
-		const glm::quat& GetOrientation() const { return m_Orientation; }
+		const Quat& GetOrientation() const { return m_Orientation; }
 
 	private:
-		glm::quat m_Orientation = glm::identity<glm::quat>();
+		Quat m_Orientation = Quat::Identity();
 		std::vector<std::string> m_BoneNames;
 		std::vector<uint32_t> m_ParentBoneIndices;
-		
+
 		/// rest pose of skeleton. All in bone-local space (i.e. translation/rotation/scale relative to parent)
 		std::vector<Vec3> m_BoneTranslations;
-		std::vector<glm::quat> m_BoneRotations;
+		std::vector<Quat> m_BoneRotations;
 		std::vector<float> m_BoneScales;
 
 		std::vector<Transform> m_ModelSpaceRestPoseTransforms;          /// model-space transforms for each bone at rest pose

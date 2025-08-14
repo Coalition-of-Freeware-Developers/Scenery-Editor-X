@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <entt/src/entt/entt.hpp>
-#include <glm/glm.hpp>
+#include <SceneryEditorX/utils/math/math.h>
 #include <SceneryEditorX/scene/components.h>
 
 /// -------------------------------------------------------

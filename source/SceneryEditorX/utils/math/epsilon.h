@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,18 +11,21 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <limits>
 #include <cmath>
+#include <limits>
 
 /// -----------------------------------------------------
 
-namespace SceneryEditorX::Utils
+namespace SceneryEditorX
 {
-	// GLM-compatible epsilon<T>() replacement
+	/// GLM-compatible epsilon<T>() replacement
 	template <typename T>
-	constexpr T epsilon() noexcept { return std::numeric_limits<T>::epsilon(); }
+	constexpr T epsilon() noexcept
+	{
+	    return std::numeric_limits<T>::epsilon();
+	}
 
-	// Scalar epsilonEqual
+	/// Scalar epsilonEqual
 	template <typename T>
 	inline bool epsilonEqual(T a, T b, T eps = epsilon<T>()) noexcept
 	{

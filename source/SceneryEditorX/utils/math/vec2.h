@@ -20,9 +20,15 @@ namespace SceneryEditorX::Utils
 	template<typename T>
 	struct TVector2
 	{
-		T x{0}, y{0};
+		// Provide multiple semantic aliases for components (position/color/texcoord)
+		union
+		{
+			struct { T x, y; }; // Cartesian
+			struct { T r, g; }; // Color
+			struct { T s, t; }; // Texture
+		};
 
-		constexpr TVector2() = default;
+	constexpr TVector2() : x(0), y(0) {}
 		constexpr TVector2(T s) : x(s), y(s) {}
 		constexpr TVector2(T _x, T _y) : x(_x), y(_y) {}
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -9,221 +9,25 @@
 * -------------------------------------------------------
 * Created: 31/5/2025
 * -------------------------------------------------------
+* Scenery Editor X - Smart Pointer System (Consolidated)
+* -------------------------------------------------------
+* This header previously contained two competing implementations of the
+* engine smart pointer system. The duplicate (control-block based) version
+* injected ahead of the original project version has been removed to resolve
+* redefinition and ODR errors. The surviving implementation below is the
+* original project design that other engine modules expect (m_Ptr +
+* InternalAddRef/Release + ControlBlockRegistry for weak refs).
+* -------------------------------------------------------
 */
+ #pragma once
+ #include <atomic>
+ #include <cassert>
+ #include <memory>
+ #include <mutex>
+ #include <type_traits>
+ #include <unordered_map>
 
-/**
- * Comprehensive smart pointer system optimized for 3D rendering applications
- *
- * This file provides a complete reference counting and weak reference system
- * designed specifically for high-performance Vulkan-based rendering. The system
- * includes thread-safe reference counting, weak references for cycle breaking,
- * and seamless interoperability with standard library smart pointers.
- *
- * ## Core Components:
- *
- * ### RefCounted
- * Base class providing atomic reference counting for any object that needs
- * shared ownership semantics. All objects managed by Ref<T> must inherit from this.
- *
- * ### Ref<T> - Strong References
- * Primary smart pointer for shared ownership. Provides automatic memory management
- * through atomic reference counting with full thread safety.
- *
- * Usage Examples:
- * @code
- * // Create new reference-counted object
- * Ref<Texture> texture = CreateRef<Texture>("diffuse.png");
- *
- * // Share ownership
- * Ref<Texture> sharedTexture = texture;
- *
- * // Type conversions
- * Ref<BaseTexture> base = texture.As<BaseTexture>();
- * Ref<SpecialTexture> special = base.DynamicCast<SpecialTexture>();
- *
- * // Check validity and access
- * if (texture) {
- *     std::string path = texture->GetPath();
- *     uint32_t refCount = texture.UseCount();
- * }
- * @endcode
- *
- * ### WeakRef<T> - Weak References
- * Non-owning observation of Ref<T> managed objects. Essential for breaking
- * circular dependencies and implementing safe observer patterns.
- *
- * Usage Examples:
- * @code
- * // Create weak reference from strong reference
- * Ref<SceneNode> node = CreateRef<SceneNode>();
- * WeakRef<SceneNode> weakNode = node;
- *
- * // Safe access pattern
- * if (!weakNode.Expired()) {
- *     if (auto strongRef = weakNode.Lock()) {
- *         strongRef->Update(); // Safe to use
- *     }
- * }
- *
- * // Observer pattern implementation
- * class TextureCache {
- *     std::unordered_map<std::string, WeakRef<Texture>> cache;
- * public:
- *     void CleanExpired() {
- *         for (auto it = cache.begin(); it != cache.end();) {
- *             if (it->second.Expired()) {
- *                 it = cache.erase(it);
- *             } else {
- *                 ++it;
- *             }
- *         }
- *     }
- * };
- * @endcode
- *
- * ### Scope<T> - Unique Ownership
- * Alias for std::unique_ptr providing exclusive ownership semantics for
- * single-owner scenarios where reference counting overhead is unnecessary.
- *
- * Usage Examples:
- * @code
- * // Create unique object
- * Scope<CommandBuffer> cmdBuffer = CreateScope<CommandBuffer>();
- *
- * // Transfer ownership
- * Scope<CommandBuffer> transferred = std::move(cmdBuffer);
- * @endcode
- *
- * ## Design Patterns and Best Practices:
- *
- * ### Resource Management
- * @code
- * class Mesh : public RefCounted {
- * public:
- *     void SetMaterial(const Ref<Material>& material) {
- *         m_Material = material; // Strong ref - mesh owns material
- *     }
- *
- *     void SetParent(const Ref<SceneNode>& parent) {
- *         m_Parent = parent; // Weak ref - parent owns mesh
- *     }
- *
- * private:
- *     Ref<Material> m_Material;      // Owned resource
- *     WeakRef<SceneNode> m_Parent;   // Observer relationship
- * };
- * @endcode
- *
- * ### Circular Dependency Breaking
- * @code
- * class SceneNode : public RefCounted {
- * public:
- *     void AddChild(const Ref<SceneNode>& child) {
- *         m_Children.push_back(child);           // Strong ref
- *         child->m_Parent = WeakRef(*this);      // Weak ref breaks cycle
- *     }
- *
- * private:
- *     std::vector<Ref<SceneNode>> m_Children;   // Own children
- *     WeakRef<SceneNode> m_Parent;              // Observe parent
- * };
- * @endcode
- *
- * ### Thread-Safe Cache Implementation
- * @code
- * class AssetCache {
- *     mutable std::mutex m_Mutex;
- *     std::unordered_map<std::string, WeakRef<Asset>> m_Cache;
- *
- * public:
- *     Ref<Asset> GetAsset(const std::string& id) {
- *         std::lock_guard lock(m_Mutex);
- *
- *         auto it = m_Cache.find(id);
- *         if (it != m_Cache.end()) {
- *             if (auto asset = it->second.Lock()) {
- *                 return asset; // Found valid cached asset
- *             }
- *             m_Cache.erase(it); // Clean expired entry
- *         }
- *
- *         // Load new asset
- *         auto asset = LoadAssetFromDisk(id);
- *         m_Cache[id] = asset;
- *         return asset;
- *     }
- * };
- * @endcode
- *
- * ## Performance Characteristics:
- *
- * - **Ref<T>**: 8 bytes overhead (single pointer), atomic increment/decrement
- * - **WeakRef<T>**: 8 bytes overhead (control block pointer), mutex-protected access
- * - **Reference Counting**: Lockless atomic operations for high-performance scenarios
- * - **Control Blocks**: Allocated on-demand, shared among weak references to same object
- *
- * ## Thread Safety Guarantees:
- *
- * - Reference counting operations are fully thread-safe
- * - Multiple threads can safely copy/move Ref<T> instances
- * - WeakRef<T> expiration checking is thread-safe
- * - Control block management is mutex-protected
- * - Object destruction coordination is thread-safe
- *
- * ## GitHub Copilot Integration Guidelines:
- *
- * When generating code for Scenery Editor X, GitHub Copilot should:
- *
- * 1. **Always use project smart pointers instead of std:: equivalents**:
- *    ```cpp
- *    // PREFERRED
- *    Ref<Texture> texture = CreateRef<Texture>(args...);
- *    WeakRef<Material> material = strongMaterial;
- *    Scope<Buffer> buffer = CreateScope<Buffer>(size);
- *
- *    // AVOID (unless interfacing with external APIs)
- *    std::shared_ptr<Texture> texture = std::make_shared<Texture>(args...);
- *    std::weak_ptr<Material> material = strongMaterial;
- *    ```
- *
- * 2. **Ensure all shared objects inherit from RefCounted**:
- *    ```cpp
- *    class RenderTarget : public RefCounted {
- *        // Implementation
- *    };
- *    ```
- *
- * 3. **Use appropriate ownership semantics**:
- *    - Ref<T> for shared ownership
- *    - WeakRef<T> for observation without ownership
- *    - Scope<T> for exclusive ownership
- *
- * 4. **Always check WeakRef validity before use**:
- *    ```cpp
- *    if (auto locked = weakRef.Lock()) {
- *        locked->DoSomething(); // Safe
- *    }
- *    ```
- *
- * 5. **Prefer move semantics for performance**:
- *    ```cpp
- *    Ref<Object> obj = std::move(sourceObj);
- *    ```
- *
- * ## See Also:
- * - docs/pointers_documentation.md - Comprehensive usage guide
- * - Tests/pointer_tests/ - Complete test suite with examples
- * - memory.h/memory.cpp - Memory management utilities
- *
- * -------------------------------------------------------
- */
-#pragma once
-#include <atomic>
-#include <cassert>
-#include <memory>
-#include <mutex>
-#include <type_traits>
-#include <unordered_map>
+// (Removed duplicate large usage documentation block to prevent parsing errors.)
 
 /// -------------------------------------------------------
 
@@ -946,7 +750,7 @@ namespace SceneryEditorX
         /// Grant access to specific classes or functions
         template <typename U>
         friend class Ref;
-        
+
         template <typename U>
         friend class WeakRef;
 	};
@@ -1216,7 +1020,7 @@ namespace SceneryEditorX
 	 *
 	 * @tparam U The type of the source reference, must be convertible to T
 	 * @param ref The strong reference to create a weak reference from
-	 * @note This constructor enables implicit conversion from Ref<U> to WeakRef<T>
+	 * @note - This constructor enables implicit conversion from Ref<U> to WeakRef<T>
 	 *       when U is convertible to T
 	 */
     template <typename T>
@@ -1244,7 +1048,7 @@ namespace SceneryEditorX
      * 2. Increments the weak reference count in that control block
      *
      * @param other The source WeakRef to copy from
-     * @note This maintains proper reference counting without affecting the
+     * @note - This maintains proper reference counting without affecting the
      *       lifetime of the referenced object
      */
     template <typename T>
@@ -1270,7 +1074,7 @@ namespace SceneryEditorX
 	 *
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to convert from
-	 * @note This constructor only participates in overload resolution if U* is convertible to T*
+	 * @note - This constructor only participates in overload resolution if U* is convertible to T*
 	 */
     template <typename T>
     template <typename U, typename>
@@ -1326,7 +1130,7 @@ namespace SceneryEditorX
 	 *
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to move from
-	 * @note This constructor only participates in overload resolution if U* is convertible to T*
+	 * @note - This constructor only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
     template <typename T>
@@ -1380,7 +1184,7 @@ namespace SceneryEditorX
 	 *
 	 * @param other The source WeakRef to copy from
 	 * @return A reference to this WeakRef after the assignment
-	 * @note This operator maintains proper reference counting without affecting the
+	 * @note - This operator maintains proper reference counting without affecting the
 	 *       lifetime of the referenced object
 	 */
     template <typename T>
@@ -1419,7 +1223,7 @@ namespace SceneryEditorX
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to assign from
 	 * @return A reference to this WeakRef after the assignment
-	 * @note This operator only participates in overload resolution if U* is convertible to T*
+	 * @note - This operator only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
     template <typename T>
@@ -1497,7 +1301,7 @@ namespace SceneryEditorX
 	 * @tparam U Source type that is convertible to T
 	 * @param other The source WeakRef<U> to move from
 	 * @return A reference to this WeakRef after the assignment
-	 * @note This operator only participates in overload resolution if U* is convertible to T*
+	 * @note - This operator only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
     template <typename T>
@@ -1535,7 +1339,7 @@ namespace SceneryEditorX
 	 * @tparam U Source type that is convertible to T
 	 * @param ref The source Ref<U> to assign from
 	 * @return A reference to this WeakRef after the assignment
-	 * @note This operator only participates in overload resolution if U* is convertible to T*
+	 * @note - This operator only participates in overload resolution if U* is convertible to T*
 	 *       (enforced by the SFINAE template parameter)
 	 */
     template <typename T>
@@ -1639,7 +1443,7 @@ namespace SceneryEditorX
 	 * After calling Reset(), the weak reference will be in an empty state (similar to a
 	 * default-constructed WeakRef) and will return true for Expired() and nullptr for Lock().
 	 *
-	 * @note This method is often used to explicitly release resources before the WeakRef
+	 * @note - This method is often used to explicitly release resources before the WeakRef
 	 *       goes out of scope, or to prepare the WeakRef for reuse.
 	 */
     template <typename T>
@@ -1739,7 +1543,7 @@ namespace SceneryEditorX
 	 * 3. Calls InternalAddRef() to increment the reference count if the pointer is valid
 	 *
 	 * @param weak The weak reference to convert to a strong reference
-	 * @note This enables safe conversion from WeakRef<T> to Ref<T>, preventing access to destroyed objects
+	 * @note - This enables safe conversion from WeakRef<T> to Ref<T>, preventing access to destroyed objects
 	 */
     template <typename T>
     inline Ref<T>::Ref(const WeakRef<T> &weak) noexcept

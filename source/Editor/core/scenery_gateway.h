@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * scenery_gateway.h
@@ -87,7 +87,7 @@ namespace SceneryEditorX
         std::string dateApproved;
         int totalSceneryPacks;
         std::string recommendedSceneryId;
-        
+
         static AirportInfo FromJson(const nlohmann::json& json);
     };
 
@@ -104,7 +104,7 @@ namespace SceneryEditorX
         std::string downloadUrl;
         int downloadCount;
         double fileSizeMB;
-        
+
         static SceneryPackInfo FromJson(const nlohmann::json& json);
     };
 
@@ -115,7 +115,7 @@ namespace SceneryEditorX
         std::string email;
         std::string description;
         std::vector<std::string> contributions;
-        
+
         static ArtistInfo FromJson(const nlohmann::json& json);
     };
 
@@ -123,16 +123,16 @@ namespace SceneryEditorX
     {
         /// Internal reference to the authentication information
         SceneryGatewayStats stats;
-        
+
         /// Cached data
         std::vector<AirportInfo> airports;
         std::vector<SceneryPackInfo> sceneryPacks;
         std::vector<ArtistInfo> artists;
-        
+
         /// Last response
         ApiResponse lastResponse;
         std::string lastRequestUrl;
-        
+
         /// Clear all cached data
         void ClearCache();
     };
@@ -147,7 +147,7 @@ namespace SceneryEditorX
 
         /// Initialize the gateway with optional login credentials
         bool Initialize(const std::string& login = "", const std::string& password = "") const;
-        
+
         /// Authentication
         bool Login(const std::string& login, const std::string& password) const;
         void Logout() const;
@@ -164,16 +164,16 @@ namespace SceneryEditorX
 
         /// Download functionality
         bool DownloadSceneryPack(int id, const std::string& saveDir, const ProgressCallback &progressCb = nullptr, const CompletionCallback &completionCb = nullptr);
-        
+
         /// Access to cached data
         const std::vector<AirportInfo>& GetCachedAirports() const;
         const std::vector<SceneryPackInfo>& GetCachedSceneryPacks() const;
         const std::vector<ArtistInfo>& GetCachedArtists() const;
-        
+
         /// Get the last error information
         GatewayErrorCode GetLastErrorCode() const;
         std::string GetLastErrorMessage() const;
-        
+
         /// Save/load gateway data to/from a JSON file
         bool SaveToFile(const std::string& filePath) const;
         bool LoadFromFile(const std::string& filePath) const;
@@ -182,7 +182,7 @@ namespace SceneryEditorX
         /// Internal implementation
         ApiResponse MakeRequest(const std::string& endpoint, bool useAuth = false) const;
         ApiResponse MakeAuthenticatedRequest(const std::string& endpoint) const;
-        
+
         /// libcurl callbacks
         static size_t WriteCallback(const char* contents, size_t size, size_t nmemb, void* userdata);
         static int ProgressCallback(void* clientp, double dltotal, double dlnow, double ultotal, double ulnow);
@@ -190,7 +190,7 @@ namespace SceneryEditorX
         /// Internal data
         std::unique_ptr<SceneryGatewayData> data_;
         CURL* curl_;
-        
+
         /// Current download status
         struct DownloadStatus
         {

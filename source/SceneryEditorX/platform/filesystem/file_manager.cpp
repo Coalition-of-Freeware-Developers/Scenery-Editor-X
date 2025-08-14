@@ -773,7 +773,7 @@ namespace SceneryEditorX::IO
 	        }
 	        if (node.rotation.size() == 4)
 			{
-	            glm::quat quat = { float(node.rotation[3]), float(node.rotation[0]), float(node.rotation[1]), float(node.rotation[2]) };
+	            Quat quat = { float(node.rotation[3]), float(node.rotation[0]), float(node.rotation[1]), float(node.rotation[2]) };
 	            groupNode->rotation = glm::degrees(glm::eulerAngles(quat));
 	        }
 	        if (node.scale.size() == 3)
@@ -787,7 +787,7 @@ namespace SceneryEditorX::IO
 				{
 	                glm::value_ptr(mat)[i] = node.matrix[i];
 	            }
-	            glm::quat quat = {};
+	            Quat quat = {};
 	            Vec3 skew;
 	            Vec4 perspective;
 	            glm::decompose(mat, groupNode->scale, quat, groupNode->position, skew, perspective);

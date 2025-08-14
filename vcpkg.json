@@ -2,7 +2,7 @@
     "dependencies": [
         "vulkan-memory-allocator",
 		"msdfgen",
-        "glm",
+
         "portable-file-dialogs",
         "spdlog",
         "stb",

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,11 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-
-/// --------------------------------------------
-
-#ifdef __cplusplus
-
 #include "distance.h"
 #include "area.h"
 #include "volume.h"
@@ -28,8 +23,11 @@
 #include "force.h"
 #include "consumption.h"
 
-namespace SceneryEditorX { namespace Convert {
-  using PressureUnits = PressureUnit; // Back-compat alias
-}} // namespace SceneryEditorX::Convert
+/// --------------------------------------------
 
-#endif // __cplusplus
+namespace SceneryEditorX::Convert
+{
+  using PressureUnits = PressureUnit; /// Back-compat alias
+}
+
+/// --------------------------------------------

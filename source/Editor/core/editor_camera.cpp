@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * editor_camera.cpp
@@ -24,7 +24,7 @@ namespace SceneryEditorX
 	{
 		Init();
 	}
-	
+
 	void EditorCamera::Init()
 	{
         constexpr glm::vec3 position = {-5, 5, 5};
@@ -36,8 +36,8 @@ namespace SceneryEditorX
         m_Position = CalculatePosition();
         const glm::quat orientation = GetOrientation();
         m_Direction = glm::eulerAngles(orientation) * (180.0f / glm::pi<float>());
-        m_ViewMatrix = glm::translate(glm::mat4(1.0f), m_Position) * glm::toMat4(orientation);
-        m_ViewMatrix = glm::inverse(m_ViewMatrix);
+    m_ViewMatrix = glm::translate(glm::mat4(1.0f), m_Position) * glm::toMat4(orientation);
+    m_ViewMatrix = m_ViewMatrix.GetInverse();
 	}
 
 	LOCAL void DisableMouse()
@@ -64,7 +64,7 @@ namespace SceneryEditorX
         m_Position = m_FocalPoint - GetForwardDirection() * m_Distance;
         UpdateCameraView();
 	}
-	
+
 	void EditorCamera::OnUpdate(DeltaTime dt)
 	{
         const glm::vec2 &mouse{Input::GetMouseX(), Input::GetMouseY()};
@@ -150,33 +150,33 @@ namespace SceneryEditorX
 
         UpdateCameraView();
 	}
-	
+
 	void EditorCamera::OnEvent(Event &event)
     {
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<MouseScrolledEvent>([this](MouseScrolledEvent &e) { return OnMouseScroll(e); });
     }
-	
+
 	Vec3 EditorCamera::GetUpDirection() const
 	{
         return glm::rotate(GetOrientation(), Vec3(0.0f, 1.0f, 0.0f));
 	}
-	
+
 	Vec3 EditorCamera::GetRightDirection() const
 	{
         return glm::rotate(GetOrientation(),Vec3(1.f, 0.f, 0.f));
 	}
-	
+
 	Vec3 EditorCamera::GetForwardDirection() const
 	{
         return glm::rotate(GetOrientation(), Vec3(0.0f, 0.0f, -1.0f));
 	}
-	
+
 	glm::quat EditorCamera::GetOrientation() const
 	{
         return glm::quat(Vec3(-m_Pitch - m_PitchDelta, -m_Yaw - m_YawDelta, 0.0f));
 	}
-	
+
 	float EditorCamera::GetCameraSpeed() const
 	{
         float speed = m_NormalSpeed;
@@ -187,7 +187,7 @@ namespace SceneryEditorX
 
         return glm::clamp(speed, MIN_SPEED, MAX_SPEED);
 	}
-	
+
 	void EditorCamera::UpdateCameraView()
 	{
         const float yawSign = GetUpDirection().y < 0 ? -1.0f : 1.0f;
@@ -207,7 +207,7 @@ namespace SceneryEditorX
         m_PitchDelta *= 0.6f;
         m_PositionDelta *= 0.8f;
 	}
-	
+
 	bool EditorCamera::OnMouseScroll(MouseScrolledEvent &e)
 	{
         if (Input::IsMouseButtonDown(MouseButton::Right))
@@ -223,21 +223,21 @@ namespace SceneryEditorX
 
         return true;
 	}
-	
+
 	void EditorCamera::MousePan(const Vec2 &delta)
 	{
         auto [xSpeed, ySpeed] = PanSpeed();
         m_FocalPoint -= GetRightDirection() * delta.x * xSpeed * m_Distance;
         m_FocalPoint += GetUpDirection() * delta.y * ySpeed * m_Distance;
 	}
-	
+
 	void EditorCamera::MouseRotate(const Vec2 &delta)
 	{
         const float yawSign = GetUpDirection().y < 0.0f ? -1.0f : 1.0f;
         m_YawDelta += yawSign * delta.x * RotationSpeed();
         m_PitchDelta += delta.y * RotationSpeed();
 	}
-	
+
 	void EditorCamera::MouseZoom(float delta)
 	{
         m_Distance -= delta * ZoomSpeed();
@@ -250,12 +250,12 @@ namespace SceneryEditorX
         }
         m_PositionDelta += delta * ZoomSpeed() * forwardDir;
 	}
-	
+
 	Vec3 EditorCamera::CalculatePosition() const
 	{
 	    return {};
 	}
-	
+
 	std::pair<float, float> EditorCamera::PanSpeed() const
 	{
         const float x = glm::min(float(m_ViewportRight - m_ViewportLeft) / 1000.0f, 2.4f); // max = 2.4f
@@ -266,12 +266,12 @@ namespace SceneryEditorX
 
         return {xFactor, yFactor};
 	}
-	
+
 	float EditorCamera::RotationSpeed() const
 	{
         return 0.3f;
 	}
-	
+
 	float EditorCamera::ZoomSpeed() const
 	{
         float distance = m_Distance * 0.2f;

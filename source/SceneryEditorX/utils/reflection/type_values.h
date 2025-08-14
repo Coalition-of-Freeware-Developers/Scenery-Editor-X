@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -527,7 +527,7 @@ namespace SceneryEditorX
          * memory management, logging, and reflection systems. It provides type-safe
          * storage and manipulation of values with reference counting support.
          *
-         * @note Uses SceneryEditorX memory allocators and logging for consistency
+         * @note - Uses SceneryEditorX memory allocators and logging for consistency
          */
         class Value
         {

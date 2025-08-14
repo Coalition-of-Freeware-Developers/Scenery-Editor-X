@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -68,17 +68,17 @@ namespace SceneryEditorX
             ///< Shadow settings subgroup
             Setting& shadowGroup = rendererGroup.add("Shadows", Setting::TypeGroup);
             shadowGroup.add("EnableShadows", Setting::TypeBoolean) = tieringSettings.RendererTS.EnableShadows;
-            shadowGroup.add("Quality", Setting::TypeString) = Utils::ShadowQualitySettingToString(tieringSettings.RendererTS.ShadowQuality);
-            shadowGroup.add("Resolution", Setting::TypeString) = Utils::ShadowResolutionSettingToString(tieringSettings.RendererTS.ShadowResolution);
+            shadowGroup.add("Quality", Setting::TypeString) = ShadowQualitySettingToString(tieringSettings.RendererTS.ShadowQuality);
+            shadowGroup.add("Resolution", Setting::TypeString) = ShadowResolutionSettingToString(tieringSettings.RendererTS.ShadowResolution);
 
             ///< Ambient Occlusion settings subgroup
             Setting& aoGroup = rendererGroup.add("AmbientOcclusion", Setting::TypeGroup);
             aoGroup.add("EnableAO", Setting::TypeBoolean) = tieringSettings.RendererTS.EnableAO;
             aoGroup.add("Type", Setting::TypeString) = (tieringSettings.RendererTS.AOType == AmbientOcclusionTypeSetting::GTAO) ? "GTAO" : "None";
-            aoGroup.add("Quality", Setting::TypeString) = Utils::AmbientOcclusionQualitySettingToString(tieringSettings.RendererTS.AOQuality);
+            aoGroup.add("Quality", Setting::TypeString) = AmbientOcclusionQualitySettingToString(tieringSettings.RendererTS.AOQuality);
 
             ///< Screen Space Reflections settings
-            rendererGroup.add("SSRQuality", Setting::TypeString) = Utils::SSRQualitySettingToString(tieringSettings.RendererTS.SSRQuality);
+            rendererGroup.add("SSRQuality", Setting::TypeString) = SSRQualitySettingToString(tieringSettings.RendererTS.SSRQuality);
 
             ///< Post-processing effects
             rendererGroup.add("EnableBloom", Setting::TypeBoolean) = tieringSettings.RendererTS.EnableBloom;
@@ -161,13 +161,13 @@ namespace SceneryEditorX
                     if (shadows.exists("Quality"))
                     {
                         std::string qualityStr = static_cast<const char*>(shadows["Quality"]);
-                        outTieringSettings.RendererTS.ShadowQuality = Utils::ShadowQualitySettingFromString(qualityStr);
+                        outTieringSettings.RendererTS.ShadowQuality = ShadowQualitySettingFromString(qualityStr);
                     }
 
                     if (shadows.exists("Resolution"))
                     {
                         std::string resolutionStr = static_cast<const char*>(shadows["Resolution"]);
-                        outTieringSettings.RendererTS.ShadowResolution = Utils::ShadowResolutionSettingFromString(resolutionStr);
+                        outTieringSettings.RendererTS.ShadowResolution = ShadowResolutionSettingFromString(resolutionStr);
                     }
                 }
 
@@ -189,7 +189,7 @@ namespace SceneryEditorX
                     if (ao.exists("Quality"))
                     {
                         std::string qualityStr = static_cast<const char*>(ao["Quality"]);
-                        outTieringSettings.RendererTS.AOQuality = Utils::AmbientOcclusionQualitySettingFromString(qualityStr);
+                        outTieringSettings.RendererTS.AOQuality = AmbientOcclusionQualitySettingFromString(qualityStr);
                     }
                 }
 
@@ -197,7 +197,7 @@ namespace SceneryEditorX
                 if (renderer.exists("SSRQuality"))
                 {
                     std::string ssrStr = static_cast<const char*>(renderer["SSRQuality"]);
-                    outTieringSettings.RendererTS.SSRQuality = Utils::SSRQualitySettingFromString(ssrStr);
+                    outTieringSettings.RendererTS.SSRQuality = SSRQualitySettingFromString(ssrStr);
                 }
 
                 ///< Post-processing effects
@@ -219,20 +219,20 @@ namespace SceneryEditorX
             if (tieringSettings.exists("ShadowQuality"))
             {
                 std::string qualityStr = static_cast<const char*>(tieringSettings["ShadowQuality"]);
-                outTieringSettings.RendererTS.ShadowQuality = Utils::ShadowQualitySettingFromString(qualityStr);
+                outTieringSettings.RendererTS.ShadowQuality = ShadowQualitySettingFromString(qualityStr);
             }
 
             if (tieringSettings.exists("ShadowResolution"))
             {
                 std::string resolutionStr = static_cast<const char*>(tieringSettings["ShadowResolution"]);
-                outTieringSettings.RendererTS.ShadowResolution = Utils::ShadowResolutionSettingFromString(resolutionStr);
+                outTieringSettings.RendererTS.ShadowResolution = ShadowResolutionSettingFromString(resolutionStr);
             }
 
             ///< Legacy AO settings (old format support)
             if (tieringSettings.exists("AmbientOcclusionQuality"))
             {
                 std::string aoQualityStr = static_cast<const char*>(tieringSettings["AmbientOcclusionQuality"]);
-                outTieringSettings.RendererTS.AOQuality = Utils::AmbientOcclusionQualitySettingFromString(aoQualityStr);
+                outTieringSettings.RendererTS.AOQuality = AmbientOcclusionQualitySettingFromString(aoQualityStr);
             }
             else if (tieringSettings.exists("AmbientOcclusion"))
             {
@@ -246,7 +246,7 @@ namespace SceneryEditorX
             if (tieringSettings.exists("SSRQuality"))
             {
                 std::string ssrStr = static_cast<const char*>(tieringSettings["SSRQuality"]);
-                outTieringSettings.RendererTS.SSRQuality = Utils::SSRQualitySettingFromString(ssrStr);
+                outTieringSettings.RendererTS.SSRQuality = SSRQualitySettingFromString(ssrStr);
             }
 
             SEDX_CORE_INFO_TAG("TIERING", "Tiering settings loaded from: {}", filepath.string());

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * camera.h
@@ -11,14 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <glm/glm.hpp>
-#include <glm/ext/matrix_clip_space.hpp>
+#include <SceneryEditorX/utils/math/math.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	
+
 	class Camera
 	{
 	public:
@@ -49,14 +48,14 @@ namespace SceneryEditorX
 			m_UnReversedProjectionMatrix = glm::ortho(-width * 0.5f, width * 0.5f, -height * 0.5f, height * 0.5f, nearP, farP);
 		}
 
-        float GetExposure() const { return m_Exposure; }
+		float GetExposure() const { return m_Exposure; }
 		float &GetExposure() { return m_Exposure; }
 	protected:
 		float m_Exposure = 0.8f;
 
 	private:
-		Mat4 m_ProjectionMatrix = Mat4(1.0f);
-		Mat4 m_UnReversedProjectionMatrix = Mat4(1.0f); /// Currently only needed for shadow maps and ImGuizmo
+		Mat4 m_ProjectionMatrix = Mat4::Identity();
+		Mat4 m_UnReversedProjectionMatrix = Mat4::Identity(); /// Currently only needed for shadow maps and ImGuizmo
 	};
 
 }

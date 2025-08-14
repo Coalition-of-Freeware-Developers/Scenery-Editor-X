@@ -14,12 +14,13 @@
 #include <vector>
 #include <cmath>
 
-#include <glm/gtc/quaternion.hpp>
 #include <SceneryEditorX/asset/animation/animation.h>
 #include <SceneryEditorX/asset/managers/asset_manager.h>
 #include <SceneryEditorX/asset/mesh/mesh.h>
 #include <SceneryEditorX/project/project.h>
 #include <SceneryEditorX/core/memory/memory.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
+#include <algorithm>
 
 /// -------------------------------------------------------
 
@@ -33,8 +34,8 @@ namespace SceneryEditorX
 	    {
 			Vec3 SafeNormalize(Vec3 v)
 			{
-				const float len = glm::length(v);
-				return len > 0.0f ? v / len : Vec3(0.0f);
+				// Use native normalize that safely handles zero-length vectors
+				return SceneryEditorX::Utils::Normalize(v);
 			}
 
 			Vec3 TransformVector(const Transform& t, const Vec3& v)
@@ -56,28 +57,28 @@ namespace SceneryEditorX
 	{
 		inline Vec3 Lerp(const Vec3& a, const Vec3& b, float t)
 		{
-			return (1.0f - t) * a + t * b;
+            return a * (1.0f - t) + b * t;
 		}
 
-		inline glm::quat Slerp(const glm::quat& qa, const glm::quat& qb, float t)
+		inline Quat Slerp(const Quat& qa, const Quat& qb, float t)
 		{
-			float cosTheta = glm::dot(qa, qb);
-			glm::quat b = qb;
+			float cosTheta = Quat::Dot(qa, qb);
+			Quat b = qb;
 			if (cosTheta < 0.0f) { b = -qb; cosTheta = -cosTheta; }
 			if (cosTheta > 0.9995f)
 			{
-				glm::quat result = glm::normalize(glm::quat(
+				Quat result(
 					qa.w + t * (b.w - qa.w),
 					qa.x + t * (b.x - qa.x),
 					qa.y + t * (b.y - qa.y),
-					qa.z + t * (b.z - qa.z)));
-				return result;
+					qa.z + t * (b.z - qa.z));
+				return result.normalize();
 			}
 			float theta = std::acos(std::clamp(cosTheta, -1.0f, 1.0f));
 			float sinTheta = std::sin(theta);
 			float w1 = std::sin((1.0f - t) * theta) / sinTheta;
 			float w2 = std::sin(t * theta) / sinTheta;
-			return glm::quat(
+			return Quat(
 				w1 * qa.w + w2 * b.w,
 				w1 * qa.x + w2 * b.x,
 				w1 * qa.y + w2 * b.y,
@@ -129,10 +130,10 @@ namespace SceneryEditorX
 			outAlpha = 1.0f;
 		}
 
-		inline void SampleRootAtTime(const AnimationInternal::InternalAnimationData* data, float time, Vec3& outT, glm::quat& outR)
+		inline void SampleRootAtTime(const AnimationInternal::InternalAnimationData* data, float time, Vec3& outT, Quat& outR)
 		{
 			outT = Vec3(0.0f);
-			outR = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+			outR = Quat(1.0f, 0.0f, 0.0f, 0.0f);
 			if (!data || data->Tracks.empty()) return;
 
 			const AnimationInternal::TrackTRS& root = data->Tracks[0];
@@ -149,8 +150,8 @@ namespace SceneryEditorX
 			{
 				uint32_t a, b; float alpha;
 				FindBracketingKeys(root.Rotations, time, a, b, alpha);
-				const glm::quat& qa = root.Rotations[a].Value;
-				const glm::quat& qb = root.Rotations[b].Value;
+				const Quat& qa = root.Rotations[a].Value;
+				const Quat& qb = root.Rotations[b].Value;
 				outR = Slerp(qa, qb, alpha);
 			}
 		}
@@ -163,13 +164,13 @@ namespace SceneryEditorX
 		, m_Skeleton(skeleton)
 		, m_RootTranslationEnd(0.0f, 0.0f, 0.0f)
 		, m_Duration(duration)
-	, m_RootRotationEnd(glm::quat(1.0f, 0.0f, 0.0f, 0.0f))
+	, m_RootRotationEnd(Quat(1.0f, 0.0f, 0.0f, 0.0f))
 		, m_NumTracks(numTracks)
 	{
 		if (data)
 		{
 			const auto* internal = static_cast<const AnimationInternal::InternalAnimationData*>(data);
-			const float t = internal ? glm::clamp(m_Duration, 0.0f, internal->Duration) : m_Duration;
+			const float t = internal ? std::clamp(m_Duration, 0.0f, internal->Duration) : m_Duration;
 			SampleRootAtTime(internal, t, m_RootTranslationEnd, m_RootRotationEnd);
 		}
 	}
@@ -217,9 +218,9 @@ namespace SceneryEditorX
 	}
 
 	/// AnimationAsset methods (unchanged behavior)
-	AnimationAsset::AnimationAsset(AssetHandle animationSource, AssetHandle mesh, const std::string_view animationName, bool extractRootMotion, uint32_t rootBoneIndex, const glm::vec3& rootTranslationMask, const glm::vec3& rootRotationMask, bool discardRootMotion)
-		: m_RootTranslationMask(rootTranslationMask)
-		, m_RootRotationMask(rootRotationMask)
+    AnimationAsset::AnimationAsset(AssetHandle animationSource, AssetHandle mesh, const std::string_view animationName, bool extractRootMotion, uint32_t rootBoneIndex, const Vec3& rootTranslationMask, const Vec3& rootRotationMask, bool discardRootMotion)
+		: m_RootTranslationMask(Bool3{ rootTranslationMask.x != 0.0f, rootTranslationMask.y != 0.0f, rootTranslationMask.z != 0.0f })
+		, m_RootRotationMask(Bool3{ rootRotationMask.x != 0.0f, rootRotationMask.y != 0.0f, rootRotationMask.z != 0.0f })
 		, m_AnimationSource(animationSource)
 		, m_Mesh(mesh)
 		, m_AnimationName(animationName)
@@ -227,12 +228,12 @@ namespace SceneryEditorX
 		, m_IsExtractRootMotion(extractRootMotion)
 		, m_IsDiscardRootMotion(discardRootMotion)
 	{
-		SEDX_CORE_ASSERT(rootTranslationMask.x == 0.0f || rootTranslationMask.x == 1.0f);
-		SEDX_CORE_ASSERT(rootTranslationMask.y == 0.0f || rootTranslationMask.y == 1.0f);
-		SEDX_CORE_ASSERT(rootTranslationMask.z == 0.0f || rootTranslationMask.z == 1.0f);
-		SEDX_CORE_ASSERT(rootRotationMask.x == 0.0f || rootRotationMask.x == 1.0f);
-		SEDX_CORE_ASSERT(rootRotationMask.y == 0.0f || rootRotationMask.y == 1.0f);
-		SEDX_CORE_ASSERT(rootRotationMask.z == 0.0f || rootRotationMask.z == 1.0f);
+	SEDX_CORE_ASSERT(rootTranslationMask.x == 0.0f || rootTranslationMask.x == 1.0f);
+	SEDX_CORE_ASSERT(rootTranslationMask.y == 0.0f || rootTranslationMask.y == 1.0f);
+	SEDX_CORE_ASSERT(rootTranslationMask.z == 0.0f || rootTranslationMask.z == 1.0f);
+	SEDX_CORE_ASSERT(rootRotationMask.x == 0.0f || rootRotationMask.x == 1.0f);
+	SEDX_CORE_ASSERT(rootRotationMask.y == 0.0f || rootRotationMask.y == 1.0f);
+	SEDX_CORE_ASSERT(rootRotationMask.z == 0.0f || rootRotationMask.z == 1.0f);
 	}
 
 	AssetHandle AnimationAsset::GetAnimationSource() const { return m_AnimationSource; }
@@ -240,8 +241,8 @@ namespace SceneryEditorX
 	const std::string& AnimationAsset::GetAnimationName() const { return m_AnimationName; }
 	bool AnimationAsset::IsExtractRootMotion() const { return m_IsExtractRootMotion; }
 	uint32_t AnimationAsset::RootBoneIndex() const { return m_RootBoneIndex; }
-	const glm::bvec3& AnimationAsset::GetRootTranslationMask() const { return m_RootTranslationMask; }
-	const glm::bvec3& AnimationAsset::GetRootRotationMask() const { return m_RootRotationMask; }
+	const Bool3& AnimationAsset::GetRootTranslationMask() const { return m_RootTranslationMask; }
+	const Bool3& AnimationAsset::GetRootRotationMask() const { return m_RootRotationMask; }
 	bool AnimationAsset::IsDiscardRootMotion() const { return m_IsDiscardRootMotion; }
 
 	/*

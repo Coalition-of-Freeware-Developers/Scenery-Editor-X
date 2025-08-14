@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -122,14 +122,14 @@ namespace SceneryEditorX::Types
 
 		/**
 		 * Returns a type representing an empty object, with the given class name.
-		 * @note that the name must be a valid UTF8 string, and may not contain a null character.
+		 * @note - that the name must be a valid UTF8 string, and may not contain a null character.
 		 */
         static Type createObject(std::string_view className, Allocator *allocator = nullptr);
 
         /**
          * Appends a member to an object type, with the given name and type. This will throw an Error if
          * this isn't possible for some reason.
-         * @note that the name must be a valid UTF8 string, and may not contain a null character.
+         * @note - that the name must be a valid UTF8 string, and may not contain a null character.
          */
         void addObjectMember(std::string_view memberName, Type memberType);
 

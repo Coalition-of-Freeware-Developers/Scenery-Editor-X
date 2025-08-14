@@ -158,7 +158,7 @@ namespace SceneryEditorX
             std::string FilePath;
             std::string FilePathAuto;
         } m_LoadAutoSavePopupData;
-		
+
 		float m_TimeSinceLastSave = 0.0f; /// time (in seconds) since scene was last saved.  Counts up only when scene is in Edit mode. If exceeds 300s then scene is automatically saved
 
 		float m_RequiredProjectVersion = 0.0f;
@@ -171,7 +171,7 @@ namespace SceneryEditorX
 		std::string m_AssetPackBuildMessage;
 		bool m_BuildAllInProgress = false;
 		bool m_AssetPackBuiltOK = false;
-		
+
 #ifdef SEDX_PLATFORM_WINDOWS
 		using WatcherString = std::wstring;
 #else

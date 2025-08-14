@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -13,59 +13,62 @@
 #pragma once
 #include <filesystem>
 #include <format>
-#include <SceneryEditorX/core/base.hpp>
+#include <string>
+#include "../core/base.hpp"
+#include <SceneryEditorX/utils/math/vector.h>
+
+// Optional fmt support: enable by defining SEDX_ENABLE_FMT in targets that set proper encoding flags
+#if defined(SEDX_ENABLE_FMT)
+#  if __has_include(<fmt/format.h>)
+#    include <fmt/format.h>
+#    define SEDX_HAS_FMT 1
+#  else
+#    define SEDX_HAS_FMT 0
+#  endif
+#else
+#  define SEDX_HAS_FMT 0
+#endif
 
 /// -------------------------------------------------------
 
+#if SEDX_HAS_FMT
 template <>
 struct fmt::formatter<Vec2>
 {
-    char presentation = 'f';
+	char presentation = 'f';
 
-    /**
-	 * @brief Parses the format specification for the vector.
-	 *
-	 * Accepts 'f' for fixed-point notation (default) or 'e' for scientific notation.
-	 *
-	 * @param ctx The format parse context
-	 * @return Iterator pointing past the parsed format specification
-	 * @throws format_error if the format specification is invalid
-	 */
-    constexpr auto parse(const format_parse_context &ctx) -> decltype(ctx.begin())
-    {
-        auto it = ctx.begin();
-        const auto end = ctx.end();
-        if (it != end && (*it == 'f' || *it == 'e'))
-            presentation = *it++;
+	// Parse format specifier ('f' = fixed, 'e' = scientific)
+	constexpr auto parse(const format_parse_context &ctx) -> decltype(ctx.begin())
+	{
+		auto it = ctx.begin();
+		const auto end = ctx.end();
+		if (it != end && (*it == 'f' || *it == 'e'))
+			presentation = *it++;
 
-        if (it != end && *it != '}')
-            throw format_error("invalid format");
+		if (it != end && *it != '}')
+			throw format_error("invalid format");
 
-        return it;
-    }
+		return it;
+	}
 
-    /**
-	 * @brief Formats the Vec2 object into the output.
-	 *
-	 * Renders the vector as "(x, y)" with 3 decimal places in either
-	 * fixed-point or scientific notation based on the presentation format.
-	 *
-	 * @param vec The vector to format
-	 * @param ctx The formatting context that receives the formatted output
-	 * @return Iterator pointing past the end of the formatted output
-	 */
-    template <typename FormatContext>
-    auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
-    {
-        return presentation == 'f' ? fmt::format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
-                                   : fmt::format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
-    }
+	// Format Vec2 using fmt
+	template <typename FormatContext>
+	auto format(const Vec2 &vec, FormatContext &ctx) const -> decltype(ctx.out())
+	{
+		return presentation == 'f' ? fmt::format_to(ctx.out(), "({:.3f}, {:.3f})", vec.x, vec.y)
+								   : fmt::format_to(ctx.out(), "({:.3e}, {:.3e})", vec.x, vec.y);
+	}
 };
+#endif // SEDX_HAS_FMT
 
 /// -------------------------------------------------------
 ///
 namespace std
 {
+#if !defined(__cpp_lib_format)
+#define __cpp_lib_format 0
+#endif
+#if __cpp_lib_format
 	/**
 	 * @struct formatter
 	 * @brief Specialization of the std::formatter for std::filesystem::path objects.
@@ -89,7 +92,7 @@ namespace std
 		 * @return Iterator pointing past the end of the formatted output
 		 */
 	    template <typename FormatContext>
-        FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
+	    typename FormatContext::iterator format(const filesystem::path &path, FormatContext &ctx) const
 	    {
 	        return formatter<string>::format(path.string(), ctx);
 	    }
@@ -275,6 +278,7 @@ namespace std
 	                   : format_to(ctx.out(), "({:.3e}, {:.3e}, {:.3e}, {:.3e})", vec.x, vec.y, vec.z, vec.w);
 	    }
 	};
+#endif // __cpp_lib_format
 
 }
 

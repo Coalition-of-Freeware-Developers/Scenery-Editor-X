@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * logging.cpp
@@ -23,7 +23,7 @@
 
 namespace SceneryEditorX
 {
-	
+
 	/**
 	 * @brief Static member to hold the logger instance.
 	 */
@@ -58,10 +58,10 @@ namespace SceneryEditorX
 	    {"Scripting",				TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
 	    {"Timer",					TagDetails{.Enabled = false,.LevelFilter = Level::Trace}},
 	};
-	
+
 	/**
 	 * @brief Initializes the logging system with console and file sinks.
-	 * 
+	 *
 	 * This method sets up the logging system to output logs to both the console
 	 * and a file named "SceneryEditorX.log". It configures the log patterns for
 	 * each sink and sets the logging level to trace. The logger is also set to
@@ -69,7 +69,7 @@ namespace SceneryEditorX
 	 */
 	void Log::Init()
 	{
-	    try 
+	    try
 	    {
             /// Check if loggers already exist and drop them
             if (spdlog::get("SceneryEditorX-Core"))
@@ -90,7 +90,7 @@ namespace SceneryEditorX
 	        std::vector<spdlog::sink_ptr> editorSinks = {
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
                 std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/SceneryEditorX.log", true)};
-	
+
 	        std::vector<spdlog::sink_ptr> editorConsoleSinks = {
 	            std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
 	            std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/EditorConsoleOut.log", true)};
@@ -100,11 +100,11 @@ namespace SceneryEditorX
                 std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/Launcher.log", true)};
 
 	        /// -------------------------------------------------------
-	
+
 	        /// Pattern for console sinks
 	        coreSinks[1]->set_pattern("%^[%T] %n: %v%$");
 	        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");
-            launcherSinks[1]->set_pattern("%^[%T] %n: %v%$"); 
+            launcherSinks[1]->set_pattern("%^[%T] %n: %v%$");
 
 			/// -------------------------------------------------------
 
@@ -115,9 +115,9 @@ namespace SceneryEditorX
                 sink->set_pattern("%^%v%$");
             launcherSinks[1]->set_pattern("[%T] [%l] %n: %v");
 
-	
+
 	        /// -------------------------------------------------------
-	
+
 	        CoreLogger = std::make_shared<spdlog::logger>("Core", coreSinks.begin(), coreSinks.end());
 	        CoreLogger->set_level(spdlog::level::trace);
 	        CoreLogger->flush_on(spdlog::level::info); /// Flush on info level and above
@@ -125,7 +125,7 @@ namespace SceneryEditorX
 	        EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
 	        EditorLogger->set_level(spdlog::level::trace);
 	        EditorLogger->flush_on(spdlog::level::info); /// Flush on info level and above
-	
+
 	        EditorConsoleLogger = std::make_shared<spdlog::logger>("Vulkan", editorConsoleSinks.begin(), editorConsoleSinks.end());
 	        EditorConsoleLogger->set_level(spdlog::level::trace);
 	        EditorConsoleLogger->flush_on(spdlog::level::info); /// Flush on info level and above
@@ -142,7 +142,7 @@ namespace SceneryEditorX
 	        spdlog::register_logger(EditorConsoleLogger);
 			spdlog::register_logger(LauncherLogger);
 	        SetDefaultTagSettings();
-	
+
 	        CoreLogger->info("Log system initialized successfully");
 	        CoreLogger->flush();
 	    }
@@ -195,7 +195,7 @@ namespace SceneryEditorX
 	        {
 	            const char *resultString = vkErrorString(result);
 	            std::string message = "Vulkan operation '" + operation + "' returned " + resultString;
-	
+
 	            if (result < 0)
 	            { // Negative values are errors
 	                CoreLogger->error("{}", message);
@@ -204,7 +204,7 @@ namespace SceneryEditorX
 	            { // Non-zero positive values are warnings/info
 	                CoreLogger->warn("{}", message);
 	            }
-	
+
 	            CoreLogger->flush();
 	        }
 	        else
@@ -247,20 +247,20 @@ namespace SceneryEditorX
 		/// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
 		SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
-	
+
 		/// -------------------------------------------------------
 		SYSTEMTIME systemTime;
 		GetSystemTime(&systemTime);
-	
+
 		/// -------------------------------------------------------
-	
+
 		/// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
 		TIME_ZONE_INFORMATION timeZoneInfo;
 		GetTimeZoneInformation(&timeZoneInfo);
 		std::wstring timeZoneName = timeZoneInfo.StandardName[0] != L'\0' ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
-	
+
 		/// -------------------------------------------------------
-	
+
 		SEDX_CORE_INFO("============================================");
 		SEDX_CORE_INFO("System Information");
 		SEDX_CORE_INFO("Operating System: {}", getOsName());
@@ -290,7 +290,7 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO("============================================");
 		SEDX_CORE_INFO("============================================");
 	}
-	
+
 	void Log::ShutDown()
 	{
         if (CoreLogger)
@@ -324,7 +324,7 @@ namespace SceneryEditorX
 	    spdlog::drop_all(); // Drop all loggers
 	    spdlog::shutdown();
 	}
-	
+
 	/// -------------------------------------------------------
 
 	/// taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c

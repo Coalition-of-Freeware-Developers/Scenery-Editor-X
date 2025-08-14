@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,8 +12,21 @@
 */
 #pragma once
 
-// Umbrella header for all vector types
+/// -----------------------------------------------------
+/// Umbrella header for all vector types
+/// -----------------------------------------------------
 
-#include <SceneryEditorX/utils/math/vec2.h>
-#include <SceneryEditorX/utils/math/vec3.h>
-#include <SceneryEditorX/utils/math/vec4.h>
+#include <SceneryEditorX/utils/math/vec2.h>	/// 2D Vector
+#include <SceneryEditorX/utils/math/vec3.h>	/// 3D Vector
+#include <SceneryEditorX/utils/math/vec4.h>	/// 4D Vector
+
+/// -----------------------------------------------------
+
+namespace SceneryEditorX
+{
+	using Vec2 = Utils::TVector2<float>;
+	using Vec3 = Utils::TVector3<float>;
+	using Vec4 = Utils::TVector4<float>;
+}
+
+/// -----------------------------------------------------

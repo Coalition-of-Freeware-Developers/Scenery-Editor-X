@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -51,10 +51,10 @@ namespace SceneryEditorX
 		 *         specific resource implementation (e.g., VkDescriptorImageInfo for
 		 *         textures, VkDescriptorBufferInfo for buffers).
 		 *
-		 * @note Derived classes must ensure the returned descriptor information
+		 * @note - Derived classes must ensure the returned descriptor information
 		 *       remains valid for the lifetime of the resource or until the next
 		 *       call to this method.
-		 * @note This method should be thread-safe as it may be called from multiple
+		 * @note - This method should be thread-safe as it may be called from multiple
 		 *       rendering threads simultaneously.
 		 */
 	    virtual ResourceDescriptorInfo GetDescriptorInfo() const = 0;
@@ -68,8 +68,8 @@ namespace SceneryEditorX
 		 *
 		 * @return uint64_t Unique hash value for this resource
 		 *
-		 * @note The hash value should remain constant for the lifetime of the resource
-		 * @note Different resource instances should have different hash values
+		 * @note - The hash value should remain constant for the lifetime of the resource
+		 * @note - Different resource instances should have different hash values
 		 */
 		//virtual uint64_t GetHash() const = 0;
 

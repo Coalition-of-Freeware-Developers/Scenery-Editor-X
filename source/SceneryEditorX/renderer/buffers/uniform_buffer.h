@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include <SceneryEditorX/utils/math/matrix.h>
 
 /// ----------------------------------------------------------
 

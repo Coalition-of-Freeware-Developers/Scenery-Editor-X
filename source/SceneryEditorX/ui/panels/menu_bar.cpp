@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -216,7 +216,7 @@ namespace SceneryEditorX::UI
 		const ImVec2 padding = window->WindowPadding;
 
 		/**
-		 * @note We don't clip with current window clipping rectangle as it is already set to the area below. However we clip with window full rect.
+		 * @note - We don't clip with current window clipping rectangle as it is already set to the area below. However we clip with window full rect.
 		 * We remove 1 worth of rounding to Max.x to that text in long menus and small windows don't tend to display over the lower-right rounded area, which looks particularly glitchy.
          */
 		ImRect bar_rect = RectOffset(barRectangle, 0.0f, padding.y);// window->MenuBarRect();

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -199,7 +199,7 @@ namespace SceneryEditorX
 		 * Try to load graph Nodes from JSON. This function parses JSON into NodeCandidates and PinCandidates,
 		 * which are then passed to implementation provided factory to deserialize and validate.
 		 *
-		 * @note This function throws an exception if deserialization fails, the caller must handle it!
+		 * @note - This function throws an exception if deserialization fails, the caller must handle it!
 		 #1#
 		static void TryLoadNodes(nlohmann::json &data, std::vector<GraphNode*> &nodes, const DeserializationFactory &factory);
 		static void TryLoadLinks(nlohmann::json &data, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback = {});

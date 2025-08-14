@@ -124,7 +124,7 @@ namespace SceneryEditorX
          * @param dstRegistry 
          * @param src 
          *
-         * @note Used to have ".has<>" but has been replaced in Entt 4.0 with ".all_of<>()"
+         * @note - Used to have ".has<>" but has been replaced in Entt 4.0 with ".all_of<>()"
          */
         template<typename TComponent>
 		void CopyComponentIfExists(entt::entity dst, entt::registry& dstRegistry, entt::entity src)

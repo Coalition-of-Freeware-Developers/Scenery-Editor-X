@@ -1000,7 +1000,7 @@ namespace SceneryEditorX
 
 	void Renderer2D::DrawRotatedQuad(const Vec3& position, const Vec2& size, const float rotation, const Vec4& color)
 	{
-        constexpr float textureIndex = 0.0f; // White Texture
+        constexpr float textureIndex = 0.0f; /// White Texture
         constexpr float tilingFactor = 1.0f;
 
 		const Mat4 transform = glm::translate(Mat4(1.0f), position)
@@ -1060,8 +1060,8 @@ namespace SceneryEditorX
 		if (textureIndex == 0.0f)
 		{
 			textureIndex = (float)m_TextureSlotIndex;
-		 m_TextureSlots[m_TextureSlotIndex] = texture;
-		 m_TextureSlotIndex++;
+		    m_TextureSlots[m_TextureSlotIndex] = texture;
+		    m_TextureSlotIndex++;
 		}
 
 		const Mat4 transform = glm::translate(Mat4(1.0f), position)
@@ -1146,7 +1146,8 @@ namespace SceneryEditorX
 
 	void Renderer2D::FillCircle(const Vec3& position, float radius, const Vec4& color, const float thickness)
 	{
-		const Mat4 transform = glm::translate(Mat4(1.0f), position) * glm::scale(Mat4(1.0f), { radius * 2.0f, radius * 2.0f, 1.0f });
+		const Mat4 transform = glm::translate(Mat4(1.0f), position)
+	    * glm::scale(Mat4(1.0f), { radius * 2.0f, radius * 2.0f, 1.0f });
 
 		auto& bufferPtr = GetWriteableCircleBuffer();
 		for (auto m_QuadVertexPosition : m_QuadVertexPositions)
@@ -1174,9 +1175,9 @@ namespace SceneryEditorX
 		bufferPtr++;
 
 		if(onTop)
-		 m_LineOnTopIndexCount += 2;
+			m_LineOnTopIndexCount += 2;
 		else
-		 m_LineIndexCount += 2;
+			m_LineIndexCount += 2;
 
 		m_DrawStats.LineCount++;
 	}
@@ -1410,7 +1411,10 @@ namespace SceneryEditorX
 
 				double texelWidth = 1. / fontAtlas->GetWidth();
 				double texelHeight = 1. / fontAtlas->GetHeight();
-				l *= texelWidth, b *= texelHeight, r *= texelWidth, t *= texelHeight;
+                l *= texelWidth;
+                b *= texelHeight;
+                r *= texelWidth;
+			    t *= texelHeight;
 
 				// ImGui::Begin("Font");
 				// ImGui::Text("Size: %d, %d", m_ExampleFontSheet->GetWidth(), m_ExampleFontSheet->GetHeight());

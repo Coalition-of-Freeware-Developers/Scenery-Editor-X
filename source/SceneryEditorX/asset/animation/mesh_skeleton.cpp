@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #include <algorithm>
-#include <glm/gtx/quaternion.hpp>
 #include <SceneryEditorX/asset/animation/mesh_skeleton.h>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/utils/string_utils.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
 
 /// -------------------------------------------------------
 
@@ -437,7 +437,7 @@ namespace SceneryEditorX
 		return m_ModelSpaceRestPoseInverseTransforms[boneIndex];
 	}
 
-	void Skeleton::SetBones(std::vector<std::string> boneNames, std::vector<uint32_t> parentBoneIndices, std::vector<Vec3> boneTranslations, std::vector<glm::quat> boneRotations, std::vector<float> boneScales)
+	void Skeleton::SetBones(std::vector<std::string> boneNames, std::vector<uint32_t> parentBoneIndices, std::vector<Vec3> boneTranslations, std::vector<Quat> boneRotations, std::vector<float> boneScales)
 	{
 		SEDX_CORE_ASSERT(parentBoneIndices.size() == boneNames.size());
 		SEDX_CORE_ASSERT(boneTranslations.size()  == boneNames.size());
@@ -484,7 +484,8 @@ namespace SceneryEditorX
 			{
 				const auto& firstChildBoneTransform = GetModelSpaceRestPoseTransform(children[0]);
 				Vec3 direction = firstChildBoneTransform.Translation - boneTransform.Translation;
-				length = glm::length(direction);
+				// Use native utility instead of glm::length
+				length = SceneryEditorX::Utils::Distance(boneTransform.Translation, firstChildBoneTransform.Translation);
 			}
 
 			m_BoneLengths[i] = length;
@@ -495,7 +496,7 @@ namespace SceneryEditorX
 		/// Returns the rotation quaternion required that would point the skeleton towards +Y
 		for (uint32_t i = 0; i < N; ++i)
 		{
-            if (auto direction = GetModelSpaceRestPoseTransform(i).Translation; direction  != glm::zero<Vec3>())
+			if (auto direction = GetModelSpaceRestPoseTransform(i).Translation; direction  != Vec3(0.0f, 0.0f, 0.0f))
 			{
 				/// (probably) only need the maximum component of the direction vector
 				/// to determine which axis the skeleton is aligned to
@@ -515,7 +516,8 @@ namespace SceneryEditorX
 					direction.y = 0.0f;
 				}
 
-				m_Orientation = glm::rotation(glm::normalize(direction), { 0.0f, 1.0f, 0.0f });
+				// Rotate the skeleton's dominant axis direction to +Y using native quaternion helper
+				m_Orientation = Quat::FromToRotation(SceneryEditorX::Utils::Normalize(direction), Vec3(0.0f, 1.0f, 0.0f));
 				break;
 			}
 		}
