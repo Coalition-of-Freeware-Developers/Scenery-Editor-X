@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -38,7 +38,7 @@ namespace SceneryEditorX
      * It supports both FNV-1a and CRC32 hashing algorithms for different use cases within the
      * application architecture.
      *
-     * @note All hash functions are implemented as constexpr where possible for compile-time
+     * @note - All hash functions are implemented as constexpr where possible for compile-time
      *       evaluation and improved performance.
      *
      * @see UUID, Identifier classes for usage examples
@@ -66,7 +66,7 @@ namespace SceneryEditorX
          * @param length Number of characters to process
          * @return uint32_t 32-bit hash value suitable for hash tables and quick comparisons
          *
-         * @note This is a constexpr function, allowing compile-time hash calculation
+         * @note - This is a constexpr function, allowing compile-time hash calculation
          *       for constant string expressions.
          *
          * @warning This is not a cryptographically secure hash function. Do not use
@@ -109,7 +109,7 @@ namespace SceneryEditorX
          * @param str Standard string object to hash
          * @return uint32_t 32-bit FNV-1a hash value
          *
-         * @note This function internally calls GenerateFNVHash(str.c_str(), str.length())
+         * @note - This function internally calls GenerateFNVHash(str.c_str(), str.length())
          *
          * @example
          * @code
@@ -138,8 +138,8 @@ namespace SceneryEditorX
          * @param str Null-terminated C-style string to hash
          * @return uint32_t 32-bit CRC32 hash value
          *
-         * @note Uses IEEE 802.3 polynomial with initial value 0xFFFFFFFF
-         * @note Final result is bitwise inverted (~crc) as per CRC32 standard
+         * @note - Uses IEEE 802.3 polynomial with initial value 0xFFFFFFFF
+         * @note - Final result is bitwise inverted (~crc) as per CRC32 standard
          *
          * @warning Input string must be null-terminated to avoid buffer overrun
          *
@@ -162,7 +162,7 @@ namespace SceneryEditorX
          * @param string Standard string object to hash
          * @return uint32_t 32-bit CRC32 hash value
          *
-         * @note This function internally calls CRC32(string.c_str())
+         * @note - This function internally calls CRC32(string.c_str())
          *
          * @example
          * @code

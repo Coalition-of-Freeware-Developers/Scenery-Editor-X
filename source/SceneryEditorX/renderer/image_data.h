@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * image_data.h
@@ -11,7 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <glm/gtc/integer.hpp>
+#include <cstdint>
+#include <SceneryEditorX/utils/vulkan/vk_includes.h>
+#include <SceneryEditorX/utils/math/math.h>
 #include <imgui/imgui.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
@@ -33,7 +35,8 @@ namespace SceneryEditorX
 		    DepthAttachment = 0x00000020,
 		};
 	}
-    using ImageUsageFlags = Flags;
+	//using ImageUsageFlags = Flags;
+    using ImageUsageFlags = uint32_t; // previously Flags (uint32_t) – localized to remove dependency on vk_data.h
 
 	namespace Layout
 	{

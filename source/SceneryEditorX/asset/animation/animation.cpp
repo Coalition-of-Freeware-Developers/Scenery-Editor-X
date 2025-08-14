@@ -35,7 +35,7 @@ namespace SceneryEditorX
 			Vec3 SafeNormalize(Vec3 v)
 			{
 				// Use native normalize that safely handles zero-length vectors
-				return SceneryEditorX::Utils::Normalize(v);
+				return Normalize(v);
 			}
 
 			Vec3 TransformVector(const Transform& t, const Vec3& v)

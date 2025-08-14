@@ -24,8 +24,8 @@ namespace SceneryEditorX
      * such as buffers and images.
      * It is used in synchronization operations to ensure proper access control and memory barriers.
      *
-     * @note The values in this enum are bitwise OR'd together to create a bitfield representing multiple access types.
-     * @note Identical to Vulkan's VkAccessFlagBits
+     * @note - The values in this enum are bitwise OR'd together to create a bitfield representing multiple access types.
+     * @note - Identical to Vulkan's VkAccessFlagBits
      */
     enum class ResourceAccessFlags
     {
@@ -58,7 +58,7 @@ namespace SceneryEditorX
 	 * This enum is used to specify whether the memory is GPU or CPU accessible.
 	 * It is used in resource allocation and management to determine the appropriate memory type.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkMemoryPropertyFlagBits.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkMemoryPropertyFlagBits.
 	 */
 	enum MemoryType : uint8_t
     {
@@ -90,7 +90,7 @@ namespace SceneryEditorX
      * This enum is used to specify the language of the shader code,
      * such as GLSL, HLSL, or SPIR-V.
      *
-     * @note The values in this enum are designed to be compatible with Vulkan's shader language specifications.
+     * @note - The values in this enum are designed to be compatible with Vulkan's shader language specifications.
      */
     enum class ShaderLanguage : uint8_t
     {
@@ -107,7 +107,7 @@ namespace SceneryEditorX
 	 *
 	 * This enum is used to specify whether the pipeline is for graphics rendering or compute operations.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkPipelineBindPoint.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkPipelineBindPoint.
 	 */
     enum class PipelineType : uint8_t
     {
@@ -125,9 +125,9 @@ namespace SceneryEditorX
 	 * for synchronization purposes, such as when waiting for
 	 * operations to complete or when setting up barriers.
 	 *
-	 * @note The values in this enum are bitwise OR'd together
+	 * @note - The values in this enum are bitwise OR'd together
 	 * to create a bitfield representing multiple stages.
-	 * @note Identical to Vulkan's VkPipelineStageFlagBits
+	 * @note - Identical to Vulkan's VkPipelineStageFlagBits
 	 */
     enum class PipelineStage
     {
@@ -160,7 +160,7 @@ namespace SceneryEditorX
 	 * This enum is used to specify the color space of textures,
 	 * such as whether they are in linear or nonlinear sRGB space.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkColorSpaceKHR.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkColorSpaceKHR.
 	 */
     enum ColorSpace : uint8_t
     {
@@ -178,7 +178,7 @@ namespace SceneryEditorX
 	 * such as whether to use nearest neighbor sampling, linear interpolation,
 	 * or cubic interpolation.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkFilter.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkFilter.
 	 */
     enum class SamplerFilter : uint8_t
     {
@@ -194,7 +194,7 @@ namespace SceneryEditorX
      * This enum specifies how mipmaps should be sampled when textures are accessed,
      * such as whether to disable mipmapping, use nearest neighbor sampling, or linear interpolation.
      *
-     * @note The values in this enum are designed to be compatible with Vulkan's VkSamplerMipmapMode.
+     * @note - The values in this enum are designed to be compatible with Vulkan's VkSamplerMipmapMode.
      */
     enum class SamplerMip : uint8_t
     {
@@ -210,7 +210,7 @@ namespace SceneryEditorX
 	 * This enum specifies how textures should be wrapped when sampled,
 	 * such as repeating, clamping, or mirroring.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkSamplerAddressMode.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkSamplerAddressMode.
 	 */
     enum class SamplerWrap : uint8_t
     {
@@ -226,7 +226,7 @@ namespace SceneryEditorX
      * This enum specifies how polygons should be rendered,
      * such as filling them, drawing their outlines, or other modes.
      *
-     * @note The values in this enum are designed to be compatible with Vulkan's VkPolygonMode.
+     * @note - The values in this enum are designed to be compatible with Vulkan's VkPolygonMode.
      */
     enum PolygonMode : uint8_t
     {
@@ -241,7 +241,7 @@ namespace SceneryEditorX
 	 * This enum specifies the various ways a texture can be used,
 	 * such as being sampled, used for storage, or as an attachment.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkImageUsageFlagBits.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkImageUsageFlagBits.
 	 */
     enum TextureUsageBits : uint8_t
     {
@@ -257,7 +257,7 @@ namespace SceneryEditorX
      * This enum specifies how the texture channels (R, G, B, A)
      * should be swizzled or remapped when sampling textures.
      *
-     * @note The values in this enum are designed to be compatible with Vulkan's @typedef VkComponentSwizzle.
+     * @note - The values in this enum are designed to be compatible with Vulkan's @typedef VkComponentSwizzle.
      * @see VkComponentSwizzle
      */
     enum Swizzle : uint8_t
@@ -278,7 +278,7 @@ namespace SceneryEditorX
 	 * This enum specifies the various types of resources that can be created and managed
 	 * in a Vulkan application, such as buffers and textures.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's resource types.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's resource types.
 	 */
 	enum class ResourceType : uint16_t  // NOLINT(performance-enum-size)
     {
@@ -299,7 +299,7 @@ namespace SceneryEditorX
      * This enum specifies the various types of resources that can be bound to shader stages,
      * such as uniform buffers, storage buffers, and image samplers.
      *
-     * @note The values in this enum are designed to be compatible with Vulkan's resource types.
+     * @note - The values in this enum are designed to be compatible with Vulkan's resource types.
      */
     enum class ResourceInputType : uint16_t  // NOLINT(performance-enum-size)
 	{
@@ -321,7 +321,7 @@ namespace SceneryEditorX
 	 * This enum specifies how colors from different framebuffer attachments
 	 * should be blended together during rendering.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkBlendFactor and VkBlendOp.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkBlendFactor and VkBlendOp.
 	 */
 	enum class FramebufferBlendMode : uint8_t
     {
@@ -340,7 +340,7 @@ namespace SceneryEditorX
 	 * at the start of a render pass, such as whether to clear them or load
 	 * existing data.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's VkAttachmentLoadOp.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkAttachmentLoadOp.
 	 */
 	enum class AttachmentLoadOp : uint8_t
     {
@@ -356,7 +356,7 @@ namespace SceneryEditorX
      * This enum specifies the various primitive topologies
      * that can be used in rendering pipelines.
      *
-     * @note The values in this enum are designed to be compatible with Vulkan's VkPrimitiveTopology.
+     * @note - The values in this enum are designed to be compatible with Vulkan's VkPrimitiveTopology.
      */
     enum class PrimitiveTopology : uint8_t
     {
@@ -376,7 +376,7 @@ namespace SceneryEditorX
      * This enum specifies the various depth comparison operations
      * that can be used in depth testing during rendering.
      *
-     * @note The values in this enum are designed to be compatible with Vulkan's VkCompareOp.
+     * @note - The values in this enum are designed to be compatible with Vulkan's VkCompareOp.
      */
     enum class DepthCompareOperator : uint8_t
     {
@@ -398,7 +398,7 @@ namespace SceneryEditorX
 	 * This enum specifies how the vertex buffer is intended to be used,
 	 * which can affect performance optimizations and memory management.
 	 *
-	 * @note The values are designed to be compatible with Vulkan buffer usage flags.
+	 * @note - The values are designed to be compatible with Vulkan buffer usage flags.
 	 */
     enum class VertexBufferType : uint8_t
     {
@@ -417,7 +417,7 @@ namespace SceneryEditorX
 	 * Each format specifies the components included in the vertex data,
 	 * allowing for flexibility in rendering different types of geometry.
 	 *
-	 * @note The values are designed to be compatible with Vulkan vertex input attribute descriptions.
+	 * @note - The values are designed to be compatible with Vulkan vertex input attribute descriptions.
 	 */
     enum class VertexFormat : uint8_t
     {
@@ -442,7 +442,7 @@ namespace SceneryEditorX
 	 * This enum defines the various data types that can be used in shader programs,
 	 * such as floats, vectors, matrices, integers, and booleans.
 	 *
-	 * @note The values in this enum are designed to be compatible with Vulkan's shader data types.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's shader data types.
 	 */
     enum class ShaderDataType : uint8_t
     {

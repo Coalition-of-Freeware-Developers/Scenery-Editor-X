@@ -29,7 +29,7 @@ namespace SceneryEditorX
 	 * This constructor initializes the image with the given specifications such as width, height, format, and usage.
 	 *
 	 * @param specification The specifications for the image, including format, usage, dimensions, and whether to create a sampler.
-	 * @note The width and height must be greater than zero, otherwise an assertion will fail.
+	 * @note - The width and height must be greater than zero, otherwise an assertion will fail.
 	 */
 	Image2D::Image2D(const ImageSpecification &specification) : m_Specification(specification)
     {
@@ -113,8 +113,8 @@ namespace SceneryEditorX
 		if (width > m_Specification.width / 2 || height > m_Specification.height / 2)
 			return 0;
 
-		int a = glm::log2(glm::min(m_Specification.width, m_Specification.height));
-		int b = glm::log2(glm::min(width, height));
+		int a = (int)std::log2((double)Math::Min(m_Specification.width, m_Specification.height));
+		int b = (int)std::log2((double)Math::Min(width, height));
 		return a - b;
 	}
 
@@ -319,7 +319,7 @@ namespace SceneryEditorX
 	{
         if (auto it = m_PerMipImageViews.find(mip); it != m_PerMipImageViews.end())
 			return it->second;
-		
+
 		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 		VkImageAspectFlags aspectMask = IsDepthFormat(m_Specification.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
         if (m_Specification.format == RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat())
@@ -406,7 +406,7 @@ namespace SceneryEditorX
 	{
 		return s_ImageReferences;
 	}
-	
+
 	void Image2D::SetData(Buffer buffer)
 	{
 		SEDX_CORE_VERIFY(m_Specification.transfer, "Image must be created with ImageSpecification::Transfer enabled!");

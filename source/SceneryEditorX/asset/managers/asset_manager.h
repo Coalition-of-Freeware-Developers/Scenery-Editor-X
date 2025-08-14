@@ -78,7 +78,7 @@ namespace SceneryEditorX
          * - The file referred to by asset metadata is missing
          * - The asset could not be loaded from file
          *
-         * @note This will attempt to load the asset if it is not already loaded.
+         * @note - This will attempt to load the asset if it is not already loaded.
          *
          * @param assetHandle The asset handle to check.
          * @returns True if the asset referred to by assetHandle is valid.
@@ -226,7 +226,7 @@ namespace SceneryEditorX
 		}
 
 		/**
-		 * @note The memory-only asset must be fully initialised before you AddMemoryOnlyAsset()
+		 * @note - The memory-only asset must be fully initialised before you AddMemoryOnlyAsset()
 		 * Assets are not themselves thread-safe, but can potentially be accessed from multiple threads.
 		 * Thread safety therefore depends on the assets being immutable once they've been added to the asset manager.
          #1#

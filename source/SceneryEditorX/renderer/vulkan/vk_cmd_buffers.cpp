@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -207,8 +207,8 @@ namespace SceneryEditorX
      * 
      * @return VkCommandBuffer The Vulkan command buffer handle for the specified frame
      * 
-     * @note This method is const, indicating it doesn't modify the internal state of the CommandBuffer object
-     * @note Command buffers should not be used across multiple frames without proper synchronization
+     * @note - This method is const, indicating it doesn't modify the internal state of the CommandBuffer object
+     * @note - Command buffers should not be used across multiple frames without proper synchronization
      * 
      * @see Begin, End, Submit
      */

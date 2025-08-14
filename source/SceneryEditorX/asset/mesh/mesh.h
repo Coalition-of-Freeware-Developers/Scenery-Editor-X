@@ -13,12 +13,13 @@
 #pragma once
 #include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/asset/asset_types.h>
+#include <SceneryEditorX/asset/animation/mesh_skeleton.h>
 #include <SceneryEditorX/renderer/buffers/index_buffer.h>
 #include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
+#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/utils/math/aabb.h>
 //#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
 //#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
-#include <SceneryEditorX/asset/animation/mesh_skeleton.h>
-#include <SceneryEditorX/utils/math/aabb.h>
 
 /// -------------------------------------------------------
 
@@ -149,7 +150,7 @@ namespace SceneryEditorX
 
 		Mat4 Transform{ 1.0f }; /// World transform
 		Mat4 LocalTransform{ 1.0f };
-        Utils::AABB BoundingBox;
+        AABB BoundingBox;
 
 		std::string NodeName, MeshName;
 		bool IsRigged = false;
@@ -249,7 +250,7 @@ namespace SceneryEditorX
 		/// Sometimes the nodes between the scene root and the skeleton root can have some transforms (e.g. rotations from various axis orientation conventions)
 		/// Usually this doesn't matter (because the skin bound to the skeleton is already transformed by these nodes)
 		/// However, if we just want to render the skeleton without any skin, then we need to know what this is)
-		const glm::mat4& GetSkeletonTransform() const { return m_SkeletonTransform; }
+		const Mat4& GetSkeletonTransform() const { return m_SkeletonTransform; }
 
 		bool IsCompatibleSkeleton(const std::string_view animationName, const Skeleton& skeleton) const;
 
@@ -271,7 +272,7 @@ namespace SceneryEditorX
 		static AssetType GetStaticType() { return AssetType::MeshSource; }
 		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 
-		const Utils::AABB& GetBoundingBox() const { return m_BoundingBox; }
+		const AABB& GetBoundingBox() const { return m_BoundingBox; }
 
 		const MeshNode& GetRootNode() const { return m_Nodes[0]; }
 		const std::vector<MeshNode>& GetNodes() const { return m_Nodes; }
@@ -289,7 +290,7 @@ namespace SceneryEditorX
 		std::vector<BoneInfluence> m_BoneInfluences;
 		std::vector<BoneInfo> m_BoneInfo;
 		Scope<Skeleton> m_Skeleton;
-		glm::mat4 m_SkeletonTransform;
+		Mat4 m_SkeletonTransform{ 1.0f };
 		std::vector<std::string> m_AnimationNames;
 		mutable std::unordered_map<size_t, Scope<Animation>> m_Animations;
 
@@ -297,7 +298,7 @@ namespace SceneryEditorX
 
 		std::unordered_map<uint32_t, std::vector<Triangle>> m_TriangleCache;
 
-        Utils::AABB m_BoundingBox;
+        AABB m_BoundingBox;
 
 		std::string m_FilePath;
 

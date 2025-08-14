@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * framebuffer.h
@@ -74,10 +74,10 @@ namespace SceneryEditorX
 		///< Will it be used for transfer ops?
 		bool transfer = false;
 
-		/// Note: these are used to attach multi-layered color/depth images 
+		/// Note: these are used to attach multi-layered color/depth images
 		Ref<Image2D> existingImage;
 		std::vector<uint32_t> existingImageLayers;
-		
+
 		///< Specify existing images to attach instead of creating new images. attachment index -> image
 		std::map<uint32_t, Ref<Image2D>> existingImages;
 
@@ -94,7 +94,7 @@ namespace SceneryEditorX
 	public:
         Framebuffer(const FramebufferSpecification &specification);
         virtual ~Framebuffer();
-	
+
 	    void Bind();
 	    void Unbind();
 
@@ -107,7 +107,7 @@ namespace SceneryEditorX
 		virtual ResourceID GetRendererID() const { return m_ResourceID; }
 		virtual ResourceID GetColorAttachmentRendererID() const { return 0; }
 		virtual ResourceID GetDepthAttachmentRendererID() const { return 0; }
-				
+
 		virtual Ref<Image2D> GetImage(uint32_t attachmentIndex = 0) const  { SEDX_CORE_ASSERT(attachmentIndex < m_AttachmentImages.size()); return m_AttachmentImages[attachmentIndex]; }
 		virtual Ref<Image2D> GetDepthImage() const { return m_DepthAttachmentImage; }
 		virtual size_t GetColorAttachmentCount() const { return m_Specification.swapChainTarget ? 1 : m_AttachmentImages.size(); }

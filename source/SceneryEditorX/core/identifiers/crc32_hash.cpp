@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -30,7 +30,7 @@
  *
  * @return std::array<uint32_t, 256> Generated CRC32 lookup table
  *
- * @note Uses the IEEE 802.3 polynomial in reflected form for standard CRC32 compatibility
+ * @note - Uses the IEEE 802.3 polynomial in reflected form for standard CRC32 compatibility
  *
  * Algorithm steps for each byte value:
  * 1. Initialize CRC with the byte value
@@ -98,8 +98,8 @@ namespace SceneryEditorX
      * @param str Null-terminated C-style string to hash
      * @return uint32_t 32-bit CRC32 hash value
      *
-     * @note Uses IEEE 802.3 CRC32 polynomial (0xEDB88320) in reflected form
-     * @note Final result is bitwise inverted as per CRC32 standard
+     * @note - Uses IEEE 802.3 CRC32 polynomial (0xEDB88320) in reflected form
+     * @note - Final result is bitwise inverted as per CRC32 standard
      *
      * @warning Input string must be null-terminated to avoid undefined behavior
      *
@@ -135,8 +135,8 @@ namespace SceneryEditorX
      * @param string Standard string object to hash
      * @return uint32_t 32-bit CRC32 hash value
      *
-     * @note This function internally calls CRC32(string.c_str())
-     * @note Inherits all properties and warnings from the C-string version
+     * @note - This function internally calls CRC32(string.c_str())
+     * @note - Inherits all properties and warnings from the C-string version
      *
      * @example
      * @code

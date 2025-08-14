@@ -255,7 +255,7 @@ namespace SceneryEditorX
     }
     */
 
-    void Texture2D::Resize(const glm::uvec2 &size)
+    void Texture2D::Resize(const UVec2 &size)
     {
         Resize(size.x, size.y);
     }

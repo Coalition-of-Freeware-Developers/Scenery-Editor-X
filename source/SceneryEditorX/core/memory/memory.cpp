@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -283,7 +283,7 @@ namespace SceneryEditorX
  * 
  * @param size The number of bytes to allocate
  * @return Pointer to the allocated memory
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
@@ -297,7 +297,7 @@ void* __CRTDECL operator new(size_t size) { return Allocator::Allocate(size); }
  * 
  * @param size The number of bytes to allocate for the array
  * @return Pointer to the allocated memory block
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
@@ -313,7 +313,7 @@ void* __CRTDECL operator new[](size_t size) {  return Allocator::Allocate(size);
  * @param size The number of bytes to allocate
  * @param desc Category descriptor string for this allocation
  * @return Pointer to the allocated memory block
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
@@ -329,7 +329,7 @@ void* __CRTDECL operator new(size_t size, const char *desc) { return Allocator::
  * @param size The number of bytes to allocate for the array
  * @param desc Category descriptor string for this allocation
  * @return Pointer to the allocated memory block
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
@@ -346,7 +346,7 @@ void* __CRTDECL operator new[](size_t size, const char *desc) { return Allocator
  * @param file Source file path where the allocation is requested
  * @param line Line number in the source file where the allocation is requested
  * @return Pointer to the allocated memory block
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
@@ -363,7 +363,7 @@ void* __CRTDECL operator new(size_t size, const char *file, int line) { return A
  * @param file Source file path where the allocation is requested
  * @param line Line number in the source file where the allocation is requested
  * @return Pointer to the allocated memory block
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 _NODISCARD _Ret_notnull_ _Post_writable_byte_size_(size)
 _VCRT_ALLOCATOR
@@ -376,7 +376,7 @@ void* __CRTDECL operator new[](size_t size, const char *file, int line) { return
  * It allows the memory system to update statistics and remove allocation records from tracking.
  * 
  * @param memory Pointer to the memory block to be deallocated
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 void __CRTDECL operator delete(void *memory) { return Allocator::Free(memory); }
 
@@ -388,7 +388,7 @@ void __CRTDECL operator delete(void *memory) { return Allocator::Free(memory); }
  * 
  * @param memory Pointer to the memory block to be deallocated
  * @param desc Category descriptor string (unused for deallocation)
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 void __CRTDECL operator delete(void *memory, const char *desc) { return Allocator::Free(memory); }
 
@@ -401,7 +401,7 @@ void __CRTDECL operator delete(void *memory, const char *desc) { return Allocato
  * @param memory Pointer to the memory block to be deallocated
  * @param file Source file path (unused for deallocation)
  * @param line Line number (unused for deallocation)
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 void __CRTDECL operator delete(void *memory, const char *file, int line) { return Allocator::Free(memory); }
 
@@ -412,7 +412,7 @@ void __CRTDECL operator delete(void *memory, const char *file, int line) { retur
  * It allows the memory system to update statistics and remove array allocation records from tracking.
  * 
  * @param memory Pointer to the memory block to be deallocated
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 void __CRTDECL operator delete[](void *memory) { return Allocator::Free(memory); }
 
@@ -424,7 +424,7 @@ void __CRTDECL operator delete[](void *memory) { return Allocator::Free(memory);
  * 
  * @param memory Pointer to the memory block to be deallocated
  * @param desc Category descriptor string (unused for deallocation)
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 void __CRTDECL operator delete[](void *memory, const char *desc) { return Allocator::Free(memory); }
 
@@ -437,7 +437,7 @@ void __CRTDECL operator delete[](void *memory, const char *desc) { return Alloca
  * @param memory Pointer to the memory block to be deallocated
  * @param file Source file path (unused for deallocation)
  * @param line Line number (unused for deallocation)
- * @note This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
+ * @note - This override is only active when SEDX_TRACK_MEMORY and SEDX_PLATFORM_WINDOWS are defined
  */
 void __CRTDECL operator delete[](void *memory, const char *file, int line) { return Allocator::Free(memory); }
 

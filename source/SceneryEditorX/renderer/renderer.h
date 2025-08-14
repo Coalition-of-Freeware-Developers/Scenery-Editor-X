@@ -136,7 +136,7 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //GLOBAL void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
 		//GLOBAL void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
-		//GLOBAL void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const glm::uvec3& workGroups, Buffer constants = Buffer());
+		//GLOBAL void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
 		GLOBAL void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
         GLOBAL void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * render_data.h
@@ -12,9 +12,12 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
-#include <glm/gtc/integer.hpp>
+#include <cstdint>
+#include <SceneryEditorX/utils/vulkan/vk_includes.h>
+#include <SceneryEditorX/utils/math/math.h>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <vulkan/vulkan_core.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
+// unified include already provides Vulkan declarations
 
 /// -------------------------------------------------------
 
@@ -172,7 +175,7 @@ namespace SceneryEditorX
 	/**
 	* @struct Extensions
 	* @brief Manages Vulkan extension requirements and availability
-	* 
+	*
 	* This structure contains information about required and available Vulkan extensions.
 	* It tracks which extensions are active, which ones are required for the application,
 	* and maintains lists of extensions available on the system.
@@ -219,7 +222,7 @@ namespace SceneryEditorX
 	/**
 	 * @struct Layers
 	 * @brief Manages Vulkan validation layers for debugging and validation purposes
-	 * 
+	 *
 	 * This structure contains information about available and active Vulkan validation layers.
 	 * Validation layers provide debug information, error checking, and validation during
 	 * development to help catch API usage errors and performance issues.
@@ -256,7 +259,7 @@ namespace SceneryEditorX
     /**
 	 * @enum Queue
 	 * @brief Enumeration of Vulkan queue family types used in the rendering system
-	 * 
+	 *
 	 * Vulkan uses different queue families to execute different types of operations.
 	 * This enum provides a type-safe way to identify and reference these queue families
 	 * throughout the rendering system.
@@ -295,13 +298,13 @@ namespace SceneryEditorX
     /**
 	 * @struct InternalQueue
 	 * @brief Represents a Vulkan queue and its associated command resources.
-	 * 
+	 *
 	 * InternalQueue encapsulates a Vulkan queue along with its family index and a collection
 	 * of associated command resources. It provides the foundation for managing Vulkan command
 	 * execution across different queue types (graphics, compute, transfer, etc.).
-	 * 
+	 *
 	 * Each queue can have multiple associated command resources allowing for parallel command
-	 * buffer recording and submission, which is particularly useful when implementing 
+	 * buffer recording and submission, which is particularly useful when implementing
 	 * multithreaded rendering operations.
 	 */
     struct InternalQueue
@@ -314,7 +317,7 @@ namespace SceneryEditorX
 
         /**
 	     * @brief Collection of command resources associated with this queue.
-	     * 
+	     *
 	     * Each CommandResources instance can contain command pools, buffers, and synchronization
 	     * primitives required for command execution on this queue. Multiple command resources
 	     * enable parallel command recording from different threads.
@@ -327,10 +330,10 @@ namespace SceneryEditorX
 	/**
 	 * @struct Viewport
 	 * @brief Represents a viewport for rendering in the scene editor.
-	 * 
-	 * The Viewport structure encapsulates all data related to a rendering viewport, including 
+	 *
+	 * The Viewport structure encapsulates all data related to a rendering viewport, including
 	 * its dimensions, position, aspect ratio, and associated Vulkan resources. This structure
-	 * is used to configure and manage separate viewports for scene editing, allowing multiple 
+	 * is used to configure and manage separate viewports for scene editing, allowing multiple
 	 * views into the same scene with different perspectives or visualization modes.
 	 */
 
@@ -413,7 +416,7 @@ namespace SceneryEditorX
     /**
      * @struct LightingData
      * @brief Stores lighting configuration data for the renderer.
-     * 
+     *
      * The LightingData structure maintains settings related to scene lighting
      * and shadow rendering. It controls how many light sources are active in the scene
      * and the quality settings for shadow maps.
@@ -435,12 +438,12 @@ namespace SceneryEditorX
     /**
      * @struct RenderData
 	 * @brief Core rendering configuration and state information for the renderer.
-	 * 
+	 *
 	 * The RenderData structure serves as a central repository for renderer state, configuration,
 	 * and capabilities. It maintains information about the rendering surface dimensions,
 	 * swap chain configuration, frame timing, hardware capabilities, and various rendering
 	 * settings used throughout the rendering pipeline.
-	 * 
+	 *
 	 * This structure is shared across different components of the renderer to ensure
 	 * consistent access to rendering parameters and state.
 	 */
@@ -589,7 +592,7 @@ namespace SceneryEditorX
 
         GLOBAL uint32_t CalculateMipCount(uint32_t width, uint32_t height)
         {
-            return (uint32_t)glm::floor(glm::log2(glm::min(width, height))) + 1;
+            return (uint32_t)std::floor(std::log2((double)Math::Min(width, height))) + 1;
         }
 
     };
@@ -634,21 +637,21 @@ namespace SceneryEditorX
      * @brief ImageClearValue is a union that holds clear values for images in Vulkan.
      * @union ImageClearValue
      *
-     * This union can store either floating-point values (Vec4) or integer values (glm::ivec4, glm::uvec4)
+     * This union can store either floating-point values (Vec4) or signed/unsigned integer values (iVec4, UVec4)
      * for clearing image data. It is used to specify the clear color or value when initializing or clearing images.
      *
      * @code
      * ImageClearValue clearValue;
-     * clearValue.FloatValues = Vec4{1.0f, 0.0f, 0.0f, 1.0f};  // Red color
-     * clearValue.IntValues = glm::ivec4{255, 0, 0, 255};    // Integer red
-	 * @endcode
-     *
+     * clearValue.FloatValues = Vec4{1.0f, 0.0f, 0.0f, 1.0f}; // Red color (float)
+     * clearValue.IntValues   = iVec4{255, 0, 0, 255};       // Integer red (signed)
+     * clearValue.UIntValues  = UVec4{255u, 0u, 0u, 255u};   // Integer red (unsigned)
+     * @endcode
      */
     union ImageClearValue
     {
         Vec4 FloatValues;
-        glm::ivec4 IntValues;
-        glm::uvec4 UIntValues;
+        iVec4 IntValues;
+        UVec4 UIntValues;
     };
 
 	/// ClearColorValue is more compatible with C-style or raw data copying, practically identical to ImageClearValue

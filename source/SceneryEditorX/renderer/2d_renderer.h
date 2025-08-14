@@ -98,7 +98,7 @@ namespace SceneryEditorX
 
 		void DrawLine(const Vec3& p0, const Vec3& p1, const Vec4& color = Vec4(1.0f), bool onTop = false);
 		void DrawTransform(const Mat4& transform, float scale = 1.0f, bool onTop = true);
-		void DrawAABB(const Utils::AABB& aabb, const Mat4& transform, const Vec4& color = Vec4(1.0f), bool onTop = false);
+		void DrawAABB(const AABB& aabb, const Mat4& transform, const Vec4& color = Vec4(1.0f), bool onTop = false);
 		void DrawString(const std::string& string, const Vec3& position, float maxWidth, const Vec4& color = Vec4(1.0f));
 		void DrawString(const std::string& string, const Ref<Font>& font, const Vec3& position, float maxWidth, const Vec4& color = Vec4(1.0f));
 		void DrawString(const std::string& string, const Ref<Font>& font, const Mat4& transform, float maxWidth, const Vec4& color = Vec4(1.0f), float lineHeightOffset = 0.0f, float kerningOffset = 0.0f);

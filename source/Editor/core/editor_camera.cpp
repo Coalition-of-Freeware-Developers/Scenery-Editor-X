@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,7 +10,24 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-#include <Editor/core/editor_camera.h>
+#include "editor_camera.h"
+#if __has_include(<SceneryEditorX/utils/math/math.h>)
+#include <SceneryEditorX/utils/math/math.h>
+#else
+#include "../../SceneryEditorX/utils/math/math.h"
+#endif
+#if __has_include(<SceneryEditorX/core/input/input.h>)
+#include <SceneryEditorX/core/input/input.h>
+#else
+#include "../../SceneryEditorX/core/input/input.h"
+#endif
+#if __has_include(<SceneryEditorX/ui/ui_manager.h>)
+#include <SceneryEditorX/ui/ui_manager.h>
+#else
+#include "../../SceneryEditorX/ui/ui_manager.h"
+#endif
+#include <algorithm>
+#include <cmath>
 #include <SceneryEditorX/core/input/input.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 
@@ -19,34 +36,36 @@
 namespace SceneryEditorX
 {
 
-	EditorCamera::EditorCamera(const float degFov, const float width, const float height, const float nearP, const float farP)
-		: Camera(glm::perspectiveFov(glm::radians(degFov), width, height, farP, nearP), glm::perspectiveFov(glm::radians(degFov), width, height, nearP, farP)), m_FocalPoint(0.0f), m_VerticalFOV(glm::radians(degFov)), m_NearClip(nearP), m_FarClip(farP)
+    EditorCamera::EditorCamera(const float degFov, const float width, const float height, const float nearP, const float farP)
+        : Camera(PerspectiveFov(ToRadians(degFov), width, height, farP, nearP),
+                 PerspectiveFov(ToRadians(degFov), width, height, nearP, farP)),
+          m_FocalPoint(0.0f), m_VerticalFOV(ToRadians(degFov)), m_NearClip(nearP), m_FarClip(farP)
 	{
 		Init();
 	}
 
 	void EditorCamera::Init()
 	{
-        constexpr glm::vec3 position = {-5, 5, 5};
-        m_Distance = glm::distance(position, m_FocalPoint);
+    Vec3 position = {-5.0f, 5.0f, 5.0f};
+    m_Distance = Distance(position, m_FocalPoint);
 
-        m_Yaw = 3.0f * glm::pi<float>() / 4.0f;
-        m_Pitch = glm::pi<float>() / 4.0f;
+    m_Yaw = 3.0f * PI / 4.0f;
+    m_Pitch = PI / 4.0f;
 
         m_Position = CalculatePosition();
-        const glm::quat orientation = GetOrientation();
-        m_Direction = glm::eulerAngles(orientation) * (180.0f / glm::pi<float>());
-    m_ViewMatrix = glm::translate(glm::mat4(1.0f), m_Position) * glm::toMat4(orientation);
-    m_ViewMatrix = m_ViewMatrix.GetInverse();
+        const Quat orientation = GetOrientation();
+        m_Direction = orientation.ToEulerDegrees();
+        m_ViewMatrix = Mat4::Translate(m_Position) * orientation.ToMatrix();
+        m_ViewMatrix = m_ViewMatrix.GetInverse();
 	}
 
-	LOCAL void DisableMouse()
+    static void DisableMouse()
     {
         Input::SetCursorMode(CursorMode::Locked);
         UI::SetInputEnabled(false);
     }
 
-    LOCAL void EnableMouse()
+    static void EnableMouse()
     {
         Input::SetCursorMode(CursorMode::Normal);
         UI::SetInputEnabled(true);
@@ -67,8 +86,8 @@ namespace SceneryEditorX
 
 	void EditorCamera::OnUpdate(DeltaTime dt)
 	{
-        const glm::vec2 &mouse{Input::GetMouseX(), Input::GetMouseY()};
-        const glm::vec2 delta = (mouse - m_InitialMousePosition) * 0.002f;
+        const Vec2 mouse{Input::GetMouseX(), Input::GetMouseY()};
+        const Vec2 delta = (mouse - m_InitialMousePosition) * 0.002f;
 
         if (!m_IsActive)
         {
@@ -101,15 +120,16 @@ namespace SceneryEditorX
                 m_PositionDelta += dt.GetMilliseconds() * speed * m_RightDirection;
 
             constexpr float maxRate{0.12f};
-            m_YawDelta += glm::clamp(yawSign * delta.x * RotationSpeed(), -maxRate, maxRate);
-            m_PitchDelta += glm::clamp(delta.y * RotationSpeed(), -maxRate, maxRate);
+            m_YawDelta += Math::Clamp(yawSign * delta.x * RotationSpeed(), -maxRate, maxRate);
+            m_PitchDelta += Math::Clamp(delta.y * RotationSpeed(), -maxRate, maxRate);
 
-            m_RightDirection = glm::cross(m_Direction, Vec3{0.f, yawSign, 0.f});
+            m_RightDirection = Cross(m_Direction, Vec3{0.f, yawSign, 0.f});
 
-            m_Direction = glm::rotate(glm::normalize(glm::cross(glm::angleAxis(-m_PitchDelta, m_RightDirection),
-					glm::angleAxis(-m_YawDelta, Vec3{0.f, yawSign, 0.f}))), m_Direction);
+            const Quat pitchQ = Quat::AngleAxisRadians(-m_PitchDelta, m_RightDirection);
+            const Quat yawQ = Quat::AngleAxisRadians(-m_YawDelta, Vec3{0.f, yawSign, 0.f});
+            m_Direction = Quat::Normalize(yawQ * pitchQ) * m_Direction;
 
-            const float distance = glm::distance(m_FocalPoint, m_Position);
+            const float distance = Distance(m_FocalPoint, m_Position);
             m_FocalPoint = m_Position + GetForwardDirection() * distance;
             m_Distance = distance;
         }
@@ -159,33 +179,34 @@ namespace SceneryEditorX
 
 	Vec3 EditorCamera::GetUpDirection() const
 	{
-        return glm::rotate(GetOrientation(), Vec3(0.0f, 1.0f, 0.0f));
+        // Rotate world up by current orientation
+        return GetOrientation() * Vec3(0.0f, 1.0f, 0.0f);
 	}
 
 	Vec3 EditorCamera::GetRightDirection() const
 	{
-        return glm::rotate(GetOrientation(),Vec3(1.f, 0.f, 0.f));
+        return GetOrientation() * Vec3(1.f, 0.f, 0.f);
 	}
 
 	Vec3 EditorCamera::GetForwardDirection() const
 	{
-        return glm::rotate(GetOrientation(), Vec3(0.0f, 0.0f, -1.0f));
+        return GetOrientation() * Vec3(0.0f, 0.0f, -1.0f);
 	}
 
-	glm::quat EditorCamera::GetOrientation() const
+    Quat EditorCamera::GetOrientation() const
 	{
-        return glm::quat(Vec3(-m_Pitch - m_PitchDelta, -m_Yaw - m_YawDelta, 0.0f));
+        return Quat::FromEulerDegrees(Vec3(-m_Pitch - m_PitchDelta, -m_Yaw - m_YawDelta, 0.0f));
 	}
 
 	float EditorCamera::GetCameraSpeed() const
 	{
         float speed = m_NormalSpeed;
         if (Input::IsKeyDown(KeyCode::LeftControl))
-            speed /= 2 - glm::log(m_NormalSpeed);
+            speed /= 2 - std::log(m_NormalSpeed);
         if (Input::IsKeyDown(KeyCode::LeftShift))
-            speed *= 2 - glm::log(m_NormalSpeed);
+            speed *= 2 - std::log(m_NormalSpeed);
 
-        return glm::clamp(speed, MIN_SPEED, MAX_SPEED);
+        return Math::Clamp(speed, MIN_SPEED, MAX_SPEED);
 	}
 
 	void EditorCamera::UpdateCameraView()
@@ -193,14 +214,14 @@ namespace SceneryEditorX
         const float yawSign = GetUpDirection().y < 0 ? -1.0f : 1.0f;
 
         /// Extra step to handle the problem when the camera direction is the same as the up vector
-        const float cosAngle = glm::dot(GetForwardDirection(), GetUpDirection());
+        const float cosAngle = Dot(GetForwardDirection(), GetUpDirection());
         if (cosAngle * yawSign > 0.99f)
             m_PitchDelta = 0.f;
 
         const Vec3 lookAt = m_Position + GetForwardDirection();
-        m_Direction = glm::normalize(lookAt - m_Position);
-        m_Distance = glm::distance(m_Position, m_FocalPoint);
-        m_ViewMatrix = glm::lookAt(m_Position, lookAt, Vec3{0.f, yawSign, 0.f});
+        m_Direction = Normalize(lookAt - m_Position);
+        m_Distance = Distance(m_Position, m_FocalPoint);
+        m_ViewMatrix = Mat4::LookAt(m_Position, lookAt, Vec3{0.f, yawSign, 0.f});
 
         ///Damping for smooth camera
         m_YawDelta *= 0.6f;
@@ -253,15 +274,16 @@ namespace SceneryEditorX
 
 	Vec3 EditorCamera::CalculatePosition() const
 	{
-	    return {};
+        // Orbit calculation: position = focalPoint - forward * distance
+        return m_FocalPoint - GetForwardDirection() * m_Distance;
 	}
 
 	std::pair<float, float> EditorCamera::PanSpeed() const
 	{
-        const float x = glm::min(float(m_ViewportRight - m_ViewportLeft) / 1000.0f, 2.4f); // max = 2.4f
+        const float x = Math::Min(float(m_ViewportRight - m_ViewportLeft) / 1000.0f, 2.4f); // max = 2.4f
         const float xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
 
-        const float y = glm::min(float(m_ViewportBottom - m_ViewportTop) / 1000.0f, 2.4f); // max = 2.4f
+        const float y = Math::Min(float(m_ViewportBottom - m_ViewportTop) / 1000.0f, 2.4f); // max = 2.4f
         const float yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
 
         return {xFactor, yFactor};
@@ -275,9 +297,9 @@ namespace SceneryEditorX
 	float EditorCamera::ZoomSpeed() const
 	{
         float distance = m_Distance * 0.2f;
-        distance = glm::max(distance, 0.0f);
+        distance = Math::Max(distance, 0.0f);
         float speed = distance * distance;
-        speed = glm::min(speed, 50.0f); // max speed = 50
+        speed = Math::Min(speed, 50.0f); // max speed = 50
         return speed;
 	}
 }

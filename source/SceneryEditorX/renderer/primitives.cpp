@@ -23,10 +23,10 @@ namespace SceneryEditorX
 	ObjectType Primitives::CreateBox(const Vec3 &size)
 	{
         SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating box primitive with size: ({}, {}, {})", size.x, size.y, size.z);
-        
+
         std::vector<MeshVertex> vertices;
 		vertices.resize(24); // 6 faces * 4 vertices per face
-        
+
         // Define the 8 corner positions of the box
         const Vec3 corners[8] = {
             { -size.x / 2.0f, -size.y / 2.0f,  size.z / 2.0f }, // 0: front-bottom-left
@@ -74,7 +74,7 @@ namespace SceneryEditorX
             {
                 const int vertexIndex = face * 4 + vertex;
                 const int cornerIndex = faces[face][vertex];
-                
+
                 vertices[vertexIndex].position = corners[cornerIndex];
                 vertices[vertexIndex].normal = normals[face];
                 vertices[vertexIndex].texCoord = texCoords[vertex];
@@ -90,7 +90,7 @@ namespace SceneryEditorX
         for (int face = 0; face < 6; ++face)
         {
             const uint32_t baseIndex = face * 4;
-            
+
             // First triangle (0, 1, 2)
             indices.push_back({.V1 = baseIndex + 0, .V2 = baseIndex + 1, .V3 = baseIndex + 2});
             // Second triangle (2, 3, 0)
@@ -98,7 +98,7 @@ namespace SceneryEditorX
         }
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Box primitive created successfully with {} vertices and {} indices", 
+        SEDX_CORE_INFO_TAG("PRIMITIVES", "Box primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
 	    return {};
 	}
@@ -108,7 +108,7 @@ namespace SceneryEditorX
 	ObjectType Primitives::CreateSphere(const float radius)
 	{
         SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating sphere primitive with radius: {}", radius);
-        
+
         std::vector<MeshVertex> vertices;
         std::vector<ModelAsset::Index> indices;
 
@@ -116,38 +116,38 @@ namespace SceneryEditorX
 		constexpr uint32_t longitudeBands = 30;
 
         // Generate vertices
-		for (uint32_t latitude = 0; latitude <= latitudeBands; latitude++)
-		{
-			const float theta = static_cast<float>(latitude) * std::numbers::pi_v<float> / static_cast<float>(latitudeBands);
-			const float sinTheta = glm::sin(theta);
-			const float cosTheta = glm::cos(theta);
+        for (uint32_t latitude = 0; latitude <= latitudeBands; latitude++)
+        {
+            const float theta = static_cast<float>(latitude) * SceneryEditorX::PI / static_cast<float>(latitudeBands);
+            const float sinTheta = std::sin(theta);
+            const float cosTheta = std::cos(theta);
 
-			for (uint32_t longitude = 0; longitude <= longitudeBands; longitude++)
-			{
-				const float phi = static_cast<float>(longitude) * 2.0f * std::numbers::pi_v<float> / static_cast<float>(longitudeBands);
-				const float sinPhi = glm::sin(phi);
-				const float cosPhi = glm::cos(phi);
+            for (uint32_t longitude = 0; longitude <= longitudeBands; longitude++)
+            {
+                const float phi = static_cast<float>(longitude) * 2.0f * SceneryEditorX::PI / static_cast<float>(longitudeBands);
+                const float sinPhi = std::sin(phi);
+                const float cosPhi = std::cos(phi);
 
 				MeshVertex vertex;
-                
+
                 // Calculate normal (points outward from center)
 				vertex.normal = Vec3(cosPhi * sinTheta, cosTheta, sinPhi * sinTheta);
-                
+
                 // Position is normal scaled by radius
 				vertex.position = radius * vertex.normal;
-                
+
                 // Texture coordinates
                 vertex.texCoord = Vec2(
                     static_cast<float>(longitude) / static_cast<float>(longitudeBands),
                     static_cast<float>(latitude) / static_cast<float>(latitudeBands)
                 );
-                
+
                 // Color and tangent
                 vertex.color = Vec3(1.0f, 1.0f, 1.0f);
-                
+
                 // Calculate tangent for sphere (derivative with respect to longitude)
                 vertex.tangent = Vec4(-sinPhi, 0.0f, cosPhi, 1.0f);
-                
+
 				vertices.push_back(vertex);
 			}
 		}
@@ -168,7 +168,7 @@ namespace SceneryEditorX
 		}
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Sphere primitive created successfully with {} vertices and {} indices", 
+        SEDX_CORE_INFO_TAG("PRIMITIVES", "Sphere primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
         return {};
 	}
@@ -178,14 +178,15 @@ namespace SceneryEditorX
 	ObjectType Primitives::CreateCylinder(float radius, float height)
 	{
         SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating cylinder primitive with radius: {}, height: {}", radius, height);
-        
+
 		std::vector<MeshVertex> vertices;
 		std::vector<ModelAsset::Index> indices;
 
+		/// TODO: Allow a user to modify the number of loop segments, height, and height segments.
         constexpr int segments = 30;
         const float halfHeight = height / 2.0f;
 
-        // Create center vertices for top and bottom caps
+        /// Create center vertices for top and bottom caps
 		MeshVertex topCenter = {
 		    .position = {0.0f, halfHeight, 0.0f},
 		    .color = {1.0f, 1.0f, 1.0f},
@@ -205,17 +206,17 @@ namespace SceneryEditorX
 		vertices.push_back(topCenter);    // Index 0
 		vertices.push_back(bottomCenter); // Index 1
 
-        // Create side vertices
-		for (int i = 0; i <= segments; ++i)
-		{
-			const float theta = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * std::numbers::pi_v<float>;
-			const float x = radius * cos(theta);
-			const float z = radius * sin(theta);
-            
-            const Vec3 normal = glm::normalize(Vec3(x, 0.0f, z));
+        /// Create side vertices
+        for (int i = 0; i <= segments; ++i)
+        {
+            const float theta = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * SceneryEditorX::PI;
+            const float x = radius * std::cos(theta);
+            const float z = radius * std::sin(theta);
+
+            const Vec3 normal = Normalize(Vec3(x, 0.0f, z));
             const float u = static_cast<float>(i) / static_cast<float>(segments);
 
-            // Top ring vertex
+            /// Top ring vertex
 			vertices.push_back({
 				.position = {x, halfHeight, z},
 				.color = {1.0f, 1.0f, 1.0f},
@@ -244,17 +245,17 @@ namespace SceneryEditorX
 
             // Top cap (center is index 0)
 			indices.push_back({.V1 = 0, .V2 = topIndex1, .V3 = topIndex2});
-            
+
             // Bottom cap (center is index 1)
 			indices.push_back({.V1 = 1, .V2 = bottomIndex2, .V3 = bottomIndex1});
-            
+
             // Side faces (2 triangles per segment)
 			indices.push_back({.V1 = topIndex1, .V2 = bottomIndex1, .V3 = bottomIndex2});
 			indices.push_back({.V1 = topIndex1, .V2 = bottomIndex2, .V3 = topIndex2});
 		}
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Cylinder primitive created successfully with {} vertices and {} indices", 
+        SEDX_CORE_INFO_TAG("PRIMITIVES", "Cylinder primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
 	    return {};
 	}
@@ -264,7 +265,7 @@ namespace SceneryEditorX
 	ObjectType Primitives::CreatePlane(const Vec2 &size)
 	{
         SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating plane primitive with size: ({}, {})", size.x, size.y);
-        
+
         std::vector<MeshVertex> vertices;
         std::vector<ModelAsset::Index> indices;
 
@@ -273,7 +274,7 @@ namespace SceneryEditorX
 
         // Create the 4 vertices of the plane (lying in XY plane, facing +Z)
         vertices.reserve(4);
-        
+
         // Bottom-left
         vertices.push_back({
             .position = {-halfWidth, -halfHeight, 0.0f},
@@ -282,7 +283,7 @@ namespace SceneryEditorX
             .tangent = {1.0f, 0.0f, 0.0f, 1.0f},
             .texCoord = {0.0f, 0.0f}
         });
-        
+
         // Bottom-right
         vertices.push_back({
             .position = {halfWidth, -halfHeight, 0.0f},
@@ -291,7 +292,7 @@ namespace SceneryEditorX
             .tangent = {1.0f, 0.0f, 0.0f, 1.0f},
             .texCoord = {1.0f, 0.0f}
         });
-        
+
         // Top-right
         vertices.push_back({
             .position = {halfWidth, halfHeight, 0.0f},
@@ -300,7 +301,7 @@ namespace SceneryEditorX
             .tangent = {1.0f, 0.0f, 0.0f, 1.0f},
             .texCoord = {1.0f, 1.0f}
         });
-        
+
         // Top-left
         vertices.push_back({
             .position = {-halfWidth, halfHeight, 0.0f},
@@ -312,15 +313,15 @@ namespace SceneryEditorX
 
         // Create indices for 2 triangles
         indices.reserve(2);
-        
+
         // First triangle (bottom-left, bottom-right, top-right)
         indices.push_back({.V1 = 0, .V2 = 1, .V3 = 2});
-        
+
         // Second triangle (top-right, top-left, bottom-left)
         indices.push_back({.V1 = 2, .V2 = 3, .V3 = 0});
 
         //TODO: Create and return actual ObjectType/ModelAsset from vertices and indices
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Plane primitive created successfully with {} vertices and {} indices", 
+        SEDX_CORE_INFO_TAG("PRIMITIVES", "Plane primitive created successfully with {} vertices and {} indices",
                            vertices.size(), indices.size());
 	    return {};
 	}
@@ -330,7 +331,7 @@ namespace SceneryEditorX
     /*
     ObjectType Primitives::CreatePrimitiveType(PrimitiveType type, const Vec3& size)
     {
-        SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating primitive of type: {} with size: ({}, {}, {})", 
+        SEDX_CORE_INFO_TAG("PRIMITIVES", "Creating primitive of type: {} with size: ({}, {}, {})",
                           static_cast<int>(type), size.x, size.y, size.z);
 
         // Validate input parameters
@@ -343,7 +344,7 @@ namespace SceneryEditorX
         switch (type)
         {
             using enum PrimitiveType;
-            
+
             case Cube:		return CreateBox(size);
             case Sphere:	return CreateSphere(size.x); /// For sphere, only use the x component as radius
             case Cylinder:	return CreateCylinder(size.x, size.y); /// For cylinder, x = radius, y = height
@@ -368,7 +369,7 @@ namespace SceneryEditorX
         switch (type)
         {
             using enum PrimitiveType;
-            
+
             case Cube:		return size.x > 0.0f && size.y > 0.0f && size.z > 0.0f; /// All dimensions must be positive
             case Sphere:	return size.x > 0.0f; /// Radius (x component) must be positive
             case Cylinder:	return size.x > 0.0f && size.y > 0.0f; /// Radius (x component) and height (y component) must be positive
@@ -379,9 +380,9 @@ namespace SceneryEditorX
     }
 
     /// -------------------------------------------------------
-    
+
     /// UI Placeholder Methods - To be implemented when UI system is ready
-    
+
     /*
     bool Primitives::ShowPrimitiveCreationUI(bool& isOpen)
     {
@@ -392,13 +393,13 @@ namespace SceneryEditorX
         // - ImGuizmo for visual manipulation
         // - Preview rendering
         // - Create button
-        
+
         SEDX_CORE_WARN_TAG("PRIMITIVES", "ShowPrimitiveCreationUI not yet implemented");
         isOpen = false;
         return false;
     }
     */
-    
+
     bool Primitives::ShowTextInputInterface(PrimitiveType& primitiveType, Vec3& dimensions)
     {
         // TODO: Implement text-based input interface
@@ -407,7 +408,7 @@ namespace SceneryEditorX
         // - Text input fields for dimensions
         // - Validation feedback
         // - OK/Cancel buttons
-        
+
         SEDX_CORE_WARN_TAG("PRIMITIVES", "ShowTextInputInterface not yet implemented");
         return false;
     }

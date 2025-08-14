@@ -76,34 +76,8 @@ namespace SceneryEditorX
 	 *
 	 * @param currentImage Index of the current frame's uniform buffer to update
 	 */
-	/*
-	void UniformBuffer::Update(const uint32_t currentImage) const
-	{
-	    INTERNAL auto startTime = std::chrono::high_resolution_clock::now();
-	    const auto currentTime = std::chrono::high_resolution_clock::now();
-	    const float time = std::chrono::duration<float>(currentTime - startTime).count();
-
-        UBO uniformBuff = {};
-	    uniformBuff.model = glm::rotate(Mat4(1.0f), time * glm::radians(90.0f), Vec3(0.0f, 0.0f, 1.0f));
-    uniformBuff.view = Mat4::LookAt(Vec3(2.0f, 2.0f, 2.0f),
-									   Vec3(0.0f, 0.0f, 0.0f),
-									   Vec3(0.0f, 0.0f, 1.0f));
-	    uniformBuff.proj = glm::perspective(glm::radians(45.0f),
-	                         (float)RenderContext::Get()->GetSwapChain()->GetSwapExtent().width /
-	                             (float)gfxEngine->Get()->GetSwapChain()->GetSwapExtent().height, 0.1f, 10.0f);
-	    uniformBuff.proj[1][1] *= -1;
-
-        /// Check if currentImage is within valid range
-        if (currentImage < uniformBuffersAllocation.size())
-        {
-            void *data = MemoryAllocator::MapMemory<void>(uniformBuffersAllocation[currentImage]);
-            memcpy(data, &uniformBuff, sizeof(uniformBuff));
-            MemoryAllocator::UnmapMemory(uniformBuffersAllocation[currentImage]);
-        }
-        else
-            SEDX_CORE_ERROR("Attempting to update uniform buffer with invalid frame index");
-    }
-    */
+    // Legacy GLM-based Update implementation removed. Use renderer subsystem specific
+    // update paths and camera/projection helpers instead of direct per-frame manual code here.
 
 	/**
 	 * @brief Creates uniform buffers for each frame in flight

@@ -52,11 +52,11 @@ namespace SceneryEditorX
 	 * - Compatible with bitfield operations for type filtering and masking
 	 * - Supports efficient hash table lookups for type-based registries
 	 * 
-	 * @note The enum uses uint16_t as underlying type to balance range (65,536 possible types)
+	 * @note - The enum uses uint16_t as underlying type to balance range (65,536 possible types)
 	 *       with memory efficiency in Object instances
-	 * @note NOLINT comment suppresses performance warnings about enum size optimization
-	 * @note Values are intentionally sequential starting from 0 for switch statement optimization
-	 * @note None=0 provides a safe default/invalid state for uninitialized objects
+	 * @note - NOLINT comment suppresses performance warnings about enum size optimization
+	 * @note - Values are intentionally sequential starting from 0 for switch statement optimization
+	 * @note - None=0 provides a safe default/invalid state for uninitialized objects
 	 * 
 	 * @warning Adding new enum values requires updating ObjectTypeName() and ObjectTypeToString()
 	 *          functions to maintain consistency in string conversion operations
@@ -182,10 +182,10 @@ namespace SceneryEditorX
 	 *         Returns ObjectType::None if the input string does not match any known type name.
 	 *         This provides a safe fallback for invalid or unrecognized type strings.
 	 * 
-	 * @note String comparison is case-sensitive - "mesh" will not match "Mesh"
-	 * @note Uses std::string_view for efficient string handling without unnecessary copies
-	 * @note The function does not trim whitespace - " Mesh " will not match "Mesh"
-	 * @note ObjectType::None is returned both for explicit "None" input and as fallback for unknown strings
+	 * @note - String comparison is case-sensitive - "mesh" will not match "Mesh"
+	 * @note - Uses std::string_view for efficient string handling without unnecessary copies
+	 * @note - The function does not trim whitespace - " Mesh " will not match "Mesh"
+	 * @note - ObjectType::None is returned both for explicit "None" input and as fallback for unknown strings
 	 * 
 	 * @thread_safety Thread-safe. No shared state is accessed or modified.
 	 * 
@@ -316,11 +316,11 @@ namespace SceneryEditorX
      *          builds if an unknown/invalid ObjectType value is passed. In release builds,
      *          the function will return "None" as a safe fallback.
      * 
-     * @note The returned pointer points to a string literal with static storage duration,
+     * @note - The returned pointer points to a string literal with static storage duration,
      *       so the pointer remains valid for the entire program execution. No memory
      *       management is required by the caller.
      * 
-     * @note This function is marked inline for performance optimization in header-only
+     * @note - This function is marked inline for performance optimization in header-only
      *       usage scenarios, allowing the compiler to potentially eliminate function
      *       call overhead when used frequently.
      * 
@@ -424,9 +424,9 @@ namespace SceneryEditorX
 	 * - Uniform buffer updates when material properties change
 	 * - Descriptor set rebuilding when resource bindings change
 	 * 
-	 * @note All objects start with gpuDirty=true to ensure initial GPU upload
-	 * @note The assignment operator automatically sets gpuDirty=true to handle data changes
-	 * @note UUID assignment is intentionally excluded from copy operations to preserve identity
+	 * @note - All objects start with gpuDirty=true to ensure initial GPU upload
+	 * @note - The assignment operator automatically sets gpuDirty=true to handle data changes
+	 * @note - UUID assignment is intentionally excluded from copy operations to preserve identity
 	 * 
 	 * @code
 	 * // Creating and using objects
@@ -485,8 +485,8 @@ namespace SceneryEditorX
 	     * descriptive enough to help developers and users identify the object's
 	     * purpose or content.
 	     * 
-	     * @note Default value "Uninitialized" helps identify objects that haven't been properly configured
-	     * @note Names are not used for object lookup - use UUID for identification
+	     * @note - Default value "Uninitialized" helps identify objects that haven't been properly configured
+	     * @note - Names are not used for object lookup - use UUID for identification
 	     */
 	    std::string name = "Uninitialized";
 	    
@@ -508,8 +508,8 @@ namespace SceneryEditorX
          * excluded from assignment operations to preserve object identity.
          * 
          * @warning Never manually modify this UUID after object creation
-         * @note UUID() default constructor creates a null/invalid UUID
-         * @note Use UUID::Generate() to create valid unique identifiers
+         * @note - UUID() default constructor creates a null/invalid UUID
+         * @note - Use UUID::Generate() to create valid unique identifiers
          */
         UUID uuid = UUID();
         
@@ -530,8 +530,8 @@ namespace SceneryEditorX
 	     * change during the object's lifetime, as many systems cache type information
 	     * for performance optimization.
 	     * 
-	     * @note ObjectType::None indicates an unspecified or invalid object type
-	     * @note Derived classes should override this with their specific type
+	     * @note - ObjectType::None indicates an unspecified or invalid object type
+	     * @note - Derived classes should override this with their specific type
 	     */
 	    ObjectType type = ObjectType::None;
 
@@ -555,7 +555,7 @@ namespace SceneryEditorX
 	     * - Flag should be cleared after successful GPU synchronization
 	     * 
 	     * @todo The current design may need refinement for fine-grained GPU state tracking
-	     * @note This is a simple boolean flag - consider bitflags for specific GPU state types
+	     * @note - This is a simple boolean flag - consider bitflags for specific GPU state types
 	     * @warning Always set to true when modifying object data that affects GPU resources
 	     */
 	    bool gpuDirty = true;
@@ -582,8 +582,8 @@ namespace SceneryEditorX
          * @param rhs The source Object to copy data from
          * @return Reference to this object for method chaining
          * 
-         * @note UUID is intentionally not copied to preserve object identity
-         * @note GPU dirty flag is always set regardless of whether data actually changed
+         * @note - UUID is intentionally not copied to preserve object identity
+         * @note - GPU dirty flag is always set regardless of whether data actually changed
          * @warning This is a shallow copy - derived classes should override if deep copying is needed
          * 
          * @code
@@ -620,9 +620,9 @@ namespace SceneryEditorX
 	     * When the reference count reaches zero, this destructor ensures that
 	     * all derived class resources are properly released.
 	     * 
-	     * @note Override keyword indicates this overrides RefCounted::~RefCounted()
-	     * @note Derived classes should implement their own destructors for resource cleanup
-	     * @note The destructor is automatically called by the reference counting system
+	     * @note - Override keyword indicates this overrides RefCounted::~RefCounted()
+	     * @note - Derived classes should implement their own destructors for resource cleanup
+	     * @note - The destructor is automatically called by the reference counting system
 	     */
 	    virtual ~Object() override;
 	    
@@ -638,7 +638,7 @@ namespace SceneryEditorX
 	     * 
 	     * @param ser Reference to the serializer that handles the actual data writing
 	     * 
-	     * @note Currently commented out - serialization is handled by derived classes
+	     * @note - Currently commented out - serialization is handled by derived classes
 	     * @todo Consider implementing a base serialization interface for common Object data
 	     */
 	    //virtual void Serialize(SerializeWriter &ser) = 0;

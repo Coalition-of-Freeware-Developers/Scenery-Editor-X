@@ -151,7 +151,7 @@ namespace SceneryEditorX
 
 		operator Mat4() const
 		{
-			return Utils::Math::ComposeTransform(Translation, Rotation, { Scale, Scale, Scale });
+			return Math::ComposeTransform(Translation, Rotation, { Scale, Scale, Scale });
 		}
 	};
 

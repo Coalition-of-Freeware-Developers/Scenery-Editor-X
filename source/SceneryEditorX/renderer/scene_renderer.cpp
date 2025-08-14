@@ -16,12 +16,16 @@
 #include <SceneryEditorX/renderer/debug_renderer.h>
 #include <SceneryEditorX/renderer/scene_renderer.h>
 
+#include "primitives.h"
+
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
 	LOCAL std::vector<std::thread> s_ThreadPool;
+
+    /// -------------------------------------------------------
 
 	SceneRenderer::SceneRenderer(const Ref<Scene> &scene, const SceneRendererSpecification &specification) : m_Scene(scene), m_Specification(specification)
 	{
@@ -32,6 +36,8 @@ namespace SceneryEditorX
 	{
 		Shutdown();
 	}
+
+    /// -------------------------------------------------------
 
 	void SceneRenderer::Init()
 	{
@@ -222,7 +228,7 @@ namespace SceneryEditorX
 			m_BloomDirtTexture = Renderer::GetBlackTexture();
 
 			/**
-			 * TODO m_BloomComputePrefilterMaterial = Material::Create(shader);
+			 * TODO: m_BloomComputePrefilterMaterial = Material::Create(shader);
              */
 		}
 
@@ -595,7 +601,7 @@ namespace SceneryEditorX
 				spec.Pipeline = m_GeometryPipeline;
 
 				m_GeometryPass = CreateRef<RenderPass>(spec);
-				    geometryRenderPass->GetRequiredInputs(); // Returns list of sets+bindings of required resources from descriptor layout
+				// m_GeometryPass->GetRequiredInputs(); // Returns list of sets+bindings of required resources from descriptor layout (currently unused)
 
 				m_GeometryPass->AddInput("Camera", m_UBSCamera);
 
@@ -705,7 +711,7 @@ namespace SceneryEditorX
 			Renderer::RenderStaticMeshWithMaterial(m_CommandBuffer, ...);
 			Renderer::EndRenderPass(m_CommandBuffer);
 
-			Renderer::BeginRenderPass(m_CommandBuffer, geometryRenderPass);
+			Renderer::BeginRenderPass(m_CommandBuffer, m_GeometryPass);
 			Renderer::RenderStaticMesh(m_CommandBuffer, ...);
 			Renderer::EndRenderPass(m_CommandBuffer);
 #endif
@@ -1108,13 +1114,13 @@ namespace SceneryEditorX
 			///< Outline compositing
 			if (m_Specification.JumpFloodPass)
 			{
-				FramebufferSpecification fbSpec;
-				fbSpec.width = m_Specification.ViewportWidth;
-				fbSpec.height = m_Specification.ViewportHeight;
-				fbSpec.attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT};
-				fbSpec.existingImages[0] = m_CompositePass->GetOutput(0);
-				fbSpec.clearColorOnLoad = false;
-				pipelineSpecification.dstFramebuffer = CreateRef<Framebuffer>(fbSpec); // TODO: move this and skybox FB to be central, can use same
+				FramebufferSpecification fbJumpSpec;
+                fbJumpSpec.width = m_Specification.ViewportWidth;
+				fbJumpSpec.height = m_Specification.ViewportHeight;
+				fbJumpSpec.attachments = { VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT};
+				fbJumpSpec.existingImages[0] = m_CompositePass->GetOutput(0);
+				fbJumpSpec.clearColorOnLoad = false;
+				pipelineSpecification.dstFramebuffer = CreateRef<Framebuffer>(fbJumpSpec); // TODO: move this and skybox FB to be central, can use same
 				pipelineSpecification.debugName = "JumpFlood-Composite";
 				pipelineSpecification.shader = Renderer::GetShaderLibrary()->Get("JumpFlood_Composite");
 				pipelineSpecification.depthTest = false;
@@ -1160,7 +1166,7 @@ namespace SceneryEditorX
 		m_SelectedBoneMaterial->Set("u_MaterialUniforms.Color", m_Options.SelectedBoneColor);
 		m_BoneMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "Bone");
 		m_BoneMaterial->Set("u_MaterialUniforms.Color", m_Options.BoneColor);
-		m_BoneMesh = AssetManager::GetAsset<StaticMesh>(MeshFactory::CreateSphere(0.1f)); // must hold a Ref<Mesh> here, not an asset handle (so that if project is reloaded (and asset manager destroyed) we still hold a ref to the bone mesh, so bone mesh is not destroyed)
+		m_BoneMesh = AssetManager::GetAsset<StaticMesh>(Primitives::CreateSphere(0.1f)); // must hold a Ref<Mesh> here, not an asset handle (so that if project is reloaded (and asset manager destroyed) we still hold a ref to the bone mesh, so bone mesh is not destroyed)
 		m_BoneMeshSource = AssetManager::GetAsset<MeshSource>(m_BoneMesh->GetMeshSource());
 		m_SimpleColliderMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "SimpleCollider");
 		m_SimpleColliderMaterial->Set("u_MaterialUniforms.Color", m_Options.SimplePhysicsCollidersColor);
@@ -1439,7 +1445,7 @@ namespace SceneryEditorX
 	{
 		CBGTAOData& gtaoData = GTAODataCB;
 		gtaoData.NDCToViewMul_x_PixelSize = { CameraDataUB.NDCToViewMul * (gtaoData.HalfRes ? m_ScreenDataUB.InvHalfResolution : m_ScreenDataUB.InvFullResolution) };
-		gtaoData.HZBUVFactor = m_SSROptions.HZBUvFactor;
+		gtaoData.BUVFactor = m_SSROptions.BUvFactor;
 		gtaoData.ShadowTolerance = m_Options.AOShadowTolerance;
 	}
 
@@ -1476,9 +1482,9 @@ namespace SceneryEditorX
 		{
 			m_NeedsResize = false;
 
-			const glm::uvec2 viewportSize = { m_ViewportWidth, m_ViewportHeight };
+			const UVec2 viewportSize = { m_ViewportWidth, m_ViewportHeight };
 
-			m_ScreenSpaceProjectionMatrix = glm::ortho(0.0f, (float)m_ViewportWidth, 0.0f, (float)m_ViewportHeight);
+			m_ScreenSpaceProjectionMatrix = ::SceneryEditorX::Ortho(0.0f, (float)m_ViewportWidth, 0.0f, (float)m_ViewportHeight, -1.0f, 1.0f);
 
 			m_ScreenDataUB.FullResolution = { m_ViewportWidth, m_ViewportHeight };
 			m_ScreenDataUB.InvFullResolution = { m_InvViewportWidth,  m_InvViewportHeight };
@@ -1519,14 +1525,15 @@ namespace SceneryEditorX
 			///< HZB
 			{
                 ///< HZB size must be power of 2's
-				const glm::uvec2 numMips = glm::ceil(glm::log2(Vec2(viewportSize)));
-				m_SSROptions.NumDepthMips = glm::max(numMips.x, numMips.y);
+				const Vec2 log2Size = Vec2(std::log2((float)viewportSize.x), std::log2((float)viewportSize.y));
+				const UVec2 numMips = UVec2((uint32_t)std::ceil(log2Size.x), (uint32_t)std::ceil(log2Size.y));
+				m_SSROptions.NumDepthMips = Utils::Math::Max(numMips.x, numMips.y);
 
-				const glm::uvec2 hzbSize = BIT(numMips);
+				const UVec2 hzbSize = BIT(numMips);
 				m_HierarchicalDepthTexture.Texture->Resize(hzbSize.x, hzbSize.y);
 
 				const Vec2 hzbUVFactor = { (Vec2)viewportSize / (Vec2)hzbSize };
-				m_SSROptions.HZBUvFactor = hzbUVFactor;
+				m_SSROptions.BUvFactor = hzbUVFactor;
 
 				///< Image Views (per-mip)
 				ImageViewData imageViewSpec;
@@ -1563,7 +1570,7 @@ namespace SceneryEditorX
 			///< Light culling
 			{
 				constexpr uint32_t TILE_SIZE = 16u;
-				glm::uvec2 size = viewportSize;
+				UVec2 size = viewportSize;
 				size += TILE_SIZE - viewportSize % TILE_SIZE;
 				m_LightCullingWorkGroups = { size / TILE_SIZE, 1 };
 				RendererDataUB.TilesCountX = m_LightCullingWorkGroups.x;
@@ -1574,8 +1581,8 @@ namespace SceneryEditorX
 
 			///< GTAO
 			{
-				glm::uvec2 gtaoSize = GTAODataCB.HalfRes ? (viewportSize + 1u) / 2u : viewportSize;
-				glm::uvec2 denoiseSize = gtaoSize;
+				UVec2 gtaoSize = GTAODataCB.HalfRes ? (viewportSize + 1u) / 2u : viewportSize;
+				UVec2 denoiseSize = gtaoSize;
 				const VkFormat gtaoImageFormat = m_Options.GTAOBentNormals ? VkFormat::VK_FORMAT_R32_UINT : VkFormat::VK_FORMAT_R8_UINT;
 				m_GTAOOutputImage->GetSpecification().format = gtaoImageFormat;
 				m_GTAODenoiseImage->GetSpecification().format = gtaoImageFormat;
@@ -1598,7 +1605,7 @@ namespace SceneryEditorX
 			///< SSR
 			{
 				constexpr uint32_t WORK_GROUP_SIZE = 8u;
-				glm::uvec2 ssrSize = m_SSROptions.HalfRes ? (viewportSize + 1u) / 2u : viewportSize;
+				UVec2 ssrSize = m_SSROptions.HalfRes ? (viewportSize + 1u) / 2u : viewportSize;
 				m_SSRImage->Resize(ssrSize);
 
 				ssrSize += WORK_GROUP_SIZE - ssrSize % WORK_GROUP_SIZE;
@@ -1626,7 +1633,7 @@ namespace SceneryEditorX
 
 			///< Bloom
 			{
-				glm::uvec2 bloomSize = (viewportSize + 1u) / 2u;
+				UVec2 bloomSize = (viewportSize + 1u) / 2u;
 				bloomSize += m_BloomComputeWorkgroupSize - bloomSize % m_BloomComputeWorkgroupSize;
 
 				m_BloomComputeTextures[0].Texture->Resize(bloomSize);
@@ -1688,7 +1695,7 @@ namespace SceneryEditorX
 		if (depthLinearizeMul * depthLinearizeAdd < 0)
 			depthLinearizeAdd = -depthLinearizeAdd;
 		cameraData.DepthUnpackConsts = { depthLinearizeMul, depthLinearizeAdd };
-		const float* P = glm::value_ptr(m_SceneData.SceneCamera.camera.GetProjectionMatrix());
+		const float* P = m_SceneData.SceneCamera.camera.GetProjectionMatrix().Data();
 		const Vec4 projInfoPerspective = {
 				 2.0f / (P[4 * 0 + 0]),                 ///< (x) * (R - L)/N
 				 2.0f / (P[4 * 1 + 1]),                 ///< (y) * (T - B)/N
@@ -1732,7 +1739,7 @@ namespace SceneryEditorX
 			if (!light.CastsShadows)
 				continue;
 
-			Mat4 projection = glm::perspective(glm::radians(light.Angle), 1.f, 0.1f, light.Range);
+			Mat4 projection = Perspective(ToRadians(light.Angle), 1.f, 0.1f, light.Range);
             ///< NOTE: ShadowMatrices[0] because we only support ONE shadow casting spot light at the moment and it MUST be index 0
 			spotShadowData.ShadowMatrices[0] = projection * Mat4::LookAt(light.Position,  light.Position - light.Direction, Vec3(0.0f, 1.0f, 0.0f));
 		}
@@ -2355,18 +2362,18 @@ namespace SceneryEditorX
 			hierarchicalZComputePushConstants.DispatchThreadIdToBufferUV = DispatchThreadIdToBufferUV;
 			hierarchicalZComputePushConstants.InputViewportMaxBound = InputViewportMaxBound;
 
-			const glm::ivec2 srcSize(Utils::Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << parentMip));
-			const glm::ivec2 dstSize(Utils::Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << startDestMip));
+			const auto srcSize = Utils::Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << parentMip);
+			const auto dstSize = Utils::Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << startDestMip);
 			hierarchicalZComputePushConstants.InvSize = Vec2{ 1.0f / (float)srcSize.x, 1.0f / (float)srcSize.y };
 
-			glm::uvec3 workGroups(Utils::Math::DivideAndRoundUp(dstSize.x, 8), Utils::Math::DivideAndRoundUp(dstSize.y, 8), 1);
+			UVec3 workGroups(Utils::Math::DivideAndRoundUp(dstSize.x, 8), Utils::Math::DivideAndRoundUp(dstSize.y, 8), 1);
 			Renderer::DispatchCompute(commandBuffer, hierarchicalDepthPass, hzbMaterials[startDestMip / 4], workGroups, Buffer(&hierarchicalZComputePushConstants, sizeof(hierarchicalZComputePushConstants)));
 		};
 
 		Renderer::BeginGPUPerfMarker(m_CommandBuffer, "HZB-FirstPass");
 
 		///< Reduce first 4 mips
-		glm::ivec2 srcSize = m_PreDepthPass->GetDepthOutput()->GetSize();
+		auto srcSize = m_PreDepthPass->GetDepthOutput()->GetSize();
 		ReduceHZB(0, 0, { 1.0f / Vec2{ srcSize } }, { (Vec2{ srcSize } - 0.5f) / Vec2{ srcSize } }, true);
 		Renderer::EndGPUPerfMarker(m_CommandBuffer);
 
@@ -2416,11 +2423,11 @@ namespace SceneryEditorX
 		{
 			Renderer::BeginGPUPerfMarker(m_CommandBuffer, std::format("PreIntegration-Pass({})", mip));
 			auto [mipWidth, mipHeight] = visibilityTexture->GetMipSize(mip);
-			glm::uvec3 workGroups = { (uint32_t)glm::ceil((float)mipWidth / 8.0f), (uint32_t)glm::ceil((float)mipHeight / 8.0f), 1 };
+			UVec3 workGroups = { (uint32_t)std::ceil((float)mipWidth / 8.0f), (uint32_t)std::ceil((float)mipHeight / 8.0f), 1 };
 
 			auto [width, height] = visibilityTexture->GetMipSize(mip);
 			Vec2 resFactor = 1.0f / Vec2{ width, height };
-			preIntegrationComputePushConstants.HZBResFactor = resFactor * m_SSROptions.HZBUvFactor;
+			preIntegrationComputePushConstants.HZBResFactor = resFactor * m_SSROptions.BUvFactor;
 			preIntegrationComputePushConstants.ResFactor = resFactor;
 			preIntegrationComputePushConstants.ProjectionParams = projectionParams;
 			preIntegrationComputePushConstants.PrevLod = (int)mip - 1;
@@ -2587,12 +2594,12 @@ namespace SceneryEditorX
 
 		m_GPUTimeQueries.PreConvolutionQuery = m_CommandBuffer->BeginTimestampQuery();
 
-		glm::uvec3 workGroups(0);
+		UVec3 workGroups(0);
 
 		Renderer::BeginComputePass(m_CommandBuffer, m_PreConvolutionComputePass);
 
 		auto inputImage = m_SkyboxPass->GetOutput(0);
-		workGroups = { (uint32_t)glm::ceil((float)inputImage->GetWidth() / 16.0f), (uint32_t)glm::ceil((float)inputImage->GetHeight() / 16.0f), 1 };
+		workGroups = { (uint32_t)std::ceil((float)inputImage->GetWidth() / 16.0f), (uint32_t)std::ceil((float)inputImage->GetHeight() / 16.0f), 1 };
 		Renderer::DispatchCompute(m_CommandBuffer, m_PreConvolutionComputePass, m_PreConvolutionMaterials[0], workGroups, Buffer(&preConvolutionComputePushConstants, sizeof(preConvolutionComputePushConstants)));
 
 		const uint32_t mipCount = m_PreConvolutedTexture.Texture->GetMipLevelCount();
@@ -2601,7 +2608,7 @@ namespace SceneryEditorX
 			Renderer::BeginGPUPerfMarker(m_CommandBuffer, std::format("Pre-Convolution-Mip({})", mip));
 
 			auto [mipWidth, mipHeight] = m_PreConvolutedTexture.Texture->GetMipSize(mip);
-			workGroups = { (uint32_t)glm::ceil((float)mipWidth / 16.0f), (uint32_t)glm::ceil((float)mipHeight / 16.0f), 1 };
+			workGroups = { (uint32_t)std::ceil((float)mipWidth / 16.0f), (uint32_t)std::ceil((float)mipHeight / 16.0f), 1 };
 			preConvolutionComputePushConstants.PrevLod = (int)mip - 1;
 
 			auto blur = [&](const int mip, const int mode)
@@ -2671,13 +2678,13 @@ namespace SceneryEditorX
 		Renderer::EndFrame(m_CommandBuffer);
 
         constexpr int steps = 2;
-		int step = (int)glm::round(glm::pow<int>(steps - 1, 2));
+		int step = (int)std::round(std::pow((float)(steps - 1), 2.0f));
 		int index = 0;
 		Buffer vertexOverrides;
 		const Ref<Framebuffer> passFB = m_JumpFloodPass[0]->GetTargetFramebuffer();
 		Vec2 texelSize = { 1.0f / (float)passFB->GetWidth(), 1.0f / (float)passFB->GetHeight() };
 		vertexOverrides.Allocate(sizeof(Vec2) + sizeof(int));
-		vertexOverrides.Write(glm::value_ptr(texelSize), sizeof(Vec2));
+		vertexOverrides.Write(&texelSize, sizeof(Vec2));
 		while (step != 0)
 		{
 			vertexOverrides.Write(&step, sizeof(int), sizeof(Vec2));
@@ -2723,7 +2730,7 @@ namespace SceneryEditorX
 
 	void SceneRenderer::BloomCompute()
 	{
-		glm::uvec3 workGroups;
+		UVec3 workGroups;
 
 		struct BloomComputePushConstants
 		{
@@ -2755,7 +2762,7 @@ namespace SceneryEditorX
 			for (uint32_t i = 1; i < mips; i++)
 			{
 				auto [mipWidth, mipHeight] = m_BloomComputeTextures[0].Texture->GetMipSize(i);
-				workGroups = { (uint32_t)glm::ceil((float)mipWidth / (float)m_BloomComputeWorkgroupSize) ,(uint32_t)glm::ceil((float)mipHeight / (float)m_BloomComputeWorkgroupSize), 1 };
+				workGroups = { (uint32_t)std::ceil((float)mipWidth / (float)m_BloomComputeWorkgroupSize) ,(uint32_t)std::ceil((float)mipHeight / (float)m_BloomComputeWorkgroupSize), 1 };
 
 				bloomComputePushConstants.LOD = i - 1.0f;
 				Renderer::DispatchCompute(m_CommandBuffer, m_BloomComputePass, m_BloomComputeMaterials.DownsampleAMaterials[i], workGroups, Buffer(&bloomComputePushConstants, sizeof(bloomComputePushConstants)));
@@ -2777,8 +2784,8 @@ namespace SceneryEditorX
 		Renderer::BeginGPUPerfMarker(m_CommandBuffer, "Bloom-FirstUpsamle");
 		{
 			auto [mipWidth, mipHeight] = m_BloomComputeTextures[2].Texture->GetMipSize(mips - 2);
-			workGroups.x = (uint32_t)glm::ceil((float)mipWidth / (float)m_BloomComputeWorkgroupSize);
-			workGroups.y = (uint32_t)glm::ceil((float)mipHeight / (float)m_BloomComputeWorkgroupSize);
+			workGroups.x = (uint32_t)std::ceil((float)mipWidth / (float)m_BloomComputeWorkgroupSize);
+			workGroups.y = (uint32_t)std::ceil((float)mipHeight / (float)m_BloomComputeWorkgroupSize);
 
 			Renderer::DispatchCompute(m_CommandBuffer, m_BloomComputePass, m_BloomComputeMaterials.FirstUpsampleMaterial, workGroups, Buffer(&bloomComputePushConstants, sizeof(bloomComputePushConstants)));
 			m_BloomComputePipeline->ImageMemoryBarrier(m_CommandBuffer, m_BloomComputeTextures[2].Texture->GetImage(), ResourceAccessFlags::ShaderWrite, ResourceAccessFlags::ShaderRead);
@@ -2792,8 +2799,8 @@ namespace SceneryEditorX
 			for (int32_t mip = mips - 3; mip >= 0; mip--)
 			{
 				auto [mipWidth, mipHeight] = m_BloomComputeTextures[2].Texture->GetMipSize(mip);
-				workGroups.x = (uint32_t)glm::ceil((float)mipWidth / (float)m_BloomComputeWorkgroupSize);
-				workGroups.y = (uint32_t)glm::ceil((float)mipHeight / (float)m_BloomComputeWorkgroupSize);
+				workGroups.x = (uint32_t)std::ceil((float)mipWidth / (float)m_BloomComputeWorkgroupSize);
+				workGroups.y = (uint32_t)std::ceil((float)mipHeight / (float)m_BloomComputeWorkgroupSize);
 
 				bloomComputePushConstants.LOD = (float)mip;
 				Renderer::DispatchCompute(m_CommandBuffer, m_BloomComputePass, m_BloomComputeMaterials.UpsampleMaterials[mip], workGroups, Buffer(&bloomComputePushConstants, sizeof(bloomComputePushConstants)));
@@ -2897,7 +2904,7 @@ namespace SceneryEditorX
 		if (GetOptions().ShowGrid)
 		{
 			Renderer::BeginFrame(m_CommandBuffer, m_GridRenderPass);
-			const static Mat4 transform = glm::rotate(Mat4(1.0f), glm::radians(-90.0f), Vec3(1.0f, 0.0f, 0.0f)) * glm::scale(Mat4(1.0f), Vec3(8.0f));
+			const static Mat4 transform = Rotation::AxisAngleRadians({1.0f, 0.0f, 0.0f}, ToRadians(-90.0f)) * Mat4::Scale(Vec3(8.0f));
 			SceneRenderer::BeginGPUPerfMarker(m_CommandBuffer, "Grid");
 			Renderer::RenderQuad(m_CommandBuffer, m_GridRenderPass->GetPipeline(), m_GridMaterial, transform);
 			SceneRenderer::EndGPUPerfMarker(m_CommandBuffer);
@@ -3149,7 +3156,7 @@ namespace SceneryEditorX
 
 		if (boneTransforms.empty())
 		{
-			std::fill_n(std::back_inserter(boneTransformsMap.BoneTransformsData), stride, glm::identity<Mat4>());
+			std::fill_n(std::back_inserter(boneTransformsMap.BoneTransformsData), stride, Mat4(1.0f));
 		}
 		else
 		{
@@ -3236,7 +3243,7 @@ namespace SceneryEditorX
 			else
 				material->Set("u_InputDepth", m_HierarchicalDepthTexture.Texture);
 
-			const uint32_t endDestMip = glm::min(startDestMip + maxMipBatchSize, hzbMipCount);
+			const uint32_t endDestMip = Utils::Math::Min(startDestMip + maxMipBatchSize, hzbMipCount);
 			uint32_t destMip;
 			for (destMip = startDestMip; destMip < endDestMip; ++destMip)
 			{
@@ -3316,7 +3323,7 @@ namespace SceneryEditorX
 
 		Mat4 viewMatrix = sceneCamera.ViewMatrix;
 		constexpr Vec4 origin = Vec4(Vec3(0.0f), 1.0f);
-		viewMatrix[3] = glm::lerp(viewMatrix[3], origin, scaleToOrigin);
+		viewMatrix[3] = viewMatrix[3] + (origin - viewMatrix[3]) * scaleToOrigin;
 
 		auto viewProjection = sceneCamera.Camera.GetUnReversedProjectionMatrix() * viewMatrix;
 
@@ -3397,8 +3404,8 @@ namespace SceneryEditorX
 			float radius = 0.0f;
 			for (auto frustumCorner : frustumCorners)
             {
-				float distance = glm::length(frustumCorner - frustumCenter);
-				radius = glm::max(radius, distance);
+				float distance = Length(frustumCorner - frustumCenter);
+				radius = Utils::Math::Max(radius, distance);
 			}
 			radius = std::ceil(radius * 16.0f) / 16.0f;
 
@@ -3407,14 +3414,14 @@ namespace SceneryEditorX
 
 			Vec3 lightDir = -lightDirection;
 			Mat4 lightViewMatrix = Mat4::LookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, Vec3(0.0f, 0.0f, 1.0f));
-			Mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f + CascadeNearPlaneOffset, maxExtents.z - minExtents.z + CascadeFarPlaneOffset);
+			Mat4 lightOrthoMatrix = ::SceneryEditorX::Ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f + CascadeNearPlaneOffset, maxExtents.z - minExtents.z + CascadeFarPlaneOffset);
 
 			///< Offset to texel space to avoid shimmering (from https://stackoverflow.com/questions/33499053/cascaded-shadow-map-shimmering)
 			Mat4 shadowMatrix = lightOrthoMatrix * lightViewMatrix;
 			float ShadowMapResolution = (float)m_DirectionalShadowMapPass[0]->GetTargetFramebuffer()->GetWidth();
 
 			Vec4 shadowOrigin = (shadowMatrix * Vec4(0.0f, 0.0f, 0.0f, 1.0f)) * ShadowMapResolution / 2.0f;
-			Vec4 roundedOrigin = glm::round(shadowOrigin);
+			Vec4 roundedOrigin = { std::round(shadowOrigin.x), std::round(shadowOrigin.y), std::round(shadowOrigin.z), std::round(shadowOrigin.w) };
 			Vec4 roundOffset = roundedOrigin - shadowOrigin;
 			roundOffset = roundOffset * 2.0f / ShadowMapResolution;
 			roundOffset.z = 0.0f;
@@ -3439,7 +3446,7 @@ namespace SceneryEditorX
 
 		Mat4 viewMatrix = sceneCamera.ViewMatrix;
 		constexpr Vec4 origin = Vec4(Vec3(0.0f), 1.0f);
-		viewMatrix[3] = glm::lerp(viewMatrix[3], origin, scaleToOrigin);
+		viewMatrix[3] = viewMatrix[3] + (origin - viewMatrix[3]) * scaleToOrigin;
 
 		auto viewProjection = sceneCamera.Camera.GetUnReversedProjectionMatrix() * viewMatrix;
 
@@ -3501,8 +3508,8 @@ namespace SceneryEditorX
 			float radius = 0.0f;
 			for (auto frustumCorner : frustumCorners)
             {
-				float distance = glm::length(frustumCorner - frustumCenter);
-				radius = glm::max(radius, distance);
+				float distance = Length(frustumCorner - frustumCenter);
+				radius = Utils::Math::Max(radius, distance);
 			}
 			radius = std::ceil(radius * 16.0f) / 16.0f;
 			radius *= m_ShadowCascadeSplits[1];
@@ -3512,13 +3519,13 @@ namespace SceneryEditorX
 
 			Vec3 lightDir = -lightDirection;
 			Mat4 lightViewMatrix = Mat4::LookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, Vec3(0.0f, 0.0f, 1.0f));
-			Mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f + CascadeNearPlaneOffset, maxExtents.z - minExtents.z + CascadeFarPlaneOffset);
+			Mat4 lightOrthoMatrix = ::SceneryEditorX::Ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f + CascadeNearPlaneOffset, maxExtents.z - minExtents.z + CascadeFarPlaneOffset);
 
 			///< Offset to texel space to avoid shimmering (from https://stackoverflow.com/questions/33499053/cascaded-shadow-map-shimmering)
 			Mat4 shadowMatrix = lightOrthoMatrix * lightViewMatrix;
 			float ShadowMapResolution = (float)m_DirectionalShadowMapPass[0]->GetTargetFramebuffer()->GetWidth();
 			Vec4 shadowOrigin = (shadowMatrix * Vec4(0.0f, 0.0f, 0.0f, 1.0f)) * ShadowMapResolution / 2.0f;
-			Vec4 roundedOrigin = glm::round(shadowOrigin);
+			Vec4 roundedOrigin = { std::round(shadowOrigin.x), std::round(shadowOrigin.y), std::round(shadowOrigin.z), std::round(shadowOrigin.w) };
 			Vec4 roundOffset = roundedOrigin - shadowOrigin;
 			roundOffset = roundOffset * 2.0f / ShadowMapResolution;
 			roundOffset.z = 0.0f;

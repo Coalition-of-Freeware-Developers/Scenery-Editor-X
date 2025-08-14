@@ -866,7 +866,7 @@ namespace SceneryEditorX::Utils
 	 * @param deviceName The name of the graphics device (e.g., "NVIDIA GeForce RTX 4080", "AMD Radeon RX 7900 XTX")
 	 *                   Must not be empty or the function will log an error and return early
 	 *
-	 * @note This function is typically called during Vulkan device initialization to store
+	 * @note - This function is typically called during Vulkan device initialization to store
 	 *       the selected physical device name for later reference in the application.
 	 *
 	 * @warning If the device name is empty, the function will log an error using SEDX_CORE_ERROR_TAG

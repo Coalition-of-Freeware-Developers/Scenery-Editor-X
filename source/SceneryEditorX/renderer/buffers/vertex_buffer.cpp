@@ -22,18 +22,18 @@
 namespace SceneryEditorX
 {
 
-    VertexBuffer::VertexBuffer(uint64_t size) 
-        : m_BufferType(VertexBufferType::Dynamic), 
+    VertexBuffer::VertexBuffer(uint64_t size)
+        : m_BufferType(VertexBufferType::Dynamic),
 		m_Format(VertexFormat::Position3D_Color3), /// or whatever your default format is
-		m_Capacity(0), 
-		m_Size(size), 
+		m_Capacity(0),
+		m_Size(size),
 		m_IsInitialized(false)
     {
 		SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating VertexBuffer with size: {} bytes", size);
-		
+
 		/// Initialize the buffer with the specified size
 		CreateVertexBuffer();
-		
+
 		m_IsInitialized = true;
     }
 
@@ -331,7 +331,7 @@ namespace SceneryEditorX
     Ref<VertexBuffer> VertexBuffer::CreatePrimitive(PrimitiveType type, const Vec3 &size, const Vec3 &color)
     {
         SEDX_PROFILE_SCOPE("VertexBuffer::CreatePrimitive");
-        SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating primitive vertex buffer: type={}, size=({}, {}, {}), color=({}, {}, {})", 
+        SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating primitive vertex buffer: type={}, size=({}, {}, {}), color=({}, {}, {})",
                           static_cast<int>(type), size.x, size.y, size.z, color.r, color.g, color.b);
 
         /// Validate input parameters
@@ -348,7 +348,7 @@ namespace SceneryEditorX
             switch (type)
             {
                 using enum PrimitiveType;
-                
+
                 case Cube:		vertices = GenerateCubeVertices(size, color);		break;
                 case Sphere:	vertices = GenerateSphereVertices(size.x, color);	break;
                 case Cylinder:	vertices = GenerateCylinderVertices(size.x, size.y, color); break;
@@ -366,7 +366,7 @@ namespace SceneryEditorX
 
             /// Create vertex buffer with the generated vertices
             auto vertexBuffer = CreateRef<VertexBuffer>(vertices, VertexBufferType::Static);
-            
+
             SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Primitive vertex buffer created successfully with {} vertices", vertices.size());
             return vertexBuffer;
         }
@@ -588,7 +588,7 @@ namespace SceneryEditorX
     {
         std::vector<Vertex> vertices;
         vertices.reserve(24); /// 6 faces * 4 vertices per face
-        
+
         /// Define the 8 corner positions of the box
         const Vec3 corners[8] = {
             { -size.x / 2.0f, -size.y / 2.0f,  size.z / 2.0f }, /// 0: front-bottom-left
@@ -625,7 +625,7 @@ namespace SceneryEditorX
             for (int vertex = 0; vertex < 4; ++vertex)
             {
                 const int cornerIndex = face[vertex];
-                
+
                 /// Use constructor with position, color, and texture coordinates
                 vertices.emplace_back(corners[cornerIndex], color, texCoords[vertex]);
             }
@@ -640,20 +640,20 @@ namespace SceneryEditorX
     std::vector<VertexBuffer::Vertex> VertexBuffer::GenerateSphereVertices(float radius, const Vec3& color)
     {
         std::vector<Vertex> vertices;
-        
+
         constexpr uint32_t latitudeBands = 30;
         constexpr uint32_t longitudeBands = 30;
 
         /// Generate vertices
         for (uint32_t latitude = 0; latitude <= latitudeBands; latitude++)
         {
-            const float theta = static_cast<float>(latitude) * std::numbers::pi_v<float> / static_cast<float>(latitudeBands);
+            const float theta = static_cast<float>(latitude) * SceneryEditorX::PI / static_cast<float>(latitudeBands);
             const float sinTheta = std::sin(theta);
             const float cosTheta = std::cos(theta);
 
             for (uint32_t longitude = 0; longitude <= longitudeBands; longitude++)
             {
-                const float phi = static_cast<float>(longitude) * 2.0f * std::numbers::pi_v<float> / static_cast<float>(longitudeBands);
+                const float phi = static_cast<float>(longitude) * 2.0f * SceneryEditorX::PI / static_cast<float>(longitudeBands);
                 const float sinPhi = std::sin(phi);
                 const float cosPhi = std::cos(phi);
 
@@ -663,13 +663,13 @@ namespace SceneryEditorX
                     radius * cosTheta,
                     radius * sinPhi * sinTheta
                 );
-                
+
                 /// Texture coordinates
                 Vec2 texCoord = Vec2(
                     static_cast<float>(longitude) / static_cast<float>(longitudeBands),
                     static_cast<float>(latitude) / static_cast<float>(latitudeBands)
                 );
-                
+
                 /// Use constructor with position, color, and texture coordinates
                 vertices.emplace_back(position, color, texCoord);
             }
@@ -684,7 +684,7 @@ namespace SceneryEditorX
     std::vector<VertexBuffer::Vertex> VertexBuffer::GenerateCylinderVertices(float radius, float height, const Vec3& color)
     {
         std::vector<Vertex> vertices;
-        
+
         constexpr int segments = 30;
         const float halfHeight = height / 2.0f;
 
@@ -695,7 +695,7 @@ namespace SceneryEditorX
         /// Create side vertices
         for (int i = 0; i <= segments; ++i)
         {
-            const float theta = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * std::numbers::pi_v<float>;
+            const float theta = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * SceneryEditorX::PI;
             const float x = radius * std::cos(theta);
             const float z = radius * std::sin(theta);
             const float u = static_cast<float>(i) / static_cast<float>(segments);

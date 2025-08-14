@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -566,7 +566,7 @@ namespace SceneryEditorX
      *
      * @return The current custom buffer size in bytes.
      *
-     * @note If customBufferSize is zero, this function will return DEFAULT_CUSTOM_BUFFER_SIZE.
+     * @note - If customBufferSize is zero, this function will return DEFAULT_CUSTOM_BUFFER_SIZE.
      */
     VkDeviceSize MemoryAllocator::GetCustomBufferSize()
     {
@@ -954,7 +954,7 @@ namespace SceneryEditorX
 	 * This function outputs comprehensive memory usage information to help
 	 * with debugging and monitoring memory usage patterns.
 	 *
-	 * @note This function is thread-safe and locks the allocation mutex
+	 * @note - This function is thread-safe and locks the allocation mutex
 	 * to ensure consistent access to memory statistics.
 	 */
     void MemoryAllocator::PrintDetailedStats() const
@@ -1031,7 +1031,7 @@ namespace SceneryEditorX
 	 * This function clears the statistics counters without affecting
 	 * actual memory allocations.
 	 *
-	 * @note This function is thread-safe and locks the allocation mutex
+	 * @note - This function is thread-safe and locks the allocation mutex
 	 * to ensure consistent access to memory statistics.
 	 */
     void MemoryAllocator::ResetStats()
@@ -1071,7 +1071,7 @@ namespace SceneryEditorX
      *
      * @param strategy The desired allocation strategy
      *
-     * @note This function is thread-safe and locks the allocation mutex
+     * @note - This function is thread-safe and locks the allocation mutex
      * to ensure consistent access to the allocation strategy.
      */
     void MemoryAllocator::SetAllocationStrategy(const AllocationStrategy strategy)

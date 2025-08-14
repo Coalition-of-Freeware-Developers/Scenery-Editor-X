@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * scene_renderer.h
@@ -11,18 +11,27 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <cstdint>
+#include <map>
+#include <vector>
+#include <SceneryEditorX/asset/mesh/mesh.h>
 #include <SceneryEditorX/project/project_settings.h>
 #include <SceneryEditorX/renderer/2d_renderer.h>
-#include <SceneryEditorX/renderer/camera.h>
-#include <SceneryEditorX/renderer/shaders/shader_definitions.h>
 #include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
+#include <SceneryEditorX/renderer/buffers/storage_buffer_set.h>
+#include <SceneryEditorX/renderer/camera.h>
 #include <SceneryEditorX/renderer/compute_pass.h>
 #include <SceneryEditorX/renderer/compute_pipeline.h>
+#include <SceneryEditorX/renderer/debug_renderer.h>
+#include <SceneryEditorX/renderer/shaders/shader_definitions.h>
 #include <SceneryEditorX/renderer/texture.h>
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
 #include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
 #include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/utils/math/vector.h>
+#include <SceneryEditorX/utils/math/matrix.h>
+#include <SceneryEditorX/renderer/tiering/renderer_tiering.h>
 
 /// -------------------------------------------------------
 
@@ -59,7 +68,7 @@ namespace SceneryEditorX
 
 	    ///< SSR
 		bool EnableSSR = false;
-        ShaderSpecs::AOMethod ReflectionOcclusionMethod = ShaderSpecs::AOMethod::None;
+		ShaderSpecs::AOMethod ReflectionOcclusionMethod = ShaderSpecs::AOMethod::None;
 	};
 
     /// -------------------------------------------------------
@@ -67,7 +76,7 @@ namespace SceneryEditorX
 	struct SSROptionsUB
 	{
 		///< Screen Space Reflections
-		Vec2 HZBUvFactor;
+		Vec2 BUvFactor;
 		Vec2 FadeIn = {0.1f, 0.15f };
 		float Brightness = 0.7f;
 		float DepthTolerance = 0.8f;
@@ -124,7 +133,7 @@ namespace SceneryEditorX
 		float DepthMIPSamplingOffset = 3.3f;
 		int NoiseIndex = 0;
 
-		Vec2 HZBUVFactor;
+		Vec2 BUVFactor;
 		float ShadowTolerance;
 		float Padding;
 	};
@@ -203,7 +212,7 @@ namespace SceneryEditorX
 
 		Ref<Pipeline> GetFinalPipeline() const;
 		Ref<RenderPass> GetFinalRenderPass();
-        ///< TODO Ref<RenderPass> GetCompositeRenderPass() { return m_CompositePipeline->GetSpecification().RenderPass; }
+        /// TODO: Ref<RenderPass> GetCompositeRenderPass() { return m_CompositePipeline->GetSpecification().RenderPass; }
 		Ref<RenderPass> GetCompositeRenderPass() { return nullptr; }
 		Ref<Framebuffer> GetExternalCompositeFramebuffer() { return m_CompositingFramebuffer; }
 		Ref<Image2D> GetFinalPassImage() const;
@@ -255,7 +264,6 @@ namespace SceneryEditorX
 	private:
 		void FlushDrawList();
 		void PreRender();
-
 
 		struct MeshKey
 		{
@@ -505,10 +513,10 @@ namespace SceneryEditorX
         ///< Points to m_GTAOOutputImage or m_GTAODenoiseImage!
 		Ref<Image2D> m_GTAOFinalImage; ///TODO: WeakRef!
 		Ref<Image2D> m_GTAOEdgesOutputImage;
-		glm::uvec3 m_GTAOWorkGroups{ 1 };
+		UVec3 m_GTAOWorkGroups{ 1 };
 		Ref<Material> m_GTAODenoiseMaterial[2]; ///Ping, Pong
 		Ref<Material> m_AOCompositeMaterial;
-		glm::uvec3 m_GTAODenoiseWorkGroups{ 1 };
+		UVec3 m_GTAODenoiseWorkGroups{ 1 };
 		Ref<Shader> m_CompositeShader;
 
         /// -------------------------------------------------------
@@ -518,7 +526,7 @@ namespace SceneryEditorX
 		Ref<Pipeline> m_SpotShadowPassAnimPipeline;
 		Ref<Material> m_SpotShadowPassMaterial;
 
-		glm::uvec3 m_LightCullingWorkGroups;
+		UVec3 m_LightCullingWorkGroups;
 
 		Ref<UniformBufferSet> m_UBSCamera;
 		Ref<UniformBufferSet> m_UBSShadow;
@@ -531,8 +539,8 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		//Ref<StorageBufferSet> m_SBSVisiblePointLightIndicesBuffer;
-		//Ref<StorageBufferSet> m_SBSVisibleSpotLightIndicesBuffer;
+		Ref<StorageBufferSet> m_SBSVisiblePointLightIndicesBuffer; ///< Visible point light indices per-tile
+		Ref<StorageBufferSet> m_SBSVisibleSpotLightIndicesBuffer;  ///< Visible spot light indices per-tile
 
 		std::vector<Ref<RenderPass>> m_DirectionalShadowMapPass; ///< Per-cascade
 		std::vector<Ref<RenderPass>> m_DirectionalShadowMapAnimPass; ///< Per-cascade
@@ -543,7 +551,7 @@ namespace SceneryEditorX
 		Ref<RenderPass> m_DeinterleavingPass[2];
 		Ref<RenderPass> m_AOCompositePass;
 
-		//Ref<ComputePass> m_LightCullingPass;
+		Ref<ComputePass> m_LightCullingPass; ///< Light culling compute (HZB based)
 
         /// -------------------------------------------------------
 
@@ -555,21 +563,21 @@ namespace SceneryEditorX
 		float m_ShadowCascadeSplits[4];
 		bool m_UseManualCascadeSplits = false;
 
-		//Ref<ComputePass> m_HierarchicalDepthPass;
+		Ref<ComputePass> m_HierarchicalDepthPass; ///< HZB reduction pass
 
         /// -------------------------------------------------------
 
 		///< SSR
 		Ref<RenderPass> m_SSRCompositePass;
-		//Ref<ComputePass> m_SSRPass;
-		//Ref<ComputePass> m_PreConvolutionComputePass;
-		//Ref<ComputePass> m_SSRUpscalePass;
+		Ref<ComputePass> m_SSRPass; ///< Screen space reflections ray march
+		Ref<ComputePass> m_PreConvolutionComputePass; ///< Blur pyramid for reflections
+		Ref<ComputePass> m_SSRUpscalePass; ///< (Optional) upscale pass if half-res enabled (not currently used)
 		Ref<Image2D> m_SSRImage;
 
         /// -------------------------------------------------------
 
 		///< Pre-Integration
-		//Ref<ComputePass> m_PreIntegrationPass;
+		Ref<ComputePass> m_PreIntegrationPass; ///< Visibility pre-integration for SSR
 		struct PreIntegrationVisibilityTexture
 		{
 			Ref<Texture2D> Texture;
@@ -596,7 +604,7 @@ namespace SceneryEditorX
 		} m_PreConvolutedTexture;
 		std::vector<Ref<Material>> m_PreConvolutionMaterials; ///< per-mip
 		Ref<Material> m_SSRCompositeMaterial;
-		glm::uvec3 m_SSRWorkGroups { 1 };
+		UVec3 m_SSRWorkGroups { 1 };
 
         /// -------------------------------------------------------
 
@@ -651,7 +659,7 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 		///< Bloom compute
-		//Ref<ComputePass> m_BloomComputePass;
+		Ref<ComputePass> m_BloomComputePass; ///< Compute based bloom pipeline
 		uint32_t m_BloomComputeWorkgroupSize = 4;
 		Ref<ComputePipeline> m_BloomComputePipeline;
 
@@ -693,7 +701,7 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 		std::vector<TransformBuffer> m_SubmeshTransformBuffers;
-		//Ref<StorageBufferSet> m_SBSBoneTransforms;
+		Ref<StorageBufferSet> m_SBSBoneTransforms; ///< Bone transforms storage
 		Mat4 *m_BoneTransformsData = nullptr;
 		std::vector<Ref<Framebuffer>> m_TempFramebuffers;
 
@@ -716,32 +724,30 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		//std::map<MeshKey, TransformMapData> m_MeshTransformMap;
-		//std::map<MeshKey, BoneTransformsMapData> m_MeshBoneTransformsMap;
+		std::map<MeshKey, TransformMapData> m_MeshTransformMap; ///< Aggregated instance transforms per mesh/material/submesh
+		std::map<MeshKey, BoneTransformsMapData> m_MeshBoneTransformsMap; ///< Bone transform ranges
 
-		//std::vector<DrawCommand> m_DrawList;
-		//std::map<MeshKey, DrawCommand> m_DrawList;
-		//std::map<MeshKey, DrawCommand> m_TransparentDrawList;
-		//std::map<MeshKey, DrawCommand> m_SelectedMeshDrawList;
-		//std::map<MeshKey, DrawCommand> m_ShadowPassDrawList;
-
-		//std::map<MeshKey, StaticDrawCommand> m_StaticMeshDrawList;
-		//std::map<MeshKey, StaticDrawCommand> m_TransparentStaticMeshDrawList;
-		//std::map<MeshKey, StaticDrawCommand> m_SelectedStaticMeshDrawList;
-		//std::map<MeshKey, StaticDrawCommand> m_StaticMeshShadowPassDrawList;
+		std::map<MeshKey, DrawCommand> m_DrawList;
+		std::map<MeshKey, DrawCommand> m_TransparentDrawList;
+		std::map<MeshKey, DrawCommand> m_SelectedMeshDrawList;
+		std::map<MeshKey, DrawCommand> m_ShadowPassDrawList;
+		std::map<MeshKey, StaticDrawCommand> m_StaticMeshDrawList;
+		std::map<MeshKey, StaticDrawCommand> m_TransparentStaticMeshDrawList;
+		std::map<MeshKey, StaticDrawCommand> m_SelectedStaticMeshDrawList;
+		std::map<MeshKey, StaticDrawCommand> m_StaticMeshShadowPassDrawList;
 
         /// -------------------------------------------------------
 
 		///< Debug
-		//std::map<MeshKey, StaticDrawCommand> m_StaticColliderDrawList;
-		//std::map<MeshKey, DrawCommand> m_ColliderDrawList;
-		//std::map<MeshKey, StaticDrawCommand> m_AnimationDebugDrawList;
+		std::map<MeshKey, StaticDrawCommand> m_StaticColliderDrawList;
+		std::map<MeshKey, DrawCommand> m_ColliderDrawList;
+		std::map<MeshKey, StaticDrawCommand> m_AnimationDebugDrawList;
 		Ref<Material> m_SimpleColliderMaterial;
 		Ref<Material> m_ComplexColliderMaterial;
 		Ref<Material> m_SelectedBoneMaterial;
 		Ref<Material> m_BoneMaterial;
-		//Ref<StaticMesh> m_BoneMesh;
-		//Ref<MeshSource> m_BoneMeshSource;
+		Ref<StaticMesh> m_BoneMesh;
+		Ref<MeshSource> m_BoneMeshSource;
 
         /// -------------------------------------------------------
 

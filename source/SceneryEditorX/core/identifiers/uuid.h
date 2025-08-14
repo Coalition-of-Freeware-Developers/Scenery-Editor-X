@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -243,7 +243,7 @@ namespace SceneryEditorX
 	 * such as persistent asset identifiers, database keys, or distributed
 	 * system identifiers that need to be globally unique.
 	 *
-	 * @note The probability of collision is astronomically low (approximately 1 in 2^122)
+	 * @note - The probability of collision is astronomically low (approximately 1 in 2^122)
 	 *       making it suitable for any application requiring guaranteed uniqueness.
 	 *
 	 * @thread_safety Thread-safe for construction and conversion operations.
@@ -458,7 +458,7 @@ namespace SceneryEditorX
 	 * This class implements explicit conversion operators to prevent accidental type
 	 * confusion and provides STL hash specialization for use in hash-based containers.
 	 *
-	 * @note While called "UUID", this implementation currently uses a 64-bit random
+	 * @note - While called "UUID", this implementation currently uses a 64-bit random
 	 *       integer rather than a full 128-bit UUID. This provides sufficient uniqueness
 	 *       for most applications while maintaining optimal performance.
 	 *
@@ -642,7 +642,7 @@ namespace SceneryEditorX
 	 * the full uniqueness guarantees of a 64-bit UUID. The smaller size makes it more
 	 * cache-friendly and reduces memory usage in collections.
 	 *
-	 * @note The probability of collision is higher than UUID (approximately 1 in 2^32)
+	 * @note - The probability of collision is higher than UUID (approximately 1 in 2^32)
 	 *       but still very low for most applications. Consider this when choosing between
 	 *       UUID and UUID32.
 	 *
@@ -864,7 +864,7 @@ namespace std
 		 * @complexity O(1) - constant time operation
 		 * @thread_safety Thread-safe. No shared state is accessed.
 		 *
-		 * @note The hash value is deterministic - the same UUID will always
+		 * @note - The hash value is deterministic - the same UUID will always
 		 *       produce the same hash value within a single program execution.
 		 */
 		std::size_t operator()(const SceneryEditorX::UUID &uuid) const noexcept
@@ -914,7 +914,7 @@ namespace std
 		 * @complexity O(1) - constant time operation
 		 * @thread_safety Thread-safe. No shared state is accessed.
 		 *
-		 * @note The hash value is deterministic - the same UUID32 will always
+		 * @note - The hash value is deterministic - the same UUID32 will always
 		 *       produce the same hash value within a single program execution.
 		 */
 		std::size_t operator()(const SceneryEditorX::UUID32 &uuid) const noexcept
@@ -962,7 +962,7 @@ namespace std
 		 * @complexity O(1) - constant time operation
 		 * @thread_safety Thread-safe. No shared state is accessed.
 		 *
-		 * @note The hash value is deterministic - the same UUID128 will always
+		 * @note - The hash value is deterministic - the same UUID128 will always
 		 *       produce the same hash value within a single program execution.
 		 */
 		std::size_t operator()(const SceneryEditorX::UUID128 &uuid) const noexcept

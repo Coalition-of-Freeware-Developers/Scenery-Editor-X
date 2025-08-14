@@ -14,6 +14,7 @@
 #include <Editor/core/editor_camera.h>
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/time/time.h>
+#include <SceneryEditorX/renderer/scene_renderer.h>
 
 /// -------------------------------------------------------
 
@@ -24,7 +25,6 @@ namespace SceneryEditorX
     class Scene;
     class Editor;
     class Renderer2D;
-    class SceneRenderer;
     class KeyPressedEvent;
     class MouseButtonPressedEvent;
 

@@ -318,9 +318,9 @@ namespace SceneryEditorX
          * @param color Color to apply to all primitive vertices (default: white Vec3(1,1,1))
          * @return Ref<VertexBuffer> Reference to the created vertex buffer, or nullptr if creation failed
          *
-         * @note The generated vertices include position, color, and texture coordinates.
+         * @note - The generated vertices include position, color, and texture coordinates.
          *       All primitives are centered at the origin with the specified dimensions.
-         * @note For best performance, consider caching returned vertex buffers for reuse.
+         * @note - For best performance, consider caching returned vertex buffers for reuse.
          *
          * @example Usage:
          * @code
@@ -504,7 +504,7 @@ namespace SceneryEditorX
 		 * and calculates their offsets and total stride.
 		 *
 		 * @param elements Initializer list of VertexBufferElement objects.
-		 * @note The elements should be defined in the order they will be used in the vertex buffer.
+		 * @note - The elements should be defined in the order they will be used in the vertex buffer.
 		 * @example
 		 * @code
 		 * VertexBufferLayout layout = {

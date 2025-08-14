@@ -26,7 +26,7 @@
 * - Asset pipeline routing and processing
 * - Serialization format selection
 * 
-* @note Some extensions like ".obj" appear multiple times with different asset types.
+* @note - Some extensions like ".obj" appear multiple times with different asset types.
 *       The asset manager uses additional context (file location, content analysis)
 *       to resolve ambiguities between X-Plane objects and mesh source files.
 */
@@ -91,7 +91,7 @@ namespace SceneryEditorX
 	*          and AssetType::MeshSource. Asset importers must use additional context
 	*          (file location, header analysis) to resolve the correct type.
 	* 
-	* @note This map is used extensively by:
+	* @note - This map is used extensively by:
 	*       - AssetImporter for type detection during drag-and-drop operations
 	*       - FileDialog filters for showing relevant files
 	*       - AssetBrowser for icon selection and categorization

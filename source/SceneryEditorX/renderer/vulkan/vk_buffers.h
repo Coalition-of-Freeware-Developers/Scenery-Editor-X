@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,9 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <cstdint>
 #include <SceneryEditorX/core/memory/memory.h>
+#include <SceneryEditorX/utils/pointers.h>
 #include <SceneryEditorX/renderer/vulkan/resource.h>
 #include <SceneryEditorX/renderer/vulkan/vk_enums.h>
+#include <SceneryEditorX/logging/asserts.h>
+#include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------
@@ -114,7 +118,7 @@ namespace SceneryEditorX
          * This destructor is responsible for cleaning up the Vulkan buffer and its associated
          * memory allocation. It ensures that resources are released properly to prevent memory leaks.
          *
-         * @note This destructor is virtual to allow for polymorphic behavior in derived classes.
+         * @note - This destructor is virtual to allow for polymorphic behavior in derived classes.
 		 * @see VulkanMemoryUtils::DestroyBuffer
          */
         virtual ~BufferResource() override
@@ -345,7 +349,7 @@ namespace SceneryEditorX
      * support host access (e.g., MemoryType::CPU_VISIBLE). The function returns
      * a pointer to the mapped memory region which can be used for data transfer.
      *
-     * @note The caller is responsible for ensuring proper synchronization when
+     * @note - The caller is responsible for ensuring proper synchronization when
      * accessing the mapped memory. The memory should be unmapped when no longer needed.
      *
      * @see UnmapBuffer() to unmap the memory when operations are complete

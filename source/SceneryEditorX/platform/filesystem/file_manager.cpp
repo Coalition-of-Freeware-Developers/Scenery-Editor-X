@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * FileManager.cpp
@@ -158,7 +158,7 @@ namespace SceneryEditorX::IO
         return true;
     #elif defined(SEDX_PLATFORM_LINUX)
         return ShowFileInExplorer(path);
-    #endif		
+    #endif
     }
 
     std::filesystem::path FileSystem::GetUniqueFileName(const std::filesystem::path &filepath)
@@ -356,11 +356,11 @@ namespace SceneryEditorX::IO
 
     /**
 	 * @brief Reads the raw bytes from a file.
-	 * 
+	 *
 	 * This function opens a file in binary mode, reads its contents into a vector of bytes,
 	 * and returns the vector. It uses the 'ate' flag to start reading at the end of the file
 	 * to determine the file size, then reads the file from the beginning.
-	 * 
+	 *
 	 * @param path The path of the file to read.
 	 * @param filename The name of the file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the file.
@@ -376,92 +376,92 @@ namespace SceneryEditorX::IO
 
 	/**
 	 * @brief Reads the shader code from a file.
-	 * 
+	 *
 	 * This function opens a file in binary mode, reads its contents into a vector of bytes,
 	 * and returns the vector. It uses the 'ate' flag to start reading at the end of the file
 	 * to determine the file size, then reads the file from the beginning.
-	 * 
+	 *
 	 * @param filename The name of the shader file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the shader file.
 	*/
 	std::vector<char> FileManager::ReadShaders(const std::string &filename)
 	{
 	    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-	
+
 	    if (!file.is_open())
 	    {
 	        SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
 	        ErrMsg(std::string("Failed to open file: ") + ToString(filename));
 	        return {}; /// Return empty vector on failure
 	    }
-	
+
 	    size_t fileSize = file.tellg();
 	    if (fileSize == 0)
 	    {
 	        SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
 	        return {};
 	    }
-	
+
 	    std::vector<char> buffer(fileSize);
-	
+
 	    file.seekg(0);
 	    file.read(buffer.data(), fileSize);
-	
+
 	    if (!file)
 	    {
 	        SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
 	        ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
 	        return {};
 	    }
-	
+
 	    file.close();
-	
+
 	    SEDX_CORE_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
 	    return buffer;
 	}
-	
+
 	/**
 	 * @brief Reads the raw bytes from a file.
-	 * 
+	 *
 	 * This function opens a file in binary mode, reads its contents into a vector of bytes,
 	 * and returns the vector. It uses the 'ate' flag to start reading at the end of the file
 	 * to determine the file size, then reads the file from the beginning.
-	 * 
+	 *
 	 * @param filename The name of the file to read.
 	 * @return std::vector<char> A vector containing the raw bytes of the file.
 	*/
     std::vector<char> FileManager::ReadFile(const std::string &filename)
 	{
 	    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-	
+
 	    if (!file.is_open())
 	    {
 	        SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
 	        ErrMsg(std::string("Failed to open file: ") + ToString(filename));
 	        return {}; /// Return empty vector on failure
 	    }
-	
+
 	    size_t fileSize = file.tellg();
 	    if (fileSize == 0)
 	    {
 	        SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
 	        return {};
 	    }
-	
+
 	    std::vector<char> buffer(fileSize);
-	
+
 	    file.seekg(0);
 	    file.read(buffer.data(), fileSize);
-	
+
 	    if (!file)
 	    {
 	        SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
 	        ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
 	        return {};
 	    }
-	
+
 	    file.close();
-	
+
 	    SEDX_CORE_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
 	    return buffer;
 	}
@@ -485,7 +485,7 @@ namespace SceneryEditorX::IO
 	    tinygltf::TinyGLTF loader;
 	    std::string err;
 	    std::string warn;
-	
+
 	    bool ret = false;
 	    if (path.extension() == ".gltf")
 		{
@@ -495,23 +495,23 @@ namespace SceneryEditorX::IO
 		{
 	        ret = loader.LoadBinaryFromFile(&model, &err, &warn, path.string());
 	    }
-	
+
 	    if (!warn.empty())
 		{
 	      SEDX_CORE_WARN("Warn: {}", warn.c_str());
 	    }
-	
+
 	    if (!err.empty())
 		{
 	      SEDX_CORE_ERROR("Err: {}", err.c_str());
 	    }
-	
+
 	    if (!ret)
 		{
 	      SEDX_CORE_ERROR("Failed to parse glTF");
 	      return 0;
 	    }
-	
+
 	    const tinygltf::Scene& scene = model.scenes[model.defaultScene];
 	    const auto getBuffer = [&](auto& accessor, auto& view) { return &model.buffers[view.buffer].data[view.byteOffset + accessor.byteOffset]; };
 
@@ -524,7 +524,7 @@ namespace SceneryEditorX::IO
 	        std::vector<uint8_t> buffer(image.width * image.height * 4);
 	        if (image.component == 3)
 			{
-	            unsigned char* rgba = buffer.data(); 
+	            unsigned char* rgba = buffer.data();
 	            unsigned char* rgb = image.image.data();
 	            for (uint32_t j = 0; j < image.width * image.height; j++)
 				{
@@ -546,9 +546,9 @@ namespace SceneryEditorX::IO
 	        loadedTextures[i]->height = image.height;
 	        loadedTextures[i]->channels = 4;
 	    }
-	
+
 	    std::vector<Ref<MaterialAsset>> materials(model.materials.size());
-	
+
 	    for (int i = 0; i < materials.size(); i++)
 		{
 	        auto& mat = model.materials[i];
@@ -564,7 +564,8 @@ namespace SceneryEditorX::IO
 	        }
 	        if (mat.values.contains("baseColorFactor"))
 			{
-	            materials[i]->color = glm::make_vec4(mat.values["baseColorFactor"].ColorFactor().data());
+	            const auto& cf = mat.values["baseColorFactor"].ColorFactor();
+	            materials[i]->color = { (float)cf[0], (float)cf[1], (float)cf[2], (float)cf[3] };
 	        }
 	        if (mat.values.contains("roughnessFactor"))
 			{
@@ -589,10 +590,11 @@ namespace SceneryEditorX::IO
 	        }
 	        if (mat.additionalValues.contains("emissiveFactor"))
 			{
-	            materials[i]->emission = glm::make_vec3(mat.additionalValues["emissiveFactor"].ColorFactor().data());
+	            const auto& ef = mat.additionalValues["emissiveFactor"].ColorFactor();
+	            materials[i]->emission = { (float)ef[0], (float)ef[1], (float)ef[2] };
 	        }
 	    }
-	
+
 	    std::vector<Ref<MeshAsset>> loadedMeshes;
 	    std::vector<int> loadedMeshMaterials;
 	    for (const tinygltf::Mesh& mesh : model.meshes)
@@ -603,12 +605,12 @@ namespace SceneryEditorX::IO
 	            std::string name = (!mesh.name.empty() ? mesh.name : path.stem().string()) + "_" + std::to_string(i);
 	            Ref<MeshAsset>& desc = loadedMeshes.emplace_back(manager.CreateAsset<MeshAsset>(name));
 	            loadedMeshMaterials.emplace_back(primitive.material);
-	
+
 	            float* bufferPos = nullptr;
 	            float* bufferNormals = nullptr;
 	            float* bufferTangents = nullptr;
 	            float* bufferUV = nullptr;
-	
+
 	            int stridePos = 0;
 	            int strideNormals = 0;
 	            int strideTangents = 0;
@@ -616,7 +618,7 @@ namespace SceneryEditorX::IO
 
                 uint32_t vertexCount = 0;
                 uint32_t indexCount = 0;
-	
+
 	            // position
 	            {
 	                auto it = primitive.attributes.find("POSITION");
@@ -627,7 +629,7 @@ namespace SceneryEditorX::IO
 	                stridePos = accessor.ByteStride(bufferView) / sizeof(float);
 	                vertexCount = accessor.count;
 	            }
-	
+
 	            // normal
 	            {
 	                auto it = primitive.attributes.find("NORMAL");
@@ -639,7 +641,7 @@ namespace SceneryEditorX::IO
 	                    strideNormals = accessor.ByteStride(bufferView) / sizeof(float);
 	                }
 	            }
-	
+
 	            // tangent
 	            {
 	                auto it = primitive.attributes.find("TANGENT");
@@ -651,7 +653,7 @@ namespace SceneryEditorX::IO
 	                    strideTangents = accessor.ByteStride(bufferView) / sizeof(float);
 	                }
 	            }
-	
+
 	            // uvs
 	            {
 	                auto it = primitive.attributes.find("TEXCOORD_0");
@@ -663,18 +665,32 @@ namespace SceneryEditorX::IO
 	                    strideUV = accessor.ByteStride(bufferView) / sizeof(float);
 	                }
 	            }
-	
+
 	            // vertices
 	            for (uint32_t v = 0; v < vertexCount; v++)
 				{
 	                MeshVertex vertex{};
-	                vertex.position = glm::make_vec3(&bufferPos[v * stridePos]);
-	                vertex.normal = bufferNormals ? glm::make_vec3(&bufferNormals[v * strideNormals]) : Vec3(0);
-	                vertex.texCoord = bufferUV ? glm::make_vec3(&bufferUV[v * strideUV]) : Vec3(0);
-	                vertex.tangent = bufferTangents ? glm::make_vec4(&bufferTangents[v * strideTangents]) : Vec4(0);
+	                vertex.position = { bufferPos[v * stridePos + 0], bufferPos[v * stridePos + 1], bufferPos[v * stridePos + 2] };
+	                vertex.normal = bufferNormals ? Vec3(bufferNormals[v * strideNormals + 0], bufferNormals[v * strideNormals + 1], bufferNormals[v * strideNormals + 2]) : Vec3(0);
+	                if (bufferUV)
+	                {
+	                    vertex.texCoord = { bufferUV[v * strideUV + 0], bufferUV[v * strideUV + 1] };
+	                }
+	                else
+	                {
+	                    vertex.texCoord = Vec2(0);
+	                }
+	                if (bufferTangents)
+	                {
+	                    vertex.tangent = { bufferTangents[v * strideTangents + 0], bufferTangents[v * strideTangents + 1], bufferTangents[v * strideTangents + 2], bufferTangents[v * strideTangents + 3] };
+	                }
+	                else
+	                {
+	                    vertex.tangent = Vec4(0);
+	                }
 	                desc->vertices.push_back(vertex);
 	            }
-	
+
 	            // indices
 	            SEDX_ASSERT(primitive.indices > -1, "Non indexed primitive not supported!");
 	            {
@@ -703,11 +719,11 @@ namespace SceneryEditorX::IO
 	                    SEDX_ASSERT(false, "Index type not supported!");
 	                }
 	            }
-	
+
 	            // calculate tangents
 	            if (!bufferTangents)
 				{
-	                Vec3* tan1 = new Vec3[desc->vertices.size()*2];
+	                Vec3* tan1 = new("Renderer::Meshes::Tangents") Vec3[desc->vertices.size()*2];
 	                Vec3* tan2 = tan1 + vertexCount;
 	                for (int indexID = 0; indexID < desc->indices.size(); indexID += 3)
 					{
@@ -736,14 +752,16 @@ namespace SceneryEditorX::IO
 	                    Vec3 t = tan1[a];
 	                    auto& v = desc->vertices[a];
 	                    Vec3 n = v.normal;
-	                    v.tangent = Vec4(glm::normalize(t - n * glm::dot(t, n)), 1.0);
-	                    v.tangent.w = (glm::dot(glm::cross(n, t), tan2[a]) < 0.0f) ? -1.0f : 1.0f;
+	                    const Vec3 tProj = t - n * Dot(t, n);
+	                    const Vec3 normT = Normalize(tProj);
+	                    v.tangent = Vec4(normT.x, normT.y, normT.z, 1.0f);
+	                    v.tangent.w = (Dot(Cross(n, t), tan2[a]) < 0.0f) ? -1.0f : 1.0f;
 	                }
 	                delete[] tan1;
 	            }
 	        }
 	    }
-	
+
 	    std::vector<Ref<Node>> loadedNodes;
 	    for (const tinygltf::Node& node : model.nodes)
 		{
@@ -774,7 +792,8 @@ namespace SceneryEditorX::IO
 	        if (node.rotation.size() == 4)
 			{
 	            Quat quat = { float(node.rotation[3]), float(node.rotation[0]), float(node.rotation[1]), float(node.rotation[2]) };
-	            groupNode->rotation = glm::degrees(glm::eulerAngles(quat));
+	            const Vec3 eulerRad = quat.ToEulerRadians();
+	            groupNode->rotation = eulerRad; // internal representation already radians
 	        }
 	        if (node.scale.size() == 3)
 			{
@@ -782,16 +801,20 @@ namespace SceneryEditorX::IO
 	        }
 	        if (node.matrix.size() == 16)
 			{
-	            glm::mat4 mat;
+	            Mat4 mat;
+	            float* mdata = mat.Data();
 	            for (int i = 0; i < 16; i++)
 				{
-	                glm::value_ptr(mat)[i] = node.matrix[i];
+	                mdata[i] = static_cast<float>(node.matrix[i]);
 	            }
-	            Quat quat = {};
-	            Vec3 skew;
-	            Vec4 perspective;
-	            glm::decompose(mat, groupNode->scale, quat, groupNode->position, skew, perspective);
-	            groupNode->rotation = glm::degrees(glm::eulerAngles(quat));
+	            Vec3 translation, scale;
+	            Quat rotation;
+	            if (Transforms::Decompose(mat, translation, rotation, scale))
+	            {
+	                groupNode->position = translation;
+	                groupNode->scale = scale;
+	                groupNode->rotation = rotation.ToEulerRadians();
+	            }
 	        }
 
 	        loadedNodes.emplace_back(groupNode);
@@ -803,7 +826,7 @@ namespace SceneryEditorX::IO
 	            Node::SetParent(loadedNodes[child], loadedNodes[i]);
 	        }
 	    }
-	
+
 	    std::vector<Ref<SceneAsset>> loadedScenes;
 	    for (const tinygltf::Scene& scene : model.scenes)
 		{
@@ -813,11 +836,11 @@ namespace SceneryEditorX::IO
 	            s->Add(loadedNodes[node]);
 	        }
 	    }
-	
+
 	    if (loadedScenes.size()) return loadedScenes[0]->uuid;
         else return 0;
 	}
-	
+
 	uint64_t FileDialogs::ImportOBJ(const std::filesystem::path &path, AssetManager &manager)
     {
 	    SEDX_CORE_TRACE("Start loading mesh {}", path.string().c_str());
@@ -828,19 +851,19 @@ namespace SceneryEditorX::IO
 	    std::string warn;
 	    std::string filename = path.stem().string();
 	    std::string parentPath = path.parent_path().string() + "/";
-	
+
 	    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.string().c_str(), parentPath.c_str(), true))
 		{
 	        SEDX_CORE_ERROR("{}", err);
 	        SEDX_CORE_WARN("{}", warn);
 	        SEDX_CORE_ERROR("Failed to load obj file {}", path.string().c_str());
 	    }
-	
+
 	    if (!warn.empty())
 		{
 	        SEDX_CORE_WARN("Warning during load obj file {}: {}", path.string().c_str(), warn);
 	    }
-	
+
 	    // convert obj material to my material
 	    auto avg = [](const tinyobj::real_t value[3]) {return (value[0] + value[1] + value[2]) / 3.0f; };
 	    std::vector<Ref<MaterialAsset>> materialAssets;
@@ -849,8 +872,8 @@ namespace SceneryEditorX::IO
         {
 	        Ref<MaterialAsset> asset = manager.CreateAsset<MaterialAsset>(filename + ":" + material.name);
 	        //asset->color = Vec4(1, 0, 0, 1);
-	        asset->color = Vec4(glm::make_vec3(material.diffuse), 1);
-	        asset->emission = glm::make_vec3(material.emission);
+	        asset->color = Vec4(material.diffuse[0], material.diffuse[1], material.diffuse[2], 1.0f);
+	        asset->emission = Vec3(material.emission[0], material.emission[1], material.emission[2]);
 	        asset->metallic = material.metallic;
 	        if (material.specular != nullptr)
 			{
@@ -888,7 +911,7 @@ namespace SceneryEditorX::IO
 	        }
 	        materialAssets.push_back(asset);
 	    }
-	
+
 	    Ref<SceneAsset> scene = manager.CreateAsset<SceneAsset>(filename);
         const Ref<Node> parentNode = AssetManager::CreateObject<Node>(filename);
 	    scene->Add(parentNode);
@@ -905,13 +928,13 @@ namespace SceneryEditorX::IO
 	        for (const auto&[vertex_index, normal_index, texcoord_index] : shape.mesh.indices)
 			{
 	            MeshVertex vertex{};
-	
+
 	            vertex.position = {
 	                attrib.vertices[3 * vertex_index + 0],
 	                attrib.vertices[3 * vertex_index + 1],
 	                attrib.vertices[3 * vertex_index + 2]
 	            };
-	
+
 	            if (normal_index != -1)
 				{
 	                vertex.normal = {
@@ -920,7 +943,7 @@ namespace SceneryEditorX::IO
 	                    attrib.normals[3 * normal_index + 2],
 	                };
 	            }
-	
+
 	            if (texcoord_index == -1)
 				{
 	                vertex.texCoord = { 0, 0 };
@@ -932,16 +955,16 @@ namespace SceneryEditorX::IO
 	                    1.0f - attrib.texcoords[2 * texcoord_index + 1]
 	                };
 	            }
-	
+
 	            if (!uniqueVertices.contains(vertex))
 				{
 	                uniqueVertices[vertex] = static_cast<uint32_t>(asset->vertices.size());
 	                asset->vertices.push_back(vertex);
 	            }
-	
+
 	            asset->indices.push_back(uniqueVertices[vertex]);
 	            j += 1;
-	
+
 	            if (j % 3 == 0)
 				{
                     if (size_t faceId = j / 3; faceId >= shape.mesh.material_ids.size() || std::cmp_not_equal(shape.mesh.material_ids[faceId], lastMaterialId))

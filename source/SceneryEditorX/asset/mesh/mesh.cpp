@@ -56,12 +56,12 @@ namespace SceneryEditorX
 		for (size_t i = 0; i < m_Vertices.size(); i++)
 		{
 			const Vertex& vertex = m_Vertices[i];
-			m_BoundingBox.Min.x = glm::min(vertex.Position.x, m_BoundingBox.Min.x);
-			m_BoundingBox.Min.y = glm::min(vertex.Position.y, m_BoundingBox.Min.y);
-			m_BoundingBox.Min.z = glm::min(vertex.Position.z, m_BoundingBox.Min.z);
-			m_BoundingBox.Max.x = glm::max(vertex.Position.x, m_BoundingBox.Max.x);
-			m_BoundingBox.Max.y = glm::max(vertex.Position.y, m_BoundingBox.Max.y);
-			m_BoundingBox.Max.z = glm::max(vertex.Position.z, m_BoundingBox.Max.z);
+			m_BoundingBox.Min.x = Math::Min(vertex.Position.x, m_BoundingBox.Min.x);
+			m_BoundingBox.Min.y = Math::Min(vertex.Position.y, m_BoundingBox.Min.y);
+			m_BoundingBox.Min.z = Math::Min(vertex.Position.z, m_BoundingBox.Min.z);
+			m_BoundingBox.Max.x = Math::Max(vertex.Position.x, m_BoundingBox.Max.x);
+			m_BoundingBox.Max.y = Math::Max(vertex.Position.y, m_BoundingBox.Max.y);
+			m_BoundingBox.Max.z = Math::Max(vertex.Position.z, m_BoundingBox.Max.z);
 		}
 
 		submesh.BoundingBox = m_BoundingBox;
@@ -81,12 +81,12 @@ namespace SceneryEditorX
 		for (size_t i = 0; i < m_Vertices.size(); i++)
 		{
 			const Vertex& vertex = m_Vertices[i];
-			m_BoundingBox.Min.x = glm::min(vertex.Position.x, m_BoundingBox.Min.x);
-			m_BoundingBox.Min.y = glm::min(vertex.Position.y, m_BoundingBox.Min.y);
-			m_BoundingBox.Min.z = glm::min(vertex.Position.z, m_BoundingBox.Min.z);
-			m_BoundingBox.Max.x = glm::max(vertex.Position.x, m_BoundingBox.Max.x);
-			m_BoundingBox.Max.y = glm::max(vertex.Position.y, m_BoundingBox.Max.y);
-			m_BoundingBox.Max.z = glm::max(vertex.Position.z, m_BoundingBox.Max.z);
+			m_BoundingBox.Min.x = Math::Min(vertex.Position.x, m_BoundingBox.Min.x);
+			m_BoundingBox.Min.y = Math::Min(vertex.Position.y, m_BoundingBox.Min.y);
+			m_BoundingBox.Min.z = Math::Min(vertex.Position.z, m_BoundingBox.Min.z);
+			m_BoundingBox.Max.x = Math::Max(vertex.Position.x, m_BoundingBox.Max.x);
+			m_BoundingBox.Max.y = Math::Max(vertex.Position.y, m_BoundingBox.Max.y);
+			m_BoundingBox.Max.z = Math::Max(vertex.Position.z, m_BoundingBox.Max.z);
 		}
 	}
 

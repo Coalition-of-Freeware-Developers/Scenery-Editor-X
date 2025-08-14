@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -90,7 +90,7 @@ namespace SceneryEditorX
 		 * This structure contains information about the total bytes allocated,
 		 * used bytes, allocation count, and fragmentation ratio.
 		 *
-		 * @note This structure is used to monitor memory usage and
+		 * @note - This structure is used to monitor memory usage and
 		 */
         struct AllocationStats
         {
@@ -145,7 +145,7 @@ namespace SceneryEditorX
 		 * This structure contains information about the total memory,
 		 * used memory, usage percentage, and whether the budget is exceeded.
 		 *
-		 * @note This structure is used to monitor memory usage and
+		 * @note - This structure is used to monitor memory usage and
 		 * to trigger warnings if the usage exceeds a certain threshold.
 		 */
 		struct MemoryBudget
@@ -173,7 +173,7 @@ namespace SceneryEditorX
 		 * and the size of the buffer. It is used for batch allocation of buffers
 		 * to improve performance and reduce fragmentation.
 		 *
-		 * @note This structure is used internally by the MemoryAllocator class.
+		 * @note - This structure is used internally by the MemoryAllocator class.
 		 */
         struct BatchBufferAllocation
         {

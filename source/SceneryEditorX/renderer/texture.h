@@ -60,7 +60,7 @@ namespace SceneryEditorX
 		virtual VkFormat GetFormat() const = 0;
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;
-		virtual glm::uvec2 GetSize() const = 0;
+		virtual UVec2 GetSize() const = 0;
 
 		virtual uint32_t GetMipLevelCount() const = 0;
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const = 0;
@@ -93,7 +93,7 @@ namespace SceneryEditorX
 
 		void CreateFromBuffer(const TextureSpecification &specification, const Buffer &data);
 
-        virtual void Resize(const glm::uvec2 &size);
+        virtual void Resize(const UVec2 &size);
         virtual void Resize(uint32_t width, uint32_t height);
 
 		void Invalidate();
@@ -101,7 +101,7 @@ namespace SceneryEditorX
 		virtual VkFormat GetFormat() const override { return m_Specification.format; }
 		virtual uint32_t GetWidth() const override { return m_Specification.width; }
 		virtual uint32_t GetHeight() const override { return m_Specification.height; }
-		virtual glm::uvec2 GetSize() const override { return { m_Specification.width, m_Specification.height }; }
+		virtual UVec2 GetSize() const override { return { m_Specification.width, m_Specification.height }; }
 
 		virtual void Bind(uint32_t slot = 0) const override;
 
@@ -146,7 +146,7 @@ namespace SceneryEditorX
 		virtual VkFormat GetFormat() const override { return m_Specification.format; }
 		virtual uint32_t GetWidth() const override{ return m_Specification.width; }
 		virtual uint32_t GetHeight() const override { return m_Specification.height; }
-		virtual glm::uvec2 GetSize() const override { return { m_Specification.width, m_Specification.height}; }
+		virtual UVec2 GetSize() const override { return { m_Specification.width, m_Specification.height}; }
 	    virtual TextureType GetType() const override { return TextureType::TextureCube; }
 		virtual uint32_t GetMipLevelCount() const override;
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const override;

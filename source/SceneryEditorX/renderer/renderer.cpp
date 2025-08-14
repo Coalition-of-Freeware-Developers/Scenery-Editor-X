@@ -110,7 +110,7 @@ namespace SceneryEditorX
 
         const auto &config = GetRenderData();
         /// Make sure we don't have more frames in flight than swapchain images
-        config.framesInFlight = glm::min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
+        config.framesInFlight = Math::Min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
 
         s_Data->DescriptorPools.resize(config.framesInFlight);
         s_Data->DescriptorPoolAllocationCount.resize(config.framesInFlight);

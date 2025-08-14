@@ -44,9 +44,9 @@ namespace SceneryEditorX
 	 * - Dependency resolution to handle missing asset references gracefully
 	 * - Asset streaming to prioritize loading of critical assets
 	 * 
-	 * @note Flags use BIT() macro to ensure proper bit positioning
-	 * @note uint16_t provides 16 possible flag combinations while maintaining memory efficiency
-	 * @note Additional flags can be added using BIT(2), BIT(3), etc. for future extensions
+	 * @note - Flags use BIT() macro to ensure proper bit positioning
+	 * @note - uint16_t provides 16 possible flag combinations while maintaining memory efficiency
+	 * @note - Additional flags can be added using BIT(2), BIT(3), etc. for future extensions
 	 * 
 	 * @code
 	 * // Usage example for asset validation

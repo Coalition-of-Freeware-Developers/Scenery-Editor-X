@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/texture.h>
-#include <vulkan/vulkan.h>
+#include <SceneryEditorX/utils/vulkan/vk_includes.h>
 #include "vulkan/vk_enums.h"
 
 /// -------------------------------------------------------

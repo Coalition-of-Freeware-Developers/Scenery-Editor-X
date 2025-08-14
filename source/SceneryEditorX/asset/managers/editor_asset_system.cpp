@@ -243,7 +243,7 @@ namespace SceneryEditorX
 			auto absolutePath = GetFileSystemPath(metadata);
 
 			/**
-			 * @note There's a small hole here.  Other thread could start writing to asset's file in the exact instant that TryLoadData() has finished with it.
+			 * @note - There's a small hole here.  Other thread could start writing to asset's file in the exact instant that TryLoadData() has finished with it.
 			 *            GetLastWriteTime() then blocks until the data write has finished, but now we have a new write time - not the one that was relevant for TryLoadData()
 			 *            To resolve this, you basically need to lock the metadata until both the TryLoadData() _and_ the GetLastWriteTime() have completed.
 			 *            Or you need to update the last write time while you still have the file locked during TryLoadData()

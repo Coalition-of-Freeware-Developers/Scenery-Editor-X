@@ -17,7 +17,7 @@
 #include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
-#include <vulkan/vulkan.h>
+#include <SceneryEditorX/utils/vulkan/vk_includes.h>
 
 /// -------------------------------------------------------
 

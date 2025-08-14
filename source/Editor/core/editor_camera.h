@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * editor_camera.h
@@ -69,7 +69,7 @@ namespace SceneryEditorX
 		[[nodiscard]] Vec3 GetForwardDirection() const;
 
 		[[nodiscard]] const Vec3& GetPosition() const { return m_Position; }
-		[[nodiscard]] glm::quat GetOrientation() const;
+        [[nodiscard]] Quat GetOrientation() const;
 
 		[[nodiscard]] float GetVerticalFOV() const { return m_VerticalFOV; }
 		[[nodiscard]] float GetAspectRatio() const { return m_AspectRatio; }

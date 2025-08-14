@@ -11,8 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
+#include <SceneryEditorX/utils/math/math.h>
 #include <limits>
 #include <SceneryEditorX/core/identifiers/uuid.h>
 #include <SceneryEditorX/asset/asset.h>

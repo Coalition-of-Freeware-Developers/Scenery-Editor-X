@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -40,7 +40,7 @@ namespace SceneryEditorX
      * This prevents multiple initialization attempts which could cause resource leaks.
      * The Window::Init() method checks this flag before calling glfwInit().
      *
-     * @note This flag is reset to false in Window::Shutdown() when glfwTerminate() is called.
+     * @note - This flag is reset to false in Window::Shutdown() when glfwTerminate() is called.
      */
     GLOBAL bool windowInit = false;
 
@@ -58,7 +58,7 @@ namespace SceneryEditorX
      * @param error The GLFW error code (e.g., GLFW_INVALID_ENUM, GLFW_INVALID_VALUE)
      * @param description A string describing the error that occurred
      *
-     * @note This function is set as the GLFW error callback during Window::Init()
+     * @note - This function is set as the GLFW error callback during Window::Init()
      */
     GLOBAL void WindowErrorCallback(int error, const char *description)
 	{
@@ -83,9 +83,9 @@ namespace SceneryEditorX
      *                   like dimensions, title, and display mode.
      * @return A pointer to the newly created Window instance.
      *
-     * @note The caller is responsible for managing the memory of the returned Window
+     * @note - The caller is responsible for managing the memory of the returned Window
      *       pointer, typically by using smart pointers or explicit deletion.
-     * @note This method only creates the Window object but doesn't initialize it.
+     * @note - This method only creates the Window object but doesn't initialize it.
      *       Call Init() on the returned object to complete window creation.
      */
     Window *Window::Create(const WindowData &windowSpecs)
@@ -113,7 +113,7 @@ namespace SceneryEditorX
      * @param winData The window configuration data containing properties like width, height,
      *                title, decoration status, and other window attributes.
      *
-     * @note This is a lightweight constructor that only stores configuration. The actual window
+     * @note - This is a lightweight constructor that only stores configuration. The actual window
      *       creation, monitor setup, and renderer initialization happens in the Init() method.
      */
     Window::Window(WindowData winData) : swapChain(nullptr), renderData(), winData(std::move(winData)), leftAlt(0), initState(false),
@@ -327,7 +327,7 @@ namespace SceneryEditorX
      * when the window is being closed to ensure proper cleanup of all GPU and
      * system resources.
      *
-     * @note This must be called before the application exits to prevent resource leaks.
+     * @note - This must be called before the application exits to prevent resource leaks.
      */
     void Window::Shutdown()
     {
@@ -361,7 +361,7 @@ namespace SceneryEditorX
      *
      * @return A pair of floating-point values representing the window's x and y position in screen coordinates.
      *
-     * @note The position coordinates are relative to the top-left corner of the screen, with positive y values
+     * @note - The position coordinates are relative to the top-left corner of the screen, with positive y values
      *       moving downward and positive x values moving rightward.
      */
 	inline std::pair<float, float> Window::GetWindowPos() const
@@ -415,7 +415,7 @@ namespace SceneryEditorX
      * This function is called to handle all events that have occurred since the last call.
      * It processes input events, updates the state of the window, and handles any user input.
      *
-     * @note This function should be called regularly in the main application loop to ensure
+     * @note - This function should be called regularly in the main application loop to ensure
      */
     void Window::ProcessEvents()
     {
@@ -897,9 +897,9 @@ namespace SceneryEditorX
 	 *
 	 * @param window The GLFW window handle for which to set the icon
 	 *
-	 * @note The icon file path is defined in the IconData structure, typically pointing
+	 * @note - The icon file path is defined in the IconData structure, typically pointing
 	 *       to "..\\..\\assets\\icon.png"
-	 * @note This implementation uses stb_image for PNG decoding and requires it to be included
+	 * @note - This implementation uses stb_image for PNG decoding and requires it to be included
 	 */
 	void Window::SetWindowIcon(GLFWwindow *window)
 	{

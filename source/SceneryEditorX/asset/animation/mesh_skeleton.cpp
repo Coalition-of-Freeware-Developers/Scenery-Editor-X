@@ -485,7 +485,7 @@ namespace SceneryEditorX
 				const auto& firstChildBoneTransform = GetModelSpaceRestPoseTransform(children[0]);
 				Vec3 direction = firstChildBoneTransform.Translation - boneTransform.Translation;
 				// Use native utility instead of glm::length
-				length = SceneryEditorX::Utils::Distance(boneTransform.Translation, firstChildBoneTransform.Translation);
+				length = Distance(boneTransform.Translation, firstChildBoneTransform.Translation);
 			}
 
 			m_BoneLengths[i] = length;
@@ -517,7 +517,7 @@ namespace SceneryEditorX
 				}
 
 				// Rotate the skeleton's dominant axis direction to +Y using native quaternion helper
-				m_Orientation = Quat::FromToRotation(SceneryEditorX::Utils::Normalize(direction), Vec3(0.0f, 1.0f, 0.0f));
+				m_Orientation = Quat::FromToRotation(Normalize(direction), Vec3(0.0f, 1.0f, 0.0f));
 				break;
 			}
 		}

@@ -17,7 +17,15 @@
 #include <sstream>
 #include <string>
 #include <vector>
+// Primary include path expects project root include directories set.
+// Provide fallback relative include for static analysis tools lacking those paths.
+#if __has_include(<SceneryEditorX/utils/system_detection.h>)
 #include <SceneryEditorX/utils/system_detection.h>
+#elif __has_include("../utils/system_detection.h")
+#include "../utils/system_detection.h"
+#elif __has_include("../../SceneryEditorX/utils/system_detection.h")
+#include "../../SceneryEditorX/utils/system_detection.h"
+#endif
 // Minimal core includes only; custom Mat2/Mat3 are forward-declared below
 
 /// -------------------------------------------------------
@@ -76,7 +84,10 @@ using iVec3 =	SceneryEditorX::Utils::TVector3<int32_t>; 	///< 3D integer vector
 using iVec4 =	SceneryEditorX::Utils::TVector4<int32_t>; 	///< 4D integer vector
 using UVec2 = 	SceneryEditorX::Utils::TVector2<uint32_t>; 	///< 2D unsigned integer vector
 using UVec3 = 	SceneryEditorX::Utils::TVector3<uint32_t>; 	///< 3D unsigned integer vector
+using UVec4 = 	SceneryEditorX::Utils::TVector4<uint32_t>; 	///< 4D unsigned integer vector
+using Bool2 = 	SceneryEditorX::Utils::TVector2<bool>;     	///< 2D boolean vector
 using Bool3 = 	SceneryEditorX::Utils::TVector3<bool>;     	///< 3D boolean vector
+using Bool4 = 	SceneryEditorX::Utils::TVector4<bool>;     	///< 4D boolean vector
 using Mat2	=	SceneryEditorX::Mat2;                     	///< 2x2 matrix
 using Mat3	=	SceneryEditorX::Mat3;                     	///< 3x3 matrix
 using Mat4	=	SceneryEditorX::Mat4;                    	///< 4x4 matrix
@@ -94,7 +105,7 @@ using Quat	=	SceneryEditorX::Quat;                    	///< Quaternion for rotat
  * @param alignment The alignment boundary (must be a power of 2).
  * @return The aligned size value.
  *
- * @note If size is already aligned to alignment, it will be returned unchanged.
+ * @note - If size is already aligned to alignment, it will be returned unchanged.
  *
  * @example
  * // Align 17 to 8-byte boundary (result: 24)
@@ -201,7 +212,7 @@ namespace SceneryEditorX
      * the standard uint8_t type. It can be used for operations that specifically
      * deal with raw bytes of memory rather than character data or other numeric types.
      *
-     * @note Equivalent to uint8_t from <cstdint>
+     * @note - Equivalent to uint8_t from <cstdint>
      */
     using byte = uint8_t;
 
@@ -217,7 +228,7 @@ namespace SceneryEditorX
 	 * explicit locking. When copied, the new instance starts in a "clean" state regardless
 	 * of the source object's state.
 	 *
-	 * @note The semantics of atomic_flag in C++ guarantee that operations on the flag
+	 * @note - The semantics of atomic_flag in C++ guarantee that operations on the flag
 	 *       are atomic and provide synchronization between threads.
 	 */
 	struct AtomicFlag

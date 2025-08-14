@@ -25,6 +25,7 @@
 #include <SceneryEditorX/scene/entity.h>
 #include <SceneryEditorX/utils/math/aabb.h>
 #include <SceneryEditorX/utils/math/math_utils.h>
+#include <SceneryEditorX/utils/math/constants.h>
 
 /// -------------------------------------------------------
 
@@ -210,7 +211,7 @@ namespace SceneryEditorX
 						if (auto meshSource = AssetManager::GetAsset<AssetType::MeshSource>(mesh->GetMeshSource()); meshSource)
 						{
 							const Utils::AABB& aabb = meshSource->GetBoundingBox();
-							m_ViewportRenderer2D->DrawAABB(aabb, transform, glm::vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+									m_ViewportRenderer2D->DrawAABB(aabb, transform, Vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 						}
 					}
 				}
@@ -225,7 +226,7 @@ namespace SceneryEditorX
                 for (auto entities = m_Editor->m_CurrentScene->GetAllEntitiesWith<PointLightComponent>(); auto e : entities)
 				{
 					Entity entity = { e, m_Editor->m_CurrentScene.Raw() };
-					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translation, { 1.0f, 1.0f }, EditorResources::PointLightIcon);
+					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translate, { 1.0f, 1.0f }, EditorResources::PointLightIcon);
 				}
 			}
 
@@ -233,7 +234,7 @@ namespace SceneryEditorX
                 for (auto entities = m_Editor->m_CurrentScene->GetAllEntitiesWith<SpotLightComponent>(); auto e : entities)
 				{
 					Entity entity = { e, m_Editor->m_CurrentScene.Raw() };
-					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translation, { 1.0f, 1.0f }, EditorResources::SpotLightIcon);
+					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translate, { 1.0f, 1.0f }, EditorResources::SpotLightIcon);
 				}
 			}
 
@@ -241,7 +242,7 @@ namespace SceneryEditorX
                 for (auto entities = m_Editor->m_CurrentScene->GetAllEntitiesWith<CameraComponent>(); auto e : entities)
 				{
 					Entity entity = { e, m_Editor->m_CurrentScene.Raw() };
-					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translation, { 1.0f, 1.0f }, EditorResources::CameraIcon);
+					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translate, { 1.0f, 1.0f }, EditorResources::CameraIcon);
 				}
 			}
 
@@ -249,7 +250,7 @@ namespace SceneryEditorX
                 for (auto entities = m_Editor->m_CurrentScene->GetAllEntitiesWith<AudioComponent>(); auto e : entities)
 				{
 					Entity entity = { e, m_Editor->m_CurrentScene.Raw() };
-					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translation, { 1.0f, 1.0f }, EditorResources::AudioIcon);
+					m_ViewportRenderer2D->DrawQuadBillboard(m_Editor->m_CurrentScene->GetWorldSpaceTransform(entity).Translate, { 1.0f, 1.0f }, EditorResources::AudioIcon);
 				}
 			}
 		}
@@ -357,7 +358,7 @@ namespace SceneryEditorX
 			Entity cameraEntity = m_Editor->m_CurrentScene->GetMainCameraEntity();
 			SceneCamera& camera = cameraEntity.GetComponent<CameraComponent>();
 			projectionMatrix = camera.GetProjectionMatrix();
-			viewMatrix = glm::inverse(m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(cameraEntity));
+			viewMatrix = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(cameraEntity).GetInverse();
 		}
 		else
 		{
@@ -374,11 +375,11 @@ namespace SceneryEditorX
 
 			SEDX_EDITOR_OP_DECLARE;
 			if (ImGuizmo::Manipulate(
-				glm::value_ptr(viewMatrix),
-				glm::value_ptr(projectionMatrix),
+				viewMatrix.Data(),
+				projectionMatrix.Data(),
 				static_cast<ImGuizmo::OPERATION>(m_Editor->m_GizmoType),
 				m_Editor->m_GizmoWorldOrientation ? ImGuizmo::WORLD_SPACE : ImGuizmo::LOCAL_SPACE,
-				glm::value_ptr(transform),
+				transform.Data(),
 				nullptr,
 				snap ? snapValues : nullptr)
 			)
@@ -387,8 +388,8 @@ namespace SceneryEditorX
 
                 if (Entity parent = m_Editor->m_CurrentScene->TryGetEntityWithUUID(entity.GetParentUUID()))
 				{
-					glm::mat4 parentTransform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(parent);
-					transform = glm::inverse(parentTransform) * transform;
+					Mat4 parentTransform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(parent);
+					transform = parentTransform.GetInverse() * transform;
 				}
 
 				/// Manipulated transform is now in local space of parent (= world space if no parent)
@@ -401,7 +402,7 @@ namespace SceneryEditorX
 				/// small drift (particularly in rotation and scale) due numerical precision issues
 				/// from all those matrix operations.
 				Vec3 translation;
-				glm::quat rotation;
+							Quat rotation;
 				Vec3 scale;
                 Utils::Math::DecomposeTransform(transform, translation, rotation, scale);
 
@@ -418,11 +419,14 @@ namespace SceneryEditorX
 						Vec3 originalRotationEuler = entityTransform.GetRotationEuler();
 
 						/// Map original rotation to range [-180, 180] which is what ImGuizmo gives us
-						originalRotationEuler.x = fmodf(originalRotationEuler.x + glm::pi<float>(), glm::two_pi<float>()) - glm::pi<float>();
-						originalRotationEuler.y = fmodf(originalRotationEuler.y + glm::pi<float>(), glm::two_pi<float>()) - glm::pi<float>();
-						originalRotationEuler.z = fmodf(originalRotationEuler.z + glm::pi<float>(), glm::two_pi<float>()) - glm::pi<float>();
+						originalRotationEuler.x = fmodf(originalRotationEuler.x + SceneryEditorX::PI, SceneryEditorX::TWO_PI) - SceneryEditorX::PI;
+						originalRotationEuler.y = fmodf(originalRotationEuler.y + SceneryEditorX::PI, SceneryEditorX::TWO_PI) - SceneryEditorX::PI;
+						originalRotationEuler.z = fmodf(originalRotationEuler.z + SceneryEditorX::PI, SceneryEditorX::TWO_PI) - SceneryEditorX::PI;
 
-						Vec3 deltaRotationEuler = glm::eulerAngles(rotation) - originalRotationEuler;
+						// ImGuizmo returns rotation in matrix form; we decomposed to a quaternion 'rotation'.
+						// Our TransformComponent stores Euler in radians, so work entirely in radians
+						// to avoid precision loss from unnecessary degree conversions.
+						Vec3 deltaRotationEuler = rotation.ToEulerRadians() - originalRotationEuler;
 
 						/// Try to avoid drift due numeric precision
 						if (fabs(deltaRotationEuler.x) < 0.001) deltaRotationEuler.x = 0.0f;
@@ -465,17 +469,17 @@ namespace SceneryEditorX
 			medianScale /= selections.size();
 			medianRotation /= selections.size();
 
-			Mat4 medianPointMatrix = glm::translate(Mat4(1.0f), medianLocation) * glm::toMat4(glm::quat(medianRotation)) * glm::scale(Mat4(1.0f), medianScale);
+			Mat4 medianPointMatrix = Mat4::Translate(medianLocation) * Quat::EulerDegrees(medianRotation).ToMatrix() * Mat4::Scale(medianScale);
 			Mat4 deltaMatrix = Mat4(1.0f);
 
 			/// TODO: Undo stack multi-transform.
 			if (ImGuizmo::Manipulate(
-				glm::value_ptr(viewMatrix),
-				glm::value_ptr(projectionMatrix),
+				viewMatrix.Data(),
+				projectionMatrix.Data(),
 				static_cast<ImGuizmo::OPERATION>(m_Editor->m_GizmoType),
 				m_Editor->m_GizmoWorldOrientation ? ImGuizmo::WORLD_SPACE : ImGuizmo::LOCAL_SPACE,
-				glm::value_ptr(medianPointMatrix),
-				glm::value_ptr(deltaMatrix),
+				medianPointMatrix.Data(),
+				deltaMatrix.Data(),
 				snap ? snapValues : nullptr)
 			)
 			{
@@ -495,7 +499,7 @@ namespace SceneryEditorX
 					case TransformationTarget::IndividualOrigins:
 					{
 						Vec3 deltaTranslation, deltaScale;
-						glm::quat deltaRotation;
+							Quat deltaRotation;
                         Utils::Math::DecomposeTransform(deltaMatrix, deltaTranslation, deltaRotation, deltaScale);
 
 						for (auto entityID : selections)
@@ -512,12 +516,13 @@ namespace SceneryEditorX
 								}
 								case ImGuizmo::ROTATE:
 								{
-									transform.SetRotationEuler(transform.GetRotationEuler() + glm::eulerAngles(deltaRotation));
+									// deltaRotation is a quaternion; add its Euler (radians) directly
+									transform.SetRotationEuler(transform.GetRotationEuler() + deltaRotation.ToEulerRadians());
 									break;
 								}
 								case ImGuizmo::SCALE:
 								{
-									if (deltaScale != glm::vec3(1.0f, 1.0f, 1.0f))
+									if (deltaScale != Vec3(1.0f, 1.0f, 1.0f))
 										transform.Scale *= deltaScale;
 									break;
 								}
@@ -1137,8 +1142,8 @@ namespace SceneryEditorX
 						Mat4 transform = m_Editor->m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
 						Ray ray =
 						{
-							glm::inverse(transform) * Vec4(origin, 1.0f),
-							glm::inverse(Mat3(transform)) * direction
+							transform.GetInverse() * Vec4(origin, 1.0f),
+							Mat3(transform).GetInverse() * direction
 						};
 
 						float t;
@@ -1172,8 +1177,8 @@ namespace SceneryEditorX
 							auto& submesh = submeshes[i];
 							Mat4 transform =m_Editor-> m_CurrentScene->GetWorldSpaceTransformMatrix(entity);
 							Ray ray = {
-								glm::inverse(transform * submesh.Transform) * Vec4(origin, 1.0f),
-								glm::inverse(Mat3(transform * submesh.Transform)) * direction
+								(transform * submesh.Transform).GetInverse() * Vec4(origin, 1.0f),
+								Mat3(transform * submesh.Transform).GetInverse() * direction
 							};
 
 							float t;
@@ -1236,8 +1241,8 @@ namespace SceneryEditorX
 	{
         Vec4 mouseClipPos = {mx, my, -1.0f, 1.0f};
 
-        auto inverseProj = glm::inverse(m_ViewportCamera.GetProjectionMatrix());
-        auto inverseView = glm::inverse(Mat3(m_ViewportCamera.GetViewMatrix()));
+		auto inverseProj = m_ViewportCamera.GetProjectionMatrix().GetInverse();
+		auto inverseView = Mat3(m_ViewportCamera.GetViewMatrix()).GetInverse();
 
         Vec4 ray = inverseProj * mouseClipPos;
         Vec3 rayPos = m_ViewportCamera.GetPosition();

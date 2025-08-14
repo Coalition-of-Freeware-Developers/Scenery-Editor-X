@@ -1,8 +1,8 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * logging.hpp
@@ -14,7 +14,7 @@
 #include <SceneryEditorX/utils/formatter.h>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
-#include <vulkan/vulkan.h>
+#include <SceneryEditorX/utils/vulkan/vk_includes.h>
 
 /// -------------------------------------------------------
 
@@ -36,7 +36,7 @@ namespace SceneryEditorX
 	 * This class provides a static interface for initializing the logger and
 	 * accessing the logger instance. It uses the spdlog library for logging.
 	 *
-	 * @note This class is not intended to be instantiated.
+	 * @note - This class is not intended to be instantiated.
 	 */
 	class Log
 	{
@@ -51,7 +51,7 @@ namespace SceneryEditorX
 		 * These types can be used to differentiate between
 		 * different loggers in the application.
 		 *
-		 * @note The Core logger is used for core application logging,
+		 * @note - The Core logger is used for core application logging,
 		 * while the Editor logger is used for editor-specific logging.
 		 */
 	    enum class Type : uint8_t
@@ -77,7 +77,7 @@ namespace SceneryEditorX
 	        Error,
 	        Fatal
 	    };
-	
+
 	    /**
 	     * @struct TagDetails
 		 * @brief A structure to hold the details of a tag.
@@ -85,20 +85,20 @@ namespace SceneryEditorX
 		 * This structure contains information about whether a tag is enabled
 		 * and the log level filter associated with that tag.
 		 *
-		 * @note The Enabled field indicates whether the tag is enabled for logging,
+		 * @note - The Enabled field indicates whether the tag is enabled for logging,
 		 * while the LevelFilter field specifies the minimum log level for messages
 		 * associated with this tag.
 		 *
-		 * @note The LevelFilter field can be used to filter log messages based on their severity.
+		 * @note - The LevelFilter field can be used to filter log messages based on their severity.
 		 */
 	    struct TagDetails
 	    {
 	        bool Enabled = true;
 	        Level LevelFilter = Level::Trace;
 	    };
-	
+
 	    /// ------------------------------------------------
-	
+
 	    /**
 	     * @fn Init
 		 * @brief Initializes the logger instance.
@@ -106,7 +106,7 @@ namespace SceneryEditorX
 		 * This function initializes the logger instance with the desired settings.
 		 */
 	    static void Init();
-	
+
 	    /**
 	     * @fn LogHeader
 		 * @brief Logs system information to the console.
@@ -116,7 +116,7 @@ namespace SceneryEditorX
 		 * page size, and processor type.
 		 */
 	    static void LogHeader();
-	
+
 	    /**
 	     * @fn ShutDown
 		 * @brief Shuts down the logger instance.
@@ -126,7 +126,7 @@ namespace SceneryEditorX
 		 * ensure that all log messages are properly flushed.
 		 */
 	    static void ShutDown();
-	
+
 	    /**
 	     * @fn LogVulkanDebug
 		 * @brief Logs a message with the specified vulkan log level.
@@ -142,12 +142,12 @@ namespace SceneryEditorX
          * @brief Logs a Vulkan result with the specified operation.
          *
          * This function logs a Vulkan result with the specified operation to the console and the log file.
-         * 
+         *
          * @param result The Vulkan result to log.
          * @param operation The operation that was performed.
          */
         static void LogVulkanResult(VkResult result, const std::string &operation);
-	
+
 	    /**
 		 * @brief Gets the logger instance.
 		 * @return A shared pointer to the logger instance.
@@ -155,7 +155,7 @@ namespace SceneryEditorX
 		 * This function returns a shared pointer to the logger instance.
 		 * It can be used to access the logger for logging messages.
 		 *
-		 * @note The logger instance is initialized in the Init function.
+		 * @note - The logger instance is initialized in the Init function.
 		 */
         static std::shared_ptr<spdlog::logger> &GetCoreLogger() { return CoreLogger; }
 
@@ -166,7 +166,7 @@ namespace SceneryEditorX
          * This function returns a shared pointer to the editor logger instance.
          * It can be used to access the editor logger for logging messages.
          *
-         * @note The editor logger instance is initialized in the Init function.
+         * @note - The editor logger instance is initialized in the Init function.
          * @return A shared pointer to the editor logger instance.
          */
         static std::shared_ptr<spdlog::logger> &GetEditorLogger() { return EditorLogger; }
@@ -177,7 +177,7 @@ namespace SceneryEditorX
          *
          * This function returns a shared pointer to the editor console logger instance.
          * It can be used to access the editor console logger for logging messages.
-         * 
+         *
          * @return A shared pointer to the editor console logger instance.
          */
         static std::shared_ptr<spdlog::logger> &GetEditorConsoleLogger() { return EditorConsoleLogger; }
@@ -188,11 +188,11 @@ namespace SceneryEditorX
          *
          * This function returns a shared pointer to the launcher logger instance.
          * It can be used to access the launcher logger for logging messages.
-         * 
+         *
          * @return A shared pointer to the launcher logger instance.
          */
 		static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return LauncherLogger; }
-	
+
 	    /// -------------------------------------------------------------
 
         /**
@@ -214,7 +214,7 @@ namespace SceneryEditorX
          * @brief Sets the tag details for a specific tag.
          */
         static void SetDefaultTagSettings();
-	
+
 	    /// -----------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_WINDOWS
@@ -226,16 +226,16 @@ namespace SceneryEditorX
 #endif
 	    template <typename... Args>
 	    static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::format_string<Args...> format, Args &&...args);
-									
+
 	    static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message);
-	
+
 	    template <typename... Args>
 	    static void PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args);
-	
+
 	    static void PrintAssertMessage(Log::Type type, std::string_view prefix);
-	
+
 	    /// -----------------------------------------------------------
-	
+
 	    /**
 		 * @brief Converts a log level to a string.
 		 * @param level The log level to convert.
@@ -253,7 +253,7 @@ namespace SceneryEditorX
 	        }
 	        return "";
 	    }
-	
+
 	    /**
 		* @brief Converts a string to a log level.
 		* @param string The string to convert.
@@ -266,7 +266,7 @@ namespace SceneryEditorX
 	        if (string == "Warn")	return Level::Warn;
 	        if (string == "Error")	return Level::Error;
 	        if (string == "Fatal")	return Level::Fatal;
-	
+
 	        return Level::Trace;
 	    }
 
@@ -276,7 +276,7 @@ namespace SceneryEditorX
          * This function flushes all loggers to ensure that all log messages
          * are written to the log files and console.
          *
-         * @note This function should be called before the application exits
+         * @note - This function should be called before the application exits
          * to ensure that all log messages are properly flushed.
          */
         static void FlushAll()
@@ -286,7 +286,7 @@ namespace SceneryEditorX
             if (EditorConsoleLogger) EditorConsoleLogger->flush();
 			if (LauncherLogger) LauncherLogger->flush();
         }
-	
+
 	private:
 	    /**
 		 * @brief The logger instances for the Core Logger, Editor Logger, and Editor Debug Logger for the UI debug console.
@@ -295,7 +295,7 @@ namespace SceneryEditorX
 	    static std::shared_ptr<spdlog::logger> EditorLogger;
 	    static std::shared_ptr<spdlog::logger> EditorConsoleLogger;
         static std::shared_ptr<spdlog::logger> LauncherLogger;
-	
+
 	    inline static std::map<std::string, TagDetails> EnabledTags_;
 	    static std::map<std::string, TagDetails> DefaultTagDetails_;
 	};
@@ -398,9 +398,9 @@ namespace SceneryEditorX
 	        }
 	    }
 	}
-	
+
 	/// ----------------------------------------------------
-	
+
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
 	{
@@ -429,9 +429,9 @@ namespace SceneryEditorX
 	        }
 	    }
 	}
-	
+
 	/// ----------------------------------------------------
-	
+
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
 	    auto &detail = EnabledTags_[std::string(tag.data(), tag.size())]; // Convert fmt::string_view to std::string properly
@@ -458,14 +458,14 @@ namespace SceneryEditorX
 	        }
 	    }
 	}
-	
+
 	/// ----------------------------------------------------
-	
+
 	template <typename... Args>
 	void Log::PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() : 
-	                  (type == Type::Editor) ? GetEditorLogger() : 
+	    auto logger = (type == Type::Core) ? GetCoreLogger() :
+	                  (type == Type::Editor) ? GetEditorLogger() :
 	                  GetLauncherLogger();
 	    auto formatted = std::format(message, std::forward<Args>(args)...);
 	    logger->error("{}: {}", prefix, formatted);
@@ -473,14 +473,14 @@ namespace SceneryEditorX
 	    MessageBoxA(nullptr, formatted.c_str(), "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
 	#endif
 	}
-	
-	
+
+
 	/// ----------------------------------------------------
-	
+
 	inline void Log::PrintAssertMessage(Log::Type type, std::string_view prefix)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() : 
-	                  (type == Type::Editor) ? GetEditorLogger() : 
+	    auto logger = (type == Type::Core) ? GetCoreLogger() :
+	                  (type == Type::Editor) ? GetEditorLogger() :
 	                  GetLauncherLogger();
 	    logger->error("{}", prefix);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
@@ -491,12 +491,12 @@ namespace SceneryEditorX
 } // namespace SceneryEditorX
 
 /// ----------------------------------------------------
-	
-	
+
+
 	/**
 	 *
 	 * Launcher Log Macros
-	 * 
+	 *
 	 * @brief A macro to log a message with the specified log level.
 	 *
 	 * This macro logs a message with the specified log level to the console and the log file.
@@ -506,9 +506,9 @@ namespace SceneryEditorX
 	#define LAUNCHER_LOG_WARN(...)		::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
 	#define LAUNCHER_LOG_ERROR(...)		::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
 	#define LAUNCHER_LOG_CRITICAL(...)  ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
-	
+
 	/**
-	 * 
+	 *
 	 * Editor Log Macros
 	 *
 	 */

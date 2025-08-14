@@ -44,9 +44,9 @@ namespace SceneryEditorX
      * For each device, it queries comprehensive hardware capabilities and prepares queue
      * configurations that will later be used for logical device creation.
      * 
-     * @note This constructor doesn't create a logical device - it only prepares the physical device
+     * @note - This constructor doesn't create a logical device - it only prepares the physical device
      *       information needed for logical device creation in the VulkanDevice class.
-     * @note Errors during device enumeration or if no discrete GPU is found are logged
+     * @note - Errors during device enumeration or if no discrete GPU is found are logged
      *       but don't throw exceptions.
      * 
      * @see VulkanDevice, GetQueueFamilyIndices, FindDepthFormat
@@ -314,7 +314,7 @@ namespace SceneryEditorX
 	 * 
 	 * @throws Logs an error if no suitable format is found among the candidates
 	 * 
-	 * @note Linear tiling is typically used for host-accessible images, while optimal tiling
+	 * @note - Linear tiling is typically used for host-accessible images, while optimal tiling
 	 *       provides better performance for GPU-only access images like depth buffers and textures
 	 * 
 	 * @see vkGetPhysicalDeviceFormatProperties, VkFormatProperties, VkImageTiling
@@ -403,7 +403,7 @@ namespace SceneryEditorX
 	 *   as they are owned by the Vulkan instance, not by this class
 	 * - The physical device handle itself is not destroyed as it's managed by the Vulkan runtime
 	 * 
-	 * @note Physical device handles (VkPhysicalDevice) are not created or destroyed by the
+	 * @note - Physical device handles (VkPhysicalDevice) are not created or destroyed by the
 	 *       application. They are managed by the Vulkan implementation.
 	 */
 	VulkanPhysicalDevice::~VulkanPhysicalDevice() = default;
@@ -427,7 +427,7 @@ namespace SceneryEditorX
 	 * @param instance The Vulkan instance to use for device enumeration
 	 * @return Ref<VulkanPhysicalDevice> A shared pointer to the newly created physical device object
 	 * 
-	 * @note The returned physical device has enumerated all available GPUs but may not
+	 * @note - The returned physical device has enumerated all available GPUs but may not
 	 *       have explicitly selected one yet. Call SelectDevice() to choose a specific device.
 	 * 
 	 * @see VulkanPhysicalDevice(), VulkanDevice
@@ -454,7 +454,7 @@ namespace SceneryEditorX
 	 * 
 	 * @throws Logs an error if no device has been selected or if the device index is invalid
 	 * 
-	 * @note This method should only be called after a physical device has been properly
+	 * @note - This method should only be called after a physical device has been properly
 	 *       selected via SelectDevice() or an equivalent selection method
 	 * 
 	 * @see @struct GPUDevice, SelectDevice
@@ -521,9 +521,9 @@ namespace SceneryEditorX
 	 * @param qFlags Bitfield of required queue capabilities (@enum VK_QUEUE_GRAPHICS_BIT, @enum VK_QUEUE_COMPUTE_BIT, etc.)
 	 * @return @struct QueueFamilyIndices containing the selected queue family indices for different operations
 	 * 
-	 * @note If the device has no dedicated compute or transfer queues, the general graphics queue will
+	 * @note - If the device has no dedicated compute or transfer queues, the general graphics queue will
 	 *       be used for all operations.
-	 * @note The commented-out section contains code for checking presentation support once surface
+	 * @note - The commented-out section contains code for checking presentation support once surface
 	 *       creation is implemented.
 	 * 
 	 * @see VkQueueFlagBits, QueueFamilyIndices
@@ -671,9 +671,9 @@ namespace SceneryEditorX
 	 * @param physDevice The physical device to create a logical device from
 	 * @param enabledFeatures The device features to be enabled on the logical device
 	 * 
-	 * @note The device creation may fail if required extensions are not supported, in which
+	 * @note - The device creation may fail if required extensions are not supported, in which
 	 *       case an error is logged and the function returns early.
-	 * @note Device queues are acquired based on queue family indices determined during
+	 * @note - Device queues are acquired based on queue family indices determined during
 	 *       physical device selection.
 	 * 
 	 * @see LoadExtensionFunctions, InitializeBindlessResources, CreateBuffer
@@ -891,7 +891,7 @@ namespace SceneryEditorX
 	 * These function pointers enable the engine to use extension functionality in a 
 	 * cross-platform and runtime-compatible way.
 	 * 
-	 * @note Function pointers are initialized to nullptr and will remain that way if the 
+	 * @note - Function pointers are initialized to nullptr and will remain that way if the 
 	 *       corresponding extension is not supported or enabled.
 	 * 
 	 * @see vkGetDeviceProcAddr
@@ -939,8 +939,8 @@ namespace SceneryEditorX
 	 * - Use dynamic indexing in shaders for data-driven rendering techniques
 	 * - Support efficient texture arrays, material systems, and instance data
 	 * 
-	 * @note This implementation relies on VK_EXT_descriptor_indexing extension
-	 * @note The descriptor pools are sized according to predefined MAX_* constants
+	 * @note - This implementation relies on VK_EXT_descriptor_indexing extension
+	 * @note - The descriptor pools are sized according to predefined MAX_* constants
 	 * 
 	 * @see VkDescriptorPoolCreateInfo, VkDescriptorSetLayoutCreateInfo
 	 */
@@ -979,7 +979,7 @@ namespace SceneryEditorX
 	 * The destructor follows a careful order of destruction to prevent accessing freed resources,
 	 * and includes appropriate null-checking to handle partially-initialized states.
 	 * 
-	 * @note This class follows RAII principles with this destructor ensuring all Vulkan resources
+	 * @note - This class follows RAII principles with this destructor ensuring all Vulkan resources
 	 *       are properly freed when a VulkanDevice instance goes out of scope.
 	 * 
 	 * @see VulkanDevice::Destroy, MemoryAllocator::Shutdown
@@ -1030,7 +1030,7 @@ namespace SceneryEditorX
 	 * 
 	 * @return VmaAllocator The Vulkan Memory Allocator handle, or nullptr if not initialized
 	 * 
-	 * @note This function checks if the memory allocator has been properly initialized and
+	 * @note - This function checks if the memory allocator has been properly initialized and
 	 *       logs an error if it hasn't been. Memory operations will fail without a valid allocator.
 	 * 
 	 * @see MemoryAllocator::GetMemAllocator()
@@ -1060,7 +1060,7 @@ namespace SceneryEditorX
      * 
      * @param other The source VulkanDevice instance to move from (will be left in a valid but empty state).
      * 
-     * @note After the move operation, the source object remains in a valid but resource-empty state,
+     * @note - After the move operation, the source object remains in a valid but resource-empty state,
      *       with its critical handles set to null/zero to prevent any destructive operations when
      *       its destructor is called.
      * 
@@ -1104,7 +1104,7 @@ namespace SceneryEditorX
 	 * @param other The source VulkanDevice to move resources from (will be in a valid but empty state after the move)
 	 * @return VulkanDevice& A reference to the destination object (*this) containing all moved resources
 	 * 
-	 * @note After the move, the source object remains valid but with all its Vulkan handles set to null
+	 * @note - After the move, the source object remains valid but with all its Vulkan handles set to null
 	 *       and should not be used to execute Vulkan operations without reinitialization.
 	 * 
 	 * @see VulkanDevice, VulkanDevice::Destroy
@@ -1171,7 +1171,7 @@ namespace SceneryEditorX
 	 * 
 	 * @param compute If true, locks the compute queue mutex; otherwise locks the graphics queue mutex
 	 * 
-	 * @note This should be paired with a matching UnlockQueue call in a RAII pattern,
+	 * @note - This should be paired with a matching UnlockQueue call in a RAII pattern,
 	 *       ideally using a std::lock_guard or similar scope-based locking mechanism.
 	 * 
 	 * @see UnlockQueue
@@ -1341,7 +1341,7 @@ namespace SceneryEditorX
 	 * 
 	 * @return VkSampleCountFlagBits The maximum supported MSAA sample count
 	 * 
-	 * @note The returned sample count can be used when creating render passes and framebuffers
+	 * @note - The returned sample count can be used when creating render passes and framebuffers
 	 *       to enable MSAA rendering at the highest quality level supported by the hardware.
 	 */
 	VkSampleCountFlagBits VulkanDevice::GetMaxUsableSampleCount() const
@@ -1700,7 +1700,7 @@ namespace SceneryEditorX
 	 * 
 	 * @return VkSampler A configured Vulkan sampler object that must be destroyed when no longer needed
 	 * 
-	 * @note The sampler checks for anisotropic filtering support at runtime and enables it
+	 * @note - The sampler checks for anisotropic filtering support at runtime and enables it
 	 *       if available, using the maximum available anisotropy level from the physical device.
 	 *       The returned sampler should be destroyed with vkDestroySampler when no longer needed.
 	 * 
@@ -1809,7 +1809,7 @@ namespace SceneryEditorX
 	 * @param vulkanDevice Reference to the Vulkan device that will own these command pools
 	 * @param type Queue type to determine which command pool to create (graphics or compute)
 	 * 
-	 * @note Command pools are specific to queue families and buffers allocated from a pool
+	 * @note - Command pools are specific to queue families and buffers allocated from a pool
 	 *       can only be submitted to queues of the matching family.
 	 * 
 	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
@@ -1860,7 +1860,7 @@ namespace SceneryEditorX
 	 * share the same handle to avoid double-deletion, which would cause a Vulkan
 	 * validation error.
 	 * 
-	 * @note Command pools must be destroyed before their parent device is destroyed.
+	 * @note - Command pools must be destroyed before their parent device is destroyed.
 	 *       When a command pool is destroyed, all command buffers allocated from it
 	 *       are implicitly freed and should not be used afterward.
 	 * 
@@ -1901,7 +1901,7 @@ namespace SceneryEditorX
 	 * 
 	 * @return VkCommandBuffer The newly allocated command buffer, or VK_NULL_HANDLE if allocation failed
 	 * 
-	 * @note Command buffers allocated with this method should either be freed manually or flushed using 
+	 * @note - Command buffers allocated with this method should either be freed manually or flushed using 
 	 *       the FlushCmdBuffer method, which will handle submission and automatic cleanup.
 	 * 
 	 * @see FlushCmdBuffer
@@ -1963,9 +1963,9 @@ namespace SceneryEditorX
 	 * @param cmdBuffer The command buffer to submit and execute
 	 * @param queue The queue to which the command buffer should be submitted
 	 * 
-	 * @note After this function returns, the command buffer has been freed and should not be used
-	 * @note This function will block the calling thread until the GPU completes execution
-	 * @note For regular rendering operations that don't need CPU synchronization,
+	 * @note - After this function returns, the command buffer has been freed and should not be used
+	 * @note - This function will block the calling thread until the GPU completes execution
+	 * @note - For regular rendering operations that don't need CPU synchronization,
 	 *       consider using semaphores instead for better performance
 	 * 
 	 * @see vkEndCommandBuffer, vkCreateFence, vkQueueSubmit, vkWaitForFences

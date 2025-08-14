@@ -41,7 +41,7 @@ namespace SceneryEditorX
 
         //GLOBAL Ref<Image2D> Create(const ImageDescriptions &desc, const std::string &name = "Image2D");
 
-        void Resize(const glm::uvec2& size)
+        void Resize(const UVec2& size)
         {
 			Resize(size.x, size.y);
 		}
@@ -59,7 +59,7 @@ namespace SceneryEditorX
         [[nodiscard]] bool IsValid() const { return m_DescriptorImageInfo.imageView != nullptr; }
         [[nodiscard]] uint32_t GetWidth() const { return m_Specification.width; }
 		[[nodiscard]] uint32_t GetHeight() const { return m_Specification.height; }
-		[[nodiscard]] glm::uvec2 GetSize() const { return { m_Specification.width, m_Specification.height };}
+		[[nodiscard]] UVec2 GetSize() const { return { m_Specification.width, m_Specification.height };}
 		[[nodiscard]] bool HasMips() const { return m_Specification.mips > 1; }
 		[[nodiscard]] float GetAspectRatio() const { return (float)m_Specification.width / (float)m_Specification.height; }
 		[[nodiscard]] int GetClosestMipLevel(uint32_t width, uint32_t height) const;

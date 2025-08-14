@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -398,7 +398,7 @@ namespace SceneryEditorX
          * @param device The Vulkan device to initialize resources for
          * @param bindlessResources The bindless resources to initialize
          *
-         * @note This function sets up the bindless resources for the device, including
+         * @note - This function sets up the bindless resources for the device, including
          * creating the bindless descriptor pool and descriptor sets.
          */
         //GLOBAL void InitBindlessResources(VkDevice device, const BindlessResources& bindlessResources);

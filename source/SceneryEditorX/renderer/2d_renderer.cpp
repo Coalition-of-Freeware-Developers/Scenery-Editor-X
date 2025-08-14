@@ -555,7 +555,7 @@ namespace SceneryEditorX
 	 * The fix is:
 	 * @code
 	 * VertexBuffer(uint64_t size);
-	 * @endcode 
+	 * @endcode
 	 * Located in @file vertex_buffer.h
 	 *
 	 * @note: Alternatives to the fix can be used here to avoid the error:
@@ -802,7 +802,7 @@ namespace SceneryEditorX
         constexpr float textureIndex = 0.0f; ///< White Texture
         constexpr float tilingFactor = 1.0f;
 
-		const Mat4 transform = glm::translate(Mat4(1.0f), position) * glm::scale(Mat4(1.0f), { size.x, size.y, 1.0f });
+		const Mat4 transform = Mat4::Translate(position) * Mat4::Scale({size.x, size.y, 1.0f});
 
 		auto& bufferPtr = GetWriteableQuadBuffer();
 		bufferPtr->Position = transform * m_QuadVertexPositions[0];
@@ -862,7 +862,7 @@ namespace SceneryEditorX
 		}
 
 		const Vec2 textureCoords[] = { uv0, { uv1.x, uv0.y }, uv1, { uv0.x, uv1.y } };
-		const Mat4 transform = glm::translate(Mat4(1.0f), position) * glm::scale(Mat4(1.0f), { size.x, size.y, 1.0f });
+		const Mat4 transform = Mat4::Translate(position) * Mat4::Scale({size.x, size.y, 1.0f});
 
 		auto& bufferPtr = GetWriteableQuadBuffer();
 		bufferPtr->Position = transform * m_QuadVertexPositions[0];
@@ -1003,9 +1003,9 @@ namespace SceneryEditorX
         constexpr float textureIndex = 0.0f; /// White Texture
         constexpr float tilingFactor = 1.0f;
 
-		const Mat4 transform = glm::translate(Mat4(1.0f), position)
-			* glm::rotate(Mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
-			* glm::scale(Mat4(1.0f), { size.x, size.y, 1.0f });
+		const Mat4 transform = Mat4::Translate(position)
+			* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation)
+			* Mat4::Scale({ size.x, size.y, 1.0f });
 
 		auto& bufferPtr = GetWriteableQuadBuffer();
 		bufferPtr->Position = transform * m_QuadVertexPositions[0];
@@ -1064,9 +1064,9 @@ namespace SceneryEditorX
 		    m_TextureSlotIndex++;
 		}
 
-		const Mat4 transform = glm::translate(Mat4(1.0f), position)
-			* glm::rotate(Mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
-			* glm::scale(Mat4(1.0f), { size.x, size.y, 1.0f });
+		const Mat4 transform = Mat4::Translate(position)
+			* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation)
+		    * Mat4::Scale({ size.x, size.y, 1.0f });
 
 		auto& bufferPtr = GetWriteableQuadBuffer();
 		bufferPtr->Position = transform * m_QuadVertexPositions[0];
@@ -1108,9 +1108,9 @@ namespace SceneryEditorX
 
 	void Renderer2D::DrawRotatedRect(const Vec3& position, const Vec2& size, float rotation, const Vec4& color, const bool onTop)
 	{
-		const Mat4 transform = glm::translate(Mat4(1.0f), position)
-			* glm::rotate(Mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
-			* glm::scale(Mat4(1.0f), { size.x, size.y, 1.0f });
+		const Mat4 transform = Mat4::Translate(position)
+				* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation)
+				* Mat4::Scale({ size.x, size.y, 1.0f });
 
 		const Vec3 positions[4] =
 		{
@@ -1146,8 +1146,8 @@ namespace SceneryEditorX
 
 	void Renderer2D::FillCircle(const Vec3& position, float radius, const Vec4& color, const float thickness)
 	{
-		const Mat4 transform = glm::translate(Mat4(1.0f), position)
-	    * glm::scale(Mat4(1.0f), { radius * 2.0f, radius * 2.0f, 1.0f });
+		const Mat4 transform = Mat4::Translate(position)
+		    * Mat4::Scale({ radius * 2.0f, radius * 2.0f, 1.0f });
 
 		auto& bufferPtr = GetWriteableCircleBuffer();
 		for (auto m_QuadVertexPosition : m_QuadVertexPositions)
@@ -1197,11 +1197,11 @@ namespace SceneryEditorX
 
 	void Renderer2D::DrawCircle(const Vec3& position, const Vec3& rotation, float radius, const Vec4& color, const bool onTop)
 	{
-		const Mat4 transform = glm::translate(Mat4(1.0f), position)
-			* glm::rotate(Mat4(1.0f), rotation.x, { 1.0f, 0.0f, 0.0f })
-			* glm::rotate(Mat4(1.0f), rotation.y, { 0.0f, 1.0f, 0.0f })
-			* glm::rotate(Mat4(1.0f), rotation.z, { 0.0f, 0.0f, 1.0f })
-			* glm::scale(Mat4(1.0f), Vec3(radius));
+		const Mat4 transform = Mat4::Translate(position)
+			* Rotation::AxisAngleRadians({ 1.0f, 0.0f, 0.0f }, rotation.x)
+			* Rotation::AxisAngleRadians({ 0.0f, 1.0f, 0.0f }, rotation.y)
+			* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation.z)
+			* Mat4::Scale(Vec3(radius));
 
 		DrawCircle(transform, color, onTop);
 	}
@@ -1211,10 +1211,10 @@ namespace SceneryEditorX
         constexpr int segments = 32;
 		for (int i = 0; i < segments; i++)
 		{
-			float angle = 2.0f * glm::pi<float>() * (float)i / segments;
-			Vec4 startPosition = { glm::cos(angle), glm::sin(angle), 0.0f, 1.0f };
-			angle = 2.0f * glm::pi<float>() * (float)((i + 1) % segments) / segments;
-			Vec4 endPosition = { glm::cos(angle), glm::sin(angle), 0.0f, 1.0f };
+			float angle = 2.0f * ::SceneryEditorX::PI * (float)i / segments;
+				Vec4 startPosition = { Math::Cos(angle), Math::Sin(angle), 0.0f, 1.0f };
+				angle = 2.0f * ::SceneryEditorX::PI * (float)((i + 1) % segments) / segments;
+				Vec4 endPosition = { Math::Cos(angle), Math::Sin(angle), 0.0f, 1.0f };
 
 			Vec3 p0 = transform * startPosition;
 			Vec3 p1 = transform * endPosition;
@@ -1222,7 +1222,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	void Renderer2D::DrawAABB(const Utils::AABB &aabb, const Mat4& transform, const Vec4& color /*= Vec4(1.0f)*/, const bool onTop)
+	void Renderer2D::DrawAABB(const AABB &aabb, const Mat4& transform, const Vec4& color /*= Vec4(1.0f)*/, const bool onTop)
 	{
 		Vec4 min = { aabb.Min.x, aabb.Min.y, aabb.Min.z, 1.0f };
 		Vec4 max = { aabb.Max.x, aabb.Max.y, aabb.Max.z, 1.0f };
@@ -1269,7 +1269,7 @@ namespace SceneryEditorX
 
 	void Renderer2D::DrawString(const std::string& string, const Ref<Font>& font, const Vec3& position, float maxWidth, const Vec4& color)
 	{
-		DrawString(string, font, glm::translate(Mat4(1.0f), position), maxWidth, color);
+        DrawString(string, font, Mat4::Translate(position), maxWidth, color);
 	}
 
 	/**
@@ -1322,7 +1322,7 @@ namespace SceneryEditorX
 		auto &fontGeometry = font->GetMSDFData()->FontGeometry;
 		const auto& metrics = fontGeometry.getMetrics();
 
-	    /// TODO: these font metrics really should be cleaned up/refactored...(this is a first pass WIP) 
+	    /// TODO: these font metrics really should be cleaned up/refactored...(this is a first pass WIP)
 		std::vector<int> nextLines;
 		{
 			double x = 0.0;
@@ -1422,25 +1422,25 @@ namespace SceneryEditorX
 				// ImGui::End();
 
 				auto& bufferPtr = GetWriteableTextBuffer();
-				bufferPtr->Position = transform * Vec4(pl, pb, 0.0f, 1.0f);
+				bufferPtr->Position = transform * Vec4((float)pl, (float)pb, 0.0f, 1.0f);
 				bufferPtr->Color = color;
 				bufferPtr->TexCoord = { l, b };
 				bufferPtr->TexIndex = textureIndex;
 				bufferPtr++;
 
-				bufferPtr->Position = transform * Vec4(pl, pt, 0.0f, 1.0f);
+				bufferPtr->Position = transform * Vec4((float)pl, (float)pt, 0.0f, 1.0f);
 				bufferPtr->Color = color;
 				bufferPtr->TexCoord = { l, t };
 				bufferPtr->TexIndex = textureIndex;
 				bufferPtr++;
 
-				bufferPtr->Position = transform * Vec4(pr, pt, 0.0f, 1.0f);
+				bufferPtr->Position = transform * Vec4((float)pr, (float)pt, 0.0f, 1.0f);
 				bufferPtr->Color = color;
 				bufferPtr->TexCoord = { r, t };
 				bufferPtr->TexIndex = textureIndex;
 				bufferPtr++;
 
-				bufferPtr->Position = transform * Vec4(pr, pb, 0.0f, 1.0f);
+				bufferPtr->Position = transform * Vec4((float)pr, (float)pb, 0.0f, 1.0f);
 				bufferPtr->Color = color;
 				bufferPtr->TexCoord = { r, b };
 				bufferPtr->TexIndex = textureIndex;

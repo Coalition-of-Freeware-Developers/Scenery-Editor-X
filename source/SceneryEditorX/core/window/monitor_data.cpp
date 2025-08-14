@@ -108,7 +108,7 @@ namespace SceneryEditorX
      * The output is formatted using fmt library with consistent spacing and
      * appropriate precision for floating-point values.
      *
-     * @note This method automatically calls GetMonitorStats() to refresh monitor data
+     * @note - This method automatically calls GetMonitorStats() to refresh monitor data
      *       before displaying the information
      *
      * @see GetMonitorStats
@@ -147,8 +147,8 @@ namespace SceneryEditorX
      *                 will use the current monitor handles.
      * @return Vec2 The center coordinates of the monitor (x, y) in pixels
      *
-     * @note The method contains recursive behavior when invalid monitor data is provided
-     * @note This method depends on the current monitorIndex and monitorCount class members
+     * @note - The method contains recursive behavior when invalid monitor data is provided
+     * @note - This method depends on the current monitorIndex and monitorCount class members
      */
     Vec2 MonitorData::GetMonitorCenter(GLFWmonitor **monitors)
     {
@@ -199,9 +199,9 @@ namespace SceneryEditorX
      * monitor index is out of range after the refresh (e.g., a monitor was
      * disconnected), it will reset the monitor index to 0 (the primary monitor).
      *
-     * @note This method should be called whenever monitor configuration changes
+     * @note - This method should be called whenever monitor configuration changes
      *       or before accessing monitor-related information to ensure data is current.
-     * @note Requires GLFW to be initialized before calling this method.
+     * @note - Requires GLFW to be initialized before calling this method.
      *
      * @see GetMonitorStats
      * @see GetMonitorCenter
@@ -273,8 +273,8 @@ namespace SceneryEditorX
      * @param count Pointer to an integer where the number of available video modes will be stored
      * @return const GLFWvidmode* Array of video modes or nullptr if the monitor index is invalid
      *
-     * @note The returned array is allocated and owned by GLFW, so it should not be freed
-     * @note If an invalid monitor index is provided, count will be set to 0 and nullptr returned
+     * @note - The returned array is allocated and owned by GLFW, so it should not be freed
+     * @note - If an invalid monitor index is provided, count will be set to 0 and nullptr returned
      *
      * @see RefreshMonitorList
      */
