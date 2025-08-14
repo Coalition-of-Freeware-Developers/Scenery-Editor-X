@@ -278,8 +278,8 @@ The following headers are automatically available in all source files:
 ```cpp
 // GLM is automatically configured and available
 // Use directly without explicit includes:
-glm::vec3 position{0.0f, 0.0f, 0.0f};
-glm::mat4 transform = glm::translate(glm::mat4(1.0f), position);
+Vec3 position{0.0f, 0.0f, 0.0f};
+Mat4 transform = Mat4::Translate(position);
 ```
 
 #### Project Core (Always Available)

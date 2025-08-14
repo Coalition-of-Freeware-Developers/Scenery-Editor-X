@@ -177,8 +177,8 @@ public:
     void UpdateLightParameters()
     {
         // Validate light parameters
-        intensity = glm::max(0.0f, intensity);
-        color = glm::clamp(color, Vec3(0.0f), Vec3(1.0f));
+    intensity = std::max(0.0f, intensity);
+    color = Clamp(color, Vec3(0.0f), Vec3(1.0f));
     }
     
 private:
@@ -213,20 +213,20 @@ public:
     Mat4 GetViewMatrix()
     {
         Mat4 worldTransform = GetWorldTransform();
-        return glm::inverse(worldTransform);
+    return worldTransform.Inverse();
     }
     
     Mat4 GetProjectionMatrix(float aspectRatio)
     {
         if (cameraType == CameraType::Perspective)
         {
-            return glm::perspective(glm::radians(horizontalFov), aspectRatio, nearDistance, farDistance);
+            return Mat4::Perspective(ToRadians(horizontalFov), aspectRatio, nearDistance, farDistance);
         }
         else
         {
             float halfWidth = extent.x * 0.5f;
             float halfHeight = extent.y * 0.5f;
-            return glm::ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, orthoNearDistance, orthoFarDistance);
+            return Mat4::Orthographic(-halfWidth, halfWidth, -halfHeight, halfHeight, orthoNearDistance, orthoFarDistance);
         }
     }
     
@@ -483,26 +483,26 @@ void ValidateTransform(Ref<Node> node)
     if (!node) return;
     
     // Check for invalid scale values
-    if (glm::length(node->scale) < 0.001f)
+    if (Length(node->scale) < 0.001f)
     {
         SEDX_CORE_WARN_TAG("TRANSFORM", "Scale too small for node: {}, resetting to 1.0", node->name);
         node->scale = Vec3(1.0f);
     }
     
     // Check for NaN values
-    if (glm::any(glm::isnan(node->position)))
+    if (Any(IsNaN(node->position)))
     {
         SEDX_CORE_ERROR_TAG("TRANSFORM", "NaN position detected for node: {}", node->name);
         node->position = Vec3(0.0f);
     }
     
-    if (glm::any(glm::isnan(node->rotation)))
+    if (Any(IsNaN(node->rotation)))
     {
         SEDX_CORE_ERROR_TAG("TRANSFORM", "NaN rotation detected for node: {}", node->name);
         node->rotation = Vec3(0.0f);
     }
     
-    if (glm::any(glm::isnan(node->scale)))
+    if (Any(IsNaN(node->scale)))
     {
         SEDX_CORE_ERROR_TAG("TRANSFORM", "NaN scale detected for node: {}", node->name);
         node->scale = Vec3(1.0f);

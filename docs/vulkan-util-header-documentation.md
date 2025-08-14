@@ -386,11 +386,11 @@ private:
             float x = HaltonSeq(i, 2);  // Base 2 for X
             float y = HaltonSeq(i, 3);  // Base 3 for Y
           
-            m_JitterPattern[i] = glm::vec2(x - 0.5f, y - 0.5f);
+            m_JitterPattern[i] = Vec2(x - 0.5f, y - 0.5f);
         }
     }
   
-    glm::vec2 GetCurrentJitter()
+    Vec2 GetCurrentJitter()
     {
         return m_JitterPattern[m_FrameIndex % m_SampleCount];
     }

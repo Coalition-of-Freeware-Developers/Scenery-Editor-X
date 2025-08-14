@@ -71,7 +71,6 @@ TARGET_INCLUDE_DIRECTORIES(Launcher
 
 TARGET_LINK_LIBRARIES(Launcher
     PRIVATE
-        glm::glm-header-only
         nlohmann_json
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator

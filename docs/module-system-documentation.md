@@ -405,12 +405,12 @@ private:
     // Sun & Sky settings
     float m_SunElevation = 45.0f;
     float m_SunAzimuth = 180.0f;
-    glm::vec3 m_SunColor = glm::vec3(1.0f, 0.9f, 0.8f);
+    Vec3 m_SunColor = Vec3(1.0f, 0.9f, 0.8f);
     float m_SunIntensity = 3.0f;
   
     // Environment settings
     float m_AmbientLight = 0.1f;
-    glm::vec3 m_SkyColor = glm::vec3(0.5f, 0.7f, 1.0f);
+    Vec3 m_SkyColor = Vec3(0.5f, 0.7f, 1.0f);
     float m_FogDensity = 0.01f;
   
     // Shadow settings

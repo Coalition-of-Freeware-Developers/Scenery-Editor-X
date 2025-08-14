@@ -11,9 +11,9 @@ The Scenery Editor X project uses a sophisticated custom formatter system that p
 - **Documentation**: `docs/formatter-system-documentation.md`
 
 ### Supported Types
-- `Vec2` (glm::vec2) - 2D floating-point vector
-- `Vec3` (glm::vec3) - 3D floating-point vector  
-- `Vec4` (glm::vec4) - 4D floating-point vector
+- `Vec2` - 2D floating-point vector
+- `Vec3` - 3D floating-point vector  
+- `Vec4` - 4D floating-point vector
 - `std::filesystem::path` - File system paths
 
 ## Mandatory Usage Patterns

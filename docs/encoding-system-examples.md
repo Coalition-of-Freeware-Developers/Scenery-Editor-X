@@ -119,7 +119,7 @@ private:
     {
         std::string texturePath;
         uint32_t textureHash;
-        glm::vec4 uvBounds; // x, y, width, height in atlas coordinates
+    Vec4 uvBounds; // x, y, width, height in atlas coordinates
         uint32_t atlasIndex;
     };
   
@@ -158,7 +158,7 @@ public:
             uint32_t textureHash = CalculateTextureHash(texture);
           
             // Pack texture into atlas
-            glm::vec4 uvBounds = packer.PackTexture(texture->GetWidth(), texture->GetHeight());
+            Vec4 uvBounds = packer.PackTexture(texture->GetWidth(), texture->GetHeight());
             if (uvBounds.z == 0.0f || uvBounds.w == 0.0f)
             {
                 SEDX_CORE_WARN_TAG("ATLAS", "Failed to pack texture: {}", texturePath);
@@ -234,7 +234,7 @@ private:
         {
             SceneryEditorX::Encoding::HashCombine(hash, entry.texturePath);
             SceneryEditorX::Encoding::HashCombine(hash, entry.textureHash);
-            SceneryEditorX::Encoding::HashCombine(hash, &entry.uvBounds, sizeof(glm::vec4));
+            SceneryEditorX::Encoding::HashCombine(hash, &entry.uvBounds, sizeof(Vec4));
         }
         metadata.metadataHash = hash;
       
@@ -254,7 +254,7 @@ private:
           
             // Add entry data
             const uint8_t* entryBytes = reinterpret_cast<const uint8_t*>(&entry.textureHash);
-            binaryData.insert(binaryData.end(), entryBytes, entryBytes + sizeof(uint32_t) + sizeof(glm::vec4) + sizeof(uint32_t));
+            binaryData.insert(binaryData.end(), entryBytes, entryBytes + sizeof(uint32_t) + sizeof(Vec4) + sizeof(uint32_t));
         }
       
         // Encode to Base64
@@ -282,7 +282,7 @@ private:
     struct SceneObjectState
     {
         SceneryEditorX::UUID objectId;
-        glm::mat4 transform;
+    Mat4 transform;
         std::string materialPath;
         std::string meshPath;
         uint32_t objectHash;

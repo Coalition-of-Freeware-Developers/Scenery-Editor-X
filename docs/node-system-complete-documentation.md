@@ -48,15 +48,15 @@ public:
     Vec3 scale = Vec3(1.0f);
   
     // Transformation methods
-    glm::mat4 GetLocalTransform();
-    glm::mat4 GetWorldTransform();
-    glm::mat4 GetParentTransform();
+    Mat4 GetLocalTransform();
+    Mat4 GetWorldTransform();
+    Mat4 GetParentTransform();
     Vec3 GetWorldPosition();
     Vec3 GetWorldFront();
   
     // Static utility methods
-    static glm::mat4 ComposeTransform(const Vec3& pos, const Vec3& rot, 
-                                      const Vec3& scl, const glm::mat4& parent = glm::mat4(1));
+    static Mat4 ComposeTransform(const Vec3& pos, const Vec3& rot, 
+                                 const Vec3& scl, const Mat4& parent = Mat4(1));
     static void SetParent(const Ref<Node>& child, const Ref<Node>& parent);
     static void UpdateChildrenParent(const Ref<Node>& node);
     static Ref<Node> Clone(Ref<Node>& node);
@@ -114,11 +114,13 @@ Vec3 worldFront = node->GetWorldFront();
 #### Implementation Details
 
 ```cpp
-Mat4 Node::ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent)
+Mat4 Node::ComposeTransform(const Vec3 &pos, const Vec3 &rotDeg, const Vec3 &scl, const Mat4 &parent)
 {
-    Mat4 rotationMat = glm::toMat4(glm::quat(glm::radians(rot)));
-    Mat4 translationMat = glm::translate(Mat4(1.0f), pos);
-    Mat4 scaleMat = glm::scale(scl);
+    // Convert Euler degrees to quaternion then to matrix using internal math
+    Quat q = Quat::FromEulerDegrees(rotDeg);
+    Mat4 rotationMat = q.ToMatrix();
+    Mat4 translationMat = Mat4::Translate(pos);
+    Mat4 scaleMat = Mat4::Scale(scl);
     return parent * (translationMat * rotationMat * scaleMat);
 }
 
@@ -204,7 +206,7 @@ struct MeshNode : Node
     std::vector<uint32_t> children;         // Child UUIDs for serialization
     std::vector<uint32_t> submeshes;        // Submesh references
     std::string name;                       // Node name
-    glm::mat4 localTransform;              // Cached local transform
+    Mat4 localTransform;              // Cached local transform
   
     bool IsRoot() const { return parent == 0xffffffff; }
     MeshNode();
@@ -318,10 +320,10 @@ public:
     float zoom = 10.0f;
   
     // Methods
-    glm::mat4 GetView();
-    glm::mat4 GetProj();
-    glm::mat4 GetProjJittered();
-    glm::mat4 GetProj(float zNear, float zFar);
+    Mat4 GetView();
+    Mat4 GetProj();
+    Mat4 GetProjJittered();
+    Mat4 GetProj(float zNear, float zFar);
 };
 ```
 
@@ -620,7 +622,7 @@ void ValidateNodeHierarchy(Ref<Node> node)
     ValidateNodeHierarchyRecursive(node, visited);
   
     // Validate transformations
-    SEDX_CORE_ASSERT(glm::length(node->scale) > 0.001f, "Scale too small");
+    SEDX_CORE_ASSERT(Length(node->scale) > 0.001f, "Scale too small");
 }
 
 void ValidateNodeHierarchyRecursive(Ref<Node> node, std::set<uint32_t>& visited)

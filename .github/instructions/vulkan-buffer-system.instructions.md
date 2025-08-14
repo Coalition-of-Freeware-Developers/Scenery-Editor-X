@@ -385,7 +385,7 @@ private:
     
     Buffer m_UniformBuffer;
     Ref<Camera> m_Camera;
-    glm::vec3 m_LightPosition{0.0f, 10.0f, 0.0f};
+    Vec3 m_LightPosition{0.0f, 10.0f, 0.0f};
 };
 ```
 

@@ -8,6 +8,7 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 # --------------------------------
 
 FILE(GLOB CORE core/*.cpp core/*.h core/*.hpp)
+FILE(GLOB MODULES modules/*.cpp modules/*.h modules/*.hpp)
 FILE(GLOB SETTINGS settings/*.cpp settings/*.h settings/*.hpp)
 
 FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
@@ -26,6 +27,7 @@ SET (PROJECT_CONFIG_FILES
 
 ADD_EXECUTABLE(SceneryEditorX
 	${CORE}
+	${MODULES}
 	${SETTINGS}
 	${UI_ACTIONS}
 	${UI_PANELS}
@@ -49,6 +51,9 @@ ADD_EXECUTABLE(SceneryEditorX
 
 SOURCE_GROUP("Core" FILES
 	${CORE}
+)
+SOURCE_GROUP("Modules" FILES
+	${MODULES}
 )
 SOURCE_GROUP("UI" FILES
 	${UI_FILES}/ui.cpp
@@ -104,7 +109,6 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
     PRIVATE
 		AppCore
 		nlohmann_json
-        glm::glm-header-only
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl

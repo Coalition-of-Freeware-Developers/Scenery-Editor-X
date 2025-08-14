@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * viewports.cpp
@@ -15,11 +15,12 @@
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <GraphicsEngine/vulkan/vk_util.h>
+#include <SceneryEditorX/utils/math/math.h>
 
 // -------------------------------------------------------
 
 // Temporary stub for ImGuizmo until you integrate the actual library
-namespace ImGuizmo 
+namespace ImGuizmo
 {
     // Simple stub implementation
     bool IsUsing() { return false; }
@@ -30,18 +31,18 @@ namespace ImGuizmo
 
 namespace UI
 {
-    static bool ViewportPanel(glm::ivec2& newViewportSize, bool& viewportHovered, VkImageView imageView)
+    static bool ViewportPanel(iVec2& newViewportSize, bool& viewportHovered, VkImageView imageView)
 	{
 	    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
 	    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-    
+
         bool isOpen = true;
         if (ImGui::Begin("Viewport", &isOpen, ImGuiWindowFlags_NoScrollbar))
         {
             // Get current viewport size
             ImVec2 viewportSize = ImGui::GetContentRegionAvail();
             newViewportSize = {static_cast<int>(viewportSize.x), static_cast<int>(viewportSize.y)};
-            
+
             // Display the viewport image
             if (imageView != VK_NULL_HANDLE)
             {
@@ -49,7 +50,7 @@ namespace UI
             }
 
 			viewportHovered = ImGui::IsWindowHovered();
-            
+
             // Set up ImGuizmo uncomment when integrating ImGuizmo
             /*
             ImGuizmo::SetDrawlist();
@@ -72,7 +73,7 @@ namespace UI
 
         ImGui::End();
         ImGui::PopStyleVar(2);
-        
+
         return viewportHovered;
     }
 
@@ -148,7 +149,7 @@ namespace UI
         ImGui::End();
     }
 
-    void UIManager::ViewportWindow(glm::ivec2& viewportSize, bool& viewportHovered, VkImageView imageView)
+    void UIManager::ViewportWindow(iVec2& viewportSize, bool& viewportHovered, VkImageView imageView)
     {
         if (showViewport)
         {

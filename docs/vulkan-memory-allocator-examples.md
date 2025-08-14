@@ -869,7 +869,7 @@ public:
         SEDX_CORE_INFO("Terrain memory usage: {} MB", stats.usedBytes / (1024 * 1024));
     }
   
-    void UpdateLOD(const glm::vec3& cameraPosition)
+    void UpdateLOD(const Vec3& cameraPosition)
     {
         SEDX_PROFILE_SCOPE("TerrainRenderer::UpdateLOD");
     

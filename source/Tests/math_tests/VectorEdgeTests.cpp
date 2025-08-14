@@ -1,4 +1,4 @@
-#include <catch2/catch_all.hpp>
+﻿#include <catch2/catch_all.hpp>
 #include <SceneryEditorX/utils/math/math.h>
 
 TEST_CASE("Vec3 normalize edge cases", "[math][vec3]") {
@@ -9,7 +9,7 @@ TEST_CASE("Vec3 normalize edge cases", "[math][vec3]") {
 }
 
 TEST_CASE("Vec3 multiply by matrix treats w=1 for Vec3 overload", "[math][vec3][matrix]") {
-    auto T = SceneryEditorX::Matrix4x4::Translation(Vec3(5, -2, 3));
+    auto T = SceneryEditorX::Mat4::Translate(Vec3(5, -2, 3));
     Vec3 p(1,2,3);
     // Using mat * Vec3 should promote to Vec4 with w=1, translating the point
     auto r = T * p;

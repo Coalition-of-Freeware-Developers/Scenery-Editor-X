@@ -516,9 +516,9 @@ class UniformBufferModule : public Module
 public:
     struct SceneUniforms
     {
-        glm::mat4 viewMatrix;
-        glm::mat4 projMatrix;
-        glm::vec4 lightPosition;
+        Mat4 viewMatrix;
+        Mat4 projMatrix;
+        Vec4 lightPosition; // w = 1.0 for positional light
         float time;
     };
   
@@ -547,7 +547,7 @@ public:
         SceneUniforms uniforms;
         uniforms.viewMatrix = m_Camera->GetViewMatrix();
         uniforms.projMatrix = m_Camera->GetProjectionMatrix();
-        uniforms.lightPosition = glm::vec4(m_LightPosition, 1.0f);
+    uniforms.lightPosition = Vec4(m_LightPosition, 1.0f);
         uniforms.time = GetTime();
       
         // Map and update buffer
@@ -559,7 +559,7 @@ public:
 private:
     Buffer m_UniformBuffer;
     Ref<Camera> m_Camera;
-    glm::vec3 m_LightPosition{0.0f, 10.0f, 0.0f};
+    Vec3 m_LightPosition{0.0f, 10.0f, 0.0f};
     bool m_IsEnabled = true;
 };
 ```

@@ -133,26 +133,21 @@ The PCH includes commonly used standard library headers:
 
 Configures GLFW to include Vulkan headers automatically, ensuring proper graphics API integration.
 
-### 4. GLM Mathematics Library
+### 4. Internal Mathematics Library
+
+The engine no longer relies on GLM. A custom math library provides vectors, matrices, quaternions, projections, and transform decomposition.
 
 ```cpp
-#define GLM_FORCE_RADIANS
-#define GLM_ENABLE_EXPERIMENTAL
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/hash.hpp>
-#include <glm/gtx/matrix_decompose.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/transform.hpp>
+#include <SceneryEditorX/utils/math/math.h>
 ```
 
-**Configuration Details**:
-- `GLM_FORCE_RADIANS`: Ensures all angle parameters are in radians
-- `GLM_ENABLE_EXPERIMENTAL`: Enables experimental GLM features
-- `GLM_FORCE_DEPTH_ZERO_TO_ONE`: Configures depth range for Vulkan (0.0 to 1.0)
+Provided types & helpers (non‑exhaustive):
+- Vec2 / Vec3 / Vec4, iVec2 / iVec3 / iVec4, UVec*, Bool2/3/4
+- Mat4 (Translate, Scale, Rotate, Perspective, Orthographic, LookAt, Inverse, Transpose, Decompose)
+- Quat (FromEuler, ToEuler, Normalize, Inverse, * operator for composition)
+- Utility free functions: Length, Length2, Normalize, Clamp, Lerp, ToRadians/ToDegrees
+
+All previous GLM usage (glm::mat4, glm::quat, glm::vec*) must be replaced with these native types. Any legacy GLM compile flags/macros should be removed from build scripts and PCHs.
 
 ### 5. Third-Party Libraries
 

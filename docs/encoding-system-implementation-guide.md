@@ -284,7 +284,7 @@ public:
       
         // Hash transformation matrix
         const auto& transform = object->GetTransform();
-        SceneryEditorX::Encoding::HashCombine(hash, &transform, sizeof(glm::mat4));
+    SceneryEditorX::Encoding::HashCombine(hash, &transform, sizeof(Mat4));
       
         // Hash object type and properties
         SceneryEditorX::Encoding::HashCombine(hash, static_cast<uint32_t>(object->GetType()));

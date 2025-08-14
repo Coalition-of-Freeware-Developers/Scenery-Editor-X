@@ -220,7 +220,7 @@ private:
     SceneryEditorX::UUID m_ID;
   
 public:
-    void GenerateID(const std::string& name, const glm::vec3& position, 
+    void GenerateID(const std::string& name, const Vec3& position, 
                    uint32_t typeID)
     {
         uint32_t hash = 0;

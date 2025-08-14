@@ -37,7 +37,7 @@ Need static variable/function?
 std::vector, std::string, std::filesystem, std::chrono, std::thread
 
 // Mathematics
-glm::vec3, glm::mat4, glm::quat
+Vec3, Mat4, Quat
 
 // Project Core
 Ref<T>, CreateRef<T>(), SEDX_CORE_INFO, SEDX_ASSERT

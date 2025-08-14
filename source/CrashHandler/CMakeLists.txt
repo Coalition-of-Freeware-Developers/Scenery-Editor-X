@@ -57,7 +57,6 @@ TARGET_INCLUDE_DIRECTORIES(CrashHandler
 
 TARGET_LINK_LIBRARIES(CrashHandler
     PRIVATE
-        glm::glm-header-only
 		nlohmann_json
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator

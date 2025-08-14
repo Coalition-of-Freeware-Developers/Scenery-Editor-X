@@ -585,20 +585,19 @@ private:
 ```cpp
 class Transform : public RefCounted {
 public:
-    void SetPosition(const glm::vec3& position) { m_Position = position; }
-    void SetRotation(const glm::quat& rotation) { m_Rotation = rotation; }
-    void SetScale(const glm::vec3& scale) { m_Scale = scale; }
-  
-    glm::mat4 GetMatrix() const {
-        return glm::translate(glm::mat4(1.0f), m_Position) *
-               glm::mat4_cast(m_Rotation) *
-               glm::scale(glm::mat4(1.0f), m_Scale);
+    void SetPosition(const Vec3& position) { m_Position = position; }
+    void SetRotation(const Quat& rotation) { m_Rotation = rotation; }
+    void SetScale(const Vec3& scale) { m_Scale = scale; }
+
+    Mat4 GetMatrix() const {
+        // Compose TRS using internal math helpers
+        return Mat4::Translate(m_Position) * m_Rotation.ToMatrix() * Mat4::Scale(m_Scale);
     }
-  
+
 private:
-    glm::vec3 m_Position = glm::vec3(0.0f);
-    glm::quat m_Rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-    glm::vec3 m_Scale = glm::vec3(1.0f);
+    Vec3 m_Position{0.0f, 0.0f, 0.0f};
+    Quat m_Rotation = Quat::Identity();
+    Vec3 m_Scale{1.0f, 1.0f, 1.0f};
 };
 
 class SceneNode : public RefCounted {
@@ -622,8 +621,8 @@ public:
         m_Mesh = std::move(mesh);
     }
   
-    glm::mat4 GetWorldMatrix() const {
-        glm::mat4 worldMatrix = m_Transform->GetMatrix();
+    Mat4 GetWorldMatrix() const {
+        Mat4 worldMatrix = m_Transform->GetMatrix();
         if (auto parent = m_Parent.Lock()) {
             worldMatrix = parent->GetWorldMatrix() * worldMatrix;
         }

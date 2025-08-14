@@ -17,7 +17,6 @@ SET(CMAKE_CXX_EXTENSIONS OFF)
 
 # Define the test executable
 ADD_EXECUTABLE(RefTests
-    pointer_tests/TestMain.cpp
     pointer_tests/RefTest.cpp
     pointer_tests/WeakRefTest.cpp
     pointer_tests/RefPerformanceTest.cpp
@@ -32,8 +31,9 @@ TARGET_INCLUDE_DIRECTORIES(RefTests PRIVATE
 # Link with Catch2
 TARGET_LINK_LIBRARIES(RefTests PRIVATE
     Catch2::Catch2WithMain
-    glm::glm-header-only
 )
+# Disable engine logging/tracy in this target to avoid pulling in Vulkan/OS deps via asserts
+TARGET_COMPILE_DEFINITIONS(RefTests PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 IF(MSVC)
     TARGET_COMPILE_OPTIONS(RefTests PRIVATE /U"TRACY_ENABLE")
 ELSE()
@@ -128,6 +128,8 @@ TARGET_LINK_LIBRARIES(SettingsTest PRIVATE
     d3d12
     Shell32.lib
 )
+# Disable engine logging/tracy in this target to avoid pulling in Vulkan/OS deps via asserts
+TARGET_COMPILE_DEFINITIONS(SettingsTest PRIVATE SEDX_NO_LOGGING ZoneScoped=)
 IF(MSVC)
     TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /U"TRACY_ENABLE")
 ELSE()
@@ -303,7 +305,7 @@ TARGET_INCLUDE_DIRECTORIES(MathTests PRIVATE
 
 TARGET_LINK_LIBRARIES(MathTests PRIVATE
     Catch2::Catch2WithMain
-    glm::glm-header-only
+
 )
 
 IF(MSVC)

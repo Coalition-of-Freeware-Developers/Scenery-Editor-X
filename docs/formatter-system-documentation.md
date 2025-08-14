@@ -39,11 +39,11 @@ This dual approach ensures compatibility with both modern C++ standards and the 
 
 ### Vector Types
 
-All vector types in Scenery Editor X are supported through GLM type aliases:
+All vector types in Scenery Editor X are native engine math types:
 
-- **Vec2** (`glm::vec2`): 2D floating-point vector
-- **Vec3** (`glm::vec3`): 3D floating-point vector
-- **Vec4** (`glm::vec4`): 4D floating-point vector
+- **Vec2**: 2D floating-point vector
+- **Vec3**: 3D floating-point vector
+- **Vec4**: 4D floating-point vector
 
 ### Standard Library Types
 
@@ -274,7 +274,7 @@ void PhysicsModule::OnUpdate() override
   
         // Log significant position changes
         Vec3 deltaPos = entity.position - oldPos;
-        if (glm::length(deltaPos) > SIGNIFICANT_MOVEMENT_THRESHOLD)
+    if (Length(deltaPos) > SIGNIFICANT_MOVEMENT_THRESHOLD)
         {
             SEDX_CORE_INFO_TAG("PHYSICS", "Entity {} moved from {} to {}", 
                                entity.id, oldPos, entity.position);

@@ -12,7 +12,6 @@
 */
 #include <catch2/catch_all.hpp>
 #include <memory>
-#include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/utils/pointers.h>
 #include <string>
 #include <thread>
@@ -363,10 +362,10 @@ TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Circular Reference Breaking", "[
         {
             Node(const int value) : m_Value(value) {}
 
-            void AddChild(const SceneryEditorX::Ref<Node> &child)
+            void AddChild(const SceneryEditorX::Ref<Node>& child, const SceneryEditorX::Ref<Node>& self)
             {
-                m_Children.push_back(child);                            // Strong reference to child
-                child->m_Parent = SceneryEditorX::WeakRef<Node>(*this); // Weak reference to parent
+                m_Children.push_back(child);          // Strong reference to child
+                child->m_Parent = self;               // Weak reference to parent via Ref<Node>
             }
 
             [[nodiscard]] SceneryEditorX::Ref<Node> GetParent() const
@@ -383,8 +382,8 @@ TEST_CASE_METHOD(WeakRefTestFixture, "WeakRef - Circular Reference Breaking", "[
         auto child1 = SceneryEditorX::CreateRef<Node>(2);
         auto child2 = SceneryEditorX::CreateRef<Node>(3);
 
-        parent->AddChild(child1);
-        parent->AddChild(child2);
+    parent->AddChild(child1, parent);
+    parent->AddChild(child2, parent);
 
         // Verify relationships
         REQUIRE(parent->m_Children.size() == 2);
