@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_render_pass.cpp
@@ -28,8 +28,8 @@ namespace SceneryEditorX
 	 *
 	 * @param spec The RenderSpec structure containing the Vulkan pipeline and other configuration.
 	 *
-	 * @note The gfxEngine pointer is initialized to nullptr and should be set before use.
-	 * @note The renderData member is default-initialized.
+	 * @note - The gfxEngine pointer is initialized to nullptr and should be set before use.
+	 * @note - The renderData member is default-initialized.
 	 * @throws Assertion failure if spec.vkPipeline is not valid.
 	 */
 
@@ -128,15 +128,8 @@ namespace SceneryEditorX
     }
     */
 
-    Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const
-    {
-        return renderSpec.Pipeline->GetSpecification().dstFramebuffer;
-    }
-
-    Ref<Pipeline> RenderPass::GetPipeline() const
-    {
-        return renderSpec.Pipeline;
-    }
+    Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const { return m_Spec.Pipeline ? m_Spec.Pipeline->GetSpecification().dstFramebuffer : nullptr; }
+    Ref<Pipeline> RenderPass::GetPipeline() const { return m_Spec.Pipeline; }
 
     /*
     bool RenderPass::Validate()
@@ -208,8 +201,8 @@ namespace SceneryEditorX
 	 * The method then fills out a VkRenderPassCreateInfo structure and creates the Vulkan render pass
 	 * using vkCreateRenderPass. If creation fails, an error is logged.
 	 *
-	 * @note The color and depth formats are retrieved from the swap chain.
-	 * @note The created render pass handle is stored in the renderPass member.
+	 * @note - The color and depth formats are retrieved from the swap chain.
+	 * @note - The created render pass handle is stored in the renderPass member.
 	 * @throws Logs an error if vkCreateRenderPass fails.
 	 */
 	/*
@@ -225,7 +218,7 @@ namespace SceneryEditorX
 	    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	
+
 	    VkAttachmentDescription depthAttachment{};
 	    depthAttachment.format = vkSwapChain->GetDepthFormat();
 	    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -235,27 +228,27 @@ namespace SceneryEditorX
 	    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	
+
 	    /// -------------------------------------------------------
-	
+
 	    VkAttachmentReference colorAttachmentRef{};
 	    colorAttachmentRef.attachment = 0;
 	    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	
+
 	    VkAttachmentReference depthAttachmentRef{};
 	    depthAttachmentRef.attachment = 1;
 	    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	
+
 	    /// -------------------------------------------------------
-	
+
 	    VkSubpassDescription subpass{};
 	    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	    subpass.colorAttachmentCount = 1;
 	    subpass.pColorAttachments = &colorAttachmentRef;
 	    subpass.pDepthStencilAttachment = &depthAttachmentRef;
-	
+
 	    /// -------------------------------------------------------
-	
+
 	    VkSubpassDependency dependency{};
 	    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	    dependency.dstSubpass = 0;
@@ -263,12 +256,12 @@ namespace SceneryEditorX
 	    dependency.srcAccessMask = 0;
 	    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	
+
 	    /// -------------------------------------------------------
-	
+
 	    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
         const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
-		
+
 	    VkRenderPassCreateInfo renderPassInfo{};
 	    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -277,7 +270,7 @@ namespace SceneryEditorX
 	    renderPassInfo.pSubpasses = &subpass;
 	    renderPassInfo.dependencyCount = 1;
 	    renderPassInfo.pDependencies = &dependency;
-	
+
 	    if (vkCreateRenderPass(device, &renderPassInfo, RenderContext::Get()->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
 	        SEDX_CORE_ERROR("Failed to create render pass!");
 	}
@@ -511,8 +504,8 @@ namespace SceneryEditorX
 	 *
 	 * @throws Logs an error if image creation or memory allocation fails.
 	 *
-	 * @note The created image is initialized with VK_IMAGE_LAYOUT_UNDEFINED.
-	 * @note The image is created with exclusive sharing mode.
+	 * @note - The created image is initialized with VK_IMAGE_LAYOUT_UNDEFINED.
+	 * @note - The image is created with exclusive sharing mode.
 	 */
 	/*
 	void RenderPass::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels,
@@ -534,21 +527,21 @@ namespace SceneryEditorX
 	    imageInfo.usage = usage;
 	    imageInfo.samples = numSamples;
 	    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	
+
 	    if (vkCreateImage(device, &imageInfo, RenderContext::Get()->GetAllocatorCallback(), &image) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create image!");
-	
+
 	    VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device, image, &memRequirements);
-	
+
 	    VkMemoryAllocateInfo allocInfo{};
 	    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	    allocInfo.allocationSize = memRequirements.size;
 	    allocInfo.memoryTypeIndex = RenderContext::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits, properties);
-	
+
 	    if (vkAllocateMemory(device, &allocInfo, RenderContext::Get()->GetAllocatorCallback(), &imageMemory) != VK_SUCCESS)
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to allocate image memory!");
-	
+
 	    vkBindImageMemory(device, image, imageMemory, 0);
 	}
 	*/

@@ -1,0 +1,140 @@
+name: TODO TASK - Scenery Editor X
+description: Generalized TODO / implementation task for Scenery Editor X (single scoped deliverable with optional sub‑tasks).
+title: "[TODO] <short task title>"
+labels: ["TODO TASK"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Scenery Editor X – TODO Task
+        Provide a focused, implementable unit of work. Break work into clear sub‑tasks (checkbox list) and link related issues / PRs (`#123`).
+
+        > Tips:
+        > * Reference other tasks with `#ID` or external issues via full URL.
+        > * Keep acceptance criteria testable.
+        > * Use the dynamic **Task Checklist (Markdown)** section for arbitrary length lists.
+
+  - type: input
+    id: task
+    attributes:
+      label: Task Title
+      description: Short imperative summary.
+      placeholder: "Add vector & matrix overloads for epsilonEqual"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component / Area
+      description: Affected subsystem.
+      options:
+        - Math Library
+        - Renderer
+        - Assets
+		- UI
+        - Core / Application
+        - Build / Tooling
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 (Critical)
+        - P1 (High)
+        - P2 (Medium)
+        - P3 (Low)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Rationale, context, constraints. Include screenshots/log excerpts if helpful.
+      placeholder: |
+        What problem does this solve?
+        Why is it needed now?
+        Any constraints / non-goals?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Bullet list of testable outcomes (definition of done).
+      placeholder: |
+        - [ ] All new epsilonEqual overloads compile and pass unit tests
+        - [ ] Doxygen generated without warnings
+        - [ ] No regression in existing math benchmarks
+    validations:
+      required: true
+
+  - type: textarea
+    id: checklist_markdown
+    attributes:
+      label: Task Checklist (Markdown)
+      description: Provide one `- [ ]` per sub‑task. Use `- [ ] Refactor foo (#123)` to link other issues. This will render as a standard GitHub checklist.
+      placeholder: |
+        - [ ] Implement vector epsilonEqual overloads (Vec2/3/4)
+        - [ ] Implement matrix epsilonEqual overloads (Mat2/3/4)
+        - [ ] Implement quaternion epsilonEqual overload
+        - [ ] Update docs/math/constants_epsilon.md
+        - [ ] Add unit tests (Catch2) for new overloads
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: meta_flags
+    attributes:
+      label: Meta Flags
+      description: Mark any special handling required.
+      options:
+        - label: Requires new tests
+        - label: Affects public API
+        - label: Needs benchmark update
+        - label: Docs update required
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies / Blockers
+      description: Link issues, PRs, or external tasks that must be completed first.
+      placeholder: "Depends on #456 for base quaternion implementation."
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks / Mitigations
+      description: Potential pitfalls and how to address them.
+      placeholder: |
+        Risk: Changing epsilon policy might break existing comparisons.
+        Mitigation: Keep old helpers until migration PR merged.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Miscellaneous context, references, benchmarks, or design links.
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Submission Checklist (author)**
+        - Ensure all mandatory fields are filled.
+        - Provide actionable acceptance criteria.
+        - Include links to related issues/PRs.
+        - Provide at least one risk & mitigation if applicable.
+
+        **After Creation**
+        - Refine checklist items as work clarifies.
+        - Link PRs in the issue description (they auto-link back).
+        - Keep the checklist updated to reflect progress.

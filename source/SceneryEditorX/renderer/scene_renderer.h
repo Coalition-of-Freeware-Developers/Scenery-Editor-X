@@ -31,7 +31,6 @@
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/utils/math/vector.h>
 #include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/renderer/tiering/renderer_tiering.h>
 
 /// -------------------------------------------------------
 

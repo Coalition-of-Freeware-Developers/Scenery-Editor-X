@@ -242,31 +242,31 @@ namespace SceneryEditorX
 	    }
 
 	    /**
-	         * @brief Creates a translation (position) matrix.
-	         *
-	         * This function creates a 4x4 transformation matrix that represents a translation
-	         * (position offset) in 3D space. The resulting matrix can be used to move objects
-	         * from their original position to a new position.
-	         *
-	         * @param translation The translation vector specifying the offset in X, Y, and Z axes.
-	         *
-	         * @return Matrix4x4 A translation matrix that moves objects by the specified offset.
-	         *
-	         * @note - The returned matrix is in the form:
-	         * ```
-	         * [1  0  0  tx]
-	         * [0  1  0  ty]
-	         * [0  0  1  tz]
-	         * [0  0  0  1 ]
-	         * ```
-	         * where (tx, ty, tz) is the translation vector.
-	         *
-	         * @example
-	         * @code
-	         * Vec3 position(10.0f, 5.0f, -3.0f);
-	         * Matrix4x4 translateMatrix = Matrix4x4::Translation(position);
-	         * @endcode
-	         */
+	     * @brief Creates a translation (position) matrix.
+	     *
+	     * This function creates a 4x4 transformation matrix that represents a translation
+	     * (position offset) in 3D space. The resulting matrix can be used to move objects
+	     * from their original position to a new position.
+	     *
+	     * @param translation The translation vector specifying the offset in X, Y, and Z axes.
+	     *
+	     * @return Matrix4x4 A translation matrix that moves objects by the specified offset.
+	     *
+	     * @note - The returned matrix is in the form:
+	     * ```
+	     * [1  0  0  tx]
+	     * [0  1  0  ty]
+	     * [0  0  1  tz]
+	     * [0  0  0  1 ]
+	     * ```
+	     * where (tx, ty, tz) is the translation vector.
+	     *
+	     * @example
+	     * @code
+	     * Vec3 position(10.0f, 5.0f, -3.0f);
+	     * Matrix4x4 translateMatrix = Matrix4x4::Translation(position);
+	     * @endcode
+	     */
 	    static Mat4 Translate(const Vec3 &translation)
 	    {
 	        return Mat4({{1, 0, 0, translation.x}, {0, 1, 0, translation.y}, {0, 0, 1, translation.z}, {0, 0, 0, 1}});
@@ -293,150 +293,150 @@ namespace SceneryEditorX
 	    const float* Data() const { return &rows[0][0]; }
 
 	    /**
-	         * @brief Creates a 2D rotation matrix around the Z-axis.
-	         *
-	         * This convenience function creates a 4x4 transformation matrix that represents
-	         * a rotation around the Z-axis (out of the screen in a right-handed coordinate system).
-	         * This is commonly used for 2D rotations in UI elements, sprites, or 2D games.
-	         *
-	         * @param degrees The rotation angle in degrees. Positive values rotate counter-clockwise.
-	         *
-	         * @return Matrix4x4 A 4x4 transformation matrix representing rotation around the Z-axis.
-	         *
-	         * @note - This function internally creates a quaternion and converts it to a matrix.
-	         * @note - For multiple rotations, consider using glm::quat directly for better performance.
-	         *
-	         * @example
-	         * @code
-	         * Matrix4x4 rotation = Matrix4x4::Angle(45.0f); // 45-degree  rotation
-	         * @endcode
-	         */
+	     * @brief Creates a 2D rotation matrix around the Z-axis.
+	     *
+	     * This convenience function creates a 4x4 transformation matrix that represents
+	     * a rotation around the Z-axis (out of the screen in a right-handed coordinate system).
+	     * This is commonly used for 2D rotations in UI elements, sprites, or 2D games.
+	     *
+	     * @param degrees The rotation angle in degrees. Positive values rotate counter-clockwise.
+	     *
+	     * @return Matrix4x4 A 4x4 transformation matrix representing rotation around the Z-axis.
+	     *
+	     * @note - This function internally creates a quaternion and converts it to a matrix.
+	     * @note - For multiple rotations, consider using glm::quat directly for better performance.
+	     *
+	     * @example
+	     * @code
+	     * Matrix4x4 rotation = Matrix4x4::Angle(45.0f); // 45-degree  rotation
+	     * @endcode
+	     */
 	    static Mat4 Angle(float degrees);
 
 	    /**
-	         * @brief Creates a 3D rotation matrix from Euler angles in degrees.
-	         *
-	         * This function creates a 4x4 transformation matrix representing a 3D rotation
-	         * defined by Euler angles. The rotation order is YXZ (yaw-pitch-roll), which
-	         * is commonly used in games and 3D applications.
-	         *
-	         * @param eulerDegrees A Vec3 containing the rotation angles in degrees:
-	         *                     - x: Pitch (rotation around X-axis)
-	         *                     - y: Yaw (rotation around Y-axis)
-	         *                     - z: Roll (rotation around Z-axis)
-	         *
-	         * @return Matrix4x4 A 4x4 transformation matrix representing the combined rotation.
-	         *
-	         * @note - Rotation order matters. This function uses YXZ order to avoid gimbal lock in common cases.
-	         * @note - For smooth interpolation between rotations, use quaternions directly.
-	         *
-	         * @example
-	         * @code
-	         * Vec3 rotation(15.0f, 45.0f, 0.0f); // 15° pitch, 45° yaw, 0° roll
-	         * Matrix4x4 rotMatrix = Matrix4x4::RotationDegrees(rotation);
-	         * @endcode
-	         */
+	     * @brief Creates a 3D rotation matrix from Euler angles in degrees.
+	     *
+	     * This function creates a 4x4 transformation matrix representing a 3D rotation
+	     * defined by Euler angles. The rotation order is YXZ (yaw-pitch-roll), which
+	     * is commonly used in games and 3D applications.
+	     *
+	     * @param eulerDegrees A Vec3 containing the rotation angles in degrees:
+	     *                     - x: Pitch (rotation around X-axis)
+	     *                     - y: Yaw (rotation around Y-axis)
+	     *                     - z: Roll (rotation around Z-axis)
+	     *
+	     * @return Matrix4x4 A 4x4 transformation matrix representing the combined rotation.
+	     *
+	     * @note - Rotation order matters. This function uses YXZ order to avoid gimbal lock in common cases.
+	     * @note - For smooth interpolation between rotations, use quaternions directly.
+	     *
+	     * @example
+	     * @code
+	     * Vec3 rotation(15.0f, 45.0f, 0.0f); // 15° pitch, 45° yaw, 0° roll
+	     * Matrix4x4 rotMatrix = Matrix4x4::RotationDegrees(rotation);
+	     * @endcode
+	     */
 	    static Mat4 RotationDegrees(const Vec3 &eulerDegrees);
 
 	    /**
-	         * @brief Creates a 3D rotation matrix from Euler angles in radians.
-	         *
-	         * This function creates a 4x4 transformation matrix representing a 3D rotation
-	         * defined by Euler angles in radians. This is the radian equivalent of RotationDegrees().
-	         *
-	         * @param eulerRadians A Vec3 containing the rotation angles in radians:
-	         *                     - x: Pitch (rotation around X-axis)
-	         *                     - y: Yaw (rotation around Y-axis)
-	         *                     - z: Roll (rotation around Z-axis)
-	         *
-	         * @return Matrix4x4 A 4x4 transformation matrix representing the combined rotation.
-	         *
-	         * @note - Rotation order is YXZ (yaw-pitch-roll).
-	         * @note - Using radians directly can be more efficient when working with mathematical calculations.
-	         *
-	         * @example
-	         * @code
-	         * Vec3 rotation(0.262f, 0.785f, 0.0f); // ~15° pitch, ~45° yaw, 0° roll
-	         * Matrix4x4 rotMatrix = Matrix4x4::RotationRadians(rotation);
-	         * @endcode
-	         */
+	     * @brief Creates a 3D rotation matrix from Euler angles in radians.
+	     *
+	     * This function creates a 4x4 transformation matrix representing a 3D rotation
+	     * defined by Euler angles in radians. This is the radian equivalent of RotationDegrees().
+	     *
+	     * @param eulerRadians A Vec3 containing the rotation angles in radians:
+	     *                     - x: Pitch (rotation around X-axis)
+	     *                     - y: Yaw (rotation around Y-axis)
+	     *                     - z: Roll (rotation around Z-axis)
+	     *
+	     * @return Matrix4x4 A 4x4 transformation matrix representing the combined rotation.
+	     *
+	     * @note - Rotation order is YXZ (yaw-pitch-roll).
+	     * @note - Using radians directly can be more efficient when working with mathematical calculations.
+	     *
+	     * @example
+	     * @code
+	     * Vec3 rotation(0.262f, 0.785f, 0.0f); // ~15° pitch, ~45° yaw, 0° roll
+	     * Matrix4x4 rotMatrix = Matrix4x4::RotationRadians(rotation);
+	     * @endcode
+	     */
 	    static Mat4 RotationRadians(const Vec3 &eulerRadians);
 
 	    /**
-	         * @brief Creates a 2D scaling matrix.
-	         *
-	         * This function creates a 4x4 transformation matrix that scales objects in 2D space.
-	         * The Z-axis scaling is set to 1.0 (no scaling), making this suitable for 2D applications.
-	         *
-	         * @param scale A Vec2 containing the scaling factors for X and Y axes.
-	         *
-	         * @return Matrix4x4 A scaling matrix that scales objects by the specified factors.
-	         *
-	         * @note - The resulting matrix has the form:
-	         * ```
-	         * [sx  0   0  0]
-	         * [0   sy  0  0]
-	         * [0   0   1  0]
-	         * [0   0   0  1]
-	         * ```
-	         *
-	         * @example
-	         * @code
-	         * Vec2 scale(2.0f, 0.5f); // Double width, halve height
-	         * Matrix4x4 scaleMatrix = Matrix4x4::Scale(scale);
-	         * @endcode
-	         */
+	     * @brief Creates a 2D scaling matrix.
+	     *
+	     * This function creates a 4x4 transformation matrix that scales objects in 2D space.
+	     * The Z-axis scaling is set to 1.0 (no scaling), making this suitable for 2D applications.
+	     *
+	     * @param scale A Vec2 containing the scaling factors for X and Y axes.
+	     *
+	     * @return Matrix4x4 A scaling matrix that scales objects by the specified factors.
+	     *
+	     * @note - The resulting matrix has the form:
+	     * ```
+	     * [sx  0   0  0]
+	     * [0   sy  0  0]
+	     * [0   0   1  0]
+	     * [0   0   0  1]
+	     * ```
+	     *
+	     * @example
+	     * @code
+	     * Vec2 scale(2.0f, 0.5f); // Double width, halve height
+	     * Matrix4x4 scaleMatrix = Matrix4x4::Scale(scale);
+	     * @endcode
+	     */
 	    static Mat4 Scale(const Vec2 &scale)
 	    {
 	        return Mat4({{scale.x, 0, 0, 0}, {0, scale.y, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}});
 	    }
 
 	    /**
-	         * @brief Creates a 3D scaling matrix.
-	         *
-	         * This function creates a 4x4 transformation matrix that scales objects uniformly
-	         * or non-uniformly in 3D space along the X, Y, and Z axes.
-	         *
-	         * @param scale A Vec3 containing the scaling factors for each axis.
-	         *
-	         * @return Matrix4x4 A scaling matrix that scales objects by the specified factors.
-	         *
-	         * @note - The resulting matrix has the form:
-	         * ```
-	         * [sx  0   0   0]
-	         * [0   sy  0   0]
-	         * [0   0   sz  0]
-	         * [0   0   0   1]
-	         * ```
-	         *
-	         * @example
-	         * @code
-	         * Vec3 scale(2.0f, 1.0f, 0.5f); // Double X, keep Y, halve Z
-	         * Matrix4x4 scaleMatrix = Matrix4x4::Scale(scale);
-	         * @endcode
-	         */
+	     * @brief Creates a 3D scaling matrix.
+	     *
+	     * This function creates a 4x4 transformation matrix that scales objects uniformly
+	     * or non-uniformly in 3D space along the X, Y, and Z axes.
+	     *
+	     * @param scale A Vec3 containing the scaling factors for each axis.
+	     *
+	     * @return Matrix4x4 A scaling matrix that scales objects by the specified factors.
+	     *
+	     * @note - The resulting matrix has the form:
+	     * ```
+	     * [sx  0   0   0]
+	     * [0   sy  0   0]
+	     * [0   0   sz  0]
+	     * [0   0   0   1]
+	     * ```
+	     *
+	     * @example
+	     * @code
+	     * Vec3 scale(2.0f, 1.0f, 0.5f); // Double X, keep Y, halve Z
+	     * Matrix4x4 scaleMatrix = Matrix4x4::Scale(scale);
+	     * @endcode
+	     */
 	    static Mat4 Scale(const Vec3 &scale)
 	    {
 	        return Mat4({{scale.x, 0, 0, 0}, {0, scale.y, 0, 0}, {0, 0, scale.z, 0}, {0, 0, 0, 1}});
 	    }
 
 	    /**
-	         * @brief Creates a zero matrix.
-	         *
-	         * This function creates a 4x4 matrix with all elements set to zero.
-	         * This is useful for initializing matrices that will be built up incrementally
-	         * or for mathematical operations that require a zero matrix.
-	         *
-	         * @return Matrix4x4 A matrix with all elements set to 0.
-	         *
-	         * @note - A zero matrix represents no transformation and will nullify any
-	         *       point or vector it's multiplied with.
-	         *
-	         * @example
-	         * @code
-	         * Matrix4x4 zero = Matrix4x4::Zero();
-	         * @endcode
-	         */
+	     * @brief Creates a zero matrix.
+	     *
+	     * This function creates a 4x4 matrix with all elements set to zero.
+	     * This is useful for initializing matrices that will be built up incrementally
+	     * or for mathematical operations that require a zero matrix.
+	     *
+	     * @return Matrix4x4 A matrix with all elements set to 0.
+	     *
+	     * @note - A zero matrix represents no transformation and will nullify any
+	     *       point or vector it's multiplied with.
+	     *
+	     * @example
+	     * @code
+	     * Matrix4x4 zero = Matrix4x4::Zero();
+	     * @endcode
+	     */
 	    static Mat4 Zero()
 	    {
 	        static Vec4 rows[4] = {Vec4{0, 0, 0, 0}, Vec4{0, 0, 0, 0}, Vec4{0, 0, 0, 0}, Vec4{0, 0, 0, 0}};

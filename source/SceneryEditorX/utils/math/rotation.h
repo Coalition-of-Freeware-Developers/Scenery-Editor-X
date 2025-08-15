@@ -274,6 +274,30 @@ namespace SceneryEditorX
 		return RotateAxisAngleRadians(axis, degrees * DEG_TO_RAD);
 	}
 
+	static Mat4 AxisAngleRadians(const Vec3& axis, float angle)
+	{
+	    // Normalize axis
+	    Vec3 nAxis = Normalize(axis);
+	    float c = std::cos(angle);
+	    float s = std::sin(angle);
+	    float t = 1.0f - c;
+	    float x = nAxis.x, y = nAxis.y, z = nAxis.z;
+	
+	    // Rodrigues' rotation formula for 3x3
+        Mat4 result = Mat4::Identity();
+	    result[0][0] = t * x * x + c;
+	    result[0][1] = t * x * y - s * z;
+	    result[0][2] = t * x * z + s * y;
+	    result[1][0] = t * x * y + s * z;
+	    result[1][1] = t * y * y + c;
+	    result[1][2] = t * y * z - s * x;
+	    result[2][0] = t * x * z - s * y;
+	    result[2][1] = t * y * z + s * x;
+	    result[2][2] = t * z * z + c;
+	    // The last row/column remain as for affine transform
+	    return result;
+	}
+
     /**
      * @brief Create a rotation matrix that rotates around a specified axis by a given angle in degrees, applied to an existing matrix.
      *
