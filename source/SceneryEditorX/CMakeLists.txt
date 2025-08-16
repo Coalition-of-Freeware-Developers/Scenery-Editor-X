@@ -126,6 +126,7 @@ ADD_LIBRARY(AppCore
 	renderer/camera.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
+	renderer/compute_pass.cpp
 	renderer/compute_pass.h
 	renderer/dds.h
 	renderer/image_data.cpp

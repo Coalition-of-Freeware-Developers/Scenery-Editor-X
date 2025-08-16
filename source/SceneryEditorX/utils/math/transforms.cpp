@@ -80,13 +80,13 @@ namespace SceneryEditorX
 		scale.z = std::sqrt(Row[2].x*Row[2].x + Row[2].y*Row[2].y + Row[2].z*Row[2].z);
 		Row[2] = Scale(Row[2], static_cast<T>(1));
 
-    	#if SEDX_DEBUG
+		#ifdef SEDX_DEBUG
 			/// At this point, the matrix (in rows[]) is orthonormal.
 			/// Check for a coordinate system flip.  If the determinant
 			/// is -1, then negate the matrix and the scaling factors.
 			Vec3 Pdum3 = Cross(Row[1], Row[2]);
 			SEDX_CORE_ASSERT(Dot(Row[0], Pdum3) >= static_cast<T>(0));
-    	#endif
+		#endif
 
         T root;
         float qx = 0.0f, qy = 0.0f, qz = 0.0f, qw = 1.0f;

@@ -30,3 +30,23 @@
 
 
 /// -------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Compatibility forwarding layer
+// Some legacy/test code referenced free math utility functions via the nested
+// namespace SceneryEditorX::Utils::<Func>. The canonical definitions now live
+// directly in namespace SceneryEditorX (see math_utils.h, epsilon.h, etc.).
+// To preserve those call sites without rewriting the tests, we import the
+// symbols into the Utils namespace here. This keeps the public surface stable
+// while allowing the core math implementation to remain flat.
+// -----------------------------------------------------------------------------
+namespace SceneryEditorX { namespace Utils {
+	using ::SceneryEditorX::Normalize;
+	using ::SceneryEditorX::Dot;
+	using ::SceneryEditorX::Cross;
+	using ::SceneryEditorX::ToRadians;
+	using ::SceneryEditorX::ToDegrees;
+	using ::SceneryEditorX::epsilon;       // template
+	using ::SceneryEditorX::epsilonEqual;  // template
+}} // namespace SceneryEditorX::Utils
+

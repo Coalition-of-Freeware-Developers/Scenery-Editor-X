@@ -13,12 +13,13 @@
 #pragma once
 #include <cstdint>
 #include <cstring>
-#include <fmt/core.h>
-#include <fmt/format.h>
 #include <initializer_list>
+#include <string>
+#include <sstream>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/utils/math/vector.h>
-#include <string>
+// Pull in optional fmt detection macros (SEDX_HAS_FMT) used elsewhere.
+#include <SceneryEditorX/utils/formatter.h>
 
 namespace SceneryEditorX
 {
@@ -992,23 +993,21 @@ namespace SceneryEditorX
 	         */
 	    [[nodiscard]] std::string ToString() const
 	    {
+#if SEDX_HAS_FMT
 	        return fmt::format("[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]\n[{} {} {} {}]",
-	                           rows[0][0],
-	                           rows[0][1],
-	                           rows[0][2],
-	                           rows[0][3],
-	                           rows[1][0],
-	                           rows[1][1],
-	                           rows[1][2],
-	                           rows[1][3],
-	                           rows[2][0],
-	                           rows[2][1],
-	                           rows[2][2],
-	                           rows[2][3],
-	                           rows[3][0],
-	                           rows[3][1],
-	                           rows[3][2],
-	                           rows[3][3]);
+	                           rows[0][0], rows[0][1], rows[0][2], rows[0][3],
+	                           rows[1][0], rows[1][1], rows[1][2], rows[1][3],
+	                           rows[2][0], rows[2][1], rows[2][2], rows[2][3],
+	                           rows[3][0], rows[3][1], rows[3][2], rows[3][3]);
+#else
+	        // Fallback formatter without relying on fmt – keeps identical layout.
+	        std::ostringstream oss;
+	        oss << '[' << rows[0][0] << ' ' << rows[0][1] << ' ' << rows[0][2] << ' ' << rows[0][3] << "]\n";
+	        oss << '[' << rows[1][0] << ' ' << rows[1][1] << ' ' << rows[1][2] << ' ' << rows[1][3] << "]\n";
+	        oss << '[' << rows[2][0] << ' ' << rows[2][1] << ' ' << rows[2][2] << ' ' << rows[2][3] << "]\n";
+	        oss << '[' << rows[3][0] << ' ' << rows[3][1] << ' ' << rows[3][2] << ' ' << rows[3][3] << ']';
+	        return oss.str();
+#endif
 	    }
 
 	private:
@@ -1074,26 +1073,22 @@ namespace SceneryEditorX
 
 }
 
-/// fmt user-defined Formatter for SceneryEditorX::Mat4
+/// fmt user-defined Formatter for SceneryEditorX::Mat4 (only when fmt available)
+#if SEDX_HAS_FMT
 template <>
 struct fmt::formatter<SceneryEditorX::Mat4>
 {
-    /// Parses format specifications of the form ['f' | 'e'].
-    static constexpr auto parse(const format_parse_context &ctx) -> decltype(ctx.begin())
-    {
-        /// Return an iterator past the end of the parsed range:
-        return ctx.end();
-    }
-
-    /// Formats the point p using the parsed format specification (presentation)
-    /// stored in this formatter.
-    template <typename FormatContext>
-    auto format(const SceneryEditorX::Mat4 &mat, FormatContext &ctx) const -> decltype(ctx.out())
-    {
-        /// ctx.out() is an output iterator to write to.
-        return fmt::format_to(ctx.out(), "{}", mat.ToString());
-    }
+	static constexpr auto parse(const format_parse_context &ctx) -> decltype(ctx.begin())
+	{
+		return ctx.end();
+	}
+	template <typename FormatContext>
+	auto format(const SceneryEditorX::Mat4 &mat, FormatContext &ctx) const -> decltype(ctx.out())
+	{
+		return fmt::format_to(ctx.out(), "{}", mat.ToString());
+	}
 };
+#endif // SEDX_HAS_FMT
 
 /// -------------------------------------------------------
 

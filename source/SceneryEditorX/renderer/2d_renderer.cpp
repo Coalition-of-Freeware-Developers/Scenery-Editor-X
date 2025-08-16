@@ -18,7 +18,6 @@
 #include <SceneryEditorX/renderer/fonts/msdf_impl.h>
 
 /// -------------------------------------------------------
-
 namespace SceneryEditorX
 {
 
@@ -71,7 +70,7 @@ namespace SceneryEditorX
 
 			RenderSpec quadSpec;
 			quadSpec.debugName = "Renderer2D-Quad";
-            quadSpec.Pipeline = CreateRef<Pipeline>(pipelineSpecification);
+			quadSpec.Pipeline = CreateRef<Pipeline>(pipelineSpecification);
             m_QuadPass = CreateRef<RenderPass>(quadSpec);
 			m_QuadPass->AddInput("Camera", m_UBSCamera->Get());
 			SEDX_CORE_VERIFY(m_QuadPass->Validate());
@@ -127,10 +126,9 @@ namespace SceneryEditorX
 		/*
 		///< Lines
 		{
-			PipelineData pipelineSpecification;
+			auto& bufferPtr = GetWriteableQuadBuffer();
 			pipelineSpecification.debugName = "Renderer2D-Line";
 			pipelineSpecification.shader = Renderer::GetShaderLibrary()->Get("Renderer2D_Line");
-			pipelineSpecification.dstFramebuffer = framebuffer;
 			pipelineSpecification.topology = Topology::Lines;
 			pipelineSpecification.lineWidth = 2.0f;
 			pipelineSpecification.layout = {
