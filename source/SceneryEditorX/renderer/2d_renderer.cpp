@@ -16,7 +16,6 @@
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/renderer/fonts/msdf_impl.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer_set.h>
 
 /// -------------------------------------------------------
 
@@ -1003,33 +1002,34 @@ namespace SceneryEditorX
         constexpr float textureIndex = 0.0f; /// White Texture
         constexpr float tilingFactor = 1.0f;
 
+		// NOTE: Quat::AngleAxisRadians returns a Quat, so explicitly convert to Mat4 before multiplying
 		const Mat4 transform = Mat4::Translate(position)
-			* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation)
+			* Quat::AngleAxisRadians(rotation, { 0.0f, 0.0f, 1.0f }).ToMatrix()
 			* Mat4::Scale({ size.x, size.y, 1.0f });
 
 		auto& bufferPtr = GetWriteableQuadBuffer();
-		bufferPtr->Position = transform * m_QuadVertexPositions[0];
+			bufferPtr->Position = transform * m_QuadVertexPositions[0];
 		bufferPtr->Color = color;
 		bufferPtr->TexCoord = { 0.0f, 0.0f };
 		bufferPtr->TexIndex = textureIndex;
 		bufferPtr->TilingFactor = tilingFactor;
 		bufferPtr++;
 
-		bufferPtr->Position = transform * m_QuadVertexPositions[1];
+			bufferPtr->Position = transform * m_QuadVertexPositions[1];
 		bufferPtr->Color = color;
 		bufferPtr->TexCoord = { 1.0f, 0.0f };
 		bufferPtr->TexIndex = textureIndex;
 		bufferPtr->TilingFactor = tilingFactor;
 		bufferPtr++;
 
-		bufferPtr->Position = transform * m_QuadVertexPositions[2];
+			bufferPtr->Position = transform * m_QuadVertexPositions[2];
 		bufferPtr->Color = color;
 		bufferPtr->TexCoord = { 1.0f, 1.0f };
 		bufferPtr->TexIndex = textureIndex;
 		bufferPtr->TilingFactor = tilingFactor;
 		bufferPtr++;
 
-		bufferPtr->Position = transform * m_QuadVertexPositions[3];
+			bufferPtr->Position = transform * m_QuadVertexPositions[3];
 		bufferPtr->Color = color;
 		bufferPtr->TexCoord = { 0.0f, 1.0f };
 		bufferPtr->TexIndex = textureIndex;
@@ -1039,6 +1039,7 @@ namespace SceneryEditorX
 		m_QuadIndexCount += 6;
 		m_DrawStats.QuadCount++;
 	}
+
 
 	void Renderer2D::DrawRotatedQuad(const Vec2& position, const Vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const Vec4& tintColor)
 	{
@@ -1064,42 +1065,42 @@ namespace SceneryEditorX
 		    m_TextureSlotIndex++;
 		}
 
-		const Mat4 transform = Mat4::Translate(position)
-			* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation)
-		    * Mat4::Scale({ size.x, size.y, 1.0f });
+        const Mat4 transform = Mat4::Translate(position) *
+                               Quat::AngleAxisRadians(rotation, {0.0f, 0.0f, 1.0f}).ToMatrix() *
+                               Mat4::Scale({size.x, size.y, 1.0f});
 
-		auto& bufferPtr = GetWriteableQuadBuffer();
-		bufferPtr->Position = transform * m_QuadVertexPositions[0];
-		bufferPtr->Color = tintColor;
-		bufferPtr->TexCoord = { 0.0f, 0.0f };
-		bufferPtr->TexIndex = textureIndex;
-		bufferPtr->TilingFactor = tilingFactor;
-		bufferPtr++;
+        auto &bufferPtr = GetWriteableQuadBuffer();
+        bufferPtr->Position = transform * m_QuadVertexPositions[0];
+        bufferPtr->Color = tintColor;
+        bufferPtr->TexCoord = {0.0f, 0.0f};
+        bufferPtr->TexIndex = textureIndex;
+        bufferPtr->TilingFactor = tilingFactor;
+        bufferPtr++;
 
-		bufferPtr->Position = transform * m_QuadVertexPositions[1];
-		bufferPtr->Color = tintColor;
-		bufferPtr->TexCoord = { 1.0f, 0.0f };
-		bufferPtr->TexIndex = textureIndex;
-		bufferPtr->TilingFactor = tilingFactor;
-		bufferPtr++;
+        bufferPtr->Position = transform * m_QuadVertexPositions[1];
+        bufferPtr->Color = tintColor;
+        bufferPtr->TexCoord = {1.0f, 0.0f};
+        bufferPtr->TexIndex = textureIndex;
+        bufferPtr->TilingFactor = tilingFactor;
+        bufferPtr++;
 
-		bufferPtr->Position = transform * m_QuadVertexPositions[2];
-		bufferPtr->Color = tintColor;
-		bufferPtr->TexCoord = { 1.0f, 1.0f };
-		bufferPtr->TexIndex = textureIndex;
-		bufferPtr->TilingFactor = tilingFactor;
-		bufferPtr++;
+        bufferPtr->Position = transform * m_QuadVertexPositions[2];
+        bufferPtr->Color = tintColor;
+        bufferPtr->TexCoord = {1.0f, 1.0f};
+        bufferPtr->TexIndex = textureIndex;
+        bufferPtr->TilingFactor = tilingFactor;
+        bufferPtr++;
 
-		bufferPtr->Position = transform * m_QuadVertexPositions[3];
-		bufferPtr->Color = tintColor;
-		bufferPtr->TexCoord = { 0.0f, 1.0f };
-		bufferPtr->TexIndex = textureIndex;
-		bufferPtr->TilingFactor = tilingFactor;
-		bufferPtr++;
+        bufferPtr->Position = transform * m_QuadVertexPositions[3];
+        bufferPtr->Color = tintColor;
+        bufferPtr->TexCoord = {0.0f, 1.0f};
+        bufferPtr->TexIndex = textureIndex;
+        bufferPtr->TilingFactor = tilingFactor;
+        bufferPtr++;
 
-		m_QuadIndexCount += 6;
-		m_DrawStats.QuadCount++;
-	}
+        m_QuadIndexCount += 6;
+        m_DrawStats.QuadCount++;
+    }
 
 	void Renderer2D::DrawRotatedRect(const Vec2& position, const Vec2& size, float rotation, const Vec4& color, const bool onTop)
 	{
@@ -1109,16 +1110,14 @@ namespace SceneryEditorX
 	void Renderer2D::DrawRotatedRect(const Vec3& position, const Vec2& size, float rotation, const Vec4& color, const bool onTop)
 	{
 		const Mat4 transform = Mat4::Translate(position)
-				* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation)
+				* Quat::AngleAxisRadians(rotation, { 0.0f, 0.0f, 1.0f }).ToMatrix()
 				* Mat4::Scale({ size.x, size.y, 1.0f });
 
-		const Vec3 positions[4] =
-		{
-			transform * m_QuadVertexPositions[0],
-			transform * m_QuadVertexPositions[1],
-			transform * m_QuadVertexPositions[2],
-			transform * m_QuadVertexPositions[3]
-		};
+		const Vec3 positions[4] = {transform * m_QuadVertexPositions[0],
+                                   transform * m_QuadVertexPositions[1],
+                                   transform * m_QuadVertexPositions[2],
+                                   transform * m_QuadVertexPositions[3]};
+
 
 		for (int i = 0; i < 4; i++)
 		{
@@ -1150,17 +1149,17 @@ namespace SceneryEditorX
 		    * Mat4::Scale({ radius * 2.0f, radius * 2.0f, 1.0f });
 
 		auto& bufferPtr = GetWriteableCircleBuffer();
-		for (auto m_QuadVertexPosition : m_QuadVertexPositions)
+        for (auto m_QuadVertexPosition : m_QuadVertexPositions)
         {
-			bufferPtr->WorldPosition = transform * m_QuadVertexPosition;
-			bufferPtr->Thickness = thickness;
-			bufferPtr->LocalPosition = m_QuadVertexPosition * 2.0f;
-			bufferPtr->Color = color;
-			bufferPtr++;
+            bufferPtr->WorldPosition = transform * m_QuadVertexPosition;
+            bufferPtr->Thickness = thickness;
+            bufferPtr->LocalPosition = Vec2(m_QuadVertexPosition.x, m_QuadVertexPosition.y) * 2.0f;
+            bufferPtr->Color = color;
+            bufferPtr++;
 
-			m_CircleIndexCount += 6;
-			m_DrawStats.QuadCount++;
-		}
+            m_CircleIndexCount += 6;
+            m_DrawStats.QuadCount++;
+        }
 	}
 
 	void Renderer2D::DrawLine(const Vec3& p0, const Vec3& p1, const Vec4& color, const bool onTop)
@@ -1182,25 +1181,26 @@ namespace SceneryEditorX
 		m_DrawStats.LineCount++;
 	}
 
-	void Renderer2D::DrawTransform(const Mat4& transform, float scale /*= 1.0 */, const bool onTop)
-	{
-		const Vec3 p0 = transform * Vec4(0.0f, 0.0f, 0.0f, 1.0f);
-		Vec3 p1 = transform * Vec4(scale, 0.0f, 0.0f, 1.0f);
-		DrawLine(p0, p1, { 1.0f, 0.0f, 0.0f, 1.0f }, onTop);
+	void Renderer2D::DrawTransform(const Mat4 &transform, float scale /*= 1.0 */, const bool onTop)
+    {
+        const Vec3 p0 = transform * Vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        Vec3 p1 = transform * Vec4(scale, 0.0f, 0.0f, 1.0f);
+        DrawLine(p0, p1, {1.0f, 0.0f, 0.0f, 1.0f}, onTop);
 
-		p1 = transform * Vec4(0.0f, scale, 0.0f, 1.0f);
-		DrawLine(p0, p1, { 0.0f, 1.0f, 0.0f, 1.0f }, onTop);
+        p1 = transform * Vec4(0.0f, scale, 0.0f, 1.0f);
+        DrawLine(p0, p1, {0.0f, 1.0f, 0.0f, 1.0f}, onTop);
 
-		p1 = transform * Vec4(0.0f, 0.0f, scale, 1.0f);
-		DrawLine(p0, p1, { 0.0f, 0.0f, 1.0f, 1.0f }, onTop);
-	}
+        p1 = transform * Vec4(0.0f, 0.0f, scale, 1.0f);
+        DrawLine(p0, p1, {0.0f, 0.0f, 1.0f, 1.0f}, onTop);
+    }
+
 
 	void Renderer2D::DrawCircle(const Vec3& position, const Vec3& rotation, float radius, const Vec4& color, const bool onTop)
 	{
 		const Mat4 transform = Mat4::Translate(position)
-			* Rotation::AxisAngleRadians({ 1.0f, 0.0f, 0.0f }, rotation.x)
-			* Rotation::AxisAngleRadians({ 0.0f, 1.0f, 0.0f }, rotation.y)
-			* Rotation::AxisAngleRadians({ 0.0f, 0.0f, 1.0f }, rotation.z)
+			* Quat::AngleAxisRadians(rotation.x, { 1.0f, 0.0f, 0.0f }).ToMatrix()
+	        * Quat::AngleAxisRadians(rotation.y,{0.0f, 1.0f, 0.0f}).ToMatrix()
+	        * Quat::AngleAxisRadians(rotation.z,{0.0f, 0.0f, 1.0f}).ToMatrix()
 			* Mat4::Scale(Vec3(radius));
 
 		DrawCircle(transform, color, onTop);
@@ -1212,15 +1212,16 @@ namespace SceneryEditorX
 		for (int i = 0; i < segments; i++)
 		{
 			float angle = 2.0f * ::SceneryEditorX::PI * (float)i / segments;
-				Vec4 startPosition = { Math::Cos(angle), Math::Sin(angle), 0.0f, 1.0f };
-				angle = 2.0f * ::SceneryEditorX::PI * (float)((i + 1) % segments) / segments;
-				Vec4 endPosition = { Math::Cos(angle), Math::Sin(angle), 0.0f, 1.0f };
+			Vec4 startPosition = { Math::Cos(angle), Math::Sin(angle), 0.0f, 1.0f };
+			angle = 2.0f * ::SceneryEditorX::PI * (float)((i + 1) % segments) / segments;
+			Vec4 endPosition = { Math::Cos(angle), Math::Sin(angle), 0.0f, 1.0f };
 
 			Vec3 p0 = transform * startPosition;
 			Vec3 p1 = transform * endPosition;
 			DrawLine(p0, p1, color, onTop);
 		}
 	}
+
 
 	void Renderer2D::DrawAABB(const AABB &aabb, const Mat4& transform, const Vec4& color /*= Vec4(1.0f)*/, const bool onTop)
 	{

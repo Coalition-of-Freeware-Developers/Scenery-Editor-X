@@ -14,9 +14,8 @@
 #include <SceneryEditorX/core/time/timer.h>
 #include <SceneryEditorX/logging/profiler.hpp>
 #include <SceneryEditorX/renderer/debug_renderer.h>
+#include <SceneryEditorX/renderer/primitives.h>
 #include <SceneryEditorX/renderer/scene_renderer.h>
-
-#include "primitives.h"
 
 /// -------------------------------------------------------
 

@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/core/threading/render_thread.h>
 #include <SceneryEditorX/renderer/command_queue.h>
-//#include <SceneryEditorX/renderer/compute_pass.h>
+#include <SceneryEditorX/renderer/compute_pass.h>
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
 #include <SceneryEditorX/scene/material.h>
@@ -103,15 +103,17 @@ namespace SceneryEditorX
         GLOBAL uint32_t GetRenderQueueSubmissionIndex();
         GLOBAL uint32_t GetCurrentFrameIndex();
         GLOBAL RenderData &GetRenderData();
+
         GLOBAL void SetRenderData(const RenderData &renderData);
         GLOBAL void RenderThreadFunc(RenderThread *renderThread);
         GLOBAL void WaitAndRender(RenderThread* renderThread);
 		GLOBAL void SwapQueues();
+
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
         VkSampler CreateSampler(VkSamplerCreateInfo &samplerCreateInfo);
-        //GLOBAL void RenderGeometry(Ref<CommandBuffer> &ref, Ref<Pipeline> &pipeline, Ref<Material> &material, std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> & indexBuffer, const Mat4 &transform, uint32_t indexCount);
-        //GLOBAL void SubmitFullscreenQuad(Ref<CommandBuffer> & ref, Ref<Pipeline> & pipeline, Ref<Material> & material);
+        GLOBAL void RenderGeometry(Ref<CommandBuffer> &ref, Ref<Pipeline> &pipeline, Ref<Material> &material, std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> & indexBuffer, const Mat4 &transform, uint32_t indexCount);
+        GLOBAL void SubmitFullscreenQuad(Ref<CommandBuffer> & ref, Ref<Pipeline> & pipeline, Ref<Material> & material);
         GLOBAL Ref<Texture2D> GetWhiteTexture();
         GLOBAL Ref<Texture2D> GetBlackTexture();
         GLOBAL Ref<Texture2D> GetHilbertLut();
@@ -120,8 +122,8 @@ namespace SceneryEditorX
         GLOBAL Ref<Environment> GetEmptyEnvironment();
 
         void RegisterShaderDependency(Ref<Shader> &shader, Ref<Pipeline> &pipeline);
-        //void RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material);
-        //void RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline);
+        void RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material);
+        void RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline);
         void OnShaderReloaded(size_t hash);
         GLOBAL bool UpdateDirtyShaders();
 
@@ -134,9 +136,9 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Compute Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //GLOBAL void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
-		//GLOBAL void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
-		//GLOBAL void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
+        GLOBAL void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+		GLOBAL void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+		GLOBAL void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
 		GLOBAL void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
         GLOBAL void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 

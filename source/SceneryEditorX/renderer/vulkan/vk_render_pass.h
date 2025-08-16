@@ -14,8 +14,9 @@
 #include <SceneryEditorX/renderer/buffers/framebuffer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptor_set_manager.h>
 #include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
-#include <SceneryEditorX/scene/texture.h>
+#include <SceneryEditorX/renderer/texture.h>
 #include <vulkan/vulkan.h>
+
 
 /// -------------------------------------------------------
 
@@ -67,11 +68,13 @@ namespace SceneryEditorX
 		virtual RenderSpec& GetSpecification() { return renderSpec; }
 		virtual const RenderSpec& GetSpecification() const { return renderSpec; }
 
-        //void AddInput(std::string_view name, const Ref<UniformBufferSet> &uniformBufferSet);
+	void AddInput(std::string_view name, const Ref<UniformBufferSet> &uniformBufferSet);
         void AddInput(std::string_view name, const Ref<UniformBuffer> &uniformBuffer);
-        //void AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet);
+	void AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet);
         void AddInput(std::string_view name, const Ref<StorageBuffer> &storageBuffer);
-        void AddInput(std::string_view name, const Ref<TextureAsset> &texture);
+	void AddInput(std::string_view name, const Ref<Texture2D> &texture);
+	void AddInput(std::string_view name, const Ref<TextureCube> &textureCube);
+	void AddInput(std::string_view name, const Ref<Image2D> &image);
 
         void CreateRenderPass();
 
@@ -110,8 +113,8 @@ namespace SceneryEditorX
         VkQueue graphicsQueue = nullptr;
         VkQueue presentQueue = nullptr;
 
-        RenderSpec renderSpec;
-        //DescriptorSetManager m_DescriptorSetManager;
+	RenderSpec renderSpec;
+	DescriptorSetManager m_DescriptorSetManager;
 
 		/// ----------------------------------
 

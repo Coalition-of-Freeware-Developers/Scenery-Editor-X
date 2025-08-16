@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -16,6 +16,8 @@
 
 namespace SceneryEditorX::Utils
 {
+    // Forward declaration to allow declaring converting constructor without including vec4.h here.
+	template<typename T> struct TVector4;
 
 	template<typename T>
 	struct TVector3
@@ -31,6 +33,11 @@ namespace SceneryEditorX::Utils
 		constexpr TVector3() : x(0), y(0), z(0) {}
 		constexpr TVector3(T s) : x(s), y(s), z(s) {}
 		constexpr TVector3(T _x, T _y, T _z) : x(_x), y(_y), z(_z) {}
+
+        // Converting constructor from a 4D vector (drops w component).
+        // Intentionally explicit to avoid accidental narrowing in overload resolution.
+		explicit constexpr TVector3(const TVector4<T>& v) : x(v.x), y(v.y), z(v.z) {}
+
 
 		// Basic arithmetic
 		constexpr TVector3 operator+(const TVector3& r) const { return {x + r.x, y + r.y, z + r.z}; }

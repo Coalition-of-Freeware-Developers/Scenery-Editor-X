@@ -11,9 +11,8 @@
 * -------------------------------------------------------
 */
 // ReSharper disable IdentifierTypo
-#include <algorithm>
-#include <SceneryEditorX/utils/math/math_utils.h>
 #include <SceneryEditorX/utils/math/quat.h>
+#include <SceneryEditorX/utils/math/math_utils.h>
 #if TRACY_ENABLE
 #include <tracy/Tracy.hpp>
 #endif
@@ -80,6 +79,17 @@ namespace SceneryEditorX
 	 * @endcode
 	 */
 	Quat::Quat(const Vec4& vec4) : x(vec4.x), y(vec4.y), z(vec4.z), w(vec4.w) {}
+
+    /**
+     * @note Storage Layout vs Parameter Order
+     * Internally the quaternion stores components as (x,y,z,w) in memory so the
+     * vector part is tightly packed at the beginning for cache/SIMD friendliness
+     * with other math structures (Vec3/Vec4). The public constructor however
+     * takes parameters in the common (w,x,y,z) order for readability. Always use
+     * the named members (x,y,z,w) when accessing components. Do not assume
+     * constructor parameter ordering matches memory layout for binary dumps or
+     * serialization – consult the math library documentation first.
+     */
 
 	/**
 	 * @brief Copy constructor.
@@ -395,11 +405,16 @@ namespace SceneryEditorX
 	 * Quat normalized = q.GetNormalized(); // Unit quaternion with same rotation
 	 * @endcode
 	 */
-	Quat Quat::GetNormalized() const
+    Quat Quat::GetNormalized() const
     {
-		const float mag = sqrtf(w * w + x * x + y * y + z * z);
-		return {w / mag, x / mag, y / mag, z / mag};
-	}
+        const float mag2 = w * w + x * x + y * y + z * z;
+        if (mag2 <= 0.0f)
+            return Quat(); // identity fallback for degenerate quaternion
+        const float mag = sqrtf(mag2);
+        if (mag <= 0.0f)
+            return Quat();
+        return {w / mag, x / mag, y / mag, z / mag};
+    }
 
     /**
      * @brief GLM-style alias for GetNormalized().
@@ -519,9 +534,6 @@ namespace SceneryEditorX
 	 * @param b The quaternion to compute dot product with
 	 * @return The dot product value (1.0 = identical, -1.0 = opposite)
 	 *
-	 * @note - There appears to be a bug in this implementation - it's missing
-	 * the y component multiplication (should be + x * b.x + y * b.y + z * b.z)
-	 *
 	 * @note - Used internally by Slerp and angle calculation functions.
 	 * @note - The result is always in the range [-1.0, 1.0].
 	 * @note - Both quaternions should be normalized for accurate results.
@@ -533,6 +545,7 @@ namespace SceneryEditorX
 	 * @endcode
 	 */
 	float Quat::Dot(const Quat& b) const { return (w * b.w + x * b.x + y * b.y + z * b.z); }
+
 
     /**
      * @brief Converts this quaternion to a rotation matrix.
@@ -603,11 +616,12 @@ namespace SceneryEditorX
 		const float s_from = SceneryEditorX::Dot(unitFrom, unitFrom);
 		const float s_to = SceneryEditorX::Dot(unitTo, unitTo);
 		const float s = sqrtf(s_from * s_to) + SceneryEditorX::Dot(unitFrom, unitTo);
-		Vec3 v = SceneryEditorX::Cross(unitFrom, unitTo);
-		v.x *= -1.0f;
-		v.y *= -1.0f;
-		return Quat(Vec4(v, s)).GetNormalized();
-	}
+        Vec3 v = Cross(unitFrom, unitTo);
+        // @note: Previous implementation negated x & y only (v.x*= -1, v.y*=-1) which
+        // introduced an implicit handedness flip for some rotations. That was unintentional
+        // and produced asymmetric results. We now keep the raw cross product.
+        return Quat(Vec4(v, s)).GetNormalized();
+    }
 
     /**
      * @brief Creates a quaternion that looks in the specified direction.
@@ -718,6 +732,7 @@ namespace SceneryEditorX
 		return result;
 	}
 
+
 	/**
 	 * @brief Spherical linear interpolation between two quaternions.
 	 *
@@ -746,22 +761,36 @@ namespace SceneryEditorX
 	 * Quat middle = Quat::Slerp(start, end, 0.5f); // 45° rotation
 	 * @endcode
 	 */
-	Quat Quat::Slerp(const Quat& from, const Quat& to, const float t)
-	{
-		float cosTheta = Quat::Dot(from, to);
-		Quat temp(to);
+    Quat Quat::Slerp(const Quat &from, const Quat &to, const float t)
+    {
+        // Robust SLERP with small-angle fallback to avoid precision loss.
+        Quat a = from.GetNormalized();
+        Quat b = to.GetNormalized();
+        float dot = a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
+        if (dot < 0.0f)
+        {
+            dot = -dot;
+            b.w = -b.w;
+            b.x = -b.x;
+            b.y = -b.y;
+            b.z = -b.z; // shortest path
+        }
+        dot = std::clamp(dot, -1.0f, 1.0f);
+        // Small angle -> nlerp
+        if (1.0f - dot < 1e-3f)
+        {
+            Quat result(a.w + t * (b.w - a.w), a.x + t * (b.x - a.x), a.y + t * (b.y - a.y), a.z + t * (b.z - a.z));
+            return result.GetNormalized();
+        }
+        float theta0 = acosf(dot);
+        float theta = theta0 * t;
+        float sinTheta0 = sinf(theta0);
+        float sinTheta = sinf(theta);
+        float s0 = cosf(theta) - dot * sinTheta / sinTheta0;
+        float s1 = sinTheta / sinTheta0;
+        return Quat(s0 * a.w + s1 * b.w, s0 * a.x + s1 * b.x, s0 * a.y + s1 * b.y, s0 * a.z + s1 * b.z);
+    }
 
-		if (cosTheta < 0.0f)
-		{
-			cosTheta *= -1.0f;
-			temp = temp * -1.0f;
-		}
-
-		const float theta = acosf(cosTheta);
-		const float sinTheta = 1.0f / sinf(theta);
-
-		return sinTheta * (((Quat)(from * sinf(theta * (1.0f - t)))) + ((Quat)(temp * sinf(t * theta))));
-	}
 
     /**
      * @brief Linearly interpolates between two quaternions.
@@ -1136,12 +1165,14 @@ namespace SceneryEditorX
      * float angle = Quat::AngleRadians(rotation);
      * @endcode
      */
-    float Quat::AngleRadians(const Quat& x)
-	{
-		/// Clamp to avoid NaNs from slight numerical errors
-		float cw = std::max(-1.0f, std::min(1.0f, x.w));
-		return 2.0f * acosf(cw);
-	}
+    float Quat::AngleRadians(const Quat &x)
+    {
+        /// Clamp to avoid NaNs from slight numerical errors. The acosf domain is
+        /// [-1,1], but accumulated FP drift (or a slightly non‑normalized
+        /// quaternion) can push w marginally outside. We clamp then scale.
+        float cw = std::max(-1.0f, std::min(1.0f, x.w));
+        return 2.0f * acosf(cw);
+    }
 
     /**
      * @brief Calculates the axis of rotation for a quaternion.
@@ -1160,14 +1191,15 @@ namespace SceneryEditorX
      * Vec3 axis = Quat::Axis(rotation); // Axis of rotation
      * @endcode
      */
-    Vec3 Quat::Axis(const Quat& x)
-	{
-		float tmp1 = 1.0f - x.w * x.w;
-		if (tmp1 <= 0.0f)
-			return Vec3(0.0f, 0.0f, 1.0f);
-		float inv = 1.0f / sqrtf(tmp1);
-		return Vec3(x.x * inv, x.y * inv, x.z * inv);
-	}
+    Vec3 Quat::Axis(const Quat &x)
+    {
+        // tmp1 = sin^2(theta/2); if very small the axis direction is numerically unstable.
+        float tmp1 = 1.0f - x.w * x.w;
+        if (tmp1 <= 1e-12f)
+            return Vec3(0.0f, 0.0f, 1.0f); // default axis when angle ~0
+        float inv = 1.0f / sqrtf(tmp1);
+        return Vec3(x.x * inv, x.y * inv, x.z * inv);
+    }
 
     /**
      * @brief Rotates a quaternion by a given angle around a specified axis.

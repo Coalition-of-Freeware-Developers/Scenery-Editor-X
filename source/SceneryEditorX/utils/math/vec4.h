@@ -52,6 +52,9 @@ namespace SceneryEditorX::Utils
 
 		/// Conversions
 		operator TVector3<T>() const { return TVector3<T>(x, y, z); }
+	    // Allow explicit construction of a Vec3 from a Vec4 without relying on operator cast.
+		friend struct TVector3<T>; // Grant access for converting ctor definition below.
+
 
 		/// Indexing helpers
 		T& operator[](int i) { return (&x)[i]; }
@@ -61,3 +64,10 @@ namespace SceneryEditorX::Utils
 }
 
 /// -----------------------------------------------------
+
+// Converting constructor definition (must be after TVector4 is visible via vec4.h include in umbrella header usage).
+namespace SceneryEditorX::Utils
+{
+	template<typename T>
+	constexpr TVector3<T>::TVector3(const TVector4<T>& v) : x(v.x), y(v.y), z(v.z) {}
+}

@@ -13,15 +13,13 @@
 #pragma once
 #include <cstdint>
 #include <map>
-#include <vector>
 #include <SceneryEditorX/asset/mesh/mesh.h>
 #include <SceneryEditorX/project/project_settings.h>
 #include <SceneryEditorX/renderer/2d_renderer.h>
 #include <SceneryEditorX/renderer/buffers/framebuffer.h>
-#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
 #include <SceneryEditorX/renderer/buffers/storage_buffer_set.h>
+#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
 #include <SceneryEditorX/renderer/camera.h>
-#include <SceneryEditorX/renderer/compute_pass.h>
 #include <SceneryEditorX/renderer/compute_pipeline.h>
 #include <SceneryEditorX/renderer/debug_renderer.h>
 #include <SceneryEditorX/renderer/shaders/shader_definitions.h>
@@ -29,13 +27,14 @@
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
 #include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
 #include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/utils/math/vector.h>
 #include <SceneryEditorX/utils/math/matrix.h>
+#include <SceneryEditorX/utils/math/vector.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	class ComputePass; // forward declaration
 
 	struct SceneRendererOptions
 	{

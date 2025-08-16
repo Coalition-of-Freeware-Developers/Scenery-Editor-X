@@ -18,11 +18,16 @@
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/vulkan/vk_sampler.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/scene.h>
-#include <SceneryEditorX/renderer/vulkan/vk_sampler.h>
+
+#include "compute_pipeline.h"
+
+#include "buffers/storage_buffer_set.h"
+#include "buffers/uniform_buffer_set.h"
 
 /// -------------------------------------------------------
 
@@ -34,16 +39,16 @@ namespace SceneryEditorX
         Ref<VertexBuffer> QuadVertexBuffer;
         Ref<IndexBuffer> QuadIndexBuffer;
 
-        //Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
-        //std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
+        Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
+        std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
         VkDescriptorSet ActiveRendererDescriptorSet = nullptr;
         std::vector<VkDescriptorPool> DescriptorPools;
         VkDescriptorPool MaterialDescriptorPool;
         std::vector<uint32_t> DescriptorPoolAllocationCount;
 
         /// UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor
-		//std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
-		//std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
+		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
+		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
 
         /// Default samplers
         VkSampler SamplerClamp = nullptr;
@@ -53,7 +58,6 @@ namespace SceneryEditorX
         int32_t DrawCallCount = 0;
 
         Ref<ShaderLibrary> m_ShaderLibrary;
-
         Ref<Texture2D> WhiteTexture;
         Ref<Texture2D> BlackTexture;
         Ref<Texture2D> BRDFLutTexture;
@@ -77,7 +81,7 @@ namespace SceneryEditorX
 
     struct ShaderDependencies
     {
-        //std::vector<Ref<ComputePipeline>> ComputePipelines;
+        std::vector<Ref<ComputePipeline>> ComputePipelines;
         std::vector<Ref<Pipeline>> Pipelines;
         std::vector<Ref<Material>> Materials;
     };
@@ -88,13 +92,6 @@ namespace SceneryEditorX
     {
         return RenderContext::Get();
     }
-
-    /*
-    Ref<Texture2D> && Renderer::GetBRDFLutTexture()
-    {
-        return s_Data->BRDFLutTexture;
-    }
-    */
 
     void Renderer::Init()
     {
@@ -180,7 +177,7 @@ namespace SceneryEditorX
 		uint32_t indices[6] = { 0, 1, 2, 2, 3, 0, };
 		s_Data->QuadIndexBuffer = IndexBuffer::Create(indices, 6 * sizeof(uint32_t));
 
-		s_Data->BRDFLut = Renderer::GetBRDFLutTexture();
+		s_Data->BRDFLut = GetBRDFLutTexture();
 
 
         uint32_t whiteTextureData = 0xffffffff;
@@ -289,20 +286,6 @@ namespace SceneryEditorX
         return resourceFreeQueue[index];
     }
 
-    /*
-    uint32_t Renderer::GetRenderQueueIndex()
-    {
-        return m_renderData->s_RenderQueueIndex;
-    }
-    */
-
-    /*
-    uint32_t Renderer::GetRenderQueueSubmissionIndex()
-    {
-        return m_renderData->s_RenderQueueSubmissionIndex;
-    }
-    */
-
     uint32_t Renderer::GetCurrentFrameIndex()
     {
         return m_renderData.frameIndex;
@@ -374,44 +357,20 @@ namespace SceneryEditorX
 		return sampler;
     }
 
-    /*
-    void Renderer::RenderGeometry(const Ref<CommandBuffer> &ref, const Ref<Pipeline> &pipeline, const Ref<Material> &material,
+    void Renderer::RenderGeometry(Ref<CommandBuffer> &ref, Ref<Pipeline> &pipeline, Ref<Material> &material,
         std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> &indexBuffer, const Mat4 &transform, uint32_t indexCount)
     {
         RenderGeometry(ref, pipeline, material, vertexBuffer, indexBuffer, transform, indexCount);
 
     }
-    */
 
-    Ref<Texture2D> Renderer::GetWhiteTexture()
-    {
-        return s_Data->WhiteTexture;
-    }
+    Ref<Texture2D> Renderer::GetWhiteTexture() { return s_Data->WhiteTexture; }
+    Ref<Texture2D> Renderer::GetBlackTexture() { return s_Data->BlackTexture; }
+    Ref<Texture2D> Renderer::GetHilbertLut() { return s_Data->HilbertLut; }
+    Ref<Texture2D> Renderer::GetBRDFLutTexture() { return s_Data->BRDFLutTexture; }
 
-    Ref<Texture2D> Renderer::GetBlackTexture()
-    {
-        return s_Data->BlackTexture;
-    }
-
-    Ref<Texture2D> Renderer::GetHilbertLut()
-    {
-        return s_Data->HilbertLut;
-    }
-
-    Ref<Texture2D> Renderer::GetBRDFLutTexture()
-    {
-        return s_Data->BRDFLutTexture;
-    }
-
-    Ref<TextureCube> Renderer::GetBlackCubeTexture()
-    {
-        return s_Data->BlackCubeTexture;
-    }
-
-    Ref<Environment> Renderer::GetEmptyEnvironment()
-    {
-        return s_Data->EmptyEnvironment;
-    }
+    Ref<TextureCube> Renderer::GetBlackCubeTexture() { return s_Data->BlackCubeTexture; }
+    Ref<Environment> Renderer::GetEmptyEnvironment() { return s_Data->EmptyEnvironment; }
 
     /// -------------------------------------------------------
 

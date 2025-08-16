@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/utils/math/matrix.h>
+#include <SceneryEditorX/utils/math/vector.h>
 
 /// -----------------------------------------------------
 
@@ -954,6 +955,17 @@ namespace SceneryEditorX
             float xyzw[4];
         };
     };
+
+
+    /// Inline helper for readability when composing transforms with quaternions.
+    /// Instead of writing q.ToMatrix() callers can use ToMat(q) mirroring other
+    /// free-function helpers in the math API.
+    inline Mat4 ToMat(const Quat& q) { return q.ToMatrix(); }
+
+    // Ensure Mat4 * Quat and Quat * Mat4 interoperability helpers exist (may have been added earlier).
+    inline Mat4 operator*(const Mat4& lhs, const Quat& rhs) { return lhs * rhs.ToMatrix(); }
+    inline Mat4 operator*(const Quat& lhs, const Mat4& rhs) { return lhs.ToMatrix() * rhs; }
+
 
     /**
      * @brief Transforms a Vec4 by a quaternion's rotation (right-hand operator).

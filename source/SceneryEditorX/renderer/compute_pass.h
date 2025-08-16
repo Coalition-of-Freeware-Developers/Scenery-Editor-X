@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,17 +11,30 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include <SceneryEditorX/renderer/compute_pipeline.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_descriptor_set_manager.h>
+#include <SceneryEditorX/renderer/compute_pipeline.h>
+#include <SceneryEditorX/renderer/vulkan/vk_descriptor_set_manager.h>
+// STL
+#include <set>            // std::set used in private declaration
+#include <string_view>    // std::string_view parameters
+#include <string>         // std::string in specification
+
+// Math types
+#include <SceneryEditorX/utils/math/vector.h> // Vec4
+
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /*
+
 	/// Forward declarations
 	class UniformBufferSet;
+	class UniformBuffer;
     class StorageBufferSet;
+	class StorageBuffer;
+	class Texture2D;
+	class TextureCube;
+	class Image2D;
 
 	struct ComputePassSpecification
 	{
@@ -55,8 +68,8 @@ namespace SceneryEditorX
 
 		virtual Ref<Image2D> GetOutput(uint32_t index);
 		virtual Ref<Image2D> GetDepthOutput();
-		virtual bool HasDescriptorSets();
-		virtual uint32_t GetFirstSetIndex();
+		virtual bool HasDescriptorSets() const;
+        virtual uint32_t GetFirstSetIndex() const;
 
 		virtual bool Validate();
 		virtual void Bake();
@@ -80,7 +93,7 @@ namespace SceneryEditorX
 	    ComputePassSpecification m_Specification;
         DescriptorSetManager m_DescriptorSetManager;
 	};
-	*/
+
 
 }
 

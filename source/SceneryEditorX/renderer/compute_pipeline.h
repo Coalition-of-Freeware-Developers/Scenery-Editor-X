@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,10 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/utils/vulkan/vk_includes.h>
-#include "vulkan/vk_enums.h"
+#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 
 /// -------------------------------------------------------
 
