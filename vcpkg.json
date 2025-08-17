@@ -2,7 +2,7 @@
     "dependencies": [
         "vulkan-memory-allocator",
 		"msdfgen",
-
+		"imguizmo",
         "portable-file-dialogs",
         "spdlog",
         "stb",
