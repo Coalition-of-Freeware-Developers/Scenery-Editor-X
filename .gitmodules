@@ -28,3 +28,6 @@
 [submodule "dependency/ImGuizmo"]
 	path = dependency/ImGuizmo
 	url = git@github.com:CedricGuillemet/ImGuizmo.git
+[submodule "dependency/imgui"]
+	path = dependency/imgui
+	url = git@github.com:Coalition-of-Freeware-Developers/Scenery-Editor-X-imgui.git
