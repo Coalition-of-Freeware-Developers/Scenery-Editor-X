@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -13,11 +13,11 @@
 #pragma once
 #include <GLFW/glfw3.h>
 #include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/window/icon.h>
-#include <SceneryEditorX/core/window/monitor_data.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <SceneryEditorX/utils/vulkan/vk_includes.h>
+#include "icon.h"
+#include "monitor_data.h"
 
 /// -------------------------------------------------------
 

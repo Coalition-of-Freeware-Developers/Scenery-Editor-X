@@ -10,12 +10,12 @@
 * Created: 23/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/time/timer.h>
-#include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/renderer/debug_renderer.h>
-#include <SceneryEditorX/renderer/primitives.h>
-#include <SceneryEditorX/renderer/scene_renderer.h>
+#include "scene_renderer.h"
+#include "debug_renderer.h"
+#include "primitives.h"
+#include "SceneryEditorX/core/application/application.h"
+#include "SceneryEditorX/core/time/timer.h"
+#include "SceneryEditorX/logging/profiler.hpp"
 
 /// -------------------------------------------------------
 
@@ -100,14 +100,14 @@ namespace SceneryEditorX
 
 		uint32_t framesInFlight = Renderer::GetRenderData().framesInFlight;
 
-		m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(UBCamera));
-		m_UBSShadow = CreateRef<UniformBufferSet>(sizeof(UBShadow));
-		m_UBSScene = CreateRef<UniformBufferSet>(sizeof(UBScene));
-		m_UBSRendererData = CreateRef<UniformBufferSet>(sizeof(UBRendererData));
-		m_UBSPointLights = CreateRef<UniformBufferSet>(sizeof(UBPointLights));
-		m_UBSScreenData = CreateRef<UniformBufferSet>(sizeof(UBScreenData));
-		m_UBSSpotLights = CreateRef<UniformBufferSet>(sizeof(UBSpotLights));
-		m_UBSSpotShadowData = CreateRef<UniformBufferSet>(sizeof(UBSpotShadowData));
+		m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(UBOCamera));
+		m_UBSShadow = CreateRef<UniformBufferSet>(sizeof(UBOShadow));
+		m_UBSScene = CreateRef<UniformBufferSet>(sizeof(UBOScene));
+		m_UBSRendererData = CreateRef<UniformBufferSet>(sizeof(UBORendererData));
+		m_UBSPointLights = CreateRef<UniformBufferSet>(sizeof(UBOPointLights));
+		m_UBSScreenData = CreateRef<UniformBufferSet>(sizeof(UBOScreenData));
+		m_UBSSpotLights = CreateRef<UniformBufferSet>(sizeof(UBOSpotLights));
+		m_UBSSpotShadowData = CreateRef<UniformBufferSet>(sizeof(UBOSpotShadowData));
 
 		{
 			StorageBufferSpec spec;
@@ -1666,14 +1666,14 @@ namespace SceneryEditorX
 		}
 
 		///< Update uniform buffers
-		UBCamera& cameraData = CameraDataUB;
-		UBScene& sceneData = SceneDataUB;
-		UBShadow& shadowData = ShadowData;
-		UBRendererData& rendererData = RendererDataUB;
-		UBPointLights& pointLightData = PointLightsUB;
-		UBScreenData& screenData = m_ScreenDataUB;
-		UBSpotLights& spotLightData = SpotLightUB;
-		UBSpotShadowData& spotShadowData = SpotShadowDataUB;
+		UBOCamera& cameraData = CameraDataUB;
+		UBOScene& sceneData = SceneDataUB;
+		UBOShadow& shadowData = ShadowData;
+		UBORendererData& rendererData = RendererDataUB;
+		UBOPointLights& pointLightData = PointLightsUB;
+		UBOScreenData& screenData = m_ScreenDataUB;
+		UBOSpotLights& spotLightData = SpotLightUB;
+		UBOSpotShadowData& spotShadowData = SpotShadowDataUB;
 
 		auto& sceneCamera = m_SceneData.SceneCamera;
 		const auto viewProjection = sceneCamera.camera.GetProjectionMatrix() * sceneCamera.ViewMatrix;

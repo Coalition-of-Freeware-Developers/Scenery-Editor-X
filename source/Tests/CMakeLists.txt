@@ -32,13 +32,8 @@ TARGET_INCLUDE_DIRECTORIES(RefTests PRIVATE
 TARGET_LINK_LIBRARIES(RefTests PRIVATE
     Catch2::Catch2WithMain
 )
-# Disable engine logging/tracy in this target to avoid pulling in Vulkan/OS deps via asserts
+# Disable engine logging in this target; profiling (Tracy) simply not defined here
 TARGET_COMPILE_DEFINITIONS(RefTests PRIVATE SEDX_NO_LOGGING ZoneScoped=)
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(RefTests PRIVATE /U"TRACY_ENABLE")
-ELSE()
-    TARGET_COMPILE_OPTIONS(RefTests PRIVATE -U TRACY_ENABLE)
-ENDIF()
 
 # Enable parallel compilation for MSVC
 IF(MSVC)
@@ -85,11 +80,7 @@ TARGET_LINK_LIBRARIES(MemoryAllocatorTests PRIVATE
     Catch2::Catch2
     vulkan-1
 )
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE /U"TRACY_ENABLE")
-ELSE()
-    TARGET_COMPILE_OPTIONS(MemoryAllocatorTests PRIVATE -U TRACY_ENABLE)
-ENDIF()
+# No Tracy undef needed; not defined for this target
 
 # Enable parallel compilation for MSVC
 IF(MSVC)
@@ -128,13 +119,8 @@ TARGET_LINK_LIBRARIES(SettingsTest PRIVATE
     d3d12
     Shell32.lib
 )
-# Disable engine logging/tracy in this target to avoid pulling in Vulkan/OS deps via asserts
+# Disable engine logging; omit Tracy
 TARGET_COMPILE_DEFINITIONS(SettingsTest PRIVATE SEDX_NO_LOGGING ZoneScoped=)
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE /U"TRACY_ENABLE")
-ELSE()
-    TARGET_COMPILE_OPTIONS(SettingsTest PRIVATE -U TRACY_ENABLE)
-ENDIF()
 
 # Enable parallel compilation for MSVC
 IF(MSVC)
@@ -179,11 +165,7 @@ TARGET_LINK_LIBRARIES(EdxTests PRIVATE
     Catch2::Catch2WithMain
     edX
 )
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE /U"TRACY_ENABLE")
-ELSE()
-    TARGET_COMPILE_OPTIONS(EdxTests PRIVATE -U TRACY_ENABLE)
-ENDIF()
+# No Tracy undef required
 
 # Enable parallel compilation for MSVC
 IF(MSVC)
@@ -218,11 +200,7 @@ TARGET_INCLUDE_DIRECTORIES(EdxDemoGenerator PRIVATE
 TARGET_LINK_LIBRARIES(EdxDemoGenerator PRIVATE
     edX
 )
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE /U"TRACY_ENABLE")
-ELSE()
-    TARGET_COMPILE_OPTIONS(EdxDemoGenerator PRIVATE -U TRACY_ENABLE)
-ENDIF()
+# No Tracy undef required
 
 # Enable parallel compilation for MSVC
 IF(MSVC)
@@ -279,23 +257,8 @@ FILE(GLOB MATH_TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/math_tests/*.cpp
 )
 
-# Also compile the math implementation sources directly into MathTests to avoid
-# linking the full AppCore library and keep test builds lightweight.
-# Explicitly list only the math implementation sources that actually exist.
-# Avoid wildcard globs here to prevent stale/non-existent files from being
-# referenced in generated project files.
-SET(MATH_IMPL_SOURCES
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/utils/math/colors.cpp
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/utils/math/gradients.cpp
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/utils/math/math_utils.cpp
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/utils/math/matrix.cpp
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/utils/math/quat.cpp
-    ${CMAKE_SOURCE_DIR}/source/SceneryEditorX/utils/math/transforms.cpp
-)
-
 ADD_EXECUTABLE(MathTests
     ${MATH_TEST_SOURCES}
-    ${MATH_IMPL_SOURCES}
 )
 
 TARGET_INCLUDE_DIRECTORIES(MathTests PRIVATE
@@ -305,7 +268,7 @@ TARGET_INCLUDE_DIRECTORIES(MathTests PRIVATE
 
 TARGET_LINK_LIBRARIES(MathTests PRIVATE
     Catch2::Catch2WithMain
-
+    xMath
 )
 
 IF(MSVC)
@@ -314,13 +277,8 @@ ELSE()
     TARGET_COMPILE_OPTIONS(MathTests PRIVATE -Wall -Wextra -Wpedantic)
 ENDIF()
 
-# Disable engine logging/tracy in this target to avoid pulling in Vulkan/OS deps via asserts
+# Disable engine logging; profiling off by omission
 TARGET_COMPILE_DEFINITIONS(MathTests PRIVATE SEDX_NO_LOGGING ZoneScoped=)
-IF(MSVC)
-    TARGET_COMPILE_OPTIONS(MathTests PRIVATE /U"TRACY_ENABLE")
-ELSE()
-    TARGET_COMPILE_OPTIONS(MathTests PRIVATE -U TRACY_ENABLE)
-ENDIF()
 
 INCLUDE(Catch)
 catch_discover_tests(MathTests)

@@ -10,11 +10,11 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
+#include "monitor_data.h"
 #include <algorithm>
-#include <fmt/format.h>
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/window/monitor_data.h>
-#include <SceneryEditorX/logging/logging.hpp>
+#include <fmt/format.h>
+#include "SceneryEditorX/logging/logging.hpp"
 
 /// --------------------------------------------
 

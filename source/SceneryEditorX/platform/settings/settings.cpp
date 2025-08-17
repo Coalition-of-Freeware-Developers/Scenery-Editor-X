@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,9 +12,9 @@
 */
 #include <filesystem>
 #include <libconfig.h++>
-#include <SceneryEditorX/core/application/application_data.h>
-#include <SceneryEditorX/platform/settings/settings.h>
-#include <SceneryEditorX/platform/settings/steam_parser.h>
+#include "settings.h"
+#include "steam_parser.h"
+#include "SceneryEditorX/core/application/application_data.h"
 
 /// -------------------------------------------------------
 

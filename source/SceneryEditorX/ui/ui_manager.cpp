@@ -10,10 +10,10 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
+#include "ui_manager.h"
 #include <imgui_impl_vulkan.h>
 #include <imgui_internal.h>
-#include <SceneryEditorX/renderer/vulkan/vk_image.h>
-#include <SceneryEditorX/ui/ui_manager.h>
+#include "SceneryEditorX/renderer/vulkan/vk_image.h"
 
 /// -------------------------------------------------------
 
@@ -34,37 +34,37 @@ namespace SceneryEditorX::UI
 
     /// -------------------------------------------------------
 
-	const char* GenerateID()
+	const char *UIManager::GenerateID()
 	{
 		snprintf(s_IDBuffer + 2, 16, "%u", s_Counter++);
 		return s_IDBuffer;
 	}
 
-	const char* GenerateLabelID(std::string_view label)
+	const char *UIManager::GenerateLabelID(std::string_view label)
 	{
 		*std::format_to_n(s_LabelIDBuffer, std::size(s_LabelIDBuffer), "{}##{}", label, s_Counter++).out = 0;
 		return s_LabelIDBuffer;
 	}
 
-	void PushID()
+	void UIManager::PushID()
 	{
 		ImGui::PushID(s_UIContextID++);
 		s_Counter = 0;
 	}
 
-	void PopID()
+	void UIManager::PopID()
 	{
 		ImGui::PopID();
 		s_UIContextID--;
 	}
 
-	bool IsInputEnabled()
+	bool UIManager::IsInputEnabled()
 	{
 		const auto& io = ImGui::GetIO();
 		return (io.ConfigFlags & ImGuiConfigFlags_NoMouse) == 0 && (io.ConfigFlags & ImGuiConfigFlags_NavNoCaptureKeyboard) == 0;
 	}
 
-	void SetInputEnabled(bool enabled)
+	void UIManager::SetInputEnabled(bool enabled)
 	{
 		auto& io = ImGui::GetIO();
 
@@ -80,23 +80,23 @@ namespace SceneryEditorX::UI
 		}
 	}
 
-	void ShiftCursorX(float distance)
+	void UIManager::ShiftCursorX(float distance)
 	{
 		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + distance);
 	}
 
-	void ShiftCursorY(float distance)
+	void UIManager::ShiftCursorY(float distance)
 	{
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + distance);
 	}
 
-	void ShiftCursor(float x, float y)
+	void UIManager::ShiftCursor(float x, float y)
 	{
 		const ImVec2 cursor = ImGui::GetCursorPos();
 		ImGui::SetCursorPos(ImVec2(cursor.x + x, cursor.y + y));
 	}
 
-	void BeginPropertyGrid(uint32_t columns)
+	void UIManager::BeginPropertyGrid(uint32_t columns)
 	{
 		PushID();
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
@@ -104,7 +104,7 @@ namespace SceneryEditorX::UI
 		ImGui::Columns(columns);
 	}
 
-	void EndPropertyGrid()
+	void UIManager::EndPropertyGrid()
 	{
 		ImGui::Columns(1);
 		Draw::Underline();
@@ -113,7 +113,7 @@ namespace SceneryEditorX::UI
 		PopID();
 	}
 
-	bool BeginTreeNode(const char* name, bool defaultOpen)
+	bool UIManager::BeginTreeNode(const char *name, bool defaultOpen)
 	{
 		ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
 		if (defaultOpen)
@@ -122,25 +122,28 @@ namespace SceneryEditorX::UI
 		return ImGui::TreeNodeEx(name, treeNodeFlags);
 	}
 
-	void EndTreeNode()
-	{
-		ImGui::TreePop();
-	}
+	void UIManager::EndTreeNode()
+    {
+        ImGui::TreePop();
+    }
 
-	bool ColoredButton(const char* label, const ImVec4& backgroundColor, ImVec2 buttonSize)
-	{
-		ScopedColour buttonColor(ImGuiCol_Button, backgroundColor);
-		return ImGui::Button(label, buttonSize);
-	}
+    bool UIManager::ColoredButton(const char *label, const ImVec4 &backgroundColor, ImVec2 buttonSize)
+    {
+        ScopedColour buttonColor(ImGuiCol_Button, backgroundColor);
+        return ImGui::Button(label, buttonSize);
+    }
 
-	bool ColoredButton(const char* label, const ImVec4& backgroundColor, const ImVec4& foregroundColor, ImVec2 buttonSize)
+    bool UIManager::ColoredButton(const char *label,
+                                const ImVec4 &backgroundColor,
+                                const ImVec4 &foregroundColor,
+                                ImVec2 buttonSize)
 	{
 		ScopedColour textColor(ImGuiCol_Text, foregroundColor);
 		ScopedColour buttonColor(ImGuiCol_Button, backgroundColor);
 		return ImGui::Button(label, buttonSize);
 	}
 
-	bool TableRowClickable(const char* id, float rowHeight)
+	bool UIManager::TableRowClickable(const char *id, float rowHeight)
 	{
 		ImGuiWindow* window = ImGui::GetCurrentWindow();
 		window->DC.CurrLineSize.y = rowHeight;
@@ -166,7 +169,7 @@ namespace SceneryEditorX::UI
 		return isRowClicked;
 	}
 
-	void Separator(ImVec2 size, ImVec4 color)
+	void UIManager::Separator(ImVec2 size, ImVec4 color)
 	{
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, color);
 		ImGui::BeginChild("sep", size);
@@ -174,7 +177,7 @@ namespace SceneryEditorX::UI
 		ImGui::PopStyleColor();
 	}
 
-	bool IsWindowFocused(const char* windowName, const bool checkRootWindow)
+	bool UIManager::IsWindowFocused(const char *windowName, const bool checkRootWindow)
 	{
 		ImGuiWindow* currentNavWindow = GImGui->NavWindow;
 		if (checkRootWindow)
@@ -191,7 +194,7 @@ namespace SceneryEditorX::UI
 		return currentNavWindow == ImGui::FindWindowByName(windowName);
 	}
 
-	void HelpMarker(const char* desc)
+	void UIManager::HelpMarker(const char *desc)
 	{
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered())
@@ -204,12 +207,12 @@ namespace SceneryEditorX::UI
 		}
 	}
 
-	bool ImageButton(const Ref<Texture2D>& texture, const ImVec2& size, const ImVec4& tint)
+	bool UIManager::ImageButton(const Ref<Texture2D> &texture, const ImVec2 &size, const ImVec4 &tint)
 	{
 		return ImageButton(texture, size, ImVec2(0, 0), ImVec2(1, 1), -1, ImVec4(0, 0, 0, 0), tint);
 	}
 
-	void ImageToolTip(const Ref<Texture2D>& texture)
+	void UIManager::ImageToolTip(const Ref<Texture2D> &texture)
 	{
 		ImGui::BeginTooltip();
 		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
@@ -220,7 +223,7 @@ namespace SceneryEditorX::UI
 		ImGui::EndTooltip();
 	}
 	
-	ImTextureID GetTextureID(const Ref<Image2D> &image)
+	ImTextureID UIManager::GetTextureID(const Ref<Image2D> &image)
 	{
 	    Ref<Image2D> vulkanImage = image.As<Image2D>();
 	    if (const auto&[sampler, imageView, imageLayout] = vulkanImage->GetDescriptorInfoVulkan(); imageView)
@@ -229,7 +232,7 @@ namespace SceneryEditorX::UI
         return 0;
 	}
 
-	ImTextureID GetTextureID(const Ref<Texture2D> &texture)
+	ImTextureID UIManager::GetTextureID(const Ref<Texture2D> &texture)
 	{
 	    Ref<Texture2D> vulkanTexture = texture.As<Texture2D>();
 	    const auto&[sampler, imageView, imageLayout] = vulkanTexture->GetDescriptorInfoVulkan();
@@ -239,7 +242,7 @@ namespace SceneryEditorX::UI
         return reinterpret_cast<ImTextureID>(ImGui_ImplVulkan_AddTexture(sampler, imageView, imageLayout));
 	}
 
-	void Image(const Ref<Image2D>& image, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+	void UIManager::Image(const Ref<Image2D>& image, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
 	{
 		SEDX_CORE_VERIFY(image, "Image is null");
 
@@ -252,7 +255,7 @@ namespace SceneryEditorX::UI
 	    ImGui::Image(textureID, size, uv0, uv1, tint_col, border_col);
 	}
 
-	void Image(const Ref<Image2D>& image, uint32_t imageLayer, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+	void UIManager::Image(const Ref<Image2D>& image, uint32_t imageLayer, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
 	{
 		SEDX_CORE_VERIFY(image, "Image is null");
 
@@ -266,7 +269,7 @@ namespace SceneryEditorX::UI
 	    ImGui::Image(textureID, size, uv0, uv1, tint_col, border_col);
 	}
 
-	void ImageMip(const Ref<Image2D>& image, uint32_t mip, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+	void UIManager::ImageMip(const Ref<Image2D>& image, uint32_t mip, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
 	{
 		SEDX_CORE_VERIFY(image, "Image is null");
 
@@ -280,7 +283,7 @@ namespace SceneryEditorX::UI
 		ImGui::Image(textureID, size, uv0, uv1, tint_col, border_col);
 	}
 
-	void Image(const Ref<Texture2D>& texture, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
+	void UIManager::Image(const Ref<Texture2D>& texture, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col)
 	{
 		SEDX_CORE_VERIFY(texture, "Texture is null");
 
@@ -293,12 +296,12 @@ namespace SceneryEditorX::UI
 		ImGui::Image(textureID, size, uv0, uv1, tint_col, border_col);
 	}
 
-	bool ImageButton(const Ref<Image2D>& image, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
+	bool UIManager::ImageButton(const Ref<Image2D>& image, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
 	{
 		return ImageButton(nullptr, image, size, uv0, uv1, frame_padding, bg_col, tint_col);
 	}
 
-	bool ImageButton(const char* stringID, const Ref<Image2D>& image, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
+	bool UIManager::ImageButton(const char* stringID, const Ref<Image2D>& image, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
 	{
 		Ref<Image2D> vulkanImage = image.As<Image2D>();
 		const auto& imageInfo = vulkanImage->GetImageInfo();
@@ -318,12 +321,12 @@ namespace SceneryEditorX::UI
 			ImColor(bg_col).Value, ImColor(tint_col).Value);
 	}
 
-	bool ImageButton(const Ref<Texture2D>& texture, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
+	bool UIManager::ImageButton(const Ref<Texture2D>& texture, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
 	{
 		return ImageButton(nullptr, texture, size, uv0, uv1, frame_padding, bg_col, tint_col);
 	}
 
-	bool ImageButton(const char* stringID, const Ref<Texture2D>& texture, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
+	bool UIManager::ImageButton(const char* stringID, const Ref<Texture2D>& texture, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col)
 	{
 		SEDX_CORE_VERIFY(texture);
 		if (!texture)

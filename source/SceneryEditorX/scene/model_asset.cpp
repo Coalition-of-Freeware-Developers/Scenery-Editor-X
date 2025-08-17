@@ -10,10 +10,10 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
+#include "model_asset.h"
+#include "SceneryEditorX/platform/config/editor_config.hpp"
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
-#include <SceneryEditorX/platform/config/editor_config.hpp>
-#include <SceneryEditorX/scene/model_asset.h>
 
 /// -------------------------------------------------------
 

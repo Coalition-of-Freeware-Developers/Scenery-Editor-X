@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/modules/module.h>
-#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
+#include "SceneryEditorX/core/modules/module.h"
+#include "SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h"
 
 /// ---------------------------------------------------------
 

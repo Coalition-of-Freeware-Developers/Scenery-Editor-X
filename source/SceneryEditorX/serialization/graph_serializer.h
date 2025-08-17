@@ -14,10 +14,10 @@
 #include <functional>
 #include <imgui.h>
 #include <optional>
-#include <SceneryEditorX/serialization/asset_serializer.h>
-#include <SceneryEditorX/utils/reflection/type_values.h>
 #include <string_view>
 #include <vector>
+#include "asset_serializer.h"
+#include "SceneryEditorX/utils/reflection/type_values.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,14 +11,14 @@
 * -------------------------------------------------------
 */
 // Implementation restored
-#include <SceneryEditorX/renderer/vulkan/vk_descriptor_set_manager.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
-#include <SceneryEditorX/renderer/shaders/shader_resource.h>
-#include <SceneryEditorX/renderer/vulkan/vk_sampler.h>
-#include <SceneryEditorX/renderer/vulkan/vk_device.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/logging/asserts.h>
+#include "vk_descriptor_set_manager.h"
 #include <cstring>
+#include "vk_device.h"
+#include "vk_sampler.h"
+#include "vk_util.h"
+#include "SceneryEditorX/logging/profiler.hpp"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/shaders/shader_resource.h"
 
 /// -------------------------------------------------------
 
@@ -229,8 +229,6 @@ namespace SceneryEditorX
 		return false;
 	}
 
-
-
 	std::set<uint32_t> DescriptorSetManager::HasBufferSets() const
 	{
 		/// Find all descriptor sets that have either UniformBufferSet or StorageBufferSet descriptors
@@ -257,7 +255,7 @@ namespace SceneryEditorX
 		const auto& shaderDescriptorSets = m_Specification.shader->GetShaderDescriptorSets();
 
 		/// Nothing to validate, pipeline only contains material inputs
-		///if (shaderDescriptorSets.size() < 2)
+		/// if (shaderDescriptorSets.size() < 2)
 		///	return true;
 
 		for (uint32_t set = m_Specification.startSet; set <= m_Specification.endSet; set++)
@@ -368,7 +366,7 @@ namespace SceneryEditorX
 				VkDescriptorSetAllocateInfo descriptorSetAllocInfo = DescriptorSetAllocInfo(&dsl);
 				descriptorSetAllocInfo.descriptorPool = m_DescriptorPool;
 				VkDescriptorSet descriptorSet = nullptr;
-				VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &descriptorSet));
+				VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &descriptorSet))
 
 				m_DescriptorSets[frameIndex].emplace_back(descriptorSet);
 
@@ -376,9 +374,9 @@ namespace SceneryEditorX
 				std::vector<std::vector<VkDescriptorImageInfo>> imageInfoStorage;
 				uint32_t imageInfoStorageIndex = 0;
 
-				for (const auto& [binding, input] : setData)
+				for (const auto &[binding, input] : setData)
 				{
-					auto& storedWriteDescriptor = currentWriteDescriptorMap.at(binding);
+					auto &storedWriteDescriptor = currentWriteDescriptorMap.at(binding);
 
 					VkWriteDescriptorSet& writeDescriptor = storedWriteDescriptor.writeDescriptorSet;
 					writeDescriptor.dstSet = descriptorSet;
@@ -530,7 +528,7 @@ namespace SceneryEditorX
 				{
 					case ResourceType::UniformBuffer:
 					{
-						//for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
+						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
 							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<UniformBuffer>()->GetDescriptorBufferInfo();
 							if (bufferInfo.buffer != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
@@ -543,7 +541,7 @@ namespace SceneryEditorX
 					}
 					case ResourceType::UniformBufferSet:
 					{
-						//for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
+						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
 							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<UniformBufferSet>()->Get(currentFrameIndex).As<UniformBuffer>()->GetDescriptorBufferInfo();
 							if (bufferInfo.buffer != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
@@ -557,7 +555,7 @@ namespace SceneryEditorX
 					case ResourceType::StorageBuffer:
 					{
 
-						//for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
+						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
 							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<StorageBuffer>()->GetDescriptorBufferInfo();
 							if (bufferInfo.buffer != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
@@ -570,7 +568,7 @@ namespace SceneryEditorX
 					}
 					case ResourceType::StorageBufferSet:
 					{
-						//for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
+						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
 							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<StorageBufferSet>()->Get(currentFrameIndex).As<StorageBuffer>()->GetDescriptorBufferInfo();
 							if (bufferInfo.buffer != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
@@ -600,7 +598,7 @@ namespace SceneryEditorX
 					}
 					case ResourceType::TextureCube:
 					{
-						//for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
+						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
 							const VkDescriptorImageInfo& imageInfo = input.input[0].As<TextureCube>()->GetDescriptorInfoVulkan();
 							if (imageInfo.imageView != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
@@ -613,9 +611,9 @@ namespace SceneryEditorX
 					}
 					case ResourceType::Image2D:
 					{
-						//for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
+						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
-							const VkDescriptorImageInfo& imageInfo = *(VkDescriptorImageInfo*)input.input[0].As<Resource>()->GetDescriptorInfo();
+							const VkDescriptorImageInfo &imageInfo = *(VkDescriptorImageInfo*)input.input[0].As<Resource>()->GetDescriptorInfo();
 							if (imageInfo.imageView != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
 							{
 								invalidatedInputResources[set][binding] = input;
@@ -691,7 +689,6 @@ namespace SceneryEditorX
 						}
 						case ResourceType::Texture2D:
 						{
-
 							if (input.input.size() > 1)
 							{
 								imageInfoStorage.emplace_back(input.input.size());
@@ -780,6 +777,7 @@ namespace SceneryEditorX
 		const RenderPassInputDeclaration& decl = inputDeclarations.at(nameStr);
 		return &decl;
 	}
+
 }
 
 /// -------------------------------------------------------

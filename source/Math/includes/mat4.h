@@ -11,15 +11,17 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <Math/math_config.h>
+// Standard library dependencies
 #include <cstdint>
 #include <cstring>
 #include <initializer_list>
 #include <string>
 #include <sstream>
-#include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/utils/math/vector.h>
-// Pull in optional fmt detection macros (SEDX_HAS_FMT) used elsewhere.
-#include <SceneryEditorX/utils/formatter.h>
+#include <cmath>        // trig, sqrt, etc.
+// Bring in individual vector templates; fall back to defining aliases if umbrella not used
+#include <Math/includes/vector.h>
+#include <Math/includes/epsilon.h>   // epsilonEqual, epsilon
 
 namespace SceneryEditorX
 {
@@ -46,7 +48,7 @@ namespace SceneryEditorX
      * - Fourth row (m30, m31, m32): Usually (0, 0, 0)
      * - Bottom-right (m33): Usually 1 for affine transformations
      */
-	class Mat4
+	class XMATH_API Mat4
 	{
 	public:
 	    /**
@@ -55,10 +57,7 @@ namespace SceneryEditorX
 	     * Initializes all matrix elements to zero. For an identity matrix,
 	     * use Mat4::Identity() instead.
 	     */
-	    Mat4()
-	    {
-	        memset(rows, 0, sizeof(rows));
-	    }
+	    Mat4() noexcept : rows{Vec4{0.0f,0.0f,0.0f,0.0f},Vec4{0.0f,0.0f,0.0f,0.0f},Vec4{0.0f,0.0f,0.0f,0.0f},Vec4{0.0f,0.0f,0.0f,0.0f}} {}
 
 	    /**
 	     * @brief Diagonal constructor (GLM compatibility).
@@ -69,24 +68,15 @@ namespace SceneryEditorX
 	     *
 	     * @param diagonal Value to place on the main diagonal.
 	     */
-	    explicit Mat4(float diagonal)
-	    {
-	        rows[0] = { diagonal, 0.0f,    0.0f,    0.0f };
-	        rows[1] = { 0.0f,    diagonal, 0.0f,    0.0f };
-	        rows[2] = { 0.0f,    0.0f,    diagonal, 0.0f };
-	        rows[3] = { 0.0f,    0.0f,    0.0f,    diagonal };
-	    }
+	    explicit Mat4(float diagonal) noexcept :
+	        rows{Vec4{diagonal,0.0f,0.0f,0.0f},Vec4{0.0f,diagonal,0.0f,0.0f},Vec4{0.0f,0.0f,diagonal,0.0f},Vec4{0.0f,0.0f,0.0f,diagonal}} {}
 
 	    /**
 	     * @brief Constructs a matrix from an array of Vec4 rows.
 	     *
 	     * @param rows Array of 4 Vec4 objects representing the matrix rows.
 	     */
-	    Mat4(Vec4 rows[4])
-	    {
-	        for (int i = 0; i < 4; i++)
-	            this->rows[i] = rows[i];
-	    }
+	    Mat4(const Vec4 (&inRows)[4]) noexcept : rows{inRows[0],inRows[1],inRows[2],inRows[3]} {}
 
 	    /**
 	     * @brief Constructs a matrix from an initializer list of Vec4 rows.
@@ -103,10 +93,12 @@ namespace SceneryEditorX
 	     * };
 	     * @endcode
 	     */
-	    Mat4(const std::initializer_list<Vec4> rows)
+	    Mat4(const std::initializer_list<Vec4> inRows) noexcept
 	    {
-	        for (int i = 0; i < 4; i++)
-	            this->rows[i] = *(rows.begin() + i);
+	        int i = 0;
+	        for (auto it = inRows.begin(); it != inRows.end() && i < 4; ++it, ++i)
+	            rows[i] = *it;
+	        for (; i < 4; ++i) rows[i] = Vec4{0.0f,0.0f,0.0f,0.0f};
 	    }
 
 	    /**
@@ -128,16 +120,15 @@ namespace SceneryEditorX
 		 * };
 		 * @endcode
 		 */
-	    Mat4(const std::initializer_list<float> cells)
+	    Mat4(const std::initializer_list<float> cells) noexcept
 	    {
-	        memset(rows, 0, sizeof(rows));
-
+	        for (auto &r : rows) r = Vec4{0.0f,0.0f,0.0f,0.0f};
 	        int i = 0;
 	        for (auto it = cells.begin(); it != cells.end() && i < 16; ++it, ++i)
 	        {
-	            const int row = i / 4;
-	            const int col = i % 4;
-	            rows[row][col] = *it;
+	            const int rowIdx = i / 4;
+	            const int colIdx = i % 4;
+	            rows[rowIdx][colIdx] = *it;
 	        }
 	    }
 
@@ -146,10 +137,7 @@ namespace SceneryEditorX
 	     *
 	     * @param copy The matrix to copy from.
 	     */
-	    Mat4(const Mat4 &copy)
-	    {
-	        memcpy(rows, copy.rows, sizeof(rows));
-	    }
+	    Mat4(const Mat4 &copy) noexcept = default;
 
 	    /**
 		 * @brief Creates a perspective projection matrix for 3D rendering.
@@ -175,7 +163,7 @@ namespace SceneryEditorX
 		 * Matrix4x4 projection = Matrix4x4::PerspectiveProjection(aspectRatio, 60.0f, 0.1f, 1000.0f);
 		 * @endcode
 		 */
-	    static Mat4 PerspectiveProjection(float aspect, float fieldOfView, float nearPlane, float farPlane);
+	    [[nodiscard]] static Mat4 PerspectiveProjection(float aspect, float fieldOfView, float nearPlane, float farPlane) noexcept;
 
 	    /**
 		 * @brief Creates an orthographic projection matrix for 2D rendering or technical drawing.
@@ -204,7 +192,7 @@ namespace SceneryEditorX
 		 * Matrix4x4 ortho = Matrix4x4::OrthographicProjection(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f);
 		 * @endcode
 		 */
-	    static Mat4 OrthographicProjection(float left,float right, float top, float bottom, float nearPlane, float farPlane);
+	    [[nodiscard]] static Mat4 OrthographicProjection(float left,float right, float top, float bottom, float nearPlane, float farPlane) noexcept;
 
 	    /**
 	     * @brief Creates a right-handed view matrix looking from eye to center with given up vector.
@@ -217,7 +205,7 @@ namespace SceneryEditorX
 	     * @param up World up direction (need not be normalized; must not be collinear with forward).
 	     * @return Matrix4x4 View (camera) matrix.
 	     */
-	    static Mat4 LookAt(const Vec3 &eye, const Vec3 &center, const Vec3 &up);
+	    [[nodiscard]] static Mat4 LookAt(const Vec3 &eye, const Vec3 &center, const Vec3 &up) noexcept;
 
 	    /**
 	     * @brief Creates an orthographic projection matrix with symmetric frustum.
@@ -237,9 +225,9 @@ namespace SceneryEditorX
 	     * Matrix4x4 ortho = Matrix4x4::OrthographicProjection(16.0f/9.0f, -1.0f, 1.0f);
 	     * @endcode
 	     */
-	    static Mat4 OrthographicProjection(const float aspect, const float nearPlane, const float farPlane)
+	    static Mat4 OrthographicProjection(const float aspect, const float nearPlane, const float farPlane) noexcept
 	    {
-	        return OrthographicProjection(-aspect, aspect, -1, 1, nearPlane, farPlane);
+	        return OrthographicProjection(-aspect, aspect, -1.0f, 1.0f, nearPlane, farPlane);
 	    }
 
 	    /**
@@ -268,9 +256,9 @@ namespace SceneryEditorX
 	     * Matrix4x4 translateMatrix = Matrix4x4::Translation(position);
 	     * @endcode
 	     */
-	    static Mat4 Translate(const Vec3 &translation)
+	    [[nodiscard]] static Mat4 Translate(const Vec3 &translation) noexcept
 	    {
-	        return Mat4({{1, 0, 0, translation.x}, {0, 1, 0, translation.y}, {0, 0, 1, translation.z}, {0, 0, 0, 1}});
+	        return Mat4({{1.0f, 0.0f, 0.0f, translation.x}, {0.0f, 1.0f, 0.0f, translation.y}, {0.0f, 0.0f, 1.0f, translation.z}, {0.0f, 0.0f, 0.0f, 1.0f}});
 	    }
 
 	    /// @brief The matrix data stored as 4 rows of 4-component vectors.
@@ -286,12 +274,12 @@ namespace SceneryEditorX
 	     * This is provided to interoperate with APIs (ImGuizmo, ImGui, GPU uploads) that expect a
 	     * raw float pointer similar to glm::value_ptr.
 	     */
-	    float* Data() { return &rows[0][0]; }
+	    [[nodiscard]] float* Data() noexcept { return &rows[0][0]; }
 
 	    /**
 	     * @brief Returns a const pointer to the first element of the matrix data.
 	     */
-	    const float* Data() const { return &rows[0][0]; }
+	    [[nodiscard]] const float* Data() const noexcept { return &rows[0][0]; }
 
 	    /**
 	     * @brief Creates a 2D rotation matrix around the Z-axis.
@@ -312,7 +300,7 @@ namespace SceneryEditorX
 	     * Matrix4x4 rotation = Matrix4x4::Angle(45.0f); // 45-degree  rotation
 	     * @endcode
 	     */
-	    static Mat4 Angle(float degrees);
+	    [[nodiscard]] static Mat4 Angle(float degrees) noexcept;
 
 	    /**
 	     * @brief Creates a 3D rotation matrix from Euler angles in degrees.
@@ -337,7 +325,7 @@ namespace SceneryEditorX
 	     * Matrix4x4 rotMatrix = Matrix4x4::RotationDegrees(rotation);
 	     * @endcode
 	     */
-	    static Mat4 RotationDegrees(const Vec3 &eulerDegrees);
+	    [[nodiscard]] static Mat4 RotationDegrees(const Vec3 &eulerDegrees) noexcept;
 
 	    /**
 	     * @brief Creates a 3D rotation matrix from Euler angles in radians.
@@ -361,7 +349,7 @@ namespace SceneryEditorX
 	     * Matrix4x4 rotMatrix = Matrix4x4::RotationRadians(rotation);
 	     * @endcode
 	     */
-	    static Mat4 RotationRadians(const Vec3 &eulerRadians);
+	    [[nodiscard]] static Mat4 RotationRadians(const Vec3 &eulerRadians) noexcept;
 
 	    /**
 	     * @brief Creates a 2D scaling matrix.
@@ -387,9 +375,9 @@ namespace SceneryEditorX
 	     * Matrix4x4 scaleMatrix = Matrix4x4::Scale(scale);
 	     * @endcode
 	     */
-	    static Mat4 Scale(const Vec2 &scale)
+	    [[nodiscard]] static Mat4 Scale(const Vec2 &scale) noexcept
 	    {
-	        return Mat4({{scale.x, 0, 0, 0}, {0, scale.y, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}});
+	        return Mat4({{scale.x, 0.0f, 0.0f, 0.0f}, {0.0f, scale.y, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}});
 	    }
 
 	    /**
@@ -416,9 +404,9 @@ namespace SceneryEditorX
 	     * Matrix4x4 scaleMatrix = Matrix4x4::Scale(scale);
 	     * @endcode
 	     */
-	    static Mat4 Scale(const Vec3 &scale)
+	    [[nodiscard]] static Mat4 Scale(const Vec3 &scale) noexcept
 	    {
-	        return Mat4({{scale.x, 0, 0, 0}, {0, scale.y, 0, 0}, {0, 0, scale.z, 0}, {0, 0, 0, 1}});
+	        return Mat4({{scale.x, 0.0f, 0.0f, 0.0f}, {0.0f, scale.y, 0.0f, 0.0f}, {0.0f, 0.0f, scale.z, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}});
 	    }
 
 	    /**
@@ -438,12 +426,7 @@ namespace SceneryEditorX
 	     * Matrix4x4 zero = Matrix4x4::Zero();
 	     * @endcode
 	     */
-	    static Mat4 Zero()
-	    {
-	        static Vec4 rows[4] = {Vec4{0, 0, 0, 0}, Vec4{0, 0, 0, 0}, Vec4{0, 0, 0, 0}, Vec4{0, 0, 0, 0}};
-
-	        return {rows};
-	    }
+	    [[nodiscard]] static Mat4 Zero() noexcept { return Mat4(); }
 
 	    /**
 	         * @brief Creates an identity matrix.
@@ -467,12 +450,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 identity = Matrix4x4::Identity();
 	         * @endcode
 	         */
-	    static Mat4 Identity()
-	    {
-	        static Vec4 rows[4] = {Vec4{1, 0, 0, 0}, Vec4{0, 1, 0, 0}, Vec4{0, 0, 1, 0}, Vec4{0, 0, 0, 1}};
-
-	        return {rows};
-	    }
+	    [[nodiscard]] static Mat4 Identity() noexcept { return Mat4(1.0f); }
 
 	    /**
 	         * @brief Subscript operator for non-const matrix access.
@@ -492,10 +470,7 @@ namespace SceneryEditorX
 	         * mat[1][2] = 5.0f;          // Set element at row 1, column 2
 	         * @endcode
 	         */
-	    Vec4 &operator[](const int index)
-	    {
-	        return rows[index];
-	    }
+	    Vec4 &operator[](const int index) noexcept { return rows[index]; }
 
 	    /**
 	         * @brief Subscript operator for const matrix access.
@@ -515,10 +490,7 @@ namespace SceneryEditorX
 	         * float element = mat[1][2];  // Get element at row 1, column 2
 	         * @endcode
 	         */
-	    const Vec4 &operator[](const int index) const
-	    {
-	        return rows[index];
-	    }
+	    const Vec4 &operator[](const int index) const noexcept { return rows[index]; }
 
 	    /**
 	         * @brief Matrix addition operator.
@@ -538,7 +510,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 result = matrixA + matrixB;
 	         * @endcode
 	         */
-	    Mat4 operator+(const Mat4 &rhs) const;
+	    [[nodiscard]] Mat4 operator+(const Mat4 &rhs) const noexcept;
 
 	    /**
 	         * @brief Matrix subtraction operator.
@@ -558,7 +530,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 result = matrixA - matrixB;
 	         * @endcode
 	         */
-	    Mat4 operator-(const Mat4 &rhs) const;
+	    [[nodiscard]] Mat4 operator-(const Mat4 &rhs) const noexcept;
 
 	    /**
 	         * @brief Matrix addition assignment operator.
@@ -574,7 +546,7 @@ namespace SceneryEditorX
 	         * matrixA += matrixB; // matrixA is modified
 	         * @endcode
 	         */
-	    Mat4 operator+=(const Mat4 &rhs)
+	    Mat4 operator+=(const Mat4 &rhs) noexcept
 	    {
 	        *this = *this + rhs;
 	        return *this;
@@ -594,7 +566,7 @@ namespace SceneryEditorX
 	         * matrixA -= matrixB; // matrixA is modified
 	         * @endcode
 	         */
-	    Mat4 operator-=(const Mat4 &rhs)
+	    Mat4 operator-=(const Mat4 &rhs) noexcept
 	    {
 	        *this = *this - rhs;
 	        return *this;
@@ -618,7 +590,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 scaled = originalMatrix * 2.0f; // Double all transformation components
 	         * @endcode
 	         */
-	    Mat4 operator*(float rhs) const;
+	    [[nodiscard]] Mat4 operator*(float rhs) const noexcept;
 
 	    /**
 	         * @brief Scalar division operator.
@@ -639,7 +611,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 scaled = originalMatrix / 2.0f; // Halve all transformation components
 	         * @endcode
 	         */
-	    Mat4 operator/(float rhs) const;
+	    [[nodiscard]] Mat4 operator/(float rhs) const noexcept;
 
 	    /**
 	         * @brief Scalar multiplication assignment operator.
@@ -655,7 +627,7 @@ namespace SceneryEditorX
 	         * matrix *= 2.0f; // matrix is modified
 	         * @endcode
 	         */
-	    Mat4 operator*=(const float rhs)
+	    Mat4 operator*=(const float rhs) noexcept
 	    {
 	        *this = *this * rhs;
 	        return *this;
@@ -677,7 +649,7 @@ namespace SceneryEditorX
 	         * matrix /= 2.0f; // matrix is modified
 	         * @endcode
 	         */
-	    Mat4 operator/=(const float rhs)
+	    Mat4 operator/=(const float rhs) noexcept
 	    {
 	        *this = *this / rhs;
 	        return *this;
@@ -700,7 +672,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 result = transformA * transformB;
 	         * @endcode
 	         */
-	    Mat4 operator*(const Mat4 &rhs) const
+	    [[nodiscard]] Mat4 operator*(const Mat4 &rhs) const noexcept
 	    {
 	        return Multiply(*this, rhs);
 	    }
@@ -722,7 +694,7 @@ namespace SceneryEditorX
 	         * Vec4 transformedPoint = transformMatrix * Vec4(position, 1.0f);
 	         * @endcode
 	         */
-	    Vec4 operator*(const Vec4 &rhs) const
+	    [[nodiscard]] Vec4 operator*(const Vec4 &rhs) const noexcept
 	    {
 	        return Multiply(*this, rhs);
 	    }
@@ -744,7 +716,7 @@ namespace SceneryEditorX
 			 * Vec4 transformedPoint = transformMatrix * Vec3(1.0f, 2.0f, 3.0f);
 			 * @endcode
 			 */
-	    Vec4 operator*(const Vec3 &rhs) const
+	    [[nodiscard]] Vec4 operator*(const Vec3 &rhs) const noexcept
 	    {
 	        return Multiply(*this, Vec4(rhs, 1.0f));
 	    }
@@ -763,7 +735,7 @@ namespace SceneryEditorX
 	         * transformMatrix *= rotationMatrix; // transformMatrix is modified
 	         * @endcode
 	         */
-	    Mat4 operator*=(const Mat4 &rhs)
+	    Mat4 operator*=(const Mat4 &rhs) noexcept
 	    {
 	        *this = *this * rhs;
 	        return *this;
@@ -789,8 +761,9 @@ namespace SceneryEditorX
 	         * }
 	         * @endcode
 	         */
-	    bool operator==(const Mat4 &rhs) const
+	    bool operator==(const Mat4 &rhs) const noexcept
 	    {
+	        // Exact comparison (legacy semantics). For tolerant comparison use Mat4::NearlyEqual.
 	        return rows[0] == rhs.rows[0] && rows[1] == rhs.rows[1] && rows[2] == rhs.rows[2] && rows[3] == rhs.rows[3];
 	    }
 
@@ -810,9 +783,21 @@ namespace SceneryEditorX
 	         * }
 	         * @endcode
 	         */
-	    bool operator!=(const Mat4 &rhs) const
+	    bool operator!=(const Mat4 &rhs) const noexcept { return !(*this == rhs); }
+
+	    /**
+	     * @brief Epsilon-based element-wise comparison helper.
+	     * @param a First matrix.
+	     * @param b Second matrix.
+	     * @param epsilon Maximum allowed absolute difference per element.
+	     * @return true if all corresponding elements differ by <= epsilon.
+	     */
+	    [[nodiscard]] static bool NearlyEqual(const Mat4 &a, const Mat4 &b, float epsilon = 1e-5f) noexcept
 	    {
-	        return !(*this == rhs);
+	        for (int r = 0; r < 4; ++r)
+	            for (int c = 0; c < 4; ++c)
+	                if (std::fabs(a.rows[r][c] - b.rows[r][c]) > epsilon) return false;
+	        return true;
 	    }
 
 	    /**
@@ -840,7 +825,7 @@ namespace SceneryEditorX
 	         * // Equivalent to: transform = projection * view (if operator* were defined)
 	         * @endcode
 	         */
-	    static Mat4 Multiply(const Mat4 &lhs, const Mat4 &rhs);
+	    [[nodiscard]] static Mat4 Multiply(const Mat4 &lhs, const Mat4 &rhs) noexcept;
 
 	    /**
 	         * @brief Matrix-vector multiplication (Matrix × Vector).
@@ -867,7 +852,7 @@ namespace SceneryEditorX
 	         * Vec4 clipPos = Matrix4x4::Multiply(projectionMatrix, viewPos);
 	         * @endcode
 	         */
-	    static Vec4 Multiply(const Mat4 &lhs, const Vec4 &rhs);
+	    [[nodiscard]] static Vec4 Multiply(const Mat4 &lhs, const Vec4 &rhs) noexcept;
 
 	    /**
 	         * @brief Computes the transpose of a 4x4 matrix.
@@ -893,7 +878,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 inverse = Matrix4x4::GetTranspose(rotation); // For pure rotations
 	         * @endcode
 	         */
-	    static Mat4 GetTranspose(const Mat4 &mat);
+	    [[nodiscard]] static Mat4 GetTranspose(const Mat4 &mat) noexcept;
 
 	    /**
 	         * @brief Transposes this matrix in-place.
@@ -908,7 +893,7 @@ namespace SceneryEditorX
 	         * matrix.Transpose(); // matrix is modified
 	         * @endcode
 	         */
-	    void Transpose()
+	    void Transpose() noexcept
 	    {
 	        *this = GetTranspose(*this);
 	    }
@@ -926,7 +911,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 transposed = matrix.GetTranspose(); // matrix is not modified
 	         * @endcode
 	         */
-	    [[nodiscard]] Mat4 GetTranspose() const
+	    [[nodiscard]] Mat4 GetTranspose() const noexcept
 	    {
 	        return GetTranspose(*this);
 	    }
@@ -948,7 +933,7 @@ namespace SceneryEditorX
 	         * Matrix4x4 inverse = transform.GetInverse();
 	         * @endcode
 	         */
-	    [[nodiscard]] Mat4 GetInverse() const
+	    [[nodiscard]] Mat4 GetInverse() const noexcept
 	    {
 	        return GetInverse(*this);
 	    }
@@ -967,7 +952,7 @@ namespace SceneryEditorX
 	         * transform.Invert(); // transform is modified
 	         * @endcode
 	         */
-	    void Invert()
+	    void Invert() noexcept
 	    {
 	        *this = GetInverse(*this);
 	    }
@@ -1023,7 +1008,7 @@ namespace SceneryEditorX
 	         * @param q The column to exclude (0-based index).
 	         * @param n The size of the matrix (should be 4 for Matrix4x4).
 	         */
-	    static void GetCofactor(const Mat4 &mat, Mat4 &cofactor, int32_t p, int32_t q, int32_t n);
+	    static void GetCofactor(const Mat4 &mat, Mat4 &cofactor, int32_t p, int32_t q, int32_t n) noexcept;
 
 	    /**
 	         * @brief Calculates the determinant of a matrix.
@@ -1039,7 +1024,7 @@ namespace SceneryEditorX
 	         *
 	         * @note - A determinant of 0 indicates the matrix is singular (non-invertible).
 	         */
-	    static float GetDeterminant(const Mat4 &mat, int32_t n);
+	    static float GetDeterminant(const Mat4 &mat, int32_t n) noexcept;
 
 	    /**
 	         * @brief Calculates the adjoint (adjudicate) matrix.
@@ -1052,7 +1037,7 @@ namespace SceneryEditorX
 	         *
 	         * @return Matrix4x4 The adjoint matrix.
 	         */
-	    static Mat4 GetAdjoint(const Mat4 &mat);
+	    static Mat4 GetAdjoint(const Mat4 &mat) noexcept;
 
 	    /**
 	         * @brief Calculates the inverse of a matrix using analytical methods.
@@ -1068,7 +1053,7 @@ namespace SceneryEditorX
 	         * @note - If the input matrix is singular (determinant = 0), the result is undefined.
 	         * @note - This is the actual implementation used by GetInverse().
 	         */
-	    static Mat4 GetInverse(const Mat4 &mat);
+	    static Mat4 GetInverse(const Mat4 &mat) noexcept;
 	};
 
 }
@@ -1091,5 +1076,3 @@ struct fmt::formatter<SceneryEditorX::Mat4>
 #endif // SEDX_HAS_FMT
 
 /// -------------------------------------------------------
-
-// (Former GLM compatibility shims removed – all call sites migrated to native API.)

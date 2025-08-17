@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 //#include <nlohmann/json.hpp>
-//#include <SceneryEditorX/asset/texture_manager.h>
-//#include <SceneryEditorX/platform/file_manager.hpp>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/scene/material.h>
+//#include "SceneryEditorX/asset/texture_manager.h"
+//#include "SceneryEditorX/platform/file_manager.hpp"
+#include "material.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 /// -------------------------------------------------------
 

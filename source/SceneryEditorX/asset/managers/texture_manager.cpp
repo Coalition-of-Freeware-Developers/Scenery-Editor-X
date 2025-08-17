@@ -10,7 +10,7 @@
 * Created: 8/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/managers/texture_manager.h>
+#include "texture_manager.h"
 
 /// -------------------------------------------------------
 

@@ -10,8 +10,8 @@
 * Created: 11/8/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/scene/entity.h>
-#include <SceneryEditorX/scene/scene.h>
+#include "entity.h"
+#include "scene.h"
 
 /// -------------------------------------------------------
 

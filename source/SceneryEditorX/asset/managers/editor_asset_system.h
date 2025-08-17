@@ -14,9 +14,9 @@
 #include <atomic>
 #include <mutex>
 #include <queue>
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_metadata.h>
-#include <SceneryEditorX/core/threading/thread.h>
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/asset/asset_metadata.h"
+#include "SceneryEditorX/core/threading/thread.h"
 
 /// -------------------------------------------------------
 

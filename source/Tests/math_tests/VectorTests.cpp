@@ -1,5 +1,5 @@
 #include <catch2/catch_all.hpp>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 
 TEST_CASE("Vec2 basic ops", "[math][vec2]") {
     Vec2 a(1.0f, 2.0f), b(3.0f, 4.0f);

@@ -11,7 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/math/colors.h>
+#include <Math/math_config.h>
+#include <Math/includes/colors.h>
+
+// Standard library dependencies required by this header
+#include <vector>        // std::vector for key storage
+#include <cstdint>       // uint32_t
+#include <cstddef>       // size_t
+#include <initializer_list> // std::initializer_list constructor
+#include <functional>    // std::hash
 
 /// -----------------------------------------------------
 
@@ -42,7 +50,7 @@ namespace SceneryEditorX
 	 * @note - Color keys should be ordered by position for optimal performance,
 	 *       though the class will handle unordered keys correctly
 	 */
-    class Gradient
+	class XMATH_API Gradient
     {
     public:
     	/**

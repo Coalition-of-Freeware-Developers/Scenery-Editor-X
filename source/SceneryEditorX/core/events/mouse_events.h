@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/input/key_codes.h>
+#include "event_system.h"
+#include "SceneryEditorX/core/input/key_codes.h"
 
 /// -------------------------------------------------------------------
 

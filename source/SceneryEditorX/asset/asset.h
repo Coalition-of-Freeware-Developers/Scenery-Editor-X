@@ -11,8 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/object.h>
-#include <SceneryEditorX/core/identifiers/uuid.h>
+#include "object.h"
 
 /// -------------------------------------------------------
 
@@ -90,23 +89,11 @@ namespace SceneryEditorX
         uint16_t Flags = (uint16_t)AssetFlag::None;
         virtual ~Asset() override;
 
-        GLOBAL ObjectType GetStaticType()
-        {
-            return ObjectType::None;
-        }
-        virtual ObjectType GetAssetType() const
-        {
-            return ObjectType::None;
-        }
+        GLOBAL ObjectType GetStaticType() { return ObjectType::None; }
+        virtual ObjectType GetAssetType() const { return ObjectType::None; }
 
-        virtual bool operator!=(const Asset &other) const
-        {
-            return !(*this == other);
-        }
-        virtual bool operator==(const Asset &other) const
-        {
-            return Handle == other.Handle;
-        }
+        virtual bool operator!=(const Asset &other) const { return !(*this == other); }
+        virtual bool operator==(const Asset &other) const { return Handle == other.Handle; }
 
         /// -------------------------------------------------------
 

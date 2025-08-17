@@ -12,12 +12,13 @@
 */
 #pragma once
 #include <cstdint>
-#include <SceneryEditorX/utils/vulkan/vk_includes.h>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 #include <imgui/imgui.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/resource.h>
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h> /// Used by VmaAllocation in struct. !MUST KEEP!
+
+#include "render_context.h"
+#include "SceneryEditorX/utils/vulkan/vk_includes.h"
+#include "vulkan/resource.h"
+#include "vulkan/vk_allocator.h" /// Used by VmaAllocation in struct. !MUST KEEP!
 
 /// -------------------------------------------------------
 

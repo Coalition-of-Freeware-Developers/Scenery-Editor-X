@@ -10,12 +10,12 @@
 * Created: 7/6/2025
 * -------------------------------------------------------
 */
+#include "render_context.h"
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/application/application_data.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/vk_checks.h>
-#include <SceneryEditorX/renderer/vulkan/vk_pipeline_cache.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include "SceneryEditorX/core/application/application_data.h"
+#include "vulkan/vk_checks.h"
+#include "vulkan/vk_pipeline_cache.h"
+#include "vulkan/vk_util.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+ï»¿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <Editor/ui/ui_manager.h>
-#include <SceneryEditorX/ui/ui.h>
+
+#include "SceneryEditorX/ui/ui.h"
 
 /// -------------------------------------------------------
 
@@ -103,8 +103,8 @@ namespace SceneryEditorX::UI
             ImGui::Text("Scenery Editor X");
             ImGui::Text("Version 1.0.0");
             ImGui::Separator();
-            ImGui::Text("© 2025 Thomas Ray");
-            ImGui::Text("© 2025 Coalition of Freeware Developers");
+            ImGui::Text("Â© 2025 Thomas Ray");
+            ImGui::Text("Â© 2025 Coalition of Freeware Developers");
             ImGui::Separator();
             ImGui::Text("Powered by Vulkan and Dear ImGui");
             

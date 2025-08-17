@@ -1,8 +1,8 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ecs.h
@@ -11,11 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/math/math.h>
 #include <limits>
+#include <Math/includes/xmath.hpp>
+
 #include <SceneryEditorX/core/identifiers/uuid.h>
-#include <SceneryEditorX/asset/asset.h>
 #include <SceneryEditorX/scene/material.h>
+#include "asset.h"
 
 /// -------------------------------------------------------
 

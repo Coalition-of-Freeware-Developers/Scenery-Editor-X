@@ -1,6 +1,6 @@
 ﻿#include <catch2/catch_all.hpp>
 #include <cmath>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 
 TEST_CASE("Matrix Zero and Identity basics", "[math][matrix]") {
     auto Z = SceneryEditorX::Mat4::Zero();

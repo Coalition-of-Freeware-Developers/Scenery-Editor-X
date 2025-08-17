@@ -1,5 +1,5 @@
 ﻿#include <catch2/catch_all.hpp>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 
 TEST_CASE("Matrix identity and multiply", "[math][matrix]") {
     auto I = SceneryEditorX::Mat4::Identity();

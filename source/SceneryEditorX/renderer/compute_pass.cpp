@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,12 +10,11 @@
 * Created: 24/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/compute_pass.h>
-// Required buffer/type headers
-#include <SceneryEditorX/renderer/buffers/uniform_buffer_set.h>
-#include <SceneryEditorX/renderer/buffers/storage_buffer_set.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
-#include <SceneryEditorX/renderer/buffers/storage_buffer.h>
+#include "compute_pass.h"
+#include "buffers/storage_buffer.h"
+#include "buffers/storage_buffer_set.h"
+#include "buffers/uniform_buffer.h"
+#include "buffers/uniform_buffer_set.h"
 
 /// -------------------------------------------------------
 
@@ -53,10 +52,10 @@ namespace SceneryEditorX
 		m_DescriptorSetManager.AddInput(name, uniformBuffer);
 	}
 
-	void ComputePass::AddInput(std::string_view name, Ref<StorageBufferSet> storageBufferSet)
-	{
-		m_DescriptorSetManager.AddInput(name, storageBufferSet);
-	}
+    void ComputePass::AddInput(std::string_view name, Ref<StorageBufferSet> storageBufferSet)
+    {
+        m_DescriptorSetManager.AddInput(name, storageBufferSet);
+    }
 
 	void ComputePass::AddInput(std::string_view name, Ref<StorageBuffer> storageBuffer)
 	{
@@ -115,7 +114,7 @@ namespace SceneryEditorX
 		m_DescriptorSetManager.InvalidateAndUpdate();
 	}
 
-	const std::vector<VkDescriptorSet>& ComputePass::GetDescriptorSets(uint32_t frameIndex) const
+    const std::vector<VkDescriptorSet> &ComputePass::GetDescriptorSets(uint32_t frameIndex) const
 	{
 		return m_DescriptorSetManager.GetDescriptorSets(frameIndex);
 	}

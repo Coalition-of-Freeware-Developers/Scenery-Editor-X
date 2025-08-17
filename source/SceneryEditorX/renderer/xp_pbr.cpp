@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 9/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/xp_pbr.h>
-#include <SceneryEditorX/scene/material.h>
+#include "xp_pbr.h"
+#include "SceneryEditorX/scene/material.h"
 
 /// -------------------------------------------------------
 

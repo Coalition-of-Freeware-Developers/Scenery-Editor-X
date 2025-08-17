@@ -10,9 +10,9 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/importers/texture_importer.h>
+#include "texture_importer.h"
+#include <stb_image.h>
 #include <SceneryEditorX/platform/filesystem/file_manager.hpp>
-#include "stb_image.h"
 
 /// -------------------------------------------------------
 

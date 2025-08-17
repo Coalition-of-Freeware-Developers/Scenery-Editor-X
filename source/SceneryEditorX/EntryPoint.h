@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/initializer.h>
-#include <SceneryEditorX/logging/asserts.h>
+#include "core/initializer.h"
+#include "core/application/application.h"
+#include "logging/asserts.h"
 
 /// ----------------------------------------------------
 

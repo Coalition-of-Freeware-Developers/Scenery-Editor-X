@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
-#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
+#include "filestream_reader.h"
+#include "filestream_writer.h"
 
 /// -------------------------------------------------------
 

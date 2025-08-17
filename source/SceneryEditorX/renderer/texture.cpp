@@ -10,11 +10,11 @@
 * Created: 8/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/importers/texture_importer.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include "texture.h"
 #include <utility>
+#include "renderer.h"
+#include "SceneryEditorX/asset/importers/texture_importer.h"
+#include "vulkan/vk_util.h"
 
 /// -------------------------------------------------------
 

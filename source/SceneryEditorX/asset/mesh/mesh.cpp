@@ -10,9 +10,9 @@
 * Created: 11/8/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/managers/asset_manager.h>
-#include <SceneryEditorX/asset/mesh/mesh.h>
-#include <SceneryEditorX/project/project.h>
+#include "mesh.h"
+#include "SceneryEditorX/asset/managers/asset_manager.h"
+#include "SceneryEditorX/project/project.h"
 
 /// -------------------------------------------------------
 

@@ -1,23 +1,34 @@
-﻿// Restored original clean header (enum names UniformSet/StorageSet)
+﻿/**
+* -------------------------------------------------------
+* Scenery Editor X
+* -------------------------------------------------------
+* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Coalition of Freeware Developers
+* -------------------------------------------------------
+* vk_descriptor_set_manager.h
+* -------------------------------------------------------
+* Created: 16/6/2025
+* -------------------------------------------------------
+*/
 #pragma once
+#include <cstdint>
 #include <map>
 #include <set>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer_set.h>
-#include <SceneryEditorX/renderer/buffers/storage_buffer.h>
-#include <SceneryEditorX/renderer/buffers/storage_buffer_set.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
-#include <SceneryEditorX/renderer/vulkan/vk_image_view.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/logging/asserts.h>
-#include <cstdint>
+#include "vk_image.h"
+#include "vk_enums.h"
+#include "SceneryEditorX/logging/asserts.h"
+#include "SceneryEditorX/renderer/texture.h"
+#include "SceneryEditorX/renderer/buffers/storage_buffer_set.h"
+#include "SceneryEditorX/renderer/buffers/uniform_buffer_set.h"
+
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
     struct RenderPassInput
     {
         ResourceType type = ResourceType::None;
@@ -142,3 +153,5 @@ namespace SceneryEditorX
         VkDescriptorPool m_DescriptorPool = nullptr;
     };
 }
+
+/// -------------------------------------------------------

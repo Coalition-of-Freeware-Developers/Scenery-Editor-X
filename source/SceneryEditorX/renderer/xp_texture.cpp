@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 9/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/xp_texture.h>
-#include <SceneryEditorX/scene/texture.h>
+#include "xp_texture.h"
+#include "SceneryEditorX/scene/texture.h"
 
 /// -------------------------------------------------------
 

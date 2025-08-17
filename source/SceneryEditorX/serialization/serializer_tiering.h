@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <filesystem>
-#include <SceneryEditorX/project/project_settings.h>
+#include "SceneryEditorX/project/project_settings.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,15 +10,15 @@
 * Created: 31/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/input/input.h>
-#include <SceneryEditorX/core/input/key_codes.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/fonts/font_awesome.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
-#include <SceneryEditorX/ui/ui_fonts.h>
-#include <SceneryEditorX/ui/ui_manager.h>
-#include <SceneryEditorX/ui/ui_renderer.h>
+#include "ui_renderer.h"
+#include "ui_fonts.h"
+#include "ui_manager.h"
+#include "SceneryEditorX/core/application/application.h"
+#include "SceneryEditorX/core/input/input.h"
+#include "SceneryEditorX/core/input/key_codes.h"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/fonts/font_awesome.h"
+#include "SceneryEditorX/renderer/vulkan/vk_util.h"
 #ifndef IMGUI_IMPL_API
     #define IMGUI_IMPL_API
 #endif

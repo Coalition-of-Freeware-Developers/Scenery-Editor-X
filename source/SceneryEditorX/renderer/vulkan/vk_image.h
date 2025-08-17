@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/image_data.h>
+#include "SceneryEditorX/renderer/image_data.h"
 
 /// -----------------------------------------------------------
 

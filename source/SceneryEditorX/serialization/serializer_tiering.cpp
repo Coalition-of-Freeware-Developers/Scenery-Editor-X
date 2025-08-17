@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #include <libconfig.h++>
-#include <SceneryEditorX/serialization/serializer_tiering.h>
+#include "serializer_tiering.h"
 
 /// -------------------------------------------------------
 

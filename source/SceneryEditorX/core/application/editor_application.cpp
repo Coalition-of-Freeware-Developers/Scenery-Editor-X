@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,11 +10,11 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-//#include <Editor/core/editor.h>
-//#include <SceneryEditorX/core/application/application.h>
-//#include <SceneryEditorX/renderer/renderer.h>
-//#include <SceneryEditorX/ui/ui.h>
-//#include <SceneryEditorX/ui/ui_context.h>
+//#include "Editor/core/editor.h"
+//#include "application/application.h"
+//#include "SceneryEditorX/renderer/renderer.h"
+//#include "SceneryEditorX/ui/ui.h"
+//#include "SceneryEditorX/ui/ui_context.h"
 
 /// -------------------------------------------------------
 

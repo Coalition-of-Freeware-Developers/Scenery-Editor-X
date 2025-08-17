@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,10 +10,10 @@
 * Created: 20/6/2025
 * -------------------------------------------------------
 */
+#include "string_utils.h"
 #include <algorithm>
 #include <fstream>
 #include <regex>
-#include <SceneryEditorX/utils/string_utils.h>
 #include <utility>
 
 /// -------------------------------------------------------

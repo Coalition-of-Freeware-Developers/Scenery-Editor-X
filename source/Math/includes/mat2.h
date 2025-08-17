@@ -12,9 +12,11 @@
 */
 #pragma once
 #include <cmath>
+#include <cstdlib>
+#include <Math/includes/epsilon.h>
+#include <Math/includes/vector.h>
+#include <Math/math_config.h>
 #include <ostream>
-#include <SceneryEditorX/utils/math/epsilon.h>
-#include <SceneryEditorX/utils/math/vector.h>
 
 /// -----------------------------------------------------
 
@@ -27,7 +29,7 @@ namespace SceneryEditorX
 	 * [ m00 m01 ]
 	 * [ m10 m11 ]
 	 */
-	class Mat2
+	class XMATH_API Mat2
 	{
 	public:
         float m00, m01;

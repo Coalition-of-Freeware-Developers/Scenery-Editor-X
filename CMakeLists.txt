@@ -229,6 +229,11 @@ ADD_SUBDIRECTORY(dependency/json-cpp-gen)
 ADD_SUBDIRECTORY(dependency/json)
 
 # --------------------------------
+# Math Library
+# --------------------------------
+ADD_SUBDIRECTORY(source/Math)
+
+# --------------------------------
 # AppCore
 # --------------------------------
 ADD_SUBDIRECTORY(source/SceneryEditorX)
@@ -351,11 +356,11 @@ SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
 SET_PROPERTY(TARGET MemoryAllocatorTests RefTests MathTests SettingsTest EdxTests EdxDemoGenerator ConversionTests PROPERTY FOLDER "Tests")
 SET_PROPERTY(TARGET edX PROPERTY FOLDER "File Formats")
 SET_PROPERTY(TARGET glfw uninstall update_mappings PROPERTY FOLDER "Dependency/GLFW3")
-SET_PROPERTY(TARGET imgui json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
+SET_PROPERTY(TARGET xMath imgui json-cpp-gen nlohmann_json PROPERTY FOLDER "Dependency")
 SET_PROPERTY(TARGET libconfig libconfig++ PROPERTY FOLDER "Dependency/LibConfig")
 SET_PROPERTY(TARGET Catch2 Catch2WithMain PROPERTY FOLDER "Dependency/Catch2")
 
-FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore MemoryAllocatorTests ConversionTests RefTests MathTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
+FOREACH(TARGET IN ITEMS Launcher SceneryEditorX AppCore MemoryAllocatorTests ConversionTests RefTests MathTests SettingsTest EdxTests EdxDemoGenerator CrashHandler Catch2 Catch2WithMain nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ edX X-PlaneSceneryLibrary glfw)
     SET_TARGET_PROPERTIES(${TARGET} PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${LIBS_DIR}
         LIBRARY_OUTPUT_DIRECTORY ${LIBS_DIR}

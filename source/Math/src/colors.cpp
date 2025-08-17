@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 // ReSharper disable CommentTypo
-#include "colors.h"
+#include <Math/includes/colors.h>
 #include <algorithm>
 #include <cmath>
 
@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	 * Color cyan = hueValues[3];   // Cyan color (0, 1, 1)
 	 * Color blue = hueValues[4];   // Blue color (0, 0, 1)
 	 * Color magenta = hueValues[5]; // Magenta color (1, 0, 1)
-	 * @endcode 
+	 * @endcode
 	 */
 	static const Color hueValues[] = {
 		Color(1, 0, 0), Color(1, 1, 0), Color(0, 1, 0),

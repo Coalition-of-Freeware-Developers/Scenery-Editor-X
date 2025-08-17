@@ -10,24 +10,22 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/renderer/buffers/index_buffer.h>
-#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/vulkan/vk_sampler.h>
-#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/scene/scene.h>
-
+#include "renderer.h"
 #include "compute_pipeline.h"
-
+#include "render_context.h"
+#include "texture.h"
+#include "SceneryEditorX/core/application/application.h"
+#include "SceneryEditorX/logging/profiler.hpp"
+#include "SceneryEditorX/scene/material.h"
+#include "SceneryEditorX/scene/scene.h"
+#include "buffers/index_buffer.h"
 #include "buffers/storage_buffer_set.h"
 #include "buffers/uniform_buffer_set.h"
+#include "buffers/vertex_buffer.h"
+#include "shaders/shader.h"
+#include "vulkan/vk_sampler.h"
+#include "vulkan/vk_swapchain.h"
+#include "vulkan/vk_util.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,12 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <../dependency/libconfig/lib/libconfig.h++>
 #include <filesystem>
 #include <map>
-#include <SceneryEditorX/core/application/application_data.h>
-#include <SceneryEditorX/utils/pointers.h>
 #include <string>
+#include <../dependency/libconfig/lib/libconfig.h++>
+#include "SceneryEditorX/core/application/application_data.h"
+#include "SceneryEditorX/utils/pointers.h"
 
 /// -------------------------------------------------------
 

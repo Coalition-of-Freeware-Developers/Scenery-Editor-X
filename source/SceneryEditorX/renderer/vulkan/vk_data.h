@@ -14,9 +14,9 @@
 #pragma once
 #include <cstdint>
 #include <SceneryEditorX/utils/vulkan/vk_includes.h>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 #include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
+#include <Math/includes/math_utils.h>
 // unified include already provides Vulkan declarations
 
 /// -------------------------------------------------------

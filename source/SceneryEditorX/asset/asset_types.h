@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/logging/asserts.h>
+#include "SceneryEditorX/logging/asserts.h"
 
 /// -------------------------------------------------------
 

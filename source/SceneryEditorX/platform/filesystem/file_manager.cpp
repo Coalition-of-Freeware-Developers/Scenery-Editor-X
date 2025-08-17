@@ -11,17 +11,16 @@
 * -------------------------------------------------------
 */
 #include <commdlg.h>
-#include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-//#include <SceneryEditorX/asset/asset_manager.h>
-#include <SceneryEditorX/core/time/time.h>
-#include <SceneryEditorX/platform/config/editor_config.hpp>
-#include <SceneryEditorX/platform/filesystem/file_manager.hpp>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/scene/model_asset.h>
-#include <SceneryEditorX/utils/string_utils.h>
+//#include "SceneryEditorX/asset/asset_manager.h"
+#include "file_manager.hpp"
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
+#include "SceneryEditorX/core/time/time.h"
+#include "SceneryEditorX/platform/config/editor_config.hpp"
+#include "SceneryEditorX/scene/material.h"
+#include "SceneryEditorX/scene/model_asset.h"
+#include "SceneryEditorX/utils/string_utils.h"
 
 /// -------------------------------------------------------
 

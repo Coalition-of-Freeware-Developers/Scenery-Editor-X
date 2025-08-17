@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/platform/config/editor_config.hpp>
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/platform/config/editor_config.hpp"
 
 /// -------------------------------------------------------
 

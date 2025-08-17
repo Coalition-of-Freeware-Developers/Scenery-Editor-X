@@ -12,11 +12,11 @@
 */
 #pragma once
 #include <shared_mutex>
-#include <SceneryEditorX/asset/managers/asset_manager_core.h>
-#include <SceneryEditorX/asset/registry/asset_registry.h>
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/events/editor_events.h>
-#include <SceneryEditorX/platform/filesystem/file_manager.hpp>
+#include "asset_manager_core.h"
+#include "SceneryEditorX/asset/registry/asset_registry.h"
+#include "SceneryEditorX/core/application/application.h"
+#include "SceneryEditorX/core/events/editor_events.h"
+#include "SceneryEditorX/platform/filesystem/file_manager.hpp"
 
 /// -------------------------------------------------------
 

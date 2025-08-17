@@ -10,14 +10,14 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/asset//importers/asset_importer.h>
-//#include <SceneryEditorX/asset/managers/editor_asset_system.h>
-//#include <SceneryEditorX/core/application/application.h>
-//#include <SceneryEditorX/core/events/editor_events.h>
-//#include <SceneryEditorX/core/time/timer.h>
-//#include <SceneryEditorX/logging/profiler.hpp>
-//#include <SceneryEditorX/platform/file_manager.hpp>
-//#include <SceneryEditorX/project/project.h>
+//#include "editor_asset_system.h"
+//#include "SceneryEditorX/asset/importers/asset_importer.h"
+//#include "SceneryEditorX/core/application/application.h"
+//#include "SceneryEditorX/core/events/editor_events.h"
+//#include "SceneryEditorX/core/time/timer.h"
+//#include "SceneryEditorX/logging/profiler.hpp"
+//#include "SceneryEditorX/platform/file_manager.hpp"
+//#include "SceneryEditorX/project/project.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,12 +10,12 @@
 * Created: 14/7/2025
 * -------------------------------------------------------
 */
+#include "input.h"
 #include <GLFW/glfw3.h>
 #include <imgui/imgui_internal.h>
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/window/window.h>
-#include "input.h"
 #include "key_codes.h"
+#include "SceneryEditorX/core/application/application.h"
+#include "SceneryEditorX/core/window/window.h"
 //#include <magic_enum.hpp>
 
 /// -------------------------------------------------------

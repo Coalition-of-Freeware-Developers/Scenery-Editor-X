@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/identifiers/uuid.h>
+#include "SceneryEditorX/core/identifiers/uuid.h"
 
 /// -------------------------------------------------------
 

@@ -14,10 +14,10 @@
 #include <algorithm>
 #include <exception>
 #include <memory>
-#include <SceneryEditorX/logging/logging.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "SceneryEditorX/logging/logging.hpp"
 
 /// -------------------------------------------------------
 

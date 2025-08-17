@@ -11,15 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_types.h>
-#include <SceneryEditorX/asset/animation/mesh_skeleton.h>
-#include <SceneryEditorX/renderer/buffers/index_buffer.h>
-#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/utils/math/aabb.h>
-//#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
-//#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
+#include <Math/includes/aabb.h>
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/asset/asset_types.h"
+#include "SceneryEditorX/asset/animation/mesh_skeleton.h"
+#include "SceneryEditorX/renderer/buffers/index_buffer.h"
+#include "SceneryEditorX/renderer/buffers/vertex_buffer.h"
+#include "SceneryEditorX/scene/material.h"
+//#include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
+//#include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
 
 /// -------------------------------------------------------
 

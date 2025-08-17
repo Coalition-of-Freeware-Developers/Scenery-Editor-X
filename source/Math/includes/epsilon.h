@@ -5,28 +5,35 @@
 * Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* vector.h
+* epsilon.h
 * -------------------------------------------------------
-* Created: 15/7/2025
+* Created: 12/8/2025
 * -------------------------------------------------------
 */
 #pragma once
-
-/// -----------------------------------------------------
-/// Umbrella header for all vector types
-/// -----------------------------------------------------
-
-#include <SceneryEditorX/utils/math/vec2.h>	/// 2D Vector
-#include <SceneryEditorX/utils/math/vec3.h>	/// 3D Vector
-#include <SceneryEditorX/utils/math/vec4.h>	/// 4D Vector
+#include <Math/math_config.h>
+#include <cmath>
+#include <limits>
 
 /// -----------------------------------------------------
 
 namespace SceneryEditorX
 {
-	using Vec2 = Utils::TVector2<float>;
-	using Vec3 = Utils::TVector3<float>;
-	using Vec4 = Utils::TVector4<float>;
+	/// GLM-compatible epsilon<T>() replacement
+	template <typename T>
+	constexpr T epsilon() noexcept
+	{
+	    return std::numeric_limits<T>::epsilon();
+	}
+
+	/// Scalar epsilonEqual
+	template <typename T>
+	inline bool epsilonEqual(T a, T b, T eps = epsilon<T>()) noexcept
+	{
+		using std::fabs; // ADL
+		return fabs(static_cast<double>(a - b)) <= static_cast<double>(eps);
+	}
 }
 
 /// -----------------------------------------------------
+

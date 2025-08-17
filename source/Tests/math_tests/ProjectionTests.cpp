@@ -1,6 +1,6 @@
 ﻿#include <catch2/catch_all.hpp>
 #include <cmath>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 
 TEST_CASE("PerspectiveProjection basic structure", "[math][matrix][projection]") {
     float aspect = 16.0f/9.0f;

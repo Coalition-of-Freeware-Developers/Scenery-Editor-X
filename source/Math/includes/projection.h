@@ -8,13 +8,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-
-// -------------------------------------------------------
-
-#include <SceneryEditorX/utils/math/vector.h>
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/constants.h>
 #include <cmath>
+#include <Math/math_config.h>
+#include <Math/includes/constants.h>
+#include <Math/includes/matrix.h>
+#include <Math/includes/vector.h>
+
+/// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -109,11 +109,11 @@ namespace SceneryEditorX
      * orthographic projection with a symmetric frustum defined by left, right, bottom, top, near, and far planes.
      *
      * @param left
-     * @param right 
-     * @param bottom 
-     * @param top 
-     * @param zNear 
-     * @param zFar 
+     * @param right
+     * @param bottom
+     * @param top
+     * @param zNear
+     * @param zFar
      * @return Mat4 A 4x4 orthographic projection matrix suitable for 2D rendering or technical drawing.
      *
      * @note - The coordinate system is right-handed with Y pointing up.
@@ -154,9 +154,9 @@ namespace SceneryEditorX
      * This function generates a view matrix that transforms world coordinates
      * into camera space, effectively positioning and orienting the camera in 3D space.
      *
-     * @param eye 
-     * @param center 
-     * @param up 
+     * @param eye
+     * @param center
+     * @param up
      * @return Mat4 A 4x4 look-at matrix that can be used to transform world coordinates to camera space.
      *
      * @note - The camera is positioned at 'eye', looking towards 'center', with 'up' defining the camera's up direction.

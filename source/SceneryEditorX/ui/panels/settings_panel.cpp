@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,9 +10,7 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <Editor/ui/ui_manager.h>
-
-#include <SceneryEditorX/ui/ui.h>
+#include "SceneryEditorX/ui/ui.h"
 #include <imgui/imgui.h>
 
 /// -------------------------------------------------------
@@ -126,7 +124,7 @@ namespace SceneryEditorX::UI
 	            ImGui::Checkbox("Vertical Sync", &vSync);
 	
 	            ImGui::SetNextItemWidth(200);
-	            ImGui::SliderFloat("Field of View", &fov, 45.0f, 90.0f, "%.1f�");
+	            ImGui::SliderFloat("Field of View", &fov, 45.0f, 90.0f, "%.1f°");
 	
 	            ImGui::Combo("Shadow Quality", &shadowQuality, shadowOptions, IM_ARRAYSIZE(shadowOptions));
 	        }

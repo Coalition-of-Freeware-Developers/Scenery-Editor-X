@@ -10,8 +10,8 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/ui/ui_utils.h>
-#include <SceneryEditorX/ui/ui_manager.h>
+#include "ui_utils.h"
+#include "ui_manager.h"
 
 /// -------------------------------------------------------
 

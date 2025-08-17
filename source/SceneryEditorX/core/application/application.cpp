@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,12 +10,12 @@
 * Created: 25/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/events/application_events.h>
-#include <SceneryEditorX/core/input/input.h>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
+#include "application.h"
+#include "SceneryEditorX/core/events/application_events.h"
+#include "SceneryEditorX/core/input/input.h"
+#include "SceneryEditorX/logging/logging.hpp"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/vulkan/vk_swapchain.h"
 
 /// -------------------------------------------------------
 

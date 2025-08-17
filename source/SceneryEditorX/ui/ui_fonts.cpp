@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 31/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/ui/ui_fonts.h>
+#include "ui_fonts.h"
+#include "SceneryEditorX/logging/asserts.h"
 
 /// -------------------------------------------------------
 

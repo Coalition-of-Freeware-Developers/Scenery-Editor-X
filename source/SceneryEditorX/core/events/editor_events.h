@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/core/events/event_system.h>
+#include "event_system.h"
+#include "SceneryEditorX/asset/asset.h"
 
 /// -------------------------------------------------------------------
 

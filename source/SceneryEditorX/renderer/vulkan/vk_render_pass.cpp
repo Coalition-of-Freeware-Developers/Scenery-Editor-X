@@ -10,11 +10,11 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/platform/config/editor_config.hpp>
-#include <SceneryEditorX/renderer/buffers/storage_buffer_set.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer_set.h>
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
+#include "vk_render_pass.h"
+#include "vk_buffers.h"
+#include "SceneryEditorX/platform/config/editor_config.hpp"
+#include "SceneryEditorX/renderer/buffers/storage_buffer_set.h"
+#include "SceneryEditorX/renderer/buffers/uniform_buffer_set.h"
 
 /// -------------------------------------------------------
 

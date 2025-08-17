@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_metadata.h>
-#include <SceneryEditorX/asset/asset_pack_header.h>
-#include <SceneryEditorX/serialization/asset_serializer.h>
-#include <SceneryEditorX/utils/filestreaming/file_streaming.h>
+#include "asset_serializer.h"
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/asset/asset_metadata.h"
+#include "SceneryEditorX/asset/asset_pack_header.h"
+#include "SceneryEditorX/utils/filestreaming/file_streaming.h"
 
 /// -------------------------------------------------------
 

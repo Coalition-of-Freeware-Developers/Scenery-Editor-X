@@ -11,16 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
-#include <SceneryEditorX/scene/camera.h>
-#include <SceneryEditorX/scene/lights.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/scene/model_asset.h>
-#include <SceneryEditorX/scene/node.h>
-#include <SceneryEditorX/scene/scene.h>
-#include <SceneryEditorX/scene/texture.h>
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/project/project.h"
+#include "SceneryEditorX/renderer/vulkan/vk_data.h"
+#include "SceneryEditorX/scene/camera.h"
+#include "SceneryEditorX/scene/lights.h"
+#include "SceneryEditorX/scene/material.h"
+#include "SceneryEditorX/scene/model_asset.h"
+#include "SceneryEditorX/scene/node.h"
+#include "SceneryEditorX/scene/scene.h"
+#include "SceneryEditorX/scene/texture.h"
 
 /// -------------------------------------------------------
 

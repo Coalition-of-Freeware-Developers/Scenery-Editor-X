@@ -10,9 +10,9 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/renderer/command_queue.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
+#include "command_queue.h"
+#include <Math/includes/math_utils.h>
+#include "SceneryEditorX/core/memory/memory.h"
 
 /// -------------------------------------------------------
 

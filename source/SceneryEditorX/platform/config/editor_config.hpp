@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/system_detection.h>
+#include "SceneryEditorX/utils/system_detection.h"
 
 /// -------------------------------------------------------
 

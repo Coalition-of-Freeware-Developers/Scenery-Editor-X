@@ -11,12 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Editor/core/viewport.h>
 #include <IconsFontAwesome5.h>
 #include <imgui/imgui.h>
-#include <SceneryEditorX/renderer/image_data.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/ui/ui_manager.h>
+#include "ui_manager.h"
+#include "SceneryEditorX/renderer/image_data.h"
+#include "SceneryEditorX/renderer/render_context.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -14,7 +14,7 @@
 #include <fstream>
 #include <libconfig.h++>
 #include <regex>
-#include <SceneryEditorX/platform/settings/steam_parser.h>
+#include "steam_parser.h"
 
 /// -------------------------------------------------------
 

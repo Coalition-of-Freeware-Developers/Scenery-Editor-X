@@ -1,5 +1,5 @@
 ﻿#include <catch2/catch_all.hpp>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 
 TEST_CASE("Vec3 normalize edge cases", "[math][vec3]") {
     auto n0 = SceneryEditorX::Utils::Normalize(Vec3(0,0,0));

@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #include <fstream>
-#include <SceneryEditorX/platform/config/cfg_loader.h>
+#include "cfg_loader.h"
 
 // ---------------------------------------------------------
 

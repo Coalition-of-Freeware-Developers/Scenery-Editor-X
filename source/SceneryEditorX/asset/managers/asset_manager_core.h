@@ -13,8 +13,8 @@
 #pragma once
 #include <unordered_map>
 #include <unordered_set>
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_types.h>
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/asset/asset_types.h"
 
 /// -------------------------------------------------------
 

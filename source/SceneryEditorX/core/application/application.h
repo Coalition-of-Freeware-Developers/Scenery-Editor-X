@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,16 +12,16 @@
 */
 #pragma once
 #include <deque>
-#include <SceneryEditorX/core/application//application_data.h>
-#include <SceneryEditorX/core/events/application_events.h>
-#include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/modules/module_stage.h>
-#include <SceneryEditorX/core/time/time.h>
-#include <SceneryEditorX/core/time/timer.h>
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/platform/settings/settings.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/utils/static_states.h>
+#include "application_data.h"
+#include "SceneryEditorX/core/events/application_events.h"
+#include "SceneryEditorX/core/events/event_system.h"
+#include "SceneryEditorX/core/modules/module_stage.h"
+#include "SceneryEditorX/core/time/time.h"
+#include "SceneryEditorX/core/time/timer.h"
+#include "SceneryEditorX/core/window/window.h"
+#include "SceneryEditorX/platform/settings/settings.h"
+#include "SceneryEditorX/utils/pointers.h"
+#include "SceneryEditorX/utils/static_states.h"
 
 /// -------------------------------------------------------
 

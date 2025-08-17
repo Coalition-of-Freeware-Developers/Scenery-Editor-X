@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/vulkan/vk_image_view.h>
-#include <SceneryEditorX/scene/texture.h>
+#include "texture.h"
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/renderer/texture.h"
+#include "SceneryEditorX/renderer/shaders/shader.h"
+#include "SceneryEditorX/renderer/vulkan/vk_image_view.h"
 
 /// -------------------------------------------------------
 

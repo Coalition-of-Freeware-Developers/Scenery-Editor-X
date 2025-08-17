@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,11 +10,11 @@
 * Created: 25/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/core/initializer.h>
-#include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/resource.h>
+#include "initializer.h"
+#include "base.hpp"
+#include "resource.h"
+#include "SceneryEditorX/logging/logging.hpp"
+#include "memory/memory.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,14 +10,14 @@
 * Created: 25/1/2025
 * -------------------------------------------------------
 */
+#include "logging.hpp"
 #include <minwinbase.h>
-#include <SceneryEditorX/core/application/application_data.h>
-#include <SceneryEditorX/logging/logging.hpp>
 #include <sysinfoapi.h>
 #include <timezoneapi.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <vulkan/vulkan.h>
+#include "SceneryEditorX/core/application/application_data.h"
 
 /// -------------------------------------------------------
 

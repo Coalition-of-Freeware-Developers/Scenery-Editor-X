@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <cstdint>
-#include <SceneryEditorX/core/memory/memory.h>
+#include "memory.h"
 
 #ifndef SEDX_BYTE_DEFINED
 #define SEDX_BYTE_DEFINED

@@ -10,11 +10,20 @@
 * Created: 15/7/2025
 * -------------------
 */
-#include <SceneryEditorX/utils/math/math_utils.h>
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/quat.h>
-#if TRACY_ENABLE
-#include <tracy/Tracy.hpp>
+#include <cmath>
+#include <Math/math_config.h>
+#include <Math/includes/xmath.hpp> // umbrella ensures ordering (renamed)
+#include <Math/includes/math_utils.h>
+#include <Math/includes/matrix.h>
+#include <Math/includes/quat.h>
+
+// Profiling (Tracy) optional: only active if both XMATH_ALLOW_TRACY and TRACY_ENABLE provided by build.
+#if defined(XMATH_ALLOW_TRACY) && defined(TRACY_ENABLE)
+	#include <tracy/Tracy.hpp>
+#else
+	#ifndef ZoneScoped
+		#define ZoneScoped (void)0
+	#endif
 #endif
 
 /// -------------------------------------------------------
@@ -44,9 +53,9 @@ namespace SceneryEditorX
      * Matrix4x4 projection = Matrix4x4::PerspectiveProjection(aspectRatio, 60.0f, 0.1f, 1000.0f);
      * @endcode
      */
-    Mat4 Mat4::PerspectiveProjection(const float aspect, const float fieldOfView, const float n, const float f)
+	Mat4 Mat4::PerspectiveProjection(const float aspect, const float fieldOfView, const float n, const float f) noexcept
     {
-		const float tanHalfFOV = tan(ToRadians(fieldOfView / 2.0f));
+		const float tanHalfFOV = std::tan(ToRadians(fieldOfView / 2.0f));
 
         return Mat4({
 			{ 1 / (aspect * tanHalfFOV), 0, 0, 0 },
@@ -82,7 +91,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 ortho = Matrix4x4::OrthographicProjection(0.0f, 800.0f, 600.0f, 0.0f, -1.0f, 1.0f);
 	 * @endcode
 	 */
-	Mat4 Mat4::OrthographicProjection(float l, float r, float t, float b, float nearPlane, float farPlane)
+	Mat4 Mat4::OrthographicProjection(float l, float r, float t, float b, float nearPlane, float farPlane) noexcept
 	{
 		return Mat4({
 			{ 2 / (r - l), 0, 0, -(r + l) / (r - l) },
@@ -103,7 +112,7 @@ namespace SceneryEditorX
      * @param up The up direction vector for the camera, defining its orientation.
      * @return Matrix4x4 A 4x4 look-at matrix that can be used to transform world coordinates to camera space.
      */
-    Mat4 Mat4::LookAt(const Vec3& eye, const Vec3& center, const Vec3& up)
+	Mat4 Mat4::LookAt(const Vec3& eye, const Vec3& center, const Vec3& up) noexcept
 	{
 		/// Right-handed look-at using row-major layout and column-vector math basis
 		const Vec3 f = Normalize(center - eye);				/// forward
@@ -141,7 +150,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 rotation = Matrix4x4::Angle(45.0f); // 45° degree rotation
 	 * @endcode
 	 */
-	Mat4 Mat4::Angle(const float degrees)
+	Mat4 Mat4::Angle(const float degrees) noexcept
     {
         return Quat::EulerDegrees(0, 0, degrees).ToMatrix();
     }
@@ -168,7 +177,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 rotMatrix = Matrix4x4::RotationDegrees(rotation);
 	 * @endcode
 	 */
-	Mat4 Mat4::RotationDegrees(const Vec3& eulerDegrees)
+	Mat4 Mat4::RotationDegrees(const Vec3& eulerDegrees) noexcept
     {
         return Quat::EulerDegrees(eulerDegrees).ToMatrix();
     }
@@ -194,7 +203,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 rotMatrix = Matrix4x4::RotationRadians(rotation);
 	 * @endcode
 	 */
-	Mat4 Mat4::RotationRadians(const Vec3 &eulerRadians)
+	Mat4 Mat4::RotationRadians(const Vec3 &eulerRadians) noexcept
     {
         return Quat::EulerRadians(eulerRadians).ToMatrix();
     }
@@ -217,7 +226,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 result = matrixA + matrixB;
 	 * @endcode
 	 */
-	Mat4 Mat4::operator+(const Mat4& rhs) const
+	Mat4 Mat4::operator+(const Mat4& rhs) const noexcept
 	{
 		Mat4 result{};
 
@@ -245,7 +254,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 result = matrixA - matrixB;
 	 * @endcode
 	 */
-	Mat4 Mat4::operator-(const Mat4& rhs) const
+	Mat4 Mat4::operator-(const Mat4& rhs) const noexcept
 	{
 		Mat4 result{};
 
@@ -272,7 +281,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 scaled = originalMatrix * 2.0f; // Double all transformation components
 	 * @endcode
 	 */
-	Mat4 Mat4::operator*(float rhs) const
+	Mat4 Mat4::operator*(float rhs) const noexcept
 	{
 		ZoneScoped;
 		Mat4 result{};
@@ -301,7 +310,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 scaled = originalMatrix / 2.0f; // Halve all transformation components
 	 * @endcode
 	 */
-	Mat4 Mat4::operator/(const float rhs) const
+	Mat4 Mat4::operator/(const float rhs) const noexcept
 	{
 		ZoneScoped;
 		Mat4 result{};
@@ -336,7 +345,7 @@ namespace SceneryEditorX
 	 * // Equivalent to: transform = projection * view (if operator* were defined)
 	 * @endcode
 	 */
-	Mat4 Mat4::Multiply(const Mat4& lhs, const Mat4& rhs)
+	Mat4 Mat4::Multiply(const Mat4& lhs, const Mat4& rhs) noexcept
 	{
 		ZoneScoped;
 		Mat4 result{};
@@ -381,7 +390,7 @@ namespace SceneryEditorX
 	 * Vec4 clipPos = Matrix4x4::Multiply(projectionMatrix, viewPos);
 	 * @endcode
 	 */
-	Vec4 Mat4::Multiply(const Mat4& lhs, const Vec4& rhs)
+	Vec4 Mat4::Multiply(const Mat4& lhs, const Vec4& rhs) noexcept
     {
 		ZoneScoped;
         Vec4 result{};
@@ -423,7 +432,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 inverse = Matrix4x4::GetTranspose(rotation); // For pure rotations
 	 * @endcode
 	 */
-	Mat4 Mat4::GetTranspose(const Mat4& mat)
+	Mat4 Mat4::GetTranspose(const Mat4& mat) noexcept
 	{
 		ZoneScoped;
 		Mat4 result{};
@@ -455,7 +464,7 @@ namespace SceneryEditorX
 	 * @note - This is a helper function for determinant and inverse calculations.
 	 * @note - The output cofactor matrix will be one dimension smaller than the input.
 	 */
-	void Mat4::GetCofactor(const Mat4 &mat, Mat4 &cofactor, const int32_t p, const int32_t q, const int32_t n)
+	void Mat4::GetCofactor(const Mat4 &mat, Mat4 &cofactor, const int32_t p, const int32_t q, const int32_t n) noexcept
 	{
 		ZoneScoped;
 		int32_t i = 0, j = 0;
@@ -499,7 +508,7 @@ namespace SceneryEditorX
 	 * @note - A determinant of 0 indicates the matrix is singular (non-invertible).
 	 * @note - This function uses recursive calls and may be slower for large matrices.
 	 */
-	float Mat4::GetDeterminant(const Mat4& mat, const int32_t n)
+	float Mat4::GetDeterminant(const Mat4& mat, const int32_t n) noexcept
 	{
 		ZoneScoped;
 		float determinant = 0.0f;
@@ -540,7 +549,7 @@ namespace SceneryEditorX
 	 * @note - The adjoint matrix is also known as the adjudicate matrix.
 	 * @note - For a 4×4 matrix, this involves calculating 16 determinants of 3×3 submatrices.
 	 */
-	Mat4 Mat4::GetAdjoint(const Mat4& mat)
+	Mat4 Mat4::GetAdjoint(const Mat4& mat) noexcept
 	{
 		ZoneScoped;
 		Mat4 adj{};
@@ -593,7 +602,7 @@ namespace SceneryEditorX
 	 * Matrix4x4 identity = Matrix4x4::Multiply(original, inverse); // Should be identity
 	 * @endcode
 	 */
-	Mat4 Mat4::GetInverse(const Mat4& matrix)
+	Mat4 Mat4::GetInverse(const Mat4& matrix) noexcept
 	{
         ZoneScoped; /// Enable Tracy profiling for this function
 

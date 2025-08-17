@@ -12,11 +12,11 @@
 */
 #pragma once
 #include <filesystem>
-//#include <SceneryEditorX/asset/managers/asset_manager.h>
-//#include <SceneryEditorX/asset/managers/editor_asset_manager.h>
-#include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/platform/config/editor_config.hpp>
-#include <SceneryEditorX/project/project_settings.h>
+//#include "SceneryEditorX/asset/managers/asset_manager.h"
+//#include "SceneryEditorX/asset/managers/editor_asset_manager.h"
+#include "project_settings.h"
+#include "SceneryEditorX/logging/asserts.h"
+#include "SceneryEditorX/platform/config/editor_config.hpp"
 
 /// -------------------------------------------------------
 

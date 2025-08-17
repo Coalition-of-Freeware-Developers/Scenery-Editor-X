@@ -13,11 +13,11 @@
 #pragma once
 #include <cmath>
 #include <string>
-#include <vector>
 #include <utility>
-#include <SceneryEditorX/core/identifiers/uuid.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/utils/math/math.h>
+#include <vector>
+#include <Math/includes/xmath.hpp>
+#include "material.h"
+#include "SceneryEditorX/core/identifiers/uuid.h"
 
 /// -------------------------------------------------------
 

@@ -10,13 +10,13 @@
 * Created: 16/3/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/window/window.h>
-#include <imgui/imgui.h>
-#include <SceneryEditorX/core/input/input.h>
-#include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/core/window/icon.h>
-#include <SceneryEditorX/core/window/monitor_data.h>
+#include "window.h"
 #include <stb_image.h>
+#include <imgui/imgui.h>
+#include "icon.h"
+#include "monitor_data.h"
+#include "SceneryEditorX/core/input/input.h"
+#include "SceneryEditorX/core/memory/memory.h"
 
 /// -------------------------------------------------------
 

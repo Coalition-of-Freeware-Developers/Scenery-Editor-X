@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,11 +10,11 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
+#include "graph_serializer.h"
 #include <imgui.h>
 #include <nlohmann/json.hpp>
-#include <SceneryEditorX/serialization/graph_serializer.h>
-#include <SceneryEditorX/serialization/serialization_macros.h>
-#include <SceneryEditorX/utils/string_utils.h>
+#include "serialization_macros.h"
+#include "SceneryEditorX/utils/string_utils.h"
 
 /// -----------------------------------------------------------
 

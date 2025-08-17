@@ -10,10 +10,10 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
+#include "texture.h"
 #include <stb_image.h>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/scene/texture.h>
+#include "SceneryEditorX/logging/logging.hpp"
+#include "SceneryEditorX/renderer/render_context.h"
 
 /// -------------------------------------------------------
 

@@ -10,8 +10,8 @@
 * Created: 11/4/2025
 * -------------------------------------------------------
 */
+#include "memory.h"
 #include <mutex>
-#include <SceneryEditorX/core/memory/memory.h>
 
 /// -------------------------------------------------------
 

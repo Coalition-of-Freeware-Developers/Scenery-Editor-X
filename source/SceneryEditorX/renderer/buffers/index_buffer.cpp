@@ -10,10 +10,10 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <SceneryEditorX/renderer/buffers/index_buffer.h>
+#include "index_buffer.h"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
+#include "SceneryEditorX/renderer/vulkan/vk_data.h"
 
 /// --------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/reflection/type_descriptors.h>
-#include <SceneryEditorX/utils/reflection/type_structs.h>
+#include "type_descriptors.h"
+#include "type_structs.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <memory>
-#include <SceneryEditorX/scene/texture.h>
 #include <string>
 #include <unordered_map>
+#include "SceneryEditorX/scene/texture.h"
 
 /// -------------------------------------------------------
 

@@ -11,9 +11,8 @@
 * -------------------------------------------------------
 */
 #include <numbers>
-
-#include <SceneryEditorX/renderer/primitives.h>
-#include <SceneryEditorX/scene/model_asset.h>
+#include "primitives.h"
+#include "SceneryEditorX/scene/model_asset.h"
 
 /// -------------------------------------------------------
 

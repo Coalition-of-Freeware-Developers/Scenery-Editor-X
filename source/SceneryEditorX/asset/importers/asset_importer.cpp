@@ -10,8 +10,8 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/importers/asset_importer.h>
-#include <SceneryEditorX/logging/profiler.hpp>
+#include "asset_importer.h"
+#include "SceneryEditorX/logging/profiler.hpp"
 //#include <SceneryEditorX/project/project.h>
 //#include <SceneryEditorX/serialization/mesh_serializer.h>
 

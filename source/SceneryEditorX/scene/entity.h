@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * entity.h
@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <Math/includes/xmath.hpp>
 #include <entt/src/entt/entt.hpp>
-#include <SceneryEditorX/utils/math/math.h>
-#include <SceneryEditorX/scene/components.h>
+#include "components.h"
 
 /// -------------------------------------------------------
 

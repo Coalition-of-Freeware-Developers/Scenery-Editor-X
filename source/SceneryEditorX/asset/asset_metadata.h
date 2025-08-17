@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset_types.h>
+#include "asset_types.h"
 
 /// -------------------------------------------------------
 

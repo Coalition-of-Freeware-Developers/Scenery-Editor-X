@@ -10,7 +10,7 @@
 * Created: 21/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/debug_renderer.h>
+#include "debug_renderer.h"
 
 /// ---------------------------------------------------------
 

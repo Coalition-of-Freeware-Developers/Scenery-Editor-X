@@ -16,8 +16,8 @@
 /// Umbrella header for all matrix types
 /// -----------------------------------------------------
 
-#include <SceneryEditorX/utils/math/mat2.h>	/// Matrix2x2
-#include <SceneryEditorX/utils/math/mat3.h> /// Matrix3x3
-#include <SceneryEditorX/utils/math/mat4.h> /// Matrix4x4
+#include <Math/includes/mat2.h>	/// Matrix2x2
+#include <Math/includes/mat3.h> /// Matrix3x3
+#include <Math/includes/mat4.h> /// Matrix4x4
 
 /// -------------------------------------------------------

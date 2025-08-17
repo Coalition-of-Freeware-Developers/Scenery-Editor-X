@@ -10,11 +10,11 @@
 * Created: 17/4/2025
 * -------------------------------------------------------
 */
+#include "time.h"
 #include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/time/time.h>
 
 /// -------------------------------------------------------
 

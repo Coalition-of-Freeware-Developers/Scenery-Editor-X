@@ -11,8 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/vector.h>
+#include <cmath>
+#include <Math/includes/matrix.h>   // brings in mat2/3/4
+#include <Math/includes/vector.h>
+#include <Math/math_config.h>
 
 /// -------------------------------------------------------
 
@@ -55,7 +57,7 @@ namespace SceneryEditorX
      * 3D points in space. The translation is applied in the order of the matrix multiplication,
      * meaning it will translate points by the vector t when multiplied with the matrix.
      *
-     * @param m 
+     * @param m
      * @param t transform matrix vector
      * @return
      *

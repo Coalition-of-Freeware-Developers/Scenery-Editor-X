@@ -11,11 +11,12 @@
 * -------------------------------------------------------
 */
 #include <cmath>
-#include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
-#include <SceneryEditorX/utils/math/quat.h>
-#include <SceneryEditorX/utils/math/scale.h>
-#include <SceneryEditorX/utils/math/transforms.h>
+#include <Math/includes/math_utils.h>
+#include <Math/includes/quat.h>
+#include <Math/includes/scale.h>
+#include <Math/includes/transforms.h>
+// NOTE: Removed dependency on engine-wide asserts (which pulled heavy logging/Vulkan includes)
+// to keep the math library standalone. Use lightweight runtime checks instead.
 
 /// -------------------------------------------------------
 
@@ -46,13 +47,15 @@ namespace SceneryEditorX
             return false;
 
         /// Assume matrix is already normalized
-		SEDX_CORE_ASSERT(::SceneryEditorX::epsilonEqual(LocalMatrix[3][3], static_cast<T>(1), static_cast<T>(0.00001)));
+		// Assert: matrix[3][3] should be ~1 for affine matrix; fallback early if invalid
+		if (!::SceneryEditorX::epsilonEqual(LocalMatrix[3][3], static_cast<T>(1), static_cast<T>(0.00001)))
+			return false;
 
 	    /// Ignore perspective
-        SEDX_CORE_ASSERT(::SceneryEditorX::epsilonEqual(LocalMatrix[0][3], static_cast<T>(0),
-			::SceneryEditorX::epsilon<T>()) && ::SceneryEditorX::epsilonEqual(LocalMatrix[1][3], static_cast<T>(0),
-			::SceneryEditorX::epsilon<T>()) && ::SceneryEditorX::epsilonEqual(LocalMatrix[2][3], static_cast<T>(0),
-			::SceneryEditorX::epsilon<T>()));
+		if (!(::SceneryEditorX::epsilonEqual(LocalMatrix[0][3], static_cast<T>(0), ::SceneryEditorX::epsilon<T>()) &&
+			::SceneryEditorX::epsilonEqual(LocalMatrix[1][3], static_cast<T>(0), ::SceneryEditorX::epsilon<T>()) &&
+			::SceneryEditorX::epsilonEqual(LocalMatrix[2][3], static_cast<T>(0), ::SceneryEditorX::epsilon<T>())))
+			return false; // perspective components present; not supported
 
         /// perspectiveMatrix is used to solve for perspective, but it also provides
         /// an easy way to test for singularity of the upper 3x3 component.
@@ -85,7 +88,8 @@ namespace SceneryEditorX
 			/// Check for a coordinate system flip.  If the determinant
 			/// is -1, then negate the matrix and the scaling factors.
 			Vec3 Pdum3 = Cross(Row[1], Row[2]);
-			SEDX_CORE_ASSERT(Dot(Row[0], Pdum3) >= static_cast<T>(0));
+			// If determinant negative, coordinate system flip not supported here.
+			if (Dot(Row[0], Pdum3) < static_cast<T>(0)) return false;
 		#endif
 
         T root;

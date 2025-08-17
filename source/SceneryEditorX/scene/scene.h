@@ -12,11 +12,11 @@
 */
 #pragma once
 #include <entt/src/entt/entt.hpp>
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_types.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/scene/camera.h>
-#include <SceneryEditorX/scene/entity.h>
+#include "camera.h"
+#include "entity.h"
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/asset/asset_types.h"
+#include "SceneryEditorX/renderer/texture.h"
 
 /// -------------------------------------------------------
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,8 +12,8 @@
 */
 #pragma once
 #include <imgui/imgui.h>
-#include <SceneryEditorX/core/modules/module.h>
-#include <SceneryEditorX/utils/static_states.h>
+#include "SceneryEditorX/core/modules/module.h"
+#include "SceneryEditorX/utils/static_states.h"
 
 /// -------------------------------------------------------
 

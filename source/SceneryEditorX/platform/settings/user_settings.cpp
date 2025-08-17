@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -16,12 +16,12 @@
 #include <filesystem>
 #include <iomanip>
 #include <locale>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/platform/settings/settings.h>
-#include <SceneryEditorX/platform/settings/user_settings.h>
-#include <SceneryEditorX/project/project_settings.h>
-#include <SceneryEditorX/utils/string_utils.h>
 #include <sstream>
+#include "user_settings.h"
+#include "settings.h"
+#include "SceneryEditorX/logging/logging.hpp"
+#include "SceneryEditorX/project/project_settings.h"
+#include "SceneryEditorX/utils/string_utils.h"
 
 /// -------------------------------------------------------
 

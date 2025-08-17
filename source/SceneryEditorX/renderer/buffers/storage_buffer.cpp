@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,15 +10,15 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/buffers/storage_buffer.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
+#include "storage_buffer.h"
+#include "SceneryEditorX/renderer/render_context.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 /// -----------------------------------
 
 namespace SceneryEditorX
 {
-	StorageBuffer::StorageBuffer(uint32_t size, StorageBufferSpec &spec) : m_spec(std::move(spec)), size(size)
+	StorageBuffer::StorageBuffer(uint32_t size, const StorageBufferSpec &spec) : m_spec(spec), size(size)
 	{
         Ref<StorageBuffer> instance(this);
         Renderer::Submit([instance]() mutable { instance->InvalidateRenderThread(); });

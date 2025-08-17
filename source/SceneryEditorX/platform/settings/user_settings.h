@@ -13,9 +13,9 @@
 #pragma once
 #include <filesystem>
 #include <map>
-#include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/project/project_settings.h>
 #include <string>
+#include "SceneryEditorX/project/project_settings.h"
+#include "SceneryEditorX/utils/pointers.h"
 
 /// -------------------------------------------------------
 

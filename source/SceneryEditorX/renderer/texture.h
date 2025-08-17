@@ -11,12 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
-
-#include <SceneryEditorX/renderer/vulkan/vk_image.h>
-#include <SceneryEditorX/utils/pointers.h>
+#include "SceneryEditorX/asset/asset.h"
+#include "vulkan/vk_buffers.h"
+#include "vulkan/vk_enums.h"
+#include "vulkan/vk_image.h"
 
 /// -------------------------------------------------------
 

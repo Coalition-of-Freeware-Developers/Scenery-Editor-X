@@ -280,13 +280,13 @@ namespace SceneryEditorX
 	 *
 	 * @note - The values in this enum are designed to be compatible with Vulkan's resource types.
 	 */
-	enum class ResourceType : uint16_t  // NOLINT(performance-enum-size)
+    enum class ResourceType : uint16_t // NOLINT(performance-enum-size)
     {
         None = 0,
         UniformBuffer,
-        UniformBufferSet,
+        UniformSet,
         StorageBuffer,
-        StorageBufferSet,
+        StorageSet,
         Texture2D,
         TextureCube,
         Image2D

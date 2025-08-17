@@ -11,13 +11,14 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/buffers/index_buffer.h>
-#include <SceneryEditorX/renderer/fonts/font.h>
-#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
-#include <SceneryEditorX/utils/math/aabb.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer_set.h>
+#include <Math/includes/aabb.h>
+
+#include "texture.h"
+#include "buffers/index_buffer.h"
+#include "buffers/uniform_buffer_set.h"
+#include "fonts/font.h"
+#include "vulkan/vk_cmd_buffers.h"
+#include "vulkan/vk_render_pass.h"
 
 /// -------------------------------------------------------
 

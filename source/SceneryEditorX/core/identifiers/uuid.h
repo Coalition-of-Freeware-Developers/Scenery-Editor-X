@@ -54,10 +54,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <functional>
-#include <vector>
-#include <string>
 #include <array>
+#include <functional>
+#include <string>
+#include <vector>
 
 /// -------------------------------------------------------
 

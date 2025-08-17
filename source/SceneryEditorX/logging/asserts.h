@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
+#include "SceneryEditorX/core/base.hpp"
 #if !defined(SEDX_NO_LOGGING)
-#include <SceneryEditorX/logging/logging.hpp>
+#include "logging.hpp"
 #endif
 
 /// -------------------------------------------------------

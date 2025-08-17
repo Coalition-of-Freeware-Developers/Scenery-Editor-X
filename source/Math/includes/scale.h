@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/vector.h>
+#include <Math/includes/matrix.h>
+#include <Math/includes/vector.h>
 
 /// -------------------------------------------------------
 

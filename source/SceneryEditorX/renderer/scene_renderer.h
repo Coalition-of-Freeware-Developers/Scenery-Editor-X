@@ -13,22 +13,24 @@
 #pragma once
 #include <cstdint>
 #include <map>
-#include <SceneryEditorX/asset/mesh/mesh.h>
-#include <SceneryEditorX/project/project_settings.h>
-#include <SceneryEditorX/renderer/2d_renderer.h>
-#include <SceneryEditorX/renderer/buffers/framebuffer.h>
-#include <SceneryEditorX/renderer/buffers/storage_buffer_set.h>
-#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
-#include <SceneryEditorX/renderer/camera.h>
-#include <SceneryEditorX/renderer/compute_pipeline.h>
-#include <SceneryEditorX/renderer/debug_renderer.h>
-#include <SceneryEditorX/renderer/shaders/shader_definitions.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/vulkan/vk_image.h>
-#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/vector.h>
+
+#include <Math/includes/matrix.h>
+#include <Math/includes/vector.h>
+
+#include "2d_renderer.h"
+#include "camera.h"
+#include "compute_pipeline.h"
+#include "debug_renderer.h"
+#include "texture.h"
+#include "SceneryEditorX/asset/mesh/mesh.h"
+#include "SceneryEditorX/project/project_settings.h"
+#include "SceneryEditorX/scene/material.h"
+#include "buffers/framebuffer.h"
+#include "buffers/storage_buffer_set.h"
+#include "buffers/vertex_buffer.h"
+#include "shaders/shader_definitions.h"
+#include "vulkan/vk_image.h"
+#include "vulkan/vk_render_pass.h"
 
 /// -------------------------------------------------------
 
@@ -177,21 +179,17 @@ namespace SceneryEditorX
 		virtual ~SceneRenderer();
 
 		void Init();
-
 		void Shutdown() const;
+        void BeginScene(const SceneRendererCamera &camera);
+        void EndScene();
 
 		///< Should only be called at initialization.
 		void InitOptions();
 
 		void SetScene(const Ref<Scene> &scene);
-
 		void SetViewportSize(uint32_t width, uint32_t height);
 
-		void UpdateGTAOData();
-
-		void BeginScene(const SceneRendererCamera& camera);
-		void EndScene();
-
+        void UpdateGTAOData();
 		static void InsertGPUPerfMarker(Ref<CommandBuffer> renderCommandBuffer, const std::string& label, const Vec4& markerColor = {});
 		static void BeginGPUPerfMarker(Ref<CommandBuffer> renderCommandBuffer, const std::string& label, const Vec4& markerColor = {});
 		static void EndGPUPerfMarker(const Ref<CommandBuffer> &renderCommandBuffer);
@@ -254,7 +252,6 @@ namespace SceneryEditorX
 		void SetOpacity(float opacity) { m_Opacity = opacity; }
 
 		const Mat4& GetScreenSpaceProjectionMatrix() const { return m_ScreenSpaceProjectionMatrix; }
-
 		const Statistics& GetStatistics() const { return m_Statistics; }
 
 		bool IsReady() const { return m_ResourcesCreatedGPU; }
@@ -364,8 +361,8 @@ namespace SceneryEditorX
 			Mat4 View;
 			float SplitDepth;
 		};
-		void CalculateCascades(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3& lightDirection) const;
-		void CalculateCascadesManualSplit(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3& lightDirection) const;
+		void CalculateCascades(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3 &lightDirection) const;
+		void CalculateCascadesManualSplit(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3 &lightDirection) const;
 
 		void UpdateStatistics();
 
@@ -394,7 +391,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		struct UBCamera
+		struct UBOCamera
 		{
             ///< Projection with near and far inverted
 			Mat4 ViewProjection;
@@ -413,7 +410,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		struct UBScreenData
+		struct UBOScreenData
 		{
 			Vec2 InvFullResolution;
 			Vec2 FullResolution;
@@ -423,7 +420,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		struct UBShadow
+		struct UBOShadow
 		{
 			Mat4 ViewProjection[4];
 		} ShadowData;
@@ -440,7 +437,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		struct UBPointLights
+		struct UBOPointLights
 		{
 			uint32_t Count { 0 };
 			Vec3 Padding {};
@@ -449,7 +446,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		struct UBSpotLights
+		struct UBOSpotLights
 		{
 			uint32_t Count{ 0 };
 			Vec3 Padding{};
@@ -458,14 +455,14 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		struct UBSpotShadowData
+		struct UBOSpotShadowData
 		{
 			Mat4 ShadowMatrices[1000]{};
 		} SpotShadowDataUB;
 
         /// -------------------------------------------------------
 
-		struct UBScene
+		struct UBOScene
 		{
 			DirLight Lights;
 			Vec3 CameraPosition;
@@ -474,7 +471,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-		struct UBRendererData
+		struct UBORendererData
 		{
 			Vec4 CascadeSplits;
 			uint32_t TilesCountX { 0 };
@@ -607,41 +604,37 @@ namespace SceneryEditorX
         /// -------------------------------------------------------
 
 		Vec2 FocusPoint = { 0.5f, 0.5f };
-
+        Ref<Material> m_WireframeMaterial;
 		Ref<Material> m_CompositeMaterial;
 		Ref<Material> m_LightCullingMaterial;
 
 		Ref<Pipeline> m_GeometryPipeline;
 		Ref<Pipeline> m_TransparentGeometryPipeline;
 		Ref<Pipeline> m_GeometryPipelineAnim;
+        Ref<Pipeline> m_PreDepthPipeline;
+        Ref<Pipeline> m_PreDepthTransparentPipeline;
+        Ref<Pipeline> m_PreDepthPipelineAnim;
+        Ref<Pipeline> m_ShadowPassPipelines[4];
+        Ref<Pipeline> m_ShadowPassPipelinesAnim[4];
+        Ref<Pipeline> m_SkyboxPipeline;
 
-		Ref<RenderPass> m_SelectedGeometryPass;
-		Ref<RenderPass> m_SelectedGeometryAnimPass;
+        Ref<Material> m_PreDepthMaterial;
 		Ref<Material> m_SelectedGeometryMaterial;
 		Ref<Material> m_SelectedGeometryMaterialAnim;
+        Ref<Material> m_ShadowPassMaterial;
+        Ref<Material> m_SkyboxMaterial;
+        Ref<Material> m_DOFMaterial;
 
 		Ref<RenderPass> m_GeometryWireframePass;
 		Ref<RenderPass> m_GeometryWireframeAnimPass;
 		Ref<RenderPass> m_GeometryWireframeOnTopPass;
 		Ref<RenderPass> m_GeometryWireframeOnTopAnimPass;
-		Ref<Material> m_WireframeMaterial;
-
-		Ref<Pipeline> m_PreDepthPipeline;
-		Ref<Pipeline> m_PreDepthTransparentPipeline;
-		Ref<Pipeline> m_PreDepthPipelineAnim;
-		Ref<Material> m_PreDepthMaterial;
-
+        Ref<RenderPass> m_SelectedGeometryPass;
+        Ref<RenderPass> m_SelectedGeometryAnimPass;
 		Ref<RenderPass> m_CompositePass;
-
-		Ref<Pipeline> m_ShadowPassPipelines[4];
-		Ref<Pipeline> m_ShadowPassPipelinesAnim[4];
 		Ref<RenderPass> m_EdgeDetectionPass;
-		Ref<Material> m_ShadowPassMaterial;
-		Ref<Pipeline> m_SkyboxPipeline;
-		Ref<Material> m_SkyboxMaterial;
 		Ref<RenderPass> m_SkyboxPass;
 		Ref<RenderPass> m_DOFPass;
-		Ref<Material> m_DOFMaterial;
 
 		Ref<ComputePipeline> m_LightCullingPipeline;
 

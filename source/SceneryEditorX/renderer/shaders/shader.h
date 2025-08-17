@@ -11,11 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/shaders/shader_resource.h>
-#include <SceneryEditorX/renderer/shaders/shader_uniforms.h>
-#include <SceneryEditorX/utils/filestreaming/filestream_reader.h>
-#include <SceneryEditorX/utils/filestreaming/filestream_writer.h>
-#include <SceneryEditorX/renderer/buffers/uniform_buffer.h>
+#include "shader_resource.h"
+#include "shader_uniforms.h"
+#include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
+#include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
+#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 
 /// -------------------------------------------------------
 

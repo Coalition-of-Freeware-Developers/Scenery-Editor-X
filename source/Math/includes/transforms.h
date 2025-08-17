@@ -11,16 +11,18 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/base.hpp>
-
-
+#include <Math/math_config.h>
+//#include <SceneryEditorX/core/base.hpp>
+#include <Math/includes/mat4.h>
+#include <Math/includes/vector.h>
+#include <Math/includes/quat.h>
 
 /// -------------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    class Transforms
+	class XMATH_API Transforms
     {
     public:
 

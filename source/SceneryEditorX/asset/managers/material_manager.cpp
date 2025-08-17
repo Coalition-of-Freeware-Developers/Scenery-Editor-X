@@ -10,7 +10,7 @@
 * Created: 8/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/managers/material_manager.h>
+#include "material_manager.h"
 
 /// -------------------------------------------------------
 

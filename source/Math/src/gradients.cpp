@@ -12,7 +12,7 @@
 */
 #include <algorithm>
 #include <initializer_list>
-#include <SceneryEditorX/utils/math/gradients.h>
+#include <Math/includes/gradients.h>
 
 /// -----------------------------------------------------
 

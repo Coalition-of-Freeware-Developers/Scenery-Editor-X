@@ -36,7 +36,6 @@ FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.co
 FILE(GLOB SERIALIZER_FILES serialization/*.h serialization/*.cpp serialization/*.hpp)
 FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
 
-FILE(GLOB UTILS_MATH utils/math/*.cpp utils/math/*.h utils/math/*.hpp)
 FILE(GLOB UTILS_REFLECTION utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
 FILE(GLOB UTILS_CONVERSIONS utils/conversions/*.cpp utils/conversions/*.h utils/conversions/*.hpp)
 FILE(GLOB UTILS_FILESTREAM utils/filestreaming/*.cpp utils/filestreaming/*.h utils/filestreaming/*.hpp)
@@ -95,7 +94,6 @@ ADD_LIBRARY(AppCore
 	${FONT_CODE}
 	${UI_PANELS}
 	${UI_ACTIONS}
-	${UTILS_MATH}
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
 	${UTILS_FILESTREAM}
@@ -276,9 +274,6 @@ SOURCE_GROUP("Utilities" FILES
 	utils/string_utils.h
 	utils/system_detection.h
 )
-SOURCE_GROUP("Utilities/Math" FILES
-	${UTILS_MATH}
-)
 SOURCE_GROUP("Utilities/File Streaming" FILES
 	${UTILS_FILESTREAM}
 )
@@ -408,6 +403,7 @@ ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
 TARGET_INCLUDE_DIRECTORIES(AppCore
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
+		${CMAKE_SOURCE_DIR}/source/Math/includes
 		${CMAKE_SOURCE_DIR}/dependency
 		${CMAKE_SOURCE_DIR}/dependency/entt/src
         ${CMAKE_SOURCE_DIR}/dependency/imgui
@@ -438,6 +434,7 @@ TARGET_LINK_LIBRARIES(AppCore
         dxgi
         d3d12
         Shell32.lib
+		xMath
 )
 
 # --------------------------------

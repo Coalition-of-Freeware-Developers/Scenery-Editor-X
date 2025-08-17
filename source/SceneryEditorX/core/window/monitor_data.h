@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,9 +12,7 @@
 */
 #pragma once
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/core/base.hpp>
-#include <string>
-#include <vector>
+#include "SceneryEditorX/core/base.hpp"
 
 /// --------------------------------------------
 

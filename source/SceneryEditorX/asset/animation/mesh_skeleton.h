@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/math/quat.h>
-#include <SceneryEditorX/utils/math/vec3.h>
-#include <SceneryEditorX/asset/animation/animation.h>
+#include <Math/includes/quat.h>
+#include <Math/includes/vec3.h>
+#include "animation.h"
 
 /// -------------------------------------------------------
 

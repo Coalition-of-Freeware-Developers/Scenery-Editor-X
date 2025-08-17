@@ -10,17 +10,17 @@
 * Created: 11/8/2025
 * -------------------------------------------------------
 */
+#include <cmath>
 #include <cstdint>
 #include <vector>
-#include <cmath>
 
-#include <SceneryEditorX/asset/animation/animation.h>
-#include <SceneryEditorX/asset/managers/asset_manager.h>
-#include <SceneryEditorX/asset/mesh/mesh.h>
-#include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
+#include "animation.h"
 #include <algorithm>
+#include <Math/includes/math_utils.h>
+#include "SceneryEditorX/asset/managers/asset_manager.h"
+#include "SceneryEditorX/asset/mesh/mesh.h"
+#include "SceneryEditorX/core/memory/memory.h"
+#include "SceneryEditorX/project/project.h"
 
 /// -------------------------------------------------------
 

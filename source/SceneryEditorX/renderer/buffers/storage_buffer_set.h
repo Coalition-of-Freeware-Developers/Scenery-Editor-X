@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <map>
-#include <SceneryEditorX/logging/asserts.h> 
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/buffers/storage_buffer.h>
+#include "storage_buffer.h"
+#include "SceneryEditorX/logging/asserts.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 /// -------------------------------------------------------
 
@@ -24,7 +24,8 @@ namespace SceneryEditorX
     class StorageBufferSet : public RefCounted
     {
     public:
-        explicit StorageBufferSet(StorageBufferSpec spec, uint32_t size, uint32_t framesInFlight) : m_spec(std::move(spec)), m_framesInFlight(framesInFlight)
+        explicit StorageBufferSet(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight)
+            : m_spec(spec), m_framesInFlight(framesInFlight)
         {
             if (framesInFlight == 0)
                 m_framesInFlight = Renderer::GetRenderData().framesInFlight;
@@ -33,13 +34,13 @@ namespace SceneryEditorX
                 storageBuffers[frame] = CreateRef<StorageBuffer>(size, const_cast<StorageBufferSpec&>(m_spec)); 
         }
 
-        virtual ~StorageBufferSet() override = default;
+        ~StorageBufferSet() override = default;
 
         /// -------------------------------------------------------
 
         Ref<StorageBuffer> Get()
         {
-            const uint32_t frame = Renderer::GetCurrentFrameIndex();
+            uint32_t frame = Renderer::GetCurrentFrameIndex();
             return Get(frame);
         }
 
@@ -47,7 +48,7 @@ namespace SceneryEditorX
 
         Ref<StorageBuffer> GetRenderThread()
         {
-            const uint32_t frame = Renderer::GetCurrentRenderThreadFrameIndex();
+            uint32_t frame = Renderer::GetCurrentRenderThreadFrameIndex();
             return Get(frame);
         }
 
@@ -63,7 +64,7 @@ namespace SceneryEditorX
 
         void Set(Ref<StorageBuffer> storageBuffer, uint32_t frame)
         {
-            storageBuffers[frame] = std::move(storageBuffer);
+            storageBuffers[frame] = storageBuffer;
         }
 
         /// -------------------------------------------------------
@@ -76,7 +77,7 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-        static Ref<StorageBufferSet> Create(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight = 0);
+        //static Ref<StorageBufferSet> Create(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight = 0);
 
         /// -------------------------------------------------------
 

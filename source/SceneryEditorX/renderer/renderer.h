@@ -11,13 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/threading/render_thread.h>
-#include <SceneryEditorX/renderer/command_queue.h>
-#include <SceneryEditorX/renderer/compute_pass.h>
-#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_render_pass.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/scene/scene.h>
+#include "command_queue.h"
+#include "compute_pass.h"
+#include "SceneryEditorX/core/threading/render_thread.h"
+#include "SceneryEditorX/scene/material.h"
+#include "SceneryEditorX/scene/scene.h"
+
+#include "buffers/index_buffer.h"
+#include "vulkan/vk_cmd_buffers.h"
+#include "vulkan/vk_render_pass.h"
 
 /// -------------------------------------------------------
 
@@ -142,7 +144,6 @@ namespace SceneryEditorX
 		GLOBAL void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
         GLOBAL void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 
-        //GLOBAL CommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
     private:
         INTERNAL CommandQueue &GetCommandQueue();
 

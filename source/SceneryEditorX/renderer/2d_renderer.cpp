@@ -10,12 +10,12 @@
 * Created: 24/7/2025
 * -------------------------------------------------------
 */
+#include "2d_renderer.h"
 #include <codecvt>
-#include <SceneryEditorX/renderer/2d_renderer.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/scene/material.h>
-#include <SceneryEditorX/renderer/fonts/msdf_impl.h>
+#include "renderer.h"
+#include "SceneryEditorX/scene/material.h"
+#include "fonts/msdf_impl.h"
+#include "vulkan/vk_cmd_buffers.h"
 
 /// -------------------------------------------------------
 namespace SceneryEditorX
@@ -1423,25 +1423,25 @@ namespace SceneryEditorX
 				auto& bufferPtr = GetWriteableTextBuffer();
 				bufferPtr->Position = transform * Vec4((float)pl, (float)pb, 0.0f, 1.0f);
 				bufferPtr->Color = color;
-				bufferPtr->TexCoord = { l, b };
+                bufferPtr->TexCoord = Vec2(static_cast<float>(l), static_cast<float>(b));
 				bufferPtr->TexIndex = textureIndex;
 				bufferPtr++;
 
 				bufferPtr->Position = transform * Vec4((float)pl, (float)pt, 0.0f, 1.0f);
 				bufferPtr->Color = color;
-				bufferPtr->TexCoord = { l, t };
+                bufferPtr->TexCoord = Vec2(static_cast<float>(l), static_cast<float>(t));
 				bufferPtr->TexIndex = textureIndex;
 				bufferPtr++;
 
 				bufferPtr->Position = transform * Vec4((float)pr, (float)pt, 0.0f, 1.0f);
 				bufferPtr->Color = color;
-				bufferPtr->TexCoord = { r, t };
+                bufferPtr->TexCoord = Vec2(static_cast<float>(r), static_cast<float>(t));
 				bufferPtr->TexIndex = textureIndex;
 				bufferPtr++;
 
 				bufferPtr->Position = transform * Vec4((float)pr, (float)pb, 0.0f, 1.0f);
 				bufferPtr->Color = color;
-				bufferPtr->TexCoord = { r, b };
+                bufferPtr->TexCoord = Vec2(static_cast<float>(r), static_cast<float>(b));
 				bufferPtr->TexIndex = textureIndex;
 				bufferPtr++;
 

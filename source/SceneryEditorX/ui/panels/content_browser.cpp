@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <Editor/ui/ui_manager.h>
-#include <SceneryEditorX/ui/ui.h>
+
+#include "SceneryEditorX/ui/ui.h"
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 

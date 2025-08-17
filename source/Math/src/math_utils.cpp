@@ -10,10 +10,10 @@
 * Created: 12/8/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/utils/math/math_utils.h>
-#include <SceneryEditorX/utils/math/quat.h>
-#include <SceneryEditorX/utils/math/transforms.h>
-#include <SceneryEditorX/utils/math/vector.h>
+#include <Math/includes/math_utils.h>
+#include <Math/includes/quat.h>
+#include <Math/includes/transforms.h>
+#include <Math/includes/vector.h>
 
 /// -----------------------------------------------------
 

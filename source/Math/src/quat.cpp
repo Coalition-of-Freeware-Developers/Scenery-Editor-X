@@ -11,10 +11,15 @@
 * -------------------------------------------------------
 */
 // ReSharper disable IdentifierTypo
-#include <SceneryEditorX/utils/math/quat.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
-#if TRACY_ENABLE
-#include <tracy/Tracy.hpp>
+#include <Math/includes/quat.h>
+#include <Math/includes/math_utils.h>
+// Optional Tracy profiling: only enabled if both XMATH_ALLOW_TRACY and TRACY_ENABLE are defined by build system
+#if defined(XMATH_ALLOW_TRACY) && defined(TRACY_ENABLE)
+	#include <tracy/Tracy.hpp>
+#else
+	#ifndef ZoneScoped
+		#define ZoneScoped (void)0
+	#endif
 #endif
 
 /// -----------------------------------------------------
@@ -679,7 +684,7 @@ namespace SceneryEditorX
 		///< Calculate the unit quaternion that rotates Vector3::FORWARD to face in the specified forward direction.
 		const Quat q1 = LookRotation(lookAt);
 
-		
+
 		/// We can't preserve the upwards direction if the forward and upwards
 		/// vectors are linearly dependent (collinear).
 	    if (SceneryEditorX::Dot(SceneryEditorX::Cross(lookAt, upDirection), SceneryEditorX::Cross(lookAt, upDirection)) == 0.0f)

@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/2d_renderer.h>
+#include "2d_renderer.h"
 
 /// ---------------------------------------------------------
 

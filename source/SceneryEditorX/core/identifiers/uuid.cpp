@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -19,12 +19,12 @@
 * uniqueness across multiple threads and application instances.
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/identifiers/uuid.h>
-#include <random>
+#include "uuid.h"
 #include <algorithm>
-#include <string>
-#include <stdexcept>
 #include <array>
+#include <random>
+#include <stdexcept>
+#include <string>
 
 /// -------------------------------------------------------
 

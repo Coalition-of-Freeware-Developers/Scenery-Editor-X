@@ -11,13 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "SceneryEditorX/core/memory/memory.h"
+#include "SceneryEditorX/renderer/vulkan/resource.h"
+#include "SceneryEditorX/renderer/vulkan/vk_enums.h"
 #include <cstdint>
-#include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/renderer/vulkan/resource.h>
-#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
-#include <SceneryEditorX/logging/asserts.h>
-#include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------

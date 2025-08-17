@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/formatter.h>
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
-#include <SceneryEditorX/utils/vulkan/vk_includes.h>
+#include "SceneryEditorX/utils/formatter.h"
+#include "SceneryEditorX/utils/vulkan/vk_includes.h"
 
 /// -------------------------------------------------------
 

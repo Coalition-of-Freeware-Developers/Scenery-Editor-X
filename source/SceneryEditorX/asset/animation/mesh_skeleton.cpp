@@ -10,11 +10,11 @@
 * Created: 11/8/2025
 * -------------------------------------------------------
 */
+#include "mesh_skeleton.h"
 #include <algorithm>
-#include <SceneryEditorX/asset/animation/mesh_skeleton.h>
-#include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/utils/string_utils.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
+#include <Math/includes/math_utils.h>
+#include "SceneryEditorX/logging/asserts.h"
+#include "SceneryEditorX/utils/string_utils.h"
 
 /// -------------------------------------------------------
 

@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include "SceneryEditorX/renderer/vulkan/vk_allocator.h"
 
 /// ----------------------------------------------------------
 
@@ -30,9 +30,7 @@ namespace SceneryEditorX
     class IndexBuffer : public RefCounted
     {
     public:
-
         IndexBuffer(uint64_t size);
-
 		IndexBuffer(const void *data, uint64_t size = 0);
 
         /**

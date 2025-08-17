@@ -11,6 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <cstdint>
+#include <Math/includes/vector.h>
+#include <Math/math_config.h>
 
 /// -----------------------------------------------------
 

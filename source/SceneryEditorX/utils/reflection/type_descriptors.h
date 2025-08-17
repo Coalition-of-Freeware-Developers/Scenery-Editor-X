@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,12 +12,12 @@
 */
 #pragma once
 #include <optional>
-#include <SceneryEditorX/utils/reflection/type_names.h>
-#include <SceneryEditorX/utils/reflection/type_utils.h>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
+#include "type_names.h"
+#include "type_utils.h"
 
 /// -------------------------------------------------------
 

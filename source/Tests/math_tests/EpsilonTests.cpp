@@ -2,7 +2,7 @@
 #include <limits>
 // Pull in epsilon explicitly and umbrella for aliases
 #include <SceneryEditorX/utils/math/epsilon.h>
-#include <SceneryEditorX/utils/math/math.h>
+#include <Math/includes/xmath.hpp>
 
 TEST_CASE("epsilon<T>() returns std::numeric_limits<T>::epsilon", "[math][epsilon]") {
     REQUIRE(SceneryEditorX::Utils::epsilon<float>() == std::numeric_limits<float>::epsilon());

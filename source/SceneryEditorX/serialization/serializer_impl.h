@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/identifiers/identifier.h>
-#include <SceneryEditorX/serialization/serializer_reader.h>
-#include <SceneryEditorX/serialization/serializer_writer.h>
-#include <SceneryEditorX/utils/reflection/type_descriptors.h>
+#include "serializer_reader.h"
+#include "serializer_writer.h"
+#include "SceneryEditorX/core/identifiers/identifier.h"
+#include "SceneryEditorX/utils/reflection/type_descriptors.h"
 
 /// -------------------------------------------------------
 	

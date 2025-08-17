@@ -11,7 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/utils/math/math_utils.h>
+#include <Math/math_config.h>
+#include <Math/includes/math_utils.h>
 
 /// -----------------------------------------------------
 
@@ -34,7 +35,7 @@ namespace SceneryEditorX
 	 * @warning Negative color values or values > 1.0 are valid for HDR workflows but
 	 *          may produce unexpected results when converted to integer formats
 	 */
-	class Color
+	class XMATH_API Color
     {
     public:
     	/**
@@ -175,7 +176,7 @@ namespace SceneryEditorX
 		 * Color blue = Color::RGBHex(0x0000FF);    // Pure blue
 		 * Color yellow = Color::RGBHex(0xFFFF00);  // Pure yellow
 		 * Color cyan = Color::RGBHex(0x00FFFF);    // Pure cyan
-		 * @endcode 
+		 * @endcode
 		 */
         static Color RGBHex(uint32_t hex);
 
@@ -193,7 +194,7 @@ namespace SceneryEditorX
          * Color opaqueGreen = Color::RGBAHex(0x00FF00FF); // Fully opaque green
          * Color blue = Color::RGBAHex(0x0000FFFF); // Fully opaque blue
          * Color transparentBlack = Color::RGBAHex(0x00000000); // Transparent black
-         * @endcode 
+         * @endcode
          */
 		static Color RGBAHex(uint32_t hex);
 
@@ -215,7 +216,7 @@ namespace SceneryEditorX
 		 * Color green = Color::HSV(120.0f, 1.0f, 1.0f); // Pure green
 		 * Color blue = Color::HSV(240.0f, 1.0f, 1.0f); // Pure blue
 		 * Color yellow = Color::HSV(60.0f, 1.0f, 1.0f); // Pure yellow
-		 * @endcode 
+		 * @endcode
 		 */
         static Color HSV(float h, float s, float v);
 
@@ -235,7 +236,7 @@ namespace SceneryEditorX
          * Color green = Color::RGBA(0, 255, 0);        // Fully opaque green
          * Color blue = Color::RGBA(0, 0, 255);         // Fully opaque blue
          * Color semiTransparentYellow = Color::RGBA(255, 255, 0, 128); // Yellow with 50% opacity
-         * @endcode 
+         * @endcode
          */
 		static Color RGBA(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t a = 255) { return RGBA8(r, g, b, a); }
 
@@ -645,7 +646,7 @@ namespace SceneryEditorX
 		 * @note - This does not modify the original color, but returns a new instance
 		 * @note - Alpha value is not clamped to [0.0, 1.0] range, allowing for HDR effects
 		 * @note - Negative values or values > 1.0 may produce unexpected results
-		 * 
+		 *
 		 * @code
 		 * Color original(1.0f, 0.5f, 0.0f, 1.0f); // Original color (orange)
 		 * Color semiTransparent = original.WithAlpha(0.5f); // New color with 50% opacity
@@ -677,7 +678,7 @@ namespace SceneryEditorX
 		 * color.rgba[0] = 0.8f; // Modify red component (now 0.8, 0.5, 0.0, 1.0)
 		 * color.rgba[3] = 0.5f; // Modify alpha component (now 0.8, 0.5, 0.0, 0.5)
 		 * @endcode
-		 * 
+		 *
 		 * @note - This union is designed for performance and convenience, but care should be taken
 		 *       to avoid modifying components in a way that breaks the intended color representation.
 		 *       For example, setting alpha to 0.0 will make the color fully transparent, while setting

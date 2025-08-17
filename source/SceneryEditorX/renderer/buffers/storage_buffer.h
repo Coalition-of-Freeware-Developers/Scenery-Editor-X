@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include "SceneryEditorX/renderer/vulkan/vk_allocator.h"
 
 /// -----------------------------------
 
@@ -29,8 +29,8 @@ namespace SceneryEditorX
     class StorageBuffer : public RefCounted
     {
     public:
-        StorageBuffer(uint32_t size, StorageBufferSpec &spec);
-        virtual ~StorageBuffer() override;
+        StorageBuffer(uint32_t size, const StorageBufferSpec &spec);
+        ~StorageBuffer();
 
         void SetData(const void *data, uint32_t size, uint32_t offset = 0);
         void SetRenderThreadData(const void *data, uint32_t size, uint32_t offset = 0) const;
@@ -52,7 +52,7 @@ namespace SceneryEditorX
         VkShaderStageFlagBits shaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
         VmaAllocation m_StagingAlloc = nullptr;
         VkBuffer stagingBuffer = nullptr;
-        uint8_t *localStorage = nullptr;
+        uint8_t* localStorage = nullptr;
     };
 
 }

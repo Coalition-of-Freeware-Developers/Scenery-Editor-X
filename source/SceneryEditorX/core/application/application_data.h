@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,10 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Editor/resource.h>
 #include <filesystem>
-#include <SceneryEditorX/utils/static_states.h>
 #include <string>
+#include "SceneryEditorX/utils/static_states.h"
 
 /// -------------------------------------------------------
 

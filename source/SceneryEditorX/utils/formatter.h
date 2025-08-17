@@ -12,10 +12,19 @@
 */
 #pragma once
 #include <filesystem>
+#include <cmath>      // Ensure math classification functions available before <format>
 #include <format>
 #include <string>
 #include "../core/base.hpp"
-#include <SceneryEditorX/utils/math/vector.h>
+// Prefer public math umbrella include path; fallback to relative if not available
+#if __has_include(<Math/includes/vector.h>)
+#  include <Math/includes/vector.h>
+#elif __has_include("../../Math/includes/vector.h")
+#  include "../../Math/includes/vector.h"
+#elif __has_include("../math/vector.h")
+#  include "../math/vector.h"
+#endif
+#include <cstdlib>
 
 // Optional fmt support: enable by defining SEDX_ENABLE_FMT in targets that set proper encoding flags
 #if defined(SEDX_ENABLE_FMT)

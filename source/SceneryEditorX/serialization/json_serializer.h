@@ -12,7 +12,7 @@
 */
 #pragma once
 #include <nlohmann/json.hpp>
-#include <SceneryEditorX/asset/asset.h>
+#include "SceneryEditorX/asset/asset.h"
 
 /// -------------------------------------------------------
 

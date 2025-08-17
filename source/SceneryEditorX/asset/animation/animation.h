@@ -11,14 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/asset/asset.h>
-#include <SceneryEditorX/asset/asset_types.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
-#include <SceneryEditorX/utils/math/transforms.h>
 #include <vector>
-
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/quat.h>
+#include <Math/includes/math_utils.h>
+#include <Math/includes/matrix.h>
+#include <Math/includes/quat.h>
+#include <Math/includes/transforms.h>
+#include "SceneryEditorX/asset/asset.h"
+#include "SceneryEditorX/asset/asset_types.h"
 
 /// -------------------------------------------------------
 

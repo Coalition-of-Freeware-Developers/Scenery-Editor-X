@@ -12,9 +12,9 @@
 */
 #pragma once
 #include <cmath>
-#include <SceneryEditorX/utils/math/constants.h>
-#include <SceneryEditorX/utils/math/matrix.h>
-#include <SceneryEditorX/utils/math/vector.h>
+#include <Math/includes/constants.h>
+#include <Math/includes/matrix.h>
+#include <Math/includes/vector.h>
 
 /// -------------------------------------------------------
 
@@ -282,7 +282,7 @@ namespace SceneryEditorX
 	    float s = std::sin(angle);
 	    float t = 1.0f - c;
 	    float x = nAxis.x, y = nAxis.y, z = nAxis.z;
-	
+
 	    // Rodrigues' rotation formula for 3x3
         Mat4 result = Mat4::Identity();
 	    result[0][0] = t * x * x + c;

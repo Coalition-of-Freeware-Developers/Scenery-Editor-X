@@ -10,8 +10,8 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/asset/registry/asset_registry.h>
-#include <SceneryEditorX/core/application/application.h>
+#include "asset_registry.h"
+#include "SceneryEditorX/core/application/application.h"
 
 /// -------------------------------------------------------
 

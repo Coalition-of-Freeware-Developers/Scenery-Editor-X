@@ -33,7 +33,7 @@
 #pragma once
 #include <unordered_map>
 #include <variant>
-#include <SceneryEditorX/asset/asset_types.h>
+#include "asset_types.h"
 
 /// -------------------------------------------------------
 
