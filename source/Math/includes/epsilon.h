@@ -33,6 +33,7 @@ namespace SceneryEditorX
 		using std::fabs; // ADL
 		return fabs(static_cast<double>(a - b)) <= static_cast<double>(eps);
 	}
+
 }
 
 /// -----------------------------------------------------

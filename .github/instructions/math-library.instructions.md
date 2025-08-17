@@ -1,11 +1,13 @@
-# Scenery Editor X Math Library – GitHub Copilot Instructions
+# Scenery Editor X Math Library – GitHub Copilot Instructions (2025-08 Refresh)
 
-> Purpose: Teach Copilot (and contributors) how to correctly use, extend, and fix the in‑progress math subsystem located under `source/SceneryEditorX/utils/math`. Follow these rules to maintain consistency (row‑major policy, naming, memory layout, epsilon handling) and avoid reintroducing GLM patterns the engine intentionally removed.
+> Purpose: Guide Copilot (and contributors) in using, extending, and fixing the math subsystem now located under `source/Math` (previously `source/SceneryEditorX/utils/math`). This refresh synchronizes the instruction set with the current implemented code (notably a substantially featured `Mat4`) and clarifies conventions where legacy draft docs drifted from actual implementation.
 
-## 1. Core Principles
+> IMPORTANT: Some earlier draft docs described a left→right "apply A then B" multiplication semantics for row‑major matrices. The **current shipped `Mat4` implementation (see `mat4.h`) stores translation in the last column and documents that in `lhs * rhs`, the `rhs` transform is applied first. This reflects a column‑vector conceptual order (even though storage is row‑major). Until an intentional refactor unifies wording and storage semantics, **treat multiplication as: `result = A * B` applies B, then A.** Keep docs consistent with code to avoid subtle transform bugs.
+
+## 1. Core Principles (Validated / Updated)
 
 1. Lightweight POD types (vectors, matrices, quaternions) with explicit public members – no hidden storage, no dynamic allocation.
-2. Row‑major matrices everywhere (`Mat2`, `Mat3`, `Mat4`). Composition `M = A * B` means “apply A, then B” (left→right) – keep this consistent in docs and code.
+2. Row‑major storage (`Mat2`, `Mat3`, `Mat4`). Current operational semantics: `M = A * B` applies **B first, then A** (column‑vector style). Translation lives in the last column (`m03,m13,m23`). When adding examples, reflect this to avoid confusion. (Open action: optionally introduce explicit helpers like `ComposeTRSRowMajorLeftToRight` or rename docs after any future unification.)
 3. Deterministic binary layout (safe for memcpy, serialization, uniform uploads after appropriate packing or transpose if GPU expects column‑major).
 4. Prefer free functions over member overloads when ambiguous; keep APIs minimal and explicit.
 5. Avoid implicit conversions or silent unit changes (degrees vs radians must be explicit / documented).
@@ -13,16 +15,16 @@
 7. Use `epsilon<T>()`, `epsilonEqual()` for tolerant float comparisons; never raw `==` on floats in algorithms needing robustness.
 8. Don’t add GLM includes or mimic GLM naming; this is an internal math layer.
 
-## 2. Type Overview & Layout
+## 2. Type Overview & Layout (Current State)
 
 | Type | File | Notes |
 |------|------|-------|
 | `Vec2` / `Vec3` / `Vec4` | `vector.h` + `vec*.h` | POD wrappers (`TVector*<float>` aliases). Multiple semantic unions (`x/y/z/w`, `r/g/b/a`, `s/t/p/q`). |
 | `Mat2` | `mat2.h` | Row‑major 2×2, fields: `m00,m01,m10,m11`. |
 | `Mat3` | `mat3.h` | Row‑major 3×3, fields contiguous `m00..m22`. |
-| `Mat4` | `mat4.h` | Row‑major 4×4 (16 floats). Provide constructors / identity helpers. |
+| `Mat4` | `mat4.h` | Row‑major 4×4 (16 floats). Implements: rich constructors, Perspective/Ortho/LookAt, arithmetic, multiply, transpose, inverse (analytical), NearlyEqual, data access. |
 | `Quat` | `quat.h` | (x,y,z,w), identity = (0,0,0,1). Rotation representation – avoid gimbal issues. |
-| `AABB` | `aabb.h` (TODO body) | Axis-aligned box with `min`/`max` (Vec3). Invariant: `min <= max` component-wise. |
+| `AABB` | `aabb.h` (skeleton / TODO) | Axis-aligned box with `min`/`max` (Vec3). Invariant: `min <= max` component-wise. Implementation still pending. |
 | Colors (`Color*`) | `colors.h` / `colors.cpp` | Utility conversion & linear/sRGB helpers (WIP). |
 | Gradient | `gradients.h/.cpp` | Keyed color interpolation; maintain sorted keys. |
 | Projection builders | `projection.h` | Perspective / ortho (row‑major). |
@@ -30,9 +32,12 @@
 | Rotation helpers | `rotation.h` | Axis / Euler builder/apply variants (YXZ order for Euler – document!). |
 | Translation helpers | `translate.h` | Build / post-multiply translation matrices. |
 | Scale helpers | `scale.h` | 2D and 3D scale matrix builders + vector length normalization. |
-| Constants | `constants.h` | `PI`, `TWO_PI`, `HALF_PI`, `DEG_TO_RAD`, etc. Add `RAD_TO_DEG` when needed. |
+| Constants | `constants.h` | Implemented: `PI`, `TWO_PI`, `HALF_PI`, `DEG_TO_RAD`, `RAD_TO_DEG`, `INV_PI`, `INV_TWO_PI`, `PI_OVER_4`, `PI_OVER_6`, `EPSILON_F`, etc. |
 | Epsilon | `epsilon.h` | `epsilon<T>()`, `epsilonEqual()`. Extend with vector overloads if needed. |
-| Dot | `dot.h` | Currently Vec2 / Vec4; add Vec3 specialization (pending). |
+| Dot | `dot.h` | Vec2 / Vec4 implemented; Vec3 still missing (add soon). |
+
+### Path / Include Updates
+The canonical include root has shifted to `#include <Math/...>` (e.g. `#include <Math/includes/mat4.h>`). Update legacy include paths in new code accordingly.
 
 ### Memory / ABI Rules
 * Do not reorder public members – downstream serialization may depend on order.
@@ -42,8 +47,8 @@
 ## 3. Naming & Style Enforcement
 Follow repository coding style: tabs for indentation, Allman braces, max line length 120, Doxygen comments for public APIs. Right-align pointer stars to variable name (e.g., `float *ptr`). All inline math functions should live in headers with `inline` or `constexpr` to avoid ODR issues.
 
-## 4. Vectors – Expected / Missing Operations
-Current headers show constructors but hide arithmetic bodies (`{…}`). When implementing or generating code:
+## 4. Vectors – Implemented vs Missing
+`TVector3<T>` currently implements: constructors, semantic unions, arithmetic (+ - * / with scalar), compound assignments, unary minus, equality (exact), indexing, and free scalar*vector overload. **Still missing** common geometric helpers (Length, Normalize, Dot for Vec3, Cross, Min/Max/Clamp, epsilon-aware equality). Avoid re‑implementing per call site; add canonical helpers.
 
 Recommended minimal operator set per `TVectorN<T>`:
 ```cpp
@@ -56,39 +61,40 @@ constexpr T LengthSq(const TVector3<T>& v) noexcept; // v.x*v.x + ...
 inline T Length(const TVector3<T>& v) noexcept { return std::sqrt(LengthSq(v)); }
 inline TVector3<T> Normalized(const TVector3<T>& v) noexcept { T len = Length(v); return len > epsilon<T>() ? v / len : TVector3<T>{0}; }
 ```
-* Guard divide-by-zero with epsilon.
-* Provide scalar * vector free overload: `s * v` (already started for Vec3).
+* Guard divide-by-zero with epsilon in new division helpers (current raw `/` does not check – callers must ensure non-zero scalar).
+* Scalar * vector free overload exists for `TVector3`; replicate for other dimensions when implementing their arithmetic.
+* When adding `Length` / `Normalize`, prefer free functions in a dedicated header (or extend `math_utils`) to keep POD vector lean.
 
-## 5. Matrices – Construction & Multiplication
-Mat classes must provide:
-* Static `Identity()` returning appropriate diagonal = 1.
-* Constructor from elements (row-major order).
-* Optionally constructor from row vectors for clarity.
-* Multiplication `Mat4 operator*(const Mat4& rhs) const` implementing row-major multiply.
-* `Vec3/Vec4` transform helpers: for position vs direction (w = 1 vs 0). Example:
+## 5. Matrices – Status & Guidance
+`Mat4` already offers: identity (diagonal ctor), zero, translation, scale (2D & 3D), Euler (degrees & radians), Z‑axis angle helper, perspective, orthographic (two variants), look-at, arithmetic (+ - * / with scalar & matrix), Multiply static helpers, transpose (in-place and free), inverse (analytical), determinant/adjoint infrastructure, epsilon comparison (`NearlyEqual`), pointer access, and an `fmt` formatter (when available).
+
+Pending for smaller matrices (`Mat2`, `Mat3`) and cross‑type transform helpers:
+* Implement `Mat3`/`Mat2` parity (identity, multiply, inverse, transpose) – ensure naming matches `Mat4` style.
+* Add `TransformPoint/TransformVector` free functions (with explicit w=1 or 0) once vector-matrix multiply conventions are finalized.
 ```cpp
 inline Vec3 TransformPoint(const Mat4& m, const Vec3& p);
 inline Vec3 TransformVector(const Mat4& m, const Vec3& v);
 ```
-* When adding inversion / transpose later, keep them numerically robust (use cofactors or optimized affine path if last row is `[0 0 0 1]`).
+* Prefer specialized affine inverse path (rotation+translation+scale) over full analytical inverse in hot code; current implementation uses general path — mark a TODO if profiling flags a hotspot.
 
-## 6. Quaternion Usage
+## 6. Quaternion Usage (Still Needed)
 * Identity default constructed.
 * Provide: `Length()`, `LengthSq()`, `Normalize(q)`, `Normalized(q)`, `Conjugate(q)`, `Inverse(q)`, `Dot(q1,q2)`, `Slerp(q1,q2,t)` (shortest path, clamp dot). Mark TODO in code where not yet implemented.
-* Multiplication order: define clearly – use `result = a * b` meaning “apply a, then b” (consistent with matrices). Document this in the header.
+* Multiplication order MUST align with current matrix semantics: with `result = a * b` the **b** rotation occurs first, then **a**. Document clearly when implementing to avoid contradictions.
 * Provide conversion: `Mat3 ToMat3(const Quat&)`, `Mat4 ToMat4(const Quat&)` (embedding into upper-left 3×3). Keep row-major orientation consistent.
 * Euler conversions must document order (e.g., intrinsic Y (yaw), X (pitch), Z (roll) – YXZ).
 
 ## 7. Transform Composition / Decomposition
-`Transforms::Compose(translation, rotationQuat, scale)` must implement `T * R * S` in row-major:
+Target design remains logical TRS composition. Given current column‑vector style application order, building a world matrix as `M = T * R * S` means a point `v` experiences scale, then rotation, then translation (desired). Preserve this when implementing `Transforms::Compose`.
 ```cpp
 Mat4 compose = TranslationMatrix(translation) * RotationMatrix(rotation) * ScaleMatrix(scale);
 ```
 * DO NOT multiply in reverse or silently optimize away order.
-* `Decompose` should: extract translation (last column), derive scale as length of basis vectors, normalize rotation axes, build quaternion. Use epsilon to guard near-zero scale.
+* `Decompose` should: extract translation (last column in current layout), derive scale as length of basis vectors, normalize rotation axes, build quaternion. Use epsilon to guard near-zero scale.
 * Always verify `Decompose(Compose(t,q,s))` reconstructs components within tolerance.
 
-## 8. Projection Builders
+## 8. Projection Builders (Planned vs Existing)
+Current `Mat4` includes static builders `PerspectiveProjection` / `OrthographicProjection` (naming differs from earlier MakeX plan). A unified projection API in `projection.h` is still desirable for consistency & reverse/infinite variants. When adding:
 Functions (planned / to complete) in `projection.h`:
 ```cpp
 Mat4 MakePerspective(float fovYRadians, float aspect, float zNear, float zFar);
@@ -99,7 +105,7 @@ Mat4 MakeOrthographicCentered(float width,float height,float zNear,float zFar);
 ```
 Guidelines:
 * Validate inputs: `aspect > 0`, `zNear > 0`, `zFar > zNear` (unless reverse-Z variant).
-* Reverse-Z swaps mapping so far plane becomes greater precision region near camera; set depth mapping accordingly (1 at near vs default.
+* Reverse-Z swaps mapping so far plane becomes greater precision region near camera; set depth mapping accordingly (1 at near vs default). Ensure renderer depth compare flips (`GREATER`) and clear depth = 0.
 * Keep handedness consistent (right-handed; confirm with engine conventions before finalizing sign of Z terms).
 
 ## 9. Translation / Rotation / Scale Helpers
@@ -107,10 +113,10 @@ Files: `translate.h`, `rotation.h`, `scale.h`.
 Patterns:
 * Provide pure constructors `Translate(Vec3 t)`, `RotateZDegrees(float deg)`, `Scale(Vec3 s)` returning new `Mat4` without modifying globals.
 * Provide post-multiply variants: `RotateZDegrees(const Mat4& m, float deg)` returns `m * Rz` (explicit row-major doc string).
-* Euler: `RotateEulerRadians(Vec3 euler)` uses Y-X-Z order; degrees variant converts via `* DEG_TO_RAD`.
+* Euler: Current `Mat4::RotationDegrees/RotationRadians` implement **Y (yaw), X (pitch), Z (roll)** order (YXZ). Maintain consistency across free helpers and quaternion conversions.
 * Scale2D / Translate2D operate on `Mat3` homogeneous coordinates; keep final row `[0 0 1]`.
 
-## 10. AABB Utilities (Implementation Guidance)
+## 10. AABB Utilities (Implementation Guidance – Still Missing)
 Add to `aabb.h/.cpp` (create `.cpp` if needed):
 ```cpp
 struct AABB {
@@ -131,7 +137,7 @@ struct AABB {
 ```
 * Avoid NaN propagation; if any component becomes NaN during expansion, assert in debug.
 
-## 11. Colors & Gradients
+## 11. Colors & Gradients (WIP)
 * Color types should clearly distinguish byte vs float (naming suffix: `RGBA8` vs `RGBAF`).
 * Provide `FromBytes`, `ToBytes`, `FromSRGBBytes`, `ToSRGBBytes`. Use standard gamma 2.2 (or 2.4 if specified) – document chosen curve.
 * Gradient: always keep keys sorted (`position` 0..1). When adding a key, insert then stable sort or insert in order; clamp evaluation input.
@@ -242,7 +248,7 @@ When scaffolding yet-to-be-done functions, annotate:
 ```
 This helps Copilot not hallucinate behavior without explicit direction.
 
-## 22. Minimal Test Ideas (For Future Catch2 Suites)
+## 22. Minimal Test Ideas (For Future Catch2 Suites – Update as Features Land)
 | Test | Assertion |
 |------|-----------|
 | Identity multiply | `M * I == M` within epsilon |
@@ -252,4 +258,13 @@ This helps Copilot not hallucinate behavior without explicit direction.
 | Perspective mapping | NDC z for `zNear` / `zFar` matches convention |
 
 ---
-**Reminder for Copilot:** Prefer existing helpers (`Transforms::Compose`, rotation/scale builders) over re-deriving matrix math inline. Keep all new math code consistent with row‑major, left→right multiplication semantics, and explicit units.
+## 23. Immediate Shortlist (High-Value Next Steps)
+1. Implement `Dot(Vec3,Vec3)` & `Cross(Vec3,Vec3)` in a new or existing header (e.g. extend `dot.h` or a `vector_ops.h`).
+2. Add vector length / normalize helpers with epsilon guards.
+3. Provide `projection.h` with reverse & infinite perspective variants plus centered ortho.
+4. Introduce `Transforms::Compose` / `Decompose` to remove ad-hoc TRS construction.
+5. Scaffold `quat.h` with documented multiplication semantics (YXZ Euler conversions consistent with matrix helpers).
+6. Implement AABB (expansion, validity) for forthcoming culling work.
+
+---
+**Reminder for Copilot:** Use existing implemented `Mat4` methods where possible; do **not** re‑invent projection or inversion inline. Reflect CURRENT multiplication semantics (rhs first) unless/until code is refactored to match earlier draft wording.

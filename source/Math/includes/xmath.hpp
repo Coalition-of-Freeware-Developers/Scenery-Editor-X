@@ -15,9 +15,11 @@
 #endif
 
 // Public module includes
+// Order matters: vector types must be available before dot/epsilon overloads.
+#include <Math/includes/vector.h>
 #include <Math/includes/constants.h>
-#include <Math/includes/dot.h>
 #include <Math/includes/epsilon.h>
+#include <Math/includes/dot.h>
 #include <Math/includes/math_utils.h>
 #include <Math/includes/matrix.h>
 #include <Math/includes/projection.h>
@@ -26,7 +28,6 @@
 #include <Math/includes/scale.h>
 #include <Math/includes/transforms.h>
 #include <Math/includes/translate.h>
-#include <Math/includes/vector.h>
 
 // Legacy forwarding namespace (kept for backward compatibility with previous API usage)
 namespace SceneryEditorX::Utils

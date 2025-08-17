@@ -1,8 +1,8 @@
-# Scenery Editor X Math Library
+# Scenery Editor X Math Library (2025-08 Update)
 
-> Status: Draft (initial authoring based on current `source/SceneryEditorX/utils/math` layout – fill in implementation details as functions are completed)
+> Status: Living documentation synchronized with current `source/Math` implementation. Earlier drafts referenced the legacy path `source/SceneryEditorX/utils/math`; adjust includes to the new root (`<Math/...>`). This update reflects the now feature-rich `Mat4` and clarifies transform multiplication semantics.
 
-The Scenery Editor X Math Library provides a lightweight, engine‑oriented set of vector, matrix, quaternion, color, gradient, transform, and projection utilities used throughout rendering, asset processing, spatial reasoning, and editor tooling. It replaces external monolithic math dependencies with a small, explicit API tailored to engine needs (deterministic layout, minimal headers, fast inlining, and clear ownership of precision policy).
+The Scenery Editor X Math Library provides a lightweight, engine‑oriented set of vector, matrix, quaternion (planned), color, gradient, transform (planned), and projection utilities used throughout rendering, asset processing, spatial reasoning, and editor tooling. It replaces external monolithic math dependencies with a small, explicit API (deterministic layout, minimal headers, fast inlining, explicit precision & epsilon policy).
 
 ## Goals
 
@@ -12,14 +12,14 @@ The Scenery Editor X Math Library provides a lightweight, engine‑oriented set 
 - Clear separation of primitive types (Vec*, Mat*, Quat) and higher‑level helpers (Transforms, projection, rotation/scale/translation builders)
 - GLM compatibility shims maintained only where needed for transition (clearly marked)
 
-## Directory Layout
+## Directory Layout (Current)
 
 ```text
 utils/math/
-  aabb.h                # Axis-aligned bounding box (planned / placeholder)
+   aabb.h                # Axis-aligned bounding box (placeholder, unimplemented)
   colors.h / .cpp       # Color struct & utility conversions (HSV/RGB, packing, clamping)
   gradients.h / .cpp    # Keyframed color gradient with hashing & evaluation
-  constants.h           # Core mathematical constants (PI, DEG↔RAD, etc.)
+   constants.h           # Core mathematical constants (PI, DEG↔RAD, INV_PI, EPSILON_F, etc.)
   dot.h                 # Dot product overloads (Vec2 / Vec4) – extended forms TBD
   epsilon.h             # Epsilon helpers (epsilon<T>, epsilonEqual)
   mat2.h                # 2×2 matrix (row-major)
@@ -28,12 +28,12 @@ utils/math/
   math_utils.h / .cpp   # Generic helpers (approx comparison, angle conversions, etc.)
   math.h                # Umbrella include for the full math subsystem
   matrix.h / .cpp       # Aggregate matrix include & shared matrix operations
-  projection.h          # Perspective & orthographic projection builders (+ shims)
-  quat.h / .cpp         # Quaternion type & operations
+   projection.h          # (Planned) Consolidated perspective/orthographic builders (currently some live in Mat4)
+   quat.h / .cpp         # (Planned) Quaternion type & operations
   rotation.h            # Axis‑angle & matrix rotation helpers (+ GLM-style wrappers)
   scale.h               # Scale matrix constructors
   translate.h           # Translation matrix constructors
-  transforms.h / .cpp   # Decompose / compose TRS matrices
+   transforms.h / .cpp   # (Planned) Decompose / compose TRS matrices
   vector.h              # Umbrella include for vector templates
   vec2.h / vec3.h / vec4.h  # TVectorN templates with semantic component unions
 ```
@@ -45,18 +45,19 @@ utils/math/
 | `Vec2` / `Vec3` / `Vec4` | Cartesian / color / texture coordinate vectors | Plain aggregates via `TVectorN<T>` | Multiple semantic aliases (`x/y/z/w`, `r/g/b/a`, `s/t/p/q`) |
 | `Mat2` | 2×2 linear ops (2D transforms, UV space) | Row-major scalars | Identity by default |
 | `Mat3` | 3×3 rotation/scale/skew (no translation) | Row-major | Often embedded in `Mat4` upper-left |
-| `Mat4` | Full 4×4 affine/projective transforms | Row-major contiguous floats | API designed for TRS composition, projection, camera matrices |
-| `Quat` | Rotation representation (x,y,z,w) | Scalar members | Right-handed, unit-length expected for rotation |
+| `Mat4` | Full 4×4 affine/projective transforms | Row-major contiguous floats (translation last column) | Rich API: perspective/ortho, look-at, inverse, transpose, arithmetic |
+| `Quat` | Rotation representation (x,y,z,w) | (pending) | Will provide stable rotation accumulation |
 | `Color` | RGBA or linear color | Likely floats (see `colors.h`) | Utility conversions & interpolation |
 | `Gradient` | Time / position mapped colors | Vector of sorted keys | Hashing for cache invalidation |
 
-## Conventions
+## Conventions & Semantics
 
-- **Row-major matrices**: Indexing documented in each header. When interfacing with APIs expecting column-major (e.g., some shading languages), explicit transpose or upload paths handle conversion.
-- **Right-handed coordinate system** unless noted.
-- **Angles**: Radians internally; degree helpers provided (`DEG_TO_RAD`, `RAD_TO_DEG`, `ToRadians`, `ToDegrees`).
-- **Epsilon comparisons**: Use `epsilonEqual` or `IsEqual` from `math_utils` for float stability.
-- **No hidden allocations**: All math types are POD‑like and trivially movable.
+* **Row-major storage**: Matrices store rows contiguously; translation components sit in the last column (`m03, m13, m23`).
+* **Multiplication order (current)**: `A * B` applies **B first, then A** (column-vector conceptual order). Match this in TRS compositions until/unless refactored. When composing TRS manually use `M = T * R * S` so a point experiences S→R→T.
+* **Right-handed coordinate system** (camera/look-at is right-handed). Y-up unless otherwise documented in higher-level engine docs.
+* **Angles**: Core uses radians; degree variants provided where convenient. Convert via `DEG_TO_RAD` / `RAD_TO_DEG` constants (already defined in `constants.h`).
+* **Floating comparison**: Use `epsilonEqual` (scalar) and implement vector/matrix overloads before relying on tolerant comparisons outside scalar scope.
+* **No implicit normalization**: Vector/quaternion normalization (once quats exist) must be explicit to avoid hidden costs.
 
 ## Umbrella Headers
 
@@ -66,7 +67,7 @@ utils/math/
 | `matrix.h` | `mat2.h`, `mat3.h`, `mat4.h` | When only matrix types needed |
 | `vector.h` | `vec2.h`, `vec3.h`, `vec4.h` | Lightweight vector-only usage |
 
-## Transformation Pipeline
+## Transformation Pipeline (Planned Final Form)
 
 Typical object/world transform operations:
 
@@ -76,7 +77,7 @@ Typical object/world transform operations:
    - `S` via uniform / non-uniform scale (`scale.h`)
 2. Compose: `M = Transforms::Compose(translation, rotationQuat, scaleVec)`
 3. For cameras / projections:
-   - `P = Perspective(fovY, aspect, near, far)` or `Orthographic(left,right,bottom,top,near,far)` (in `projection.h`)
+   - `P = Mat4::PerspectiveProjection(aspect, fovDeg, near, far)` (current) OR future `MakePerspective()` in `projection.h`.
    - `V` from inverse of camera world transform (utility TBD / camera system)
    - Final: `MVP = P * V * M`
 4. Decomposition: `Transforms::Decompose(matrix, outT, outR, outS)` for gizmos, animation, or serialization.
@@ -87,36 +88,28 @@ Typical object/world transform operations:
 
 - Lightweight templates `TVectorN<T>`
 - Semantic unions for clarity in different domains (color, texture, position)
-- Basic arithmetic operators (+, -, *, /) return new vectors (inlined)
-- Free scalar * vector overload (e.g., `2.0f * v`)
+Implemented: constructors, arithmetic (+,-,* scalar,/ scalar), compound assigns, unary minus, exact equality, indexing, free scalar*Vec3.
+Missing: Length/LengthSq, Normalize/SafeNormalize, Dot(Vec3), Cross(Vec3), epsilon-aware equality, per-component clamp/min/max/abs, lerp.
 
 ### Matrices (`mat2.h`, `mat3.h`, `mat4.h`)
 
-- Identity by default constructor.
-- Stream (`operator<<`) and `fmt` formatting (for `Mat4`) for logging & debugging.
-- Intended future ops: multiplication, determinant, inverse, transpose (some may be in `.cpp` or pending — fill as implemented).
+`Mat4` implements zero, diagonal (identity), translation, scale (Vec2/Vec3), Euler rotations (degrees & radians YXZ), Z-axis rotation (`Angle`), perspective/orthographic projections, look-at, arithmetic (+,-,*,/ with scalar & matrix), transpose (in-place & free), inverse (analytical), determinant support, `NearlyEqual`, pointer access, `fmt` formatter. `Mat2`/`Mat3` pending parity.
 
-### Quaternions (`quat.h/.cpp`)
+### Quaternions (`quat.h/.cpp`) – Pending
 
-- Stored as `(x, y, z, w)` with identity = (0,0,0,1)
-- Provide construction from axis‑angle and conversion to rotation matrices.
-- Normalize after composite rotations to maintain numerical stability.
+Planned features: axis-angle & Euler (YXZ) constructors, length/normalize, multiply (composition, matching matrix semantics), conjugate/inverse, slerp (shortest path), nlerp fallback, to/from Mat3/Mat4. Document order semantics explicitly when implemented.
 
-### Transforms (`transforms.h/.cpp`)
+### Transforms (`transforms.h/.cpp`) – Pending
 
-- `Compose(translation, rotation, scale)` → `Mat4`
-- `Decompose(mat, outT, outR, outS)` → extracts TRS; asserts validity.
-- Uses epsilon tolerances to counter floating‑point drift.
+Will provide `Compose(Vec3, Quat, Vec3)` building `T * R * S` (consistent with current matrix multiply semantics) and `Decompose` (extract translation from last column, scale from basis lengths, rotation from normalized basis → quaternion).
 
-### Projection (`projection.h`)
+### Projection (`projection.h`) – Planned
 
-- Perspective and orthographic matrix constructors.
-- Maintains GLM‑style compatibility wrappers (namespaced shim) for gradual migration.
+Centralize existing `Mat4::PerspectiveProjection / OrthographicProjection` plus reverse-Z, infinite far, centered ortho, jittered (TAA) variants. Provide consistent validation (fov bounds, aspect>0, near>0, far>near unless reverse/infinite) and depth mapping documentation.
 
 ### Rotation / Scale / Translation Helpers
 
-- Each domain broken into dedicated headers (`rotation.h`, `scale.h`, `translate.h`) for minimal inclusion and compile performance.
-- Provide `Mat4` builders rather than modifying existing matrices in-place (favor explicit construction).
+Higher-level free helpers (or thin wrappers) still desirable for explicit intent (`Translate(m, v)`, `RotateEulerDegrees(m, e)`, etc.) even though many operations exist as `Mat4` statics.
 
 ### Colors & Gradients (`colors.*`, `gradients.*`)
 
@@ -129,7 +122,7 @@ Typical object/world transform operations:
 - `epsilon<T>()` and `epsilonEqual` avoid dependency on GLM while preserving familiar semantics.
 - `IsEqual(a, b, eps)` is a convenience wrapper.
 
-### AABB (`aabb.h`)
+### AABB (`aabb.h`) – Placeholder
 
 - Placeholder for axis-aligned bounding box type to support culling / spatial queries.
 - Planned features: expansion, overlap test, ray intersection, center/extent queries.
@@ -163,7 +156,7 @@ Vec3 sum = a + b;        // (5,7,9)
 Vec3 scaled = 2.0f * a;  // (2,4,6)
 ```
 
-### Compose & Decompose Transform
+### Compose & Decompose Transform (Future API Sketch)
 
 ```cpp
 #include <SceneryEditorX/utils/math/math.h>
@@ -188,7 +181,7 @@ float aspect = 1920.0f / 1080.0f;
 float nearZ = 0.1f;
 float farZ  = 500.0f;
 
-Mat4 proj = Perspective(ToRadians(fovDeg), aspect, nearZ, farZ);
+Mat4 proj = Mat4::PerspectiveProjection(aspect, fovDeg, nearZ, farZ);
 ```
 
 ### Color Gradient Evaluation
@@ -221,7 +214,18 @@ When adding new functionality:
 4. Add unit tests (Catch2) for numerical stability & edge cases (NaN handling, zero-length vectors, degenerate matrices).
 5. Document new APIs in this directory (`docs/math/`), updating dependency and usage sections.
 
-## Pending / TODO Areas
+## Pending / TODO Areas (Priority Roughly Ordered)
+
+1. Vector geometric helpers (Length / Normalize / Dot(Vec3) / Cross).
+2. `dot.h` Vec3 overload.
+3. Quaternion implementation.
+4. `projection.h` (reverse & infinite variants + centered ortho + jitter).
+5. Transforms compose/decompose utilities.
+6. AABB implementation.
+7. Mat2/Mat3 feature parity.
+8. Epsilon overloads for vectors/matrices.
+9. Color space conversions (sRGB ↔ linear) & gradient interpolation finalization.
+10. Affine inverse fast path (if profiling indicates need).
 
 - Complete implementation & docs for `AABB`.
 - Add cross / normalize / length utilities in vector templates (if not already implemented in source).
@@ -230,4 +234,4 @@ When adding new functionality:
 - Expand color space conversions (sRGB ↔ linear, HDR tone mapping helpers).
 
 ---
-*Generated documentation scaffolding – refine as implementation details are finalized.*
+*Document version updated 2025-08; synchronize when new primitives or helpers land.*

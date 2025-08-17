@@ -53,6 +53,16 @@ namespace SceneryEditorX
     XMATH_API float Dot(const Vec3& a, const Vec3& b);
     XMATH_API Vec3 Cross(const Vec3& a, const Vec3& b);
 
+    /// Vector operations (Vec2)
+    XMATH_API float Length(const Vec2& v);
+    XMATH_API float Length2(const Vec2& v);
+    XMATH_API Vec2 Normalize(const Vec2& v);
+
+    /// Vector operations (Vec4)
+    XMATH_API float Length(const Vec4& v);
+    XMATH_API float Length2(const Vec4& v);
+    XMATH_API Vec4 Normalize(const Vec4& v);
+
     /// Rounding helpers
     template <typename T>
     constexpr T RoundDown(T x, T fac)

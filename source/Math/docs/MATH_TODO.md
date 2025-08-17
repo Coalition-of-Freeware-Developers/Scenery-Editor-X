@@ -13,22 +13,22 @@ Use standard markdown checkboxes: `[ ]` unchecked, `[x]` checked.
 
 ---
 ## 1. Global / Cross-Cutting
- 
-- [ ] Add missing constants: `RAD_TO_DEG`, `INV_PI`, `EPSILON_F`, `EPSILON_D` (if not centralized yet)
-- [ ] Ensure consistent naming: choose `DEG_TO_RAD` vs `DEG2RAD` (add alias if needed)
-- [ ] Doxygen comments for all public math APIs
+
+- [x] Add missing constants: `RAD_TO_DEG`, `INV_PI`, `EPSILON_F` (present in `constants.h`) (`EPSILON_D` still TBD)
+- [ ] Ensure consistent naming: choose `DEG_TO_RAD` vs `DEG2RAD` (current is `DEG_TO_RAD`; remove legacy mentions)
+- [ ] Doxygen comments for all public math APIs (Mat4 heavily documented; others pending)
 - [ ] Add vector & matrix overloads for `epsilonEqual` (Vec2/3/4, Quat, Mat2/3/4)
 - [ ] Add relative epsilon compare helper (optional)
 - [ ] Introduce basic Catch2 test suite for math (identity, compose/decompose, etc.)
-- [ ] Add fmt / stream formatters for core types (Vec*, Mat*, Quat, AABB, Colors)
-- [ ] Clarify global coordinate & handedness conventions in docs (right-handed? +Y up?)
-- [ ] Explicitly document Euler order (YXZ) in `rotation.h` & `quat.h`
+- [ ] Add fmt / stream formatters for core types (Vec*, Mat*, Quat, AABB, Colors) (Mat4 done)
+- [x] Clarify global coordinate & handedness conventions in docs (README updated)
+- [x] Explicitly document Euler order (YXZ) in rotation docs / Mat4 comments (quat pending)
 
 ## 2. Vectors (`vec2.h`, `vec3.h`, `vec4.h`, `vector.h`)
- 
-- [ ] Arithmetic operators (+, -, unary -, *, /, compound assignments)
-- [ ] Scalar multiply/divide free operators both orders (`scalar * v`, `v * scalar`)
-- [ ] Equality / inequality (epsilon-aware helpers)
+
+- [x] Arithmetic operators (+, -, unary -, *, /, compound assignments) (implemented for Vec3; verify Vec2/Vec4 parity)
+- [ ] Scalar multiply/divide free operators both orders (`scalar * v`, `v * scalar`) (Vec3 scalar * v present; others pending)
+- [ ] Equality / inequality (epsilon-aware helpers) (exact only now)
 - [ ] `LengthSq`, `Length`, `Normalize`, `Normalized`, safe zero guard
 - [ ] Dot product (Vec3 currently missing in `dot.h`)
 - [ ] Cross product for Vec3
@@ -38,7 +38,7 @@ Use standard markdown checkboxes: `[ ]` unchecked, `[x]` checked.
 - [ ] Per-component floor/ceil/abs helpers (optional)
 
 ## 3. `dot.h`
- 
+
 - [ ] Add `Dot(const Vec3&, const Vec3&)`
 - [ ] Consider templated generic TVectorN fallback (optional)
 
@@ -68,28 +68,28 @@ Use standard markdown checkboxes: `[ ]` unchecked, `[x]` checked.
 - [ ] Stream/fmt formatter
 
 ### `mat4.h`
- 
-- [ ] Full struct definition (currently elided)
-- [ ] Constructors (identity, elements, from rows, from Mat3 + translation)
-- [ ] `Identity()`
-- [ ] Mat4 × Mat4 multiply (row-major)
-- [ ] `TransformPoint` / `TransformVector`
-- [ ] Determinant & optimized affine inverse
-- [ ] Transpose
-- [ ] FromTRS (or wrapper to `Transforms::Compose`)
-- [ ] Optional ToTRS (if not solely in Transforms)
-- [ ] fmt formatter specialization implementation
-- [ ] Epsilon equality
+
+- [x] Full struct definition (present with rich API)
+- [x] Constructors (zero, diagonal identity, rows, initializer list) (Mat3-from ctor pending)
+- [x] `Identity()`
+- [x] Mat4 × Mat4 multiply (implemented with static `Multiply`)
+- [ ] `TransformPoint` / `TransformVector` helpers
+- [x] Determinant & inverse (analytical) (opt affine inverse TODO)
+- [x] Transpose (in-place & free)
+- [ ] FromTRS (pending; to live in `Transforms` or helper)
+- [ ] ToTRS (decompose; planned in `Transforms`)
+- [x] fmt formatter specialization implementation
+- [x] Epsilon equality (`NearlyEqual`)
 
 ## 5. Quaternions (`quat.h/.cpp`)
- 
+
 - [ ] Define visible `Quat` struct (x,y,z,w) with identity default
 - [ ] Axis-angle constructor & `ToAxisAngle`
 - [ ] Euler YXZ constructor & `ToEulerYXZ`
 - [ ] From/To rotation matrix (Mat3 / Mat4)
 - [ ] Length / LengthSq / Normalize / Normalized
 - [ ] Conjugate / Inverse
-- [ ] Multiplication (document order semantics)
+- [ ] Multiplication (document order semantics; must match matrix semantics: rhs first)
 - [ ] RotateVector(Vec3)
 - [ ] Dot(Quat,Quat)
 - [ ] Slerp (shortest path, clamp dot)
@@ -132,13 +132,13 @@ Use standard markdown checkboxes: `[ ]` unchecked, `[x]` checked.
 - [ ] Vector length set / normalization helper (`SetLength` or `Scale(vec,len)`) with zero guard
 
 ## 10. Projection Builders (`projection.h`)
- 
-- [ ] `MakePerspective`
+
+- [ ] `MakePerspective` (current stopgap: `Mat4::PerspectiveProjection`)
 - [ ] `MakePerspectiveInfinite`
 - [ ] `MakePerspectiveReverseZ`
-- [ ] `MakeOrthographic`
+- [ ] `MakeOrthographic` (current stopgap: `Mat4::OrthographicProjection`)
 - [ ] `MakeOrthographicCentered`
-- [ ] Parameter validation & assertions (aspect, near/far ordering)
+- [ ] Parameter validation & assertions (aspect, near/far ordering) (partially in Mat4 static funcs)
 - [ ] Reverse-Z depth mapping verification
 - [ ] Optional left-handed variants (future)
 - [ ] Tests (NDC mapping of near/far)
@@ -163,10 +163,11 @@ Use standard markdown checkboxes: `[ ]` unchecked, `[x]` checked.
 - [ ] Tests (expansion, intersection, validity)
 
 ## 12. Constants (`constants.h`)
- 
-- [ ] Add/verify: `RAD_TO_DEG`, `INV_PI`, `EPSILON_F`, `EPSILON_D`
-- [ ] Consistency audit: naming + duplication avoidance
-- [ ] Documentation alignment with `docs/math/constants_epsilon.md`
+
+- [x] Add/verify: `RAD_TO_DEG`, `INV_PI`, `EPSILON_F`
+- [ ] Add `EPSILON_D` or decide policy (use `std::numeric_limits<double>::epsilon()`)
+- [ ] Consistency audit: naming + duplication avoidance (DEG_TO_RAD vs legacy aliases)
+- [ ] Documentation alignment with `constants_epsilon.md` (pending update applied in this sweep)
 
 ## 13. Epsilon (`epsilon.h`)
  
@@ -186,10 +187,11 @@ Use standard markdown checkboxes: `[ ]` unchecked, `[x]` checked.
 - [ ] Unit tests for utility correctness
 
 ## 15. Matrix Implementation (`matrix.cpp`)
- 
-- [ ] Mat4 multiply (if not header-only)
-- [ ] Transpose & inverse (affine fast path)
-- [ ] Determinant (general & affine specialized)
+
+- [x] Mat4 multiply (implemented static in header; verify cpp implementation parity)
+- [x] Transpose & inverse (general analytical path)
+- [ ] Affine fast path inverse (optimization)
+- [ ] Determinant specialized affine path (if beneficial)
 - [ ] Optional SIMD optimization (future)
 - [ ] Benchmark harness (future)
 

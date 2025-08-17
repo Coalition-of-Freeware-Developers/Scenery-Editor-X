@@ -23,6 +23,10 @@ namespace SceneryEditorX
 	using Vec2 = Utils::TVector2<float>;
 	using Vec3 = Utils::TVector3<float>;
 	using Vec4 = Utils::TVector4<float>;
+
+	#ifndef SEDX_MATH_HAS_VECTOR_ALIASES
+	#define SEDX_MATH_HAS_VECTOR_ALIASES 1
+	#endif
 }
 
 /// -----------------------------------------------------
