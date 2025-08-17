@@ -12,12 +12,8 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
-#include <cstdint>
-#include <SceneryEditorX/utils/vulkan/vk_includes.h>
-#include <Math/includes/xmath.hpp>
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
-#include <Math/includes/math_utils.h>
-// unified include already provides Vulkan declarations
+#include "vk_buffers.h"
+#include "vk_includes.h"
 
 /// -------------------------------------------------------
 

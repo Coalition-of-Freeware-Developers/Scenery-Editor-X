@@ -84,8 +84,8 @@ namespace SceneryEditorX
         {
         auto device = RenderContext::GetCurrentDevice();
         auto memoryAllocator = CreateRef<MemoryAllocator>("IndexBuffer");
-#define USE_STAGING 1
-#if USE_STAGING
+    #define USE_STAGING 1
+    #if USE_STAGING
             VkBufferCreateInfo bufferCreateInfo{};
             bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
             bufferCreateInfo.size = sizeof(instance->indices[0]) * instance->indices.size();
@@ -115,7 +115,7 @@ namespace SceneryEditorX
             device->FlushCmdBuffer(copyCmd);
 
             memoryAllocator->DestroyBuffer(stagingBuffer, stagingBufferAllocation);
-#else
+    #else
             VkBufferCreateInfo indexbufferCreateInfo = {};
             indexbufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
             indexbufferCreateInfo.size = instance->m_Size;
@@ -126,7 +126,7 @@ namespace SceneryEditorX
             void *dstBuffer = memoryAllocator->MapMemory<void>(bufferAlloc);
             memcpy(dstBuffer, instance->m_LocalData.Data, instance->m_Size);
             memoryAllocator->UnmapMemory(bufferAlloc);
-#endif
+    #endif
         });
     };
 
@@ -156,6 +156,7 @@ namespace SceneryEditorX
 
     /// --------------------------------------------
 
+
     /*
     Ref<IndexBuffer> IndexBuffer::Create(const void* data, uint64_t size)
     {
@@ -174,6 +175,7 @@ namespace SceneryEditorX
         return indexBuffer;
     }
     */
+
 
 }
 

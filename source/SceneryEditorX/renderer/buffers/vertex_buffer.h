@@ -21,6 +21,8 @@ namespace SceneryEditorX
     /// Forward Declaration
     enum class PrimitiveType : uint8_t;
 
+    /// ----------------------------------------------------------
+
     /**
      * @class VertexBuffer
      * @brief Manages vertex data storage and configuration in Vulkan.

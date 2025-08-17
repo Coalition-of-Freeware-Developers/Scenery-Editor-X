@@ -11,11 +11,10 @@
 * -------------------------------------------------------
 */
 #define VMA_IMPLEMENTATION
-#include <SceneryEditorX/core/application/application_data.h>
-#include <SceneryEditorX/core/memory/memory.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include "vk_allocator.h"
 #include <vma/vk_mem_alloc.h>
+#include "SceneryEditorX/core/memory/memory.h"
+#include "SceneryEditorX/renderer/render_context.h"
 
 /// -------------------------------------------------------
 

@@ -14,8 +14,8 @@
 #include <Math/includes/vector.h>
 #include "compute_pipeline.h"
 #include "texture.h"
-#include "buffers/storage_buffer_set.h"
-#include "buffers/uniform_buffer_set.h"
+#include "buffers/storage_buffer.h"
+#include "buffers/uniform_buffer.h"
 
 /// -------------------------------------------------------
 

@@ -13,7 +13,6 @@
 #pragma once
 #include <filesystem>
 #include <string>
-#include "SceneryEditorX/utils/static_states.h"
 
 /// -------------------------------------------------------
 

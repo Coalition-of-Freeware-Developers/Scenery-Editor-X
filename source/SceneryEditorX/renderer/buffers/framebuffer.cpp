@@ -10,11 +10,11 @@
 * Created: 26/6/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/renderer/buffers/framebuffer.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include "framebuffer.h"
+#include "SceneryEditorX/core/application/application.h"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/vulkan/vk_swapchain.h"
+#include "SceneryEditorX/renderer/vulkan/vk_util.h"
 
 /// ---------------------------------------------------------
 
