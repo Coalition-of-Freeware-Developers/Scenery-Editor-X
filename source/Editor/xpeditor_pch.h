@@ -85,8 +85,8 @@
 //#include <glm/gtx/quaternion.hpp>
 //#include <glm/gtx/transform.hpp>
 
-/// GLM dependency removed – using internal math system (Vec*, Mat*, Quat, Transforms) defined in <SceneryEditorX/utils/math/math.h>
-#include <SceneryEditorX/utils/math/math.h>
+/// GLM dependency removed – using internal math system (Vec*, Mat*, Quat, Transforms) defined in <Math/includes/xmath.hpp>
+#include <Math/includes/xmath.hpp>
 
 /**
 ##########################################################

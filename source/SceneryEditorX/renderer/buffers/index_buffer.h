@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * index_buffer.h
@@ -11,45 +11,31 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/vulkan/vk_allocator.h"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
+#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 
 /// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
     /**
      * @class IndexBuffer
-     * @brief Manages index data storage and configuration in Vulkan
-     *
-     * This class handles the creation and management of index buffers in Vulkan,
-     * including memory allocation and transfer of index data to the GPU.
-     * Index buffers store the indices that define how vertices are connected
-     * to form geometry primitives (triangles).
+     * @brief Manages index data storage and configuration in Vulkan.
      */
     class IndexBuffer : public RefCounted
     {
     public:
-        IndexBuffer(uint64_t size);
-		IndexBuffer(const void *data, uint64_t size = 0);
+        explicit IndexBuffer(uint64_t size);
+        IndexBuffer(const void *data, uint64_t size = 0);
 
         /**
          * @brief Destructor for IndexBuffer
          *
          * Cleans up index buffer resources and associated memory.
          */
-        virtual ~IndexBuffer();
+    	~IndexBuffer() override = default; // RAII via Buffer
 
-        /**
-         * @brief Creates and initializes the index buffer on the GPU
-         *
-         * Allocates memory for the index buffer and transfers index data to it.
-         * The buffer is created with appropriate usage flags for index data access
-         * during rendering.
-         */
-        //void Create() const;
-        //void Release() const;
-		
         /**
          * @brief Static factory method to create an index buffer with raw data
          * @param data Pointer to index data
@@ -59,13 +45,10 @@ namespace SceneryEditorX
         static Ref<IndexBuffer> Create(const void* data, uint64_t size);
 
     private:
-        Buffer m_LocalData;						///< Local buffer for index data
-        VkBuffer indexBuffer;					///< Handle to the Vulkan index buffer
-        Ref<MemoryAllocator> allocator;			///< Reference to the memory allocator
-        std::vector<uint32_t> indices;			///< Storage for index data
-        VmaAllocation indexBufferAllocation;	///< Handle to the allocated memory for the index buffer
+        Buffer m_LocalData;                    ///< CPU-side staging copy
+        Buffer m_GpuBuffer;                    ///< GPU index buffer
+        std::vector<uint32_t> indices;         ///< Optional retained index data
     };
-
 }
 
 /// ----------------------------------------------------------

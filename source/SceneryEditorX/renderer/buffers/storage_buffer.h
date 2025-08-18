@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * storage_buffer.h
@@ -11,7 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/vulkan/vk_allocator.h"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 
 /// -----------------------------------
 
@@ -30,29 +31,25 @@ namespace SceneryEditorX
     {
     public:
         StorageBuffer(uint32_t size, const StorageBufferSpec &spec);
-        ~StorageBuffer();
+        ~StorageBuffer() override = default; // RAII via Buffer
 
-        void SetData(const void *data, uint32_t size, uint32_t offset = 0);
-        void SetRenderThreadData(const void *data, uint32_t size, uint32_t offset = 0) const;
+        void SetData(const void* data, uint32_t size, uint32_t offset = 0);
+        void SetRenderThreadData(const void* data, uint32_t size, uint32_t offset = 0);
         void Resize(uint32_t newSize);
-		VkBuffer GetBuffer() const { return m_buffer; }
-		const VkDescriptorBufferInfo &GetDescriptorBufferInfo() const { return m_descriptInfo; }
+
+        [[nodiscard]] VkBuffer GetBuffer() const { return m_Buffer.resource ? m_Buffer.resource->buffer : VK_NULL_HANDLE; }
+        [[nodiscard]] uint32_t GetSize() const { return m_Size; }
+        [[nodiscard]] const VkDescriptorBufferInfo& GetDescriptorInfo() const { return m_DescriptorInfo; }
 
     private:
-        void Release();
-        void InvalidateRenderThread();
+        void Allocate();
+        void AllocateRenderThread();
+        void UpdateDescriptor();
 
-        StorageBufferSpec m_spec;
-        VkBuffer m_buffer {};
-        VkDescriptorBufferInfo m_descriptInfo {};
-        VmaAllocation alloctor = nullptr;
-        uint32_t size = 0;
-        std::string name;
-
-        VkShaderStageFlagBits shaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
-        VmaAllocation m_StagingAlloc = nullptr;
-        VkBuffer stagingBuffer = nullptr;
-        uint8_t* localStorage = nullptr;
+        StorageBufferSpec m_Spec;
+        uint32_t m_Size = 0;
+        Buffer m_Buffer; // underlying storage buffer
+        VkDescriptorBufferInfo m_DescriptorInfo{};
     };
 
     /// ----------------------------------------------------------
@@ -68,7 +65,7 @@ namespace SceneryEditorX
                 m_framesInFlight = Renderer::GetRenderData().framesInFlight;
 
             for (uint32_t frame = 0; frame < m_framesInFlight; frame++)
-                storageBuffers[frame] = CreateRef<StorageBuffer>(size, const_cast<StorageBufferSpec&>(m_spec)); 
+                storageBuffers[frame] = CreateRef<StorageBuffer>(size, const_cast<StorageBufferSpec&>(m_spec));
         }
 
         ~StorageBufferSet() override = default;

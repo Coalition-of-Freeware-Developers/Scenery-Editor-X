@@ -10,12 +10,12 @@
 * Created: 18/5/2025
 * -------------------------------------------------------
 */
+#include "vertex_buffer.h"
 #include <numbers>
-#include <SceneryEditorX/logging/profiler.hpp>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
-#include <SceneryEditorX/renderer/primitives.h>
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include "SceneryEditorX/logging/profiler.hpp"
+#include "SceneryEditorX/renderer/primitives.h"
+#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 
 /// ---------------------------------------------------------
 
@@ -25,9 +25,7 @@ namespace SceneryEditorX
     VertexBuffer::VertexBuffer(uint64_t size)
         : m_BufferType(VertexBufferType::Dynamic),
 		m_Format(VertexFormat::Position3D_Color3), /// or whatever your default format is
-		m_Capacity(0),
-		m_Size(size),
-		m_IsInitialized(false)
+		m_Capacity(0), m_Size(size), m_IsInitialized(false)
     {
 		SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating VertexBuffer with size: {} bytes", size);
 
@@ -215,10 +213,10 @@ namespace SceneryEditorX
         /// For dynamic buffers, update GPU memory directly
         if (m_BufferType == VertexBufferType::Dynamic && m_VertexBuffer.memory & MemoryType::CPU)
         {
-            if (void* mapped = MapBuffer(*m_VertexBuffer.resource))
+            if (void* mapped = MapBuffer(m_VertexBuffer))
             {
                 memcpy(static_cast<uint8_t*>(mapped) + offset, updatedVertices.data(), updateSize);
-                UnmapBuffer(*m_VertexBuffer.resource);
+                UnmapBuffer(m_VertexBuffer);
             }
         }
         else
@@ -466,10 +464,10 @@ namespace SceneryEditorX
             if (m_VertexBuffer.memory & MemoryType::CPU)
             {
                 /// Direct memory mapping for CPU-accessible buffers
-                if (void* mapped = MapBuffer(*m_VertexBuffer.resource))
+                if (void* mapped = MapBuffer(m_VertexBuffer))
                 {
                     memcpy(mapped, m_LocalData.data, m_Size);
-                    UnmapBuffer(*m_VertexBuffer.resource);
+                    UnmapBuffer(m_VertexBuffer);
                     SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Uploaded {} bytes via direct mapping", m_Size);
                 }
                 else
@@ -489,10 +487,10 @@ namespace SceneryEditorX
                 }
 
                 /// Upload to staging buffer
-                if (void* mapped = MapBuffer(*stagingBuffer.resource))
+                if (void* mapped = MapBuffer(stagingBuffer))
                 {
                     memcpy(mapped, m_LocalData.data, m_Size);
-                    UnmapBuffer(*stagingBuffer.resource);
+                    UnmapBuffer(stagingBuffer);
 
                     /// Copy from staging to GPU buffer
                     CopyBuffer(stagingBuffer.resource->buffer, m_VertexBuffer.resource->buffer, m_Size);
@@ -531,10 +529,10 @@ namespace SceneryEditorX
             if (m_VertexBuffer.memory & MemoryType::CPU)
             {
                 /// Direct memory mapping for CPU-accessible buffers with offset
-                if (void* mapped = MapBuffer(*m_VertexBuffer.resource))
+                if (void* mapped = MapBuffer(m_VertexBuffer))
                 {
                     memcpy(static_cast<uint8_t*>(mapped) + offset, static_cast<uint8_t*>(m_LocalData.data) + offset, size);
-                    UnmapBuffer(*m_VertexBuffer.resource);
+                    UnmapBuffer(m_VertexBuffer);
                     SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Uploaded {} bytes at offset {} via direct mapping", size, offset);
                 }
                 else
@@ -554,10 +552,10 @@ namespace SceneryEditorX
                 }
 
                 /// Upload to staging buffer
-                if (void* mapped = MapBuffer(*stagingBuffer.resource))
+                if (void* mapped = MapBuffer(stagingBuffer))
                 {
                     memcpy(mapped, static_cast<uint8_t*>(m_LocalData.data) + offset, size);
-                    UnmapBuffer(*stagingBuffer.resource);
+                    UnmapBuffer(stagingBuffer);
 
                     /// Copy from staging to GPU buffer with offset using CopyBufferRegion
                     CopyBufferRegion(stagingBuffer.resource->buffer, m_VertexBuffer.resource->buffer, size, 0, offset);
@@ -583,6 +581,11 @@ namespace SceneryEditorX
 
     /**
      * @brief Generates vertices for a cube primitive
+     *
+     * This method generates vertices for a cube centered at the origin.
+     *
+     * @param size Size of the cube in Vec3 format (width, height, depth).
+     * @param color Color to apply to all vertices of the cube.
      */
     std::vector<VertexBuffer::Vertex> VertexBuffer::GenerateCubeVertices(const Vec3& size, const Vec3& color)
     {

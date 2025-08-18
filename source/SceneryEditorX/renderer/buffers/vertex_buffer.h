@@ -11,8 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
+#include "SceneryEditorX/renderer/vulkan/vk_allocator.h"
 
 /// ----------------------------------------------------------
 

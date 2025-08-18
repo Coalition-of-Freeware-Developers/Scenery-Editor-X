@@ -351,7 +351,8 @@ namespace SceneryEditorX
      *
      * @see UnmapBuffer() to unmap the memory when operations are complete
      */
-    void* MapBuffer(BufferResource &buffer);
+    // Map a CPU-visible buffer
+    void* MapBuffer(const Buffer &buffer);
 
 	/**
 	 * @brief Unmaps a Vulkan buffer from host-accessible memory
@@ -367,7 +368,7 @@ namespace SceneryEditorX
 	 *
 	 * @see MapBuffer(BufferResource&) to map the buffer before unmapping
 	 */
-	void UnmapBuffer(BufferResource &buffer);
+    void UnmapBuffer(const Buffer &buffer);
 
     /// ----------------------------------------------------------
 
