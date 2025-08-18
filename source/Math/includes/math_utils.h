@@ -68,17 +68,11 @@ namespace SceneryEditorX
     constexpr T RoundDown(T x, T fac)
     {
         if constexpr (std::is_floating_point_v<T>)
-        {
             return fac == static_cast<T>(0) ? x : std::floor(x / fac) * fac;
-        }
         else if constexpr (std::is_integral_v<T>)
-        {
             return fac == static_cast<T>(0) ? x : static_cast<T>(x - (x % fac));
-        }
         else
-        {
             return x;
-        }
     }
 
     template <typename T>

@@ -19,7 +19,7 @@
 #include <Math/includes/vector.h>
 #include <Math/includes/constants.h>
 #include <Math/includes/epsilon.h>
-#include <Math/includes/dot.h>
+//#include <Math/includes/dot.h> // Dot was removed and placed into math_util.h
 #include <Math/includes/math_utils.h>
 #include <Math/includes/matrix.h>
 #include <Math/includes/projection.h>
@@ -33,7 +33,7 @@
 namespace SceneryEditorX::Utils
 {
 	using ::SceneryEditorX::Normalize;
-	using ::SceneryEditorX::Dot;
+	//using ::SceneryEditorX::Dot; // Dot was removed and placed into math_util.h
 	using ::SceneryEditorX::Cross;
 	using ::SceneryEditorX::ToRadians;
 	using ::SceneryEditorX::ToDegrees;

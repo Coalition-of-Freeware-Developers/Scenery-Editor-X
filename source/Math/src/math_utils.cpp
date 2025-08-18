@@ -105,10 +105,10 @@ namespace SceneryEditorX
 	{
 	    const float len2 = v.x*v.x + v.y*v.y + v.z*v.z;
 	    if (len2 <= 0.0f)
-            return Vec3(0.0f, 0.0f, 0.0f);
+            return {0.0f, 0.0f, 0.0f};
 
         const float invLen = 1.0f / sqrtf(len2);
-	    return Vec3(v.x*invLen, v.y*invLen, v.z*invLen);
+	    return {v.x*invLen, v.y*invLen, v.z*invLen};
 	}
 
     /**

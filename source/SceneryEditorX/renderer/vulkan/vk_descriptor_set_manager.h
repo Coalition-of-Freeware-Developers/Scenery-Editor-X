@@ -21,8 +21,8 @@
 #include "vk_enums.h"
 #include "SceneryEditorX/logging/asserts.h"
 #include "SceneryEditorX/renderer/texture.h"
-#include "SceneryEditorX/renderer/buffers/storage_buffer_set.h"
-#include "SceneryEditorX/renderer/buffers/uniform_buffer_set.h"
+#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
+#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 
 /// -------------------------------------------------------
 

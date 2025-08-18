@@ -16,7 +16,7 @@
 #include <imgui/imgui.h>
 
 #include "render_context.h"
-#include "SceneryEditorX/utils/vulkan/vk_includes.h"
+#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 #include "vulkan/resource.h"
 #include "vulkan/vk_allocator.h" /// Used by VmaAllocation in struct. !MUST KEEP!
 

@@ -14,7 +14,7 @@
 #include "material.h"
 #include "SceneryEditorX/asset/asset.h"
 //#include "node.h"
-#include "SceneryEditorX/utils/vulkan/vk_includes.h"
+#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 
 /// -------------------------------------------------------
 
