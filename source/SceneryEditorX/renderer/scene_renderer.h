@@ -26,7 +26,6 @@
 #include "SceneryEditorX/project/project_settings.h"
 #include "SceneryEditorX/scene/material.h"
 #include "buffers/framebuffer.h"
-#include "buffers/storage_buffer_set.h"
 #include "buffers/vertex_buffer.h"
 #include "shaders/shader_definitions.h"
 #include "vulkan/vk_image.h"

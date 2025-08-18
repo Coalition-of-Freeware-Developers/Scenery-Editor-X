@@ -24,12 +24,13 @@ FILE(GLOB CORE_THREADING core/threading/*.h core/threading/*.hpp core/threading/
 FILE(GLOB CORE_TIME core/time/*.h core/time/*.hpp core/time/*.cpp)
 FILE(GLOB CORE_WINDOW core/window/*.h core/window/*.hpp core/window/*.cpp)
 
-FILE(GLOB PLATFORM_CONFIGFILES platform/config/*.h platform/config/*.hpp platform/config/*.cpp)
+FILE(GLOB PLATFORM_CONFIG_FILES platform/config/*.h platform/config/*.hpp platform/config/*.cpp)
 FILE(GLOB PLATFORM_FILESYSTEM platform/filesystem/*.h platform/filesystem/*.hpp platform/filesystem/*.cpp)
 FILE(GLOB PLATFORM_SETTINGS platform/settings/*.h platform/settings/*.hpp platform/settings/*.cpp)
 
 FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
 FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
+FILE(GLOB DEBUG_RENDERER_FILES renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
 FILE(GLOB REFLECTION_FILES utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
 FILE(GLOB SCENE scene/*.cpp scene/*.h scene/*.hpp)
 FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.comp shaders/*.geom shaders/*.tesc shaders/*.tese)
@@ -79,7 +80,7 @@ ADD_LIBRARY(AppCore
 	${CORE_WINDOW}
 	${LOGGER}
 	${PROJECT}
-	${PLATFORM_CONFIGFILES}
+	${PLATFORM_CONFIG_FILES}
 	${PLATFORM_FILESYSTEM}
 	${PLATFORM_SETTINGS}
 	${SCENE}
@@ -88,6 +89,7 @@ ADD_LIBRARY(AppCore
 	${SCENE_FILES}
 	${REFLECTION_FILES}
 	${SHADER_FILES}
+	${DEBUG_RENDERER_FILES}
 	${VULKAN_FILES}
 	${VULKAN_BUFFERS}
 	${VULKAN_SHADER_CODE}
@@ -134,6 +136,8 @@ ADD_LIBRARY(AppCore
 	renderer/render_config.h
 	renderer/render_context.cpp
 	renderer/render_context.h
+	renderer/render_pass.cpp
+	renderer/render_pass.h
 	renderer/renderer.cpp
 	renderer/renderer.h
 	renderer/scene_renderer.cpp
@@ -250,7 +254,7 @@ SOURCE_GROUP("Core/Window" FILES
 	${CORE_WINDOW}
 )
 SOURCE_GROUP("Platform/Config" FILES
-	${PLATFORM_CONFIGFILES}
+	${PLATFORM_CONFIG_FILES}
 )
 SOURCE_GROUP("Platform/Files" FILES
 	${PLATFORM_FILESYSTEM}
@@ -263,6 +267,9 @@ SOURCE_GROUP("Serialization" FILES
 )
 SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
 	${VULKAN_BUFFERS}
+)
+SOURCE_GROUP("Renderer/Debug" FILES
+	${DEBUG_RENDERER_FILES}
 )
 SOURCE_GROUP("Utilities" FILES
 	utils/container_utils.h
@@ -291,8 +298,6 @@ SOURCE_GROUP("Project" FILES
 	${PROJECT}
 )
 SOURCE_GROUP("Renderer" FILES
-	renderer/debug_renderer.cpp
-	renderer/debug_renderer.h
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
 	renderer/camera.cpp
@@ -302,15 +307,19 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/compute_pass.cpp
 	renderer/compute_pass.h
 	renderer/dds.h
+	renderer/debug_renderer.cpp
+	renderer/debug_renderer.h
 	renderer/image_data.cpp
 	renderer/image_data.h
 	renderer/primitives.cpp
 	renderer/primitives.h
-	renderer/renderer.cpp
-	renderer/renderer.h
+	renderer/render_config.h
 	renderer/render_context.cpp
 	renderer/render_context.h
-	renderer/render_config.h
+	renderer/render_pass.cpp
+	renderer/render_pass.h
+	renderer/renderer.cpp
+	renderer/renderer.h
 	renderer/scene_renderer.cpp
 	renderer/scene_renderer.h
 	renderer/stb_image_impl.cpp

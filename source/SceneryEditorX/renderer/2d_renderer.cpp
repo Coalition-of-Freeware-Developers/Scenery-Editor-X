@@ -40,7 +40,7 @@ namespace SceneryEditorX
 		else
             m_RenderCommandBuffer = CreateRef<CommandBuffer>(0, "Renderer2D");
 
-		m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(CameraUniformBuffer));
+		//m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(CameraUniformBuffer));
 
 		m_MemoryStats.TotalAllocated = 0;
 
@@ -72,7 +72,7 @@ namespace SceneryEditorX
 			quadSpec.debugName = "Renderer2D-Quad";
 			quadSpec.Pipeline = CreateRef<Pipeline>(pipelineSpecification);
             m_QuadPass = CreateRef<RenderPass>(quadSpec);
-			m_QuadPass->AddInput("Camera", m_UBSCamera->Get());
+			//m_QuadPass->AddInput("Camera", m_UBSCamera->Get());
 			SEDX_CORE_VERIFY(m_QuadPass->Validate());
 			m_QuadPass->Bake();
 
@@ -319,11 +319,13 @@ namespace SceneryEditorX
 		m_CameraView = view;
 		m_DepthTest = depthTest;
 
+		/*
 		Renderer::Submit([ubsCamera = m_UBSCamera, viewProj]() mutable
 		{
 			uint32_t bufferIndex = Renderer::GetCurrentRenderThreadFrameIndex();
 			ubsCamera->GetRenderThread()->SetRenderThreadData(&viewProj, sizeof(CameraUniformBuffer));
 		});
+		*/
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Renderer2D::BeginScene frame {}", frameIndex);
 

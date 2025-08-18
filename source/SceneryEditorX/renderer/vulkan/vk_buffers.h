@@ -11,10 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "resource.h"
 #include "SceneryEditorX/core/memory/memory.h"
-#include "SceneryEditorX/renderer/vulkan/resource.h"
-#include "SceneryEditorX/renderer/vulkan/vk_enums.h"
-#include <cstdint>
+#include "vk_enums.h"
 #include <vma/vk_mem_alloc.h>
 
 /// --------------------------------------------
@@ -230,20 +229,9 @@ namespace SceneryEditorX
 			memcpy(static_cast<byte *>(this->data) + offset, data, size);
 		}
 
-        explicit operator bool() const
-		{
-			return static_cast<bool>(data);
-		}
-
-		byte& operator[](const int index)
-		{
-			return static_cast<byte *>(data)[index];
-		}
-
-		byte operator[](const int index) const
-		{
-			return static_cast<byte *>(data)[index];
-		}
+        explicit operator bool() const { return static_cast<bool>(data); }
+		byte& operator[](const int index) { return static_cast<byte *>(data)[index]; }
+		byte operator[](const int index) const { return static_cast<byte *>(data)[index]; }
 
 		template<typename T>
 		T* As() const
@@ -314,8 +302,7 @@ namespace SceneryEditorX
      * source and destination buffers, enabling partial buffer copies and updates.
      * This is essential for dynamic vertex buffers that need partial updates.
      */
-    void CopyBufferRegion(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
-                         VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0);
+    void CopyBufferRegion(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0);
 
     /**
      * @brief Copies buffer data to an image
@@ -442,9 +429,11 @@ namespace SceneryEditorX
 
         std::string DebugName;
     };
+    */
 
     /// ----------------------------------------------------------
 
+	/*
     class Framebuffer : public RefCounted
     {
     public:

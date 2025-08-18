@@ -12,7 +12,6 @@
 */
 #pragma once
 #include <Math/includes/aabb.h>
-
 #include "texture.h"
 #include "buffers/index_buffer.h"
 #include "buffers/uniform_buffer.h"
@@ -277,7 +276,7 @@ namespace SceneryEditorX
 		DrawStatistics m_DrawStats;
 		MemoryStatistics m_MemoryStats;
 
-		Ref<UniformBufferSet> m_UBSCamera;
+		//Ref<UniformBufferSet> m_UBSCamera;
 
         /// -------------------------------------------------------
 

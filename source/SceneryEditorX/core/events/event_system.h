@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * event_system.h
@@ -14,6 +14,7 @@
 #include <functional>
 #include <ostream>
 #include <string>
+#include "../base.hpp"
 
 /// -------------------------------------------------------------------
 
@@ -48,9 +49,10 @@ namespace SceneryEditorX
 		EditorExitPlayMode,
 		SelectionChanged,
 		AssetReloaded,
-		AnimationGraphCompiled
+		AnimationGraphCompiled,
+		ScreenshotCaptured
 	};
-	
+
 	enum EventCategory : uint8_t
 	{
 		None = 0,

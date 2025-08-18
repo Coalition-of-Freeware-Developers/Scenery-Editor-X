@@ -11,8 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/buffers/framebuffer.h"
-#include "SceneryEditorX/renderer/texture.h"
 #include "vk_descriptor_set_manager.h"
 #include "vk_pipeline.h"
 #include <vulkan/vulkan.h>
@@ -89,21 +87,16 @@ namespace SceneryEditorX
 
 	    virtual bool Validate();
 		virtual void Bake();
-		//virtual bool Baked() const { return static_cast<bool>(m_DescriptorSetManager.GetDescriptorPool()); }
+		virtual bool Baked() const { return static_cast<bool>(m_DescriptorSetManager.GetDescriptorPool()); }
 		virtual void Prepare();
 
 		bool HasDescriptorSets() const;
 		const std::vector<VkDescriptorSet>& GetDescriptorSets(uint32_t frameIndex) const;
 
 		bool IsInputValid(std::string_view name) const;
-		//const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name);
+		const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name);
 
 	private:
-        //Ref<SwapChain> vkSwapChain;			///< Reference to the Vulkan swap chain
-        //Ref<MemoryAllocator> allocator;		///< Reference to the memory allocator for Vulkan resources
-        //Ref<Descriptors> descriptors;			///< Reference to the Vulkan descriptor set manager
-        //Ref<CommandBuffer> cmdBuffer;			///< Reference to the Vulkan command buffer manager
-        //Ref<UniformBuffer> uniformBuffer;		///< Reference to the uniform buffer used in the render pass
         RenderData renderData;					///< Render data containing information about the render pass
         VkRenderPass renderPass = nullptr;		///< Vulkan render pass handle
 

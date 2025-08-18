@@ -114,7 +114,7 @@ namespace SceneryEditorX
 			spec.debugName = "BoneTransforms";
 			spec.GPUOnly = false;
             constexpr size_t BoneTransformBufferCount = 1024 * 50; ///< This provides enough for 1024 animated entities at an average of 50 bones each
-			m_SBSBoneTransforms = StorageBufferSet::Create(spec, sizeof(Mat4) * BoneTransformBufferCount);
+            m_SBSBoneTransforms = CreateRef<StorageBufferSet>(spec, sizeof(Mat4) * BoneTransformBufferCount);
 			m_BoneTransformsData = hnew Mat4[BoneTransformBufferCount];
 		}
 
@@ -136,10 +136,10 @@ namespace SceneryEditorX
 		{
 			StorageBufferSpec spec;
 			spec.debugName = "VisiblePointLightIndices";
-			m_SBSVisiblePointLightIndicesBuffer = StorageBufferSet::Create(spec, 1); ///< Resized later
+            m_SBSVisiblePointLightIndicesBuffer = CreateRef<StorageBufferSet>(spec, 1); ///< Resized later
 
 			spec.debugName = "VisibleSpotLightIndices";
-			m_SBSVisibleSpotLightIndicesBuffer = StorageBufferSet::Create(spec, 1); ///< Resized later
+            m_SBSVisibleSpotLightIndicesBuffer = CreateRef<StorageBufferSet>(spec, 1); ///< Resized later
 
 			m_LightCullingMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("LightCulling"), "LightCulling");
 			Ref<Shader> lightCullingShader = Renderer::GetShaderLibrary()->Get("LightCulling");

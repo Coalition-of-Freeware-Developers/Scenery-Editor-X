@@ -159,7 +159,7 @@ namespace SceneryEditorX
 		 */
 		using ShaderReloadedCallback = std::function<void()>;
 
-		//using ShaderModuleErrorCallback = void (*)(RenderContext*, Ref<Shader>, int line, int col, const char* debugName);
+		using ShaderModuleErrorCallback = void (*)(RenderContext*, Ref<Shader>, int line, int col, const char* debugName);
 
         /**
          * @brief Default constructor.
@@ -183,7 +183,7 @@ namespace SceneryEditorX
          * 
          * Cleans up Vulkan shader module resources.
          */
-        virtual ~Shader() override;
+        virtual ~Shader();
 
 		/**
 		 * @brief Load shader from a shader pack file.
@@ -202,33 +202,33 @@ namespace SceneryEditorX
          */
         static Ref<Shader> CreateFromString(const std::string &source);
 
-		//virtual const std::unordered_map<std::string, ShaderBuffer>& GetShaderBuffers() const;
-		//virtual const std::unordered_map<std::string, ShaderResourceDeclaration>& GetResources() const;
+		const std::unordered_map<std::string, ShaderBuffer>& GetShaderBuffers() const;
+		const std::unordered_map<std::string, ShaderResourceDeclaration>& GetResources() const;
 
 		/**
 		 * @brief Register a callback to be invoked when shader is reloaded.
 		 * 
 		 * @param callback Function to call when shader is recompiled or reloaded
 		 */
-		virtual void AddShaderReloadedCallback(const ShaderReloadedCallback& callback);
+	    void AddShaderReloadedCallback(const ShaderReloadedCallback& callback);
         
         /**
          * @brief Get the name of the shader.
          * 
          * @return const std::string& The shader name, typically derived from the filename
          */
-        [[nodiscard]] virtual const std::string &GetName() const;
+        [[nodiscard]] const std::string &GetName() const;
 
 
         /**
          * @brief Reload the shader from its source file.
          * @param forceCompile Whether to force recompilation even if a cached version exists
          */
-        virtual void Reload(bool forceCompile = false);
+	    void Reload(bool forceCompile = false);
 
-	    virtual void ReloadRenderThreadShaders(bool forceCompile = false);
+	    void ReloadRenderThreadShaders(bool forceCompile = false);
 
-        virtual size_t GetHash() const;
+	    size_t GetHash() const;
 
 	    /**
 	     * @brief Get the base directory path for shader assets.
@@ -255,7 +255,7 @@ namespace SceneryEditorX
             const auto &ub = m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.at(binding);
 
             ShaderResource::UniformBuffer result;
-            result.descriptor = ub.GetDescriptorBufferInfo();
+            result.descriptor = ub.GetDescriptor(1);
             result.size = ub.GetBufferCount() > 0 ? ub.GetBufferCount() : ub.GetBufferCount(); /// You may want to set this to ub.size if available
             result.bindingPoint = binding;
             result.name = "";                                        /// If UniformBuffer has a name, set it here
@@ -300,7 +300,7 @@ namespace SceneryEditorX
 
         /** @brief List of callbacks to invoke when shader is reloaded */
         std::vector<ShaderReloadedCallback> reloadCallbacks;
-        //ShaderModuleErrorCallback shaderModuleErrorCallback = nullptr;
+        ShaderModuleErrorCallback shaderModuleErrorCallback = nullptr;
 		std::string name;
         std::vector<VkPipelineShaderStageCreateInfo> m_PipelineShaderStageCreateInfos;
         std::unordered_map<uint32_t, std::vector<VkDescriptorPoolSize>> m_TypeCounts;

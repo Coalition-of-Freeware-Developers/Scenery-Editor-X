@@ -12,9 +12,11 @@
 */
 #include "vk_render_pass.h"
 #include "vk_buffers.h"
+#include "vk_swapchain.h"
+
 #include "SceneryEditorX/platform/config/editor_config.hpp"
-#include "SceneryEditorX/renderer/buffers/storage_buffer_set.h"
-#include "SceneryEditorX/renderer/buffers/uniform_buffer_set.h"
+#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
+#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 
 /// -------------------------------------------------------
 
@@ -121,9 +123,15 @@ namespace SceneryEditorX
         return 0;
     }
 
-    Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const { return m_Spec.Pipeline ? m_Spec.Pipeline->GetSpecification().dstFramebuffer : nullptr; }
-    Ref<Pipeline> RenderPass::GetPipeline() const { return m_Spec.Pipeline; }
+    Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const
+	{
+        return renderSpec.Pipeline ? renderSpec.Pipeline->GetSpecification().dstFramebuffer : nullptr;
+	}
 
+    Ref<Pipeline> RenderPass::GetPipeline() const
+	{
+        return renderSpec.Pipeline;
+	}
 
     bool RenderPass::Validate()
     {
@@ -202,7 +210,7 @@ namespace SceneryEditorX
 	{
 	    VkAttachmentDescription colorAttachment{};
 	    colorAttachment.flags = 0;
-	    colorAttachment.format = vkSwapChain->GetColorFormat();
+	    colorAttachment.format = SwapChain->GetColorFormat();
 	    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -212,7 +220,7 @@ namespace SceneryEditorX
 	    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	    VkAttachmentDescription depthAttachment{};
-	    depthAttachment.format = vkSwapChain->GetDepthFormat();
+        depthAttachment.format = SwapChain->GetDepthFormat();
 	    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

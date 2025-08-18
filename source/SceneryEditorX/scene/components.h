@@ -29,6 +29,8 @@ namespace SceneryEditorX
         UUID ID = UUID(0);
 	};
 
+    /// -------------------------------------------------------
+
 	struct TagComponent
 	{
 		std::string Tag;
@@ -41,6 +43,8 @@ namespace SceneryEditorX
 		operator const std::string& () const { return Tag; }
 	};
 
+    /// -------------------------------------------------------
+
     struct RelationshipComponent
     {
         UUID ParentHandle = UUID(0);
@@ -51,11 +55,15 @@ namespace SceneryEditorX
         RelationshipComponent(const UUID &parent) : ParentHandle(parent) { }
     };
 
+    /// -------------------------------------------------------
+
     struct PrefabComponent
     {
         UUID PrefabID = UUID(0);
         UUID EntityID = UUID(0);
     };
+
+    /// -------------------------------------------------------
 
     struct TransformComponent
     {
@@ -185,6 +193,8 @@ namespace SceneryEditorX
         //friend class SceneSerializer;
     };
 
+    /// -------------------------------------------------------
+
     /// Entity with this component is the "root" of a dynamic mesh
     struct MeshComponent
     {
@@ -208,16 +218,17 @@ namespace SceneryEditorX
         bool Visible = true;
 
         SubmeshComponent() = default;
-        SubmeshComponent(const SubmeshComponent &other) : Mesh(other.Mesh),
-			MaterialTable(CreateRef<SceneryEditorX::MaterialTable>(other.MaterialTable)), BoneEntityIds(other.BoneEntityIds), SubmeshIndex(other.SubmeshIndex), Visible(other.Visible)
+        SubmeshComponent(const SubmeshComponent &other) : Mesh(other.Mesh), MaterialTable(CreateRef<SceneryEditorX::MaterialTable>(other.MaterialTable)),
+        BoneEntityIds(other.BoneEntityIds), SubmeshIndex(other.SubmeshIndex), Visible(other.Visible)
         {
         }
 
-        SubmeshComponent(const AssetHandle &mesh, uint32_t submeshIndex = 0) :
-            Mesh(mesh), SubmeshIndex(submeshIndex)
+        SubmeshComponent(const AssetHandle &mesh, uint32_t submeshIndex = 0) : Mesh(mesh), SubmeshIndex(submeshIndex)
         {
         }
     };
+
+    /// -------------------------------------------------------
 
     struct StaticMeshComponent
     {
@@ -236,6 +247,8 @@ namespace SceneryEditorX
         }
     };
 
+    /// -------------------------------------------------------
+
     /*
     struct AnimationComponent
     {
@@ -250,6 +263,8 @@ namespace SceneryEditorX
     };
     */
 
+    /// -------------------------------------------------------
+
     struct SpriteRendererComponent
     {
         Vec4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -262,6 +277,8 @@ namespace SceneryEditorX
         SpriteRendererComponent() = default;
         SpriteRendererComponent(const SpriteRendererComponent &other) = default;
     };
+
+    /// -------------------------------------------------------
 
     struct TextComponent
     {
@@ -286,16 +303,7 @@ namespace SceneryEditorX
         TextComponent(const TextComponent &other) = default;
     };
 
-    /// Already defined in Lights.h
-    /*
-    enum class LightType : uint8_t
-    {
-        None = 0,
-        Directional = 1,
-        Point = 2,
-        Spot = 3
-    };
-    */
+    /// -------------------------------------------------------
 
     struct DirectionalLightComponent
     {
@@ -307,6 +315,8 @@ namespace SceneryEditorX
         bool CastShadows = true;
         bool SoftShadows = true;
     };
+
+    /// -------------------------------------------------------
 
     struct PointLightComponent
     {
@@ -321,6 +331,8 @@ namespace SceneryEditorX
         bool SoftShadows = true;
     };
 
+    /// -------------------------------------------------------
+
     struct SpotLightComponent
     {
         Vec3 Radiance{1.0f};
@@ -334,6 +346,8 @@ namespace SceneryEditorX
         bool CastsShadows = false;
     };
 
+    /// -------------------------------------------------------
+
     struct SkyLightComponent
     {
         AssetHandle SceneEnvironment;
@@ -343,6 +357,8 @@ namespace SceneryEditorX
         Vec3 TurbidityAzimuthInclination = {2.0, 0.0, 0.0};
     };
 
+    /// -------------------------------------------------------
+
     struct TileRendererComponent
     {
         AssetHandle StaticMesh;
@@ -350,11 +366,11 @@ namespace SceneryEditorX
         uint32_t Height = 128;
 
         // ReSharper disable once CppRedundantQualifier
-        std::vector<Ref<SceneryEditorX::MaterialTable>> Materials{1};	/// Width * Height material IDs
-        std::vector<uint8_t> MaterialIDs{1};								/// Width * Height material IDs
+        std::vector<Ref<MaterialTable>> Materials{1};	/// Width * Height material IDs
+        std::vector<uint8_t> MaterialIDs{1};				/// Width * Height material IDs
 
         // ReSharper disable once CppRedundantQualifier
-        TileRendererComponent() { Materials[0] = CreateRef<SceneryEditorX::MaterialTable>(); }
+        TileRendererComponent() { Materials[0] = CreateRef<MaterialTable>(); }
     };
 
 }

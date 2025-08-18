@@ -481,7 +481,7 @@ namespace SceneryEditorX
         uint32_t imageIndex = 0;
 
         /** @brief Global for the current frame index in the frame cycle */
-        uint32_t frameIndex = 0;
+        uint64_t frameIndex = 0;
 
         /** @brief Maximum number of frames that can be processed simultaneously (triple buffering) */
         mutable uint32_t framesInFlight = 3;

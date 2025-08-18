@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * application_events.h
@@ -12,6 +12,7 @@
 */
 #pragma once
 #include "event_system.h"
+#include <sstream>
 
 /// -------------------------------------------------------------------
 
@@ -114,6 +115,29 @@ namespace SceneryEditorX
 
         EVENT_CLASS_TYPE(AppRender)
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
+	};
+
+    /// -------------------------------------------------------------------
+
+	class ScreenshotCapturedEvent : public Event
+	{
+	public:
+		ScreenshotCapturedEvent(std::string path, bool success)
+			: m_Path(std::move(path)), m_Success(success) {}
+
+		[[nodiscard]] const std::string &GetPath() const { return m_Path; }
+		[[nodiscard]] bool IsSuccess() const { return m_Success; }
+
+		[[nodiscard]] std::string ToString() const override
+		{
+			std::stringstream ss; ss << "ScreenshotCapturedEvent: " << (m_Success ? "Success" : "Failure") << ", path='" << m_Path << "'"; return ss.str();
+		}
+
+		EVENT_CLASS_TYPE(ScreenshotCaptured)
+		EVENT_CLASS_CATEGORY(EventCategoryApplication)
+	private:
+		std::string m_Path;
+		bool m_Success = false;
 	};
 
     /// -------------------------------------------------------------------

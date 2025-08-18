@@ -625,7 +625,6 @@ namespace SceneryEditorX
     {
         VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-				
 		VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.pWaitDstStageMask = &waitStageMask;
@@ -640,7 +639,7 @@ namespace SceneryEditorX
 
         vkDevice->LockQueue();
 
-        VK_CHECK_RESULT(vkQueueSubmit(vkDevice->GetGraphicsQueue(), 1, &submitInfo, waitFences[currentFrameIdx]));
+        VK_CHECK_RESULT(vkQueueSubmit(vkDevice->GetGraphicsQueue(), 1, &submitInfo, waitFences[currentFrameIdx]))
 
         VkResult result;
         {

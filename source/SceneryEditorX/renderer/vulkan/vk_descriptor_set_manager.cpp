@@ -152,6 +152,7 @@ namespace SceneryEditorX
 		}
 	}
 
+	/*
 	void DescriptorSetManager::AddInput(std::string_view name, const Ref<UniformBufferSet> &uniformBufferSet)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
@@ -159,6 +160,7 @@ namespace SceneryEditorX
 		else
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
+	*/
 
 	void DescriptorSetManager::AddInput(std::string_view name, const Ref<UniformBuffer> &uniformBuffer)
 	{
@@ -168,6 +170,7 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
 
+	/*
 	void DescriptorSetManager::AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
@@ -175,6 +178,7 @@ namespace SceneryEditorX
 		else
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
+	*/
 
 	void DescriptorSetManager::AddInput(std::string_view name, const Ref<StorageBuffer> &storageBuffer)
 	{
@@ -229,6 +233,7 @@ namespace SceneryEditorX
 		return false;
 	}
 
+	/*
 	std::set<uint32_t> DescriptorSetManager::HasBufferSets() const
 	{
 		/// Find all descriptor sets that have either UniformBufferSet or StorageBufferSet descriptors
@@ -247,6 +252,7 @@ namespace SceneryEditorX
 		}
 		return sets;
 	}
+	*/
 
 
 	bool DescriptorSetManager::Validate()
@@ -386,7 +392,7 @@ namespace SceneryEditorX
 						case ResourceType::UniformBuffer:
 						{
 							Ref<UniformBuffer> buffer = input.input[0].As<UniformBuffer>();
-							writeDescriptor.pBufferInfo = &buffer->GetDescriptorBufferInfo();
+                            writeDescriptor.pBufferInfo = &buffer->GetCurrentFrameDescriptor();
 							storedWriteDescriptor.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 
 							// Defer if resource doesn't exist
@@ -395,6 +401,7 @@ namespace SceneryEditorX
 
 							break;
 						}
+					    /*
 						case ResourceType::UniformBufferSet:
 						{
 							Ref<UniformBufferSet> buffer = input.input[0].As<UniformBufferSet>();
@@ -408,10 +415,11 @@ namespace SceneryEditorX
 
 							break;
 						}
+						*/
 						case ResourceType::StorageBuffer:
 						{
 							Ref<StorageBuffer> buffer = input.input[0].As<StorageBuffer>();
-							writeDescriptor.pBufferInfo = &buffer->GetDescriptorBufferInfo();
+                            writeDescriptor.pBufferInfo = &buffer->GetDescriptorInfo();
 							storedWriteDescriptor.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 
 							// Defer if resource doesn't exist
@@ -420,6 +428,7 @@ namespace SceneryEditorX
 
 							break;
 						}
+						/*
 						case ResourceType::StorageBufferSet:
 						{
 							Ref<StorageBufferSet> buffer = input.input[0].As<StorageBufferSet>();
@@ -433,6 +442,8 @@ namespace SceneryEditorX
 
 							break;
 						}
+						*/
+
 						case ResourceType::Texture2D:
 						{
 							if (input.input.size() > 1)
@@ -530,7 +541,7 @@ namespace SceneryEditorX
 					{
 						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
-							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<UniformBuffer>()->GetDescriptorBufferInfo();
+							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<UniformBuffer>()->GetCurrentFrameDescriptor();
 							if (bufferInfo.buffer != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
 							{
 								invalidatedInputResources[set][binding] = input;
@@ -539,6 +550,7 @@ namespace SceneryEditorX
 						}
 						break;
 					}
+					/*
 					case ResourceType::UniformBufferSet:
 					{
 						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
@@ -552,12 +564,13 @@ namespace SceneryEditorX
 						}
 						break;
 					}
+					*/
 					case ResourceType::StorageBuffer:
 					{
 
 						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
 						{
-							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<StorageBuffer>()->GetDescriptorBufferInfo();
+							const VkDescriptorBufferInfo& bufferInfo = input.input[0].As<StorageBuffer>()->GetDescriptorInfo();
 							if (bufferInfo.buffer != writeDescriptorMap[currentFrameIndex].at(set).at(binding).resourceHandles[0])
 							{
 								invalidatedInputResources[set][binding] = input;
@@ -566,6 +579,7 @@ namespace SceneryEditorX
 						}
 						break;
 					}
+					/*
 					case ResourceType::StorageBufferSet:
 					{
 						for (uint32_t frameIndex = 0; frameIndex < (uint32_t)writeDescriptorMap.size(); frameIndex++)
@@ -579,6 +593,8 @@ namespace SceneryEditorX
 						}
 						break;
 					}
+					*/
+
 					case ResourceType::Texture2D:
 					{
 						for (size_t i = 0; i < input.input.size(); i++)
@@ -662,10 +678,11 @@ namespace SceneryEditorX
 						case ResourceType::UniformBuffer:
 						{
 							Ref<UniformBuffer> buffer = input.input[0].As<UniformBuffer>();
-							writeDescriptor.pBufferInfo = &buffer->GetDescriptorBufferInfo();
+                            writeDescriptor.pBufferInfo = &buffer->GetCurrentFrameDescriptor();
 							wd.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 							break;
 						}
+						/*
 						case ResourceType::UniformBufferSet:
 						{
 							Ref<UniformBufferSet> buffer = input.input[0].As<UniformBufferSet>();
@@ -673,13 +690,15 @@ namespace SceneryEditorX
 							wd.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 							break;
 						}
+						*/
 						case ResourceType::StorageBuffer:
 						{
 							Ref<StorageBuffer> buffer = input.input[0].As<StorageBuffer>();
-							writeDescriptor.pBufferInfo = &buffer->GetDescriptorBufferInfo();
+                            writeDescriptor.pBufferInfo = &buffer->GetDescriptorInfo();
 							wd.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 							break;
 						}
+						/*
 						case ResourceType::StorageBufferSet:
 						{
 							Ref<StorageBufferSet> buffer = input.input[0].As<StorageBufferSet>();
@@ -687,6 +706,7 @@ namespace SceneryEditorX
 							wd.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 							break;
 						}
+						*/
 						case ResourceType::Texture2D:
 						{
 							if (input.input.size() > 1)

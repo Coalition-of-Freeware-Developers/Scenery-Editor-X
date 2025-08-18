@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
+#include "texture.h"
+#include "shaders/shader.h"
+#include "vulkan/vk_enums.h"
 
 /// -------------------------------------------------------
 

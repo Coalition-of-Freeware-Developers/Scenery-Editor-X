@@ -1,8 +1,8 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_swapchain.h
@@ -11,8 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/image_data.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
+#include "SceneryEditorX/renderer/image_data.h"
 
 /// -------------------------------------------------------
 
@@ -43,7 +42,6 @@ namespace SceneryEditorX
         void OnResize(uint32_t width, uint32_t height);
         void Present();
         void Destroy();
-
 		void BeginFrame();
 
 		/// Getter methods
@@ -78,18 +76,28 @@ namespace SceneryEditorX
          * @return VkImageView The texture image view handle or VK_NULL_HANDLE if not available
          */
         [[nodiscard]] VkImageView GetTextureImageView() const { return textureImageView; }
-        
+
         /**
          * @brief Gets the texture sampler for use in descriptor sets
          * @return VkSampler The texture sampler handle or VK_NULL_HANDLE if not available
          */
         [[nodiscard]] VkSampler GetTextureSampler() const { return textureSampler; }
-        
+
         /**
          * @brief Gets the depth image view for use in descriptor sets or framebuffers
          * @return VkImageView The depth image view handle or VK_NULL_HANDLE if not available
          */
         [[nodiscard]] VkImageView GetDepthImageView() const { return depthImageView; }
+
+        /**
+         * @brief Returns the raw swapchain VkImage for the given index
+         */
+        [[nodiscard]] VkImage GetSwapchainImage(uint32_t index) const { SEDX_CORE_ASSERT(index < swapChainImage.size()); return swapChainImage[index].Image; }
+
+        /**
+         * @brief Returns the currently active swapchain VkImage (the one we are recording commands for)
+         */
+        [[nodiscard]] VkImage GetActiveImage() const { SEDX_CORE_ASSERT(currentFrameIdx < swapChainImage.size()); return swapChainImage[currentFrameIdx].Image; }
 
 		uint32_t GetSwapChainImageCount() const { return swapChainImageCount; }
 		uint32_t GetBufferIndex() const { return currentFrameIdx; }

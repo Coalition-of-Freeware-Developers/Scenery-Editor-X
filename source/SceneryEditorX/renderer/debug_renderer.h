@@ -17,7 +17,6 @@
 
 namespace SceneryEditorX
 {
-
 	/**
 	 * Utility class which queues rendering work for once-per-frame
 	 * flushing by Scene (intended to be used for debug graphics)
@@ -36,10 +35,21 @@ namespace SceneryEditorX
 		void DrawQuadBillboard(const Vec3& translation, const Vec2& size, const Vec4& color = Vec4(1.0f));
 		void SetLineWidth(float thickness);
 
+        /// -------------------------------------------------------
+
 		RenderQueue& GetRenderQueue() { return m_RenderQueue; }
 		void ClearRenderQueue() { m_RenderQueue.clear(); }
+
+	    /// -------------------------------------------------------
+
+		GLOBAL bool HasValidationLayers() { return m_validation_layer_enabled; }
+		GLOBAL bool IsRenderDocEnabled() { return m_renderdoc_enabled; }
+
 	private:
 		RenderQueue m_RenderQueue;
+
+        inline GLOBAL bool m_validation_layer_enabled = false;
+        inline GLOBAL bool m_renderdoc_enabled = false;
 	};
 
 }

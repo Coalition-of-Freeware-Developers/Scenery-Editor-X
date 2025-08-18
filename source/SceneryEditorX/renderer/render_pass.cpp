@@ -1,27 +1,21 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
 * Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* vk_sampler.h
+* render_pass.cpp
 * -------------------------------------------------------
-* Created: 26/7/2025
+* Created: 18/8/2025
 * -------------------------------------------------------
 */
-#pragma once
-#include <vulkan/vulkan.h>
+#include "render_pass.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-	VkDescriptorSetAllocateInfo DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count = 1, VkDescriptorPool pool = nullptr);
-
-	VkSampler CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo);
-	void DestroySampler(VkSampler sampler);
 
 }
 

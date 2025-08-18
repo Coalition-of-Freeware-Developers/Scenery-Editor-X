@@ -12,17 +12,14 @@
 */
 #include "compute_pass.h"
 #include "buffers/storage_buffer.h"
-#include "buffers/storage_buffer_set.h"
 #include "buffers/uniform_buffer.h"
-#include "buffers/uniform_buffer_set.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	ComputePass::ComputePass(const ComputePassSpecification& spec)
-		: m_Specification(spec)
+	ComputePass::ComputePass(const ComputePassSpecification& spec) : m_Specification(spec)
 	{
 		SEDX_CORE_VERIFY(spec.pipeline);
 

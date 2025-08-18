@@ -11,11 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Math/includes/vector.h>
 #include "compute_pipeline.h"
 #include "texture.h"
-#include "buffers/storage_buffer.h"
-#include "buffers/uniform_buffer.h"
+#include "vulkan/vk_descriptor_set_manager.h"
+#include <Math/includes/vector.h>
 
 /// -------------------------------------------------------
 

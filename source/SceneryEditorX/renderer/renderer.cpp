@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * renderer.cpp
@@ -10,22 +10,37 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include "renderer.h"
-#include "compute_pipeline.h"
-#include "render_context.h"
-#include "texture.h"
-#include "SceneryEditorX/core/application/application.h"
-#include "SceneryEditorX/logging/profiler.hpp"
-#include "SceneryEditorX/scene/material.h"
-#include "SceneryEditorX/scene/scene.h"
+#include "buffers/framebuffer.h"
 #include "buffers/index_buffer.h"
-#include "buffers/storage_buffer_set.h"
-#include "buffers/uniform_buffer_set.h"
 #include "buffers/vertex_buffer.h"
+#include "compute_pass.h"
+#include "render_context.h"
+#include "renderer.h"
+#include "scene_renderer.h"
+#include "SceneryEditorX/core/time/timer.h"
+#include "SceneryEditorX/logging/profiler.hpp"
 #include "shaders/shader.h"
-#include "vulkan/vk_sampler.h"
-#include "vulkan/vk_swapchain.h"
+#include "texture.h"
+#include "vulkan/vk_cmd_buffers.h"
+#include "vulkan/vk_pipeline.h"
+#include "vulkan/vk_render_pass.h"
+#include "vulkan/vk_allocator.h"
+#include "image_data.h"
+
+#include <imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
+
 #include "vulkan/vk_util.h"
+
+#include <vector>
+#include <algorithm>
+#include <utility>
+#include <stb_image_write.h>
+
+#include "SceneryEditorX/core/time/time.h"
+#include "SceneryEditorX/platform/filesystem/file_manager.hpp"
+#include "SceneryEditorX/core/events/application_events.h"
 
 /// -------------------------------------------------------
 
@@ -45,8 +60,8 @@ namespace SceneryEditorX
         std::vector<uint32_t> DescriptorPoolAllocationCount;
 
         /// UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor
-		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
-		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
+		//std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
+		//std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
 
         /// Default samplers
         VkSampler SamplerClamp = nullptr;
@@ -145,7 +160,7 @@ namespace SceneryEditorX
             VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &s_Data->MaterialDescriptorPool))
         });
 
-		
+
 		/// Create fullscreen quad
         constexpr float x = -1;
         constexpr float y = -1;
@@ -284,9 +299,14 @@ namespace SceneryEditorX
         return resourceFreeQueue[index];
     }
 
-    uint32_t Renderer::GetCurrentFrameIndex()
+    uint64_t Renderer::GetCurrentFrameIndex()
     {
         return m_renderData.frameIndex;
+    }
+
+    Ref<ShaderLibrary> Renderer::GetShaderLibrary()
+    {
+        return s_Data->m_ShaderLibrary;
     }
 
     RenderData &Renderer::GetRenderData()
@@ -322,6 +342,41 @@ namespace SceneryEditorX
         s_RenderCommandQueueSubmissionIndex = (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
     }
 
+    /*
+    SwapChain* Renderer::GetSwapChain()
+    {
+        return m_SwapChain.Get();
+    }
+    */
+
+	VkDescriptorSetAllocateInfo Renderer::DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count, VkDescriptorPool pool)
+	{
+		VkDescriptorSetAllocateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		info.pSetLayouts = layouts;
+		info.descriptorSetCount = count;
+		info.descriptorPool = pool;
+		return info;
+	}
+
+	VkSampler Renderer::CreateSampler(VkSamplerCreateInfo &samplerCreateInfo)
+	{
+	    VkDevice vulkanDevice = RenderContext::GetCurrentDevice()->GetDevice();
+		VkSampler sampler;
+		VK_CHECK_RESULT(vkCreateSampler(vulkanDevice, &samplerCreateInfo, nullptr, &sampler))
+
+		Utils::GetResourceAllocationCounts().Samplers++;
+		return sampler;
+	}
+
+	void Renderer::DestroySampler(VkSampler sampler)
+	{
+	    VkDevice vulkanDevice = RenderContext::GetCurrentDevice()->GetDevice();
+		vkDestroySampler(vulkanDevice, sampler, nullptr);
+
+		Utils::GetResourceAllocationCounts().Samplers--;
+	}
+
     uint32_t Renderer::GetRenderQueueIndex()
     {
         return (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
@@ -343,23 +398,147 @@ namespace SceneryEditorX
         return s_Data->DescriptorPoolAllocationCount[frameIndex];
     }
 
-    VkSampler Renderer::CreateSampler(VkSamplerCreateInfo &samplerCreateInfo)
-    {
-        const auto device = RenderContext::GetCurrentDevice();
-
-		VkSampler sampler;
-        vkCreateSampler(device->GetDevice(), &samplerCreateInfo, nullptr, &sampler);
-
-		Utils::GetResourceAllocationCounts().Samplers++;
-
-		return sampler;
-    }
-
+    /*
     void Renderer::RenderGeometry(Ref<CommandBuffer> &ref, Ref<Pipeline> &pipeline, Ref<Material> &material,
         std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> &indexBuffer, const Mat4 &transform, uint32_t indexCount)
     {
         RenderGeometry(ref, pipeline, material, vertexBuffer, indexBuffer, transform, indexCount);
 
+    }
+    */
+
+    /**
+     * @brief Capture a screenshot of the current frame and save it to the specified file path.
+     *
+     * If the file path is empty, a default path will be generated using the current date and time.
+     * This function captures the current frame's color buffer, reads it back to the CPU, and saves it as a PNG file.
+     *
+     * @param file_path The file path where the screenshot will be saved. If empty, a default path is used.
+     * @param immediateDispatch If true, the screenshot event will be dispatched immediately after capture; otherwise, it will be queued.
+     *
+     * @note This function uses Vulkan's command buffers to perform the readback operation and requires the swap chain to be active.
+     * @note The screenshot is saved in PNG format using the stb_image_write library.
+     *
+     * @warning This function may block if the GPU readback is not completed, so it should be used carefully in performance-sensitive contexts.
+     * @warning The function assumes that the swap chain is already initialized and active.
+     *
+     * @code
+     * Renderer::Screenshot("screenshot.png", true);
+     * @endcode
+     */
+    void Renderer::Screenshot(const std::string &file_path, bool immediateDispatch, std::string format)
+    {
+        SEDX_PROFILE_FUNC("Renderer::Screenshot");
+
+        std::string outPath = file_path;
+        if (outPath.empty())
+        {
+            std::string format = ".png"; // Default format
+			if (!format.empty() && format[0] != '.')
+                format = "." + format; // Ensure format starts with a dot
+
+            // Use FileSystem + Time utilities
+            std::string dir = "screenshots";
+            if (!IO::FileSystem::DirExists(dir))
+                IO::FileSystem::CreateDir(dir);
+
+            // Base name with timestamp (Time already provides date-time string)
+            // Default format is ".png", can be overridden by parameter
+            std::string timestamp = Time::GetCurrentDateTimeString(); // Expected format: YYYYMMDDHHMM...
+            std::string baseName = std::string("screenshot_") + timestamp + format;
+
+            // Ensure uniqueness (in case multiple in same minute)
+            // GetUniqueFileName returns std::filesystem::path; convert explicitly to string
+            outPath = IO::FileSystem::GetUniqueFileName(dir + "/" + baseName).string();
+        }
+
+        /// Submit GPU readback and encode asynchronously
+    	Submit([outPath, immediateDispatch]()
+        {
+            SEDX_PROFILE_SCOPE("Renderer::Screenshot::Execute");
+            bool success = false;
+
+            auto &app = Application::Get();
+            auto &swap = app.GetWindow().GetSwapChain();
+            VkImage srcImage = swap.GetActiveImage();
+            uint32_t width = swap.GetWidth();
+            uint32_t height = swap.GetHeight();
+            VkFormat format = swap.GetColorFormat();
+
+            int32_t bppBits = Utils::getBPP(format);
+            if (bppBits % 8 != 0)
+            {
+                SEDX_CORE_WARN_TAG("RENDERER", "Unsupported BPP for screenshot ({} bits)", bppBits);
+                if (immediateDispatch)
+                    Application::Get().DispatchEvent<ScreenshotCapturedEvent, true>(outPath, false);
+                else
+                    Application::Get().DispatchEvent<ScreenshotCapturedEvent>(outPath, false); // queued
+                return;
+            }
+            uint32_t bytesPerPixel = bppBits / 8;
+            uint64_t bufferSize = static_cast<uint64_t>(width) * height * bytesPerPixel;
+
+            MemoryAllocator allocator("Screenshot");
+            VkBufferCreateInfo bufferInfo{}; bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; bufferInfo.size = bufferSize; bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT; bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VkBuffer stagingBuffer = VK_NULL_HANDLE; VmaAllocation stagingAlloc = allocator.AllocateBuffer(bufferInfo, VMA_MEMORY_USAGE_GPU_TO_CPU, stagingBuffer);
+
+            auto deviceRef = RenderContext::GetCurrentDevice();
+            VkCommandBuffer cmd = deviceRef->GetCommandBuffer(true);
+
+            VkImageSubresourceRange range{}; range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; range.levelCount = 1; range.layerCount = 1;
+            InsertImageMemoryBarrier(cmd, srcImage,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                range);
+
+            VkBufferImageCopy region{}; region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; region.imageSubresource.layerCount = 1; region.imageExtent = { width, height, 1 }; region.bufferOffset = 0;
+            vkCmdCopyImageToBuffer(cmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, stagingBuffer, 1, &region);
+
+            InsertImageMemoryBarrier(cmd, srcImage,
+                VK_ACCESS_TRANSFER_READ_BIT, 0,
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                range);
+
+            deviceRef->FlushCmdBuffer(cmd);
+
+            uint8_t *mapped = allocator.MapMemory<uint8_t>(stagingAlloc);
+            if (!mapped)
+            {
+                SEDX_CORE_WARN_TAG("RENDERER", "Failed to map screenshot staging buffer");
+                allocator.DestroyBuffer(stagingBuffer, stagingAlloc);
+                if (immediateDispatch)
+                    Application::Get().DispatchEvent<ScreenshotCapturedEvent, true>(outPath, false);
+                else
+                    Application::Get().DispatchEvent<ScreenshotCapturedEvent>(outPath, false);
+                return;
+            }
+
+            std::vector<uint8_t> pixels(bufferSize);
+            memcpy(pixels.data(), mapped, bufferSize);
+            MemoryAllocator::UnmapMemory(stagingAlloc);
+            allocator.DestroyBuffer(stagingBuffer, stagingAlloc);
+
+            // Swizzle if needed (BGRA->RGBA)
+            Utils::SwizzleBGRAtoRGBA(pixels.data(), bufferSize, format);
+
+            int writeOk = stbi_write_png(outPath.c_str(), static_cast<int>(width), static_cast<int>(height), bytesPerPixel, pixels.data(), static_cast<int>(width * bytesPerPixel));
+            if (!writeOk)
+            {
+                SEDX_CORE_WARN_TAG("RENDERER", "Failed to write screenshot to {}", outPath);
+            }
+            else
+            {
+                success = true;
+                SEDX_CORE_INFO_TAG("RENDERER", "Screenshot saved to {}", outPath);
+            }
+
+            if (immediateDispatch)
+                Application::Get().DispatchEvent<ScreenshotCapturedEvent, true>(outPath, success);
+            else
+                Application::Get().DispatchEvent<ScreenshotCapturedEvent>(outPath, success);
+        });
     }
 
     Ref<Texture2D> Renderer::GetWhiteTexture() { return s_Data->WhiteTexture; }

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * renderer.h
@@ -13,11 +13,11 @@
 #pragma once
 #include "command_queue.h"
 #include "compute_pass.h"
+#include "SceneryEditorX/core/application/application.h"
 #include "SceneryEditorX/core/threading/render_thread.h"
 #include "SceneryEditorX/scene/material.h"
 #include "SceneryEditorX/scene/scene.h"
 
-#include "buffers/index_buffer.h"
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_render_pass.h"
 
@@ -38,6 +38,8 @@ namespace SceneryEditorX
         typedef void (*RenderCommandFn)(void *);
 
 		GLOBAL Ref<RenderContext> GetContext();
+
+        /// -------------------------------------------------------
 
         GLOBAL void Init();
 		GLOBAL void Shutdown();
@@ -84,13 +86,13 @@ namespace SceneryEditorX
 
 			if (RenderThread::IsCurrentThreadRT())
 			{
-				const uint32_t index = GetCurrentFrameIndex();
+				const uint64_t index = GetCurrentFrameIndex();
 				auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
 				new (storageBuffer) FuncT(std::forward<FuncT>((FuncT&&)func));
 			}
 			else
 			{
-				const uint32_t index = GetCurrentFrameIndex();
+				const uint64_t index = GetCurrentFrameIndex();
 				Submit([renderCmd, func, index]()
 				{
 					auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
@@ -99,23 +101,47 @@ namespace SceneryEditorX
 			}
 		}
 
-		GLOBAL Ref<ShaderLibrary> GetShaderLibrary();
-        GLOBAL CommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
-        GLOBAL uint32_t GetRenderQueueIndex();
-        GLOBAL uint32_t GetRenderQueueSubmissionIndex();
-        GLOBAL uint32_t GetCurrentFrameIndex();
-        GLOBAL RenderData &GetRenderData();
+        /// -------------------------------------------------------
 
+        GLOBAL RenderData &GetRenderData();
         GLOBAL void SetRenderData(const RenderData &renderData);
         GLOBAL void RenderThreadFunc(RenderThread *renderThread);
-        GLOBAL void WaitAndRender(RenderThread* renderThread);
-		GLOBAL void SwapQueues();
+        GLOBAL void WaitAndRender(RenderThread *renderThread);
+        GLOBAL void SwapQueues();
+
+        /// -------------------------------------------------------
+
+		GLOBAL SwapChain *GetSwapChain();
+
+        /// -------------------------------------------------------
+
+        GLOBAL uint32_t GetRenderQueueIndex();
+        GLOBAL uint32_t GetRenderQueueSubmissionIndex();
+        GLOBAL uint64_t GetCurrentFrameIndex();
+
+        /// -------------------------------------------------------
+
+	    VkDescriptorSetAllocateInfo DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count = 1, VkDescriptorPool pool = nullptr);
+
+        /// -------------------------------------------------------
+
+	    GLOBAL VkSampler CreateSampler(VkSamplerCreateInfo &samplerCreateInfo);
+        GLOBAL void DestroySampler(VkSampler sampler);
+
+        /// -------------------------------------------------------
+
+		GLOBAL Ref<ShaderLibrary> GetShaderLibrary();
+        GLOBAL CommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
+
+        /// -------------------------------------------------------
 
         GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
         GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
-        VkSampler CreateSampler(VkSamplerCreateInfo &samplerCreateInfo);
-        GLOBAL void RenderGeometry(Ref<CommandBuffer> &ref, Ref<Pipeline> &pipeline, Ref<Material> &material, std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> & indexBuffer, const Mat4 &transform, uint32_t indexCount);
+
+        //GLOBAL void RenderGeometry(Ref<CommandBuffer> &ref, Ref<Pipeline> &pipeline, Ref<Material> &material, std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> & indexBuffer, const Mat4 &transform, uint32_t indexCount);
         GLOBAL void SubmitFullscreenQuad(Ref<CommandBuffer> & ref, Ref<Pipeline> & pipeline, Ref<Material> & material);
+        GLOBAL void Screenshot(const std::string &file_path, bool immediateDispatch = false, std::string format = "png");
+
         GLOBAL Ref<Texture2D> GetWhiteTexture();
         GLOBAL Ref<Texture2D> GetBlackTexture();
         GLOBAL Ref<Texture2D> GetHilbertLut();
@@ -146,7 +172,7 @@ namespace SceneryEditorX
 
     private:
         INTERNAL CommandQueue &GetCommandQueue();
-
+        Ref<SwapChain> m_SwapChain;
 	};
 
 }

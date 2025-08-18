@@ -26,7 +26,7 @@ namespace SceneryEditorX
         virtual ~RenderContext() override;
 
 		/// Initialize the render context
-		virtual void Init();
+		void Init();
 
         Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
         GLOBAL VkInstance GetInstance();

@@ -11,47 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <cstdint>
-#include <map>
-#include <set>
-#include <string>
-#include <string_view>
-#include <vector>
-#include "vk_image.h"
-#include "vk_enums.h"
-#include "SceneryEditorX/logging/asserts.h"
+#include "vk_image_view.h"
+#include "SceneryEditorX/renderer/render_pass.h"
 #include "SceneryEditorX/renderer/texture.h"
 #include "SceneryEditorX/renderer/buffers/storage_buffer.h"
-#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
+#include "SceneryEditorX/renderer/shaders/shader.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    struct RenderPassInput
-    {
-        ResourceType type = ResourceType::None;
-        std::vector<Ref<RefCounted>> input;
-
-        RenderPassInput() = default;
-    	RenderPassInput(const Ref<UniformBuffer>& uniformBuffer) : type(ResourceType::UniformBuffer) { input.reserve(1); input.push_back(uniformBuffer.As<RefCounted>()); }
-    	RenderPassInput(const Ref<UniformBufferSet>& uniformBufferSet) : type(ResourceType::UniformSet) { input.reserve(1); input.push_back(uniformBufferSet.As<RefCounted>()); }
-    	RenderPassInput(const Ref<StorageBuffer>& storageBuffer) : type(ResourceType::StorageBuffer) { input.reserve(1); input.push_back(storageBuffer.As<RefCounted>()); }
-    	RenderPassInput(const Ref<StorageBufferSet>& storageBufferSet) : type(ResourceType::StorageSet) { input.reserve(1); input.push_back(storageBufferSet.As<RefCounted>()); }
-    	RenderPassInput(const Ref<Texture2D>& texture) : type(ResourceType::Texture2D) { input.reserve(1); input.push_back(texture.As<RefCounted>()); }
-    	RenderPassInput(const Ref<TextureCube>& texture) : type(ResourceType::TextureCube) { input.reserve(1); input.push_back(texture.As<RefCounted>()); }
-    	RenderPassInput(const Ref<Image2D>& image) : type(ResourceType::Image2D) { input.reserve(1); input.push_back(image.As<RefCounted>()); }
-
-    	void Set(const Ref<UniformBuffer>& uniformBuffer, uint32_t index = 0) { type = ResourceType::UniformBuffer; if (input.size() <= index) input.resize(index+1); input[index] = uniformBuffer.As<RefCounted>(); }
-    	void Set(const Ref<UniformBufferSet>& uniformBufferSet, uint32_t index = 0) { type = ResourceType::UniformSet; if (input.size() <= index) input.resize(index+1); input[index] = uniformBufferSet.As<RefCounted>(); }
-    	void Set(const Ref<StorageBuffer>& storageBuffer, uint32_t index = 0) { type = ResourceType::StorageBuffer; if (input.size() <= index) input.resize(index+1); input[index] = storageBuffer.As<RefCounted>(); }
-    	void Set(const Ref<StorageBufferSet>& storageBufferSet, uint32_t index = 0) { type = ResourceType::StorageSet; if (input.size() <= index) input.resize(index+1); input[index] = storageBufferSet.As<RefCounted>(); }
-    	void Set(const Ref<Texture2D>& texture, uint32_t index = 0) { type = ResourceType::Texture2D; if (input.size() <= index) input.resize(index+1); input[index] = texture.As<RefCounted>(); }
-    	void Set(const Ref<TextureCube>& texture, uint32_t index = 0) { type = ResourceType::TextureCube; if (input.size() <= index) input.resize(index+1); input[index] = texture.As<RefCounted>(); }
-    	void Set(const Ref<Image2D>& image, uint32_t index = 0) { type = ResourceType::Image2D; if (input.size() <= index) input.resize(index+1); input[index] = image.As<RefCounted>(); }
-    	void Set(const Ref<ImageView>& image, uint32_t index = 0) { type = ResourceType::Image2D; if (input.size() <= index) input.resize(index+1); input[index] = image.As<RefCounted>(); }
-    };
 
     inline bool IsCompatibleInput(ResourceType input, VkDescriptorType descriptorType)
     {
@@ -80,14 +49,7 @@ namespace SceneryEditorX
         return ResourceInputType::None;
     }
 
-    struct RenderPassInputDeclaration
-    {
-        ResourceInputType type = ResourceInputType::None;
-        uint32_t set = 0;
-        uint32_t binding = 0;
-        uint32_t count = 0;
-        std::string name;
-    };
+    /// -------------------------------------------------------
 
     struct DescriptorSetManagerSpecification
     {
@@ -98,8 +60,11 @@ namespace SceneryEditorX
         bool DefaultResources = false;
     };
 
-    struct DescriptorSetManager
+    /// -------------------------------------------------------
+
+    class DescriptorSetManager : public RefCounted
     {
+    public:
         std::map<uint32_t, std::map<uint32_t, RenderPassInput>> inputResources;
         std::map<uint32_t, std::map<uint32_t, RenderPassInput>> invalidatedInputResources;
         std::map<std::string, RenderPassInputDeclaration> inputDeclarations;
@@ -113,9 +78,9 @@ namespace SceneryEditorX
         DescriptorSetManager(const DescriptorSetManagerSpecification& specification);
         static DescriptorSetManager Copy(const DescriptorSetManager& other);
 
-        void AddInput(std::string_view name, const Ref<UniformBufferSet>& uniformBufferSet);
+        //void AddInput(std::string_view name, const Ref<UniformBufferSet>& uniformBufferSet);
         void AddInput(std::string_view name, const Ref<UniformBuffer>& uniformBuffer);
-        void AddInput(std::string_view name, const Ref<StorageBufferSet>& storageBufferSet);
+        //void AddInput(std::string_view name, const Ref<StorageBufferSet>& storageBufferSet);
         void AddInput(std::string_view name, const Ref<StorageBuffer>& storageBuffer);
         void AddInput(std::string_view name, const Ref<Texture2D>& texture, uint32_t index = 0);
         void AddInput(std::string_view name, const Ref<TextureCube>& textureCube);
@@ -152,6 +117,7 @@ namespace SceneryEditorX
         DescriptorSetManagerSpecification m_Specification;
         VkDescriptorPool m_DescriptorPool = nullptr;
     };
+
 }
 
 /// -------------------------------------------------------
