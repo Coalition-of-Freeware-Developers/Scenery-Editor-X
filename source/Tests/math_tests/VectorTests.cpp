@@ -1,4 +1,4 @@
-#include <catch2/catch_all.hpp>
+﻿#include <catch2/catch_all.hpp>
 #include <Math/includes/xmath.hpp>
 
 TEST_CASE("Vec2 basic ops", "[math][vec2]") {
@@ -10,7 +10,7 @@ TEST_CASE("Vec2 basic ops", "[math][vec2]") {
 
 TEST_CASE("Vec3 dot/cross/normalize", "[math][vec3]") {
     Vec3 a(1,0,0), b(0,1,0);
-    REQUIRE(SceneryEditorX::Utils::Dot(a,b) == Catch::Approx(0.0f));
+    REQUIRE(SceneryEditorX::Dot(a,b) == Catch::Approx(0.0f));
     auto c = SceneryEditorX::Utils::Cross(a,b);
     REQUIRE(c.x == Catch::Approx(0.0f));
     REQUIRE(c.y == Catch::Approx(0.0f));

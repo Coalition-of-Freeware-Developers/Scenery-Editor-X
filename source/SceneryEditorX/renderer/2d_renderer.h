@@ -15,7 +15,7 @@
 
 #include "texture.h"
 #include "buffers/index_buffer.h"
-#include "buffers/uniform_buffer_set.h"
+#include "buffers/uniform_buffer.h"
 #include "fonts/font.h"
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_render_pass.h"

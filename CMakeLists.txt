@@ -280,17 +280,6 @@ ADD_LIBRARY(imgui
 	${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
 	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_glfw.cpp
 	${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGuizmo.cpp
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGuizmo.h
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImZoomSlider.h
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImSequencer.cpp
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImSequencer.h
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGradient.cpp
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImGradient.h
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImCurveEdit.cpp
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/ImCurveEdit.h
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/GraphEditor.cpp
-	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo/GraphEditor.h
 )
 
 TARGET_INCLUDE_DIRECTORIES(imgui
@@ -298,7 +287,6 @@ TARGET_INCLUDE_DIRECTORIES(imgui
 		${CMAKE_SOURCE_DIR}/dependency/imgui
 		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
 		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
 )
 
 TARGET_LINK_LIBRARIES(imgui

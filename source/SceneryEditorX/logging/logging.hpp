@@ -14,7 +14,7 @@
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 #include "SceneryEditorX/utils/formatter.h"
-#include "SceneryEditorX/utils/vulkan/vk_includes.h"
+#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 
 /// -------------------------------------------------------
 

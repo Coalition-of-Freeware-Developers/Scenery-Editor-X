@@ -7,109 +7,84 @@
 * -------------------------------------------------------
 * storage_buffer.cpp
 * -------------------------------------------------------
-* Created: 22/6/2025
+* Created: 7/7/2025
 * -------------------------------------------------------
 */
 #include "storage_buffer.h"
-#include "SceneryEditorX/renderer/render_context.h"
-#include "SceneryEditorX/renderer/renderer.h"
+#include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 
-/// -----------------------------------
+/// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	StorageBuffer::StorageBuffer(uint32_t size, const StorageBufferSpec &spec) : m_spec(spec), size(size)
+	StorageBuffer::StorageBuffer(uint32_t size, const StorageBufferSpec &spec) : m_Spec(spec), m_Size(size)
 	{
-        Ref<StorageBuffer> instance(this);
-        Renderer::Submit([instance]() mutable { instance->InvalidateRenderThread(); });
+		Allocate();
 	}
-	
-	StorageBuffer::~StorageBuffer()
-	{
-        Release();
-	}
-	
-	void StorageBuffer::SetData(const void *data, uint32_t size, uint32_t offset)
-	{
-        memcpy(localStorage, data, size);
-        Ref<StorageBuffer> instance(this);
-        Renderer::Submit([instance, size, offset]() mutable { instance->SetRenderThreadData(instance->localStorage, size, offset); });
-	}
-	
-	void StorageBuffer::SetRenderThreadData(const void *data, uint32_t size, uint32_t offset) const
-    {
-        /// Cannot call SetData if GPU only
-        SEDX_CORE_VERIFY(!m_spec.GPUOnly);
 
-	#if NO_STAGING
-	        MemoryAllocator allocator("StorageBuffer");
-	        uint8_t *pData = allocator.MapMemory<uint8_t>(alloctor);
-	        memcpy(pData, data, size);
-	        MemoryAllocator::UnmapMemory(alloctor);
-	#else
-	
-	        MemoryAllocator allocator("Staging");
-	        uint8_t *pData = allocator.MapMemory<uint8_t>(m_StagingAlloc);
-	        memcpy(pData, data, size);
-	        MemoryAllocator::UnmapMemory(m_StagingAlloc);
-	
-	        VkCommandBuffer commandBuffer = RenderContext::GetCurrentDevice()->GetCommandBuffer(true);
-	        VkBufferCopy copyRegion = {0, offset, size};
-	        vkCmdCopyBuffer(commandBuffer, stagingBuffer, m_buffer, 1, &copyRegion);
-	
-	        RenderContext::GetCurrentDevice()->FlushCmdBuffer(commandBuffer);
-	#endif
+	void StorageBuffer::Allocate()
+	{
+		Ref<StorageBuffer> instance(this);
+		Renderer::Submit([instance]() mutable { instance->AllocateRenderThread(); });
 	}
-	
+
+	void StorageBuffer::AllocateRenderThread()
+	{
+		MemoryFlags mem = m_Spec.GPUOnly ? MemoryType::GPU : MemoryType::CPU;
+		m_Buffer = CreateBuffer(m_Size, BufferUsage::Storage, mem, m_Spec.debugName.empty() ? "StorageBuffer" : m_Spec.debugName);
+		UpdateDescriptor();
+	}
+
+	void StorageBuffer::UpdateDescriptor()
+	{
+		m_DescriptorInfo.buffer = m_Buffer.resource->buffer;
+		m_DescriptorInfo.offset = 0;
+		m_DescriptorInfo.range = m_Size;
+	}
+
+	void StorageBuffer::SetRenderThreadData(const void* data, uint32_t size, uint32_t offset)
+	{
+		SEDX_CORE_ASSERT(offset + size <= m_Size, "StorageBuffer::SetRenderThreadData out of range");
+		if (m_Buffer.memory & MemoryType::CPU)
+		{
+			if (void* mapped = MapBuffer(m_Buffer))
+			{
+				memcpy(static_cast<uint8_t*>(mapped) + offset, data, size);
+				UnmapBuffer(m_Buffer);
+			}
+		}
+		else
+		{
+			Buffer staging = CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU, "StorageStaging");
+			if (void* mapped = MapBuffer(staging))
+			{
+				memcpy(mapped, data, size);
+				UnmapBuffer(staging);
+				CopyBufferRegion(staging.resource->buffer, m_Buffer.resource->buffer, size, 0, offset);
+			}
+		}
+	}
+
+	void StorageBuffer::SetData(const void* data, uint32_t size, uint32_t offset)
+	{
+		Buffer copy;
+	    if (size)
+		{
+		    copy.Allocate(size); memcpy(copy.data, data, size);
+		}
+
+		Ref<StorageBuffer> instance(this);
+		Renderer::Submit([instance, size, offset, copy]() mutable {
+		    if (size == 0) return; instance->SetRenderThreadData(copy.data, size, offset);
+		});
+	}
+
 	void StorageBuffer::Resize(uint32_t newSize)
 	{
-        size = newSize;
-        Ref<StorageBuffer> instance(this);
-        Renderer::Submit([instance]() mutable { instance->InvalidateRenderThread(); });
+		m_Size = newSize;
+		Allocate();
 	}
-	
-	void StorageBuffer::Release()
-	{
-        if (!alloctor)
-            return;
 
-        Renderer::SubmitResourceFree([buffer = m_buffer, memoryAlloc = alloctor, stagingAlloc = m_StagingAlloc, stagingBuffer = stagingBuffer]() {
-            MemoryAllocator allocator("StorageBuffer");
-            allocator.DestroyBuffer(buffer, memoryAlloc);
-            if (stagingBuffer)
-                allocator.DestroyBuffer(stagingBuffer, stagingAlloc);
-        });
-
-        m_buffer = nullptr;
-        alloctor = nullptr;
-	}
-	
-	void StorageBuffer::InvalidateRenderThread()
-	{
-        Release();
-
-        VkBufferCreateInfo bufferInfo = {};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        bufferInfo.size = size;
-
-        MemoryAllocator allocator("StorageBuffer");
-        alloctor = allocator.AllocateBuffer(bufferInfo, m_spec.GPUOnly ? VMA_MEMORY_USAGE_GPU_ONLY : VMA_MEMORY_USAGE_CPU_TO_GPU, m_buffer);
-
-        m_descriptInfo.buffer = m_buffer;
-        m_descriptInfo.offset = 0;
-        m_descriptInfo.range = size;
-
-#if 0
-		VkBufferCreateInfo stagingBufferInfo = {};
-		stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		stagingBufferInfo.size = size;
-
-		m_StagingAlloc = allocator.AllocateBuffer(stagingBufferInfo, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer);
-#endif
-	}
-	
 }
 
-/// ----------------------------------
+/// ----------------------------------------------------------
