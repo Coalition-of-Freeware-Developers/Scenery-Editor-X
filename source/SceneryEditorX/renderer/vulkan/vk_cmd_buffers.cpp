@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <vulkan/vulkan.h>
@@ -19,11 +20,14 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     CommandResources& CommandBuffer::GetCurrentCommandResources()
     {
         RenderData renderData;
         return queues[currentQueue].commands[renderData.swapChainCurrentFrame];
     }
+    */
 
     /*
     CommandBuffer::CommandBuffer(bool swapchain)
@@ -71,16 +75,16 @@ namespace SceneryEditorX
     }
     */
 
-    CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : swapChain(), data(), debugName(std::move(debugName))
+    CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : debugName(std::move(debugName))
     {
         /// Get the device from graphics engine
-        const auto device = vkDevice;
+        auto device = vkDevice;
 
         if (count == 0)
             count = data.framesInFlight; /// 0 = one per frame in flight
 
         SEDX_CORE_VERIFY(count > 0, "CommandBuffer count must be greater than 0");
-
+        /*
         /// Allocate command buffers if count > 0
         if (count > 0)
         {
@@ -107,18 +111,138 @@ namespace SceneryEditorX
                 }
             }
         }
+        */
 
+        VkCommandPoolCreateInfo cmdPoolInfo = {};
+        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cmdPoolInfo.queueFamilyIndex = device->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
+        cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        VK_CHECK_RESULT(vkCreateCommandPool(device->GetDevice(), &cmdPoolInfo, nullptr, &cmdPool))
+        SetDebugUtilsObjectName(device->GetDevice(), VK_OBJECT_TYPE_COMMAND_POOL, debugName, cmdPool);
+
+        VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+        commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBufferAllocateInfo.commandPool = cmdPool;
+        commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        commandBufferAllocateInfo.commandBufferCount = count;
+        cmdBuffers.resize(count);
+        VK_CHECK_RESULT(vkAllocateCommandBuffers(device->GetDevice(), &commandBufferAllocateInfo, cmdBuffers.data()))
+
+        for (uint32_t i = 0; i < count; ++i)
+            SetDebugUtilsObjectName(device->GetDevice(), VK_OBJECT_TYPE_COMMAND_BUFFER,std::format("{} (frame in flight: {})", debugName, i), cmdBuffers[i]);
+
+        VkFenceCreateInfo fenceCreateInfo{};
+		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        waitFences.resize(count);
+        for (size_t i = 0; i < waitFences.size(); ++i)
+		{
+            VK_CHECK_RESULT(vkCreateFence(device->GetDevice(), &fenceCreateInfo, nullptr, &waitFences[i]))
+			SetDebugUtilsObjectName(device->GetDevice(), VK_OBJECT_TYPE_FENCE, std::format("{} (frame in flight: {}) fence", debugName, i), waitFences[i]);
+		}
+
+		VkQueryPoolCreateInfo queryPoolCreateInfo = {};
+		queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+		queryPoolCreateInfo.pNext = nullptr;
+
+		/// Timestamp queries
+		const uint32_t maxUserQueries = 16;
+        timeQueryCount = 2 + 2 * maxUserQueries;
+
+		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        queryPoolCreateInfo.queryCount = timeQueryCount;
+        timestampQueryPools.resize(count);
+
+		for (auto& timestampQueryPool : timestampQueryPools)
+			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
+
+		timestampQueryResults.resize(count);
+		for (auto& timestampQueryResults : timestampQueryResults)
+            timestampQueryResults.resize(timeQueryCount);
+
+		executionGPUTimes.resize(count);
+		for (auto& executionGPUTimes : executionGPUTimes)
+            executionGPUTimes.resize(timeQueryCount / 2);
+
+		/// Pipeline statistics queries
+        pipelineQueryCount = 7;
+		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+        queryPoolCreateInfo.queryCount = pipelineQueryCount;
+		queryPoolCreateInfo.pipelineStatistics =
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+
+		pipelineQueryPools.resize(count);
+        for (auto &pipelineStatisticsQueryPools : pipelineQueryPools)
+			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &pipelineStatisticsQueryPools))
+
+		pipelineQueryPools.resize(count);
+
+    }
+
+    CommandBuffer::CommandBuffer(std::string debugName, bool swapchain) : ownedBySwapChain(true), debugName(std::move(debugName))
+    {
+        auto device = RenderContext::GetCurrentDevice();
+        uint32_t framesInFlight = data.framesInFlight; 
+
+		VkQueryPoolCreateInfo queryPoolCreateInfo = {};
+		queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+		queryPoolCreateInfo.pNext = nullptr;
+
+		// Timestamp queries
+		const uint32_t maxUserQueries = 16;
+        timeQueryCount = 2 + 2 * maxUserQueries;
+
+		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        queryPoolCreateInfo.queryCount = timeQueryCount;
+		timestampQueryPools.resize(framesInFlight);
+		for (auto& timestampQueryPool : timestampQueryPools)
+			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
+
+		timestampQueryResults.resize(framesInFlight);
+		for (auto& timestampQueryResults : timestampQueryResults)
+            timestampQueryResults.resize(timeQueryCount);
+
+		executionGPUTimes.resize(framesInFlight);
+		for (auto& executionGPUTimes : executionGPUTimes)
+            executionGPUTimes.resize(timeQueryCount / 2);
+
+		// Pipeline statistics queries
+        pipelineQueryCount = 7;
+		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+        queryPoolCreateInfo.queryCount = pipelineQueryCount;
+		queryPoolCreateInfo.pipelineStatistics =
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+			VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+
+		pipelineQueryPools.resize(framesInFlight);
+        for (auto &pipelineStatisticsQueryPools : pipelineQueryPools)
+			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &pipelineStatisticsQueryPools))
+
+		pipelineStatsQueryResults.resize(framesInFlight);
     }
 
     CommandBuffer::~CommandBuffer()
     {
-        const VkCommandPool commandPool = cmdPool;
-        if (!commandBuffer.empty())
+        if (ownedBySwapChain)
+            return;
+
+        VkCommandPool commandPool = cmdPool;
+        Renderer::SubmitResourceFree([commandPool]()
         {
-            const auto device = vkDevice;
+            auto device = RenderContext::GetCurrentDevice();
             vkDestroyCommandPool(device->GetDevice(), commandPool, nullptr);
-            commandBuffer.clear();
-        }
+        });
     }
 
     /// -------------------------------------------------------
@@ -136,6 +260,46 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+
+	void CommandBuffer::Begin()
+	{
+        availTimeQuery = 2;
+
+		Ref<CommandBuffer> instance(this);
+		Renderer::Submit([instance]() mutable
+		{
+			uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex();
+
+			VkCommandBufferBeginInfo cmdBufInfo = {};
+			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			cmdBufInfo.pNext = nullptr;
+
+			VkCommandBuffer commandBuffer = nullptr;
+			if (instance->ownedBySwapChain)
+			{
+				SwapChain& swapChain = Application::Get().GetWindow().GetSwapChain();
+				commandBuffer = swapChain.GetDrawCommandBuffer(commandBufferIndex);
+			}
+			else
+			{
+				commandBufferIndex %= instance->cmdBuffers.size();
+                commandBuffer = instance->cmdBuffers[commandBufferIndex];
+			}
+			instance->activeCmdBuffer = commandBuffer;
+			VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &cmdBufInfo))
+
+			// Timestamp query
+			vkCmdResetQueryPool(commandBuffer, instance->timestampQueryPools[commandBufferIndex], 0, instance->timeQueryCount);
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], 0);
+
+			// Pipeline stats query
+			vkCmdResetQueryPool(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0, instance->pipelineQueryCount);
+			vkCmdBeginQuery(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0, 0);
+		});
+	}
+
+    /*
     void CommandBuffer::Begin(const Queue queue)
     {
         SEDX_ASSERT(currentQueue == Queue::Count, "Already recording a command buffer");
@@ -177,7 +341,27 @@ namespace SceneryEditorX
 		if (queue != Queue::Transfer)
             vkCmdResetQueryPool(cmd.buffer, cmd.queryPool, 0, timeStampPerPool);
     }
+    */
 
+    void CommandBuffer::End()
+    {
+        Ref<CommandBuffer> instance(this);
+        Renderer::Submit([instance]() mutable
+        {
+            uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex();
+            if (!instance->ownedBySwapChain)
+                commandBufferIndex %= instance->cmdBuffers.size();
+
+            VkCommandBuffer commandBuffer = instance->activeCmdBuffer;
+            vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,instance->timestampQueryPools[commandBufferIndex],1);
+            vkCmdEndQuery(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0);
+            VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer))
+
+            instance->activeCmdBuffer = nullptr;
+        });
+    }
+
+    /*
     void CommandBuffer::End(VkSubmitInfo submitInfo)
     {
         const auto &cmd = GetCurrentCommandResources();
@@ -190,6 +374,7 @@ namespace SceneryEditorX
         const auto result = vkQueueSubmit(queues[currentQueue].queue, 1, &submitInfo, cmd.fence);
         SEDX_ASSERT(result != VK_SUCCESS, "Failed to submit command buffer to queue");
     }
+    */
 
     /**
      * @fn GetCommandBuffer
@@ -220,8 +405,10 @@ namespace SceneryEditorX
     }
 	*/
 
+    /*
     void CommandBuffer::Submit()
     {
+
         RenderData renderData;
         const auto &cmd = GetCurrentCommandResources();
 
@@ -247,6 +434,77 @@ namespace SceneryEditorX
         presentInfo.pImageIndices = &renderData.imageIndex;
         presentInfo.pResults = nullptr;
     }
+    */
+	
+	void CommandBuffer::Submit()
+	{
+		if (ownedBySwapChain)
+			return;
+
+		Ref<CommandBuffer> instance(this);
+		Renderer::Submit([instance]() mutable
+		{
+			auto device = RenderContext::GetCurrentDevice();
+
+			uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->cmdBuffers.size();
+
+			VkSubmitInfo submitInfo{};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.commandBufferCount = 1;
+            VkCommandBuffer commandBuffer = instance->cmdBuffers[commandBufferIndex];
+			submitInfo.pCommandBuffers = &commandBuffer;
+
+			VK_CHECK_RESULT(vkWaitForFences(device->GetDevice(), 1, &instance->waitFences[commandBufferIndex], VK_TRUE, UINT64_MAX))
+            VK_CHECK_RESULT(vkResetFences(device->GetDevice(), 1, &instance->waitFences[commandBufferIndex]))
+
+			SEDX_CORE_TRACE_TAG("Renderer", "Submitting Render Command Buffer {}", instance->debugName);
+
+			device->LockQueue();
+			VK_CHECK_RESULT(vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, instance->waitFences[commandBufferIndex]))
+			device->UnlockQueue();
+
+			// Retrieve timestamp query results
+			vkGetQueryPoolResults(device->GetDevice(), instance->timestampQueryPools[commandBufferIndex], 0, instance->availTimeQuery,
+				instance->availTimeQuery * sizeof(uint64_t), instance->timestampQueryResults[commandBufferIndex].data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+
+			for (uint32_t i = 0; i < instance->availTimeQuery; i += 2)
+			{
+                uint64_t startTime = instance->timestampQueryResults[commandBufferIndex][i];
+                uint64_t endTime = instance->timestampQueryResults[commandBufferIndex][i + 1];
+				float nsTime = endTime > startTime ? (endTime - startTime) * device->GetPhysicalDevice()->GetLimits().timestampPeriod : 0.0f;
+                instance->executionGPUTimes[commandBufferIndex][i / 2] = nsTime * 0.000001f; // Time in ms
+			}
+
+			// Retrieve pipeline stats results
+			vkGetQueryPoolResults(device->GetDevice(), instance->pipelineQueryPools[commandBufferIndex], 0, 1,
+				sizeof(PipelineStats), &instance->pipelineStatsQueryResults[commandBufferIndex], sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+		});
+	}
+	
+	uint32_t CommandBuffer::BeginTimestampQuery()
+	{
+        uint32_t queryIndex = availTimeQuery;
+        availTimeQuery += 2;
+        Ref<CommandBuffer> instance(this);
+		Renderer::Submit([instance, queryIndex]()
+		{
+			uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->cmdBuffers.size();
+			VkCommandBuffer commandBuffer = instance->cmdBuffers[commandBufferIndex];
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], queryIndex);
+		});
+		return queryIndex;
+	}
+
+	void CommandBuffer::EndTimestampQuery(uint32_t queryID)
+	{
+        Ref<CommandBuffer> instance(this);
+		Renderer::Submit([instance, queryID]()
+		{
+            uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->cmdBuffers.size();
+            VkCommandBuffer commandBuffer = instance->cmdBuffers[commandBufferIndex];
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], queryID + 1);
+		});
+	}
 
 }
 

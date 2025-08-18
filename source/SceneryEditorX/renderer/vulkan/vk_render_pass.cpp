@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	 */
 
 
-	RenderPass::RenderPass(const RenderSpec &spec) : renderData(), renderSpec(spec)
+	RenderPass::RenderPass(const RenderSpec &spec) : renderSpec(spec), renderData()
     {
         SEDX_CORE_VERIFY(spec.Pipeline);
 
@@ -70,62 +70,81 @@ namespace SceneryEditorX
 	RenderPass::~RenderPass()
 	{
 
+        /*
         if (renderPass != VK_NULL_HANDLE && RenderContext::Get()->GetLogicDevice())
 	    {
             const auto device = RenderContext::Get()->GetLogicDevice();
             vkDestroyRenderPass(device, renderPass, RenderContext::Get()->GetAllocatorCallback() : nullptr);
 	        renderPass = VK_NULL_HANDLE;
 	    }
+	    */
 
 	}
 
-    void RenderPass::AddInput(std::string_view name, const Ref<UniformBuffer> &uniformBuffer)
+    bool RenderPass::IsInvalidated(uint32_t set, uint32_t binding) const
     {
-        m_DescriptorSetManager.AddInput(name, uniformBuffer);
+        return m_DescriptorSetManager.IsInvalidated(set, binding);
     }
 
-
-    void RenderPass::AddInput(std::string_view name, const Ref<UniformBufferSet> &uniformBufferSet)
+    void RenderPass::AddInput(std::string_view name, Ref<UniformBufferSet> &uniformBufferSet)
     {
         m_DescriptorSetManager.AddInput(name, uniformBufferSet);
     }
 
+    void RenderPass::AddInput(std::string_view name, Ref<UniformBuffer> &uniformBuffer)
+    {
+        m_DescriptorSetManager.AddInput(name, uniformBuffer);
+    }
 
-	void RenderPass::AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet)
+	void RenderPass::AddInput(std::string_view name, Ref<StorageBufferSet> &storageBufferSet)
     {
         m_DescriptorSetManager.AddInput(name, storageBufferSet);
     }
 
-    void RenderPass::AddInput(std::string_view name, const Ref<StorageBuffer> &storageBuffer)
+    void RenderPass::AddInput(std::string_view name, Ref<StorageBuffer> &storageBuffer)
     {
         m_DescriptorSetManager.AddInput(name, storageBuffer);
     }
 
-    // NOTE: Original code referenced TextureAsset which is not part of DescriptorSetManager interface.
-    // Adjust to Texture2D (engine texture) for descriptor binding.
-    void RenderPass::AddInput(std::string_view name, const Ref<Texture2D> &texture)
+    /**
+     * @note: Original code referenced TextureAsset which is not part of DescriptorSetManager interface.
+     * Adjust to Texture2D (engine texture) for descriptor binding.
+     */
+    void RenderPass::AddInput(std::string_view name, Ref<Texture2D> &texture)
     {
         m_DescriptorSetManager.AddInput(name, texture); // index 0
     }
 
+    /// -------------------------------------------------------
+
     Ref<Image2D> RenderPass::GetOutput(uint32_t index)
     {
-        return {};
+        Ref<Framebuffer> framebuffer = renderSpec.Pipeline->GetSpecification().dstFramebuffer;
+        if (index > framebuffer->GetColorAttachmentCount() + 1)
+            return nullptr; // Invalid index
+        if (index < framebuffer->GetColorAttachmentCount())
+            return framebuffer->GetImage(index);
+
+        return framebuffer->GetDepthImage();
     }
 
     Ref<Image2D> RenderPass::GetDepthOutput()
     {
-        return {};
+        Ref<Framebuffer> framebuffer = renderSpec.Pipeline->GetSpecification().dstFramebuffer;
+        if (!framebuffer->HasDepthAttachment())
+            return nullptr; // No depth output
+
+        return framebuffer->GetDepthImage();
     }
 
     uint32_t RenderPass::GetFirstSetIndex() const
     {
-        return 0;
+        return m_DescriptorSetManager.GetFirstSetIndex();
     }
 
     Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const
 	{
-        return renderSpec.Pipeline ? renderSpec.Pipeline->GetSpecification().dstFramebuffer : nullptr;
+        return renderSpec.Pipeline->GetSpecification().dstFramebuffer;
 	}
 
     Ref<Pipeline> RenderPass::GetPipeline() const
@@ -145,6 +164,7 @@ namespace SceneryEditorX
 
     void RenderPass::Prepare()
     {
+        m_DescriptorSetManager.InvalidateAndUpdate();
     }
 
     bool RenderPass::HasDescriptorSets() const
@@ -166,27 +186,13 @@ namespace SceneryEditorX
         return m_DescriptorSetManager.inputDeclarations.contains(nameStr);
     }
 
-	const RenderPassInputDeclaration *RenderPass::GetInputDeclaration(std::string_view name)
+	const RenderPassInputDeclaration *RenderPass::GetInputDeclaration(std::string_view name) const
     {
         std::string nameStr(name);
         if (!m_DescriptorSetManager.inputDeclarations.contains(nameStr))
             return nullptr;
         const RenderPassInputDeclaration &decl = m_DescriptorSetManager.inputDeclarations.at(nameStr);
         return &decl;
-    }
-
-    void RenderPass::CreateDescriptorSets() const
-    {
-    }
-
-    bool RenderPass::IsInvalidated(uint32_t set, uint32_t binding) const
-    {
-        return false;
-    }
-
-    VkCommandBuffer RenderPass::BeginSingleTimeCommands() const
-    {
-        return nullptr;
     }
 
     /**
@@ -206,6 +212,7 @@ namespace SceneryEditorX
 	 * @throws Logs an error if vkCreateRenderPass fails.
 	 */
 
+	/*
 	void RenderPass::CreateRenderPass()
 	{
 	    VkAttachmentDescription colorAttachment{};
@@ -274,7 +281,9 @@ namespace SceneryEditorX
 	    if (vkCreateRenderPass(device, &renderPassInfo, RenderContext::Get()->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
 	        SEDX_CORE_ERROR("Failed to create render pass!");
 	}
+	*/
 
+	/*
 	void RenderPass::CreateDescriptorSets() const
     {
         std::vector<VkDescriptorSetLayout> layouts(RenderData::framesInFlight, descriptors->descriptorSetLayout);
@@ -337,7 +346,7 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
     }
-
+    */
 
     /**
      * @brief Generates mipmaps for a Vulkan image.
@@ -362,6 +371,7 @@ namespace SceneryEditorX
      * - If the image format does not support linear blitting, an error is logged.
      */
 
+    /*
     void RenderPass::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const
     {
         Ref<VulkanPhysicalDevice> physicalDevice;
@@ -480,7 +490,7 @@ namespace SceneryEditorX
 
         cmdBuffer->End(submitInfo);
     }
-
+    */
 
 	/**
 	 * @brief Creates a Vulkan image and allocates memory for it.
@@ -506,6 +516,7 @@ namespace SceneryEditorX
 	 * @note - The image is created with exclusive sharing mode.
 	 */
 
+	/*
 	void RenderPass::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels,
 	                             VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
 	                             VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const
@@ -542,6 +553,7 @@ namespace SceneryEditorX
 
 	    vkBindImageMemory(device, image, imageMemory, 0);
 	}
+	*/
 
 }
 

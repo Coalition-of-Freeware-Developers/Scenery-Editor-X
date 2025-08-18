@@ -69,10 +69,20 @@ namespace SceneryEditorX
 		    std::optional<std::pair<Queue, uint32_t>> presentFamily;
 		    std::optional<std::pair<Queue, uint32_t>> computeFamily;
 		    std::optional<std::pair<Queue, uint32_t>> transferFamily;
-		
-		    [[nodiscard]] bool isComplete() const { return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value(); }
-		    
-		    [[nodiscard]] uint32_t GetGraphicsFamily() const
+
+            /**
+             * @brief Check if all required queue families are initialized.
+             *
+             * @return True if all required families are set, false otherwise.
+             */
+            [[nodiscard]] bool isComplete() const { return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value(); }
+
+            /**
+             * @brief Get the graphics family index.
+             *
+             * @return The graphics family index, or 0 if not initialized.
+             */
+            [[nodiscard]] uint32_t GetGraphicsFamily() const
 		    { 
 		        if (!graphicsFamily.has_value())
 				{

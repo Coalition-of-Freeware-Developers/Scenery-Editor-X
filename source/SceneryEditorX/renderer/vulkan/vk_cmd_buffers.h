@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -37,37 +37,59 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    struct PipelineStats
+    {
+        uint64_t InputAssemblyVertices = 0;
+        uint64_t InputAssemblyPrimitives = 0;
+        uint64_t VertexShaderInvocations = 0;
+        uint64_t ClippingInvocations = 0;
+        uint64_t ClippingPrimitives = 0;
+        uint64_t FragmentShaderInvocations = 0;
+        uint64_t ComputeShaderInvocations = 0;
+    };
+
+    /// -------------------------------------------------------
+
 	class CommandBuffer : public RefCounted
 	{
 	public:
         CommandBuffer(uint32_t count = 0, std::string debugName = "");
-        CommandBuffer(bool swapchain);
+        CommandBuffer(std::string debugName, bool swapchain);
         virtual ~CommandBuffer() override;
 
 		GLOBAL Ref<CommandBuffer> Get(); ///< Static accessor method to get the singleton instance
 
-        virtual void Begin(Queue queue);
-        virtual void End(VkSubmitInfo submitInfo);
-        virtual void Submit();
+        void Begin();
+        //void Begin(Queue queue);
+        void End();
+        //void End(VkSubmitInfo submitInfo);
+        void Submit();
+		
+		const PipelineStats& GetPipelineStatistics(uint32_t frameIndex) const { return pipelineStatsQueryResults[frameIndex]; }
 
-        [[nodiscard]] static CommandResources &GetCurrentCommandResources();
+		uint32_t BeginTimestampQuery();
+		void EndTimestampQuery(uint32_t queryID);
+
+        //[[nodiscard]] static CommandResources &GetCurrentCommandResources();
         [[nodiscard]] VkCommandBuffer GetActiveCmdBuffer() const { return activeCmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
 
-		GLOBAL Ref<CommandBuffer> CreateFromSwapChain(const std::string &debugName = "");
+		//GLOBAL Ref<CommandBuffer> CreateFromSwapChain(const std::string &debugName = "");
 
 	private:
-        Ref<CommandBuffer> cmdBuffers;
         Ref<VulkanDevice> vkDevice;
         SwapChain swapChain;
         VkCommandBuffer activeCmdBuffer = nullptr;
         VkCommandPool cmdPool = nullptr;
 
         std::vector<VkFence> waitFences;
-        std::vector<VkCommandBuffer> commandBuffer;
+        std::vector<VkCommandBuffer> cmdBuffers;
+        std::vector<PipelineStats> pipelineStatsQueryResults;
 
-        std::vector<VkQueryPool> TimestampQueryPools;
-        std::vector<VkQueryPool> PipelineQueryPools;
+        std::vector<VkQueryPool> timestampQueryPools;
+        std::vector<VkQueryPool> pipelineQueryPools;
+        std::vector<std::vector<uint64_t>> timestampQueryResults;
+        std::vector<std::vector<float>> executionGPUTimes;
 
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -75,8 +97,9 @@ namespace SceneryEditorX
         std::map<std::string, float> timeStampTable;
 
         RenderData data;
-        uint32_t availQuery = 2;
-        uint32_t queryCount = 0;
+        bool ownedBySwapChain = false;
+        uint32_t availTimeQuery = 2;
+        uint32_t timeQueryCount = 0;
         uint32_t pipelineQueryCount = 0;
         uint32_t timeStampPerPool = 64;
         std::string debugName;

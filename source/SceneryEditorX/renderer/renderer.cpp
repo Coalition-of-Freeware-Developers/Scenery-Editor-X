@@ -14,6 +14,7 @@
 #include "buffers/index_buffer.h"
 #include "buffers/vertex_buffer.h"
 #include "compute_pass.h"
+#include "image_data.h"
 #include "render_context.h"
 #include "renderer.h"
 #include "scene_renderer.h"
@@ -21,11 +22,10 @@
 #include "SceneryEditorX/logging/profiler.hpp"
 #include "shaders/shader.h"
 #include "texture.h"
+#include "vulkan/vk_allocator.h"
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_pipeline.h"
 #include "vulkan/vk_render_pass.h"
-#include "vulkan/vk_allocator.h"
-#include "image_data.h"
 
 #include <imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
@@ -33,14 +33,14 @@
 
 #include "vulkan/vk_util.h"
 
-#include <vector>
 #include <algorithm>
-#include <utility>
 #include <stb_image_write.h>
+#include <utility>
+#include <vector>
 
+#include "SceneryEditorX/core/events/application_events.h"
 #include "SceneryEditorX/core/time/time.h"
 #include "SceneryEditorX/platform/filesystem/file_manager.hpp"
-#include "SceneryEditorX/core/events/application_events.h"
 
 /// -------------------------------------------------------
 
@@ -60,8 +60,8 @@ namespace SceneryEditorX
         std::vector<uint32_t> DescriptorPoolAllocationCount;
 
         /// UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor
-		//std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
-		//std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
+		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
+		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
 
         /// Default samplers
         VkSampler SamplerClamp = nullptr;
@@ -84,7 +84,7 @@ namespace SceneryEditorX
     /// Static variable
     LOCAL RenderData m_renderData;
     LOCAL RendererProperties *s_Data = nullptr;
-    constexpr static uint32_t s_RenderCommandQueueCount = 2;
+    constexpr LOCAL uint32_t s_RenderCommandQueueCount = 2;
     INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
     INTERNAL std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
     INTERNAL CommandQueue resourceFreeQueue[3];
@@ -101,10 +101,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    Ref<RenderContext> Renderer::GetContext()
-    {
-        return RenderContext::Get();
-    }
+    Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
 
     void Renderer::Init()
     {

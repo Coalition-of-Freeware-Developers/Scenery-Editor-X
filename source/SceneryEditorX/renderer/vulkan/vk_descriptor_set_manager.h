@@ -62,7 +62,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    class DescriptorSetManager : public RefCounted
+    class DescriptorSetManager
     {
     public:
         std::map<uint32_t, std::map<uint32_t, RenderPassInput>> inputResources;
@@ -70,7 +70,12 @@ namespace SceneryEditorX
         std::map<std::string, RenderPassInputDeclaration> inputDeclarations;
         std::vector<std::vector<VkDescriptorSet>> m_DescriptorSets;
 
-        struct WriteDescriptor { VkWriteDescriptorSet writeDescriptorSet{}; std::vector<void*> resourceHandles; };
+        struct WriteDescriptor
+        {
+            VkWriteDescriptorSet writeDescriptorSet{};
+            std::vector<void*> resourceHandles;
+        };
+
         std::vector<std::map<uint32_t, std::map<uint32_t, WriteDescriptor>>> writeDescriptorMap;
 
         DescriptorSetManager() = default;
@@ -78,14 +83,16 @@ namespace SceneryEditorX
         DescriptorSetManager(const DescriptorSetManagerSpecification& specification);
         static DescriptorSetManager Copy(const DescriptorSetManager& other);
 
-        //void AddInput(std::string_view name, const Ref<UniformBufferSet>& uniformBufferSet);
-        void AddInput(std::string_view name, const Ref<UniformBuffer>& uniformBuffer);
-        //void AddInput(std::string_view name, const Ref<StorageBufferSet>& storageBufferSet);
-        void AddInput(std::string_view name, const Ref<StorageBuffer>& storageBuffer);
-        void AddInput(std::string_view name, const Ref<Texture2D>& texture, uint32_t index = 0);
-        void AddInput(std::string_view name, const Ref<TextureCube>& textureCube);
-        void AddInput(std::string_view name, const Ref<Image2D>& image);
-        void AddInput(std::string_view name, const Ref<ImageView>& image);
+        void AddInput(std::string_view name, Ref<UniformBufferSet>& uniformBufferSet);
+        void AddInput(std::string_view name, Ref<UniformBuffer>& uniformBuffer);
+        void AddInput(std::string_view name, Ref<StorageBufferSet>& storageBufferSet);
+        void AddInput(std::string_view name, Ref<StorageBuffer>& storageBuffer);
+        void AddInput(std::string_view name, Ref<Texture2D>& texture, uint32_t index = 0);
+        void AddInput(std::string_view name, Ref<TextureCube>& textureCube);
+        void AddInput(std::string_view name, Ref<Image2D>& image);
+        void AddInput(std::string_view name, Ref<ImageView>& image);
+
+        /// -------------------------------------------------------
 
         template<typename T>
         Ref<T> GetInput(std::string_view name)
@@ -100,6 +107,8 @@ namespace SceneryEditorX
             }
             return nullptr;
         }
+
+        /// -------------------------------------------------------
 
         void Bake();
         bool Validate();
