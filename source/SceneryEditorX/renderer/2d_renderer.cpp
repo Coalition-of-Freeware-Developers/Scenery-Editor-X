@@ -18,6 +18,7 @@
 #include "vulkan/vk_cmd_buffers.h"
 
 /// -------------------------------------------------------
+
 namespace SceneryEditorX
 {
 
@@ -36,12 +37,15 @@ namespace SceneryEditorX
 	void Renderer2D::Init()
 	{
 		if (m_Specification.SwapChainTarget)
-			m_RenderCommandBuffer = CommandBuffer::CreateFromSwapChain("Renderer2D");
+		{
+		    m_RenderCommandBuffer = CreateRef<CommandBuffer>("Renderer2D", true);
+		}
 		else
-            m_RenderCommandBuffer = CreateRef<CommandBuffer>(0, "Renderer2D");
+		{
+		    m_RenderCommandBuffer = CreateRef<CommandBuffer>(0, "Renderer2D");
+		}
 
-		//m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(CameraUniformBuffer));
-
+		m_UBSCamera = CreateRef<UniformBufferSet>(sizeof(CameraUniformBuffer));
 		m_MemoryStats.TotalAllocated = 0;
 
 		uint32_t framesInFlight = Renderer::GetRenderData().framesInFlight;
@@ -53,8 +57,9 @@ namespace SceneryEditorX
 		framebufferSpec.clearColor = { 0.1f, 0.5f, 0.5f, 1.0f };
 		framebufferSpec.debugName = "Renderer2D Framebuffer";
 
+	    Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(framebufferSpec);
+
         {
-            Ref<Framebuffer> framebuffer = CreateRef<Framebuffer>(framebufferSpec);
             PipelineData pipelineSpecification;
 			pipelineSpecification.debugName = "Renderer2D-Quad";
 			pipelineSpecification.shader = Renderer::GetShaderLibrary()->Get("Renderer2D");
@@ -72,7 +77,7 @@ namespace SceneryEditorX
 			quadSpec.debugName = "Renderer2D-Quad";
 			quadSpec.Pipeline = CreateRef<Pipeline>(pipelineSpecification);
             m_QuadPass = CreateRef<RenderPass>(quadSpec);
-			//m_QuadPass->AddInput("Camera", m_UBSCamera->Get());
+			m_QuadPass->AddInput("Camera", m_UBSCamera);
 			SEDX_CORE_VERIFY(m_QuadPass->Validate());
 			m_QuadPass->Bake();
 
@@ -107,7 +112,7 @@ namespace SceneryEditorX
 
 			{
 				uint64_t allocationSize = c_MaxIndices * sizeof(uint32_t);
-				m_QuadIndexBuffer = IndexBuffer::Create(quadIndices, allocationSize);
+                m_QuadIndexBuffer = CreateRef<IndexBuffer>(quadIndices, allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize;
 			}
 			hdelete[] quadIndices;
@@ -123,13 +128,14 @@ namespace SceneryEditorX
 		m_QuadVertexPositions[2] = {  0.5f,  0.5f, 0.0f, 1.0f };
 		m_QuadVertexPositions[3] = {  0.5f, -0.5f, 0.0f, 1.0f };
 
-		/*
-		///< Lines
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Lines
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		{
-			auto& bufferPtr = GetWriteableQuadBuffer();
+            PipelineData pipelineSpecification;
 			pipelineSpecification.debugName = "Renderer2D-Line";
 			pipelineSpecification.shader = Renderer::GetShaderLibrary()->Get("Renderer2D_Line");
-			pipelineSpecification.topology = Topology::Lines;
+            pipelineSpecification.topology = PrimitiveTopology::Lines;
 			pipelineSpecification.lineWidth = 2.0f;
 			pipelineSpecification.layout = {
 				{ ShaderDataType::Float3, "a_Position" },
@@ -172,21 +178,22 @@ namespace SceneryEditorX
 
 			{
 				uint64_t allocationSize = c_MaxLineIndices * sizeof(uint32_t);
-				m_LineIndexBuffer = IndexBuffer::Create(lineIndices, allocationSize);
-				m_LineOnTopIndexBuffer = IndexBuffer::Create(lineIndices, allocationSize);
+                m_LineIndexBuffer = CreateRef<IndexBuffer>(lineIndices, allocationSize);
+                m_LineOnTopIndexBuffer = CreateRef<IndexBuffer>(lineIndices, allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize + allocationSize;
 			}
 			hdelete[] lineIndices;
 		}
-		*/
 
-		/*
-		///< Text
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Text
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		{
 			PipelineData pipelineSpecification;
 			pipelineSpecification.debugName = "Renderer2D-Text";
 			pipelineSpecification.shader = Renderer::GetShaderLibrary()->Get("Renderer2D_Text");
-			pipelineSpecification.dstFramebuffer = framebuffer;
+            pipelineSpecification.dstFramebuffer = framebuffer;
 			pipelineSpecification.backfaceCulling = false;
 			pipelineSpecification.layout = {
 				{ ShaderDataType::Float3, "a_Position" },
@@ -199,7 +206,7 @@ namespace SceneryEditorX
 			textSpec.debugName = "Renderer2D-Text";
             textSpec.Pipeline = CreateRef<Pipeline>(pipelineSpecification);
             m_TextPass = CreateRef<RenderPass>(textSpec);
-			//m_TextPass->AddInput("Camera", m_UBSCamera);
+			m_TextPass->AddInput("Camera", m_UBSCamera);
 			SEDX_CORE_VERIFY(m_TextPass->Validate());
 			m_TextPass->Bake();
 
@@ -235,15 +242,15 @@ namespace SceneryEditorX
 
 			{
 				uint64_t allocationSize = c_MaxIndices * sizeof(uint32_t);
-				m_TextIndexBuffer = IndexBuffer::Create(textQuadIndices, allocationSize);
+                m_TextIndexBuffer = CreateRef<IndexBuffer>(textQuadIndices, allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize;
 			}
 			hdelete[] textQuadIndices;
 		}
-		*/
 
-		/*
-		///< Circles
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Circles
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		{
 			PipelineData pipelineSpecification;
 			pipelineSpecification.debugName = "Renderer2D-Circle";
@@ -276,7 +283,7 @@ namespace SceneryEditorX
 
 		m_QuadMaterial = CreateRef<Material>(m_QuadPass->GetPipeline()->GetShader(), "QuadMaterial");
         m_LineMaterial = CreateRef<Material>(m_LinePass->GetPipeline()->GetShader(), "LineMaterial");
-        */
+
 	}
 
 	void Renderer2D::Shutdown() const
@@ -319,7 +326,7 @@ namespace SceneryEditorX
 		m_CameraView = view;
 		m_DepthTest = depthTest;
 
-		/*
+
 		Renderer::Submit([ubsCamera = m_UBSCamera, viewProj]() mutable
 		{
 			uint32_t bufferIndex = Renderer::GetCurrentRenderThreadFrameIndex();
@@ -365,12 +372,14 @@ namespace SceneryEditorX
 		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
 
 		/// Begin command buffer recording
-		m_RenderCommandBuffer->Begin(Graphics);
+		m_RenderCommandBuffer->Begin();
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Renderer2D::EndScene frame {}", frameIndex);
 		uint32_t dataSize;
 
-		///< Quads
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Quads
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		for (uint32_t i = 0; i <= m_QuadBufferWriteIndex; i++)
 		{
 			dataSize = (uint32_t)((uint8_t*)m_QuadVertexBufferPtr[i] - (uint8_t*)m_QuadVertexBufferBases[i][frameIndex]);
@@ -388,7 +397,7 @@ namespace SceneryEditorX
 				}
 
 				Renderer::BeginFrame(m_RenderCommandBuffer, m_QuadPass);
-				//Renderer::RenderGeometry(m_RenderCommandBuffer, m_QuadPass->GetPipeline(), m_QuadMaterial, m_QuadVertexBuffers[i][frameIndex], m_QuadIndexBuffer, Mat4(1.0f), indexCount);
+				Renderer::RenderGeometry(m_RenderCommandBuffer, m_QuadPass->GetPipeline(), m_QuadMaterial, m_QuadVertexBuffers[i][frameIndex], m_QuadIndexBuffer, Mat4(1.0f), indexCount);
 				Renderer::EndFrame(m_RenderCommandBuffer);
 
 				m_DrawStats.DrawCalls++;
@@ -396,10 +405,12 @@ namespace SceneryEditorX
 			}
 		}
 
-		///< Render text
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Render Text
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		for (uint32_t i = 0; i <= m_TextBufferWriteIndex; i++)
 		{
-			dataSize = (uint32_t)(reinterpret_cast<uint8_t *>(m_TextVertexBufferPtr[i]) - reinterpret_cast<uint8_t *>(m_TextVertexBufferBases[i][frameIndex]));
+            dataSize = (uint32_t)((uint8_t *)m_TextVertexBufferPtr[i] - (uint8_t *)m_TextVertexBufferBases[i][frameIndex]);
 			if (dataSize)
 			{
 				uint32_t indexCount = i == m_TextBufferWriteIndex ? m_TextIndexCount - c_MaxIndices * i : c_MaxIndices;
@@ -414,7 +425,7 @@ namespace SceneryEditorX
 				}
 
 				Renderer::BeginFrame(m_RenderCommandBuffer, m_TextPass);
-				//Renderer::RenderGeometry(m_RenderCommandBuffer, m_TextPass->GetSpecification().Pipeline, m_TextMaterial, m_TextVertexBuffers[i][frameIndex], m_TextIndexBuffer, Mat4(1.0f), indexCount);
+				Renderer::RenderGeometry(m_RenderCommandBuffer, m_TextPass->GetSpecification().Pipeline, m_TextMaterial, m_TextVertexBuffers[i][frameIndex], m_TextIndexBuffer, Mat4(1.0f), indexCount);
 				Renderer::EndFrame(m_RenderCommandBuffer);
 
 				m_DrawStats.DrawCalls++;
@@ -423,12 +434,13 @@ namespace SceneryEditorX
 
 		}
 
-		/*
-		///< Lines
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Lines
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		m_LinePass->GetPipeline()->GetSpecification().depthTest = true;
 		for (uint32_t i = 0; i <= m_LineBufferWriteIndex; i++)
 		{
-			dataSize = (uint32_t)(reinterpret_cast<uint8_t *>(m_LineVertexBufferPtr[i]) - reinterpret_cast<uint8_t *>(m_LineVertexBufferBases[i][frameIndex]));
+            dataSize = (uint32_t)((uint8_t *)m_LineVertexBufferPtr[i] - (uint8_t *)m_LineVertexBufferBases[i][frameIndex]);
 			if (dataSize)
 			{
 				uint32_t indexCount = i == m_LineBufferWriteIndex ? m_LineIndexCount - c_MaxLineIndices * i : c_MaxLineIndices;
@@ -461,7 +473,6 @@ namespace SceneryEditorX
 				m_MemoryStats.Used += dataSize;
 			}
 		}
-		*/
 
 #if TODO
 		///< Circles
@@ -495,9 +506,8 @@ namespace SceneryEditorX
 		}
 #endif
 
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		m_RenderCommandBuffer->End(submitInfo);
+		m_RenderCommandBuffer->End();
+        m_RenderCommandBuffer->Submit();
 	}
 
 	void Renderer2D::Flush()
@@ -513,7 +523,7 @@ namespace SceneryEditorX
 
 	void Renderer2D::SetTargetFramebuffer(Ref<Framebuffer> &framebuffer)
 	{
-	    /*
+
 		if (framebuffer != m_TextPass->GetTargetFramebuffer())
 		{
 			{
@@ -537,13 +547,13 @@ namespace SceneryEditorX
                 renderpassSpec.Pipeline = CreateRef<Pipeline>(pipelineSpec);
 			}
 		}
-		*/
+
 	}
 
 	void Renderer2D::OnRecreateSwapchain()
 	{
 		if (m_Specification.SwapChainTarget)
-			m_RenderCommandBuffer = CommandBuffer::CreateFromSwapChain("Renderer2D");
+            m_RenderCommandBuffer = CreateRef<CommandBuffer>("Renderer2D");
 	}
 
     /**
@@ -644,7 +654,7 @@ namespace SceneryEditorX
 
 	Renderer2D::QuadVertex*& Renderer2D::GetWriteableQuadBuffer()
 	{
-		const uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+		const uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 
 		m_QuadBufferWriteIndex = m_QuadIndexCount / c_MaxIndices;
 		if (m_QuadBufferWriteIndex >= m_QuadVertexBufferBases.size())
@@ -659,7 +669,7 @@ namespace SceneryEditorX
 
 	Renderer2D::LineVertex*& Renderer2D::GetWriteableLineBuffer(const bool onTop)
 	{
-		const uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+        const uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 
 		if (onTop)
 		{
@@ -686,7 +696,7 @@ namespace SceneryEditorX
 
 	Renderer2D::TextVertex*& Renderer2D::GetWriteableTextBuffer()
 	{
-		const uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+        const uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 		m_TextBufferWriteIndex = m_TextIndexCount / c_MaxIndices;
 		if (m_TextBufferWriteIndex >= m_TextVertexBufferBases.size())
 		{
@@ -700,7 +710,7 @@ namespace SceneryEditorX
 
 	Renderer2D::CircleVertex*& Renderer2D::GetWriteableCircleBuffer()
 	{
-		const uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+        const uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 		m_CircleBufferWriteIndex = m_CircleIndexCount / c_MaxIndices;
 		if (m_CircleBufferWriteIndex >= m_CircleVertexBufferBases.size())
 		{
@@ -714,7 +724,7 @@ namespace SceneryEditorX
 
 	void Renderer2D::DrawQuad(const Mat4& transform, const Vec4& color)
 	{
-		const uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+        const uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 		constexpr size_t quadVertexCount = 4;
 
         m_QuadBufferWriteIndex = m_QuadIndexCount / c_MaxIndices;
@@ -1002,13 +1012,16 @@ namespace SceneryEditorX
         constexpr float textureIndex = 0.0f; /// White Texture
         constexpr float tilingFactor = 1.0f;
 
-		// NOTE: Quat::AngleAxisRadians returns a Quat, so explicitly convert to Mat4 before multiplying
+		// @note: Quat::AngleAxisRadians returns a Quat, so explicitly convert to Mat4 before multiplying
 		const Mat4 transform = Mat4::Translate(position)
 			* Quat::AngleAxisRadians(rotation, { 0.0f, 0.0f, 1.0f }).ToMatrix()
 			* Mat4::Scale({ size.x, size.y, 1.0f });
 
 		auto& bufferPtr = GetWriteableQuadBuffer();
-			bufferPtr->Position = transform * m_QuadVertexPositions[0];
+        {
+            bufferPtr->Position = transform * m_QuadVertexPositions[0];
+        }
+
 		bufferPtr->Color = color;
 		bufferPtr->TexCoord = { 0.0f, 0.0f };
 		bufferPtr->TexIndex = textureIndex;
@@ -1039,7 +1052,6 @@ namespace SceneryEditorX
 		m_QuadIndexCount += 6;
 		m_DrawStats.QuadCount++;
 	}
-
 
 	void Renderer2D::DrawRotatedQuad(const Vec2& position, const Vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const Vec4& tintColor)
 	{
@@ -1194,7 +1206,6 @@ namespace SceneryEditorX
         DrawLine(p0, p1, {0.0f, 0.0f, 1.0f, 1.0f}, onTop);
     }
 
-
 	void Renderer2D::DrawCircle(const Vec3& position, const Vec3& rotation, float radius, const Vec4& color, const bool onTop)
 	{
 		const Mat4 transform = Mat4::Translate(position)
@@ -1221,7 +1232,6 @@ namespace SceneryEditorX
 			DrawLine(p0, p1, color, onTop);
 		}
 	}
-
 
 	void Renderer2D::DrawAABB(const AABB &aabb, const Mat4& transform, const Vec4& color /*= Vec4(1.0f)*/, const bool onTop)
 	{
@@ -1251,7 +1261,7 @@ namespace SceneryEditorX
 			DrawLine(corners[i], corners[i + 4], color, onTop);
 	}
 
-	static bool NextLine(const int index, const std::vector<int>& lines)
+	INTERNAL bool NextLine(const int index, const std::vector<int>& lines)
 	{
 		for (const int line : lines)
 		{
@@ -1261,7 +1271,6 @@ namespace SceneryEditorX
 
 		return false;
 	}
-
 
 	void Renderer2D::DrawString(const std::string& string, const Vec3& position, float maxWidth, const Vec4& color)
 	{
@@ -1279,8 +1288,7 @@ namespace SceneryEditorX
 	 * The C++ Standard doesn't provide equivalent non-deprecated functionality; consider using MultiByteToWideChar() and WideCharToMultiByte() from <Windows.h> instead.
 	 * You can define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
 	 */
-
-#pragma warning(disable : 4996)
+    #pragma warning(disable : 4996)
 
 	///< From https://stackoverflow.com/questions/31302506/stdu32string-conversion-to-from-stdstring-and-stdu16string
 	static std::u32string To_UTF32(const std::string& s)
@@ -1289,7 +1297,7 @@ namespace SceneryEditorX
 		return conv.from_bytes(s);
 	}
 
-#pragma warning(default : 4996)
+    #pragma warning(default : 4996)
 
 	void Renderer2D::DrawString(const std::string& string, const Ref<Font>& font, const Mat4& transform, float maxWidth, const Vec4& color, float lineHeightOffset, float kerningOffset)
 	{
@@ -1464,15 +1472,13 @@ namespace SceneryEditorX
 	    return m_LineWidth;
 	}
 
-	/*
-	void Renderer2D::SetLineWidth(const float lineWidth)
+	void Renderer2D::SetLineWidth(float lineWidth)
 	{
 		m_LineWidth = lineWidth;
 
 		if (m_LinePass)
 			m_LinePass->GetPipeline()->GetSpecification().lineWidth = lineWidth;
 	}
-	*/
 
 	void Renderer2D::ResetStats()
 	{
@@ -1495,5 +1501,6 @@ namespace SceneryEditorX
         return TotalAllocated / Renderer::GetRenderData().framesInFlight;
 	}
 
-
 }
+
+/// -------------------------------------------------------

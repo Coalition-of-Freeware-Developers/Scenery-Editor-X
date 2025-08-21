@@ -3,6 +3,7 @@
 * Scenery Editor X
 * -------------------------------------------------------
 * Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * renderer.cpp
@@ -15,7 +16,15 @@
 #include "buffers/vertex_buffer.h"
 #include "compute_pass.h"
 #include "image_data.h"
+#include "buffers/framebuffer.h"
+#include "buffers/index_buffer.h"
+#include "buffers/vertex_buffer.h"
+#include "compute_pass.h"
+#include "image_data.h"
 #include "render_context.h"
+#include "renderer.h"
+#include "scene_renderer.h"
+#include "SceneryEditorX/core/time/timer.h"
 #include "renderer.h"
 #include "scene_renderer.h"
 #include "SceneryEditorX/core/time/timer.h"
@@ -31,7 +40,26 @@
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 
+#include "texture.h"
+#include "vulkan/vk_allocator.h"
+#include "vulkan/vk_cmd_buffers.h"
+#include "vulkan/vk_pipeline.h"
+#include "vulkan/vk_render_pass.h"
+
+#include <imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
+
 #include "vulkan/vk_util.h"
+
+#include <algorithm>
+#include <stb_image_write.h>
+#include <utility>
+#include <vector>
+
+#include "SceneryEditorX/core/events/application_events.h"
+#include "SceneryEditorX/core/time/time.h"
+#include "SceneryEditorX/platform/filesystem/file_manager.hpp"
 
 #include <algorithm>
 #include <stb_image_write.h>
@@ -85,6 +113,7 @@ namespace SceneryEditorX
     LOCAL RenderData m_renderData;
     LOCAL RendererProperties *s_Data = nullptr;
     constexpr LOCAL uint32_t s_RenderCommandQueueCount = 2;
+    constexpr LOCAL uint32_t s_RenderCommandQueueCount = 2;
     INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
     INTERNAL std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
     INTERNAL CommandQueue resourceFreeQueue[3];
@@ -101,6 +130,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
     Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
 
     void Renderer::Init()
@@ -122,7 +152,9 @@ namespace SceneryEditorX
         s_Data->DescriptorPools.resize(config.framesInFlight);
         s_Data->DescriptorPoolAllocationCount.resize(config.framesInFlight);
 
-		/// Create Descriptor pools
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Create Descriptor pools
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         Submit([]() mutable
         {
             /// Create Descriptor Pool
@@ -159,6 +191,10 @@ namespace SceneryEditorX
 
 
 		/// Create fullscreen quad
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Create Fullscreen Quad
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         constexpr float x = -1;
         constexpr float y = -1;
         constexpr float width = 2;
@@ -183,12 +219,11 @@ namespace SceneryEditorX
 		data[3].Position = Vec3(x, y + height, 0.0f);
 		data[3].TexCoord = Vec2(0, 1);
 
-		s_Data->QuadVertexBuffer = VertexBuffer::Create(data, 4 * sizeof(QuadVertex));
+		s_Data->QuadVertexBuffer = CreateRef<VertexBuffer>(data, 4 * sizeof(QuadVertex));
 		uint32_t indices[6] = { 0, 1, 2, 2, 3, 0, };
-		s_Data->QuadIndexBuffer = IndexBuffer::Create(indices, 6 * sizeof(uint32_t));
+		s_Data->QuadIndexBuffer = CreateRef<IndexBuffer>(indices, 6 * sizeof(uint32_t));
 
 		s_Data->BRDFLut = GetBRDFLutTexture();
-
 
         uint32_t whiteTextureData = 0xffffffff;
         TextureSpecification spec;
@@ -297,8 +332,14 @@ namespace SceneryEditorX
     }
 
     uint64_t Renderer::GetCurrentFrameIndex()
+    uint64_t Renderer::GetCurrentFrameIndex()
     {
         return m_renderData.frameIndex;
+    }
+
+    Ref<ShaderLibrary> Renderer::GetShaderLibrary()
+    {
+        return s_Data->m_ShaderLibrary;
     }
 
     Ref<ShaderLibrary> Renderer::GetShaderLibrary()
@@ -338,13 +379,6 @@ namespace SceneryEditorX
     {
         s_RenderCommandQueueSubmissionIndex = (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
     }
-
-    /*
-    SwapChain* Renderer::GetSwapChain()
-    {
-        return m_SwapChain.Get();
-    }
-    */
 
 	VkDescriptorSetAllocateInfo Renderer::DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count, VkDescriptorPool pool)
 	{
@@ -396,8 +430,8 @@ namespace SceneryEditorX
     }
 
     /*
-    void Renderer::RenderGeometry(Ref<CommandBuffer> &ref, Ref<Pipeline> &pipeline, Ref<Material> &material,
-        std::vector<Ref<VertexBuffer>>::const_reference vertexBuffer, const Ref<IndexBuffer> &indexBuffer, const Mat4 &transform, uint32_t indexCount)
+    void Renderer::RenderGeometry(Ref<CommandBuffer> ref, Ref<Pipeline> &pipeline, Ref<Material> &material,
+        Ref<VertexBuffer> vertexBuffer, Ref<IndexBuffer> &indexBuffer, const Mat4 &transform, uint32_t indexCount)
     {
         RenderGeometry(ref, pipeline, material, vertexBuffer, indexBuffer, transform, indexCount);
 
@@ -520,8 +554,7 @@ namespace SceneryEditorX
             // Swizzle if needed (BGRA->RGBA)
             Utils::SwizzleBGRAtoRGBA(pixels.data(), bufferSize, format);
 
-            int writeOk = stbi_write_png(outPath.c_str(), static_cast<int>(width), static_cast<int>(height), bytesPerPixel, pixels.data(), static_cast<int>(width * bytesPerPixel));
-            if (!writeOk)
+            if (int writeOk = stbi_write_png(outPath.c_str(), static_cast<int>(width), static_cast<int>(height), bytesPerPixel, pixels.data(), static_cast<int>(width * bytesPerPixel)); !writeOk)
             {
                 SEDX_CORE_WARN_TAG("RENDERER", "Failed to write screenshot to {}", outPath);
             }

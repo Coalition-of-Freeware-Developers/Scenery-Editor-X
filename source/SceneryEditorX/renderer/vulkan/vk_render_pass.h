@@ -47,6 +47,8 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    /// -------------------------------------------------------
+
     /**
 	 * @class RenderPass
 	 * @brief Manages the Vulkan render pass and associated resources
@@ -62,6 +64,7 @@ namespace SceneryEditorX
 	{
 	public:
 	    RenderPass(const RenderSpec &spec);
+	    RenderPass(const RenderSpec &spec);
 	    virtual ~RenderPass() override;
 
 		virtual RenderSpec& GetSpecification() { return renderSpec; }
@@ -76,9 +79,24 @@ namespace SceneryEditorX
 	    void AddInput(std::string_view name, Ref<Texture2D> &texture);
 	    void AddInput(std::string_view name, Ref<TextureCube> &textureCube);
 	    void AddInput(std::string_view name, Ref<Image2D> &image);
-
         /// -------------------------------------------------------
 
+	    void AddInput(std::string_view name, Ref<UniformBufferSet> &uniformBufferSet);
+        void AddInput(std::string_view name, Ref<UniformBuffer> &uniformBuffer);
+	    void AddInput(std::string_view name, Ref<StorageBufferSet> &storageBufferSet);
+        void AddInput(std::string_view name, Ref<StorageBuffer> &storageBuffer);
+	    void AddInput(std::string_view name, Ref<Texture2D> &texture);
+	    void AddInput(std::string_view name, Ref<TextureCube> &textureCube);
+	    void AddInput(std::string_view name, Ref<Image2D> &image);
+
+        /// -------------------------------------------------------
+        /// -------------------------------------------------------
+
+		Ref<Image2D> GetOutput(uint32_t index);
+        Ref<Image2D> GetDepthOutput();
+        uint32_t GetFirstSetIndex() const;
+        Ref<Framebuffer> GetTargetFramebuffer() const;
+        Ref<Pipeline> GetPipeline() const;
 		Ref<Image2D> GetOutput(uint32_t index);
         Ref<Image2D> GetDepthOutput();
         uint32_t GetFirstSetIndex() const;
@@ -91,7 +109,7 @@ namespace SceneryEditorX
 		void Bake();
 		bool Baked() const { return (bool)m_DescriptorSetManager.GetDescriptorPool(); }
 		void Prepare();
-		
+
         /// -------------------------------------------------------
 
 		bool HasDescriptorSets() const;
@@ -99,8 +117,12 @@ namespace SceneryEditorX
 
 		bool IsInputValid(std::string_view name) const;
 		const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name) const;
+		const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name) const;
 
 	private:
+        RenderSpec renderSpec;                  /// Render specification containing pipeline and debug name
+        RenderData renderData;					/// Render data containing information about the render pass
+	    DescriptorSetManager m_DescriptorSetManager;
         RenderSpec renderSpec;                  /// Render specification containing pipeline and debug name
         RenderData renderData;					/// Render data containing information about the render pass
 	    DescriptorSetManager m_DescriptorSetManager;
