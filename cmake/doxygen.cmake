@@ -1,24 +1,24 @@
-if(BUILD_DOXYGEN)
+IF(BUILD_DOXYGEN)
     # Find Doxygen package
-    find_package(Doxygen)
+    FIND_PACKAGE(Doxygen)
 
-    if(NOT DOXYGEN_FOUND)
-        message(FATAL_ERROR "Doxygen not found. Please install Doxygen to generate documentation.")
-    endif()
+    IF(NOT DOXYGEN_FOUND)
+        MESSAGE(FATAL_ERROR "Doxygen not found. Please install Doxygen to generate documentation.")
+    ENDIF()
 
     # Set the path to the Doxyfile
-    set(DOXYFILE_PATH "${CMAKE_SOURCE_DIR}/scripts/Doxyfile")
+	SET(DOXYFILE_PATH ${CMAKE_SOURCE_DIR}/scripts/Doxyfile)
 
     # Check if the Doxyfile exists
-    if(NOT EXISTS ${DOXYFILE_PATH})
-        message(FATAL_ERROR "Doxyfile not found at ${DOXYFILE_PATH}")
-    endif()
+	IF(NOT EXISTS ${DOXYFILE_PATH})
+	    MESSAGE(FATAL_ERROR "Doxyfile not found at ${DOXYFILE_PATH}")
+	ENDIF()
 
     # Set the output directory for the documentation
-    set(DOXYGEN_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/docs/doxygen")
+    SET(DOXYGEN_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/docs/doxygen")
 
     # Add a custom target to generate the Doxygen documentation
-    add_custom_target(doxygen
+    ADD_CUSTOM_TARGET(doxygen
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_PATH}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Generating API documentation with Doxygen"
@@ -26,5 +26,5 @@ if(BUILD_DOXYGEN)
     )
 
     # Ensure the output directory exists
-    file(MAKE_DIRECTORY ${DOXYGEN_OUTPUT_DIR})
-endif()
+    FILE(MAKE_DIRECTORY ${DOXYGEN_OUTPUT_DIR})
+ENDIF()

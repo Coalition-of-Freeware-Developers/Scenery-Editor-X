@@ -115,5 +115,7 @@ if %errorlevel% equ 0 (
     echo %ESC%[92mA log file has been created called CMake_Gen.log%ESC%[0m
 	echo %ESC%[92m-----------------------------------%ESC%[0m
 )
+
+REM --- Prompt for Doxygen documentation generation ---
 echo %ESC%[92mPress any key to exit...%ESC%[0m
 pause >nul

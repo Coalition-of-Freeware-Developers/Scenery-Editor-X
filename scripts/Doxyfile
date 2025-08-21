@@ -48,26 +48,26 @@ PROJECT_NAME           = "Scenery Editor X"
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         =
+PROJECT_NUMBER         = "0.2.27"
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
 # quick idea about the purpose of the project. Keep the description short.
 
-PROJECT_BRIEF          =
+PROJECT_BRIEF          = "A new 3D interactive airport and scenery editor for X-Plane 12 Flight Simulator."
 
 # With the PROJECT_LOGO tag one can specify a logo or an icon that is included
 # in the documentation. The maximum height of the logo should not exceed 55
 # pixels and the maximum width should not exceed 200 pixels. Doxygen will copy
 # the logo to the output directory.
 
-PROJECT_LOGO           = ../assets/icon.png
+PROJECT_LOGO           =
 
 # With the PROJECT_ICON tag one can specify an icon that is included in the tabs
 # when the HTML document is shown. Doxygen will copy the logo to the output
 # directory.
 
-PROJECT_ICON           = ../assets/icon.png
+PROJECT_ICON           =
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) path
 # into which the generated documentation will be written. If a relative path is
@@ -266,7 +266,7 @@ INHERIT_DOCS           = YES
 # of the file/class/namespace that contains it.
 # The default value is: NO.
 
-SEPARATE_MEMBER_PAGES  = YES
+SEPARATE_MEMBER_PAGES  = NO # Must be NO because INLINE_GROUPED_CLASSES = YES
 
 # The TAB_SIZE tag can be used to set the number of spaces in a tab. Doxygen
 # uses this value to replace tabs by spaces in code fragments.
@@ -489,7 +489,7 @@ TYPEDEF_HIDES_STRUCT   = NO
 # the optimal cache size from a speed point of view.
 # Minimum value: 0, maximum value: 9, default value: 0.
 
-LOOKUP_CACHE_SIZE      = 2
+LOOKUP_CACHE_SIZE      = 6
 
 # The NUM_PROC_THREADS specifies the number of threads Doxygen is allowed to use
 # during processing. When set to 0 Doxygen will based this on the number of
@@ -502,7 +502,7 @@ LOOKUP_CACHE_SIZE      = 2
 # DOT_NUM_THREADS setting.
 # Minimum value: 0, maximum value: 32, default value: 1.
 
-NUM_PROC_THREADS       = 1
+NUM_PROC_THREADS       = 8
 
 # If the TIMESTAMP tag is set different from NO then each generated page will
 # contain the date or date and time when the page was generated. Setting this to
@@ -848,8 +848,8 @@ CITE_BIB_FILES         =
 # PATH=/Library/TeX/texbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 EXTERNAL_TOOL_PATH     = "K:/X-Plane 12 Development/XP SDK/SDK" \
-                         C:/VulkanSDK/1.3.296.0 \
-                         ../dependency/vcpkg
+                         "C:/VulkanSDK/1.3.296.0" \
+                         "../dependency/vcpkg"
 
 #---------------------------------------------------------------------------
 # Configuration options related to warning and progress messages
@@ -968,13 +968,23 @@ WARN_LOGFILE           =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = ../source \
-                         ../source/EditorFramework \
+						 ../source/CrashHandler \
+                         ../source/Editor \
                          ../source/edX \
                          ../source/Launcher \
+						 ../source/Math \
                          ../source/SceneryEditorX \
-                         ../source/VulkanRenderer \
+						 ../source/Tests \
                          ../source/X-PlaneSceneryLibrary \
-                         ../dependency/optick
+                         ../dependency/Catch2 \
+						 ../dependency/entt \
+                         ../dependency/glfw \
+						 ../dependency/IconFontCppHeaders \
+                         ../dependency/imgui \
+                         ../dependency/json \
+                         ../dependency/json-cpp-gen \
+                         ../dependency/libconfig \
+                         ../dependency/msdf-atlas-gen \
 
 # This tag can be used to specify the character encoding of the source files
 # that Doxygen parses. Internally Doxygen uses the UTF-8 encoding. Doxygen uses
@@ -1071,7 +1081,18 @@ FILE_PATTERNS          = *.c \
                          *.jpg \
                          *.png \
                          *.tga \
-                         *.bmp
+                         *.bmp \
+						 *.edx \
+						 *.edx.lib \
+						 *.edx.bin \
+						 *.log \
+						 *.ps1 \
+						 *.bat \
+						 *.json \
+						 *.hint \
+						 *.rc \
+						 *.rgs \
+
 
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
@@ -1086,7 +1107,7 @@ RECURSIVE              = YES
 # Note that relative paths are relative to the directory from which Doxygen is
 # run.
 
-EXCLUDE                =
+EXCLUDE                = ../source/_backup  # Exclude experimental/backup headers that break filters (e.g. type_values.h)
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
@@ -1102,7 +1123,8 @@ EXCLUDE_SYMLINKS       = NO
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories for example use the pattern */test/*
 
-EXCLUDE_PATTERNS       =
+EXCLUDE_PATTERNS       = */_backup/*  # Ensure any nested _backup dirs are ignored /
+						 */dependency/rtm/*
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names
 # (namespaces, classes, functions, etc.) that should be excluded from the
@@ -1178,14 +1200,19 @@ INPUT_FILTER           =
 # need to set EXTENSION_MAPPING for the extension otherwise the files are not
 # properly processed by Doxygen.
 
-FILTER_PATTERNS        =
+FILTER_PATTERNS        = \
+                        *.h="python ./strip_license_header.py" \
+                        *.hpp="python ./strip_license_header.py" \
+                        *.c="python ./strip_license_header.py" \
+                        *.cpp="python ./strip_license_header.py" \
+                        *.inl="python ./strip_license_header.py"
 
 # If the FILTER_SOURCE_FILES tag is set to YES, the input filter (if set using
 # INPUT_FILTER) will also be used to filter the input files that are used for
 # producing the source files to browse (i.e. when SOURCE_BROWSER is set to YES).
 # The default value is: NO.
 
-FILTER_SOURCE_FILES    = NO
+FILTER_SOURCE_FILES    = YES
 
 # The FILTER_SOURCE_PATTERNS tag can be used to specify source filters per file
 # pattern. A pattern will override the setting for FILTER_PATTERN (if any) and

@@ -129,10 +129,10 @@ PROJECT(SceneryEditorX
 
 # Enable CTest/CTest integration at the top-level so tests added in subdirectories
 # are discoverable from the build root via `ctest`.
-include(CTest)
-if(BUILD_TESTING)
-    enable_testing()
-endif()
+INCLUDE(CTest)
+IF(BUILD_TESTING)
+    ENABLE_TESTING()
+ENDIF()
 
 MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Beginning project generation for Scenery Editor X")
@@ -182,6 +182,15 @@ FIND_PACKAGE(Doxygen                          QUIET)
 FIND_PACKAGE(VulkanMemoryAllocator  CONFIG REQUIRED)
 
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h")
+
+# --------------------------------
+# PROJECT OPTIONS
+# --------------------------------
+
+OPTION(BUILD_DOXYGEN "Build Doxygen documentation" OFF)
+IF(BUILD_DOXYGEN)
+    INCLUDE(cmake/doxygen.cmake)
+ENDIF()
 
 # --------------------------------
 # GLFW
