@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Editor/core/editor_camera.h>
 #include <SceneryEditorX/core/events/event_system.h>
 #include <SceneryEditorX/core/time/time.h>
 #include <SceneryEditorX/renderer/scene_renderer.h>
@@ -42,10 +41,10 @@ namespace SceneryEditorX
         bool IsViewportVisible() const;
         bool IsMainViewport() const;
 
-        Ref<SceneRenderer> GetRenderer() const;
+        //Ref<SceneRenderer> GetRenderer() const;
         Ref<Renderer2D> GetRenderer2D() const;
 
-		EditorCamera &GetViewportCamera();
+		Camera &GetViewportCamera();
         std::array<Vec2, 2> GetViewportBounds() const;
 
         void Init(const Ref<Scene> &scene);
@@ -74,9 +73,9 @@ namespace SceneryEditorX
         std::pair<Vec3, Vec3> CastRay(float mx, float my) const;
 
         Editor *m_Editor = nullptr;
-        EditorCamera m_ViewportCamera;
+        Camera m_ViewportCamera;
         std::string m_ViewportName = "Viewport";
-        Ref<SceneRenderer> m_ViewportRenderer;
+        //Ref<SceneRenderer> m_ViewportRenderer;
         Ref<Renderer2D> m_ViewportRenderer2D;
         std::array<Vec2, 2> m_ViewportBounds = {};
 
