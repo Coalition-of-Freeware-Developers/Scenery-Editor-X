@@ -367,7 +367,7 @@ namespace SceneryEditorX
 		StaticMesh(AssetHandle meshSource, const std::vector<uint32_t>& submeshes, bool generateColliders);
 		virtual ~StaticMesh() = default;
 
-		virtual void OnDependencyUpdated(AssetHandle handle);
+	    virtual void OnDependencyUpdated(AssetHandle handle);
 
 		const std::vector<uint32_t>& GetSubmeshes() const { return m_Submeshes; }
 
@@ -381,7 +381,7 @@ namespace SceneryEditorX
 
 		bool ShouldGenerateColliders() const { return m_GenerateColliders; }
 
-		static AssetType GetStaticType() { return AssetType::StaticMesh; }
+		GLOBAL AssetType GetStaticType() { return AssetType::StaticMesh; }
 		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 	private:
 		AssetHandle m_MeshSource;

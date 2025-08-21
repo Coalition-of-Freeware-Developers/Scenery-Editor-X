@@ -140,7 +140,7 @@ namespace SceneryEditorX::UI
          * @brief Shows application info in an ImGui window
          * @param appName Application name
          */
-        void ShowAppInfo(const std::string &appName) const;
+        void ShowAppInfo(std::string &appName) const;
 
         /**
          * @brief Initialize a viewport window for rendering
@@ -148,7 +148,7 @@ namespace SceneryEditorX::UI
          * @param imageView Vulkan image view to render into
          * @return True if initialization was successful
          */
-        bool InitViewport(const Viewport &size, VkImageView imageView);
+        bool InitViewport(Viewport &size, VkImageView imageView);
 
         /**
          * @brief Display the viewport window with the scene rendering

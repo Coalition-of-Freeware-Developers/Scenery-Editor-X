@@ -39,12 +39,7 @@ namespace SceneryEditorX
         explicit Image2D(const ImageSpecification &specification);
         virtual ~Image2D();
 
-        //GLOBAL Ref<Image2D> Create(const ImageDescriptions &desc, const std::string &name = "Image2D");
-
-        void Resize(const UVec2& size)
-        {
-			Resize(size.x, size.y);
-		}
+        void Resize(const UVec2& size) { Resize(size.x, size.y); }
 
         void Resize(const uint32_t width, const uint32_t height)
         {

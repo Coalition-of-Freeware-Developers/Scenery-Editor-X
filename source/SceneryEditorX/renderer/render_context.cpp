@@ -71,15 +71,15 @@ namespace SceneryEditorX
         allocatorCallback = nullptr;
         instance = VK_NULL_HANDLE;
         debugMessenger = VK_NULL_HANDLE;
-#ifdef SEDX_DEBUG
+    #ifdef SEDX_DEBUG
         debugCallback = VK_NULL_HANDLE;
-#endif
+    #endif
     }
 
     RenderContext::~RenderContext()
     {
         /// Clean up debug messenger if enabled
-#ifdef SEDX_DEBUG
+    #ifdef SEDX_DEBUG
         if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
         {
             /// Cleanup debug messenger
@@ -92,9 +92,10 @@ namespace SceneryEditorX
             /// Cleanup debug callback using appropriate extension function
             if (auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"))
                 func(instance, debugCallback, nullptr);
+
             debugCallback = VK_NULL_HANDLE;
         }
-#endif
+    #endif
 
         /// Destroy Vulkan instance if it was created
         if (instance != VK_NULL_HANDLE)
@@ -111,7 +112,6 @@ namespace SceneryEditorX
 
         return s_Instance;
     }
-
 
     LOCAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
     {
@@ -192,13 +192,9 @@ namespace SceneryEditorX
                 khronosAvailable = layerChecker.CheckValidationLayerSupport();
                 
                 if (!khronosAvailable)
-                {
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer requested but not available!");
-                }
                 else
-                {
                     SEDX_CORE_INFO_TAG("Graphics Engine", "Validation layers are available and will be enabled");
-                }
             }
     
             /// Get all available extensions
@@ -389,7 +385,7 @@ namespace SceneryEditorX
             PipelineCache pipelineCache;
             pipelineCache.CreateCache();
 
-            SEDX_CORE_INFO("Pipeline cache created successfully");
+            //SEDX_CORE_INFO("Pipeline cache created successfully");
             SEDX_CORE_INFO("RenderContext initialization complete");
         }
         catch (const std::exception& e)
@@ -404,8 +400,6 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-
-    
     VkInstance RenderContext::GetInstance()
     {
         if (!s_Instance)

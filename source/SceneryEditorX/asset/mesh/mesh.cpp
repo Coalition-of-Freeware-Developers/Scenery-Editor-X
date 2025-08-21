@@ -43,8 +43,8 @@ namespace SceneryEditorX
 		submesh.IndexCount = (uint32_t)indices.size() * 3u;
 		submesh.Transform = transform;
 
-		m_VertexBuffer = VertexBuffer::Create(m_Vertices.data(), (uint32_t)(m_Vertices.size() * sizeof(Vertex)));
-		m_IndexBuffer = IndexBuffer::Create(m_Indices.data(), (uint32_t)(m_Indices.size() * sizeof(Index)));
+		m_VertexBuffer = CreateRef<VertexBuffer>(m_Vertices.data(), (uint32_t)(m_Vertices.size() * sizeof(Vertex)));
+		m_IndexBuffer = CreateRef<IndexBuffer>(m_Indices.data(), (uint32_t)(m_Indices.size() * sizeof(Index)));
 
 		m_TriangleCache[0].reserve(indices.size());
 		for (const Index& index : indices)
@@ -72,8 +72,8 @@ namespace SceneryEditorX
 		/// Generate a new asset handle
 		Handle = {};
 
-		m_VertexBuffer = VertexBuffer::Create(m_Vertices.data(), (uint32_t)(m_Vertices.size() * sizeof(Vertex)));
-		m_IndexBuffer = IndexBuffer::Create(m_Indices.data(), (uint32_t)(m_Indices.size() * sizeof(Index)));
+		m_VertexBuffer = CreateRef<VertexBuffer>(m_Vertices.data(), (uint32_t)(m_Vertices.size() * sizeof(Vertex)));
+        m_IndexBuffer = CreateRef<IndexBuffer>(m_Indices.data(), (uint32_t)(m_Indices.size() * sizeof(Index)));
 
 		/// Calculate bounding box
 		m_BoundingBox.Min = { FLT_MAX, FLT_MAX, FLT_MAX };

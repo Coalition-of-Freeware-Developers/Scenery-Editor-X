@@ -222,7 +222,7 @@ namespace SceneryEditorX
          * @param debugName Optional debug name for the vertex buffer
          * @return Ref<VertexBuffer> Smart pointer to the created vertex buffer
          */
-        static Ref<VertexBuffer> Create(const void* data, uint64_t size, VertexBufferType usage = VertexBufferType::Static, const std::string& debugName = "");
+        //static Ref<VertexBuffer> Create(const void* data, uint64_t size, VertexBufferType usage = VertexBufferType::Static, const std::string& debugName = "");
 
         /**
          * @brief Gets the Vulkan buffer handle

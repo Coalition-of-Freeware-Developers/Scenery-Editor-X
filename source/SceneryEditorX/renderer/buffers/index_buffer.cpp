@@ -18,6 +18,10 @@
 namespace SceneryEditorX
 {
 
+	IndexBuffer::IndexBuffer(uint64_t size) : m_Size(size)
+	{
+	}
+
     ///TODO: Evaluate if this is how it should be done or the other methods bellow.
     ///TODO: Need to refactor to properly utilize the custom MemoryAllocator and Buffer functions.
     /*
@@ -46,11 +50,13 @@ namespace SceneryEditorX
 
     /// --------------------------------------------
 
+    /*
     IndexBuffer::IndexBuffer(uint64_t size) : indices(size / sizeof(uint32_t))
     {
         uint64_t bufferSize = size;
         m_GpuBuffer = CreateBuffer(bufferSize, BufferUsage::Index, MemoryType::GPU, "IndexBuffer");
     }
+    */
 
     /// --------------------------------------------
 

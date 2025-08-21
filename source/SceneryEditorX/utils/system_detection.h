@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -14,35 +14,27 @@
 //////////////////////////////////////////////////////
 ///			   COMPILER TYPE DETECTION			   ///
 //////////////////////////////////////////////////////
-#if defined(__GNUC__)
-	#if defined(__clang__)
-		#define SEDX_COMPILER_CLANG
-	#else
-		#define SEDX_COMPILER_GCC
-	#endif
-#elif defined(_MSC_VER)
-	#define SEDX_COMPILER_MSVC
+#if defined(_MSC_VER)
+    #define SEDX_COMPILER_MSVC
+#elif defined(__clang__)
+    #define SEDX_COMPILER_CLANG
+    #pragma clang diagnostic ignored "-Wmissing-braces"
+#elif defined(__GNUC__)
+        #define SEDX_COMPILER_GCC
+#else
+    #error  "Unknown Compiler! If you are using a compiler that is not listed here, please report it to the Scenery Editor X team."
 #endif
 //////////////////////////////////////////////////////
 #ifdef SEDX_COMPILER_MSVC
 	#define SEDX_FORCE_INLINE __forceinline
 	#define SEDX_EXPLICIT_STATIC static
-#elif defined(__GNUC__)
+#elif defined(SEDX_COMPILER_GCC)
 	#define SEDX_FORCE_INLINE __attribute__((always_inline)) inline
 	#define SEDX_EXPLICIT_STATIC
 #else
 	#define SEDX_FORCE_INLINE inline
 	#define SEDX_EXPLICIT_STATIC
 #endif
-//////////////////////////////////////////////////////
-///				BUILD TYPE DETECTION			   ///
-//////////////////////////////////////////////////////
-#ifdef SEDX_DEBUG
-    #define SEDX_BUILD_TYPE "Debug"
-#elif defined(SEDX_RELEASE)
-    #define SEDX_BUILD_TYPE "Release"
-#endif
-
 //////////////////////////////////////////////////////
 ///           WINDOWS PLATFORM DETECTION		   ///
 //////////////////////////////////////////////////////
@@ -53,21 +45,9 @@
         #define SEDX_PLATFORM_NAME "Windowsx64"
 		#include <Windows.h>
 		#ifndef VK_USE_PLATFORM_WIN32_KHR
-		#define VK_USE_PLATFORM_WIN32_KHR
+		    #define VK_USE_PLATFORM_WIN32_KHR
 		#endif
         constexpr char dirSeparator = '\\';
-		#if defined(_DEBUG) || defined(DEBUG)
-			#ifndef SEDX_DEBUG
-            #define SEDX_DEBUG
-			#endif
-			#define SEDX_DEBUGBREAK() __debugbreak()
-			#define APP_USE_VULKAN_DEBUG_REPORT
-		#endif
-		#if defined(_RELEASE) || defined(NDEBUG) || defined(RELEASE)
-		    #ifndef SEDX_RELEASE
-		    #define SEDX_RELEASE
-		    #endif
-		#endif
     #elif
 	/** Windows x86 **/
     #error "x86 Builds are not supported!"
@@ -127,12 +107,6 @@
 	#endif
 	#include <vulkan/vulkan.h>
 	constexpr char dirSeparator = '/';
-	#if defined(_DEBUG) || defined(DEBUG)
-		#ifndef SEDX_DEBUG
-        #define SEDX_DEBUG
-		#endif
-		#define SEDX_DEBUGBREAK() raise(SIGTRAP)
-	#endif
 #else
 	/* Unknown compiler/platform */
     #define SEDX_PLATFORM_NAME "Unknown"
@@ -140,4 +114,24 @@
 #endif 
 
 //////////////////////////////////////////////////////
+///				BUILD TYPE DETECTION			   ///
+//////////////////////////////////////////////////////
 
+#if defined(_DEBUG) || defined(DEBUG)
+	#ifndef SEDX_DEBUG
+	    #define SEDX_DEBUG
+	#endif
+	#define SEDX_BUILD_TYPE "Debug"
+	#define SEDX_DEBUGBREAK() __debugbreak()
+	#if defined(SEDX_PLATFORM_LINUX)
+	    #define SEDX_DEBUGBREAK() raise(SIGTRAP)
+	#endif
+	#define APP_USE_VULKAN_DEBUG_REPORT
+#elif defined(_RELEASE) || defined(NDEBUG) || defined(RELEASE)
+	#ifndef SEDX_RELEASE
+	    #define SEDX_RELEASE
+	#endif
+	    #define SEDX_BUILD_TYPE "Release"
+#endif
+
+//////////////////////////////////////////////////////

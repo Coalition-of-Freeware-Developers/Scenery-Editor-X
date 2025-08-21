@@ -17,6 +17,8 @@
 #include <Math/includes/matrix.h>
 #include <Math/includes/vector.h>
 
+#include <SceneryEditorX/scene/scene.h>
+
 #include "2d_renderer.h"
 #include "camera.h"
 #include "compute_pipeline.h"
@@ -362,7 +364,6 @@ namespace SceneryEditorX
 		};
 		void CalculateCascades(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3 &lightDirection) const;
 		void CalculateCascadesManualSplit(CascadeData* cascades, const SceneRendererCamera& sceneCamera, const Vec3 &lightDirection) const;
-
 		void UpdateStatistics();
 
 		Ref<Scene> m_Scene;

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * framebuffer.cpp
@@ -28,10 +28,10 @@ namespace SceneryEditorX
 			{
 				if (IsDepthFormat(attachmentSpecification.Format))
 					return specification.clearDepthOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-				
+
 				return specification.clearColorOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 			}
-	
+
 			return attachmentSpecification.LoadOp == AttachmentLoadOp::Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
 		}
     }
@@ -100,20 +100,20 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(specification.attachments.Attachments.size());
         Framebuffer::Resize(m_Width, m_Height, true);
 	}
-	
+
 	Framebuffer::~Framebuffer()
 	{
         Release();
 	}
-	
+
 	void Framebuffer::Bind()
 	{
 	}
-	
+
 	void Framebuffer::Unbind()
 	{
 	}
-	
+
 	void Framebuffer::Resize(uint32_t width, uint32_t height, bool forceRecreate)
 	{
         if (!forceRecreate && (m_Width == width && m_Height == height))
@@ -139,18 +139,18 @@ namespace SceneryEditorX
 		for (auto &callback : m_ResizeCallbacks)
             callback(Ref<Framebuffer>(this));
 	}
-	
+
 	void Framebuffer::AddResizeCallback(const std::function<void(Ref<Framebuffer>)> &func)
 	{
         m_ResizeCallbacks.push_back(func);
 	}
-	
+
 	void Framebuffer::Invalidate()
 	{
         Ref<Framebuffer> instance(this);
         Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });
 	}
-	
+
 	void Framebuffer::Invalidate_RenderThread()
 	{
         auto device = RenderContext::GetCurrentDevice()->GetDevice();
@@ -399,7 +399,7 @@ namespace SceneryEditorX
         VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &m_Framebuffer))
         SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_FRAMEBUFFER, m_Specification.debugName, m_Framebuffer);
     }
-	
+
 	void Framebuffer::Release() const
     {
         if (m_Framebuffer)

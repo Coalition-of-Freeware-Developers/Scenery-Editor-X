@@ -64,11 +64,9 @@ namespace SceneryEditorX
 	{
 		/// Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
 		if (error == 0x10003 && strstr(description, "joystick"))
-		{
-			/// Silently ignore joystick-related GLFW_INVALID_ENUM errors
-			return;
-		}
-		SEDX_CORE_ERROR_TAG("Window", "GLFW Error ({0}): {1}", error, description);
+            return; /// Silently ignore joystick-related GLFW_INVALID_ENUM errors
+
+        SEDX_CORE_ERROR_TAG("Window", "GLFW Error ({0}): {1}", error, description);
     }
 
     /**
@@ -211,9 +209,8 @@ namespace SceneryEditorX
         /// If fullscreen creation failed or not in fullscreen mode, create windowed
         if (!windowCreated) {
             SEDX_CORE_INFO("Creating window in windowed mode: {}x{}", static_cast<int>(winData.width), static_cast<int>(winData.height));
-            m_window = glfwCreateWindow(static_cast<int>(winData.width), static_cast<int>(winData.height),
-                                                 winData.title.c_str(), nullptr, nullptr);
-            windowCreated = (m_window != nullptr);
+            m_window = glfwCreateWindow(static_cast<int>(winData.width), static_cast<int>(winData.height),winData.title.c_str(), nullptr, nullptr);
+            windowCreated = m_window != nullptr;
         }
 
         /// Final fallback - try creating a minimal window
@@ -748,7 +745,9 @@ namespace SceneryEditorX
                     glfwSetWindowMonitor(m_window, currentMonitor, 0, 0, videoMode.width, videoMode.height, videoMode.refreshRate);
                 }
                 else
+                {
                     SEDX_CORE_ERROR("Invalid video mode index or no video modes available");
+                }
 
                 break;
         }
@@ -808,7 +807,8 @@ namespace SceneryEditorX
 	 */
 	void Window::Update()
 	{
-	    if (!m_window) {
+	    if (!m_window)
+		{
 	        SEDX_CORE_WARN("Cannot update window - window not created yet");
 	        return;
 	    }
@@ -860,7 +860,8 @@ namespace SceneryEditorX
 	 */
     void Window::UpdateFramebufferSize()
     {
-        if (!m_window) {
+        if (!m_window)
+		{
             SEDX_CORE_WARN("Cannot update framebuffer size - window not created yet");
             return;
         }
@@ -872,6 +873,11 @@ namespace SceneryEditorX
         winData.framebufferResized = false;
     }
 
+    /**
+     * @brief
+     *
+     * @param title 
+     */
     void Window::SetTitle(const std::string &title)
     {
         m_winSpecs.title = title;
@@ -974,10 +980,8 @@ namespace SceneryEditorX
      *
      * @return Reference to the SwapChain used by this window.
      */
-    SwapChain &Window::GetSwapChain()
-    {
-        return *swapChain;
-    }
+    SwapChain &Window::GetSwapChain() { return *swapChain; }
+
 
 	void Window::SetResizable(bool resizable) const
     {

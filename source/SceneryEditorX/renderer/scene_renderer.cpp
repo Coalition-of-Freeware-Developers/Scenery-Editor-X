@@ -11,8 +11,11 @@
 * -------------------------------------------------------
 */
 #include "scene_renderer.h"
+#include "compute_pass.h"
 #include "debug_renderer.h"
 #include "primitives.h"
+#include "renderer.h"
+
 #include "SceneryEditorX/core/application/application.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/logging/profiler.hpp"
@@ -127,7 +130,7 @@ namespace SceneryEditorX
 		m_DebugRenderer = CreateRef<DebugRenderer>();
 
 		m_CompositeShader = Renderer::GetShaderLibrary()->Get("SceneComposite");
-		m_CompositeMaterial = Material::Create(m_CompositeShader);
+        m_CompositeMaterial = CreateRef<Material>(m_CompositeShader);
 
 		/**
 		 * Descriptor Set Layout
@@ -141,7 +144,7 @@ namespace SceneryEditorX
 			spec.debugName = "VisibleSpotLightIndices";
             m_SBSVisibleSpotLightIndicesBuffer = CreateRef<StorageBufferSet>(spec, 1); ///< Resized later
 
-			m_LightCullingMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("LightCulling"), "LightCulling");
+			m_LightCullingMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("LightCulling"), "LightCulling");
 			Ref<Shader> lightCullingShader = Renderer::GetShaderLibrary()->Get("LightCulling");
             m_LightCullingPipeline = CreateRef<ComputePipeline>(lightCullingShader);
 		}
@@ -303,7 +306,7 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_DirectionalShadowMapAnimPass[i]->Validate());
 				m_DirectionalShadowMapAnimPass[i]->Bake();
 			}
-			m_ShadowPassMaterial = Material::Create(shadowPassShader, "DirShadowPass");
+            m_ShadowPassMaterial = CreateRef<Material>(shadowPassShader, "DirShadowPass");
 		}
 
 		///< Non-directional shadow mapping pass
@@ -346,7 +349,7 @@ namespace SceneryEditorX
 			m_SpotShadowPassPipeline = CreateRef<Pipeline>(pipelineSpec);
             m_SpotShadowPassAnimPipeline = CreateRef<Pipeline>(pipelineSpecAnim);
 
-			m_SpotShadowPassMaterial = Material::Create(shadowPassShader, "SpotShadowPass");
+			m_SpotShadowPassMaterial = CreateRef<Material>(shadowPassShader, "SpotShadowPass");
 
 			RenderSpec spotShadowPassSpec;
 			spotShadowPassSpec.debugName = "SpotShadowMap";
@@ -368,49 +371,49 @@ namespace SceneryEditorX
 		///< - RenderPass contains Pipeline in spec
 
 		{
-			///<
-			///< A render pass should provide context and initiate (prepare) certain layout transitions for all
-			///< required resources. This should be easy to check and ensure everything is ready.
-			///<
-			///< Passes should be somewhat pre-baked to contain ready-to-go descriptors that aren't draw-call
-			///< specific. Hazel defines Set 0 as per-draw - so usually materials. Sets 1-3 are scene/renderer owned.
-			///<
-			///< This means that when you define a render pass, you need to set-up required inputs from Sets 1-3
-			///< and based on what is used here, these need to get baked into ready-to-go allocated descriptor sets,
-			///< for that specific render pass draw call (so we can use vkCmdBindDescriptorSets).
-			///<
-			///< API could look something like:
+			///
+			/// A render pass should provide context and initiate (prepare) certain layout transitions for all
+			/// required resources. This should be easy to check and ensure everything is ready.
+			///
+			/// Passes should be somewhat pre-baked to contain ready-to-go descriptors that aren't draw-call
+			/// specific. Hazel defines Set 0 as per-draw - so usually materials. Sets 1-3 are scene/renderer owned.
+			///
+			/// This means that when you define a render pass, you need to set-up required inputs from Sets 1-3
+			/// and based on what is used here, these need to get baked into ready-to-go allocated descriptor sets,
+			/// for that specific render pass draw call (so we can use vkCmdBindDescriptorSets).
+			///
+			/// API could look something like:
 
-			///< Ref<RenderPass> shadowMapRenderPass[4]; // Four shadow map passes, into single layered framebuffer
-			///<
-			///< {
-			///< 	for (int i = 0; i < 4; i++)
-			///< 	{
-			///< 		RenderSpec spec;
-			///< 		spec.debugName = "ShadowMapPass";
-			///< 		spec.Pipeline = m_ShadowPassPipelines[i];
-			///< 		//spec.dstFramebuffer = m_ShadowPassPipelines[i]->GetSpecification().RenderPass->GetSpecification().dstFramebuffer; // <- set framebuffer here
-			///<
-			///< 		shadowMapRenderPass[i] = RenderPass::Create(spec);
-			///< 		// shadowMapRenderPass[i]->GetRequiredInputs(); // Returns list of sets+bindings of required resources from descriptor layout
-			///<
-			///< 		// NOTE:
-			///< 		// AddInput needs to potentially take in the set + binding of the resource
-			///< 		// We (currently) don't store the actual variable name, just the struct type (eg. ShadowData and not u_ShadowData),
-			///< 		// so if there are multiple instances of the ShadowData struct then it's ambiguous.
-			///< 		// I suspect clashes will be rare - usually we only have one input per type/buffer
-			///< 		shadowMapRenderPass[i]->AddInput("ShadowData", m_UBSShadow);
-			///< 		// Note: outputs are automatically set by framebuffer
-			///<
-			///< 		// Bake will create descriptor sets and ensure everything is ready for rendering
-			///< 		// If resources (eg. storage buffers/images) resize, passes need to be invalidated
-			///< 		// so we can re-create proper descriptors to the newly created replacement resources
-			///< 		SEDX_CORE_VERIFY(shadowMapRenderPass[i]->Validate());
-			///< 		shadowMapRenderPass[i]->Bake();
-			///< 	}
-			///< }
+			/// Ref<RenderPass> shadowMapRenderPass[4]; // Four shadow map passes, into single layered framebuffer
+			///
+			/// {
+			/// 	for (int i = 0; i < 4; i++)
+			/// 	{
+			/// 		RenderSpec spec;
+			/// 		spec.debugName = "ShadowMapPass";
+			/// 		spec.Pipeline = m_ShadowPassPipelines[i];
+			/// 		//spec.dstFramebuffer = m_ShadowPassPipelines[i]->GetSpecification().RenderPass->GetSpecification().dstFramebuffer; // <- set framebuffer here
+			///
+			/// 		shadowMapRenderPass[i] = RenderPass::Create(spec);
+			/// 		// shadowMapRenderPass[i]->GetRequiredInputs(); // Returns list of sets+bindings of required resources from descriptor layout
+			///
+			/// 		// NOTE:
+			/// 		// AddInput needs to potentially take in the set + binding of the resource
+			/// 		// We (currently) don't store the actual variable name, just the struct type (eg. ShadowData and not u_ShadowData),
+			/// 		// so if there are multiple instances of the ShadowData struct then it's ambiguous.
+			/// 		// I suspect clashes will be rare - usually we only have one input per type/buffer
+			/// 		shadowMapRenderPass[i]->AddInput("ShadowData", m_UBSShadow);
+			/// 		// Note: outputs are automatically set by framebuffer
+			///
+			/// 		// Bake will create descriptor sets and ensure everything is ready for rendering
+			/// 		// If resources (eg. storage buffers/images) resize, passes need to be invalidated
+			/// 		// so we can re-create proper descriptors to the newly created replacement resources
+			/// 		SEDX_CORE_VERIFY(shadowMapRenderPass[i]->Validate());
+			/// 		shadowMapRenderPass[i]->Bake();
+			/// 	}
+			/// }
 
-			///< PreDepth
+			/// PreDepth
 			{
 				FramebufferSpecification preDepthFramebufferSpec;
 				preDepthFramebufferSpec.width = m_Specification.ViewportWidth;
@@ -434,7 +437,7 @@ namespace SceneryEditorX
 				pipelineSpec.layout = vertexLayout;
 				pipelineSpec.instanceLayout = instanceLayout;
                 m_PreDepthPipeline = CreateRef<Pipeline>(pipelineSpec);
-				m_PreDepthMaterial = Material::Create(pipelineSpec.shader, pipelineSpec.debugName);
+                m_PreDepthMaterial = CreateRef<Material>(pipelineSpec.shader, pipelineSpec.debugName);
 
 				///< Change to loading framebuffer so we don't clear
 				pipelineSpec.dstFramebuffer = loadFramebuffer;
@@ -577,7 +580,7 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_SelectedGeometryPass->Validate());
 				m_SelectedGeometryPass->Bake();
 
-				m_SelectedGeometryMaterial = Material::Create(pipelineSpecification.shader, pipelineSpecification.debugName);
+				m_SelectedGeometryMaterial = CreateRef<Material>(pipelineSpecification.shader, pipelineSpecification.debugName);
 
 				pipelineSpecification.debugName = "SelectedGeometry-Anim";
 				pipelineSpecification.shader = Renderer::GetShaderLibrary()->Get("SelectedGeometry_Anim");
@@ -600,10 +603,9 @@ namespace SceneryEditorX
 				spec.Pipeline = m_GeometryPipeline;
 
 				m_GeometryPass = CreateRef<RenderPass>(spec);
-				// m_GeometryPass->GetRequiredInputs(); // Returns list of sets+bindings of required resources from descriptor layout (currently unused)
+				//m_GeometryPass->GetRequiredInputs(); // Returns list of sets+bindings of required resources from descriptor layout (currently unused)
 
 				m_GeometryPass->AddInput("Camera", m_UBSCamera);
-
 				m_GeometryPass->AddInput("SpotShadowData", m_UBSSpotShadowData);
 				m_GeometryPass->AddInput("ShadowData", m_UBSShadow);
 				m_GeometryPass->AddInput("PointLightData", m_UBSPointLights);
@@ -667,7 +669,6 @@ namespace SceneryEditorX
 				m_GeometryAnimPass->Bake();
 			}
 
-			/*
 			{
 				ComputePassSpecification spec;
 				spec.debugName = "LightCulling";
@@ -684,7 +685,6 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_LightCullingPass->Validate());
 				m_LightCullingPass->Bake();
 			}
-			*/
 
 #if 0
 			///< Render example
@@ -724,7 +724,7 @@ namespace SceneryEditorX
 			imageSpec.layers = 16;
 			imageSpec.usage = ImageUsage::Attachment;
 			imageSpec.debugName = "Deinterleaved";
-			Ref<Image2D> image = Image2D::Create(imageSpec);
+			Ref<Image2D> image = CreateRef<Image2D>(imageSpec);
 			image->Invalidate();
 			image->CreatePerLayerImageViews();
 
@@ -759,7 +759,7 @@ namespace SceneryEditorX
 				RenderSpec spec;
 				spec.debugName = "Deinterleaving";
 				spec.Pipeline = m_DeinterleavingPipelines[rp];
-				m_DeinterleavingPass[rp] = RenderPass::Create(spec);
+				m_DeinterleavingPass[rp] = CreateRef<RenderPass>(spec);
 
 				m_DeinterleavingPass[rp]->AddInput("u_Depth", m_PreDepthPass->GetDepthOutput());
 				m_DeinterleavingPass[rp]->AddInput("Camera", m_UBSCamera);
@@ -1083,7 +1083,7 @@ namespace SceneryEditorX
 				{ ShaderDataType::Float3, "a_Position" },
 				{ ShaderDataType::Float2, "a_TexCoord" }
 			};
-			m_JumpFloodInitMaterial = Material::Create(pipelineSpecification.shader, pipelineSpecification.debugName);
+            m_JumpFloodInitMaterial = CreateRef<Material>(pipelineSpecification.shader, pipelineSpecification.debugName);
 
 			RenderSpec renderPassSpec;
 			renderPassSpec.debugName = "JumpFlood-Init";
@@ -1107,7 +1107,7 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_JumpFloodPass[i]->Validate());
 				m_JumpFloodPass[i]->Bake();
 
-				m_JumpFloodPassMaterial[i] = Material::Create(pipelineSpecification.shader, pipelineSpecification.debugName);
+				m_JumpFloodPassMaterial[i] = CreateRef<Material>(pipelineSpecification.shader, pipelineSpecification.debugName);
 			}
 
 			///< Outline compositing
@@ -1155,24 +1155,24 @@ namespace SceneryEditorX
 
             constexpr float gridScale = 16.025f;
             constexpr float gridSize = 0.025f;
-			m_GridMaterial = Material::Create(pipelineSpec.shader, pipelineSpec.debugName);
+            m_GridMaterial = CreateRef<Material>(pipelineSpec.shader, pipelineSpec.debugName);
 			m_GridMaterial->Set("u_Settings.Scale", gridScale);
 			m_GridMaterial->Set("u_Settings.Size", gridSize);
 		}
 
 		///< Debug render
-		m_SelectedBoneMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "SelectedBone");
+        m_SelectedBoneMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "SelectedBone");
 		m_SelectedBoneMaterial->Set("u_MaterialUniforms.Color", m_Options.SelectedBoneColor);
-		m_BoneMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "Bone");
+        m_BoneMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "Bone");
 		m_BoneMaterial->Set("u_MaterialUniforms.Color", m_Options.BoneColor);
 		m_BoneMesh = AssetManager::GetAsset<StaticMesh>(Primitives::CreateSphere(0.1f)); // must hold a Ref<Mesh> here, not an asset handle (so that if project is reloaded (and asset manager destroyed) we still hold a ref to the bone mesh, so bone mesh is not destroyed)
 		m_BoneMeshSource = AssetManager::GetAsset<MeshSource>(m_BoneMesh->GetMeshSource());
-		m_SimpleColliderMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "SimpleCollider");
+        m_SimpleColliderMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "SimpleCollider");
 		m_SimpleColliderMaterial->Set("u_MaterialUniforms.Color", m_Options.SimplePhysicsCollidersColor);
-		m_ComplexColliderMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "ComplexCollider");
+		m_ComplexColliderMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "ComplexCollider");
 		m_ComplexColliderMaterial->Set("u_MaterialUniforms.Color", m_Options.ComplexPhysicsCollidersColor);
 
-		m_WireframeMaterial = Material::Create(Renderer::GetShaderLibrary()->Get("Wireframe"), "Wireframe");
+		m_WireframeMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "Wireframe");
 		m_WireframeMaterial->Set("u_MaterialUniforms.Color", Vec4{ 1.0f, 0.5f, 0.0f, 1.0f });
 
 		///< Skybox
@@ -1198,7 +1198,7 @@ namespace SceneryEditorX
 			};
 			pipelineSpec.dstFramebuffer = skyboxFB;
             m_SkyboxPipeline = CreateRef<Pipeline>(pipelineSpec);
-			m_SkyboxMaterial = Material::Create(pipelineSpec.shader, pipelineSpec.debugName);
+            m_SkyboxMaterial = CreateRef<Material>(pipelineSpec.shader, pipelineSpec.debugName);
 			m_SkyboxMaterial->SetFlag(MaterialFlag::DepthTest, false);
 
 			RenderSpec renderPassSpec;
@@ -1286,8 +1286,8 @@ namespace SceneryEditorX
 				m_GTAODenoiseImage->Invalidate();
 
 				Ref<Shader> shader = Renderer::GetShaderLibrary()->Get("GTAO-Denoise");
-				m_GTAODenoiseMaterial[0] = Material::Create(shader, "GTAO-Denoise-Ping");
-				m_GTAODenoiseMaterial[1] = Material::Create(shader, "GTAO-Denoise-Pong");
+                m_GTAODenoiseMaterial[0] = CreateRef<Material>(shader, "GTAO-Denoise-Ping");
+                m_GTAODenoiseMaterial[1] = CreateRef<Material>(shader, "GTAO-Denoise-Pong");
 
 				ComputePassSpecification spec;
 				spec.debugName = "GTAO-Denoise";
@@ -1341,7 +1341,7 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_AOCompositePass->Validate());
 				m_AOCompositePass->Bake();
 
-				m_AOCompositeMaterial = Material::Create(aoCompositePipelineSpec.shader, "GTAO-Composite");
+				m_AOCompositeMaterial = CreateRef<Material>(aoCompositePipelineSpec.shader, "GTAO-Composite");
 			}
 
 		}
@@ -1483,7 +1483,7 @@ namespace SceneryEditorX
 
 			const UVec2 viewportSize = { m_ViewportWidth, m_ViewportHeight };
 
-			m_ScreenSpaceProjectionMatrix = ::SceneryEditorX::Ortho(0.0f, (float)m_ViewportWidth, 0.0f, (float)m_ViewportHeight, -1.0f, 1.0f);
+			m_ScreenSpaceProjectionMatrix = Ortho(0.0f, (float)m_ViewportWidth, 0.0f, (float)m_ViewportHeight, -1.0f, 1.0f);
 
 			m_ScreenDataUB.FullResolution = { m_ViewportWidth, m_ViewportHeight };
 			m_ScreenDataUB.InvFullResolution = { m_InvViewportWidth,  m_InvViewportHeight };
@@ -1526,7 +1526,7 @@ namespace SceneryEditorX
                 ///< HZB size must be power of 2's
 				const Vec2 log2Size = Vec2(std::log2((float)viewportSize.x), std::log2((float)viewportSize.y));
 				const UVec2 numMips = UVec2((uint32_t)std::ceil(log2Size.x), (uint32_t)std::ceil(log2Size.y));
-				m_SSROptions.NumDepthMips = Utils::Math::Max(numMips.x, numMips.y);
+				m_SSROptions.NumDepthMips = Math::Max(numMips.x, numMips.y);
 
 				const UVec2 hzbSize = BIT(numMips);
 				m_HierarchicalDepthTexture.Texture->Resize(hzbSize.x, hzbSize.y);
@@ -1805,7 +1805,7 @@ namespace SceneryEditorX
 		SEDX_PROFILE_FUNC();
 		SEDX_CORE_ASSERT(m_Active);
 #if MULTI_THREAD
-		Ref<SceneRenderer> instance = this;
+        Ref<SceneRenderer> instance(this);
 		s_ThreadPool.emplace_back(([instance]() mutable
 		{
 			instance->FlushDrawList();
@@ -1899,7 +1899,6 @@ namespace SceneryEditorX
 			transformStorage.MRow[0] = { submeshTransform[0][0], submeshTransform[1][0], submeshTransform[2][0], submeshTransform[3][0] };
 			transformStorage.MRow[1] = { submeshTransform[0][1], submeshTransform[1][1], submeshTransform[2][1], submeshTransform[3][1] };
 			transformStorage.MRow[2] = { submeshTransform[0][2], submeshTransform[1][2], submeshTransform[2][2], submeshTransform[3][2] };
-
 
 			///< Main geo
 			{
@@ -2209,7 +2208,7 @@ namespace SceneryEditorX
 	{
 		SEDX_PROFILE_FUNC();
 
-		const uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+		const uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 		m_GPUTimeQueries.SpotShadowMapPassQuery = m_CommandBuffer->BeginTimestampQuery();
 
 		///< Spot shadow maps
@@ -2248,7 +2247,7 @@ namespace SceneryEditorX
 	{
 		SEDX_PROFILE_FUNC();
 
-		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+		uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 		m_GPUTimeQueries.DepthPrePassQuery = m_CommandBuffer->BeginTimestampQuery();
 		SceneRenderer::BeginGPUPerfMarker(m_CommandBuffer, "PreDepthPass");
 		Renderer::BeginFrame(m_CommandBuffer, m_PreDepthPass);
@@ -2361,11 +2360,11 @@ namespace SceneryEditorX
 			hierarchicalZComputePushConstants.DispatchThreadIdToBufferUV = DispatchThreadIdToBufferUV;
 			hierarchicalZComputePushConstants.InputViewportMaxBound = InputViewportMaxBound;
 
-			const auto srcSize = Utils::Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << parentMip);
-			const auto dstSize = Utils::Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << startDestMip);
+			const auto srcSize = Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << parentMip);
+			const auto dstSize = Math::DivideAndRoundUp(hierarchicalDepthTexture->GetSize(), 1u << startDestMip);
 			hierarchicalZComputePushConstants.InvSize = Vec2{ 1.0f / (float)srcSize.x, 1.0f / (float)srcSize.y };
 
-			UVec3 workGroups(Utils::Math::DivideAndRoundUp(dstSize.x, 8), Utils::Math::DivideAndRoundUp(dstSize.y, 8), 1);
+			UVec3 workGroups(Math::DivideAndRoundUp(dstSize.x, 8), Math::DivideAndRoundUp(dstSize.y, 8), 1);
 			Renderer::DispatchCompute(commandBuffer, hierarchicalDepthPass, hzbMaterials[startDestMip / 4], workGroups, Buffer(&hierarchicalZComputePushConstants, sizeof(hierarchicalZComputePushConstants)));
 		};
 
@@ -2373,7 +2372,7 @@ namespace SceneryEditorX
 
 		///< Reduce first 4 mips
 		auto srcSize = m_PreDepthPass->GetDepthOutput()->GetSize();
-		ReduceHZB(0, 0, { 1.0f / Vec2{ srcSize } }, { (Vec2{ srcSize } - 0.5f) / Vec2{ srcSize } }, true);
+		ReduceHZB(0, 0, { 1.0f / Vec2{srcSize} }, { (Vec2{srcSize} - 0.5f) / Vec2{srcSize} }, true);
 		Renderer::EndGPUPerfMarker(m_CommandBuffer);
 
 		///< Reduce the next mips
@@ -2487,7 +2486,7 @@ namespace SceneryEditorX
 	{
 		SEDX_PROFILE_FUNC();
 
-		uint32_t frameIndex = Renderer::GetCurrentFrameIndex();
+		uint64_t frameIndex = Renderer::GetCurrentFrameIndex();
 
 		m_GPUTimeQueries.GeometryPassQuery = m_CommandBuffer->BeginTimestampQuery();
 

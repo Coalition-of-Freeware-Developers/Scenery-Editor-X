@@ -418,14 +418,14 @@ namespace SceneryEditorX
          */
         void LoadExtensionFunctions();
 
+        /// -------------------------------------------------------
+
 	    VkQueue vkQueue = VK_NULL_HANDLE;
         VkDevice vkDevice = VK_NULL_HANDLE;
 	    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
         VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
     };
 
-	/// ---------------------------------------------------------
-
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

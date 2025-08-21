@@ -14,6 +14,7 @@
 #include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 #include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
 
+#include "vk_pipeline_cache.h"
 #include "vk_util.h"
 
 /// -------------------------------------------------------
@@ -487,6 +488,10 @@ namespace SceneryEditorX
         Renderer::Submit([instance]() mutable {
 
             VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+
+			PipelineCache cache;
+            cache.CreateCache();
+
             SEDX_CORE_ASSERT(instance->pipelineSpecs.shader);
             Ref<Shader> vulkanShader = Ref<Shader>(instance->pipelineSpecs.shader);
             Ref<Framebuffer> framebuffer = instance->pipelineSpecs.dstFramebuffer.As<Framebuffer>();
@@ -728,13 +733,9 @@ namespace SceneryEditorX
             pipelineCreateInfo.renderPass = framebuffer->GetRenderPass();
             pipelineCreateInfo.pDynamicState = &dynamicState;
 
-            /// What is this pipeline cache?
-            VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
-            pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-            VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &instance->pipelineCache))
-
             /// Create rendering pipeline using the specified states
-            VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, instance->pipelineCache,1, &pipelineCreateInfo, nullptr,  &instance->pipeline))
+            ///	TODO: Impliment the pipeline cache when finished with it
+            VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, nullptr,1, &pipelineCreateInfo, nullptr,  &instance->pipeline))
             SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_PIPELINE, instance->pipelineSpecs.debugName, instance->pipeline);
         });
     }

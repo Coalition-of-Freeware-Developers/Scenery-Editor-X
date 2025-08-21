@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -32,29 +32,26 @@ namespace SceneryEditorX
         PipelineCache();
         ~PipelineCache();
 
+        void CheckCache(char *cacheData, size_t cacheDataSize);
         VkPipelineCache CreateCache();
-        void DestroyCache() const;
-        void SaveCache();
-        [[nodiscard]] std::vector<uint8_t> LoadCache() const;
+        void DestroyCache();
+        //void SaveCache();
+        void LoadCache();
 
     private:
         VkPipelineCache pipelineCache = nullptr;
-        size_t pipelineCacheDataSize = 0;
-        std::vector<uint8_t> pipelineCacheData;
 
 		/// -------------------------------------------
 
-		struct PipelineCachePrefixHeader
-        {
-            uint32_t cacheHeader;       /// An arbitrary magic header to make sure this is actually our file
-            uint32_t dataSize;          /// Equal to *pDataSize returned by vkGetPipelineCacheData
-            uint64_t dataHash;          /// A hash of pipeline cache data, including the header
-            uint32_t vendorID;          /// Equal to VkPhysicalDeviceProperties::vendorID
-            uint32_t deviceID;          /// Equal to VkPhysicalDeviceProperties::deviceID
-            uint32_t driverVersion;     /// Equal to VkPhysicalDeviceProperties::driverVersion
-            uint32_t driverABI;         /// Equal to sizeof(void*)
-            uint8_t uuid[VK_UUID_SIZE]; /// Equal to VkPhysicalDeviceProperties::pipelineCacheUUID
-        };
+        uint32_t cacheHeader = 0;			/// An arbitrary magic header to make sure this is actually our file
+        uint32_t cacheHeaderVersion = 0;    /// Equal to VK_PIPELINE_CACHE_HEADER_VERSION_ONE
+        uint32_t vendorID = 0;              /// Equal to VkPhysicalDeviceProperties::vendorID
+        uint32_t deviceID = 0;              /// Equal to VkPhysicalDeviceProperties::deviceID
+        uint8_t  uuid[VK_UUID_SIZE] = {};   /// Equal to VkPhysicalDeviceProperties::pipelineCacheUUID
+
+        //uint32_t dataSize = 0;				/// Equal to *pDataSize returned by vkGetPipelineCacheData
+
+        
     };
 }
 
