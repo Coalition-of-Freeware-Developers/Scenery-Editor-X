@@ -145,7 +145,13 @@ namespace SceneryEditorX
         m_ResizeCallbacks.push_back(func);
 	}
 
-	void Framebuffer::Invalidate()
+    uint32_t Framebuffer::GetMSAABitMak() const
+    {
+        const VkPhysicalDeviceLimits &limits = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetLimits();
+        return limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
+    }
+
+    void Framebuffer::Invalidate()
 	{
         Ref<Framebuffer> instance(this);
         Renderer::Submit([instance]() mutable { instance->Invalidate_RenderThread(); });

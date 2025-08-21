@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 // ReSharper disable StringLiteralTypo
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include "vk_util.h"
+#include "vk_data.h"
 
 /// -------------------------------------------------------
 namespace SceneryEditorX::Utils

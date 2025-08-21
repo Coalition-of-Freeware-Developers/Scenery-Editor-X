@@ -414,6 +414,7 @@ namespace SceneryEditorX::UI
 	}
 	*/
 
+    /*
     void GUI::ShowAppInfo(const std::string &appName) const
     {
         if (!initialized || !visible)
@@ -435,7 +436,9 @@ namespace SceneryEditorX::UI
 
         ImGui::End();
     }
+    */
 
+    /*
     bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
     {
         if (!initialized)
@@ -444,6 +447,7 @@ namespace SceneryEditorX::UI
         viewportInitialized = true;
         return true;
     }
+    */
 
     /*
     void GUI::ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView)

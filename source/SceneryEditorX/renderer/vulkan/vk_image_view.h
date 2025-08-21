@@ -30,8 +30,8 @@ namespace SceneryEditorX
 	class ImageView : public Resource
 	{
 	public:
-        ImageView(const ImageViewData &spec);
-        virtual ~ImageView();
+        explicit ImageView(const ImageViewData &spec);
+        virtual ~ImageView() override;
 		
 		void Invalidate();
 		void Invalidate_RenderThread();

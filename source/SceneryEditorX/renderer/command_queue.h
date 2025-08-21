@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -26,8 +26,8 @@ namespace SceneryEditorX
 		~CommandQueue();
 
         void *Allocate(RenderCommandFn func, uint32_t size);
-
         void Execute();
+
 	private:
         uint8_t* cmdBuffer;
 		uint8_t* cmdBufferPtr;

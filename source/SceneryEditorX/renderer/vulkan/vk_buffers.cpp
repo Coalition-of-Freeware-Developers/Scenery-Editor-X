@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,9 +10,9 @@
 * Created: 5/5/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/image_data.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/vk_buffers.h>
+#include "vk_buffers.h"
+#include "SceneryEditorX/renderer/image_data.h"
+#include "SceneryEditorX/renderer/render_context.h"
 
 /// ----------------------------------------------------------
 

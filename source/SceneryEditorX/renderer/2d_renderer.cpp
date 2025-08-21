@@ -326,13 +326,11 @@ namespace SceneryEditorX
 		m_CameraView = view;
 		m_DepthTest = depthTest;
 
-
 		Renderer::Submit([ubsCamera = m_UBSCamera, viewProj]() mutable
 		{
 			uint32_t bufferIndex = Renderer::GetCurrentRenderThreadFrameIndex();
 			ubsCamera->GetRenderThread()->SetRenderThreadData(&viewProj, sizeof(CameraUniformBuffer));
 		});
-		*/
 
 		SEDX_CORE_TRACE_TAG("Renderer", "Renderer2D::BeginScene frame {}", frameIndex);
 

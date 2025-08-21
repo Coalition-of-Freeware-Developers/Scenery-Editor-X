@@ -14,11 +14,7 @@
 #include "vk_buffers.h"
 #include "vk_swapchain.h"
 
-#include "vk_swapchain.h"
-
 #include "SceneryEditorX/platform/config/editor_config.hpp"
-#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
-#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 #include "SceneryEditorX/renderer/buffers/storage_buffer.h"
 #include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 
@@ -81,18 +77,14 @@ namespace SceneryEditorX
 	        renderPass = VK_NULL_HANDLE;
 	    }
 	    */
-	    */
 
 	}
 
     bool RenderPass::IsInvalidated(uint32_t set, uint32_t binding) const
-    bool RenderPass::IsInvalidated(uint32_t set, uint32_t binding) const
     {
-        return m_DescriptorSetManager.IsInvalidated(set, binding);
         return m_DescriptorSetManager.IsInvalidated(set, binding);
     }
 
-    void RenderPass::AddInput(std::string_view name, Ref<UniformBufferSet> &uniformBufferSet)
     void RenderPass::AddInput(std::string_view name, Ref<UniformBufferSet> &uniformBufferSet)
     {
         m_DescriptorSetManager.AddInput(name, uniformBufferSet);
@@ -102,18 +94,12 @@ namespace SceneryEditorX
     {
         m_DescriptorSetManager.AddInput(name, uniformBuffer);
     }
-    void RenderPass::AddInput(std::string_view name, Ref<UniformBuffer> &uniformBuffer)
-    {
-        m_DescriptorSetManager.AddInput(name, uniformBuffer);
-    }
 
-	void RenderPass::AddInput(std::string_view name, Ref<StorageBufferSet> &storageBufferSet)
 	void RenderPass::AddInput(std::string_view name, Ref<StorageBufferSet> &storageBufferSet)
     {
         m_DescriptorSetManager.AddInput(name, storageBufferSet);
     }
 
-    void RenderPass::AddInput(std::string_view name, Ref<StorageBuffer> &storageBuffer)
     void RenderPass::AddInput(std::string_view name, Ref<StorageBuffer> &storageBuffer)
     {
         m_DescriptorSetManager.AddInput(name, storageBuffer);
@@ -124,28 +110,15 @@ namespace SceneryEditorX
      * Adjust to Texture2D (engine texture) for descriptor binding.
      */
     void RenderPass::AddInput(std::string_view name, Ref<Texture2D> &texture)
-    /**
-     * @note: Original code referenced TextureAsset which is not part of DescriptorSetManager interface.
-     * Adjust to Texture2D (engine texture) for descriptor binding.
-     */
-    void RenderPass::AddInput(std::string_view name, Ref<Texture2D> &texture)
     {
         m_DescriptorSetManager.AddInput(name, texture); // index 0
     }
 
-    /// -------------------------------------------------------
 
     /// -------------------------------------------------------
 
     Ref<Image2D> RenderPass::GetOutput(uint32_t index)
     {
-        Ref<Framebuffer> framebuffer = renderSpec.Pipeline->GetSpecification().dstFramebuffer;
-        if (index > framebuffer->GetColorAttachmentCount() + 1)
-            return nullptr; // Invalid index
-        if (index < framebuffer->GetColorAttachmentCount())
-            return framebuffer->GetImage(index);
-
-        return framebuffer->GetDepthImage();
         Ref<Framebuffer> framebuffer = renderSpec.Pipeline->GetSpecification().dstFramebuffer;
         if (index > framebuffer->GetColorAttachmentCount() + 1)
             return nullptr; // Invalid index
@@ -162,28 +135,13 @@ namespace SceneryEditorX
             return nullptr; // No depth output
 
         return framebuffer->GetDepthImage();
-        Ref<Framebuffer> framebuffer = renderSpec.Pipeline->GetSpecification().dstFramebuffer;
-        if (!framebuffer->HasDepthAttachment())
-            return nullptr; // No depth output
-
-        return framebuffer->GetDepthImage();
     }
 
     uint32_t RenderPass::GetFirstSetIndex() const
     {
         return m_DescriptorSetManager.GetFirstSetIndex();
-        return m_DescriptorSetManager.GetFirstSetIndex();
     }
 
-    Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const
-	{
-        return renderSpec.Pipeline->GetSpecification().dstFramebuffer;
-	}
-
-    Ref<Pipeline> RenderPass::GetPipeline() const
-	{
-        return renderSpec.Pipeline;
-	}
     Ref<Framebuffer> RenderPass::GetTargetFramebuffer() const
 	{
         return renderSpec.Pipeline->GetSpecification().dstFramebuffer;
@@ -207,7 +165,6 @@ namespace SceneryEditorX
     void RenderPass::Prepare()
     {
         m_DescriptorSetManager.InvalidateAndUpdate();
-        m_DescriptorSetManager.InvalidateAndUpdate();
     }
 
     bool RenderPass::HasDescriptorSets() const
@@ -229,7 +186,6 @@ namespace SceneryEditorX
         return m_DescriptorSetManager.inputDeclarations.contains(nameStr);
     }
 
-	const RenderPassInputDeclaration *RenderPass::GetInputDeclaration(std::string_view name) const
 	const RenderPassInputDeclaration *RenderPass::GetInputDeclaration(std::string_view name) const
     {
         std::string nameStr(name);

@@ -427,8 +427,6 @@ namespace SceneryEditorX
 
     EditorApplication::EditorApplication() = default;
 
-    EditorApplication::~EditorApplication() = default;
-
     void EditorApplication::Run()
     {
         //const Ref<Window> &window = GetWindow();

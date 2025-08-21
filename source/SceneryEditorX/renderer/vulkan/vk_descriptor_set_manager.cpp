@@ -14,7 +14,6 @@
 #include "vk_descriptor_set_manager.h"
 #include <cstring>
 #include "vk_device.h"
-#include "vk_sampler.h"
 #include "vk_util.h"
 #include "SceneryEditorX/logging/profiler.hpp"
 #include "SceneryEditorX/renderer/renderer.h"
@@ -152,17 +151,16 @@ namespace SceneryEditorX
 		}
 	}
 
-	/*
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<UniformBufferSet> &uniformBufferSet)
+
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<UniformBufferSet> &uniformBufferSet)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
 			inputResources.at(decl->set).at(decl->binding).Set(uniformBufferSet);
 		else
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
-	*/
 
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<UniformBuffer> &uniformBuffer)
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<UniformBuffer> &uniformBuffer)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
 			inputResources.at(decl->set).at(decl->binding).Set(uniformBuffer);
@@ -170,17 +168,16 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
 
-	/*
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<StorageBufferSet> &storageBufferSet)
+
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<StorageBufferSet> &storageBufferSet)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
 			inputResources.at(decl->set).at(decl->binding).Set(storageBufferSet);
 		else
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
-	*/
 
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<StorageBuffer> &storageBuffer)
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<StorageBuffer> &storageBuffer)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
 			inputResources.at(decl->set).at(decl->binding).Set(storageBuffer);
@@ -188,7 +185,7 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
 
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<Texture2D> &texture, uint32_t index)
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<Texture2D> &texture, uint32_t index)
 	{
 		const RenderPassInputDeclaration* decl = GetInputDeclaration(name);
 		SEDX_CORE_VERIFY(index < decl->count);
@@ -198,7 +195,7 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
 
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<TextureCube> &textureCube)
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<TextureCube> &textureCube)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
 			inputResources.at(decl->set).at(decl->binding).Set(textureCube);
@@ -206,7 +203,7 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
 
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<Image2D> &image)
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<Image2D> &image)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
 			inputResources.at(decl->set).at(decl->binding).Set(image);
@@ -214,7 +211,7 @@ namespace SceneryEditorX
 			SEDX_CORE_WARN_TAG("Renderer", "[RenderPass ({})] Input {} not found", m_Specification.debugName, name);
 	}
 
-	void DescriptorSetManager::AddInput(std::string_view name, const Ref<ImageView> &image)
+	void DescriptorSetManager::AddInput(std::string_view name, Ref<ImageView> &image)
 	{
         if (const RenderPassInputDeclaration* decl = GetInputDeclaration(name))
 			inputResources.at(decl->set).at(decl->binding).Set(image);
@@ -369,7 +366,7 @@ namespace SceneryEditorX
 			for (uint32_t frameIndex = 0; frameIndex < descriptorSetCount; frameIndex++)
 			{
 				VkDescriptorSetLayout dsl = m_Specification.shader->GetDescriptorSetLayout(set);
-				VkDescriptorSetAllocateInfo descriptorSetAllocInfo = DescriptorSetAllocInfo(&dsl);
+				VkDescriptorSetAllocateInfo descriptorSetAllocInfo = descriptorSetCount(&dsl);
 				descriptorSetAllocInfo.descriptorPool = m_DescriptorPool;
 				VkDescriptorSet descriptorSet = nullptr;
 				VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &descriptorSet))

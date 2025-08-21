@@ -26,8 +26,8 @@ namespace SceneryEditorX
 	public:
 		using RenderQueue = std::vector<std::function<void(Ref<Renderer2D>)>>;
 
-		DebugRenderer() = default;
-		~DebugRenderer() = default;
+		DebugRenderer() = delete;
+        virtual ~DebugRenderer() override = default;
 
 		void DrawLine(const Vec3& p0, const Vec3& p1, const Vec4& color = Vec4(1.0f), bool onTop = false);
 		void DrawCircle(const Vec3& centre, const Vec3& rotation, float radius, const Vec4& color = Vec4(1.0f), bool onTop = false);

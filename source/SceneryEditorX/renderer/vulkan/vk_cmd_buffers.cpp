@@ -10,11 +10,11 @@
 * Created: 7/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include "vk_cmd_buffers.h"
 #include <vulkan/vulkan.h>
+#include "vk_util.h"
+#include "SceneryEditorX/renderer/render_context.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 /// -------------------------------------------------------
 
@@ -129,107 +129,111 @@ namespace SceneryEditorX
         VK_CHECK_RESULT(vkAllocateCommandBuffers(device->GetDevice(), &commandBufferAllocateInfo, cmdBuffers.data()))
 
         for (uint32_t i = 0; i < count; ++i)
-            SetDebugUtilsObjectName(device->GetDevice(), VK_OBJECT_TYPE_COMMAND_BUFFER,std::format("{} (frame in flight: {})", debugName, i), cmdBuffers[i]);
+            SetDebugUtilsObjectName(device->GetDevice(),
+                                    VK_OBJECT_TYPE_COMMAND_BUFFER,
+                                    std::format("{} (frame in flight: {})", debugName, i),
+                                    cmdBuffers[i]);
 
         VkFenceCreateInfo fenceCreateInfo{};
-		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         waitFences.resize(count);
         for (size_t i = 0; i < waitFences.size(); ++i)
-		{
+        {
             VK_CHECK_RESULT(vkCreateFence(device->GetDevice(), &fenceCreateInfo, nullptr, &waitFences[i]))
-			SetDebugUtilsObjectName(device->GetDevice(), VK_OBJECT_TYPE_FENCE, std::format("{} (frame in flight: {}) fence", debugName, i), waitFences[i]);
-		}
+            SetDebugUtilsObjectName(device->GetDevice(),
+                                    VK_OBJECT_TYPE_FENCE,
+                                    std::format("{} (frame in flight: {}) fence", debugName, i),
+                                    waitFences[i]);
+        }
 
-		VkQueryPoolCreateInfo queryPoolCreateInfo = {};
-		queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-		queryPoolCreateInfo.pNext = nullptr;
+        VkQueryPoolCreateInfo queryPoolCreateInfo = {};
+        queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+        queryPoolCreateInfo.pNext = nullptr;
 
-		/// Timestamp queries
-		const uint32_t maxUserQueries = 16;
+        /// Timestamp queries
+        const uint32_t maxUserQueries = 16;
         timeQueryCount = 2 + 2 * maxUserQueries;
 
-		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
         queryPoolCreateInfo.queryCount = timeQueryCount;
         timestampQueryPools.resize(count);
 
-		for (auto& timestampQueryPool : timestampQueryPools)
-			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
+        for (auto &timestampQueryPool : timestampQueryPools) VK_CHECK_RESULT(
+            vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
 
-		timestampQueryResults.resize(count);
-		for (auto& timestampQueryResults : timestampQueryResults)
+        timestampQueryResults.resize(count);
+        for (auto &timestampQueryResults : timestampQueryResults)
             timestampQueryResults.resize(timeQueryCount);
 
-		executionGPUTimes.resize(count);
-		for (auto& executionGPUTimes : executionGPUTimes)
+        executionGPUTimes.resize(count);
+        for (auto &executionGPUTimes : executionGPUTimes)
             executionGPUTimes.resize(timeQueryCount / 2);
 
-		/// Pipeline statistics queries
+        /// Pipeline statistics queries
         pipelineQueryCount = 7;
-		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+        queryPoolCreateInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
         queryPoolCreateInfo.queryCount = pipelineQueryCount;
-		queryPoolCreateInfo.pipelineStatistics =
-			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+        queryPoolCreateInfo.pipelineStatistics =
+            VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
 
-		pipelineQueryPools.resize(count);
-        for (auto &pipelineStatisticsQueryPools : pipelineQueryPools)
-			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &pipelineStatisticsQueryPools))
+        pipelineQueryPools.resize(count);
+        for (auto &pipelineStatisticsQueryPools : pipelineQueryPools) VK_CHECK_RESULT(
+            vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &pipelineStatisticsQueryPools))
 
-		pipelineQueryPools.resize(count);
+        pipelineQueryPools.resize(count);
 
     }
 
     CommandBuffer::CommandBuffer(std::string debugName, bool swapchain) : ownedBySwapChain(true), debugName(std::move(debugName))
     {
         auto device = RenderContext::GetCurrentDevice();
-        uint32_t framesInFlight = data.framesInFlight; 
+        uint32_t framesInFlight = data.framesInFlight;
 
-		VkQueryPoolCreateInfo queryPoolCreateInfo = {};
-		queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-		queryPoolCreateInfo.pNext = nullptr;
+        VkQueryPoolCreateInfo queryPoolCreateInfo = {};
+        queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+        queryPoolCreateInfo.pNext = nullptr;
 
-		// Timestamp queries
-		const uint32_t maxUserQueries = 16;
+        // Timestamp queries
+        const uint32_t maxUserQueries = 16;
         timeQueryCount = 2 + 2 * maxUserQueries;
 
-		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
         queryPoolCreateInfo.queryCount = timeQueryCount;
-		timestampQueryPools.resize(framesInFlight);
-		for (auto& timestampQueryPool : timestampQueryPools)
-			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
+        timestampQueryPools.resize(framesInFlight);
+        for (auto &timestampQueryPool : timestampQueryPools) VK_CHECK_RESULT(
+            vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
 
-		timestampQueryResults.resize(framesInFlight);
-		for (auto& timestampQueryResults : timestampQueryResults)
+        timestampQueryResults.resize(framesInFlight);
+        for (auto &timestampQueryResults : timestampQueryResults)
             timestampQueryResults.resize(timeQueryCount);
 
-		executionGPUTimes.resize(framesInFlight);
-		for (auto& executionGPUTimes : executionGPUTimes)
+        executionGPUTimes.resize(framesInFlight);
+        for (auto &executionGPUTimes : executionGPUTimes)
             executionGPUTimes.resize(timeQueryCount / 2);
 
-		// Pipeline statistics queries
+        // Pipeline statistics queries
         pipelineQueryCount = 7;
-		queryPoolCreateInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+        queryPoolCreateInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
         queryPoolCreateInfo.queryCount = pipelineQueryCount;
-		queryPoolCreateInfo.pipelineStatistics =
-			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
-			VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
+        queryPoolCreateInfo.pipelineStatistics =
+            VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
+            VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
 
-		pipelineQueryPools.resize(framesInFlight);
-        for (auto &pipelineStatisticsQueryPools : pipelineQueryPools)
-			VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &pipelineStatisticsQueryPools))
+        pipelineQueryPools.resize(framesInFlight);
+        for (auto &pipelineStatisticsQueryPools : pipelineQueryPools) VK_CHECK_RESULT(
+            vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &pipelineStatisticsQueryPools))
 
-		pipelineStatsQueryResults.resize(framesInFlight);
+        pipelineStatsQueryResults.resize(framesInFlight);
     }
 
     CommandBuffer::~CommandBuffer()

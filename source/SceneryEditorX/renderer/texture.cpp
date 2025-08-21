@@ -212,7 +212,6 @@ namespace SceneryEditorX
         Invalidate();
     }
 
-
     /*
     void Texture2D::CreateFromBuffer(const TextureSpecification &specification, const Buffer &data)
     {

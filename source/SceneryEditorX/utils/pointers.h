@@ -27,8 +27,6 @@
  #include <type_traits>
  #include <unordered_map>
 
-// (Removed duplicate large usage documentation block to prevent parsing errors.)
-
 /// -------------------------------------------------------
 
 namespace SceneryEditorX

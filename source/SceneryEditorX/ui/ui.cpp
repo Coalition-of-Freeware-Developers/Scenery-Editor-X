@@ -11,6 +11,9 @@
 * -------------------------------------------------------
 */
 #include "ui.h"
+
+#include <Editor/core/viewport.h>
+
 #include <imgui/imconfig.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>

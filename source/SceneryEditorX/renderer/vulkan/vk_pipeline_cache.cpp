@@ -10,11 +10,11 @@
 * Created: 20/6/2025
 * -------------------------------------------------------
 */
-#include "vk_pipeline_cache.h"
-#include <filesystem>
-#include <fstream>
-#include "SceneryEditorX/logging/asserts.h"
-#include "SceneryEditorX/renderer/render_context.h"
+//#include "vk_pipeline_cache.h"
+//#include <filesystem>
+//#include <fstream>
+//#include "SceneryEditorX/logging/asserts.h"
+//#include "SceneryEditorX/renderer/render_context.h"
 
 /// -------------------------------------------------------
 
@@ -50,17 +50,16 @@
 
 namespace SceneryEditorX
 {
+
+    /*
     /// Constants for cache directory and file
     INTERNAL std::string PIPELINE_CACHE_DIR = "../cache";
     INTERNAL std::string PIPELINE_CACHE_FILE = "pipeline_cache.bin";
+    */
 
     /// -------------------------------------------------------
 
-    PipelineCache::PipelineCache() = default;
-    PipelineCache::~PipelineCache() = default;
-
-    /// -------------------------------------------------------
-
+    /*
     void PipelineCache::CheckCache(char *cacheData, size_t cacheDataSize)
     {
         auto device = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDeviceProperties();
@@ -110,9 +109,11 @@ namespace SceneryEditorX
             }
         }
     }
+    */
 
     /// -------------------------------------------------------
 
+    /*
     void PipelineCache::LoadCache()
     {
         size_t cacheDataSize = 0;
@@ -164,7 +165,9 @@ namespace SceneryEditorX
             SEDX_CORE_WARN("Unable to find a pipeline cache in, {}", cacheFilePath);
         }
     }
+    */
 
+    /*
     VkPipelineCache PipelineCache::CreateCache()
     {
         auto device = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDeviceProperties();
@@ -197,9 +200,11 @@ namespace SceneryEditorX
 		
 
     }
+    */
 
     /// -------------------------------------------------------
 
+    /*
     void PipelineCache::DestroyCache()
     {
         if (pipelineCache != VK_NULL_HANDLE && RenderContext::GetCurrentDevice() && RenderContext::GetCurrentDevice()->GetDevice() != VK_NULL_HANDLE)
@@ -209,6 +214,7 @@ namespace SceneryEditorX
             SEDX_CORE_INFO("Pipeline cache destroyed");
         }
     }
+    */
 
     /// -------------------------------------------------------
 

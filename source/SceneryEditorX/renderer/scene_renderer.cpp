@@ -10,29 +10,31 @@
 * Created: 23/7/2025
 * -------------------------------------------------------
 */
-#include "scene_renderer.h"
-#include "compute_pass.h"
-#include "debug_renderer.h"
-#include "primitives.h"
-#include "renderer.h"
+//#include "scene_renderer.h"
+//#include "compute_pass.h"
+//#include "debug_renderer.h"
+//#include "primitives.h"
+//#include "renderer.h"
 
-#include "SceneryEditorX/core/application/application.h"
-#include "SceneryEditorX/core/time/timer.h"
-#include "SceneryEditorX/logging/profiler.hpp"
+//#include "SceneryEditorX/core/application/application.h"
+//#include "SceneryEditorX/core/time/timer.h"
+//#include "SceneryEditorX/logging/profiler.hpp"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+	/*
 	LOCAL std::vector<std::thread> s_ThreadPool;
 
     /// -------------------------------------------------------
 
-	SceneRenderer::SceneRenderer(const Ref<Scene> &scene, const SceneRendererSpecification &specification) : m_Scene(scene), m_Specification(specification)
-	{
-		Init();
-	}
+	SceneRenderer::SceneRenderer(const Ref<Scene> &scene, const SceneRendererSpecification &specification)
+        : m_Scene(scene), m_Specification(specification), m_SceneData()
+    {
+        Init();
+    }
 
 	SceneRenderer::~SceneRenderer()
 	{
@@ -124,7 +126,7 @@ namespace SceneryEditorX
 		/**
 		 * Create passes and specify "flow" -> this can (and should) include outputs and chain together,
 		 * for eg. shadow pass output goes into geo pass input
-		 */
+		 #1#
 		m_Renderer2D = CreateRef<Renderer2D>();
 		m_Renderer2DScreenSpace = CreateRef<Renderer2D>();
 		m_DebugRenderer = CreateRef<DebugRenderer>();
@@ -135,7 +137,7 @@ namespace SceneryEditorX
 		/**
 		 * Descriptor Set Layout
          * Light culling compute pipeline
-		 */
+		 #1#
 		{
 			StorageBufferSpec spec;
 			spec.debugName = "VisiblePointLightIndices";
@@ -231,7 +233,7 @@ namespace SceneryEditorX
 
 			/**
 			 * TODO: m_BloomComputePrefilterMaterial = Material::Create(shader);
-             */
+             #1#
 		}
 
 		///< Directional Shadow pass
@@ -421,7 +423,7 @@ namespace SceneryEditorX
 				preDepthFramebufferSpec.debugName = "PreDepth-Opaque";
 
                 ///< Linear depth, reversed device depth
-                preDepthFramebufferSpec.attachments = {/*VkFormat::VK_FORMAT_R32_SFLOAT, */ VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT};
+                preDepthFramebufferSpec.attachments = {/*VkFormat::VK_FORMAT_R32_SFLOAT, #1# VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT};
 				preDepthFramebufferSpec.clearColor = { 0.0f, 0.0f, 0.0f, 0.0f };
 				preDepthFramebufferSpec.depthClearValue = 0.0f;
 
@@ -641,6 +643,11 @@ namespace SceneryEditorX
 				m_GeometryPass->Bake();
 			}
 
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            /// Animated Geometry Pass
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+			/*
 			{
 				RenderSpec spec;
 				spec.debugName = "GeometryPass-Animated";
@@ -668,6 +675,11 @@ namespace SceneryEditorX
 				SEDX_CORE_VERIFY(m_GeometryAnimPass->Validate());
 				m_GeometryAnimPass->Bake();
 			}
+			#1#
+
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            /// Light Culling Pass
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			{
 				ComputePassSpecification spec;
@@ -794,7 +806,11 @@ namespace SceneryEditorX
 			m_HierarchicalDepthPass->Bake();
 		}
 
-		///< SSR Composite
+		
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Screem Space Reflection (SSR) Composite Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		{
 			ImageSpecification imageSpec;
 			imageSpec.format = VkFormat::VK_FORMAT_R16G16B16A16_SFLOAT;
@@ -834,8 +850,11 @@ namespace SceneryEditorX
 			SEDX_CORE_VERIFY(m_SSRCompositePass->Validate());
 			m_SSRCompositePass->Bake();
 		}
+		
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Pre-Integration Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		///< Pre-Integration
 		{
 			TextureSpecification spec;
 			spec.format = VkFormat::VK_FORMAT_R8_UNORM;
@@ -852,7 +871,10 @@ namespace SceneryEditorX
             m_PreIntegrationPass = CreateRef<ComputePass>(passSpec);
 		}
 
-		///< Pre-convolution Compute
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Pre-convolution Compute Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		{
 			TextureSpecification spec;
 			spec.format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -872,7 +894,10 @@ namespace SceneryEditorX
 			m_PreConvolutionComputePass->Bake();
 		}
 
-		///< Edge Detection
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Edge Detection Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		if (m_Specification.EnableEdgeOutlineEffect)
 		{
 			FramebufferSpecification compFramebufferSpec;
@@ -907,7 +932,10 @@ namespace SceneryEditorX
 			m_EdgeDetectionPass->Bake();
 		}
 
-		///< Composite
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Scene Composite Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		{
 			FramebufferSpecification compFramebufferSpec;
 			compFramebufferSpec.width = m_Specification.ViewportWidth;
@@ -950,7 +978,10 @@ namespace SceneryEditorX
 			m_CompositePass->Bake();
 		}
 
-		// DOF
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Depth Of Feild (DOF) Pass 
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		{
 			FramebufferSpecification compFramebufferSpec;
 			compFramebufferSpec.width = m_Specification.ViewportWidth;
@@ -995,7 +1026,10 @@ namespace SceneryEditorX
 		fbSpec.existingImages[1] = m_PreDepthPass->GetDepthOutput();
         m_CompositingFramebuffer = CreateRef<Framebuffer>(fbSpec);
 
-		///< Wireframe
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Wireframe Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		{
 			PipelineData pipelineSpecification;
 			pipelineSpecification.debugName = "Wireframe";
@@ -1133,7 +1167,10 @@ namespace SceneryEditorX
 			}
 		}
 
-		///< Grid
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Ground Grid/ Floor Grid Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 		{
 			PipelineData pipelineSpec;
 			pipelineSpec.debugName = "Grid";
@@ -1160,7 +1197,11 @@ namespace SceneryEditorX
 			m_GridMaterial->Set("u_Settings.Size", gridSize);
 		}
 
-		///< Debug render
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Debug Rendering Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         m_SelectedBoneMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "SelectedBone");
 		m_SelectedBoneMaterial->Set("u_MaterialUniforms.Color", m_Options.SelectedBoneColor);
         m_BoneMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "Bone");
@@ -1174,8 +1215,11 @@ namespace SceneryEditorX
 
 		m_WireframeMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "Wireframe");
 		m_WireframeMaterial->Set("u_MaterialUniforms.Color", Vec4{ 1.0f, 0.5f, 0.0f, 1.0f });
+		
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Skybox Pass
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		///< Skybox
 		{
 			auto skyboxShader = Renderer::GetShaderLibrary()->Get("Skybox");
 
@@ -1714,22 +1758,22 @@ namespace SceneryEditorX
 		});
 
 		const auto lightEnvironment = m_SceneData.SceneLightEnvironment;
-		const std::vector<PointLight>& pointLightsVec = lightEnvironment.PointLights;
+		const std::vector<PointLightComponent>& pointLightsVec = lightEnvironment.PointLights;
 		pointLightData.Count = static_cast<int>(pointLightsVec.size());
 		if(pointLightsVec.data()) std::memcpy(pointLightData.PointLights, pointLightsVec.data(), lightEnvironment.GetPointLightsSize()); /// Do we really have to copy that?
 		Renderer::Submit([instance, &pointLightData]() mutable
 		{
 			const Ref<UniformBuffer> uniformBuffer = instance->m_UBSPointLights->GetRenderThread();
-			uniformBuffer->SetRenderThreadData(&pointLightData, 16ull + sizeof(PointLight) * pointLightData.Count);
+			uniformBuffer->SetRenderThreadData(&pointLightData, 16ull + sizeof(PointLightComponent) * pointLightData.Count);
 		});
 
-		const std::vector<SpotLight>& spotLightsVec = lightEnvironment.SpotLights;
+		const std::vector<SpotLightComponent>& spotLightsVec = lightEnvironment.SpotLights;
 		spotLightData.Count = static_cast<int>(spotLightsVec.size());
 		if(spotLightsVec.data()) std::memcpy(spotLightData.SpotLights, spotLightsVec.data(), lightEnvironment.GetSpotLightsSize()); /// Do we really have to copy that?
 		Renderer::Submit([instance, &spotLightData]() mutable
 		{
 			const Ref<UniformBuffer> uniformBuffer = instance->m_UBSSpotLights->GetRenderThread();
-			uniformBuffer->SetRenderThreadData(&spotLightData, 16ull + sizeof(SpotLight) * spotLightData.Count);
+			uniformBuffer->SetRenderThreadData(&spotLightData, 16ull + sizeof(SpotLightComponent) * spotLightData.Count);
 		});
 
 		for (size_t i = 0; i < spotLightsVec.size(); ++i)
@@ -3596,6 +3640,7 @@ namespace SceneryEditorX
 		if (m_Renderer2D)
 			m_Renderer2D->SetLineWidth(width);
 	}
+	*/
 
 }
 

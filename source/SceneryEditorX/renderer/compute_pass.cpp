@@ -30,10 +30,6 @@ namespace SceneryEditorX
 		m_DescriptorSetManager = DescriptorSetManager(dmSpec);
 	}
 
-	ComputePass::~ComputePass()
-	{
-	}
-
 	bool ComputePass::IsInvalidated(uint32_t set, uint32_t binding) const
 	{
 		return m_DescriptorSetManager.IsInvalidated(set, binding);

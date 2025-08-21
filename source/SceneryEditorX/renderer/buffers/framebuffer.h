@@ -93,29 +93,30 @@ namespace SceneryEditorX
 	{
 	public:
         Framebuffer(const FramebufferSpecification &specification);
-        virtual ~Framebuffer();
+        virtual ~Framebuffer() override;
 
 	    void Bind();
 	    void Unbind();
 
-        virtual void Resize(uint32_t width, uint32_t height, bool forceRecreate = false);
-        virtual void AddResizeCallback(const std::function<void(Ref<Framebuffer>)> &func);
-	    virtual void BindTexture(uint32_t attachmentIndex = 0, uint32_t slot = 0) const {}
+        void Resize(uint32_t width, uint32_t height, bool forceRecreate = false);
+        void AddResizeCallback(const std::function<void(Ref<Framebuffer>)> &func);
+	    void BindTexture(uint32_t attachmentIndex = 0, uint32_t slot = 0) const {}
 
-	    virtual uint32_t GetWidth() const { return m_Width; }
-		virtual uint32_t GetHeight() const { return m_Height; }
-		virtual ResourceID GetRendererID() const { return m_ResourceID; }
-		virtual ResourceID GetColorAttachmentRendererID() const { return 0; }
-		virtual ResourceID GetDepthAttachmentRendererID() const { return 0; }
+	    uint32_t GetWidth() const { return m_Width; }
+		uint32_t GetHeight() const { return m_Height; }
+        uint32_t GetMSAABitMak() const;
+		ResourceID GetRendererID() const { return m_ResourceID; }
+		ResourceID GetColorAttachmentRendererID() const { return 0; }
+		ResourceID GetDepthAttachmentRendererID() const { return 0; }
 
-		virtual Ref<Image2D> GetImage(uint32_t attachmentIndex = 0) const  { SEDX_CORE_ASSERT(attachmentIndex < m_AttachmentImages.size()); return m_AttachmentImages[attachmentIndex]; }
-		virtual Ref<Image2D> GetDepthImage() const { return m_DepthAttachmentImage; }
-		virtual size_t GetColorAttachmentCount() const { return m_Specification.swapChainTarget ? 1 : m_AttachmentImages.size(); }
-		virtual bool HasDepthAttachment() const { return (bool)m_DepthAttachmentImage; }
+		Ref<Image2D> GetImage(uint32_t attachmentIndex = 0) const  { SEDX_CORE_ASSERT(attachmentIndex < m_AttachmentImages.size()); return m_AttachmentImages[attachmentIndex]; }
+		Ref<Image2D> GetDepthImage() const { return m_DepthAttachmentImage; }
+		size_t GetColorAttachmentCount() const { return m_Specification.swapChainTarget ? 1 : m_AttachmentImages.size(); }
+		bool HasDepthAttachment() const { return (bool)m_DepthAttachmentImage; }
 		VkRenderPass GetRenderPass() const { return m_RenderPass; }
 		VkFramebuffer GetVulkanFramebuffer() const { return m_Framebuffer; }
 		const std::vector<VkClearValue>& GetVulkanClearValues() const { return m_ClearValues; }
-		virtual const FramebufferSpecification& GetSpecification() const { return m_Specification; }
+		const FramebufferSpecification& GetSpecification() const { return m_Specification; }
 
         void Invalidate();
         void Invalidate_RenderThread();

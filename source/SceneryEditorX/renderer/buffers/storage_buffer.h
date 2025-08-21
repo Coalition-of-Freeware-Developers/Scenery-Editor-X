@@ -30,7 +30,7 @@ namespace SceneryEditorX
     {
     public:
         StorageBuffer(uint32_t size, const StorageBufferSpec &spec);
-        ~StorageBuffer() override = default; // RAII via Buffer
+        virtual ~StorageBuffer() override; // RAII via Buffer
 
         void SetData(const void* data, uint32_t size, uint32_t offset = 0);
         void SetRenderThreadData(const void* data, uint32_t size, uint32_t offset = 0);
@@ -57,7 +57,7 @@ namespace SceneryEditorX
     {
     public:
         explicit StorageBufferSet(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight);
-        ~StorageBufferSet() override = default;
+        virtual ~StorageBufferSet() override;
 
         Ref<StorageBuffer> Get();
         Ref<StorageBuffer> Get(uint32_t frame);

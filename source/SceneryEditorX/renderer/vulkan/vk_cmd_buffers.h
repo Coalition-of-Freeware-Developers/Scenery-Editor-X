@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
-#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
+#include "vk_data.h"
+#include "vk_swapchain.h"
 
 /// -------------------------------------------------------
 
@@ -50,24 +50,10 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    struct PipelineStats
-    {
-        uint64_t InputAssemblyVertices = 0;
-        uint64_t InputAssemblyPrimitives = 0;
-        uint64_t VertexShaderInvocations = 0;
-        uint64_t ClippingInvocations = 0;
-        uint64_t ClippingPrimitives = 0;
-        uint64_t FragmentShaderInvocations = 0;
-        uint64_t ComputeShaderInvocations = 0;
-    };
-
-    /// -------------------------------------------------------
-
 	class CommandBuffer : public RefCounted
 	{
 	public:
-        CommandBuffer(uint32_t count = 0, std::string debugName = "");
-        CommandBuffer(std::string debugName, bool swapchain);
+        explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
         CommandBuffer(std::string debugName, bool swapchain);
         virtual ~CommandBuffer() override;
 
@@ -94,13 +80,7 @@ namespace SceneryEditorX
         std::vector<VkFence> waitFences;
         std::vector<VkCommandBuffer> cmdBuffers;
         std::vector<PipelineStats> pipelineStatsQueryResults;
-        std::vector<VkCommandBuffer> cmdBuffers;
-        std::vector<PipelineStats> pipelineStatsQueryResults;
 
-        std::vector<VkQueryPool> timestampQueryPools;
-        std::vector<VkQueryPool> pipelineQueryPools;
-        std::vector<std::vector<uint64_t>> timestampQueryResults;
-        std::vector<std::vector<float>> executionGPUTimes;
         std::vector<VkQueryPool> timestampQueryPools;
         std::vector<VkQueryPool> pipelineQueryPools;
         std::vector<std::vector<uint64_t>> timestampQueryResults;
@@ -112,9 +92,6 @@ namespace SceneryEditorX
         std::map<std::string, float> timeStampTable;
 
         RenderData data;
-        bool ownedBySwapChain = false;
-        uint32_t availTimeQuery = 2;
-        uint32_t timeQueryCount = 0;
         bool ownedBySwapChain = false;
         uint32_t availTimeQuery = 2;
         uint32_t timeQueryCount = 0;

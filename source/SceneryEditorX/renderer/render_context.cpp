@@ -220,20 +220,21 @@ namespace SceneryEditorX
                 if (!khronosAvailable)
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer not available!");
             }
-    
-            std::vector<const char*> instanceExtensions = {
-                    VK_KHR_SURFACE_EXTENSION_NAME,
-                #if defined(SEDX_PLATFORM_WINDOWS)
-                    VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-                #elif defined(SEDX_PLATFORM_LINUX)
-                    #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-                        VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
-                    #else
-                        VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
-                    #endif
-                #elif defined(SEDX_PLATFORM_APPLE)
-                    VK_EXT_LAYER_SETTINGS_EXTENSION_NAME, VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
-                #endif
+
+            std::vector<const char *> instanceExtensions = {
+				    VK_KHR_SURFACE_EXTENSION_NAME,
+				#if defined(_WIN32) || defined(SEDX_PLATFORM_WINDOWS)
+				    VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+				#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+				    #error Android is not upported for Scenery Editor X,
+				#elif defined(__linux__) || defined(SEDX_PLATFORM_LINUX)
+				#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+				    #error Wayland is not upported for Scenery Editor X,
+				#endif
+				#elif defined(__APPLE__) || defined(SEDX_PLATFORM_APPLE)
+				    VK_EXT_LAYER_SETTINGS_EXTENSION_NAME,
+				    VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
+				#endif
             };
     
             VulkanChecks check;
@@ -243,7 +244,10 @@ namespace SceneryEditorX
             if (enableValidationLayers)
             {
                 instanceExtensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
-                //instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+            #if defined(SEDX_VK_DEBUG_EXT) && SEDX_DEBUG
+                instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+            #endif
+
                 //instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
             }
     
@@ -257,7 +261,7 @@ namespace SceneryEditorX
                 if (extensionName[0] != '\0')
                     instanceExtensions.push_back(extensionName);
 
-        #ifdef SEDX_PLATFORM_APPLE
+        #if defined(__APPLE__) || defined(SEDX_PLATFORM_APPLE)
     		/// Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
     		/// "Invalid SPIR-V binary version 1.6 for target environment SPIR-V 1.5 (under Vulkan 1.2 semantics)."
             const VkValidationFeatureDisableEXT validationFeaturesDisabled[] = {
@@ -272,7 +276,7 @@ namespace SceneryEditorX
             const VkValidationFeaturesEXT features = {
                 .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
                 .pNext = nullptr,
-            #if defined(SEDX_PLATFORM_APPLE)
+            #if defined(__APPLE__) || defined(SEDX_PLATFORM_APPLE)
                 .disabledValidationFeatureCount = enableValidationLayers ? (uint32_t)SEDX_NUM_ARRAY_ELEMENTS(validationFeaturesDisabled) : 0u,
                 .pDisabledValidationFeatures = enableValidationLayers ? validationFeaturesDisabled : nullptr,
             #endif
@@ -287,31 +291,28 @@ namespace SceneryEditorX
                     constexpr VkBool32 gpuav_indirect_draws_buffers = VK_FALSE;				/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
                     constexpr VkBool32 gpuav_post_process_descriptor_indexing = VK_FALSE;	/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
     		
-    		    #define LAYER_SETTINGS_BOOL32(name, var)											\
-    				VkLayerSettingEXT                                                               \
-    				{                                                                               \
-    				    .pLayerName = validationLayer[0],											\
-    		            .pSettingName = name, .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,				\
-    				    .valueCount = 1, .pValues = var,                                            \
-    				}
-    		
-    				const VkLayerSettingEXT settings[] = {
-    				    LAYER_SETTINGS_BOOL32("gpuav_descriptor_checks", &gpuav_descriptor_checks),
-    				    LAYER_SETTINGS_BOOL32("gpuav_indirect_draws_buffers", &gpuav_indirect_draws_buffers),
-    				    LAYER_SETTINGS_BOOL32("gpuav_post_process_descriptor_indexing", &gpuav_post_process_descriptor_indexing),
-    				    {"MoltenVK",
-    				     "MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS",
-    				     VK_LAYER_SETTING_TYPE_INT32_EXT,
-    				     1,
-    				     &useMetalArgumentBuffers},
-    				};
-    		    #undef LAYER_SETTINGS_BOOL32
+				#define LAYER_SETTINGS_BOOL32(name, var)												\
+    					VkLayerSettingEXT                                                               \
+    					{                                                                               \
+    					    .pLayerName = validationLayer[0],											\
+    			            .pSettingName = name, .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,				\
+    					    .valueCount = 1, .pValues = var,                                            \
+    					}
+    			
+    					const VkLayerSettingEXT settings[] = {
+    					    LAYER_SETTINGS_BOOL32("gpuav_descriptor_checks", &gpuav_descriptor_checks),
+    					    LAYER_SETTINGS_BOOL32("gpuav_indirect_draws_buffers", &gpuav_indirect_draws_buffers),
+    					    LAYER_SETTINGS_BOOL32("gpuav_post_process_descriptor_indexing", &gpuav_post_process_descriptor_indexing),
+    					    {"MoltenVK","MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS",VK_LAYER_SETTING_TYPE_INT32_EXT,1,&useMetalArgumentBuffers},
+    					};
+				#undef LAYER_SETTINGS_BOOL32
     		
     				VkLayerSettingsCreateInfoEXT layerSettingsCreateInfo;
                     layerSettingsCreateInfo.sType = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
                     layerSettingsCreateInfo.pNext = enableValidationLayers ? &features : nullptr;
                     layerSettingsCreateInfo.settingCount = (uint32_t)std::size(settings);
                     layerSettingsCreateInfo.pSettings = settings;
+
     		#endif
     
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -360,7 +361,8 @@ namespace SceneryEditorX
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Initialize the Vulkan Physical Device & Vulkan Device
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    	    vkPhysicalDevice = VulkanPhysicalDevice::Select(instance);
+
+            vkPhysicalDevice = VulkanPhysicalDevice::Select(instance);
             if (!vkPhysicalDevice)
 			{
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
@@ -381,11 +383,13 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Pipeline Cache Creation
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			// TODO: Reimplement later
 
+            /*
             PipelineCache pipelineCache;
             pipelineCache.CreateCache();
+            */
 
-            //SEDX_CORE_INFO("Pipeline cache created successfully");
             SEDX_CORE_INFO("RenderContext initialization complete");
         }
         catch (const std::exception& e)

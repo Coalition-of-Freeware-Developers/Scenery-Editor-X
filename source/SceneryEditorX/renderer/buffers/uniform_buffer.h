@@ -18,7 +18,7 @@ namespace SceneryEditorX
 	{
 	public:
 	    explicit UniformBuffer(uint32_t size);
-	    ~UniformBuffer() override = default; // Buffer RAII
+        virtual ~UniformBuffer() override = default; // Buffer RAII
 	
 	    void SetData(const void *data, uint32_t size, uint32_t offset = 0);
 	    void SetRenderThreadData(const void *data, uint32_t size, uint32_t offset = 0);
@@ -57,7 +57,7 @@ namespace SceneryEditorX
 	{
 	public:
         UniformBufferSet(uint32_t size, uint32_t framesInFlight = 0);
-        virtual ~UniformBufferSet() = default;
+        virtual ~UniformBufferSet() override;
 
         /// ----------------------------------------------------------
 

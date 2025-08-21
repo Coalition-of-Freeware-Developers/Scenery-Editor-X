@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -83,7 +83,8 @@ namespace SceneryEditorX
 	{
 	public:
 		ShaderPack() = default;
-		ShaderPack(const std::filesystem::path& path);
+        explicit ShaderPack(const std::filesystem::path& path);
+        virtual ~ShaderPack() override = default;
 
 		bool IsLoaded() const { return m_Loaded; }
 		bool Contains(std::string_view name) const;

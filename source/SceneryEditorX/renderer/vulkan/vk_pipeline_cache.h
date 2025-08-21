@@ -26,11 +26,11 @@ namespace SceneryEditorX
 	 * and save/loading the pipeline cache data for efficiency in shader compilation.
 	 *
 	 */
-	class PipelineCache
+    class PipelineCache : public RefCounted
     {
     public:
-        PipelineCache();
-        ~PipelineCache();
+        PipelineCache() = delete;
+        virtual ~PipelineCache() override = default;
 
         void CheckCache(char *cacheData, size_t cacheDataSize);
         VkPipelineCache CreateCache();
@@ -51,7 +51,6 @@ namespace SceneryEditorX
 
         //uint32_t dataSize = 0;				/// Equal to *pDataSize returned by vkGetPipelineCacheData
 
-        
     };
 }
 

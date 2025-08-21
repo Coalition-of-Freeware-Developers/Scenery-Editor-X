@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -22,6 +22,9 @@ namespace SceneryEditorX
     class VulkanChecks : public RefCounted
     {
     public:
+        VulkanChecks();
+        virtual ~VulkanChecks() override = default;
+
         void InitChecks(const char* ext, const std::vector<VkExtensionProperties>& props, const std::vector<const char *> &layers, const VkPhysicalDevice &device);
         INTERNAL bool IsRequiredExtensionSupported(const std::vector<VkExtensionProperties> &availExtensions, const char *extension); /// Function to check if a required extension is supported
         INTERNAL bool IsExtensionSupported(const char *extension);                                                                    /// Function to check if an extension is supported
@@ -37,10 +40,9 @@ namespace SceneryEditorX
         Extensions vkExtensions;
         VkPhysicalDeviceFeatures vkEnabledFeatures;
 
-
         friend class VulkanDevice;
     };
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

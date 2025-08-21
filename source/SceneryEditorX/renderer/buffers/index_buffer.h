@@ -27,7 +27,7 @@ namespace SceneryEditorX
     public:
         explicit IndexBuffer(uint64_t size);
         IndexBuffer(const void *data, uint64_t size = 0);
-        virtual ~IndexBuffer(); // RAII via Buffer
+        virtual ~IndexBuffer() override = default; // RAII via Buffer
 
         void SetData(void* buffer, uint64_t size, uint64_t offset = 0);
 		void Bind() const;

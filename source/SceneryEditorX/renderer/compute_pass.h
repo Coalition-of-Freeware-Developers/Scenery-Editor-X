@@ -33,8 +33,8 @@ namespace SceneryEditorX
 	class ComputePass : public RefCounted
 	{
 	public:
-        ComputePass(const ComputePassSpecification &spec);
-		~ComputePass();
+        explicit ComputePass(const ComputePassSpecification &spec);
+        virtual ~ComputePass() override;
 
 		ComputePassSpecification &GetSpecification() { return m_Specification; }
 		const ComputePassSpecification &GetSpecification() const { return m_Specification; }

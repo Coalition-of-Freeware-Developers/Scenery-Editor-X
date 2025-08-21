@@ -47,10 +47,10 @@ namespace SceneryEditorX
 		ShaderUniform() = default;
 		ShaderUniform(std::string name, ShaderUniformType type, uint32_t size, uint32_t offset);
 
-		const std::string& GetName() const { return m_Name; }
-		ShaderUniformType GetType() const { return m_Type; }
-		uint32_t GetSize() const { return m_Size; }
-		uint32_t GetOffset() const { return m_Offset; }
+        [[nodiscard]] const std::string& GetName() const { return m_Name; }
+        [[nodiscard]] ShaderUniformType GetType() const { return m_Type; }
+		[[nodiscard]] uint32_t GetSize() const { return m_Size; }
+		[[nodiscard]] uint32_t GetOffset() const { return m_Offset; }
 
 		static constexpr std::string_view UniformTypeToString(ShaderUniformType type);
 
@@ -176,14 +176,14 @@ namespace SceneryEditorX
          * @param disableOptimization Whether to disable shader optimization during compilation
          * @param name Name of the shader
          */
-        Shader(const std::string &filepath);
+        explicit Shader(const std::string &filepath);
         
         /**
          * @brief Virtual destructor.
          * 
          * Cleans up Vulkan shader module resources.
          */
-        virtual ~Shader();
+        virtual ~Shader() override;
 
 		/**
 		 * @brief Load shader from a shader pack file.
@@ -326,19 +326,19 @@ namespace SceneryEditorX
     class ShaderLibrary : public RefCounted
 	{
 	public:
-	    ShaderLibrary();
-	    ~ShaderLibrary();
+	    ShaderLibrary() = default;
+        virtual ~ShaderLibrary() override;
 	
 	    void Add(const Ref<Shader> &shader);
 	    void Load(std::string_view path, bool forceCompile = false, bool disableOptimization = false);
 	    void Load(std::string_view name, const std::string &path);
 	    void LoadShaderPack(const std::filesystem::path &path);
 
-		const Ref<Shader>& Get(const std::string& name) const;
+		const Ref<Shader> &Get(const std::string& name) const;
 		size_t GetSize() const { return m_Shaders.size(); }
 
-		std::unordered_map<std::string, Ref<Shader>>& GetShaders() { return m_Shaders; }
-		const std::unordered_map<std::string, Ref<Shader>>& GetShaders() const { return m_Shaders; }
+		std::unordered_map<std::string, Ref<Shader>> &GetShaders() { return m_Shaders; }
+		const std::unordered_map<std::string, Ref<Shader>> &GetShaders() const { return m_Shaders; }
 
 	private:
 		std::unordered_map<std::string, Ref<Shader>> m_Shaders;

@@ -34,6 +34,7 @@ namespace SceneryEditorX
 	{
     public:
         SwapChain() = default;
+        ~SwapChain() = default;
 
 		/// Initialization methods
 		void Init(VkInstance instance, const Ref<VulkanDevice> &device);

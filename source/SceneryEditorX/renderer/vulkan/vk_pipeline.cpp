@@ -489,8 +489,11 @@ namespace SceneryEditorX
 
             VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
+			// TODO: Reimplement later when pipeline cache is refactored
+			/*
 			PipelineCache cache;
             cache.CreateCache();
+            */
 
             SEDX_CORE_ASSERT(instance->pipelineSpecs.shader);
             Ref<Shader> vulkanShader = Ref<Shader>(instance->pipelineSpecs.shader);

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -81,6 +81,8 @@ namespace SceneryEditorX
         std::vector<VkDescriptorSet> descriptorSets;
     };
 
+    /// -------------------------------------------------------
+
 	struct ImageDescriptorInfo
     {
         VkDescriptorSet                     targetDescriptorSet;
@@ -89,6 +91,8 @@ namespace SceneryEditorX
         VkDescriptorType                    targetDescriptorType;
         std::vector<VkDescriptorImageInfo>  imageInfos;
     };
+
+    /// -------------------------------------------------------
 
 	struct BufferDescriptorInfo
     {
@@ -99,6 +103,8 @@ namespace SceneryEditorX
         std::vector<VkDescriptorBufferInfo> bufferInfos;
     };
 
+    /// -------------------------------------------------------
+
 	struct TexelBufferDescriptorInfo
     {
         VkDescriptorSet                     targetDescriptorSet;
@@ -108,12 +114,16 @@ namespace SceneryEditorX
         std::vector<VkBufferView>           texelBufferViews;
     };
 
+    /// -------------------------------------------------------
+
 	struct CopyDescriptorInfo
     {
         VkDescriptorSet     targetDescriptorSet;
         uint32_t            targetDescriptorBinding;
         uint32_t            targetArrayElement;
+
 	    ///----------------------------------------///
+
         VkDescriptorSet     sourceDescriptorSet;
         uint32_t            sourceDescriptorBinding;
         uint32_t            sourceArrayElement;

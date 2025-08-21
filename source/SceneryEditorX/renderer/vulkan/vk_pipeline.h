@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/buffers/framebuffer.h>
-#include <SceneryEditorX/renderer/buffers/vertex_buffer.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
+#include "vk_enums.h"
+#include "SceneryEditorX/renderer/buffers/framebuffer.h"
+#include "SceneryEditorX/renderer/buffers/vertex_buffer.h"
+#include "SceneryEditorX/renderer/shaders/shader.h"
 
 /// -------------------------------------------------------
 
@@ -53,13 +53,13 @@ namespace SceneryEditorX
 	class Pipeline : public RefCounted
 	{
 	public:
-        Pipeline(PipelineData &data);
+        explicit Pipeline(PipelineData &data);
         virtual ~Pipeline() override;
 
-		virtual PipelineData &GetSpecification() { return pipelineSpecs; }
-		virtual const PipelineData &GetSpecification() const { return pipelineSpecs; }
-        virtual void Invalidate();
-		virtual Ref<Shader> GetShader() const { return pipelineSpecs.shader; }
+		PipelineData &GetSpecification() { return pipelineSpecs; }
+	    const PipelineData &GetSpecification() const { return pipelineSpecs; }
+	    void Invalidate();
+	    Ref<Shader> GetShader() const { return pipelineSpecs.shader; }
         bool DynamicLineWidth() const;
 
         struct Stage

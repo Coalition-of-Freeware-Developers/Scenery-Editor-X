@@ -177,7 +177,7 @@ namespace SceneryEditorX
          * @param size Size of the data in bytes.
          * @param offset Offset in bytes where the data should be written (default: 0).
          */
-        virtual void SetData(void* buffer, uint64_t size, uint64_t offset = 0);
+        void SetData(void* buffer, uint64_t size, uint64_t offset = 0);
 
         /**
          * @brief Sets the render thread data for the vertex buffer.
@@ -186,25 +186,25 @@ namespace SceneryEditorX
          * @param size Size of the data in bytes.
          * @param offset Offset in bytes where the data should be written (default: 0).
          */
-        virtual void Set_RenderThreadData(void* buffer, uint64_t size, uint64_t offset = 0);
+        void Set_RenderThreadData(void* buffer, uint64_t size, uint64_t offset = 0);
 
         /**
          * @brief Binds the vertex buffer for rendering.
          */
-        virtual void Bind() const {}
+        void Bind() const {}
 
         /**
          * @brief Unbinds the vertex buffer.
          * @return True if the buffer was successfully unbound, false otherwise.
          */
-        virtual uint64_t GetSize() const { return m_Size; }
+        uint64_t GetSize() const { return m_Size; }
 
         /**
          * @brief Gets the renderer ID of the vertex buffer.
          *
          * @return Renderer ID of the vertex buffer.
          */
-        virtual uint32_t GetRendererID() const { return 0; }
+        uint32_t GetRendererID() const { return 0; }
 
         /**
          * @brief Creates vertex attribute descriptions based on the vertex format

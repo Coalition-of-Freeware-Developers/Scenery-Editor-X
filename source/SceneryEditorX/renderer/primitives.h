@@ -45,6 +45,9 @@ namespace SceneryEditorX
     {
     public:
 
+		Primitives() = delete;
+        ~Primitives() = delete;
+
         /**
          * @brief Creates a 3D box primitive
          *

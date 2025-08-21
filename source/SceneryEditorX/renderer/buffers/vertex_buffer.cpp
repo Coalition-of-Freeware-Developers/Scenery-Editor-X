@@ -392,6 +392,7 @@ namespace SceneryEditorX
      * @param debugName Optional debug name for the buffer.
      * @return Ref<VertexBuffer> Reference-counted pointer to the created VertexBuffer.
      */
+    /*
     Ref<VertexBuffer> VertexBuffer::Create(const void* data, uint64_t size, VertexBufferType usage, const std::string& debugName)
     {
         Ref<VertexBuffer> buffer = CreateRef<VertexBuffer>(data, size, usage);
@@ -400,6 +401,7 @@ namespace SceneryEditorX
 
         return buffer;
     }
+    */
 
     /// ---- Private Implementation Methods ----
 

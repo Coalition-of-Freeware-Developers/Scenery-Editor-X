@@ -33,13 +33,9 @@ namespace SceneryEditorX
 {
     static std::vector<VkCommandBuffer> s_ImGuiCommandBuffers;
 
-    UIModule::UIModule() = default;
-
     UIModule::UIModule(const std::string &name)
     {
     }
-    
-    UIModule::~UIModule() = default;
 
     void UIModule::Start()
     {

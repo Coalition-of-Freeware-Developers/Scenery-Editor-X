@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <vulkan/vulkan.h>
 #include <utility> // for std::swap used in SwizzleBGRAtoRGBA
-#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
+#include <vulkan/vulkan.h>
+#include "vk_enums.h"
 
 /// -------------------------------------------------------
 
@@ -232,23 +232,23 @@ namespace SceneryEditorX
 		 */
 		extern int getBPP(VkFormat format);
 
-			/**
-			 * @brief In-place convert a BGRA8 pixel buffer to RGBA8 by swapping R/B channels per texel.
-			 *
-			 * Safe for VK_FORMAT_B8G8R8A8_UNORM and VK_FORMAT_B8G8R8A8_SRGB outputs captured via vkCmdCopyImageToBuffer.
-			 * Performs no work for other formats. Buffer size must be width * height * 4 bytes (validated by caller).
-			 * @param data Pointer to beginning of pixel buffer.
-			 * @param size Size in bytes of the pixel buffer.
-			 * @param format Original VkFormat of the source image (used to gate swap).
-			 */
-			inline void SwizzleBGRAtoRGBA(uint8_t* data, uint64_t size, VkFormat format)
-			{
-				if (!data) return;
-				if (format != VK_FORMAT_B8G8R8A8_UNORM && format != VK_FORMAT_B8G8R8A8_SRGB)
-					return; // Only swap for BGRA8 formats
-				for (uint64_t i = 0; i + 3 < size; i += 4)
-					std::swap(data[i + 0], data[i + 2]);
-			}
+		/**
+		 * @brief In-place convert a BGRA8 pixel buffer to RGBA8 by swapping R/B channels per texel.
+		 *
+		 * Safe for VK_FORMAT_B8G8R8A8_UNORM and VK_FORMAT_B8G8R8A8_SRGB outputs captured via vkCmdCopyImageToBuffer.
+		 * Performs no work for other formats. Buffer size must be width * height * 4 bytes (validated by caller).
+		 * @param data Pointer to beginning of pixel buffer.
+		 * @param size Size in bytes of the pixel buffer.
+		 * @param format Original VkFormat of the source image (used to gate swap).
+		 */
+		inline void SwizzleBGRAtoRGBA(uint8_t* data, uint64_t size, VkFormat format)
+		{
+			if (!data) return;
+			if (format != VK_FORMAT_B8G8R8A8_UNORM && format != VK_FORMAT_B8G8R8A8_SRGB)
+				return; // Only swap for BGRA8 formats
+			for (uint64_t i = 0; i + 3 < size; i += 4)
+				std::swap(data[i + 0], data[i + 2]);
+		}
 
 		/**
 		 * @brief Get the string representation of a Vulkan debug message severity.

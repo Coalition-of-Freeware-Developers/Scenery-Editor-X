@@ -37,7 +37,7 @@ namespace SceneryEditorX
     {
     public:
         explicit Image2D(const ImageSpecification &specification);
-        virtual ~Image2D();
+        virtual ~Image2D() override;
 
         void Resize(const UVec2& size) { Resize(size.x, size.y); }
 

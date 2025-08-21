@@ -21,9 +21,9 @@ namespace SceneryEditorX
     class UIModule : public Module
 	{
 	public:
-        UIModule();
-        UIModule(const std::string &name);
-        virtual ~UIModule();
+        UIModule() = default;
+        explicit UIModule(const std::string &name);
+        virtual ~UIModule() override;
 
         void Start();
         void End();

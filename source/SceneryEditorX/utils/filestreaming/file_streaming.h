@@ -21,7 +21,7 @@ namespace SceneryEditorX
 	class FileStreamWriter : public StreamWriter
 	{
 	public:
-		FileStreamWriter(const std::filesystem::path& path);
+        explicit FileStreamWriter(const std::filesystem::path& path);
 		FileStreamWriter(const FileStreamWriter&) = delete;
 		virtual ~FileStreamWriter() override;
 
@@ -40,7 +40,7 @@ namespace SceneryEditorX
 	class FileStreamReader : public StreamReader
 	{
 	public:
-		FileStreamReader(const std::filesystem::path& path);
+        explicit FileStreamReader(const std::filesystem::path& path);
 		FileStreamReader(const FileStreamReader&) = delete;
         virtual ~FileStreamReader() override;
 

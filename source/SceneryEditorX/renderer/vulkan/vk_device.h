@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "vk_allocator.h"
-#include "vk_data.h"
 #include <optional>
 #include <vulkan/vulkan.h>
+#include "vk_allocator.h"
+#include "vk_data.h"
 
 /// -------------------------------------------------------
 
@@ -152,7 +152,7 @@ namespace SceneryEditorX
         [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryProperties; }
 		[[nodiscard]] VkFormat GetDepthFormat() const { return  devices.at(deviceIndex).depthFormat;}
         [[nodiscard]] VkPhysicalDevice GetGPUDevices() const;
-		[[nodiscard]] VkPhysicalDeviceFeatures GetDeviceFeatures() const { return devices.at(deviceIndex).deviceFeatures; }
+		[[nodiscard]] const VkPhysicalDeviceFeatures &GetDeviceFeatures() const { return devices.at(deviceIndex).deviceFeatures; }
         [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
 		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }

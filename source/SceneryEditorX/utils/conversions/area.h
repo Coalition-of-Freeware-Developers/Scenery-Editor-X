@@ -14,7 +14,6 @@
 
 /// -----------------------------------------------------
 
-#ifdef __cplusplus
 namespace SceneryEditorX::Convert
 {
 
@@ -40,6 +39,5 @@ namespace SceneryEditorX::Convert
 	inline float ToHectare(const float squareMeters)	{ return squareMeters / detail::M2_PER_HA; }
 
 }
-#endif /// __cplusplus
 
 /// -----------------------------------------------------

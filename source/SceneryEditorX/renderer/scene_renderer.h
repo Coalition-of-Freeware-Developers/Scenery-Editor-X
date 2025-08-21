@@ -17,7 +17,8 @@
 #include <Math/includes/matrix.h>
 #include <Math/includes/vector.h>
 
-#include <SceneryEditorX/scene/scene.h>
+#include "SceneryEditorX/scene/components.h"
+#include "SceneryEditorX/scene/scene.h"
 
 #include "2d_renderer.h"
 #include "camera.h"
@@ -163,6 +164,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+	/*
 	class SceneRenderer : public RefCounted
 	{
 	public:
@@ -176,8 +178,8 @@ namespace SceneryEditorX
 			float TotalGPUTime = 0.0f;
 		};
 
-		SceneRenderer(const Ref<Scene> &scene, const SceneRendererSpecification &specification = SceneRendererSpecification());
-		virtual ~SceneRenderer();
+        SceneRenderer(const Ref<Scene> &scene, const SceneRendererSpecification &specification = SceneRendererSpecification());
+		~SceneRenderer();
 
 		void Init();
 		void Shutdown() const;
@@ -385,8 +387,8 @@ namespace SceneryEditorX
 			Ref<Environment> SceneEnvironment;
 			float SkyboxLod = 0.0f;
 			float SceneEnvironmentIntensity;
-			LightEnvironment SceneLightEnvironment;
-			DirLight ActiveLight;
+            SkyLightComponent SceneLightEnvironment;
+            DirectionalLightComponent ActiveLight;
 		} m_SceneData;
 
         /// -------------------------------------------------------
@@ -441,7 +443,7 @@ namespace SceneryEditorX
 		{
 			uint32_t Count { 0 };
 			Vec3 Padding {};
-			PointLight PointLights[1024] {};
+            PointLightComponent PointLights[1024]{};
 		} PointLightsUB;
 
         /// -------------------------------------------------------
@@ -450,7 +452,7 @@ namespace SceneryEditorX
 		{
 			uint32_t Count{ 0 };
 			Vec3 Padding{};
-			SpotLight SpotLights[1000]{};
+            SpotLightComponent SpotLights[1000]{};
 		} SpotLightUB;
 
         /// -------------------------------------------------------
@@ -795,6 +797,7 @@ namespace SceneryEditorX
 		Statistics m_Statistics;
 		friend class SceneRendererPanel;
 	};
+	*/
 
 }
 

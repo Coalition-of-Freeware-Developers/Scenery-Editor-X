@@ -177,9 +177,9 @@ namespace SceneryEditorX
         uint32_t m_ViewportBottom = 0;
 
         //EntityMap m_EntityIDMap;
-        //DirectionalLight m_Light;
+        DirectionalLightComponent m_Light;
         float m_LightMultiplier = 0.3f;
-        //LightEnvironment m_LightEnvironment;
+        SkyLightComponent m_LightEnvironment;
 
         Ref<Environment> m_Environment;
         float m_EnvironmentIntensity = 0.0f;

@@ -10,13 +10,13 @@
 * Created: 9/4/2025
 * -------------------------------------------------------
 */
+#include "vk_swapchain.h"
 #include <GLFW/glfw3.h>
-#include <SceneryEditorX/renderer/image_data.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
-#include <SceneryEditorX/renderer/vulkan/vk_device.h>
-#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include "vk_data.h"
+#include "vk_device.h"
+#include "vk_util.h"
+#include "SceneryEditorX/renderer/image_data.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 /// -------------------------------------------------------
 
@@ -921,7 +921,7 @@ namespace SceneryEditorX
 		}
     }
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------
 

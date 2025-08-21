@@ -32,7 +32,7 @@ namespace SceneryEditorX
 	* Resources specific to each module type should be cleaned up in their
 	* respective OnDetach() methods.
 	*/
-	Module::~Module() {}
+	Module::~Module() = default;
 
 }
 

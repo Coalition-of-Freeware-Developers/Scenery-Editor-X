@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -17,10 +17,7 @@
 
 namespace SceneryEditorX::UI
 {
-    uint32_t GetActiveWidgetID()
-    {
-        return GImGui->ActiveId;
-    }
+    uint32_t GetActiveWidgetID() { return GImGui->ActiveId; }
 
 }
 
@@ -244,7 +241,7 @@ namespace SceneryEditorX::Themes
     /// -------------------------------------------------------
 
     /*
-ImGuiStyle * style = &ImGui::GetStyle();
+    ImGuiStyle * style = &ImGui::GetStyle();
 
 	style->WindowPadding = ImVec2(15, 15);
 	style->WindowRounding = 5.0f;
@@ -301,7 +298,7 @@ ImGuiStyle * style = &ImGui::GetStyle();
 	style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
 	style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
 	style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
-*/
+    */
 
 }
 

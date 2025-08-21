@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "resource.h"
-#include "SceneryEditorX/core/memory/memory.h"
-#include "vk_enums.h"
 #include <vma/vk_mem_alloc.h>
+#include "resource.h"
+#include "vk_enums.h"
+#include "SceneryEditorX/core/memory/memory.h"
 
 /// --------------------------------------------
 

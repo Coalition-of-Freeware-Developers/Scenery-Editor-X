@@ -27,6 +27,10 @@ namespace SceneryEditorX::Values
 
 namespace SceneryEditorX::Types
 {
+
+	/**
+	 * @brief 
+	 */
 	class Type
 	{
 	public:

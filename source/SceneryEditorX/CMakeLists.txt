@@ -145,6 +145,8 @@ ADD_LIBRARY(AppCore
 	renderer/stb_image_impl.cpp
 	renderer/texture.cpp
 	renderer/texture.h
+	renderer/viewport.cpp
+	renderer/viewport.h
 	renderer/xp_pbr.cpp
 	renderer/xp_pbr.h
 	renderer/xp_texture.cpp
@@ -325,6 +327,8 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/stb_image_impl.cpp
 	renderer/texture.cpp
 	renderer/texture.h
+	renderer/viewport.cpp
+	renderer/viewport.h
 	renderer/xp_pbr.cpp
 	renderer/xp_pbr.h
 	renderer/xp_texture.cpp

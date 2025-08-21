@@ -140,7 +140,7 @@ namespace SceneryEditorX::UI
          * @brief Shows application info in an ImGui window
          * @param appName Application name
          */
-        void ShowAppInfo(std::string &appName) const;
+        void ShowAppInfo(const std::string &appName) const;
 
         /**
          * @brief Initialize a viewport window for rendering

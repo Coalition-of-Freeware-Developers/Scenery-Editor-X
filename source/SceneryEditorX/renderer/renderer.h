@@ -56,58 +56,9 @@ namespace SceneryEditorX
      *
      * @note All functions marked GLOBAL are static; the class behaves as a singleton façade.
      */
-
-    /**
-     * @class Renderer
-     * @brief Central static façade for all high-level rendering operations.
-     *
-     * The Renderer class manages frame lifecycle, command submission, shader hot-reload
-     * propagation, descriptor and sampler utilities, render/compute pass orchestration,
-     * and deferred resource destruction on the render thread. Most functions are exposed
-     * as GLOBAL (static) entry points to allow easy invocation across systems while
-     * ensuring ordered execution on the render thread where required.
-     *
-     * Core Responsibilities:
-     *  - Frame begin/end and swapchain presentation sequencing
-     *  - Thread-safe deferred command submission through a linear command queue
-     *  - Render resource lifetime management (safe destruction after GPU usage)
-     *  - Shader dependency tracking for pipelines/materials and hot-reload propagation
-     *  - Utility functions for descriptor set allocation and sampler creation
-     *  - Dispatch and management of render & compute passes
-     *
-     * Threading Model:
-     *  - CPU/game logic threads enqueue work via Submit()/SubmitResourceFree()
-     *  - The render thread drains command queues in a deterministic order
-     *  - Resource destruction is deferred per-frame to avoid GPU-use-after-free
-     *
-     * @note All functions marked GLOBAL are static; the class behaves as a singleton façade.
-     */
     class Renderer
 	{
 	public:
-        /**
-         * @typedef RenderCommandFn
-         * @brief Function pointer signature used to execute a recorded render command.
-         *
-         * Each submitted lambda/functor is placement-new constructed into a transient
-         * linear buffer inside a CommandQueue. When executed, the queue invokes the
-         * associated RenderCommandFn passing the pointer to the stored callable object.
-         * The callable is then manually destroyed (unless trivially destructible).
-         *
-         * @param void* Opaque pointer to the callable object storage.
-         *
-         * @note: This function pointer type is used internally by the Renderer to
-         *       execute submitted commands on the render thread.
-         *
-         * @code
-         * Renderer::RenderCommandFn cmdFn = [](void* ptr)
-         * {
-         *	auto pFunc = (FuncT*)ptr;
-         *	(*pFunc)(); // Call the submitted function
-         *	pFunc->~FuncT(); // Explicitly destroy the callable
-         * };
-         * @endcode
-         */
         /**
          * @typedef RenderCommandFn
          * @brief Function pointer signature used to execute a recorded render command.
@@ -137,13 +88,7 @@ namespace SceneryEditorX
 		 * @brief Retrieve the global render context instance.
 		 * @return Shared reference to RenderContext.
 		 */
-		/**
-		 * @brief Retrieve the global render context instance.
-		 * @return Shared reference to RenderContext.
-		 */
 		GLOBAL Ref<RenderContext> GetContext();
-
-        /// -------------------------------------------------------
 
         /// -------------------------------------------------------
 
@@ -155,20 +100,6 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
-        /**
-         * @brief Submit a callable to execute on the render thread command queue.
-         *
-         * The callable is copied (or moved) into a linear transient buffer; execution
-         * occurs later on the render thread. The callable is explicitly destroyed
-         * after invocation to permit non-trivially-destructible closures (e.g. with
-         * std::string members).
-         *
-         * @tparam FuncT Callable type (lambda/functor) - must be invocable with ().
-         * @param func Callable instance (forwarded).
-         *
-         * @note Avoid capturing large objects by value; prefer lightweight handles.
-         * @threadsafe Yes.
-         */
         /**
          * @brief Submit a callable to execute on the render thread command queue.
          *
@@ -217,21 +148,6 @@ namespace SceneryEditorX
 		 * @tparam FuncT Callable type.
 		 * @param func Callable responsible for performing resource destruction.
 		 */
-        /// -------------------------------------------------------
-
-        /**
-		 * @brief Submit a callable that frees GPU resources at a safe time.
-		 *
-		 * If called from the render thread the resource-free command is enqueued
-		 * directly into the current frame's release queue; otherwise it is marshalled
-		 * via Submit() to ensure correct thread context.
-		 *
-		 * Use this for destroying Vulkan objects / buffers / images that must survive
-		 * until the GPU finishes referencing them.
-		 *
-		 * @tparam FuncT Callable type.
-		 * @param func Callable responsible for performing resource destruction.
-		 */
 		template<typename FuncT>
 		static void SubmitResourceFree(FuncT&& func)
 		{
@@ -251,13 +167,11 @@ namespace SceneryEditorX
 			if (RenderThread::IsCurrentThreadRT())
 			{
 				const uint64_t index = GetCurrentFrameIndex();
-				const uint64_t index = GetCurrentFrameIndex();
 				auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
 				new (storageBuffer) FuncT(std::forward<FuncT>((FuncT&&)func));
 			}
 			else
 			{
-				const uint64_t index = GetCurrentFrameIndex();
 				const uint64_t index = GetCurrentFrameIndex();
 				Submit([renderCmd, func, index]()
 				{
@@ -273,18 +187,8 @@ namespace SceneryEditorX
         * @brief Access current frame's aggregated immutable render data.
         * @return Reference to the active RenderData structure.
         */
-        /// -------------------------------------------------------
-
-        /**
-        * @brief Access current frame's aggregated immutable render data.
-        * @return Reference to the active RenderData structure.
-        */
         GLOBAL RenderData &GetRenderData();
 
-        /**
-        * @brief Replace the active frame RenderData.
-        * @param renderData New data snapshot copied into internal storage.
-        */
         /**
         * @brief Replace the active frame RenderData.
         * @param renderData New data snapshot copied into internal storage.
@@ -295,25 +199,7 @@ namespace SceneryEditorX
         * @brief Entry point executed by the render thread main loop.
         * @param renderThread Pointer to the owning RenderThread.
         */
-
-        /**
-        * @brief Entry point executed by the render thread main loop.
-        * @param renderThread Pointer to the owning RenderThread.
-        */
         GLOBAL void RenderThreadFunc(RenderThread *renderThread);
-
-        /**
-        * @brief Wait for required synchronization then perform rendering.
-        * @param renderThread Pointer to render thread context.
-        */
-        GLOBAL void WaitAndRender(RenderThread *renderThread);
-
-        /**
-        * @brief Swap front/back command queues to prepare for next frame submission.
-        *
-        * Usually invoked once per frame during SubmitFrame().
-        */
-        GLOBAL void SwapQueues();
 
         /**
         * @brief Wait for required synchronization then perform rendering.
@@ -546,6 +432,14 @@ namespace SceneryEditorX
 		 * @param destinationImage Destination image.
 		 */
 		GLOBAL void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+
+		/**
+		 * @brief Get number of nanoseconds required for a timestamp query to be incremented by 1
+		 *
+		 * @return The timestamp period in milliseconds.
+		 * @see https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#queries-timestamps
+		 */
+        [[nodiscard]] double GetTimestampPeriodInMS() const;
 
     private:
 		/**

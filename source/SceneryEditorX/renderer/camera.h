@@ -21,10 +21,10 @@ namespace SceneryEditorX
 	class Camera
 	{
 	public:
-		Camera() = default;
+		Camera() = delete;
 		Camera(const Mat4& projection, const Mat4& unReversedProjection);
 		Camera(const float degFov, const float width, const float height, const float nearP, const float farP);
-		virtual ~Camera() = default;
+		~Camera() = delete;
 
         [[nodiscard]] const Mat4& GetProjectionMatrix() const { return m_ProjectionMatrix; }
         [[nodiscard]] const Mat4& GetUnReversedProjectionMatrix() const { return m_UnReversedProjectionMatrix; }

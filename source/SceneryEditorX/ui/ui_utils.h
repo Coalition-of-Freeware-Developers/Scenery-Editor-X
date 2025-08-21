@@ -327,10 +327,7 @@ namespace SceneryEditorX::UI
     /// Rectangles
     ///=========================================================================================
 
-	inline ImRect GetItemRect()
-	{
-		return ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
-	}
+	inline ImRect GetItemRect() { return {ImGui::GetItemRectMin(), ImGui::GetItemRectMax()}; }
 
 	inline ImRect RectExpanded(const ImRect& rect, float x, float y)
 	{
@@ -352,10 +349,7 @@ namespace SceneryEditorX::UI
 		return result;
 	}
 
-	inline ImRect RectOffset(const ImRect& rect, ImVec2 xy)
-	{
-		return RectOffset(rect, xy.x, xy.y);
-	}
+	inline ImRect RectOffset(const ImRect& rect, ImVec2 xy) { return RectOffset(rect, xy.x, xy.y); }
 
     ///=========================================================================================
     /// Window
@@ -410,10 +404,7 @@ namespace SceneryEditorX::UI
 			ImGui::BeginDisabled(true);
 	}
 
-	inline bool IsItemDisabled()
-	{
-		return ImGui::GetItemFlags() & ImGuiItemFlags_Disabled;
-	}
+	inline bool IsItemDisabled() { return ImGui::GetItemFlags() & ImGuiItemFlags_Disabled; }
 
 	inline void EndDisabled()
 	{
@@ -1030,10 +1021,7 @@ namespace SceneryEditorX::UI
 		return opened;
 	}
 
-	inline void EndCombo()
-	{
-		ImGui::EndCombo();
-	}
+	inline void EndCombo() { ImGui::EndCombo(); }
 
 	bool FakeComboBoxButton(const char* label, const char* preview_value, ImGuiComboFlags flags = 0);
 

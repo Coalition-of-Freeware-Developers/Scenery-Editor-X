@@ -84,10 +84,6 @@ namespace SceneryEditorX
         return shaderModule;
 	}
 
-    ShaderLibrary::ShaderLibrary() = default;
-
-    ShaderLibrary::~ShaderLibrary() = default;
-
     void ShaderLibrary::Add(const Ref<Shader>& shader)
 	{
 		auto& name = shader->GetName();

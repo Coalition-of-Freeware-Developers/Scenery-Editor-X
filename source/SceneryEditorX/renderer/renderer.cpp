@@ -16,17 +16,9 @@
 #include "buffers/vertex_buffer.h"
 #include "compute_pass.h"
 #include "image_data.h"
-#include "buffers/framebuffer.h"
-#include "buffers/index_buffer.h"
-#include "buffers/vertex_buffer.h"
-#include "compute_pass.h"
-#include "image_data.h"
 #include "render_context.h"
 #include "renderer.h"
-#include "scene_renderer.h"
-#include "SceneryEditorX/core/time/timer.h"
-#include "renderer.h"
-#include "scene_renderer.h"
+//#include "scene_renderer.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/logging/profiler.hpp"
 #include "shaders/shader.h"
@@ -35,31 +27,11 @@
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_pipeline.h"
 #include "vulkan/vk_render_pass.h"
-
-#include <imgui.h>
-#include <imgui/backends/imgui_impl_glfw.h>
-#include <imgui/backends/imgui_impl_vulkan.h>
-
-#include "texture.h"
-#include "vulkan/vk_allocator.h"
-#include "vulkan/vk_cmd_buffers.h"
-#include "vulkan/vk_pipeline.h"
-#include "vulkan/vk_render_pass.h"
-
-#include <imgui.h>
-#include <imgui/backends/imgui_impl_glfw.h>
-#include <imgui/backends/imgui_impl_vulkan.h>
-
 #include "vulkan/vk_util.h"
 
-#include <algorithm>
-#include <stb_image_write.h>
-#include <utility>
-#include <vector>
-
-#include "SceneryEditorX/core/events/application_events.h"
-#include "SceneryEditorX/core/time/time.h"
-#include "SceneryEditorX/platform/filesystem/file_manager.hpp"
+#include <imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
 
 #include <algorithm>
 #include <stb_image_write.h>
@@ -113,7 +85,6 @@ namespace SceneryEditorX
     LOCAL RenderData m_renderData;
     LOCAL RendererProperties *s_Data = nullptr;
     constexpr LOCAL uint32_t s_RenderCommandQueueCount = 2;
-    constexpr LOCAL uint32_t s_RenderCommandQueueCount = 2;
     INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
     INTERNAL std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
     INTERNAL CommandQueue resourceFreeQueue[3];
@@ -130,7 +101,6 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
     Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
 
     void Renderer::Init()
@@ -172,6 +142,7 @@ namespace SceneryEditorX
 				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
 				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
 			};
+
 			VkDescriptorPoolCreateInfo pool_info = {};
             pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
@@ -189,8 +160,6 @@ namespace SceneryEditorX
             VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &s_Data->MaterialDescriptorPool))
         });
 
-
-		/// Create fullscreen quad
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Create Fullscreen Quad
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +207,7 @@ namespace SceneryEditorX
 		{
 			TextureSpecification textureSpec;
 			textureSpec.samplerWrap = SamplerWrap::Clamp;
-			s_Data->BRDFLutTexture = Texture2D::Create(textureSpec, std::filesystem::path("assets/Renderer/BRDF_LUT.png"));
+			s_Data->BRDFLutTexture = CreateRef<Texture2D>(textureSpec, std::filesystem::path("assets/Renderer/BRDF_LUT.png"));
 		}
 
 		constexpr uint32_t blackCubeTextureData[6] = { 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000 };
@@ -332,14 +301,8 @@ namespace SceneryEditorX
     }
 
     uint64_t Renderer::GetCurrentFrameIndex()
-    uint64_t Renderer::GetCurrentFrameIndex()
     {
         return m_renderData.frameIndex;
-    }
-
-    Ref<ShaderLibrary> Renderer::GetShaderLibrary()
-    {
-        return s_Data->m_ShaderLibrary;
     }
 
     Ref<ShaderLibrary> Renderer::GetShaderLibrary()
@@ -611,6 +574,17 @@ namespace SceneryEditorX
 		std::scoped_lock lock(s_ShaderDependenciesMutex);
 		s_ShaderDependencies[shader->GetHash()].Pipelines.push_back(pipeline);
 	}
+
+    /**
+     * @brief Get number of nanoseconds required for a timestamp query to be incremented by 1
+     *
+     * @return The timestamp period in milliseconds.
+     * @see https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#queries-timestamps
+     */
+    double Renderer::GetTimestampPeriodInMS() const
+    {
+        return double(RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->GetDeviceProperties().limits.timestampPeriod) * 1e-6;
+    }
 
     /*
 	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material)

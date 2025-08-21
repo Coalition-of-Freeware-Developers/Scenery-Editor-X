@@ -43,8 +43,8 @@ namespace SceneryEditorX
 	class Renderer2D : public RefCounted
 	{
 	public:
-		Renderer2D(const Renderer2DSpecification& specification = Renderer2DSpecification());
-		virtual ~Renderer2D();
+        explicit Renderer2D(const Renderer2DSpecification& specification = Renderer2DSpecification());
+		virtual ~Renderer2D() override;
 
 		void Init();
 		void Shutdown() const;
@@ -276,7 +276,7 @@ namespace SceneryEditorX
 		DrawStatistics m_DrawStats;
 		MemoryStatistics m_MemoryStats;
 
-		//Ref<UniformBufferSet> m_UBSCamera;
+		Ref<UniformBufferSet> m_UBSCamera;
 
         /// -------------------------------------------------------
 

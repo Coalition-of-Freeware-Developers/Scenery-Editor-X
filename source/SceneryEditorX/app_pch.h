@@ -133,6 +133,9 @@
 	#define TRACY_ENABLE
 #endif
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+
+
 /// -------------------------------------------------------
 
 /**
