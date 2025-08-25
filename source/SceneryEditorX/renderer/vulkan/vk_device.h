@@ -83,43 +83,43 @@ namespace SceneryEditorX
              * @return The graphics family index, or 0 if not initialized.
              */
             [[nodiscard]] uint32_t GetGraphicsFamily() const
-		    { 
+		    {
 		        if (!graphicsFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access graphics family when it's not initialized");
 		            return 0; /// Return a default value to avoid crashing
 		        }
-		        return graphicsFamily.value().second; 
+		        return graphicsFamily.value().second;
 		    }
-		    
+
 		    [[nodiscard]] uint32_t GetPresentFamily() const
-		    { 
+		    {
 		        if (!presentFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access present family when it's not initialized");
 		            return 0; /// Return a default value to avoid crashing
 		        }
-		        return presentFamily.value().second;  
+		        return presentFamily.value().second;
 		    }
-		    
+
 		    [[nodiscard]] uint32_t GetComputeFamily() const
-		    { 
+		    {
 		        if (!computeFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access compute family when it's not initialized");
 		            return 0; /// Return a default value to avoid crashing
 		        }
-		        return computeFamily.value().second; 
+		        return computeFamily.value().second;
 		    }
-		    
+
 		    [[nodiscard]] uint32_t GetTransferFamily() const
-		    { 
+		    {
 		        if (!transferFamily.has_value())
 				{
 		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access transfer family when it's not initialized");
 		            return 0; /// Return a default value to avoid crashing
 		        }
-		        return transferFamily.value().second; 
+		        return transferFamily.value().second;
 		    }
 		};
 
@@ -157,7 +157,7 @@ namespace SceneryEditorX
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
 		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
 		[[nodiscard]] const std::vector<VkQueueFamilyProperties> &GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
-        
+
         /**
          * @brief Find queue families that meet specified criteria in the physical device.
          * @param device The physical device to examine.
@@ -185,7 +185,7 @@ namespace SceneryEditorX
         //VkPhysicalDeviceVulkan12Features vulkan12Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
         //VkPhysicalDeviceVulkan11Features vulkan11Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
         //VkPhysicalDeviceFeatures2 vulkan10Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-		
+
 	    /// -------------------------------------------------------
 
 	    /**
@@ -215,10 +215,10 @@ namespace SceneryEditorX
 
         /**
          * @brief Allocate a command buffer from the pool
-         * 
+         *
          * @param begin Whether to begin the command buffer
          * @param compute Whether to allocate from the compute pool
-         * 
+         *
          * @return A new command buffer
          */
         [[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;

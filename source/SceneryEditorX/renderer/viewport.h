@@ -2,115 +2,66 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
+* Copyright (c) 2025 Thomas Ray 
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * viewport.h
 * -------------------------------------------------------
-* Created: 1/8/2025
+* Created: 25/8/2025
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/time/time.h>
-#include <SceneryEditorX/renderer/scene_renderer.h>
+#include "vulkan/resource.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/// Forward declarations
-    class Scene;
-    class Editor;
-    class Renderer2D;
-    class KeyPressedEvent;
-    class MouseButtonPressedEvent;
-
-    /// -------------------------------------------------------
-
-    class Viewport : public RefCounted
+    class Viewport : public Resource
     {
     public:
-		/// Default constructor to allow aggregate members to default-construct
-		Viewport() : m_ViewportCamera(45.0f, 1280.0f, 720.0f, 0.1f, 1000.0f) {}
-        Viewport(std::string viewportName, Editor *editor);
+        explicit Viewport::Viewport(const float x = 0.0f, const float y = 0.0f, const float width = 0.0f, const float height = 0.0f, const float minDepth = 0.0f, const float maxDepth = 1.0f)
+		{
+		    this->x			= x;
+		    this->y			= y;
+		    this->width		= width;
+		    this->height	= height;
+		    this->minDepth  = minDepth;
+		    this->maxDepth  = maxDepth;
+		}
 
-        const std::string &GetName() const;
-
-        bool IsViewportVisible() const;
-        bool IsMainViewport() const;
-
-        //Ref<SceneRenderer> GetRenderer() const;
-        Ref<Renderer2D> GetRenderer2D() const;
-
-		Camera &GetViewportCamera();
-        std::array<Vec2, 2> GetViewportBounds() const;
-
-        void Init(const Ref<Scene> &scene);
-        void SetIsMainViewport(bool isMain);
-        void SetIsVisible(bool visible);
-
-        void OnUpdate(DeltaTime dt);
-        void OnRender2D();
-        void OnUIRender();
-        void OnEvent(Event &e);
-        void ResetCamera();
-        bool *GetIsVisibleMemory();
-        //Viewport GetViewportSize(){ return m_ViewportBounds; }
-
-    private:
-        void UI_DrawGizmos();
-        void UI_GizmosToolbar();
-        void UI_CentralToolbar();
-        void UI_ViewportSettings();
-        void UI_HandleAssetDrop();
-
-        bool OnKeyPressedEvent(KeyPressedEvent &e);
-        bool OnMouseButtonPressed(MouseButtonPressedEvent &e);
-
-        std::pair<float, float> GetMouseViewportSpace(bool primaryViewport) const;
-        std::pair<Vec3, Vec3> CastRay(float mx, float my) const;
-
-        Editor *m_Editor = nullptr;
-        Camera m_ViewportCamera;
-        std::string m_ViewportName = "Viewport";
-        //Ref<SceneRenderer> m_ViewportRenderer;
-        Ref<Renderer2D> m_ViewportRenderer2D;
-        std::array<Vec2, 2> m_ViewportBounds = {};
-
-
-		/**
-		 * Main means the last active viewport.
-		 * If you click on any viewport, and it is focus this viewport will be main.
-         */
-        bool m_IsMainViewport = false;
-        bool m_IsVisible = false;
-        bool m_IsMouseOver = false;
-        bool m_IsFocused = false;
-        bool m_ShowIcons = true;
-        bool m_ShowGizmos = true;
-        bool m_ShowBoundingBoxSelectedMeshOnly = true;
-        bool m_ShowBoundingBoxSubmeshes = false;
-        bool m_ShowGizmosInPlayMode = false;
-        bool m_DrawOnTopBoundingBoxes = true;
-        bool m_ShowBoundingBoxes = false;
-        float m_LineWidth = 2.0f;
-
-        enum class SelectionMode : uint8_t
+		Viewport::Viewport(const Viewport &viewport) : Resource(viewport)
         {
-            Entity = 0,
-            SubMesh = 1
-        };
-        SelectionMode m_SelectionMode = SelectionMode::Entity;
+		    x		 = viewport.x;
+		    y		 = viewport.y;
+		    width	 = viewport.width;
+		    height	 = viewport.height;
+		    minDepth = viewport.minDepth;
+		    maxDepth = viewport.maxDepth;
+		}
 
-        enum class TransformationTarget : uint8_t
-        {
-            MedianPoint,
-            IndividualOrigins
-        };
+        virtual ~Viewport() = default;
 
-        TransformationTarget m_MultiTransformTarget = TransformationTarget::MedianPoint;
+        bool operator==(const Viewport &data) const;
+        bool operator!=(const Viewport &data) const { return !(*this == data); }
+		float GetAspectRatio() const { return width / height; }
+        bool IsDefined() const;
+
+        /** @brief Flag indicating whether the mouse is currently hovering over the viewport */
+        bool viewportHovered = false;
+
+        /** @brief Flag indicating whether the viewport has been resized and needs updating */
+        bool viewportResized = false;
+
+        float x		 = 0.0f;
+        float y		 = 0.0f;
+        float width	 = 0.0f;
+        float height	 = 0.0f;
+        float minDepth = 0.0f;
+        float maxDepth = 1.0f;
+
+        GLOBAL const Viewport undefined;
     };
 
 }

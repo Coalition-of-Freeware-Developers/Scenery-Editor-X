@@ -22,7 +22,7 @@ namespace SceneryEditorX
 	 * @param ext
 	 * @param props
 	 * @param layers
-	 * @param device 
+	 * @param device
 	 */
     void VulkanChecks::InitChecks(const char *ext,
                               const std::vector<VkExtensionProperties> &props,
@@ -37,7 +37,7 @@ namespace SceneryEditorX
     /**
 	 * @brief Checks to see if the Vulkan API version is compatible.
 	 * @param minVulkanVersion
-	 * @param minimumVulkanVersion 
+	 * @param minimumVulkanVersion
 	 * @return True if the Vulkan API version is compatible.
 	 * @return False if the Vulkan API version is not compatible.
 	 */
@@ -49,12 +49,12 @@ namespace SceneryEditorX
 	        SEDX_CORE_ERROR("Failed to enumerate instance version: {}", ToString(result));
 	        return false;
 	    }
-	
+
 	    RenderData::apiVersion vulkanVersion = {vulkanVersion.Variant = VK_API_VERSION_VARIANT(instanceVersion),
 	                                            vulkanVersion.Major = VK_API_VERSION_MAJOR(instanceVersion),
 	                                            vulkanVersion.Minor = VK_API_VERSION_MINOR(instanceVersion),
 	                                            vulkanVersion.Patch = VK_API_VERSION_PATCH(instanceVersion)};
-	
+
 	    if (instanceVersion < minVulkanVersion)
 	    {
 	        SEDX_CORE_ERROR_TAG("Graphics Engine", "Installed Vulkan API version is incompatible with the program!");
@@ -63,19 +63,19 @@ namespace SceneryEditorX
 	                        VK_API_VERSION_MAJOR(instanceVersion),
 	                        VK_API_VERSION_MINOR(instanceVersion),
 	                        VK_API_VERSION_PATCH(instanceVersion));
-	
+
 	        SEDX_CORE_ERROR("You need at least {}.{}.{}.{}",
 	                        VK_API_VERSION_VARIANT(minVulkanVersion),
 	                        VK_API_VERSION_MAJOR(minVulkanVersion),
 	                        VK_API_VERSION_MINOR(minVulkanVersion),
 	                        VK_API_VERSION_PATCH(minVulkanVersion));
-	
+
 	        return false;
 	    }
-	
+
 	    return true;
 	}
-	
+
 	/**
 	 * @brief Checks to see if the device has support for the required extensions.
 	 *
@@ -87,17 +87,17 @@ namespace SceneryEditorX
 	bool VulkanChecks::IsRequiredExtensionSupported(const std::vector<VkExtensionProperties> &availExtensions,
 	                                                const char *const extension)
 	{
-	
+
 	    for (const auto &[extensionName, specVersion] : availExtensions)
 	    {
 	        if (strstr(extensionName, extension))
 	            return true;
 	    }
-	
-	
+
+
 	    return false;
 	}
-	
+
 	/**
      * @brief Checks to see if the device has support for the required extensions.
      *
@@ -132,8 +132,8 @@ namespace SceneryEditorX
 
         return false;
     }
-	
-	
+
+
 	/**
 	 * @brief Checks to see if the device has support for the required extensions.
 	 *
@@ -147,12 +147,12 @@ namespace SceneryEditorX
 	{
 	    uint32_t extensionCount = 0;
 	    vkEnumerateDeviceExtensionProperties(device, validationLayer, &extensionCount, nullptr);
-	
+
 	    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 	    vkEnumerateDeviceExtensionProperties(device, validationLayer, &extensionCount, availableExtensions.data());
 	    props.insert(props.end(), availableExtensions.begin(), availableExtensions.end());
 	}
-	
+
 	/**
 	 * @brief Checks to see if the device has support for the required extensions.
 	 *
@@ -184,13 +184,13 @@ namespace SceneryEditorX
 	{
 	    VkPhysicalDeviceFeatures deviceFeatures;
 	    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-	
+
 	    constexpr VulkanDeviceFeatures requiredFeatures; /// Create a temporary instance with default values
-	
+
 	    /// Check for all true features in our configuration if they're supported by the device
 	    bool missingFeatures = false;
 	    std::string missingFeaturesLog;
-	
+
 	    /// Check all features that might be required by our application
 	    CHECK_FEATURE(robustBufferAccess)
 	    CHECK_FEATURE(fullDrawIndexUint32)
@@ -247,18 +247,18 @@ namespace SceneryEditorX
 	    CHECK_FEATURE(sparseResidencyAliased)
 	    CHECK_FEATURE(variableMultisampleRate)
 	    CHECK_FEATURE(inheritedQueries)
-	
+
 	    if (missingFeatures)
 	    {
 	        SEDX_CORE_ERROR_TAG("Graphics Core", "Your device does not support all required Vulkan device features!");
-	
+
 	        return false;
 	    }
-	
+
 	    SEDX_CORE_TRACE_TAG("Graphics Core", "All required Vulkan device features are supported");
 	    return true;
 	}
-	
+
 	/**
 	 * @brief - Check if a device is suitable for rendering.
 	 * @param device - The Vulkan physical device.
@@ -271,11 +271,11 @@ namespace SceneryEditorX
 	    VkPhysicalDeviceProperties deviceProperties;
 	    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 	    vkGetPhysicalDeviceProperties(device, &deviceProperties);
-	
+
 	    /// Check for required device type (discrete GPU preferred)
 	    if (bool isDiscreteGPU = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU); !isDiscreteGPU)
 	        SEDX_CORE_WARN_TAG("Graphics Core", "Graphics device is not a discrete GPU. Performance might be affected.");
-	
+
 	    if (const bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
 	                                (CheckDeviceFeatures(device) == true);
 	        !isSuitable)
@@ -284,25 +284,25 @@ namespace SceneryEditorX
 	            "Graphics Core",
 	            "Your device does not contain the features required for this Vulkan device or is not discrete GPU");
 	        return false;
-	
+
 	        //TODO: Add error handling in case the device is an integrated GPU.
 	        //TODO: Set up a fallback destructor to not continue device creation.
 	    }
-	
+
 	    return true;
 	}
 
     /**
      * @brief Checks if all required validation layers are available
-     * 
+     *
      * @param layers The validation layers to check for
      */
     void VulkanChecks::CheckLayers(const std::vector<const char*>& layers)
     {
         uint32_t layerCount;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-        
-        if (layerCount == 0) 
+
+        if (layerCount == 0)
         {
             SEDX_CORE_ERROR_TAG("Vulkan", "No validation layers are available on this system");
             return;
@@ -317,8 +317,8 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Vulkan", "Available validation layers:");
         for (const auto& layer : availableLayers)
         {
-            SEDX_CORE_TRACE_TAG("Vulkan", "  {} (version: {}, spec: {})", 
-                layer.layerName, 
+            SEDX_CORE_TRACE_TAG("Vulkan", "  {} (version: {}, spec: {})",
+                layer.layerName,
                 layer.implementationVersion,
                 layer.specVersion);
         }
@@ -345,7 +345,7 @@ namespace SceneryEditorX
                 allLayersFound = false;
             }
         }
-        
+
         if (!allLayersFound)
         {
             SEDX_CORE_WARN_TAG("Vulkan", "Not all requested validation layers are available");
@@ -354,7 +354,7 @@ namespace SceneryEditorX
 
     /**
      * @brief Checks if validation layer support is available
-     * 
+     *
      * @param layers The specific validation layers to check for
      * @return true if all requested validation layers are supported
      * @return false if any requested validation layer is not supported
@@ -372,18 +372,18 @@ namespace SceneryEditorX
 
         std::vector<VkLayerProperties> availableLayers(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-        
+
         // Check for VK_LAYER_KHRONOS_validation specifically
-        for (const auto& layerProperties : availableLayers) 
+        for (const auto& layerProperties : availableLayers)
         {
-            if (strcmp("VK_LAYER_KHRONOS_validation", layerProperties.layerName) == 0) 
+            if (strcmp("VK_LAYER_KHRONOS_validation", layerProperties.layerName) == 0)
             {
-                SEDX_CORE_INFO_TAG("Vulkan", "Khronos validation layer is available (version: {})", 
+                SEDX_CORE_INFO_TAG("Vulkan", "Khronos validation layer is available (version: {})",
                     layerProperties.implementationVersion);
                 return true;
             }
         }
-        
+
         SEDX_CORE_WARN_TAG("Vulkan", "Khronos validation layer is not available");
         return false;
     }

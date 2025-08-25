@@ -25,6 +25,7 @@ FILE(GLOB CORE_TIME core/time/*.h core/time/*.hpp core/time/*.cpp)
 FILE(GLOB CORE_WINDOW core/window/*.h core/window/*.hpp core/window/*.cpp)
 
 FILE(GLOB PLATFORM_CONFIG_FILES platform/config/*.h platform/config/*.hpp platform/config/*.cpp)
+FILE(GLOB PLATFORM_CONFIG_FILES platform/config/*.h platform/config/*.hpp platform/config/*.cpp)
 FILE(GLOB PLATFORM_FILESYSTEM platform/filesystem/*.h platform/filesystem/*.hpp platform/filesystem/*.cpp)
 FILE(GLOB PLATFORM_SETTINGS platform/settings/*.h platform/settings/*.hpp platform/settings/*.cpp)
 
@@ -80,6 +81,7 @@ ADD_LIBRARY(AppCore
 	${CORE_WINDOW}
 	${LOGGER}
 	${PROJECT}
+	${PLATFORM_CONFIG_FILES}
 	${PLATFORM_CONFIG_FILES}
 	${PLATFORM_FILESYSTEM}
 	${PLATFORM_SETTINGS}
@@ -143,6 +145,8 @@ ADD_LIBRARY(AppCore
 	renderer/scene_renderer.cpp
 	renderer/scene_renderer.h
 	renderer/stb_image_impl.cpp
+	renderer/viewport.h
+	renderer/viewport.cpp
 	renderer/texture.cpp
 	renderer/texture.h
 	renderer/viewport.cpp
@@ -256,6 +260,7 @@ SOURCE_GROUP("Core/Window" FILES
 	${CORE_WINDOW}
 )
 SOURCE_GROUP("Platform/Config" FILES
+	${PLATFORM_CONFIG_FILES}
 	${PLATFORM_CONFIG_FILES}
 )
 SOURCE_GROUP("Platform/Files" FILES
