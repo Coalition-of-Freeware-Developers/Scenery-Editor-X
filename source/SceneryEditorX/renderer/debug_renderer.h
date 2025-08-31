@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_debug.h
@@ -11,16 +11,17 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "2d_renderer.h"
+//#include "2d_renderer.h"
 
 /// ---------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	/**
 	 * Utility class which queues rendering work for once-per-frame
 	 * flushing by Scene (intended to be used for debug graphics)
-	 */
+	 #1#
 	class DebugRenderer : public RefCounted
 	{
 	public:
@@ -42,16 +43,17 @@ namespace SceneryEditorX
 
 	    /// -------------------------------------------------------
 
-		GLOBAL bool HasValidationLayers() { return m_validation_layer_enabled; }
-		GLOBAL bool IsRenderDocEnabled() { return m_renderdoc_enabled; }
+		static bool HasValidationLayers() { return m_validation_layer_enabled; }
+		static bool IsRenderDocEnabled() { return m_renderdoc_enabled; }
 
 	private:
 		RenderQueue m_RenderQueue;
 
-        inline GLOBAL bool m_validation_layer_enabled = false;
-        inline GLOBAL bool m_renderdoc_enabled = false;
+        inline static bool m_validation_layer_enabled = false;
+        inline static bool m_renderdoc_enabled = false;
 	};
 
 }
+*/
 
 /// ---------------------------------------------------------

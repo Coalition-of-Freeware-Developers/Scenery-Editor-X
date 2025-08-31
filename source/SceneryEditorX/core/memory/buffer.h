@@ -56,7 +56,7 @@ namespace SceneryEditorX::Memory
 			if (fsize == 0)
 				return;
 
-			data = hnew byte[fsize];
+			data = new byte[fsize];
 		}
 
 		void Release()
@@ -87,7 +87,7 @@ namespace SceneryEditorX::Memory
         [[nodiscard]] byte* ReadBytes(const uint64_t fsize, const uint64_t offset) const
 		{
 			SEDX_CORE_ASSERT(offset + fsize <= size, "Buffer overflow!");
-			byte* buffer = hnew byte[fsize];
+			byte* buffer = new byte[fsize];
 			memcpy(buffer, static_cast<byte *>(data) + offset, fsize);
 			return buffer;
 		}

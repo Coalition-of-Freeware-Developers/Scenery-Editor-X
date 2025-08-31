@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_device.cpp
@@ -15,6 +15,7 @@
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
 
 /// -------------------------------------------------------
 
@@ -27,7 +28,7 @@ namespace SceneryEditorX
     /**
      * @fn VulkanPhysicalDevice::VulkanPhysicalDevice
      * @brief Constructor that enumerates and initializes available physical GPU devices
-     * 
+     *
      * @details This constructor performs the following operations:
      * 1. Retrieves the Vulkan instance from the Graphics Engine
      * 2. Enumerates all physical devices (GPUs) available in the system
@@ -38,17 +39,17 @@ namespace SceneryEditorX
      * 7. Identifies and configures dedicated graphics, compute, and transfer queues
      * 8. Sets up queue create infos required for logical device creation
      * 9. Determines appropriate depth buffer formats supported by the device
-     * 
+     *
      * The constructor first attempts to find a discrete GPU for optimal performance.
      * If none is found, it logs an error as the engine currently requires a discrete GPU.
      * For each device, it queries comprehensive hardware capabilities and prepares queue
      * configurations that will later be used for logical device creation.
-     * 
+     *
      * @note - This constructor doesn't create a logical device - it only prepares the physical device
      *       information needed for logical device creation in the VulkanDevice class.
      * @note - Errors during device enumeration or if no discrete GPU is found are logged
      *       but don't throw exceptions.
-     * 
+     *
      * @see VulkanDevice, GetQueueFamilyIndices, FindDepthFormat
      */
     VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance &instance)
@@ -56,7 +57,7 @@ namespace SceneryEditorX
         this->vkInstance = &instance;                      /// Store the Vulkan instance
 
         uint32_t GFXDevices = 0;                           /// Number of physical devices
-        vkEnumeratePhysicalDevices(*vkInstance, &GFXDevices, nullptr); 
+        vkEnumeratePhysicalDevices(*vkInstance, &GFXDevices, nullptr);
         //VK_CHECK_RESULT(vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data()))
 
         std::vector<VkPhysicalDevice> device(GFXDevices); /// Vector to hold physical devices
@@ -93,7 +94,7 @@ namespace SceneryEditorX
             {
                 VkPhysicalDevice GFXDevice = devices[index].physicalDevice; /// Access the VkPhysicalDevice from GPUDevice
                 vkGetPhysicalDeviceProperties(GFXDevice, &devices[index].deviceProperties); /// Get device properties
-				
+
                 if (devices[index].deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
                 {
                     SEDX_CORE_INFO("============================================");
@@ -119,7 +120,7 @@ namespace SceneryEditorX
             if (!selectedPhysicalDevice)
             {
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find discrete GPU.");
-                
+
                 /// Fallback to integrated GPU if no discrete GPU was found
                 for (int index = 0; index < devices.size(); ++index)
                 {
@@ -131,7 +132,7 @@ namespace SceneryEditorX
                         break;
                     }
                 }
-                
+
                 /// If still no GPU found, use the first available
                 if (!selectedPhysicalDevice && !devices.empty())
                 {
@@ -264,7 +265,7 @@ namespace SceneryEditorX
     /**
 	 * @fn FindDepthFormat
 	 * @brief Determines the best supported depth format for the given physical device
-	 * 
+	 *
 	 * @details This method selects an appropriate depth format from a list of preferred
 	 * candidates in order of preference. It uses FindSupportedFormat to check which
 	 * format is supported with optimal tiling and depth/stencil attachment capabilities.
@@ -272,13 +273,13 @@ namespace SceneryEditorX
 	 * 1. @enum VK_FORMAT_D32_SFLOAT - 32-bit floating-point depth only (preferred)
 	 * 2. @enum VK_FORMAT_D32_SFLOAT_S8_UINT - 32-bit float depth with 8-bit stencil
 	 * 3. @enum VK_FORMAT_D24_UNORM_S8_UINT - 24-bit normalized depth with 8-bit stencil
-	 * 
+	 *
 	 * This method is typically called during device initialization to determine the
 	 * appropriate format for depth buffers used in the rendering pipeline.
-	 * 
+	 *
 	 * @param device The GPU device for which to find a compatible depth format
 	 * @return VkFormat The best supported depth format for the device
-	 * 
+	 *
 	 * @see FindSupportedFormat, @enum VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
 	 */
 	VkFormat VulkanPhysicalDevice::FindDepthFormat(const GPUDevice &device)
@@ -293,7 +294,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn FindSupportedFormat
 	 * @brief Find the first format in the provided candidates list that supports the required features
-	 * 
+	 *
 	 * @details This method examines each format in the candidates list to find the first one that
 	 * supports the specified feature flags with the given tiling mode. For each candidate format:
 	 * 1. It queries the physical device for the format properties using vkGetPhysicalDeviceFormatProperties
@@ -301,22 +302,22 @@ namespace SceneryEditorX
 	 *    - For linear tiling: Checks linearTilingFeatures against the required features
 	 *    - For optimal tiling: Checks optimalTilingFeatures against the required features
 	 * 3. Returns the first format that satisfies all requirements
-	 * 
-	 * This function is typically used to find appropriate depth/stencil formats or 
+	 *
+	 * This function is typically used to find appropriate depth/stencil formats or
 	 * other specialized formats with specific hardware feature requirements.
-	 * 
+	 *
 	 * @param physicalDevice The physical device to query for format support
 	 * @param candidates A list of format candidates to check in order of preference
 	 * @param tiling The desired tiling mode (linear or optimal)
 	 * @param features Required format features that must be supported
-	 * 
+	 *
 	 * @return VkFormat The first format from the candidate list that supports the requested features
-	 * 
+	 *
 	 * @throws Logs an error if no suitable format is found among the candidates
-	 * 
+	 *
 	 * @note - Linear tiling is typically used for host-accessible images, while optimal tiling
 	 *       provides better performance for GPU-only access images like depth buffers and textures
-	 * 
+	 *
 	 * @see vkGetPhysicalDeviceFormatProperties, VkFormatProperties, VkImageTiling
 	 */
 	VkFormat VulkanPhysicalDevice::FindSupportedFormat(const VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
@@ -343,7 +344,7 @@ namespace SceneryEditorX
 	uint32_t numSurfaceFormats = 0;
 	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(vkDevice, nullptr, &numSurfaceFormats, nullptr))
 	SEDX_CORE_INFO("Number of surface formats: {}", ToString(numSurfaceFormats));
-	
+
 	devices[index].surfaceFormats.resize(numSurfaceFormats);
 	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(vkDevice, nullptr, &numSurfaceFormats, devices[index].surfaceFormats.data()))
 	for (uint32_t format = 0; format < numSurfaceFormats; format++)
@@ -354,7 +355,7 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO("Color Space: {}", ToString(surfaceFormat.colorSpace));
 		SEDX_CORE_INFO("============================================");
 	}
-	
+
 	/// Get surface capabilities
 	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkDevice, nullptr, &(devices[index].surfaceCapabilities)))
 	SEDX_CORE_INFO("============================================");
@@ -371,16 +372,16 @@ namespace SceneryEditorX
 	SEDX_CORE_INFO("Supported Composite Alpha: {}", ToString(devices[index].surfaceCapabilities.supportedCompositeAlpha));
 	SEDX_CORE_INFO("Supported Usage Flags: {}",     ToString(devices[index].surfaceCapabilities.supportedUsageFlags));
 	SEDX_CORE_INFO("============================================");
-	
+
 	// -------------------------------------------------------
-	
+
 	/// Get present modes
 	uint32_t numPresentModes = 0;
 	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(vkDevice, nullptr, &numPresentModes, nullptr))
 	devices[index].presentModes.resize(numPresentModes);
 	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(vkDevice, nullptr, &numPresentModes, devices[index].presentModes.data()))
 	SEDX_CORE_INFO("Number of present modes: {}", ToString(numPresentModes));
-	
+
 	// Store queue family properties for later queue index lookup
 	if (!devices.empty())
 	{
@@ -392,17 +393,17 @@ namespace SceneryEditorX
     /**
      * @fn VulkanPhysicalDevice
 	 * @brief Default destructor for VulkanPhysicalDevice
-	 * 
+	 *
 	 * @details This destructor handles the cleanup of VulkanPhysicalDevice resources.
 	 * Since the class uses RAII (Resource Acquisition Is Initialization) pattern,
 	 * most resources are automatically cleaned up by their own destructors.
-	 * 
+	 *
 	 * Key points:
 	 * - Uses the default implementation as no manual resource cleanup is needed
 	 * - Any Vulkan handles stored in the devices vector are not explicitly destroyed here
 	 *   as they are owned by the Vulkan instance, not by this class
 	 * - The physical device handle itself is not destroyed as it's managed by the Vulkan runtime
-	 * 
+	 *
 	 * @note - Physical device handles (VkPhysicalDevice) are not created or destroyed by the
 	 *       application. They are managed by the Vulkan implementation.
 	 */
@@ -413,23 +414,23 @@ namespace SceneryEditorX
 	/**
 	 * @fn Select
 	 * @brief Creates and returns a new Vulkan physical device instance
-	 * 
+	 *
 	 * @details This static factory method creates a new VulkanPhysicalDevice instance
 	 * which performs physical device enumeration and selection. The implementation:
 	 * 1. Creates a new VulkanPhysicalDevice object using the provided Vulkan instance
 	 * 2. During construction, the object automatically enumerates all available GPUs
 	 * 3. Evaluates device capabilities (queue families, features, extensions)
 	 * 4. Returns a shared pointer (Ref) to the newly created object
-	 * 
+	 *
 	 * This method is the primary way for the graphics engine to initialize
 	 * physical device functionality, typically followed by logical device creation.
-	 * 
+	 *
 	 * @param instance The Vulkan instance to use for device enumeration
 	 * @return Ref<VulkanPhysicalDevice> A shared pointer to the newly created physical device object
-	 * 
+	 *
 	 * @note - The returned physical device has enumerated all available GPUs but may not
 	 *       have explicitly selected one yet. Call SelectDevice() to choose a specific device.
-	 * 
+	 *
 	 * @see VulkanPhysicalDevice(), VulkanDevice
 	 */
 	Ref<VulkanPhysicalDevice> VulkanPhysicalDevice::Select(VkInstance &instance)
@@ -440,23 +441,23 @@ namespace SceneryEditorX
 	/**
 	 * @fn Selected
 	 * @brief Returns a reference to the currently selected physical device
-	 * 
+	 *
 	 * @details This method retrieves the GPUDevice object representing the currently selected
 	 * physical GPU in the system. It performs validation to ensure a valid device has been
 	 * selected before returning a reference to it.
-	 * 
+	 *
 	 * The selection is based on the deviceIndex property that should have been set during
 	 * physical device enumeration and selection. This device represents the GPU that will
 	 * be used for rendering operations.
-	 * 
-	 * @return const GPUDevice& A reference to the selected GPU device object containing 
+	 *
+	 * @return const GPUDevice& A reference to the selected GPU device object containing
 	 *         all relevant capabilities, properties, and feature information
-	 * 
+	 *
 	 * @throws Logs an error if no device has been selected or if the device index is invalid
-	 * 
+	 *
 	 * @note - This method should only be called after a physical device has been properly
 	 *       selected via SelectDevice() or an equivalent selection method
-	 * 
+	 *
 	 * @see @struct GPUDevice, SelectDevice
 	 */
 	const GPUDevice &VulkanPhysicalDevice::Selected() const
@@ -501,67 +502,67 @@ namespace SceneryEditorX
     /**
 	 * @fn GetQueueFamilyIndices
 	 * @brief Identifies queue families available on the physical device that match requested capabilities
-	 * 
+	 *
 	 * @details This method analyzes the queue families provided by a physical device and
 	 * determines which queue families can support the requested queue operations. The implementation:
 	 * 1. First attempts to find dedicated queue families for specialized tasks:
 	 *    - Dedicated compute queues (support compute but not graphics operations)
 	 *    - Dedicated transfer queues (support transfer but neither graphics nor compute operations)
-	 * 
+	 *
 	 * 2. Then assigns general-purpose queues to any required roles that weren't filled by dedicated queues
-	 * 
+	 *
 	 * This approach optimizes performance by using hardware queues that are specialized for specific
 	 * tasks when available, falling back to more general queues when necessary. Dedicated queues often
 	 * provide better performance for their specialized operations since they don't compete with other
 	 * operation types.
-	 * 
+	 *
 	 * The function logs extensive information about available queue families and the final selections
 	 * to assist with debugging and optimization.
-	 * 
+	 *
 	 * @param qFlags Bitfield of required queue capabilities (@enum VK_QUEUE_GRAPHICS_BIT, @enum VK_QUEUE_COMPUTE_BIT, etc.)
 	 * @return @struct QueueFamilyIndices containing the selected queue family indices for different operations
-	 * 
+	 *
 	 * @note - If the device has no dedicated compute or transfer queues, the general graphics queue will
 	 *       be used for all operations.
 	 * @note - The commented-out section contains code for checking presentation support once surface
 	 *       creation is implemented.
-	 * 
+	 *
 	 * @see VkQueueFlagBits, QueueFamilyIndices
 	 */
 	VulkanPhysicalDevice::QueueFamilyIndices VulkanPhysicalDevice::GetQueueFamilyIndices(VkQueueFlags qFlags) const
 	{
 		QueueFamilyIndices queueFamilies;
-		
+
 		/// Early return if no devices available
 		if (devices.empty())
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "No physical devices available");
 			return queueFamilies;
 		}
-		
+
 		/// Only process the selected device (or first device if none selected)
 		uint32_t deviceIdx = deviceIndex >= 0 && deviceIndex < static_cast<int>(devices.size()) ? deviceIndex : 0;
 		const VkPhysicalDevice vkDevice = devices[deviceIdx].physicalDevice;
-		
+
 		/// Get queue family properties for the device
 		uint32_t numQueueFamilies = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, nullptr);
 		SEDX_CORE_ASSERT(numQueueFamilies > 0, "No queue families found for the physical device.");
-		
+
 		std::vector<VkQueueFamilyProperties> queueFamilyProperties(numQueueFamilies);
 		vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, queueFamilyProperties.data());
-		
+
 		/// Log queue family information
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
 			const VkQueueFamilyProperties &queueFamilyInfo = queueFamilyProperties[queueIdx];
-			
+
 			SEDX_CORE_INFO("============================================");
 			SEDX_CORE_INFO("Queue Family Index: {}", ToString(queueIdx));
 			SEDX_CORE_INFO("Queue Count: {}", ToString(queueFamilyInfo.queueCount));
 			SEDX_CORE_INFO("Queue Flags: {}", ToString(queueFamilyInfo.queueFlags));
 			SEDX_CORE_INFO("============================================");
 		}
-		
+
 		/// First pass: find a graphics queue
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
 		{
@@ -571,7 +572,7 @@ namespace SceneryEditorX
 				break;
 			}
 		}
-		
+
 		/// First pass: look for dedicated queues
 		if (qFlags & VK_QUEUE_COMPUTE_BIT)
 		{
@@ -588,7 +589,7 @@ namespace SceneryEditorX
 				}
 			}
 		}
-		
+
 		if (qFlags & VK_QUEUE_TRANSFER_BIT)
 		{
 			/// Find dedicated transfer queue (transfer, but not graphics or compute)
@@ -605,12 +606,12 @@ namespace SceneryEditorX
 				}
 			}
 		}
-		
+
 		/// Second pass: set any remaining indices to general-purpose queues
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
 		{
 			const auto &props = queueFamilyProperties[queueIdx];
-			
+
 			/// Set compute queue if not already set and if needed
 			if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
                 queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
@@ -621,14 +622,14 @@ namespace SceneryEditorX
 				queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
 				break;
 			}
-			
+
 			/// Set presentation queue
 			/// Note: This would normally check presentation support against a surface
 			/// Since we don't have a surface at this point, we'll just use the graphics queue
 			if (!queueFamilies.presentFamily.has_value() && queueFamilies.graphicsFamily.has_value() && queueFamilies.graphicsFamily.value().second == queueIdx)
                 queueFamilies.presentFamily = std::make_optional(std::make_pair(Queue::Present, queueIdx));
         }
-		
+
 		/// Fallback: If we couldn't find dedicated compute/transfer queues, use the graphics queue
 		if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && queueFamilies.graphicsFamily.has_value())
             queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueFamilies.graphicsFamily.value().second));
@@ -654,7 +655,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn VulkanDevice::VulkanDevice
 	 * @brief Creates a Vulkan logical device from a physical device
-	 * 
+	 *
 	 * @details This constructor initializes a logical Vulkan device with the following steps:
 	 * 1. Verifies that required device extensions are supported
 	 * 2. Adds necessary extensions such as VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -664,18 +665,18 @@ namespace SceneryEditorX
 	 * 6. Loads function pointers for extended Vulkan functionality
 	 * 7. Sets up bindless resources for efficient shader resource access
 	 * 8. Creates an initial scratch buffer for general GPU operations
-	 * 
+	 *
 	 * The constructor configures the device based on the supplied physical device capabilities
 	 * and the requested feature set, ensuring all necessary features and extensions are enabled.
-	 * 
+	 *
 	 * @param physDevice The physical device to create a logical device from
 	 * @param enabledFeatures The device features to be enabled on the logical device
-	 * 
+	 *
 	 * @note - The device creation may fail if required extensions are not supported, in which
 	 *       case an error is logged and the function returns early.
 	 * @note - Device queues are acquired based on queue family indices determined during
 	 *       physical device selection.
-	 * 
+	 *
 	 * @see LoadExtensionFunctions, InitializeBindlessResources, CreateBuffer
 	 */
 	VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice) : vkPhysicalDevice(physDevice)
@@ -753,7 +754,7 @@ namespace SceneryEditorX
         descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = true;
         descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
         descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = true;
-		
+
         VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddresFeatures{};
         bufferDeviceAddresFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
         bufferDeviceAddresFeatures.bufferDeviceAddress = VK_TRUE;
@@ -770,7 +771,7 @@ namespace SceneryEditorX
         dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
         dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
         dynamicRenderingFeatures.pNext = &accelerationStructureFeatures;
-        
+
         VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
         sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
         sync2Features.synchronization2 = VK_TRUE;
@@ -788,14 +789,14 @@ namespace SceneryEditorX
         /// Create the logical device
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        
+
         // Verify we have valid queue create info before proceeding
         if (physDevice->Selected().queueCreateInfos.empty())
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "No queue create info available for device creation");
             return;
         }
-        
+
         createInfo.pQueueCreateInfos = physDevice->Selected().queueCreateInfos.data();
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueCreateInfos.size());
 
@@ -872,7 +873,7 @@ namespace SceneryEditorX
 	/**
 	 * @fn LoadExtensionFunctions
 	 * @brief Loads function pointers for Vulkan extension functions
-	 * 
+	 *
 	 * @details This method dynamically loads function pointers for Vulkan extension functions that
 	 * are not part of the core API and must be queried at runtime. It loads:
 	 * 1. Debug utilities functions:
@@ -887,13 +888,13 @@ namespace SceneryEditorX
 	 *
 	 * 3. Buffer device address functions:
 	 *    - vkGetBufferDeviceAddressKHR: Retrieves device address for a buffer
-	 * 
-	 * These function pointers enable the engine to use extension functionality in a 
+	 *
+	 * These function pointers enable the engine to use extension functionality in a
 	 * cross-platform and runtime-compatible way.
-	 * 
-	 * @note - Function pointers are initialized to nullptr and will remain that way if the 
+	 *
+	 * @note - Function pointers are initialized to nullptr and will remain that way if the
 	 *       corresponding extension is not supported or enabled.
-	 * 
+	 *
 	 * @see vkGetDeviceProcAddr
 	 */
 	void VulkanDevice::LoadExtensionFunctions()
@@ -920,8 +921,8 @@ namespace SceneryEditorX
 	/**
 	 * @fn InitializeBindlessResources
 	 * @brief Sets up bindless resource system for efficient shader resource access
-	 * 
-	 * @details This method initializes the bindless descriptor system which allows shaders to 
+	 *
+	 * @details This method initializes the bindless descriptor system which allows shaders to
 	 * access a large number of resources through indices rather than fixed bindings:
 	 * 1. Creates a descriptor pool specifically for ImGui rendering with sufficient resources
 	 * 2. Initializes resource ID tracking for both buffers and sampled images
@@ -932,42 +933,31 @@ namespace SceneryEditorX
 	 *    - Storage images
 	 * 5. Configures binding flags to enable partial binding and dynamic updates
 	 * 6. Allocates the global bindless descriptor set
-	 * 
+	 *
 	 * The bindless resource system enables the engine to:
 	 * - Access thousands of resources from any shader without rebinding
 	 * - Update resources at runtime without recreating descriptor sets
 	 * - Use dynamic indexing in shaders for data-driven rendering techniques
 	 * - Support efficient texture arrays, material systems, and instance data
-	 * 
+	 *
 	 * @note - This implementation relies on VK_EXT_descriptor_indexing extension
 	 * @note - The descriptor pools are sized according to predefined MAX_* constants
-	 * 
+	 *
 	 * @see VkDescriptorPoolCreateInfo, VkDescriptorSetLayoutCreateInfo
 	 */
     /*
     void VulkanDevice::InitializeBindlessResources(const VkDevice device, const BindlessResources& bindlessResources)
     {
-        
+
         /// Initialize resource ID arrays for tracking available resource slots
-        for (auto i = 0; std::cmp_less(i, BindlessResources::MAX_STORAGE_BUFFERS); i++)
-		{
-            ImageID::availBufferRID.push_back(i);
-        }
-        
-        for (auto i = 0; std::cmp_less(i, BindlessResources::MAX_SAMPLED_IMAGES); i++)
-		{
-            ImageID::availImageRID.push_back(i);
-        }
-        
-        SEDX_CORE_INFO("Bindless resources initialized with {} buffer slots and {} texture slots",
-					   BindlessResources::MAX_STORAGE_BUFFERS, BindlessResources::MAX_SAMPLED_IMAGES);
+	// Legacy bindless resource ID pool initialization removed (handled by BindlessDescriptorManager).
     }
     */
 
 	/**
 	 * @fn ~VulkanDevice()
 	 * @brief Destroys the VulkanDevice instance and cleans up associated resources
-	 * 
+	 *
 	 * @details This destructor handles the complete cleanup of all Vulkan resources created by the device:
 	 * 1. Waits for all pending device operations to complete using vkDeviceWaitIdle
 	 * 2. Cleans up thread-specific command pools stored in the CmdPools map
@@ -975,13 +965,13 @@ namespace SceneryEditorX
 	 * 4. Destroys bindless descriptor resources (layout, descriptor pools)
 	 * 5. Shuts down the memory allocator subsystem
 	 * 6. Destroys the logical device
-	 * 
+	 *
 	 * The destructor follows a careful order of destruction to prevent accessing freed resources,
 	 * and includes appropriate null-checking to handle partially-initialized states.
-	 * 
+	 *
 	 * @note - This class follows RAII principles with this destructor ensuring all Vulkan resources
 	 *       are properly freed when a VulkanDevice instance goes out of scope.
-	 * 
+	 *
 	 * @see VulkanDevice::Destroy, MemoryAllocator::Shutdown
 	 */
 	VulkanDevice::~VulkanDevice()
@@ -1011,6 +1001,9 @@ namespace SceneryEditorX
         }
         */
 
+		// Shutdown bindless descriptor system prior to device destruction
+		BindlessDescriptorManager::Shutdown();
+
 		/// Destroy logical device
 		if (device != VK_NULL_HANDLE)
 		{
@@ -1023,16 +1016,16 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Get the memory allocator associated with this device
-	 * 
+	 *
 	 * Retrieves the VMA allocator object that handles memory management for this Vulkan device.
-	 * The memory allocator provides efficient allocation, binding, and management of Vulkan 
+	 * The memory allocator provides efficient allocation, binding, and management of Vulkan
 	 * memory resources, helping to reduce fragmentation and optimize memory usage.
-	 * 
+	 *
 	 * @return VmaAllocator The Vulkan Memory Allocator handle, or nullptr if not initialized
-	 * 
+	 *
 	 * @note - This function checks if the memory allocator has been properly initialized and
 	 *       logs an error if it hasn't been. Memory operations will fail without a valid allocator.
-	 * 
+	 *
 	 * @see MemoryAllocator::GetMemAllocator()
 	 */
 	VmaAllocator VulkanDevice::GetMemoryAllocator() const
@@ -1047,26 +1040,26 @@ namespace SceneryEditorX
     /**
      * @fn VulkanDevice::VulkanDevice(VulkanDevice &&)
      * @brief Move constructor that transfers ownership of Vulkan device resources.
-     * 
+     *
      * @details This constructor efficiently transfers ownership of all Vulkan resources from one
      * VulkanDevice instance to another without performing deep copies. It implements the following:
      * 1. Moves all member variables (descriptors, resources, buffers, etc.) from source to destination.
      * 2. Transfers ownership of all Vulkan handles (device, queues, etc.) to the new instance.
      * 3. Nullifies critical handles in the source object to prevent double-deletion.
-     * 
+     *
      * Move semantics are essential for Vulkan resources which are expensive to copy and must have
      * clearly defined ownership to prevent validation errors or resource leaks. This constructor
      * enables VulkanDevice objects to be stored in standard containers that require move operations.
-     * 
+     *
      * @param other The source VulkanDevice instance to move from (will be left in a valid but empty state).
-     * 
+     *
      * @note - After the move operation, the source object remains in a valid but resource-empty state,
      *       with its critical handles set to null/zero to prevent any destructive operations when
      *       its destructor is called.
-     * 
+     *
      * @see ~VulkanDevice, operator=
      */
-    VulkanDevice::VulkanDevice(VulkanDevice &&other) noexcept : 
+    VulkanDevice::VulkanDevice(VulkanDevice &&other) noexcept :
           /*bindlessResources(other.bindlessResources),*/ vkGetBufferDeviceAddressKHR(other.vkGetBufferDeviceAddressKHR),
           vkSetDebugUtilsObjectNameEXT(other.vkSetDebugUtilsObjectNameEXT), vkCreateAccelerationStructureKHR(other.vkCreateAccelerationStructureKHR),
           vkDestroyAccelerationStructureKHR(other.vkDestroyAccelerationStructureKHR), vkCmdBuildAccelerationStructuresKHR(other.vkCmdBuildAccelerationStructuresKHR),
@@ -1089,24 +1082,24 @@ namespace SceneryEditorX
 	/**
 	 * @fn operator=
 	 * @brief Move assignment operator that transfers ownership of Vulkan device resources
-	 * 
+	 *
 	 * @details This operator properly handles resource transfer when moving one VulkanDevice
 	 * instance to another. It implements the following strategy:
 	 * 1. Checks for self-assignment to prevent resource corruption.
 	 * 2. Properly cleans up any existing resources in the destination object.
 	 * 3. Transfers ownership of all Vulkan handles and resources from source to destination.
 	 * 4. Nullifies the source object's handles to prevent double-deletion.
-	 * 
+	 *
 	 * This ensures safe transfer of device ownership with proper resource management, which
 	 * is essential for RAII (Resource Acquisition Is Initialization) in Vulkan applications
 	 * where resource cleanup order is critical.
-	 * 
+	 *
 	 * @param other The source VulkanDevice to move resources from (will be in a valid but empty state after the move)
 	 * @return VulkanDevice& A reference to the destination object (*this) containing all moved resources
-	 * 
+	 *
 	 * @note - After the move, the source object remains valid but with all its Vulkan handles set to null
 	 *       and should not be used to execute Vulkan operations without reinitialization.
-	 * 
+	 *
 	 * @see VulkanDevice, VulkanDevice::Destroy
 	 */
     VulkanDevice &VulkanDevice::operator=(VulkanDevice &&other) noexcept
@@ -1138,13 +1131,13 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Destroys the Vulkan logical device and cleans up resources
-	 * 
+	 *
 	 * This method handles the proper destruction of the Vulkan logical device:
 	 * 1. Clears all command pools associated with the device
 	 * 2. Waits for all device operations to complete using vkDeviceWaitIdle
 	 * 3. Destroys the logical device
 	 * 4. Sets the device handle to VK_NULL_HANDLE to prevent reuse
-	 * 
+	 *
 	 * This should be called before the VulkanDevice instance is destroyed or
 	 * when the application is shutting down to ensure proper cleanup of GPU resources.
 	 */
@@ -1164,16 +1157,16 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Locks a queue for thread-safe access
-	 * 
+	 *
 	 * This method provides exclusive access to either the graphics or compute queue
 	 * by locking the appropriate mutex. This prevents race conditions when multiple
 	 * threads attempt to submit work to the same queue simultaneously.
-	 * 
+	 *
 	 * @param compute If true, locks the compute queue mutex; otherwise locks the graphics queue mutex
-	 * 
+	 *
 	 * @note - This should be paired with a matching UnlockQueue call in a RAII pattern,
 	 *       ideally using a std::lock_guard or similar scope-based locking mechanism.
-	 * 
+	 *
 	 * @see UnlockQueue
 	 */
 	void VulkanDevice::LockQueue(const bool compute)
@@ -1186,13 +1179,13 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Unlocks a previously locked queue
-	 * 
+	 *
 	 * @details This method releases the lock on either the graphics or compute queue,
 	 * allowing other threads to access it. It should only be called after a
 	 * corresponding LockQueue call.
-	 * 
+	 *
 	 * @param compute If true, unlocks the compute queue mutex; otherwise unlocks the graphics queue mutex
-	 * 
+	 *
 	 * @see LockQueue
 	 */
 	void VulkanDevice::UnlockQueue(const bool compute)
@@ -1241,7 +1234,7 @@ namespace SceneryEditorX
 		if (deviceIndex >= 0 && deviceIndex < devices.size())
 		{
 			const GPUDevice& selectedDevice = devices[deviceIndex];
-			
+
 			// Find queue families that support graphics and presentation
 			for (uint32_t idx = 0; idx < selectedDevice.queueFamilyInfo.size(); idx++)
 			{
@@ -1263,7 +1256,7 @@ namespace SceneryEditorX
 				}
 			}
 		}
-		
+
 		return indices;
 	}
 	*/
@@ -1330,17 +1323,17 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Determine the maximum MSAA sample count supported by the GPU
-	 * 
+	 *
 	 * This method queries the physical device properties to determine the highest multisample
 	 * anti-aliasing (MSAA) sample count that is supported for both color and depth attachments.
 	 * It performs a bitwise AND operation between the supported color and depth sample counts
 	 * to find values that are supported by both.
-	 * 
+	 *
 	 * The method checks sample counts in descending order (64 → 2) and returns the highest
 	 * supported value. If no multisampling is supported, it returns VK_SAMPLE_COUNT_1_BIT.
-	 * 
+	 *
 	 * @return VkSampleCountFlagBits The maximum supported MSAA sample count
-	 * 
+	 *
 	 * @note - The returned sample count can be used when creating render passes and framebuffers
 	 *       to enable MSAA rendering at the highest quality level supported by the hardware.
 	 */
@@ -1411,8 +1404,8 @@ namespace SceneryEditorX
 			for (size_t i = 0; i < allExtensions.size(); i++)
 			{
 				if (strcmp(allExtensions[i].extensionName, req) == 0)
-				{ 
-					available = true; 
+				{
+					available = true;
 					break;
 				}
 			}
@@ -1423,15 +1416,29 @@ namespace SceneryEditorX
 			}
 		}
 
+		// Descriptor indexing feature chain (expanded for full bindless usage similar to Spartan engine approach)
 		VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
 		descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-		descriptorIndexingFeatures.runtimeDescriptorArray = true;
-		descriptorIndexingFeatures.descriptorBindingPartiallyBound = true;
-		descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = true;
-		descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing = true;
-		descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = true;
-		descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
-		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = true;
+		descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE; // allow variable sized arrays if needed later
+		descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.shaderInputAttachmentArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.shaderUniformTexelBufferArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.shaderStorageTexelBufferArrayNonUniformIndexing = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
+		descriptorIndexingFeatures.descriptorBindingInlineUniformBlockUpdateAfterBind = VK_FALSE; // not used yet
+		descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE; // reaffirm
+
+		// NOTE: If any of these end up unsupported on a target GPU we should query first and mask unsupported ones.
+		// Spartan-like path: eventually centralize a FeatureQuery struct gathering all required optional features & fallback policy.
 
 		VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddresFeatures{};
 		bufferDeviceAddresFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
@@ -1471,7 +1478,7 @@ namespace SceneryEditorX
 		createInfo.pEnabledFeatures;
 		createInfo.pNext = &features2;
 
-		// specify the required layers to the device 
+		// specify the required layers to the device
 		if (enableValidationLayers)
 		{
 			auto &layers = Layers::activeLayersNames;
@@ -1530,89 +1537,13 @@ namespace SceneryEditorX
 		VkResult result = vkCreateDescriptorPool(device, &imguiPoolInfo, renderData.allocator, &bindlessResources.imguiDescriptorPool);
 		SEDX_ASSERT(result, "Failed to create imgui descriptor pool!");
 
-		// Create bindless resources
-		{
-			BindlessResources bindlessRes;
-			for (int i = 0; i < bindlessRes.MAX_STORAGE; i++)
-			{
-				bindlessResources.availBufferRID.push_back(i);
-			}
-			for (int i = 0; i < bindlessRes.MAX_SAMPLED_IMAGES; i++)
-			{
-				bindlessResources.availImageRID.push_back(i);
-			}
-
-			// Create descriptor set pool for bindless resources
-			std::vector<VkDescriptorPoolSize> bindlessPoolSizes =
-			{ 
-				{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, bindlessRes.MAX_SAMPLED_IMAGES},
-				{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, bindlessRes.MAX_STORAGE},
-				{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, bindlessRes.MAX_STORAGE_IMAGES},
-			};
-
-			VkDescriptorPoolCreateInfo bindlessPoolInfo{};
-			bindlessPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			bindlessPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-			bindlessPoolInfo.maxSets = 1;
-			bindlessPoolInfo.poolSizeCount = bindlessPoolSizes.size();
-			bindlessPoolInfo.pPoolSizes = bindlessPoolSizes.data();
-
-			result = vkCreateDescriptorPool(device, &bindlessPoolInfo, renderData.allocator, &bindlessRes.bindlessDescriptorPool);
-			SEDX_ASSERT(result, "Failed to create bindless descriptor pool!");
-
-			// create descriptor set layout for bindless resources
-			std::vector<VkDescriptorSetLayoutBinding> bindings;
-			std::vector<VkDescriptorBindingFlags> bindingFlags;
-
-			VkDescriptorSetLayoutBinding texturesBinding{};
-			texturesBinding.binding = BindlessResources::TEXTURE;
-			texturesBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			texturesBinding.descriptorCount = bindlessRes.MAX_SAMPLED_IMAGES;
-			texturesBinding.stageFlags = VK_SHADER_STAGE_ALL;
-			bindings.push_back(texturesBinding);
-			bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT });
-
-			VkDescriptorSetLayoutBinding storageBuffersBinding{};
-			storageBuffersBinding.binding = BindlessResources::BUFFER;
-			storageBuffersBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			storageBuffersBinding.descriptorCount = bindlessRes.MAX_STORAGE;
-			storageBuffersBinding.stageFlags = VK_SHADER_STAGE_ALL;
-			bindings.push_back(storageBuffersBinding);
-			bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT });
-
-			VkDescriptorSetLayoutBinding imageStorageBinding{};
-			imageStorageBinding.binding = BindlessResources::STORAGE_IMAGE;
-			imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			imageStorageBinding.descriptorCount = bindlessRes.MAX_STORAGE_IMAGES;
-			imageStorageBinding.stageFlags = VK_SHADER_STAGE_ALL;
-			bindings.push_back(imageStorageBinding);
-			bindingFlags.push_back({ VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT });
-
-			VkDescriptorSetLayoutBindingFlagsCreateInfo setLayoutBindingFlags{};
-			setLayoutBindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-			setLayoutBindingFlags.bindingCount = bindingFlags.size();
-			setLayoutBindingFlags.pBindingFlags = bindingFlags.data();
-
-			VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
-			descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			descriptorLayoutInfo.bindingCount = bindings.size();
-			descriptorLayoutInfo.pBindings = bindings.data();
-			descriptorLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-			descriptorLayoutInfo.pNext = &setLayoutBindingFlags;
-
-			result = vkCreateDescriptorSetLayout(device, &descriptorLayoutInfo, renderData.allocator, &bindlessRes.bindlessDescriptorLayout);
-			SEDX_ASSERT(result, "Failed to create bindless descriptor set layout!");
-
-			// create descriptor set for bindless resources
-			VkDescriptorSetAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.descriptorPool = bindlessRes.bindlessDescriptorPool;
-			allocInfo.descriptorSetCount = 1;
-			allocInfo.pSetLayouts = &bindlessRes.bindlessDescriptorLayout;
-
-			result = vkAllocateDescriptorSets(device, &allocInfo, &bindlessRes.bindlessDescriptorSet);
-			SEDX_ASSERT(result, "Failed to allocate bindless descriptor set!");
-		}
+		// Initialize global bindless descriptor manager (sampled images, samplers, storage images, storage buffers, uniform buffers)
+		BindlessDescriptorManager::Init(
+			BindlessResources::MAX_SAMPLED_IMAGES,
+			512,
+			BindlessResources::MAX_STORAGE_IMAGES,
+			BindlessResources::MAX_STORAGE_BUFFERS,
+			BindlessResources::MAX_UNIFORM_BUFFERS);
 
 		scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU);
 		VkBufferDeviceAddressInfo scratchInfo{};
@@ -1628,18 +1559,18 @@ namespace SceneryEditorX
 
     /**
      * @brief Initializes the Vulkan memory allocator for efficient GPU memory management.
-     * 
+     *
      * This function creates and configures the Vulkan Memory Allocator (VMA) instance
      * that will handle all memory allocations for buffers, images, and other GPU resources.
-     * VMA provides efficient memory management, minimizes fragmentation, and optimizes 
+     * VMA provides efficient memory management, minimizes fragmentation, and optimizes
      * allocation strategies based on usage patterns.
-     * 
+     *
      * The function:
      * 1. Sets up the core allocator configuration with the physical device, logical device, and instance
      * 2. Configures optional features like buffer device address support when available
      * 3. Provides function pointers for dynamic Vulkan function loading
      * 4. Creates the memory allocator instance
-     * 
+     *
      * Once initialized, all Vulkan memory allocations should be handled through this allocator
      * rather than directly through vkAllocateMemory for optimal performance and resource management.
      */
@@ -1681,29 +1612,29 @@ namespace SceneryEditorX
 	/**
 	 * @fn CreateSampler
 	 * @brief Creates a texture sampler with specified configuration parameters
-	 * 
+	 *
 	 * @details This function creates a Vulkan sampler object with common texture sampling
 	 * parameters. The sampler is configured with linear filtering for both magnification
 	 * and minification, repeat address modes for all dimensions, and conditional anisotropic
 	 * filtering based on hardware support.
-	 * 
-	 * Samplers are essential objects in Vulkan that define how texture data is read and 
+	 *
+	 * Samplers are essential objects in Vulkan that define how texture data is read and
 	 * filtered within shaders. They control aspects such as:
 	 * - Filtering modes (linear, nearest)
 	 * - Address modes (repeat, clamp, mirror)
 	 * - Anisotropic filtering
 	 * - Mipmap selection and filtering
 	 * - LOD (Level of Detail) behavior
-	 * 
+	 *
 	 * @param maxLOD Maximum level of detail that can be accessed through this sampler,
 	 *               useful for controlling mipmap access (default should be the max mip level)
-	 * 
+	 *
 	 * @return VkSampler A configured Vulkan sampler object that must be destroyed when no longer needed
-	 * 
+	 *
 	 * @note - The sampler checks for anisotropic filtering support at runtime and enables it
 	 *       if available, using the maximum available anisotropy level from the physical device.
 	 *       The returned sampler should be destroyed with vkDestroySampler when no longer needed.
-	 * 
+	 *
 	 * @see VkSamplerCreateInfo, vkCreateSampler, vkDestroySampler
 	 */
 	VkSampler VulkanDevice::CreateSampler(const float maxLOD) const
@@ -1715,11 +1646,11 @@ namespace SceneryEditorX
 		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	
+
 		/// Check if anisotropy is supported
 		VkPhysicalDeviceFeatures deviceFeatures;
 		vkGetPhysicalDeviceFeatures(vkPhysicalDevice->GetGPUDevices(), &deviceFeatures);
-	
+
 		if (deviceFeatures.samplerAnisotropy)
 		{
 			samplerInfo.anisotropyEnable = VK_TRUE;
@@ -1730,7 +1661,7 @@ namespace SceneryEditorX
 			samplerInfo.anisotropyEnable = VK_FALSE;
 			samplerInfo.maxAnisotropy = 1.0f;
 		}
-	
+
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 		samplerInfo.compareEnable = VK_FALSE;
@@ -1739,26 +1670,26 @@ namespace SceneryEditorX
 		samplerInfo.mipLodBias = 0.0f;
 		samplerInfo.minLod = 0.0f;
 		samplerInfo.maxLod = maxLOD;
-	
+
 		VkSampler sampler;
 		VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &sampler))
-	
+
 		return sampler;
 	}
 
 	/**
 	 * @fn FindMemoryType
 	 * @brief Finds a suitable memory type index that meets specific requirements
-	 * 
+	 *
 	 * This method locates a memory type that satisfies both:
 	 * 1. It must be compatible with the provided type filter (represented as a bit field)
 	 * 2. It must have all the required memory properties
-	 * 
+	 *
 	 * The implementation retrieves memory properties from the physical device and iterates
 	 * through available memory types. For each memory type index, it checks:
 	 * - Whether the type is suitable according to the type filter (using bit masking)
 	 * - Whether the memory type has all the required property flags
-	 * 
+	 *
 	 * This function is critical for proper allocation of buffers and images in Vulkan,
 	 * as it ensures memory is allocated from an appropriate memory heap with the needed
 	 * characteristics (e.g., device-local, host-visible, coherent).
@@ -1766,7 +1697,7 @@ namespace SceneryEditorX
 	 * @param typeFilter Bit field where each bit represents a memory type that is suitable
 	 * @param properties Required memory properties (e.g., @enum VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
 	 * @return Index of a suitable memory type, or 0 if no suitable memory type is found
-	 * 
+	 *
 	 * @see vkGetPhysicalDeviceMemoryProperties, VkMemoryPropertyFlags
 	 */
 	uint32_t VulkanDevice::FindMemoryType(const uint32_t typeFilter, const VkMemoryPropertyFlags properties) const
@@ -1774,14 +1705,14 @@ namespace SceneryEditorX
 		/// Get memory properties from the physical vkDevice
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice->GetGPUDevices(), &memProperties);
-	
+
 		/// Find a memory type that satisfies both the type filter and the property requirements
 		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
 		{
 			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
                 return i;
         }
-	
+
 		SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find suitable memory type!");
 		return 0; /// Return a default value to avoid undefined behavior
 	}
@@ -1793,25 +1724,25 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
     /**
-	 * @fn CommandPool 
+	 * @fn CommandPool
 	 * @brief Creates command pools for graphics and compute operations
-	 * 
+	 *
 	 * @details This constructor initializes separate command pools for graphics and compute queues.
 	 * Command pools are memory managers for command buffers and should typically be created for
 	 * each thread that will record commands. This implementation:
 	 * 1. Creates a command pool using the queue type specified (graphics or compute)
 	 * 2. Creates a separate compute command pool if a dedicated compute queue is available
 	 * 3. Falls back to using the graphics command pool for compute operations if necessary
-	 * 
+	 *
 	 * Command pools are created with the @enum VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag,
 	 * allowing individual command buffers to be reset for reuse without resetting the entire pool.
-	 * 
+	 *
 	 * @param vulkanDevice Reference to the Vulkan device that will own these command pools
 	 * @param type Queue type to determine which command pool to create (graphics or compute)
-	 * 
+	 *
 	 * @note - Command pools are specific to queue families and buffers allocated from a pool
 	 *       can only be submitted to queues of the matching family.
-	 * 
+	 *
 	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
 	 */
     CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type)
@@ -1849,21 +1780,21 @@ namespace SceneryEditorX
     /**
 	 * @fn ~CommandPool
 	 * @brief Destroys the command pools created by this object
-	 * 
+	 *
 	 * @details This destructor properly cleans up command pool resources by:
 	 * 1. Checking if the device is still valid before proceeding
 	 * 2. Destroying the compute command pool if it's distinct from the graphics pool
 	 * 3. Destroying the graphics command pool
 	 * 4. Setting all handles to VK_NULL_HANDLE to prevent use-after-free issues
-	 * 
+	 *
 	 * The destructor handles the case where the compute and graphics command pools
 	 * share the same handle to avoid double-deletion, which would cause a Vulkan
 	 * validation error.
-	 * 
+	 *
 	 * @note - Command pools must be destroyed before their parent device is destroyed.
 	 *       When a command pool is destroyed, all command buffers allocated from it
 	 *       are implicitly freed and should not be used afterward.
-	 * 
+	 *
 	 * @see @fn vkDestroyCommandPool
 	 */
     CommandPool::~CommandPool()
@@ -1886,24 +1817,24 @@ namespace SceneryEditorX
     /**
 	 * @fn AllocateCommandBuffer
 	 * @brief Allocates a command buffer from the appropriate command pool
-	 * 
+	 *
 	 * @details This method allocates a new command buffer from either the graphics or compute command pool
 	 * based on the provided parameters. It handles proper allocation, initialization, and error checking.
 	 * If requested, it will also automatically begin the command buffer with one-time-submit usage flag,
 	 * making it ready to record commands immediately.
-	 * 
+	 *
 	 * The command buffer is allocated as a primary command buffer, which can be submitted directly to a queue
 	 * and can call secondary command buffers. Primary command buffers cannot be called by other command buffers.
-	 * 
+	 *
 	 * @param begin If true, the command buffer will be automatically started with @enum VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
 	 * @param compute If true, the command buffer will be allocated from the compute command pool;
 	 *                otherwise, it will be allocated from the graphics command pool
-	 * 
+	 *
 	 * @return VkCommandBuffer The newly allocated command buffer, or VK_NULL_HANDLE if allocation failed
-	 * 
-	 * @note - Command buffers allocated with this method should either be freed manually or flushed using 
+	 *
+	 * @note - Command buffers allocated with this method should either be freed manually or flushed using
 	 *       the FlushCmdBuffer method, which will handle submission and automatic cleanup.
-	 * 
+	 *
 	 * @see FlushCmdBuffer
 	 */
     VkCommandBuffer CommandPool::AllocateCommandBuffer(const bool begin, const bool compute) const
@@ -1947,27 +1878,27 @@ namespace SceneryEditorX
     /**
 	 * @fn FlushCmdBuffer
 	 * @brief Submits a command buffer to a specified queue and waits for its completion
-	 * 
+	 *
 	 * @details This method handles the complete submission lifecycle of a command buffer:
 	 * 1. Ends the command buffer recording with vkEndCommandBuffer
 	 * 2. Creates a fence to synchronize execution completion
 	 * 3. Submits the command buffer to the specified queue
 	 * 4. Waits for execution to complete using the fence
 	 * 5. Cleans up resources (fence and command buffer)
-	 * 
+	 *
 	 * This implementation uses a fence-based synchronization approach to ensure the GPU has
 	 * completely processed the submitted commands before returning. This is suitable for
 	 * operations that need to be completed before the CPU continues execution, such as
 	 * resource initialization or one-time uploads to the GPU.
-	 * 
+	 *
 	 * @param cmdBuffer The command buffer to submit and execute
 	 * @param queue The queue to which the command buffer should be submitted
-	 * 
+	 *
 	 * @note - After this function returns, the command buffer has been freed and should not be used
 	 * @note - This function will block the calling thread until the GPU completes execution
 	 * @note - For regular rendering operations that don't need CPU synchronization,
 	 *       consider using semaphores instead for better performance
-	 * 
+	 *
 	 * @see vkEndCommandBuffer, vkCreateFence, vkQueueSubmit, vkWaitForFences
 	 */
     void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer, const VkQueue queue) const

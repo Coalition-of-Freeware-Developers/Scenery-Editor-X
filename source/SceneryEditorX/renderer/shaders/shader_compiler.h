@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,14 +11,28 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "shader.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    enum class ShaderCompileState : uint8_t
+	{
+	    Idle,
+	    Compiling,
+	    Succeeded,
+	    Failed
+	};
+
     class ShaderCompiler
     {
     public:
+        ShaderCompiler();
+        ~ShaderCompiler();
+
+		void CompileShader(const ShaderDataType type, const uint32_t *ptr, const uint32_t size);
+
         /// -------------------------------------------------------
         /// Path to the glslang Validator executable
         /// -------------------------------------------------------

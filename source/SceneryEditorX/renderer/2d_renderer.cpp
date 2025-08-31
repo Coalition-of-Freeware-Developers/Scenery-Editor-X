@@ -10,15 +10,18 @@
 * Created: 24/7/2025
 * -------------------------------------------------------
 */
+/*
 #include "2d_renderer.h"
 #include <codecvt>
 #include "renderer.h"
 #include "SceneryEditorX/scene/material.h"
 #include "fonts/msdf_impl.h"
 #include "vulkan/vk_cmd_buffers.h"
+*/
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -92,10 +95,10 @@ namespace SceneryEditorX
 				uint64_t allocationSize = c_MaxVertices * sizeof(QuadVertex);
                 m_QuadVertexBuffers[0][i] = CreateRef<VertexBuffer>(allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize;
-				m_QuadVertexBufferBases[0][i] = hnew QuadVertex[c_MaxVertices];
+				m_QuadVertexBufferBases[0][i] = new QuadVertex[c_MaxVertices];
 			}
 
-			uint32_t* quadIndices = hnew uint32_t[c_MaxIndices];
+			uint32_t* quadIndices = new uint32_t[c_MaxIndices];
 
 			uint32_t offset = 0;
 			for (uint32_t i = 0; i < c_MaxIndices; i += 6)
@@ -115,7 +118,7 @@ namespace SceneryEditorX
                 m_QuadIndexBuffer = CreateRef<IndexBuffer>(quadIndices, allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize;
 			}
-			hdelete[] quadIndices;
+			delete[] quadIndices;
 		}
 
 		m_WhiteTexture = Renderer::GetWhiteTexture();
@@ -168,11 +171,11 @@ namespace SceneryEditorX
                 m_LineVertexBuffers[0][i] = CreateRef<VertexBuffer>(allocationSize);
                 m_LineOnTopVertexBuffers[0][i] = CreateRef<VertexBuffer>(allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize + allocationSize;
-				m_LineVertexBufferBases[0][i] = hnew LineVertex[c_MaxLineVertices];
-				m_LineOnTopVertexBufferBases[0][i] = hnew LineVertex[c_MaxLineVertices];
+				m_LineVertexBufferBases[0][i] = new LineVertex[c_MaxLineVertices];
+				m_LineOnTopVertexBufferBases[0][i] = new LineVertex[c_MaxLineVertices];
 			}
 
-			uint32_t* lineIndices = hnew uint32_t[c_MaxLineIndices];
+			uint32_t* lineIndices = new uint32_t[c_MaxLineIndices];
 			for (uint32_t i = 0; i < c_MaxLineIndices; i++)
 				lineIndices[i] = i;
 
@@ -182,7 +185,7 @@ namespace SceneryEditorX
                 m_LineOnTopIndexBuffer = CreateRef<IndexBuffer>(lineIndices, allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize + allocationSize;
 			}
-			hdelete[] lineIndices;
+			delete[] lineIndices;
 		}
 
 
@@ -222,10 +225,10 @@ namespace SceneryEditorX
 				uint64_t allocationSize = c_MaxVertices * sizeof(TextVertex);
                 m_TextVertexBuffers[0][i] = CreateRef<VertexBuffer>(allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize;
-				m_TextVertexBufferBases[0][i] = hnew TextVertex[c_MaxVertices];
+				m_TextVertexBufferBases[0][i] = new TextVertex[c_MaxVertices];
 			}
 
-			uint32_t* textQuadIndices = hnew uint32_t[c_MaxIndices];
+			uint32_t* textQuadIndices = new uint32_t[c_MaxIndices];
 			uint32_t offset = 0;
 			for (uint32_t i = 0; i < c_MaxIndices; i += 6)
 			{
@@ -245,7 +248,7 @@ namespace SceneryEditorX
                 m_TextIndexBuffer = CreateRef<IndexBuffer>(textQuadIndices, allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize;
 			}
-			hdelete[] textQuadIndices;
+			delete[] textQuadIndices;
 		}
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -277,7 +280,7 @@ namespace SceneryEditorX
 				uint64_t allocationSize = c_MaxVertices * sizeof(QuadVertex);
 				m_CircleVertexBuffers[0][i] = CreateRef<VertexBuffer>(allocationSize);
 				m_MemoryStats.TotalAllocated += allocationSize;
-				m_CircleVertexBufferBases[0][i] = hnew CircleVertex[c_MaxVertices];
+				m_CircleVertexBufferBases[0][i] = new CircleVertex[c_MaxVertices];
 			}
 		}
 
@@ -291,25 +294,25 @@ namespace SceneryEditorX
 		for (const auto &buffers : m_QuadVertexBufferBases)
 		{
 			for (const auto buffer : buffers)
-				hdelete[] buffer;
+				delete[] buffer;
 		}
 
 		for (const auto &buffers : m_TextVertexBufferBases)
 		{
 			for (const auto buffer : buffers)
-				hdelete[] buffer;
+				delete[] buffer;
 		}
 
 		for (const auto &buffers : m_LineVertexBufferBases)
 		{
 			for (const auto buffer : buffers)
-				hdelete[] buffer;
+				delete[] buffer;
 		}
 
 		for (const auto &buffers : m_CircleVertexBufferBases)
 		{
 			for (const auto buffer : buffers)
-				hdelete[] buffer;
+				delete[] buffer;
 		}
 	}
 
@@ -579,7 +582,7 @@ namespace SceneryEditorX
 	 * @code
 	 * newVertexBuffer[i] = CreateRef<VertexBuffer>(VertexBufferType::Dynamic, VertexFormat::Default, allocationSize / sizeof(Vertex));
 	 * @endcode
-     */
+     #1#
     void Renderer2D::AddQuadBuffer()
 	{
 		uint32_t framesInFlight = Renderer::GetRenderData().framesInFlight;
@@ -593,7 +596,7 @@ namespace SceneryEditorX
 			uint64_t allocationSize = c_MaxVertices * sizeof(QuadVertex);
             newVertexBuffer[i] = CreateRef<VertexBuffer>(allocationSize);
 			m_MemoryStats.TotalAllocated += allocationSize;
-			newVertexBufferBase[i] = hnew QuadVertex[c_MaxVertices];
+			newVertexBufferBase[i] = new QuadVertex[c_MaxVertices];
 		}
 	}
 
@@ -610,7 +613,7 @@ namespace SceneryEditorX
 			uint64_t allocationSize = c_MaxLineVertices * sizeof(LineVertex);
             newVertexBuffer[i] = CreateRef<VertexBuffer>(allocationSize);
 			m_MemoryStats.TotalAllocated += allocationSize;
-			newVertexBufferBase[i] = hnew LineVertex[c_MaxLineVertices];
+			newVertexBufferBase[i] = new LineVertex[c_MaxLineVertices];
 		}
 	}
 
@@ -628,7 +631,7 @@ namespace SceneryEditorX
 			uint64_t allocationSize = c_MaxVertices * sizeof(TextVertex);
             newVertexBuffer[i] = CreateRef<VertexBuffer>(allocationSize);
 			m_MemoryStats.TotalAllocated += allocationSize;
-			newVertexBufferBase[i] = hnew TextVertex[c_MaxVertices];
+			newVertexBufferBase[i] = new TextVertex[c_MaxVertices];
 		}
 	}
 
@@ -646,7 +649,7 @@ namespace SceneryEditorX
 			uint64_t allocationSize = c_MaxVertices * sizeof(CircleVertex);
             newVertexBuffer[i] = CreateRef<VertexBuffer>(allocationSize);
 			m_MemoryStats.TotalAllocated += allocationSize;
-			newVertexBufferBase[i] = hnew CircleVertex[c_MaxVertices];
+			newVertexBufferBase[i] = new CircleVertex[c_MaxVertices];
 		}
 	}
 
@@ -1191,7 +1194,7 @@ namespace SceneryEditorX
 		m_DrawStats.LineCount++;
 	}
 
-	void Renderer2D::DrawTransform(const Mat4 &transform, float scale /*= 1.0 */, const bool onTop)
+	void Renderer2D::DrawTransform(const Mat4 &transform, float scale /*= 1.0 #1#, const bool onTop)
     {
         const Vec3 p0 = transform * Vec4(0.0f, 0.0f, 0.0f, 1.0f);
         Vec3 p1 = transform * Vec4(scale, 0.0f, 0.0f, 1.0f);
@@ -1231,7 +1234,7 @@ namespace SceneryEditorX
 		}
 	}
 
-	void Renderer2D::DrawAABB(const AABB &aabb, const Mat4& transform, const Vec4& color /*= Vec4(1.0f)*/, const bool onTop)
+	void Renderer2D::DrawAABB(const AABB &aabb, const Mat4& transform, const Vec4& color /*= Vec4(1.0f)#1#, const bool onTop)
 	{
 		Vec4 min = { aabb.Min.x, aabb.Min.y, aabb.Min.z, 1.0f };
 		Vec4 max = { aabb.Max.x, aabb.Max.y, aabb.Max.z, 1.0f };
@@ -1259,7 +1262,7 @@ namespace SceneryEditorX
 			DrawLine(corners[i], corners[i + 4], color, onTop);
 	}
 
-	INTERNAL bool NextLine(const int index, const std::vector<int>& lines)
+	static bool NextLine(const int index, const std::vector<int>& lines)
 	{
 		for (const int line : lines)
 		{
@@ -1285,7 +1288,7 @@ namespace SceneryEditorX
 	 * (containing std::codecvt_mode, std::codecvt_utf8, std::codecvt_utf16, and std::codecvt_utf8_utf16) are deprecated in C++17. (The std::codecvt class template is NOT deprecated.)
 	 * The C++ Standard doesn't provide equivalent non-deprecated functionality; consider using MultiByteToWideChar() and WideCharToMultiByte() from <Windows.h> instead.
 	 * You can define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING or _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have received this warning.
-	 */
+	 #1#
     #pragma warning(disable : 4996)
 
 	///< From https://stackoverflow.com/questions/31302506/stdu32string-conversion-to-from-stdstring-and-stdu16string
@@ -1500,5 +1503,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

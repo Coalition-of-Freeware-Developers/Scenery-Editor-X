@@ -145,7 +145,7 @@ The initialization process sets up the VMA allocator with proper Vulkan integrat
 void MemoryAllocator::Init(const Ref<VulkanDevice>& device, const uint32_t& apiVersion)
 {
     // Create global allocator data
-    memAllocatorData = hnew VulkanAllocatorData();
+    memAllocatorData = new VulkanAllocatorData();
   
     // Configure VMA allocator
     VmaAllocatorCreateInfo allocatorInfo = {};

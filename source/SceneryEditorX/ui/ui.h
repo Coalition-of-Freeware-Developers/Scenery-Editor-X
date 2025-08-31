@@ -12,6 +12,9 @@
 */
 #pragma once
 #include <IconsFontAwesome5.h>
+
+#include <SceneryEditorX/renderer/viewport.h>
+
 #include <imgui/imgui.h>
 #include "ui_manager.h"
 #include "SceneryEditorX/renderer/image_data.h"
@@ -161,7 +164,7 @@ namespace SceneryEditorX::UI
         /**
          * @brief Set ImGui style (colors, sizes, etc.)
          */
-        INTERNAL void SetStyle();
+        static void SetStyle();
 
         /**
          * @brief Configure and load fonts for ImGui
@@ -177,8 +180,8 @@ namespace SceneryEditorX::UI
          */
         ImTextureID GetTextureID(VkImageView imageView, VkSampler sampler, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) const;
 
-        GLOBAL bool visible;                 /// Used to show/hide the GUI
-        LOCAL const std::string defaultFont; /// Default font name
+        static bool visible;                 /// Used to show/hide the GUI
+        static const std::string defaultFont; /// Default font name
 
 	private:
         VkDescriptorPool imguiPool = VK_NULL_HANDLE;

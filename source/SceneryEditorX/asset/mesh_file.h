@@ -31,7 +31,7 @@ namespace SceneryEditorX
 		struct Metadata
 		{
 			uint32_t Flags;
-            Utils::AABB BoundingBox;
+            AABB BoundingBox;
 
 			uint64_t NodeArrayOffset;
 			uint64_t NodeArraySize;

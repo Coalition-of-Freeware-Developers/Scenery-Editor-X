@@ -19,6 +19,7 @@
 #include "render_context.h"
 #include "renderer.h"
 //#include "scene_renderer.h"
+
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/logging/profiler.hpp"
 #include "shaders/shader.h"
@@ -28,19 +29,26 @@
 #include "vulkan/vk_pipeline.h"
 #include "vulkan/vk_render_pass.h"
 #include "vulkan/vk_util.h"
+#include "render_dispatcher.h"
+#include "bindless_descriptor_manager.h"
 
-#include <imgui.h>
-#include <imgui/backends/imgui_impl_glfw.h>
-#include <imgui/backends/imgui_impl_vulkan.h>
+
+// #include <imgui.h>
+// #include <imgui/backends/imgui_impl_glfw.h>
+// #include <imgui/backends/imgui_impl_vulkan.h>
 
 #include <algorithm>
 #include <stb_image_write.h>
 #include <utility>
 #include <vector>
 
+#include "primitives.h"
+
 #include "SceneryEditorX/core/events/application_events.h"
 #include "SceneryEditorX/core/time/time.h"
 #include "SceneryEditorX/platform/filesystem/file_manager.hpp"
+
+#include "fonts/font.h"
 
 /// -------------------------------------------------------
 
@@ -53,7 +61,7 @@ namespace SceneryEditorX
         Ref<IndexBuffer> QuadIndexBuffer;
 
         Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
-        std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
+        //std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
         VkDescriptorSet ActiveRendererDescriptorSet = nullptr;
         std::vector<VkDescriptorPool> DescriptorPools;
         VkDescriptorPool MaterialDescriptorPool;
@@ -79,16 +87,14 @@ namespace SceneryEditorX
         Ref<Environment> EmptyEnvironment;
 
         std::unordered_map<std::string, std::string> GlobalShaderMacros;
+
     };
 
     /// Static variable
-    LOCAL RenderData m_renderData;
-    LOCAL RendererProperties *s_Data = nullptr;
-    constexpr LOCAL uint32_t s_RenderCommandQueueCount = 2;
-    INTERNAL CommandQueue *s_CommandQueue[s_RenderCommandQueueCount];
-    INTERNAL std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
-    INTERNAL CommandQueue resourceFreeQueue[3];
-    INTERNAL std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
+    static RenderData m_renderData;
+    static RendererProperties *s_Data = nullptr;
+    // Legacy command queue system removed in favor of RenderDispatcher.
+    static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
 
     /// -------------------------------------------------------
 
@@ -103,6 +109,8 @@ namespace SceneryEditorX
 
     Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
 
+    /// -------------------------------------------------------
+
     void Renderer::Init()
     {
         /// Initialize the rendering system. This includes setting up the render context, command buffers, etc.
@@ -111,9 +119,7 @@ namespace SceneryEditorX
         if (const auto context = GetContext())
             context->Init();
 
-		s_Data = hnew RendererProperties;
-        s_CommandQueue[0] = hnew CommandQueue();
-        s_CommandQueue[1] = hnew CommandQueue();
+        s_Data = new RendererProperties;
 
         const auto &config = GetRenderData();
         /// Make sure we don't have more frames in flight than swapchain images
@@ -174,7 +180,7 @@ namespace SceneryEditorX
 			Vec2 TexCoord;
 		};
 
-		QuadVertex* data = hnew QuadVertex[4];
+		QuadVertex* data = new QuadVertex[4];
 
 		data[0].Position = Vec3(x, y, 0.0f);
 		data[0].TexCoord = Vec2(0, 0);
@@ -206,12 +212,17 @@ namespace SceneryEditorX
 
 		{
 			TextureSpecification textureSpec;
-			textureSpec.samplerWrap = SamplerWrap::Clamp;
+            textureSpec.samplerWrap = SamplerWrap::Clamp_Edge;
 			s_Data->BRDFLutTexture = CreateRef<Texture2D>(textureSpec, std::filesystem::path("assets/Renderer/BRDF_LUT.png"));
 		}
 
 		constexpr uint32_t blackCubeTextureData[6] = { 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000 };
         s_Data->BlackCubeTexture = CreateRef<TextureCube>(spec, Buffer(blackCubeTextureData, sizeof(blackCubeTextureData)));
+
+        // Initialize async render dispatcher
+        RenderDispatcher::Init();
+		// Initialize bindless descriptor manager
+		BindlessDescriptorManager::Init();
 
     }
 
@@ -219,6 +230,8 @@ namespace SceneryEditorX
     {
         VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
         vkDeviceWaitIdle(device);
+        RenderDispatcher::Shutdown();
+        BindlessDescriptorManager::Shutdown();
 
         if (s_Data->SamplerPoint)
         {
@@ -238,19 +251,13 @@ namespace SceneryEditorX
         delete s_Data;
 
         /// Resource release queue
-        for (uint32_t i = 0; i < m_renderData.framesInFlight; i++)
-        {
-            auto &queue = GetRenderResourceReleaseQueue(i);
-            queue.Execute();
-        }
-
-        delete s_CommandQueue[0];
-        delete s_CommandQueue[1];
+        // Resource free queues handled by RenderDispatcher ring.
     }
 
     void Renderer::BeginFrame()
     {
-        Submit([]() {
+        Submit([]()
+        {
             SEDX_PROFILE_FUNC("VulkanRenderer::BeginFrame");
 
             SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
@@ -276,6 +283,8 @@ namespace SceneryEditorX
 			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &cmdBufInfo));
     #endif
         });
+
+        // Resource free ring advanced after GPU submission (see swapchain present/acquire logic)
     }
 
     void Renderer::EndFrame()
@@ -295,10 +304,7 @@ namespace SceneryEditorX
         // This would involve submitting command buffers to the appropriate queues
     }
 
-    CommandQueue &Renderer::GetRenderResourceReleaseQueue(uint32_t index)
-    {
-        return resourceFreeQueue[index];
-    }
+    // Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction.
 
     uint64_t Renderer::GetCurrentFrameIndex()
     {
@@ -318,29 +324,6 @@ namespace SceneryEditorX
 	void Renderer::SetRenderData(const RenderData &renderData)
     {
         m_renderData = renderData;
-    }
-
-    void Renderer::RenderThreadFunc(RenderThread *renderThread)
-    {
-        SEDX_PROFILE_THREAD("Render Thread");
-        while (renderThread->IsRunning())
-            WaitAndRender(renderThread);
-    }
-
-    void Renderer::WaitAndRender(RenderThread *renderThread)
-    {
-        renderThread->WaitAndSet(RenderThread::State::Kick, RenderThread::State::Busy);
-        s_CommandQueue[GetRenderQueueIndex()]->Execute();
-
-		/// Rendering has completed, set state to idle
-        renderThread->Set(RenderThread::State::Idle);
-
-        SubmitFrame();
-    }
-
-    void Renderer::SwapQueues()
-    {
-        s_RenderCommandQueueSubmissionIndex = (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
     }
 
 	VkDescriptorSetAllocateInfo Renderer::DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count, VkDescriptorPool pool)
@@ -370,16 +353,6 @@ namespace SceneryEditorX
 
 		Utils::GetResourceAllocationCounts().Samplers--;
 	}
-
-    uint32_t Renderer::GetRenderQueueIndex()
-    {
-        return (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
-    }
-
-    uint32_t Renderer::GetRenderQueueSubmissionIndex()
-    {
-        return s_RenderCommandQueueSubmissionIndex;
-    }
 
     uint32_t Renderer::GetCurrentRenderThreadFrameIndex()
     {

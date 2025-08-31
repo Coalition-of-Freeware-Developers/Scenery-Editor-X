@@ -38,16 +38,16 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-	LOCAL const std::string s_AlbedoColorUniform = "u_MaterialUniforms.AlbedoColor";
-    LOCAL const std::string s_UseNormalMapUniform = "u_MaterialUniforms.UseNormalMap";
-    LOCAL const std::string s_MetalnessUniform = "u_MaterialUniforms.Metalness";
-    LOCAL const std::string s_RoughnessUniform = "u_MaterialUniforms.Roughness";
-    LOCAL const std::string s_EmissionUniform = "u_MaterialUniforms.Emission";
-    LOCAL const std::string s_TransparencyUniform = "u_MaterialUniforms.Transparency";
-    LOCAL const std::string s_AlbedoMapUniform = "u_AlbedoTexture";
-    LOCAL const std::string s_NormalMapUniform = "u_NormalTexture";
-    LOCAL const std::string s_MetalnessMapUniform = "u_MetalnessTexture";
-    LOCAL const std::string s_RoughnessMapUniform = "u_RoughnessTexture";
+	static const std::string s_AlbedoColorUniform = "u_MaterialUniforms.AlbedoColor";
+    static const std::string s_UseNormalMapUniform = "u_MaterialUniforms.UseNormalMap";
+    static const std::string s_MetalnessUniform = "u_MaterialUniforms.Metalness";
+    static const std::string s_RoughnessUniform = "u_MaterialUniforms.Roughness";
+    static const std::string s_EmissionUniform = "u_MaterialUniforms.Emission";
+    static const std::string s_TransparencyUniform = "u_MaterialUniforms.Transparency";
+    static const std::string s_AlbedoMapUniform = "u_AlbedoTexture";
+    static const std::string s_NormalMapUniform = "u_NormalTexture";
+    static const std::string s_MetalnessMapUniform = "u_MetalnessTexture";
+    static const std::string s_RoughnessMapUniform = "u_RoughnessTexture";
 
     /*
     void MaterialAsset::Serialize(Serializer &ser)

@@ -33,7 +33,7 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
 	#ifdef SEDX_PLATFORM_WINDOWS
-        INTERNAL std::wstring GetRegValue(HKEY hKey, const std::wstring &subKey, const std::wstring &valueName)
+        static std::wstring GetRegValue(HKEY hKey, const std::wstring &subKey, const std::wstring &valueName)
 		{
 	        HKEY openedKey = nullptr;
 	        if (RegOpenKeyExW(hKey, subKey.c_str(), 0, KEY_READ, &openedKey) != ERROR_SUCCESS)

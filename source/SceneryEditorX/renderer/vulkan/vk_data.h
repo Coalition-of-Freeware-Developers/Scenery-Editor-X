@@ -253,23 +253,6 @@ namespace SceneryEditorX
     /// -----------------------------------------------------------
 
     /**
-	 * @enum Queue
-	 * @brief Enumeration of Vulkan queue family types used in the rendering system
-	 *
-	 * Vulkan uses different queue families to execute different types of operations.
-	 * This enum provides a type-safe way to identify and reference these queue families
-	 * throughout the rendering system.
-	 */
-    enum Queue : uint8_t
-    {
-        Graphics	= 0, ///< Graphics queue family for rendering operations and drawing commands
-        Compute		= 1, ///< Compute queue family for compute shader and general computation operations
-        Transfer	= 2, ///< Transfer queue family dedicated to memory transfer operations
-        Count		= 3, ///< Total number of queue families
-        Present		= 4, ///< Present queue family for presenting rendered images to the display surface
-    };
-
-    /**
 	 * @struct CommandResources
 	 * @brief Holds command buffer and synchronization resources for Vulkan queues
 	 *
@@ -332,23 +315,18 @@ namespace SceneryEditorX
 	 * is used to configure and manage separate viewports for scene editing, allowing multiple
 	 * views into the same scene with different perspectives or visualization modes.
 	 */
-
     struct ViewportData
     {
         /** @brief Position of the viewport in the scene editor */
         const float x = 0.0f;
         const float y = 0.0f;
 
-        /** @brief Width of the viewport in pixels */
+        /** @brief Width and Height of the viewport in pixels */
         const float width = 0.0f;
-
-        /** @brief Height of the viewport in pixels */
         const float height = 0.0f;
 
-        /** @brief minimum depth value for the viewport (near plane) */
+        /** @brief minimum and maximum depth value for the viewport (near plane) (far plane) */
         const float minDepth = 0.0f;
-
-        /** @brief maximum depth value for the viewport (far plane) */
         const float maxDepth = 1.0f;
     };
 
@@ -402,13 +380,13 @@ namespace SceneryEditorX
 		 * @brief Minimum supported Vulkan API version.
 		 * The application requires at least this Vulkan version to run properly.
 		 */
-        GLOBAL inline uint32_t minVulkanVersion = VK_API_VERSION_1_3;
+        static inline uint32_t minVulkanVersion = VK_API_VERSION_1_3;
 
         /**
 		 * @brief Maximum supported Vulkan API version.
 		 * The application has been tested up to this Vulkan version.
 		 */
-        GLOBAL inline uint32_t maxVulkanVersion = VK_API_VERSION_1_4;
+        static inline uint32_t maxVulkanVersion = VK_API_VERSION_1_4;
 
         /** @brief Current width of the rendering surface in pixels */
         uint32_t width = 0;
@@ -450,13 +428,7 @@ namespace SceneryEditorX
         std::string Device;
 
         /** @brief Vulkan API version supported by the device */
-        struct apiVersion
-        {
-            int Variant = 0;
-            int Major	= 0;
-            int Minor	= 0;
-            int Patch	= 0;
-        };
+        struct apiVersion { int Variant = 0, Major = 0, Minor = 0, Patch = 0; };
 
         /**
 		 * @brief Check if the swap chain needs to be recreated
@@ -516,25 +488,16 @@ namespace SceneryEditorX
 		 * @brief Check if the renderer has all required queue families
 		 * @return True if both graphics and present queue families are available
 		 */
-        [[nodiscard]] bool IsComplete() const
-        {
-            return graphicsFamily.has_value() && presentFamily.has_value();
-        }
+        [[nodiscard]] bool IsComplete() const { return graphicsFamily.has_value() && presentFamily.has_value(); }
 
         /**
 		 * @brief Check if a given format includes a stencil component
 		 * @param format The Vulkan format to check
 		 * @return True if the format includes a stencil component
 		 */
-        GLOBAL bool HasStencilComponent(const VkFormat format)
-        {
-            return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-        }
+        static bool HasStencilComponent(const VkFormat format) { return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT; }
 
-        GLOBAL uint32_t CalculateMipCount(uint32_t width, uint32_t height)
-        {
-            return (uint32_t)std::floor(std::log2((double)Math::Min(width, height))) + 1;
-        }
+        static uint32_t CalculateMipCount(uint32_t width, uint32_t height) { return (uint32_t)std::floor(std::log2((double)Math::Min(width, height))) + 1; }
 
     };
 
@@ -543,25 +506,12 @@ namespace SceneryEditorX
     /// Taken from the Vulkan 3D Graphics Cookbook Second Edition.
 	struct Dimensions
     {
-        uint32_t width = 1;
-        uint32_t height = 1;
-        uint32_t depth = 1;
-        Dimensions divide1D(uint32_t v) const
-        {
-            return {.width = width / v, .height = height, .depth = depth};
-        }
-        Dimensions divide2D(uint32_t v) const
-        {
-            return {.width = width / v, .height = height / v, .depth = depth};
-        }
-        Dimensions divide3D(uint32_t v) const
-        {
-            return {.width = width / v, .height = height / v, .depth = depth / v};
-        }
-        bool operator==(const Dimensions &other) const
-        {
-            return width == other.width && height == other.height && depth == other.depth;
-        }
+        uint32_t width = 1, height = 1, depth = 1;
+
+        [[nodiscard]] Dimensions divide1D(uint32_t v) const { return {.width = width / v, .height = height, .depth = depth}; }
+        [[nodiscard]] Dimensions divide2D(uint32_t v) const { return {.width = width / v, .height = height / v, .depth = depth}; }
+        [[nodiscard]] Dimensions divide3D(uint32_t v) const { return {.width = width / v, .height = height / v, .depth = depth / v}; }
+        bool operator==(const Dimensions &other) const { return width == other.width && height == other.height && depth == other.depth; }
     };
 
     struct ScissorRect
@@ -605,11 +555,14 @@ namespace SceneryEditorX
     };
     */
 
+    /**
+     * @brief Offset3D represents a 3D offset in space.
+     *
+     * This structure holds three integer values (x, y, z) that define an offset in a 3D coordinate system.
+     */
     struct Offset3D
     {
-        int32_t x = 0;
-        int32_t y = 0;
-        int32_t z = 0;
+        int32_t x = 0,y = 0, z = 0;
     };
 
     /// -------------------------------------------------------

@@ -12,6 +12,7 @@
 */
 #pragma once
 #include "SceneryEditorX/renderer/image_data.h"
+#include <SceneryEditorX/renderer/command_manager.h>
 
 /// -------------------------------------------------------
 
@@ -34,14 +35,17 @@ namespace SceneryEditorX
 	{
     public:
         SwapChain() = default;
+        SwapChain(uint32_t *width, uint32_t *height, bool vsync);
         ~SwapChain() = default;
 
 		/// Initialization methods
 		void Init(VkInstance instance, const Ref<VulkanDevice> &device);
         void InitSurface(GLFWwindow *windowPtr);
-        void Create(uint32_t *width, uint32_t *height, bool vsync);
+		
+        void Create();
         void OnResize(uint32_t width, uint32_t height);
-        void Present();
+        void AcquireNextImage();
+        void Present(CommandManager *cmdFrame);
         void Destroy();
 		void BeginFrame();
 
@@ -60,13 +64,13 @@ namespace SceneryEditorX
         [[nodiscard]] uint32_t GetWidth() const { return swapWidth; }
         [[nodiscard]] uint32_t GetHeight() const { return swapHeight; }
 
-		VkFramebuffer GetFramebuffer(uint32_t index) const
+        [[nodiscard]] VkFramebuffer GetFramebuffer(uint32_t index) const
         {
             SEDX_CORE_ASSERT(index < swapChainFramebuffers.size());
             return swapChainFramebuffers[index];
 		}
 
-		VkCommandBuffer GetDrawCommandBuffer(uint32_t index) const
+        [[nodiscard]] VkCommandBuffer GetDrawCommandBuffer(uint32_t index) const
 		{
 			SEDX_CORE_ASSERT(index < cmdBuffers.size());
 			return cmdBuffers[index].CommandBuffer;
@@ -100,21 +104,20 @@ namespace SceneryEditorX
          */
         [[nodiscard]] VkImage GetActiveImage() const { SEDX_CORE_ASSERT(currentFrameIdx < swapChainImage.size()); return swapChainImage[currentFrameIdx].Image; }
 
-		uint32_t GetSwapChainImageCount() const { return swapChainImageCount; }
-		uint32_t GetBufferIndex() const { return currentFrameIdx; }
+		[[nodiscard]] uint32_t GetSwapChainImageCount() const { return swapChainImageCount; }
+        [[nodiscard]] uint32_t GetBufferIndex() const { return currentFrameIdx; }
 
 		/// Image/view utility methods
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
 		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
 						 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const;
-        uint32_t GetCurrentBufferIndex() const { return currentFrameIdx; }
+        [[nodiscard]] uint32_t GetCurrentBufferIndex() const { return currentFrameIdx; }
 
     private:
         VkInstance instance = nullptr;
         Ref<VulkanDevice> vkDevice;
 
 		/// Helper methods
-        uint32_t AcquireNextImage();
         void CreateImageViews();
         void FindImageFormatAndColorSpace();
         void CreateDepthResources();
@@ -123,9 +126,9 @@ namespace SceneryEditorX
         [[nodiscard]] VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
 		/// Selection methods
-        LOCAL VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
-	    LOCAL VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, uint32_t width, uint32_t height);
-        LOCAL SwapChainDetails QuerySwapChainSupport(const VulkanDevice &device);
+        static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+	    static VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, uint32_t width, uint32_t height);
+        static SwapChainDetails QuerySwapChainSupport(const VulkanDevice &device);
         [[nodiscard]] VkPresentModeKHR ChooseSwapPresentMode(uint32_t presentModeCount) const;
 
 		/// Vulkan resources - derived after device is initialized

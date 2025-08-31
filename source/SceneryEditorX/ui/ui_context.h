@@ -41,10 +41,10 @@ namespace SceneryEditorX::UI
 
 	    virtual void SetGUI(GUI *guiInstance) = 0;
 
-        GLOBAL void SetDarkThemeColors();
-        GLOBAL void SetDarkThemeV2Colors();
-        GLOBAL void AllowInputEvents(bool allowEvents);
-        GLOBAL UIContext *Create();
+        static void SetDarkThemeColors();
+        static void SetDarkThemeV2Colors();
+        static void AllowInputEvents(bool allowEvents);
+        static UIContext *Create();
 
 	private:
         UIResource uiResource;

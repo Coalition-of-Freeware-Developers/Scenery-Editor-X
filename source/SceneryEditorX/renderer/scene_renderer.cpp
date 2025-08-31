@@ -26,7 +26,7 @@ namespace SceneryEditorX
 {
 
 	/*
-	LOCAL std::vector<std::thread> s_ThreadPool;
+	static std::vector<std::thread> s_ThreadPool;
 
     /// -------------------------------------------------------
 
@@ -120,7 +120,7 @@ namespace SceneryEditorX
 			spec.GPUOnly = false;
             constexpr size_t BoneTransformBufferCount = 1024 * 50; ///< This provides enough for 1024 animated entities at an average of 50 bones each
             m_SBSBoneTransforms = CreateRef<StorageBufferSet>(spec, sizeof(Mat4) * BoneTransformBufferCount);
-			m_BoneTransformsData = hnew Mat4[BoneTransformBufferCount];
+			m_BoneTransformsData = new Mat4[BoneTransformBufferCount];
 		}
 
 		/**
@@ -806,7 +806,7 @@ namespace SceneryEditorX
 			m_HierarchicalDepthPass->Bake();
 		}
 
-		
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Screem Space Reflection (SSR) Composite Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -850,7 +850,7 @@ namespace SceneryEditorX
 			SEDX_CORE_VERIFY(m_SSRCompositePass->Validate());
 			m_SSRCompositePass->Bake();
 		}
-		
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Pre-Integration Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -979,7 +979,7 @@ namespace SceneryEditorX
 		}
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// Depth Of Feild (DOF) Pass 
+        /// Depth Of Feild (DOF) Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		{
@@ -1215,7 +1215,7 @@ namespace SceneryEditorX
 
 		m_WireframeMaterial = CreateRef<Material>(Renderer::GetShaderLibrary()->Get("Wireframe"), "Wireframe");
 		m_WireframeMaterial->Set("u_MaterialUniforms.Color", Vec4{ 1.0f, 0.5f, 0.0f, 1.0f });
-		
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Skybox Pass
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1260,7 +1260,7 @@ namespace SceneryEditorX
 		for (uint32_t i = 0; i < framesInFlight; i++)
 		{
             m_SubmeshTransformBuffers[i].Buffer = CreateRef<VertexBuffer>(sizeof(TransformVertexData) * TransformBufferCount);
-			m_SubmeshTransformBuffers[i].Data = hnew TransformVertexData[TransformBufferCount];
+			m_SubmeshTransformBuffers[i].Data = new TransformVertexData[TransformBufferCount];
 		}
 
 		Renderer::Submit([instance = Ref(this)]() mutable { instance->m_ResourcesCreatedGPU = true; });
@@ -1418,9 +1418,9 @@ namespace SceneryEditorX
 
 	void SceneRenderer::Shutdown() const
     {
-		hdelete[] m_BoneTransformsData;
+		delete[] m_BoneTransformsData;
 		for (const auto&[Buffer, Data] : m_SubmeshTransformBuffers)
-			hdelete[] Data;
+			delete[] Data;
 	}
 
 

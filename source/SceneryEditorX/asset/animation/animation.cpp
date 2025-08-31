@@ -205,7 +205,7 @@ namespace SceneryEditorX
 	{
 		if (m_Data)
 		{
-			hdelete static_cast<AnimationInternal::InternalAnimationData*>(m_Data);
+			delete static_cast<AnimationInternal::InternalAnimationData*>(m_Data);
 			m_Data = nullptr;
 		}
 	}

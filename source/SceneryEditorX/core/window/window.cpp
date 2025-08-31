@@ -42,7 +42,7 @@ namespace SceneryEditorX
      *
      * @note - This flag is reset to false in Window::Shutdown() when glfwTerminate() is called.
      */
-    GLOBAL bool windowInit = false;
+    static bool windowInit = false;
 
     /**
      * @brief Callback function for handling GLFW error events.
@@ -60,7 +60,7 @@ namespace SceneryEditorX
      *
      * @note - This function is set as the GLFW error callback during Window::Init()
      */
-    GLOBAL void WindowErrorCallback(int error, const char *description)
+    static void WindowErrorCallback(int error, const char *description)
 	{
 		/// Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
 		if (error == 0x10003 && strstr(description, "joystick"))
@@ -723,24 +723,31 @@ namespace SceneryEditorX
         switch (mode)
         {
             case WindowMode::Windowed:
+            {
                 winData.posY = std::max(winData.posY, 31);
                 glfwSetWindowMonitor(m_window, nullptr, winData.posX, winData.posY, m_winSpecs.width, m_winSpecs.height, GLFW_DONT_CARE);
 
                 if (winData.maximized)
+                {
                     glfwMaximizeWindow(m_window);
+                }
 
                 glfwSetWindowAttrib(m_window, GLFW_MAXIMIZED, winData.maximized ? GLFW_TRUE : GLFW_FALSE);
                 glfwSetWindowAttrib(m_window, GLFW_RESIZABLE, winData.resizable ? GLFW_TRUE : GLFW_FALSE);
                 glfwSetWindowAttrib(m_window, GLFW_DECORATED, winData.decorated ? GLFW_TRUE : GLFW_FALSE);
                 break;
+            }
 
             case WindowMode::WindowedFullScreen:
+            {
                 glfwSetWindowMonitor(m_window, currentMonitor, 0, 0, monitorMode->width, monitorMode->height, monitorMode->refreshRate);
                 break;
+            }
 
             case WindowMode::FullScreen:
+            {
                 if (videoModes && videoModeIndex < modesCount)
-				{
+                {
                     const GLFWvidmode videoMode = videoModes[videoModeIndex];
                     glfwSetWindowMonitor(m_window, currentMonitor, 0, 0, videoMode.width, videoMode.height, videoMode.refreshRate);
                 }
@@ -750,6 +757,7 @@ namespace SceneryEditorX
                 }
 
                 break;
+            }
         }
 
         winData.framebufferResized = false;
@@ -874,9 +882,9 @@ namespace SceneryEditorX
     }
 
     /**
-     * @brief
+     * @brief Sets the window title.
      *
-     * @param title 
+     * @param title The new title for the window.
      */
     void Window::SetTitle(const std::string &title)
     {
@@ -935,12 +943,7 @@ namespace SceneryEditorX
 	        return;
 	    }
 
-	    iconData.pixels = stbi_load_from_memory(iconData.buffer.data(),
-	                                            static_cast<int>(size),
-	                                            &iconData.width,
-	                                            &iconData.height,
-	                                            &iconData.channels,
-	                                            4);
+	    iconData.pixels = stbi_load_from_memory(iconData.buffer.data(),static_cast<int>(size),&iconData.width,&iconData.height,&iconData.channels,4);
 
 	    if (iconData.pixels)
 	    {
@@ -951,7 +954,9 @@ namespace SceneryEditorX
 	        SEDX_CORE_INFO("Window icon set successfully");
 	    }
 	    else
-            SEDX_CORE_ERROR("Failed to load window icon!");
+	    {
+	        SEDX_CORE_ERROR("Failed to load window icon!");
+	    }
     }
 
 	/**
@@ -966,7 +971,9 @@ namespace SceneryEditorX
 	bool Window::IsKeyPressed(const uint16_t keyCode) const
     {
         if (!m_window)
+        {
             return false;
+        }
 
         return lastKeyState[keyCode] && !glfwGetKey(m_window, keyCode);
 	}
@@ -982,11 +989,18 @@ namespace SceneryEditorX
      */
     SwapChain &Window::GetSwapChain() { return *swapChain; }
 
-
-	void Window::SetResizable(bool resizable) const
+    /**
+     * @brief Sets whether the window is resizable by the user.
+     *
+     * @param resizable True to make the window resizable, false to make it fixed size.
+     */
+    void Window::SetResizable(bool resizable) const
     {
         if (m_window)
             glfwSetWindowAttrib(m_window, GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE);
+
+        if (!m_window)
+            SEDX_CORE_ERROR("Failed to load window icon!");
     }
 
 }

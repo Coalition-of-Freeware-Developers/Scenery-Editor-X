@@ -12,15 +12,21 @@
 */
 #include <SceneryEditorX/renderer/image_data.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/image_data.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
+#include <SceneryEditorX/utils/static_states.h>
+#include <map>
+#include <vector>
+#include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
 
 /// -----------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	LOCAL std::map<VkImage, WeakRef<Image2D>> s_ImageReferences;
+	static std::map<VkImage, WeakRef<Image2D>> s_ImageReferences;
 
     /**
 	 * @brief Constructs a 2D image with the specified image specification.
@@ -42,14 +48,6 @@ namespace SceneryEditorX
 
 	void Image2D::Invalidate()
 	{
-#if INVESTIGATE
-        Ref<Image2D> instance(this);
-		Renderer::Submit([instance]() mutable
-		{
-			instance->Invalidate_RenderThread();
-		});
-#endif
-
 		Invalidate_RenderThread();
 	}
 
@@ -163,7 +161,7 @@ namespace SceneryEditorX
 		s_ImageReferences[m_Info.image] = Ref<Image2D>(this);
 		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_IMAGE, m_Specification.debugName, m_Info.image);
 
-		
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Default ImageView
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -252,6 +250,12 @@ namespace SceneryEditorX
 		}
 
 		UpdateDescriptor();
+
+		// Bindless auto-registration for storage images (binding 2)
+		if (m_Specification.usage == ImageUsage::Storage && BindlessDescriptorManager::GetDescriptorSet() != VK_NULL_HANDLE)
+		{
+			BindlessDescriptorManager::RegisterStorageImage(m_Info.view, VK_IMAGE_LAYOUT_GENERAL);
+		}
 	}
 
     void Image2D::CreatePerLayerImageViews()

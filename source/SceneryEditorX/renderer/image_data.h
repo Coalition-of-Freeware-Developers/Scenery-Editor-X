@@ -51,15 +51,18 @@ namespace SceneryEditorX
 	        ShaderRead					= 5,
 	        TransferSrc					= 6,
 	        TransferDst					= 7,
+            Preinitialized				= 8,
 	        DepthReadStencilAttachment	= 1000117000,
 	        DepthAttachmentStencilRead	= 1000117001,
 	        DepthAttachment				= 1000241000,
 	        DepthRead					= 1000241001,
 	        StencilAttachment			= 1000241002,
 	        StencilRead					= 1000241003,
+            FragmentShadeRate			= 1000164003,
 	        Read						= 1000314000,
 	        Attachment					= 1000314001,
 	        Present						= 1000001002,
+            Max							= 0x7FFFFFFF
 	    };
     }
 
@@ -92,12 +95,10 @@ namespace SceneryEditorX
         return false;
 	}
 
-    /*
     inline void GetDepthFormat()
     {
 		RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat();
     }
-    */
 
     struct ImageSubresourceRange
     {
@@ -120,12 +121,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    struct ImageID
-    {
-        GLOBAL std::vector<int32_t> availBufferRID;
-        GLOBAL std::vector<int32_t> availImageRID;
-        GLOBAL std::vector<int32_t> availTLASRID;
-    };
+    struct ImageID { /* Legacy resource ID pools removed */ };
 
     /// -------------------------------------------------------
 

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * shader_definitions.h
@@ -16,14 +16,14 @@
 
 namespace SceneryEditorX::ShaderSpecs
 {
-	
+
 	enum class AOMethod
 	{
 		None = 0,
 	    GTAO = BIT(1)
 	};
 
-	constexpr GLOBAL std::underlying_type_t<AOMethod> GetMethodIndex(const AOMethod method)
+	constexpr static std::underlying_type_t<AOMethod> GetMethodIndex(const AOMethod method)
 	{
 		switch (method)
 		{
@@ -32,9 +32,9 @@ namespace SceneryEditorX::ShaderSpecs
 		}
 		return 0;
 	}
-    constexpr GLOBAL ShaderSpecs::AOMethod ROMETHODS[4] = {AOMethod::None, AOMethod::GTAO};
+    constexpr static ShaderSpecs::AOMethod ROMETHODS[4] = {AOMethod::None, AOMethod::GTAO};
 
-	constexpr GLOBAL AOMethod GetAOMethod(const bool gtaoEnabled)
+	constexpr static AOMethod GetAOMethod(const bool gtaoEnabled)
 	{
 		if (gtaoEnabled)
 			return AOMethod::GTAO;

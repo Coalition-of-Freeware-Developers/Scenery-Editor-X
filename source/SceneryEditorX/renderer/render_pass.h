@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "command_manager.h"
 #include "texture.h"
 #include "buffers/storage_buffer.h"
 #include "buffers/uniform_buffer.h"
@@ -55,6 +56,58 @@ namespace SceneryEditorX
         std::string name;
     };
 
+    class RenderPass : public RefCounted
+    {
+    public:
+		RenderPass() = delete;
+		virtual ~RenderPass() override = default;
+
+        // passes - core
+        static void ProduceFrame(CommandManager* cmd_list_graphics_present, CommandManager* cmd_list_compute);
+        static void Pass_VariableRateShading(CommandManager* cmd_list);
+        static void Pass_ShadowMaps(CommandManager* cmd_list);
+        static void Pass_Occlusion(CommandManager* cmd_list);
+        static void Pass_Depth_Prepass(CommandManager* cmd_list);
+        static void Pass_GBuffer(CommandManager* cmd_list, const bool is_transparent_pass);
+        static void Pass_ScreenSpaceAmbientOcclusion(CommandManager* cmd_list);
+        static void Pass_TransparencyReflectionRefraction(CommandManager* cmd_list);
+        static void Pass_ScreenSpaceShadows(CommandManager* cmd_list);
+        static void Pass_Skysphere(CommandManager* cmd_list);
+
+        // passes - lighting
+        static void Pass_Light(CommandManager* cmd_list, const bool is_transparent_pass);
+        static void Pass_Light_Composition(CommandManager* cmd_list, const bool is_transparent_pass);
+        static void Pass_Light_ImageBased(CommandManager* cmd_list);
+        static void Pass_Lut_BrdfSpecular(CommandManager* cmd_list);
+        static void Pass_Lut_AtmosphericScattering(CommandManager* cmd_list);
+
+        // passes - debug/editor
+        static void Pass_Grid(CommandManager* cmd_list, Texture* tex_out);
+        static void Pass_Lines(CommandManager* cmd_list, Texture* tex_out);
+        static void Pass_Outline(CommandManager* cmd_list, Texture* tex_out);
+        static void Pass_Icons(CommandManager* cmd_list, Texture* tex_out);
+        static void Pass_Text(CommandManager* cmd_list, Texture* tex_out);
+
+        // passes - post-process
+        static void Pass_PostProcess(CommandManager* cmd_list);
+        static void Pass_Output(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_Fxaa(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_FilmGrain(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_Vhs(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_ChromaticAberration(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_MotionBlur(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_DepthOfField(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_Bloom(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_Sharpening(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_Dithering(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_Upscale(CommandManager* cmd_list);
+
+        // passes - utility
+        static void Pass_Blit(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
+        static void Pass_Downscale(CommandManager* cmd_list, Texture* tex, const DownsampleFilter filter);
+        static void Pass_Blur(CommandManager* cmd_list, Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
+
+    };
 
 }
 

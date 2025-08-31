@@ -26,6 +26,7 @@ namespace SceneryEditorX
      *
      * @note - The values in this enum are bitwise OR'd together to create a bitfield representing multiple access types.
      * @note - Identical to Vulkan's VkAccessFlagBits
+     * @see @enum VkAccessFlagBits
      */
     enum class ResourceAccessFlags
     {
@@ -72,12 +73,15 @@ namespace SceneryEditorX
     {
         enum class Stage
         {
-            Vertex		= 0x00000001,
-            Geometry	= 0x00000008,
-            Fragment	= 0x00000010,
-            Compute		= 0x00000020,
-            AllGraphics = 0x0000001F,
-            All			= 0x7FFFFFFF,
+            Vertex				= 0x00000001,
+            TesselationControl	= 0x00000002,
+            TesselationEval		= 0x00000004,
+            Geometry			= 0x00000008,
+            Fragment			= 0x00000010,
+            Compute				= 0x00000020,
+            AllGraphics			= 0x0000001F,
+            Raygen				= 0x00000100,
+            MaxEnum				= 0x7FFFFFFF,
         };
     }
 
@@ -111,8 +115,8 @@ namespace SceneryEditorX
 	 */
     enum class PipelineType : uint8_t
     {
-        Graphics = 0,
-        Compute = 1,
+        Graphics	= 0,
+        Compute		= 1,
     };
 
     /// -------------------------------------------------------
@@ -128,6 +132,7 @@ namespace SceneryEditorX
 	 * @note - The values in this enum are bitwise OR'd together
 	 * to create a bitfield representing multiple stages.
 	 * @note - Identical to Vulkan's VkPipelineStageFlagBits
+	 * @see @enum VkPipelineStageFlagBits
 	 */
     enum class PipelineStage
     {
@@ -148,7 +153,9 @@ namespace SceneryEditorX
         BottomOfPipe				= 0x00002000,
         Host						= 0x00004000,
         AllGraphics					= 0x00008000,
-        AllCommands					= 0x00010000
+        AllCommands					= 0x00010000,
+        TaskShader					= 0x00080000,
+        MeshShader					= 0x00100000,
     };
 
 	/// ---------------------------------------------------------
@@ -161,11 +168,14 @@ namespace SceneryEditorX
 	 * such as whether they are in linear or nonlinear sRGB space.
 	 *
 	 * @note - The values in this enum are designed to be compatible with Vulkan's VkColorSpaceKHR.
+	 * @see @enum VkColorSpaceKHR
 	 */
-    enum ColorSpace : uint8_t
+    enum ColorSpace
     {
-        ColorSpace_SRGB_LINEAR,
-        ColorSpace_SRGB_NONLINEAR,
+        SRGB_NonLinear		= 0,
+        SRGB_Linear			= 1000104002,
+        Adobe_RGB_Linear	= 1000104011,
+        Adobe_RGB_NonLinear = 1000104012,
     };
 
     /// ----------------------------------------------------------
@@ -179,12 +189,13 @@ namespace SceneryEditorX
 	 * or cubic interpolation.
 	 *
 	 * @note - The values in this enum are designed to be compatible with Vulkan's VkFilter.
+	 * @see @enum VkFilter
 	 */
-    enum class SamplerFilter : uint8_t
+    enum class SamplerFilter
     {
-        Nearest,
-        Linear,
-		Cubic
+        Nearest = 0,
+        Linear	= 1,
+        Cubic	= 1000015000
     };
 
     /**
@@ -195,12 +206,12 @@ namespace SceneryEditorX
      * such as whether to disable mipmapping, use nearest neighbor sampling, or linear interpolation.
      *
      * @note - The values in this enum are designed to be compatible with Vulkan's VkSamplerMipmapMode.
+     * @see @enum VkSamplerMipmapMode
      */
     enum class SamplerMip : uint8_t
     {
-        Disabled = 0,
-        Nearest,
-        Linear
+        Nearest = 0,
+        Linear	= 1
     };
 
     /**
@@ -211,12 +222,14 @@ namespace SceneryEditorX
 	 * such as repeating, clamping, or mirroring.
 	 *
 	 * @note - The values in this enum are designed to be compatible with Vulkan's VkSamplerAddressMode.
+	 * @see @enum VkSamplerAddressMode
 	 */
     enum class SamplerWrap : uint8_t
     {
-        Repeat = 0,
-        Clamp,
-        MirrorRepeat
+        Repeat			= 0,
+        Repeat_Mirrored = 1,
+        Clamp_Edge		= 2,
+        Clamp_Border	= 3,
     };
 
     /**
@@ -230,8 +243,8 @@ namespace SceneryEditorX
      */
     enum PolygonMode : uint8_t
     {
-        PolygonMode_Fill = 0,
-        PolygonMode_Line = 1,
+        Fill = 0,
+        Line = 1,
     };
 
     /**
@@ -242,12 +255,13 @@ namespace SceneryEditorX
 	 * such as being sampled, used for storage, or as an attachment.
 	 *
 	 * @note - The values in this enum are designed to be compatible with Vulkan's VkImageUsageFlagBits.
+	 * @see @enum VkImageUsageFlagBits
 	 */
     enum TextureUsageBits : uint8_t
     {
-        TextureUsageBits_Sampled = 1 << 0,
-        TextureUsageBits_Storage = 1 << 1,
-        TextureUsageBits_Attachment = 1 << 2,
+        Sampled	= 1 << 0,
+        Storage	= 1 << 1,
+        Attachment = 1 << 2,
     };
 
     /**
@@ -258,17 +272,17 @@ namespace SceneryEditorX
      * should be swizzled or remapped when sampling textures.
      *
      * @note - The values in this enum are designed to be compatible with Vulkan's @typedef VkComponentSwizzle.
-     * @see VkComponentSwizzle
+     * @see @enum VkComponentSwizzle
      */
     enum Swizzle : uint8_t
     {
-        Swizzle_Default = 0,
-        Swizzle_0,
-        Swizzle_1,
-        Swizzle_R,
-        Swizzle_G,
-        Swizzle_B,
-        Swizzle_A,
+        Default			= 0,
+        Swizzle_0		= 1,
+        Swizzle_1		= 2,
+        Swizzle_R		= 3,
+        Swizzle_G		= 4,
+        Swizzle_B		= 5,
+        Swizzle_A		= 6,
     };
 
     /**
@@ -358,15 +372,15 @@ namespace SceneryEditorX
      *
      * @note - The values in this enum are designed to be compatible with Vulkan's VkPrimitiveTopology.
      */
-    enum class PrimitiveTopology : uint8_t
+    enum class PrimitiveTopology
     {
-        None = 0,
-        Points,
-        Lines,
-        Triangles,
-        LineStrip,
-        TriangleStrip,
-        TriangleFan
+        Points			= 0,
+        Line			= 1,
+        LineStrip		= 2,
+        Triangles		= 3,
+        TriangleStrip	= 4,
+        TriangleFan		= 5,
+        MaxEnum			= 0x7FFFFFFF
     };
 
     /**
@@ -377,18 +391,19 @@ namespace SceneryEditorX
      * that can be used in depth testing during rendering.
      *
      * @note - The values in this enum are designed to be compatible with Vulkan's VkCompareOp.
+     * @see @enum VkCompareOp
      */
-    enum class DepthCompareOperator : uint8_t
+    enum class DepthCompareOperator
     {
-        None = 0,
-        Never,
-        NotEqual,
-        Less,
-        LessOrEqual,
-        Greater,
-        GreaterOrEqual,
-        Equal,
-        Always,
+        Never			= 0,
+        Less			= 1,
+        Equal			= 2,
+        LessOrEqual		= 3,
+        Greater			= 4,
+        NotEqual		= 5,
+        GreaterOrEqual	= 6,
+        Always			= 7,
+        MaxEnum			= 0x7FFFFFFF
     };
 
     /**
@@ -399,14 +414,15 @@ namespace SceneryEditorX
 	 * which can affect performance optimizations and memory management.
 	 *
 	 * @note - The values are designed to be compatible with Vulkan buffer usage flags.
+	 * @see @enum VkBufferUsageFlagBits
 	 */
     enum class VertexBufferType : uint8_t
     {
-        None = 0,      ///< No specific type defined.
-        Static = 1,    ///< Static data, rarely or never updated (GPU optimized).
-        Dynamic = 2,   ///< Frequently changed data (CPU-GPU shared memory).
-        Transient = 3, ///< Single-use buffer that will be discarded after rendering.
-        Streaming = 4  ///< Continuously streamed data (e.g. particles).
+        None		= 0,    ///< No specific type defined.
+        Static		= 1,    ///< Static data, rarely or never updated (GPU optimized).
+        Dynamic		= 2,	///< Frequently changed data (CPU-GPU shared memory).
+        Transient	= 3,	///< Single-use buffer that will be discarded after rendering.
+        Streaming	= 4		///< Continuously streamed data (e.g. particles).
     };
 
     /**
@@ -421,19 +437,18 @@ namespace SceneryEditorX
 	 */
     enum class VertexFormat : uint8_t
     {
-        None = 0,
-        Position2D = 1,                         ///< Vec2 position
-        Position3D = 2,                         ///< Vec3 position
-        Position3D_Color3 = 3,                  ///< Vec3 position + Vec3 color
-        Position3D_Color4 = 4,                  ///< Vec3 position + Vec4 color
-        Position3D_Normal = 5,                  ///< Vec3 position + Vec3 normal
-        Position3D_TexCoord = 6,                ///< Vec3 position + Vec2 texcoord
-        Position3D_Color4_TexCoord = 7,         ///< Vec3 position + Vec4 color + Vec2 texcoord
-        Position3D_Normal_TexCoord = 8,         ///< Vec3 position + Vec3 normal + Vec2 texcoord
-        Position3D_Normal_TexCoord_Tangent = 9, ///< Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
-        Custom = 255                            ///< Custom vertex format defined by user
+        None								= 0,
+        Position2D							= 1,    // Vec2 position
+        Position3D							= 2,    // Vec3 position
+        Position3D_Color3					= 3,    // Vec3 position + Vec3 color
+        Position3D_Color4					= 4,    // Vec3 position + Vec4 color
+        Position3D_Normal					= 5,    // Vec3 position + Vec3 normal
+        Position3D_TexCoord					= 6,    // Vec3 position + Vec2 texcoord
+        Position3D_Color4_TexCoord			= 7,    // Vec3 position + Vec4 color + Vec2 texcoord
+        Position3D_Normal_TexCoord			= 8,    // Vec3 position + Vec3 normal + Vec2 texcoord
+        Position3D_Normal_TexCoord_Tangent	= 9,	// Vec3 position + Vec3 normal + Vec2 texcoord + Vec4 tangent
+        Custom								= 255	// Custom vertex format defined by user
     };
-
 
 	/**
 	 * @enum ShaderDataType
@@ -447,18 +462,138 @@ namespace SceneryEditorX
     enum class ShaderDataType : uint8_t
     {
         None = 0,
+        Bool,
+        Int,
         Float,
         Float2,
         Float3,
         Float4,
         Mat3,
         Mat4,
-        Int,
         Int2,
         Int3,
         Int4,
-        Bool
+		IVec2,
+        IVec3,
+        IVec4,
+		Vec2,
+		Vec3,
+		Vec4,
+        Uint,
     };
+
+    /**
+	 * @enum Queue
+	 * @brief Enumeration of Vulkan queue family types used in the rendering system
+	 *
+	 * Vulkan uses different queue families to execute different types of operations.
+	 * This enum provides a type-safe way to identify and reference these queue families
+	 * throughout the rendering system.
+	 */
+    enum Queue : uint8_t
+    {
+        Graphics = 0,  // Graphics queue family for rendering operations and drawing commands
+        Compute  = 1,  // Compute queue family for compute shader and general computation operations
+        Transfer = 2,  // Transfer queue family dedicated to memory transfer operations
+        Count    = 3,  // Total number of queue families
+        Present  = 4,  // Present queue family for presenting rendered images to the display surface
+    };
+
+    /**
+     * @enum FrameSyncType
+     * @brief Defines the synchronization primitive types used for frame synchronization in Vulkan.
+     *
+     * This enum specifies the types of synchronization primitives that can be used
+     * to synchronize rendering operations between the CPU and GPU, such as fences and semaphores.
+     *
+     * @note - The values in this enum are designed to be compatible with Vulkan's VkSemaphoreType.
+     * @see @enum VkSemaphoreType
+     */
+    enum class FrameSyncType
+    {
+        SyncFence             = 0,
+        SyncSemaphore         = 1,
+        SyncSemaphoreTimeline = 2,
+        MaxEnum               = 0x7FFFFFFF
+    };
+
+	/**
+	 * @enum CullMode
+	 * @brief Represents the culling modes used in Vulkan.
+	 *
+	 * This enum specifies how polygons should be culled during rendering,
+	 * such as whether to cull front-facing, back-facing, or both types of polygons.
+	 *
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkCullModeFlagBits.
+	 * @see @enum VkCullModeFlagBits
+	 */
+    enum class CullMode
+    {
+        None			= 0,
+        Front			= 0x00000001,
+		Back			= 0x00000002,
+		FrontAndBack	= 0x00000003,
+        MaxEnum			= 0x7FFFFFFF,
+    };
+
+    /**
+     * @enum FilterMode
+     * @brief Defines the filtering modes for texture sampling.
+     *
+     * This enum specifies how textures should be filtered when sampled,
+     * such as using nearest neighbor, linear interpolation, or cubic interpolation.
+     *
+     * @note - The values in this enum are designed to be compatible with Vulkan's VkFilter and VkSamplerMipmapMode.
+     * @see @enum VkFilter
+     */
+    enum class FilterMode : uint8_t
+	{
+		Nearest = 0,
+		Linear  = 1,
+		Cubic   = 2
+    };
+
+    /**
+	 * @enum RenderTarget
+	 * @brief Defines the various render targets used in the rendering pipeline.
+	 *
+	 * This enum specifies the different types of render targets that can be used
+	 * throughout the rendering process, such as G-buffers, lighting buffers, and post-processing effects.
+	 *
+	 * @note - The values in this enum are designed to be compatible with the rendering system's requirements.
+     */
+	enum class RenderTarget : uint8_t
+    {
+        gBuffer_Color,
+        gBuffer_Normal,
+        gBuffer_Material,
+        gBuffer_Velocity,
+        gBuffer_Depth,
+        gBuffer_DepthOccluders,
+        gBuffer_DepthOccluders_hiz,
+        gBuffer_DepthOpaque_Output,
+        LUT_Specular_BRDF,
+        LUT_Atmosphere_Scatter,
+        LightDiffuse,
+        LightSpecular,
+        LightShadow,
+        LightVolumetric,
+        FrameRender,
+        FrameRenderOpaque,
+        FrameOutput,
+        FrameOutput2,
+        SSAO,
+        SSR,
+        SSS,
+        SkySphere,
+        Bloom,
+        Blur,
+        Outline,
+        ShadingRate,
+        ShadowAtlas,
+        Max
+	};
+
 
 }
 

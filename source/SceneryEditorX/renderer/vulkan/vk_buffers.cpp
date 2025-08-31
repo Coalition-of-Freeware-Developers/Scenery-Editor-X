@@ -13,6 +13,7 @@
 #include "vk_buffers.h"
 #include "SceneryEditorX/renderer/image_data.h"
 #include "SceneryEditorX/renderer/render_context.h"
+#include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
 
 /// ----------------------------------------------------------
 
@@ -43,7 +44,7 @@ namespace SceneryEditorX
     }*/
 
     /*
-    GLOBAL void EndCommands(VkCommandBuffer commandBuffer)
+    static void EndCommands(VkCommandBuffer commandBuffer)
     {
         vkEndCommandBuffer(commandBuffer);
 
@@ -162,34 +163,13 @@ namespace SceneryEditorX
 	    buffer.usage = usage;
 	    buffer.memory = memory;
 
-	    /// Handle storage buffer descriptors for bindless access
-	    if (usage & BufferUsage::Storage)
-	    {
-            //BindlessResources bindlessData;
-
-	        /// Get a resource ID from the available pool
-	        resource->resourceID = ImageID::availBufferRID.back();
-	        ImageID::availBufferRID.pop_back();
-
-	        /// Set up descriptor info for the storage buffer
-	        VkDescriptorBufferInfo descriptorInfo;
-	        VkWriteDescriptorSet write = {};
-	        descriptorInfo.buffer = resource->buffer;
-	        descriptorInfo.offset = 0;
-	        descriptorInfo.range = size;
-
-	        /// Configure descriptor write operation
-	        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	        //write.dstSet = bindlessData.bindlessDescriptorSet;
-	        write.dstBinding = 1;
-	        write.dstArrayElement = buffer.resource->resourceID;
-	        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	        write.descriptorCount = 1;
-	        write.pBufferInfo = &descriptorInfo;
-
-	        /// Update descriptor set with buffer info
-            vkUpdateDescriptorSets(device->GetDevice(), 1, &write, 0, nullptr);
-        }
+			// Register storage buffer into global bindless manager if available
+			if (usage & BufferUsage::Storage)
+			{
+				// Register buffer in bindless descriptor manager (legacy RID fallback removed)
+				uint32_t bIndex = BindlessDescriptorManager::RegisterStorageBuffer(resource->buffer, size, 0);
+				resource->resourceID = bIndex;
+			}
 
 	    return buffer;
 	}

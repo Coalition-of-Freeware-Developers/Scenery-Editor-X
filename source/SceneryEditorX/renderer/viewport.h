@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * viewport.h
@@ -32,11 +32,11 @@ namespace SceneryEditorX
 
         float GetAspectRatio() const;
         bool IsDefined() const;
-        
+
         // Access to viewport data
         const ViewportData& GetData() const { return m_Data; }
         void SetData(const ViewportData &data);
-        
+
         // Convenience accessors
         float GetX() const { return m_Data.x; }
         float GetY() const { return m_Data.y; }
@@ -44,7 +44,7 @@ namespace SceneryEditorX
         float GetHeight() const { return m_Data.height; }
         float GetMinDepth() const { return m_Data.minDepth; }
         float GetMaxDepth() const { return m_Data.maxDepth; }
-        
+
         // Setters for mutable operations
         void SetPosition(float x, float y);
         void SetSize(float width, float height);
@@ -57,14 +57,14 @@ namespace SceneryEditorX
         bool viewportResized = false;
 
         // Static undefined viewport instance
-        GLOBAL const Viewport& GetUndefined();
+        static const Viewport& GetUndefined();
 
     private:
         /** @brief Core viewport data using the existing ViewportData struct */
         ViewportData m_Data;
-        
+
         // Static undefined instance - declared here, defined in source
-        INTERNAL Viewport s_Undefined;
+        static Viewport s_Undefined;
     };
 
 }

@@ -242,11 +242,6 @@ namespace SceneryEditorX
             return;
 
         VkCommandPool commandPool = cmdPool;
-        Renderer::SubmitResourceFree([commandPool]()
-        {
-            auto device = RenderContext::GetCurrentDevice();
-            vkDestroyCommandPool(device->GetDevice(), commandPool, nullptr);
-        });
     }
 
     /// -------------------------------------------------------
@@ -263,7 +258,6 @@ namespace SceneryEditorX
     }
 
     /// -------------------------------------------------------
-
 
 	void CommandBuffer::Begin()
 	{

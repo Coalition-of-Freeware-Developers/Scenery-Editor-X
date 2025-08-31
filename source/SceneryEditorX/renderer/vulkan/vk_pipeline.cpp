@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_pipeline.cpp
@@ -13,6 +13,7 @@
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 #include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
+#include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
 
 #include "vk_pipeline_cache.h"
 #include "vk_util.h"
@@ -27,12 +28,10 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(data.shader);
         SEDX_CORE_ASSERT(data.dstFramebuffer);
         Pipeline::Invalidate();
-        //Renderer::RegisterShaderDependency(data.shader, this);
     }
 
     Pipeline::~Pipeline()
     {
-        /*
         if (VkDevice device = RenderContext::GetCurrentDevice()->GetDevice())
         {
             if (pipeline != nullptr)
@@ -53,7 +52,7 @@ namespace SceneryEditorX
                 pipelineCache = nullptr;
             }
         }
-        */
+
         Renderer::SubmitResourceFree(
             [pipeline = pipeline, pipelineCache = pipelineCache, pipelineLayout = pipelineLayout]() {
                 const auto vulkanDevice = RenderContext::GetCurrentDevice()->GetDevice();
@@ -62,12 +61,11 @@ namespace SceneryEditorX
                 vkDestroyPipelineLayout(vulkanDevice, pipelineLayout, nullptr);
             });
 
-        /*
+
         const auto device = RenderContext::GetCurrentDevice()->GetDevice();
         vkDestroyPipeline(device, pipeline, nullptr);
         vkDestroyPipelineCache(device, pipelineCache, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        */
 
     }
 
@@ -97,9 +95,9 @@ namespace SceneryEditorX
             shaderStages[i].pSpecializationInfo = nullptr;
         }
 
-        BindlessResources bindlessResource;
         std::vector<VkDescriptorSetLayout> layouts;
-        layouts.push_back(bindlessResource.bindlessDescriptorLayout);
+        if (auto bindlessLayout = BindlessDescriptorManager::GetLayout(); bindlessLayout != VK_NULL_HANDLE)
+            layouts.push_back(bindlessLayout);
 
 	    VkPushConstantRange pushConstant{};
         pushConstant.offset = 0;
@@ -432,11 +430,9 @@ namespace SceneryEditorX
 
             /// Set up descriptor set layouts
             std::vector<VkDescriptorSetLayout> layouts;
-
-
-			/// Get the bindless descriptor set layout from the device
-			if (device->GetBindlessResources().bindlessDescriptorSetLayout != VK_NULL_HANDLE)
-			    layouts.push_back(device->GetBindlessResources().bindlessDescriptorSetLayout);
+            // Append global bindless layout if initialized
+            if (BindlessDescriptorManager::GetLayout() != VK_NULL_HANDLE)
+                layouts.push_back(BindlessDescriptorManager::GetLayout());
 
             /// Create the graphics pipeline layout
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -450,7 +446,7 @@ namespace SceneryEditorX
 
             /// Get the render pass from the swap chain
             VkRenderPass renderPass = vkSwapChain->GetRenderPass();
-        
+
             /// Complete pipeline creation info
             VkGraphicsPipelineCreateInfo pipelineInfo{};
             pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -474,8 +470,8 @@ namespace SceneryEditorX
 
             /// Clean up shader modules
             shaderPtr.Reset();
-            //vkDestroyShaderModule(device->GetDevice(), fragShaderModule, nullptr);
-            //vkDestroyShaderModule(device->GetDevice(), vertShaderModule, nullptr);
+            vkDestroyShaderModule(device->GetDevice(), fragShaderModule, nullptr);
+            vkDestroyShaderModule(device->GetDevice(), vertShaderModule, nullptr);
         }
 	}
 	*/
@@ -748,27 +744,30 @@ namespace SceneryEditorX
 
     /// Changed to utilize Shader class for shader module creation
 
-    /*
+
     /// Helper function to create a shader module from shader code
+    /*
     VkShaderModule Pipeline::CreateShaderModule(VkDevice device, const std::vector<char>& code)
     {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
         createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-        
+
         VkShaderModule shaderModule;
         if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 		{
             SEDX_CORE_ERROR("Failed to create shader module!");
             return VK_NULL_HANDLE;
         }
-        
+
         return shaderModule;
     }
     */
 
+
     /// -------------------------------------------------------
+
 
     /*
     VkExtent2D Pipeline::GetFloatSwapExtent()

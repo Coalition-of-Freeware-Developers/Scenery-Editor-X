@@ -167,7 +167,7 @@ namespace SceneryEditorX
 			robotoDefault.Size = 15.0f;
 			UI::Fonts::Add(robotoDefault, true);
 
-			INTERNAL constexpr ImWchar s_FontAwesomeRanges[] = { SEDX_ICON_MIN, SEDX_ICON_MAX, 0 };
+			static constexpr ImWchar s_FontAwesomeRanges[] = { SEDX_ICON_MIN, SEDX_ICON_MAX, 0 };
 			UI::FontConfiguration fontAwesome;
 			fontAwesome.FontName = "FontAwesome";
 			fontAwesome.FilePath = "Resources/Fonts/FontAwesome/fontawesome-webfont.ttf";

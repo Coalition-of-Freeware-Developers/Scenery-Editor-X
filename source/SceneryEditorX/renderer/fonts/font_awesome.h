@@ -1,8 +1,8 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * font_awesome.h
@@ -29,7 +29,7 @@ enum SEDX_ICON_FON : uint16_t
 /// -----------------------------------------------------
 
 constexpr auto SEDX_ICON_GLASS							= "\uf000";
-constexpr auto SEDX_ICON_MUSIC							= "\uf001";;
+constexpr auto SEDX_ICON_MUSIC							= "\uf001";
 constexpr auto SEDX_ICON_SEARCH							= "\uf002";
 constexpr auto SEDX_ICON_ENVELOPE_O						= "\uf003";
 constexpr auto SEDX_ICON_HEART							= "\uf004";

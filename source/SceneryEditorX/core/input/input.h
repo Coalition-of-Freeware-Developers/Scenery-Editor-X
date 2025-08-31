@@ -89,36 +89,36 @@ namespace SceneryEditorX
 	class Input
 	{
 	public:
-		GLOBAL void Update();
+		static void Update();
 
-		LOCAL bool IsKeyPressed(KeyCode keycode);
-		LOCAL bool IsKeyHeld(KeyCode keycode);
-		LOCAL bool IsKeyDown(KeyCode keycode);
-		LOCAL bool IsKeyReleased(KeyCode keycode);
-		LOCAL bool IsKeyToggledOn(KeyCode keycode);
+		static bool IsKeyPressed(KeyCode keycode);
+		static bool IsKeyHeld(KeyCode keycode);
+		static bool IsKeyDown(KeyCode keycode);
+		static bool IsKeyReleased(KeyCode keycode);
+		static bool IsKeyToggledOn(KeyCode keycode);
 
-		LOCAL bool IsMouseButtonPressed(MouseButton button);
-		LOCAL bool IsMouseButtonHeld(MouseButton button);
-		LOCAL bool IsMouseButtonDown(MouseButton button);
-		LOCAL bool IsMouseButtonReleased(MouseButton button);
-		GLOBAL float GetMouseX();
-		GLOBAL float GetMouseY();
-		GLOBAL std::pair<float, float> GetMousePosition();
+		static bool IsMouseButtonPressed(MouseButton button);
+		static bool IsMouseButtonHeld(MouseButton button);
+		static bool IsMouseButtonDown(MouseButton button);
+		static bool IsMouseButtonReleased(MouseButton button);
+		static float GetMouseX();
+		static float GetMouseY();
+		static std::pair<float, float> GetMousePosition();
 
-		LOCAL void SetCursorMode(CursorMode mode);
-		INTERNAL CursorMode GetCursorMode();
+		static void SetCursorMode(CursorMode mode);
+		static CursorMode GetCursorMode();
 
 		/// Internal use only...
-		INTERNAL void TransitionPressedKeys();
-		INTERNAL void TransitionPressedButtons();
-		INTERNAL void UpdateKeyState(KeyCode key, KeyState newState);
-		INTERNAL void UpdateKeyMods(std::optional<KeyMods> mods);
-		INTERNAL void UpdateButtonState(MouseButton button, KeyState newState);
-		INTERNAL void ClearReleasedKeys();
+		static void TransitionPressedKeys();
+		static void TransitionPressedButtons();
+		static void UpdateKeyState(KeyCode key, KeyState newState);
+		static void UpdateKeyMods(std::optional<KeyMods> mods);
+		static void UpdateButtonState(MouseButton button, KeyState newState);
+		static void ClearReleasedKeys();
 	private:
-		inline LOCAL std::map<KeyCode, KeyData> s_KeyData;
-		inline LOCAL std::map<MouseButton, ButtonData> s_MouseData;
-		inline LOCAL KeyMods s_Mods = KeyMods::None;
+		inline static std::map<KeyCode, KeyData> s_KeyData;
+		inline static std::map<MouseButton, ButtonData> s_MouseData;
+		inline static KeyMods s_Mods = KeyMods::None;
 	};
 
 }

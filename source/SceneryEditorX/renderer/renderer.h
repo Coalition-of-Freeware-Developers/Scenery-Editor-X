@@ -12,16 +12,18 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "command_queue.h"
 #include "compute_pass.h"
 #include "SceneryEditorX/asset/mesh/mesh.h"
 #include "SceneryEditorX/core/application/application.h"
-#include "SceneryEditorX/core/threading/render_thread.h"
 #include "SceneryEditorX/scene/material.h"
 #include "SceneryEditorX/scene/scene.h"
 #include "buffers/index_buffer.h"
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_render_pass.h"
+#include "SceneryEditorX/utils/pointers.h"
+#include "render_dispatcher.h"
+
+#include "fonts/font.h"
 
 /// -------------------------------------------------------
 
@@ -38,7 +40,7 @@ namespace SceneryEditorX
      * The Renderer class manages frame lifecycle, command submission, shader hot-reload
      * propagation, descriptor and sampler utilities, render/compute pass orchestration,
      * and deferred resource destruction on the render thread. Most functions are exposed
-     * as GLOBAL (static) entry points to allow easy invocation across systems while
+     * as static (static) entry points to allow easy invocation across systems while
      * ensuring ordered execution on the render thread where required.
      *
      * Core Responsibilities:
@@ -59,127 +61,32 @@ namespace SceneryEditorX
     class Renderer
 	{
 	public:
-        /**
-         * @typedef RenderCommandFn
-         * @brief Function pointer signature used to execute a recorded render command.
-         *
-         * Each submitted lambda/functor is placement-new constructed into a transient
-         * linear buffer inside a CommandQueue. When executed, the queue invokes the
-         * associated RenderCommandFn passing the pointer to the stored callable object.
-         * The callable is then manually destroyed (unless trivially destructible).
-         *
-         * @param void* Opaque pointer to the callable object storage.
-         *
-         * @note: This function pointer type is used internally by the Renderer to
-         *       execute submitted commands on the render thread.
-         *
-         * @code
-         * Renderer::RenderCommandFn cmdFn = [](void* ptr)
-         * {
-         *	auto pFunc = (FuncT*)ptr;
-         *	(*pFunc)(); // Call the submitted function
-         *	pFunc->~FuncT(); // Explicitly destroy the callable
-         * };
-         * @endcode
-         */
-        typedef void (*RenderCommandFn)(void *);
+		// Async submission helpers (now routed through RenderDispatcher)
+		template<typename FuncT>
+		static inline void Submit(FuncT&& func)
+		{
+			RenderDispatcher::Enqueue(std::forward<FuncT>(func));
+		}
+
+		template<typename FuncT>
+		static inline void SubmitResourceFree(FuncT&& func)
+		{
+			RenderDispatcher::EnqueueResourceFree(std::forward<FuncT>(func));
+		}
 
 		/**
 		 * @brief Retrieve the global render context instance.
 		 * @return Shared reference to RenderContext.
 		 */
-		GLOBAL Ref<RenderContext> GetContext();
+		static Ref<RenderContext> GetContext();
 
         /// -------------------------------------------------------
 
-        GLOBAL void Init();
-		GLOBAL void Shutdown();
-        GLOBAL void BeginFrame();
-        GLOBAL void EndFrame();
-        GLOBAL void SubmitFrame();
-
-        /// -------------------------------------------------------
-
-        /**
-         * @brief Submit a callable to execute on the render thread command queue.
-         *
-         * The callable is copied (or moved) into a linear transient buffer; execution
-         * occurs later on the render thread. The callable is explicitly destroyed
-         * after invocation to permit non-trivially-destructible closures (e.g. with
-         * std::string members).
-         *
-         * @tparam FuncT Callable type (lambda/functor) - must be invocable with ().
-         * @param func Callable instance (forwarded).
-         *
-         * @note Avoid capturing large objects by value; prefer lightweight handles.
-         * @threadsafe Yes.
-         */
-        template<typename FuncT>
-		static void Submit(FuncT&& func)
-		{
-			auto renderCmd = [](void* ptr)
-            {
-				auto pFunc = (FuncT*)ptr;
-				(*pFunc)();
-
-				/**
-				 * @note: Instead of destroying we could try and enforce all items to be trivally destructible
-				 * however some items like uniforms which contain std::strings still exist for now.
-				 * static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
- 				 */
-				pFunc->~FuncT();
-			};
-			auto storageBuffer = GetCommandQueue().Allocate(renderCmd, sizeof(func));
-			new (storageBuffer) FuncT(std::forward<FuncT>(func));
-		}
-
-        /// -------------------------------------------------------
-
-        /**
-		 * @brief Submit a callable that frees GPU resources at a safe time.
-		 *
-		 * If called from the render thread the resource-free command is enqueued
-		 * directly into the current frame's release queue; otherwise it is marshalled
-		 * via Submit() to ensure correct thread context.
-		 *
-		 * Use this for destroying Vulkan objects / buffers / images that must survive
-		 * until the GPU finishes referencing them.
-		 *
-		 * @tparam FuncT Callable type.
-		 * @param func Callable responsible for performing resource destruction.
-		 */
-		template<typename FuncT>
-		static void SubmitResourceFree(FuncT&& func)
-		{
-			auto renderCmd = [](void* ptr)
-            {
-				auto pFunc = (FuncT*)ptr;
-				(*pFunc)();
-
-				/**
-				 * @note: Instead of destroying we could try and enforce all items to be trivally destructible
-				 * however some items like uniforms which contain std::strings still exist for now.
-				 * static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
-				 */
-				pFunc->~FuncT();
-			};
-
-			if (RenderThread::IsCurrentThreadRT())
-			{
-				const uint64_t index = GetCurrentFrameIndex();
-				auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
-				new (storageBuffer) FuncT(std::forward<FuncT>((FuncT&&)func));
-			}
-			else
-			{
-				const uint64_t index = GetCurrentFrameIndex();
-				Submit([renderCmd, func, index]()
-				{
-					auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
-					new (storageBuffer) FuncT(std::forward<FuncT>((FuncT&&)func));
-				});
-			}
-		}
+        static void Init();
+		static void Shutdown();
+        static void BeginFrame();
+        static void EndFrame();
+        static void SubmitFrame();
 
         /// -------------------------------------------------------
 
@@ -187,60 +94,21 @@ namespace SceneryEditorX
         * @brief Access current frame's aggregated immutable render data.
         * @return Reference to the active RenderData structure.
         */
-        GLOBAL RenderData &GetRenderData();
+        static RenderData &GetRenderData();
 
         /**
         * @brief Replace the active frame RenderData.
         * @param renderData New data snapshot copied into internal storage.
         */
-        GLOBAL void SetRenderData(const RenderData &renderData);
-
-        /**
-        * @brief Entry point executed by the render thread main loop.
-        * @param renderThread Pointer to the owning RenderThread.
-        */
-        GLOBAL void RenderThreadFunc(RenderThread *renderThread);
-
-        /**
-        * @brief Wait for required synchronization then perform rendering.
-        * @param renderThread Pointer to render thread context.
-        */
-        GLOBAL void WaitAndRender(RenderThread *renderThread);
-
-        /**
-        * @brief Swap front/back command queues to prepare for next frame submission.
-        *
-        * Usually invoked once per frame during SubmitFrame().
-        */
-        GLOBAL void SwapQueues();
+        static void SetRenderData(const RenderData &renderData);
 
         /// -------------------------------------------------------
-
-        /**
-		 * @brief Get the active swapchain instance.
-		 * @return Pointer to swapchain (could be null before Init()).
-		 */
-		//GLOBAL SwapChain *GetSwapChain();
-
-        /// -------------------------------------------------------
-
-        /**
-         * @brief Get the graphics queue family index used for primary rendering.
-         * @return Queue family index.
-         */
-        GLOBAL uint32_t GetRenderQueueIndex();
-
-        /**
-         * @brief Get per-frame submission counter (monotonically increasing).
-         * @return Submission index.
-         */
-        GLOBAL uint32_t GetRenderQueueSubmissionIndex();
 
         /**
          * @brief Get the current frame-in-flight index (ring buffer slot).
          * @return Frame index.
          */
-        GLOBAL uint64_t GetCurrentFrameIndex();
+        static uint64_t GetCurrentFrameIndex();
 
         /// -------------------------------------------------------
 
@@ -253,6 +121,9 @@ namespace SceneryEditorX
          * @return Populated VkDescriptorSetAllocateInfo ready for vkAllocateDescriptorSets.
          */
         VkDescriptorSetAllocateInfo DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count = 1, VkDescriptorPool pool = nullptr);
+        Ref<Font> &GetFont();
+
+        Ref<Material> &GetStandardMaterial();
 
         /// -------------------------------------------------------
 
@@ -261,13 +132,13 @@ namespace SceneryEditorX
          * @param samplerCreateInfo Mutable create info (fields may be adjusted internally).
          * @return Created VkSampler handle.
          */
-        GLOBAL VkSampler CreateSampler(VkSamplerCreateInfo &samplerCreateInfo);
+        static VkSampler CreateSampler(VkSamplerCreateInfo &samplerCreateInfo);
 
         /**
          * @brief Destroy a Vulkan sampler previously created via CreateSampler().
          * @param sampler Sampler handle to destroy (ignored if VK_NULL_HANDLE).
          */
-        GLOBAL void DestroySampler(VkSampler sampler);
+        static void DestroySampler(VkSampler sampler);
 
         /// -------------------------------------------------------
 
@@ -275,29 +146,20 @@ namespace SceneryEditorX
 		 * @brief Access the global shader library.
 		 * @return Shared reference to ShaderLibrary.
 		 */
-		GLOBAL Ref<ShaderLibrary> GetShaderLibrary();
-
-		/**
-		 * @brief Get the per-frame resource release queue (deferred destruction).
-		 * @param index Frame index slot.
-		 * @return Reference to CommandQueue for that frame.
-		 */
-		GLOBAL CommandQueue &GetRenderResourceReleaseQueue(uint32_t index);
-
-		/// -------------------------------------------------------
+		static Ref<ShaderLibrary> GetShaderLibrary();
 
 		/**
 		 * @brief Get the current frame index as seen from the render thread (may differ from CPU).
 		 * @return Render thread frame index.
 		 */
-		GLOBAL uint32_t GetCurrentRenderThreadFrameIndex();
+		static uint32_t GetCurrentRenderThreadFrameIndex();
 
 		/**
 		 * @brief Number of descriptor allocations performed this frame (for diagnostics).
 		 * @param frameIndex Optional frame override (0 = current).
 		 * @return Allocation count.
 		 */
-		GLOBAL uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
+		static uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
 
 		/**
 		 * @brief Submit a fullscreen triangle/quad draw call with provided pipeline & material.
@@ -305,7 +167,7 @@ namespace SceneryEditorX
 		 * @param pipeline Graphics pipeline to bind.
 		 * @param material Material providing descriptor sets / push constants.
 		 */
-		GLOBAL void SubmitFullscreenQuad(Ref<CommandBuffer> & ref, Ref<Pipeline> & pipeline, Ref<Material> & material);
+		static void SubmitFullscreenQuad(Ref<CommandBuffer> & ref, Ref<Pipeline> & pipeline, Ref<Material> & material);
 
 		/**
 		 * @brief Capture a screenshot of the current swapchain image.
@@ -313,25 +175,25 @@ namespace SceneryEditorX
 		 * @param immediateDispatch If true, executes immediately instead of deferred.
 		 * @param format Image format string ("png", "jpg", etc.).
 		 */
-		GLOBAL void Screenshot(const std::string &file_path, bool immediateDispatch = false, std::string format = "png");
-        GLOBAL void RenderStaticMesh(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount);
-		GLOBAL void RenderSubmeshInstanced(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount);
-		GLOBAL void RenderMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
-		GLOBAL void RenderStaticMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
-		GLOBAL void RenderQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, const Mat4& transform);
-		GLOBAL void SubmitFullscreenQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material);
-		GLOBAL void SubmitFullscreenQuadWithOverrides(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Buffer vertexShaderOverrides, Buffer fragmentShaderOverrides);
-		GLOBAL void LightCulling(Ref<CommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups);
-		GLOBAL void RenderGeometry(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Ref<VertexBuffer> vertexBuffer, Ref<IndexBuffer> indexBuffer, const Mat4& transform, uint32_t indexCount = 0);
-		GLOBAL void SubmitQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Material> material, const Mat4& transform = Mat4(1.0f));
-		GLOBAL void BlitImage(Ref<CommandBuffer> renderCommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+		static void Screenshot(const std::string &file_path, bool immediateDispatch = false, std::string format = "png");
+        static void RenderStaticMesh(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount);
+		static void RenderSubmeshInstanced(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount);
+		static void RenderMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
+		static void RenderStaticMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
+		static void RenderQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, const Mat4& transform);
+		static void SubmitFullscreenQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material);
+		static void SubmitFullscreenQuadWithOverrides(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Buffer vertexShaderOverrides, Buffer fragmentShaderOverrides);
+		static void LightCulling(Ref<CommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups);
+		static void RenderGeometry(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Ref<VertexBuffer> vertexBuffer, Ref<IndexBuffer> indexBuffer, const Mat4& transform, uint32_t indexCount = 0);
+		static void SubmitQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Material> material, const Mat4& transform = Mat4(1.0f));
+		static void BlitImage(Ref<CommandBuffer> renderCommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 
-		GLOBAL Ref<Texture2D> GetWhiteTexture();
-		GLOBAL Ref<Texture2D> GetBlackTexture();
-		GLOBAL Ref<Texture2D> GetHilbertLut();
-		GLOBAL Ref<Texture2D> GetBRDFLutTexture();
-		GLOBAL Ref<TextureCube> GetBlackCubeTexture();
-		GLOBAL Ref<Environment> GetEmptyEnvironment();
+		static Ref<Texture2D> GetWhiteTexture();
+		static Ref<Texture2D> GetBlackTexture();
+		static Ref<Texture2D> GetHilbertLut();
+		static Ref<Texture2D> GetBRDFLutTexture();
+		static Ref<TextureCube> GetBlackCubeTexture();
+		static Ref<Environment> GetEmptyEnvironment();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Shader Management
@@ -368,7 +230,7 @@ namespace SceneryEditorX
 		 * @brief Process all shaders marked dirty and propagate changes to dependents.
 		 * @return True if any shader refresh occurred.
 		 */
-		GLOBAL bool UpdateDirtyShaders();
+		static bool UpdateDirtyShaders();
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Pass
@@ -380,13 +242,13 @@ namespace SceneryEditorX
 		 * @param renderPass RenderPass abstraction to prepare/begin.
 		 * @param explicitClear If true, forces explicit attachment clears.
 		 */
-		GLOBAL void BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
+		static void BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
 
 		/**
 		 * @brief End the active render pass (frame scope).
 		 * @param CommandBuffer Command buffer reference.
 		 */
-		GLOBAL void EndFrame(Ref<CommandBuffer> CommandBuffer);
+		static void EndFrame(Ref<CommandBuffer> CommandBuffer);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Compute Pass
@@ -397,14 +259,14 @@ namespace SceneryEditorX
          * @param CommandBuffer Command buffer reference.
          * @param computePass Compute pass object.
          */
-        GLOBAL void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+        static void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
 
         /**
 		 * @brief End a previously begun compute pass.
 		 * @param CommandBuffer Command buffer reference.
 		 * @param computePass Compute pass object.
 		 */
-		GLOBAL void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+		static void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
 
 		/**
 		 * @brief Dispatch a compute workload.
@@ -414,7 +276,7 @@ namespace SceneryEditorX
 		 * @param workGroups 3D work group counts.
 		 * @param constants Optional push constant buffer.
 		 */
-		GLOBAL void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
+		static void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
 
 		/**
 		 * @brief Clear an image with specified clear value.
@@ -423,7 +285,7 @@ namespace SceneryEditorX
 		 * @param clearValue Clear color/depth/stencil specification.
 		 * @param subresourceRange Optional subresource range (defaults to whole image).
 		 */
-		GLOBAL void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
+		static void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
 
 		/**
 		 * @brief Copy contents of a source image to a destination image.
@@ -431,7 +293,7 @@ namespace SceneryEditorX
 		 * @param sourceImage Source image.
 		 * @param destinationImage Destination image.
 		 */
-		GLOBAL void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+		static void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 
 		/**
 		 * @brief Get number of nanoseconds required for a timestamp query to be incremented by 1
@@ -442,12 +304,6 @@ namespace SceneryEditorX
         [[nodiscard]] double GetTimestampPeriodInMS() const;
 
     private:
-		/**
-		 * @brief Internal access to the active command queue (front buffer).
-		 * @return Reference to CommandQueue used for recording submitted lambdas.
-		 */
-		INTERNAL CommandQueue &GetCommandQueue();
-
 		/**
 		 * @brief Active swapchain reference (lifetime managed by renderer).
 		 */

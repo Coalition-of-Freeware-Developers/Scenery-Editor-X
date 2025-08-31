@@ -38,16 +38,16 @@ namespace SceneryEditorX::UI
     class UIManager
     {
     public:
-		GLOBAL void SetupDockspace(bool* p_open = nullptr);
-		GLOBAL void MainMenuBar();
-		GLOBAL void LayerStack();
-		GLOBAL void AssetBrowser();
-		GLOBAL void SettingsPanel();
+		static void SetupDockspace(bool* p_open = nullptr);
+		static void MainMenuBar();
+		static void LayerStack();
+		static void AssetBrowser();
+		static void SettingsPanel();
 		//void Properties();
-		GLOBAL void CreateProjectModal(GLFWwindow *window);
-		GLOBAL void ExitConfirmationModal(GLFWwindow *window);
-		GLOBAL void AboutModal();
-		GLOBAL void ViewportWindow(iVec2& viewportSize, bool& viewportHovered, VkImageView imageView);
+		static void CreateProjectModal(GLFWwindow *window);
+		static void ExitConfirmationModal(GLFWwindow *window);
+		static void AboutModal();
+		static void ViewportWindow(iVec2& viewportSize, bool& viewportHovered, VkImageView imageView);
 
 		/// -------------------------------------------------------
 
@@ -73,7 +73,7 @@ namespace SceneryEditorX::UI
 		bool ColoredButton(const char* label, const ImVec4& backgroundColor, const ImVec4& foregroundColor, ImVec2 buttonSize = { 16.0f, 16.0f });
 
 		template<typename T>
-		GLOBAL void Table(const char* tableName, const char** columns, uint32_t columnCount, const ImVec2& size, T callback)
+		static void Table(const char* tableName, const char** columns, uint32_t columnCount, const ImVec2& size, T callback)
 		{
 			if (size.x <= 0.0f || size.y <= 0.0f)
 				return;

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * shader.h
@@ -13,46 +13,33 @@
 #pragma once
 #include "shader_resource.h"
 #include "shader_uniforms.h"
+#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
-#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
+
+#include <spirv_cross/spirv_hlsl.hpp>
+
+/// -------------------------------------------------------
+
+using namespace SPIRV_CROSS_NAMESPACE;
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	enum class ShaderUniformType : uint8_t
-	{
-		None = 0,
-	    Bool,
-	    Int,
-	    UInt,
-	    Float,
-	    Vec2,
-	    Vec3,
-	    Vec4,
-	    Mat3,
-	    Mat4,
-		IVec2,
-	    IVec3,
-	    IVec4
-	};
-
-    /// -------------------------------------------------------
-
 	class ShaderUniform
 	{
 	public:
 		ShaderUniform() = default;
-		ShaderUniform(std::string name, ShaderUniformType type, uint32_t size, uint32_t offset);
+        ShaderUniform(std::string name, ShaderDataType type, uint32_t size, uint32_t offset);
 
         [[nodiscard]] const std::string& GetName() const { return m_Name; }
-        [[nodiscard]] ShaderUniformType GetType() const { return m_Type; }
+        [[nodiscard]] ShaderDataType GetType() const { return m_Type; }
 		[[nodiscard]] uint32_t GetSize() const { return m_Size; }
 		[[nodiscard]] uint32_t GetOffset() const { return m_Offset; }
 
-		static constexpr std::string_view UniformTypeToString(ShaderUniformType type);
+		static constexpr std::string_view UniformTypeToString(ShaderDataType type);
 
 		/*
 		static void Serialize(SerializeWriter* serializer, const ShaderUniform& instance)
@@ -74,7 +61,7 @@ namespace SceneryEditorX
 
 	private:
 		std::string m_Name;
-		ShaderUniformType m_Type = ShaderUniformType::None;
+        ShaderDataType m_Type = ShaderDataType::None;
 		uint32_t m_Size = 0;
 		uint32_t m_Offset = 0;
 	};
@@ -134,7 +121,7 @@ namespace SceneryEditorX
 	/**
 	 * @class Shader
 	 * @brief Represents a Vulkan shader program.
-	 * 
+	 *
 	 * This class manages shader loading, compilation, and lifecycle in the Scenery Editor X renderer.
 	 * It handles shader modules that can be loaded from files or created from string sources.
 	 * The class supports hot-reloading through a callback system to notify dependents of changes.
@@ -154,7 +141,7 @@ namespace SceneryEditorX
 		/**
 		 * @typedef ShaderReloadedCallback.
 		 * @brief Function type for shader reload notifications
-		 * 
+		 *
 		 * Called when a shader is reloaded to allow dependents to update resources.
 		 */
 		using ShaderReloadedCallback = std::function<void()>;
@@ -163,40 +150,40 @@ namespace SceneryEditorX
 
         /**
          * @brief Default constructor.
-         * 
+         *
          * Creates an uninitialized shader instance that must be loaded before use.
          */
         Shader() = default;
 
         /**
          * @brief Construct shader from file.
-         * 
+         *
          * @param filepath Path to the shader file, relative to shader directory
          * @param forceCompile Whether to force recompilation even if cached version exists
          * @param disableOptimization Whether to disable shader optimization during compilation
          * @param name Name of the shader
          */
         explicit Shader(const std::string &filepath);
-        
+
         /**
          * @brief Virtual destructor.
-         * 
+         *
          * Cleans up Vulkan shader module resources.
          */
         virtual ~Shader() override;
 
 		/**
 		 * @brief Load shader from a shader pack file.
-		 * 
+		 *
 		 * @param filepath Path to the shader pack file
 		 * @param forceCompile Whether to force recompilation even if cached version exists
 		 * @param disableOptimization Whether to disable shader optimization during compilation
 		 */
 		void LoadFromShaderPack(const std::string& filepath, bool forceCompile = false, bool disableOptimization = false);
-        
+
         /**
          * @brief Create a shader from source code string.
-         * 
+         *
          * @param source The shader source code as a string
          * @return Ref<Shader> Reference to the newly created shader
          */
@@ -207,14 +194,14 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Register a callback to be invoked when shader is reloaded.
-		 * 
+		 *
 		 * @param callback Function to call when shader is recompiled or reloaded
 		 */
 	    void AddShaderReloadedCallback(const ShaderReloadedCallback& callback);
-        
+
         /**
          * @brief Get the name of the shader.
-         * 
+         *
          * @return const std::string& The shader name, typically derived from the filename
          */
         [[nodiscard]] const std::string &GetName() const;
@@ -234,12 +221,12 @@ namespace SceneryEditorX
 	     * @brief Get the base directory path for shader assets.
 	     * @return const char* Path to the shader directory
 	     */
-	    GLOBAL constexpr const char* GetShaderDirectoryPath() { return "assets/shaders/"; }
+	    static constexpr const char* GetShaderDirectoryPath() { return "assets/shaders/"; }
 	    const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageCreateInfos() const { return m_PipelineShaderStageCreateInfos; }
 
 	    /**
 	     * @brief Create a Vulkan shader module from compiled bytecode.
-	     * 
+	     *
 	     * @param code Vector containing the compiled shader bytecode
 	     * @return VkShaderModule The created Vulkan shader module
 	     */
@@ -308,7 +295,7 @@ namespace SceneryEditorX
         std::filesystem::path m_AssetPath;
         std::string m_Name;
         bool m_DisableOptimization = false;
-		
+
 		std::map<VkShaderStageFlagBits, std::vector<uint32_t>> m_ShaderData;
         ReflectionData m_ReflectionData;
 
@@ -318,7 +305,6 @@ namespace SceneryEditorX
 	    friend class ShaderCache;
         friend class ShaderPack;
         friend class VulkanShaderCompiler;
-
 	};
 
     /// -------------------------------------------------------
@@ -328,7 +314,7 @@ namespace SceneryEditorX
 	public:
 	    ShaderLibrary() = default;
         virtual ~ShaderLibrary() override;
-	
+
 	    void Add(const Ref<Shader> &shader);
 	    void Load(std::string_view path, bool forceCompile = false, bool disableOptimization = false);
 	    void Load(std::string_view name, const std::string &path);

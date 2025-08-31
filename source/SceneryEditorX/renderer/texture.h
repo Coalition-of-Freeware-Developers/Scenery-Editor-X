@@ -27,7 +27,10 @@ namespace SceneryEditorX
 	{
 	    None = 0,
 	    Texture2D,
-	    TextureCube
+	    Texture2DArray,
+		Texture3D,
+	    TextureCube,
+		MaxEnum
 	};
 
 	struct TextureSpecification
@@ -65,6 +68,10 @@ namespace SceneryEditorX
 
 		virtual uint64_t GetHash() const = 0;
 		virtual TextureType GetType() const = 0;
+
+		// Bindless indices (optional; valid after first Invalidate when bindless manager active)
+		virtual int32_t GetBindlessImageIndex() const { return -1; }
+		virtual int32_t GetBindlessSamplerIndex() const { return -1; }
 	};
 
     /// -------------------------------------------------------
@@ -85,16 +92,18 @@ namespace SceneryEditorX
 		///< reinterpret the given texture's data as if it was sRGB
 		static Ref<Texture2D> CreateFromSRGB(const Ref<Texture2D> &texture);
 
-		virtual void CreateFromFile(const TextureSpecification &specification, const std::filesystem::path& filePath);
-        virtual void ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filePath);
+		void CreateFromFile(const TextureSpecification &specification, const std::filesystem::path& filePath);
+        void ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filePath);
         //virtual void CreateFromBuffer(const TextureSpecification &specification, Buffer data = Buffer());
 
 		void CreateFromBuffer(const TextureSpecification &specification, const Buffer &data);
 
-        virtual void Resize(const UVec2 &size);
-        virtual void Resize(uint32_t width, uint32_t height);
+        void Resize(const UVec2 &size);
+        void Resize(uint32_t width, uint32_t height);
 
 		void Invalidate();
+
+		Ref<Texture2D> *GetRenderTarget(const RenderTarget type);
 
 		virtual VkFormat GetFormat() const override { return m_Specification.format; }
 		virtual uint32_t GetWidth() const override { return m_Specification.width; }
@@ -121,6 +130,9 @@ namespace SceneryEditorX
         void CopyToHostBuffer(Buffer &buffer) const;
         virtual TextureType GetType() const override { return TextureType::Texture2D; }
 
+		virtual int32_t GetBindlessImageIndex() const override { return m_BindlessImageIndex; }
+		virtual int32_t GetBindlessSamplerIndex() const override { return m_BindlessSamplerIndex; }
+
     private:
         void SetData(const Buffer &buffer);
 
@@ -128,6 +140,8 @@ namespace SceneryEditorX
         std::filesystem::path m_Path;
         Buffer m_ImageData = {};
         Ref<Image2D> m_Image;
+	    int32_t m_BindlessImageIndex = -1;
+	    int32_t m_BindlessSamplerIndex = -1;
 
     };
 

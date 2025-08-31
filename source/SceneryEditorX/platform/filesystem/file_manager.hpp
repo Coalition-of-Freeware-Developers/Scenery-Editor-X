@@ -88,17 +88,17 @@ namespace SceneryEditorX::IO
 	{
 	public:
 		/// These return empty strings if cancelled
-		GLOBAL std::string OpenFile(const char* filter);
-		GLOBAL std::string SaveFile(const char* filter);
+		static std::string OpenFile(const char* filter);
+		static std::string SaveFile(const char* filter);
 
 		/// -------------------------------------------------------
 
-        LOCAL bool IsTexture(const std::filesystem::path &path);
-        LOCAL bool IsModel(const std::filesystem::path &path);
+        static bool IsTexture(const std::filesystem::path &path);
+        static bool IsModel(const std::filesystem::path &path);
 
-        LOCAL std::vector<uint8_t> ReadFileBytes(const std::filesystem::path &path);
-        LOCAL void WriteFileBytes(const std::filesystem::path &path, const std::vector<uint8_t> &content);
-        GLOBAL void WriteFile(const std::filesystem::path &path, const std::string &content);
+        static std::vector<uint8_t> ReadFileBytes(const std::filesystem::path &path);
+        static void WriteFileBytes(const std::filesystem::path &path, const std::vector<uint8_t> &content);
+        static void WriteFile(const std::filesystem::path &path, const std::string &content);
 
 		/// -------------------------------------------------------
 
@@ -114,9 +114,9 @@ namespace SceneryEditorX::IO
 
 		/// -------------------------------------------------------
 
-        //GLOBAL void ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t);
-        //LOCAL uint64_t ImportTexture(const std::filesystem::path &path, AssetManager &assets);
-        INTERNAL void ReadTexture(const std::filesystem::path &path, std::vector<uint8_t> &data, int32_t &w, int32_t &h);
+        //static void ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t);
+        //static uint64_t ImportTexture(const std::filesystem::path &path, AssetManager &assets);
+        static void ReadTexture(const std::filesystem::path &path, std::vector<uint8_t> &data, int32_t &w, int32_t &h);
 
 	};
 
@@ -129,45 +129,45 @@ namespace SceneryEditorX::IO
             const char *Spec;
         };
 
-        GLOBAL std::filesystem::path GetWorkingDir();
-        GLOBAL void SetWorkingDir(const std::filesystem::path &path);
+        static std::filesystem::path GetWorkingDir();
+        static void SetWorkingDir(const std::filesystem::path &path);
 
-        GLOBAL bool CreateDir(const std::filesystem::path &directory);
-        GLOBAL bool CreateDir(const std::string &directory);
-        GLOBAL bool DirExists(const std::filesystem::path &directory);
-        GLOBAL bool DirExists(const std::string &directory);
+        static bool CreateDir(const std::filesystem::path &directory);
+        static bool CreateDir(const std::string &directory);
+        static bool DirExists(const std::filesystem::path &directory);
+        static bool DirExists(const std::string &directory);
 
-        GLOBAL bool DeleteFile(const std::filesystem::path &filepath);
-        GLOBAL bool MoveFile(const std::filesystem::path &filepath, const std::filesystem::path &dest);
-        GLOBAL bool CopyFile(const std::filesystem::path &filepath, const std::filesystem::path &dest);
+        static bool DeleteFile(const std::filesystem::path &filepath);
+        static bool MoveFile(const std::filesystem::path &filepath, const std::filesystem::path &dest);
+        static bool CopyFile(const std::filesystem::path &filepath, const std::filesystem::path &dest);
 
-        GLOBAL bool Exists(const std::string &filepath);
-        GLOBAL bool Exists(const std::filesystem::path &filepath);
+        static bool Exists(const std::string &filepath);
+        static bool Exists(const std::filesystem::path &filepath);
 
-        GLOBAL FileStatus TryOpenFile(const std::filesystem::path &filePath);
-        GLOBAL FileStatus TryOpenFileAndWait(const std::filesystem::path &filepath, uint64_t waitms);
-        GLOBAL bool Move(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
-        GLOBAL bool Copy(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
-        GLOBAL bool Rename(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
-        GLOBAL bool RenameFilename(const std::filesystem::path &oldFilepath, const std::string &newName);
+        static FileStatus TryOpenFile(const std::filesystem::path &filePath);
+        static FileStatus TryOpenFileAndWait(const std::filesystem::path &filepath, uint64_t waitms);
+        static bool Move(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
+        static bool Copy(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
+        static bool Rename(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath);
+        static bool RenameFilename(const std::filesystem::path &oldFilepath, const std::string &newName);
 
-        GLOBAL bool IsDirectory(const std::filesystem::path &filepath);
-        GLOBAL bool IsNewer(const std::filesystem::path &fileA, const std::filesystem::path &fileB);
-        GLOBAL bool ShowFileInExplorer(const std::filesystem::path &path);
-        GLOBAL bool OpenDirectoryInExplorer(const std::filesystem::path &path);
-        GLOBAL bool OpenExternally(const std::filesystem::path &path);
+        static bool IsDirectory(const std::filesystem::path &filepath);
+        static bool IsNewer(const std::filesystem::path &fileA, const std::filesystem::path &fileB);
+        static bool ShowFileInExplorer(const std::filesystem::path &path);
+        static bool OpenDirectoryInExplorer(const std::filesystem::path &path);
+        static bool OpenExternally(const std::filesystem::path &path);
 
-        GLOBAL bool WriteBytes(const std::filesystem::path &filepath, const BufferResource &buffer);
-        GLOBAL Buffer ReadBytes(const std::filesystem::path& filepath);
+        static bool WriteBytes(const std::filesystem::path &filepath, const BufferResource &buffer);
+        static Buffer ReadBytes(const std::filesystem::path& filepath);
 
-        GLOBAL std::filesystem::path GetUniqueFileName(const std::filesystem::path &filepath);
-        GLOBAL uint64_t GetLastWriteTime(const std::filesystem::path &filepath);
+        static std::filesystem::path GetUniqueFileName(const std::filesystem::path &filepath);
+        static uint64_t GetLastWriteTime(const std::filesystem::path &filepath);
 
-        GLOBAL std::filesystem::path OpenFileDialog(const std::initializer_list<FileDialogItem> inFilters = {});
-        GLOBAL std::filesystem::path OpenFolderDialog(const char *initialFolder = "");
-        GLOBAL std::filesystem::path SaveFileDialog(const std::initializer_list<FileDialogItem> inFilters = {});
+        static std::filesystem::path OpenFileDialog(const std::initializer_list<FileDialogItem> inFilters = {});
+        static std::filesystem::path OpenFolderDialog(const char *initialFolder = "");
+        static std::filesystem::path SaveFileDialog(const std::initializer_list<FileDialogItem> inFilters = {});
 
-        GLOBAL std::filesystem::path GetPersistentStoragePath();
+        static std::filesystem::path GetPersistentStoragePath();
 
         static bool CheckEnvVariable(const std::string &key);
         static bool SetEnvVariable(const std::string &key, const std::string &value);

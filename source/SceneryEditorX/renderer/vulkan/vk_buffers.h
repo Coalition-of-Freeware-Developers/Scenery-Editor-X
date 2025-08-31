@@ -162,7 +162,7 @@ namespace SceneryEditorX
 		Buffer() = default;
         explicit Buffer(const void* data, const uint64_t size = 0) : data(const_cast<void *>(data)), size(size), usage(0), memory(0) {}
 
-		GLOBAL Buffer Copy(const Buffer& other)
+		static Buffer Copy(const Buffer& other)
 		{
 			Buffer buffer;
 			buffer.Allocate(other.size);
@@ -170,7 +170,7 @@ namespace SceneryEditorX
 			return buffer;
 		}
 
-		GLOBAL Buffer Copy(const void *data, const uint64_t size)
+		static Buffer Copy(const void *data, const uint64_t size)
 		{
 			Buffer buffer;
 			buffer.Allocate(size);
@@ -187,7 +187,7 @@ namespace SceneryEditorX
 			if (size == 0)
 				return;
 
-			data = hnew byte[size];
+			data = new byte[size];
 		}
 
 		void Release()
@@ -218,7 +218,7 @@ namespace SceneryEditorX
         [[nodiscard]] byte* ReadBytes(const uint64_t size, const uint64_t offset) const
 		{
 			SEDX_CORE_ASSERT(offset + size <= this->size, "Buffer overflow!"); /// Fixed this line to use 'this->size'
-			byte* buffer = hnew byte[size];
+			byte* buffer = new byte[size];
 			memcpy(buffer, static_cast<byte *>(data) + offset, size);
 			return buffer;
 		}

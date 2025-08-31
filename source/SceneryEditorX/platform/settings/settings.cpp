@@ -25,13 +25,13 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
     /// Default section templates for use when creating config sections
-    INTERNAL constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
+    static constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
 	# Application settings
 	version = "${APP_VERSION}";
 	no_titlebar = false;
     )";
 
-    INTERNAL constexpr const char *XPLANE_SECTION_TEMPLATE = R"(
+    static constexpr const char *XPLANE_SECTION_TEMPLATE = R"(
 	# X-Plane settings
 	version = "X-Plane 12.06b1";
 	path = "";
@@ -40,14 +40,14 @@ namespace SceneryEditorX
 	is_steam = false;
     )";
 
-    INTERNAL constexpr const char *UI_SECTION_TEMPLATE = R"(
+    static constexpr const char *UI_SECTION_TEMPLATE = R"(
 	# User interface settings
 	theme = "dark";
 	font_size = 12;
 	language = "english";
 	)";
 
-    INTERNAL constexpr const char *PROJECT_SECTION_TEMPLATE = R"(
+    static constexpr const char *PROJECT_SECTION_TEMPLATE = R"(
 	# Project settings
 	auto_save = true;
 	auto_save_interval = 5; # minutes

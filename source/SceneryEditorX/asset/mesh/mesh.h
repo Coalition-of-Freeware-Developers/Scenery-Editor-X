@@ -119,7 +119,7 @@ namespace SceneryEditorX
 
 	};
 
-	GLOBAL constexpr int NumAttributes = 5;
+	static constexpr int NumAttributes = 5;
 
 	struct Index
 	{
@@ -333,7 +333,7 @@ namespace SceneryEditorX
 		void SetSubmeshes(const std::vector<uint32_t>& submeshes, Ref<MeshSource> meshSource);
 
 		AssetHandle GetMeshSource() const { return m_MeshSource; }
-		void SetMeshAsset(AssetHandle meshSource) { m_MeshSource = meshSource; }
+		void SetMeshAsset(const AssetHandle &meshSource) { m_MeshSource = meshSource; }
 
 		Ref<MaterialTable> GetMaterials() const { return m_Materials; }
 
@@ -381,7 +381,7 @@ namespace SceneryEditorX
 
 		bool ShouldGenerateColliders() const { return m_GenerateColliders; }
 
-		GLOBAL AssetType GetStaticType() { return AssetType::StaticMesh; }
+		static AssetType GetStaticType() { return AssetType::StaticMesh; }
 		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 	private:
 		AssetHandle m_MeshSource;

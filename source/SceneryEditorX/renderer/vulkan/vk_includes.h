@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X - Unified Vulkan Includes
  * -------------------------------------------------------
@@ -17,7 +17,7 @@
  * -------------------------------------------------------
  */
 #pragma once
-
+#pragma comment(lib, "vulkan-1.lib")
 // If the build system or another header (GLFW) already defined GLFW_INCLUDE_VULKAN
 // we don't redefine it, otherwise we can optionally allow the user to opt-in
 // by defining SEDX_FORCE_VK_PROTOTYPES before including this header.
@@ -28,7 +28,9 @@
 
 // Primary attempt: full umbrella header
 #if __has_include(<vulkan/vulkan.h>)
+    #pragma warning(push, 0)
     #include <vulkan/vulkan.h>
+    #pragma warning(pop)
 #elif __has_include(<vulkan/vulkan_core.h>)
     // Fallback: core header only (definitions & basic prototypes)
     #include <vulkan/vulkan_core.h>

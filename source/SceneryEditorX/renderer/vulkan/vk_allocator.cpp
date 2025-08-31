@@ -62,7 +62,7 @@ namespace SceneryEditorX
      * This data is used for detailed reporting, memory usage optimization,
      * and identifying which memory types are under the most pressure.
      */
-    GLOBAL std::array<VulkanAllocatorData, VK_MAX_MEMORY_TYPES> memoryTypeStats;
+    static std::array<VulkanAllocatorData, VK_MAX_MEMORY_TYPES> memoryTypeStats;
 
 	/**
 	 * @brief Static global instance of the Vulkan memory allocator data.
@@ -76,7 +76,7 @@ namespace SceneryEditorX
 	 * This is particularly important for utility functions like those in the
 	 * VulkanMemoryUtils namespace.
 	 */
-	GLOBAL VulkanAllocatorData *memAllocatorData = nullptr;
+	static VulkanAllocatorData *memAllocatorData = nullptr;
 
 
 	/**
@@ -125,7 +125,7 @@ namespace SceneryEditorX
 	 *
 	 * This is a global static instance shared across all memory allocation operations.
 	 */
-	GLOBAL std::map<VmaAllocation, AllocInfo> AllocationMap;
+	static std::map<VmaAllocation, AllocInfo> AllocationMap;
 
 	/// ---------------------------------------------------------
 
@@ -833,7 +833,7 @@ namespace SceneryEditorX
      */
     void MemoryAllocator::Init(const Ref<VulkanDevice> &device, const uint32_t &apiVersion)
     {
-        memAllocatorData = hnew VulkanAllocatorData();
+        memAllocatorData = new VulkanAllocatorData();
 
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.vulkanApiVersion = apiVersion;
@@ -853,7 +853,7 @@ namespace SceneryEditorX
         if (VkResult result = vmaCreateAllocator(&allocatorInfo, &memAllocatorData->allocator); result != VK_SUCCESS)
 		{
             SEDX_CORE_ERROR("Failed to create Vulkan Memory Allocator. Error code: {}", static_cast<int>(result));
-            hdelete memAllocatorData;
+            delete memAllocatorData;
             memAllocatorData = nullptr;
             return;
         }

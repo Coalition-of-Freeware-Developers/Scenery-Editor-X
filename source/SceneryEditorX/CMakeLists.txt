@@ -44,6 +44,7 @@ FILE(GLOB UTILS_FILESTREAM utils/filestreaming/*.cpp utils/filestreaming/*.h uti
 
 FILE(GLOB VULKAN_BUFFERS renderer/buffers/*.h renderer/buffers/*.cpp)
 FILE(GLOB VULKAN_FILES renderer/vulkan/*.cpp renderer/vulkan/*.h renderer/vulkan/*.hpp)
+FILE(GLOB VULKAN_RENDER_PASS renderer/render_pass/*.cpp renderer/render_pass/*.h renderer/render_pass/*.hpp)
 FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h renderer/shaders/*.hpp)
 
 FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
@@ -94,6 +95,7 @@ ADD_LIBRARY(AppCore
 	${DEBUG_RENDERER_FILES}
 	${VULKAN_FILES}
 	${VULKAN_BUFFERS}
+	${VULKAN_RENDER_PASS}
 	${VULKAN_SHADER_CODE}
 	${FONT_CODE}
 	${UI_PANELS}
@@ -120,17 +122,28 @@ ADD_LIBRARY(AppCore
 	core/initializer.h
 	core/version.h
 	# --------------------------------
-	renderer/debug_renderer.cpp
-	renderer/debug_renderer.h
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
+	renderer/bindless_descriptor_manager.cpp
+	renderer/bindless_descriptor_manager.h
 	renderer/camera.cpp
 	renderer/camera.h
+	renderer/command_manager.cpp
+	renderer/command_manager.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
 	renderer/compute_pass.cpp
 	renderer/compute_pass.h
+	renderer/compute_pipeline.cpp
+	renderer/compute_pipeline.h
 	renderer/dds.h
+	renderer/debug_renderer.cpp
+	renderer/debug_renderer.h
+	renderer/frame_sync.cpp
+	renderer/fence.cpp
+	renderer/fence.h
+	renderer/frame_sync.h
+	renderer/icons.cpp
 	renderer/image_data.cpp
 	renderer/image_data.h
 	renderer/primitives.cpp
@@ -138,12 +151,19 @@ ADD_LIBRARY(AppCore
 	renderer/render_config.h
 	renderer/render_context.cpp
 	renderer/render_context.h
+	renderer/render_dispatcher.cpp
+	renderer/render_dispatcher.h
 	renderer/render_pass.cpp
 	renderer/render_pass.h
+	renderer/render_resource.cpp
 	renderer/renderer.cpp
 	renderer/renderer.h
+	renderer/sampler.cpp
+	renderer/sampler.h
 	renderer/scene_renderer.cpp
 	renderer/scene_renderer.h
+	renderer/semaphore.cpp
+	renderer/semaphore.h
 	renderer/stb_image_impl.cpp
 	renderer/viewport.h
 	renderer/viewport.cpp
@@ -151,10 +171,6 @@ ADD_LIBRARY(AppCore
 	renderer/texture.h
 	renderer/viewport.cpp
 	renderer/viewport.h
-	renderer/xp_pbr.cpp
-	renderer/xp_pbr.h
-	renderer/xp_texture.cpp
-	renderer/xp_texture.h
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
@@ -307,15 +323,26 @@ SOURCE_GROUP("Project" FILES
 SOURCE_GROUP("Renderer" FILES
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
+	renderer/bindless_descriptor_manager.cpp
+	renderer/bindless_descriptor_manager.h
 	renderer/camera.cpp
 	renderer/camera.h
+	renderer/command_manager.cpp
+	renderer/command_manager.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
 	renderer/compute_pass.cpp
 	renderer/compute_pass.h
+	renderer/compute_pipeline.cpp
+	renderer/compute_pipeline.h
 	renderer/dds.h
 	renderer/debug_renderer.cpp
 	renderer/debug_renderer.h
+	renderer/frame_sync.cpp
+	renderer/fence.cpp
+	renderer/fence.h
+	renderer/frame_sync.h
+	renderer/icons.cpp
 	renderer/image_data.cpp
 	renderer/image_data.h
 	renderer/primitives.cpp
@@ -323,27 +350,35 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/render_config.h
 	renderer/render_context.cpp
 	renderer/render_context.h
+	renderer/render_dispatcher.cpp
+	renderer/render_dispatcher.h
 	renderer/render_pass.cpp
 	renderer/render_pass.h
+	renderer/render_resource.cpp
 	renderer/renderer.cpp
 	renderer/renderer.h
+	renderer/sampler.cpp
+	renderer/sampler.h
 	renderer/scene_renderer.cpp
 	renderer/scene_renderer.h
+	renderer/semaphore.cpp
+	renderer/semaphore.h
 	renderer/stb_image_impl.cpp
+	renderer/viewport.h
+	renderer/viewport.cpp
 	renderer/texture.cpp
 	renderer/texture.h
 	renderer/viewport.cpp
 	renderer/viewport.h
-	renderer/xp_pbr.cpp
-	renderer/xp_pbr.h
-	renderer/xp_texture.cpp
-	renderer/xp_texture.h
 )
 SOURCE_GROUP("Renderer/Vulkan" FILES
 	${VULKAN_FILES}
 )
 SOURCE_GROUP("Renderer/Fonts" FILES
 	${FONT_CODE}
+)
+SOURCE_GROUP("Renderer/Render Passes" FILES
+	${VULKAN_RENDER_PASS}
 )
 SOURCE_GROUP("Scene" FILES
 	${SCENE}

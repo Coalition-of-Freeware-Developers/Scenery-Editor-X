@@ -13,6 +13,8 @@
 #include "texture.h"
 #include <utility>
 #include "renderer.h"
+#include "bindless_descriptor_manager.h"
+#include <format>
 #include "SceneryEditorX/asset/importers/texture_importer.h"
 #include "vulkan/vk_util.h"
 
@@ -65,7 +67,7 @@ namespace SceneryEditorX
 			return 0;
 		}
 
-        LOCAL bool ValidateSpecification(const TextureSpecification& specification)
+        static bool ValidateSpecification(const TextureSpecification& specification)
 		{
             bool result = specification.width > 0 && specification.height > 0 && specification.width < 65536 && specification.height < 65536;
 			SEDX_CORE_VERIFY(result);
@@ -394,6 +396,88 @@ namespace SceneryEditorX
         }
     }
     */
+
+	// Temporary simplified invalidate (bindless integration) until legacy commented version is reinstated
+	void Texture2D::Invalidate()
+	{
+		const auto device = RenderContext::GetCurrentDevice();
+		const auto vulkanDevice = device->GetDevice();
+
+		// Recreate underlying image (basic path similar to legacy block, trimmed)
+		m_Image->Release();
+		uint32_t mipCount = m_Specification.generateMips ? GetMipLevelCount() : 1;
+		ImageSpecification &imageSpec = m_Image->GetSpecification();
+		imageSpec.format = m_Specification.format;
+		imageSpec.width  = m_Specification.width;
+		imageSpec.height = m_Specification.height;
+		imageSpec.mips   = mipCount;
+		imageSpec.createSampler = false;
+		if (!m_ImageData)
+			imageSpec.usage = ImageUsage::Storage; // storage fallback if no data
+
+		const Ref<Image2D> image = m_Image.As<Image2D>();
+		image->Invalidate_RenderThread();
+		auto &info = image->GetImageInfo();
+
+		if (m_ImageData)
+			SetData(m_ImageData);
+		else
+		{
+			VkCommandBuffer transitionCmd = device->GetCommandBuffer(true);
+			VkImageSubresourceRange sub{}; sub.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; sub.layerCount = 1; sub.levelCount = mipCount;
+			SetImageLayout(transitionCmd, info.image, VK_IMAGE_LAYOUT_UNDEFINED, image->GetDescriptorInfoVulkan().imageLayout, sub);
+			device->FlushCmdBuffer(transitionCmd);
+		}
+
+		// Create sampler owned by Image
+		VkSamplerCreateInfo samplerInfo{}; samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO; samplerInfo.maxAnisotropy = 1.0f;
+		samplerInfo.magFilter = Utils::VulkanSamplerFilter(m_Specification.samplerFilter);
+		samplerInfo.minFilter = Utils::VulkanSamplerFilter(m_Specification.samplerFilter);
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		samplerInfo.addressModeU = Utils::VulkanSamplerWrap(m_Specification.samplerWrap);
+		samplerInfo.addressModeV = Utils::VulkanSamplerWrap(m_Specification.samplerWrap);
+		samplerInfo.addressModeW = Utils::VulkanSamplerWrap(m_Specification.samplerWrap);
+		samplerInfo.mipLodBias = 0.0f; samplerInfo.compareOp = VK_COMPARE_OP_NEVER; samplerInfo.minLod = 0.0f; samplerInfo.maxLod = (float)mipCount;
+		samplerInfo.maxAnisotropy = 1.0f; samplerInfo.anisotropyEnable = VK_FALSE; samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+		info.sampler = CreateSampler(samplerInfo);
+		image->UpdateDescriptor();
+
+		if (!m_Specification.storage)
+		{
+			VkImageViewCreateInfo view{}; view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO; view.viewType = VK_IMAGE_VIEW_TYPE_2D; view.format = Utils::VulkanImageFormat(m_Specification.format);
+			view.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+			view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; view.subresourceRange.baseMipLevel = 0; view.subresourceRange.baseArrayLayer = 0; view.subresourceRange.layerCount = 1; view.subresourceRange.levelCount = mipCount; view.image = info.image;
+			VK_CHECK_RESULT(vkCreateImageView(vulkanDevice, &view, nullptr, &info.view));
+			SetDebugUtilsObjectName(vulkanDevice, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("Texture view: {}", m_Specification.debugName), info.view);
+			image->UpdateDescriptor();
+		}
+
+		// Bindless registration / update
+		if (BindlessDescriptorManager::GetDescriptorSet() != VK_NULL_HANDLE)
+		{
+			if (m_BindlessImageIndex < 0)
+				m_BindlessImageIndex = (int32_t)BindlessDescriptorManager::RegisterSampledImage(info.view, image->GetDescriptorInfoVulkan().imageLayout);
+			else
+				BindlessDescriptorManager::UpdateSampledImage((uint32_t)m_BindlessImageIndex, info.view, image->GetDescriptorInfoVulkan().imageLayout);
+
+			if (m_BindlessSamplerIndex < 0)
+				m_BindlessSamplerIndex = (int32_t)BindlessDescriptorManager::RegisterSampler(info.sampler);
+			else
+				BindlessDescriptorManager::UpdateSampler((uint32_t)m_BindlessSamplerIndex, info.sampler);
+		}
+
+		// Drop CPU copy unless spec requests local storage
+		if (!m_Specification.storeLocally)
+		{
+			m_ImageData.Release();
+			m_ImageData = Buffer();
+		}
+	}
+
+    Ref<Texture2D> * Texture2D::GetRenderTarget(const RenderTarget type)
+    {
+        return render_targets[static_cast<uint8_t>(type)].get();
+    }
 
     void Texture2D::Unlock()
     {

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -232,7 +232,6 @@ namespace SceneryEditorX
 		}
 		vkCmdBindPipeline(m_ActiveComputeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline);
 	}
-
 
 	void ComputePipeline::Dispatch(const UVec3& workGroups) const
 	{

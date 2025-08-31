@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_image.h
@@ -40,7 +40,6 @@ namespace SceneryEditorX
         virtual ~Image2D() override;
 
         void Resize(const UVec2& size) { Resize(size.x, size.y); }
-
         void Resize(const uint32_t width, const uint32_t height)
         {
 			m_Specification.width = width;
@@ -91,7 +90,7 @@ namespace SceneryEditorX
 		void UpdateDescriptor();
 
 		/// Debug
-		GLOBAL const std::map<VkImage, WeakRef<Image2D>> &GetImageRefs();
+		static const std::map<VkImage, WeakRef<Image2D>> &GetImageRefs();
 		void SetData(Buffer buffer);
         void CopyToHostBuffer(Buffer &buffer) const;
     private:

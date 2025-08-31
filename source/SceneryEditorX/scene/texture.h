@@ -37,8 +37,8 @@ namespace SceneryEditorX
         virtual void Unload();
 
 		///TODO: Add these texture allocation functions
-        GLOBAL void LoadWithAllocator();
-        GLOBAL void UnloadWithAllocator();
+        static void LoadWithAllocator();
+        static void UnloadWithAllocator();
         [[nodiscard]] virtual bool IsLoaded() const;
         [[nodiscard]] virtual const std::string &GetPath() const;
         [[nodiscard]] virtual const std::string &GetName() const;

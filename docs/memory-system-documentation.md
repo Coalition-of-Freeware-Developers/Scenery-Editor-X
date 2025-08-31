@@ -104,7 +104,7 @@ The `Mallocator` template provides STL-compatible allocation using malloc/free, 
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Application Layer                             │
 ├─────────────────────────────────────────────────────────────────┤
-│  hnew/hdelete    │  new("category")  │  operator new/delete     │
+│  new/delete    │  new("category")  │  operator new/delete     │
 ├─────────────────────────────────────────────────────────────────┤
 │                    Memory Tracking Layer                         │
 │  ┌─────────────┐  ┌─────────────────┐  ┌─────────────────────┐ │
@@ -150,12 +150,12 @@ for (const auto& [category, allocation] : stats) {
 
 ### 3. Source Location Tracking
 
-The `hnew` macro automatically captures file and line information:
+The `new` macro automatically captures file and line information:
 
 ```cpp
 // Automatically captures __FILE__ and __LINE__
-MyClass* obj = hnew MyClass();
-int* data = hnew int[1000];
+MyClass* obj = new MyClass();
+int* data = new int[1000];
 
 // This helps identify exactly where allocations occur for leak detection
 ```
@@ -213,7 +213,7 @@ private:
   
     void CreateTexture() {
         // Specific categorization for different resource types
-        textureData = hnew uint8_t[textureSize];  // Captures source location
+        textureData = new uint8_t[textureSize];  // Captures source location
         // Allocation is automatically tracked with file:line information
     }
   
@@ -266,7 +266,7 @@ public:
   
     void Deallocate() {
         if (resource) {
-            hdelete[] resource;
+            delete[] resource;
             resource = nullptr;
             SEDX_CORE_TRACE("Deallocated resource in category {}", category);
         }
@@ -312,7 +312,7 @@ public:
   
     void FreeAll() {
         for (void* block : allocatedBlocks) {
-            hdelete[] static_cast<char*>(block);
+            delete[] static_cast<char*>(block);
         }
         allocatedBlocks.clear();
   
@@ -383,7 +383,7 @@ private:
 ### 1. Memory System Integration
 
 - **Initialize Early**: Call `Allocator::Init()` at the very beginning of your application
-- **Use hnew/hdelete**: Prefer `hnew` and `hdelete` for automatic source location tracking
+- **Use new/delete**: Prefer `new` and `delete` for automatic source location tracking
 - **Categorize Allocations**: Use descriptive category strings for better analysis
 
 ### 2. Category Naming Conventions
@@ -439,14 +439,14 @@ int main() {
     return 0;
 }
 
-// Step 2: Gradually replace new/delete with hnew/hdelete
+// Step 2: Gradually replace new/delete with new/delete
 // Old code:
 MyClass* obj = new MyClass();
 delete obj;
 
 // New code:
-MyClass* obj = hnew MyClass();
-hdelete obj;
+MyClass* obj = new MyClass();
+delete obj;
 
 // Step 3: Add categories for major subsystems
 // Renderer allocations
@@ -580,11 +580,11 @@ void ProcessLargeDataset() {
   
     // Memory allocations here are automatically tracked in both
     // the SceneryEditorX system and Tracy profiler
-    auto data = hnew DataPoint[LARGE_DATASET_SIZE];
+    auto data = new DataPoint[LARGE_DATASET_SIZE];
   
     // Process data...
   
-    hdelete[] data;
+    delete[] data;
 }
 ```
 

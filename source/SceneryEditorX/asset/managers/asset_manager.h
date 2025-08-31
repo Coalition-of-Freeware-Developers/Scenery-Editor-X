@@ -49,7 +49,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
 		Ref<Scene> GetInitialScene();
-        //GLOBAL Ref<CameraNode> GetMainCamera(const Ref<Scene> &scene);
+        //static Ref<CameraNode> GetMainCamera(const Ref<Scene> &scene);
 
         /**
          * @brief Checks if the asset referred to by assetHandle could potentially be valid.
@@ -64,7 +64,7 @@ namespace SceneryEditorX
          * @param assetHandle The asset handle to check.
          * @returns True if assetHandle could potentially be valid.
          #1#
-        GLOBAL bool IsAssetHandleValid(const AssetHandle &assetHandle)
+        static bool IsAssetHandleValid(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->IsAssetHandleValid(assetHandle);
         }
@@ -83,7 +83,7 @@ namespace SceneryEditorX
          * @param assetHandle The asset handle to check.
          * @returns True if the asset referred to by assetHandle is valid.
          #1#
-        GLOBAL bool IsAssetValid(const AssetHandle &assetHandle)
+        static bool IsAssetValid(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->IsAssetValid(assetHandle);
         }
@@ -96,7 +96,7 @@ namespace SceneryEditorX
          * @param handle The asset handle to check.
          * @return True if the asset is a memory asset, false if it is a physical asset.
          #1#
-        GLOBAL bool IsMemoryAsset(const AssetHandle &handle)
+        static bool IsMemoryAsset(const AssetHandle &handle)
         {
             return Project::GetAssetManager()->IsMemoryAsset(handle);
         }
@@ -109,7 +109,7 @@ namespace SceneryEditorX
 		 * @param handle The asset handle to check.
 		 * @return True if the asset is a physical asset, false if it is a memory asset.
 		 #1#
-        GLOBAL bool IsPhysicalAsset(const AssetHandle &handle)
+        static bool IsPhysicalAsset(const AssetHandle &handle)
         {
             return Project::GetAssetManager()->IsPhysicalAsset(handle);
         }
@@ -123,7 +123,7 @@ namespace SceneryEditorX
          * @param assetHandle The asset handle to reload.
          * @return True if the asset data was successfully reloaded, false otherwise.
          #1#
-        GLOBAL bool ReloadData(const AssetHandle &assetHandle)
+        static bool ReloadData(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->ReloadData(assetHandle);
         }
@@ -137,7 +137,7 @@ namespace SceneryEditorX
          * @param assetHandle The asset handle to ensure current.
          * @return True if the asset is current, false otherwise.
          #1#
-        GLOBAL bool EnsureCurrent(const AssetHandle &assetHandle)
+        static bool EnsureCurrent(const AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->EnsureCurrent(assetHandle);
         }
@@ -150,7 +150,7 @@ namespace SceneryEditorX
          *
          * @return True if all assets are loaded and current, false if any asset failed to load or is not current.
          #1#
-        GLOBAL bool EnsureAllLoadedCurrent()
+        static bool EnsureAllLoadedCurrent()
         {
             return Project::GetAssetManager()->EnsureAllLoadedCurrent();
         }
@@ -164,7 +164,7 @@ namespace SceneryEditorX
          * @param assetHandle The asset handle to check.
          * @return The type of the asset referred to by assetHandle.
          #1#
-        GLOBAL AssetType GetAssetType(AssetHandle &assetHandle)
+        static AssetType GetAssetType(AssetHandle &assetHandle)
         {
             return Project::GetAssetManager()->GetAssetType(assetHandle);
         }
@@ -207,7 +207,7 @@ namespace SceneryEditorX
 		 * @return A set of asset handles for all assets of the specified type.
 		 #1#
 	    template<typename T>
-        GLOBAL std::unordered_set<AssetHandle> GetAllAssetsWithType()
+        static std::unordered_set<AssetHandle> GetAllAssetsWithType()
 		{
             return Project::GetAssetManager()->GetAllAssetsWithType(T::GetStaticType());
 		}
@@ -231,7 +231,7 @@ namespace SceneryEditorX
 		 * Thread safety therefore depends on the assets being immutable once they've been added to the asset manager.
          #1#
 		template<typename TAsset>
-        GLOBAL AssetHandle AddMemoryOnlyAsset(Ref<TAsset> asset)
+        static AssetHandle AddMemoryOnlyAsset(Ref<TAsset> asset)
 		{
 			static_assert(std::is_base_of_v<Asset, TAsset>, "AddMemoryOnlyAsset only works for types derived from Asset");
 			if (!asset->Handle)
@@ -246,36 +246,36 @@ namespace SceneryEditorX
 
 		/// Static template method for getting typed assets by handle
 		template<typename T>
-		GLOBAL Ref<T> GetAsset(const AssetHandle &handle)
+		static Ref<T> GetAsset(const AssetHandle &handle)
 		{
 		    auto asset = Project::GetAssetManager()->GetAsset(handle);
 		    return asset ? asset.DynamicCast<T>() : nullptr;
 		}
 
-		GLOBAL Ref<Asset> GetMemoryAsset(const AssetHandle &handle)
+		static Ref<Asset> GetMemoryAsset(const AssetHandle &handle)
 		{
 		    return Project::GetAssetManager()->GetMemoryAsset(handle);
 		}
 
 		///< Handle is dependent on dependency.  e.g. handle could be a material, and dependency could be a texture that the material uses.
-		GLOBAL void RegisterDependency(const AssetHandle &dependency, const AssetHandle &handle)
+		static void RegisterDependency(const AssetHandle &dependency, const AssetHandle &handle)
 		{
 		    return Project::GetAssetManager()->RegisterDependency(dependency, handle);
 		}
 
 		///< Remove dependency of handle on dependency
-		GLOBAL void DeregisterDependency(const AssetHandle &dependency, const AssetHandle &handle)
+		static void DeregisterDependency(const AssetHandle &dependency, const AssetHandle &handle)
 		{
 		    return Project::GetAssetManager()->DeregisterDependency(dependency, handle);
 		}
 
 		/** Remove all dependencies of handle #1#
-		GLOBAL void DeregisterDependencies(const AssetHandle &handle)
+		static void DeregisterDependencies(const AssetHandle &handle)
 		{
 		    return Project::GetAssetManager()->DeregisterDependencies(handle);
 		}
 
-		GLOBAL void RemoveAsset(const AssetHandle &handle)
+		static void RemoveAsset(const AssetHandle &handle)
 		{
 		    Project::GetAssetManager()->RemoveAsset(handle);
 		}
@@ -297,7 +297,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
 		template <typename T>
-        GLOBAL Ref<T> CreateObject(const std::string &name, uint32_t uuid = 0)
+        static Ref<T> CreateObject(const std::string &name, uint32_t uuid = 0)
         {
             if (uuid == 0)
                 uuid = NewUUID();
@@ -346,7 +346,7 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
         template <typename T>
-        GLOBAL Ref<Object> CloneObject(const Ref<Object> &rhs)
+        static Ref<Object> CloneObject(const Ref<Object> &rhs)
         {
             Ref<T> object = CreateObject<T>(rhs->name, 0);
             *object = *rhs.DynamicCast<T>();
@@ -378,7 +378,7 @@ namespace SceneryEditorX
 
 		/// -------------------------------------------------------
 
-        GLOBAL Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
+        static Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
         {
             switch (type)
             {
@@ -413,7 +413,7 @@ namespace SceneryEditorX
 
     private:
         RenderData renderData;
-        LOCAL uint32_t NewUUID();
+        static uint32_t NewUUID();
         uint32_t initialScene = 0;
         std::vector<Ref<Node>> nodes;
         std::unordered_map<uint32_t, Ref<Asset>> assets;

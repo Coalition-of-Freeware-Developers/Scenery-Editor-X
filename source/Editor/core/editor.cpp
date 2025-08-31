@@ -11,6 +11,8 @@
 * -------------------------------------------------------
 */
 #include <ImGuizmo.h>
+#include <imgui_impl_glfw.h>
+
 #include <Editor/core/editor.h>
 #include <Editor/settings/editor_settings.h>
 #include <imgui/imgui.h>
@@ -30,9 +32,9 @@ namespace SceneryEditorX
 	#define MAX_PROJECT_NAME_LENGTH 255
 	#define MAX_PROJECT_FILEPATH_LENGTH 512
 
-	GLOBAL char* s_ProjectNameBuffer = new char[MAX_PROJECT_NAME_LENGTH];
-	GLOBAL char* s_OpenProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
-	GLOBAL char* s_NewProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
+	static char* s_ProjectNameBuffer = new char[MAX_PROJECT_NAME_LENGTH];
+	static char* s_OpenProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
+	static char* s_NewProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];
 
 	#define SCENE_HIERARCHY_PANEL_ID "SceneHierarchyPanel"
 	#define ECS_DEBUG_PANEL_ID "ECSDebugPanel"
@@ -45,13 +47,14 @@ namespace SceneryEditorX
 	#define SCRIPT_ENGINE_DEBUG_PANEL_ID "ScriptEngineDebugPanel"
 	#define SCENE_RENDERER_PANEL_ID "SceneRendererPanel"
 
-    GLOBAL std::filesystem::path s_ProjectSolutionPath = "";
+    static std::filesystem::path s_ProjectSolutionPath = "";
 
     /// -------------------------------------------------------
 
     Editor::Editor(const Ref<UserPreferences> &userPreferences) : m_UserPreferences(userPreferences)
     {
 
+		SceneryEditorX::Renderer::Init();
         /*
         for (auto it = m_UserPreferences->RecentProjects.begin(); it != m_UserPreferences->RecentProjects.end();)
         {
@@ -66,7 +69,17 @@ namespace SceneryEditorX
 
     }
 
-    Editor::~Editor() = default;
+    Editor::~Editor()
+    {
+        if (ImGui::GetCurrentContext())
+        {
+            ImGui::Shutdown();
+            ImGui_ImplGlfw_Shutdown();
+            ImGui::DestroyContext();
+        }
+
+		SceneryEditorX::Renderer::Shutdown();
+    };
 
     void Editor::OnAttach()
     {
@@ -138,8 +151,6 @@ namespace SceneryEditorX
 
 		Ref<SceneRendererPanel> sceneRendererPanel = m_PanelManager->AddPanel<SceneRendererPanel>(PanelCategory::View, SCENE_RENDERER_PANEL_ID, "Scene Renderer", true);
 		*/
-
-		////////////////////////////////////////////////////////
 
 		/*
 		if (!m_UserPreferences->StartupProject.empty())
@@ -409,11 +420,11 @@ namespace SceneryEditorX
 
     /**
 	* -------------------------------------------------------
-	* EditorApplication Global Variables
+	* EditorApplication static Variables
 	* -------------------------------------------------------
 	*/
 
-	GLOBAL Scope<Window> g_Window;
+	static Scope<Window> g_Window;
 
 	/**
 	 * -------------------------------------------------------
@@ -421,7 +432,7 @@ namespace SceneryEditorX
 	 * -------------------------------------------------------
 	 */
 
-	//INTERNAL void initVulkan(GraphicsEngine &gfxEngine);
+	//static void initVulkan(GraphicsEngine &gfxEngine);
 
 	/// -------------------------------------------------------
 

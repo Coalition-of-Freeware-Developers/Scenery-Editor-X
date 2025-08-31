@@ -65,11 +65,11 @@ namespace SceneryEditorX
         uint32_t GetCurrentFrameIndex() const { return currentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
 
-        GLOBAL Application &Get() { return *appInstance; }
-	    GLOBAL const char* GetConfigurationName();
-        GLOBAL const char *GetPlatformName();
-        GLOBAL std::thread::id GetMainThreadID();
-        GLOBAL bool IsMainThread();
+        static Application &Get() { return *appInstance; }
+	    static const char* GetConfigurationName();
+        static const char *GetPlatformName();
+        static std::thread::id GetMainThreadID();
+        static bool IsMainThread();
 
         ApplicationSettings &GetSettings() { return settings; }
         [[nodiscard]] const ApplicationSettings &GetSettings() const { return settings;}
@@ -130,7 +130,7 @@ namespace SceneryEditorX
         bool m_ShowStats = true;
 
         ApplicationSettings settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
-        INTERNAL Application *appInstance;
+        static Application *appInstance;
         PerformanceProfiler *m_profiler = nullptr; /// TODO: Should be null in Dist
         std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;
         std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
@@ -141,7 +141,7 @@ namespace SceneryEditorX
         //friend class RenderContext;
         //friend class Renderer;
     protected:
-        inline LOCAL bool isRuntime = false;
+        inline static bool isRuntime = false;
     };
 
     Application *CreateApplication(int argc, char **argv);

@@ -10,6 +10,7 @@
 #include "SceneryEditorX/renderer/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 #include "SceneryEditorX/renderer/vulkan/vk_data.h"
+#include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
 
 /// ----------------------------------------------------------
 
@@ -32,8 +33,23 @@ namespace SceneryEditorX
         RenderData renderData;
         m_Buffers.clear();
         m_Buffers.reserve(renderData.framesInFlight);
+        m_BindlessIndices.clear();
+        m_BindlessIndices.reserve(renderData.framesInFlight);
         for (uint32_t i = 0; i < renderData.framesInFlight; ++i)
+        {
             m_Buffers.emplace_back(CreateBuffer(m_Size, BufferUsage::Uniform, MemoryType::CPU, "UniformBuffer"));
+            // Auto-register each per-frame uniform buffer in bindless set (binding 4)
+            if (BindlessDescriptorManager::GetDescriptorSet() != VK_NULL_HANDLE)
+            {
+                const auto& buf = m_Buffers.back();
+                uint32_t idx = BindlessDescriptorManager::RegisterUniformBuffer(buf.resource->buffer, m_Size, 0);
+                m_BindlessIndices.emplace_back((int32_t)idx);
+            }
+            else
+            {
+                m_BindlessIndices.emplace_back(-1);
+            }
+        }
 
         UpdateDescriptors();
     }
@@ -86,6 +102,12 @@ namespace SceneryEditorX
         return m_DescriptorInfos[frame];
     }
 
+    int32_t UniformBuffer::GetCurrentFrameBindlessIndex() const
+    {
+        const uint32_t frame = (uint32_t)Renderer::GetCurrentFrameIndex();
+        return frame < m_BindlessIndices.size() ? m_BindlessIndices[frame] : -1;
+    }
+
     /// ----------------------------------------------------------
 
 	UniformBufferSet::UniformBufferSet(uint32_t size, uint32_t framesInFlight) : m_framesInFlight(framesInFlight)
@@ -119,6 +141,8 @@ namespace SceneryEditorX
     {
         m_UniformBuffers[frame] = uniformBuffer;
     }
+
+    UniformBufferSet::~UniformBufferSet() = default;
 
 }
 

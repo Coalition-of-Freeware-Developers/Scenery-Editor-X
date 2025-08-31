@@ -17,6 +17,7 @@
 
 /// -------------------------------------------------------
 
+/*
 template <>
 struct std::hash<SceneryEditorX::MeshVertex>
 {
@@ -28,6 +29,7 @@ struct std::hash<SceneryEditorX::MeshVertex>
         return h1 ^ (h2 << 1) ^ (h3 << 2); /// Combine the hashes
     }
 };
+*/
 
 /// -------------------------------------------------------
 

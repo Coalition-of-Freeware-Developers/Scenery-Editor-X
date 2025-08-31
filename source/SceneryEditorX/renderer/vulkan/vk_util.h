@@ -344,7 +344,7 @@ namespace SceneryEditorX
          * @param type The shader data type for which to get the size.
          * @return Size in bytes of the specified shader data type.
          */
-        GLOBAL uint32_t ShaderDataTypeSize(ShaderDataType type);
+        static uint32_t ShaderDataTypeSize(ShaderDataType type);
 
         /**
 		 * @brief Convert a SceneryEditorX shader data type to a Vulkan format.

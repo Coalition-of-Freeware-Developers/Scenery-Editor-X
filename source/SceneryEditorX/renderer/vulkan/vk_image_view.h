@@ -39,6 +39,7 @@ namespace SceneryEditorX
 		[[nodiscard]] VkImageView GetImageView() const { return m_ImageView; }
 		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
 		[[nodiscard]] const VkDescriptorImageInfo &GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
+
 	private:
 		ImageViewData m_Specification;
 		VkImageView m_ImageView = nullptr;

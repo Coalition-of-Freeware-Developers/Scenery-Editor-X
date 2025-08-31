@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * render_context.cpp
@@ -24,50 +24,52 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    LOCAL const char* validationLayer[] = {"VK_LAYER_KHRONOS_validation"};
+    static const char* validationLayer[] = {"VK_LAYER_KHRONOS_validation"};
 
     ///< Define whether validation layers are enabled - usually tied to debug mode
     #ifdef SEDX_DEBUG
-    LOCAL constexpr bool enableValidationLayers = true;
+    static constexpr bool enableValidationLayers = true;
     #else
-    LOCAL constexpr bool enableValidationLayers = false;
+    static constexpr bool enableValidationLayers = false;
     #endif
 
     /// -------------------------------------------------------
 
-    /// Static instance of the render context
-    LOCAL Ref<RenderContext> s_Instance = nullptr;
+    // Static instance of the render context
+    static Ref<RenderContext> s_Instance = nullptr;
 
-    /// DebugUtilsMessenger utility functions
-    LOCAL VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
+    // DebugUtilsMessenger utility functions
+    static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
     {
-        /// search for the requested function and return null if unable find
+        // search for the requested function and return null if unable find
         auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
         if (func != nullptr)
             return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
         return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
 
-    LOCAL void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
+    static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
-        /// search for the requested function and return null if unable find
+        // search for the requested function and return null if unable find
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
         if (func != nullptr)
             func(instance, debugMessenger, pAllocator);
     }
 
-    LOCAL VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMsgCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
+    static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugMsgCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
     {
-        /// if (messageSeverity > VK_DEBUG_UTILS...)
+        // if (messageSeverity > VK_DEBUG_UTILS...)
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
             SEDX_CORE_WARN("[Validation Layer] {0}", pCallbackData->pMessage);
 
         return VK_FALSE;
     }
 
+    /// -------------------------------------------------------
+
     RenderContext::RenderContext()
     {
-        /// Initialize any member variables
+        // Initialize any member variables
         allocatorCallback = nullptr;
         instance = VK_NULL_HANDLE;
         debugMessenger = VK_NULL_HANDLE;
@@ -76,20 +78,22 @@ namespace SceneryEditorX
     #endif
     }
 
+    /// -------------------------------------------------------
+
     RenderContext::~RenderContext()
     {
-        /// Clean up debug messenger if enabled
+        // Clean up debug messenger if enabled
     #ifdef SEDX_DEBUG
         if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
         {
-            /// Cleanup debug messenger
+            // Cleanup debug messenger
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
             debugMessenger = VK_NULL_HANDLE;
         }
 
         if (debugCallback != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
         {
-            /// Cleanup debug callback using appropriate extension function
+            // Cleanup debug callback using appropriate extension function
             if (auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"))
                 func(instance, debugCallback, nullptr);
 
@@ -97,13 +101,15 @@ namespace SceneryEditorX
         }
     #endif
 
-        /// Destroy Vulkan instance if it was created
+        // Destroy Vulkan instance if it was created
         if (instance != VK_NULL_HANDLE)
 		{
             vkDestroyInstance(instance, nullptr);
             instance = VK_NULL_HANDLE;
         }
     }
+
+    /// -------------------------------------------------------
 
     Ref<RenderContext> RenderContext::Get()
     {
@@ -113,7 +119,9 @@ namespace SceneryEditorX
         return s_Instance;
     }
 
-    LOCAL void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
+    /// -------------------------------------------------------
+
+    static void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
     {
         createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -127,38 +135,40 @@ namespace SceneryEditorX
         createInfo.pUserData = nullptr;
     }
 
+    /// -------------------------------------------------------
+
     void RenderContext::Init()
 	{
         try
 		{
             SEDX_CORE_INFO("Initializing RenderContext");
             bool khronosAvailable = true;
-    
+
             if (!VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion))
 			{
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Incompatible Vulkan driver version!");
                 return;
             }
-    
+
     	    SEDX_CORE_TRACE_TAG("Graphics Engine", "Creating Vulkan Instance");
-    
+
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Application Info
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-            /// Get Vulkan API version
+
+            // Get Vulkan API version
             VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion);
-    
+
             AppData appData;
             RenderData renderData;
-    
+
             uint32_t apiVersion = 0;
             if (VkResult result = vkEnumerateInstanceVersion(&apiVersion); result != VK_SUCCESS)
 			{
                 SEDX_CORE_ERROR("Failed to enumerate Vulkan instance version");
-                apiVersion = VK_API_VERSION_1_2;  /// Fall back to 1.2
+                apiVersion = VK_API_VERSION_1_2;  // Fall back to 1.2
             }
-    
+
     	    VkApplicationInfo appInfo{};
             appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
             appInfo.pNext = nullptr;
@@ -168,40 +178,40 @@ namespace SceneryEditorX
             appInfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
             appInfo.apiVersion = apiVersion;
 
-    
+
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Instance Extensions and Validation Layers
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            ///< Get all available layers
+            // Get all available layers
             uint32_t layerCount = 0;
             vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-            std::vector<VkLayerProperties> layerNames(layerCount); ///< @brief Properties of all available Vulkan validation layers on the system.
+            std::vector<VkLayerProperties> layerNames(layerCount); /// @brief Properties of all available Vulkan validation layers on the system.
             vkEnumerateInstanceLayerProperties(&layerCount, layerNames.data());
-            
-            ///< Check for validation layer availability
+
+            // Check for validation layer availability
             if (enableValidationLayers)
             {
-                ///< More thorough validation layer checking
+                // More thorough validation layer checking
                 VulkanChecks layerChecker;
-                
-                ///< Check for all validation layers and log available ones
+
+                // Check for all validation layers and log available ones
                 std::vector<const char*> layersToCheck = { validationLayer[0] };
                 layerChecker.CheckLayers(layersToCheck);
-                
-                ///< Specifically check for Khronos validation layer
+
+                // Specifically check for Khronos validation layer
                 khronosAvailable = layerChecker.CheckValidationLayerSupport();
-                
+
                 if (!khronosAvailable)
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer requested but not available!");
                 else
                     SEDX_CORE_INFO_TAG("Graphics Engine", "Validation layers are available and will be enabled");
             }
-    
-            /// Get all available extensions
+
+            // Get all available extensions
             Extensions extensions;
             vkEnumerateInstanceExtensionProperties(nullptr, &extensions.extensionCount, nullptr);
             extensions.instanceExtensions.resize(extensions.extensionCount);
-    
+
             vkEnumerateInstanceExtensionProperties(nullptr, &extensions.extensionCount, extensions.instanceExtensions.data());
             if (enableValidationLayers)
             {
@@ -236,11 +246,11 @@ namespace SceneryEditorX
 				    VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
 				#endif
             };
-    
+
             VulkanChecks check;
             if (check.CheckExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    
+
             if (enableValidationLayers)
             {
                 instanceExtensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
@@ -250,28 +260,28 @@ namespace SceneryEditorX
 
                 //instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
             }
-    
+
     		if (check.CheckExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
-    
+
     		if (check.CheckExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
-    
+
     		for (const auto&[extensionName, specVersion] : extensions.availableExtensions)
                 if (extensionName[0] != '\0')
                     instanceExtensions.push_back(extensionName);
 
         #if defined(__APPLE__) || defined(SEDX_PLATFORM_APPLE)
-    		/// Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
-    		/// "Invalid SPIR-V binary version 1.6 for target environment SPIR-V 1.5 (under Vulkan 1.2 semantics)."
+    		// Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
+    		// "Invalid SPIR-V binary version 1.6 for target environment SPIR-V 1.5 (under Vulkan 1.2 semantics)."
             const VkValidationFeatureDisableEXT validationFeaturesDisabled[] = {
     			    VK_VALIDATION_FEATURE_DISABLE_SHADERS_EXT,
     			    VK_VALIDATION_FEATURE_DISABLE_SHADER_VALIDATION_CACHE_EXT,
             };
         #endif
-    
+
             VkValidationFeatureEnableEXT enables[] = {VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT};
-    
+
             // ReSharper disable once CppVariableCanBeMadeConstexpr
             const VkValidationFeaturesEXT features = {
                 .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
@@ -281,16 +291,16 @@ namespace SceneryEditorX
                 .pDisabledValidationFeatures = enableValidationLayers ? validationFeaturesDisabled : nullptr,
             #endif
             };
-    
+
             /// ---------------------------------------------------------
-    
+
     		#if defined(VK_EXT_layer_settings) && VK_EXT_layer_settings
     				/// https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Configuration_Parameters.md
                     constexpr int useMetalArgumentBuffers = 1;
                     constexpr VkBool32 gpuav_descriptor_checks = VK_FALSE;					/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8688
                     constexpr VkBool32 gpuav_indirect_draws_buffers = VK_FALSE;				/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
                     constexpr VkBool32 gpuav_post_process_descriptor_indexing = VK_FALSE;	/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
-    		
+
 				#define LAYER_SETTINGS_BOOL32(name, var)												\
     					VkLayerSettingEXT                                                               \
     					{                                                                               \
@@ -298,7 +308,7 @@ namespace SceneryEditorX
     			            .pSettingName = name, .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,				\
     					    .valueCount = 1, .pValues = var,                                            \
     					}
-    			
+
     					const VkLayerSettingEXT settings[] = {
     					    LAYER_SETTINGS_BOOL32("gpuav_descriptor_checks", &gpuav_descriptor_checks),
     					    LAYER_SETTINGS_BOOL32("gpuav_indirect_draws_buffers", &gpuav_indirect_draws_buffers),
@@ -306,7 +316,7 @@ namespace SceneryEditorX
     					    {"MoltenVK","MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS",VK_LAYER_SETTING_TYPE_INT32_EXT,1,&useMetalArgumentBuffers},
     					};
 				#undef LAYER_SETTINGS_BOOL32
-    		
+
     				VkLayerSettingsCreateInfoEXT layerSettingsCreateInfo;
                     layerSettingsCreateInfo.sType = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
                     layerSettingsCreateInfo.pNext = enableValidationLayers ? &features : nullptr;
@@ -314,11 +324,11 @@ namespace SceneryEditorX
                     layerSettingsCreateInfo.pSettings = settings;
 
     		#endif
-    
+
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Instance and Surface Creation
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
+
     		VkInstanceCreateFlags createFlags = 0;
     	    VkInstanceCreateInfo createInfo = {};
             createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -339,9 +349,9 @@ namespace SceneryEditorX
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create instance! Error code: {}", static_cast<int>(createResult));
                 return;
             }
-    
+
             /// ---------------------------------------------------------
-    
+
             if (enableValidationLayers)
             {
                 VkDebugUtilsMessengerCreateInfoEXT messengerInfo;
@@ -351,13 +361,13 @@ namespace SceneryEditorX
                 else
                     SEDX_CORE_INFO_TAG("Graphics Engine", "Debug messenger set up successfully");
             }
-    
+
             SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created");
-    
+
             #ifdef SEDX_DEBUG
                 Utils::VulkanLoadDebugUtilsExtensions(instance);
             #endif
-    
+
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Initialize the Vulkan Physical Device & Vulkan Device
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -368,18 +378,18 @@ namespace SceneryEditorX
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
                 return;
             }
-    
+
             vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice);
-    
+
             /// Verify the device was created successfully before proceeding
             if (!vkDevice || vkDevice->GetDevice() == VK_NULL_HANDLE)
 			{
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create valid Vulkan device!");
                 return;
             }
-    
+
             SEDX_CORE_INFO("Vulkan device created successfully");
-    
+
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Pipeline Cache Creation
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -23,6 +23,8 @@ namespace SceneryEditorX
         Pixel = 1 // unused
 	};
 
+    /// -------------------------------------------------------
+
 	class ShaderResourceDeclaration
 	{
 	public:

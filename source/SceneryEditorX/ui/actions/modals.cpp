@@ -22,8 +22,8 @@
 namespace SceneryEditorX::UI
 {
 	/// Define projectName and projectLocation variables
-    INTERNAL char projectName[128];
-	INTERNAL char projectLocation[2048];
+    static char projectName[128];
+	static char projectLocation[2048];
 
 	/// ---------------------------------------------------------
 

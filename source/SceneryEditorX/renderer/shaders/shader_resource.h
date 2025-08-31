@@ -121,6 +121,7 @@ namespace SceneryEditorX
             */
 
         };
+
     private:
         std::string name;
         uint32_t set = 0;

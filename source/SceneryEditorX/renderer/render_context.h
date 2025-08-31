@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * render_context.h
@@ -29,16 +29,16 @@ namespace SceneryEditorX
 		void Init();
 
         Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
-        GLOBAL VkInstance GetInstance();
-        GLOBAL Ref<RenderContext> Get();
-		LOCAL Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
+        static VkInstance GetInstance();
+        static Ref<RenderContext> Get();
+		static Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
         std::vector<uint8_t> GetPipelineCacheData() const;
         VkAllocationCallbacks *allocatorCallback = nullptr;
 
     private:
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanDevice> vkDevice;
-        inline LOCAL VkInstance instance;
+        inline static VkInstance instance;
 
 		/// -------------------------------------------------------
 

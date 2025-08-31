@@ -89,7 +89,7 @@ namespace SceneryEditorX
         uint16_t Flags = (uint16_t)AssetFlag::None;
         virtual ~Asset() override;
 
-        GLOBAL ObjectType GetStaticType() { return ObjectType::None; }
+        static ObjectType GetStaticType() { return ObjectType::None; }
         virtual ObjectType GetAssetType() const { return ObjectType::None; }
 
         virtual bool operator!=(const Asset &other) const { return !(*this == other); }

@@ -18,7 +18,7 @@
 namespace SceneryEditorX::UI
 {
 	
-	LOCAL std::unordered_map<std::string, ImFont*> s_Fonts;
+	static std::unordered_map<std::string, ImFont*> s_Fonts;
 
     /// -------------------------------------------------------
 

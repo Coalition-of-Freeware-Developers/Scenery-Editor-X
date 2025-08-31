@@ -55,13 +55,17 @@ namespace SceneryEditorX
 	public:
         explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
         CommandBuffer(std::string debugName, bool swapchain);
-        virtual ~CommandBuffer() override;
+        ~CommandBuffer();
 
-		GLOBAL Ref<CommandBuffer> Get(); ///< Static accessor method to get the singleton instance
+		static Ref<CommandBuffer> Get(); ///< Static accessor method to get the singleton instance
 
         void Begin();
-        void End();
-        void Submit();
+        void Submit(void *cmdBuffer, uint32_t waitFlags);
+
+        void Wait(const bool flush = false);
+
+        void Execute(void *swapchain, const uint32_t imageIdx);
+        Queue GetQueueType() const { return qType;}
 
 		const PipelineStats& GetPipelineStatistics(uint32_t frameIndex) const { return pipelineStatsQueryResults[frameIndex]; }
 
@@ -93,6 +97,11 @@ namespace SceneryEditorX
 
         RenderData data;
         bool ownedBySwapChain = false;
+        uint8_t *cmdBuffer;
+        uint8_t *cmdBufferPtr;
+        std::atomic<uint32_t> cmdCount = 0;
+        Queue qType;
+
         uint32_t availTimeQuery = 2;
         uint32_t timeQueryCount = 0;
         uint32_t pipelineQueryCount = 0;

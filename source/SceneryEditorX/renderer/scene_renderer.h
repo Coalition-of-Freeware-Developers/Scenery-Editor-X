@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <cstdint>
+/*#include <cstdint>
 #include <map>
 
 #include <Math/includes/matrix.h>
@@ -32,12 +32,14 @@
 #include "buffers/vertex_buffer.h"
 #include "shaders/shader_definitions.h"
 #include "vulkan/vk_image.h"
-#include "vulkan/vk_render_pass.h"
+#include "vulkan/vk_render_pass.h"*/
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+	/*
 	class ComputePass; // forward declaration
 
 	struct SceneRendererOptions
@@ -161,6 +163,7 @@ namespace SceneryEditorX
 
 		uint32_t ViewportWidth = 0, ViewportHeight = 0; ///< 0 means application window size
 	};
+	*/
 
     /// -------------------------------------------------------
 

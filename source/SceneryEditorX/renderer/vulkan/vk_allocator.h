@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * vk_allocator.h
@@ -117,7 +117,7 @@ namespace SceneryEditorX
 
         void SetAllocationStrategy(AllocationStrategy strategy);
         void ApplyAllocationStrategy(VmaAllocationCreateInfo &createInfo) const;
-        GLOBAL bool ContainsAllocation(VmaAllocation allocation);
+        static bool ContainsAllocation(VmaAllocation allocation);
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
 
         /**
@@ -125,7 +125,7 @@ namespace SceneryEditorX
 		 *
 		 * @return The custom buffer size in bytes
 		 */
-        GLOBAL VkDeviceSize GetCustomBufferSize();
+        static VkDeviceSize GetCustomBufferSize();
 
 		/**
 		 * @brief Sets the custom buffer size if the device supports it.
@@ -134,7 +134,7 @@ namespace SceneryEditorX
 		 * @param device Reference to the Vulkan device.
 		 * @return true if set successfully, false if unsupported
 		 */
-		GLOBAL bool SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device);
+		static bool SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device);
 
         /// ---------------------------------------------------------
 
@@ -218,10 +218,10 @@ namespace SceneryEditorX
 
 		/// ---------------------------------------------------------
 
-        GLOBAL void UnmapMemory(VmaAllocation allocation);
-        GLOBAL VmaAllocator GetAllocator();
-		GLOBAL void Init(const Ref<VulkanDevice> &device, const uint32_t &apiVersion);
-		GLOBAL void Shutdown();
+        static void UnmapMemory(VmaAllocation allocation);
+        static VmaAllocator GetAllocator();
+		static void Init(const Ref<VulkanDevice> &device, const uint32_t &apiVersion);
+		static void Shutdown();
 
 		/// ---------------------------------------------------------
 
@@ -251,7 +251,7 @@ namespace SceneryEditorX
         /// Helper function to align buffer sizes for better caching
         [[nodiscard]] VkDeviceSize AlignBufferSize(VkDeviceSize size) const;
 
-		INTERNAL VkDeviceSize customBufferSize;
+		static VkDeviceSize customBufferSize;
     };
 
 }

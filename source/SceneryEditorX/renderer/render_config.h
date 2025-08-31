@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -19,8 +19,8 @@ namespace SceneryEditorX
 {
 	struct RendererConfig
 	{
-        uint32_t framesInFlight = 3; ///< Number of frames in flight for rendering
-        std::string shaderPath;      ///< Path to the shaders directory
+        uint32_t framesInFlight = 3; // Number of frames in flight for rendering
+        std::string shaderPath;      // Path to the shaders directory
     };
 
 }

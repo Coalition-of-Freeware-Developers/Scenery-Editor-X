@@ -53,8 +53,8 @@ namespace SceneryEditorX
 
     /*
     /// Constants for cache directory and file
-    INTERNAL std::string PIPELINE_CACHE_DIR = "../cache";
-    INTERNAL std::string PIPELINE_CACHE_FILE = "pipeline_cache.bin";
+    static std::string PIPELINE_CACHE_DIR = "../cache";
+    static std::string PIPELINE_CACHE_FILE = "pipeline_cache.bin";
     */
 
     /// -------------------------------------------------------

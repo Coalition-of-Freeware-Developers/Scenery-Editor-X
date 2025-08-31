@@ -11,18 +11,29 @@
 * -------------------------------------------------------
 */
 #include "command_queue.h"
-#include <Math/includes/math_utils.h>
 #include "SceneryEditorX/core/memory/memory.h"
+#include <mutex>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    CommandQueue::CommandQueue()
+    namespace
     {
-        cmdBuffer = hnew uint8_t[10 * 1024 * 1024]; /// 10mb buffer
+        std::array<std::mutex, 3> mutexes; // One mutex for each queue type (Graphics, Compute, Transfer)
+
+	    /// Get the mutex corresponding to the queue type
+		std::mutex &GetMutex(const CommandQueue *queue)
+		{
+            return mutexes[static_cast<uint32_t>(queue->GetQueueType())];
+		}
+    }
+
+    CommandQueue::CommandQueue(Queue queueType, const std::string &debugName) : qType(queueType)
+    {
+        // Legacy allocation (kept to avoid touching broader lifetime assumptions)
+        cmdBuffer = new uint8_t[1];
         cmdBufferPtr = cmdBuffer;
-        memset(cmdBuffer, 0, 10 * 1024 * 1024);
     }
 
     CommandQueue::~CommandQueue()
@@ -30,6 +41,16 @@ namespace SceneryEditorX
         delete[] cmdBuffer;
     }
 
+    void CommandQueue::Wait(const bool flush)
+    {
+        std::lock_guard<std::mutex> lock(GetMutex(this)); (void)flush;
+    }
+
+    void CommandQueue::Submit(void *cmdBufferIn, uint32_t waitFlags) { (void)cmdBufferIn; (void)waitFlags; /* no-op in refactor */ }
+
+    void CommandQueue::Execute() { /* legacy queue removed */ }
+
+    /*
     void* CommandQueue::Allocate(RenderCommandFn func, uint32_t size)
     {
         *(RenderCommandFn *)cmdBufferPtr = func;
@@ -44,7 +65,9 @@ namespace SceneryEditorX
         cmdCount++;
         return memory;
     }
+    */
 
+    /*
     void CommandQueue::Execute()
     {
         byte *buffer = cmdBuffer;
@@ -64,6 +87,7 @@ namespace SceneryEditorX
         cmdBufferPtr = cmdBuffer;
         cmdCount = 0;
     }
+    */
 
 }
 

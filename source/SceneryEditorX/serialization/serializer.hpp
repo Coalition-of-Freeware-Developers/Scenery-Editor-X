@@ -118,8 +118,8 @@ namespace SceneryEditorX
 		/// -------------------------------------------------------
 
 	    std::filesystem::path filename;
-	    LOCAL constexpr int LOAD = 0;
-	    LOCAL constexpr int SAVE = 1;
+	    static constexpr int LOAD = 0;
+	    static constexpr int SAVE = 1;
 
 		/// -------------------------------------------------------
 

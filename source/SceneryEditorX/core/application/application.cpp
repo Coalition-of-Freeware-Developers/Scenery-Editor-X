@@ -26,7 +26,7 @@ extern bool appRunning; /// Global variable to control the application loop
 namespace SceneryEditorX
 {
     Application *Application::appInstance = nullptr;
-    INTERNAL std::thread::id s_MainThreadID;
+    static std::thread::id s_MainThreadID;
 
     /// -------------------------------------------------------
 

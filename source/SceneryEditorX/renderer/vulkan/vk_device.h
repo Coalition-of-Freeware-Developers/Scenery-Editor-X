@@ -129,7 +129,7 @@ namespace SceneryEditorX
 		 * @return A reference to the selected physical device.
 		 * @throws Error if no suitable device is found.
 		 */
-	    GLOBAL Ref<VulkanPhysicalDevice> Select(VkInstance &instance);
+	    static Ref<VulkanPhysicalDevice> Select(VkInstance &instance);
 
 		/**
          * @brief Select a physical device based on queue requirements.
@@ -175,8 +175,8 @@ namespace SceneryEditorX
         std::vector<GPUDevice> devices;
         std::unordered_set<std::string> supportedExtensions;
 
-        INTERNAL VkFormat FindDepthFormat(const GPUDevice& device);
-		INTERNAL VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+        static VkFormat FindDepthFormat(const GPUDevice& device);
+		static VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
 	    /// -------------------------------------------------------
 
@@ -267,6 +267,15 @@ namespace SceneryEditorX
         VmaAllocator GetMemoryAllocator() const;
         VkCommandBuffer GetCommandBuffer(bool cond);
 
+        // Immediate submit helper (one-shot command buffer already ended)
+        void ImmediateSubmit(VkCommandBuffer cmd, VkQueue queue = VK_NULL_HANDLE)
+        {
+            if (!cmd) return;
+            if (queue == VK_NULL_HANDLE)
+                queue = GetGraphicsQueue();
+            FlushCmdBuffer(cmd, queue);
+        }
+
         /// Delete copy constructor and assignment operator.
         VulkanDevice(const VulkanDevice &) = delete;
         VulkanDevice &operator=(const VulkanDevice &) = delete;
@@ -306,7 +315,7 @@ namespace SceneryEditorX
          * @param name Debug name for the buffer.
          * @return Buffer object configured for staging.
          */
-        GLOBAL Buffer CreateStagingBuffer(uint64_t size, const std::string& name = "Staging Buffer");
+        static Buffer CreateStagingBuffer(uint64_t size, const std::string& name = "Staging Buffer");
 
 	    /**
          * @brief Get the maximum usable MSAA sample count supported by the device.
@@ -411,7 +420,7 @@ namespace SceneryEditorX
          * @note - This function sets up the bindless resources for the device, including
          * creating the bindless descriptor pool and descriptor sets.
          */
-        //GLOBAL void InitBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
+        //static void InitBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
 
         /**
          * @brief Load function pointers for extension functions

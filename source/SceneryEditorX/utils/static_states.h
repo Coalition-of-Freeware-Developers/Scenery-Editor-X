@@ -21,7 +21,7 @@
 * Usage Examples:
 * - INTERNAL void ProcessInternalData() - Internal module function
 * - LOCAL int callCount = 0; - Local static variable in function
-* - GLOBAL const char* APP_NAME = "Scenery Editor X"; - Global static
+* - static const char* APP_NAME = "Scenery Editor X"; - Global static
 *
 * @note - These macros do not change the behavior of static declarations,
 *       they only provide semantic clarity for code maintenance.
@@ -40,7 +40,7 @@
  *
  * @note - Equivalent to 'static' keyword but provides clearer intent
  */
-#define INTERNAL static 	/// For easier readability inside to determine if a static variable is internal to the module
+//#define INTERNAL static 	/// For easier readability inside to determine if a static variable is internal to the module
 
 /**
  * @def LOCAL
@@ -52,10 +52,10 @@
  *
  * @note - Equivalent to 'static' keyword but provides clearer intent
  */
-#define LOCAL static 		/// For easier readability for local variables
+//#define LOCAL static 		/// For easier readability for local variables
 
 /**
- * @def GLOBAL
+ * @def static
  * @brief Semantic macro for global static variables and functions
  *
  * Use this macro for static variables and functions that have global
@@ -64,4 +64,4 @@
  *
  * @note - Equivalent to 'static' keyword but provides clearer intent
  */
-#define GLOBAL static 		/// For easier readability for global variables
+//#define static static 		/// For easier readability for global variables

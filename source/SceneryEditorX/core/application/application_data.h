@@ -35,20 +35,20 @@ namespace SceneryEditorX
 		uint32_t WinWidth = 1280;
         uint32_t WinHeight = 720;
 
-	    GLOBAL inline std::string renderName = "X-Plane 12 Graphics Emulator";
+	    static inline std::string renderName = "X-Plane 12 Graphics Emulator";
 
 	    /**
 		 * @brief Human-readable version string of the application.
 		 * Defined by SEDX_VERSION_STRING macro
 		 */
-	    GLOBAL inline std::string versionString = SEDX_VERSION_STRING;
+	    static inline std::string versionString = SEDX_VERSION_STRING;
 
 	    /**
 		 * @brief Numeric version identifier.
 		 * Used for version comparison and compatibility checks
 		 * Defined by SEDX_VERSION macro
 		 */
-	    GLOBAL inline uint32_t version = SEDX_VERSION;
+	    static inline uint32_t version = SEDX_VERSION;
 
         bool Fullscreen = false;
 	    bool NoTitlebar = false;

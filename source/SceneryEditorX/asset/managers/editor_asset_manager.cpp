@@ -29,7 +29,7 @@ namespace SceneryEditorX
 {
 
 	/*
-	LOCAL AssetMetadata s_NullMetadata;
+	static AssetMetadata s_NullMetadata;
 
     /// -------------------------------------------------------
 

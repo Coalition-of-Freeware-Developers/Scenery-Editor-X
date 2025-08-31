@@ -81,7 +81,7 @@ namespace SceneryEditorX
 	public:
 		AnimationAsset(AssetHandle animationSource, AssetHandle mesh, std::string_view animationName, bool extractRootMotion, uint32_t rootBoneIndex, const Vec3 &rootTranslationMask, const Vec3 &rootRotationMask, bool bDiscardRootMotion);
 
-		GLOBAL AssetType GetStaticType() { return AssetType::Animation; }
+		static AssetType GetStaticType() { return AssetType::Animation; }
 		virtual ObjectType GetAssetType() const override { return static_cast<ObjectType>(GetStaticType()); }
 
 		AssetHandle GetAnimationSource() const;			/// mesh source (the source asset that contains animation data)

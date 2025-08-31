@@ -31,8 +31,10 @@ namespace SceneryEditorX
         Plane,      /// 2D quad
         Sphere,     /// 3D sphere
         Cylinder,   /// 3D cylinder
+		Cone,       /// 3D cone
+        MaxEnum   /// Maximum enum value for validation
     };
-    
+
     /**
      * @class Primitives
      * @brief Utility class for creating primitive 3D and 2D objects
@@ -62,7 +64,7 @@ namespace SceneryEditorX
          * ObjectType box = Primitives::CreateBox(size);
          * @endcode
          */
-        GLOBAL ObjectType CreateBox(const Vec3 &size);
+        static ObjectType CreateBox(const Vec3 &size);
 
         /**
          * @brief Creates a 3D sphere primitive
@@ -78,7 +80,7 @@ namespace SceneryEditorX
          * ObjectType sphere = Primitives::CreateSphere(radius);
          * @endcode
          */
-        GLOBAL ObjectType CreateSphere(float radius);
+        static ObjectType CreateSphere(float radius);
 
         /**
          * @brief Creates a 3D cylinder primitive
@@ -97,23 +99,23 @@ namespace SceneryEditorX
          * ObjectType cylinder = Primitives::CreateCylinder(radius, height);
          * @endcode
          */
-        GLOBAL ObjectType CreateCylinder(float radius, float height);
+        static ObjectType CreateCylinder(float radius, float height);
 
         /**
          * @brief Creates a 2D plane primitive
          * @param size The dimensions of the plane (width, height)
          * @return ObjectType representing the created plane
          */
-        GLOBAL ObjectType CreatePlane(const Vec2 &size);
-        
+        static ObjectType CreatePlane(const Vec2 &size);
+
         /**
          * @brief Shows text-based input interface for primitive creation
-         * 
+         *
          * This method provides a simpler text-only interface for primitive creation:
          * - Text input fields for dimensions
          * - Primitive type selection
          * - Validation of input values
-         * 
+         *
          * @param primitiveType Current selected primitive type
          * @param dimensions Current dimension values
          * @return true if user confirmed creation, false otherwise
@@ -132,7 +134,7 @@ namespace SceneryEditorX
          * @endcode
          */
         static bool ShowTextInputInterface(PrimitiveType& primitiveType, Vec3& dimensions);
-        
+
     private:
         /**
          * @brief Validates primitive dimensions based on type
@@ -156,7 +158,7 @@ namespace SceneryEditorX
          *
          */
         static bool ValidatePrimitiveDimensions(PrimitiveType type, const Vec3& size);
-    }; 
+    };
 
 }
 

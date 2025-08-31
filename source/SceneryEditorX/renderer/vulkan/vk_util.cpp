@@ -827,7 +827,7 @@ namespace SceneryEditorX::Utils
      * @param vendorID The vendor ID of the graphics device (e.g., 0x10DE for NVIDIA, 0x1002 for AMD).
      * @return A string representation of the vendor name.
      */
-    GLOBAL const char* VendorIDToString(const uint32_t vendorID)
+    static const char* VendorIDToString(const uint32_t vendorID)
 	{
 	    // ReSharper disable once CppDefaultCaseNotHandledInSwitchStatement
 	    switch (vendorID)
@@ -906,13 +906,11 @@ namespace SceneryEditorX::Utils
 	    switch (topology)
 	    {
 			case PrimitiveTopology::Points:			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-			case PrimitiveTopology::Lines:			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	        case PrimitiveTopology::Line:			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 			case PrimitiveTopology::Triangles:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 			case PrimitiveTopology::LineStrip:		return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
 			case PrimitiveTopology::TriangleStrip:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 			case PrimitiveTopology::TriangleFan:	return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-	        case PrimitiveTopology::None:
-	            break;
 	    }
 	
 	    SEDX_CORE_ASSERT(false, "Unknown toplogy");
@@ -931,9 +929,9 @@ namespace SceneryEditorX::Utils
 			case DepthCompareOperator::GreaterOrEqual:	return VK_COMPARE_OP_GREATER_OR_EQUAL;
 			case DepthCompareOperator::Equal:			return VK_COMPARE_OP_EQUAL;
 			case DepthCompareOperator::Always:			return VK_COMPARE_OP_ALWAYS;
-			case DepthCompareOperator::None:
-	            break;
-	    }
+	        case DepthCompareOperator::MaxEnum:
+                break;
+        }
 	    SEDX_CORE_ASSERT(false, "Unknown Operator");
 	    return VK_COMPARE_OP_MAX_ENUM;
 	}
@@ -954,7 +952,9 @@ namespace SceneryEditorX::Utils
 			case ShaderDataType::Int3:     return 4 * 3;
 			case ShaderDataType::Int4:     return 4 * 4;
 			case ShaderDataType::Bool:     return 1;
-		}
+            case ShaderDataType::None:
+            break;
+        }
 
 		SEDX_CORE_ASSERT(false, "Unknown ShaderDataType!");
 		return 0;
@@ -972,14 +972,19 @@ namespace SceneryEditorX::Utils
 			case ShaderDataType::Int2:      return VK_FORMAT_R32G32_SINT;
 			case ShaderDataType::Int3:      return VK_FORMAT_R32G32B32_SINT;
 			case ShaderDataType::Int4:      return VK_FORMAT_R32G32B32A32_SINT;
-		}
+			case ShaderDataType::Mat3:		return VK_FORMAT_R32G32B32_SFLOAT;
+            case ShaderDataType::Mat4:		
+            case ShaderDataType::Bool:
+            case ShaderDataType::None:
+            break;
+        }
 		SEDX_CORE_ASSERT(false);
 		return VK_FORMAT_UNDEFINED;
 	}
 
 	/// -------------------------------------------------------
 	
-    LOCAL ResourceAllocationCounts s_ResourceAllocationCounts;
+    static ResourceAllocationCounts s_ResourceAllocationCounts;
 	
     ResourceAllocationCounts &GetResourceAllocationCounts()
     {

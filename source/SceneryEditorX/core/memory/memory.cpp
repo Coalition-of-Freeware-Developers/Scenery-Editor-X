@@ -18,8 +18,8 @@
 namespace SceneryEditorX
 {
 
-	LOCAL AllocationStats GlobalStats;
-	LOCAL bool InInit_ = false;
+	static AllocationStats GlobalStats;
+	static bool InInit_ = false;
 
     /// -------------------------------------------------------
 

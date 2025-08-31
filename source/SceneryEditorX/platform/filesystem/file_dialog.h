@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -19,12 +19,12 @@ namespace SceneryEditorX::IO
     class FileDialog
     {
     public:
-        INTERNAL FileDialog* instance();
+        static FileDialog* instance();
 
-        GLOBAL void OpenFileDialog(char *fileName, char *filter, char *title);
-		GLOBAL void SaveFileDialog(char *fileName, char *filter, char *title);
-		GLOBAL void OpenFolderDialog(char *folderName, char *title);
-		GLOBAL void SaveFolderDialog(char *folderName, char *title);
+        static void OpenFileDialog(char *fileName, char *filter, char *title);
+		static void SaveFileDialog(char *fileName, char *filter, char *title);
+		static void OpenFolderDialog(char *folderName, char *title);
+		static void SaveFolderDialog(char *folderName, char *title);
 
 
     };
