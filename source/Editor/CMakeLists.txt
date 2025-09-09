@@ -92,11 +92,12 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
+		${CMAKE_SOURCE_DIR}/dependency/xMath
 		${CMAKE_SOURCE_DIR}/dependency/entt/src
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/source/Gizmo
+        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
         ${Stb_INCLUDE_DIR}
@@ -108,13 +109,12 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 TARGET_LINK_LIBRARIES(SceneryEditorX
     PRIVATE
 		AppCore
-		nlohmann_json
+		nlohmann_json::nlohmann_json
         spdlog::spdlog_header_only
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
 		imgui
-		imguizmo
 		libconfig
 		libconfig++
 		X-PlaneSceneryLibrary
@@ -122,6 +122,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         dxgi
         d3d12
         Shell32.lib
+		xMath::xMath
 )
 
 # --------------------------------

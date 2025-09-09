@@ -102,6 +102,7 @@ namespace SceneryEditorX
 
         [[nodiscard]] AllocationStats GetStats();
         void PrintDetailedStats() const;
+        void FrameIdx(uint64_t frameCount) const;
         void ResetStats();
 
         /**
@@ -184,7 +185,6 @@ namespace SceneryEditorX
 
         /// Batch allocation methods
         [[nodiscard]] std::vector<BatchBufferAllocation> AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, BufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO) const;
-
         void FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations);
 
 		/// ---------------------------------------------------------

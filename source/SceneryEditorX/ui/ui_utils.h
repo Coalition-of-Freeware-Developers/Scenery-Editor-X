@@ -11,17 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
-#include <imgui/misc/cpp/imgui_stdlib.h>
-
-#include "colors.h"
-#include "SceneryEditorX/renderer/texture.h"
+//#define IMGUI_DEFINE_MATH_OPERATORS
+//#include <imgui/imgui.h>
+//#include <imgui/imgui_internal.h>
+//#include <imgui/misc/cpp/imgui_stdlib.h>
+//#include "colors.h"
+//#include "SceneryEditorX/renderer/texture.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX::UI
 {
     ///=========================================================================================
@@ -1046,5 +1045,6 @@ namespace SceneryEditorX::UI
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

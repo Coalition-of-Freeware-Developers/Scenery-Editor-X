@@ -10,15 +10,16 @@
 * Created: 26/8/2025
 * -------------------------------------------------------
 */
-#include "SplashScreen.h"
-#include <stb_image.h>
-#include <GLFW/glfw3.h>
-#include <SceneryEditorX/logging/logging.hpp>
-#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
-#include <SceneryEditorX/utils/pointers.h>
+//#include "SplashScreen.h"
+//#include <stb_image.h>
+//#include <GLFW/glfw3.h>
+//#include <SceneryEditorX/logging/logging.hpp>
+//#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
+//#include <SceneryEditorX/utils/pointers.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     
@@ -126,7 +127,7 @@ namespace SceneryEditorX
             // Create texture using existing texture creation system
             splashTexture = CreateRef<Texture2D>(imageData, width, height, 4); // RGBA format
 
-            if (!splashTexture /*|| !splashTexture->IsValid()*/)
+            if (!splashTexture /*|| !splashTexture->IsValid()#1#)
             {
                 SEDX_CORE_ERROR_TAG("SPLASH", "Failed to create valid splash texture");
                 return false;
@@ -230,5 +231,6 @@ namespace SceneryEditorX
         }
     }
 }
+*/
 
 /// -------------------------------------------------------

@@ -11,15 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/asset/asset.h"
-#include "SceneryEditorX/asset/asset_metadata.h"
-#include "SceneryEditorX/asset/asset_pack_header.h"
-#include "SceneryEditorX/scene/scene.h"
+//#include "SceneryEditorX/asset/asset.h"
+//#include "SceneryEditorX/asset/asset_metadata.h"
+//#include "SceneryEditorX/asset/asset_pack_header.h"
+//#include "SceneryEditorX/scene/scene.h"
 //#include "SceneryEditorX/serialization/asset_serializer.h"
-#include "SceneryEditorX/utils/filestreaming/file_streaming.h"
+//#include "SceneryEditorX/utils/filestreaming/file_streaming.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -37,9 +38,10 @@ namespace SceneryEditorX
 		static Ref<Scene> DeserializeSceneFromAssetPack(FileStreamReader& stream, const AssetPackFile::SceneInfo& assetInfo);
 
 	private:
-		/*static std::unordered_map<AssetType, Scope<AssetSerializer>> s_Serializers;*/
+		/*static std::unordered_map<AssetType, Scope<AssetSerializer>> s_Serializers;#1#
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

@@ -13,17 +13,18 @@
 //#include <nlohmann/json.hpp>
 //#include "SceneryEditorX/asset/texture_manager.h"
 //#include "SceneryEditorX/platform/file_manager.hpp"
-#include "material.h"
-#include "SceneryEditorX/renderer/renderer.h"
+//#include "material.h"
+//#include "SceneryEditorX/renderer/renderer.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     /*
     /// Use nlohmann json for parsing material files
     using json = nlohmann::json;
-    */
+    #1#
     /// -------------------------------------------------------
 
     MaterialAsset::MaterialAsset(const std::string &path)
@@ -55,7 +56,7 @@ namespace SceneryEditorX
         /// TODO: Implement serialization
         /// This would store material properties in a specific format
     }
-    */
+    #1#
 
     void MaterialAsset::Load(const std::string &path)
     {
@@ -117,7 +118,7 @@ namespace SceneryEditorX
 			SetRoughnessMap(handle);
 		}
 	}
-	*/
+	#1#
 
 	Vec3& MaterialAsset::GetAlbedoColor() const
     {
@@ -176,7 +177,7 @@ namespace SceneryEditorX
 		}
 		return texture;
 	}
-	*/
+	#1#
 
 	/*
 	void MaterialAsset::SetAlbedoMap(AssetHandle handle)
@@ -205,7 +206,7 @@ namespace SceneryEditorX
 			ClearAlbedoMap();
 		}
 	}
-	*/
+	#1#
 
 	/*
 	void MaterialAsset::ClearAlbedoMap() const
@@ -213,7 +214,7 @@ namespace SceneryEditorX
 		AssetManager::DeregisterDependency(m_Maps.AlbedoMap, Handle);
 		m_Material->Set(s_AlbedoMapUniform, Renderer::GetWhiteTexture());
 	}
-	*/
+	#1#
 
 	Ref<Texture2D> MaterialAsset::GetNormalMap() const
     {
@@ -236,7 +237,7 @@ namespace SceneryEditorX
 			ClearNormalMap();
 		}
 	}
-	*/
+	#1#
 
 	bool MaterialAsset::IsUsingNormalMap() const
     {
@@ -275,7 +276,7 @@ namespace SceneryEditorX
 			ClearMetalnessMap();
 		}
 	}
-	*/
+	#1#
 
 	/*
 	void MaterialAsset::ClearMetalnessMap() const
@@ -283,7 +284,7 @@ namespace SceneryEditorX
 		AssetManager::DeregisterDependency(m_Maps.MetalnessMap, Handle);
 		m_Material->Set(s_MetalnessMapUniform, Renderer::GetWhiteTexture());
 	}
-	*/
+	#1#
 
 	Ref<Texture2D> MaterialAsset::GetRoughnessMap() const
     {
@@ -306,7 +307,7 @@ namespace SceneryEditorX
 			ClearRoughnessMap();
 		}
 	}
-	*/
+	#1#
 
 	/*
 	void MaterialAsset::ClearRoughnessMap() const
@@ -314,7 +315,7 @@ namespace SceneryEditorX
 		AssetManager::DeregisterDependency(m_Maps.RoughnessMap, Handle);
 		m_Material->Set(s_RoughnessMapUniform, Renderer::GetWhiteTexture());
 	}
-	*/
+	#1#
 
 	float& MaterialAsset::GetTransparency() const
     {
@@ -385,5 +386,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

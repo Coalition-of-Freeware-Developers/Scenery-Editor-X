@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,11 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/scene/components.h>
+//#include <SceneryEditorX/renderer/texture.h>
+//#include <SceneryEditorX/scene/components.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     struct MSDFData;
@@ -52,5 +53,6 @@ namespace SceneryEditorX
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

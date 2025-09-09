@@ -1023,6 +1023,11 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("--------------------------------------------------------");
     }
 
+    void MemoryAllocator::FrameIdx(const uint64_t frameCount) const
+    {
+        vmaSetCurrentFrameIndex(GetAllocator(), static_cast<uint32_t>(frameCount));
+    }
+
 	/**
 	 * @fn ResetStats
 	 * @brief Resets memory allocation statistics tracking

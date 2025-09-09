@@ -10,13 +10,14 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/command_manager.h>
-#include <SceneryEditorX/renderer/render_pass.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
+//#include <SceneryEditorX/renderer/command_manager.h>
+//#include <SceneryEditorX/renderer/render_pass.h>
+//#include <SceneryEditorX/renderer/texture.h>
+//#include <SceneryEditorX/renderer/shaders/shader.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     void RenderPass::Pass_Lines(CommandManager *cmd_list, Texture *tex_out)
@@ -64,5 +65,6 @@ namespace SceneryEditorX
     }
 
 }
+*/
 
 /// -------------------------------------------------------

@@ -16,7 +16,7 @@
 #include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
-
+#include "SceneryEditorX/renderer/render_context.h"
 #include <spirv_cross/spirv_hlsl.hpp>
 
 /// -------------------------------------------------------

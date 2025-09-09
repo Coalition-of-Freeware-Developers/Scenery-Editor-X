@@ -21,8 +21,8 @@ namespace SceneryEditorX
 	}
 
 	Camera::Camera(const float degFov, const float width, const float height, const float nearP, const float farP) :
-	m_ProjectionMatrix(::SceneryEditorX::PerspectiveFov(::SceneryEditorX::ToRadians(degFov), width, height, farP, nearP)),
-	m_UnReversedProjectionMatrix(::SceneryEditorX::PerspectiveFov(::SceneryEditorX::ToRadians(degFov), width, height, nearP, farP))
+	m_ProjectionMatrix(PerspectiveFov(ToRadians(degFov), width, height, farP, nearP)),
+	m_UnReversedProjectionMatrix(PerspectiveFov(ToRadians(degFov), width, height, nearP, farP))
 	{
 	}
 }

@@ -17,33 +17,38 @@
 
 namespace SceneryEditorX
 {
+
+    struct SamplerSpec
+    {
+        FilterMode filter_min = FilterMode::Nearest;
+        FilterMode filter_mag = FilterMode::Nearest;
+        FilterMode filter_mipmap = FilterMode::Nearest;
+        SamplerWrap sampler_address_mode = SamplerWrap::Repeat;
+        DepthCompareOperator comparison_function = DepthCompareOperator::Never;
+        float anisotropy = 0.0f;
+        bool comparison_enabled = false;
+        float mip_bias = 0.0f;
+    };
+
     class Sampler : public RefCounted
     {
     public:
-		explicit Sampler(const std::string &debug_name);
+        explicit Sampler(const SamplerSpec &samplerSpec, const std::string &debug_name);
 		virtual ~Sampler() override;
 
-		FilterMode GetFilterMin()						const { return m_filter_min; }
-        FilterMode GetFilterMag()						const { return m_filter_mag; }
-        FilterMode GetFilterMipmap()					const { return m_filter_mipmap; }
-        SamplerWrap GetAddressMode()					const { return m_sampler_address_mode; }
-        DepthCompareOperator GetComparisonFunction()	const { return m_comparison_function; }
-        bool GetAnisotropyEnabled()                     const { return m_anisotropy != 0; }
-        bool GetComparisonEnabled()                     const { return m_comparison_enabled; }
+		FilterMode GetFilterMin()						const { return m_samplerSpec.filter_min; }
+        FilterMode GetFilterMag()						const { return m_samplerSpec.filter_mag; }
+        FilterMode GetFilterMipmap()					const { return m_samplerSpec.filter_mipmap; }
+        SamplerWrap GetAddressMode()					const { return m_samplerSpec.sampler_address_mode; }
+        DepthCompareOperator GetComparisonFunction()	const { return m_samplerSpec.comparison_function; }
+        bool GetAnisotropyEnabled()                     const { return m_samplerSpec.anisotropy != 0; }
+        bool GetComparisonEnabled()                     const { return m_samplerSpec.comparison_enabled; }
 		void* GetResource()								const { return m_resource; }
 
     private:
         void CreateResource();
-
-        FilterMode m_filter_min                         = FilterMode::Nearest;
-        FilterMode m_filter_mag                         = FilterMode::Nearest;
-        FilterMode m_filter_mipmap                      = FilterMode::Nearest;
-        SamplerWrap m_sampler_address_mode				= SamplerWrap::Repeat;
-        DepthCompareOperator m_comparison_function		= DepthCompareOperator::Always;
-        float m_anisotropy                              = 0;
-        bool m_comparison_enabled                       = false;
-        float m_mip_lod_bias                            = 0.0f;
-
+        SamplerSpec m_samplerSpec;
+        std::string samplerName;
         void* m_resource = nullptr;
 
     };

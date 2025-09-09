@@ -56,42 +56,46 @@ using ResourceID = u32;      ///< Resource Identifier, alias for unsigned 32-bit
 /// -------------------------------------------------------
 
 // Forward declarations to avoid heavy includes and cycles
-namespace SceneryEditorX
+namespace xMath
 {
 	class Mat2;
 	class Mat3;
 	class Mat4;
 	class Quat;
 
-	namespace Utils
-	{
-		template<typename T>
-		struct TVector2;
+	template<typename T>
+	struct TVector2;
 
-		template<typename T>
-		struct TVector3;
+	template<typename T>
+	struct TVector3;
 
-		template<typename T>
-		struct TVector4;
-	}
+	template<typename T>
+	struct TVector4;
+	
 }
 
-using Vec2	=	SceneryEditorX::Utils::TVector2<float>;   	///< 2D vector
-using Vec3	=	SceneryEditorX::Utils::TVector3<float>;   	///< 3D vector
-using Vec4	=	SceneryEditorX::Utils::TVector4<float>;   	///< 4D vector
-using iVec2 =	SceneryEditorX::Utils::TVector2<int32_t>; 	///< 2D integer vector
-using iVec3 =	SceneryEditorX::Utils::TVector3<int32_t>; 	///< 3D integer vector
-using iVec4 =	SceneryEditorX::Utils::TVector4<int32_t>; 	///< 4D integer vector
-using UVec2 = 	SceneryEditorX::Utils::TVector2<uint32_t>; 	///< 2D unsigned integer vector
-using UVec3 = 	SceneryEditorX::Utils::TVector3<uint32_t>; 	///< 3D unsigned integer vector
-using UVec4 = 	SceneryEditorX::Utils::TVector4<uint32_t>; 	///< 4D unsigned integer vector
-using Bool2 = 	SceneryEditorX::Utils::TVector2<bool>;     	///< 2D boolean vector
-using Bool3 = 	SceneryEditorX::Utils::TVector3<bool>;     	///< 3D boolean vector
-using Bool4 = 	SceneryEditorX::Utils::TVector4<bool>;     	///< 4D boolean vector
-using Mat2	=	SceneryEditorX::Mat2;                     	///< 2x2 matrix
-using Mat3	=	SceneryEditorX::Mat3;                     	///< 3x3 matrix
-using Mat4	=	SceneryEditorX::Mat4;                    	///< 4x4 matrix
-using Quat	=	SceneryEditorX::Quat;                    	///< Quaternion for rotation
+/// -------------------------------------------------------
+
+using Vec2	=	xMath::TVector2<float>;   	///< 2D vector
+using Vec3	=	xMath::TVector3<float>;   	///< 3D vector
+using Vec4	=	xMath::TVector4<float>;   	///< 4D vector
+using iVec2 =	xMath::TVector2<int32_t>; 	///< 2D integer vector
+using iVec3 =	xMath::TVector3<int32_t>; 	///< 3D integer vector
+using iVec4 =	xMath::TVector4<int32_t>; 	///< 4D integer vector
+using UVec2 = 	xMath::TVector2<uint32_t>; 	///< 2D unsigned integer vector
+using UVec3 = 	xMath::TVector3<uint32_t>; 	///< 3D unsigned integer vector
+using UVec4 = 	xMath::TVector4<uint32_t>; 	///< 4D unsigned integer vector
+using Bool2 = 	xMath::TVector2<bool>;     	///< 2D boolean vector
+using Bool3 = 	xMath::TVector3<bool>;     	///< 3D boolean vector
+using Bool4 = 	xMath::TVector4<bool>;     	///< 4D boolean vector
+using Mat2	=	xMath::Mat2;                ///< 2x2 matrix
+using Mat3	=	xMath::Mat3;                ///< 3x3 matrix
+using Mat4	=	xMath::Mat4;                ///< 4x4 matrix
+using Quat	=	xMath::Quat;                ///< Quaternion for rotation
+
+/// -------------------------------------------------------
+
+using namespace xMath;
 
 /// -------------------------------------------------------
 

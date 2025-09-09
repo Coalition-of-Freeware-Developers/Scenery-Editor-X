@@ -29,7 +29,7 @@ namespace SceneryEditorX
 
         VkFormat Format;
         bool Blend = true;
-        FramebufferBlendMode BlendMode = FramebufferBlendMode::SrcAlphaOneMinusSrcAlpha;
+        BlendMode BlendMode = BlendMode::SrcAlphaOneMinusSrcAlpha;
         AttachmentLoadOp LoadOp = AttachmentLoadOp::Inherit;
         /// TODO: filtering/wrap
     };
@@ -57,31 +57,31 @@ namespace SceneryEditorX
 		bool clearDepthOnLoad = true;
 
 		FramebufferAttachmentSpecification attachments;
-		uint32_t samples = 1; ///< Multi-Sampling
+		uint32_t samples = 1; /// Multi-Sampling
 
-		///< TODO: Temp, needs scale
+		/// TODO: Temp, needs scale
 		bool noResize = false;
 
-		///< Master switch (individual attachments can be disabled in FramebufferTextureSpecification)
+		/// Master switch (individual attachments can be disabled in FramebufferTextureSpecification)
 		bool blend = true;
 
-		///< None means use BlendMode in FramebufferTextureSpecification
-		FramebufferBlendMode blendMode = FramebufferBlendMode::None;
+		/// None means use BlendMode in FramebufferTextureSpecification
+		BlendMode blendMode = BlendMode::None;
 
-		///< SwapChainTarget = screen buffer (i.e. no framebuffer)
+		/// SwapChainTarget = screen buffer (i.e. no framebuffer)
 		bool swapChainTarget = false;
 
-		///< Will it be used for transfer ops?
+		/// Will it be used for transfer ops?
 		bool transfer = false;
 
 		/// Note: these are used to attach multi-layered color/depth images
 		Ref<Image2D> existingImage;
 		std::vector<uint32_t> existingImageLayers;
 
-		///< Specify existing images to attach instead of creating new images. attachment index -> image
+		/// Specify existing images to attach instead of creating new images. attachment index -> image
 		std::map<uint32_t, Ref<Image2D>> existingImages;
 
-		///< At the moment this will just create a new render pass with an existing framebuffer
+		/// At the moment this will just create a new render pass with an existing framebuffer
 		Ref<Framebuffer> existingFramebuffer;
 
 		std::string debugName;

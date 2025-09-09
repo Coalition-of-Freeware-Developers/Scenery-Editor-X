@@ -11,11 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/scene/scene.h>
+//#include <SceneryEditorX/core/events/event_system.h>
+//#include <SceneryEditorX/scene/scene.h>
 
 /// -------------------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	class SceneEvent : public Event
@@ -118,5 +119,6 @@ namespace SceneryEditorX
 
 
 }
+*/
 
 /// -------------------------------------------------------------------

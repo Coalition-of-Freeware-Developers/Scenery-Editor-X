@@ -11,15 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <array>
-#include <atomic>
-#include <cstdint>
-#include <mutex>
-#include "vulkan/resource.h"
-#include "vulkan/vk_enums.h"
+//#include <array>
+//#include <atomic>
+//#include <cstdint>
+//#include <mutex>
+//#include "vulkan/resource.h"
+//#include "vulkan/vk_enums.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -48,5 +49,6 @@ namespace SceneryEditorX
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

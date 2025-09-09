@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,15 +10,16 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/ui/ui_manager.h>
-#include <GraphicsEngine/vulkan/vk_util.h>
-#include <SceneryEditorX/utils/math/math.h>
+//#include <imgui/imgui.h>
+//#include <imgui/imgui_internal.h>
+//#include <SceneryEditorX/ui/ui.h>
+//#include <SceneryEditorX/ui/ui_manager.h>
+//#include <GraphicsEngine/vulkan/vk_util.h>
+//#include <SceneryEditorX/utils/math/math.h>
 
 // -------------------------------------------------------
 
+/*
 // Temporary stub for ImGuizmo until you integrate the actual library
 namespace ImGuizmo
 {
@@ -26,9 +27,11 @@ namespace ImGuizmo
     bool IsUsing() { return false; }
 
 }
+*/
 
 // -------------------------------------------------------
 
+/*
 namespace UI
 {
     static bool ViewportPanel(iVec2& newViewportSize, bool& viewportHovered, VkImageView imageView)
@@ -59,7 +62,7 @@ namespace UI
                               viewportSize.x,
                               viewportSize.y);
 
-			*/
+			#1#
 
             // Check if viewport is hovered
             //viewportHovered = ImGui::IsWindowHovered() && !ImGuizmo::IsUsing();
@@ -158,5 +161,6 @@ namespace UI
     }
 
 } // namespace UI
+*/
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

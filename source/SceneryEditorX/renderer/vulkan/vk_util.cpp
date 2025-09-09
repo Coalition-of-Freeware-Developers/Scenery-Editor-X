@@ -15,6 +15,7 @@
 #include "vk_data.h"
 
 /// -------------------------------------------------------
+
 namespace SceneryEditorX::Utils
 {
 	/**

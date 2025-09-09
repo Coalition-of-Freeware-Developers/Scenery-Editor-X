@@ -10,15 +10,16 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/camera.h>
-#include <SceneryEditorX/renderer/command_manager.h>
-#include <SceneryEditorX/renderer/render_pass.h>
-#include <SceneryEditorX/renderer/texture.h>
-#include <SceneryEditorX/renderer/shaders/shader.h>
-#include <SceneryEditorX/scene/entity.h>
+//#include <SceneryEditorX/renderer/camera.h>
+//#include <SceneryEditorX/renderer/command_manager.h>
+//#include <SceneryEditorX/renderer/render_pass.h>
+//#include <SceneryEditorX/renderer/texture.h>
+//#include <SceneryEditorX/renderer/shaders/shader.h>
+//#include <SceneryEditorX/scene/entity.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	
@@ -105,5 +106,6 @@ namespace SceneryEditorX
     }
 
 }
+*/
 
 /// -------------------------------------------------------

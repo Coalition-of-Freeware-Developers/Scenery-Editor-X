@@ -15,7 +15,11 @@
 #include "renderer.h"
 #include "bindless_descriptor_manager.h"
 #include <format>
+
+#include "sampler.h"
+
 #include "SceneryEditorX/asset/importers/texture_importer.h"
+#include "vulkan/vk_image.h"
 #include "vulkan/vk_util.h"
 
 /// -------------------------------------------------------
@@ -28,9 +32,10 @@ namespace SceneryEditorX
 		{
 			switch (wrap)
 			{
-			    case SamplerWrap::Repeat:		return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-				case SamplerWrap::Clamp:		return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                case SamplerWrap::MirrorRepeat: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+			    case SamplerWrap::Repeat:			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			    case SamplerWrap::ClampEdge:		return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			    case SamplerWrap::ClampBorder:		return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+			    case SamplerWrap::RepeatMirrored:	return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
             }
 			SEDX_CORE_ASSERT(false, "Unknown wrap mode");
 			return (VkSamplerAddressMode)0;
@@ -40,9 +45,9 @@ namespace SceneryEditorX
 		{
 			switch (filter)
 			{
-				case SamplerFilter::Linear:   return VK_FILTER_LINEAR;
-				case SamplerFilter::Nearest:  return VK_FILTER_NEAREST;
-				case SamplerFilter::Cubic:   return VK_FILTER_CUBIC_IMG;
+				case SamplerFilter::Linear:		return VK_FILTER_LINEAR;
+				case SamplerFilter::Nearest:	return VK_FILTER_NEAREST;
+				case SamplerFilter::Cubic:		return VK_FILTER_CUBIC_IMG;
 			}
 			SEDX_CORE_ASSERT(false, "Unknown filter");
 			return (VkFilter)0;
@@ -52,20 +57,30 @@ namespace SceneryEditorX
 		{
 			switch (format)
 			{
-				case VK_FORMAT_R16_UINT: return width * height * sizeof(uint16_t);
-				case VK_FORMAT_R16G16_SFLOAT: return width * height * 2 * sizeof(uint16_t);
-				case VK_FORMAT_R32G32_SFLOAT: return width * height * 2 * sizeof(float);
-				case VK_FORMAT_R32_SFLOAT: return width * height * sizeof(float);
-				case VK_FORMAT_R8_UNORM: return width * height;
-				case VK_FORMAT_R8_UINT: return width * height;
-				case VK_FORMAT_R8G8B8A8_UNORM: return width * height * 4;
-				case VK_FORMAT_R8G8B8A8_SRGB: return width * height * 4;
-				case VK_FORMAT_R32G32B32A32_SFLOAT: return width * height * 4 * sizeof(float);
+				case VK_FORMAT_R16_UINT:				return width * height * sizeof(uint16_t);
+				case VK_FORMAT_R16G16_SFLOAT:			return width * height * 2 * sizeof(uint16_t);
+				case VK_FORMAT_R32G32_SFLOAT:			return width * height * 2 * sizeof(float);
+				case VK_FORMAT_R32_SFLOAT:				return width * height * sizeof(float);
+				case VK_FORMAT_R8_UNORM:				return width * height;
+				case VK_FORMAT_R8_UINT:					return width * height;
+				case VK_FORMAT_R8G8B8A8_UNORM:			return width * height * 4;
+				case VK_FORMAT_R8G8B8A8_SRGB:			return width * height * 4;
+				case VK_FORMAT_R32G32B32A32_SFLOAT:		return width * height * 4 * sizeof(float);
 				case VK_FORMAT_B10G11R11_UFLOAT_PACK32: return width * height * sizeof(float);
 			}
 			SEDX_CORE_ASSERT(false);
 			return 0;
 		}
+
+	
+        bool Texture::IsCompressedFormat(const VkFormat format)
+        {
+            return format == VK_FORMAT_BC1_RGB_UNORM_BLOCK ||
+                   format == VK_FORMAT_BC3_UNORM_BLOCK ||
+                   format == VK_FORMAT_BC5_UNORM_BLOCK ||
+				   format == VK_FORMAT_BC7_UNORM_BLOCK ||
+                   format == VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
+        }
 
         static bool ValidateSpecification(const TextureSpecification& specification)
 		{
@@ -80,14 +95,13 @@ namespace SceneryEditorX
 
 
     /// Texture2D Constructor Implementations
-    /*
+
     Texture2D::Texture2D(const TextureSpecification &specification) : m_Specification(specification)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D with specification: {}x{}", specification.width, specification.height);
         /// Initialize with empty data
         Texture2D::CreateFromBuffer(specification);
     }
-    */
 
     Texture2D::Texture2D(const TextureSpecification& specification, const std::filesystem::path& filePath) : m_Specification(specification), m_Path(filePath)
     {
@@ -98,9 +112,53 @@ namespace SceneryEditorX
     Texture2D::Texture2D(const TextureSpecification& specification, const Buffer& imageData) : m_Specification(specification), m_ImageData(imageData)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from buffer data: {} bytes", imageData.size);
-        CreateFromBuffer(specification, imageData);
+        if (m_Specification.height == 0)
+        {
+            m_ImageData = TextureImporter::ToBufferFromMemory(Buffer(imageData.data, m_Specification.width),
+                                                              m_Specification.format,
+                                                              m_Specification.width,
+                                                              m_Specification.height);
+            if (!m_ImageData)
+            {
+                m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/error_texture.png",
+                                                                m_Specification.format,
+                                                                m_Specification.width,
+                                                                m_Specification.height);
+            }
+
+            Utils::ValidateSpecification(m_Specification);
+        }
+        else if (imageData)
+        {
+            Utils::ValidateSpecification(m_Specification);
+            auto size = (uint32_t)Utils::GetMemorySize(m_Specification.format, m_Specification.width, m_Specification.height);
+            m_ImageData = Buffer::Copy(imageData.data, size);
+        }
+        else
+        {
+            Utils::ValidateSpecification(m_Specification);
+            auto size = (uint32_t)Utils::GetMemorySize(m_Specification.format, m_Specification.width, m_Specification.height);
+            m_ImageData.Allocate(size);
+            m_ImageData.ZeroInitialize();
+        }
+
+        ImageSpecification imageSpec;
+        imageSpec.format = m_Specification.format;
+        imageSpec.usage = ImageUsage::Sampled | ImageUsage::TransferDst;
+        imageSpec.width = m_Specification.width;
+        imageSpec.height = m_Specification.height;
+        imageSpec.mips = specification.generateMips ? Texture2D::GetMipLevelCount() : 1;
+        imageSpec.debugName = specification.debugName;
+        imageSpec.createSampler = false;
+        if (specification.storage)
+            imageSpec.usage = ImageUsage::Storage;
+
+        m_Image = CreateRef<Image2D>(imageSpec);
+
+        Invalidate();
     }
 
+	/*
 	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification)
 	{
         return CreateRef<Texture2D>(specification);
@@ -115,6 +173,7 @@ namespace SceneryEditorX
 	{
         return CreateRef<Texture2D>(specification, imageData);
 	}
+	*/
 
     Ref<Texture2D> Texture2D::CreateFromSRGB(const Ref<Texture2D> &texture)
     {
@@ -124,7 +183,7 @@ namespace SceneryEditorX
         spec.format = VK_FORMAT_R8G8B8A8_UNORM;
         Buffer buffer;
         texture->GetImage()->CopyToHostBuffer(buffer);
-        auto srgbTexture = Create(spec, buffer);
+        auto srgbTexture = CreateRef<Texture2D>(spec, buffer);
         return srgbTexture;
     }
 
@@ -214,52 +273,7 @@ namespace SceneryEditorX
         Invalidate();
     }
 
-    /*
-    void Texture2D::CreateFromBuffer(const TextureSpecification &specification, const Buffer &data)
-    {
-	    if (m_Specification.height == 0)
-		{
-			m_ImageData = TextureImporter::ToBufferFromMemory(Buffer(data.data, m_Specification.width), m_Specification.format, m_Specification.width, m_Specification.height);
-			if (!m_ImageData)
-                m_ImageData = TextureImporter::ToBufferFromFile("assets/textures/error_texture.png", m_Specification.format, m_Specification.width, m_Specification.height);
-
-            Utils::ValidateSpecification(m_Specification);
-		}
-		else if (data)
-		{
-			Utils::ValidateSpecification(m_Specification);
-			auto size = (uint32_t)Utils::GetMemorySize(m_Specification.format, m_Specification.width, m_Specification.height);
-			m_ImageData = Buffer::Copy(data.data, size);
-		}
-		else
-		{
-			Utils::ValidateSpecification(m_Specification);
-			auto size = (uint32_t)Utils::GetMemorySize(m_Specification.format, m_Specification.width, m_Specification.height);
-			m_ImageData.Allocate(size);
-			m_ImageData.ZeroInitialize();
-		}
-
-		ImageSpecification imageSpec;
-		imageSpec.format = m_Specification.format;
-		imageSpec.usage = ImageUsage::Sampled | ImageUsage::TransferDst;
-		imageSpec.width = m_Specification.width;
-		imageSpec.height = m_Specification.height;
-		imageSpec.mips = specification.generateMips ? Texture2D::GetMipLevelCount() : 1;
-		imageSpec.debugName = specification.debugName;
-		imageSpec.createSampler = false;
-		if (specification.storage)
-			imageSpec.usage = ImageUsage::Storage;
-
-        m_Image = CreateRef<Image2D>(imageSpec);
-
-		Invalidate();
-    }
-    */
-
-    void Texture2D::Resize(const UVec2 &size)
-    {
-        Resize(size.x, size.y);
-    }
+    void Texture2D::Resize(const UVec2 &size) { Resize(size.x, size.y); }
 
     void Texture2D::Resize(const uint32_t width, const uint32_t height)
     {
@@ -270,7 +284,6 @@ namespace SceneryEditorX
         Renderer::Submit([instance]() mutable { instance->Invalidate(); });
     }
 
-    /*
     void Texture2D::Invalidate()
     {
 	    const auto device = RenderContext::GetCurrentDevice();
@@ -342,12 +355,12 @@ namespace SceneryEditorX
 				sampler.maxAnisotropy = 1.0;
 				sampler.anisotropyEnable = VK_FALSE;
 		}
-		#1#
+		*/
 		samplerInfo.maxAnisotropy = 1.0;
 		samplerInfo.anisotropyEnable = VK_FALSE;
 		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 
-		info.sampler = CreateSampler(samplerInfo);
+		info.sampler = CreateRef<Sampler>(samplerInfo);
 		image->UpdateDescriptor();
 
 		if (!m_Specification.storage)
@@ -355,7 +368,7 @@ namespace SceneryEditorX
 			VkImageViewCreateInfo view{};
 			view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			view.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			view.format = Utils::VulkanImageFormat(m_Specification.format);
+			view.format = m_Specification.format;
 			view.components = {
 			    .r = VK_COMPONENT_SWIZZLE_R,
 			    .g = VK_COMPONENT_SWIZZLE_G,
@@ -383,123 +396,22 @@ namespace SceneryEditorX
 		m_ImageData = Buffer();
     }
 
-    void Texture2D::Bind(uint32_t slot) const
-    {
-    }
-
     void Texture2D::Lock()
     {
         if (!m_ImageData)
         {
-            auto size = (uint32_t)GetMemorySize(m_Specification.format, m_Specification.width, m_Specification.height);
+            auto size = (uint32_t)Utils::GetMemorySize(m_Specification.format, m_Specification.width, m_Specification.height);
             m_ImageData.Allocate(size);
         }
     }
-    */
 
-	// Temporary simplified invalidate (bindless integration) until legacy commented version is reinstated
-	void Texture2D::Invalidate()
-	{
-		const auto device = RenderContext::GetCurrentDevice();
-		const auto vulkanDevice = device->GetDevice();
+    void Texture2D::Unlock() { SetData(m_ImageData); }
 
-		// Recreate underlying image (basic path similar to legacy block, trimmed)
-		m_Image->Release();
-		uint32_t mipCount = m_Specification.generateMips ? GetMipLevelCount() : 1;
-		ImageSpecification &imageSpec = m_Image->GetSpecification();
-		imageSpec.format = m_Specification.format;
-		imageSpec.width  = m_Specification.width;
-		imageSpec.height = m_Specification.height;
-		imageSpec.mips   = mipCount;
-		imageSpec.createSampler = false;
-		if (!m_ImageData)
-			imageSpec.usage = ImageUsage::Storage; // storage fallback if no data
+    Buffer Texture2D::GetWriteableBuffer() const { return m_ImageData; }
 
-		const Ref<Image2D> image = m_Image.As<Image2D>();
-		image->Invalidate_RenderThread();
-		auto &info = image->GetImageInfo();
+    const std::filesystem::path & Texture2D::GetPath() const { return m_Path; }
 
-		if (m_ImageData)
-			SetData(m_ImageData);
-		else
-		{
-			VkCommandBuffer transitionCmd = device->GetCommandBuffer(true);
-			VkImageSubresourceRange sub{}; sub.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; sub.layerCount = 1; sub.levelCount = mipCount;
-			SetImageLayout(transitionCmd, info.image, VK_IMAGE_LAYOUT_UNDEFINED, image->GetDescriptorInfoVulkan().imageLayout, sub);
-			device->FlushCmdBuffer(transitionCmd);
-		}
-
-		// Create sampler owned by Image
-		VkSamplerCreateInfo samplerInfo{}; samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO; samplerInfo.maxAnisotropy = 1.0f;
-		samplerInfo.magFilter = Utils::VulkanSamplerFilter(m_Specification.samplerFilter);
-		samplerInfo.minFilter = Utils::VulkanSamplerFilter(m_Specification.samplerFilter);
-		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerInfo.addressModeU = Utils::VulkanSamplerWrap(m_Specification.samplerWrap);
-		samplerInfo.addressModeV = Utils::VulkanSamplerWrap(m_Specification.samplerWrap);
-		samplerInfo.addressModeW = Utils::VulkanSamplerWrap(m_Specification.samplerWrap);
-		samplerInfo.mipLodBias = 0.0f; samplerInfo.compareOp = VK_COMPARE_OP_NEVER; samplerInfo.minLod = 0.0f; samplerInfo.maxLod = (float)mipCount;
-		samplerInfo.maxAnisotropy = 1.0f; samplerInfo.anisotropyEnable = VK_FALSE; samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-		info.sampler = CreateSampler(samplerInfo);
-		image->UpdateDescriptor();
-
-		if (!m_Specification.storage)
-		{
-			VkImageViewCreateInfo view{}; view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO; view.viewType = VK_IMAGE_VIEW_TYPE_2D; view.format = Utils::VulkanImageFormat(m_Specification.format);
-			view.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-			view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; view.subresourceRange.baseMipLevel = 0; view.subresourceRange.baseArrayLayer = 0; view.subresourceRange.layerCount = 1; view.subresourceRange.levelCount = mipCount; view.image = info.image;
-			VK_CHECK_RESULT(vkCreateImageView(vulkanDevice, &view, nullptr, &info.view));
-			SetDebugUtilsObjectName(vulkanDevice, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("Texture view: {}", m_Specification.debugName), info.view);
-			image->UpdateDescriptor();
-		}
-
-		// Bindless registration / update
-		if (BindlessDescriptorManager::GetDescriptorSet() != VK_NULL_HANDLE)
-		{
-			if (m_BindlessImageIndex < 0)
-				m_BindlessImageIndex = (int32_t)BindlessDescriptorManager::RegisterSampledImage(info.view, image->GetDescriptorInfoVulkan().imageLayout);
-			else
-				BindlessDescriptorManager::UpdateSampledImage((uint32_t)m_BindlessImageIndex, info.view, image->GetDescriptorInfoVulkan().imageLayout);
-
-			if (m_BindlessSamplerIndex < 0)
-				m_BindlessSamplerIndex = (int32_t)BindlessDescriptorManager::RegisterSampler(info.sampler);
-			else
-				BindlessDescriptorManager::UpdateSampler((uint32_t)m_BindlessSamplerIndex, info.sampler);
-		}
-
-		// Drop CPU copy unless spec requests local storage
-		if (!m_Specification.storeLocally)
-		{
-			m_ImageData.Release();
-			m_ImageData = Buffer();
-		}
-	}
-
-    Ref<Texture2D> * Texture2D::GetRenderTarget(const RenderTarget type)
-    {
-        return render_targets[static_cast<uint8_t>(type)].get();
-    }
-
-    void Texture2D::Unlock()
-    {
-        SetData(m_ImageData);
-    }
-
-    Buffer Texture2D::GetWriteableBuffer() const
-    {
-        return m_ImageData;
-    }
-
-    const std::filesystem::path & Texture2D::GetPath() const
-    {
-        return m_Path;
-    }
-
-    /*
-    uint32_t Texture2D::GetMipLevelCount() const
-    {
-        return CalculateMipCount(m_Specification.width, m_Specification.height);
-    }
-    */
+    uint32_t Texture2D::GetMipLevelCount() const { return CalculateMipCount(m_Specification.width, m_Specification.height); }
 
     std::pair<uint32_t, uint32_t> Texture2D::GetMipSize(uint32_t mip) const
     {
@@ -515,7 +427,6 @@ namespace SceneryEditorX
         return {width, height};
     }
 
-    /*
     void Texture2D::GenerateMips()
     {
 	    const auto device = RenderContext::GetCurrentDevice()->GetDevice();
@@ -668,7 +579,48 @@ namespace SceneryEditorX
 		RenderContext::GetCurrentDevice()->FlushCmdBuffer(commandBuffer);
 #endif
     }
-    */
+
+    size_t Texture2D::CalculateMipSize(const TextureSpecification &spec, uint32_t bits_per_channel, uint32_t channel_count)
+    {
+        SEDX_ASSERT(spec.width > 0);
+        SEDX_ASSERT(spec.height > 0);
+        SEDX_ASSERT(spec.depth > 0);
+
+        if (Utils::IsCompressedFormat(spec.format))
+        {
+            uint32_t block_size;
+            uint32_t block_width  = 4; // default block width  for BC formats
+            uint32_t block_height = 4; // default block height for BC formats
+            switch (spec.format)
+            {
+            case VkFormat::VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+                block_size = 8;
+                break;
+            case VkFormat::VK_FORMAT_BC3_UNORM_BLOCK:
+            case VkFormat::VK_FORMAT_BC7_UNORM_BLOCK:
+            case VkFormat::VK_FORMAT_BC5_SNORM_BLOCK:
+                block_size = 16;
+                break;
+            case VkFormat::VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
+                block_width  = 4;
+                block_height = 4;
+                block_size  = 16;
+                break;
+            default:
+                SEDX_ASSERT(false);
+                return 0;
+            }
+            uint32_t num_blocks_wide = (spec.width + block_width - 1) / block_width;
+            uint32_t num_blocks_high = (spec.height + block_height - 1) / block_height;
+            return static_cast<size_t>(num_blocks_wide) * static_cast<size_t>(num_blocks_high) * static_cast<size_t>(spec.depth) * static_cast<size_t>(block_size);
+        }
+        else
+        {
+            SEDX_ASSERT(channel_count > 0);
+            SEDX_ASSERT(bits_per_channel > 0);
+            return static_cast<size_t>(spec.width) * static_cast<size_t>(spec.height) * static_cast<size_t>(spec.depth) * static_cast<size_t>(channel_count) * static_cast<size_t>(bits_per_channel / 8);
+        }
+    }
 
     void Texture2D::CopyToHostBuffer(Buffer &buffer) const
     {
@@ -792,6 +744,19 @@ namespace SceneryEditorX
 			GenerateMips();
     }
 
+    void Texture2D::SaveAsImage(const std::string &file_path)
+    {
+        SEDX_ASSERT(m_mappedData != nullptr, "The texture needs to be mappable");
+        ImageImporter::Save(file_path, m_width, m_height, m_channel_count, m_bits_per_channel, m_mappedData);
+        SEDX_CORE_INFO("Screenshot has been saved");
+    }
+
+    void Texture2D::ClearData()
+    {
+        m_slices.clear();
+        m_slices.shrink_to_fit();
+    }
+
 	//////////////////////////////////////////////////////////////////////////////////
     /// TextureCube
     //////////////////////////////////////////////////////////////////////////////////
@@ -809,7 +774,6 @@ namespace SceneryEditorX
 	    Invalidate();
     }
 
-    /*
     void TextureCube::Release()
     {
         if (m_Image == nullptr)
@@ -830,14 +794,9 @@ namespace SceneryEditorX
         m_DescriptorImageInfo.imageView = nullptr;
         m_DescriptorImageInfo.sampler = nullptr;
     }
-    */
 
-    TextureCube::~TextureCube()
-    {
-        Release();
-    }
+    TextureCube::~TextureCube() { Release(); }
 
-    /*
     void TextureCube::Invalidate()
 	{
 		auto device = RenderContext::GetCurrentDevice();
@@ -969,12 +928,12 @@ namespace SceneryEditorX
 		VkSamplerCreateInfo sampler {};
 		sampler.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		sampler.maxAnisotropy = 1.0f;
-		sampler.magFilter = static_cast<SamplerFilter>(m_Specification.samplerFilter);
-		sampler.minFilter = static_cast<SamplerFilter>(m_Specification.samplerFilter);
+		sampler.magFilter = static_cast<VkFilter>(m_Specification.samplerFilter);
+        sampler.minFilter = static_cast<VkFilter>(m_Specification.samplerFilter);
 		sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		sampler.addressModeU = static_cast<SamplerWrap>(m_Specification.samplerWrap);
-		sampler.addressModeV = static_cast<SamplerWrap>(m_Specification.samplerWrap);
-		sampler.addressModeW = static_cast<SamplerWrap>(m_Specification.samplerWrap);
+        sampler.addressModeU = static_cast<VkSamplerAddressMode>(m_Specification.samplerWrap);
+        sampler.addressModeV = static_cast<VkSamplerAddressMode>(m_Specification.samplerWrap);
+        sampler.addressModeW = static_cast<VkSamplerAddressMode>(m_Specification.samplerWrap);
 		sampler.mipLodBias = 0.0f;
 		sampler.compareOp = VK_COMPARE_OP_NEVER;
 		sampler.minLod = 0.0f;
@@ -986,7 +945,7 @@ namespace SceneryEditorX
 		sampler.maxAnisotropy = 1.0;
 		sampler.anisotropyEnable = VK_FALSE;
 		sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-		m_DescriptorImageInfo.sampler = CreateSampler(sampler);
+        m_DescriptorImageInfo.sampler = CreateRef<Sampler>(sampler);
 
 		/// Create image view
 		/// Textures are not directly accessed by the shaders and
@@ -1014,12 +973,8 @@ namespace SceneryEditorX
 
 		SetDebugUtilsObjectName(vulkanDevice, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("Texture cube view: {}", m_Specification.debugName), m_DescriptorImageInfo.imageView);
 	}
-	*/
 
-	uint32_t TextureCube::GetMipLevelCount() const
-	{
-		return RenderData::CalculateMipCount(m_Specification.width, m_Specification.height);
-	}
+	uint32_t TextureCube::GetMipLevelCount() const { return RenderData::CalculateMipCount(m_Specification.width, m_Specification.height); }
 
 	std::pair<uint32_t, uint32_t> TextureCube::GetMipSize(uint32_t mip) const
 	{
@@ -1035,7 +990,6 @@ namespace SceneryEditorX
 		return { width, height };
 	}
 
-	/*
 	VkImageView TextureCube::CreateImageViewSingleMip(uint32_t mip)
 	{
 		// TODO: assert to check mip count
@@ -1067,7 +1021,6 @@ namespace SceneryEditorX
 
 		return result;
 	}
-	*/
 
 	void TextureCube::GenerateMips(const bool readonly)
 	{
@@ -1247,8 +1200,7 @@ namespace SceneryEditorX
 	}
 #endif
 
-	/*
-	void TextureCube::CopyToHostBuffer(Memory::Buffer &buffer) const
+	void TextureCube::CopyToHostBuffer(Buffer &buffer) const
     {
         const auto device = RenderContext::GetCurrentDevice();
         auto vulkanDevice = device->GetDevice();
@@ -1328,7 +1280,6 @@ namespace SceneryEditorX
 
 		allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
 	}
-	*/
 
 	void TextureCube::CopyFromBuffer(const Buffer &buffer, const uint32_t mips) const
     {

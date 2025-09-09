@@ -15,7 +15,7 @@
  * @file render_dispatcher.cpp
  * @brief Implementation of the RenderDispatcher asynchronous job & deferred resource free system.
  *
- * See `render_dispatcher.h` and `docs/render-dispatcher-documentation.md` for detailed design notes.
+ * @see `render_dispatcher.h` and `docs/render-dispatcher-documentation.md` for detailed design notes.
  */
 
 #include "render_dispatcher.h"
@@ -26,18 +26,13 @@
 namespace SceneryEditorX
 {
 
-	/// Singleton lifetime anchor instance (created in Init, released in Shutdown)
-	Ref<RenderDispatcher> RenderDispatcher::s_Instance = nullptr;
-	/// Background worker thread executing FIFO jobs
-	std::thread RenderDispatcher::s_Worker;
-	/// Active job queue + synchronization primitives
-	RenderDispatcher::Queues RenderDispatcher::s_Queue;
-	/// Mutex protecting the resource free ring structure
-	std::mutex RenderDispatcher::s_RFMutex;
-	/// Ring of per-frame deferred destruction job buckets
-	std::vector<RenderDispatcher::RFQueue> RenderDispatcher::s_ResourceFreeRing;
-	/// Index of the frame bucket that just became safe for destruction
-	uint32_t RenderDispatcher::s_CurrentRFIndex = 0;
+
+	Ref<RenderDispatcher> RenderDispatcher::s_Instance = nullptr;					// Singleton lifetime anchor instance (created in Init, released in Shutdown)
+	std::thread RenderDispatcher::s_Worker;											// Background worker thread executing FIFO jobs
+	RenderDispatcher::Queues RenderDispatcher::s_Queue;								// Active job queue + synchronization primitives
+    std::mutex RenderDispatcher::s_RFMutex;											// Mutex protecting the resource free ring structure
+	std::vector<RenderDispatcher::RFQueue> RenderDispatcher::s_ResourceFreeRing;	// Ring of per-frame deferred destruction job buckets
+    uint32_t RenderDispatcher::s_CurrentRFIndex = 0;								// Index of the frame bucket that just became safe for destruction
 
     /// -------------------------------------------------------
 

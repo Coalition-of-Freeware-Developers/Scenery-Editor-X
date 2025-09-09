@@ -11,14 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "vk_image_view.h"
-#include "SceneryEditorX/renderer/render_pass.h"
-#include "SceneryEditorX/renderer/texture.h"
-#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
-#include "SceneryEditorX/renderer/shaders/shader.h"
+//#include "vk_image_view.h"
+//#include "SceneryEditorX/renderer/render_pass.h"
+//#include "SceneryEditorX/renderer/texture.h"
+//#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
+//#include "SceneryEditorX/renderer/shaders/shader.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -128,5 +129,6 @@ namespace SceneryEditorX
     };
 
 }
+*/
 
 /// -------------------------------------------------------

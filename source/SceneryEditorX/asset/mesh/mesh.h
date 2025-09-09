@@ -11,18 +11,19 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Math/includes/aabb.h>
-#include "SceneryEditorX/asset/asset.h"
-#include "SceneryEditorX/asset/asset_types.h"
-#include "SceneryEditorX/asset/animation/mesh_skeleton.h"
-#include "SceneryEditorX/renderer/buffers/index_buffer.h"
-#include "SceneryEditorX/renderer/buffers/vertex_buffer.h"
-#include "SceneryEditorX/scene/material.h"
+//#include <Math/includes/aabb.h>
+//#include "SceneryEditorX/asset/asset.h"
+//#include "SceneryEditorX/asset/asset_types.h"
+//#include "SceneryEditorX/asset/animation/mesh_skeleton.h"
+//#include "SceneryEditorX/renderer/buffers/index_buffer.h"
+//#include "SceneryEditorX/renderer/buffers/vertex_buffer.h"
+//#include "SceneryEditorX/scene/material.h"
 //#include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
 //#include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -45,14 +46,14 @@ namespace SceneryEditorX
 		{
 			serializer->WriteRaw(instance);
 		}
-		*/
+		#1#
 
 		/*
 		static void Deserialize(StreamReader* deserializer, BoneInfo& instance)
 		{
 			deserializer->ReadRaw(instance);
 		}
-		*/
+		#1#
 
 	};
 
@@ -108,14 +109,14 @@ namespace SceneryEditorX
 		{
 			serializer->WriteRaw(instance);
 		}
-		*/
+		#1#
 
 		/*
 		static void Deserialize(StreamReader* deserializer, BoneInfluence& instance)
 		{
 			deserializer->ReadRaw(instance);
 		}
-		*/
+		#1#
 
 	};
 
@@ -170,7 +171,7 @@ namespace SceneryEditorX
 			serializer->WriteString(instance.MeshName);
 			serializer->WriteRaw(instance.IsRigged);
 		}
-		*/
+		#1#
 
 		/*
 		static void Deserialize(StreamReader* deserializer, Submesh& instance)
@@ -187,7 +188,7 @@ namespace SceneryEditorX
 			deserializer->ReadString(instance.MeshName);
 			deserializer->ReadRaw(instance.IsRigged);
 		}
-		*/
+		#1#
 
 	};
 
@@ -211,7 +212,7 @@ namespace SceneryEditorX
 			serializer->WriteString(instance.Name);
 			serializer->WriteRaw(instance.LocalTransform);
 		}
-		*/
+		#1#
 
 		/*
 		static void Deserialize(StreamReader* deserializer, MeshNode& instance)
@@ -222,7 +223,7 @@ namespace SceneryEditorX
 			deserializer->ReadString(instance.Name);
 			deserializer->ReadRaw(instance.LocalTransform);
 		}
-		*/
+		#1#
 
 	};
 
@@ -400,5 +401,6 @@ namespace SceneryEditorX
 
 
 }
+*/
 
 /// -------------------------------------------------------

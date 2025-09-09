@@ -11,15 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "command_manager.h"
-#include "texture.h"
-#include "buffers/storage_buffer.h"
-#include "buffers/uniform_buffer.h"
-#include "vulkan/vk_enums.h"
-#include "vulkan/vk_image_view.h"
+//#include "command_manager.h"
+//#include "texture.h"
+//#include "buffers/storage_buffer.h"
+//#include "buffers/uniform_buffer.h"
+//#include "vulkan/vk_enums.h"
+//#include "vulkan/vk_image_view.h"
 
 /// -------------------------------------------------------
-
+/*
 namespace SceneryEditorX
 {
 	
@@ -110,5 +110,6 @@ namespace SceneryEditorX
     };
 
 }
+*/
 
 /// -------------------------------------------------------

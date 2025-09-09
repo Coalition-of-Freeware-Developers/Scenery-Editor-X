@@ -12,6 +12,7 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
+#include <colors.h>
 #include "vk_buffers.h"
 #include "vk_includes.h"
 
@@ -318,16 +319,16 @@ namespace SceneryEditorX
     struct ViewportData
     {
         /** @brief Position of the viewport in the scene editor */
-        const float x = 0.0f;
-        const float y = 0.0f;
+        float x = 0.0f;
+        float y = 0.0f;
 
         /** @brief Width and Height of the viewport in pixels */
-        const float width = 0.0f;
-        const float height = 0.0f;
+        float width = 0.0f;
+        float height = 0.0f;
 
         /** @brief minimum and maximum depth value for the viewport (near plane) (far plane) */
-        const float minDepth = 0.0f;
-        const float maxDepth = 1.0f;
+        float minDepth = 0.0f;
+        float maxDepth = 1.0f;
     };
 
     /// -------------------------------------------------------
@@ -497,7 +498,7 @@ namespace SceneryEditorX
 		 */
         static bool HasStencilComponent(const VkFormat format) { return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT; }
 
-        static uint32_t CalculateMipCount(uint32_t width, uint32_t height) { return (uint32_t)std::floor(std::log2((double)Math::Min(width, height))) + 1; }
+        static uint32_t CalculateMipCount(uint32_t width, uint32_t height) { return (uint32_t)std::floor(std::log2((double)Min(width, height))) + 1; }
 
     };
 
@@ -566,6 +567,207 @@ namespace SceneryEditorX
     };
 
     /// -------------------------------------------------------
+
+    // TODO: Refactor and move this when Hash code and serialization is re-implemented
+    static uint64_t hash_combine(uint64_t a, uint64_t b) { return a * 31 + b; }
+
+    // shader register slot shifts (required to produce spirv from hlsl)
+    // 000-099 is push constant buffer range
+    const uint32_t shader_register_shift_u = 100;
+    const uint32_t shader_register_shift_b = 200;
+    const uint32_t shader_register_shift_t = 300;
+    const uint32_t shader_register_shift_s = 400;
+
+    /// -------------------------------------------------------
+
+    const float depth_dont_care = std::numeric_limits<float>::max();
+    const float depth_load = std::numeric_limits<float>::infinity();
+
+    const Color color_dont_care = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    const Color color_load = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+
+    const uint8_t max_render_target_count = 8;
+    const uint8_t max_constant_buffer_count = 8;
+    const uint32_t stencil_dont_care = std::numeric_limits<uint32_t>::max();
+    const uint32_t stencil_load = std::numeric_limits<uint32_t>::infinity();
+    const uint32_t max_array_size = 16384;
+    const uint32_t max_descriptor_set_count = 512;
+    const uint32_t max_mip_count = 13;
+    const uint32_t all_mips = std::numeric_limits<uint32_t>::max();
+    const uint32_t dynamic_offset_empty = std::numeric_limits<uint32_t>::max();
+    const uint32_t max_buffer_update_size = 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
+
+    /// -------------------------------------------------------
+
+	static const VkPolygonMode vulkan_polygon_mode[] =
+	{
+	    VK_POLYGON_MODE_FILL,
+	    VK_POLYGON_MODE_LINE,
+	    VK_POLYGON_MODE_MAX_ENUM
+	};
+	
+	static const VkCullModeFlags vulkan_cull_mode[] =
+	{
+	    VK_CULL_MODE_BACK_BIT,
+	    VK_CULL_MODE_FRONT_BIT,
+	    VK_CULL_MODE_NONE
+	};
+	
+	static const VkPrimitiveTopology vulkan_primitive_topology[] =
+	{
+	    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	    VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+	};
+	
+	static const VkFormat vulkan_format[] =
+	{
+	    // R
+	    VK_FORMAT_R8_UNORM,
+	    VK_FORMAT_R8_UINT,
+	    VK_FORMAT_R16_UNORM,
+	    VK_FORMAT_R16_UINT,
+	    VK_FORMAT_R16_SFLOAT,
+	    VK_FORMAT_R32_UINT,
+	    VK_FORMAT_R32_SFLOAT,
+	    // RG
+	    VK_FORMAT_R8G8_UNORM,
+	    VK_FORMAT_R16G16_SFLOAT,
+	    VK_FORMAT_R32G32_SFLOAT,
+	    // RGB
+	    VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+	    VK_FORMAT_R32G32B32_SFLOAT,
+	    // RGBA
+	    VK_FORMAT_R8G8B8A8_UNORM,
+	    VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+	    VK_FORMAT_R16G16B16A16_UNORM,
+	    VK_FORMAT_R16G16B16A16_SNORM,
+	    VK_FORMAT_R16G16B16A16_SFLOAT,
+	    VK_FORMAT_R32G32B32A32_SFLOAT,
+	    // Depth
+	    VK_FORMAT_D16_UNORM,
+	    VK_FORMAT_D32_SFLOAT,
+	    VK_FORMAT_D32_SFLOAT_S8_UINT,
+	    // Compressed
+	    VK_FORMAT_BC1_RGB_UNORM_BLOCK,
+	    VK_FORMAT_BC3_UNORM_BLOCK,
+	    VK_FORMAT_BC5_UNORM_BLOCK,
+	    VK_FORMAT_BC7_UNORM_BLOCK,
+	    VK_FORMAT_ASTC_4x4_UNORM_BLOCK,
+	    // Surface
+	    VK_FORMAT_B8G8R8A8_UNORM,
+	    // Unknown
+	    VK_FORMAT_UNDEFINED
+	};
+	
+	static const VkObjectType vulkan_object_type[] =
+	{
+	    VK_OBJECT_TYPE_FENCE,
+	    VK_OBJECT_TYPE_SEMAPHORE,
+	    VK_OBJECT_TYPE_SHADER_MODULE,
+	    VK_OBJECT_TYPE_SAMPLER,
+	    VK_OBJECT_TYPE_QUERY_POOL,
+	    VK_OBJECT_TYPE_DEVICE_MEMORY,
+	    VK_OBJECT_TYPE_BUFFER,
+	    VK_OBJECT_TYPE_COMMAND_BUFFER,
+	    VK_OBJECT_TYPE_COMMAND_POOL,
+	    VK_OBJECT_TYPE_IMAGE,
+	    VK_OBJECT_TYPE_IMAGE_VIEW,
+	    VK_OBJECT_TYPE_DESCRIPTOR_SET,
+	    VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
+	    VK_OBJECT_TYPE_PIPELINE,
+	    VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+	    VK_OBJECT_TYPE_QUEUE,
+	    VK_OBJECT_TYPE_UNKNOWN
+	};
+	
+	static const VkSamplerAddressMode vulkan_sampler_address_mode[] =
+	{
+	    VK_SAMPLER_ADDRESS_MODE_REPEAT,
+	    VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+	    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+	    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+	    VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
+	};
+	
+	static const VkCompareOp vulkan_compare_operator[] =
+	{
+	    VK_COMPARE_OP_NEVER,
+	    VK_COMPARE_OP_LESS,
+	    VK_COMPARE_OP_EQUAL,
+	    VK_COMPARE_OP_LESS_OR_EQUAL,
+	    VK_COMPARE_OP_GREATER,
+	    VK_COMPARE_OP_NOT_EQUAL,
+	    VK_COMPARE_OP_GREATER_OR_EQUAL,
+	    VK_COMPARE_OP_ALWAYS
+	};
+	
+	static const VkStencilOp vulkan_stencil_operation[] =
+	{
+	    VK_STENCIL_OP_KEEP,
+	    VK_STENCIL_OP_ZERO,
+	    VK_STENCIL_OP_REPLACE,
+	    VK_STENCIL_OP_INCREMENT_AND_CLAMP,
+	    VK_STENCIL_OP_DECREMENT_AND_CLAMP,
+	    VK_STENCIL_OP_INVERT,
+	    VK_STENCIL_OP_INCREMENT_AND_WRAP,
+	    VK_STENCIL_OP_DECREMENT_AND_WRAP
+	};
+	
+	static const VkBlendFactor vulkan_blend_factor[] =
+	{
+	    VK_BLEND_FACTOR_ZERO,
+	    VK_BLEND_FACTOR_ONE,
+	    VK_BLEND_FACTOR_SRC_COLOR,
+	    VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+	    VK_BLEND_FACTOR_SRC_ALPHA,
+	    VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	    VK_BLEND_FACTOR_DST_ALPHA,
+	    VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+	    VK_BLEND_FACTOR_DST_COLOR,
+	    VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+	    VK_BLEND_FACTOR_SRC_ALPHA_SATURATE,
+	    VK_BLEND_FACTOR_CONSTANT_COLOR,
+	    VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+	    VK_BLEND_FACTOR_SRC1_COLOR,
+	    VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
+	    VK_BLEND_FACTOR_SRC1_ALPHA,
+	    VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+	};
+	
+	static const VkBlendOp vulkan_blend_operation[] =
+	{
+	    VK_BLEND_OP_ADD,
+	    VK_BLEND_OP_SUBTRACT,
+	    VK_BLEND_OP_REVERSE_SUBTRACT,
+	    VK_BLEND_OP_MIN,
+	    VK_BLEND_OP_MAX
+	};
+	
+	static const VkFilter vulkan_filter[] =
+	{
+	    VK_FILTER_NEAREST,
+	    VK_FILTER_LINEAR
+	};
+	
+	static const VkSamplerMipmapMode vulkan_mipmap_mode[] =
+	{
+	    VK_SAMPLER_MIPMAP_MODE_NEAREST,
+	    VK_SAMPLER_MIPMAP_MODE_LINEAR
+	};
+	
+	static const VkImageLayout vulkan_image_layout[] =
+	{
+	    VK_IMAGE_LAYOUT_GENERAL,
+	    VK_IMAGE_LAYOUT_PREINITIALIZED,
+	    VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+	    VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
+	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+	    VK_IMAGE_LAYOUT_UNDEFINED
+	};
+	
 
 }
 

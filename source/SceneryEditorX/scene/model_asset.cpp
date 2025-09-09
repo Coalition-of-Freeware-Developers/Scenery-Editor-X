@@ -10,10 +10,10 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include "model_asset.h"
-#include "SceneryEditorX/platform/config/editor_config.hpp"
-#include <tiny_gltf.h>
-#include <tiny_obj_loader.h>
+//#include "model_asset.h"
+//#include "SceneryEditorX/platform/config/editor_config.hpp"
+//#include <tiny_gltf.h>
+//#include <tiny_obj_loader.h>
 
 /// -------------------------------------------------------
 
@@ -33,6 +33,7 @@ struct std::hash<SceneryEditorX::MeshVertex>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -151,10 +152,11 @@ namespace SceneryEditorX
         // This will depend on the exact implementation of the Serializer class
         // For now, providing a minimal implementation
     }
-    */
+    #1#
 
     /// -------------------------------------------------------
 
 }
+*/
 
 /// -------------------------------------------------------

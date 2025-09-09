@@ -12,7 +12,7 @@
 */
 #include "mesh_skeleton.h"
 #include <algorithm>
-#include <Math/includes/math_utils.h>
+#include <xMath/includes/math_utils.h>
 #include "SceneryEditorX/logging/asserts.h"
 #include "SceneryEditorX/utils/string_utils.h"
 
@@ -517,7 +517,7 @@ namespace SceneryEditorX
 				}
 
 				// Rotate the skeleton's dominant axis direction to +Y using native quaternion helper
-				m_Orientation = Quat::FromToRotation(Normalize(direction), Vec3(0.0f, 1.0f, 0.0f));
+				m_Orientation = xMath::Quat::FromToRotation(xMath::Normalize(direction), Vec3(0.0f, 1.0f, 0.0f));
 				break;
 			}
 		}

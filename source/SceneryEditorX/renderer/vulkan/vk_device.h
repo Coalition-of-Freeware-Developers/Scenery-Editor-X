@@ -263,6 +263,7 @@ namespace SceneryEditorX
          */
         VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice);
         virtual ~VulkanDevice() override;
+        void Tick(uint64_t frame_count) const;
         //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
         VkCommandBuffer GetCommandBuffer(bool cond);
@@ -275,6 +276,8 @@ namespace SceneryEditorX
                 queue = GetGraphicsQueue();
             FlushCmdBuffer(cmd, queue);
         }
+
+        bool IsValidResolution(uint32_t width, uint32_t height);
 
         /// Delete copy constructor and assignment operator.
         VulkanDevice(const VulkanDevice &) = delete;

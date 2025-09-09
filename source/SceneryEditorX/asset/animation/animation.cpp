@@ -16,7 +16,7 @@
 
 #include "animation.h"
 #include <algorithm>
-#include <Math/includes/math_utils.h>
+#include <xMath/includes/math_utils.h>
 #include "SceneryEditorX/asset/managers/asset_manager.h"
 #include "SceneryEditorX/asset/mesh/mesh.h"
 #include "SceneryEditorX/core/memory/memory.h"
@@ -60,14 +60,14 @@ namespace SceneryEditorX
             return a * (1.0f - t) + b * t;
 		}
 
-		inline Quat Slerp(const Quat& qa, const Quat& qb, float t)
+		inline xMath::Quat Slerp(const xMath::Quat &qa, const xMath::Quat &qb, float t)
 		{
-			float cosTheta = Quat::Dot(qa, qb);
-			Quat b = qb;
+			float cosTheta = xMath::Quat::Dot(qa, qb);
+            xMath::Quat b = qb;
 			if (cosTheta < 0.0f) { b = -qb; cosTheta = -cosTheta; }
 			if (cosTheta > 0.9995f)
 			{
-				Quat result(
+                xMath::Quat result(
 					qa.w + t * (b.w - qa.w),
 					qa.x + t * (b.x - qa.x),
 					qa.y + t * (b.y - qa.y),
@@ -78,11 +78,10 @@ namespace SceneryEditorX
 			float sinTheta = std::sin(theta);
 			float w1 = std::sin((1.0f - t) * theta) / sinTheta;
 			float w2 = std::sin(t * theta) / sinTheta;
-			return Quat(
-				w1 * qa.w + w2 * b.w,
-				w1 * qa.x + w2 * b.x,
-				w1 * qa.y + w2 * b.y,
-				w1 * qa.z + w2 * b.z);
+            return {w1 * qa.w + w2 * b.w,
+                    w1 * qa.x + w2 * b.x,
+                    w1 * qa.y + w2 * b.y,
+                    w1 * qa.z + w2 * b.z};
 		}
 
 

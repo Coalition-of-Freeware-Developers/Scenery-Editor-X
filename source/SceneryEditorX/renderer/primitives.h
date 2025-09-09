@@ -11,19 +11,20 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/asset/asset.h"
+//#include "SceneryEditorX/asset/asset.h"
 
 /// -------------------------------------------------------
 
 ///TODO: Add Primitive creation functionality
 
+/*
 namespace SceneryEditorX
 {
 
     /**
      * @enum PrimitiveType
      * @brief Types of primitive shapes that can be created
-     */
+     #1#
     enum class PrimitiveType : uint8_t
     {
 		None = 0,   /// No primitive type
@@ -42,7 +43,7 @@ namespace SceneryEditorX
      * This class provides static methods to create various primitive shapes
      * that can be used as the foundation for more complex objects in the scene.
      * All methods return an ObjectType that can be further manipulated.
-     */
+     #1#
     class Primitives
     {
     public:
@@ -63,7 +64,7 @@ namespace SceneryEditorX
          * Vec3 size(1.0f, 2.0f, 3.0f);
          * ObjectType box = Primitives::CreateBox(size);
          * @endcode
-         */
+         #1#
         static ObjectType CreateBox(const Vec3 &size);
 
         /**
@@ -79,7 +80,7 @@ namespace SceneryEditorX
          * float radius = 1.0f;
          * ObjectType sphere = Primitives::CreateSphere(radius);
          * @endcode
-         */
+         #1#
         static ObjectType CreateSphere(float radius);
 
         /**
@@ -98,14 +99,14 @@ namespace SceneryEditorX
          * float height = 2.0f;
          * ObjectType cylinder = Primitives::CreateCylinder(radius, height);
          * @endcode
-         */
+         #1#
         static ObjectType CreateCylinder(float radius, float height);
 
         /**
          * @brief Creates a 2D plane primitive
          * @param size The dimensions of the plane (width, height)
          * @return ObjectType representing the created plane
-         */
+         #1#
         static ObjectType CreatePlane(const Vec2 &size);
 
         /**
@@ -132,7 +133,7 @@ namespace SceneryEditorX
          *    ObjectType primitive = Primitives::CreateBox(size);
          * }
          * @endcode
-         */
+         #1#
         static bool ShowTextInputInterface(PrimitiveType& primitiveType, Vec3& dimensions);
 
     private:
@@ -156,10 +157,11 @@ namespace SceneryEditorX
          * @endcode
          *
          *
-         */
+         #1#
         static bool ValidatePrimitiveDimensions(PrimitiveType type, const Vec3& size);
     };
 
 }
+*/
 
 /// -------------------------------------------------------

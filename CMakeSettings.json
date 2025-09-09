@@ -1,33 +1,108 @@
 ﻿{
-    "version": 3,
-    "cmakeMinimumRequired": {
-        "major": 3,
-        "minor": 23,
-        "patch": 0
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 8,
+    "patch": 0
+  },
+  "configurations": [
+    {
+      "name": "Debug",
+      "generator": "Ninja Multi-Config",
+      "configurationType": "Debug",
+      "inheritEnvironments": ["msvc_x64_x64"],
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\bin\\install\\${name}",
+      "libraryOutput": "${projectDir}\\lib\\${name}",
+      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}\\dependency\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "-C Debug --output-on-failure",
+      "variables": [
+        { "name": "BUILD_TESTING", "value": "ON" },
+        { "name": "VCPKG_TARGET_TRIPLET", "value": "x64-windows" },
+        { "name": "CMAKE_PREFIX_PATH", "value": "${env.VULKAN_SDK}" }
+      ]
     },
-    "configurations": [
-        {
-          "name": "x64-Debug",
-          "generator": "Ninja",
-          "configurationType": "Debug",
-          "inheritEnvironments": [ "msvc_x64_x64" ],
-          "buildRoot": "${projectDir}\\out\\build\\${name}",
-          "installRoot": "${projectDir}\\out\\install\\${name}",
-          "cmakeCommandArgs": "",
-          "buildCommandArgs": "",
-          "ctestCommandArgs": ""
-        },
-        {
-          "name": "x64-Release",
-          "generator": "Ninja",
-          "configurationType": "Release",
-          "buildRoot": "${projectDir}\\out\\build\\${name}",
-          "installRoot": "${projectDir}\\out\\install\\${name}",
-          "cmakeCommandArgs": "",
-          "buildCommandArgs": "",
-          "ctestCommandArgs": "",
-          "inheritEnvironments": [ "msvc_x64_x64" ],
-          "variables": []
-        }
-    ]
+    {
+      "name": "Release",
+      "generator": "Ninja Multi-Config",
+      "configurationType": "Release",
+      "inheritEnvironments": ["msvc_x64_x64"],
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\bin\\install\\${name}",
+      "libraryOutput": "${projectDir}\\lib\\${name}",
+      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}\\dependency\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "-C Release --output-on-failure",
+      "variables": [
+        { "name": "VCPKG_TARGET_TRIPLET", "value": "x64-windows" }
+      ]
+    },
+    {
+      "name": "Linux-Debug",
+      "generator": "Ninja Multi-Config",
+      "configurationType": "Debug",
+      "inheritEnvironments": ["linux_x64"],
+      "buildRoot": "${projectDir}/build/${name}",
+      "installRoot": "${projectDir}/bin/install/${name}",
+      "libraryOutput": "${projectDir}/lib/${name}",
+      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "-C Debug --output-on-failure",
+      "variables": [
+        { "name": "BUILD_TESTING", "value": "ON" },
+        { "name": "VCPKG_TARGET_TRIPLET", "value": "x64-linux" },
+        { "name": "CMAKE_PREFIX_PATH", "value": "${env.VULKAN_SDK}" }
+      ]
+    },
+    {
+      "name": "Linux-Release",
+      "generator": "Ninja Multi-Config",
+      "configurationType": "Release",
+      "inheritEnvironments": ["linux_x64"],
+      "buildRoot": "${projectDir}/build/${name}",
+      "installRoot": "${projectDir}/bin/install/${name}",
+      "libraryOutput": "${projectDir}/lib/${name}",
+      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "-C Release --output-on-failure",
+      "variables": [
+        { "name": "VCPKG_TARGET_TRIPLET", "value": "x64-linux" }
+      ]
+    },
+    {
+      "name": "Mac-Debug",
+      "generator": "Ninja Multi-Config",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}/build/${name}",
+      "installRoot": "${projectDir}/bin/install/${name}",
+      "libraryOutput": "${projectDir}/lib/${name}",
+      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "-C Debug --output-on-failure",
+      "variables": [
+        { "name": "BUILD_TESTING", "value": "ON" },
+        { "name": "CMAKE_OSX_ARCHITECTURES", "value": "arm64" },
+        { "name": "CMAKE_OSX_DEPLOYMENT_TARGET", "value": "13.0" },
+        { "name": "VCPKG_TARGET_TRIPLET", "value": "arm64-osx" },
+        { "name": "CMAKE_PREFIX_PATH", "value": "${env.VULKAN_SDK}" }
+      ]
+    },
+    {
+      "name": "Mac-Release",
+      "generator": "Ninja Multi-Config",
+      "configurationType": "Release",
+      "buildRoot": "${projectDir}/build/${name}",
+      "installRoot": "${projectDir}/bin/install/${name}",
+      "libraryOutput": "${projectDir}/lib/${name}",
+      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "-C Release --output-on-failure",
+      "variables": [
+        { "name": "CMAKE_OSX_ARCHITECTURES", "value": "arm64" },
+        { "name": "CMAKE_OSX_DEPLOYMENT_TARGET", "value": "13.0" },
+        { "name": "VCPKG_TARGET_TRIPLET", "value": "arm64-osx" }
+      ]
+    }
+  ]
 }

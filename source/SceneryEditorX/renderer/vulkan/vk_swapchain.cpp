@@ -943,21 +943,21 @@ namespace SceneryEditorX
         // Advance and execute deferred resource free jobs now that GPU has finished previous frame
         RenderDispatcher::NextFrame(currentFrameIdx);
 
-        currentFrameIdx = AcquireNextImage();
+        AcquireNextImage();
         VK_CHECK_RESULT(vkResetCommandPool(vkDevice->GetDevice(), cmdBuffers[currentFrameIdx].CommandPool, 0))
     }
 
-    void SwapChain::OnResize(uint32_t width, uint32_t height)
+    void SwapChain::OnResize(uint32_t width, uint32_t height) const
     {
         const auto device = vkDevice->GetDevice();
         vkDeviceWaitIdle(device);
-        CreateRef<SwapChain>(&width, &height, VSync);
+        SwapChain(&width, &height, VSync);
         vkDeviceWaitIdle(device);
     }
 
-    void SwapChain::Present()
+    void SwapChain::Present() const
     {
-        VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        constexpr VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
 		VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1023,8 +1023,6 @@ namespace SceneryEditorX
                 VK_CHECK_RESULT(fpAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[renderData.imageIndex], (VkFence)nullptr, &imageIndex))
             }
         }
-
-        return imageIndex;
 	}
 
     VkSurfaceFormatKHR SwapChain::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)

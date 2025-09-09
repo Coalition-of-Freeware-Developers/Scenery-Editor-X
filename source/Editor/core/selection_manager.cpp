@@ -10,13 +10,14 @@
 * Created: 11/8/2025
 * -------------------------------------------------------
 */
-#include <Editor/core/selection_manager.h>
-#include <SceneryEditorX/core/application/application.h>
-#include <SceneryEditorX/core/events/scene_events.h>
-#include <algorithm>
+//#include <Editor/core/selection_manager.h>
+//#include <SceneryEditorX/core/application/application.h>
+//#include <SceneryEditorX/core/events/scene_events.h>
+//#include <algorithm>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -132,5 +133,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

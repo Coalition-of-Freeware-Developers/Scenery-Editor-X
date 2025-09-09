@@ -46,7 +46,6 @@ namespace SceneryEditorX
         [[nodiscard]] const std::vector<Monitor>& GetMonitors() const { return monitors; }
 		[[nodiscard]] int GetMonitorCount() const { return monitorCount; }
 		[[nodiscard]] int GetCurrentMonitorIndex() const { return monitorIndex; }
-		//void SetCurrentMonitorIndex(int index);
 		void RefreshDisplayCount();
         void RefreshMonitorList();
 
@@ -55,6 +54,16 @@ namespace SceneryEditorX
 		[[nodiscard]] int GetVideoModeIndex() const { return videoModeIndex; }
 		void SetVideoModeIndex(int index) { videoModeIndex = index; }
         [[nodiscard]] const GLFWvidmode *GetCurrentVideoMode() const;
+
+		// Static convenience methods for current monitor
+		static uint32_t GetWidth();
+        static uint32_t GetHeight();
+        static float GetRefreshRate();
+        static uint32_t GetId();
+        static bool GetHdr();
+        static float GetLuminanceMax();
+        static float GetGamma();
+        static const char* GetName();
 
 	private:
         /// Core monitor data
@@ -71,6 +80,6 @@ namespace SceneryEditorX
         void UpdateMonitorList();
 	};
 
-} // namespace SceneryEditorX
+}
 
 /// --------------------------------------------

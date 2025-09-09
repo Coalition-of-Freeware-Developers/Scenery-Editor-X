@@ -57,7 +57,7 @@ namespace SceneryEditorX
 		 * @note - This method should be thread-safe as it may be called from multiple
 		 *       rendering threads simultaneously.
 		 */
-	    virtual ResourceDescriptorInfo GetDescriptorInfo() const = 0;
+	    virtual ResourceDescriptorInfo GetDescriptorInfo() const;
 
 		/**
 		 * @brief Gets the unique hash identifier for this resource.

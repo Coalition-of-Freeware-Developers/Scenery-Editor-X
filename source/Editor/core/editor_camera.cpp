@@ -10,29 +10,17 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-#include "editor_camera.h"
-#if __has_include(<SceneryEditorX/utils/math/math.h>)
-#include <SceneryEditorX/utils/math/math.h>
-#else
-#include "../../SceneryEditorX/utils/math/math.h"
-#endif
-#if __has_include(<SceneryEditorX/core/input/input.h>)
-#include <SceneryEditorX/core/input/input.h>
-#else
-#include "../../SceneryEditorX/core/input/input.h"
-#endif
-#if __has_include(<SceneryEditorX/ui/ui_manager.h>)
-#include <SceneryEditorX/ui/ui_manager.h>
-#else
-#include "../../SceneryEditorX/ui/ui_manager.h"
-#endif
-#include <algorithm>
-#include <cmath>
-#include <SceneryEditorX/core/input/input.h>
-#include <SceneryEditorX/ui/ui_manager.h>
+//#include "editor_camera.h"
+//#include <SceneryEditorX/core/input/input.h>
+//#include <SceneryEditorX/ui/ui_manager.h>
+//#include <algorithm>
+//#include <cmath>
+//#include <SceneryEditorX/core/input/input.h>
+//#include <SceneryEditorX/ui/ui_manager.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -303,5 +291,6 @@ namespace SceneryEditorX
         return speed;
 	}
 }
+*/
 
 /// -------------------------------------------------------

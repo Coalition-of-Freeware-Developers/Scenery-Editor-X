@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,12 +10,13 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
-#include <SceneryEditorX/ui/ui.h>
+//#include <imgui/imgui.h>
+//#include <imgui/imgui_internal.h>
+//#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
+/*
 namespace UI
 {
 	void UIManager::AssetBrowser()
@@ -39,9 +40,10 @@ namespace UI
                     if (sort_specs->SpecsDirty) { }
                 ImGui::EndTable();
             }
-            ImGui::Text(R"(Selected: %d/%d items)" /*, Selection.Size, Items.Size */ );
+            ImGui::Text(R"(Selected: %d/%d items)" /*, Selection.Size, Items.Size #1# );
             ImGui::EndChild();
 
         ImGui::End();
     }
 } // namespace UI
+*/

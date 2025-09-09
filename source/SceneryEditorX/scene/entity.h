@@ -11,12 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Math/includes/xmath.hpp>
-#include <entt/src/entt/entt.hpp>
-#include "components.h"
+//#include <Math/includes/xmath.hpp>
+//#include <entt/src/entt/entt.hpp>
+//#include "components.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	class Scene;
@@ -155,5 +156,6 @@ namespace SceneryEditorX
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

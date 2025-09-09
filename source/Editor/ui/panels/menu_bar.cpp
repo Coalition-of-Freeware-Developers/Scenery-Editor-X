@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/imgui.h>
-#include <SceneryEditorX/ui/ui.h>
+//#include <imgui/imgui.h>
+//#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -25,6 +25,7 @@
 
 // -------------------------------------------------------
 
+/*
 namespace UI
 {
 	void UIManager::MainMenuBar()
@@ -38,7 +39,7 @@ namespace UI
                     showCreateProjectModal = true;
                 }
 
-                if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Prompt the user to select a file from a file manager */ }
+                if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Prompt the user to select a file from a file manager #1# }
                 if (ImGui::BeginMenu("Open Recent"))
                 {
                     ImGui::MenuItem("KHVN | Tweed New Haven", nullptr);
@@ -78,8 +79,8 @@ namespace UI
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do something here */ }
-                if (ImGui::MenuItem("Save As..", "Ctrl+Shift+S")) { /* Do something here */ }
+                if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do something here #1# }
+                if (ImGui::MenuItem("Save As..", "Ctrl+Shift+S")) { /* Do something here #1# }
 
                 ImGui::Separator();
 
@@ -95,13 +96,13 @@ namespace UI
 
             if (ImGui::BeginMenu("Edit"))
             {
-                if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Do something here */ }
-                if (ImGui::MenuItem("Redo", "Ctrl+Y")) { /* Do something here */ }
+                if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Do something here #1# }
+                if (ImGui::MenuItem("Redo", "Ctrl+Y")) { /* Do something here #1# }
                 ImGui::Separator();
-                if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Do something here */ }
-                if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Do something here */ }
-                if (ImGui::MenuItem("Paste", "Ctrl+V")) { /* Do something here */ }
-                if (ImGui::MenuItem("Duplicate", "Ctrl+D")) { /* Do something here */ }
+                if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Do something here #1# }
+                if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Do something here #1# }
+                if (ImGui::MenuItem("Paste", "Ctrl+V")) { /* Do something here #1# }
+                if (ImGui::MenuItem("Duplicate", "Ctrl+D")) { /* Do something here #1# }
                 ImGui::EndMenu();
             }
             
@@ -135,11 +136,11 @@ namespace UI
 
                 ImGui::Separator();
                 static bool enabled = true;
-                if (ImGui::MenuItem("Show Grid", "G", &enabled)) { /* Do something here */ }
-                if (ImGui::MenuItem("Show Axis", nullptr, &enabled)) { /* Do something here */ }
+                if (ImGui::MenuItem("Show Grid", "G", &enabled)) { /* Do something here #1# }
+                if (ImGui::MenuItem("Show Axis", nullptr, &enabled)) { /* Do something here #1# }
                 ImGui::Separator();
-                if (ImGui::MenuItem("Save UI", nullptr)) { /* Do something here */}
-                if (ImGui::MenuItem("Reset UI", nullptr)) { /* Do something here */}
+                if (ImGui::MenuItem("Save UI", nullptr)) { /* Do something here #1#}
+                if (ImGui::MenuItem("Reset UI", nullptr)) { /* Do something here #1#}
                 ImGui::EndMenu();
             }
             
@@ -173,7 +174,7 @@ namespace UI
 			if (ImGui::BeginMenu("Options"))
             {
                 static bool enabled = true;
-                if (ImGui::MenuItem("Toggle Snaps", "S", &enabled)) { /* Do something here */ }
+                if (ImGui::MenuItem("Toggle Snaps", "S", &enabled)) { /* Do something here #1# }
                 if (ImGui::BeginMenu("Snaps"))
                 {
                     ImGui::MenuItem("Toggle Grid Snap", nullptr, &enabled);
@@ -193,7 +194,7 @@ namespace UI
             {
                 static bool showHelp = true;
                 ImGui::MenuItem("Show Help", nullptr, &showHelp);
-                if (ImGui::MenuItem("Check for Updates", nullptr)) { /* Do something here */}
+                if (ImGui::MenuItem("Check for Updates", nullptr)) { /* Do something here #1#}
                 (ImGui::MenuItem("Release Notes", nullptr));
                 (ImGui::MenuItem("Bug Report", nullptr));
                 if (ImGui::MenuItem("About", nullptr))
@@ -207,6 +208,7 @@ namespace UI
     }
 
 } // namespace UI
+*/
 
 // -------------------------------------------------------
 

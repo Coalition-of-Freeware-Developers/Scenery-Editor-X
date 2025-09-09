@@ -11,10 +11,11 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/asset/asset.h"
+//#include "SceneryEditorX/asset/asset.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	class Animation : public Asset
@@ -37,5 +38,6 @@ namespace SceneryEditorX
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

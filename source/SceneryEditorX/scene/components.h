@@ -11,16 +11,17 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <cmath>
-#include <string>
-#include <utility>
-#include <vector>
-#include <Math/includes/xmath.hpp>
-#include "material.h"
-#include "SceneryEditorX/core/identifiers/uuid.h"
+//#include <cmath>
+//#include <string>
+//#include <utility>
+//#include <vector>
+//#include <Math/includes/xmath.hpp>
+//#include "material.h"
+//#include "SceneryEditorX/core/identifiers/uuid.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -89,7 +90,7 @@ namespace SceneryEditorX
          * Accordingly, we store Euler for "editor" stuff that humans work with,
          * and quats for everything else.  The two are maintained in-sync via the SetRotation()
          * methods.
-		 */
+		 #1#
         Vec3 RotationEuler = {0.0f, 0.0f, 0.0f};
         Quat Rotation = {1.0f, 0.0f, 0.0f, 0.0f};
 
@@ -261,7 +262,7 @@ namespace SceneryEditorX
         /// A) Reset the bone entity ids (e.g.to point to copied entities that the copied component belongs to).  See Scene::DuplicateEntity()
         /// B) Create a new independent AnimationGraph instance.  See Scene::DuplicateEntity()
     };
-    */
+    #1#
 
     /// -------------------------------------------------------
 
@@ -374,5 +375,6 @@ namespace SceneryEditorX
     };
 
 }
+*/
 
 /// -------------------------------------------------------

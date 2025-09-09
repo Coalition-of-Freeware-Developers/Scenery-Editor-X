@@ -23,7 +23,7 @@ ADD_EXECUTABLE(Launcher
 	${CORE}
 	${PROJECT_CONFIG_FILES}
 	${REGISTRY_KEYS}
-    ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
+    ${ASSET_DIR}/splash_screen.bmp
 	# --------------------------------
     Launcher.rc
     resource.h
@@ -35,7 +35,7 @@ SOURCE_GROUP("Resource" FILES
 	Launcher.rc
 )
 SOURCE_GROUP("Resource/Images" FILES
-    ${CMAKE_SOURCE_DIR}/assets/splash_screen.bmp
+    ${ASSET_DIR}/splash_screen.bmp
 )
 SOURCE_GROUP("Resource/Registry" FILES
     ${REGISTRY_KEYS}
@@ -57,6 +57,7 @@ TARGET_INCLUDE_DIRECTORIES(Launcher
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
+		${CMAKE_SOURCE_DIR}/dependency/xMath
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
@@ -85,6 +86,7 @@ TARGET_LINK_LIBRARIES(Launcher
         dxgi
         d3d12
         Shell32.lib
+		xMath::xMath
 )
 
 # --------------------------------

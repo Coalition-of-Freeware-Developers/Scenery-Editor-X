@@ -11,17 +11,18 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GLFW/glfw3.h>
-#include <Math/includes/xmath.hpp>
-#include "colors.h"
-#include "ui.h"
-#include "ui_utils.h"
-#include "SceneryEditorX/renderer/texture.h"
-#include "SceneryEditorX/utils/static_states.h"
+//#include <GLFW/glfw3.h>
+//#include <Math/includes/xmath.hpp>
+//#include "colors.h"
+//#include "ui.h"
+//#include "ui_utils.h"
+//#include "SceneryEditorX/renderer/texture.h"
+//#include "SceneryEditorX/utils/static_states.h"
 
 /// -------------------------------------------------------
 
-namespace SceneryEditorX::UI
+/*
+namespace UI
 {
     extern bool showViewport;
     extern bool showCreateProjectModal;
@@ -153,6 +154,7 @@ namespace SceneryEditorX::UI
 		void ImageToolTip(const Ref<Texture2D>& texture);
     };
 }
+*/
 
 /// -------------------------------------------------------
 

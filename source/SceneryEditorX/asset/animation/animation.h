@@ -12,10 +12,10 @@
 */
 #pragma once
 #include <vector>
-#include <Math/includes/math_utils.h>
-#include <Math/includes/matrix.h>
-#include <Math/includes/quat.h>
-#include <Math/includes/transforms.h>
+#include <xMath/includes/math_utils.h>
+#include <xMath/includes/matrix.h>
+#include <xMath/includes/quat.h>
+#include <xMath/includes/transforms.h>
 #include "SceneryEditorX/asset/asset.h"
 #include "SceneryEditorX/asset/asset_types.h"
 
@@ -125,9 +125,9 @@ namespace SceneryEditorX
 	/// TODO: Consider switching animation to use rtm::qvsf directly and remove this Transform struct
 	struct Transform
 	{
-	Vec3 Translation = Vec3(0.0f, 0.0f, 0.0f);
+	    Vec3 Translation = Vec3(0.0f, 0.0f, 0.0f);
 		float Scale = 1.0f;
-	Quat Rotation = Quat::Identity();
+	    xMath::Quat Rotation = xMath::Quat::Identity();
 
 		static const Transform Identity;
 
@@ -150,7 +150,7 @@ namespace SceneryEditorX
 
 		operator Mat4() const
 		{
-			return Math::ComposeTransform(Translation, Rotation, { Scale, Scale, Scale });
+			return xMath::ComposeTransform(Translation, Rotation, { Scale, Scale, Scale });
 		}
 	};
 
@@ -206,13 +206,13 @@ namespace SceneryEditorX::AnimationInternal
 	struct KeyframeVec3
 	{
 		float Time = 0.0f;
-	Vec3   Value = Vec3(0.0f, 0.0f, 0.0f);
+	    Vec3 Value = Vec3(0.0f, 0.0f, 0.0f);
 	};
 
 	struct KeyframeQuat
 	{
-		float     Time = 0.0f;
-		Quat Value = Quat::Identity();
+		float Time = 0.0f;
+        xMath::Quat Value = xMath::Quat::Identity();
 	};
 
 	struct TrackTRS

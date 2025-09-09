@@ -10,13 +10,14 @@
 * Created: 25/7/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/core/time/timer.h>
-#include <SceneryEditorX/renderer/compute_pipeline.h>
-#include <SceneryEditorX/renderer/vulkan/vk_util.h>
-#include <utility>
+//#include <SceneryEditorX/core/time/timer.h>
+//#include <SceneryEditorX/renderer/compute_pipeline.h>
+//#include <SceneryEditorX/renderer/vulkan/vk_util.h>
+//#include <utility>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -282,5 +283,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

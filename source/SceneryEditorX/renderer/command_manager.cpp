@@ -10,11 +10,12 @@
 * Created: 25/8/2025
 * -------------------------------------------------------
 */
-#include "command_manager.h"
-#include "vulkan/vk_util.h"
+//#include "command_manager.h"
+//#include "vulkan/vk_util.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     namespace
@@ -250,5 +251,6 @@ namespace SceneryEditorX
     }
 
 }
+*/
 
 /// -------------------------------------------------------

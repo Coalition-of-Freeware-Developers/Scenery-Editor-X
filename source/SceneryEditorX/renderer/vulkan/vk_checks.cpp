@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -24,10 +24,7 @@ namespace SceneryEditorX
 	 * @param layers
 	 * @param device
 	 */
-    void VulkanChecks::InitChecks(const char *ext,
-                              const std::vector<VkExtensionProperties> &props,
-                              const std::vector<const char *> &layers,
-                              const VkPhysicalDevice &device)
+    void VulkanChecks::InitChecks(const char *ext, const std::vector<VkExtensionProperties> &props, const std::vector<const char *> &layers, const VkPhysicalDevice &device)
 	{
 	    CheckAPIVersion(RenderData::minVulkanVersion);
 	    CheckExtension(ext, props);

@@ -10,12 +10,13 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include "SceneryEditorX/ui/ui.h"
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+//#include "SceneryEditorX/ui/ui.h"
+//#include <imgui/imgui.h>
+//#include <imgui/imgui_internal.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX::UI
 {
 	void UIManager::AssetBrowser()
@@ -35,11 +36,12 @@ namespace SceneryEditorX::UI
 
             ImGui::EndTable();
         }
-        ImGui::Text("Selected: %d/%d items" /*, Selection.Size, Items.Size */ );
+        ImGui::Text("Selected: %d/%d items" /*, Selection.Size, Items.Size #1# );
         ImGui::EndChild();
 
         ImGui::End();
     }
 }
+*/
 
 /// -------------------------------------------------------

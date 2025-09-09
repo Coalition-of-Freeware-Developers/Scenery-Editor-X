@@ -10,15 +10,16 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-#include "ui_utils.h"
-#include "ui_manager.h"
+//#include "ui_utils.h"
+//#include "ui_manager.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX::UI
 {
 
-	ScopedDisable::ScopedDisable(bool disabled /*= true*/)
+	ScopedDisable::ScopedDisable(bool disabled /*= true#1#)
 	{
 		BeginDisabled(disabled);
 	}
@@ -68,7 +69,7 @@ namespace SceneryEditorX::UI
 		if (window->SkipItems)
 			return false;
 		/*if (!(window->Flags & ImGuiWindowFlags_MenuBar))
-			return false;#1#
+			return false;#2#
 
 		IM_ASSERT(!window->DC.MenuBarAppending);
 
@@ -81,7 +82,7 @@ namespace SceneryEditorX::UI
 		/**
 		 * We don't clip with current window clipping rectangle as it is already set to the area below. However we clip with window full rect.
 		 * We remove 1 worth of rounding to Max.x to that text in long menus and small windows don't tend to display over the lower-right rounded area, which looks particularly glitchy.
-         #1#
+         #2#
 		ImRect bar_rect = RectOffset(barRectangle, 0.0f, padding.y);// window->MenuBarRect();
 		ImRect clip_rect(IM_ROUND(ImMax(window->Pos.x, bar_rect.Min.x + window->WindowBorderSize + window->Pos.x - 10.0f)), IM_ROUND(bar_rect.Min.y + window->WindowBorderSize + window->Pos.y),
 			IM_ROUND(ImMax(bar_rect.Min.x + window->Pos.x, bar_rect.Max.x - ImMax(window->WindowRounding, window->WindowBorderSize))), IM_ROUND(bar_rect.Max.y + window->Pos.y));
@@ -138,7 +139,7 @@ namespace SceneryEditorX::UI
 		window->DC.NavLayerCurrent = ImGuiNavLayer_Main;
 		window->DC.MenuBarAppending = false;
 	}
-	*/
+	#1#
 
 	/// Exposed to be used for window with disabled decorations
 	/// This border is going to be drawn even if window border size is set to 0.0f
@@ -292,7 +293,7 @@ namespace SceneryEditorX::UI
             /**
              * When the window cannot fit all contents (either because of constraints, either because screen is too small),
              * we are growing the size on the other axis to compensate for expected scrollbar.
-             */
+             #1#
             ///TODO: Setup handling if bigger than ViewportSize-WindowPadding.
             ImVec2 size_auto_fit_after_constraint = CalcWindowSizeAfterConstraint(window, size_auto_fit);
             bool will_have_scrollbar_x = (size_auto_fit_after_constraint.x - size_pad.x - 0.0f < size_contents.x &&
@@ -447,7 +448,7 @@ namespace SceneryEditorX::UI
         auto &style = g.Style;
 
         if (ImGuiWindowFlags flags = window->Flags;
-            /*(flags & ImGuiWindowFlags_NoResize) || */ (flags & ImGuiWindowFlags_AlwaysAutoResize) ||
+            /*(flags & ImGuiWindowFlags_NoResize) || #1# (flags & ImGuiWindowFlags_AlwaysAutoResize) ||
             window->AutoFitFramesX > 0 || window->AutoFitFramesY > 0)
             return false;
         if (window->WasActive ==
@@ -651,7 +652,7 @@ namespace SceneryEditorX::UI
         }
         return opened;
     }
-    */
+    #1#
 
     ///=========================================================================================
     /// Shadows
@@ -864,5 +865,6 @@ namespace SceneryEditorX::UI
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

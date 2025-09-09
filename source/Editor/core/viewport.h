@@ -11,13 +11,14 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Editor/core/editor_camera.h>
-#include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/time/time.h>
-#include <SceneryEditorX/renderer/scene_renderer.h>
+//#include <Editor/core/editor_camera.h>
+//#include <SceneryEditorX/core/events/event_system.h>
+//#include <SceneryEditorX/core/time/time.h>
+//#include <SceneryEditorX/renderer/scene_renderer.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -84,7 +85,7 @@ namespace SceneryEditorX
 		/**
 		 * Main means the last active viewport.
 		 * If you click on any viewport, and it is focus this viewport will be main.
-         */
+         #1#
         bool m_IsMainViewport = false;
         bool m_IsVisible = false;
         bool m_IsMouseOver = false;
@@ -115,5 +116,6 @@ namespace SceneryEditorX
     };
 
 }
+*/
 
 /// -------------------------------------------------------

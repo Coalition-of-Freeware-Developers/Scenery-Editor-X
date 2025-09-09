@@ -10,12 +10,13 @@
 * Created: 24/7/2025
 * -------------------------------------------------------
 */
-#include "compute_pass.h"
-#include "buffers/storage_buffer.h"
-#include "buffers/uniform_buffer.h"
+//#include "compute_pass.h"
+//#include "buffers/storage_buffer.h"
+//#include "buffers/uniform_buffer.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -134,5 +135,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

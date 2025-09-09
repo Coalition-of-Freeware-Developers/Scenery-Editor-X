@@ -483,8 +483,7 @@ namespace SceneryEditorX
         /// Fall back to the devices array if direct handle isn't set
         if (deviceIndex >= 0 && deviceIndex < static_cast<int>(devices.size()))
         {
-            VkPhysicalDevice device = devices[deviceIndex].physicalDevice;
-            if (device != VK_NULL_HANDLE)
+            if (VkPhysicalDevice device = devices[deviceIndex].physicalDevice; device != VK_NULL_HANDLE)
                 return device;
         }
 
@@ -1012,6 +1011,15 @@ namespace SceneryEditorX
 		}
 	}
 
+    // From device, or use the FrameIdx in MemoryAllocator class.
+    void VulkanDevice::Tick(const uint64_t frame_count) const
+    {
+        // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
+        // make sure to call vmaSetCurrentFrameIndex() every frame
+        // budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation
+        vmaSetCurrentFrameIndex(GetMemoryAllocator(), static_cast<uint32_t>(frame_count));
+    }
+
 	/// -------------------------------------------------------
 
 	/**
@@ -1036,6 +1044,12 @@ namespace SceneryEditorX
 		SEDX_CORE_ERROR_TAG("Graphics Engine", "Memory allocator not initialized.");
 		return nullptr;
 	}
+
+    bool VulkanDevice::IsValidResolution(uint32_t width, uint32_t height)
+    {
+        return width  > 4 && width  <= m_max_texture_2d_dimension &&
+               height > 4 && height <= m_max_texture_2d_dimension;
+    }
 
     /**
      * @fn VulkanDevice::VulkanDevice(VulkanDevice &&)

@@ -12,9 +12,8 @@
 */
 #pragma once
 #include <cstdint>
-#include <Math/includes/xmath.hpp>
+#include <xMath/includes/xmath.hpp>
 #include <imgui/imgui.h>
-
 #include "render_context.h"
 #include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 #include "vulkan/resource.h"

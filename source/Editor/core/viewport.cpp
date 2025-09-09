@@ -10,25 +10,23 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-#include <Editor/core/editor.h>
-#include <Editor/core/selection_manager.h>
-#include <Editor/core/viewport.h>
-#include <Editor/ui/resources/editor_resources.h>
-#include <imgui_internal.h>
-#include <ImGuizmo.h>
-#include <SceneryEditorX/asset/asset_types.h>
-#include <SceneryEditorX/asset/managers/asset_manager.h>
-#include <SceneryEditorX/core/input/input.h>
-#include <SceneryEditorX/renderer/2d_renderer.h>
-#include <SceneryEditorX/renderer/scene/scene_renderer.h>
-#include <SceneryEditorX/scene/components.h>
-#include <SceneryEditorX/scene/entity.h>
-#include <SceneryEditorX/utils/math/aabb.h>
-#include <SceneryEditorX/utils/math/math_utils.h>
-#include <SceneryEditorX/utils/math/constants.h>
+//#include <Editor/core/editor.h>
+//#include <Editor/core/selection_manager.h>
+//#include <Editor/core/viewport.h>
+//#include <Editor/ui/resources/editor_resources.h>
+//#include <imgui_internal.h>
+//#include <ImGuizmo.h>
+//#include <SceneryEditorX/asset/asset_types.h>
+//#include <SceneryEditorX/asset/managers/asset_manager.h>
+//#include <SceneryEditorX/core/input/input.h>
+//#include <SceneryEditorX/renderer/2d_renderer.h>
+////#include <SceneryEditorX/renderer/scene/scene_renderer.h>
+//#include <SceneryEditorX/scene/components.h>
+//#include <SceneryEditorX/scene/entity.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -217,7 +215,7 @@ namespace SceneryEditorX
 				}
 			}
 		}
-		*/
+		#1#
 
 		/*
 		if (m_ShowIcons)
@@ -298,7 +296,7 @@ namespace SceneryEditorX
 					UI_DrawGizmos();
 			}
 		}
-		*/
+		#1#
 
 	    ImGui::End();
 		ImGui::PopStyleVar(2);
@@ -1252,5 +1250,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

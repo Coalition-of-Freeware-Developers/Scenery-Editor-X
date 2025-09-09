@@ -74,7 +74,7 @@
 //#include <glm/gtx/transform.hpp>
 
 /// GLM dependency removed – using internal math system (Vec*, Mat*, Quat, Transforms) defined in <SceneryEditorX/utils/math/math.h>
-#include <Math/includes/xmath.hpp>
+#include <xMath/includes/xmath.hpp>
 
 /**
 ##########################################################

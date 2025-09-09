@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <Math/includes/quat.h>
-#include <Math/includes/vec3.h>
+#include <xMath/includes/quat.h>
+#include <xMath/includes/vec3.h>
 #include "animation.h"
 
 /// -------------------------------------------------------

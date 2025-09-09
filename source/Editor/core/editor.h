@@ -109,7 +109,7 @@ namespace SceneryEditorX
 
         //void DeleteEntity(Entity entity);
 
-        void QueueSceneTransition(AssetHandle scene);
+        //void QueueSceneTransition(AssetHandle scene);
 
         void BuildProjectData();
         void BuildShaderPack();
@@ -127,11 +127,13 @@ namespace SceneryEditorX
         bool m_ShowStatisticsPanel = false;
         std::vector<Ref<Viewport>> m_EditorViewports;
 
+        /*
         Ref<Scene> m_RuntimeScene;
         Ref<Scene> m_EditorScene;
         Ref<Scene> m_SimulationScene;
         Ref<Scene> m_CurrentScene;
         std::string m_SceneFilePath;
+        */
 
         float m_AssetUpdatePerf = 0.0f;
 
@@ -253,7 +255,7 @@ namespace SceneryEditorX
          *
          * Manages Vulkan resources, rendering operations, and the window surface.
          */
-        GLOBAL GraphicsEngine gfxEngine;
+        static GraphicsEngine gfxEngine;
 
         /**
          * @brief Command buffer for rendering operations.

@@ -9,7 +9,7 @@ This document provides specific instructions for GitHub Copilot instances and ag
 ### Memory System Hierarchy
 
 ```
-Application Code (uses hnew/hdelete or new("category"))
+Application Code (uses new/delete or new("category"))
     ↓
 Global operator new/delete overrides (when SEDX_TRACK_MEMORY enabled)
     ↓
@@ -33,30 +33,30 @@ System malloc/free with comprehensive metadata
 
 ```cpp
 // ✅ CORRECT - Automatic source location tracking
-MyClass* obj = hnew MyClass(constructor_args);
-auto* buffer = hnew uint8_t[bufferSize];
+MyClass* obj = new MyClass(constructor_args);
+auto* buffer = new uint8_t[bufferSize];
 
 // ✅ CORRECT - Category-based allocation for subsystem tracking  
 Texture* texture = new("Renderer::Textures") Texture(width, height);
 AudioBuffer* audio = new("Audio::Buffers::Music") AudioBuffer(samples);
 
 // ✅ CORRECT - Corresponding deallocation
-hdelete obj;
-hdelete[] buffer;
-hdelete texture;
-hdelete audio;
+delete obj;
+delete[] buffer;
+delete texture;
+delete audio;
 ```
 
 **AVOID these patterns:**
 
 ```cpp
 // ❌ INCORRECT - Missing tracking in tracked builds
-MyClass* obj = new MyClass();  // Use hnew instead
-auto* buffer = malloc(size);   // Use hnew instead (unless specifically needed)
+MyClass* obj = new MyClass();  // Use new instead
+auto* buffer = malloc(size);   // Use new instead (unless specifically needed)
 
-// ❌ INCORRECT - Not using hdelete  
-delete obj;     // Use hdelete instead
-free(buffer);   // Use hdelete[] instead
+// ❌ INCORRECT - Not using delete  
+delete obj;     // Use delete instead
+free(buffer);   // Use delete[] instead
 ```
 
 ### 2. Category Naming Conventions for AI Code Generation
@@ -107,7 +107,7 @@ public:
     }
   
     ~TrackedResource() {
-        hdelete[] static_cast<uint8_t*>(data);
+        delete[] static_cast<uint8_t*>(data);
     }
   
     // Non-copyable but movable
@@ -121,7 +121,7 @@ public:
   
     TrackedResource& operator=(TrackedResource&& other) noexcept {
         if (this != &other) {
-            if (data) hdelete[] static_cast<uint8_t*>(data);
+            if (data) delete[] static_cast<uint8_t*>(data);
             data = other.data;
             category = other.category;
             size = other.size;
@@ -142,7 +142,7 @@ public:
 template<typename T>
 struct TrackedDeleter {
     void operator()(T* ptr) {
-        hdelete ptr;
+        delete ptr;
     }
 };
 
@@ -224,7 +224,7 @@ public:
   
     ~RendererComponent() {
         if (bufferData) {
-            hdelete[] static_cast<uint8_t*>(bufferData);
+            delete[] static_cast<uint8_t*>(bufferData);
             SEDX_CORE_TRACE("RendererComponent deallocated {} bytes", bufferSize);
             bufferData = nullptr;
         }
@@ -240,7 +240,7 @@ public:
     RendererComponent& operator=(RendererComponent&& other) noexcept {
         if (this != &other) {
             if (bufferData) {
-                hdelete[] static_cast<uint8_t*>(bufferData);
+                delete[] static_cast<uint8_t*>(bufferData);
             }
             bufferData = other.bufferData;
             bufferSize = other.bufferSize;
@@ -344,7 +344,7 @@ public:
   
     static void ShutdownRenderer() {
         if (rendererData) {
-            hdelete rendererData;
+            delete rendererData;
             rendererData = nullptr;
         }
     
@@ -363,7 +363,7 @@ public:
 ```cpp
 // ✅ CORRECT usage
 #ifdef SEDX_TRACK_MEMORY
-    auto* trackedBuffer = hnew uint8_t[size];
+    auto* trackedBuffer = new uint8_t[size];
     // Memory tracking active
 #else
     auto* trackedBuffer = new uint8_t[size];
@@ -379,7 +379,7 @@ public:
 // ✅ CORRECT profiling integration
 #if SEDX_ENABLE_PROFILING
     ZoneScoped; // Tracy zone
-    auto* data = hnew LargeDataStructure();
+    auto* data = new LargeDataStructure();
     // Both Tracy and SceneryEditorX tracking active
 #endif
 ```
@@ -427,7 +427,7 @@ public:
   
     ~ExceptionSafeResource() {
         if (resource) {
-            hdelete resource;
+            delete resource;
         }
     }
   
@@ -446,7 +446,7 @@ public:
   
     ExceptionSafeResource& operator=(ExceptionSafeResource&& other) noexcept {
         if (this != &other) {
-            if (resource) hdelete resource;
+            if (resource) delete resource;
             resource = other.resource;
             other.resource = nullptr;
         }
@@ -497,7 +497,7 @@ public:
     }
   
     ~TrackedMemoryPool() {
-        hdelete[] static_cast<uint8_t*>(poolMemory);
+        delete[] static_cast<uint8_t*>(poolMemory);
     }
   
     void* Allocate(size_t size) {
@@ -521,7 +521,7 @@ public:
 
 ### MUST DO:
 
-1. Always use `hnew`/`hdelete` instead of `new`/`delete`
+1. Always use `new`/`delete` instead of `new`/`delete`
 2. Initialize memory system with `SceneryEditorX::Allocator::Init()` in main functions
 3. Use descriptive, hierarchical category names for tracked allocations
 4. Implement proper RAII patterns with move semantics
@@ -538,7 +538,7 @@ public:
 
 ### WHEN IN DOUBT:
 
-- Default to using `hnew`/`hdelete` for all dynamic allocations
+- Default to using `new`/`delete` for all dynamic allocations
 - Use appropriate category strings that match the component hierarchy
 - Add debug-only memory usage reporting for new subsystems
 - Follow the existing patterns in the codebase for consistency

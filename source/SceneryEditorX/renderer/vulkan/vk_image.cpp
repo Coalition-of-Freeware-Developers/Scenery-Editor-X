@@ -10,15 +10,15 @@
 * Created: 27/6/2025
 * -------------------------------------------------------
 */
+#include <map>
+#include <vector>
+#include <SceneryEditorX/renderer/image_data.h>
 #include <SceneryEditorX/renderer/image_data.h>
 #include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/image_data.h>
 #include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/renderer/vulkan/vk_image.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 #include <SceneryEditorX/utils/static_states.h>
-#include <map>
-#include <vector>
 #include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
 
 /// -----------------------------------------------------------
@@ -95,8 +95,8 @@ namespace SceneryEditorX
 		if (width > m_Specification.width / 2 || height > m_Specification.height / 2)
 			return 0;
 
-		int a = (int)std::log2((double)Math::Min(m_Specification.width, m_Specification.height));
-		int b = (int)std::log2((double)Math::Min(width, height));
+		int a = (int)std::log2((double)Min(m_Specification.width, m_Specification.height));
+		int b = (int)std::log2((double)Min(width, height));
 		return a - b;
 	}
 

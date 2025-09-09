@@ -489,6 +489,7 @@ namespace SceneryEditorX::UI
 
     /// -------------------------------------------------------
 
+    /*
     bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
     {
         if (!initialized)
@@ -497,6 +498,7 @@ namespace SceneryEditorX::UI
         viewportInitialized = true;
         return true;
     }
+    */
 
     /// -------------------------------------------------------
 

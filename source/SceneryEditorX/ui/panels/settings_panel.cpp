@@ -52,6 +52,7 @@ namespace SceneryEditorX::UI
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX::UI
 {
 	void UIManager::SettingsPanel()
@@ -212,5 +213,6 @@ namespace SceneryEditorX::UI
 
 
 }
+*/
 
 /// -------------------------------------------------------

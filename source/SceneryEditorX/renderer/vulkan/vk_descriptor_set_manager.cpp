@@ -11,16 +11,17 @@
 * -------------------------------------------------------
 */
 // Implementation restored
-#include "vk_descriptor_set_manager.h"
-#include <cstring>
-#include "vk_device.h"
-#include "vk_util.h"
-#include "SceneryEditorX/logging/profiler.hpp"
-#include "SceneryEditorX/renderer/renderer.h"
-#include "SceneryEditorX/renderer/shaders/shader_resource.h"
+//#include "vk_descriptor_set_manager.h"
+//#include <cstring>
+//#include "vk_device.h"
+//#include "vk_util.h"
+//#include "SceneryEditorX/logging/profiler.hpp"
+//#include "SceneryEditorX/renderer/renderer.h"
+//#include "SceneryEditorX/renderer/shaders/shader_resource.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	namespace Utils
@@ -249,7 +250,7 @@ namespace SceneryEditorX
 		}
 		return sets;
 	}
-	*/
+	#1#
 
 
 	bool DescriptorSetManager::Validate()
@@ -412,7 +413,7 @@ namespace SceneryEditorX
 
 							break;
 						}
-						*/
+						#1#
 						case ResourceType::StorageBuffer:
 						{
 							Ref<StorageBuffer> buffer = input.input[0].As<StorageBuffer>();
@@ -439,7 +440,7 @@ namespace SceneryEditorX
 
 							break;
 						}
-						*/
+						#1#
 
 						case ResourceType::Texture2D:
 						{
@@ -561,7 +562,7 @@ namespace SceneryEditorX
 						}
 						break;
 					}
-					*/
+					#1#
 					case ResourceType::StorageBuffer:
 					{
 
@@ -590,7 +591,7 @@ namespace SceneryEditorX
 						}
 						break;
 					}
-					*/
+					#1#
 
 					case ResourceType::Texture2D:
 					{
@@ -687,7 +688,7 @@ namespace SceneryEditorX
 							wd.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 							break;
 						}
-						*/
+						#1#
 						case ResourceType::StorageBuffer:
 						{
 							Ref<StorageBuffer> buffer = input.input[0].As<StorageBuffer>();
@@ -703,7 +704,7 @@ namespace SceneryEditorX
 							wd.resourceHandles[0] = writeDescriptor.pBufferInfo->buffer;
 							break;
 						}
-						*/
+						#1#
 						case ResourceType::Texture2D:
 						{
 							if (input.input.size() > 1)
@@ -796,5 +797,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

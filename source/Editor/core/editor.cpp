@@ -12,6 +12,7 @@
 */
 #include <ImGuizmo.h>
 #include <imgui_impl_glfw.h>
+#include <imgui_internal.h>
 
 #include <Editor/core/editor.h>
 #include <Editor/settings/editor_settings.h>
@@ -366,9 +367,11 @@ namespace SceneryEditorX
     }
     */
 
+    /*
     void Editor::QueueSceneTransition(AssetHandle scene)
     {
     }
+    */
 
     void Editor::BuildProjectData()
     {

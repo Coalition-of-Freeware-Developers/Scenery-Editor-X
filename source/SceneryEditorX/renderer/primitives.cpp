@@ -10,12 +10,13 @@
 * Created: 20/5/2025
 * -------------------------------------------------------
 */
-#include <numbers>
-#include "primitives.h"
-#include "SceneryEditorX/scene/model_asset.h"
+//#include <numbers>
+//#include "primitives.h"
+//#include "SceneryEditorX/scene/model_asset.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -359,7 +360,7 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(false, "Unknown PrimitiveType!");
         return {};
     }
-    */
+    #1#
 
     /// -------------------------------------------------------
 
@@ -397,7 +398,7 @@ namespace SceneryEditorX
         isOpen = false;
         return false;
     }
-    */
+    #1#
 
     bool Primitives::ShowTextInputInterface(PrimitiveType& primitiveType, Vec3& dimensions)
     {
@@ -415,5 +416,6 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
 }
+*/
 
 /// -------------------------------------------------------

@@ -10,11 +10,12 @@
 * Created: 11/8/2025
 * -------------------------------------------------------
 */
-#include "entity.h"
-#include "scene.h"
+//#include "entity.h"
+//#include "scene.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     UUID Entity::GetSceneUUID() const
@@ -57,5 +58,6 @@ namespace SceneryEditorX
 	Entity::operator bool() const { return IsValid(); }
 
 }
+*/
 
 /// -------------------------------------------------------

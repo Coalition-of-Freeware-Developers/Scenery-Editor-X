@@ -11,11 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "window.h"
-#include <SceneryEditorX/renderer/texture.h>
+//#include "window.h"
+//#include <SceneryEditorX/renderer/texture.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -43,5 +44,6 @@ namespace SceneryEditorX
         void CleanupSplashContext();
     };
 }
+*/
 
 /// -------------------------------------------------------

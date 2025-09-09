@@ -10,12 +10,13 @@
 * Created: 11/8/2025
 * -------------------------------------------------------
 */
-#include "mesh.h"
-#include "SceneryEditorX/asset/managers/asset_manager.h"
-#include "SceneryEditorX/project/project.h"
+//#include "mesh.h"
+//#include "SceneryEditorX/asset/managers/asset_manager.h"
+//#include "SceneryEditorX/project/project.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -136,7 +137,7 @@ namespace SceneryEditorX
 
 		return m_Skeleton->GetBoneNames() == skeleton.GetBoneNames();
 	}
-	*/
+	#1#
 
 	std::vector<std::string> MeshSource::GetAnimationNames() const
 	{
@@ -170,7 +171,7 @@ namespace SceneryEditorX
 		}
 		return animation.get(); /// Note: could be nullptr (e.g. if the import above failed.)
 	}
-	*/
+	#1#
 
 
 	Mesh::Mesh(AssetHandle meshSource, bool generateColliders) : m_MeshSource(meshSource), m_GenerateColliders(generateColliders)
@@ -191,7 +192,7 @@ namespace SceneryEditorX
 			for (size_t i = 0; i < meshMaterials.size(); i++)
 				m_Materials->SetMaterial((uint32_t)i, meshMaterials[i]);
 		}
-		*/
+		#1#
 
 	}
 
@@ -213,7 +214,7 @@ namespace SceneryEditorX
 			for (size_t i = 0; i < meshMaterials.size(); i++)
 				m_Materials->SetMaterial((uint32_t)i, meshMaterials[i]);
 		}
-		*/
+		#1#
 
 	}
 
@@ -222,7 +223,7 @@ namespace SceneryEditorX
 	{
 		Project::GetAssetManager()->ReloadDataAsync(Handle);
 	}
-	*/
+	#1#
 
 	void Mesh::SetSubmeshes(const std::vector<uint32_t>& submeshes, Ref<MeshSource> meshSource)
 	{
@@ -244,7 +245,7 @@ namespace SceneryEditorX
 		/*
 		if (auto meshSourceAsset = AssetManager::GetAsset<MeshSource>(m_MeshSource); meshSourceAsset)
             return meshSourceAsset->GetSkeleton();
-        */
+        #1#
 
         return nullptr;
 	}
@@ -272,7 +273,7 @@ namespace SceneryEditorX
 			for (uint32_t i = 0; i < numMaterials; i++)
 				m_Materials->SetMaterial(i, meshMaterials[i]);
 		}
-		*/
+		#1#
 
 	}
 
@@ -295,7 +296,7 @@ namespace SceneryEditorX
 			for (uint32_t i = 0; i < numMaterials; i++)
 				m_Materials->SetMaterial(i, meshMaterials[i]);
 		}
-		*/
+		#1#
 
 	}
 
@@ -304,7 +305,7 @@ namespace SceneryEditorX
 	{
 		Project::GetAssetManager()->ReloadDataAsync(Handle);
 	}
-	*/
+	#1#
 
 	void StaticMesh::SetSubmeshes(const std::vector<uint32_t>& submeshes, Ref<MeshSource> meshSource)
 	{
@@ -322,5 +323,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 /// -------------------------------------------------------

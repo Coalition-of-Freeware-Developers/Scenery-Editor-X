@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -48,7 +48,7 @@ namespace SceneryEditorX
     // ----------------------------------------
 
 	/// Utility function to URL encode a string
-    INTERNAL std::string UrlEncode(const std::string& input)
+    static std::string UrlEncode(const std::string& input)
 	{
 	    CURL* curl = curl_easy_init();
 	    std::string result;
@@ -67,13 +67,13 @@ namespace SceneryEditorX
 	}
 
 	/// Utility function to build a full URL for an API endpoint
-    INTERNAL std::string BuildUrl(const std::string &endpoint)
+    static std::string BuildUrl(const std::string &endpoint)
 	{
 	    return std::string(GATEWAY_API_URL) + endpoint;
 	}
 
 	/// Utility function to format a URL with parameters
-    INTERNAL std::string FormatUrl(const char *format, const std::string &param)
+    static std::string FormatUrl(const char *format, const std::string &param)
 	{
 	    char buffer[1024];
 	    snprintf(buffer, sizeof(buffer), format, param.c_str());

@@ -11,7 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/asset/asset.h"
+//#include "SceneryEditorX/asset/asset.h"
+#include "viewport.h"
 #include "vulkan/vk_buffers.h"
 #include "vulkan/vk_enums.h"
 #include "vulkan/vk_image.h"
@@ -33,19 +34,52 @@ namespace SceneryEditorX
 		MaxEnum
 	};
 
+	enum TextureFlags : uint32_t
+	{
+	    Texture_Srv		= 1U << 0,
+	    Texture_Uav		= 1U << 1,
+	    Texture_Rtv		= 1U << 2,
+	    Texture_Vrs		= 1U << 3,
+	    ClearBlit		= 1U << 4,
+	    PerMipViews		= 1U << 5,
+	    Greyscale		= 1U << 6,
+	    Transparent		= 1U << 7,
+	    SRGB			= 1U << 8,
+	    Mappable		= 1U << 9,
+	    Compress		= 1U << 10,
+	    ExternalMemory	= 1U << 11,
+	    DontPrepForGpu	= 1U << 12,
+	    Thumbnail		= 1U << 13
+	};
+
+    struct TextureMip
+    {
+        std::vector<std::byte> bytes;
+    };
+
+    struct TextureSlice
+    {
+        std::vector<TextureMip> mips;
+        uint32_t GetMipCount() { return static_cast<uint32_t>(mips.size()); }
+    };
+
 	struct TextureSpecification
 	{
+        TextureType type;
 		VkFormat format;
-		uint32_t width = 1;
-		uint32_t height = 1;
+		uint32_t width;
+		uint32_t height;
+        uint32_t depth;
+        uint32_t mipCount;
+        uint32_t flags;
 		SamplerWrap samplerWrap = SamplerWrap::Repeat;
 		SamplerFilter samplerFilter = SamplerFilter::Linear;
+        std::vector<TextureSlice> data = {};
+        std::string debugName;
 
 		bool generateMips = true;
 		bool storage = false;
 		bool storeLocally = false;
-
-		std::string debugName;
 	};
 
     /// -------------------------------------------------------
@@ -53,7 +87,7 @@ namespace SceneryEditorX
 	class Texture : public Resource
 	{
 	public:
-        AssetHandle handle = AssetHandle(0);
+        //AssetHandle handle = AssetHandle(0);
 
 		virtual ~Texture() override = default;
         virtual void Bind(uint32_t slot = 0) const = 0;
@@ -83,11 +117,11 @@ namespace SceneryEditorX
 
         explicit Texture2D(const TextureSpecification &specification);
         Texture2D(const TextureSpecification &specification, const std::filesystem::path &filePath);
-        Texture2D(const TextureSpecification &specification, const Buffer &imageData);
+        Texture2D(const TextureSpecification &specification, const Buffer &imageData = Buffer());
 
-		static Ref<Texture2D> Create(const TextureSpecification &specification);
-		static Ref<Texture2D> Create(const TextureSpecification &specification, const std::filesystem::path& filePath);
-        static Ref<Texture2D> Create(const TextureSpecification &specification, const Buffer &imageData = Buffer());
+		//static Ref<Texture2D> Create(const TextureSpecification &specification);
+		//static Ref<Texture2D> Create(const TextureSpecification &specification, const std::filesystem::path& filePath);
+        //static Ref<Texture2D> Create(const TextureSpecification &specification, const Buffer &imageData = Buffer());
 
 		///< reinterpret the given texture's data as if it was sRGB
 		static Ref<Texture2D> CreateFromSRGB(const Ref<Texture2D> &texture);
@@ -103,8 +137,6 @@ namespace SceneryEditorX
 
 		void Invalidate();
 
-		Ref<Texture2D> *GetRenderTarget(const RenderTarget type);
-
 		virtual VkFormat GetFormat() const override { return m_Specification.format; }
 		virtual uint32_t GetWidth() const override { return m_Specification.width; }
 		virtual uint32_t GetHeight() const override { return m_Specification.height; }
@@ -116,6 +148,14 @@ namespace SceneryEditorX
 		virtual ResourceDescriptorInfo GetDescriptorInfo() const override;
 		const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const;
 
+        void ClearData();
+        void PrepareForGpu();
+        void SaveAsImage(const std::string &file_path);
+
+	    void SetLayout(const Layout::ImageLayout layout, CommandList *cmd_list,  uint32_t mip_index = all_mips, uint32_t mip_range = 0);
+        Layout::ImageLayout GetLayout(const uint32_t mip) const;
+        std::array<Layout::ImageLayout, max_mip_count> GetLayouts();
+
 		void Lock();
 		void Unlock();
 
@@ -125,13 +165,20 @@ namespace SceneryEditorX
         virtual uint32_t GetMipLevelCount() const override;
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const override;
 
-		void GenerateMips();
+	    TextureMip GetMip(uint32_t array_index, uint32_t mip_index);
+        TextureSlice &GetSlice(uint32_t array_index);
+        void GenerateMips();
+        void AllocateMip();
+        static size_t CalculateMipSize(const TextureSpecification &spec, uint32_t bits_per_channel, uint32_t channel_count);
+
 		virtual uint64_t GetHash() const override;
         void CopyToHostBuffer(Buffer &buffer) const;
         virtual TextureType GetType() const override { return TextureType::Texture2D; }
 
 		virtual int32_t GetBindlessImageIndex() const override { return m_BindlessImageIndex; }
 		virtual int32_t GetBindlessSamplerIndex() const override { return m_BindlessSamplerIndex; }
+
+        const auto& GetViewport() const { return m_viewport; }
 
     private:
         void SetData(const Buffer &buffer);
@@ -143,6 +190,27 @@ namespace SceneryEditorX
 	    int32_t m_BindlessImageIndex = -1;
 	    int32_t m_BindlessSamplerIndex = -1;
 
+	protected:
+        bool CreateResource();
+
+        uint32_t m_width = 0;
+        uint32_t m_height = 0;
+        uint32_t m_depth = 0;
+        uint32_t m_mip_count = 0;
+        uint32_t m_bits_per_channel = 0;
+        uint32_t m_channel_count = 0;
+        VkFormat m_format = VK_FORMAT_MAX_ENUM;
+        TextureType m_type = TextureType::MaxEnum;
+        Viewport m_viewport;
+        std::vector<TextureSlice> m_slices;
+
+	    void* m_srv = nullptr;										// an srv with all mips
+        std::array<void*, max_mip_count> m_srv_mips = {nullptr};	// an srv for each mip
+        std::array<void*, max_render_target_count> m_rtv = {nullptr};
+        std::array<void*, max_render_target_count> m_dsv = {nullptr};
+        void* m_resource = nullptr;
+        void* m_externalMemory = nullptr;
+	    void* m_mappedData = nullptr;
     };
 
     /// -------------------------------------------------------

@@ -1,4 +1,4 @@
-/**
+ï»¿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -10,8 +10,8 @@
 * Created: 29/3/2025
 * -------------------------------------------------------
 */
-#include <imgui/imgui.h>
-#include <SceneryEditorX/ui/ui.h>
+//#include <imgui/imgui.h>
+//#include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
 
@@ -20,12 +20,13 @@
 //bool UI::showAboutModal = false;
 //bool UI::showCreateProjectModal = false;
 
+/*
 namespace UI
 {
 
 	// Define projectName and projectLocation variables
-    INTERNAL char projectName[128];
-	INTERNAL char projectLocation[2048];
+    static char projectName[128];
+	static char projectLocation[2048];
 
 	// ---------------------------------------------------------
 
@@ -111,8 +112,8 @@ namespace UI
             ImGui::Text("Scenery Editor X");
             ImGui::Text("Version 1.0.0");
             ImGui::Separator();
-            ImGui::Text(R"(© 2025 Thomas Ray)");
-            ImGui::Text(R"(© 2025 Coalition of Freeware Developers)");
+            ImGui::Text(R"(Â© 2025 Thomas Ray)");
+            ImGui::Text(R"(Â© 2025 Coalition of Freeware Developers)");
             ImGui::Separator();
             ImGui::Text("Powered by Vulkan and Dear ImGui");
             
@@ -133,5 +134,6 @@ namespace UI
     }
 
 } // namespace UI
+*/
 
-// -------------------------------------------------------
+/// -------------------------------------------------------

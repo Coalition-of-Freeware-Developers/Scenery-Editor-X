@@ -10,25 +10,26 @@
 * Created: 31/7/2025
 * -------------------------------------------------------
 */
-#include "ui_renderer.h"
-#include "ui_fonts.h"
-#include "ui_manager.h"
-#include "SceneryEditorX/core/application/application.h"
-#include "SceneryEditorX/core/input/input.h"
-#include "SceneryEditorX/core/input/key_codes.h"
-#include "SceneryEditorX/renderer/renderer.h"
-#include "SceneryEditorX/renderer/fonts/font_awesome.h"
-#include "SceneryEditorX/renderer/vulkan/vk_util.h"
-#ifndef IMGUI_IMPL_API
-    #define IMGUI_IMPL_API
-#endif
-#include <ImGuizmo.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
-#include <GLFW/glfw3.h>
+//#include "ui_renderer.h"
+//#include "ui_fonts.h"
+//#include "ui_manager.h"
+//#include "SceneryEditorX/core/application/application.h"
+//#include "SceneryEditorX/core/input/input.h"
+//#include "SceneryEditorX/core/input/key_codes.h"
+//#include "SceneryEditorX/renderer/renderer.h"
+//#include "SceneryEditorX/renderer/fonts/font_awesome.h"
+//#include "SceneryEditorX/renderer/vulkan/vk_util.h"
+//#ifndef IMGUI_IMPL_API
+//    #define IMGUI_IMPL_API
+//#endif
+//#include <ImGuizmo.h>
+//#include <imgui_impl_glfw.h>
+//#include <imgui_impl_vulkan.h>
+//#include <GLFW/glfw3.h>
 
 /// ---------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     static std::vector<VkCommandBuffer> s_ImGuiCommandBuffers;
@@ -263,7 +264,7 @@ namespace SceneryEditorX
 			SwapChain& swapChain = Application::Get().GetWindow().GetSwapChain();
             init_info.ImageCount = swapChain.GetSwapChainImageCount();
 			init_info.CheckVkResultFn = VulkanCheckResult;
-			ImGui_ImplVulkan_Init(&init_info/*, swapChain.GetRenderPass()*/);
+			ImGui_ImplVulkan_Init(&init_info/*, swapChain.GetRenderPass()#1#);
 
 			/// Upload Fonts
 			{
@@ -302,5 +303,6 @@ namespace SceneryEditorX
 
 
 }
+*/
 
 /// ---------------------------------------------------------

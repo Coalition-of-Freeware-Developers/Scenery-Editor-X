@@ -335,7 +335,7 @@ namespace SceneryEditorX
          * auto groundBuffer = VertexBuffer::CreatePrimitive(PrimitiveType::Plane, Vec3(10.0f, 10.0f, 0.0f));
          * @endcode
          */
-        static Ref<VertexBuffer> CreatePrimitive(PrimitiveType type, const Vec3& size = Vec3(1.0f), const Vec3& color = Vec3(1.0f));
+        //static Ref<VertexBuffer> CreatePrimitive(PrimitiveType type, const Vec3& size = Vec3(1.0f), const Vec3& color = Vec3(1.0f));
 
     private:
         std::vector<Vertex> m_Vertices;						///< Storage for vertex data

@@ -14,6 +14,9 @@
 #include <algorithm>
 #include <GLFW/glfw3.h>
 #include <fmt/format.h>
+
+#include "window.h"
+
 #include "SceneryEditorX/logging/logging.hpp"
 
 /// --------------------------------------------
@@ -358,6 +361,202 @@ namespace SceneryEditorX
 
         SEDX_CORE_WARN("Cannot get current video mode - no monitor available");
         return nullptr;
+    }
+
+    /**
+     * @brief Gets the primary monitor width in pixels using GLFW
+     *
+     * @return Width in pixels or 0 if not available
+     */
+    uint32_t MonitorData::GetWidth()
+    {
+        if (glfwInit() == GLFW_FALSE)
+        {
+            SEDX_CORE_WARN("GetWidth: GLFW not initialized");
+            return 0;
+        }
+
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        if (!monitor)
+        {
+            SEDX_CORE_WARN("GetWidth: Primary monitor not available");
+            return 0;
+        }
+
+        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+        if (!mode)
+        {
+            SEDX_CORE_WARN("GetWidth: Failed to get primary monitor video mode");
+            return 0;
+        }
+
+        return static_cast<uint32_t>(mode->width);
+    }
+
+    /**
+     * @brief Gets the primary monitor height in pixels using GLFW
+     *
+     * @return Height in pixels or 0 if not available
+     */
+    uint32_t MonitorData::GetHeight()
+    {
+        if (glfwInit() == GLFW_FALSE)
+        {
+            SEDX_CORE_WARN("GetHeight: GLFW not initialized");
+            return 0;
+        }
+
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        if (!monitor)
+        {
+            SEDX_CORE_WARN("GetHeight: Primary monitor not available");
+            return 0;
+        }
+
+        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+        if (!mode)
+        {
+            SEDX_CORE_WARN("GetHeight: Failed to get primary monitor video mode");
+            return 0;
+        }
+
+        return static_cast<uint32_t>(mode->height);
+    }
+
+
+    /**
+     * @brief Gets the primary monitor refresh rate in Hz using GLFW
+     *
+     * @return Refresh rate in Hz or 0.0f if not available
+     */
+    float MonitorData::GetRefreshRate()
+    {
+        if (glfwInit() == GLFW_FALSE)
+        {
+            SEDX_CORE_WARN("GetRefreshRate: GLFW not initialized");
+            return 0.0f;
+        }
+
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        if (!monitor)
+        {
+            SEDX_CORE_WARN("GetRefreshRate: Primary monitor not available");
+            return 0.0f;
+        }
+
+        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+        if (!mode)
+        {
+            SEDX_CORE_WARN("GetRefreshRate: Failed to get primary monitor video mode");
+            return 0.0f;
+        }
+
+        return static_cast<float>(mode->refreshRate);
+    }
+
+    /**
+     * @brief Gets the primary monitor index using GLFW
+     *
+     * @return Monitor index within glfwGetMonitors() list, 0 as safe fallback
+     */
+    uint32_t MonitorData::GetId()
+    {
+        if (glfwInit() == GLFW_FALSE)
+        {
+            SEDX_CORE_WARN("GetId: GLFW not initialized");
+            return 0;
+        }
+
+        int count = 0;
+        GLFWmonitor **monitors = glfwGetMonitors(&count);
+        if (!monitors || count <= 0)
+        {
+            SEDX_CORE_WARN("GetId: No monitors enumerated");
+            return 0;
+        }
+
+        GLFWmonitor *primary = glfwGetPrimaryMonitor();
+        if (!primary)
+        {
+            SEDX_CORE_WARN("GetId: Primary monitor not available");
+            return 0;
+        }
+
+        for (int i = 0; i < count; ++i)
+        {
+            if (monitors[i] == primary)
+                return static_cast<uint32_t>(i);
+        }
+
+        // If primary not found in list, default to 0
+        return 0;
+    }
+
+    /**
+     * @brief Indicates HDR support (not available via GLFW - returns false)
+     *
+     * GLFW does not expose HDR capability queries. This returns false.
+     */
+    bool MonitorData::GetHdr()
+    {
+        // Not supported by GLFW - caller should treat false as "unknown/assume SDR"
+        return false;
+    }
+
+    /**
+     * @brief Gets the display's assumed max luminance in nits
+     *
+     * No GLFW API to query real display luminance; keep a reasonable default.
+     */
+    float MonitorData::GetLuminanceMax()
+    {
+        float value = 350.0f;
+        return value;
+    }
+
+    /**
+     * @brief Gets the display's gamma
+     *
+     * GLFW can set gamma but does not provide a system gamma query. Return default.
+     */
+    float MonitorData::GetGamma()
+    {
+        // no good way to do that, so just return a default value
+        // this needs to be calibrated per display by the user
+        return 2.2f;
+    }
+
+    /**
+     * @brief Gets the primary monitor name using GLFW
+     *
+     * @return C-string of the monitor name or a fallback static string
+     */
+    const char *MonitorData::GetName()
+    {
+        if (glfwInit() == GLFW_FALSE)
+        {
+            SEDX_CORE_WARN("GetName: GLFW not initialized");
+            static const char *fallback = "Unknown Monitor";
+            return fallback;
+        }
+
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        if (!monitor)
+        {
+            SEDX_CORE_WARN("GetName: Primary monitor not available");
+            static const char *fallback = "Unknown Monitor";
+            return fallback;
+        }
+
+        if (const char *name = glfwGetMonitorName(monitor))
+            return name;
+
+        static const char *fallback = "Unknown Monitor";
+        return fallback;
+    }
+
+    void MonitorData::UpdateMonitorList()
+    {
     }
 
 } // namespace SceneryEditorX

@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -15,67 +15,68 @@
 #include <imgui/imgui.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/renderer.h>
 
 /// -------------------------------------------------------
 
 struct Icons
 {
     /// Core UI icons
-    GLOBAL constexpr const char* ARROW_RIGHT = ICON_FA_ARROW_RIGHT;
-    GLOBAL constexpr const char* ARROW_LEFT = ICON_FA_ARROW_LEFT;
-    GLOBAL constexpr const char* ARROW_UP = ICON_FA_ARROW_UP;
-    GLOBAL constexpr const char* ARROW_DOWN = ICON_FA_ARROW_DOWN;
-    GLOBAL constexpr const char* PLUS = ICON_FA_PLUS;
-    GLOBAL constexpr const char* MINUS = ICON_FA_MINUS;
-    GLOBAL constexpr const char* CHECK = ICON_FA_CHECK;
-    GLOBAL constexpr const char* TIMES = ICON_FA_TIMES;
-    GLOBAL constexpr const char* TRASH = ICON_FA_TRASH;
-    GLOBAL constexpr const char* SAVE = ICON_FA_SAVE;
-    GLOBAL constexpr const char* FOLDER = ICON_FA_FOLDER;
-    GLOBAL constexpr const char* FOLDER_OPEN = ICON_FA_FOLDER_OPEN;
-    GLOBAL constexpr const char* FILE = ICON_FA_FILE;
-    GLOBAL constexpr const char* FILE_ALT = ICON_FA_FILE_ALT;
+    static constexpr const char* ARROW_RIGHT = ICON_FA_ARROW_RIGHT;
+    static constexpr const char* ARROW_LEFT = ICON_FA_ARROW_LEFT;
+    static constexpr const char* ARROW_UP = ICON_FA_ARROW_UP;
+    static constexpr const char* ARROW_DOWN = ICON_FA_ARROW_DOWN;
+    static constexpr const char* PLUS = ICON_FA_PLUS;
+    static constexpr const char* MINUS = ICON_FA_MINUS;
+    static constexpr const char* CHECK = ICON_FA_CHECK;
+    static constexpr const char* TIMES = ICON_FA_TIMES;
+    static constexpr const char* TRASH = ICON_FA_TRASH;
+    static constexpr const char* SAVE = ICON_FA_SAVE;
+    static constexpr const char* FOLDER = ICON_FA_FOLDER;
+    static constexpr const char* FOLDER_OPEN = ICON_FA_FOLDER_OPEN;
+    static constexpr const char* FILE = ICON_FA_FILE;
+    static constexpr const char* FILE_ALT = ICON_FA_FILE_ALT;
 
     /// Editor tools
-    GLOBAL constexpr const char* PENCIL = ICON_FA_PENCIL_ALT;
-    GLOBAL constexpr const char* EDIT = ICON_FA_EDIT;
-    GLOBAL constexpr const char* MOVE = ICON_FA_ARROWS_ALT;
-    GLOBAL constexpr const char* ROTATE = ICON_FA_SYNC;
-    GLOBAL constexpr const char* SCALE = ICON_FA_EXPAND;
-    GLOBAL constexpr const char* UNDO = ICON_FA_UNDO;
-    GLOBAL constexpr const char* REDO = ICON_FA_REDO;
-    GLOBAL constexpr const char* EYE = ICON_FA_EYE;
-    GLOBAL constexpr const char* EYE_SLASH = ICON_FA_EYE_SLASH;
-    GLOBAL constexpr const char* LOCK = ICON_FA_LOCK;
-    GLOBAL constexpr const char* UNLOCK = ICON_FA_UNLOCK;
+    static constexpr const char* PENCIL = ICON_FA_PENCIL_ALT;
+    static constexpr const char* EDIT = ICON_FA_EDIT;
+    static constexpr const char* MOVE = ICON_FA_ARROWS_ALT;
+    static constexpr const char* ROTATE = ICON_FA_SYNC;
+    static constexpr const char* SCALE = ICON_FA_EXPAND;
+    static constexpr const char* UNDO = ICON_FA_UNDO;
+    static constexpr const char* REDO = ICON_FA_REDO;
+    static constexpr const char* EYE = ICON_FA_EYE;
+    static constexpr const char* EYE_SLASH = ICON_FA_EYE_SLASH;
+    static constexpr const char* LOCK = ICON_FA_LOCK;
+    static constexpr const char* UNLOCK = ICON_FA_UNLOCK;
 
     /// 3D visualization
-    GLOBAL constexpr const char* CUBE = ICON_FA_CUBE;
-    GLOBAL constexpr const char* CUBES = ICON_FA_CUBES;
-    GLOBAL constexpr const char* MOUNTAIN = ICON_FA_MOUNTAIN;
-    GLOBAL constexpr const char* MAP = ICON_FA_MAP;
-    GLOBAL constexpr const char* COMPASS = ICON_FA_COMPASS;
-    GLOBAL constexpr const char* LOCATION = ICON_FA_MAP_MARKER_ALT;
-    GLOBAL constexpr const char* RULER = ICON_FA_RULER_COMBINED;
-    GLOBAL constexpr const char* CROSSHAIRS = ICON_FA_CROSSHAIRS;
-    GLOBAL constexpr const char* OBJECT_GROUP = ICON_FA_OBJECT_GROUP;
-    GLOBAL constexpr const char* OBJECT_UNGROUP = ICON_FA_OBJECT_UNGROUP;
+    static constexpr const char* CUBE = ICON_FA_CUBE;
+    static constexpr const char* CUBES = ICON_FA_CUBES;
+    static constexpr const char* MOUNTAIN = ICON_FA_MOUNTAIN;
+    static constexpr const char* MAP = ICON_FA_MAP;
+    static constexpr const char* COMPASS = ICON_FA_COMPASS;
+    static constexpr const char* LOCATION = ICON_FA_MAP_MARKER_ALT;
+    static constexpr const char* RULER = ICON_FA_RULER_COMBINED;
+    static constexpr const char* CROSSHAIRS = ICON_FA_CROSSHAIRS;
+    static constexpr const char* OBJECT_GROUP = ICON_FA_OBJECT_GROUP;
+    static constexpr const char* OBJECT_UNGROUP = ICON_FA_OBJECT_UNGROUP;
 
     /// Interface elements
-    GLOBAL constexpr const char* COG = ICON_FA_COG;
-    GLOBAL constexpr const char* COGS = ICON_FA_COGS;
-    GLOBAL constexpr const char* BARS = ICON_FA_BARS;
-    GLOBAL constexpr const char* QUESTION = ICON_FA_QUESTION;
-    GLOBAL constexpr const char* INFO = ICON_FA_INFO_CIRCLE;
-    GLOBAL constexpr const char* EXCLAMATION = ICON_FA_EXCLAMATION_TRIANGLE;
-    GLOBAL constexpr const char* SEARCH = ICON_FA_SEARCH;
-    GLOBAL constexpr const char* HOME = ICON_FA_HOME;
-    GLOBAL constexpr const char* DOWNLOAD = ICON_FA_DOWNLOAD;
-    GLOBAL constexpr const char* UPLOAD = ICON_FA_UPLOAD;
-    GLOBAL constexpr const char* SYNC = ICON_FA_SYNC_ALT;
-    GLOBAL constexpr const char* PLAY = ICON_FA_PLAY;
-    GLOBAL constexpr const char* PAUSE = ICON_FA_PAUSE;
-    GLOBAL constexpr const char* STOP = ICON_FA_STOP;
+    static constexpr const char* COG = ICON_FA_COG;
+    static constexpr const char* COGS = ICON_FA_COGS;
+    static constexpr const char* BARS = ICON_FA_BARS;
+    static constexpr const char* QUESTION = ICON_FA_QUESTION;
+    static constexpr const char* INFO = ICON_FA_INFO_CIRCLE;
+    static constexpr const char* EXCLAMATION = ICON_FA_EXCLAMATION_TRIANGLE;
+    static constexpr const char* SEARCH = ICON_FA_SEARCH;
+    static constexpr const char* HOME = ICON_FA_HOME;
+    static constexpr const char* DOWNLOAD = ICON_FA_DOWNLOAD;
+    static constexpr const char* UPLOAD = ICON_FA_UPLOAD;
+    static constexpr const char* SYNC = ICON_FA_SYNC_ALT;
+    static constexpr const char* PLAY = ICON_FA_PLAY;
+    static constexpr const char* PAUSE = ICON_FA_PAUSE;
+    static constexpr const char* STOP = ICON_FA_STOP;
 
     /// Helper method to get font icon
     static const char* GetIcon(const std::string& name)
@@ -208,7 +209,7 @@ namespace SceneryEditorX::UI
          * @param renderer Graphics engine reference
          * @return True if initialization was successful
          */
-        bool InitGUI(GLFWwindow *window, GraphicsEngine &renderer);
+        bool InitGUI(GLFWwindow *window, Renderer &renderer);
 	
         /**
          * @brief Set the command buffer for rendering ImGui
@@ -282,7 +283,7 @@ namespace SceneryEditorX::UI
         /**
          * @brief Set ImGui style (colors, sizes, etc.)
          */
-        INTERNAL void SetStyle();
+        static void SetStyle();
 
         /**
          * @brief Configure and load fonts for ImGui
@@ -298,8 +299,8 @@ namespace SceneryEditorX::UI
          */
         ImTextureID GetTextureID(VkImageView imageView, VkSampler sampler, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) const;
 
-        GLOBAL bool visible;                 /// Used to show/hide the GUI
-        LOCAL const std::string defaultFont; /// Default font name
+        static bool visible;                 /// Used to show/hide the GUI
+        static const std::string defaultFont; /// Default font name
 
 	private:
         /// Vulkan resources
@@ -308,7 +309,7 @@ namespace SceneryEditorX::UI
         SwapChain *swapchain = nullptr;
         VulkanDevice *device = nullptr;
         //VkDevice device = VK_NULL_HANDLE;
-        GraphicsEngine *renderer = nullptr;
+        Renderer *renderer = nullptr;
         VkDescriptorPool imguiPool = VK_NULL_HANDLE;
         VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
 
@@ -334,7 +335,6 @@ namespace SceneryEditorX::UI
      */
 	void initImGuiExtensions();
 
-} // namespace SceneryEditorX::UI
+}
 
-
-// -------------------------------------------------------
+/// -------------------------------------------------------

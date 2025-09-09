@@ -11,20 +11,21 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <colors.h>
-#include <math_utils.h>
-#include <stack>
+//#include <colors.h>
+//#include <math_utils.h>
+//#include <stack>
 
-#include "frame_sync.h"
-#include "image_data.h"
-#include "texture.h"
-#include "viewport.h"
-#include "vulkan/vk_enums.h"
-#include "vulkan/vk_pipeline.h"
-#include "vulkan/vk_swapchain.h"
+//#include "frame_sync.h"
+//#include "image_data.h"
+//#include "texture.h"
+//#include "viewport.h"
+//#include "vulkan/vk_enums.h"
+//#include "vulkan/vk_pipeline.h"
+//#include "vulkan/vk_swapchain.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     /**
@@ -33,7 +34,7 @@ namespace SceneryEditorX
      *
      * This enum is used to track the current state of a command buffer,
      * such as whether it is idle, being recorded, or has been submitted for execution.
-     */
+     #1#
 	enum class CommandState : uint8_t
 	{
 	    Idle,
@@ -77,7 +78,7 @@ namespace SceneryEditorX
 		/*
 		Ref<VertexBuffer> SetBuffer();
 		Ref<IndexBuffer>  SetBuffer();
-		*/
+		#1#
 
 	    // Clear
         void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
@@ -205,5 +206,6 @@ namespace SceneryEditorX
         void* m_queryPool_occlusion				= nullptr;
 	};
 }
+*/
 
 /// -------------------------------------------------------

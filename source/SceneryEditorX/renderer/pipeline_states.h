@@ -12,6 +12,8 @@
 */
 #pragma once
 #include <colors.h>
+
+#include "blend_state.h"
 #include "texture.h"
 #include "shaders/shader.h"
 #include "vulkan/vk_swapchain.h"
@@ -41,12 +43,12 @@ namespace SceneryEditorX
         BlendState *blendState						= nullptr;
         DepthStencilState *depthStencil				= nullptr;
         Ref<SwapChain> *render_target_swapchain		= nullptr;
-        PrimitiveTopology topology					= PrimitiveTopology::TOPOLOGY_TRIANGLES;
-        Ref<Texture> *render_target_depth_texture	= nullptr;
-        Ref<Texture> *vrs_input_texture				= nullptr;
+        PrimitiveTopology topology					= PrimitiveTopology::Triangles;
+        Ref<Texture2D> *render_target_depth_texture	= nullptr;
+        Ref<Texture2D> *vrs_input_texture			= nullptr;
         uint32_t render_target_array_index			= 0;
-        std::array< Ref<Shader>*, static_cast<uint32_t>(ShaderType::SHADER_TYPE_MAX_ENUM)> shaders = {};
-        std::array< Ref<Texture>*, renderTargetCountLimit> render_target_color_textures;
+        std::array<Ref<Shader> *, static_cast<uint32_t>(ShaderStage::Stage::MaxEnum)> shaders = {};
+        std::array< Ref<Texture2D>*, renderTargetCountLimit> render_target_color_textures;
 		
         /// -------------------------------------------------------
 		
@@ -58,7 +60,7 @@ namespace SceneryEditorX
         std::string debugName; // used by the validation layer
 
 	private:
-        [[nodiscard]] bool HasShader(const ShaderType shader_stage) const;
+        [[nodiscard]] bool HasShader(ShaderStage::Stage shader_stage) const;
 
         uint32_t m_width = 0;
         uint32_t m_height = 0;

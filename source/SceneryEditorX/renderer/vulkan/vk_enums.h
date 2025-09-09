@@ -227,9 +227,10 @@ namespace SceneryEditorX
     enum class SamplerWrap : uint8_t
     {
         Repeat			= 0,
-        Repeat_Mirrored = 1,
-        Clamp_Edge		= 2,
-        Clamp_Border	= 3,
+        RepeatMirrored	= 1,
+        ClampEdge		= 2,
+        ClampBorder		= 3,
+        MirrorOnce		= 4
     };
 
     /**
@@ -239,12 +240,14 @@ namespace SceneryEditorX
      * This enum specifies how polygons should be rendered,
      * such as filling them, drawing their outlines, or other modes.
      *
-     * @note - The values in this enum are designed to be compatible with Vulkan's VkPolygonMode.
+     * @note - The values in this enum are designed to be compatible with Vulkan's @enum VkPolygonMode.
      */
-    enum PolygonMode : uint8_t
+    enum class PolygonMode
     {
-        Fill = 0,
-        Line = 1,
+        Fill	= 0,
+        Line	= 1,
+        Point	= 2,
+        MaxEnum = 0x7FFFFFFF
     };
 
     /**
@@ -329,21 +332,19 @@ namespace SceneryEditorX
 	};
 
     /**
-	 * @enum FramebufferBlendMode
+	 * @enum BlendMode
 	 * @brief Defines the blending modes for framebuffer attachments.
 	 *
 	 * This enum specifies how colors from different framebuffer attachments
 	 * should be blended together during rendering.
 	 *
-	 * @note - The values in this enum are designed to be compatible with Vulkan's VkBlendFactor and VkBlendOp.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's @enum VkBlendFactor and @enum VkBlendOp.
 	 */
-	enum class FramebufferBlendMode : uint8_t
+	enum class BlendMode : uint8_t
     {
         None = 0,
-        OneZero,
-        SrcAlphaOneMinusSrcAlpha,
+        Alpha,
         Additive,
-        Zero_SrcColor
     };
 
     /**
@@ -354,7 +355,7 @@ namespace SceneryEditorX
 	 * at the start of a render pass, such as whether to clear them or load
 	 * existing data.
 	 *
-	 * @note - The values in this enum are designed to be compatible with Vulkan's VkAttachmentLoadOp.
+	 * @note - The values in this enum are designed to be compatible with Vulkan's @enum VkAttachmentLoadOp.
 	 */
 	enum class AttachmentLoadOp : uint8_t
     {
@@ -370,7 +371,7 @@ namespace SceneryEditorX
      * This enum specifies the various primitive topologies
      * that can be used in rendering pipelines.
      *
-     * @note - The values in this enum are designed to be compatible with Vulkan's VkPrimitiveTopology.
+     * @note - The values in this enum are designed to be compatible with Vulkan's @enum VkPrimitiveTopology.
      */
     enum class PrimitiveTopology
     {
@@ -544,7 +545,7 @@ namespace SceneryEditorX
      * such as using nearest neighbor, linear interpolation, or cubic interpolation.
      *
      * @note - The values in this enum are designed to be compatible with Vulkan's VkFilter and VkSamplerMipmapMode.
-     * @see @enum VkFilter
+     * @see @enum VkFilter and @enum VkSamplerMipmapMode
      */
     enum class FilterMode : uint8_t
 	{
@@ -591,9 +592,174 @@ namespace SceneryEditorX
         Outline,
         ShadingRate,
         ShadowAtlas,
-        Max
+        MaxEnum
 	};
 
+    enum class RendererBufferId : uint8_t
+    {
+        ConstantFrame,
+        SpdCounter,
+        MaterialParameters,
+        LightParameters,
+        DummyInstance,
+        AABBs,
+        Visibility,
+        VisibilityPrevious,
+        MaxEnum
+    };
+
+	enum class RasterizerState : uint8_t
+	{
+	    Solid,
+		Wireframe,
+		PointSpot_Light,
+		DirectionalSpot_Light,
+		MaxEnum
+	};
+
+    enum class StandardTexture : uint8_t
+    {
+        Noise_blue_0,
+        Noise_blue_1,
+        Noise_blue_2,
+        Noise_blue_3,
+        Noise_blue_4,
+        Noise_blue_5,
+        Noise_blue_6,
+        Noise_blue_7,
+        Checkerboard,
+        Gizmo_light_directional,
+        Gizmo_light_point,
+        Gizmo_light_spot,
+        Black,
+        White,
+        MaxEnum
+    };
+
+    enum class Tonemapping : uint32_t
+    {
+        Aces,
+        AgX,
+        Reinhard,
+        AcesNautilus,
+        MaxEnum,
+    };
+
+    enum class Antialiasing : uint32_t
+    {
+        Disabled,
+        Fxaa,
+        Taa,
+        TaaFxaa
+    };
+
+    enum class DepthStencilState : uint8_t
+    {
+        Off,
+        ReadEqual,
+        ReadGreaterEqual,
+        ReadWrite,
+        MaxEnum
+    };
+
+    enum class SamplerPreset : uint8_t
+    {
+        CompareDepth,
+        PointClampEdge,
+        PointClampBorder,
+        PointWrap,
+        BilinearClampEdge,
+        BilinearClampBorder,
+        BilinearWrap,
+        TrilinearClamp,
+        AnisotropicWrap,
+        MaxEnum
+    };
+
+    enum class ShaderType : uint8_t
+    {
+        tessellation_h,
+        tessellation_d,
+        gbuffer_v,
+        gbuffer_p,
+        depth_prepass_v,
+        depth_prepass_alpha_test_p,
+        depth_light_v,
+        depth_light_alpha_color_p,
+        fxaa_c,
+        film_grain_c,
+        motion_blur_c,
+        depth_of_field_c,
+        chromatic_aberration_c,
+        vhs_c,
+        bloom_luminance_c,
+        bloom_blend_frame_c,
+        bloom_upsample_blend_mip_c,
+        output_c,
+        light_integration_brdf_specular_lut_c,
+        light_integration_environment_filter_c,
+        light_c,
+        light_composition_c,
+        light_image_based_c,
+        line_v,
+        line_p,
+        grid_v,
+        grid_p,
+        outline_v,
+        outline_p,
+        outline_c,
+        font_v,
+        font_p,
+        ssao_c,
+        sss_c_bend,
+        skysphere_c,
+        skysphere_lut_c,
+        blur_gaussian_c,
+        blur_gaussian_bilaterial_c,
+        variable_rate_shading_c,
+        ffx_cas_c,
+        ffx_spd_average_c,
+        ffx_spd_min_c,
+        ffx_spd_max_c,
+        ffx_spd_luminance_c,
+        blit_c,
+        occlusion_c,
+        icon_c,
+        dithering_c,
+        transparency_reflection_refraction_c,
+        MaxEnum
+    };
+
+    enum class BlendSpec : uint8_t
+    {
+        Zero,
+        One,
+        Src_Color,
+        Inv_Src_Color,
+        Src_Alpha,
+        Inv_Src_Alpha,
+        Dest_Alpha,
+        Inv_Dest_Alpha,
+        Dest_Color,
+        Inv_Dest_Color,
+        Src_Alpha_Sat,
+        Blend_Factor,
+        Inv_Blend_Factor,
+        Src1_Color,
+        Inv_Src1_Color,
+        Src1_Alpha,
+        Inv_Src1_Alpha
+    };
+
+    enum class BlendOperation : uint8_t
+    {
+        Add,
+        Subtract,
+        Rev_Subtract,
+        Min,
+        Max,
+        Undefined
+    };
 
 }
 

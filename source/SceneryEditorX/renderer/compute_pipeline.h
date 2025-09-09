@@ -11,12 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "texture.h"
-#include "shaders/shader.h"
-#include "vulkan/vk_enums.h"
+//#include "texture.h"
+//#include "shaders/shader.h"
+//#include "vulkan/vk_enums.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	// Forward declarations
@@ -58,5 +59,6 @@ namespace SceneryEditorX
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

@@ -326,6 +326,7 @@ namespace SceneryEditorX
      * @param color Color to apply to all primitive vertices (default: white)
      * @return Ref<VertexBuffer> Reference to the created vertex buffer, or nullptr if creation failed
      */
+    /*
     Ref<VertexBuffer> VertexBuffer::CreatePrimitive(PrimitiveType type, const Vec3 &size, const Vec3 &color)
     {
         SEDX_PROFILE_SCOPE("VertexBuffer::CreatePrimitive");
@@ -374,6 +375,7 @@ namespace SceneryEditorX
             return nullptr;
         }
     }
+    */
 
     /**
      * @brief Creates vertex attribute descriptions based on the vertex format
@@ -607,7 +609,7 @@ namespace SceneryEditorX
         };
 
         /// Define texture coordinates for each vertex of a face
-        constexpr Vec2 texCoords[4] = {
+        Vec2 texCoords[4] = {
             {0.0f, 0.0f}, /// bottom-left
             {1.0f, 0.0f}, /// bottom-right
             {1.0f, 1.0f}, /// top-right
@@ -652,13 +654,13 @@ namespace SceneryEditorX
         /// Generate vertices
         for (uint32_t latitude = 0; latitude <= latitudeBands; latitude++)
         {
-            const float theta = static_cast<float>(latitude) * SceneryEditorX::PI / static_cast<float>(latitudeBands);
+            const float theta = static_cast<float>(latitude) * xMath::PI / static_cast<float>(latitudeBands);
             const float sinTheta = std::sin(theta);
             const float cosTheta = std::cos(theta);
 
             for (uint32_t longitude = 0; longitude <= longitudeBands; longitude++)
             {
-                const float phi = static_cast<float>(longitude) * 2.0f * SceneryEditorX::PI / static_cast<float>(longitudeBands);
+                const float phi = static_cast<float>(longitude) * 2.0f * xMath::PI / static_cast<float>(longitudeBands);
                 const float sinPhi = std::sin(phi);
                 const float cosPhi = std::cos(phi);
 
@@ -700,7 +702,7 @@ namespace SceneryEditorX
         /// Create side vertices
         for (int i = 0; i <= segments; ++i)
         {
-            const float theta = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * SceneryEditorX::PI;
+            const float theta = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * xMath::PI;
             const float x = radius * std::cos(theta);
             const float z = radius * std::sin(theta);
             const float u = static_cast<float>(i) / static_cast<float>(segments);

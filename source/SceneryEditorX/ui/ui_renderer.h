@@ -11,11 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/core/modules/module.h"
-#include "SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h"
+//#include "SceneryEditorX/core/modules/module.h"
+//#include "SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h"
 
 /// ---------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
     class UIModule : public Module
@@ -36,5 +37,6 @@ namespace SceneryEditorX
 		float m_Time = 0.0f;
 	};
 }
+*/
 
 /// ---------------------------------------------------------

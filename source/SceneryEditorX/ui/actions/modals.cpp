@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 
-#include "SceneryEditorX/ui/ui.h"
+//#include "SceneryEditorX/ui/ui.h"
 
 /// -------------------------------------------------------
 
@@ -19,6 +19,7 @@
 //bool UI::showAboutModal = false;
 //bool UI::showCreateProjectModal = false;
 
+/*
 namespace SceneryEditorX::UI
 {
 	/// Define projectName and projectLocation variables
@@ -123,5 +124,6 @@ namespace SceneryEditorX::UI
     }
 
 }
+*/
 
 /// -------------------------------------------------------

@@ -583,7 +583,7 @@ namespace SceneryEditorX
                         break;
 
                     const auto &attachmentSpec = framebuffer->GetSpecification().attachments.Attachments[i];
-                    FramebufferBlendMode blendMode = framebuffer->GetSpecification().blendMode == FramebufferBlendMode::None ? attachmentSpec.BlendMode : framebuffer->GetSpecification().blendMode;
+                    BlendMode blendMode = framebuffer->GetSpecification().blendMode == BlendMode::None ? attachmentSpec.BlendMode : framebuffer->GetSpecification().blendMode;
 
                     blendAttachmentStates[i].blendEnable = attachmentSpec.Blend ? VK_TRUE : VK_FALSE;
                     blendAttachmentStates[i].colorBlendOp = VK_BLEND_OP_ADD;
@@ -593,17 +593,17 @@ namespace SceneryEditorX
 
                     switch (blendMode)
                     {
-                    case FramebufferBlendMode::SrcAlphaOneMinusSrcAlpha:
+                    case BlendMode::SrcAlphaOneMinusSrcAlpha:
                         blendAttachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
                         blendAttachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                         blendAttachmentStates[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
                         blendAttachmentStates[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                         break;
-                    case FramebufferBlendMode::OneZero:
+                    case BlendMode::OneZero:
                         blendAttachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
                         blendAttachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
                         break;
-                    case FramebufferBlendMode::Zero_SrcColor:
+                    case BlendMode::Zero_SrcColor:
                         blendAttachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
                         blendAttachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR;
                         break;
@@ -779,8 +779,7 @@ namespace SceneryEditorX
 
 	bool Pipeline::DynamicLineWidth() const
     {
-        return pipelineSpecs.topology == PrimitiveTopology::Lines ||
-               pipelineSpecs.topology == PrimitiveTopology::LineStrip || pipelineSpecs.wireframe;
+        return pipelineSpecs.topology == PrimitiveTopology::Line || pipelineSpecs.topology == PrimitiveTopology::LineStrip || pipelineSpecs.wireframe;
     }
 
 }

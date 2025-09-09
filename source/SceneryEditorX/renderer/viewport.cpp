@@ -100,10 +100,7 @@ namespace SceneryEditorX
         };
     }
 
-    const Viewport& Viewport::GetUndefined()
-    {
-        return s_Undefined;
-    }
+    const Viewport& Viewport::GetUndefined() { return s_Undefined; }
 
     const Ref<Viewport> undefined = CreateRef<Viewport>(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 

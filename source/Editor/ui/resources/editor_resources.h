@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,12 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/platform/filesystem/file_manager.hpp>
-#include <SceneryEditorX/renderer/texture.h>
-#include <utility>
+//#include <SceneryEditorX/platform/filesystem/file_manager.hpp>
+//#include <SceneryEditorX/renderer/texture.h>
+//#include <utility>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -367,5 +368,6 @@ namespace SceneryEditorX
 		}
 	};
 }
+*/
 
 /// -------------------------------------------------------

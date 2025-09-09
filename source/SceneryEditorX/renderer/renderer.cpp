@@ -11,27 +11,26 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-#include "buffers/framebuffer.h"
-#include "buffers/index_buffer.h"
-#include "buffers/vertex_buffer.h"
+#include "renderer.h"
 #include "compute_pass.h"
 #include "image_data.h"
 #include "render_context.h"
-#include "renderer.h"
+#include "buffers/framebuffer.h"
+#include "buffers/index_buffer.h"
+#include "buffers/vertex_buffer.h"
 //#include "scene_renderer.h"
 
+#include "bindless_descriptor_manager.h"
+#include "render_dispatcher.h"
+#include "texture.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/logging/profiler.hpp"
 #include "shaders/shader.h"
-#include "texture.h"
 #include "vulkan/vk_allocator.h"
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_pipeline.h"
 #include "vulkan/vk_render_pass.h"
 #include "vulkan/vk_util.h"
-#include "render_dispatcher.h"
-#include "bindless_descriptor_manager.h"
-
 
 // #include <imgui.h>
 // #include <imgui/backends/imgui_impl_glfw.h>
@@ -43,11 +42,9 @@
 #include <vector>
 
 #include "primitives.h"
-
 #include "SceneryEditorX/core/events/application_events.h"
 #include "SceneryEditorX/core/time/time.h"
 #include "SceneryEditorX/platform/filesystem/file_manager.hpp"
-
 #include "fonts/font.h"
 
 /// -------------------------------------------------------
@@ -56,11 +53,11 @@ namespace SceneryEditorX
 {
     struct RendererProperties
     {
-        Ref<Texture2D> BRDFLut;
-        Ref<VertexBuffer> QuadVertexBuffer;
-        Ref<IndexBuffer> QuadIndexBuffer;
+        //Ref<Texture2D> BRDFLut;
+        //Ref<VertexBuffer> QuadVertexBuffer;
+        //Ref<IndexBuffer> QuadIndexBuffer;
 
-        Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
+        //Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
         //std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
         VkDescriptorSet ActiveRendererDescriptorSet = nullptr;
         std::vector<VkDescriptorPool> DescriptorPools;
@@ -78,32 +75,60 @@ namespace SceneryEditorX
         int32_t SelectedDrawCall = -1;
         int32_t DrawCallCount = 0;
 
-        Ref<ShaderLibrary> m_ShaderLibrary;
-        Ref<Texture2D> WhiteTexture;
-        Ref<Texture2D> BlackTexture;
-        Ref<Texture2D> BRDFLutTexture;
-        Ref<Texture2D> HilbertLut;
-        Ref<TextureCube> BlackCubeTexture;
-        Ref<Environment> EmptyEnvironment;
+        //Ref<ShaderLibrary> m_ShaderLibrary;
+        //Ref<Texture2D> WhiteTexture;
+        //Ref<Texture2D> BlackTexture;
+        //Ref<Texture2D> BRDFLutTexture;
+        //Ref<Texture2D> HilbertLut;
+        //Ref<TextureCube> BlackCubeTexture;
+        //Ref<Environment> EmptyEnvironment;
 
-        std::unordered_map<std::string, std::string> GlobalShaderMacros;
+        //std::unordered_map<std::string, std::string> GlobalShaderMacros;
 
     };
+
+
+    // misc
+    //uint32_t Renderer::m_resource_index = 0;
+    //std::atomic<bool> Renderer::m_initialized_resources = false;
+    //bool Renderer::m_transparents_present = false;
+    //bool Renderer::m_bindless_samplers_dirty = true;
+    //bool Renderer::m_bindless_abbs_dirty = true;
+    //bool Renderer::m_bindless_materials_dirty = true;
+    //bool Renderer::m_bindless_lights_dirty = true;
+
+    namespace
+    {
+		// resolution & viewport
+		Vec2 m_resolution_render = Vec2(0.0f);
+		Vec2 m_resolution_output = Vec2(0.0f, 0.0f);
+		Viewport m_viewport = Viewport(0, 0, 0, 0);
+
+        uint64_t frame_num = 0;
+        Vec2 jitter_offset = Vec2(0.0f, 0.0f);
+        constexpr uint32_t resolution_shadow_min = 128;
+        float near_plane = 0.0f;
+        float far_plane = 1.0f;
+        bool dirty_orthographic_projection = true;
+
+    }
 
     /// Static variable
     static RenderData m_renderData;
     static RendererProperties *s_Data = nullptr;
     // Legacy command queue system removed in favor of RenderDispatcher.
-    static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
+    //static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
 
     /// -------------------------------------------------------
 
+    /*
     struct ShaderDependencies
     {
         std::vector<Ref<ComputePipeline>> ComputePipelines;
         std::vector<Ref<Pipeline>> Pipelines;
         std::vector<Ref<Material>> Materials;
     };
+    */
 
     /// -------------------------------------------------------
 
@@ -114,7 +139,6 @@ namespace SceneryEditorX
     void Renderer::Init()
     {
         /// Initialize the rendering system. This includes setting up the render context, command buffers, etc.
-
         /// Get the render context (Initialize the context if needed)
         if (const auto context = GetContext())
             context->Init();
@@ -123,7 +147,7 @@ namespace SceneryEditorX
 
         const auto &config = GetRenderData();
         /// Make sure we don't have more frames in flight than swapchain images
-        config.framesInFlight = Math::Min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
+        config.framesInFlight = xMath::Min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
 
         s_Data->DescriptorPools.resize(config.framesInFlight);
         s_Data->DescriptorPoolAllocationCount.resize(config.framesInFlight);
@@ -131,6 +155,8 @@ namespace SceneryEditorX
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Create Descriptor pools
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /*
         Submit([]() mutable
         {
             /// Create Descriptor Pool
@@ -165,11 +191,13 @@ namespace SceneryEditorX
 
             VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &s_Data->MaterialDescriptorPool))
         });
+        */
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Create Fullscreen Quad
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+        /*
         constexpr float x = -1;
         constexpr float y = -1;
         constexpr float width = 2;
@@ -218,6 +246,7 @@ namespace SceneryEditorX
 
 		constexpr uint32_t blackCubeTextureData[6] = { 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000, 0xff000000 };
         s_Data->BlackCubeTexture = CreateRef<TextureCube>(spec, Buffer(blackCubeTextureData, sizeof(blackCubeTextureData)));
+        */
 
         // Initialize async render dispatcher
         RenderDispatcher::Init();
@@ -254,6 +283,7 @@ namespace SceneryEditorX
         // Resource free queues handled by RenderDispatcher ring.
     }
 
+    /*
     void Renderer::BeginFrame()
     {
         Submit([]()
@@ -303,29 +333,16 @@ namespace SceneryEditorX
         // Submit the current frame to the GPU
         // This would involve submitting command buffers to the appropriate queues
     }
+    */
 
     // Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction.
 
-    uint64_t Renderer::GetCurrentFrameIndex()
-    {
-        return m_renderData.frameIndex;
-    }
+    uint64_t Renderer::GetCurrentFrameIndex() { return m_renderData.frameIndex; }
+    //Ref<ShaderLibrary> Renderer::GetShaderLibrary() { return s_Data->m_ShaderLibrary; }
+    RenderData &Renderer::GetRenderData() { return m_renderData; }
+	void Renderer::SetRenderData(const RenderData &renderData) { m_renderData = renderData; }
 
-    Ref<ShaderLibrary> Renderer::GetShaderLibrary()
-    {
-        return s_Data->m_ShaderLibrary;
-    }
-
-    RenderData &Renderer::GetRenderData()
-    {
-        return m_renderData;
-    }
-
-	void Renderer::SetRenderData(const RenderData &renderData)
-    {
-        m_renderData = renderData;
-    }
-
+	/*
 	VkDescriptorSetAllocateInfo Renderer::DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count, VkDescriptorPool pool)
 	{
 		VkDescriptorSetAllocateInfo info{};
@@ -335,6 +352,7 @@ namespace SceneryEditorX
 		info.descriptorPool = pool;
 		return info;
 	}
+	*/
 
 	VkSampler Renderer::CreateSampler(VkSamplerCreateInfo &samplerCreateInfo)
 	{
@@ -360,10 +378,91 @@ namespace SceneryEditorX
         return Application::Get().GetWindow().GetSwapChain().GetCurrentBufferIndex();
     }
 
-    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex)
+    const Viewport& Renderer::GetViewport() { return m_viewport; }
+
+    void Renderer::SetViewport(float width, float height)
     {
-        return s_Data->DescriptorPoolAllocationCount[frameIndex];
+        SEDX_ASSERT(width != 0, "Width can't be zero");
+        SEDX_ASSERT(height != 0, "Height can't be zero");
+
+        if (m_viewport.GetWidth() != width || m_viewport.GetHeight() != height)
+        {
+            m_viewport.SetSize(width, height);
+            dirty_orthographic_projection = true;
+        }
     }
+
+    const Vec2& Renderer::GetResolutionRender() { return m_resolution_render; }
+
+    void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources)
+    {
+        if (!VulkanDevice::IsValidResolution(width, height))
+        {
+            SEDX_CORE_WARN("Can't set %dx% as it's an invalid resolution", width, height);
+            return;
+        }
+
+        if (m_resolution_render.x == width && m_resolution_render.y == height)
+            return;
+
+        m_resolution_render.x = static_cast<float>(width);
+        m_resolution_render.y = static_cast<float>(height);
+
+        if (recreate_resources)
+        {
+            // if frames are in-flight, wait for them to finish before resizing
+            if (m_cb_frame_cpu.frame > 1)
+            {
+                bool flush = true;
+                VulkanDevice::QueueWaitAll(flush);
+            }
+
+            CreateRenderTargets(true, false, true);
+            CreateSamplers();
+        }
+
+        SEDX_CORE_INFO("Render resolution has been set to %dx%d", width, height);
+    }
+
+    const Vec2 & Renderer::GetResolutionOutput() { return m_resolution_output; }
+
+    void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources)
+    {
+        if (!VulkanDevice::IsValidResolution(width, height))
+        {
+            SEDX_CORE_WARN("%dx%d is an invalid resolution", width, height);
+            return;
+        }
+
+        if (m_resolution_output.x == width && m_resolution_output.y == height)
+            return;
+
+        m_resolution_output.x = static_cast<float>(width);
+        m_resolution_output.y = static_cast<float>(height);
+
+        if (recreate_resources)
+        {
+            // if frames are in-flight, wait for them to finish before resizing
+            if (m_cb_frame_cpu.frame > 1)
+            {
+                bool flush = true;
+                VulkanDevice::QueueWaitAll(flush);
+            }
+
+            CreateRenderTargets(false, true, true);
+            CreateSamplers();
+        }
+
+        // register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
+        MonitorData::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), Timer::GetFpsLimit(), MonitorData::GetId());
+
+        SEDX_CORE_INFO("Output resolution output has been set to %dx%d", width, height);
+    }
+
+
+    /*
+    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->DescriptorPoolAllocationCount[frameIndex]; }
+    */
 
     /*
     void Renderer::RenderGeometry(Ref<CommandBuffer> ref, Ref<Pipeline> &pipeline, Ref<Material> &material,
@@ -393,6 +492,7 @@ namespace SceneryEditorX
      * Renderer::Screenshot("screenshot.png", true);
      * @endcode
      */
+    /*
     void Renderer::Screenshot(const std::string &file_path, bool immediateDispatch, std::string format)
     {
         SEDX_PROFILE_FUNC("Renderer::Screenshot");
@@ -411,7 +511,7 @@ namespace SceneryEditorX
 
             // Base name with timestamp (Time already provides date-time string)
             // Default format is ".png", can be overridden by parameter
-            std::string timestamp = Time::GetCurrentDateTimeString(); // Expected format: YYYYMMDDHHMM...
+            std::string timestamp = Time::GetCurrentDateTimeString(); // Expected format: YYYY-MM-DD-HH-MM...
             std::string baseName = std::string("screenshot_") + timestamp + format;
 
             // Ensure uniqueness (in case multiple in same minute)
@@ -506,7 +606,9 @@ namespace SceneryEditorX
                 Application::Get().DispatchEvent<ScreenshotCapturedEvent>(outPath, success);
         });
     }
+    */
 
+    /*
     Ref<Texture2D> Renderer::GetWhiteTexture() { return s_Data->WhiteTexture; }
     Ref<Texture2D> Renderer::GetBlackTexture() { return s_Data->BlackTexture; }
     Ref<Texture2D> Renderer::GetHilbertLut() { return s_Data->HilbertLut; }
@@ -514,14 +616,16 @@ namespace SceneryEditorX
 
     Ref<TextureCube> Renderer::GetBlackCubeTexture() { return s_Data->BlackCubeTexture; }
     Ref<Environment> Renderer::GetEmptyEnvironment() { return s_Data->EmptyEnvironment; }
+    */
 
     /// -------------------------------------------------------
 
-    static std::unordered_map<size_t, ShaderDependencies> s_ShaderDependencies;
-    static std::shared_mutex s_ShaderDependenciesMutex; /// ShaderDependencies can be accessed (and modified) from multiple threads, hence require synchronization
+    //static std::unordered_map<size_t, ShaderDependencies> s_ShaderDependencies;
+    //static std::shared_mutex s_ShaderDependenciesMutex; /// ShaderDependencies can be accessed (and modified) from multiple threads, hence require synchronization
 
     /// -------------------------------------------------------
 
+	/*
 	struct GlobalShaderInfo
 	{
 		/// Macro name, set of shaders with that macro.
@@ -529,8 +633,9 @@ namespace SceneryEditorX
 		/// Shaders waiting to be reloaded.
 		//std::unordered_set<WeakRef<Shader>> DirtyShaders;
 	};
+	*/
 
-	static GlobalShaderInfo s_GlobalShaderInfo;
+	//static GlobalShaderInfo s_GlobalShaderInfo;
 
     /// -------------------------------------------------------
 
@@ -542,11 +647,13 @@ namespace SceneryEditorX
 	}
     */
 
+	/*
 	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<Pipeline> &pipeline)
 	{
 		std::scoped_lock lock(s_ShaderDependenciesMutex);
 		s_ShaderDependencies[shader->GetHash()].Pipelines.push_back(pipeline);
 	}
+	*/
 
     /**
      * @brief Get number of nanoseconds required for a timestamp query to be incremented by 1
@@ -556,7 +663,7 @@ namespace SceneryEditorX
      */
     double Renderer::GetTimestampPeriodInMS() const
     {
-        return double(RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->GetDeviceProperties().limits.timestampPeriod) * 1e-6;
+        return static_cast<double>(RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->GetDeviceProperties().limits.timestampPeriod) * 1e-6;
     }
 
     /*

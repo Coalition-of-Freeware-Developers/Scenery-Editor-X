@@ -12,8 +12,7 @@
 */
 #pragma once
 #include <limits>
-#include <Math/includes/xmath.hpp>
-
+#include <xMath/includes/xmath.hpp>
 #include <SceneryEditorX/core/identifiers/uuid.h>
 #include <SceneryEditorX/scene/material.h>
 #include "asset.h"

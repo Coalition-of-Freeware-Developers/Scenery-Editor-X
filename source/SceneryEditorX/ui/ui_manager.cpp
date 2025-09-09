@@ -10,20 +10,23 @@
 * Created: 1/8/2025
 * -------------------------------------------------------
 */
-#include "ui_manager.h"
-#include <imgui_impl_vulkan.h>
-#include <imgui_internal.h>
-#include "SceneryEditorX/renderer/vulkan/vk_image.h"
+//#include "ui_manager.h"
+//#include <imgui_impl_vulkan.h>
+//#include <imgui_internal.h>
+//#include "SceneryEditorX/renderer/vulkan/vk_image.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace ImGui
 {
 	extern bool ImageButtonEx(ImGuiID id, ImTextureID texture_id, const ImVec2& size, const ImVec2& uv0, const ImVec2& uv1, const ImVec2& padding, const ImVec4& bg_col, const ImVec4& tint_col);
 }
+*/
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX::UI
 {
 	
@@ -353,5 +356,6 @@ namespace SceneryEditorX::UI
     }
 
 }
+*/
 
 /// -------------------------------------------------------

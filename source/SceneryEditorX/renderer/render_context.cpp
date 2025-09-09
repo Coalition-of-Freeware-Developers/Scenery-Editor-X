@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #include "render_context.h"
-#include <GLFW/glfw3.h>
 #include "SceneryEditorX/core/application/application_data.h"
+#include "debug/renderdoc.h"
 #include "vulkan/vk_checks.h"
 #include "vulkan/vk_pipeline_cache.h"
 #include "vulkan/vk_util.h"
@@ -21,9 +21,6 @@
 
 namespace SceneryEditorX
 {
-
-    /// -------------------------------------------------------
-
     static const char* validationLayer[] = {"VK_LAYER_KHRONOS_validation"};
 
     ///< Define whether validation layers are enabled - usually tied to debug mode
@@ -156,11 +153,11 @@ namespace SceneryEditorX
             /// Application Info
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            // Get Vulkan API version
-            VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion);
-
             AppData appData;
             RenderData renderData;
+
+            // Get Vulkan API version
+            VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion);
 
             uint32_t apiVersion = 0;
             if (VkResult result = vkEnumerateInstanceVersion(&apiVersion); result != VK_SUCCESS)
@@ -178,10 +175,10 @@ namespace SceneryEditorX
             appInfo.engineVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
             appInfo.apiVersion = apiVersion;
 
-
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Instance Extensions and Validation Layers
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
             // Get all available layers
             uint32_t layerCount = 0;
             vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -218,8 +215,7 @@ namespace SceneryEditorX
                 for (const char* valLayer : validationLayer)
                 {
                     uint32_t count = 0;
-                    VkResult extResult = vkEnumerateInstanceExtensionProperties(valLayer, &count, nullptr);
-                    if (extResult == VK_SUCCESS && count > 0)
+                    if (VkResult extResult = vkEnumerateInstanceExtensionProperties(valLayer, &count, nullptr); extResult == VK_SUCCESS && count > 0)
                     {
                         const size_t layerSize = extensions.instanceExtensions.size();
                         extensions.instanceExtensions.resize(layerSize + count);
@@ -233,15 +229,15 @@ namespace SceneryEditorX
 
             std::vector<const char *> instanceExtensions = {
 				    VK_KHR_SURFACE_EXTENSION_NAME,
-				#if defined(_WIN32) || defined(SEDX_PLATFORM_WINDOWS)
+				#if defined(SEDX_PLATFORM_WINDOWS)
 				    VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 				#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
 				    #error Android is not upported for Scenery Editor X,
-				#elif defined(__linux__) || defined(SEDX_PLATFORM_LINUX)
-				#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-				    #error Wayland is not upported for Scenery Editor X,
-				#endif
-				#elif defined(__APPLE__) || defined(SEDX_PLATFORM_APPLE)
+				#elif defined(SEDX_PLATFORM_LINUX)
+					#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+					    #error Wayland is not upported for Scenery Editor X,
+					#endif
+				#elif defined(SEDX_PLATFORM_APPLE)
 				    VK_EXT_LAYER_SETTINGS_EXTENSION_NAME,
 				    VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
 				#endif
@@ -271,7 +267,7 @@ namespace SceneryEditorX
                 if (extensionName[0] != '\0')
                     instanceExtensions.push_back(extensionName);
 
-        #if defined(__APPLE__) || defined(SEDX_PLATFORM_APPLE)
+        #if defined(SEDX_PLATFORM_APPLE)
     		// Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
     		// "Invalid SPIR-V binary version 1.6 for target environment SPIR-V 1.5 (under Vulkan 1.2 semantics)."
             const VkValidationFeatureDisableEXT validationFeaturesDisabled[] = {
@@ -286,7 +282,7 @@ namespace SceneryEditorX
             const VkValidationFeaturesEXT features = {
                 .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
                 .pNext = nullptr,
-            #if defined(__APPLE__) || defined(SEDX_PLATFORM_APPLE)
+            #if defined(SEDX_PLATFORM_APPLE)
                 .disabledValidationFeatureCount = enableValidationLayers ? (uint32_t)SEDX_NUM_ARRAY_ELEMENTS(validationFeaturesDisabled) : 0u,
                 .pDisabledValidationFeatures = enableValidationLayers ? validationFeaturesDisabled : nullptr,
             #endif
@@ -305,8 +301,8 @@ namespace SceneryEditorX
     					VkLayerSettingEXT                                                               \
     					{                                                                               \
     					    .pLayerName = validationLayer[0],											\
-    			            .pSettingName = name, .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,				\
-    					    .valueCount = 1, .pValues = var,                                            \
+    			            .pSettingName = (name), .type = VK_LAYER_SETTING_TYPE_BOOL32_EXT,			\
+    					    .valueCount = 1, .pValues = (var),                                          \
     					}
 
     					const VkLayerSettingEXT settings[] = {
@@ -371,6 +367,10 @@ namespace SceneryEditorX
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Initialize the Vulkan Physical Device & Vulkan Device
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            #ifdef SEDX_DEBUG
+                RenderDocDebug::PreDeviceCreation();
+            #endif
 
             vkPhysicalDevice = VulkanPhysicalDevice::Select(instance);
             if (!vkPhysicalDevice)

@@ -43,9 +43,9 @@ namespace SceneryEditorX
         void InitSurface(GLFWwindow *windowPtr);
 		
         void Create();
-        void OnResize(uint32_t width, uint32_t height);
+        void OnResize(uint32_t width, uint32_t height) const;
         void AcquireNextImage();
-        void Present(CommandManager *cmdFrame);
+        void Present() const;
         void Destroy();
 		void BeginFrame();
 

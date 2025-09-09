@@ -10,16 +10,17 @@
 * Created: 16/4/2025
 * -------------------------------------------------------
 */
-#include "vk_render_pass.h"
-#include "vk_buffers.h"
-#include "vk_swapchain.h"
+//#include "vk_render_pass.h"
+//#include "vk_buffers.h"
+//#include "vk_swapchain.h"
 
-#include "SceneryEditorX/platform/config/editor_config.hpp"
-#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
-#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
+//#include "SceneryEditorX/platform/config/editor_config.hpp"
+//#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
+//#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	/**
@@ -34,7 +35,7 @@ namespace SceneryEditorX
 	 * @note - The gfxEngine pointer is initialized to nullptr and should be set before use.
 	 * @note - The renderData member is default-initialized.
 	 * @throws Assertion failure if spec.vkPipeline is not valid.
-	 */
+	 #1#
 
 
 	RenderPass::RenderPass(const RenderSpec &spec) : renderSpec(spec), renderData()
@@ -64,7 +65,7 @@ namespace SceneryEditorX
 	 * - If explicit cleanup of these resources is required, consider storing instances of these
 	 *   classes as members of RenderPass and letting their destructors handle cleanup automatically,
 	 *   or provide explicit cleanup methods to be called here.
-	 */
+	 #1#
 	RenderPass::~RenderPass()
 	{
 
@@ -76,7 +77,7 @@ namespace SceneryEditorX
             vkDestroyRenderPass(device, renderPass, RenderContext::Get()->GetAllocatorCallback() : nullptr);
 	        renderPass = VK_NULL_HANDLE;
 	    }
-	    */
+	    #1#
 
 	}
 
@@ -108,7 +109,7 @@ namespace SceneryEditorX
     /**
      * @note: Original code referenced TextureAsset which is not part of DescriptorSetManager interface.
      * Adjust to Texture2D (engine texture) for descriptor binding.
-     */
+     #1#
     void RenderPass::AddInput(std::string_view name, Ref<Texture2D> &texture)
     {
         m_DescriptorSetManager.AddInput(name, texture); // index 0
@@ -210,7 +211,7 @@ namespace SceneryEditorX
 	 * @note - The color and depth formats are retrieved from the swap chain.
 	 * @note - The created render pass handle is stored in the renderPass member.
 	 * @throws Logs an error if vkCreateRenderPass fails.
-	 */
+	 #1#
 
 	/*
 	void RenderPass::CreateRenderPass()
@@ -281,7 +282,7 @@ namespace SceneryEditorX
 	    if (vkCreateRenderPass(device, &renderPassInfo, RenderContext::Get()->GetAllocatorCallback(), &renderPass) != VK_SUCCESS)
 	        SEDX_CORE_ERROR("Failed to create render pass!");
 	}
-	*/
+	#1#
 
 	/*
 	void RenderPass::CreateDescriptorSets() const
@@ -346,7 +347,7 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
     }
-    */
+    #1#
 
     /**
      * @brief Generates mipmaps for a Vulkan image.
@@ -369,7 +370,7 @@ namespace SceneryEditorX
      * - The method assumes the image is already in VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL for the base level.
      * - The method ends the command buffer and submits it for execution after mipmap generation.
      * - If the image format does not support linear blitting, an error is logged.
-     */
+     #1#
 
     /*
     void RenderPass::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) const
@@ -490,7 +491,7 @@ namespace SceneryEditorX
 
         cmdBuffer->End(submitInfo);
     }
-    */
+    #1#
 
 	/**
 	 * @brief Creates a Vulkan image and allocates memory for it.
@@ -514,7 +515,7 @@ namespace SceneryEditorX
 	 *
 	 * @note - The created image is initialized with VK_IMAGE_LAYOUT_UNDEFINED.
 	 * @note - The image is created with exclusive sharing mode.
-	 */
+	 #1#
 
 	/*
 	void RenderPass::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels,
@@ -553,8 +554,9 @@ namespace SceneryEditorX
 
 	    vkBindImageMemory(device, image, imageMemory, 0);
 	}
-	*/
+	#1#
 
 }
+*/
 
 /// -------------------------------------------------------

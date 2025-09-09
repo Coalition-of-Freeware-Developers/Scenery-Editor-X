@@ -341,6 +341,7 @@ namespace SceneryEditorX
     }
     */
 
+    /*
     void CommandBuffer::End()
     {
         Ref<CommandBuffer> instance(this);
@@ -358,6 +359,7 @@ namespace SceneryEditorX
             instance->activeCmdBuffer = nullptr;
         });
     }
+    */
 
     /*
     void CommandBuffer::End(VkSubmitInfo submitInfo)
@@ -434,6 +436,7 @@ namespace SceneryEditorX
     }
     */
 	
+	/*
 	void CommandBuffer::Submit()
 	{
 		if (ownedBySwapChain)
@@ -478,6 +481,7 @@ namespace SceneryEditorX
 				sizeof(PipelineStats), &instance->pipelineStatsQueryResults[commandBufferIndex], sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
 		});
 	}
+	*/
 	
 	uint32_t CommandBuffer::BeginTimestampQuery()
 	{

@@ -10,13 +10,14 @@
 * Created: 11/7/2025
 * -------------------------------------------------------
 */
-#include "asset_importer.h"
-#include "SceneryEditorX/logging/profiler.hpp"
+//#include "asset_importer.h"
+//#include "SceneryEditorX/logging/profiler.hpp"
 //#include <SceneryEditorX/project/project.h>
 //#include <SceneryEditorX/serialization/mesh_serializer.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -47,7 +48,7 @@ namespace SceneryEditorX
 
 		s_Serializers[asset->GetAssetType()]->Serialize(metadata, asset);
 	}
-	*/
+	#1#
 
 	/*
 	void AssetImporter::Serialize(const Ref<Asset>& asset)
@@ -55,7 +56,7 @@ namespace SceneryEditorX
 		const AssetMetadata& metadata = Project::GetEditorAssetManager()->GetMetadata(asset->Handle);
 		Serialize(metadata, asset);
 	}
-	*/
+	#1#
 
 	/*
 	bool AssetImporter::TryLoadData(const AssetMetadata& metadata, Ref<Asset>& asset)
@@ -71,7 +72,7 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE("AssetImporter::TryLoadData - {}", metadata.FilePath);
 		return s_Serializers[metadata.type]->TryLoadData(metadata, asset);
 	}
-	*/
+	#1#
 
 	/*
 	void AssetImporter::RegisterDependencies(const AssetMetadata& metadata)
@@ -84,7 +85,7 @@ namespace SceneryEditorX
 
 		s_Serializers[metadata.type]->RegisterDependencies(metadata);
 	}
-	*/
+	#1#
 
 	/*
 	bool AssetImporter::SerializeToAssetPack(AssetHandle handle, FileStreamWriter& stream, AssetSerializationInfo& outInfo)
@@ -110,7 +111,7 @@ namespace SceneryEditorX
 
 		return s_Serializers[type]->SerializeToAssetPack(handle, stream, outInfo);
 	}
-	*/
+	#1#
 
 	/*
 	Ref<Asset> AssetImporter::DeserializeFromAssetPack(FileStreamReader& stream, const AssetPackFile::AssetInfo& assetInfo)
@@ -121,7 +122,7 @@ namespace SceneryEditorX
 
 		return s_Serializers[assetType]->DeserializeFromAssetPack(stream, assetInfo);
 	}
-	*/
+	#1#
 
 	/*
 	Ref<Scene> AssetImporter::DeserializeSceneFromAssetPack(FileStreamReader& stream, const AssetPackFile::SceneInfo& sceneInfo)
@@ -135,8 +136,9 @@ namespace SceneryEditorX
 	}
 
 	std::unordered_map<AssetType, Scope<AssetSerializer>> AssetImporter::s_Serializers;
-	*/
+	#1#
 
 }
+*/
 
 /// -------------------------------------------------------

@@ -126,6 +126,8 @@ ADD_LIBRARY(AppCore
 	renderer/2d_renderer.h
 	renderer/bindless_descriptor_manager.cpp
 	renderer/bindless_descriptor_manager.h
+	renderer/blend_state.cpp
+	renderer/blend_state.h
 	renderer/camera.cpp
 	renderer/camera.h
 	renderer/command_manager.cpp
@@ -134,20 +136,24 @@ ADD_LIBRARY(AppCore
 	renderer/command_queue.h
 	renderer/compute_pass.cpp
 	renderer/compute_pass.h
+	renderer/dds.h
 	renderer/compute_pipeline.cpp
 	renderer/compute_pipeline.h
-	renderer/dds.h
 	renderer/debug_renderer.cpp
 	renderer/debug_renderer.h
-	renderer/frame_sync.cpp
 	renderer/fence.cpp
 	renderer/fence.h
+	renderer/frame_sync.cpp
 	renderer/frame_sync.h
 	renderer/icons.cpp
 	renderer/image_data.cpp
 	renderer/image_data.h
+	renderer/pipeline_states.cpp
+	renderer/pipeline_states.h
 	renderer/primitives.cpp
 	renderer/primitives.h
+	renderer/rasterizer.cpp
+	renderer/rasterizer.h
 	renderer/render_config.h
 	renderer/render_context.cpp
 	renderer/render_context.h
@@ -156,6 +162,7 @@ ADD_LIBRARY(AppCore
 	renderer/render_pass.cpp
 	renderer/render_pass.h
 	renderer/render_resource.cpp
+	renderer/render_resource.h
 	renderer/renderer.cpp
 	renderer/renderer.h
 	renderer/sampler.cpp
@@ -165,8 +172,6 @@ ADD_LIBRARY(AppCore
 	renderer/semaphore.cpp
 	renderer/semaphore.h
 	renderer/stb_image_impl.cpp
-	renderer/viewport.h
-	renderer/viewport.cpp
 	renderer/texture.cpp
 	renderer/texture.h
 	renderer/viewport.cpp
@@ -325,6 +330,8 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/2d_renderer.h
 	renderer/bindless_descriptor_manager.cpp
 	renderer/bindless_descriptor_manager.h
+	renderer/blend_state.cpp
+	renderer/blend_state.h
 	renderer/camera.cpp
 	renderer/camera.h
 	renderer/command_manager.cpp
@@ -333,20 +340,24 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/command_queue.h
 	renderer/compute_pass.cpp
 	renderer/compute_pass.h
+	renderer/dds.h
 	renderer/compute_pipeline.cpp
 	renderer/compute_pipeline.h
-	renderer/dds.h
 	renderer/debug_renderer.cpp
 	renderer/debug_renderer.h
-	renderer/frame_sync.cpp
 	renderer/fence.cpp
 	renderer/fence.h
+	renderer/frame_sync.cpp
 	renderer/frame_sync.h
 	renderer/icons.cpp
 	renderer/image_data.cpp
 	renderer/image_data.h
+	renderer/pipeline_states.cpp
+	renderer/pipeline_states.h
 	renderer/primitives.cpp
 	renderer/primitives.h
+	renderer/rasterizer.cpp
+	renderer/rasterizer.h
 	renderer/render_config.h
 	renderer/render_context.cpp
 	renderer/render_context.h
@@ -355,6 +366,7 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/render_pass.cpp
 	renderer/render_pass.h
 	renderer/render_resource.cpp
+	renderer/render_resource.h
 	renderer/renderer.cpp
 	renderer/renderer.h
 	renderer/sampler.cpp
@@ -364,8 +376,6 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/semaphore.cpp
 	renderer/semaphore.h
 	renderer/stb_image_impl.cpp
-	renderer/viewport.h
-	renderer/viewport.cpp
 	renderer/texture.cpp
 	renderer/texture.h
 	renderer/viewport.cpp
@@ -456,8 +466,8 @@ ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
 TARGET_INCLUDE_DIRECTORIES(AppCore
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
-		${CMAKE_SOURCE_DIR}/source/Math/includes
 		${CMAKE_SOURCE_DIR}/dependency
+		${CMAKE_SOURCE_DIR}/dependency/xMath
 		${CMAKE_SOURCE_DIR}/dependency/entt/src
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
@@ -487,7 +497,7 @@ TARGET_LINK_LIBRARIES(AppCore
         dxgi
         d3d12
         Shell32.lib
-		xMath
+		xMath::xMath
 )
 
 # --------------------------------

@@ -12,18 +12,24 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "blend_state.h"
 #include "compute_pass.h"
+#include "rasterizer.h"
+#include "render_dispatcher.h"
+#include "texture.h"
+#include "viewport.h"
 #include "SceneryEditorX/asset/mesh/mesh.h"
 #include "SceneryEditorX/core/application/application.h"
 #include "SceneryEditorX/scene/material.h"
 #include "SceneryEditorX/scene/scene.h"
+#include "SceneryEditorX/utils/pointers.h"
 #include "buffers/index_buffer.h"
+#include "fonts/font.h"
+
+#include "shaders/shader.h"
+
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_render_pass.h"
-#include "SceneryEditorX/utils/pointers.h"
-#include "render_dispatcher.h"
-
-#include "fonts/font.h"
 
 /// -------------------------------------------------------
 
@@ -84,6 +90,9 @@ namespace SceneryEditorX
 
         static void Init();
 		static void Shutdown();
+
+        /// -------------------------------------------------------
+
         static void BeginFrame();
         static void EndFrame();
         static void SubmitFrame();
@@ -120,10 +129,19 @@ namespace SceneryEditorX
          * @param pool Optional explicit pool override.
          * @return Populated VkDescriptorSetAllocateInfo ready for vkAllocateDescriptorSets.
          */
-        VkDescriptorSetAllocateInfo DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count = 1, VkDescriptorPool pool = nullptr);
-        Ref<Font> &GetFont();
+        //VkDescriptorSetAllocateInfo DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count = 1, VkDescriptorPool pool = nullptr);
 
-        Ref<Material> &GetStandardMaterial();
+        /**
+         * @brief Allocate one or more descriptor sets from the current frame's pool.
+         * @return Allocated VkDescriptorSet handles (empty if allocation failed).
+         */
+        //Ref<Font> &GetFont();
+
+        /**
+         * @brief Get a reference to the standard material (used for untextured meshes).
+         * @return Shared reference to the standard material.
+         */
+        //Ref<Material> &GetStandardMaterial();
 
         /// -------------------------------------------------------
 
@@ -146,7 +164,7 @@ namespace SceneryEditorX
 		 * @brief Access the global shader library.
 		 * @return Shared reference to ShaderLibrary.
 		 */
-		static Ref<ShaderLibrary> GetShaderLibrary();
+		//static Ref<ShaderLibrary> GetShaderLibrary();
 
 		/**
 		 * @brief Get the current frame index as seen from the render thread (may differ from CPU).
@@ -159,7 +177,7 @@ namespace SceneryEditorX
 		 * @param frameIndex Optional frame override (0 = current).
 		 * @return Allocation count.
 		 */
-		static uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
+		//static uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
 
 		/**
 		 * @brief Submit a fullscreen triangle/quad draw call with provided pipeline & material.
@@ -167,7 +185,7 @@ namespace SceneryEditorX
 		 * @param pipeline Graphics pipeline to bind.
 		 * @param material Material providing descriptor sets / push constants.
 		 */
-		static void SubmitFullscreenQuad(Ref<CommandBuffer> & ref, Ref<Pipeline> & pipeline, Ref<Material> & material);
+		//static void SubmitFullscreenQuad(Ref<CommandBuffer> & ref, Ref<Pipeline> & pipeline, Ref<Material> & material);
 
 		/**
 		 * @brief Capture a screenshot of the current swapchain image.
@@ -175,25 +193,46 @@ namespace SceneryEditorX
 		 * @param immediateDispatch If true, executes immediately instead of deferred.
 		 * @param format Image format string ("png", "jpg", etc.).
 		 */
-		static void Screenshot(const std::string &file_path, bool immediateDispatch = false, std::string format = "png");
-        static void RenderStaticMesh(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount);
-		static void RenderSubmeshInstanced(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount);
-		static void RenderMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
-		static void RenderStaticMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
-		static void RenderQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, const Mat4& transform);
-		static void SubmitFullscreenQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material);
-		static void SubmitFullscreenQuadWithOverrides(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Buffer vertexShaderOverrides, Buffer fragmentShaderOverrides);
-		static void LightCulling(Ref<CommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups);
-		static void RenderGeometry(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Ref<VertexBuffer> vertexBuffer, Ref<IndexBuffer> indexBuffer, const Mat4& transform, uint32_t indexCount = 0);
-		static void SubmitQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Material> material, const Mat4& transform = Mat4(1.0f));
-		static void BlitImage(Ref<CommandBuffer> renderCommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+		//static void Screenshot(const std::string &file_path, bool immediateDispatch = false, std::string format = "png");
 
-		static Ref<Texture2D> GetWhiteTexture();
-		static Ref<Texture2D> GetBlackTexture();
-		static Ref<Texture2D> GetHilbertLut();
-		static Ref<Texture2D> GetBRDFLutTexture();
-		static Ref<TextureCube> GetBlackCubeTexture();
-		static Ref<Environment> GetEmptyEnvironment();
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Viewport & Image Management
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // viewport
+        static const Viewport &GetViewport();
+        static void SetViewport(float width, float height);
+
+        // resolution render
+        static const Vec2 &GetResolutionRender();
+        static void SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources = true);
+
+        // resolution output
+        static const Vec2 &GetResolutionOutput();
+        static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
+
+        /// -------------------------------------------------------
+
+        //static void RenderStaticMesh(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount);
+		//static void RenderSubmeshInstanced(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount);
+		//static void RenderMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
+		//static void RenderStaticMeshWithMaterial(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount, Ref<Material> material, Buffer additionalUniforms = Buffer());
+		//static void RenderQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, const Mat4& transform);
+		//static void SubmitFullscreenQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material);
+		//static void SubmitFullscreenQuadWithOverrides(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Buffer vertexShaderOverrides, Buffer fragmentShaderOverrides);
+		//static void LightCulling(Ref<CommandBuffer> renderCommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups);
+		//static void RenderGeometry(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Material> material, Ref<VertexBuffer> vertexBuffer, Ref<IndexBuffer> indexBuffer, const Mat4& transform, uint32_t indexCount = 0);
+		//static void SubmitQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Material> material, const Mat4& transform = Mat4(1.0f));
+		//static void BlitImage(Ref<CommandBuffer> renderCommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+
+        /// -------------------------------------------------------
+
+		//static Ref<Texture2D> GetWhiteTexture();
+		//static Ref<Texture2D> GetBlackTexture();
+		//static Ref<Texture2D> GetHilbertLut();
+		//static Ref<Texture2D> GetBRDFLutTexture();
+		//static Ref<TextureCube> GetBlackCubeTexture();
+		//static Ref<Environment> GetEmptyEnvironment();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Shader Management
@@ -201,36 +240,37 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Register a shader -> pipeline dependency for hot reload propagation.
+		 * @param type
 		 * @param shader Shader reference.
 		 * @param pipeline Dependent graphics pipeline.
 		 */
-		void RegisterShaderDependency(Ref<Shader> &shader, Ref<Pipeline> &pipeline);
+		//void RegisterShaderDependency(Ref<Shader> &shader, Ref<Pipeline> &pipeline);
 
 		/**
 		 * @brief Register a shader -> material dependency.
 		 * @param shader Shader reference.
 		 * @param material Dependent material.
 		 */
-		void RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material);
+		//void RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material);
 
 		/**
 		 * @brief Register a shader -> compute pipeline dependency.
 		 * @param shader Shader reference.
 		 * @param computePipeline Dependent compute pipeline.
 		 */
-		void RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline);
+		//void RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline);
 
 		/**
 		 * @brief Callback invoked when a shader finishes reloading.
 		 * @param hash Shader unique identifier hash.
 		 */
-		void OnShaderReloaded(size_t hash);
+		//void OnShaderReloaded(size_t hash);
 
 		/**
 		 * @brief Process all shaders marked dirty and propagate changes to dependents.
 		 * @return True if any shader refresh occurred.
 		 */
-		static bool UpdateDirtyShaders();
+		//static bool UpdateDirtyShaders();
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Pass
@@ -242,13 +282,24 @@ namespace SceneryEditorX
 		 * @param renderPass RenderPass abstraction to prepare/begin.
 		 * @param explicitClear If true, forces explicit attachment clears.
 		 */
-		static void BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
+		//static void BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
 
 		/**
 		 * @brief End the active render pass (frame scope).
 		 * @param CommandBuffer Command buffer reference.
 		 */
-		static void EndFrame(Ref<CommandBuffer> CommandBuffer);
+		//static void EndFrame(Ref<CommandBuffer> CommandBuffer);
+
+        /**
+         * @brief Get a reference to a standard render target texture.
+         *
+         * @param type Render target type enum.
+         * @return Shared reference to the requested Texture2D (can be null if not created).
+         */
+        static Ref<Texture2D> *GetRenderTarget(RenderTarget type);
+
+        void SwapVisibilityBuffers();
+        Texture2D *GetStandardTexture(StandardTexture type);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Compute Pass
@@ -259,14 +310,14 @@ namespace SceneryEditorX
          * @param CommandBuffer Command buffer reference.
          * @param computePass Compute pass object.
          */
-        static void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+        //static void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
 
         /**
 		 * @brief End a previously begun compute pass.
 		 * @param CommandBuffer Command buffer reference.
 		 * @param computePass Compute pass object.
 		 */
-		static void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+		//static void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
 
 		/**
 		 * @brief Dispatch a compute workload.
@@ -276,7 +327,7 @@ namespace SceneryEditorX
 		 * @param workGroups 3D work group counts.
 		 * @param constants Optional push constant buffer.
 		 */
-		static void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
+		//static void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
 
 		/**
 		 * @brief Clear an image with specified clear value.
@@ -285,7 +336,7 @@ namespace SceneryEditorX
 		 * @param clearValue Clear color/depth/stencil specification.
 		 * @param subresourceRange Optional subresource range (defaults to whole image).
 		 */
-		static void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
+		//static void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
 
 		/**
 		 * @brief Copy contents of a source image to a destination image.
@@ -293,7 +344,7 @@ namespace SceneryEditorX
 		 * @param sourceImage Source image.
 		 * @param destinationImage Destination image.
 		 */
-		static void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+		//static void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 
 		/**
 		 * @brief Get number of nanoseconds required for a timestamp query to be incremented by 1
@@ -308,7 +359,29 @@ namespace SceneryEditorX
 		 * @brief Active swapchain reference (lifetime managed by renderer).
 		 */
 		Ref<SwapChain> m_SwapChain;
-	};
+
+        /// -------------------------------------------------------
+
+        static void CreateRenderTargets(bool create_render, bool create_output, bool create_dynamic);
+        static void CreateDepthStencilStates();
+        static void CreateRasterizerStates();
+        static void CreateBlendModes();
+        static void CreateShaders();
+        static void CreateSamplers();
+        static void CreateFonts();
+        static void CreateStandardMeshes();
+        static void CreateStandardTextures();
+        static void CreateStandardMaterials();
+
+        /// -------------------------------------------------------
+
+	    std::array<Ref<Texture2D>, static_cast<uint32_t>(RenderTarget::MaxEnum)> &GetRenderTargets();
+        std::array<Ref<Shader>, static_cast<uint32_t>(ShaderType::MaxEnum)> &GetShaders();
+
+        Rasterizer *GetRasterizerState(RasterizerState type);
+        BlendState *GetBlendState(const BlendMode type);
+
+    };
 
 }
 

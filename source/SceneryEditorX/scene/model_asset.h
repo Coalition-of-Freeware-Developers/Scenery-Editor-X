@@ -11,13 +11,14 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "material.h"
-#include "SceneryEditorX/asset/asset.h"
+//#include "material.h"
+//#include "SceneryEditorX/asset/asset.h"
 //#include "node.h"
-#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
+//#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	//struct Serializer;
@@ -135,7 +136,7 @@ namespace SceneryEditorX
 	};
 
     /*
-    struct MeshNode /*: GraphNode#1#
+    struct MeshNode /*: GraphNode#2#
     {
         uint32_t parent = 0xffffffff;
         Ref<ModelAsset> mesh;
@@ -150,10 +151,11 @@ namespace SceneryEditorX
         MeshNode();
         //virtual void Serialize(Serializer &ser);
     };
-    */
+    #1#
 
 	/// -------------------------------------------------------
 
 }
+*/
 
 /// -------------------------------------------------------

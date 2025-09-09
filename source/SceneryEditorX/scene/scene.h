@@ -11,15 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <entt/src/entt/entt.hpp>
-#include "camera.h"
-#include "entity.h"
-#include "SceneryEditorX/asset/asset.h"
-#include "SceneryEditorX/asset/asset_types.h"
-#include "SceneryEditorX/renderer/texture.h"
+//#include <entt/src/entt/entt.hpp>
+//#include "camera.h"
+//#include "entity.h"
+//#include "SceneryEditorX/asset/asset.h"
+//#include "SceneryEditorX/asset/asset_types.h"
+//#include "SceneryEditorX/renderer/texture.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 
@@ -125,7 +126,7 @@ namespace SceneryEditorX
          * @param src 
          *
          * @note - Used to have ".has<>" but has been replaced in Entt 4.0 with ".all_of<>()"
-         */
+         #1#
         template<typename TComponent>
 		void CopyComponentIfExists(entt::entity dst, entt::registry& dstRegistry, entt::entity src)
 		{
@@ -308,8 +309,9 @@ namespace SceneryEditorX
         std::string sceneName;
         bool isLoaded = false;
 	};
-	*/
+	#1#
 	
 }
+*/
 
 /// ---------------------------------------------------------
