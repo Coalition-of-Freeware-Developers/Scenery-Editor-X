@@ -30,7 +30,8 @@ Environment Variables:
 * Add this to your "Path" veriable list: `C:\VulkanSDK\1.3.296.0\Bin`
 * VULKAN_SDK - `C:\VulkanSDK\1.3.296.0\Bin`
 
-[NOTE] Check to make sure this variable is set. Vulkan's installer will set this when installed but make sure it is there or else vulkan won't build.
+> [!NOTE]
+> Check to make sure this variable is set. Vulkan's installer will set this when installed but make sure it is there or else vulkan won't build.
 
 ## Build
 
@@ -46,7 +47,8 @@ Please make sure you have CMake installed and added to your environment variable
 I tried to make this as easy and simple as possible to get you up and running. All you need to do is run `Setup.bat` and follow the prompts on the command prompt window.
 After that you will have the whole project setup and located in the `build/` folder.
 
-[NOTE] Use the `Setup.bat` script if you need to regenerate the project structure.
+> [!NOTE]
+> Use the `Setup.bat` script if you need to regenerate the project structure.
 
 
 ---
