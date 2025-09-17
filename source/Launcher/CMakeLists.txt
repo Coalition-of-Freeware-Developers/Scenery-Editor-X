@@ -25,13 +25,13 @@ ADD_EXECUTABLE(Launcher
 	${REGISTRY_KEYS}
     ${ASSET_DIR}/splash_screen.bmp
 	# --------------------------------
-    Launcher.rc
-    resource.h
+    ${RESOURCE_FILE}
+	Launcher.rc
 )
 
 # --------------------------------
 SOURCE_GROUP("Resource" FILES
-	resource.h
+	${RESOURCE_FILE}
 	Launcher.rc
 )
 SOURCE_GROUP("Resource/Images" FILES
@@ -81,7 +81,7 @@ TARGET_LINK_LIBRARIES(Launcher
 		AppCore
 		libconfig
 		libconfig++
-		X-PlaneSceneryLibrary
+		XPSceneryLib::XPSceneryLib
         glfw
         dxgi
         d3d12
@@ -102,5 +102,36 @@ TARGET_COMPILE_DEFINITIONS(Launcher
         GLFW_EXPOSE_NATIVE_WIN32
         CURL_STATICLIB
 )
+
+# --------------------------------
+
+IF (WIN32)
+    FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
+
+    # Script path
+    SET(LAUNCHER_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_launcher_build.py)
+
+    IF (MSVC)
+        # PRE_BUILD supported by Visual Studio
+        ADD_CUSTOM_COMMAND(
+            TARGET Launcher
+            PRE_BUILD
+            COMMAND ${Python3_EXECUTABLE} ${LAUNCHER_VERSION_SCRIPT}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Incrementing Launcher build number (resource.h)"
+            VERBATIM
+        )
+    ELSE()
+        # Fallback for other Windows generators
+        ADD_CUSTOM_TARGET(IncrementedLauncherVersion
+            COMMAND ${Python3_EXECUTABLE} ${LAUNCHER_VERSION_SCRIPT}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Incrementing Launcher build number (resource.h)"
+            VERBATIM
+            BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
+        )
+        ADD_DEPENDENCIES(Launcher IncrementedLauncherVersion)
+    ENDIF()
+ENDIF()
 
 # --------------------------------

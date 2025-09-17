@@ -111,7 +111,7 @@
 ##########################################################
 */
 
-#include <SceneryEditorX/resource.h>
+#include <resource.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <SceneryEditorX/core/base.hpp>
 #include <SceneryEditorX/logging/logging.hpp>

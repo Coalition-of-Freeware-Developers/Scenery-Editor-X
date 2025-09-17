@@ -204,7 +204,7 @@ ADD_LIBRARY(AppCore
 	utils/string_utils.h
 	utils/system_detection.h
     # --------------------------------
-    resource.h
+    ${RESOURCE_FILE}
 	cpp.hint
 )
 
@@ -437,7 +437,7 @@ SOURCE_GROUP("UI/Actions" FILES
 	${UI_ACTIONS}
 )
 SOURCE_GROUP("Resources" FILES
-    resource.h
+    ${RESOURCE_FILE}
 	cpp.hint
 )
 SOURCE_GROUP("Resources/Shaders" FILES
@@ -492,7 +492,7 @@ TARGET_LINK_LIBRARIES(AppCore
 		imgui
 		libconfig
 		libconfig++
-		X-PlaneSceneryLibrary
+		XPSceneryLib::XPSceneryLib
         glfw
         dxgi
         d3d12

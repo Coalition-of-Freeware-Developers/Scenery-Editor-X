@@ -43,8 +43,8 @@ ADD_EXECUTABLE(SceneryEditorX
 	${UI_FILES}/ui_globals.cpp
 	${UI_FILES}/ui_manager.h
 	# --------------------------------
+	${RESOURCE_FILE}
     SceneryEditorX.rc
-    resource.h
 )
 
 # --------------------------------
@@ -76,7 +76,7 @@ SOURCE_GROUP("Settings" FILES
 	${SETTINGS}
 )
 SOURCE_GROUP("Resource" FILES
-    resource.h
+    ${RESOURCE_FILE}
     SceneryEditorX.rc
 )
 SOURCE_GROUP("Resource/Icons" FILES
@@ -117,12 +117,13 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 		imgui
 		libconfig
 		libconfig++
-		X-PlaneSceneryLibrary
+		XPSceneryLib::XPSceneryLib
         glfw
         dxgi
         d3d12
         Shell32.lib
 		xMath::xMath
+		edX
 )
 
 # --------------------------------
@@ -138,5 +139,36 @@ TARGET_COMPILE_DEFINITIONS(SceneryEditorX
         GLFW_EXPOSE_NATIVE_WIN32
         CURL_STATICLIB
 )
+
+# ---------------------------------
+
+IF (WIN32)
+    FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
+
+    # Script path
+    SET(SEDX_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_sedx_build.py)
+
+    IF (MSVC)
+        # PRE_BUILD supported by Visual Studio
+        ADD_CUSTOM_COMMAND(
+            TARGET SceneryEditorX
+            PRE_BUILD
+            COMMAND ${Python3_EXECUTABLE} ${SEDX_VERSION_SCRIPT}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Incrementing Scenery Editor X build number (resource.h)"
+            VERBATIM
+        )
+    ELSE()
+        # Fallback for other Windows generators
+        ADD_CUSTOM_TARGET(IncrementSceneryEditorXVersion
+            COMMAND ${Python3_EXECUTABLE} ${SEDX_VERSION_SCRIPT}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Incrementing Scenery Editor X build number (resource.h)"
+            VERBATIM
+            BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
+        )
+        ADD_DEPENDENCIES(SceneryEditorX IncrementSceneryEditorXVersion)
+    ENDIF()
+ENDIF()
 
 # --------------------------------

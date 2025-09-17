@@ -86,7 +86,7 @@
 //#include <glm/gtx/transform.hpp>
 
 /// GLM dependency removed – using internal math system (Vec*, Mat*, Quat, Transforms) defined in <SceneryEditorX/utils/math/math.h>
-#include <SceneryEditorX/utils/math/math.h>
+#include <xMath/includes/xmath.hpp>
 
 /**
 ##########################################################
@@ -154,7 +154,7 @@ void ErrMsg(const T &errorMessage)
     MessageBoxW(nullptr, errorWStr.c_str(), L"Error", MB_OK | MB_ICONERROR);
 #endif
 #ifdef SEDX_PLATFORM_APPLE
-    @autoreleasepool {
+    autoreleasepool {
 		NSString *errorStr = [NSString stringWithUTF8String:errorMessage.c_str()];
 		NSString *nsTitle = [NSString stringWithUTF8String:"Error"];
 
