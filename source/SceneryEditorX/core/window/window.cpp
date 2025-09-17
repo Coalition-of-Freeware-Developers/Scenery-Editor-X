@@ -12,6 +12,9 @@
 */
 #include "window.h"
 #include <stb_image.h>
+
+#include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
+
 #include <imgui/imgui.h>
 #include "icon.h"
 #include "monitor_data.h"
@@ -207,7 +210,8 @@ namespace SceneryEditorX
         }
 
         /// If fullscreen creation failed or not in fullscreen mode, create windowed
-        if (!windowCreated) {
+        if (!windowCreated)
+		{
             SEDX_CORE_INFO("Creating window in windowed mode: {}x{}", static_cast<int>(winData.width), static_cast<int>(winData.height));
             m_window = glfwCreateWindow(static_cast<int>(winData.width), static_cast<int>(winData.height),winData.title.c_str(), nullptr, nullptr);
             windowCreated = m_window != nullptr;
@@ -255,8 +259,20 @@ namespace SceneryEditorX
                 glfwMaximizeWindow(m_window);
             }
 
+            /// -------------------------------------------------------
+
             renderContext = RenderContext::Get();
             renderContext->Init();
+
+			//swapChain = new SwapChain(&winData.width, &winData.height, &winData.vsync);
+            swapChain = new SwapChain();
+            SEDX_CORE_INFO_TAG("Swapchain", "Swapchain Class initialized");
+            swapChain->InitSurface(m_window);
+            SEDX_CORE_INFO_TAG("Swapchain", "Created Surface for window: {}", ToString(m_window));
+            swapChain->Create(&winData.width, &winData.height, winData.vsync);
+            //swapChain->Init(RenderContext::GetInstance(), RenderContext::Get()->GetLogicDevice());
+
+            /// -------------------------------------------------------
 
             glfwSetWindowUserPointer(m_window, &winData);
             DisableJoystickHandling();
@@ -332,6 +348,13 @@ namespace SceneryEditorX
 		{
             glfwDestroyWindow(m_window);
             m_window = nullptr;
+        }
+
+        if (swapChain)
+        {
+            swapChain->Destroy();
+            delete swapChain;
+            swapChain = nullptr;
         }
 
         if (renderContext)
@@ -508,6 +531,13 @@ namespace SceneryEditorX
         const int y = videoMode->height / 2 - (m_winSpecs.height / 2);
 	    glfwSetWindowPos(m_window, x, y);
 	}
+
+    void Window::SplashScreen()
+    {
+		// Simple placeholder implementation
+		SEDX_CORE_INFO_TAG("Window", "SplashScreen() - no splash assets implemented yet.");
+
+    }
 
     /**
      * @brief Callback function for handling mouse position/movement events.
@@ -855,7 +885,7 @@ namespace SceneryEditorX
 	 */
     std::string Window::VideoModeText(const GLFWvidmode &mode)
 	{
-		return ToString(mode.width) + "x" + ToString(mode.height) + " " + std::to_string(mode.refreshRate) + " Hz";
+		return ToString(mode.width) + "x" + ToString(mode.height) + " " + ToString(mode.refreshRate) + " Hz";
 	}
 
     /**
@@ -971,9 +1001,7 @@ namespace SceneryEditorX
 	bool Window::IsKeyPressed(const uint16_t keyCode) const
     {
         if (!m_window)
-        {
             return false;
-        }
 
         return lastKeyState[keyCode] && !glfwGetKey(m_window, keyCode);
 	}

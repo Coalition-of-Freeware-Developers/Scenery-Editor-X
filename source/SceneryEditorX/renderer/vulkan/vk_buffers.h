@@ -72,7 +72,7 @@ namespace SceneryEditorX
      */
     namespace VulkanMemoryUtils
     {
-        void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
+        void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation); //TODO: Swap VmaAllocation to the MemoryAllocator class
     }
 
     /// -------------------------------------------------------
@@ -132,11 +132,13 @@ namespace SceneryEditorX
 		 *         descriptor information. The actual type and content depend on the
 		 *         specific resource implementation (e.g., VkDescriptorBufferInfo).
 		 */
-        virtual ResourceDescriptorInfo GetDescriptorInfo() const override
+        /*
+        virtual ResourceDescriptorInfo GetDescriptorInfo() const
         {
             /// Provide a valid descriptor info for the buffer
             return nullptr;
         }
+        */
 
     };
 
@@ -150,14 +152,14 @@ namespace SceneryEditorX
 	 * allocation, copying, reading, writing, and zero-initialization. It also includes
 	 * utility functions for buffer management and data manipulation.
 	 */
-    struct Buffer
+    struct Buffer : RefCounted
     {
-        void *data = nullptr;               /// Pointer to the mapped memory region for CPU access, if applicable
-        Ref<BufferResource> resource;		/// The Vulkan buffer resource
-        uint64_t size = 0;					/// Size of the buffer in bytes
-        BufferUsageFlags usage;				/// Usage flags for the buffer (e.g., vertex, index, uniform)
-        MemoryFlags memory;					/// Memory type flags indicating where the buffer is allocated (e.g., GPU, CPU)
-        [[nodiscard]] uint32_t ID() const;  /// Unique identifier for the buffer, used for tracking and debugging
+        void *data = nullptr;               // Pointer to the mapped memory region for CPU access, if applicable
+        Ref<BufferResource> resource;		// The Vulkan buffer resource
+        uint64_t size = 0;					// Size of the buffer in bytes
+        BufferUsageFlags usage;				// Usage flags for the buffer (e.g., vertex, index, uniform)
+        MemoryFlags memory;					// Memory type flags indicating where the buffer is allocated (e.g., GPU, CPU)
+        [[nodiscard]] uint32_t ID() const;  // Unique identifier for the buffer, used for tracking and debugging
 
 		Buffer() = default;
         explicit Buffer(const void* data, const uint64_t size = 0) : data(const_cast<void *>(data)), size(size), usage(0), memory(0) {}

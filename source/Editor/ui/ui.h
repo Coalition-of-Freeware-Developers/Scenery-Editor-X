@@ -12,10 +12,10 @@
 */
 #pragma once
 #include <IconsFontAwesome5.h>
-#include <imgui/imgui.h>
-#include <SceneryEditorX/ui/ui_manager.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/ui/ui_manager.h>
+#include <imgui/imgui.h>
 
 /// -------------------------------------------------------
 
@@ -270,7 +270,7 @@ namespace SceneryEditorX::UI
          * @param imageView Vulkan image view to render into
          * @return True if initialization was successful
          */
-        bool InitViewport(const Viewport &size, VkImageView imageView);
+        //bool InitViewport(const Viewport &size, VkImageView imageView);
 
         /**
          * @brief Display the viewport window with the scene rendering
@@ -278,7 +278,7 @@ namespace SceneryEditorX::UI
          * @param hovered Will be set to true if mouse is hovering the viewport
          * @param imageView Vulkan image view containing the rendered scene
          */
-        void ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView);
+        //void ViewportWindow(Viewport &size, bool &hovered, VkImageView imageView);
 
         /**
          * @brief Set ImGui style (colors, sizes, etc.)

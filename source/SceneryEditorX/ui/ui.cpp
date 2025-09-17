@@ -502,6 +502,7 @@ namespace SceneryEditorX::UI
 
     /// -------------------------------------------------------
 
+    /*
     void GUI::ViewportWindow(ImVec2 &size, bool &hovered, VkImageView imageView) const
     {
         if (!initialized || !visible || !viewportInitialized)
@@ -527,6 +528,7 @@ namespace SceneryEditorX::UI
         ImGui::End();
         ImGui::PopStyleVar();
     }
+    */
 
     /// -------------------------------------------------------
 

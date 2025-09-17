@@ -16,6 +16,9 @@
 
 namespace SceneryEditorX
 {
+
+    Viewport Viewport::s_Undefined{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+
     // Constructors
     Viewport::Viewport(const float x, const float y, const float width, const float height, const float minDepth, const float maxDepth) :
         m_Data{
@@ -100,9 +103,10 @@ namespace SceneryEditorX
         };
     }
 
-    const Viewport& Viewport::GetUndefined() { return s_Undefined; }
+    const Viewport &Viewport::GetUndefined() { return s_Undefined; }
 
-    const Ref<Viewport> undefined = CreateRef<Viewport>(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+    // (Optional) If this extra global Ref is not used anywhere, consider removing it.
+    // const Ref<Viewport> undefined = CreateRef<Viewport>(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
 }
 

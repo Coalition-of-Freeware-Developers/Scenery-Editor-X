@@ -10,26 +10,29 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
-#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
-#include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
+//#include <SceneryEditorX/renderer/renderer.h>
+//#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
+//#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
+//#include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
 
-#include "vk_pipeline_cache.h"
-#include "vk_util.h"
+//#include "vk_pipeline_cache.h"
+//#include "vk_util.h"
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+    /*
     Pipeline::Pipeline(PipelineData &data) : pipelineSpecs(data)
     {
         SEDX_CORE_ASSERT(data.shader);
         SEDX_CORE_ASSERT(data.dstFramebuffer);
         Pipeline::Invalidate();
     }
+    */
 
+    /*
     Pipeline::~Pipeline()
     {
         if (VkDevice device = RenderContext::GetCurrentDevice()->GetDevice())
@@ -68,6 +71,7 @@ namespace SceneryEditorX
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 
     }
+    */
 
     /*
     void Pipeline::Create()
@@ -478,6 +482,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+	/*
 	void Pipeline::Invalidate()
     {
         Ref<Pipeline> instance(this);
@@ -489,7 +494,7 @@ namespace SceneryEditorX
 			/*
 			PipelineCache cache;
             cache.CreateCache();
-            */
+            #1#
 
             SEDX_CORE_ASSERT(instance->pipelineSpecs.shader);
             Ref<Shader> vulkanShader = Ref<Shader>(instance->pipelineSpecs.shader);
@@ -557,7 +562,7 @@ namespace SceneryEditorX
             /**
              * Color blend state describes how blend factors are calculated (if used)
              * We need one blend attachment state per color attachment (even if blending is not used)
-             */
+             #1#
             size_t colorAttachmentCount = framebuffer->GetSpecification().swapChainTarget ? 1 : framebuffer->GetColorAttachmentCount();
             std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates(colorAttachmentCount);
             if (framebuffer->GetSpecification().swapChainTarget)
@@ -738,6 +743,7 @@ namespace SceneryEditorX
             SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_PIPELINE, instance->pipelineSpecs.debugName, instance->pipeline);
         });
     }
+    */
 
 
     /// -------------------------------------------------------
@@ -777,10 +783,12 @@ namespace SceneryEditorX
     }
     */
 
+	/*
 	bool Pipeline::DynamicLineWidth() const
     {
         return pipelineSpecs.topology == PrimitiveTopology::Line || pipelineSpecs.topology == PrimitiveTopology::LineStrip || pipelineSpecs.wireframe;
     }
+    */
 
 }
 

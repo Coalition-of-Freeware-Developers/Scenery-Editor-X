@@ -26,6 +26,8 @@ namespace SceneryEditorX
         float m_depth_bias_slope_scaled = 0.0f;
     };
 
+    /// -------------------------------------------------------
+
 	class Rasterizer : public RefCounted
 	{
     public:
@@ -51,6 +53,5 @@ namespace SceneryEditorX
         void* m_rhi_resource = nullptr;
 	};
 }
-
 
 /// -------------------------------------------------------

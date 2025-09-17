@@ -19,10 +19,13 @@
 
 /// -------------------------------------------------------
 
-/*
+
+#include "window.h"
+
 namespace SceneryEditorX
 {
     
+    /*
     SplashScreen::SplashScreen()
     {
         // Load splash screen image using stb_image
@@ -98,7 +101,9 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO_TAG("SPLASH", "Splash screen displayed successfully");
     }
+    */
 
+    /*
     // Helper method to initialize minimal Vulkan context for splash screen
     bool SplashScreen::InitializeSplashContext()
     {
@@ -118,8 +123,10 @@ namespace SceneryEditorX
 
         return true;
     }
+    */
 
     // Helper method to create splash screen texture
+    /*
     bool SplashScreen::CreateSplashTexture(unsigned char *imageData, int width, int height)
     {
         try
@@ -127,7 +134,7 @@ namespace SceneryEditorX
             // Create texture using existing texture creation system
             splashTexture = CreateRef<Texture2D>(imageData, width, height, 4); // RGBA format
 
-            if (!splashTexture /*|| !splashTexture->IsValid()#1#)
+            if (!splashTexture /*|| !splashTexture->IsValid()#2#)
             {
                 SEDX_CORE_ERROR_TAG("SPLASH", "Failed to create valid splash texture");
                 return false;
@@ -142,8 +149,10 @@ namespace SceneryEditorX
             return false;
         }
     }
+    */
 
     // Helper method to render splash screen
+    /*
     void SplashScreen::RenderSplashScreen()
     {
         if (!splashSwap || !splashTexture)
@@ -192,7 +201,9 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("SPLASH", "Exception rendering splash screen: {}", e.what());
         }
     }
+    */
 
+    /*
     void SplashScreen::CleanupSplashContext()
     {
         if (splashTexture)
@@ -212,9 +223,10 @@ namespace SceneryEditorX
             splashSurface = VK_NULL_HANDLE;
         }
     }
+    */
 
     // Method to hide and cleanup splash screen
-    void SplashScreen::HideSplashScreen()
+    /*void SplashScreen::HideSplashScreen()
     {
         if (splashWindow)
         {
@@ -230,7 +242,8 @@ namespace SceneryEditorX
             SEDX_CORE_INFO_TAG("SPLASH", "Splash screen cleanup complete");
         }
     }
+    */
+
 }
-*/
 
 /// -------------------------------------------------------

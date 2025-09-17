@@ -103,60 +103,62 @@ namespace SceneryEditorX
 	 */
     Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
-        const auto device = RenderContext::Get()->GetLogicDevice();
-        /// Get the allocator from the current device
+        auto device = RenderContext::Get()->GetLogicDevice();
+        // Get the allocator from the current device
         const VmaAllocator vmaAllocator = device->GetMemoryAllocator();
 
 	    /// ---------------------------------------------------------
 
-	    /// Add transfer destination flag for vertex buffers
+	    // Add transfer destination flag for vertex buffers
 	    if (usage & BufferUsage::Vertex)
 	        usage |= BufferUsage::TransferDst;
 
-	    /// Add transfer destination flag for index buffers
+	    // Add transfer destination flag for index buffers
 	    if (usage & BufferUsage::Index)
 	        usage |= BufferUsage::TransferDst;
 
-	    /// Handle storage buffers - add address flag and align size
+	    // Handle storage buffers - add address flag and align size
 	    if (usage & BufferUsage::Storage)
 	    {
 	        usage |= BufferUsage::Address;
-	        /// Align storage buffer size to minimum required alignment
+	        // Align storage buffer size to minimum required alignment
             size += size % device->GetPhysicalDevice()->GetDeviceProperties().limits.minStorageBufferOffsetAlignment;
         }
 
-	    /// Handle acceleration structure input buffers
+	    // Handle acceleration structure input buffers
 	    if (usage & BufferUsage::AccelerationStructureInput)
 	    {
 	        usage |= BufferUsage::Address;
 	        usage |= BufferUsage::TransferDst;
 	    }
 
-	    /// Handle acceleration structure buffers
+	    // Handle acceleration structure buffers
 	    if (usage & BufferUsage::AccelerationStructure)
 	        usage |= BufferUsage::Address;
 
-	    /// Create buffer resource
+	    // Create buffer resource
 	    const Ref<BufferResource> resource = CreateRef<BufferResource>();
 
-	    /// Configure buffer creation info
+	    // Configure buffer creation info
 	    VkBufferCreateInfo bufferInfo{};
 	    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	    bufferInfo.size = size;
 	    bufferInfo.usage = static_cast<VkBufferUsageFlagBits>(usage);
 	    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	    /// Configure memory allocation info
+	    // TODO: Swap with MemoryAllocator class
+	    // Configure memory allocation info
 	    VmaAllocationCreateInfo allocInfo = {};
 	    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-	    /// Enable memory mapping for CPU-accessible buffers
+	    // Enable memory mapping for CPU-accessible buffers
 	    if (memory & CPU)
 	        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-	    /// Create the buffer with VMA
+	    // TODO: Swap with MemoryAllocator class
+	    // Create the buffer with VMA
 	    SEDX_ASSERT(vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, &resource->buffer, &resource->allocation, nullptr));
 
-	    /// Create and populate the buffer wrapper
+	    // Create and populate the buffer wrapper
 	    Buffer buffer;
 	    buffer.resource = resource;
 	    buffer.size = size;
@@ -166,7 +168,7 @@ namespace SceneryEditorX
 			// Register storage buffer into global bindless manager if available
 			if (usage & BufferUsage::Storage)
 			{
-				// Register buffer in bindless descriptor manager (legacy RID fallback removed)
+				// Register buffer in bindless descriptor manager
 				uint32_t bIndex = BindlessDescriptorManager::RegisterStorageBuffer(resource->buffer, size, 0);
 				resource->resourceID = bIndex;
 			}
@@ -182,9 +184,9 @@ namespace SceneryEditorX
      */
     void *MapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
     {
-        const auto device = RenderContext::Get()->GetLogicDevice();
+	    auto device = RenderContext::Get()->GetLogicDevice();
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
-        void *data = nullptr; ///< Initialize data
+        void *data = nullptr; // Initialize data
         vmaMapMemory(device->GetMemoryAllocator(), buffer.resource->allocation, &data);
         return data;
 	}
@@ -196,7 +198,7 @@ namespace SceneryEditorX
      */
     void UnmapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
     {
-        const auto device = RenderContext::Get()->GetLogicDevice();
+	    auto device = RenderContext::Get()->GetLogicDevice();
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");
         vmaUnmapMemory(device->GetMemoryAllocator(), buffer.resource->allocation);
     }
@@ -237,7 +239,7 @@ namespace SceneryEditorX
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         /// Get device and command buffer from render context
-        const auto device = RenderContext::Get()->GetLogicDevice();
+	    auto device = RenderContext::Get()->GetLogicDevice();
         VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
         VkBufferCopy copyRegion{};
@@ -260,7 +262,7 @@ namespace SceneryEditorX
                          VkDeviceSize srcOffset, VkDeviceSize dstOffset)
     {
         /// Get device and command buffer from render context
-        const auto device = RenderContext::Get()->GetLogicDevice();
+	    auto device = RenderContext::Get()->GetLogicDevice();
         VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
         VkBufferCopy copyRegion{};
@@ -284,7 +286,7 @@ namespace SceneryEditorX
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
     {
         /// Get device and command buffer from render context
-        const auto device = RenderContext::Get()->GetLogicDevice();
+	    auto device = RenderContext::Get()->GetLogicDevice();
         const VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
         VkBufferImageCopy region;

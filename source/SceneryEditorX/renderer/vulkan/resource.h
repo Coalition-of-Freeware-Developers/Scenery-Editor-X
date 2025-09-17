@@ -30,7 +30,7 @@ namespace SceneryEditorX
      * Resources include objects such as textures, buffers, shaders, and other
      * GPU-related assets that need to be managed throughout their lifecycle.
      */
-	struct Resource : public RefCounted
+	struct Resource : RefCounted
 	{
 	    /** @brief Descriptive name of the resource for debugging and tracking */
 	    std::string debugName;
@@ -57,7 +57,15 @@ namespace SceneryEditorX
 		 * @note - This method should be thread-safe as it may be called from multiple
 		 *       rendering threads simultaneously.
 		 */
-	    virtual ResourceDescriptorInfo GetDescriptorInfo() const;
+
+        /*
+        ResourceDescriptorInfo Resource::GetDescriptorInfo() const
+        {
+            // Default base implementation returns nullptr.
+            // Derived classes should override with a pointer to a stable descriptor info object.
+            return nullptr;
+        }
+        */
 
 		/**
 		 * @brief Gets the unique hash identifier for this resource.

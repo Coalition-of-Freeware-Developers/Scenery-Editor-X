@@ -86,9 +86,8 @@ namespace SceneryEditorX
             Init();
 
         void *memory = malloc(size);
-	
 	    {
-	        std::scoped_lock<std::mutex> lock(Data_->Mutex_);
+	        std::scoped_lock lock(Data_->Mutex_);
             Allocation &alloc = Data_->AllocationMap[memory];
 	        alloc.Memory = memory;
 	        alloc.Size = size;
@@ -217,7 +216,6 @@ namespace SceneryEditorX
 	{
 	    if (memory == nullptr)
             return;
-
         {
 	        bool found;
 	        {

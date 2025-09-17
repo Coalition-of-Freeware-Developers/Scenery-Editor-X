@@ -79,7 +79,7 @@ namespace SceneryEditorX
     {
         m_Window->~Window();
         // TODO: Re-enable Renderer::Shutdown() once the renderer header issue is resolved
-        //Renderer::Shutdown();
+        Renderer::Shutdown();
     }
 
     void Application::Run()
@@ -103,10 +103,7 @@ namespace SceneryEditorX
         OnShutdown();
     }
 
-    void Application::Stop()
-    {
-        isRunning = false;
-    }
+    void Application::Stop() { isRunning = false; }
 
     void Application::OnShutdown()
     {
@@ -116,7 +113,7 @@ namespace SceneryEditorX
 
     void Application::SyncEvents()
     {
-        std::scoped_lock<std::mutex> lock(m_EventQueueMutex);
+        std::scoped_lock lock(m_EventQueueMutex);
         for (auto &synced : m_EventQueue | std::views::keys)
         {
             synced = true;
@@ -134,7 +131,7 @@ namespace SceneryEditorX
 		// NOTE: we have no control over what func() does.  holding this lock while calling func() is a bad idea:
 		// 1) func() might be slow (means we hold the lock for ages)
 		// 2) func() might result in events getting queued, in which case we have a deadlock
-		std::scoped_lock<std::mutex> lock(m_EventQueueMutex);
+		std::scoped_lock lock(m_EventQueueMutex);
 
 		// Process custom event queue, up until we encounter an event that is not yet synced
 		// If application queues such events, then it is the application's responsibility to call
@@ -143,10 +140,9 @@ namespace SceneryEditorX
 		{
 			const auto& [synced, func] = m_EventQueue.front();
 			if (!synced)
-			{
-				break;
-			}
-			func();
+                break;
+
+            func();
 			m_EventQueue.pop_front();
 		}
 	}
@@ -212,30 +208,11 @@ namespace SceneryEditorX
 		return false; // give other things a chance to react to window close
 	}
 
-	float Application::GetTime() const
-	{
-		return (float)glfwGetTime();
-	}
-
-    const char* Application::GetConfigurationName()
-    {
-        return SEDX_BUILD_TYPE;
-    }
-
-    const char* Application::GetPlatformName()
-    {
-        return SEDX_PLATFORM_NAME;
-    }
-
-	std::thread::id Application::GetMainThreadID()
-    {
-        return s_MainThreadID;
-    }
-
-    bool Application::IsMainThread()
-    {
-        return std::this_thread::get_id() == s_MainThreadID;
-    }
+	float Application::GetTime() const { return (float)glfwGetTime(); }
+    const char* Application::GetConfigurationName() { return SEDX_BUILD_TYPE; }
+    const char* Application::GetPlatformName() { return SEDX_PLATFORM_NAME; }
+	std::thread::id Application::GetMainThreadID() { return s_MainThreadID; }
+    bool Application::IsMainThread() { return std::this_thread::get_id() == s_MainThreadID; }
 
 }
 

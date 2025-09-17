@@ -75,53 +75,17 @@ namespace SceneryEditorX
              *
              * @return True if all required families are set, false otherwise.
              */
-            [[nodiscard]] bool isComplete() const { return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value(); }
+            [[nodiscard]] bool isComplete() const;
 
             /**
-             * @brief Get the graphics family index.
-             *
-             * @return The graphics family index, or 0 if not initialized.
+             * @brief Get the family index.
+             * @return The family index, or 0 if not initialized.
              */
-            [[nodiscard]] uint32_t GetGraphicsFamily() const
-		    {
-		        if (!graphicsFamily.has_value())
-				{
-		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access graphics family when it's not initialized");
-		            return 0; /// Return a default value to avoid crashing
-		        }
-		        return graphicsFamily.value().second;
-		    }
-
-		    [[nodiscard]] uint32_t GetPresentFamily() const
-		    {
-		        if (!presentFamily.has_value())
-				{
-		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access present family when it's not initialized");
-		            return 0; /// Return a default value to avoid crashing
-		        }
-		        return presentFamily.value().second;
-		    }
-
-		    [[nodiscard]] uint32_t GetComputeFamily() const
-		    {
-		        if (!computeFamily.has_value())
-				{
-		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access compute family when it's not initialized");
-		            return 0; /// Return a default value to avoid crashing
-		        }
-		        return computeFamily.value().second;
-		    }
-
-		    [[nodiscard]] uint32_t GetTransferFamily() const
-		    {
-		        if (!transferFamily.has_value())
-				{
-		            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access transfer family when it's not initialized");
-		            return 0; /// Return a default value to avoid crashing
-		        }
-		        return transferFamily.value().second;
-		    }
-		};
+            [[nodiscard]] uint32_t GetGraphicsFamily() const;
+            [[nodiscard]] uint32_t GetPresentFamily() const;
+            [[nodiscard]] uint32_t GetComputeFamily() const;
+            [[nodiscard]] uint32_t GetTransferFamily() const;
+        };
 
 		/**
 		 * @brief Select a physical device based on the best available options.
@@ -147,11 +111,12 @@ namespace SceneryEditorX
         [[nodiscard]] const GPUDevice& Selected() const;
 
         /// Accessor methods
+        [[nodiscard]] VkPhysicalDevice GetGPUDevices() const;
+
 		[[nodiscard]] const QueueFamilyIndices &GetQueueFamilyIndices() const { return QFamilyIndices; }
 		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
         [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryProperties; }
 		[[nodiscard]] VkFormat GetDepthFormat() const { return  devices.at(deviceIndex).depthFormat;}
-        [[nodiscard]] VkPhysicalDevice GetGPUDevices() const;
 		[[nodiscard]] const VkPhysicalDeviceFeatures &GetDeviceFeatures() const { return devices.at(deviceIndex).deviceFeatures; }
         [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
@@ -261,7 +226,7 @@ namespace SceneryEditorX
          * @param physDevice The physical device to use.
          * @param enabledFeatures Device features to enable.
          */
-        VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice);
+        explicit VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice);
         virtual ~VulkanDevice() override;
         void Tick(uint64_t frame_count) const;
         //Ref<MemoryAllocator> GetValue() const;
@@ -297,7 +262,7 @@ namespace SceneryEditorX
         [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
         [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
         [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
-		[[nodiscard]] VkDevice GetDevice() const { return device; }
+        [[nodiscard]] const VkDevice& GetDevice() const { return device; }
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 
@@ -417,6 +382,7 @@ namespace SceneryEditorX
         /**
          * @brief Initialize bindless resources for the device
          *
+
          * @param device The Vulkan device to initialize resources for
          * @param bindlessResources The bindless resources to initialize
          *
@@ -427,8 +393,10 @@ namespace SceneryEditorX
 
         /**
          * @brief Load function pointers for extension functions
+         *
+         * @param vkDevice
          */
-        void LoadExtensionFunctions();
+        void LoadExtensionFunctions(VkDevice vkDevice);
 
         /// -------------------------------------------------------
 

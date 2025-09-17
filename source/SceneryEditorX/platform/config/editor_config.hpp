@@ -33,10 +33,10 @@ namespace SceneryEditorX
          */
         struct EditorConfig : RefCounted
         {
-            std::string shaderFolder    = "../../assets/shaders";          ///< Directory containing shader files
-            std::string textureFolder   = "../../assets/textures";         ///< Directory containing texture files
-            std::string modelFolder     = "../../assets/models";           ///< Directory containing 3D model files
-            std::string fontFolder      = "../../assets/fonts";            ///< Directory containing font files
+            std::string shaderFolder    = "../../resources/shaders";          ///< Directory containing shader files
+            std::string textureFolder   = "../../resources/textures";         ///< Directory containing texture files
+            std::string modelFolder     = "../../resources/models";           ///< Directory containing 3D model files
+            std::string fontFolder      = "../../resources/fonts";            ///< Directory containing font files
             const char *defaultFontPath = R"(C:\Windows\Fonts\arial.ttf)"; ///< System default font path for Windows
         };
 
@@ -51,10 +51,10 @@ namespace SceneryEditorX
          */
         struct EditorConfig : RefCounted
         {
-            std::string shaderFolder    = "../../assets/shaders";   ///< Directory containing shader files
-            std::string textureFolder   = "../../assets/textures";  ///< Directory containing texture files
-            std::string modelFolder     = "../../assets/models";    ///< Directory containing 3D model files
-            std::string fontFolder      = "../../assets/fonts";     ///< Directory containing font files
+            std::string shaderFolder    = "../../resources/shaders";   ///< Directory containing shader files
+            std::string textureFolder   = "../../resources/textures";  ///< Directory containing texture files
+            std::string modelFolder     = "../../resources/models";    ///< Directory containing 3D model files
+            std::string fontFolder      = "../../resources/fonts";     ///< Directory containing font files
             const char *defaultFontPath = "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf"; ///< System default font path for Linux
         };
 
@@ -69,10 +69,10 @@ namespace SceneryEditorX
          */
         struct EditorConfig : RefCounted
         {
-            std::string shaderFolder    = "../../assets/shaders";   ///< Directory containing shader files
-            std::string textureFolder   = "../../assets/textures";  ///< Directory containing texture files
-            std::string modelFolder     = "../../assets/models";    ///< Directory containing 3D model files
-            std::string fontFolder      = "../../assets/fonts";     ///< Directory containing font files
+            std::string shaderFolder    = "../../resources/shaders";   ///< Directory containing shader files
+            std::string textureFolder   = "../../resources/textures";  ///< Directory containing texture files
+            std::string modelFolder     = "../../resources/models";    ///< Directory containing 3D model files
+            std::string fontFolder      = "../../resources/fonts";     ///< Directory containing font files
             const char *defaultFontPath = "/Library/Fonts/Arial Unicode.ttf"; ///< System default font path for macOS
         };
 

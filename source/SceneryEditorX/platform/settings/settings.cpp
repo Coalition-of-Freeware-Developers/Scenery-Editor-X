@@ -320,7 +320,7 @@ namespace SceneryEditorX
             }
 
             /// Update settings map
-            settings[path] = std::to_string(value);
+            settings[path] = ToString(value);
         }
         catch (const SettingException &e)
         {
@@ -358,7 +358,7 @@ namespace SceneryEditorX
             }
 
             /// Update settings map
-            settings[path] = std::to_string(value);
+            settings[path] = ToString(value);
         }
         catch (const SettingException &e)
         {
@@ -880,13 +880,13 @@ namespace SceneryEditorX
                     switch (child.getType())
                     {
                     case Setting::TypeInt:
-                        settings[name] = std::to_string(static_cast<int>(child));
+                        settings[name] = ToString(static_cast<int>(child));
                         break;
                     case Setting::TypeInt64:
-                        settings[name] = std::to_string(static_cast<long long>(child));
+                        settings[name] = ToString(static_cast<long long>(child));
                         break;
                     case Setting::TypeFloat:
-                        settings[name] = std::to_string(static_cast<double>(child));
+                        settings[name] = ToString(static_cast<double>(child));
                         break;
                     case Setting::TypeString:
                         settings[name] = static_cast<const char *>(child);
@@ -956,12 +956,12 @@ namespace SceneryEditorX
         if constexpr (std::is_same_v<T, int>)
         {
             current->add(name, Setting::TypeInt) = value;
-            settings[path] = std::to_string(value);
+            settings[path] = ToString(value);
         }
         else if constexpr (std::is_same_v<T, double>)
         {
             current->add(name, Setting::TypeFloat) = value;
-            settings[path] = std::to_string(value);
+            settings[path] = ToString(value);
         }
         else if constexpr (std::is_same_v<T, bool>)
         {

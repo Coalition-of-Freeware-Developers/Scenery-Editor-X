@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -24,7 +24,7 @@ struct IconData
     std::vector<unsigned char> buffer; /// Buffer for the icon data
     mutable unsigned char *pixels;     /// Pixel data after loading
 
-    IconData() : path(R"(..\..\assets\icon.png)"), width(0), height(0), channels(0), pixels(nullptr) { }
+    IconData() : path(R"(..\..\resources\icon.png)"), width(0), height(0), channels(0), pixels(nullptr) { }
 
     ~IconData()
     {

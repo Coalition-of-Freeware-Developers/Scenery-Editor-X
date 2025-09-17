@@ -294,7 +294,7 @@ namespace SceneryEditorX
 						for (auto j = i; j < boneNames.size(); ++j)
 						{
 							if (boneNames[j].find(chain) != std::string::npos)
-                                boneNames[j] += "." + std::to_string(k++);
+                                boneNames[j] += "." + ToString(k++);
                         }
 						break;
 					}
@@ -517,7 +517,7 @@ namespace SceneryEditorX
 				}
 
 				// Rotate the skeleton's dominant axis direction to +Y using native quaternion helper
-				m_Orientation = xMath::Quat::FromToRotation(xMath::Normalize(direction), Vec3(0.0f, 1.0f, 0.0f));
+				m_Orientation = xMath::Quat::FromToRotation(Normalize(direction), Vec3(0.0f, 1.0f, 0.0f));
 				break;
 			}
 		}

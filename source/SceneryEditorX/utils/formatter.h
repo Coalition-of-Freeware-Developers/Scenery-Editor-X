@@ -17,13 +17,7 @@
 #include <string>
 #include "../core/base.hpp"
 // Prefer public math umbrella include path; fallback to relative if not available
-#if __has_include(<Math/includes/vector.h>)
-#  include <Math/includes/vector.h>
-#elif __has_include("../../Math/includes/vector.h")
-#  include "../../Math/includes/vector.h"
-#elif __has_include("../math/vector.h")
-#  include "../math/vector.h"
-#endif
+#include <xMath/includes/vector.h>
 #include <cstdlib>
 
 // Optional fmt support: enable by defining SEDX_ENABLE_FMT in targets that set proper encoding flags
@@ -106,6 +100,29 @@ namespace std
 	        return formatter<string>::format(path.string(), ctx);
 	    }
 	};
+
+    /**
+     * @struct formatter
+     * @brief Specialization of the std::formatter for VkResult enum.
+     *
+     * This formatter enables using std::format() and std::format_to() with
+     * VkResult values in format strings. It inherits from formatter<int>
+     * to leverage integer formatting capabilities for the underlying
+     * integer representation of the VkResult enum.
+     *
+     * @param v The VkResult value to format
+     * @param ctx The formatting context that receives the formatted output
+     * @return Iterator pointing past the end of the formatted output
+     */
+    template <>
+    struct formatter<VkResult, char> : formatter<int, char>
+    {
+        template <class FormatContext>
+        auto format(VkResult v, FormatContext &ctx) const
+        {
+            return formatter<int, char>::format(static_cast<int>(v), ctx);
+        }
+    };
 
 	/// -------------------------------------------------------
 

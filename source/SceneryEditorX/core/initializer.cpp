@@ -12,7 +12,7 @@
 */
 #include "initializer.h"
 #include "base.hpp"
-#include "SceneryEditorX/resource.h"
+#include <resource.h>
 #include "SceneryEditorX/logging/logging.hpp"
 #include "memory/memory.h"
 

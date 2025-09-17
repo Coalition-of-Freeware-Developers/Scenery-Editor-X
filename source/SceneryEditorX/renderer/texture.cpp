@@ -73,7 +73,7 @@ namespace SceneryEditorX
 		}
 
 	
-        bool Texture::IsCompressedFormat(const VkFormat format)
+        bool IsCompressedFormat(const VkFormat format)
         {
             return format == VK_FORMAT_BC1_RGB_UNORM_BLOCK ||
                    format == VK_FORMAT_BC3_UNORM_BLOCK ||
@@ -96,12 +96,14 @@ namespace SceneryEditorX
 
     /// Texture2D Constructor Implementations
 
+    /*
     Texture2D::Texture2D(const TextureSpecification &specification) : m_Specification(specification)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D with specification: {}x{}", specification.width, specification.height);
         /// Initialize with empty data
         Texture2D::CreateFromBuffer(specification);
     }
+    */
 
     Texture2D::Texture2D(const TextureSpecification& specification, const std::filesystem::path& filePath) : m_Specification(specification), m_Path(filePath)
     {
@@ -284,6 +286,7 @@ namespace SceneryEditorX
         Renderer::Submit([instance]() mutable { instance->Invalidate(); });
     }
 
+    /*
     void Texture2D::Invalidate()
     {
 	    const auto device = RenderContext::GetCurrentDevice();
@@ -355,7 +358,7 @@ namespace SceneryEditorX
 				sampler.maxAnisotropy = 1.0;
 				sampler.anisotropyEnable = VK_FALSE;
 		}
-		*/
+		#1#
 		samplerInfo.maxAnisotropy = 1.0;
 		samplerInfo.anisotropyEnable = VK_FALSE;
 		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
@@ -395,6 +398,7 @@ namespace SceneryEditorX
 		m_ImageData.Release();
 		m_ImageData = Buffer();
     }
+    */
 
     void Texture2D::Lock()
     {
@@ -411,7 +415,7 @@ namespace SceneryEditorX
 
     const std::filesystem::path & Texture2D::GetPath() const { return m_Path; }
 
-    uint32_t Texture2D::GetMipLevelCount() const { return CalculateMipCount(m_Specification.width, m_Specification.height); }
+    uint32_t Texture2D::GetMipLevelCount() const { return RenderData::CalculateMipCount(m_Specification.width, m_Specification.height); }
 
     std::pair<uint32_t, uint32_t> Texture2D::GetMipSize(uint32_t mip) const
     {
@@ -744,12 +748,14 @@ namespace SceneryEditorX
 			GenerateMips();
     }
 
+    /*
     void Texture2D::SaveAsImage(const std::string &file_path)
     {
         SEDX_ASSERT(m_mappedData != nullptr, "The texture needs to be mappable");
         ImageImporter::Save(file_path, m_width, m_height, m_channel_count, m_bits_per_channel, m_mappedData);
         SEDX_CORE_INFO("Screenshot has been saved");
     }
+    */
 
     void Texture2D::ClearData()
     {
@@ -774,6 +780,7 @@ namespace SceneryEditorX
 	    Invalidate();
     }
 
+    /*
     void TextureCube::Release()
     {
         if (m_Image == nullptr)
@@ -794,9 +801,11 @@ namespace SceneryEditorX
         m_DescriptorImageInfo.imageView = nullptr;
         m_DescriptorImageInfo.sampler = nullptr;
     }
+    */
 
     TextureCube::~TextureCube() { Release(); }
 
+    /*
     void TextureCube::Invalidate()
 	{
 		auto device = RenderContext::GetCurrentDevice();
@@ -973,6 +982,7 @@ namespace SceneryEditorX
 
 		SetDebugUtilsObjectName(vulkanDevice, VK_OBJECT_TYPE_IMAGE_VIEW, std::format("Texture cube view: {}", m_Specification.debugName), m_DescriptorImageInfo.imageView);
 	}
+	*/
 
 	uint32_t TextureCube::GetMipLevelCount() const { return RenderData::CalculateMipCount(m_Specification.width, m_Specification.height); }
 
@@ -990,6 +1000,7 @@ namespace SceneryEditorX
 		return { width, height };
 	}
 
+	/*
 	VkImageView TextureCube::CreateImageViewSingleMip(uint32_t mip)
 	{
 		// TODO: assert to check mip count
@@ -1021,6 +1032,7 @@ namespace SceneryEditorX
 
 		return result;
 	}
+	*/
 
 	void TextureCube::GenerateMips(const bool readonly)
 	{

@@ -145,14 +145,14 @@ namespace SceneryEditorX
 		virtual void Bind(uint32_t slot = 0) const override;
 
 		virtual Ref<Image2D> GetImage() const { return m_Image; }
-		virtual ResourceDescriptorInfo GetDescriptorInfo() const override;
+		ResourceDescriptorInfo GetDescriptorInfo() const;
 		const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const;
 
         void ClearData();
         void PrepareForGpu();
         void SaveAsImage(const std::string &file_path);
 
-	    void SetLayout(const Layout::ImageLayout layout, CommandList *cmd_list,  uint32_t mip_index = all_mips, uint32_t mip_range = 0);
+	    //void SetLayout(const Layout::ImageLayout layout, CommandList *cmd_list,  uint32_t mip_index = all_mips, uint32_t mip_range = 0);
         Layout::ImageLayout GetLayout(const uint32_t mip) const;
         std::array<Layout::ImageLayout, max_mip_count> GetLayouts();
 
@@ -233,8 +233,8 @@ namespace SceneryEditorX
 
 		virtual uint64_t GetHash() const override { return (uint64_t)m_Image; }
 
-		virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
-		const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
+		//virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
+		//const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
 
 		VkImageView CreateImageViewSingleMip(uint32_t mip);
 

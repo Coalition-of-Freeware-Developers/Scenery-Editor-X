@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -64,7 +64,7 @@ namespace SceneryEditorX
         EditorX(const AppData &appData, std::string_view projPath) : Application(appData), m_ProjectPath(projPath)
         {
             if (projPath.empty())
-                m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
+                m_ProjectPath = "..\\Projects\\Default.edX";
                 
             ///< Initialize application services
             initCrashHandlerServices();
@@ -120,7 +120,7 @@ namespace SceneryEditorX
 
 /// -------------------------------------------------------
 
-SceneryEditorX::Application* SceneryEditorX::CreateApplication(int argc, char** argv)
+SceneryEditorX::Application *SceneryEditorX::CreateApplication(int argc, char **argv)
 {
     /// Parse command line arguments for project path
     std::string_view projectPath;
@@ -128,12 +128,12 @@ SceneryEditorX::Application* SceneryEditorX::CreateApplication(int argc, char** 
         projectPath = argv[1];
 
     /// Create the application with default settings
-	AppData windowData;
-	windowData.appName = "Scenery Editor X";
-	windowData.WinWidth = 1280;
-	windowData.WinHeight = 720;
-	windowData.Resizable = true;
-	windowData.Fullscreen = true;
+    AppData windowData;
+    windowData.appName = "Scenery Editor X";
+    windowData.WinWidth = 1280;
+    windowData.WinHeight = 720;
+    windowData.Resizable = true;
+    windowData.Fullscreen = true;
     windowData.VSync = true;
 
     /// Return a new instance of the editor application

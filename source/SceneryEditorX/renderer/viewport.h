@@ -30,6 +30,7 @@ namespace SceneryEditorX
         bool operator==(const Viewport &data) const;
         bool operator!=(const Viewport &data) const { return !(*this == data); }
 
+
         float GetAspectRatio() const;
         bool IsDefined() const;
 
@@ -62,8 +63,6 @@ namespace SceneryEditorX
     private:
         /** @brief Core viewport data using the existing ViewportData struct */
         ViewportData m_Data;
-
-        // Static undefined instance - declared here, defined in source
         static Viewport s_Undefined;
     };
 

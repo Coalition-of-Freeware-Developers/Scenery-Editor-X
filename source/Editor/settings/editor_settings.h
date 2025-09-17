@@ -112,16 +112,11 @@ namespace SceneryEditorX
 	     * @brief Gets the configuration file path.
 	     * @return
 	     */
-	    [[nodiscard]] const std::filesystem::path &GetConfigPath() const
-	    {
-	        return m_ConfigPath;
-	    }
+	    [[nodiscard]] const std::filesystem::path &GetConfigPath() const { return m_ConfigPath; }
 
 	private:
-		/// Editor settings data
-		EditorSettings m_Settings;
-		/// Configuration management
-		std::filesystem::path m_ConfigPath;
+		EditorSettings m_Settings; // Editor settings data
+		std::filesystem::path m_ConfigPath; // Configuration management
 		Ref<ApplicationSettings> m_SettingsStorage;
 		/**
 		 * @brief Initializes the settings storage system.

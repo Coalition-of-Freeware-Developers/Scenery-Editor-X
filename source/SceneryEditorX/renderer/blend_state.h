@@ -31,7 +31,7 @@ namespace SceneryEditorX
 	class BlendState : public RefCounted
 	{
 	public:
-        BlendState(bool blendEnabled = false, BlendStateDesc blendState, float blendFactor = 0.0f);
+        BlendState(bool blendEnabled = false, BlendStateDesc blendState = BlendStateDesc{}, float blendFactor = 0.0f);
         virtual ~BlendState() override = default;
 
 		auto GetBlendEnabled()						  const { return m_blendEnabled; }

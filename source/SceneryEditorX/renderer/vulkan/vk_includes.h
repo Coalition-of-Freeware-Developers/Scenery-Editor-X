@@ -42,3 +42,5 @@
 #ifndef SEDX_VK_INCLUDES_READY
     #define SEDX_VK_INCLUDES_READY 1
 #endif
+
+/// -------------------------------------------------------

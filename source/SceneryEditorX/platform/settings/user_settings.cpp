@@ -479,7 +479,7 @@ namespace SceneryEditorX
 	
 	        for (auto i = 0; i < projectCount; ++i)
 	        {
-	            std::string basePath = "user.recent_projects.project_" + std::to_string(i);
+	            std::string basePath = "user.recent_projects.project_" + ToString(i);
 	
 	            /// Load project data
 	            std::string name = m_Settings->GetStringOption(basePath + ".name", "");
@@ -533,7 +533,7 @@ namespace SceneryEditorX
 	        const int oldCount = m_Settings->GetIntOption("user.recent_projects.count", 0);
 	        for (auto i = 0; i < oldCount; ++i)
 	        {
-	            std::string basePath = "user.recent_projects.project_" + std::to_string(i);
+	            std::string basePath = "user.recent_projects.project_" + ToString(i);
 	            m_Settings->RemoveOption(basePath + ".name");
 	            m_Settings->RemoveOption(basePath + ".file_path");
 	            m_Settings->RemoveOption(basePath + ".last_opened");
@@ -544,7 +544,7 @@ namespace SceneryEditorX
 	        int index = 0;
 	        for (const auto &[name, filePath, lastOpened] : m_RecentProjects | std::views::values)
 	        {
-	            std::string basePath = "user.recent_projects.project_" + std::to_string(index);
+	            std::string basePath = "user.recent_projects.project_" + ToString(index);
 	
 	            m_Settings->AddStringOption(basePath + ".name", name);
 	            m_Settings->AddStringOption(basePath + ".file_path", filePath);

@@ -83,5 +83,10 @@ void UI_Panel::Tick()
     }
 }
 
+void UI_Panel::OnPreBegin()
+{
+    // Default no-op. Add style setup or state prep here if needed.
+}
+
 
 /// -------------------------------------------------------

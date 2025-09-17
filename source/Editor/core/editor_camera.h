@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,17 +11,18 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/events/event_system.h>
-#include <SceneryEditorX/core/events/mouse_events.h>
-#include <SceneryEditorX/core/time/time.h>
-#include <SceneryEditorX/renderer/camera.h>
-#include <SceneryEditorX/scene/camera.h>
+//#include <SceneryEditorX/core/events/event_system.h>
+//#include <SceneryEditorX/core/events/mouse_events.h>
+//#include <SceneryEditorX/core/time/time.h>
+//#include <SceneryEditorX/renderer/camera.h>
+//#include <SceneryEditorX/scene/camera.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
+    /*
     class EditorCamera : public Camera
     {
     public:
@@ -133,6 +134,7 @@ namespace SceneryEditorX
         friend class Editor;
         friend class Viewport;
     };
+    */
 
 }
 

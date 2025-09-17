@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -11,14 +11,14 @@
 * -------------------------------------------------------
 */
 #include <cstdlib>
-#include <Editor/core/editor.h>
 #include <exception>
+#include <Editor/core/editor.h>
 #include <Launcher/core/directory_manager.hpp>
 #include <Launcher/core/launcher.h>
 #include <Launcher/core/splash_handler.h>
 #include <Launcher/registry/reg_check.h>
 #include <SceneryEditorX/EntryPoint.h>
-#include <SceneryEditorX/platform/settings.h>
+#include <SceneryEditorX/platform/settings/settings.h>
 
 /// -------------------------------------------------------
 
@@ -104,7 +104,7 @@ static void SplashImg()
 {
     int width,height,channels;
 
-    std::ifstream file(R"(..\..\assets\splash_screen.png)",std::ios::binary | std::ios::ate);
+    std::ifstream file(R"(..\..\resources\splash_screen.png)",std::ios::binary | std::ios::ate);
     if (!file.is_open())
     {
         LAUNCHER_CORE_ERROR("Failed to open splash screen image!");

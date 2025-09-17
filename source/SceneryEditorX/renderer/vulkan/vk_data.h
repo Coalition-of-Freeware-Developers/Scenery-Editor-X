@@ -12,7 +12,7 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
-#include <colors.h>
+#include <xMath/includes/colors.h>
 #include "vk_buffers.h"
 #include "vk_includes.h"
 
@@ -583,8 +583,8 @@ namespace SceneryEditorX
     const float depth_dont_care = std::numeric_limits<float>::max();
     const float depth_load = std::numeric_limits<float>::infinity();
 
-    const Color color_dont_care = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
-    const Color color_load = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    const xMath::Color color_dont_care = xMath::Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    const xMath::Color color_load = xMath::Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
 
     const uint8_t max_render_target_count = 8;
     const uint8_t max_constant_buffer_count = 8;

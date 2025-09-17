@@ -10,11 +10,12 @@
 * Created: 5/9/2025
 * -------------------------------------------------------
 */
-#include "viewport.h"
-#include <SceneryEditorX/renderer/renderer.h>
+//#include "viewport.h"
+//#include <SceneryEditorX/renderer/renderer.h>
 
 /// -------------------------------------------------------
 
+/*
 namespace
 {
 	bool first_frame = true;
@@ -105,6 +106,7 @@ void Viewport::OnTickVisible()
         ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
     }
 }
+*/
 
 
 /// -------------------------------------------------------

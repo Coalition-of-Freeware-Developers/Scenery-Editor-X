@@ -23,6 +23,7 @@
 namespace SceneryEditorX
 {
 
+    /*
     namespace
     {
         // Graphics States
@@ -42,6 +43,7 @@ namespace SceneryEditorX
         //Ref<Font> standard_font;
         //Ref<Material> standard_material;
     }
+    */
 
     /// -------------------------------------------------------
 
@@ -50,6 +52,7 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    /*
     void Renderer::CreateDepthStencilStates()
     {
         #define depth_stencil_state(x) depth_stencil_states[static_cast<uint8_t>(x)]
@@ -60,7 +63,9 @@ namespace SceneryEditorX
         depth_stencil_state(DepthStencilState::ReadGreaterEqual) = CreateRef<DepthStencilState>(true,  false, DepthCompareOperator::GreaterOrEqual);
         depth_stencil_state(DepthStencilState::ReadWrite)        = CreateRef<DepthStencilState>(true,  true,  DepthCompareOperator::GreaterOrEqual);
     }
+    */
 
+    /*
     void Renderer::CreateRasterizerStates()
     {
         float bias              = LightNode::GetBias();
@@ -72,13 +77,15 @@ namespace SceneryEditorX
 
 		/**
 		 * Raster State Layout: Fill Mode, Depth Clipping, Bias, Bias Clamp, Slope Scaled Bias, Line Width
-		 */
+		 #1#
         rasterizer_state(RasterizerState::Solid)					= CreateRef<Rasterizer>(PolygonMode::Fill, true, 0.0f, 0.0f, 0.0f, line_width);
         rasterizer_state(RasterizerState::Wireframe)				= CreateRef<Rasterizer>(PolygonMode::Line, true, 0.0f, 0.0f, 0.0f, line_width);
         rasterizer_state(RasterizerState::PointSpot_Light)			= CreateRef<Rasterizer>(PolygonMode::Fill, true, bias, bias_clamp, bias_slope_scaled, line_width);
         rasterizer_state(RasterizerState::DirectionalSpot_Light)	= CreateRef<Rasterizer>(PolygonMode::Fill, false, bias * 0.1f, bias_clamp, bias_slope_scaled, line_width);
     }
+    */
 	
+    /*
     void Renderer::CreateBlendModes()
     {
         #define blend_state(x) blend_states[static_cast<uint8_t>(x)]
@@ -104,7 +111,9 @@ namespace SceneryEditorX
         blend_state(BlendMode::Alpha)	 = CreateRef<BlendState>(true, alphaBlend, 0.0f);
         blend_state(BlendMode::Additive) = CreateRef<BlendState>(true, additiveBlend, 1.0f);
     }
+    */
 
+    /*
     void Renderer::CreateSamplers()
     {
         #define sampler(type, filter_min, filter_mag, filter_mip, address_mode, comparison_func, anisotropy, comparison_enabled, mip_bias) \
@@ -133,7 +142,7 @@ namespace SceneryEditorX
             /**
              * compute mip bias for enhanced texture detail in upsampling, applicable when output resolution is higher than render resolution
              * this adjustment, beneficial even without FSR, ensures textures remain detailed at higher output resolutions by applying a negative bias
-             */
+             #1#
             float mip_bias_new = 0.0f;
             if (GetResolutionOutput().x > GetResolutionRender().x)
                 mip_bias_new = log2(GetResolutionRender().x / GetResolutionOutput().x) - 1.0f;
@@ -149,7 +158,9 @@ namespace SceneryEditorX
 
         m_bindless_samplers_dirty = true;
     }
+    */
 
+    /*
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
     {
         // Get render and output resolutions
@@ -208,7 +219,7 @@ namespace SceneryEditorX
                  * @Note #1: amd is very specific with depth formats, so if something is a depth render target, it can only have one mip and flags like RHI_Texture_Uav
                  * so we create second texture with the flags we want and then blit to that, not mention that we can't even use vkBlitImage so we do a manual one (AMD is killing is us here)
                  * @Note #2: too many mips can degrade depth to nothing (0), which is infinite distance (in reverse-z), which breaks things
-                 */
+                 #1#
                 render_target(RenderTarget::gBuffer_DepthOccluders) = CreateRef<Texture2D>(ResourceType::Texture2D, width_render, height_render, 1, 1, VkFormat::VK_FORMAT_D32_SFLOAT, Texture_Rtv | Texture_Srv, "depth_occluders");
                 render_target(RenderTarget::gBuffer_DepthOccluders_hiz) = CreateRef<Texture2D>(ResourceType::Texture2D, width_render, height_render, 1, 5, VkFormat::VK_FORMAT_R32_SFLOAT, Texture_Uav | Texture_Srv | ClearBlit | PerMipViews, "depth_occluders_hiz");
             }
@@ -252,8 +263,9 @@ namespace SceneryEditorX
         }
 
         RHI_VendorTechnology::Resize(GetResolutionRender(), GetResolutionOutput());
-    }
+    }*/
 
+    /*
     void Renderer::CreateShaders()
     {
         const bool async        = true;
@@ -643,14 +655,18 @@ namespace SceneryEditorX
         standard_font     = nullptr;
         standard_material = nullptr;
     }
+    */
 
+    /*
     std::array<Ref<Texture2D>, static_cast<uint32_t>(RenderTarget::MaxEnum)> &Renderer::GetRenderTargets() { return render_targets; }
     std::array<Ref<Shader>, static_cast<uint32_t>(ShaderType::MaxEnum)> &Renderer::GetShaders() { return shaders; }
     std::array<Ref<Buffer>, static_cast<uint32_t>(RendererBufferId::MaxEnum)> &Renderer::GetStructuredBuffers() { return buffers; }
     std::array<Ref<Sampler>, static_cast<uint32_t>(SamplerPreset::MaxEnum)> &Renderer::GetSamplers() { return samplers; }
 
     Rasterizer* Renderer::GetRasterizerState(const RasterizerState type) { return rasterizer_states[static_cast<uint8_t>(type)].Get(); }
+    */
 
+    /*
     DepthStencilState* Renderer::GetDepthStencilState(const Renderer_DepthStencilState type) { return depth_stencil_states[static_cast<uint8_t>(type)].Get(); }
 
     BlendState* Renderer::GetBlendState(const BlendMode type) { return blend_states[static_cast<uint8_t>(type)].Get(); }
@@ -670,6 +686,7 @@ namespace SceneryEditorX
     Ref<Font>& Renderer::GetFont() { return standard_font; }
 
     Ref<Material>& Renderer::GetStandardMaterial() { return standard_material; }
+    */
 
 }
 

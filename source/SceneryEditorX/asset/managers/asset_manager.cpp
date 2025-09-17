@@ -134,7 +134,7 @@ namespace SceneryEditorX
 	    /// always serialize scenes
 	    for (auto& scene : GetAll<Scene>(ObjectType::Scene))
 		{
-            const std::string sceneUuid = std::to_string(static_cast<unsigned long long>(scene->uuid));
+            const std::string sceneUuid = ToString(static_cast<unsigned long long>(scene->uuid));
 	        Json& assetJson = impl->lastJson["scenes"][sceneUuid];
             SceneAssetSerializer s = SceneAssetSerializer::Serialize(assetJson, storage, dir, *this);
 	        s.Serialize(scene);

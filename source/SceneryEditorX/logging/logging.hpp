@@ -13,8 +13,8 @@
 #pragma once
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
-#include "SceneryEditorX/utils/formatter.h"
 #include "SceneryEditorX/renderer/vulkan/vk_includes.h"
+#include "SceneryEditorX/utils/formatter.h"
 
 /// -------------------------------------------------------
 
@@ -374,8 +374,7 @@ namespace SceneryEditorX
 	void Log::PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args &&...args)
 #endif
 	{
-	    auto &detail = EnabledTags_[""];
-	    if (detail.Enabled && detail.LevelFilter <= level)
+        if (auto &detail = EnabledTags_[""]; detail.Enabled && detail.LevelFilter <= level)
 	    {
 	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
 	        switch (level)
@@ -404,8 +403,7 @@ namespace SceneryEditorX
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
 	{
-	    auto &detail = EnabledTags_[std::string(tag)];
-	    if (detail.Enabled && detail.LevelFilter <= level)
+        if (auto &detail = EnabledTags_[std::string(tag)]; detail.Enabled && detail.LevelFilter <= level)
 	    {
 	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
 	        std::string formatted = std::format(format, std::forward<Args>(args)...);
@@ -434,8 +432,7 @@ namespace SceneryEditorX
 
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
-	    auto &detail = EnabledTags_[std::string(tag.data(), tag.size())]; // Convert fmt::string_view to std::string properly
-	    if (detail.Enabled && detail.LevelFilter <= level)
+        if (auto &detail = EnabledTags_[std::string(tag.data(), tag.size())]; detail.Enabled && detail.LevelFilter <= level)
 	    {
 	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
 	        switch (level)
@@ -464,9 +461,7 @@ namespace SceneryEditorX
 	template <typename... Args>
 	void Log::PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() :
-	                  (type == Type::Editor) ? GetEditorLogger() :
-	                  GetLauncherLogger();
+	    auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
 	    auto formatted = std::format(message, std::forward<Args>(args)...);
 	    logger->error("{}: {}", prefix, formatted);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
@@ -479,9 +474,7 @@ namespace SceneryEditorX
 
 	inline void Log::PrintAssertMessage(Log::Type type, std::string_view prefix)
 	{
-	    auto logger = (type == Type::Core) ? GetCoreLogger() :
-	                  (type == Type::Editor) ? GetEditorLogger() :
-	                  GetLauncherLogger();
+	    auto logger = (type == Type::Core) ? GetCoreLogger() : (type == Type::Editor) ? GetEditorLogger() : GetLauncherLogger();
 	    logger->error("{}", prefix);
 	#ifdef SEDX_ASSERT_MESSAGE_BOX
 	    MessageBoxA(nullptr, "- No message -", "Scenery Editor X | Assert", MB_OK | MB_ICONERROR);
@@ -493,29 +486,29 @@ namespace SceneryEditorX
 /// ----------------------------------------------------
 
 
-	/**
-	 *
-	 * Launcher Log Macros
-	 *
-	 * @brief A macro to log a message with the specified log level.
-	 *
-	 * This macro logs a message with the specified log level to the console and the log file.
-	 */
-	#define LAUNCHER_LOG_TRACE(...)		::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
-	#define LAUNCHER_LOG_INFO(...)		::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
-	#define LAUNCHER_LOG_WARN(...)		::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
-	#define LAUNCHER_LOG_ERROR(...)		::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
-	#define LAUNCHER_LOG_CRITICAL(...)  ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
+/**
+ *
+ * Launcher Log Macros
+ *
+ * @brief A macro to log a message with the specified log level.
+ *
+ * This macro logs a message with the specified log level to the console and the log file.
+ */
+#define LAUNCHER_LOG_TRACE(...)		::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
+#define LAUNCHER_LOG_INFO(...)		::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
+#define LAUNCHER_LOG_WARN(...)		::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
+#define LAUNCHER_LOG_ERROR(...)		::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
+#define LAUNCHER_LOG_CRITICAL(...)  ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
 
-	/**
-	 *
-	 * Editor Log Macros
-	 *
-	 */
-	#define EDITOR_LOG_TRACE(...)    ::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
-	#define EDITOR_LOG_INFO(...)     ::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
-	#define EDITOR_LOG_WARN(...)     ::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
-	#define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
-	#define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
+/**
+ *
+ * Editor Log Macros
+ *
+ */
+#define EDITOR_LOG_TRACE(...)    ::SceneryEditorX::Log::GetEditorLogger()->trace(__VA_ARGS__)
+#define EDITOR_LOG_INFO(...)     ::SceneryEditorX::Log::GetEditorLogger()->info(__VA_ARGS__)
+#define EDITOR_LOG_WARN(...)     ::SceneryEditorX::Log::GetEditorLogger()->warn(__VA_ARGS__)
+#define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
+#define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
 
 /// -------------------------------------------------------

@@ -79,31 +79,29 @@ namespace SceneryEditorX
 
     RenderContext::~RenderContext()
     {
-        // Clean up debug messenger if enabled
-    #ifdef SEDX_DEBUG
-        if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
-        {
-            // Cleanup debug messenger
-            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-            debugMessenger = VK_NULL_HANDLE;
-        }
-
-        if (debugCallback != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
-        {
-            // Cleanup debug callback using appropriate extension function
-            if (auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"))
-                func(instance, debugCallback, nullptr);
-
-            debugCallback = VK_NULL_HANDLE;
-        }
-    #endif
-
-        // Destroy Vulkan instance if it was created
-        if (instance != VK_NULL_HANDLE)
-		{
-            vkDestroyInstance(instance, nullptr);
-            instance = VK_NULL_HANDLE;
-        }
+	    if (vkDevice)          vkDevice.Reset();
+	    if (vkPhysicalDevice)  vkPhysicalDevice.Reset();
+	
+	#ifdef SEDX_DEBUG
+	    if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
+	    {
+	        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+	        debugMessenger = VK_NULL_HANDLE;
+	    }
+	
+	    if (debugCallback != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
+	    {
+	        if (auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"))
+	            func(instance, debugCallback, nullptr);
+	        debugCallback = VK_NULL_HANDLE;
+	    }
+	#endif
+	
+	    if (instance != VK_NULL_HANDLE)
+	    {
+	        vkDestroyInstance(instance, nullptr);
+	        instance = VK_NULL_HANDLE;
+	    }
     }
 
     /// -------------------------------------------------------
@@ -162,7 +160,7 @@ namespace SceneryEditorX
             uint32_t apiVersion = 0;
             if (VkResult result = vkEnumerateInstanceVersion(&apiVersion); result != VK_SUCCESS)
 			{
-                SEDX_CORE_ERROR("Failed to enumerate Vulkan instance version");
+                SEDX_CORE_WARN("Failed to enumerate Vulkan instance version! Defaulting to Vulkan 1.2");
                 apiVersion = VK_API_VERSION_1_2;  // Fall back to 1.2
             }
 
@@ -250,7 +248,7 @@ namespace SceneryEditorX
             if (enableValidationLayers)
             {
                 instanceExtensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
-            #if defined(SEDX_VK_DEBUG_EXT) && SEDX_DEBUG
+            #if defined(SEDX_VK_DEBUG_EXT) && SEDX_DEBUG //TODO: Check to see if this should just be SEDX_DEBUG instead of two defined macros
                 instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
             #endif
 
@@ -322,7 +320,7 @@ namespace SceneryEditorX
     		#endif
 
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            /// Instance and Surface Creation
+            /// Instance Creation
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     		VkInstanceCreateFlags createFlags = 0;

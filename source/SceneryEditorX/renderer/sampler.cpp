@@ -26,10 +26,12 @@ namespace SceneryEditorX
         CreateResource();
     }
 
+	/*
 	Sampler::~Sampler()
 	{
 	    VulkanDevice::DeletionQueueAdd(ResourceType::Sampler, m_resource);
 	}
+	*/
 
 	void Sampler::CreateResource()
     {

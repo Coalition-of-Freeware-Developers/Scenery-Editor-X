@@ -156,7 +156,6 @@ namespace SceneryEditorX
         /// Create Descriptor pools
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        /*
         Submit([]() mutable
         {
             /// Create Descriptor Pool
@@ -191,7 +190,6 @@ namespace SceneryEditorX
 
             VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &s_Data->MaterialDescriptorPool))
         });
-        */
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Create Fullscreen Quad
@@ -392,8 +390,11 @@ namespace SceneryEditorX
         }
     }
 
+    /*
     const Vec2& Renderer::GetResolutionRender() { return m_resolution_render; }
+    */
 
+    /*
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources)
     {
         if (!VulkanDevice::IsValidResolution(width, height))
@@ -423,9 +424,13 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO("Render resolution has been set to %dx%d", width, height);
     }
+    */
 
+    /*
     const Vec2 & Renderer::GetResolutionOutput() { return m_resolution_output; }
+    */
 
+    /*
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources)
     {
         if (!VulkanDevice::IsValidResolution(width, height))
@@ -458,7 +463,7 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO("Output resolution output has been set to %dx%d", width, height);
     }
-
+    */
 
     /*
     uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->DescriptorPoolAllocationCount[frameIndex]; }

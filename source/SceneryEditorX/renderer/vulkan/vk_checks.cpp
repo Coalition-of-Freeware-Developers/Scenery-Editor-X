@@ -17,6 +17,13 @@
 
 namespace SceneryEditorX
 {
+	VulkanChecks::VulkanChecks()
+	{
+		// Initialize feature structure to zero (if needed)
+		memset(&vkEnabledFeatures, 0, sizeof(vkEnabledFeatures));
+		SEDX_CORE_INFO_TAG("VULKAN", "VulkanChecks constructed");
+	}
+
     /**
 	 * @brief Initializes the Vulkan checks.
 	 * @param ext

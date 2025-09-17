@@ -32,7 +32,7 @@ namespace SceneryEditorX
         static VkInstance GetInstance();
         static Ref<RenderContext> Get();
 		static Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
-        std::vector<uint8_t> GetPipelineCacheData() const;
+        std::vector<uint8_t> GetPipelineCacheData() const { return {}; }
         VkAllocationCallbacks *allocatorCallback = nullptr;
 
     private:

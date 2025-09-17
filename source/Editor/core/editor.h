@@ -99,8 +99,10 @@ namespace SceneryEditorX
         void UI_BuildAssetPackDialog();
 
         /// Viewports
+        /*
         Ref<Viewport> GetMainViewport();
         void SetMainViewport(const std::string &viewportName);
+        */
 
         /// Statistics Panel Rendering
         void UI_StatisticsPanel();
@@ -125,7 +127,7 @@ namespace SceneryEditorX
         //Scope<PanelManager> m_PanelManager;
         //Ref<EditorConsolePanel> m_ConsolePanel;
         bool m_ShowStatisticsPanel = false;
-        std::vector<Ref<Viewport>> m_EditorViewports;
+        //std::vector<Ref<Viewport>> m_EditorViewports;
 
         /*
         Ref<Scene> m_RuntimeScene;
@@ -181,7 +183,6 @@ namespace SceneryEditorX
 #endif
 		//std::unique_ptr<filewatch::FileWatch<WatcherString>> m_ScriptFileWatcher = nullptr;
     };
-
 
 	class EditorApplication
 	{
@@ -245,21 +246,30 @@ namespace SceneryEditorX
         }
         */
 
+        void OpenProject();
+        void OpenProject(const std::filesystem::path &filepath);
+
+        void CreateProject(const std::filesystem::path &projectPath);
+        void EmptyProject();
+        void UpdateCurrentProject();
+        void SaveProject();
+        void CloseProject(bool unloadProject = true);
+        void NewScene(const std::string &name = "UntitledAirport");
+        bool OpenScene();
+        bool OpenScene(const std::filesystem::path &filepath, bool checkAutoSave = true);
+        void SaveScene();
+        void SaveSceneAuto();
+        void SaveSceneAs();
 
 	private:
-	    void UpdateWindowTitle(const std::string& sceneName);
-
         using GraphicsEngine = Renderer;
-        /**
-         * @brief Graphics engine instance for rendering.
-         *
-         * Manages Vulkan resources, rendering operations, and the window surface.
-         */
-        static GraphicsEngine gfxEngine;
 
-        /**
-         * @brief Command buffer for rendering operations.
-         */
+
+	    void UpdateWindowTitle(const std::string& sceneName);
+        Ref<UserPreferences> m_UserPreferences;
+
+        static GraphicsEngine gfxEngine; // Graphics engine instance
+
         //Ref<CommandBuffer> cmdBuffer;
 
         /**
@@ -290,7 +300,7 @@ namespace SceneryEditorX
          *
          * Contains settings related to the editor's main viewport.
          */
-        Viewport viewportData;
+        //Viewport viewportData;
 
         /**
          * @brief Core rendering configuration and state.
@@ -340,7 +350,7 @@ namespace SceneryEditorX
          * Allocates and initializes framebuffers, render targets, and other
          * resources required for rendering to the viewport.
          */
-        void CreateViewportResources();
+        //void CreateViewportResources();
 
         /**
          * @brief Cleans up viewport rendering resources.
@@ -348,7 +358,7 @@ namespace SceneryEditorX
          * Releases framebuffers, render targets, and other resources
          * associated with viewport rendering.
          */
-        void CleanupViewportResources();
+        //void CleanupViewportResources();
 
         /**
          * @brief Handles surface resize events.

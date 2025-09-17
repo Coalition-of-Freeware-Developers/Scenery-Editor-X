@@ -11,15 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <colors.h>
-
-#include "blend_state.h"
-#include "texture.h"
-#include "shaders/shader.h"
-#include "vulkan/vk_swapchain.h"
+//#include <colors.h>
+//#include "blend_state.h"
+//#include "texture.h"
+//#include "shaders/shader.h"
+//#include "vulkan/vk_swapchain.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	class PipelineStates
@@ -68,5 +68,6 @@ namespace SceneryEditorX
 	};
 
 }
+*/
 
 /// -------------------------------------------------------

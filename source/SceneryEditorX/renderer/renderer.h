@@ -16,6 +16,7 @@
 #include "compute_pass.h"
 #include "rasterizer.h"
 #include "render_dispatcher.h"
+#include "sampler.h"
 #include "texture.h"
 #include "viewport.h"
 #include "SceneryEditorX/asset/mesh/mesh.h"
@@ -298,6 +299,10 @@ namespace SceneryEditorX
          */
         static Ref<Texture2D> *GetRenderTarget(RenderTarget type);
 
+        Shader *GetShader(const ShaderType type);
+
+        Buffer *GetBuffer(const RendererBufferId type);
+
         void SwapVisibilityBuffers();
         Texture2D *GetStandardTexture(StandardTexture type);
 
@@ -358,7 +363,7 @@ namespace SceneryEditorX
 		/**
 		 * @brief Active swapchain reference (lifetime managed by renderer).
 		 */
-		Ref<SwapChain> m_SwapChain;
+        SwapChain m_SwapChain = {};
 
         /// -------------------------------------------------------
 
@@ -377,6 +382,8 @@ namespace SceneryEditorX
 
 	    std::array<Ref<Texture2D>, static_cast<uint32_t>(RenderTarget::MaxEnum)> &GetRenderTargets();
         std::array<Ref<Shader>, static_cast<uint32_t>(ShaderType::MaxEnum)> &GetShaders();
+        std::array<Ref<Buffer>, static_cast<uint32_t>(RendererBufferId::MaxEnum)> &GetStructuredBuffers();
+        std::array<Ref<Sampler>, static_cast<uint32_t>(SamplerPreset::MaxEnum)> &GetSamplers();
 
         Rasterizer *GetRasterizerState(RasterizerState type);
         BlendState *GetBlendState(const BlendMode type);

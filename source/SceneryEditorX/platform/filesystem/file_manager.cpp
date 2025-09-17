@@ -153,7 +153,7 @@ namespace SceneryEditorX::IO
         if (!Exists(absolutePath))
             return false;
 
-        ShellExecute(nullptr, reinterpret_cast<LPCSTR>(L"explore"), reinterpret_cast<LPCSTR>(absolutePath.c_str()), nullptr, nullptr, SW_SHOWNORMAL);
+        ShellExecute(nullptr, L"explore", absolutePath.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         return true;
     #elif defined(SEDX_PLATFORM_LINUX)
         return ShowFileInExplorer(path);
@@ -171,9 +171,9 @@ namespace SceneryEditorX::IO
             const std::string counterStr = [&counter]
             {
                 if (counter < 10)
-                    return "0" + std::to_string(counter);
+                    return "0" + ToString(counter);
 
-                return std::to_string(counter);
+                return ToString(counter);
             }(); /// Pad with 0 if < 10;
 
             std::string newFileName = std::format("{} ({})", Utils::RemoveExtension(filepath.filename().string()), counterStr);
@@ -601,7 +601,7 @@ namespace SceneryEditorX::IO
 	        for (int i = 0; i < mesh.primitives.size(); i++)
 			{
 	            const tinygltf::Primitive& primitive = mesh.primitives[i];
-	            std::string name = (!mesh.name.empty() ? mesh.name : path.stem().string()) + "_" + std::to_string(i);
+	            std::string name = (!mesh.name.empty() ? mesh.name : path.stem().string()) + "_" + ToString(i);
 	            Ref<MeshAsset>& desc = loadedMeshes.emplace_back(manager.CreateAsset<MeshAsset>(name));
 	            loadedMeshMaterials.emplace_back(primitive.material);
 
@@ -969,7 +969,7 @@ namespace SceneryEditorX::IO
                     if (size_t faceId = j / 3; faceId >= shape.mesh.material_ids.size() || std::cmp_not_equal(shape.mesh.material_ids[faceId], lastMaterialId))
 					{
                         int splittedShapeIndex = 0;
-                        asset->name += "_" + std::to_string(splittedShapeIndex);
+                        asset->name += "_" + ToString(splittedShapeIndex);
 	                    Ref<MeshNode> model = AssetManager::CreateObject<MeshNode>(asset->name);
 	                    Node::SetParent(model, parentNode);
 	                    model->mesh = asset;

@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <GLFW/glfw3.h>
-#include <Math/includes/xmath.hpp>
-#include <SceneryEditorX/ui/ui.h>
+//#include <GLFW/glfw3.h>
+//#include <xMath/includes/xmath.hpp>
+//#include <SceneryEditorX/ui/ui.h>
 
 /// -------------------------------------------------------
 

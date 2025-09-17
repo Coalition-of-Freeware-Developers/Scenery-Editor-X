@@ -17,16 +17,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
-// Primary include path expects project root include directories set.
-// Provide fallback relative include for static analysis tools lacking those paths.
-#if __has_include(<SceneryEditorX/utils/system_detection.h>)
+
 #include <SceneryEditorX/utils/system_detection.h>
-#elif __has_include("../utils/system_detection.h")
-#include "../utils/system_detection.h"
-#elif __has_include("../../SceneryEditorX/utils/system_detection.h")
-#include "../../SceneryEditorX/utils/system_detection.h"
-#endif
-// Minimal core includes only; custom Mat2/Mat3 are forward-declared below
 
 /// -------------------------------------------------------
 

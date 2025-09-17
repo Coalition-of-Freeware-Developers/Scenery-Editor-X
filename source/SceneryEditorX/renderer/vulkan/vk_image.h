@@ -36,7 +36,7 @@ namespace SceneryEditorX
     class Image2D : public Resource
     {
     public:
-        explicit Image2D(const ImageSpecification &specification);
+        explicit Image2D(ImageSpecification specification);
         virtual ~Image2D() override;
 
         void Resize(const UVec2& size) { Resize(size.x, size.y); }
@@ -78,7 +78,7 @@ namespace SceneryEditorX
 
 		ImageResource &GetImageInfo() { return m_Info; }
 		[[nodiscard]] const ImageResource &GetImageInfo() const { return m_Info; }
-		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
+		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
 		[[nodiscard]] const VkDescriptorImageInfo &GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
 
         [[nodiscard]] Buffer GetBuffer() const { return m_ImageData; }

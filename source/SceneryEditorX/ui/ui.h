@@ -151,7 +151,7 @@ namespace SceneryEditorX::UI
          * @param imageView Vulkan image view to render into
          * @return True if initialization was successful
          */
-        bool InitViewport(Viewport &size, VkImageView imageView);
+        //bool InitViewport(Viewport &size, VkImageView imageView);
 
         /**
          * @brief Display the viewport window with the scene rendering
@@ -159,7 +159,7 @@ namespace SceneryEditorX::UI
          * @param hovered Will be set to true if mouse is hovering the viewport
          * @param imageView Vulkan image view containing the rendered scene
          */
-        void ViewportWindow(ImVec2 &size, bool &hovered, VkImageView imageView) const;
+        //void ViewportWindow(ImVec2 &size, bool &hovered, VkImageView imageView) const;
 
         /**
          * @brief Set ImGui style (colors, sizes, etc.)

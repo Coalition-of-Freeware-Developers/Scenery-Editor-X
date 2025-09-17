@@ -41,7 +41,7 @@ namespace SceneryEditorX
         MemoryAllocator::UnmapMemory(stagingBufferAllocation);
 
 		//TODO: Add back the UUID when fully implemented.
-        CreateBuffer(bufferSize, BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage, MemoryType::GPU, "IndexBuffer#" /*+ std::to_string(asset->uuid)#1#);
+        CreateBuffer(bufferSize, BufferUsage::Index | BufferUsage::AccelerationStructureInput | BufferUsage::Storage, MemoryType::GPU, "IndexBuffer#" /*+ ToString(asset->uuid)#1#);
 
         CopyBuffer(stagingBuffer, indexBuffer, bufferSize);
 

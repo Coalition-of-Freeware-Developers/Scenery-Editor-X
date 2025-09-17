@@ -10,12 +10,12 @@
 * Created: 28/8/2025
 * -------------------------------------------------------
 */
-#include "pipeline_states.h"
-
-#include "renderer.h"
+//#include "pipeline_states.h"
+//#include "renderer.h"
 
 /// -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
 	namespace
@@ -184,5 +184,6 @@ namespace SceneryEditorX
         return shaders[static_cast<uint32_t>(shader_stage)] != nullptr;
 	}
 }
+*/
 
 /// -------------------------------------------------------

@@ -255,63 +255,63 @@ namespace SceneryEditorX
 		 * @param severity The Vulkan debug message severity.
 		 * @return The string representation of the severity.
 		 */
-		const char* vkDebugSeverityString(VkDebugUtilsMessageSeverityFlagBitsEXT severity);
+		const char* VkDebugSeverityString(VkDebugUtilsMessageSeverityFlagBitsEXT severity);
 
 		/**
 		 * @brief Get the string representation of a Vulkan debug message type.
 		 * @param type The Vulkan debug message type.
 		 * @return The string representation of the type.
 		 */
-		const char* vkDebugType(VkDebugUtilsMessageTypeFlagsEXT type);
+		const char* VkDebugType(VkDebugUtilsMessageTypeFlagsEXT type);
 
 		/**
 		 * @brief Get the string representation of a Vulkan error code.
 		 * @param errorCode The Vulkan error code.
 		 * @return The string representation of the error code.
 		 */
-		const char* vkErrorString(VkResult errorCode);
+		const char* VkErrorString(VkResult errorCode);
 
 		/**
 		 * @brief Get the string representation of a Vulkan format.
 		 * @param format The Vulkan format.
 		 * @return The string representation of the format.
 		 */
-		const char* vkFormatString(VkFormat format);
+		const char* VkFormatString(VkFormat format);
 
 		/**
 		 * @brief Get the string representation of a Vulkan device type.
 		 * @param type The Vulkan device type.
 		 * @return The string representation of the device type.
 		 */
-		const char* vkDeviceTypeString(VkPhysicalDeviceType type);
+		const char* VkDeviceTypeString(VkPhysicalDeviceType type);
 
 		/**
 		 * @brief Get the string representation of a Vulkan color space.
 		 * @param colorSpace The Vulkan color space.
 		 * @return The string representation of the color space.
 		 */
-		const char* vkColorSpaceString(VkColorSpaceKHR colorSpace);
+		const char* VkColorSpaceString(VkColorSpaceKHR colorSpace);
 
 		/**
 		 * @brief Get the string representation of Vulkan queue flags.
 		 * @param flags The Vulkan queue flags.
 		 * @return The string representation of the queue flags.
 		 */
-		const char* vkQueueFlagsString(VkQueueFlags flags);
+		const char* VkQueueFlagsString(VkQueueFlags flags);
 
 		/**
 		 * @brief Get the string representation of Vulkan memory property flags.
 		 * @param flags The Vulkan memory property flags.
 		 * @return The string representation of the memory property flags.
 		 */
-		const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags);
+		const char* VkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags);
 
 		/**
 		 * @brief Get the string representation of a Vulkan object type.
 		 * @param objectType The Vulkan object type.
 		 * @return The string representation of the object type.
 		 */
-		const char *VkObjectTypeToString(VkObjectType objectType);
+		const char* VkObjectTypeToString(VkObjectType objectType);
 
 		/**
 		 * @brief Set the name of the Vulkan device vendor based on vendor ID.

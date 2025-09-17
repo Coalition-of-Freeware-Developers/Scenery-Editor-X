@@ -29,7 +29,7 @@ namespace SceneryEditorX
 
         VkFormat Format;
         bool Blend = true;
-        BlendMode BlendMode = BlendMode::SrcAlphaOneMinusSrcAlpha;
+        //BlendMode BlendMode = BlendMode::SrcAlphaOneMinusSrcAlpha;
         AttachmentLoadOp LoadOp = AttachmentLoadOp::Inherit;
         /// TODO: filtering/wrap
     };

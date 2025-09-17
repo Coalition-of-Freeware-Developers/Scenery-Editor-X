@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/image_data.h"
 #include <SceneryEditorX/renderer/command_manager.h>
+#include "SceneryEditorX/renderer/image_data.h"
 
 /// -------------------------------------------------------
 
@@ -34,90 +34,64 @@ namespace SceneryEditorX
 	class SwapChain
 	{
     public:
-        SwapChain() = default;
-        SwapChain(uint32_t *width, uint32_t *height, bool vsync);
-        ~SwapChain() = default;
+        SwapChain();
+	    ~SwapChain();
 
-		/// Initialization methods
+		// Initialization methods
 		void Init(VkInstance instance, const Ref<VulkanDevice> &device);
         void InitSurface(GLFWwindow *windowPtr);
-		
-        void Create();
-        void OnResize(uint32_t width, uint32_t height) const;
+        void Recreate(uint32_t *width, uint32_t *height, bool vsync);
+
+        void Create(uint32_t* width, uint32_t* height, bool vsync);
+        void OnResize(uint32_t width, uint32_t height);
         void AcquireNextImage();
-        void Present() const;
+        void Present();
         void Destroy();
 		void BeginFrame();
 
-		/// Getter methods
+        /// -------------------------------------------------------
+
+		// Getter methods
 		[[nodiscard]] VkFormat GetColorFormat() const { return colorFormat; }
         [[nodiscard]] VkFormat GetDepthFormat() const { return depthFormat; }
         [[nodiscard]] VkExtent2D GetSwapExtent() const { return swapChainExtent; }
 	    [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
 	    [[nodiscard]] VkSwapchainKHR GetSwapchain() const { return swapChain; }
-
 	    [[nodiscard]] VkFramebuffer GetActiveFramebuffer() const { return GetFramebuffer(currentImageIdx); }
         [[nodiscard]] VkCommandBuffer GetActiveDrawCommandBuffer() const { return GetDrawCommandBuffer(currentFrameIdx); }
 		[[nodiscard]] VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
         [[nodiscard]] VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
 
+        /// -------------------------------------------------------
+
         [[nodiscard]] uint32_t GetWidth() const { return swapWidth; }
         [[nodiscard]] uint32_t GetHeight() const { return swapHeight; }
+	    [[nodiscard]] Vec2 GetDimensions() const { return {swapWidth, swapHeight}; }
 
-        [[nodiscard]] VkFramebuffer GetFramebuffer(uint32_t index) const
-        {
-            SEDX_CORE_ASSERT(index < swapChainFramebuffers.size());
-            return swapChainFramebuffers[index];
-		}
+        /// -------------------------------------------------------
 
-        [[nodiscard]] VkCommandBuffer GetDrawCommandBuffer(uint32_t index) const
-		{
-			SEDX_CORE_ASSERT(index < cmdBuffers.size());
-			return cmdBuffers[index].CommandBuffer;
-        }
+	    [[nodiscard]] VkImage GetActiveImage() const;
+        [[nodiscard]] VkImage GetSwapchainImage(uint32_t index) const;
+        [[nodiscard]] VkFramebuffer GetFramebuffer(uint32_t index) const;
+        [[nodiscard]] VkCommandBuffer GetDrawCommandBuffer(uint32_t index) const;
 
-        /**
-         * @brief Gets the texture image view for use in descriptor sets
-         * @return VkImageView The texture image view handle or VK_NULL_HANDLE if not available
-         */
         [[nodiscard]] VkImageView GetTextureImageView() const { return textureImageView; }
-
-        /**
-         * @brief Gets the texture sampler for use in descriptor sets
-         * @return VkSampler The texture sampler handle or VK_NULL_HANDLE if not available
-         */
         [[nodiscard]] VkSampler GetTextureSampler() const { return textureSampler; }
-
-        /**
-         * @brief Gets the depth image view for use in descriptor sets or framebuffers
-         * @return VkImageView The depth image view handle or VK_NULL_HANDLE if not available
-         */
         [[nodiscard]] VkImageView GetDepthImageView() const { return depthImageView; }
 
-        /**
-         * @brief Returns the raw swapchain VkImage for the given index
-         */
-        [[nodiscard]] VkImage GetSwapchainImage(uint32_t index) const { SEDX_CORE_ASSERT(index < swapChainImage.size()); return swapChainImage[index].Image; }
-
-        /**
-         * @brief Returns the currently active swapchain VkImage (the one we are recording commands for)
-         */
-        [[nodiscard]] VkImage GetActiveImage() const { SEDX_CORE_ASSERT(currentFrameIdx < swapChainImage.size()); return swapChainImage[currentFrameIdx].Image; }
-
-		[[nodiscard]] uint32_t GetSwapChainImageCount() const { return swapChainImageCount; }
+        [[nodiscard]] uint32_t GetSwapChainImageCount() const { return swapChainImageCount; }
         [[nodiscard]] uint32_t GetBufferIndex() const { return currentFrameIdx; }
 
-		/// Image/view utility methods
+		// Image/view utility methods
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
 		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
 						 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const;
         [[nodiscard]] uint32_t GetCurrentBufferIndex() const { return currentFrameIdx; }
 
     private:
-        VkInstance instance = nullptr;
         Ref<VulkanDevice> vkDevice;
 
-		/// Helper methods
+		// Helper methods
         void CreateImageViews();
         void FindImageFormatAndColorSpace();
         void CreateDepthResources();
@@ -125,24 +99,25 @@ namespace SceneryEditorX
         [[nodiscard]] VkFormat FindDepthFormat() const;
         [[nodiscard]] VkFormat FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 
-		/// Selection methods
+		// Selection methods
         static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
 	    static VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, uint32_t width, uint32_t height);
-        static SwapChainDetails QuerySwapChainSupport(const VulkanDevice &device);
-        [[nodiscard]] VkPresentModeKHR ChooseSwapPresentMode(uint32_t presentModeCount) const;
+        static SwapChainDetails QuerySwapChainSupport(const VulkanDevice *device);
+        [[nodiscard]] VkPresentModeKHR ChooseSwapPresentMode() const;
 
-		/// Vulkan resources - derived after device is initialized
+		// Vulkan resources - derived after device is initialized
         uint32_t queueIndex = UINT32_MAX;
-        uint32_t swapChainImageCount	= 0; /// Number of images in the swapchain
-        uint32_t currentFrameIdx		= 0; /// Current frame index for swapchain operations
-        uint32_t currentImageIdx		= 0; /// Current image index for swapchain operations
-        uint32_t swapWidth				= 0; /// Width of the swapchain
-        uint32_t swapHeight				= 0; /// Height of the swapchain
+        uint32_t swapChainImageCount	= 0; // Number of images in the swapchain
+        uint32_t currentFrameIdx		= 0; // Current frame index for swapchain operations
+        uint32_t currentImageIdx		= 0; // Current image index for swapchain operations
+        uint32_t swapWidth				= 0; // Width of the swapchain
+        uint32_t swapHeight				= 0; // Height of the swapchain
         bool VSync = false;
 
 		/// -------------------------------------------------------
-
         /// Format and attachment data
+        /// -------------------------------------------------------
+
         VkFormat colorFormat;
         VkFormat depthFormat;
         VkExtent2D swapChainExtent;
@@ -152,17 +127,23 @@ namespace SceneryEditorX
         VkAttachmentDescription depthAttachment{};
 
 		/// -------------------------------------------------------
-
 		/// Core swapchain objects
-        VkSurfaceKHR surface = nullptr;
-        VkSwapchainKHR swapChain = nullptr;
-        VkRenderPass renderPass = nullptr;
+        /// -------------------------------------------------------
+
+        VkSurfaceKHR surface = nullptr;		// Window surface
+        VkSwapchainKHR swapChain = nullptr; // Swapchain object
+        VkRenderPass renderPass = nullptr;  // Render pass object
+
+        /// -------------------------------------------------------
+
 	    struct SwapchainCommandBuffer
         {
             VkCommandPool CommandPool = nullptr;
             VkCommandBuffer CommandBuffer = nullptr;
         };
         std::vector<SwapchainCommandBuffer> cmdBuffers;
+
+        /// -------------------------------------------------------
 
 	    struct SwapchainImage
         {
@@ -171,17 +152,21 @@ namespace SceneryEditorX
         };
         std::vector<SwapchainImage> swapChainImage;
 
-		/// Image resources
-        //std::vector<Image> swapChainImages;
-        std::vector<VkImage> swapChainImageCounts;
-        std::vector<VkImageView> swapChainViews;
-        std::vector<VkFramebuffer> swapChainFramebuffers;
+        /// -------------------------------------------------------
 
-	    /// Semaphores to signal that images are available for rendering and that rendering has finished (one pair for each frame in flight)
+		// Image resources
+        //std::vector<Image> swapChainImages;
+        std::vector<VkImage> swapChainImageCounts;			// Raw VkImage handles
+        std::vector<VkImageView> swapChainViews;			// Image views for the swapchain images
+        std::vector<VkFramebuffer> swapChainFramebuffers;	// Framebuffers for each swapchain image
+
+	    // Semaphores to signal that images are available for rendering and that rendering has finished (one pair for each frame in flight)
+        // TODO: Replace with the Semaphore class
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;
 
-        /// Fences to signal that command buffers are ready to be reused (one for each frame in flight)
+        // Fences to signal that command buffers are ready to be reused (one for each frame in flight)
+		// TODO: Replace with the Fence class
 		std::vector<VkFence> waitFences;
 
 		/// -------------------------------------------------------
@@ -193,12 +178,14 @@ namespace SceneryEditorX
 
         /// -------------------------------------------------------
 
+	    // For depth buffering
         VkImage depthImage = nullptr;
         VkImageView depthImageView = nullptr;
         VkDeviceMemory depthImageMemory = nullptr;
 
         /// -------------------------------------------------------
 
+	    // For multisampling
         VkImage colorImage = nullptr;
         VkDeviceMemory colorImageMemory = nullptr;
         VkImageView colorImageView = nullptr;

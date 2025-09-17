@@ -1,4 +1,4 @@
-/**
+﻿/**
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
@@ -12,13 +12,17 @@
 */
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <chrono>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
+
 
 /// -------------------------------------------------------
 
@@ -81,52 +85,52 @@ namespace SceneryEditorX::Utils
 	std::string_view trim(const char* textToTrim);
 
 	/// Returns a string with any whitespace trimmed from its start.
-	std::string trimStart(std::string textToTrim);
+	std::string TrimStart(std::string textToTrim);
 
 	/// Returns a string with any whitespace trimmed from its start.
-	std::string_view trimStart(std::string_view textToTrim);
+	std::string_view TrimStart(std::string_view textToTrim);
 
 	/// Returns a string with any whitespace trimmed from its start.
-	std::string_view trimStart(const char* textToTrim);
+	std::string_view TrimStart(const char* textToTrim);
 
 	/// Returns a string with any whitespace trimmed from its end.
-	std::string trimEnd(std::string textToTrim);
+	std::string TrimEnd(std::string textToTrim);
 
 	/// Returns a string with any whitespace trimmed from its end.
-	std::string_view trimEnd(std::string_view textToTrim);
+	std::string_view TrimEnd(std::string_view textToTrim);
 
 	/// Returns a string with any whitespace trimmed from its end.
-	std::string_view trimEnd(const char* textToTrim);
+	std::string_view TrimEnd(const char* textToTrim);
 
 	/// If the given character is at the start and end of the string, it trims it away.
-	std::string removeOuterCharacter(std::string text, char outerChar);
+	std::string RemOuterChar(std::string text, char outerChar);
 
-	inline std::string removeDoubleQuotes(std::string text) { return removeOuterCharacter(std::move(text), '"'); }
-	inline std::string removeSingleQuotes(std::string text) { return removeOuterCharacter(std::move(text), '\''); }
+	inline std::string RemoveDoubleQuotes(std::string text) { return RemOuterChar(std::move(text), '"'); }
+	inline std::string RemoveSingleQuotes(std::string text) { return RemOuterChar(std::move(text), '\''); }
 
-	inline std::string addDoubleQuotes(std::string text) { return "\"" + std::move(text) + "\""; }
-	inline std::string addSingleQuotes(std::string text) { return "'" + std::move(text) + "'"; }
+	inline std::string AddDoubleQuotes(std::string text) { return "\"" + std::move(text) + "\""; }
+	inline std::string AddSingleQuotes(std::string text) { return "'" + std::move(text) + "'"; }
 
-	std::string toLowerCase(std::string);
-	std::string toUpperCase(std::string);
+	std::string ToLowerCase(std::string);
+	std::string ToUpperCase(std::string);
 
 	template <typename IsDelimiterChar>
-	std::vector<std::string> splitString(std::string_view textToSplit, IsDelimiterChar&& isDelimiterChar, bool includeDelimitersInResult);
+	std::vector<std::string> SplitStr(std::string_view textToSplit, IsDelimiterChar&& isDelimiterChar, bool includeDelimitersInResult);
 
 	template <typename CharStartsDelimiter, typename CharIsInDelimiterBody>
-	std::vector<std::string> splitString(std::string_view textToSplit, CharStartsDelimiter&& isDelimiterStart, CharIsInDelimiterBody&& isDelimiterBody, bool includeDelimitersInResult);
+	std::vector<std::string> SplitStr(std::string_view textToSplit, CharStartsDelimiter&& isDelimiterStart, CharIsInDelimiterBody&& isDelimiterBody, bool includeDelimitersInResult);
 
-	std::vector<std::string> splitString(std::string_view textToSplit, char delimiterCharacter, bool includeDelimitersInResult);
+	std::vector<std::string> SplitStr(std::string_view textToSplit, char delimiterCharacter, bool includeDelimitersInResult);
 
-	std::vector<std::string> splitAtWhitespace(std::string_view text, bool keepDelimiters = false);
+	std::vector<std::string> SplitAtWhitespace(std::string_view text, bool keepDelimiters = false);
 
 	/// Splits a string at newline characters, returning an array of strings.
-	std::vector<std::string> splitIntoLines(std::string_view text, bool includeNewLinesInResult);
+	std::vector<std::string> SplitIntoLines(std::string_view text, bool includeNewLinesInResult);
 
 	/// Joins some kind of array of strings into a single string, adding the given separator
 	/// between them (but not adding it at the start or end)
 	template <typename ArrayOfStrings>
-	std::string joinStrings(const ArrayOfStrings& strings, std::string_view separator);
+	std::string JoinStr(const ArrayOfStrings& strings, std::string_view separator);
 
 	/// Returns true if this text contains the given sub-string.
 	bool contains(std::string_view text, std::string_view possibleSubstring);
@@ -141,23 +145,23 @@ namespace SceneryEditorX::Utils
 
 	/// Calculates the Levenshtein distance between two strings.
 	template <typename StringType>
-	size_t getLevenshteinDistance(const StringType& string1, const StringType& string2);
+	size_t GetLevenshteinDistance(const StringType& string1, const StringType& string2);
 
 	/// Converts a hex character to a number 0-15, or -1 if it's not a valid hex digit.
-	int hexToInt(uint32_t unicodeChar);
+	int HexToInt(uint32_t unicodeChar);
 
 	/// Returns a hex string for the given value.
 	/// If the minimum number of digits is non-zero, it will be zero-padded to fill this length;
 	template <typename IntegerType>
-	std::string createHexString(IntegerType value, int minNumDigits = 0);
+	std::string CreateHexStr(IntegerType value, int minNumDigits = 0);
 
 	/// Returns a truncated, easy-to-read version of a time as hours, seconds or milliseconds,
 	/// depending on its magnitude. The use-cases include things like logging or console app output.
-	std::string getDurationDescription(std::chrono::duration<double, std::micro>);
+	std::string GetDurationDescription(std::chrono::duration<double, std::micro>);
 
 	/// Returns an easy-to-read description of a size in bytes. Depending on the magnitude,
 	/// it might choose different units such as GB, MB, KB or just bytes.
-	std::string getByteSizeDescription(uint64_t sizeInBytes);
+	std::string GetByteSizeDescription(uint64_t sizeInBytes);
 
     /// ==============================================================================
 
@@ -185,7 +189,7 @@ namespace SceneryEditorX::Utils
         int suffix = 1;
 
         while (isUsed(nameToUse))
-            nameToUse = name + "_" + std::to_string(++suffix);
+            nameToUse = name + "_" + ToString(++suffix);
 
         return nameToUse;
     }
@@ -306,7 +310,7 @@ namespace SceneryEditorX::Utils
 
     /// -------------------------------------------------------
 
-	inline int hexToInt(const uint32_t unicodeChar)
+	inline int HexToInt(const uint32_t unicodeChar)
 	{
 	    const auto d1 = unicodeChar - static_cast<uint32_t>('0'); if (d1 < 10u)  return static_cast<int>(d1);
 	    const auto d2 = d1 + static_cast<uint32_t>('0' - 'a'); if (d2 < 6u)   return static_cast<int>(d2 + 10);
@@ -315,10 +319,10 @@ namespace SceneryEditorX::Utils
 	}
 
 	template <typename IntegerType>
-	std::string createHexString(IntegerType value, int minNumDigits)
+	std::string CreateHexStr(IntegerType value, int minNumDigits)
 	{
 	    static_assert(std::is_integral_v<IntegerType>, "Need to pass integers into this method");
-	    auto intvalue = static_cast<std::make_unsigned_t<IntegerType>>(intvalue);
+	    auto intvalue = static_cast<std::make_unsigned_t<IntegerType>>(value);
 	    assert(minNumDigits <= 32);
 
 	    char hex[40];
@@ -333,7 +337,7 @@ namespace SceneryEditorX::Utils
 	        --minNumDigits;
 
 	        if (intvalue == 0 && minNumDigits <= 0)
-	            return std::string(d, end);
+                return {d, end};
 	    }
 	}
 
@@ -363,13 +367,13 @@ namespace SceneryEditorX::Utils
             return replace(replace(std::move(textToSearch), firstToReplace, firstReplacement), std::forward<OtherReplacements>(otherPairsOfStringsToReplace)...);
     }
 
-	inline std::string      trim      (std::string      textToTrim)			{ return trimStart(trimEnd(std::move(textToTrim))); }
-	inline std::string_view trim	  (const std::string_view textToTrim)   { return trimStart(trimEnd(textToTrim)); }
+	inline std::string      trim      (std::string      textToTrim)			{ return TrimStart(TrimEnd(std::move(textToTrim))); }
+	inline std::string_view trim	  (const std::string_view textToTrim)   { return TrimStart(TrimEnd(textToTrim)); }
 	inline std::string_view trim      (const char* textToTrim)				{ return trim      (std::string_view(textToTrim)); }
-	inline std::string_view trimStart (const char* textToTrim)				{ return trimStart (std::string_view(textToTrim)); }
-	inline std::string_view trimEnd   (const char* textToTrim)				{ return trimEnd   (std::string_view(textToTrim)); }
+	inline std::string_view TrimStart (const char* textToTrim)				{ return TrimStart (std::string_view(textToTrim)); }
+	inline std::string_view TrimEnd   (const char* textToTrim)				{ return TrimEnd   (std::string_view(textToTrim)); }
 
-	inline std::string trimStart(std::string textToTrim)
+	inline std::string TrimStart(std::string textToTrim)
 	{
 	    auto i = textToTrim.begin();
 
@@ -385,7 +389,7 @@ namespace SceneryEditorX::Utils
 	    }
 	}
 
-	inline std::string_view trimStart(std::string_view textToTrim)
+	inline std::string_view TrimStart(std::string_view textToTrim)
 	{
 	    size_t i = 0;
 
@@ -403,7 +407,7 @@ namespace SceneryEditorX::Utils
 	    return {};
 	}
 
-	inline std::string trimEnd(std::string textToTrim)
+	inline std::string TrimEnd(std::string textToTrim)
 	{
 	    for (auto i = textToTrim.end();;)
 	    {
@@ -420,7 +424,7 @@ namespace SceneryEditorX::Utils
 	    }
 	}
 
-	inline std::string_view trimEnd(const std::string_view textToTrim)
+	inline std::string_view TrimEnd(const std::string_view textToTrim)
 	{
 	    for (auto i = textToTrim.length(); i != 0; --i)
 	        if (!isWhitespace(textToTrim[i - 1]))
@@ -429,7 +433,7 @@ namespace SceneryEditorX::Utils
 	    return {};
 	}
 
-	inline std::string removeOuterCharacter(std::string text, const char outerChar)
+	inline std::string RemOuterChar(std::string text, const char outerChar)
 	{
 	    if (text.length() >= 2 && text.front() == outerChar && text.back() == outerChar)
 	        return text.substr(1, text.length() - 2);
@@ -437,20 +441,20 @@ namespace SceneryEditorX::Utils
 	    return text;
 	}
 
-	inline std::string toLowerCase(std::string s)
+	inline std::string ToLowerCase(std::string s)
 	{
 	    std::ranges::transform(s, s.begin(), [](auto c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
 	    return s;
 	}
 
-	inline std::string toUpperCase(std::string s)
+	inline std::string ToUpperCase(std::string s)
 	{
 	    std::ranges::transform(s, s.begin(), [](auto c) { return static_cast<char>(std::toupper(static_cast<unsigned char>(c))); });
 	    return s;
 	}
 
 	template <typename CharStartsDelimiter, typename CharIsInDelimiterBody>
-	std::vector<std::string> splitString(std::string_view textToSplit, CharStartsDelimiter&& isDelimiterStart, CharIsInDelimiterBody&& isDelimiterBody, const bool includeDelimitersInResult)
+	std::vector<std::string> SplitStr(std::string_view textToSplit, CharStartsDelimiter&& isDelimiterStart, CharIsInDelimiterBody&& isDelimiterBody, const bool includeDelimitersInResult)
 	{
 	    std::vector<std::string> tokens;
 	    auto tokenStart = textToSplit.begin();
@@ -483,7 +487,7 @@ namespace SceneryEditorX::Utils
 	}
 
 	template <typename IsDelimiterChar>
-	std::vector<std::string> splitString(std::string_view textToSplit, IsDelimiterChar&& isDelimiterChar, const bool includeDelimitersInResult)
+	std::vector<std::string> SplitStr(std::string_view textToSplit, IsDelimiterChar&& isDelimiterChar, const bool includeDelimitersInResult)
 	{
 	    std::vector<std::string> tokens;
 	    auto tokenStart = textToSplit.begin();
@@ -508,25 +512,25 @@ namespace SceneryEditorX::Utils
 	    return tokens;
 	}
 
-	inline std::vector<std::string> splitString(const std::string_view textToSplit, const char delimiterCharacter, const bool includeDelimitersInResult)
+	inline std::vector<std::string> SplitStr(const std::string_view textToSplit, const char delimiterCharacter, const bool includeDelimitersInResult)
 	{
-	    return splitString(textToSplit, [=](const char c) { return c == delimiterCharacter; }, includeDelimitersInResult);
+	    return SplitStr(textToSplit, [=](const char c) { return c == delimiterCharacter; }, includeDelimitersInResult);
 	}
 
-	inline std::vector<std::string> splitAtWhitespace(const std::string_view text, const bool keepDelimiters)
+	inline std::vector<std::string> SplitAtWhitespace(const std::string_view text, const bool keepDelimiters)
 	{
-	    return splitString(text,
+	    return SplitStr(text,
 	                      [](const char c) { return isWhitespace(c); },
 	                      [](const char c) { return isWhitespace(c); }, keepDelimiters);
 	}
 
-	inline std::vector<std::string> splitIntoLines(const std::string_view text, const bool includeNewLinesInResult)
+	inline std::vector<std::string> SplitIntoLines(const std::string_view text, const bool includeNewLinesInResult)
 	{
-	    return splitString(text, '\n', includeNewLinesInResult);
+	    return SplitStr(text, '\n', includeNewLinesInResult);
 	}
 
 	template <typename ArrayOfStrings>
-    std::string joinStrings(const ArrayOfStrings& strings, const std::string_view separator)
+    std::string JoinStr(const ArrayOfStrings& strings, const std::string_view separator)
 	{
 	    if (strings.empty())
 	        return {};
@@ -565,11 +569,11 @@ namespace SceneryEditorX::Utils
         return len1 >= len2 && text.substr(len1 - len2) == possibleEnd;
 	}
 
-	inline std::string getDurationDescription(const std::chrono::duration<double, std::micro> d)
+	inline std::string GetDurationDescription(const std::chrono::duration<double, std::micro> d)
 	{
 	    const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(d).count();
 
-	    if (microseconds < 0)    return "-" + getDurationDescription(-d);
+	    if (microseconds < 0)    return "-" + GetDurationDescription(-d);
 	    if (microseconds == 0)   return "0 sec";
 
 	    std::string result;
@@ -588,7 +592,7 @@ namespace SceneryEditorX::Utils
 	        if (modulo != 0)
 	            whole = whole % modulo;
 
-	        result += std::to_string(whole);
+	        result += ToString(whole);
 
 	        if (const auto fraction = scaled % decimalScale)
 	        {
@@ -620,7 +624,7 @@ namespace SceneryEditorX::Utils
 	}
 
 	template <typename StringType>
-	size_t getLevenshteinDistance(const StringType& string1, const StringType& string2)
+	size_t GetLevenshteinDistance(const StringType& string1, const StringType& string2)
 	{
 	    if (string1.empty())  return string2.length();
 	    if (string2.empty())  return string1.length();
@@ -641,7 +645,7 @@ namespace SceneryEditorX::Utils
 	            for (auto c2 : s2)
 	            {
 	                auto upper = costs[p2 + 1];
-	                costs[p2 + 1] = c1 == c2 ? corner : std::min({costs[p2],upper, corner}) + 1;
+	                costs[p2 + 1] = c1 == c2 ? corner : xMath::Min({costs[p2], upper, corner}) + 1;
 	                ++p2;
 	                corner = upper;
 	            }
@@ -665,12 +669,12 @@ namespace SceneryEditorX::Utils
 	    return calculate(costs.get(), sizeNeeded, string1, string2);
 	}
 
-	inline std::string getByteSizeDescription(const uint64_t sizeInBytes)
+	inline std::string GetByteSizeDescription(const uint64_t sizeInBytes)
 	{
-	    auto intToStringWith1DecPlace = [](const uint64_t n, const uint64_t divisor) -> std::string
+	    auto intToStr1DecPlace = [](const uint64_t n, const uint64_t divisor) -> std::string
 	    {
 	        const auto scaled = (n * 10 + divisor / 2) / divisor;
-	        auto result = std::to_string(scaled / 10);
+	        auto result = ToString(scaled / 10);
 
 	        if (const auto fraction = scaled % 10)
 	        {
@@ -681,12 +685,12 @@ namespace SceneryEditorX::Utils
 	        return result;
 	    };
 
-	    static constexpr uint64_t maxValue = std::numeric_limits<uint64_t>::max() / 10;
+        static constexpr uint64_t maxValue = 1844674407370955161ull;
 
-	    if (sizeInBytes >= 0x40000000)  return intToStringWith1DecPlace(std::min(maxValue, sizeInBytes), 0x40000000) + " GB";
-	    if (sizeInBytes >= 0x100000)    return intToStringWith1DecPlace(sizeInBytes, 0x100000) + " MB";
-	    if (sizeInBytes >= 0x400)       return intToStringWith1DecPlace(sizeInBytes, 0x400)    + " KB";
-	    if (sizeInBytes != 1)           return std::to_string(sizeInBytes) + " bytes";
+	    if (sizeInBytes >= 0x40000000)  return intToStr1DecPlace(xMath::Min(maxValue, sizeInBytes), 0x40000000) + " GB";
+	    if (sizeInBytes >= 0x100000)    return intToStr1DecPlace(sizeInBytes, 0x100000) + " MB";
+	    if (sizeInBytes >= 0x400)       return intToStr1DecPlace(sizeInBytes, 0x400)    + " KB";
+	    if (sizeInBytes != 1)           return ToString(sizeInBytes) + " bytes";
 
 	    return "1 byte";
 	}

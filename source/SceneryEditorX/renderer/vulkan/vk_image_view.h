@@ -37,7 +37,7 @@ namespace SceneryEditorX
 		void Invalidate_RenderThread();
 
 		[[nodiscard]] VkImageView GetImageView() const { return m_ImageView; }
-		[[nodiscard]] virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
+		[[nodiscard]] ResourceDescriptorInfo GetDescriptorInfo() const { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
 		[[nodiscard]] const VkDescriptorImageInfo &GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
 
 	private:

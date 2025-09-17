@@ -133,7 +133,7 @@ namespace SceneryEditorX
 		bool fromSwapchain = false;
 		std::vector<VkImageView> layersView;
 		std::vector<ImTextureID> imguiRIDs;
-        virtual ResourceDescriptorInfo GetDescriptorInfo() const override;
+	    ResourceDescriptorInfo GetDescriptorInfo() const;
     };
 
     /// -------------------------------------------------------

@@ -28,7 +28,7 @@ namespace SceneryEditorX::Utils
 	 * @return const char* A string representation of the physical device type.
 	 */
 	// ReSharper disable once CppNotAllPathsReturnValue
-	const char* vkDeviceTypeString(const VkPhysicalDeviceType type)
+	const char* VkDeviceTypeString(const VkPhysicalDeviceType type)
 	{
 	    switch (type)
 	    {
@@ -52,7 +52,7 @@ namespace SceneryEditorX::Utils
 	 * @param colorSpace The Vulkan color space.
 	 * @return const char* A string representation of the color space.
 	 */
-	const char* vkColorSpaceString(const VkColorSpaceKHR colorSpace)
+	const char* VkColorSpaceString(const VkColorSpaceKHR colorSpace)
 	{
 	    switch (colorSpace)
 	    {
@@ -86,7 +86,7 @@ namespace SceneryEditorX::Utils
 	 * @param flags The Vulkan queue flags.
 	 * @return const char* A string representation of the queue flags.
 	 */
-	const char* vkQueueFlagsString(const VkQueueFlags flags)
+	const char* VkQueueFlagsString(const VkQueueFlags flags)
 	{
 	    switch (flags)
 	    {
@@ -108,7 +108,7 @@ namespace SceneryEditorX::Utils
 	 * @param flags The Vulkan memory property flags.
 	 * @return const char* A string representation of the memory property flags.
 	 */
-	const char* vkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags)
+	const char* VkMemoryPropertyFlagsString(VkMemoryPropertyFlags flags)
 	{
 	    switch (flags)
 	    {
@@ -135,7 +135,7 @@ namespace SceneryEditorX::Utils
 	 * @param severity The Vulkan debug message severity flags.
 	 * @return const char* A string representation of the debug message severity.
 	 */
-	const char* vkDebugSeverityString(const VkDebugUtilsMessageSeverityFlagBitsEXT severity)
+	const char* VkDebugSeverityString(const VkDebugUtilsMessageSeverityFlagBitsEXT severity)
 	{
 	    switch (severity)
 	    {
@@ -159,7 +159,7 @@ namespace SceneryEditorX::Utils
 	 * @param type The Vulkan debug message type flags.
 	 * @return const char* A string representation of the debug message type.
 	 */
-	const char* vkDebugType(const VkDebugUtilsMessageTypeFlagsEXT type)
+	const char* VkDebugType(const VkDebugUtilsMessageTypeFlagsEXT type)
 	{
 	    switch (type)
 	    {
@@ -440,7 +440,7 @@ namespace SceneryEditorX::Utils
 	 * @param format The Vulkan format.
 	 * @return const char* The string representation of the format.
 	 */
-	const char *vkFormatString(const VkFormat format)
+	const char *VkFormatString(const VkFormat format)
 	{
 	    switch (format)
 	    {
@@ -705,7 +705,7 @@ namespace SceneryEditorX::Utils
 	 * @param errorCode The Vulkan result code.
 	 * @return The string representation of the result code.
 	 */
-	const char *vkErrorString(const VkResult errorCode)
+	const char *VkErrorString(const VkResult errorCode)
 	{
 	    switch (errorCode)
 	    {

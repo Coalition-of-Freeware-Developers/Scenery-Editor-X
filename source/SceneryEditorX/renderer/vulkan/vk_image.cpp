@@ -36,7 +36,7 @@ namespace SceneryEditorX
 	 * @param specification The specifications for the image, including format, usage, dimensions, and whether to create a sampler.
 	 * @note - The width and height must be greater than zero, otherwise an assertion will fail.
 	 */
-	Image2D::Image2D(const ImageSpecification &specification) : m_Specification(specification)
+	Image2D::Image2D(ImageSpecification specification) : m_Specification(std::move(specification))
     {
         SEDX_CORE_VERIFY(m_Specification.width > 0 && m_Specification.height > 0);
     }

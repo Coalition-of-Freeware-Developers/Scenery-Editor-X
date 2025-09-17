@@ -18,19 +18,19 @@
 
 /// -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
 
 	/// Forward declarations
-    class Scene;
-    class Editor;
-    class Renderer2D;
-    class KeyPressedEvent;
-    class MouseButtonPressedEvent;
+    //class Scene;
+    //class Editor;
+    //class Renderer2D;
+    //class KeyPressedEvent;
+    //class MouseButtonPressedEvent;
 
     /// -------------------------------------------------------
 
+    /*
     class Viewport : public RefCounted
     {
     public:
@@ -80,6 +80,7 @@ namespace SceneryEditorX
         Ref<SceneRenderer> m_ViewportRenderer;
         Ref<Renderer2D> m_ViewportRenderer2D;
         std::array<Vec2, 2> m_ViewportBounds = {};
+        */
 
 
 		/**
@@ -114,8 +115,8 @@ namespace SceneryEditorX
 
         TransformationTarget m_MultiTransformTarget = TransformationTarget::MedianPoint;
     };
-
+	*/
 }
-*/
+
 
 /// -------------------------------------------------------
