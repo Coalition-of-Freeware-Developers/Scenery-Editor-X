@@ -12,9 +12,8 @@
 */
 #include "window.h"
 #include <stb_image.h>
-
+#include <cstring>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
-
 #include <imgui/imgui.h>
 #include "icon.h"
 #include "monitor_data.h"
@@ -67,7 +66,15 @@ namespace SceneryEditorX
 	{
 		/// Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
 		if (error == 0x10003 && strstr(description, "joystick"))
-            return; /// Silently ignore joystick-related GLFW_INVALID_ENUM errors
+            return; // Silently ignore joystick-related GLFW_INVALID_ENUM errors
+
+        /**
+		 * Also ignore "Invalid key <n>" spam which can occur if any code accidentally
+         * queries glfwGetKey() with values below GLFW_KEY_SPACE. We already fixed our
+         * polling loop, but keep this as a safety net to avoid noisy logs.
+         */
+        if (error == GLFW_INVALID_ENUM && description && strstr(description, "Invalid key") == description)
+            return;
 
         SEDX_CORE_ERROR_TAG("Window", "GLFW Error ({0}): {1}", error, description);
     }
@@ -147,7 +154,7 @@ namespace SceneryEditorX
         m_winSpecs.width = winData.width;
         m_winSpecs.height = winData.height;
 
-        /// Initialize GLFW if not already initialized
+        // Initialize GLFW if not already initialized
         if (!windowInit)
         {
             SEDX_CORE_INFO("Initializing GLFW");
@@ -161,7 +168,7 @@ namespace SceneryEditorX
             SEDX_CORE_INFO("GLFW initialized successfully");
         }
 
-        /// Set window hints
+        // Set window hints
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, winData.resizable ? GLFW_TRUE : GLFW_FALSE);
 
@@ -171,7 +178,7 @@ namespace SceneryEditorX
             glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
         }
 
-        /// Initialize monitor data
+        // Initialize monitor data
         MonitorData monitorData;
         bool monitorInitSuccess;
         try
@@ -186,11 +193,11 @@ namespace SceneryEditorX
             monitorInitSuccess = false;
         }
 
-        /// Create window based on mode
+        // Create window based on mode
         SEDX_CORE_INFO("Creating window: {}x{} - '{}'", static_cast<int>(winData.width), static_cast<int>(winData.height), winData.title);
         bool windowCreated = false;
 
-        /// First attempt - create with specified settings
+        // First attempt - create with specified settings
         if (mode == WindowMode::FullScreen && monitorInitSuccess)
         {
             if (GLFWmonitor* primaryMonitor = monitorData.GetPrimaryMonitor())
@@ -209,7 +216,7 @@ namespace SceneryEditorX
             }
         }
 
-        /// If fullscreen creation failed or not in fullscreen mode, create windowed
+        // If fullscreen creation failed or not in fullscreen mode, create windowed
         if (!windowCreated)
 		{
             SEDX_CORE_INFO("Creating window in windowed mode: {}x{}", static_cast<int>(winData.width), static_cast<int>(winData.height));
@@ -217,16 +224,16 @@ namespace SceneryEditorX
             windowCreated = m_window != nullptr;
         }
 
-        /// Final fallback - try creating a minimal window
+        // Final fallback - try creating a minimal window
         if (!windowCreated)
 		{
             SEDX_CORE_WARN("Window creation failed with specified parameters, trying fallback settings");
-            /// Reset window hints to defaults
+            // Reset window hints to defaults
             glfwDefaultWindowHints();
             glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
             glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-            /// Try creating a basic window
+            // Try creating a basic window
             m_window = glfwCreateWindow(800, 600, "Scenery Editor X (Fallback)", nullptr, nullptr);
             windowCreated = (m_window != nullptr);
 
@@ -247,7 +254,7 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO("Window created successfully");
 
-        /// Continue with window setup
+        // Continue with window setup
         if (m_window)
 		{
             SetWindowIcon(m_window);
@@ -282,7 +289,7 @@ namespace SceneryEditorX
             else
                 SEDX_CORE_WARN_TAG("Window", "Raw mouse motion not supported.");
 
-            /// Set up window callbacks
+            // Set up window callbacks
             glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, int width, int height)
             {
                 auto &data = *(WindowData *)glfwGetWindowUserPointer(window);
@@ -292,7 +299,7 @@ namespace SceneryEditorX
 
             winData.framebufferResized = true;
 
-            /// Set all the callbacks
+            // Set all the callbacks
             glfwSetWindowCloseCallback(m_window, windowCallbacks.windowCloseCallback);
             glfwSetFramebufferSizeCallback(m_window, windowCallbacks.framebufferResizeCallback);
             glfwSetWindowPos(m_window, winData.posX, winData.posY);
@@ -306,7 +313,7 @@ namespace SceneryEditorX
             glfwSetDropCallback(m_window, windowCallbacks.windowDropCallback);
             glfwSetWindowIconifyCallback(m_window, windowCallbacks.windowIconifyCallback);
 
-            /// Create mouse cursors for ImGui
+            // Create mouse cursors for ImGui
             ImGuiMouseCursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
             ImGuiMouseCursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
             ImGuiMouseCursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);   /// FIXME: GLFW doesn't have this.
@@ -316,7 +323,7 @@ namespace SceneryEditorX
             ImGuiMouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  /// FIXME: GLFW doesn't have this.
             ImGuiMouseCursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
 
-            /// Update window dimensions
+            // Update window dimensions
             int width, height;
             glfwGetWindowSize(m_window, &width, &height);
             m_winSpecs.width = width;
@@ -402,7 +409,7 @@ namespace SceneryEditorX
      */
     void Window::DisableJoystickHandling()
     {
-        /// Detach any registered joystick callback
+        // Detach any registered joystick callback
         glfwSetJoystickCallback(nullptr);
         SEDX_CORE_INFO_TAG("Window", "Joystick handling disabled to prevent conflicts with flight simulator hardware");
     }
@@ -592,7 +599,7 @@ namespace SceneryEditorX
 	 */
 	void Window::FramebufferResizeCallback(GLFWwindow *window, int width, int height)
 	{
-	    /// Retrieve the Window instance from the GLFW user pointer
+	    // Retrieve the Window instance from the GLFW user pointer
         if (auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window)))
 		{
             windowInstance->winData.width = width;
@@ -699,7 +706,7 @@ namespace SceneryEditorX
 	        return;
 	    }
 
-        /// Create a MonitorData instance to access monitor information
+        // Create a MonitorData instance to access monitor information
         MonitorData monitorData;
 
         try
@@ -713,7 +720,7 @@ namespace SceneryEditorX
             return;
         }
 
-        /// Get the current monitor
+        // Get the current monitor
         GLFWmonitor* currentMonitor = monitorData.GetCurrentMonitor();
         if (!currentMonitor)
 		{
@@ -721,7 +728,7 @@ namespace SceneryEditorX
             return;
         }
 
-        /// Ensure the monitor index is valid
+        // Ensure the monitor index is valid
         int currentMonitorIndex = monitorData.GetCurrentMonitorIndex();
         if (int monitorCount = monitorData.GetMonitorCount(); currentMonitorIndex >= monitorCount)
 		{
@@ -729,7 +736,7 @@ namespace SceneryEditorX
             return;
         }
 
-        /// Get current monitor's video mode
+        // Get current monitor's video mode
         const GLFWvidmode* monitorMode = monitorData.GetCurrentVideoMode();
         if (!monitorMode)
 		{
@@ -737,11 +744,11 @@ namespace SceneryEditorX
             return;
         }
 
-        /// Get video modes for the current monitor
+        // Get video modes for the current monitor
         int modesCount = 0;
         const GLFWvidmode* videoModes = monitorData.GetVideoModes(currentMonitorIndex, &modesCount);
 
-        /// Validate video mode index
+        // Validate video mode index
         int videoModeIndex = monitorData.GetVideoModeIndex();
         if (videoModeIndex >= modesCount)
         {
@@ -749,7 +756,7 @@ namespace SceneryEditorX
             monitorData.SetVideoModeIndex(videoModeIndex);
         }
 
-        /// Apply window configuration based on current mode
+        // Apply window configuration based on current mode
         switch (mode)
         {
             case WindowMode::Windowed:
@@ -815,10 +822,10 @@ namespace SceneryEditorX
      */
     void Window::ChangeWindowMode()
     {
-		/// Apply changes to the window based on the current mode
+		// Apply changes to the window based on the current mode
 		ApplyChanges();
 
-		/// Update the swap chain if it exists
+		// Update the swap chain if it exists
 		if (swapChain)
 		{
 			//swapChain->Present();
@@ -845,14 +852,17 @@ namespace SceneryEditorX
 	 */
 	void Window::Update()
 	{
+		// TODO: Change to react to key events/callbacks (less polling, less overhead)
 	    if (!m_window)
 		{
 	        SEDX_CORE_WARN("Cannot update window - window not created yet");
 	        return;
 	    }
 
-        for (auto i = 0; i < GLFW_KEY_LAST + 1; i++)
-            lastKeyState[i] = static_cast<char>(glfwGetKey(m_window, i));
+        // Only query GLFW for valid key codes to avoid GLFW_INVALID_ENUM errors.
+        // Keys below GLFW_KEY_SPACE (32) are not valid for glfwGetKey and will trigger error 0x00010003.
+        for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; ++key)
+            lastKeyState[key] = static_cast<char>(glfwGetKey(m_window, key));
 
         winData.deltaScroll = 0;
 		auto newTime = std::chrono::high_resolution_clock::now();
@@ -998,12 +1008,16 @@ namespace SceneryEditorX
 	 * @param keyCode The key code of the key to check.
 	 * @return True if the key is pressed, false otherwise.
 	 */
-	bool Window::IsKeyPressed(const uint16_t keyCode) const
+    bool Window::IsKeyPressed(const uint16_t keyCode) const
     {
         if (!m_window)
             return false;
 
-        return lastKeyState[keyCode] && !glfwGetKey(m_window, keyCode);
+        // Guard against invalid key codes to prevent GLFW_INVALID_ENUM errors
+        if (keyCode < GLFW_KEY_SPACE || keyCode > GLFW_KEY_LAST)
+            return false;
+
+        return lastKeyState[keyCode] && !glfwGetKey(m_window, static_cast<int>(keyCode));
 	}
 
     /**

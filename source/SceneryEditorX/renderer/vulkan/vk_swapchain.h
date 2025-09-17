@@ -12,6 +12,7 @@
 */
 #pragma once
 #include <SceneryEditorX/renderer/command_manager.h>
+#include <xMath/includes/vec2.h>
 #include "SceneryEditorX/renderer/image_data.h"
 
 /// -------------------------------------------------------

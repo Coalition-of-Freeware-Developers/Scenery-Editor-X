@@ -83,10 +83,15 @@ namespace SceneryEditorX
 
 	bool Input::IsKeyDown(KeyCode keycode)
 	{
+        const int key = static_cast<int32_t>(keycode);
+        // Guard against invalid key values that would trigger GLFW_INVALID_ENUM
+        if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST)
+            return false;
+
         if (const bool enableImGui = Application::Get().GetAppData().EnableImGui; !enableImGui)
 		{
 			Window window = Application::Get().GetWindow();
-			auto state = glfwGetKey(window.GetWindow(), static_cast<int32_t>(keycode));
+			auto state = glfwGetKey(window.GetWindow(), key);
 			return state == GLFW_PRESS || state == GLFW_REPEAT;
 		}
 
@@ -103,7 +108,7 @@ namespace SceneryEditorX
                 continue;
 			}
 
-            if (const auto state = glfwGetKey(windowHandle, static_cast<int32_t>(keycode)); state == GLFW_PRESS || state == GLFW_REPEAT)
+            if (const auto state = glfwGetKey(windowHandle, key); state == GLFW_PRESS || state == GLFW_REPEAT)
 			{
 				pressed = true;
 				break;

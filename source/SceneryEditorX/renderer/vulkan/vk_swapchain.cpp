@@ -16,8 +16,8 @@
 #include "vk_device.h"
 #include "vk_util.h"
 #include "SceneryEditorX/renderer/image_data.h"
-#include "SceneryEditorX/renderer/renderer.h"
 #include "SceneryEditorX/renderer/render_dispatcher.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Nvidia extensions
@@ -543,7 +543,13 @@ namespace SceneryEditorX
         VkSwapchainKHR oldSwapChain = swapChain;
         SEDX_CORE_INFO_TAG("Swapchain", "Got Old Swapchain Handle: {}", ToString(oldSwapChain));
 
-        /// Get physical device surface properties and formats
+		// Get a valid graphics queue family index from the device
+        if (ctx->GetCurrentDevice()->GetPhysicalDevice()->GetQueueFamilyIndices().graphicsFamily.has_value())
+            queueIndex = ctx->GetCurrentDevice()->GetPhysicalDevice()->GetQueueFamilyIndices().graphicsFamily.value().second;
+
+        SEDX_CORE_INFO_TAG("Swapchain", "Using queue family index: {}", queueIndex);
+
+        // Get physical device surface properties and formats
         VkSurfaceCapabilitiesKHR surfaceInfo = ctx->GetCurrentDevice()->GetPhysicalDevice()->Selected().surfaceCapabilities;
 
 #ifdef SEDX_DEBUG
@@ -1001,7 +1007,8 @@ namespace SceneryEditorX
 
     void SwapChain::Destroy()
     {
-        const auto device = vkDevice->GetDevice();
+        auto ctx = RenderContext::Get(); // Get render context reference
+        auto device = ctx->GetCurrentDevice()->GetDevice();
         vkDeviceWaitIdle(device);
 
         if (swapChain)

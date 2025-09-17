@@ -63,6 +63,11 @@ namespace SceneryEditorX
         VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
         VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
 
+		/**
+		* @brief Structure to hold indices of different queue families.
+		*
+		* This structure contains optional indices for graphics, present, compute, and transfer queue families.
+		*/
 		struct QueueFamilyIndices
 		{
 		    std::optional<std::pair<Queue, uint32_t>> graphicsFamily;
