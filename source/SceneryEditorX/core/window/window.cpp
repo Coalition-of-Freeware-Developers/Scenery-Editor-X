@@ -12,7 +12,8 @@
 */
 #include "window.h"
 #include <stb_image.h>
-#include <cstring>
+#include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/events/application_events.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <imgui/imgui.h>
 #include "icon.h"
@@ -235,7 +236,7 @@ namespace SceneryEditorX
 
             // Try creating a basic window
             m_window = glfwCreateWindow(800, 600, "Scenery Editor X (Fallback)", nullptr, nullptr);
-            windowCreated = (m_window != nullptr);
+            windowCreated = m_window != nullptr;
 
             if (windowCreated)
 			{
@@ -301,7 +302,7 @@ namespace SceneryEditorX
 
             // Set all the callbacks
             glfwSetWindowCloseCallback(m_window, windowCallbacks.windowCloseCallback);
-            glfwSetFramebufferSizeCallback(m_window, windowCallbacks.framebufferResizeCallback);
+			glfwSetFramebufferSizeCallback (m_window, Window::FramebufferResizeCallback);
             glfwSetWindowPos(m_window, winData.posX, winData.posY);
             glfwSetCharCallback(m_window, windowCallbacks.charCallback);
             glfwSetCursorPosCallback(m_window, windowCallbacks.cursorPosCallback);
@@ -607,6 +608,11 @@ namespace SceneryEditorX
             windowInstance->winData.framebufferResized = true;
             SEDX_CORE_INFO("Window framebuffer resized to: {}x{}", width, height);
         }
+
+		// Dispatch engine event so Application::OnWindowResize runs and calls SwapChain::OnResize
+		Application::Get ().DispatchEvent<WindowResizeEvent, true> (
+			static_cast<unsigned int>(width),
+			static_cast<unsigned int>(height));
 	}
 
 	/**

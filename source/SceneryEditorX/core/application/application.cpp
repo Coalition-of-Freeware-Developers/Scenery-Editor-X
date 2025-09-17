@@ -77,9 +77,9 @@ namespace SceneryEditorX
 
     Application::~Application()
     {
-        m_Window->~Window();
         // TODO: Re-enable Renderer::Shutdown() once the renderer header issue is resolved
         Renderer::Shutdown();
+		m_Window->~Window ();
     }
 
     void Application::Run()

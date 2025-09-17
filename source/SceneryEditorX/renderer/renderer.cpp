@@ -255,8 +255,11 @@ namespace SceneryEditorX
 
     void Renderer::Shutdown()
     {
-        VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
-        vkDeviceWaitIdle(device);
+        auto devRef = RenderContext::GetCurrentDevice();
+		VkDevice device = devRef ? devRef->GetDevice () : VK_NULL_HANDLE;
+		if (device != VK_NULL_HANDLE)
+			vkDeviceWaitIdle (device);
+
         RenderDispatcher::Shutdown();
         BindlessDescriptorManager::Shutdown();
 
