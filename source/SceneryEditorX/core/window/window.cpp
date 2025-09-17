@@ -355,7 +355,13 @@ namespace SceneryEditorX
         // 1) Ensure GPU presentation resources are torn down first
         if (swapChain)
         {
+            SEDX_CORE_INFO_TAG("TEARDOWN", "Destroying Swapchain and related resources");
             swapChain->Destroy();
+
+            // Tag-logged assertions to catch regressions before device destruction
+            SEDX_CORE_ASSERT(swapChain->GetSwapchain() == VK_NULL_HANDLE,"[TEARDOWN] Swapchain handle must be null before device destroy");
+            SEDX_CORE_ASSERT(swapChain->GetRenderPass() == VK_NULL_HANDLE,"[TEARDOWN] RenderPass handle must be null before device destroy");
+
             delete swapChain;
             swapChain = nullptr;
         }
@@ -368,10 +374,11 @@ namespace SceneryEditorX
         }
 
         // 3) Then destroy the logical device
+        SEDX_CORE_INFO_TAG("TEARDOWN", "Destroying Vulkan device");
+        SEDX_CORE_ASSERT(swapChain == nullptr,
+                         "[TEARDOWN] SwapChain pointer must be null prior to device destruction");
         if (renderContext)
-        {
             renderContext.As<RenderContext>()->GetLogicDevice()->Destroy();
-        }
 
         if (windowInit)
 		{
