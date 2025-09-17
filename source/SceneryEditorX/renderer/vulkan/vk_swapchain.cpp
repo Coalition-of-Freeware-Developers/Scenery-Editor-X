@@ -883,6 +883,13 @@ namespace SceneryEditorX
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
 
+        // If we're recreating the swapchain, make sure to destroy the previous render pass to avoid leaks
+        if (renderPass != VK_NULL_HANDLE)
+        {
+            vkDestroyRenderPass(device, renderPass, nullptr);
+            renderPass = VK_NULL_HANDLE;
+        }
+
         VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass))
         SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_RENDER_PASS, "Swapchain Render Pass", renderPass);
 
@@ -1004,37 +1011,130 @@ namespace SceneryEditorX
         auto device = ctx->GetCurrentDevice()->GetDevice();
         vkDeviceWaitIdle(device);
 
-        if (swapChain)
+        // Destroy presentation swapchain and related images/views
+        if (swapChain != VK_NULL_HANDLE)
+        {
             vkDestroySwapchainKHR(device, swapChain, nullptr);
+            swapChain = VK_NULL_HANDLE;
+        }
 
         for (auto &[Image, ImageView] : swapChainImage)
-            vkDestroyImageView(device, ImageView, nullptr);
+        {
+            if (ImageView != VK_NULL_HANDLE)
+                vkDestroyImageView(device, ImageView, nullptr);
+        }
         swapChainImage.clear();
+        swapChainImageCounts.clear();
 
+        // Destroy per-image command pools
         for (const auto &[CommandPool, CommandBuffer] : cmdBuffers)
-            vkDestroyCommandPool(device, CommandPool, nullptr);
+        {
+            if (CommandPool != VK_NULL_HANDLE)
+                vkDestroyCommandPool(device, CommandPool, nullptr);
+        }
         cmdBuffers.clear();
 
-        if (renderPass)
-            vkDestroyRenderPass(device, renderPass, nullptr);
-
+        // Destroy framebuffers before render pass
         for (const auto framebuffer : swapChainFramebuffers)
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        {
+            if (framebuffer != VK_NULL_HANDLE)
+                vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
         swapChainFramebuffers.clear();
 
+        // Destroy render pass if created
+        if (renderPass != VK_NULL_HANDLE)
+        {
+            vkDestroyRenderPass(device, renderPass, nullptr);
+            renderPass = VK_NULL_HANDLE;
+        }
+
+        // Synchronization primitives
         for (const auto &semaphore : imageAvailableSemaphores)
-            vkDestroySemaphore(device, semaphore, nullptr);
+        {
+            if (semaphore != VK_NULL_HANDLE)
+                vkDestroySemaphore(device, semaphore, nullptr);
+        }
         imageAvailableSemaphores.clear();
 
         for (const auto &semaphore : renderFinishedSemaphores)
-            vkDestroySemaphore(device, semaphore, nullptr);
+        {
+            if (semaphore != VK_NULL_HANDLE)
+                vkDestroySemaphore(device, semaphore, nullptr);
+        }
         renderFinishedSemaphores.clear();
 
         for (const auto &fence : waitFences)
-            vkDestroyFence(device, fence, nullptr);
+        {
+            if (fence != VK_NULL_HANDLE)
+                vkDestroyFence(device, fence, nullptr);
+        }
         waitFences.clear();
 
+        // Destroy any auxiliary images if they were created
+        if (depthImageView != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(device, depthImageView, nullptr);
+            depthImageView = VK_NULL_HANDLE;
+        }
+        if (depthImage != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(device, depthImage, nullptr);
+            depthImage = VK_NULL_HANDLE;
+        }
+        if (depthImageMemory != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(device, depthImageMemory, nullptr);
+            depthImageMemory = VK_NULL_HANDLE;
+        }
+
+        if (colorImageView != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(device, colorImageView, nullptr);
+            colorImageView = VK_NULL_HANDLE;
+        }
+        if (colorImage != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(device, colorImage, nullptr);
+            colorImage = VK_NULL_HANDLE;
+        }
+        if (colorImageMemory != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(device, colorImageMemory, nullptr);
+            colorImageMemory = VK_NULL_HANDLE;
+        }
+
+        if (textureImageView != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(device, textureImageView, nullptr);
+            textureImageView = VK_NULL_HANDLE;
+        }
+        if (textureSampler != VK_NULL_HANDLE)
+        {
+            vkDestroySampler(device, textureSampler, nullptr);
+            textureSampler = VK_NULL_HANDLE;
+        }
+        if (textureImage != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(device, textureImage, nullptr);
+            textureImage = VK_NULL_HANDLE;
+        }
+        if (textureImageMemory != VK_NULL_HANDLE)
+        {
+            vkFreeMemory(device, textureImageMemory, nullptr);
+            textureImageMemory = VK_NULL_HANDLE;
+        }
+
         vkDeviceWaitIdle(device);
+
+        // Finally, destroy the VkSurfaceKHR if it exists (must happen before instance destruction)
+        if (surface != VK_NULL_HANDLE)
+        {
+            VkInstance inst = ctx->GetInstance();
+            if (inst != VK_NULL_HANDLE)
+                vkDestroySurfaceKHR(inst, surface, nullptr);
+            surface = VK_NULL_HANDLE;
+        }
 
     }
 

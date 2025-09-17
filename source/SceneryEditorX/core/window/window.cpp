@@ -352,12 +352,7 @@ namespace SceneryEditorX
      */
     void Window::Shutdown()
     {
-        if (m_window)
-		{
-            glfwDestroyWindow(m_window);
-            m_window = nullptr;
-        }
-
+        // 1) Ensure GPU presentation resources are torn down first
         if (swapChain)
         {
             swapChain->Destroy();
@@ -365,14 +360,27 @@ namespace SceneryEditorX
             swapChain = nullptr;
         }
 
+        // 2) Destroy the window after swapchain teardown
+        if (m_window)
+        {
+            glfwDestroyWindow(m_window);
+            m_window = nullptr;
+        }
+
+        // 3) Then destroy the logical device
         if (renderContext)
+        {
             renderContext.As<RenderContext>()->GetLogicDevice()->Destroy();
+        }
 
         if (windowInit)
 		{
             glfwTerminate();
             windowInit = false;
         }
+
+        // Drop our local reference to the render context to reduce chances of post-shutdown use
+        renderContext.Reset();
     }
 
 	void Window::SwapBuffers()
