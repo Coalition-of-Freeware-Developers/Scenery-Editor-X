@@ -611,8 +611,8 @@ namespace SceneryEditorX
         // Get the actual formats
         std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
         VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, surfaceFormats.data()))
-    
-    
+
+
 		// Select a suitable format and color space
 		bool foundSrgb = false;
 		for (const auto &format : surfaceFormats)
@@ -625,46 +625,39 @@ namespace SceneryEditorX
 		        break;
 		    }
 		}
-		
+
 		// If SRGB format not found, just use the first available format
 		if (!foundSrgb)
 		{
 		    colorFormat = surfaceFormats[0].format;
 		    colorSpace = surfaceFormats[0].colorSpace;
 		}
-		
-		SEDX_CORE_INFO_TAG("Swapchain", "Selected format: {} and color space: {}", 
-		                   ToString(colorFormat), ToString(colorSpace));
 
-		/**
-		 * The VK_PRESENT_MODE_FIFO_KHR mode must always be present as per spec
-		 * This mode waits for the vertical blank ("v-sync")
-		 */
-		VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+		SEDX_CORE_INFO_TAG("Swapchain", "Selected format: {} and color space: {}", ToString(colorFormat), ToString(colorSpace));
 
-		/**
-		 * If v-sync is not requested, try to find a mailbox mode
-		 * It's the lowest latency non-tearing present mode available
-		 */
-		if (!vsync)
-		{
-		    for (size_t i = 0; i < presentModeCount; i++)
-		    {
-		        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
-		        {
-		            swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-		            break;
-		        }
+        // Prefer MAILBOX when available (low-latency triple buffering), otherwise fall back
+        VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR; // guaranteed available
+        for (size_t i = 0; i < presentModeCount; i++)
+        {
+            if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
+			{
+				swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+				break;
+			}
+        }
 
-		        if (swapchainPresentMode != VK_PRESENT_MODE_MAILBOX_KHR && presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
-		        {
-		            swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-		        }
-		    }
-		}
+        if (swapchainPresentMode != VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            // If no mailbox, try immediate, then FIFO_RELAXED, then FIFO
+            for (size_t i = 0; i < presentModeCount; i++)
+            {
+                if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) { swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR; break; }
+                if (presentModes[i] == VK_PRESENT_MODE_FIFO_RELAXED_KHR) { swapchainPresentMode = VK_PRESENT_MODE_FIFO_RELAXED_KHR; }
+            }
+        }
 
-        /// Determine the number of images
-        uint32_t desiredNumberOfSwapchainImages = surfaceInfo.minImageCount + 1;
+        /// Determine the number of images: prefer 3 when using MAILBOX (triple buffering)
+        uint32_t desiredNumberOfSwapchainImages = (swapchainPresentMode == VK_PRESENT_MODE_MAILBOX_KHR) ? 3 : (surfaceInfo.minImageCount + 1);
         if (surfaceInfo.maxImageCount > 0 && desiredNumberOfSwapchainImages > surfaceInfo.maxImageCount)
         {
             desiredNumberOfSwapchainImages = surfaceInfo.maxImageCount;
@@ -828,7 +821,7 @@ namespace SceneryEditorX
             VkFenceCreateInfo fenceInfo{};
             fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
             fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-			
+
             waitFences.resize(renderData.framesInFlight);
             for (auto &fence : waitFences)
             {
@@ -1201,7 +1194,7 @@ namespace SceneryEditorX
         const auto physDevice = ctx->GetCurrentDevice()->GetPhysicalDevice();
 
         const auto &presentModes = physDevice->GetPresentModes();
-   
+
 		// Make sure we have valid present modes before accessing them
 		if (presentModes.empty())
             SEDX_CORE_WARN_TAG("Swapchain", "No present modes available, defaulting to VK_PRESENT_MODE_FIFO_KHR");
@@ -1211,8 +1204,8 @@ namespace SceneryEditorX
 		    if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
 		        return presentMode;
 		}
-		
-		if (!VSync) 
+
+		if (!VSync)
 		{
 		    for (const auto& presentMode : presentModes)
 		    {

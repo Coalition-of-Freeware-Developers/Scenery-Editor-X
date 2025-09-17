@@ -81,14 +81,14 @@ namespace SceneryEditorX
     {
 	    if (vkDevice)          vkDevice.Reset();
 	    if (vkPhysicalDevice)  vkPhysicalDevice.Reset();
-	
+
 	#ifdef SEDX_DEBUG
 	    if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
 	    {
 	        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	        debugMessenger = VK_NULL_HANDLE;
 	    }
-	
+
 	    if (debugCallback != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
 	    {
 	        if (auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"))
@@ -96,7 +96,7 @@ namespace SceneryEditorX
 	        debugCallback = VK_NULL_HANDLE;
 	    }
 	#endif
-	
+
 	    if (instance != VK_NULL_HANDLE)
 	    {
 	        vkDestroyInstance(instance, nullptr);
@@ -255,11 +255,31 @@ namespace SceneryEditorX
                 //instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
             }
 
-    		if (check.CheckExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, extensions.instanceExtensions))
+			if (check.CheckExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
 
-    		if (check.CheckExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, extensions.instanceExtensions))
+			if (check.CheckExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+
+            // Prefer enabling the same instance-level caps X-Plane reports, when available
+            if (check.CheckExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME, extensions.instanceExtensions))
+                instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+
+            if (check.CheckExtension(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME, extensions.instanceExtensions))
+                instanceExtensions.push_back(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME);
+
+            bool portabilityEnumEnabled = false;
+            if (check.CheckExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME, extensions.instanceExtensions))
+            {
+                instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+                portabilityEnumEnabled = true;
+            }
+
+            // These are harmless and often present; include if available
+            if (check.CheckExtension(VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME, extensions.instanceExtensions))
+                instanceExtensions.push_back(VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME);
+            if (check.CheckExtension(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME, extensions.instanceExtensions))
+                instanceExtensions.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
 
     		for (const auto&[extensionName, specVersion] : extensions.availableExtensions)
                 if (extensionName[0] != '\0')
@@ -323,7 +343,19 @@ namespace SceneryEditorX
             /// Instance Creation
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    		VkInstanceCreateFlags createFlags = 0;
+            VkInstanceCreateFlags createFlags = 0;
+            // If portability enumeration is enabled, set the corresponding create flag
+            #ifdef VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+            {
+                // Quick scan to decide if we enabled the portability extension above
+                bool hasPortabilityExt = false;
+                for (const char* ext : instanceExtensions)
+                    if (strcmp(ext, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0) { hasPortabilityExt = true; break; }
+                if (hasPortabilityExt)
+                    createFlags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+            }
+            #endif
+
     	    VkInstanceCreateInfo createInfo = {};
             createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         #if defined(VK_EXT_layer_settings) && VK_EXT_layer_settings
