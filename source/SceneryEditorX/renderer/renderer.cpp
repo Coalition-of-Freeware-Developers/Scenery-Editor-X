@@ -116,6 +116,7 @@ namespace SceneryEditorX
     /// Static variable
     static RenderData m_renderData;
     static RendererProperties *s_Data = nullptr;
+	static bool s_Initialized = false;
     // Legacy command queue system removed in favor of RenderDispatcher.
     //static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
 
@@ -251,29 +252,23 @@ namespace SceneryEditorX
 		// Initialize bindless descriptor manager
 		BindlessDescriptorManager::Init();
 
-    }
+        s_Initialized = true;
+	}
 
     void Renderer::Shutdown()
     {
-        auto devRef = RenderContext::GetCurrentDevice();
-		VkDevice device = devRef ? devRef->GetDevice () : VK_NULL_HANDLE;
-		if (device != VK_NULL_HANDLE)
-			vkDeviceWaitIdle (device);
+		if (!s_Initialized)
+			return;
 
-        RenderDispatcher::Shutdown();
-        BindlessDescriptorManager::Shutdown();
+		auto devRef = RenderContext::GetCurrentDevice();
+		VkDevice device = devRef ? devRef->GetDevice() : VK_NULL_HANDLE;
+		if (device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
 
-        if (s_Data->SamplerPoint)
-        {
-            DestroySampler(s_Data->SamplerPoint);
-            s_Data->SamplerPoint = nullptr;
-        }
+		RenderDispatcher::Shutdown();
+		BindlessDescriptorManager::Shutdown();
 
-        if (s_Data->SamplerClamp)
-        {
-            DestroySampler(s_Data->SamplerClamp);
-            s_Data->SamplerClamp = nullptr;
-        }
+		if (s_Data->SamplerPoint) { DestroySampler(s_Data->SamplerPoint); s_Data->SamplerPoint = nullptr; }
+		if (s_Data->SamplerClamp) { DestroySampler(s_Data->SamplerClamp); s_Data->SamplerClamp = nullptr; }
 
 #if SEDX_HAS_SHADER_COMPILER
         VulkanShaderCompiler::ClearUniformBuffers();
@@ -282,6 +277,8 @@ namespace SceneryEditorX
 
         /// Resource release queue
         // Resource free queues handled by RenderDispatcher ring.
+
+        s_Initialized = false;
     }
 
     /*
