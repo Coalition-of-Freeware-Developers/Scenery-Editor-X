@@ -56,24 +56,24 @@ if exist "build" (
     mkdir build
 )
 
-if exist "build\assets" (
-    echo Assets folder already exists in Build directory.
-    choice /m "Do you want to overwrite the assets folder?"
+if exist "build\resources" (
+    echo Resources folder already exists in Build directory.
+    choice /m "Do you want to overwrite the resources folder?"
     if errorlevel 2 (
         echo Skipping...
 		echo -----------------------------------
         goto cmake_generation
     ) else (
-        echo Overwriting assets folder.
+        echo Overwriting resources folder.
 		echo -----------------------------------
-        rmdir /s /q "build\assets"
+        rmdir /s /q "build\resources"
 		echo -----------------------------------
     )
 )
 
-echo Copying assets folder to Build directory.
+echo Copying resources folder to Build directory.
 echo -----------------------------------
-xcopy /E /I "assets" "build\assets"
+xcopy /E /I "resources" "build\resources"
 echo -----------------------------------
 
 :cmake_generation

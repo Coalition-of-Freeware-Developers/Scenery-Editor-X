@@ -14,7 +14,7 @@
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\bin\\install\\${name}",
       "libraryOutput": "${projectDir}\\lib\\${name}",
-      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}\\dependency\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+	  "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}\\cmake\\toolchains\\sedx-windows.cmake",
       "buildCommandArgs": "",
       "ctestCommandArgs": "-C Debug --output-on-failure",
       "variables": [
@@ -31,7 +31,7 @@
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\bin\\install\\${name}",
       "libraryOutput": "${projectDir}\\lib\\${name}",
-      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}\\dependency\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+	  "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}\\cmake\\toolchains\\sedx-windows.cmake",
       "buildCommandArgs": "",
       "ctestCommandArgs": "-C Release --output-on-failure",
       "variables": [
@@ -46,7 +46,7 @@
       "buildRoot": "${projectDir}/build/${name}",
       "installRoot": "${projectDir}/bin/install/${name}",
       "libraryOutput": "${projectDir}/lib/${name}",
-      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+	  "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/cmake/toolchains/sedx-linux.cmake",
       "buildCommandArgs": "",
       "ctestCommandArgs": "-C Debug --output-on-failure",
       "variables": [
@@ -63,7 +63,7 @@
       "buildRoot": "${projectDir}/build/${name}",
       "installRoot": "${projectDir}/bin/install/${name}",
       "libraryOutput": "${projectDir}/lib/${name}",
-      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+	  "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/cmake/toolchains/sedx-linux.cmake",
       "buildCommandArgs": "",
       "ctestCommandArgs": "-C Release --output-on-failure",
       "variables": [
@@ -77,7 +77,7 @@
       "buildRoot": "${projectDir}/build/${name}",
       "installRoot": "${projectDir}/bin/install/${name}",
       "libraryOutput": "${projectDir}/lib/${name}",
-      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+	  "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/cmake/toolchains/sedx-mac.cmake",
       "buildCommandArgs": "",
       "ctestCommandArgs": "-C Debug --output-on-failure",
       "variables": [
@@ -95,7 +95,7 @@
       "buildRoot": "${projectDir}/build/${name}",
       "installRoot": "${projectDir}/bin/install/${name}",
       "libraryOutput": "${projectDir}/lib/${name}",
-      "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/dependency/vcpkg/scripts/buildsystems/vcpkg.cmake",
+	  "cmakeCommandArgs": "-DCMAKE_TOOLCHAIN_FILE=${projectDir}/cmake/toolchains/sedx-mac.cmake",
       "buildCommandArgs": "",
       "ctestCommandArgs": "-C Release --output-on-failure",
       "variables": [
