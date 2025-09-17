@@ -958,7 +958,7 @@ namespace SceneryEditorX
 	 * @param window The GLFW window handle for which to set the icon
 	 *
 	 * @note - The icon file path is defined in the IconData structure, typically pointing
-	 *       to "..\\..\\assets\\icon.png"
+	 *       to "..\\..\\resources\\icon.png"
 	 * @note - This implementation uses stb_image for PNG decoding and requires it to be included
 	 */
 	void Window::SetWindowIcon(GLFWwindow *window)
@@ -1001,7 +1001,7 @@ namespace SceneryEditorX
 	    }
 	    else
 	    {
-	        SEDX_CORE_ERROR("Failed to load window icon!");
+	        SEDX_CORE_WARN("Failed to load window icon!");
 	    }
     }
 

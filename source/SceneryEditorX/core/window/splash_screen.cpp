@@ -2,15 +2,15 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
-* SplashScreen.cpp
+* splash_screen.cpp
 * -------------------------------------------------------
 * Created: 26/8/2025
 * -------------------------------------------------------
 */
-//#include "SplashScreen.h"
+//#include "splash_screen.h"
 //#include <stb_image.h>
 //#include <GLFW/glfw3.h>
 //#include <SceneryEditorX/logging/logging.hpp>
@@ -24,7 +24,7 @@
 
 namespace SceneryEditorX
 {
-    
+
     /*
     SplashScreen::SplashScreen()
     {
@@ -139,7 +139,7 @@ namespace SceneryEditorX
                 SEDX_CORE_ERROR_TAG("SPLASH", "Failed to create valid splash texture");
                 return false;
             }
-            
+
             SEDX_CORE_INFO_TAG("SPLASH", "Splash texture created successfully: {}x{}", width, height);
             return true;
         }

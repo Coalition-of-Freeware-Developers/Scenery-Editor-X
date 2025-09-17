@@ -221,6 +221,7 @@ namespace SceneryEditorX
      * @brief Get the name of the operating system.
      * @return The name of the operating system as a string.
      */
+	// TODO: This needs to be refactored to a more modern approach to detect OS and architecture.
     [[nodiscard]] static constexpr std::string getOsName()
 	{
 	#ifdef _WIN32
