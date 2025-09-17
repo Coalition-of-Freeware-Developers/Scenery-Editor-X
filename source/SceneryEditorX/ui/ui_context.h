@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui_context.h
@@ -31,7 +31,7 @@ namespace SceneryEditorX::UI
         ImGuiID imguiDockspaceID = 0;
 	};
 
-	class UIContext : public Module 
+	class UIContext : public Module
 	{
     public:
         virtual void Begin() = 0;
@@ -48,7 +48,7 @@ namespace SceneryEditorX::UI
 
 	private:
         UIResource uiResource;
-	
+
 	};
 
 }

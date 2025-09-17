@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * cfg_loader.cpp
@@ -19,10 +19,10 @@ namespace SceneryEditorX::IO
 {
 	/**
 	 * @brief Trims leading and trailing whitespace characters from a given string.
-	 * 
+	 *
 	 * This function removes any leading and trailing spaces, tabs, newlines, and carriage returns
 	 * from the input string. If the string is empty, it returns the string as is.
-	 * 
+	 *
 	 * @param s The string to be trimmed.
 	 * @return std::string& A reference to the trimmed string.
 	 */
@@ -36,13 +36,13 @@ namespace SceneryEditorX::IO
 		s.erase(s.find_last_not_of(" \t\n\r") + 1);
 		return s;
 	}
-	
+
 	/**
 	 * @brief Gets the singleton instance of the CfgLoader.
-	 * 
+	 *
 	 * This function returns a pointer to the singleton instance of the ConfigLoader class.
 	 * The instance is created on the first call to this function and reused on subsequent calls.
-	 * 
+	 *
 	 * @return CfgLoader* A pointer to the singleton instance of the CfgLoader.
 	 */
 	ConfigLoader *ConfigLoader::instance()
@@ -50,15 +50,15 @@ namespace SceneryEditorX::IO
 		static ConfigLoader ldr;
 		return &ldr;
 	}
-	
+
 	/**
 	 * @brief Initializes the configuration loader with the given configuration file path.
-	 * 
+	 *
 	 * This function reads the configuration file specified by the cfgPath parameter.
 	 * It parses the file line by line, ignoring empty lines and comments, and extracts
 	 * key-value pairs. The key-value pairs are stored in the appropriate segment map
 	 * (common or logger) based on the segment identifier found in the file.
-	 * 
+	 *
 	 * @param cfgPath The path to the configuration file.
 	 * @return int Returns 0 on success, -1 if the file could not be opened.
 	 */
@@ -128,15 +128,15 @@ namespace SceneryEditorX::IO
 				m_loggerMap[k] = v;
 			}
 		}
-	
+
 		in.close();
-	
+
 		return 0;
 	}
-	
+
 	/**
 	 * @brief Finalizes the configuration loader.
-	 * 
+	 *
 	 * This function resets the configuration loader by clearing all stored configuration data.
 	 * It is typically called when the configuration loader is no longer needed.
 	 */
@@ -144,10 +144,10 @@ namespace SceneryEditorX::IO
 	{
 		reset();
 	}
-	
+
 	/**
 	 * @brief Resets the configuration loader.
-	 * 
+	 *
 	 * This function clears all stored configuration data from both the common and logger maps.
 	 * It is typically called to reinitialize the configuration loader with new data.
 	 */
@@ -156,15 +156,15 @@ namespace SceneryEditorX::IO
 		m_commonMap.clear();
 		m_loggerMap.clear();
 	}
-	
+
 	/**
 	 * @brief Converts the configuration data to a string representation.
-	 * 
+	 *
 	 * This function creates a string representation of the configuration data stored
 	 * in the common and logger maps. It formats the data with section headers for
 	 * "Common" and "Logger" segments, and lists each key-value pair under the respective
 	 * section.
-	 * 
+	 *
 	 * @return std::string A string representation of the configuration data.
 	 */
 	std::string ConfigLoader::toString()
@@ -185,14 +185,14 @@ namespace SceneryEditorX::IO
 		s += "\b";
 		return s;
 	}
-	
+
 	/**
 	 * @brief Retrieves a configuration value by name.
-	 * 
+	 *
 	 * This function searches for a configuration value by its name in the specified segment.
 	 * If the name is found, the corresponding value is assigned to the provided reference
 	 * and the function returns 0. If the name is not found, the function returns -1.
-	 * 
+	 *
 	 * @param value A reference to a string where the retrieved value will be stored.
 	 * @param name The name of the configuration key to search for.
 	 * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
@@ -218,15 +218,15 @@ namespace SceneryEditorX::IO
 		}
 		return -1;
 	}
-	
+
 	/**
 	 * @brief Retrieves a configuration value by name and converts it to an integer.
-	 * 
+	 *
 	 * This function searches for a configuration value by its name in the specified segment.
 	 * If the name is found, the corresponding value is converted to an integer and assigned
 	 * to the provided reference. The function returns 0 on success. If the name is not found
 	 * or the value cannot be converted to an integer, the function returns -1.
-	 * 
+	 *
 	 * @param value A reference to an integer where the retrieved value will be stored.
 	 * @param name The name of the configuration key to search for.
 	 * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
@@ -279,15 +279,15 @@ namespace SceneryEditorX::IO
 		value = num * flag;
 		return 0;
 	}
-	
+
 	/**
 	 * @brief Retrieves a configuration value by name and converts it to a boolean.
-	 * 
+	 *
 	 * This function searches for a configuration value by its name in the specified segment.
 	 * If the name is found, the corresponding value is converted to a boolean and assigned
 	 * to the provided reference. The function returns 0 on success. If the name is not found
 	 * or the value cannot be converted to a boolean, the function returns -1.
-	 * 
+	 *
 	 * @param value A reference to a boolean where the retrieved value will be stored.
 	 * @param name The name of the configuration key to search for.
 	 * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
@@ -322,7 +322,7 @@ namespace SceneryEditorX::IO
 		}
 		return -1;
 	}
-	
+
 } // namespace SceneryEditorX::IO
 
 // ---------------------------------------------------------

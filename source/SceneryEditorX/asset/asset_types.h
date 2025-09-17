@@ -62,7 +62,7 @@ namespace SceneryEditorX
 
         /**
          * @brief Convert XPlaneAssetType enum to string representation
-         * 
+         *
          * @param assetType The X-Plane asset type to convert
          * @return String representation of the X-Plane asset type
          */
@@ -94,7 +94,7 @@ namespace SceneryEditorX
 
         /**
          * @brief Convert string to XPlaneAssetType enum
-         * 
+         *
          * @param assetType String representation of the X-Plane asset type
          * @return XPlaneAssetType enum value, XPlaneAssetType::None if not found
          */
@@ -170,12 +170,12 @@ namespace SceneryEditorX
 
 	    /**
 		 * @brief Determines if an asset type string represents an X-Plane specific asset
-		 * 
+		 *
 		 * This function checks whether a given asset type string corresponds to an
 		 * X-Plane specific asset format rather than a general engine asset type.
 		 * It evaluates the string against both AssetType and XPlaneAssetType enums
 		 * to determine the asset category.
-		 * 
+		 *
 		 * @param assetType The asset type string to check
 		 * @return true if the asset type is X-Plane specific, false if it's a regular asset type
 		 */

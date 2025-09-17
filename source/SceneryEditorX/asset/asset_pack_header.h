@@ -27,7 +27,7 @@ namespace SceneryEditorX
 			uint16_t Type;
 			uint16_t Flags; // compressed type, etc.
 		};
-		
+
 		struct SceneInfo
 		{
 			uint64_t PackedOffset = 0;

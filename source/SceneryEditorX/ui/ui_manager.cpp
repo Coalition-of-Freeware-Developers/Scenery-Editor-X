@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui_manager.cpp
@@ -29,7 +29,7 @@ namespace ImGui
 /*
 namespace SceneryEditorX::UI
 {
-	
+
 	static int s_UIContextID = 0;
 	static uint32_t s_Counter = 0;
 	static char s_IDBuffer[16 + 2 + 1] = "##";
@@ -225,7 +225,7 @@ namespace SceneryEditorX::UI
 		Image(texture, ImVec2(384, 384));
 		ImGui::EndTooltip();
 	}
-	
+
 	ImTextureID UIManager::GetTextureID(const Ref<Image2D> &image)
 	{
 	    Ref<Image2D> vulkanImage = image.As<Image2D>();
@@ -336,9 +336,9 @@ namespace SceneryEditorX::UI
 			return false;
 
 		Ref<Texture2D> vulkanTexture = texture.As<Texture2D>();
-		
+
 		/// This is technically okay, could mean that GPU just hasn't created the texture yet
-		SEDX_CORE_VERIFY(vulkanTexture->GetImage()); 
+		SEDX_CORE_VERIFY(vulkanTexture->GetImage());
 		if (!vulkanTexture->GetImage())
 			return false;
 

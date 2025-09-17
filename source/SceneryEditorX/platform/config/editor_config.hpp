@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * EditorConfig.hpp
@@ -21,15 +21,15 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
     #ifdef SEDX_PLATFORM_WINDOWS
-    
+
         /**
          * @struct EditorConfig
          *
          * @brief Configuration settings for the Scenery Editor X on Windows platform
-         * 
+         *
          * Contains paths to essential resources like shaders, textures, models, and fonts.
          * Provides default locations appropriate for the Windows environment.
-         * 
+         *
          */
         struct EditorConfig : RefCounted
         {
@@ -41,11 +41,11 @@ namespace SceneryEditorX
         };
 
     #elif SEDX_PLATFORM_LINUX
-    
+
         /**
          * @struct EditorConfig
          * @brief Configuration settings for the Scenery Editor X on Linux platform
-         * 
+         *
          * Contains paths to essential resources like shaders, textures, models, and fonts.
          * Provides default locations appropriate for the Linux environment.
          */
@@ -63,7 +63,7 @@ namespace SceneryEditorX
         /**
          * @struct EditorConfig
          * @brief Configuration settings for the Scenery Editor X on macOS platform
-         * 
+         *
          * Contains paths to essential resources like shaders, textures, models, and fonts.
          * Provides default locations appropriate for the macOS environment.
          */

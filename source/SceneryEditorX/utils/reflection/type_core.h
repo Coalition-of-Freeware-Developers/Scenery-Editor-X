@@ -29,7 +29,7 @@ namespace SceneryEditorX::Types
 {
 
 	/**
-	 * @brief 
+	 * @brief
 	 */
 	class Type
 	{

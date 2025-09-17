@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * FileDialog.cpp
@@ -27,13 +27,13 @@ namespace SceneryEditorX::IO
                                         ".",
                                         {"Scenery Editor-X Files", "*.edX *.edX-lib *.wed", "All Files", "*"},
                                         pfd::opt::multiselect).result();
-    
+
         ///< TODO: Write open code and do something with selection
         for (const auto &filename : selection)
             std::cout << "Selected file: " << filename << "\n";
     }
 
-    
+
     /**
      * Opens a file dialog to save a file.
      *

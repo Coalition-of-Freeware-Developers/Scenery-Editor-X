@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * texture_manager.cpp
@@ -23,12 +23,12 @@ namespace SceneryEditorX
 	    {
 	        return it->second;
 	    }
-	
+
 	    auto texture = std::make_shared<TextureAsset>(path);
 	    textures[path] = texture;
 	    return texture;
 	}
-	
+
 	void TextureManager::UnloadTexture(const std::string &path)
 	{
         if (const auto it = textures.find(path); it != textures.end())

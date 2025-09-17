@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui_fonts.cpp
@@ -17,7 +17,7 @@
 
 namespace SceneryEditorX::UI
 {
-	
+
 	static std::unordered_map<std::string, ImFont*> s_Fonts;
 
     /// -------------------------------------------------------

@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * FileManager.hpp
@@ -46,9 +46,9 @@ namespace SceneryEditorX::IO
 	public:
 		/**
 		 * @brief Reads raw bytes from a file.
-		 * 
+		 *
 		 * This function opens the specified file and reads its contents into a vector of bytes.
-		 * 
+		 *
 		 * @param path
 		 * @return A vector containing the raw bytes read from the file.
          */
@@ -56,9 +56,9 @@ namespace SceneryEditorX::IO
 
         /**
 		 * @brief Reads shader code from a file.
-		 * 
+		 *
 		 * This function opens the specified shader file and reads its contents into a vector of bytes.
-		 * 
+		 *
 		 * @param filename The name of the shader file to read.
 		 * @return A vector containing the raw bytes read from the shader file.
          */

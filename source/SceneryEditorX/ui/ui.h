@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui.h
@@ -74,7 +74,7 @@ namespace SceneryEditorX::UI
 {
     /**
      * @brief Main GUI class responsible for ImGui integration with Vulkan
-     * 
+     *
      * This class manages the lifecycle of ImGui resources and provides
      * utilities for common UI operations in the editor.
      */
@@ -91,38 +91,38 @@ namespace SceneryEditorX::UI
          * @return True if initialization was successful
          */
         bool InitGUI();
-	
+
         /**
          * @brief Set the command buffer for rendering ImGui
          * @param cmdBuffer Vulkan command buffer to render into
          */
         void SetActiveCommandBuffer(const VkCommandBuffer cmdBuffer) { activeCommandBuffer = cmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() const { return activeCommandBuffer; }
-	
+
 	    /**
 	     * @brief Handles resizing of the window
 	     * @param width New width of the window
 	     * @param height New height of the window
 	     */
 	    void Resize(uint32_t width, uint32_t height);
-	
+
         /**
          * @brief Begin a new ImGui frame
-         * 
+         *
          * This should be called at the start of each frame before any ImGui drawing
          */
         void BeginFrame() const;
 
         /**
          * @brief End the ImGui frame and render it to the active command buffer
-         * 
+         *
          * This should be called after all ImGui drawing is complete
          */
         void EndFrame() const;
-	
+
         /**
          * @brief Clean up ImGui resources
-         * 
+         *
          * This should be called during application shutdown
          */
         void CleanUp();
@@ -132,7 +132,7 @@ namespace SceneryEditorX::UI
          * @param deltaTime Time elapsed since last update
          */
         void Update(float deltaTime) const;
-	
+
         /**
          * @brief Show the ImGui demo window
          * @param open Pointer to boolean controlling window visibility

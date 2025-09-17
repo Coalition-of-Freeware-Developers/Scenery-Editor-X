@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui.cpp
@@ -88,7 +88,7 @@ namespace SceneryEditorX::UI
 	    /// This function can be called from main ImGui setup to initialize any extensions
 	    /// Currently empty, but could be expanded if more ImGui features need integration
 	}
-	
+
     GUI::GUI() = default;
 
     GUI::~GUI()
@@ -204,7 +204,7 @@ namespace SceneryEditorX::UI
 
         /// Initialize GLFW backend
         ImGui_ImplGlfw_InitForVulkan(window, true);
-		
+
         /// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
         ImGuiStyle &style = ImGui::GetStyle();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -404,7 +404,7 @@ namespace SceneryEditorX::UI
             ImGui::RenderPlatformWindowsDefault();
         }
     }
-	
+
     /// -------------------------------------------------------
 
     void GUI::CleanUp()

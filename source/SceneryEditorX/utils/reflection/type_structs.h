@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * type_structs.h
@@ -28,13 +28,13 @@ namespace SceneryEditorX::Types
 			std::string Name;
 			size_t Size; /// 0 if function
 			std::string TypeName;
-	
+
 			enum EType : uint8_t
 			{
 				Function,
 				Data
 			} Type;
-	
+
 			bool operator==(const Member& other) const
 			{
 				return Name == other.Name
@@ -45,31 +45,31 @@ namespace SceneryEditorX::Types
 		};
 
         /// -------------------------------------------------------
-	
+
 		struct ClassInfo
 		{
 			std::string Name;
 			size_t Size;					/// sizeof(T)
 			std::vector<Member> Members;	/// "described" members
-	
+
 			template<class T>
 			static ClassInfo Of()
 			{
 	            static_assert(Described<T>::value, "Type must be 'Described'.");
-	
+
 				/// Parse info using type Description
-	
+
 				ClassInfo info;
 				using Descr = Types::Description<T>;
-	
+
 				info.Name = Descr::ClassName;
 				info.Size = sizeof(T);
-	
+
 				for (const auto& memberName : Descr::MemberNames)
 				{
 					const bool isFunction = *Descr::IsFunctionByName(memberName);
 					const auto typeName = *Descr::GetTypeNameByName(memberName);
-	
+
 					info.Members.push_back(
 						Member{
 							/*.Name*/{ memberName },
@@ -78,10 +78,10 @@ namespace SceneryEditorX::Types
 							/*.type*/{ isFunction ? Member::Function : Member::Data }
 						});
 				}
-	
+
 				return info;
 			}
-	
+
 			bool operator==(const ClassInfo& other) const
 			{
 				return Name == other.Name
@@ -120,7 +120,7 @@ namespace SceneryEditorX::Types
         inline bool ClassInfoTest()
 		{
 			static const ClassInfo cl = ClassInfo::Of<TestStruct>();
-	
+
 			static const ClassInfo ExpectedInfo
 			{
 				/*.Name =*/
@@ -136,35 +136,35 @@ namespace SceneryEditorX::Types
 					    /*.TypeName =*/ .TypeName = "int",
 					    /*.type =*/.type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "f",
 					    /*.Size =*/ .Size = 4,
 					    /*.TypeName =*/ .TypeName = "float",
 					    /*.type =*/ .type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "ch",
 					    /*.Size =*/ .Size = 1,
 					    /*.TypeName =*/ .TypeName = "char",
 					    /*.type =*/ .type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "pi",
 					    /*.Size =*/ .Size = 8,
 					    /*.TypeName =*/ .TypeName = "int*",
 					    /*.type =*/ .type = Member::Data
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "vfunc",
 					    /*.Size =*/ .Size = 0,
 					    /*.TypeName =*/ .TypeName = "void",
 					    /*.type =*/ .type = Member::EType::Function
 					},
-	
+
 					{
 					    /*.Name =*/ .Name = "bfunc",
 					    /*.Size =*/ .Size = 0,
@@ -173,11 +173,11 @@ namespace SceneryEditorX::Types
 					},
 				}
 			};
-	
+
 			return cl == ExpectedInfo;
 		}
 	}
-	
+
 }
 
 /// -------------------------------------------------------

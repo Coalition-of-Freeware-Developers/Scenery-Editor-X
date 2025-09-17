@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * type_elements.h
@@ -31,14 +31,14 @@ namespace SceneryEditorX::Values
 	inline ElementTypeAndOffset Type::PrimitiveArray::getElementRangeInfo (uint32_t start, uint32_t length) const
 	{
 	    Check (start < numElements && start + length <= numElements, "Illegal element range");
-	
+
 	    Content c;
 	    c.primitiveArray = {
 	        .elementType = elementType,
 	        .numElements = length,
 	        .numVectorElements = numVectorElements
 	    };
-	
+
 	    return {
 	        .elementType = Type (MainType::primitiveArray, c, nullptr),
 	        .offset = start * getPrimitiveSize (elementType) * (numVectorElements != 0 ? numVectorElements : 1)
@@ -50,10 +50,10 @@ namespace SceneryEditorX::Values
 	{
 	    Check (index < numElements, "Index out of range");
 	    auto primitiveSize = getPrimitiveSize (elementType);
-	
+
 	    if (numVectorElements != 0)
 	        return { Type (elementType, numVectorElements), primitiveSize * numVectorElements * index };
-	
+
 	    return { Type (elementType), primitiveSize * index };
 	}
 
@@ -136,16 +136,16 @@ namespace SceneryEditorX::Values
 	    if (isType (MainType::primitiveArray))  return content.primitiveArray.getElementInfo (index);
 	    if (isType (MainType::complexArray))    return content.complexArray->getElementInfo (index);
 	    if (isType (MainType::object))          return content.object->getElementInfo (index);
-	
+
 	    throwError ("Invalid type");
 	}
-	
+
 	inline ElementTypeAndOffset Type::getElementRangeInfo (uint32_t start, uint32_t length) const
 	{
 	    if (isType (MainType::vector))          return content.vector.getElementRangeInfo (start, length);
 	    if (isType (MainType::primitiveArray))  return content.primitiveArray.getElementRangeInfo (start, length);
 	    if (isType (MainType::complexArray))    return content.complexArray->getElementRangeInfo (allocator, start, length);
-	
+
 	    throwError ("Invalid type");
 	}
 

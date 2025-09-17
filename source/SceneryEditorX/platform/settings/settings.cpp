@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * settings.cpp
@@ -72,7 +72,7 @@ namespace SceneryEditorX
             /// If we couldn't read existing settings, create a minimal configuration
             InitMinConfig();
             configInitialized = true;
-            
+
             /// Try to detect X-Plane installation
             if (DetectXPlanePath())
                 SEDX_CORE_TRACE_TAG("SETTINGS", "X-Plane 12 detected and paths configured");
@@ -106,7 +106,7 @@ namespace SceneryEditorX
                 SEDX_CORE_TRACE_TAG("SETTINGS", "Config file not found: {}", filePath.string());
                 return false;
             }
-            
+
             cfg.readFile(filePath.string().c_str());
             SEDX_CORE_TRACE_TAG("SETTINGS", "Reading settings from: {}", filePath.string());
 
@@ -182,14 +182,14 @@ namespace SceneryEditorX
         {
             /// Ensure all required sections exist before writing.
             EnsureRequiredSections();
-            
+
             /// Update the config from our data structures.
             UpdateConfigFromData();
 
             /// Write config to file.
             cfg.writeFile(filePath.string().c_str());
             SEDX_CORE_INFO_TAG("SETTINGS", "Settings successfully written to: {}", filePath.string());
-            
+
             /// Update the settings map
             LoadSettingsToMap();
         }
@@ -512,10 +512,10 @@ namespace SceneryEditorX
 
         SEDX_CORE_TRACE_TAG("SETTINGS", "X-Plane 12 not found via Steam, checking common installation paths...");
         xPlaneStats.isSteam = false;
-        
+
         /// If not found via Steam, try some common installation paths
         std::vector<std::string> commonPaths;
-        
+
     #ifdef SEDX_PLATFORM_WINDOWS
         /// Common Windows installation paths
         /// Add more potential drive letters
@@ -527,7 +527,7 @@ namespace SceneryEditorX
             "\\Games\\X-Plane 12",
             "\\Flight Simulator\\X-Plane 12"
         };
-        
+
         /// Build combinations of drives and paths
         for (const auto& drive : driveLetters)
             for (const auto& pattern : pathPatterns)
@@ -552,7 +552,7 @@ namespace SceneryEditorX
         }
         commonPaths.push_back("/opt/X-Plane 12");
     #endif
-        
+
         for (const auto& path : commonPaths)
         {
             SEDX_CORE_TRACE_TAG("SETTINGS", "Checking potential X-Plane path: {}", path);
@@ -562,18 +562,18 @@ namespace SceneryEditorX
                 return SetXPlanePath(path);
             }
         }
-        
+
         /// Additional fallback: ask user to locate X-Plane directory
         SEDX_CORE_WARN_TAG("SETTINGS", "Could not automatically detect X-Plane 12 installation");
         SEDX_CORE_INFO_TAG("SETTINGS", "Please set the X-Plane 12 path manually in the settings menu");
-        
+
         /// Initialize with empty path but don't report error
         xPlaneStats.xPlanePath = "";
         xPlaneStats.xPlaneBinPath = "";
         xPlaneStats.xPlaneResourcesPath = "";
         xPlaneStats.isSteam = false;
         xPlaneStats.xPlaneVersion = "X-Plane 12";
-        
+
         /// Return false to indicate the path wasn't found automatically
         return false;
     }
@@ -594,10 +594,10 @@ namespace SceneryEditorX
 
         /// Set the main path
         xPlaneStats.xPlanePath = path;
-        
+
         /// Update derived paths
         UpdateDerivedXPlanePaths();
-        
+
         /// Update the config
         try
         {
@@ -606,31 +606,31 @@ namespace SceneryEditorX
                 Setting &root = cfg.getRoot();
                 root.add("x_plane", Setting::TypeGroup);
             }
-            
+
             Setting &xp = cfg.lookup("x_plane");
-            
+
             if (xp.exists("path"))
                 xp.remove("path");
             xp.add("path", Setting::TypeString) = path;
-            
+
             if (xp.exists("bin_path"))
                 xp.remove("bin_path");
             xp.add("bin_path", Setting::TypeString) = xPlaneStats.xPlaneBinPath;
-            
+
             if (xp.exists("resources_path"))
                 xp.remove("resources_path");
             xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
-            
+
             if (xp.exists("is_steam"))
                 xp.remove("is_steam");
             xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
-            
+
             /// Update settings map
             settings["x_plane.path"] = path;
             settings["x_plane.bin_path"] = xPlaneStats.xPlaneBinPath;
             settings["x_plane.resources_path"] = xPlaneStats.xPlaneResourcesPath;
             settings["x_plane.is_steam"] = xPlaneStats.isSteam ? "true" : "false";
-            
+
             SEDX_CORE_INFO_TAG("SETTINGS", "X-Plane 12 path set to: {}", path);
             return true;
         }
@@ -650,7 +650,7 @@ namespace SceneryEditorX
     {
         if (xPlaneStats.xPlanePath.empty())
             return false;
-        
+
         return SteamGameFinder::ValidateXPlanePath(xPlaneStats.xPlanePath);
     }
 
@@ -663,23 +663,23 @@ namespace SceneryEditorX
         }
 
         const std::filesystem::path basePath = xPlaneStats.xPlanePath;
-        
+
         /// Set bin path
         xPlaneStats.xPlaneBinPath = (basePath / "bin").string();
-        
+
         /// Set resources path
         xPlaneStats.xPlaneResourcesPath = (basePath / "Resources").string();
-        
+
         /// Check if this is a Steam installation by examining the path
         /// Path typically contains "steamapps/common" for Steam installations
         std::string pathStr = basePath.string();
         std::ranges::transform(pathStr, pathStr.begin(), [](const unsigned char c) { return std::tolower(c); });
-                      
-        xPlaneStats.isSteam = pathStr.find("steamapps") != std::string::npos || 
+
+        xPlaneStats.isSteam = pathStr.find("steamapps") != std::string::npos ||
                               (pathStr.find("steam") != std::string::npos && pathStr.find("common") != std::string::npos);
-        
-        SEDX_CORE_TRACE_TAG("SETTINGS", "Updated derived paths - Bin: {}, Resources: {}, Steam: {}", 
-                          xPlaneStats.xPlaneBinPath, xPlaneStats.xPlaneResourcesPath, 
+
+        SEDX_CORE_TRACE_TAG("SETTINGS", "Updated derived paths - Bin: {}, Resources: {}, Steam: {}",
+                          xPlaneStats.xPlaneBinPath, xPlaneStats.xPlaneResourcesPath,
                           xPlaneStats.isSteam ? "true" : "false");
     }
 
@@ -689,7 +689,7 @@ namespace SceneryEditorX
         {
             /// Create a minimal configuration with empty sections
             std::string minimalConfig = "# Scenery Editor X Configuration\n";
-            
+
             /// Add application section with correct version
             minimalConfig += "application: {";
             std::string appSection = APPLICATION_SECTION_TEMPLATE;
@@ -698,17 +698,17 @@ namespace SceneryEditorX
 
             minimalConfig += appSection;
             minimalConfig += "};\n";
-            
+
             /// Add X-Plane section
             minimalConfig += "x_plane: {";
             minimalConfig += XPLANE_SECTION_TEMPLATE;
             minimalConfig += "};\n";
-            
+
             /// Add UI section
             minimalConfig += "ui: {";
             minimalConfig += UI_SECTION_TEMPLATE;
             minimalConfig += "};\n";
-            
+
             /// Add project section
             minimalConfig += "project: {";
             minimalConfig += PROJECT_SECTION_TEMPLATE;
@@ -716,10 +716,10 @@ namespace SceneryEditorX
 
             /// Parse the minimal config
             cfg.readString(minimalConfig.c_str());
-            
+
             /// Load settings into the map
             LoadSettingsToMap();
-            
+
             SEDX_CORE_TRACE_TAG("SETTINGS", "Minimal configuration initialized");
         }
         catch (const ConfigException &e)
@@ -739,7 +739,7 @@ namespace SceneryEditorX
             app.add("version", Setting::TypeString) = AppData::versionString;
             app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
         }
-        
+
         /// Ensure x_plane section exists
         if (!cfg.exists("x_plane"))
 		{
@@ -753,13 +753,13 @@ namespace SceneryEditorX
             xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
             xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
         }
-        
+
         /// Ensure ui section exists
         if (!cfg.exists("ui"))
 		{
             Setting &root = cfg.getRoot();
             root.add("ui", Setting::TypeGroup);
-            
+
             /// Only add default values if not already set
             if (!HasOption("ui.theme"))
                 AddStringOption("ui.theme", "dark");
@@ -768,13 +768,13 @@ namespace SceneryEditorX
             if (!HasOption("ui.language"))
                 AddStringOption("ui.language", "english");
         }
-        
+
         /// Ensure project section exists
         if (!cfg.exists("project"))
 		{
             Setting &root = cfg.getRoot();
             root.add("project", Setting::TypeGroup);
-            
+
             /// Only add default values if not already set
             if (!HasOption("project.auto_save"))
                 AddBoolOption("project.auto_save", true);
@@ -786,7 +786,7 @@ namespace SceneryEditorX
 			{
                 /// Set default project directory
                 std::string defaultDir = "~/Documents/SceneryEditorX";
-                
+
                 /// Replace ~ with actual home directory
                 if (defaultDir.starts_with("~"))
 				{
@@ -796,11 +796,11 @@ namespace SceneryEditorX
                     #else
                     homeDir = getenv("HOME");
                     #endif
-                    
+
                     if (homeDir)
                         defaultDir.replace(0, 1, homeDir);
                 }
-                
+
                 AddStringOption("project.default_project_dir", defaultDir);
             }
         }
@@ -812,23 +812,23 @@ namespace SceneryEditorX
         try
         {
             Setting &xp = cfg.lookup("x_plane");
-            
+
             if (xp.exists("version"))
                 xp.remove("version");
             xp.add("version", Setting::TypeString) = xPlaneStats.xPlaneVersion;
-            
+
             if (xp.exists("path"))
                 xp.remove("path");
             xp.add("path", Setting::TypeString) = xPlaneStats.xPlanePath;
-            
+
             if (xp.exists("bin_path"))
                 xp.remove("bin_path");
             xp.add("bin_path", Setting::TypeString) = xPlaneStats.xPlaneBinPath;
-            
+
             if (xp.exists("resources_path"))
                 xp.remove("resources_path");
             xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
-            
+
             if (xp.exists("is_steam"))
                 xp.remove("is_steam");
             xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
@@ -843,11 +843,11 @@ namespace SceneryEditorX
         try
         {
             Setting &app = cfg.lookup("application");
-            
+
             if (app.exists("no_titlebar"))
                 app.remove("no_titlebar");
             app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
-            
+
             if (app.exists("version"))
                 app.remove("version");
             app.add("version", Setting::TypeString) = AppData::versionString;
@@ -990,7 +990,7 @@ namespace SceneryEditorX
 	    AddIntOption("vulkan.custom_buffer_size", static_cast<int>(size));
 	    return true;
 	}
-	
+
 	bool ApplicationSettings::ValidateBufferSize(VkDeviceSize size, const VkPhysicalDeviceLimits& deviceLimits)
 	{
 	    // Check that buffer size is not larger than the maximum allowed by the device
@@ -1000,7 +1000,7 @@ namespace SceneryEditorX
 	            size, deviceLimits.maxStorageBufferRange);
 	        return false;
 	    }
-	    
+
 	    // Ensure the size is a multiple of minStorageBufferOffsetAlignment
 	    if (size % deviceLimits.minStorageBufferOffsetAlignment != 0)
 	    {
@@ -1008,7 +1008,7 @@ namespace SceneryEditorX
 	            size, deviceLimits.minStorageBufferOffsetAlignment);
 	        return false;
 	    }
-	    
+
 	    return true;
 	}
 	*/

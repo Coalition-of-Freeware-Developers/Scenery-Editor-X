@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * loading_radial.cpp
@@ -19,8 +19,8 @@ using namespace ImGui;
 
 /// -------------------------------------------------------
 
-namespace SceneryEditorX::UI  
-{  
+namespace SceneryEditorX::UI
+{
    void LoadingIndicatorCircle(const char *label,
        const float indicator_radius,
        const ImVec4 &main_color,

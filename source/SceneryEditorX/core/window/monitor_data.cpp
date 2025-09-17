@@ -14,9 +14,7 @@
 #include <algorithm>
 #include <GLFW/glfw3.h>
 #include <fmt/format.h>
-
 #include "window.h"
-
 #include "SceneryEditorX/logging/logging.hpp"
 
 /// --------------------------------------------

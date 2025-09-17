@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * styles.cpp
@@ -29,36 +29,36 @@ namespace SceneryEditorX::Themes
 	{
 	    auto &colors = ImGui::GetStyle().Colors;
 	    colors[ImGuiCol_WindowBg] = ImVec4(0.1f, 0.105f, 0.11f, 1.0f);
-	
+
 	    // Headers
 	    colors[ImGuiCol_Header] = ImVec4(0.2f, 0.205f, 0.21f, 1.0f);
 	    colors[ImGuiCol_HeaderHovered] = ImVec4(0.3f, 0.305f, 0.31f, 1.0f);
 	    colors[ImGuiCol_HeaderActive] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
-	
+
 	    // Buttons
 	    colors[ImGuiCol_Button] = ImVec4(0.2f, 0.205f, 0.21f, 1.0f);
 	    colors[ImGuiCol_ButtonHovered] = ImVec4(0.3f, 0.305f, 0.31f, 1.0f);
 	    colors[ImGuiCol_ButtonActive] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
-	
+
 	    // Frame BG
 	    colors[ImGuiCol_FrameBg] = ImVec4(0.2f, 0.205f, 0.21f, 1.0f);
 	    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.3f, 0.305f, 0.31f, 1.0f);
 	    colors[ImGuiCol_FrameBgActive] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
-	
+
 	    // Tabs
 	    colors[ImGuiCol_Tab] = ImVec4(0.15f, 0.1505f, 0.151f, 1.0f);
 	    colors[ImGuiCol_TabHovered] = ImVec4(0.38f, 0.3805f, 0.381f, 1.0f);
 	    colors[ImGuiCol_TabActive] = ImVec4(0.28f, 0.2805f, 0.281f, 1.0f);
 	}
-	
-	
+
+
     /// -------------------------------------------------------
 
 	void SetStyle2()
 	{
 	    /// Deep Dark style by janekb04 from ImThemes
 	    ImGuiStyle &style = ImGui::GetStyle();
-	
+
 	    style.Alpha = 1.0f;
 	    style.DisabledAlpha = 0.6000000238418579f;
 	    style.WindowPadding = ImVec2(8.0f, 8.0f);
@@ -89,7 +89,7 @@ namespace SceneryEditorX::Themes
 	    style.ColorButtonPosition = ImGuiDir_Right;
 	    style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
 	    style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
-	
+
 	    style.Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.4980392158031464f, 0.4980392158031464f, 0.4980392158031464f, 1.0f);
 	    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.09803921729326248f, 0.09803921729326248f, 0.09803921729326248f, 1.0f);
@@ -151,7 +151,7 @@ namespace SceneryEditorX::Themes
 	{
 		/// Visual Studio style by MomoDeve from ImThemes
 		ImGuiStyle& style = ImGui::GetStyle();
-		
+
 		style.Alpha = 1.0f;
 		style.DisabledAlpha = 0.6000000238418579f;
 		style.WindowPadding = ImVec2(8.0f, 8.0f);
@@ -182,7 +182,7 @@ namespace SceneryEditorX::Themes
 		style.ColorButtonPosition = ImGuiDir_Right;
 		style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
 		style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
-		
+
 		style.Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 		style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.5921568870544434f, 0.5921568870544434f, 0.5921568870544434f, 1.0f);
 		style.Colors[ImGuiCol_WindowBg] = ImVec4(0.1450980454683304f, 0.1450980454683304f, 0.1490196138620377f, 1.0f);

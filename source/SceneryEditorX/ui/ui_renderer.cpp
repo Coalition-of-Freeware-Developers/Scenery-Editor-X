@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui_renderer.cpp
@@ -47,7 +47,7 @@ namespace SceneryEditorX
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
     }
-    
+
     void UIModule::End()
     {
         ImGui::Render();
@@ -135,7 +135,7 @@ namespace SceneryEditorX
             ImGui::RenderPlatformWindowsDefault();
         }
     }
-    
+
     void UIModule::OnAttach()
     {
 		/// Setup Dear ImGui context
@@ -283,7 +283,7 @@ namespace SceneryEditorX
 				s_ImGuiCommandBuffers[i] = RenderContext::GetCurrentDevice()->CreateUICmdBuffer("ImGuiSecondaryCommandBuffer");
 		});
     }
-    
+
     void UIModule::OnDetach()
     {
         Renderer::Submit([]()
@@ -296,7 +296,7 @@ namespace SceneryEditorX
             ImGui::DestroyContext();
         });
     }
-    
+
     void UIModule::OnUIRender()
     {
     }

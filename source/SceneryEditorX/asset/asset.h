@@ -25,49 +25,49 @@ namespace SceneryEditorX
 
 	/**
 	 * @brief Bitfield flags for tracking asset state and validation status
-	 * 
+	 *
 	 * AssetFlag provides a bitfield enumeration for tracking various states
 	 * and conditions of assets within the Scenery Editor X engine. These flags
 	 * are used by the asset management system to track loading status, validation
 	 * results, and runtime conditions that affect asset usability.
-	 * 
+	 *
 	 * The flags are designed to be combined using bitwise operations to represent
 	 * multiple simultaneous states. This allows the asset system to efficiently
 	 * track complex asset conditions and make informed decisions about asset
 	 * loading, caching, and usage.
-	 * 
+	 *
 	 * Key use cases:
 	 * - Asset validation during loading to detect corrupted or incomplete data
 	 * - Hot-reloading system to track assets that need to be reprocessed
 	 * - Editor UI to display appropriate warnings and status indicators
 	 * - Dependency resolution to handle missing asset references gracefully
 	 * - Asset streaming to prioritize loading of critical assets
-	 * 
+	 *
 	 * @note - Flags use BIT() macro to ensure proper bit positioning
 	 * @note - uint16_t provides 16 possible flag combinations while maintaining memory efficiency
 	 * @note - Additional flags can be added using BIT(2), BIT(3), etc. for future extensions
-	 * 
+	 *
 	 * @code
 	 * // Usage example for asset validation
 	 * AssetFlag flags = AssetFlag::None;
-	 * 
+	 *
 	 * if (!ValidateAssetData(asset))
 	 * {
 	 *     flags |= AssetFlag::Invalid;
 	 * }
-	 * 
+	 *
 	 * if (!FileExists(asset->GetPath()))
 	 * {
 	 *     flags |= AssetFlag::Missing;
 	 * }
-	 * 
+	 *
 	 * // Check for specific conditions
 	 * if (flags & AssetFlag::Missing)
 	 * {
 	 *     SEDX_CORE_WARN("Asset file missing: {}", asset->GetPath());
 	 *     // Attempt to locate backup or placeholder
 	 * }
-	 * 
+	 *
 	 * if (flags & AssetFlag::Invalid)
 	 * {
 	 *     SEDX_CORE_ERROR("Asset data corrupted: {}", asset->GetPath());

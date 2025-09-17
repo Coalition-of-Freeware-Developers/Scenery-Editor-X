@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * type_descriptors.h
@@ -132,7 +132,7 @@ namespace SceneryEditorX::Types
         /// -------------------------------------------------------
 		/// Set member values
         /// -------------------------------------------------------
-        
+
 		template<typename TValue, typename TObj>
 		static constexpr bool SetMemberValue(size_t memberIndex, const TValue& value, TObj&& Obj)
 		{

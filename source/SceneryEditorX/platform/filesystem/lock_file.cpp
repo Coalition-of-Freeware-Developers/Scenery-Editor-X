@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * LockFile.cpp
@@ -17,7 +17,7 @@ namespace SceneryEditorX::IO
 {
     /**
      * @brief Locks or unlocks a file based on the provided file descriptor and lock flag.
-     * 
+     *
      * @param nFileDescriptor The file descriptor of the file to be locked or unlocked.
      * @param lockBool A boolean flag indicating whether to lock (true) or unlock (false) the file.
      * @return int Returns 0 on success, -1 on failure.
@@ -59,7 +59,7 @@ namespace SceneryEditorX::IO
 
     /**
      * @brief Checks if the file is currently locked.
-     * 
+     *
      * @param nFileDescriptor The file descriptor of the file to check.
      * @return bool Returns true if the file is locked, false otherwise.
      */

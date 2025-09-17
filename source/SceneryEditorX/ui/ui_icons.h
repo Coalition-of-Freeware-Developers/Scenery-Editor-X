@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui_icons.h
@@ -17,7 +17,7 @@
 
 namespace SceneryEditorX::UI
 {
-		
+
 	struct Icons
 	{
 	    /// Core UI icons
@@ -35,7 +35,7 @@ namespace SceneryEditorX::UI
 	    static constexpr const char* FOLDER_OPEN = ICON_FA_FOLDER_OPEN;
 	    static constexpr const char* FILE = ICON_FA_FILE;
 	    static constexpr const char* FILE_ALT = ICON_FA_FILE_ALT;
-	
+
 	    /// Editor tools
 	    static constexpr const char* PENCIL = ICON_FA_PENCIL_ALT;
 	    static constexpr const char* EDIT = ICON_FA_EDIT;
@@ -48,7 +48,7 @@ namespace SceneryEditorX::UI
 	    static constexpr const char* EYE_SLASH = ICON_FA_EYE_SLASH;
 	    static constexpr const char* LOCK = ICON_FA_LOCK;
 	    static constexpr const char* UNLOCK = ICON_FA_UNLOCK;
-	
+
 	    /// 3D visualization
 	    static constexpr const char* CUBE = ICON_FA_CUBE;
 	    static constexpr const char* CUBES = ICON_FA_CUBES;
@@ -60,7 +60,7 @@ namespace SceneryEditorX::UI
 	    static constexpr const char* CROSSHAIRS = ICON_FA_CROSSHAIRS;
 	    static constexpr const char* OBJECT_GROUP = ICON_FA_OBJECT_GROUP;
 	    static constexpr const char* OBJECT_UNGROUP = ICON_FA_OBJECT_UNGROUP;
-	
+
 	    /// Interface elements
 	    static constexpr const char* COG = ICON_FA_COG;
 	    static constexpr const char* COGS = ICON_FA_COGS;
@@ -76,7 +76,7 @@ namespace SceneryEditorX::UI
 	    static constexpr const char* PLAY = ICON_FA_PLAY;
 	    static constexpr const char* PAUSE = ICON_FA_PAUSE;
 	    static constexpr const char* STOP = ICON_FA_STOP;
-	
+
 	    /// Helper method to get font icon
 	    static const char* GetIcon(const std::string& name)
 	    {
@@ -132,13 +132,13 @@ namespace SceneryEditorX::UI
 	            {"pause", PAUSE},
 	            {"stop", STOP}
 	        };
-	
+
 	        auto it = iconMap.find(name);
 	        return it != iconMap.end() ? it->second : "";
 	    }
 	};
-	
-	
+
+
 }
 
 /// -------------------------------------------------------

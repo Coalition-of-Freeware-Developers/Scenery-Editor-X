@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * ui_globals.cpp
@@ -13,7 +13,7 @@
 #include "ui_manager.h"
 
 /// -------------------------------------------------------
- 
+
 namespace SceneryEditorX::UI
 {
 	bool showViewport = true;
@@ -301,7 +301,7 @@ namespace SceneryEditorX::UI
 						result = true;
 					}
 				}
-				
+
 				break;
 			}
 			case DataType::Entity:

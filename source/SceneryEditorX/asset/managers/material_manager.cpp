@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * material_manager.cpp
@@ -24,12 +24,12 @@ namespace SceneryEditorX
 	    {
 	        return it->second;
 	    }
-	
+
 	    auto material = std::make_shared<MaterialAsset>(path);
 	    materials[path] = material;
 	    return material;
 	}
-	
+
 	void MaterialManager::UnloadMaterial(const std::string &path)
 	{
         if (const auto it = materials.find(path); it != materials.end())

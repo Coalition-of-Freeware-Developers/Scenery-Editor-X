@@ -111,7 +111,7 @@
 	/* Unknown compiler/platform */
     #define SEDX_PLATFORM_NAME "Unknown"
     #error "Unknown platform!"
-#endif 
+#endif
 
 //////////////////////////////////////////////////////
 ///				BUILD TYPE DETECTION			   ///
