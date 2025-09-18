@@ -39,6 +39,7 @@ namespace SceneryEditorX
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanDevice> vkDevice;
         inline static VkInstance instance;
+        bool m_IsInitialized = false; ///< Guard to ensure Init() is idempotent
 
 		/// -------------------------------------------------------
 

@@ -134,6 +134,12 @@ namespace SceneryEditorX
 
     void RenderContext::Init()
 	{
+        // Idempotent guard: avoid double-initialization if called from multiple entry points
+        if (m_IsInitialized)
+        {
+            SEDX_CORE_DEBUG_TAG("Graphics Engine", "RenderContext::Init() called but already initialized. Skipping.");
+            return;
+        }
         try
 		{
             SEDX_CORE_INFO("Initializing RenderContext");
@@ -431,6 +437,7 @@ namespace SceneryEditorX
             */
 
             SEDX_CORE_INFO("RenderContext initialization complete");
+            m_IsInitialized = true;
         }
         catch (const std::exception& e)
 		{
