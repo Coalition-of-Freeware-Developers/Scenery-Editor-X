@@ -145,13 +145,18 @@ namespace SceneryEditorX
             context->Init();
 
         s_Data = new RendererProperties;
-
+		SEDX_CORE_INFO_TAG("Renderer", "Initialized new RenderProperties: {}", ToString(s_Data));
         const auto &config = GetRenderData();
-        /// Make sure we don't have more frames in flight than swapchain images
+
+        // Make sure we don't have more frames in flight than swapchain images
         config.framesInFlight = xMath::Min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
+		SEDX_CORE_INFO_TAG("Renderer", "Checked Swapchain image count:");
+		SEDX_CORE_INFO("Frames-in-flight: {}", config.framesInFlight);
 
         s_Data->DescriptorPools.resize(config.framesInFlight);
+		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPools");
         s_Data->DescriptorPoolAllocationCount.resize(config.framesInFlight);
+		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPool Allocation Count");
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Create Descriptor pools
@@ -253,6 +258,7 @@ namespace SceneryEditorX
 		BindlessDescriptorManager::Init();
 
         s_Initialized = true;
+		SEDX_CORE_TRACE("Renderer Initialized");
 	}
 
     void Renderer::Shutdown()
@@ -261,8 +267,7 @@ namespace SceneryEditorX
 			return;
 
 		auto devRef = RenderContext::GetCurrentDevice();
-		VkDevice device = devRef ? devRef->GetDevice() : VK_NULL_HANDLE;
-		if (device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
+        if (VkDevice device = devRef ? devRef->GetDevice() : VK_NULL_HANDLE; device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
 
 		RenderDispatcher::Shutdown();
 		BindlessDescriptorManager::Shutdown();
@@ -273,6 +278,9 @@ namespace SceneryEditorX
 #if SEDX_HAS_SHADER_COMPILER
         VulkanShaderCompiler::ClearUniformBuffers();
 #endif
+
+		devRef->Destroy();
+
         delete s_Data;
 
         /// Resource release queue

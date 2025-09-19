@@ -65,7 +65,7 @@ namespace SceneryEditorX
      */
     static void WindowErrorCallback(int error, const char *description)
 	{
-		/// Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
+		// Filter out joystick-related errors (codes around 65539 GLFW_INVALID_ENUM)
 		if (error == 0x10003 && strstr(description, "joystick"))
             return; // Silently ignore joystick-related GLFW_INVALID_ENUM errors
 
@@ -271,13 +271,16 @@ namespace SceneryEditorX
 
             renderContext = RenderContext::Get();
             renderContext->Init();
-
+			SEDX_CORE_INFO_TAG ("Swapchain", "Got Renderer context handle");
 			//swapChain = new SwapChain(&winData.width, &winData.height, &winData.vsync);
             swapChain = new SwapChain();
-            SEDX_CORE_INFO_TAG("Swapchain", "Swapchain Class initialized");
+            SEDX_CORE_INFO_TAG("Swapchain", "Swapchain Class initialized: {}", ToString(swapChain));
             swapChain->InitSurface(m_window);
             SEDX_CORE_INFO_TAG("Swapchain", "Created Surface for window: {}", ToString(m_window));
             swapChain->Create(&winData.width, &winData.height, winData.vsync);
+			SEDX_CORE_INFO_TAG ("Swapchain", "Swapchain Class created:");
+			SEDX_CORE_INFO ("Swapchain Dimensions: {}x{}", winData.width, winData.height);
+            SEDX_CORE_INFO("Swapchain V-Sync Enabled: {}", (winData.vsync == 1) ? "Yes" : "No");
             //swapChain->Init(RenderContext::GetInstance(), RenderContext::Get()->GetLogicDevice());
 
             /// -------------------------------------------------------
@@ -317,11 +320,11 @@ namespace SceneryEditorX
             // Create mouse cursors for ImGui
             ImGuiMouseCursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
             ImGuiMouseCursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-            ImGuiMouseCursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);   /// FIXME: GLFW doesn't have this.
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);   // TODO: Fix this, GLFW doesn't have this.
             ImGuiMouseCursors[ImGuiMouseCursor_ResizeNS] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
             ImGuiMouseCursors[ImGuiMouseCursor_ResizeEW] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
-            ImGuiMouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  /// FIXME: GLFW doesn't have this.
-            ImGuiMouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  /// FIXME: GLFW doesn't have this.
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // TODO: Fix this, GLFW doesn't have this.
+            ImGuiMouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // TODO: Fix this, GLFW doesn't have this.
             ImGuiMouseCursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
 
             // Update window dimensions
@@ -352,6 +355,13 @@ namespace SceneryEditorX
      */
     void Window::Shutdown()
     {
+        // Fast-path: if everything is already released, make this idempotent
+        if (!swapChain && !m_window && !renderContext)
+        {
+            SEDX_CORE_WARN_TAG("TEARDOWN", "Window::Shutdown called but resources already released. Skipping.");
+            return;
+        }
+
         // 1) Ensure GPU presentation resources are torn down first
         if (swapChain)
         {
@@ -373,12 +383,7 @@ namespace SceneryEditorX
             m_window = nullptr;
         }
 
-        // 3) Then destroy the logical device
-        SEDX_CORE_INFO_TAG("TEARDOWN", "Destroying Vulkan device");
-        SEDX_CORE_ASSERT(swapChain == nullptr,
-                         "[TEARDOWN] SwapChain pointer must be null prior to device destruction");
-        if (renderContext)
-            renderContext.As<RenderContext>()->GetLogicDevice()->Destroy();
+        SEDX_CORE_ASSERT(swapChain == nullptr, "[TEARDOWN] SwapChain pointer must be null prior to device destruction");
 
         if (windowInit)
 		{

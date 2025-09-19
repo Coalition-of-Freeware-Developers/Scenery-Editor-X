@@ -77,26 +77,30 @@ namespace SceneryEditorX
 
     Application::~Application()
     {
-        // TODO: Re-enable Renderer::Shutdown() once the renderer header issue is resolved
+        // Ensure renderer subsystems are torn down first
         Renderer::Shutdown();
-		m_Window->~Window ();
+
+        // Let RAII handle Window destruction, or explicitly reset the unique_ptr once
+        // to avoid double-destruction. Do NOT call the destructor directly.
+        if (m_Window)
+            m_Window.reset();
     }
 
     void Application::Run()
     {
         OnInit();
 
-        /// Main application loop
+        // Main application loop
         while (isRunning && !m_Window->GetShouldClose())
         {
-            /// Update the window (poll events)
-            m_Window->Update();
 
-            /// Skip frame if window is minimized
+            m_Window->Update();            // Update the window (poll events)
+
+            // Skip frame if window is minimized
             if (isMinimized)
                 continue;
 
-            /// Call user-defined update function
+            // Call user-defined update function
             OnUpdate();
         }
 

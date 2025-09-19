@@ -23,7 +23,7 @@ namespace SceneryEditorX
 {
     static const char* validationLayer[] = {"VK_LAYER_KHRONOS_validation"};
 
-    ///< Define whether validation layers are enabled - usually tied to debug mode
+    // Define whether validation layers are enabled - usually tied to debug mode
     #ifdef SEDX_DEBUG
     static constexpr bool enableValidationLayers = true;
     #else
@@ -39,8 +39,7 @@ namespace SceneryEditorX
     static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
     {
         // search for the requested function and return null if unable find
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-        if (func != nullptr)
+        if (auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"); func != nullptr)
             return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
         return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
@@ -48,8 +47,7 @@ namespace SceneryEditorX
     static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
         // search for the requested function and return null if unable find
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-        if (func != nullptr)
+        if (auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"); func != nullptr)
             func(instance, debugMessenger, pAllocator);
     }
 
@@ -79,10 +77,16 @@ namespace SceneryEditorX
 
     RenderContext::~RenderContext()
     {
-	    if (vkDevice)          vkDevice.Reset();
-	    if (vkPhysicalDevice)  vkPhysicalDevice.Reset();
+	    if (vkDevice)
+	    {
+			vkDestroyDevice(vkDevice->GetDevice(), nullptr);
+	        vkDevice.Reset();
+	    }
 
-	#ifdef SEDX_DEBUG
+	    if (vkPhysicalDevice)
+            vkPhysicalDevice.Reset();
+
+    #ifdef SEDX_DEBUG
 	    if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
 	    {
 	        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -93,6 +97,7 @@ namespace SceneryEditorX
 	    {
 	        if (auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"))
 	            func(instance, debugCallback, nullptr);
+
 	        debugCallback = VK_NULL_HANDLE;
 	    }
 	#endif
@@ -137,7 +142,7 @@ namespace SceneryEditorX
         // Idempotent guard: avoid double-initialization if called from multiple entry points
         if (m_IsInitialized)
         {
-            SEDX_CORE_DEBUG_TAG("Graphics Engine", "RenderContext::Init() called but already initialized. Skipping.");
+            SEDX_CORE_INFO_TAG("Graphics Engine", "RenderContext::Init() called but already initialized. Skipping.");
             return;
         }
         try
@@ -288,8 +293,10 @@ namespace SceneryEditorX
                 instanceExtensions.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
 
     		for (const auto&[extensionName, specVersion] : extensions.availableExtensions)
-                if (extensionName[0] != '\0')
-                    instanceExtensions.push_back(extensionName);
+			{
+			    if (extensionName[0] != '\0')
+			        instanceExtensions.push_back(extensionName);
+			}
 
         #if defined(SEDX_PLATFORM_APPLE)
     		// Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
@@ -306,10 +313,10 @@ namespace SceneryEditorX
             const VkValidationFeaturesEXT features = {
                 .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
                 .pNext = nullptr,
-            #if defined(SEDX_PLATFORM_APPLE)
+        #if defined(SEDX_PLATFORM_APPLE)
                 .disabledValidationFeatureCount = enableValidationLayers ? (uint32_t)SEDX_NUM_ARRAY_ELEMENTS(validationFeaturesDisabled) : 0u,
                 .pDisabledValidationFeatures = enableValidationLayers ? validationFeaturesDisabled : nullptr,
-            #endif
+        #endif
             };
 
             /// ---------------------------------------------------------
@@ -350,7 +357,7 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             VkInstanceCreateFlags createFlags = 0;
-            // If portability enumeration is enabled, set the corresponding create flag
+            // If portability enumeration is enabled, set the corresponding to create flag
             #ifdef VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
             {
                 // Quick scan to decide if we enabled the portability extension above
@@ -417,7 +424,7 @@ namespace SceneryEditorX
 
             vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice);
 
-            /// Verify the device was created successfully before proceeding
+            // Verify the device was created successfully before proceeding
             if (!vkDevice || vkDevice->GetDevice() == VK_NULL_HANDLE)
 			{
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create valid Vulkan device!");
@@ -458,6 +465,7 @@ namespace SceneryEditorX
             SEDX_CORE_WARN("Attempting to get Vulkan instance before RenderContext is initialized");
             return VK_NULL_HANDLE;
         }
+
         return s_Instance->instance;
     }
 

@@ -25,13 +25,13 @@ namespace SceneryEditorX
 		RenderContext();
         virtual ~RenderContext() override;
 
-		/// Initialize the render context
+		// Initialize the render context
 		void Init();
 
         Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
         static VkInstance GetInstance();
         static Ref<RenderContext> Get();
-		static Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } ///< Get the current VulkanDevice from the singleton instance
+		static Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } // Get VulkanDevice from singleton instance
         std::vector<uint8_t> GetPipelineCacheData() const { return {}; }
         VkAllocationCallbacks *allocatorCallback = nullptr;
 
@@ -39,7 +39,7 @@ namespace SceneryEditorX
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         Ref<VulkanDevice> vkDevice;
         inline static VkInstance instance;
-        bool m_IsInitialized = false; ///< Guard to ensure Init() is idempotent
+        bool m_IsInitialized = false; //Guard to ensure Init() is idempotent
 
 		/// -------------------------------------------------------
 
