@@ -23,7 +23,7 @@ namespace SceneryEditorX
 	{
 		None = 0,
 	    SingleThreaded,
-	    MultiThreaded /// MultiThreaded will create a Render Thread
+	    MultiThreaded // MultiThreaded will create a Render Thread
 	};
 
 	class RenderThread

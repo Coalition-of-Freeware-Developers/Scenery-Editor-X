@@ -39,15 +39,16 @@ namespace SceneryEditorX
     static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
     {
         // search for the requested function and return null if unable find
-        if (auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"); func != nullptr)
+        if (auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT")); func != nullptr)
             return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+
         return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
 
     static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
     {
         // search for the requested function and return null if unable find
-        if (auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"); func != nullptr)
+        if (auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")); func != nullptr)
             func(instance, debugMessenger, pAllocator);
     }
 
@@ -66,7 +67,6 @@ namespace SceneryEditorX
     {
         // Initialize any member variables
         allocatorCallback = nullptr;
-        instance = VK_NULL_HANDLE;
         debugMessenger = VK_NULL_HANDLE;
     #ifdef SEDX_DEBUG
         debugCallback = VK_NULL_HANDLE;
@@ -77,36 +77,31 @@ namespace SceneryEditorX
 
     RenderContext::~RenderContext()
     {
-	    if (vkDevice)
-	    {
-			vkDestroyDevice(vkDevice->GetDevice(), nullptr);
-	        vkDevice.Reset();
-	    }
+        if (vkDevice)
+        {
+            vkDevice->Destroy();
+            vkDevice.Reset();
+        }
 
-	    if (vkPhysicalDevice)
-            vkPhysicalDevice.Reset();
+        // Now release physical device
+        vkPhysicalDevice.Reset();
 
     #ifdef SEDX_DEBUG
-	    if (debugMessenger != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
-	    {
-	        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-	        debugMessenger = VK_NULL_HANDLE;
-	    }
+        if (debugMessenger != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
+            DestroyDebugUtilsMessengerEXT(m_Instance, debugMessenger, nullptr);
 
-	    if (debugCallback != VK_NULL_HANDLE && instance != VK_NULL_HANDLE)
-	    {
-	        if (auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"))
-	            func(instance, debugCallback, nullptr);
+        if (debugCallback != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
+        {
+            if (auto func = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(vkGetInstanceProcAddr(m_Instance, "vkDestroyDebugReportCallbackEXT")))
+                func(m_Instance, debugCallback, nullptr);
+        }
+    #endif
 
-	        debugCallback = VK_NULL_HANDLE;
-	    }
-	#endif
-
-	    if (instance != VK_NULL_HANDLE)
-	    {
-	        vkDestroyInstance(instance, nullptr);
-	        instance = VK_NULL_HANDLE;
-	    }
+        if (m_Instance != VK_NULL_HANDLE)
+        {
+            vkDestroyInstance(m_Instance, nullptr);
+            m_Instance = VK_NULL_HANDLE;
+        }
     }
 
     /// -------------------------------------------------------
@@ -262,9 +257,10 @@ namespace SceneryEditorX
             #if defined(SEDX_VK_DEBUG_EXT) && SEDX_DEBUG //TODO: Check to see if this should just be SEDX_DEBUG instead of two defined macros
                 instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
             #endif
-
-                //instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
             }
+
+            if (check.CheckExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, extensions.instanceExtensions))
+                instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
 			if (check.CheckExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
@@ -279,11 +275,10 @@ namespace SceneryEditorX
             if (check.CheckExtension(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME);
 
-            bool portabilityEnumEnabled = false;
             if (check.CheckExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME, extensions.instanceExtensions))
             {
                 instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-                portabilityEnumEnabled = true;
+                check.portabilityEnumEnabled = true;
             }
 
             // These are harmless and often present; include if available
@@ -292,11 +287,11 @@ namespace SceneryEditorX
             if (check.CheckExtension(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
 
-    		for (const auto&[extensionName, specVersion] : extensions.availableExtensions)
-			{
-			    if (extensionName[0] != '\0')
-			        instanceExtensions.push_back(extensionName);
-			}
+    	for (const auto&[extensionName, specVersion] : extensions.availableExtensions)
+		{
+		    if (extensionName[0] != '\0')
+		        instanceExtensions.push_back(extensionName);
+		}
 
         #if defined(SEDX_PLATFORM_APPLE)
     		// Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
@@ -322,11 +317,11 @@ namespace SceneryEditorX
             /// ---------------------------------------------------------
 
     		#if defined(VK_EXT_layer_settings) && VK_EXT_layer_settings
-    				/// https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Configuration_Parameters.md
+    				// https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Configuration_Parameters.md
                     constexpr int useMetalArgumentBuffers = 1;
-                    constexpr VkBool32 gpuav_descriptor_checks = VK_FALSE;					/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8688
-                    constexpr VkBool32 gpuav_indirect_draws_buffers = VK_FALSE;				/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
-                    constexpr VkBool32 gpuav_post_process_descriptor_indexing = VK_FALSE;	/// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
+                    constexpr VkBool32 gpuav_descriptor_checks = VK_FALSE;					// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8688
+                    constexpr VkBool32 gpuav_indirect_draws_buffers = VK_FALSE;				// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
+                    constexpr VkBool32 gpuav_post_process_descriptor_indexing = VK_FALSE;	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
 
 				#define LAYER_SETTINGS_BOOL32(name, var)												\
     					VkLayerSettingEXT                                                               \
@@ -383,7 +378,7 @@ namespace SceneryEditorX
             createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
             createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
-            if (VkResult createResult = vkCreateInstance(&createInfo, nullptr, &instance); createResult != VK_SUCCESS)
+            if (VkResult createResult = vkCreateInstance(&createInfo, nullptr, &m_Instance); createResult != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create instance! Error code: {}", static_cast<int>(createResult));
                 return;
@@ -395,7 +390,7 @@ namespace SceneryEditorX
             {
                 VkDebugUtilsMessengerCreateInfoEXT messengerInfo;
                 PopulateDebugMsgCreateInfo(messengerInfo);
-                if (CreateDebugUtilsMessengerEXT(instance, &messengerInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+                if (CreateDebugUtilsMessengerEXT(m_Instance, &messengerInfo, nullptr, &debugMessenger) != VK_SUCCESS)
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to set up debug messenger!");
                 else
                     SEDX_CORE_INFO_TAG("Graphics Engine", "Debug messenger set up successfully");
@@ -403,19 +398,19 @@ namespace SceneryEditorX
 
             SEDX_CORE_TRACE_TAG("Graphics Engine", "Vulkan Instance Created");
 
-            #ifdef SEDX_DEBUG
-                Utils::VulkanLoadDebugUtilsExtensions(instance);
-            #endif
+        #ifdef SEDX_DEBUG
+            Utils::VulkanLoadDebugUtilsExtensions(m_Instance);
+        #endif
 
     	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Initialize the Vulkan Physical Device & Vulkan Device
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            #ifdef SEDX_DEBUG
-                RenderDocDebug::PreDeviceCreation();
-            #endif
+        #ifdef SEDX_DEBUG
+            RenderDocDebug::PreDeviceCreation();
+        #endif
 
-            vkPhysicalDevice = VulkanPhysicalDevice::Select(instance);
+            vkPhysicalDevice = VulkanPhysicalDevice::Select(m_Instance);
             if (!vkPhysicalDevice)
 			{
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
@@ -460,13 +455,13 @@ namespace SceneryEditorX
 
     VkInstance RenderContext::GetInstance()
     {
-        if (!s_Instance)
-		{
-            SEDX_CORE_WARN("Attempting to get Vulkan instance before RenderContext is initialized");
+        auto rc = Get();
+        if (!rc || rc->m_Instance == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_WARN("GetInstance() called before Vulkan instance creation");
             return VK_NULL_HANDLE;
         }
-
-        return s_Instance->instance;
+        return rc->m_Instance;
     }
 
 }

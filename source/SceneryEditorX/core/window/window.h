@@ -81,6 +81,7 @@ namespace SceneryEditorX
 	/// -------------------------------------------------------
 
     class SwapChain;
+    class RenderContext;
 
     //bool glfwGetKey(GLFWwindow* window, uint16_t key);
     //bool glfwGetMouseButton(GLFWwindow* window, uint16_t uint16);

@@ -12,9 +12,8 @@
 */
 // ReSharper disable CppVariableCanBeMadeConstexpr
 #pragma once
-#include <xMath/includes/colors.h>
 #include "vk_buffers.h"
-#include "vk_includes.h"
+#include <xMath/includes/colors.h>
 
 /// -------------------------------------------------------
 
@@ -377,6 +376,14 @@ namespace SceneryEditorX
 
 		//const char *defaultValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
+        static uint32_t GetVulkanAPIVersion()
+        {
+			uint32_t apiVersion = 0;
+			vkEnumerateInstanceVersion(&apiVersion);
+
+            return apiVersion;
+        }
+
         /**
 		 * @brief Minimum supported Vulkan API version.
 		 * The application requires at least this Vulkan version to run properly.
@@ -502,7 +509,7 @@ namespace SceneryEditorX
 
     };
 
-    /// -------------------------------------------------------
+	/// -------------------------------------------------------
 
     /// Taken from the Vulkan 3D Graphics Cookbook Second Edition.
 	struct Dimensions

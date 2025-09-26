@@ -10,18 +10,33 @@
 * Created: 21/3/2025
 * -------------------------------------------------------
 */
+#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <utility>
 #include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
-#include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	namespace properties
+    {
+        uint64_t min_UniformBufferOffsetAlignment = 0;
+        uint64_t min_StorageBufferOffsetAlignment = 0;
+        uint64_t optimalBufferCopyOffsetAlignment = 0;
+        uint32_t max_Cube_TextureDimension = 0;
+        uint32_t max_1D_TextureDimension = 0;
+        uint32_t max_2D_TextureDimension = 0;
+        uint32_t max_3D_TextureDimension = 0;
+        uint32_t max_TextureArrayLayers = 0;
+        uint32_t max_PushConstantSize = 0;
+        uint32_t max_X_ShadingRateTexel = 0;
+        uint32_t max_Y_ShadingRateTexel = 0;;
+    }
+
 	//////////////////////////////////////////////////////////
 	/// VulkanPhysicalDevice Implementation
 	//////////////////////////////////////////////////////////
@@ -55,9 +70,8 @@ namespace SceneryEditorX
      */
     VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance &instance)
     {
-        this->vkInstance = &instance;                      /// Store the Vulkan instance
-
-        uint32_t GFXDevices = 0;                           /// Number of physical devices
+        this->vkInstance = &instance;	// Store the Vulkan instance
+        uint32_t GFXDevices = 0;		// Number of physical devices
         vkEnumeratePhysicalDevices(*vkInstance, &GFXDevices, nullptr);
         //VK_CHECK_RESULT(vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data()))
 
@@ -71,12 +85,12 @@ namespace SceneryEditorX
                 return;
             }
 
-            /// Resize the devices vector to accommodate the number of physical devices
+            // Resize the devices vector to accommodate the number of physical devices
             devices.resize(GFXDevices);
             for (uint32_t index = 0; index < GFXDevices; index++)
             {
-                const VkPhysicalDevice physicalDevice = device[index];  /// Get device properties
-                devices[index].physicalDevice         = physicalDevice; /// Store device properties
+                const VkPhysicalDevice physicalDevice = device[index];  // Get device properties
+                devices[index].physicalDevice = physicalDevice;			// Store device properties
             }
 
             device.resize(GFXDevices);
@@ -87,33 +101,33 @@ namespace SceneryEditorX
                 return;
             }
 
-            /// Resize the devices vector to accommodate the number of physical devices
+            // Resize the devices vector to accommodate the number of physical devices
             devices.resize(GFXDevices);
-            /// Get device properties for each physical device
-            VkPhysicalDevice selectedPhysicalDevice = nullptr;
+
+            VkPhysicalDevice selectedPhysicalDevice = nullptr; // Get device properties for each physical device
             for (int index = 0; index < devices.size(); ++index)
             {
-                VkPhysicalDevice GFXDevice = devices[index].physicalDevice; /// Access the VkPhysicalDevice from GPUDevice
-                vkGetPhysicalDeviceProperties(GFXDevice, &devices[index].deviceProperties); /// Get device properties
+                VkPhysicalDevice GFXDevice = devices[index].physicalDevice; // Access the VkPhysicalDevice from GPUDevice
+                vkGetPhysicalDeviceProperties(GFXDevice, &devices[index].deviceProperties.properties); // Get device properties
 
-                if (devices[index].deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                if (devices[index].deviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
                 {
                     SEDX_CORE_INFO("============================================");
-                    SEDX_CORE_INFO("Device Name: {}", ToString(devices[index].deviceProperties.deviceName));
-                    SEDX_CORE_INFO("Device Type: {}", ToString(devices[index].deviceProperties.deviceType));
-                    SEDX_CORE_INFO("Device ID: {}", ToString(devices[index].deviceProperties.deviceID));
-                    SEDX_CORE_INFO("Driver Version: {}", ToString(devices[index].deviceProperties.driverVersion));
-                    SEDX_CORE_INFO("API Version: {}", ToString(devices[index].deviceProperties.apiVersion));
-                    SEDX_CORE_INFO("Vendor ID: {}", ToString(devices[index].deviceProperties.vendorID));
+                    SEDX_CORE_INFO("Device Name: {}", ToString(devices[index].deviceProperties.properties.deviceName));
+                    SEDX_CORE_INFO("Device Type: {}", ToString(devices[index].deviceProperties.properties.deviceType));
+                    SEDX_CORE_INFO("Device ID: {}", ToString(devices[index].deviceProperties.properties.deviceID));
+                    SEDX_CORE_INFO("Driver Version: {}", ToString(devices[index].deviceProperties.properties.driverVersion));
+                    SEDX_CORE_INFO("API Version: {}", ToString(devices[index].deviceProperties.properties.apiVersion));
+                    SEDX_CORE_INFO("Vendor ID: {}", ToString(devices[index].deviceProperties.properties.vendorID));
                     SEDX_CORE_INFO("============================================");
                     selectedPhysicalDevice = GFXDevice;
-                    deviceIndex = index; ///< Set the selected device index
+                    deviceIndex = index; // Set the selected device index
                     break;
                 }
 
-                if (devices[index].deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                if (devices[index].deviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
                 {
-                    SEDX_CORE_WARN_TAG("Graphics Engine", "Integrated GPU found: {}", ToString(devices[index].deviceProperties.deviceName));
+                    SEDX_CORE_WARN_TAG("Graphics Engine", "Integrated GPU found: {}", ToString(devices[index].deviceProperties.properties.deviceName));
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Scenery Editor X cannot utilize an integrated GPU currently.");
                 }
             }
@@ -122,22 +136,22 @@ namespace SceneryEditorX
             {
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Could not find discrete GPU.");
 
-                /// Fallback to integrated GPU if no discrete GPU was found
+                // Fallback to integrated GPU if no discrete GPU was found
                 for (int index = 0; index < devices.size(); ++index)
                 {
-                    if (devices[index].deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                    if (devices[index].deviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
                     {
-                        SEDX_CORE_WARN_TAG("Graphics Engine", "Falling back to integrated GPU: {}", ToString(devices[index].deviceProperties.deviceName));
+                        SEDX_CORE_WARN_TAG("Graphics Engine", "Falling back to integrated GPU: {}", ToString(devices[index].deviceProperties.properties.deviceName));
                         selectedPhysicalDevice = devices[index].physicalDevice;
                         deviceIndex = index;
                         break;
                     }
                 }
 
-                /// If still no GPU found, use the first available
+                // If still no GPU found, use the first available
                 if (!selectedPhysicalDevice && !devices.empty())
                 {
-                    SEDX_CORE_WARN_TAG("Graphics Engine", "Falling back to first available GPU: {}", ToString(devices[0].deviceProperties.deviceName));
+                    SEDX_CORE_WARN_TAG("Graphics Engine", "Falling back to first available GPU: {}", ToString(devices[0].deviceProperties.properties.deviceName));
                     selectedPhysicalDevice = devices[0].physicalDevice;  // <- Assign the value, not just access it
                     deviceIndex = 0;
                 }
@@ -433,6 +447,8 @@ namespace SceneryEditorX
         return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value();
     }
 
+	/// -------------------------------------------------------
+
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetGraphicsFamily() const
     {
         if (!graphicsFamily.has_value())
@@ -442,6 +458,8 @@ namespace SceneryEditorX
         }
         return graphicsFamily.value().second;
     }
+
+	/// -------------------------------------------------------
 
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetPresentFamily() const
     {
@@ -453,6 +471,8 @@ namespace SceneryEditorX
         return presentFamily.value().second;
     }
 
+	/// -------------------------------------------------------
+
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetComputeFamily() const
     {
         if (!computeFamily.has_value())
@@ -463,6 +483,8 @@ namespace SceneryEditorX
         return computeFamily.value().second;
     }
 
+	/// -------------------------------------------------------
+
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetTransferFamily() const
     {
         if (!transferFamily.has_value())
@@ -472,6 +494,7 @@ namespace SceneryEditorX
         }
         return transferFamily.value().second;
     }
+
     /// -------------------------------------------------------
 
     /**
@@ -496,10 +519,7 @@ namespace SceneryEditorX
 	 *
 	 * @see VulkanPhysicalDevice(), VulkanDevice
 	 */
-	Ref<VulkanPhysicalDevice> VulkanPhysicalDevice::Select(VkInstance &instance)
-	{
-		return CreateRef<VulkanPhysicalDevice>(instance);
-	}
+	Ref<VulkanPhysicalDevice> VulkanPhysicalDevice::Select(VkInstance &instance) { return CreateRef<VulkanPhysicalDevice>(instance); }
 
 	/**
 	 * @fn Selected
@@ -536,6 +556,8 @@ namespace SceneryEditorX
 
         return devices[deviceIndex];
 	}
+
+	/// -------------------------------------------------------
 
     VkPhysicalDevice VulkanPhysicalDevice::GetGPUDevices() const
     {
@@ -744,114 +766,231 @@ namespace SceneryEditorX
 	 *
 	 * @see LoadExtensionFunctions, InitializeBindlessResources, CreateBuffer
 	 */
-	VulkanDevice::VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice) : vkPhysicalDevice(physDevice)
+	VulkanDevice::VulkanDevice (const Ref<VulkanPhysicalDevice>& physDevice) : vkPhysicalDevice (physDevice)
     {
-		VulkanChecks checks;
 
         // Verify we have a valid physical device before proceeding
-        VkPhysicalDevice physicalDevice = physDevice->GetGPUDevices();
+        VkPhysicalDevice physicalDevice = physDevice->GetGPUDevices ();
         if (physicalDevice == VK_NULL_HANDLE)
         {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Cannot create logical device: Invalid physical device handle");
+            SEDX_CORE_ERROR_TAG ("Graphics Engine", "Cannot create logical device: Invalid physical device handle");
             return;
-        }
-
-	    VkPhysicalDeviceFeatures deviceFeatures = {};
-        deviceFeatures.samplerAnisotropy = VK_TRUE;                    ///< Enable anisotropic filtering
-        deviceFeatures.wideLines = VK_TRUE;                            ///< Enable wide lines if needed
-        deviceFeatures.fillModeNonSolid = VK_TRUE;                     ///< Enable non-solid fill modes
-        deviceFeatures.geometryShader = VK_TRUE;                       ///< Enable geometry shaders if needed
-        deviceFeatures.tessellationShader = VK_TRUE;                   ///< Enable tessellation shaders if needed
-        deviceFeatures.independentBlend = VK_TRUE;                     ///< Enable independent blending if needed
-        deviceFeatures.pipelineStatisticsQuery = VK_TRUE;              ///< Enable pipeline statistics queries if needed
-        deviceFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE; ///< Enable storage image writes without format
-
-        /// Prepare device extensions as vector<const char*>
-        std::vector<const char *> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-
-        /// Optionally add NVIDIA/AMD extensions if supported
-        if (VulkanChecks::IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME))
-            deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
-        if (VulkanChecks::IsExtensionSupported(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
-            deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
-
-        /// Check device extension support
-        std::vector<VkExtensionProperties> availableExtensions;
-        checks.CheckDeviceExtensionSupport(physicalDevice, availableExtensions, nullptr);
-        for (const char* ext : deviceExtensions)
-		{
-            bool found = false;
-            for (const auto&[extensionName, specVersion] : availableExtensions)
-			{
-                if (strcmp(ext, extensionName) == 0)
-				{
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-			{
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Required device extension not supported: {}", ext);
-                return;
-            }
         }
 
 		/// ---------------------------------------------------------
 
-	    auto supportedFeatures = deviceFeatures;
+        // Prepare device extensions as vector<const char*>
+        std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-		VkPhysicalDeviceFeatures2 features2 = {};
-		features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-		features2.features.geometryShader = VK_TRUE;
-		if (supportedFeatures.logicOp)           { features2.features.logicOp           = VK_TRUE; }
-		if (supportedFeatures.samplerAnisotropy) { features2.features.samplerAnisotropy = VK_TRUE; }
-		if (supportedFeatures.sampleRateShading) { features2.features.sampleRateShading = VK_TRUE; }
-		if (supportedFeatures.fillModeNonSolid)  { features2.features.fillModeNonSolid  = VK_TRUE; }
-		if (supportedFeatures.wideLines)         { features2.features.wideLines         = VK_TRUE; }
-		if (supportedFeatures.depthClamp)        { features2.features.depthClamp        = VK_TRUE; }
+		/// ---------------------------------------------------------
 
-	    VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
-        descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-        descriptorIndexingFeatures.runtimeDescriptorArray = true;
-        descriptorIndexingFeatures.descriptorBindingPartiallyBound = true;
-        descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = true;
-        descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing = true;
-        descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = true;
-        descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
-        descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = true;
+        {
+            // Optionally add NVIDIA/AMD extensions if supported
+            if (VulkanChecks::IsExtensionSupported (VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME))
+                deviceExtensions.push_back (VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+            if (VulkanChecks::IsExtensionSupported (VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
+                deviceExtensions.push_back (VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+        }
 
-        VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddresFeatures{};
-        bufferDeviceAddresFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-        bufferDeviceAddresFeatures.bufferDeviceAddress = VK_TRUE;
-        bufferDeviceAddresFeatures.pNext = &descriptorIndexingFeatures;
+		/// ---------------------------------------------------------
 
-	    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
-        accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-        accelerationStructureFeatures.accelerationStructure = VK_TRUE;
-        accelerationStructureFeatures.descriptorBindingAccelerationStructureUpdateAfterBind = VK_TRUE;
-        accelerationStructureFeatures.accelerationStructureCaptureReplay = VK_TRUE;
-        accelerationStructureFeatures.pNext = &bufferDeviceAddresFeatures;
+        {
+            VulkanChecks checks; // Check device extension support
+            std::vector<VkExtensionProperties> availableExtensions;
+            checks.CheckDeviceExtensionSupport (physicalDevice, availableExtensions, nullptr);
+            for (const char* ext : deviceExtensions)
+            {
+                bool found = false;
+                for (const auto& [extensionName, specVersion] : availableExtensions)
+                {
+                    if (strcmp (ext, extensionName) == 0)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    SEDX_CORE_ERROR_TAG ("Graphics Engine", "Required device extension not supported: {}", ext);
+                    return;
+                }
+            }
+        }
 
-	    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures{};
-        dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-        dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
-        dynamicRenderingFeatures.pNext = &accelerationStructureFeatures;
+        /// ---------------------------------------------------------
 
-        VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
-        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-        sync2Features.synchronization2 = VK_TRUE;
-        sync2Features.pNext = &dynamicRenderingFeatures;
+        {
+            VkPhysicalDeviceFeatures2 features2 = {};
+			VkPhysicalDeviceVulkan12Features vulkan12features = {};
+			VkPhysicalDeviceVulkan13Features vulkan13features = {};
+			VkPhysicalDeviceVulkan14Features vulkan14features = {};
+			VkPhysicalDeviceRobustness2FeaturesEXT robustness = {};
 
-        VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFeatures{};
-        atomicFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
-        atomicFeatures.shaderBufferFloat32AtomicAdd = VK_TRUE;
-        atomicFeatures.pNext = &sync2Features;
+			VkPhysicalDeviceFragmentShadingRateFeaturesKHR fragmentShadingRate = {};
+			VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentric = {};
 
-        features2.pNext = &atomicFeatures;
+			VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
+			VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutableDescriptor = {};
 
-		vkGetPhysicalDeviceFeatures2(physicalDevice, &features2);
+			VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddresFeatures{};
+			VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures{};
+			VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
+			VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFeatures{};
+			VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{};
 
-        /// Create the logical device
+			/*
+			VkPhysicalDeviceFeatures deviceFeatures = {};
+			deviceFeatures.samplerAnisotropy = VK_TRUE;                    // Enable anisotropic filtering
+			deviceFeatures.wideLines = VK_TRUE;                            // Enable wide lines if needed
+			deviceFeatures.fillModeNonSolid = VK_TRUE;                     // Enable non-solid fill modes
+			deviceFeatures.geometryShader = VK_TRUE;                       // Enable geometry shaders if needed
+			deviceFeatures.tessellationShader = VK_TRUE;                   // Enable tessellation shaders if needed
+			deviceFeatures.independentBlend = VK_TRUE;                     // Enable independent blending if needed
+			deviceFeatures.pipelineStatisticsQuery = VK_TRUE;              // Enable pipeline statistics queries if needed
+			deviceFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE; // Enable storage image writes without format
+			*/
+
+
+			/// ---------------------------------------------------------
+
+			fragmentShadingRate.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+			fragmentShadingRate.pNext = nullptr;
+
+			/// ---------------------------------------------------------
+
+			robustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+			robustness.pNext = &fragmentShadingRate;
+
+			/// ---------------------------------------------------------
+
+			vulkan12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+			vulkan12features.pNext = &robustness;
+
+			/// ---------------------------------------------------------
+
+			vulkan13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+			vulkan13features.pNext = &vulkan12features;
+
+			/// ---------------------------------------------------------
+
+			vulkan14features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+			vulkan14features.pNext = &vulkan13features;
+
+			/// ---------------------------------------------------------
+
+			barycentric.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
+			barycentric.pNext = &vulkan14features;
+
+			/// ---------------------------------------------------------
+
+			mutableDescriptor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
+			mutableDescriptor.pNext = &barycentric;
+
+			/// ---------------------------------------------------------
+
+			descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+			descriptorIndexingFeatures.pNext = &mutableDescriptor;
+			descriptorIndexingFeatures.runtimeDescriptorArray = true;
+			descriptorIndexingFeatures.descriptorBindingPartiallyBound = true;
+			descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = true;
+			descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing = true;
+			descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = true;
+			descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
+			descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = true;
+
+			/// ---------------------------------------------------------
+			bufferDeviceAddresFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+			bufferDeviceAddresFeatures.bufferDeviceAddress = VK_TRUE;
+			bufferDeviceAddresFeatures.pNext = &descriptorIndexingFeatures;
+
+			/// ---------------------------------------------------------
+
+			accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+			accelerationStructureFeatures.accelerationStructure = VK_TRUE;
+			accelerationStructureFeatures.descriptorBindingAccelerationStructureUpdateAfterBind = VK_TRUE;
+			accelerationStructureFeatures.accelerationStructureCaptureReplay = VK_TRUE;
+			accelerationStructureFeatures.pNext = &bufferDeviceAddresFeatures;
+
+			/// ---------------------------------------------------------
+
+			dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+			dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+			dynamicRenderingFeatures.pNext = &accelerationStructureFeatures;
+
+			/// ---------------------------------------------------------
+
+			sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+			sync2Features.synchronization2 = VK_TRUE;
+			sync2Features.pNext = &dynamicRenderingFeatures;
+
+			/// ---------------------------------------------------------
+
+			atomicFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+			atomicFeatures.shaderBufferFloat32AtomicAdd = VK_TRUE;
+			atomicFeatures.pNext = &sync2Features;
+
+			/// ---------------------------------------------------------
+
+            features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+			features2.features.geometryShader = VK_TRUE;
+			features2.pNext = &mutableDescriptor;
+
+			vkGetPhysicalDeviceFeatures2 (physicalDevice, &features2);
+
+			/// ---------------------------------------------------------
+
+			{
+				if (vulkan12features.timelineSemaphore) { vulkan12features.timelineSemaphore = VK_TRUE; }
+				if (vulkan12features.descriptorBindingVariableDescriptorCount) { vulkan12features.descriptorBindingVariableDescriptorCount = VK_TRUE; }
+				if (vulkan12features.descriptorBindingSampledImageUpdateAfterBind) { vulkan12features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE; }
+				if (vulkan12features.descriptorBindingPartiallyBound) { vulkan12features.descriptorBindingPartiallyBound = VK_TRUE; }
+				if (vulkan12features.runtimeDescriptorArray) { vulkan12features.runtimeDescriptorArray = VK_TRUE; }
+				if (vulkan12features.descriptorIndexing) { vulkan12features.descriptorIndexing = VK_TRUE; }
+				if (vulkan12features.shaderStorageBufferArrayNonUniformIndexing) { vulkan12features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE; }
+				if (vulkan12features.shaderSubgroupExtendedTypes) { vulkan12features.shaderSubgroupExtendedTypes = VK_TRUE; }
+				if (vulkan12features.shaderFloat16) { vulkan12features.shaderFloat16 = VK_TRUE; }
+				if (vulkan12features.shaderInt8) { vulkan12features.shaderInt8 = VK_TRUE; }
+				if (vulkan12features.scalarBlockLayout) { vulkan12features.scalarBlockLayout = VK_TRUE; }
+			}
+
+			/// ---------------------------------------------------------
+
+            {
+				if (features2.features.logicOp) { features2.features.logicOp = VK_TRUE; }
+				if (features2.features.shaderFloat64) { features2.features.shaderFloat64 = VK_TRUE; }
+				if (features2.features.samplerAnisotropy) { features2.features.samplerAnisotropy = VK_TRUE; }
+				if (features2.features.sampleRateShading) { features2.features.sampleRateShading = VK_TRUE; }
+				if (features2.features.fillModeNonSolid) { features2.features.fillModeNonSolid = VK_TRUE; }
+				if (features2.features.tessellationShader) { features2.features.tessellationShader = VK_TRUE; }
+				if (features2.features.wideLines) { features2.features.wideLines = VK_TRUE; }
+				if (features2.features.depthClamp) { features2.features.depthClamp = VK_TRUE; }
+				if (features2.features.imageCubeArray) { features2.features.imageCubeArray = VK_TRUE; }
+				if (features2.features.pipelineStatisticsQuery) { features2.features.pipelineStatisticsQuery = VK_TRUE; }
+				if (features2.features.shaderInt16) { features2.features.shaderInt16 = VK_TRUE; }
+				if (features2.features.geometryShader) { features2.features.geometryShader = VK_TRUE; }
+
+				if (vulkan13features.dynamicRendering) { vulkan13features.dynamicRendering = VK_TRUE; }
+				if (vulkan13features.synchronization2) { vulkan13features.synchronization2 = VK_TRUE; }
+				if (vulkan13features.shaderDemoteToHelperInvocation) { vulkan13features.shaderDemoteToHelperInvocation = VK_TRUE; }
+				if (vulkan13features.subgroupSizeControl) { vulkan13features.subgroupSizeControl = VK_TRUE; }
+				if (vulkan13features.shaderIntegerDotProduct) { vulkan13features.shaderIntegerDotProduct = VK_TRUE; }
+
+				if (robustness.nullDescriptor) { robustness.nullDescriptor = VK_TRUE; }
+				if (mutableDescriptor.mutableDescriptorType) { mutableDescriptor.mutableDescriptorType = VK_TRUE; }
+
+            }
+
+			/// ---------------------------------------------------------
+
+            {
+				if (vulkan14features.pushDescriptor) { vulkan14features.pushDescriptor = VK_TRUE; }
+            }
+
+        }
+
+		/// ---------------------------------------------------------
+
+        // Create the logical device
         VkDeviceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -865,14 +1004,14 @@ namespace SceneryEditorX
         createInfo.pQueueCreateInfos = physDevice->Selected().queueCreateInfos.data();
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(physDevice->Selected().queueCreateInfos.size());
 
-		if (VulkanChecks::IsExtensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
+        if (VulkanChecks::IsExtensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
             deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
 
         if (!deviceExtensions.empty())
-		{
-			createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-			createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-		}
+        {
+            createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+            createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+        }
 
         if (enableValidationLayers)
         {
@@ -886,20 +1025,45 @@ namespace SceneryEditorX
             createInfo.enabledLayerCount = 0;
         }
 
-        createInfo.pEnabledFeatures = &deviceFeatures;
-        createInfo.pNext = &features2; // Use features2 for Vulkan 1.2+
+        //createInfo.pEnabledFeatures = &features2;
+        //createInfo.pNext = &features2;
 
-		/// Create the logical device
+		VkPhysicalDeviceFragmentShadingRatePropertiesKHR shadingRateProperties = {};
+		shadingRateProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
+
+		VkPhysicalDeviceVulkan13Properties vulkan13Properties = {};
+		vulkan13Properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+        vulkan13Properties.pNext = &shadingRateProperties;
+
+		VkPhysicalDeviceProperties2 deviceProperties2 = {};
+        deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        deviceProperties2.pNext = &vulkan13Properties;
+
+		vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+
+		properties::min_UniformBufferOffsetAlignment = deviceProperties2.properties.limits.minUniformBufferOffsetAlignment;
+		properties::min_StorageBufferOffsetAlignment = deviceProperties2.properties.limits.minStorageBufferOffsetAlignment;
+        properties::optimalBufferCopyOffsetAlignment = deviceProperties2.properties.limits.optimalBufferCopyOffsetAlignment;
+        properties::max_1D_TextureDimension = deviceProperties2.properties.limits.maxImageDimension1D;
+        properties::max_2D_TextureDimension = deviceProperties2.properties.limits.maxImageDimension2D;
+        properties::max_3D_TextureDimension = deviceProperties2.properties.limits.maxImageDimension3D;
+        properties::max_Cube_TextureDimension = deviceProperties2.properties.limits.maxImageDimensionCube;
+        properties::max_TextureArrayLayers = deviceProperties2.properties.limits.maxImageArrayLayers;
+        properties::max_PushConstantSize = deviceProperties2.properties.limits.maxPushConstantsSize;
+        properties::max_X_ShadingRateTexel = shadingRateProperties.maxFragmentShadingRateAttachmentTexelSize.width;
+        properties::max_Y_ShadingRateTexel = shadingRateProperties.maxFragmentShadingRateAttachmentTexelSize.height;
+
+        // Create the logical device
         if (auto result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &device); result != VK_SUCCESS)
-		{
-			SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device! Error: {}", static_cast<int>(result));
+        {
+            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create logical device! Error: {}", static_cast<int>(result));
             device = VK_NULL_HANDLE; // Ensure device is set to null for error checking elsewhere
-			return;
-		}
+            return;
+        }
 
         SEDX_CORE_INFO_TAG("Graphics Engine", "Logical device created successfully");
 
-        /// Get device queues
+        // Get device queues
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetGraphicsFamily(), 0, &GraphicsQueue);
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetComputeFamily(), 0, &ComputeQueue);
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetPresentFamily(), 0, &PresentQueue);
@@ -913,27 +1077,44 @@ namespace SceneryEditorX
         SEDX_CORE_INFO("Transfer {}", physDevice->QFamilyIndices.GetTransferFamily());
     #endif
 
-        /// Load device extension function pointers
-        LoadExtensionFunctions(device);
+        // Load device extension function pointers
+        LoadExtensionFunctions();
 
-        //RenderData::apiVersion renderData;
-		/// Initialize memory allocator
-        //MemoryAllocator::Init(device, renderData);
+		uint32_t apiVersion = RenderData::GetVulkanAPIVersion(); // Get the Vulkan API version
 
-		/// Set up bindless resources and initial buffers
+    #ifdef SEDX_DEBUG
+		SEDX_CORE_INFO("Retrieved the current Vulkan API Version: {}", apiVersion);
+    #endif
+
+        // Initialize memory allocator
+        //MemoryAllocator::Init(apiVersion);
+
+		// Set up bindless resources and initial buffers
 		//InitBindlessResources(device, bindlessResources);
 
-		/// Create initial scratch buffer
-		//scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
+		/*
+		#ifdef SEDX_DEBUG
+				SEDX_CORE_INFO ("Creating Staging/Scratch Buffer");
+		#endif
+		*/
 
-		/// Get the device address for the scratch buffer
-		// if (vkGetBufferDeviceAddressKHR != nullptr)
-		// {
-		// 	VkBufferDeviceAddressInfo scratchInfo{};
-		// 	scratchInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-		// 	scratchInfo.buffer = scratchBuffer.bufferResource->buffer;
-		// 	scratchAddress = vkGetBufferDeviceAddressKHR(device, &scratchInfo);
-		// }
+		// Create initial scratch buffer
+        //scratchBuffer = CreateStagingBuffer(initialScratchBufferSize, "ScratchBuffer");
+		//scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
+		// Get the device address for the scratch buffer
+		/*
+		if (vkGetBufferDeviceAddressKHR != nullptr)
+		{
+			VkBufferDeviceAddressInfo scratchInfo{};
+			scratchInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+			scratchInfo.buffer = scratchBuffer.resource->buffer;
+			scratchAddress = vkGetBufferDeviceAddressKHR(device, &scratchInfo);
+		}
+		*/
+
+		#ifdef SEDX_DEBUG
+				SEDX_CORE_INFO("Successfully created scratch buffer: {}", ToString(scratchAddress));
+		#endif
 	}
 
 	/**
@@ -963,23 +1144,22 @@ namespace SceneryEditorX
 	 *
 	 * @see vkGetDeviceProcAddr
 	 */
-    void VulkanDevice::LoadExtensionFunctions(VkDevice vkDevice)
+    void VulkanDevice::LoadExtensionFunctions()
 	{
-        device = vkDevice;
 
     #ifdef SEDX_DEBUG
 		// Load debug utils functions
-		vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device,"vkSetDebugUtilsObjectNameEXT");
+		vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetDeviceProcAddr(this->device, "vkSetDebugUtilsObjectNameEXT"));
     #endif
 
 	    // Load ray tracing functions
     #ifdef SEDX_RAYTRACE
-		vkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetDeviceProcAddr(device,"vkGetAccelerationStructureBuildSizesKHR");
-		vkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR");
-		vkGetBufferDeviceAddressKHR = (PFN_vkGetBufferDeviceAddressKHR)vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddressKHR");
-		vkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetDeviceProcAddr(device, "vkCmdBuildAccelerationStructuresKHR");
-		vkGetAccelerationStructureDeviceAddressKHR = (PFN_vkGetAccelerationStructureDeviceAddressKHR) vkGetDeviceProcAddr(device, "vkGetAccelerationStructureDeviceAddressKHR");
-		vkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR");
+		vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(this->device, "vkGetAccelerationStructureBuildSizesKHR"));
+		vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(this->device, "vkCreateAccelerationStructureKHR"));
+		vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(this->device, "vkGetBufferDeviceAddressKHR"));
+		vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(this->device, "vkCmdBuildAccelerationStructuresKHR"));
+		vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(this->device, "vkGetAccelerationStructureDeviceAddressKHR"));
+		vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(this->device, "vkDestroyAccelerationStructureKHR"));
     #endif
 	}
 
@@ -1049,15 +1229,11 @@ namespace SceneryEditorX
 	 */
 	VulkanDevice::~VulkanDevice()
 	{
-		/// Wait for device to be idle before cleanup
-		if (device != VK_NULL_HANDLE)
-            vkDeviceWaitIdle(device);
+		// Wait for device to be idle before cleanup
+		if (device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
 
-        /// Clean up command pools
-		CmdPools.clear();
-
-		/// Clean up scratch buffer
-		//scratchBuffer = {};
+		// Clean up scratch buffer
+		//scratchBuffer.Release();
 
 		/*
 		/// Clean up bindless resources
@@ -1075,7 +1251,7 @@ namespace SceneryEditorX
         */
 
 		// Shutdown bindless descriptor system prior to device destruction
-		BindlessDescriptorManager::Shutdown();
+		//BindlessDescriptorManager::Shutdown();
 
 		/// Destroy logical device
 		if (device != VK_NULL_HANDLE)
@@ -1112,11 +1288,20 @@ namespace SceneryEditorX
 	 */
 	VmaAllocator VulkanDevice::GetMemoryAllocator() const
 	{
-		if (memoryAllocator)
-			return MemoryAllocator::GetAllocator();
+		// Query the global allocator directly; don't gate on a local member flag
+        if (VmaAllocator alloc = MemoryAllocator::GetAllocator())
+			return alloc;
 
-		SEDX_CORE_ERROR_TAG("Graphics Engine", "Memory allocator not initialized.");
+		SEDX_CORE_ERROR_TAG ("Graphics Engine",
+			"Memory allocator (VMA) not initialized. Ensure RenderContext::Init() completed successfully and MemoryAllocator::Init() was called after device creation.");
 		return nullptr;
+	}
+
+	VkCommandBuffer VulkanDevice::GetCommandBuffer (bool begin)
+	{
+		// Allocate a primary command buffer from the thread-local graphics command pool.
+		// If begin is true, it will be begun with ONE_TIME_SUBMIT.
+		return GetOrCreateThreadLocalCommandPool ()->AllocateCommandBuffer (begin, /*compute=*/false);
 	}
 
     /*
@@ -1402,7 +1587,7 @@ namespace SceneryEditorX
 
     void VulkanDevice::FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue)
     {
-        GetThreadLocalCommandPool()->FlushCmdBuffer(cmdBuffer);
+		GetThreadLocalCommandPool()->FlushCmdBuffer (cmdBuffer, queue);
     }
 
     /// -------------------------------------------------------
@@ -1832,37 +2017,36 @@ namespace SceneryEditorX
 	 *
 	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
 	 */
-    CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type)
-    {
-        const auto vulkanDeviceHandle = vulkanDevice->GetDevice();
-        const auto &queueIndices = vulkanDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
-        VkCommandPool commandPool;
+	CommandPool::CommandPool (const Ref<VulkanDevice>& vulkanDevice, Queue type)
+	{
+		const auto vulkanDeviceHandle = vulkanDevice->GetDevice ();
+		const auto& queueIndices = vulkanDevice->GetPhysicalDevice ()->GetQueueFamilyIndices ();
 
-        queueType = type;
+		queueType = type;
 
-        // Create command pool
-        VkCommandPoolCreateInfo cmdPoolInfo{};
-        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        cmdPoolInfo.queueFamilyIndex = queueIndices.graphicsFamily->first;
+		// Create graphics command pool
+		VkCommandPoolCreateInfo cmdPoolInfo{};
+		cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		cmdPoolInfo.queueFamilyIndex = queueIndices.GetGraphicsFamily ();
 
-        VkResult result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &commandPool);
-        if (result != VK_SUCCESS)
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create graphics command pool! Error: {}", static_cast<int>(result));
+		VkResult result = vkCreateCommandPool (vulkanDeviceHandle, &cmdPoolInfo, nullptr, &GraphicsCmdPool);
+		if (result != VK_SUCCESS)
+			SEDX_CORE_ERROR_TAG ("Graphics Engine", "Failed to create graphics command pool! Error: {}", static_cast<int>(result));
 
-        /// Create compute command pool if compute queue is available
-        if (queueIndices.computeFamily.has_value())
-        {
-            cmdPoolInfo.queueFamilyIndex = queueIndices.GetComputeFamily();
+		// Create compute command pool if compute queue is available
+		if (queueIndices.computeFamily.has_value ())
+		{
+			cmdPoolInfo.queueFamilyIndex = queueIndices.GetComputeFamily ();
 
-            result = vkCreateCommandPool(vulkanDeviceHandle, &cmdPoolInfo, nullptr, &ComputeCmdPool);
-            if (result != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create compute command pool! Error: {}", static_cast<int>(result));
-                ComputeCmdPool = GraphicsCmdPool; /// Fall back to using graphics pool for compute operations
-            }
-        }
-    }
+			result = vkCreateCommandPool (vulkanDeviceHandle, &cmdPoolInfo, nullptr, &ComputeCmdPool);
+			if (result != VK_SUCCESS)
+			{
+				SEDX_CORE_ERROR_TAG ("Graphics Engine", "Failed to create compute command pool! Error: {}", static_cast<int>(result));
+				ComputeCmdPool = GraphicsCmdPool; // Fallback: use graphics pool for compute
+			}
+		}
+	}
 
     /**
 	 * @fn ~CommandPool
@@ -2044,56 +2228,65 @@ namespace SceneryEditorX
     }
     */
 
-    void CommandPool::FlushCmdBuffer(VkCommandBuffer cmdBuffer) const
-    {
-        auto deviceRef = RenderContext::GetCurrentDevice();
-        SEDX_CORE_ASSERT(deviceRef, "No VulkanDevice available");
-        VkDevice device = deviceRef->GetDevice();
+	void CommandPool::FlushCmdBuffer (VkCommandBuffer cmdBuffer) const
+	{
+		auto deviceRef = RenderContext::GetCurrentDevice ();
+		SEDX_CORE_ASSERT (deviceRef, "No VulkanDevice available");
+		VkDevice device = deviceRef->GetDevice ();
 
-        VkQueue queue = deviceRef->GetGraphicsQueue(); // fallback
-        // If queueType captured, map to correct queue:
-        // (Assuming methods exist; adjust if API differs)
-        // switch (queueType) { ... }
+		// End the command buffer before submitting
+		VK_CHECK_RESULT (vkEndCommandBuffer (cmdBuffer))
+
+        VkQueue queue = deviceRef->GetGraphicsQueue (); // default submission queue
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cmdBuffer;
+
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		VkFence fence = VK_NULL_HANDLE;
+		VK_CHECK_RESULT (vkCreateFence (device, &fenceInfo, nullptr, &fence))
+
+		if (VkResult res = vkQueueSubmit (queue, 1, &submitInfo, fence); res != VK_SUCCESS)
+			SEDX_CORE_ERROR_TAG ("VULKAN", "Failed to submit command buffer (err {0})", res);
+
+		vkWaitForFences (device, 1, &fence, VK_TRUE, UINT64_MAX);
+		vkDestroyFence (device, fence, nullptr);
+
+		// Free the transient command buffer
+		vkFreeCommandBuffers (device, GraphicsCmdPool, 1, &cmdBuffer);
+	}
+
+	void CommandPool::FlushCmdBuffer (VkCommandBuffer cmdBuffer, VkQueue queue) const
+	{
+		auto deviceRef = RenderContext::GetCurrentDevice ();
+		SEDX_CORE_ASSERT (deviceRef, "No VulkanDevice available");
+		VkDevice device = deviceRef->GetDevice ();
+
+		// End the command buffer before submitting
+		VK_CHECK_RESULT (vkEndCommandBuffer (cmdBuffer))
 
         VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdBuffer;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cmdBuffer;
 
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        VkFence fence;
-        vkCreateFence(device, &fenceInfo, nullptr, &fence);
+		VkFenceCreateInfo fenceInfo{};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		VkFence fence = VK_NULL_HANDLE;
+		VK_CHECK_RESULT (vkCreateFence (device, &fenceInfo, nullptr, &fence))
 
-        if (VkResult res = vkQueueSubmit(queue, 1, &submitInfo, fence); res != VK_SUCCESS)
-            SEDX_CORE_ERROR_TAG("VULKAN", "Failed to submit command buffer (err {0})", res);
+		if (VkResult res = vkQueueSubmit (queue, 1, &submitInfo, fence); res != VK_SUCCESS)
+			SEDX_CORE_ERROR_TAG ("VULKAN", "Failed to submit command buffer (explicit queue) (err {0})", res);
 
-        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-        vkDestroyFence(device, fence, nullptr);
-    }
+		vkWaitForFences (device, 1, &fence, VK_TRUE, UINT64_MAX);
+		vkDestroyFence (device, fence, nullptr);
 
-    void CommandPool::FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const
-    {
-        auto deviceRef = RenderContext::GetCurrentDevice();
-        SEDX_CORE_ASSERT(deviceRef, "No VulkanDevice available");
-        VkDevice device = deviceRef->GetDevice();
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdBuffer;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        VkFence fence;
-        vkCreateFence(device, &fenceInfo, nullptr, &fence);
-
-        if (VkResult res = vkQueueSubmit(queue, 1, &submitInfo, fence); res != VK_SUCCESS)
-            SEDX_CORE_ERROR_TAG("VULKAN", "Failed to submit command buffer (explicit queue) (err {0})", res);
-
-        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-        vkDestroyFence(device, fence, nullptr);
-    }
+		// Free the transient command buffer
+		vkFreeCommandBuffers (device, GraphicsCmdPool, 1, &cmdBuffer);
+	}
 
 }
 

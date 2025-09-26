@@ -139,10 +139,22 @@ namespace SceneryEditorX
 
     void Renderer::Init()
     {
-        /// Initialize the rendering system. This includes setting up the render context, command buffers, etc.
-        /// Get the render context (Initialize the context if needed)
+        /**
+         * Initializeing the rendering system.
+         *
+         * Sets up the:
+         * - Render context
+         * - Command buffers
+         */
+
+        // Get the render context (Initialize the context if needed)
         if (const auto context = GetContext())
             context->Init();
+
+        // Initialize async render dispatcher
+        RenderDispatcher::Init();
+
+		/// -------------------------------------------------------
 
         s_Data = new RendererProperties;
 		SEDX_CORE_INFO_TAG("Renderer", "Initialized new RenderProperties: {}", ToString(s_Data));
@@ -152,6 +164,8 @@ namespace SceneryEditorX
         config.framesInFlight = xMath::Min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
 		SEDX_CORE_INFO_TAG("Renderer", "Checked Swapchain image count:");
 		SEDX_CORE_INFO("Frames-in-flight: {}", config.framesInFlight);
+
+
 
         s_Data->DescriptorPools.resize(config.framesInFlight);
 		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPools");
@@ -252,8 +266,6 @@ namespace SceneryEditorX
         s_Data->BlackCubeTexture = CreateRef<TextureCube>(spec, Buffer(blackCubeTextureData, sizeof(blackCubeTextureData)));
         */
 
-        // Initialize async render dispatcher
-        RenderDispatcher::Init();
 		// Initialize bindless descriptor manager
 		BindlessDescriptorManager::Init();
 
@@ -269,7 +281,9 @@ namespace SceneryEditorX
 		auto devRef = RenderContext::GetCurrentDevice();
         if (VkDevice device = devRef ? devRef->GetDevice() : VK_NULL_HANDLE; device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
 
+        RenderDispatcher::Flush();
 		RenderDispatcher::Shutdown();
+
 		BindlessDescriptorManager::Shutdown();
 
 		if (s_Data->SamplerPoint) { DestroySampler(s_Data->SamplerPoint); s_Data->SamplerPoint = nullptr; }
@@ -676,7 +690,7 @@ namespace SceneryEditorX
      */
     double Renderer::GetTimestampPeriodInMS() const
     {
-        return static_cast<double>(RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->GetDeviceProperties().limits.timestampPeriod) * 1e-6;
+        return static_cast<double>(RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->GetDeviceProperties().properties.limits.timestampPeriod) * 1e-6;
     }
 
     /*

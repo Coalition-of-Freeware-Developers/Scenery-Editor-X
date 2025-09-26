@@ -17,7 +17,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
 #include <SceneryEditorX/utils/system_detection.h>
 
 /// -------------------------------------------------------

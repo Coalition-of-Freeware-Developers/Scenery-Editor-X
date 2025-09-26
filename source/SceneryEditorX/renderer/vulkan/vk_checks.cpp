@@ -54,10 +54,10 @@ namespace SceneryEditorX
 	        return false;
 	    }
 
-	    RenderData::apiVersion vulkanVersion = {vulkanVersion.Variant = VK_API_VERSION_VARIANT(instanceVersion),
-	                                            vulkanVersion.Major = VK_API_VERSION_MAJOR(instanceVersion),
-	                                            vulkanVersion.Minor = VK_API_VERSION_MINOR(instanceVersion),
-	                                            vulkanVersion.Patch = VK_API_VERSION_PATCH(instanceVersion)};
+	    RenderData::apiVersion vulkanVersion = {.Variant = vulkanVersion.Variant = VK_API_VERSION_VARIANT(instanceVersion),
+                                                .Major = vulkanVersion.Major = VK_API_VERSION_MAJOR(instanceVersion),
+                                                .Minor = vulkanVersion.Minor = VK_API_VERSION_MINOR(instanceVersion),
+                                                .Patch = vulkanVersion.Patch = VK_API_VERSION_PATCH(instanceVersion)};
 
 	    if (instanceVersion < minVulkanVersion)
 	    {
@@ -191,11 +191,11 @@ namespace SceneryEditorX
 
 	    constexpr VulkanDeviceFeatures requiredFeatures; /// Create a temporary instance with default values
 
-	    /// Check for all true features in our configuration if they're supported by the device
+	    // Check for all true features in our configuration if they're supported by the device
 	    bool missingFeatures = false;
 	    std::string missingFeaturesLog;
 
-	    /// Check all features that might be required by our application
+	    // Check all features that might be required by our application
 	    CHECK_FEATURE(robustBufferAccess)
 	    CHECK_FEATURE(fullDrawIndexUint32)
 	    CHECK_FEATURE(imageCubeArray)
@@ -276,17 +276,13 @@ namespace SceneryEditorX
 	    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 	    vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-	    /// Check for required device type (discrete GPU preferred)
+	    // Check for required device type (discrete GPU preferred)
 	    if (bool isDiscreteGPU = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU); !isDiscreteGPU)
 	        SEDX_CORE_WARN_TAG("Graphics Core", "Graphics device is not a discrete GPU. Performance might be affected.");
 
-	    if (const bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
-	                                (CheckDeviceFeatures(device) == true);
-	        !isSuitable)
+	    if (const bool isSuitable = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) && (CheckDeviceFeatures(device) == true); !isSuitable)
 	    {
-	        SEDX_CORE_ERROR_TAG(
-	            "Graphics Core",
-	            "Your device does not contain the features required for this Vulkan device or is not discrete GPU");
+	        SEDX_CORE_ERROR_TAG( "Device", "Your device does not contain the features required for this Vulkan device or is not discrete GPU");
 	        return false;
 
 	        //TODO: Add error handling in case the device is an integrated GPU.
@@ -332,7 +328,6 @@ namespace SceneryEditorX
         for (const char* layerName : layers)
         {
             bool layerFound = false;
-
             for (const auto& layerProperties : availableLayers)
             {
                 if (strcmp(layerName, layerProperties.layerName) == 0)
@@ -351,9 +346,7 @@ namespace SceneryEditorX
         }
 
         if (!allLayersFound)
-        {
             SEDX_CORE_WARN_TAG("Vulkan", "Not all requested validation layers are available");
-        }
     }
 
     /**
@@ -392,6 +385,6 @@ namespace SceneryEditorX
         return false;
     }
 
-} // namespace SceneryEditorX
+}
 
 /// -------------------------------------------------------

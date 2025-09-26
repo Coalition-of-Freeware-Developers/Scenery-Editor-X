@@ -11,15 +11,15 @@
 * -------------------------------------------------------
 */
 #include "window.h"
+#include "icon.h"
+#include "monitor_data.h"
+#include "SceneryEditorX/core/input/input.h"
+#include "SceneryEditorX/core/memory/memory.h"
 #include <stb_image.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/events/application_events.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <imgui/imgui.h>
-#include "icon.h"
-#include "monitor_data.h"
-#include "SceneryEditorX/core/input/input.h"
-#include "SceneryEditorX/core/memory/memory.h"
 
 /// -------------------------------------------------------
 
@@ -355,35 +355,34 @@ namespace SceneryEditorX
      */
     void Window::Shutdown()
     {
-        // Fast-path: if everything is already released, make this idempotent
         if (!swapChain && !m_window && !renderContext)
         {
-            SEDX_CORE_WARN_TAG("TEARDOWN", "Window::Shutdown called but resources already released. Skipping.");
+            SEDX_CORE_WARN_TAG("Window", "Shutdown called but resources already released. Skipping.");
             return;
         }
 
-        // 1) Ensure GPU presentation resources are torn down first
+        // Ensure GPU presentation resources are torn down first
         if (swapChain)
         {
-            SEDX_CORE_INFO_TAG("TEARDOWN", "Destroying Swapchain and related resources");
+            SEDX_CORE_INFO_TAG("Window", "Destroying Swapchain and related resources");
             swapChain->Destroy();
 
             // Tag-logged assertions to catch regressions before device destruction
-            SEDX_CORE_ASSERT(swapChain->GetSwapchain() == VK_NULL_HANDLE,"[TEARDOWN] Swapchain handle must be null before device destroy");
-            SEDX_CORE_ASSERT(swapChain->GetRenderPass() == VK_NULL_HANDLE,"[TEARDOWN] RenderPass handle must be null before device destroy");
+            SEDX_CORE_ASSERT(swapChain->GetSwapchain() == VK_NULL_HANDLE,"[Window] Swapchain handle must be null before device destroy");
+            SEDX_CORE_ASSERT(swapChain->GetRenderPass() == VK_NULL_HANDLE,"[Window] RenderPass handle must be null before device destroy");
 
             delete swapChain;
             swapChain = nullptr;
         }
 
-        // 2) Destroy the window after swapchain teardown
+        // Destroy the window after swapchain teardown
         if (m_window)
         {
             glfwDestroyWindow(m_window);
             m_window = nullptr;
         }
 
-        SEDX_CORE_ASSERT(swapChain == nullptr, "[TEARDOWN] SwapChain pointer must be null prior to device destruction");
+        SEDX_CORE_ASSERT(swapChain == nullptr, "[Window] SwapChain pointer must be null prior to device destruction");
 
         if (windowInit)
 		{
@@ -391,8 +390,7 @@ namespace SceneryEditorX
             windowInit = false;
         }
 
-        // Drop our local reference to the render context to reduce chances of post-shutdown use
-        renderContext.Reset();
+        renderContext.Reset();	// Drop local reference to render context
     }
 
 	void Window::SwapBuffers()
@@ -447,7 +445,7 @@ namespace SceneryEditorX
 	 */
 	void Window::ScrollCallback(GLFWwindow* window,double x,double y)
 	{
-        auto *windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
+        auto* windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
         if (windowInstance->windowCallbacks.scrollCallback)
         {
             //windowInstance->cameraMovement.zoomValue = 4.0f * (float)y;

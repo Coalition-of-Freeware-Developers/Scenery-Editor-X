@@ -15,6 +15,8 @@
 #include "SceneryEditorX/renderer/render_context.h"
 #include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
 
+#include <vma/vk_mem_alloc.h>
+#include <vma/vk_mem_alloc.h>
 /// ----------------------------------------------------------
 
 namespace SceneryEditorX
@@ -103,9 +105,28 @@ namespace SceneryEditorX
 	 */
     Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, const std::string &name)
 	{
-        auto device = RenderContext::Get()->GetLogicDevice();
-        // Get the allocator from the current device
-        const VmaAllocator vmaAllocator = device->GetMemoryAllocator();
+		// Resolve device safely
+		auto rc = RenderContext::Get();
+		if (!rc)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "RenderContext is not available");
+			return {};
+		}
+
+		auto device = rc->GetLogicDevice();
+		if (!device || device->GetDevice() == VK_NULL_HANDLE)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "Logical device is not available");
+			return {};
+		}
+
+		// Get the allocator from the current device
+		const VmaAllocator vmaAllocator = device->GetMemoryAllocator();
+		if (!vmaAllocator)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine", "VMA allocator is null; buffer creation aborted");
+			return {};
+		}
 
 	    /// ---------------------------------------------------------
 
@@ -117,13 +138,15 @@ namespace SceneryEditorX
 	    if (usage & BufferUsage::Index)
 	        usage |= BufferUsage::TransferDst;
 
-	    // Handle storage buffers - add address flag and align size
-	    if (usage & BufferUsage::Storage)
-	    {
-	        usage |= BufferUsage::Address;
-	        // Align storage buffer size to minimum required alignment
-            size += size % device->GetPhysicalDevice()->GetDeviceProperties().limits.minStorageBufferOffsetAlignment;
-        }
+		// Handle storage buffers - add address flag and align size
+		if (usage & BufferUsage::Storage)
+		{
+			usage |= BufferUsage::Address;
+
+			// Align storage buffer size up to minimum required alignment
+            if (const uint64_t align = device->GetPhysicalDevice()->GetDeviceProperties().properties.limits.minStorageBufferOffsetAlignment; align > 0)
+				size = ((size + align - 1) / align) * align;
+		}
 
 	    // Handle acceleration structure input buffers
 	    if (usage & BufferUsage::AccelerationStructureInput)
@@ -136,27 +159,51 @@ namespace SceneryEditorX
 	    if (usage & BufferUsage::AccelerationStructure)
 	        usage |= BufferUsage::Address;
 
-	    // Create buffer resource
-	    const Ref<BufferResource> resource = CreateRef<BufferResource>();
+		// Create buffer resource
+		const Ref<BufferResource> resource = CreateRef<BufferResource> ();
+		resource->debugName = name;
 
-	    // Configure buffer creation info
-	    VkBufferCreateInfo bufferInfo{};
-	    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	    bufferInfo.size = size;
-	    bufferInfo.usage = static_cast<VkBufferUsageFlagBits>(usage);
-	    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		// Configure buffer creation info
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size;
+		bufferInfo.usage = static_cast<VkBufferUsageFlags>(usage);
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	    // TODO: Swap with MemoryAllocator class
-	    // Configure memory allocation info
-	    VmaAllocationCreateInfo allocInfo = {};
-	    allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-	    // Enable memory mapping for CPU-accessible buffers
-	    if (memory & CPU)
-	        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		// Configure memory allocation info
+		VmaAllocationCreateInfo allocInfo{};
+		allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
-	    // TODO: Swap with MemoryAllocator class
-	    // Create the buffer with VMA
-	    SEDX_ASSERT(vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo, &resource->buffer, &resource->allocation, nullptr));
+		// Enable memory mapping for CPU-accessible buffers
+		if (memory & MemoryType::CPU)
+		{
+			allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		}
+
+		// Create the buffer with VMA
+		VkResult vmaResult = vmaCreateBuffer(
+			vmaAllocator,
+			&bufferInfo,
+			&allocInfo,
+			&resource->buffer,
+			&resource->allocation,
+			nullptr
+		);
+
+		if (vmaResult != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR_TAG("Graphics Engine",
+				"vmaCreateBuffer failed (name: '{}', size: {}, usage: 0x{:X}) VkResult={}",
+				name, size, static_cast<uint32_t>(bufferInfo.usage), vmaResult);
+			return {};
+		}
+
+		// Fetch native VkDeviceMemory to expose in resource (optional, but useful)
+		{
+			VmaAllocationInfo outInfo{};
+			vmaGetAllocationInfo(vmaAllocator, resource->allocation, &outInfo);
+			resource->memory = outInfo.deviceMemory;
+		}
 
 	    // Create and populate the buffer wrapper
 	    Buffer buffer;
@@ -165,13 +212,14 @@ namespace SceneryEditorX
 	    buffer.usage = usage;
 	    buffer.memory = memory;
 
-			// Register storage buffer into global bindless manager if available
-			if (usage & BufferUsage::Storage)
-			{
-				// Register buffer in bindless descriptor manager
-				uint32_t bIndex = BindlessDescriptorManager::RegisterStorageBuffer(resource->buffer, size, 0);
-				resource->resourceID = bIndex;
-			}
+		// Register storage buffer into global bindless manager if available
+		if (usage & BufferUsage::Storage)
+		{
+			// Register buffer in bindless descriptor manager
+			const uint32_t bIndex = BindlessDescriptorManager::RegisterStorageBuffer(resource->buffer, size, 0);
+			SEDX_ASSERT(bIndex <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()),"Bindless buffer index exceeds int32_t range");
+			resource->resourceID = static_cast<int32_t>(bIndex);
+		}
 
 	    return buffer;
 	}
@@ -182,7 +230,7 @@ namespace SceneryEditorX
      * @param buffer The buffer resource to map to CPU-accessible memory
      * @return void* Pointer to the mapped memory region
      */
-    void *MapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
+    void* MapBuffer(const Buffer &buffer)  // NOLINT(misc-use-internal-linkage)
     {
 	    auto device = RenderContext::Get()->GetLogicDevice();
         SEDX_ASSERT(buffer.memory & MemoryType::CPU, "Buffer not accessible to the CPU.");

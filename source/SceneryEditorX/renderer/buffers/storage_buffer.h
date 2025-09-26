@@ -29,11 +29,11 @@ namespace SceneryEditorX
     class StorageBuffer : public RefCounted
     {
     public:
-        StorageBuffer(uint32_t size, const StorageBufferSpec &spec);
+        StorageBuffer(uint32_t size, StorageBufferSpec spec);
         virtual ~StorageBuffer() override; // RAII via Buffer
 
         void SetData(const void* data, uint32_t size, uint32_t offset = 0);
-        void SetRenderThreadData(const void* data, uint32_t size, uint32_t offset = 0);
+        void SetRenderThreadData(const void* data, uint32_t size, uint32_t offset = 0) const;
         void Resize(uint32_t newSize);
 
         [[nodiscard]] VkBuffer GetBuffer() const { return m_Buffer.resource ? m_Buffer.resource->buffer : VK_NULL_HANDLE; }
@@ -56,13 +56,13 @@ namespace SceneryEditorX
     class StorageBufferSet : public RefCounted
     {
     public:
-        explicit StorageBufferSet(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight);
+        explicit StorageBufferSet(StorageBufferSpec spec, uint32_t size, uint32_t framesInFlight);
         virtual ~StorageBufferSet() override;
 
         Ref<StorageBuffer> Get();
-        Ref<StorageBuffer> Get(uint32_t frame);
+        Ref<StorageBuffer> Get(uint64_t frame);
         Ref<StorageBuffer> GetRenderThread();
-        void Set(Ref<StorageBuffer> storageBuffer, uint32_t frame);
+        void Set(const Ref<StorageBuffer> &storageBuffer, uint64_t frame);
         void Resize(uint32_t newSize) const;
 
         /// -------------------------------------------------------

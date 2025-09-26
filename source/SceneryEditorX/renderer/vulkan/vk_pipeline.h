@@ -28,8 +28,17 @@ namespace SceneryEditorX
 
         virtual ~PipelineResource() override
         {
-            vkDestroyPipeline(RenderContext::GetCurrentDevice()->GetDevice(), pipeline, nullptr);
-            vkDestroyPipelineLayout(RenderContext::GetCurrentDevice()->GetDevice(), layout, nullptr);
+			// Guard against teardown order: RenderContext device can be null at shutdown
+			auto deviceRef = RenderContext::GetCurrentDevice();
+			if (deviceRef && deviceRef->GetDevice() != VK_NULL_HANDLE)
+			{
+				if (pipeline != VK_NULL_HANDLE)
+					vkDestroyPipeline (deviceRef->GetDevice(), pipeline, nullptr);
+				if (layout != VK_NULL_HANDLE)
+					vkDestroyPipelineLayout (deviceRef->GetDevice(), layout, nullptr);
+			}
+			pipeline = VK_NULL_HANDLE;
+			layout = VK_NULL_HANDLE;
         }
     };
 

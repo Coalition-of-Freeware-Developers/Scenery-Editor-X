@@ -11,19 +11,18 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <atomic>
-#include <condition_variable>
-#include <functional>
-#include <mutex>
-#include <queue>
-#include <thread>
-#include <vector>
 #include "vulkan/vk_data.h"
+#include <condition_variable>
+#include <queue>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+    // Job function signature executed by the dispatcher worker.
+    using Job = std::function<void()>;
+
 
 	/**
 	 * @brief Asynchronous render job dispatcher and deferred GPU resource destruction manager.
@@ -58,8 +57,6 @@ namespace SceneryEditorX
 	class RenderDispatcher : public RefCounted
 	{
 	public:
-    	/// @brief Job function signature executed by the dispatcher worker.
-	    using Job = std::function<void()>;
 
 	    /**
 	     * @brief Initialize the dispatcher singleton and spawn the worker thread.
@@ -79,11 +76,12 @@ namespace SceneryEditorX
 
     	/**
 	     * @brief Submit a generic background job.
+	     *
 	     * @param job Callable executed FIFO on the internal worker thread. If the
 	     *            dispatcher is not initialized the job executes inline immediately.
 	     * @warning Long blocking jobs will starve subsequent jobs; keep tasks short.
 	     */
-	    static void Enqueue(Job job);                 // generic render-thread work
+	    static void Enqueue(Job job); // generic render-thread work
 
 	    /**
 	     * @brief Schedule a job to run only after a safe GPU frame boundary.
@@ -91,23 +89,24 @@ namespace SceneryEditorX
 	     * The job is inserted into the bucket corresponding to the frame that will
 	     * become safe (currentIndex + framesInFlight - 1). Executed when enough frames
 	     * have advanced through NextFrame().
+	     *
 	     * @param job Callable that performs deferred destruction / recycling.
 	     * @note Use this for Vulkan object destroys, descriptor pool recycling, etc.
 	     */
-	    static void EnqueueResourceFree(Job job);     // executes after GPU frame complete (simple ring)
+	    static void EnqueueResourceFree(Job job); // executes after GPU frame complete (simple ring)
 
 	    /**
 	     * @brief Block the calling thread until the active background job queue is empty.
 	     * @note Does NOT force execution of deferred resource free buckets.
 	     */
-	    static void Flush();	// block until queues empty
+	    static void Flush(); // block until queues empty
 
 	    /**
 	     * @brief Advance the frames-in-flight ring and execute now-safe resource free jobs.
 	     * @param frameIndex (Reserved) Current frame index supplied by renderer; currently
 	     *                   unused but kept for future validation / diagnostics.
 	     */
-	    static void NextFrame(uint32_t frameIndex);   // move resource free ring
+	    static void NextFrame(uint32_t frameIndex); // move resource free ring
 
 	    /**
 	     * @brief Query initialization state.
@@ -128,12 +127,10 @@ namespace SceneryEditorX
 	        bool quitting = false;          // Set true to terminate worker loop
 	    };
 
-	    /**
-	     * @brief Per-frame bucket of deferred resource free jobs.
-	     */
+	    // Per-frame bucket of deferred resource free jobs.
 	    struct RFQueue { std::vector<Job> jobs; };
 
-	    /// @brief Worker thread main loop (blocks on cv until work or shutdown).
+	    // Worker thread main loop (blocks on cv until work or shutdown).
 	    static void WorkerLoop();
 
 	    static Ref<RenderDispatcher>	s_Instance;             // Lifetime anchor (Ref-counted singleton)

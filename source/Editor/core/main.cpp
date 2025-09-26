@@ -88,6 +88,8 @@ namespace SceneryEditorX
             
             try 
             {
+                if (!m_EditorApp)
+                    m_EditorApp = CreateScope<EditorApplication>();
                 m_EditorApp->InitEditor();
             }
             catch (const std::exception &e)
@@ -104,7 +106,7 @@ namespace SceneryEditorX
         
         virtual void OnShutdown() override
         {
-            ///< Clean up editor application before the main Application is destroyed
+            // Clean up editor application before the main Application is destroyed
             if (m_EditorApp)
                 m_EditorApp.reset();
 

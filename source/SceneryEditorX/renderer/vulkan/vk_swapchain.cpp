@@ -11,13 +11,13 @@
 * -------------------------------------------------------
 */
 #include "vk_swapchain.h"
-#include <GLFW/glfw3.h>
 #include "vk_data.h"
 #include "vk_device.h"
 #include "vk_util.h"
 #include "SceneryEditorX/renderer/image_data.h"
 #include "SceneryEditorX/renderer/render_dispatcher.h"
 #include "SceneryEditorX/renderer/renderer.h"
+#include <GLFW/glfw3.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Nvidia extensions
@@ -56,11 +56,9 @@ VKAPI_ATTR void VKAPI_CALL vkGetQueueCheckpointDataNV(VkQueue queue, uint32_t *p
 namespace SceneryEditorX
 {
 
-    SwapChain::SwapChain() = default;
-
     SwapChain::~SwapChain()
     {
-        Destroy();
+		if (swapChain != nullptr) Destroy();
     }
 
     /// -------------------------------------------------------
@@ -1008,8 +1006,8 @@ namespace SceneryEditorX
     void SwapChain::Destroy()
     {
         auto ctx = RenderContext::Get(); // Get render context reference
-        auto device = ctx->GetCurrentDevice()->GetDevice();
-        vkDeviceWaitIdle(device);
+        auto devRef = ctx->GetCurrentDevice();
+        VkDevice device = devRef ? devRef->GetDevice() : VK_NULL_HANDLE;
 
         // Destroy presentation swapchain and related images/views
         if (swapChain != VK_NULL_HANDLE)
@@ -1131,8 +1129,8 @@ namespace SceneryEditorX
         if (surface != VK_NULL_HANDLE)
         {
             VkInstance inst = ctx->GetInstance();
-            if (inst != VK_NULL_HANDLE)
-                vkDestroySurfaceKHR(inst, surface, nullptr);
+            if (inst != VK_NULL_HANDLE) vkDestroySurfaceKHR(inst, surface, nullptr);
+
             surface = VK_NULL_HANDLE;
         }
 

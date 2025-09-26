@@ -11,14 +11,18 @@
 * -------------------------------------------------------
 */
 #include "storage_buffer.h"
-#include <SceneryEditorX/renderer/renderer.h>
 #include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
+#include <SceneryEditorX/renderer/renderer.h>
 
 /// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	StorageBuffer::StorageBuffer(uint32_t size, const StorageBufferSpec &spec) : m_Spec(spec), m_Size(size)
+
+	StorageBuffer::~StorageBuffer () = default;
+	StorageBufferSet::~StorageBufferSet () = default;
+
+	StorageBuffer::StorageBuffer(uint32_t size, StorageBufferSpec spec) : m_Spec(std::move(spec)), m_Size(size)
 	{
 		Allocate();
 	}
@@ -43,8 +47,8 @@ namespace SceneryEditorX
 		m_DescriptorInfo.range = m_Size;
 	}
 
-	void StorageBuffer::SetRenderThreadData(const void* data, uint32_t size, uint32_t offset)
-	{
+	void StorageBuffer::SetRenderThreadData(const void* data, uint32_t size, uint32_t offset) const
+    {
 		SEDX_CORE_ASSERT(offset + size <= m_Size, "StorageBuffer::SetRenderThreadData out of range");
 		if (m_Buffer.memory & MemoryType::CPU)
 		{
@@ -88,23 +92,22 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    StorageBufferSet::StorageBufferSet(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight)
-        : m_spec(spec), m_framesInFlight(framesInFlight)
+    StorageBufferSet::StorageBufferSet(StorageBufferSpec spec, uint32_t size, uint32_t framesInFlight) : m_spec(std::move(spec)), m_framesInFlight(framesInFlight)
     {
         if (framesInFlight == 0)
             m_framesInFlight = Renderer::GetRenderData().framesInFlight;
 
-        for (uint32_t frame = 0; frame < m_framesInFlight; frame++)
+        for (uint64_t frame = 0; frame < m_framesInFlight; frame++)
             storageBuffers[frame] = CreateRef<StorageBuffer>(size, const_cast<StorageBufferSpec &>(m_spec));
     }
 
     Ref<StorageBuffer> StorageBufferSet::Get()
     {
-        uint32_t frame = Renderer::GetCurrentFrameIndex();
+        uint64_t frame = Renderer::GetCurrentFrameIndex();
         return Get(frame);
     }
 
-    Ref<StorageBuffer> StorageBufferSet::Get(uint32_t frame)
+    Ref<StorageBuffer> StorageBufferSet::Get(uint64_t frame)
     {
         SEDX_CORE_ASSERT(storageBuffers.contains(frame), "Frame index out of range");
         return storageBuffers.at(frame);
@@ -112,18 +115,18 @@ namespace SceneryEditorX
 
     Ref<StorageBuffer> StorageBufferSet::GetRenderThread()
     {
-        uint32_t frame = Renderer::GetCurrentRenderThreadFrameIndex();
+        uint64_t frame = Renderer::GetCurrentRenderThreadFrameIndex();
         return Get(frame);
     }
 
-    void StorageBufferSet::Set(Ref<StorageBuffer> storageBuffer, uint32_t frame)
+    void StorageBufferSet::Set(const Ref<StorageBuffer> &storageBuffer, uint64_t frame)
     {
         storageBuffers[frame] = storageBuffer;
     }
 
     void StorageBufferSet::Resize(uint32_t newSize) const
     {
-        for (uint32_t frame = 0; frame < m_framesInFlight; frame++)
+        for (uint64_t frame = 0; frame < m_framesInFlight; frame++)
             storageBuffers.at(frame)->Resize(newSize);
     }
 

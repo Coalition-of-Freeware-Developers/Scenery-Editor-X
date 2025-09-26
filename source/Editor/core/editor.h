@@ -11,16 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/ui/ui.h>
-#include <SceneryEditorX/ui/ui_context.h>
+#include <Editor/core/viewport.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
+#include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/platform/settings/user_settings.h>
-#include <Editor/core/viewport.h>
+#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/vk_data.h>
+#include <SceneryEditorX/ui/ui.h>
+#include <SceneryEditorX/ui/ui_context.h>
 
 /// ---------------------------------------------------------
 
@@ -79,6 +79,7 @@ namespace SceneryEditorX
 
         void UpdateWindowTitle(const std::string &sceneName);
         void UI_DrawMenubar();
+
         /// Returns titlebar height
         float UI_DrawTitlebar();
         void UI_HandleManualWindowResize();
@@ -122,21 +123,6 @@ namespace SceneryEditorX
         void ReloadCSharp();
         void FocusLogPanel();
 
-        Ref<UserPreferences> m_UserPreferences;
-
-        //Scope<PanelManager> m_PanelManager;
-        //Ref<EditorConsolePanel> m_ConsolePanel;
-        bool m_ShowStatisticsPanel = false;
-        //std::vector<Ref<Viewport>> m_EditorViewports;
-
-        /*
-        Ref<Scene> m_RuntimeScene;
-        Ref<Scene> m_EditorScene;
-        Ref<Scene> m_SimulationScene;
-        Ref<Scene> m_CurrentScene;
-        std::string m_SceneFilePath;
-        */
-
         float m_AssetUpdatePerf = 0.0f;
 
         bool m_TitleBarHovered = false;
@@ -145,36 +131,6 @@ namespace SceneryEditorX
         uint32_t m_TitleBarPreviousColor;
         bool m_AnimateTitleBarColor = true;
 
-        int m_GizmoType = -1; /// -1 = no gizmo
-        bool m_GizmoWorldOrientation = true;
-
-        /// ImGui Tools
-        bool m_ShowMetricsTool = false;
-        bool m_ShowStackTool = false;
-        bool m_ShowStyleEditor = false;
-
-        bool m_EditorCameraInRuntime = false;
-
-        std::atomic_bool m_ShouldReloadCSharp = false;
-
-        struct LoadAutoSavePopupData
-        {
-            std::string FilePath;
-            std::string FilePathAuto;
-        } m_LoadAutoSavePopupData;
-
-		float m_TimeSinceLastSave = 0.0f; /// time (in seconds) since scene was last saved.  Counts up only when scene is in Edit mode. If exceeds 300s then scene is automatically saved
-
-		float m_RequiredProjectVersion = 0.0f;
-		bool m_ProjectUpdateNeeded = false;
-		bool m_ShowProjectUpdatedPopup = false;
-
-		std::thread m_AssetPackThread;
-		//std::future<Ref<AssetPack>> m_AssetPackFuture;
-		std::atomic<float> m_AssetPackBuildProgress = 0.0f;
-		std::string m_AssetPackBuildMessage;
-		bool m_BuildAllInProgress = false;
-		bool m_AssetPackBuiltOK = false;
 
 #ifdef SEDX_PLATFORM_WINDOWS
 		using WatcherString = std::wstring;
@@ -264,11 +220,55 @@ namespace SceneryEditorX
 	private:
         using GraphicsEngine = Renderer;
 
-
 	    void UpdateWindowTitle(const std::string& sceneName);
         Ref<UserPreferences> m_UserPreferences;
-
+        Ref<RenderContext> renderContext;
         static GraphicsEngine gfxEngine; // Graphics engine instance
+
+        //Scope<PanelManager> m_PanelManager;
+        //Ref<EditorConsolePanel> m_ConsolePanel;
+        bool m_ShowStatisticsPanel = false;
+        //std::vector<Ref<Viewport>> m_EditorViewports;
+
+        /*
+        Ref<Scene> m_RuntimeScene;
+        Ref<Scene> m_EditorScene;
+        Ref<Scene> m_SimulationScene;
+        Ref<Scene> m_CurrentScene;
+        std::string m_SceneFilePath;
+        */
+
+	    float m_AssetUpdatePerf = 0.0f;
+
+        bool m_TitleBarHovered = false;
+        uint32_t m_TitleBarTargetColor;
+        uint32_t m_TitleBarActiveColor;
+        uint32_t m_TitleBarPreviousColor;
+        bool m_AnimateTitleBarColor = true;
+
+        int m_GizmoType = -1; /// -1 = no gizmo
+        bool m_GizmoWorldOrientation = true;
+
+        /// ImGui Tools
+        bool m_ShowMetricsTool = false;
+        bool m_ShowStackTool = false;
+        bool m_ShowStyleEditor = false;
+
+        struct LoadAutoSavePopupData
+        {
+            std::string FilePath;
+            std::string FilePathAuto;
+        } m_LoadAutoSavePopupData;
+
+        // Time (in seconds) since scene was last saved.
+        // Counts up only when scene is in Edit mode.
+        // If exceeds 300s then scene is automatically saved
+        float m_TimeSinceLastSave = 0.0f; 
+
+        float m_RequiredProjectVersion = 0.0f;
+        bool m_ProjectUpdateNeeded = false;
+        bool m_ShowProjectUpdatedPopup = false;
+
 
         //Ref<CommandBuffer> cmdBuffer;
 

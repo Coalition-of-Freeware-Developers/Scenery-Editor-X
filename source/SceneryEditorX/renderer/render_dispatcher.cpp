@@ -26,7 +26,6 @@
 namespace SceneryEditorX
 {
 
-
     Ref<RenderDispatcher> RenderDispatcher::s_Instance;								// Singleton lifetime anchor instance (created in Init, released in Shutdown)
 	std::thread RenderDispatcher::s_Worker;											// Background worker thread executing FIFO jobs
 	RenderDispatcher::Queues RenderDispatcher::s_Queue;								// Active job queue + synchronization primitives
@@ -77,7 +76,10 @@ namespace SceneryEditorX
 
         // Execute any remaining deferred frees
         for (auto& bucket : s_ResourceFreeRing)
-            for (auto& job : bucket.jobs) job();
+        {
+            for (auto &job : bucket.jobs)
+                job();
+        }
 
         s_ResourceFreeRing.clear();
         s_Instance.Reset();
@@ -122,7 +124,11 @@ namespace SceneryEditorX
 	 */
 	void RenderDispatcher::EnqueueResourceFree(Job job)
 	{
-	    if (!s_Instance) { job(); return; }
+	    if (!s_Instance)
+	    {
+	        job();
+	        return;
+	    }
 	    std::lock_guard lock(s_RFMutex);
         const uint32_t target = (s_CurrentRFIndex + renderData.framesInFlight - 1) % renderData.framesInFlight;
         s_ResourceFreeRing[target].jobs.push_back(std::move(job));

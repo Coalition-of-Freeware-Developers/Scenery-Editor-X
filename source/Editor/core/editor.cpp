@@ -10,12 +10,11 @@
 * Created: 13/4/2025
 * -------------------------------------------------------
 */
+#include <Editor/core/editor.h>
+#include <ImGuizmo.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_internal.h>
-#include <ImGuizmo.h>
-
-#include <Editor/core/editor.h>
 #include <Editor/settings/editor_settings.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/window/window.h>
@@ -80,10 +79,10 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
+    /*
     Editor::Editor(const Ref<UserPreferences> &userPreferences) : m_UserPreferences(userPreferences)
     {
-        SEDX_CORE_INFO_TAG("EditorApp", "Initializing EditorApplication");
-		Renderer::Init();
+		renderContext = RenderContext::Get();
         /*
         for (auto it = m_UserPreferences->RecentProjects.begin(); it != m_UserPreferences->RecentProjects.end();)
         {
@@ -94,10 +93,13 @@ namespace SceneryEditorX
         }
 
         m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-        */
+        #1#
+
 
     }
+    */
 
+    /*
     Editor::~Editor()
     {
         if (ImGui::GetCurrentContext())
@@ -107,8 +109,10 @@ namespace SceneryEditorX
             ImGui::DestroyContext();
         }
 
-		Renderer::Shutdown();
+        Renderer::Shutdown();
+        renderContext.Reset();
     };
+    */
 
     EditorApplication::EditorApplication() = default;
 
@@ -127,10 +131,14 @@ namespace SceneryEditorX
 
     void EditorApplication::InitEditor()
     {
+
         /// Log header information immediately after init and flush to ensure it's written
         EDITOR_INFO("Scenery Editor X Graphics Engine is starting...");
-
-        //GraphicsEngine::Init();
+        const auto start = std::chrono::high_resolution_clock::now();
+        renderContext = RenderContext::Get();
+        // Initialize the renderer (this creates the RenderDispatcher as well)
+        Renderer::SetRenderData(Application::Get().GetWindow().GetRenderData());
+        Renderer::Init();
 
         //Launcher::AdminCheck();
         //Launcher::Loader loader{};
@@ -142,6 +150,8 @@ namespace SceneryEditorX
 
         //scene = assetManager.GetInitialScene();
         //camera = assetManager.GetMainCamera(scene);
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     }
 
     void EditorApplication::Create()
@@ -495,10 +505,13 @@ namespace SceneryEditorX
     }
     */
 
+    /*
     void Editor::UI_StatisticsPanel()
     {
     }
+    */
 
+    /*
     float Editor::GetSnapValue()
     {
 		const auto& editorSettings = EditorSettings::Get();
@@ -511,6 +524,7 @@ namespace SceneryEditorX
 		}
 		return 0.0f;
     }
+    */
 
     /*
     void Editor::DeleteEntity(Entity entity)
@@ -524,48 +538,66 @@ namespace SceneryEditorX
     }
     */
 
+    /*
     void Editor::BuildProjectData()
     {
     }
+    */
 
+    /*
     void Editor::BuildShaderPack()
     {
     }
+    */
 
+    /*
     void Editor::BuildSoundBank()
     {
     }
+    */
 
+    /*
     void Editor::BuildAssetPack()
     {
     }
+    */
 
+    /*
     void Editor::BuildAll()
     {
     }
+    */
 
+    /*
     void Editor::RegenerateProjectScriptSolution(const std::filesystem::path &projectPath)
     {
     }
+    */
 
+    /*
     void Editor::ReloadCSharp()
     {
     }
+    */
 
+    /*
     void Editor::FocusLogPanel()
     {
     }
+    */
 
     auto operator<(const ImVec2 &lhs, const ImVec2 &rhs)
     {
         return lhs.x < rhs.x && lhs.y < rhs.y;
     }
 
+    /*
     void Editor::UpdateWindowTitle(const std::string &sceneName)
     {
         const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
         Application::Get().GetWindow().SetTitle(title);
     }
+    */
 
 
     /// -------------------------------------------------------

@@ -53,11 +53,12 @@ namespace SceneryEditorX
 	class CommandBuffer : public RefCounted
 	{
 	public:
+        //CommandBuffer() = default;
         explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
         CommandBuffer(std::string debugName, bool swapchain);
-        ~CommandBuffer();
+        virtual ~CommandBuffer() override;
 
-		static Ref<CommandBuffer> Get(); ///< Static accessor method to get the singleton instance
+		static Ref<CommandBuffer> Get(); // Static accessor method to get the singleton instance
 
         void Begin();
         void Submit(void *cmdBuffer, uint32_t waitFlags);

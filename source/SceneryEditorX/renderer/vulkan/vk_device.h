@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <optional>
-#include <vulkan/vulkan.h>
 #include "vk_allocator.h"
 #include "vk_data.h"
+#include <optional>
+#include <vulkan/vulkan.h>
 
 /// -------------------------------------------------------
 
@@ -31,7 +31,7 @@ namespace SceneryEditorX
         VkPhysicalDeviceLimits GFXLimits;
         VkPhysicalDeviceFeatures deviceFeatures;
         VkSurfaceCapabilitiesKHR surfaceCapabilities;
-        VkPhysicalDeviceProperties deviceProperties;
+        VkPhysicalDeviceProperties2 deviceProperties;
         VkPhysicalDeviceMemoryProperties memoryProperties;
 
 	    /// -------------------------------------------------------
@@ -55,17 +55,16 @@ namespace SceneryEditorX
         explicit VulkanPhysicalDevice(VkInstance &instance);
         virtual ~VulkanPhysicalDevice() override;
 
-		/// Delete copy constructor and assignment operator/
+		// Delete copy constructor and assignment operator/
         VulkanPhysicalDevice(const VulkanPhysicalDevice &) = delete;
         VulkanPhysicalDevice &operator=(const VulkanPhysicalDevice &) = delete;
 
-        /// Allow move operations if needed/
+        // Allow move operations if needed
         VulkanPhysicalDevice(VulkanPhysicalDevice &&) noexcept = default;
         VulkanPhysicalDevice &operator=(VulkanPhysicalDevice &&) noexcept = default;
 
 		/**
 		* @brief Structure to hold indices of different queue families.
-		*
 		* This structure contains optional indices for graphics, present, compute, and transfer queue families.
 		*/
 		struct QueueFamilyIndices
@@ -77,7 +76,6 @@ namespace SceneryEditorX
 
             /**
              * @brief Check if all required queue families are initialized.
-             *
              * @return True if all required families are set, false otherwise.
              */
             [[nodiscard]] bool isComplete() const;
@@ -115,7 +113,7 @@ namespace SceneryEditorX
          */
         [[nodiscard]] const GPUDevice& Selected() const;
 
-        /// Accessor methods
+        // Accessor methods
         [[nodiscard]] VkPhysicalDevice GetGPUDevices() const;
 
 		[[nodiscard]] const QueueFamilyIndices &GetQueueFamilyIndices() const { return QFamilyIndices; }
@@ -123,7 +121,7 @@ namespace SceneryEditorX
         [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryProperties; }
 		[[nodiscard]] VkFormat GetDepthFormat() const { return  devices.at(deviceIndex).depthFormat;}
 		[[nodiscard]] const VkPhysicalDeviceFeatures &GetDeviceFeatures() const { return devices.at(deviceIndex).deviceFeatures; }
-        [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
+        [[nodiscard]] VkPhysicalDeviceProperties2 GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
 		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
 		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
 		[[nodiscard]] const std::vector<VkQueueFamilyProperties> &GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
@@ -147,16 +145,6 @@ namespace SceneryEditorX
 
         static VkFormat FindDepthFormat(const GPUDevice& device);
 		static VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-
-	    /// -------------------------------------------------------
-
-	    //VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentricFeature  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR };
-        //VkPhysicalDeviceVulkan13Features vulkan13Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
-        //VkPhysicalDeviceVulkan12Features vulkan12Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-        //VkPhysicalDeviceVulkan11Features vulkan11Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
-        //VkPhysicalDeviceFeatures2 vulkan10Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-
-	    /// -------------------------------------------------------
 
 	    /**
          * @brief Find queue families that match specified queue flags.
@@ -225,7 +213,6 @@ namespace SceneryEditorX
 	class VulkanDevice : public RefCounted
     {
     public:
-
         /**
          * @brief Create a logical device from a physical device.
          * @param physDevice The physical device to use.
@@ -233,6 +220,7 @@ namespace SceneryEditorX
          */
         explicit VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice);
         virtual ~VulkanDevice() override;
+
         void Tick(uint64_t frame_count) const;
         //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
@@ -358,7 +346,9 @@ namespace SceneryEditorX
         Ref<CommandPool> CreateLocalCommandPool();
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
-        //uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
+        uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
+		Buffer scratchBuffer = {};
+		uint64_t scratchAddress;
 
 		/// -------------------------------------------------------
 
@@ -385,23 +375,11 @@ namespace SceneryEditorX
         [[nodiscard]] VkSampler CreateSampler(float maxLOD) const;
 
         /**
-         * @brief Initialize bindless resources for the device
-         *
-
-         * @param device The Vulkan device to initialize resources for
-         * @param bindlessResources The bindless resources to initialize
-         *
-         * @note - This function sets up the bindless resources for the device, including
-         * creating the bindless descriptor pool and descriptor sets.
-         */
-        //static void InitBindlessResources(VkDevice device, const BindlessResources& bindlessResources);
-
-        /**
          * @brief Load function pointers for extension functions
          *
-         * @param vkDevice
+         * @param device
          */
-        void LoadExtensionFunctions(VkDevice vkDevice);
+        void LoadExtensionFunctions();
 
         /// -------------------------------------------------------
 

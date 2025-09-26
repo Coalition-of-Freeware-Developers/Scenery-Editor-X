@@ -35,7 +35,7 @@ namespace SceneryEditorX
 	class SwapChain
 	{
     public:
-        SwapChain();
+        SwapChain() = default;
 	    ~SwapChain();
 
 		// Initialization methods

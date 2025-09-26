@@ -18,6 +18,7 @@
 
 namespace SceneryEditorX
 {
+
 	class Thread
 	{
 	public:
@@ -33,7 +34,7 @@ namespace SceneryEditorX
 		void SetName(const std::string &name);
 		void Join();
 
-		std::thread::id GetThreadID() const;
+        [[nodiscard]] std::thread::id GetThreadID() const;
 	private:
         std::string name;
         std::thread mem_thread;

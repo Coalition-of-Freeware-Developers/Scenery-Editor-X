@@ -17,7 +17,7 @@
 
 /// ----------------------------------------------------
 
-extern SceneryEditorX::Application *CreateApplication(int argc, char** argv);
+extern SceneryEditorX::Application* CreateApplication(int argc, char** argv);
 inline bool appRunning = true;
 
 /// ----------------------------------------------------
@@ -29,7 +29,7 @@ namespace SceneryEditorX
         while (appRunning)
 		{
             InitCore();
-            Application *app = CreateApplication(argc, argv);
+            Application* app = CreateApplication(argc, argv);
             SEDX_CORE_ASSERT(app, "Application is null!");
             app->Run();
             delete app;
@@ -42,7 +42,7 @@ namespace SceneryEditorX
 
 /// ----------------------------------------------------
 
-#ifdef SEDX_RELEASE && SEDX_PLATFORM_WINDOWS
+#if defined(SEDX_RELEASE) && defined(SEDX_PLATFORM_WINDOWS)
 	int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 	{
 	    return SceneryEditorX::Main(__argc, __argv);

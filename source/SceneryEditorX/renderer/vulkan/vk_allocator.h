@@ -50,12 +50,13 @@ namespace SceneryEditorX
 
     /// ---------------------------------------------------------
 
-    /// Constants for common sizes
-    constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;					/// 256KB
-    constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024;			/// 1MB
-    constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024;			/// 16MB
+    // Constants for common sizes
+    constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;					// 256KB
+    constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024;			// 1MB
+    constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024;			// 16MB
+
     /// This is a default value and will be overridden by users settings.
-    constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024;	/// 16MB
+    constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024;	// 16MB
 
     /// ---------------------------------------------------------
 
@@ -74,11 +75,17 @@ namespace SceneryEditorX
         explicit MemoryAllocator(std::string tag);
         virtual ~MemoryAllocator() override;
 
-        /// Defragmentation methods
+		MemoryAllocator(const MemoryAllocator& other) = delete;
+		MemoryAllocator& operator=(const MemoryAllocator& other) = delete;
+
+		MemoryAllocator(MemoryAllocator&& other) noexcept;
+		MemoryAllocator& operator=(MemoryAllocator&& other) noexcept;
+
+        // Defragmentation methods
         void BeginDefragmentation(VmaDefragmentationFlags flags = 0);
         void EndDefragmentation();
 
-        /// Method to mark an allocation as defragmentable
+        // Method to mark an allocation as defragmentable
         void MarkForDefragmentation(VmaAllocation allocation);
 
 		/// ---------------------------------------------------------
@@ -94,10 +101,10 @@ namespace SceneryEditorX
 		 */
         struct AllocationStats
         {
-            uint64_t totalBytes;
-            uint64_t usedBytes;
-            uint64_t allocationCount;
-            float fragmentationRatio;
+            uint64_t totalBytes = 0;
+            uint64_t usedBytes = 0;
+            uint64_t allocationCount = 0;
+            float fragmentationRatio = 0.0f;
         };
 
         [[nodiscard]] AllocationStats GetStats();
@@ -111,9 +118,9 @@ namespace SceneryEditorX
          */
         enum class AllocationStrategy : uint8_t
         {
-            Default,        /// Let VMA decide
-            SpeedOptimized, /// Optimize for fast allocation
-            MemoryOptimized /// Optimize for minimal memory usage
+            Default,        // Let VMA decide
+            SpeedOptimized, // Optimize for fast allocation
+            MemoryOptimized // Optimize for minimal memory usage
         };
 
         void SetAllocationStrategy(AllocationStrategy strategy);
@@ -151,10 +158,10 @@ namespace SceneryEditorX
 		 */
 		struct MemoryBudget
         {
-            uint64_t totalBytes;
-            uint64_t usedBytes;
-            float usagePercentage;
-            bool isOverBudget;
+            uint64_t totalBytes = 0;
+            uint64_t usedBytes = 0;
+            float usagePercentage = 0.0f;
+            bool isOverBudget = false;
         };
 
         [[nodiscard]] MemoryBudget GetMemoryBudget() const;
@@ -175,11 +182,13 @@ namespace SceneryEditorX
 		 * to improve performance and reduce fragmentation.
 		 *
 		 * @note - This structure is used internally by the MemoryAllocator class.
+		 * @param buffer 
+		 * @param allocation
 		 */
         struct BatchBufferAllocation
         {
-            VkBuffer buffer;
-            VmaAllocation allocation;
+            VkBuffer buffer = VK_NULL_HANDLE;
+            VmaAllocation allocation = nullptr;
             VkDeviceSize size;
         };
 
@@ -220,28 +229,36 @@ namespace SceneryEditorX
 
         static void UnmapMemory(VmaAllocation allocation);
         static VmaAllocator GetAllocator();
-		static void Init(const Ref<VulkanDevice> &device, const uint32_t &apiVersion);
+		static void Init(const uint32_t &apiVersion);
 		static void Shutdown();
 
 		/// ---------------------------------------------------------
 
     private:
-        std::string tag_;
+        std::string tag_ = "default tag";
         std::vector<VmaAllocation> defragmentationCandidates;
         VmaDefragmentationContext defragmentationContext = nullptr;
         AllocationStrategy currentStrategy = AllocationStrategy::Default;
 
-        /// Fixed-size pools for common allocation sizes
+        /// ---------------------------------------------------------
+
+        // Fixed-size pools for common allocation sizes
         std::unordered_map<VkDeviceSize, MemoryPool> bufferPools;
         std::unordered_map<VkDeviceSize, MemoryPool> imagePools;
 
-        /// Helper methods for pool creation and retrieval
+        /// ---------------------------------------------------------
+
+        // Helper methods for pool creation and retrieval
         VmaPool GetOrCreateBufferPool(VkDeviceSize size, VmaMemoryUsage usage);
         VmaPool GetOrCreateImagePool(VkDeviceSize size, VmaMemoryUsage usage);
 
-        /// For thread safety
+        /// ---------------------------------------------------------
+
+        // For thread safety
         std::mutex allocationMutex;
         std::mutex poolMutex;
+
+        /// ---------------------------------------------------------
 
         float memoryWarningThreshold = 0.9f; /// 90% usage generates warnings
         [[nodiscard]] bool CheckMemoryBudget() const;
