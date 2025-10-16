@@ -33,6 +33,7 @@ namespace SceneryEditorX
         Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
         const Ref<VulkanDevice>& GetLogicalDevice() const { return vkDevice; }
         const Ref<VulkanPhysicalDevice>& GetPhysicalDevice() const { return vkPhysicalDevice; }
+        [[nodiscard]] bool IsInitialized() const { return m_IsInitialized; }
 
         static Ref<RenderContext> Get();
         static Ref<VulkanDevice> GetCurrentDevice() { return Get()->GetLogicDevice(); } // Get VulkanDevice from singleton instance

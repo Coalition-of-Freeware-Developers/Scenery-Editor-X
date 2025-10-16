@@ -120,7 +120,8 @@ namespace SceneryEditorX
 
     /// -------------------------------------------------------
 
-    struct ImageID { /* Legacy resource ID pools removed */ };
+    /* Legacy resource ID pools removed */
+    //struct ImageID {  };
 
     /// -------------------------------------------------------
 
@@ -149,7 +150,7 @@ namespace SceneryEditorX
         ImageUsageFlags usage;
         Layout::ImageLayout layout;
         AspectFlags aspect;
-        bool transfer = false; /// Will it be used for transfer ops?
+        bool transfer = false; // Will it be used for transfer ops?
         bool createSampler = true;
         [[nodiscard]] uint32_t ID() const;
         [[nodiscard]] ImTextureID ImGuiRID() const;

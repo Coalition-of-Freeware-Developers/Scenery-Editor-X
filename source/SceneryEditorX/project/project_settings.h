@@ -31,7 +31,7 @@ namespace SceneryEditorX
 		bool enableAutosave = true;
 		bool enableLighting = true;
 		bool enableWeatherEffects = false;
-        int autosaveInterval = 300; /// 5 mins in seconds
+        int autosaveInterval = 300; // 5 mins in seconds
     };
 
 	struct RecentProject
@@ -87,12 +87,12 @@ namespace SceneryEditorX
 		    bool Windowed = false;
 		    bool VSync = true;
 
-		    ///< Shadows
+		    // Shadows
 		    bool EnableShadows = true;
 		    ShadowQualitySetting ShadowQuality = ShadowQualitySetting::High;
 		    ShadowResolutionSetting ShadowResolution = ShadowResolutionSetting::High;
 
-		    ///< Ambient Occlusion
+		    // Ambient Occlusion
 		    bool EnableAO = true;
 		    AmbientOcclusionTypeSetting AOType = AmbientOcclusionTypeSetting::GTAO;
 		    AmbientOcclusionQualitySetting AOQuality = AmbientOcclusionQualitySetting::Ultra;
@@ -199,9 +199,6 @@ namespace SceneryEditorX
 		    Renderer::RendererTieringSettings RendererTS;
 		};
 	}
-
-	/// -------------------------------------------------------
-
 
 }
 

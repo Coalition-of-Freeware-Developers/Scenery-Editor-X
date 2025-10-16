@@ -179,7 +179,7 @@ namespace SceneryEditorX
 		std::filesystem::path m_ConfigPath;
 		Ref<ApplicationSettings> m_Settings;
 
-		/// Maximum number of recent projects to keep
+        /// Maximum number of recent projects to keep
 		static constexpr size_t MAX_RECENT_PROJECTS = 10;
 
 		/**

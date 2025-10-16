@@ -21,8 +21,7 @@ namespace SceneryEditorX
 {
 
     // Job function signature executed by the dispatcher worker.
-    using Job = std::function<void()>;
-
+    typedef std::function<void()> Job;
 
 	/**
 	 * @brief Asynchronous render job dispatcher and deferred GPU resource destruction manager.

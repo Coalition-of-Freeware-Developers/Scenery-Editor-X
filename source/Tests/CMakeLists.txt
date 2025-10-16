@@ -52,6 +52,73 @@ INCLUDE(CTest)
 INCLUDE(Catch)
 catch_discover_tests(RefTests)
 
+# -------------------------------------------------------
+# Optional Vulkan smoke tests (disabled by default)
+# -------------------------------------------------------
+OPTION(SEDX_ENABLE_VULKAN_SMOKE_TESTS "Build Vulkan smoke tests (requires engine includes)" OFF)
+IF(SEDX_ENABLE_VULKAN_SMOKE_TESTS)
+    ADD_EXECUTABLE(VulkanSmokeTests
+        vulkan_tests/CommandPoolSmoke.cpp
+        vulkan_tests/BufferSmoke.cpp
+        vulkan_tests/ImageSmoke.cpp
+        vulkan_tests/AppStub.cpp
+    )
+
+    TARGET_INCLUDE_DIRECTORIES(VulkanSmokeTests PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+        ${CMAKE_SOURCE_DIR}/dependency
+        ${CMAKE_SOURCE_DIR}/dependency/entt/src
+        ${CMAKE_SOURCE_DIR}/dependency/imgui
+        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+        ${CMAKE_SOURCE_DIR}/dependency/xMath
+        $ENV{VULKAN_SDK}/Include/
+        ${Stb_INCLUDE_DIR}
+    )
+
+    TARGET_LINK_LIBRARIES(VulkanSmokeTests PRIVATE
+        Catch2::Catch2WithMain
+        Vulkan::Vulkan
+        spdlog::spdlog_header_only
+        imgui
+        AppCore
+        xMath
+    )
+
+    IF(MSVC)
+        TARGET_COMPILE_OPTIONS(VulkanSmokeTests PRIVATE /MP /W4)
+    ELSE()
+        TARGET_COMPILE_OPTIONS(VulkanSmokeTests PRIVATE -Wall -Wextra -Wpedantic)
+    ENDIF()
+
+    INCLUDE(Catch)
+    # On Windows, copy dependent DLLs (like xMath) next to the test exe so discovery can run
+    if(WIN32)
+        add_custom_command(TARGET VulkanSmokeTests POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "[VulkanSmokeTests] Copying runtime DLLs to test output dir"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:xMath::xMath> $<TARGET_FILE_DIR:VulkanSmokeTests>
+        )
+    endif()
+
+    # Prefix test names so filtering with -R VulkanSmokeTests works in CTest
+    catch_discover_tests(
+        VulkanSmokeTests
+        TEST_PREFIX "VulkanSmokeTests::"
+        TEST_PROPERTIES LABELS "vulkan;smoke"
+    )
+
+    # Ensure the Vulkan smoke tests run in a controlled, headless mode under CTest
+    # and only when explicitly opted in. We set environment variables for the tests
+    # so they don't try to create WSI surfaces and so they actually execute instead of skipping.
+    if(VulkanSmokeTests_TESTS)
+        foreach(test_name IN LISTS VulkanSmokeTests_TESTS)
+            set_tests_properties("${test_name}" PROPERTIES
+                ENVIRONMENT "SEDX_RUN_VULKAN_SMOKE_TESTS=1;SEDX_HEADLESS=1"
+            )
+        endforeach()
+    endif()
+ENDIF()
+
 # --------------------------------
 # Memory Allocator Tests
 # --------------------------------

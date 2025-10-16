@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * command_manager.cpp
@@ -10,247 +10,181 @@
 * Created: 25/8/2025
 * -------------------------------------------------------
 */
-//#include "command_manager.h"
-//#include "vulkan/vk_util.h"
+#include "command_manager.h"
+#include "render_context.h"
+#include "vulkan/vk_util.h"
 
 /// -------------------------------------------------------
 
-/*
+/// -------------------------------------------------------
+
+// Active implementations (outside of legacy commented block)
 namespace SceneryEditorX
 {
-    namespace
-    {
-        std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
-    }
-
-    namespace queries
-    {
-        namespace timestamp
-        {
-            const uint32_t query_count = 128;
-            std::array<uint64_t, query_count> data;
-
-            void update(void* query_pool)
-            {
-                if (Debugging::IsGpuTimingEnabled())
-                {
-                    vkGetQueryPoolResults(
-						RenderContext::Get()->GetLogicDevice()->GetDevice(), // device
-                        static_cast<VkQueryPool>(query_pool), // queryPool
-                        0,                                    // firstQuery
-                        query_count,                          // queryCount
-                        query_count * sizeof(uint64_t),       // dataSize
-                        data.data(),                          // pData
-                        sizeof(uint64_t),                     // stride
-                        VK_QUERY_RESULT_64_BIT                // flags
-                    );
-                }
-            }
-
-            void reset(void* cmd_list, void*& query_pool)
-            {
-                if (Debugging::IsGpuTimingEnabled())
-                {
-                    vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
-                }
-            }
-        }
-
-        namespace occlusion
-        {
-            uint32_t index              = 0;
-            uint32_t index_active       = 0;
-            bool occlusion_query_active = false;
-            const uint32_t query_count  = 4096;
-            std::array<uint64_t, query_count> data;
-            std::unordered_map<uint64_t, uint32_t> id_to_index;
-
-            void update(void* query_pool)
-            {
-                vkGetQueryPoolResults(RenderContext::Get()->GetLogicDevice()->GetDevice(),  // device
-                    static_cast<VkQueryPool>(query_pool),                // queryPool
-                    0,                                                   // firstQuery
-                    query_count,                                         // queryCount
-                    query_count * sizeof(uint64_t),                      // dataSize
-                    data.data(),                                         // pData
-                    sizeof(uint64_t),                                    // stride
-                    VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT // flags
-                );
-            }
-
-            void reset(void* cmd_list, void*& query_pool)
-            {
-                vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
-            }
-
-        }
-
-        void initialize(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
-        {
-            // timestamps
-            if (Debugging::IsGpuTimingEnabled())
-            {
-                VkQueryPoolCreateInfo query_pool_info = {};
-                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-                query_pool_info.queryType             = VK_QUERY_TYPE_TIMESTAMP;
-                query_pool_info.queryCount            = timestamp::query_count;
-
-                auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_timestamp);
-                VK_CHECK_RESULT(vkCreateQueryPool(RenderContext::Get()->GetLogicDevice()->GetDevice(), &query_pool_info, nullptr, query_pool));
-                RHI_Device::SetResourceName(pool_timestamp, ResourceType::QueryPool, "query_pool_timestamp");
-
-                timestamp::data.fill(0);
-            }
-
-            // occlusion
-            {
-                VkQueryPoolCreateInfo query_pool_info = {};
-                query_pool_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-                query_pool_info.queryType             = VK_QUERY_TYPE_OCCLUSION;
-                query_pool_info.queryCount            = occlusion::query_count;
-
-                auto query_pool = reinterpret_cast<VkQueryPool*>(&pool_occlusion);
-                VK_CHECK_RESULT(vkCreateQueryPool(RenderContext::Get()->GetLogicDevice()->GetDevice(), &query_pool_info, nullptr, query_pool));
-                RHI_Device::SetResourceName(pool_occlusion, ResourceType::QueryPool, "query_pool_occlusion");
-
-                occlusion::data.fill(0);
-            }
-        }
-
-        void Shutdown(void*& pool_timestamp, void*& pool_occlusion, void*& pool_pipeline_statistics)
-        {
-            VulkanDevice::DeletionQueueAdd(ResourceType::QueryPool, pool_timestamp);
-            VulkanDevice::DeletionQueueAdd(ResourceType::QueryPool, pool_occlusion);
-            VulkanDevice::DeletionQueueAdd(ResourceType::QueryPool, pool_pipeline_statistics);
-        }
-    }
-
-    CommandManager::CommandManager(Queue *queue, void *cmd_pool, const std::string &debugName)
-    {
-        m_queue = queue;
-
-        // command buffer
-        {
-            // define
-            VkCommandBufferAllocateInfo allocate_info = {};
-            allocate_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocate_info.commandPool                 = static_cast<VkCommandPool>(cmd_pool);
-            allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            allocate_info.commandBufferCount          = 1;
-
-            // allocate
-            VK_CHECK_RESULT(vkAllocateCommandBuffers(RenderContext::Get()->GetLogicDevice()->GetDevice(), &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_resource)))
-
-            // name
-            RHI_Device::SetResourceName(static_cast<void*>(m_resource), ResourceType::CommandList, debugName);
-            m_object_name = debugName;
-        }
-
-        // semaphores
-        m_rendering_complete_semaphore          = CreateRef<FrameSync>(FrameSyncType::SyncSemaphore, std::string(debugName) + "_binary");
-        m_rendering_complete_semaphore_timeline = CreateRef<FrameSync>(FrameSyncType::SyncSemaphoreTimeline, std::string(debugName) + "timeline");
-
-        queries::initialize(m_queryPool_timestamps, m_queryPool_occlusion, m_rhi_query_pool_pipeline_statistics);
-    }
-
-    CommandManager::~CommandManager()
-    {
-        queries::Shutdown(m_queryPool_timestamps,
-                          m_queryPool_occlusion,
-                          m_rhi_query_pool_pipeline_statistics);
-    }
-
-    void CommandManager::WaitForExecution(const bool log_wait_time)
-    {
-        SEDX_ASSERT(m_state == CommandState::Submitted, "the command list hasn't been submitted, can't wait for it.");
-
-        if (log_wait_time)
-        { 
-            start_time = std::chrono::high_resolution_clock::now();
-        }
-
-        // wait
-        uint64_t timeout_nanoseconds = 60'000'000'000; // 60 seconds
-        m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds);
-        m_state = CommandState::Idle;
-
-        if (log_wait_time)
-        {
-            auto end_time = std::chrono::high_resolution_clock::now();
-            auto duration = duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-            SEDX_CORE_INFO("wait time: %lld microseconds\n", duration);
-        }
-    }
-
-	void CommandManager::Dispatch(Texture *texture)
+	CommandPool::CommandPool(const Ref<VulkanDevice>& vulkanDevice, Queue type)
 	{
-	    // compute dimensions and dispatch
-        constexpr uint32_t thread_group_count = 8;
-	    const uint32_t thread_group_count_x = (texture->GetWidth() + thread_group_count - 1) / thread_group_count;
-	    const uint32_t thread_group_count_y = (texture->GetHeight() + thread_group_count - 1) / thread_group_count;
-	    const uint32_t thread_group_count_z = (texture->GetType() == TextureType::Texture3D) ? (texture->GetDepth() + thread_group_count - 1) / thread_group_count : 1;
-	
-	    Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z);
-	
-	    // synchronize writes to the texture
-	    if (GetImageLayout(texture->GetResource(), 0) == Layout::ImageLayout::General)
-	    {
-	        InsertBarrierReadWrite(texture, BarrierType::EnsureWriteThenRead);
-	    }
+		queueType = type;
+
+		const VkDevice device = vulkanDevice->GetDevice();
+		const auto& qIndices = vulkanDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
+
+		// Graphics pool
+		VkCommandPoolCreateInfo ci{};
+		ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		ci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		ci.queueFamilyIndex = qIndices.GetGraphicsFamily();
+		if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &GraphicsCmdPool); res != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR_TAG("VULKAN", "Failed to create graphics command pool (err {0})", res);
+			GraphicsCmdPool = VK_NULL_HANDLE;
+		}
+
+		// Compute pool (fallback to graphics if same family or create fails)
+		ci.queueFamilyIndex = qIndices.GetComputeFamily();
+		if (ci.queueFamilyIndex != qIndices.GetGraphicsFamily())
+		{
+			if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &ComputeCmdPool); res != VK_SUCCESS)
+			{
+				SEDX_CORE_WARN_TAG("VULKAN", "Failed to create compute command pool (err {0}), using graphics pool", res);
+				ComputeCmdPool = GraphicsCmdPool;
+			}
+		}
+		else
+		{
+			ComputeCmdPool = GraphicsCmdPool;
+		}
+
+		// Transfer pool (optional, fallback to graphics)
+		ci.queueFamilyIndex = qIndices.GetTransferFamily();
+		if (ci.queueFamilyIndex != qIndices.GetGraphicsFamily() && ci.queueFamilyIndex != qIndices.GetComputeFamily())
+		{
+			if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &TransferCmdPool); res != VK_SUCCESS)
+			{
+				SEDX_CORE_WARN_TAG("VULKAN", "Failed to create transfer command pool (err {0}), using graphics pool", res);
+				TransferCmdPool = GraphicsCmdPool;
+			}
+		}
+		else
+		{
+			TransferCmdPool = GraphicsCmdPool;
+		}
 	}
 
-    void CommandManager::SetViewport(const Viewport &viewport) const
-    {
-        SEDX_ASSERT(m_state == CommandState::Recording);
-        SEDX_ASSERT(viewport.width != 0);
-        SEDX_ASSERT(viewport.height != 0);
+	CommandPool::~CommandPool()
+	{
+		const auto deviceRef = RenderContext::GetCurrentDevice();
+		if (!deviceRef)
+			return;
 
-        VkViewport vk_viewport = {};
-        vk_viewport.x = viewport.x;
-        vk_viewport.y = viewport.y;
-        vk_viewport.width = viewport.width;
-        vk_viewport.height = viewport.height;
-        vk_viewport.minDepth = viewport.depth_min;
-        vk_viewport.maxDepth = viewport.depth_max;
+		const VkDevice device = deviceRef->GetDevice();
 
-        vkCmdSetViewport(static_cast<VkCommandBuffer>(m_resource),	// commandBuffer
-                         0,                                         // firstViewport
-                         1,                                         // viewportCount
-                         &vk_viewport                               // pViewports
-        );
-    }
+		if (TransferCmdPool != VK_NULL_HANDLE && TransferCmdPool != GraphicsCmdPool && TransferCmdPool != ComputeCmdPool)
+			vkDestroyCommandPool(device, TransferCmdPool, nullptr);
 
-    void CommandManager::PushConstants(const uint32_t offset, const uint32_t size, const void *data)
-    {
-       auto device = RenderContext::Get()->GetLogicDevice();
-       SEDX_ASSERT(m_state == CommandListState::Recording);
-       SEDX_ASSERT(size <= device->GetPhysicalDevice()->GetLimits().maxPushConstantsSize);
+		if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
+			vkDestroyCommandPool(device, ComputeCmdPool, nullptr);
 
-        uint32_t stages = 0;
+		if (GraphicsCmdPool != VK_NULL_HANDLE)
+			vkDestroyCommandPool(device, GraphicsCmdPool, nullptr);
 
-        if (m_pso.shaders[ShaderStage::Stage::Compute])
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
+		GraphicsCmdPool = VK_NULL_HANDLE;
+		ComputeCmdPool = VK_NULL_HANDLE;
+		TransferCmdPool = VK_NULL_HANDLE;
+	}
 
-        if (m_pso.shaders[ShaderStage::Stage::Vertex])
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
+	VkCommandBuffer CommandPool::AllocateCommandBuffer(bool begin, bool compute) const
+	{
+		const auto deviceRef = RenderContext::GetCurrentDevice();
+		SEDX_CORE_ASSERT(deviceRef, "VulkanDevice must be valid to allocate command buffers");
+		const VkDevice device = deviceRef->GetDevice();
+		const VkCommandPool pool = compute ? ComputeCmdPool : GraphicsCmdPool;
 
-        if (m_pso.shaders[ShaderStage::Stage::TesselationControl])
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+		VkCommandBufferAllocateInfo ai{};
+		ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		ai.commandPool = pool;
+		ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		ai.commandBufferCount = 1;
 
-        if (m_pso.shaders[ShaderStage::Stage::TesselationEval])
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+		VkCommandBuffer cmd = VK_NULL_HANDLE;
+		if (VkResult res = vkAllocateCommandBuffers(device, &ai, &cmd); res != VK_SUCCESS)
+		{
+			SEDX_CORE_ERROR_TAG("VULKAN", "vkAllocateCommandBuffers failed (err {0})", res);
+			return VK_NULL_HANDLE;
+		}
 
-        if (m_pso.shaders[ShaderStage::Stage::Fragment])
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
+		if (begin)
+		{
+			VkCommandBufferBeginInfo bi{};
+			bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			if (VkResult res = vkBeginCommandBuffer(cmd, &bi); res != VK_SUCCESS)
+			{
+				SEDX_CORE_ERROR_TAG("VULKAN", "vkBeginCommandBuffer failed (err {0})", res);
+				vkFreeCommandBuffers(device, pool, 1, &cmd);
+				return VK_NULL_HANDLE;
+			}
+		}
 
-        vkCmdPushConstants(
-            static_cast<VkCommandBuffer>(m_resource),
-            static_cast<VkPipelineLayout>(m_pipeline->GetResourceLayout()),
-            stages, offset, size, data
-        );
-    }
+		return cmd;
+	}
 
+	void CommandPool::FlushCmdBuffer(VkCommandBuffer cmdBuffer) const
+	{
+		const auto deviceRef = RenderContext::GetCurrentDevice();
+		SEDX_CORE_ASSERT(deviceRef, "No VulkanDevice available");
+		VkDevice device = deviceRef->GetDevice();
+		VkQueue queue = deviceRef->GetGraphicsQueue();
+
+		VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
+
+		VkSubmitInfo si{};
+		si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		si.commandBufferCount = 1;
+		si.pCommandBuffers = &cmdBuffer;
+
+		VkFenceCreateInfo fi{};
+		fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		VkFence fence = VK_NULL_HANDLE;
+		VK_CHECK_RESULT(vkCreateFence(device, &fi, nullptr, &fence));
+
+		if (VkResult res = vkQueueSubmit(queue, 1, &si, fence); res != VK_SUCCESS)
+			SEDX_CORE_ERROR_TAG("VULKAN", "vkQueueSubmit failed (err {0})", res);
+
+		vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+		vkDestroyFence(device, fence, nullptr);
+
+		vkFreeCommandBuffers(device, GraphicsCmdPool, 1, &cmdBuffer);
+	}
+
+	void CommandPool::FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const
+	{
+		const auto deviceRef = RenderContext::GetCurrentDevice();
+		SEDX_CORE_ASSERT(deviceRef, "No VulkanDevice available");
+		VkDevice device = deviceRef->GetDevice();
+
+		if (cmdBuffer == VK_NULL_HANDLE)
+			return;
+
+		VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
+
+		VkSubmitInfo si{};
+		si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		si.commandBufferCount = 1;
+		si.pCommandBuffers = &cmdBuffer;
+
+		VkFenceCreateInfo fi{};
+		fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		VkFence fence = VK_NULL_HANDLE;
+		VK_CHECK_RESULT(vkCreateFence(device, &fi, nullptr, &fence));
+
+		if (VkResult res = vkQueueSubmit(queue, 1, &si, fence); res != VK_SUCCESS)
+			SEDX_CORE_ERROR_TAG("VULKAN", "vkQueueSubmit (explicit queue) failed (err {0})", res);
+
+		vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+		vkDestroyFence(device, fence, nullptr);
+
+		vkFreeCommandBuffers(device, GraphicsCmdPool, 1, &cmdBuffer);
+	}
 }
-*/
 
 /// -------------------------------------------------------

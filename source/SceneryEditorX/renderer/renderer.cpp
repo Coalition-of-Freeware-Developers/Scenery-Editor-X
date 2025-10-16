@@ -19,9 +19,9 @@
 #include "buffers/index_buffer.h"
 #include "buffers/vertex_buffer.h"
 //#include "scene_renderer.h"
-
 #include "bindless_descriptor_manager.h"
 #include "render_dispatcher.h"
+#include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include "texture.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/logging/profiler.hpp"
@@ -106,7 +106,7 @@ namespace SceneryEditorX
 
         uint64_t frame_num = 0;
         Vec2 jitter_offset = Vec2(0.0f, 0.0f);
-        constexpr uint32_t resolution_shadow_min = 128;
+        constexpr uint32_t RESOLUTION_SHADOW_MIN = 128;
         float near_plane = 0.0f;
         float far_plane = 1.0f;
         bool dirty_orthographic_projection = true;
@@ -139,6 +139,7 @@ namespace SceneryEditorX
 
     void Renderer::Init()
     {
+        SEDX_TRACK_CALL("Renderer::Init");
         /**
          * Initializeing the rendering system.
          *
@@ -146,10 +147,19 @@ namespace SceneryEditorX
          * - Render context
          * - Command buffers
          */
+        // Prevent double-initialization
+        if (s_Data)
+        {
+            SEDX_CORE_INFO_TAG("Renderer", "Init() called but renderer is already initialized — skipping");
+            return;
+        }
 
         // Get the render context (Initialize the context if needed)
         if (const auto context = GetContext())
-            context->Init();
+        {
+            if (!context->IsInitialized())
+                context->Init();
+        }
 
         // Initialize async render dispatcher
         RenderDispatcher::Init();
@@ -165,8 +175,6 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO_TAG("Renderer", "Checked Swapchain image count:");
 		SEDX_CORE_INFO("Frames-in-flight: {}", config.framesInFlight);
 
-
-
         s_Data->DescriptorPools.resize(config.framesInFlight);
 		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPools");
         s_Data->DescriptorPoolAllocationCount.resize(config.framesInFlight);
@@ -179,7 +187,7 @@ namespace SceneryEditorX
         Submit([]() mutable
         {
             /// Create Descriptor Pool
-			const VkDescriptorPoolSize pool_sizes[] =
+			const VkDescriptorPoolSize poolSizes[] =
 			{
 				{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
@@ -198,8 +206,8 @@ namespace SceneryEditorX
             pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
             pool_info.maxSets = 100000;
-            pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
-            pool_info.pPoolSizes = pool_sizes;
+            pool_info.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(poolSizes));
+            pool_info.pPoolSizes = poolSizes;
             const VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
             const uint32_t framesInFlight = GetRenderData().framesInFlight;
             for (uint32_t i = 0; i < framesInFlight; i++)
@@ -284,6 +292,7 @@ namespace SceneryEditorX
         RenderDispatcher::Flush();
 		RenderDispatcher::Shutdown();
 
+		BindlessDescriptorManager::FlushPending();
 		BindlessDescriptorManager::Shutdown();
 
 		if (s_Data->SamplerPoint) { DestroySampler(s_Data->SamplerPoint); s_Data->SamplerPoint = nullptr; }
@@ -336,6 +345,7 @@ namespace SceneryEditorX
 
         // Resource free ring advanced after GPU submission (see swapchain present/acquire logic)
     }
+    */
 
     void Renderer::EndFrame()
     {
@@ -353,14 +363,14 @@ namespace SceneryEditorX
         // Submit the current frame to the GPU
         // This would involve submitting command buffers to the appropriate queues
     }
-    */
+
 
     // Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction.
 
-    uint64_t Renderer::GetCurrentFrameIndex() { return m_renderData.frameIndex; }
     //Ref<ShaderLibrary> Renderer::GetShaderLibrary() { return s_Data->m_ShaderLibrary; }
     RenderData &Renderer::GetRenderData() { return m_renderData; }
-	void Renderer::SetRenderData(const RenderData &renderData) { m_renderData = renderData; }
+    void Renderer::SetRenderData(const RenderData &renderData) { m_renderData = renderData; }
+	uint64_t Renderer::GetCurrentFrameIndex() { return m_renderData.frameIndex; }
 
 	/*
 	VkDescriptorSetAllocateInfo Renderer::DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count, VkDescriptorPool pool)
@@ -374,7 +384,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-	VkSampler Renderer::CreateSampler(VkSamplerCreateInfo &samplerCreateInfo)
+	VkSampler Renderer::CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo)
 	{
 	    VkDevice vulkanDevice = RenderContext::GetCurrentDevice()->GetDevice();
 		VkSampler sampler;

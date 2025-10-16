@@ -61,11 +61,66 @@ namespace SceneryEditorX
         return name;
     }
 
+    void *Shader::GetRendererResource() const
+    {
+        return m_resource;
+    }
+
+    VkPipelineShaderStageCreateInfo Shader::CreateShaderStage(const Shader *shader)
+    {
+        VkPipelineShaderStageCreateInfo shader_stage_info = {};
+        shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shader_stage_info.module = static_cast<VkShaderModule>(shader->GetRendererResource());
+        shader_stage_info.pName = shader->GetEntryPoint();
+
+        if (shader->GetShaderStage() == ShaderStage::Stage::Vertex)
+        {
+            shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        }
+        else if (shader->GetShaderStage() == ShaderStage::Stage::TesselationControl)
+        {
+            shader_stage_info.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        }
+        else if (shader->GetShaderStage() == ShaderStage::Stage::TesselationEval)
+        {
+            shader_stage_info.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+        }
+        else if (shader->GetShaderStage() == ShaderStage::Stage::Fragment)
+        {
+            shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
+        else if (shader->GetShaderStage() == ShaderStage::Stage::Compute)
+        {
+            shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+        }
+
+        SEDX_ASSERT(shader_stage_info.stage != 0);
+        SEDX_ASSERT(shader_stage_info.module != nullptr);
+        SEDX_ASSERT(shader_stage_info.pName != nullptr);
+
+        return shader_stage_info;
+    }
+
     void Shader::AddShaderReloadedCallback(const ShaderReloadedCallback &callback)
     {
-        /// Implementation of the pure virtual function
-        /// Store callbacks that will be triggered when the shader is reloaded
+        /**
+         * Implementation of the pure virtual function
+         * Store callbacks that will be triggered when the shader is reloaded
+         */
         reloadCallbacks.push_back(callback);
+    }
+
+    const char* Shader::GetEntryPoint() const
+    {
+        switch (m_shader_type)
+        {
+			case ShaderStage::Stage::Vertex:				return "main_vs";
+			case ShaderStage::Stage::TesselationControl:	return "main_hs";
+			case ShaderStage::Stage::TesselationEval:		return "main_ds";
+			case ShaderStage::Stage::Fragment:				return "main_ps";
+			case ShaderStage::Stage::Compute:				return "main_cs";
+			default:										return nullptr;
+        }
     }
 
     VkShaderModule Shader::CreateShaderModule(const std::vector<char> &code) const
@@ -83,6 +138,33 @@ namespace SceneryEditorX
 
         return shaderModule;
 	}
+
+    ShaderResource::UniformBuffer Shader::GetUniformBuffer(const uint32_t binding, const uint32_t set) const
+    {
+        SEDX_CORE_ASSERT(m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.size() > binding);
+        const auto &ub = m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.at(binding);
+
+        ShaderResource::UniformBuffer result;
+        result.descriptor = ub.GetDescriptor(1);
+        if (ub.GetBufferCount() > 0)
+        {
+            result.size = ub.GetBufferCount();
+        }
+        else
+            result.size = ub.GetBufferCount(); /// You may want to set this to ub.size if available
+        result.bindingPoint = binding;
+        result.name = "";                                        /// If UniformBuffer has a name, set it here
+        result.ShaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; /// Set actual stage if available
+
+        return result;
+    }
+    uint32_t Shader::GetUniformBufferCount(const uint32_t set) const
+    {
+        if (m_ReflectionData.ShaderDescriptorSets.size() < set)
+            return 0;
+
+        return static_cast<uint32_t>(m_ReflectionData.ShaderDescriptorSets[set].uniformBuffers.size());
+    }
 
     void ShaderLibrary::Add(const Ref<Shader>& shader)
 	{

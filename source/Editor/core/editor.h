@@ -11,6 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "Editor/projects/project.h"
+
+
 #include <Editor/core/viewport.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
@@ -55,21 +58,6 @@ namespace SceneryEditorX
 
         bool OnKeyPressedEvent(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
-
-		void OpenProject();
-		void OpenProject(const std::filesystem::path& filepath);
-
-        void CreateProject(const std::filesystem::path &projectPath);
-		void EmptyProject();
-		void UpdateCurrentProject();
-		void SaveProject();
-		void CloseProject(bool unloadProject = true);
-		void NewScene(const std::string& name = "UntitledAirport");
-		bool OpenScene();
-		bool OpenScene(const std::filesystem::path& filepath, const bool checkAutoSave = true);
-		void SaveScene();
-		void SaveSceneAuto();
-		void SaveSceneAs();
 
         //void OnCreateMeshFromMeshSource(Entity entity, Ref<MeshSource> meshSource);
         //void SceneHierarchyInvalidMetadataCallback(Entity entity, AssetHandle handle);
@@ -133,9 +121,9 @@ namespace SceneryEditorX
 
 
 #ifdef SEDX_PLATFORM_WINDOWS
-		using WatcherString = std::wstring;
+		typedef std::wstring WatcherString;
 #else
-		using WatcherString = std::string;
+		typedef std::string WatcherString;
 #endif
 		//std::unique_ptr<filewatch::FileWatch<WatcherString>> m_ScriptFileWatcher = nullptr;
     };
@@ -146,26 +134,8 @@ namespace SceneryEditorX
         EditorApplication();
         virtual ~EditorApplication();
 
-        /**
-         * @brief Initializes the editor components.
-         *
-         * Sets up the graphics engine, UI system, and other core components
-         * required for the editor to function properly.
-         */
         void InitEditor();
-
-        /**
-         * @brief Starts the editor application.
-         *
-         * Launches the main application loop and begins processing events.
-         */
 		void Run();
-
-        /**
-         * @brief Updates the editor state.
-         *
-         * Called each frame to update UI, process input, and manage the editor state.
-         */
         void Update();
 
         /**
@@ -218,11 +188,12 @@ namespace SceneryEditorX
         void SaveSceneAs();
 
 	private:
-        using GraphicsEngine = Renderer;
+        typedef Renderer GraphicsEngine;
 
 	    void UpdateWindowTitle(const std::string& sceneName);
         Ref<UserPreferences> m_UserPreferences;
         Ref<RenderContext> renderContext;
+        //Ref<::Project::DefaultProject> activeProject;
         static GraphicsEngine gfxEngine; // Graphics engine instance
 
         //Scope<PanelManager> m_PanelManager;

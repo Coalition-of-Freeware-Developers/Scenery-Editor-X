@@ -10,13 +10,13 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
-//#include "command_queue.h"
-//#include "SceneryEditorX/core/memory/memory.h"
-//#include <mutex>
+#include "command_queue.h"
+#include "SceneryEditorX/core/memory/memory.h"
+#include <mutex>
 
 /// -------------------------------------------------------
 
-/*
+
 namespace SceneryEditorX
 {
     namespace
@@ -29,6 +29,8 @@ namespace SceneryEditorX
             return mutexes[static_cast<uint32_t>(queue->GetQueueType())];
 		}
     }
+
+
 
     CommandQueue::CommandQueue(Queue queueType, const std::string &debugName) : qType(queueType)
     {
@@ -47,9 +49,10 @@ namespace SceneryEditorX
         std::lock_guard<std::mutex> lock(GetMutex(this)); (void)flush;
     }
 
-    void CommandQueue::Submit(void *cmdBufferIn, uint32_t waitFlags) { (void)cmdBufferIn; (void)waitFlags; /* no-op in refactor #1# }
-
-    void CommandQueue::Execute() { /* legacy queue removed #1# }
+    void CommandQueue::Submit(void *cmdBufferIn, uint32_t waitFlags)
+    {
+        (void)cmdBufferIn; (void)waitFlags; /* no-op in refactor */
+    }
 
     /*
     void* CommandQueue::Allocate(RenderCommandFn func, uint32_t size)
@@ -66,7 +69,7 @@ namespace SceneryEditorX
         cmdCount++;
         return memory;
     }
-    #1#
+    */
 
     /*
     void CommandQueue::Execute()
@@ -88,9 +91,10 @@ namespace SceneryEditorX
         cmdBufferPtr = cmdBuffer;
         cmdCount = 0;
     }
-    #1#
+    */
+    
 
 }
-*/
+
 
 /// -------------------------------------------------------

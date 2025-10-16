@@ -74,7 +74,7 @@ namespace SceneryEditorX
         const VkAccessFlags srcAccessMask, const VkAccessFlags dstAccessMask,
         const VkImageLayout oldImageLayout, const VkImageLayout newImageLayout,
         const VkPipelineStageFlags srcStageMask, const VkPipelineStageFlags dstStageMask,
-        const VkImageSubresourceRange &subresourceRange)
+        VkImageSubresourceRange &subresourceRange)
     {
         VkImageMemoryBarrier imageMemoryBarrier{};
         imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -91,10 +91,10 @@ namespace SceneryEditorX
         vkCmdPipelineBarrier(cmdbuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
     }
 
-    void SetImageLayout(const VkCommandBuffer cmdbuffer, const VkImage image,
-                        const VkImageLayout oldImageLayout, const VkImageLayout newImageLayout,
-                        const VkImageSubresourceRange &subresourceRange,
-                        const VkPipelineStageFlags srcStageMask, const VkPipelineStageFlags dstStageMask)
+    void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image,
+                        VkImageLayout oldImageLayout, VkImageLayout newImageLayout,
+                        VkImageSubresourceRange &subresourceRange,
+                        VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
     {
         // Create an image barrier object
         VkImageMemoryBarrier imageMemoryBarrier = {};
@@ -205,9 +205,9 @@ namespace SceneryEditorX
         vkCmdPipelineBarrier(cmdbuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
     }
 
-    void SetImageLayout(const VkCommandBuffer cmdbuffer, const VkImage image, const VkImageAspectFlags aspectMask,
-						const VkImageLayout oldImageLayout, const VkImageLayout newImageLayout,
-						const VkPipelineStageFlags srcStageMask, const VkPipelineStageFlags dstStageMask)
+    void SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image, VkImageAspectFlags aspectMask,
+                        VkImageLayout oldImageLayout, VkImageLayout newImageLayout,
+                        VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
     {
         VkImageSubresourceRange subresourceRange = {};
         subresourceRange.aspectMask = aspectMask;

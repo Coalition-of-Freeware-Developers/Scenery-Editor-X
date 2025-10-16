@@ -118,9 +118,9 @@ namespace SceneryEditorX
          */
         enum class AllocationStrategy : uint8_t
         {
-            Default,        // Let VMA decide
-            SpeedOptimized, // Optimize for fast allocation
-            MemoryOptimized // Optimize for minimal memory usage
+            DEFAULT,        // Let VMA decide
+            SPEED_OPTIMIZED, // Optimize for fast allocation
+            MEMORY_OPTIMIZED // Optimize for minimal memory usage
         };
 
         void SetAllocationStrategy(AllocationStrategy strategy);
@@ -160,8 +160,8 @@ namespace SceneryEditorX
         {
             uint64_t totalBytes = 0;
             uint64_t usedBytes = 0;
-            float usagePercentage = 0.0f;
             bool isOverBudget = false;
+            float usagePercentage = 0.0f;
         };
 
         [[nodiscard]] MemoryBudget GetMemoryBudget() const;
@@ -182,7 +182,7 @@ namespace SceneryEditorX
 		 * to improve performance and reduce fragmentation.
 		 *
 		 * @note - This structure is used internally by the MemoryAllocator class.
-		 * @param buffer 
+		 * @param buffer
 		 * @param allocation
 		 */
         struct BatchBufferAllocation
@@ -220,8 +220,25 @@ namespace SceneryEditorX
 		template<typename T>
 		T* MapMemory(const VmaAllocation allocation)
 		{
-			T* mappedMemory;
-            vmaMapMemory(GetAllocator(), allocation, reinterpret_cast<void **>(&mappedMemory));
+            // Validate allocator state
+            VmaAllocator allocator = GetAllocator();
+            SEDX_ASSERT(allocator != nullptr, "VMA allocator is null in MapMemory");
+
+            // Query memory type flags to ensure host visibility before mapping
+            VmaAllocationInfo allocInfo{};
+            vmaGetAllocationInfo(allocator, allocation, &allocInfo);
+            VkMemoryPropertyFlags memFlags{};
+            vmaGetMemoryTypeProperties(allocator, allocInfo.memoryType, &memFlags);
+            SEDX_ASSERT((memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0,
+                    "Attempted to map non-host-visible memory. Use a staging buffer for uploads.");
+
+            T* mappedMemory = nullptr;
+            VkResult res = vmaMapMemory(allocator, allocation, reinterpret_cast<void **>(&mappedMemory));
+            if (res != VK_SUCCESS)
+            {
+                SEDX_CORE_ERROR_TAG("VMA", "vmaMapMemory failed with error {}", static_cast<int>(res));
+                return nullptr;
+            }
             return mappedMemory;
 		}
 
@@ -238,7 +255,7 @@ namespace SceneryEditorX
         std::string tag_ = "default tag";
         std::vector<VmaAllocation> defragmentationCandidates;
         VmaDefragmentationContext defragmentationContext = nullptr;
-        AllocationStrategy currentStrategy = AllocationStrategy::Default;
+        AllocationStrategy currentStrategy = AllocationStrategy::DEFAULT;
 
         /// ---------------------------------------------------------
 

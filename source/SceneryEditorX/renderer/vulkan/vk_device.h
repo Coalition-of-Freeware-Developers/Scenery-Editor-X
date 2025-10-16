@@ -15,6 +15,12 @@
 #include "vk_data.h"
 #include <optional>
 #include <vulkan/vulkan.h>
+// PCH normally provides these in AppCore; include here for standalone TUs (tests)
+#include <map>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_set>
 
 /// -------------------------------------------------------
 
@@ -78,7 +84,7 @@ namespace SceneryEditorX
              * @brief Check if all required queue families are initialized.
              * @return True if all required families are set, false otherwise.
              */
-            [[nodiscard]] bool isComplete() const;
+            [[nodiscard]] bool IsComplete() const;
 
             /**
              * @brief Get the family index.
@@ -160,56 +166,6 @@ namespace SceneryEditorX
 
 	/// ---------------------------------------------------------
 
-    class CommandPool : public RefCounted
-    {
-    public:
-        /**
-         * @brief Create command pools for a device
-         * @param vulkanDevice The device to create command pools for
-         * @param type The type of queue this command pool will be used with (graphics, compute, transfer, etc.)
-         */
-        CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
-        virtual ~CommandPool() override;
-
-        /**
-         * @brief Allocate a command buffer from the pool
-         *
-         * @param begin Whether to begin the command buffer
-         * @param compute Whether to allocate from the compute pool
-         *
-         * @return A new command buffer
-         */
-        [[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;
-
-        /**
-         * @brief Submit a command buffer to the graphics queue and wait for completion
-         * @param cmdBuffer The command buffer to submit
-         */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
-
-        /**
-         * @brief Submit a command buffer to a specific queue and wait for completion
-         * @param cmdBuffer The command buffer to submit
-         * @param queue The queue to submit to
-         */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
-
-        /// Accessor methods
-        [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
-        [[nodiscard]] VkCommandPool GetComputeCmdPool() const { return ComputeCmdPool; }
-        [[nodiscard]] VkCommandPool GetTransferCmdPool() const { return TransferCmdPool; }
-
-        Queue queueType;
-        VkCommandPool commandPool = VK_NULL_HANDLE;
-
-    private:
-        VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
-        VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
-        VkCommandPool TransferCmdPool = VK_NULL_HANDLE;
-    };
-
-    /// ---------------------------------------------------------
-
 	class VulkanDevice : public RefCounted
     {
     public:
@@ -258,6 +214,7 @@ namespace SceneryEditorX
         [[nodiscard]] const VkDevice& GetDevice() const { return device; }
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+        void SetResourceName(void *resource, const ResourceType resourceType, const char *name);
 
 	    /// -------------------------------------------------------
         /// Function pointers for Vulkan extensions

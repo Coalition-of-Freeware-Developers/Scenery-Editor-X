@@ -199,10 +199,13 @@ ADD_LIBRARY(AppCore
 	utils/delegations.h
 	utils/formatter.h
 	utils/pointers.h
+	utils/size_macro_utils.h
 	utils/static_states.h
 	utils/string_utils.cpp
 	utils/string_utils.h
 	utils/system_detection.h
+	utils/repeat_call_tracker.h
+	utils/repeat_call_tracker.cpp
     # --------------------------------
     ${RESOURCE_FILE}
 	cpp.hint
@@ -304,6 +307,7 @@ SOURCE_GROUP("Utilities" FILES
 	utils/delegations.h
 	utils/formatter.h
 	utils/pointers.h
+	utils/size_macro_utils.h
 	utils/static_states.h
 	utils/string_utils.cpp
 	utils/string_utils.h
@@ -429,6 +433,8 @@ SOURCE_GROUP("UI" FILES
 	ui/ui_renderer.h
 	ui/ui_utils.cpp
 	ui/ui_utils.h
+	utils/repeat_call_tracker.h
+	utils/repeat_call_tracker.cpp
 )
 SOURCE_GROUP("UI/Panels" FILES
 	${UI_PANELS}

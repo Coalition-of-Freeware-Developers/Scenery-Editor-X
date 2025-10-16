@@ -26,14 +26,14 @@ namespace SceneryEditorX
         m_blendFactor = blendFactor;
 
 	    // hash
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendEnabled));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendState.src));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendState.dst));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendState.blendOp));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendState.srcAlpha));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendState.dstAlpha));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendState.blendOpAlpha));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_blendFactor));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendEnabled));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendState.src));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendState.dst));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendState.blendOp));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendState.srcAlpha));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendState.dstAlpha));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendState.blendOpAlpha));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_blendFactor));
 	}
 
 }

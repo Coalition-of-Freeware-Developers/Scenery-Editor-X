@@ -26,13 +26,13 @@ namespace SceneryEditorX
 
         // hash
         std::hash<float> hasher;
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_raster_spec.m_polygon_mode));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_raster_spec.m_depth_clip_enabled));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(m_line_width));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(hasher(m_raster_spec.m_depth_bias)));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(hasher(m_raster_spec.m_depth_bias_clamp)));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(hasher(m_raster_spec.m_depth_bias_slope_scaled)));
-        m_hash = hash_combine(m_hash, static_cast<uint64_t>(hasher(m_line_width)));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_raster_spec.m_polygon_mode));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_raster_spec.m_depth_clip_enabled));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(m_line_width));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(hasher(m_raster_spec.m_depth_bias)));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(hasher(m_raster_spec.m_depth_bias_clamp)));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(hasher(m_raster_spec.m_depth_bias_slope_scaled)));
+        m_hash = HashCombine(m_hash, static_cast<uint64_t>(hasher(m_line_width)));
     }
     
     Rasterizer::~Rasterizer() = default;

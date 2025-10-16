@@ -10,13 +10,13 @@
 * Created: 15/4/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/renderer.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
-//#include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
-
-//#include "vk_pipeline_cache.h"
-//#include "vk_util.h"
+#include <SceneryEditorX/renderer/vulkan/vk_pipeline.h>
+#include "vk_pipeline_cache.h"
+#include "vk_util.h"
+#include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
+#include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/shaders/shader_definitions.h>
+#include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 
 /// -------------------------------------------------------
 
@@ -24,11 +24,78 @@ namespace SceneryEditorX
 {
 
     /*
-    Pipeline::Pipeline(PipelineData &data) : pipelineSpecs(data)
+    Pipeline::Pipeline(const PipelineData &data) : pipelineSpecs(data)
     {
+        clear_color.fill(color_load);
+        render_target_color_textures.fill(nullptr);
+
         SEDX_CORE_ASSERT(data.shader);
         SEDX_CORE_ASSERT(data.dstFramebuffer);
-        Pipeline::Invalidate();
+        //Invalidate();
+
+        m_state = pipeline_state;
+
+        // shader stages
+        std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(ShaderStage::Stage::MaxEnum); i++)
+        {
+            if (Shader *shader = m_state.shaders[i])
+                shader_stages.push_back(Shader::CreateShaderStage(shader));
+        }
+
+        // layout
+        {
+            // build descriptor set layouts array - must much order of appearance in common_resources.hlsl
+            std::array<void *, static_cast<size_t>(RHI_Device_Bindless_Resource::Max) + 1> layouts;
+            {
+                layouts[0] = descriptor_set_layout->GetResource();
+                SEDX_ASSERT(layouts[0] != nullptr);
+
+                for (size_t i = 0; i < static_cast<size_t>(RHI_Device_Bindless_Resource::Max); i++)
+                {
+                    layouts[i + 1] = VulkanDevice::GetDescriptorSetLayout(static_cast<RHI_Device_Bindless_Resource>(i));
+                    SEDX_ASSERT(layouts[i + 1] != nullptr);
+                }
+            }
+
+            // Push Constant Buffers
+            std::vector<VkPushConstantRange> push_constant_ranges;
+            for (const RHI_Descriptor &descriptor : descriptor_set_layout->GetDescriptors())
+            {
+                if (descriptor.type == RHI_Descriptor_Type::PushConstantBuffer)
+                {
+                    SEDX_ASSERT(descriptor.struct_size <= VulkanDevice::PropertyGetMaxPushConstantSize());
+
+                    VkPushConstantRange push_constant_range = {};
+                    push_constant_range.size = descriptor.struct_size;
+                    push_constant_range.stageFlags |= descriptor.stage & ShaderSpecs::ShaderStageToMask(ShaderStage::Stage::Vertex) ? VK_SHADER_STAGE_VERTEX_BIT : 0;
+                    push_constant_range.stageFlags |= descriptor.stage & ShaderSpecs::ShaderStageToMask(ShaderStage::Stage::TesselationControl) ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT : 0;
+                    push_constant_range.stageFlags |= descriptor.stage & ShaderSpecs::ShaderStageToMask(ShaderStage::Stage::TesselationEval) ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
+                    push_constant_range.stageFlags |= descriptor.stage & ShaderSpecs::ShaderStageToMask(ShaderStage::Stage::Fragment) ? VK_SHADER_STAGE_FRAGMENT_BIT  : 0;
+                    push_constant_range.stageFlags |= descriptor.stage & ShaderSpecs::ShaderStageToMask(ShaderStage::Stage::Compute) ? VK_SHADER_STAGE_COMPUTE_BIT : 0;
+                    push_constant_ranges.emplace_back(push_constant_range);
+                }
+            }
+
+            // Pipeline Layout
+            VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+            pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipeline_layout_info.pushConstantRangeCount = 0;
+            pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(layouts.size());
+            pipeline_layout_info.pSetLayouts = reinterpret_cast<VkDescriptorSetLayout *>(layouts.data());
+            pipeline_layout_info.pushConstantRangeCount = static_cast<uint32_t>(push_constant_ranges.size());
+            pipeline_layout_info.pPushConstantRanges = push_constant_ranges.data();
+
+            // Create
+            SEDX_ASSERT(vkCreatePipelineLayout(RenderContext::GetCurrentDevice()->GetDevice(), &pipeline_layout_info,nullptr, reinterpret_cast<VkPipelineLayout *>(&m_resource_layout)));
+        }
+
+        if (m_state.name == "light_integration_brdf_specular_lut")
+        {
+            bool test = true;
+        }
+
+
     }
     */
 

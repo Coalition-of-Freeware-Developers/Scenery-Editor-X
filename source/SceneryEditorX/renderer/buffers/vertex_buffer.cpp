@@ -11,25 +11,60 @@
 * -------------------------------------------------------
 */
 #include "vertex_buffer.h"
-#include <numbers>
 #include "SceneryEditorX/logging/profiler.hpp"
 #include "SceneryEditorX/renderer/primitives.h"
 #include "SceneryEditorX/renderer/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
+#include <numbers>
+#include <SceneryEditorX/utils/size_macro_utils.h>
 
 /// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    VertexBuffer::VertexBuffer(uint64_t size)
-        : m_BufferType(VertexBufferType::Dynamic),
-		m_Format(VertexFormat::Position3D_Color3), /// or whatever your default format is
+	VkVertexInputBindingDescription VertexBuffer::Vertex::GetBindingDescription(uint32_t binding, VkVertexInputRate inputRate)
+	{
+	    VkVertexInputBindingDescription bindingDescription{};
+	    bindingDescription.binding = binding;
+	    bindingDescription.stride = sizeof(Vertex);
+	    bindingDescription.inputRate = inputRate;
+	    return bindingDescription;
+	}
+
+    std::array<VkVertexInputAttributeDescription, 3> VertexBuffer::Vertex::GetAttributeDescriptions(uint32_t binding)
+    {
+        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+
+        attributeDescriptions[0].binding = binding;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+        attributeDescriptions[1].binding = binding;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+        attributeDescriptions[2].binding = binding;
+        attributeDescriptions[2].location = 2;
+        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+        return attributeDescriptions;
+    }
+
+    bool VertexBuffer::Vertex::operator==(const Vertex &other) const
+    {
+        return pos == other.pos && color == other.color && texCoord == other.texCoord;
+    }
+
+    VertexBuffer::VertexBuffer(uint64_t size) : m_BufferType(VertexBufferType::Dynamic), m_Format(VertexFormat::Position3D_Color3), // or whatever your default format is
 		m_Capacity(0), m_Size(size), m_IsInitialized(false)
     {
-		SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating VertexBuffer with size: {} bytes", size);
+        SEDX_CORE_INFO_TAG("Vertex Buffer", "Creating VertexBuffer with size: {}", FILE_SIZE(size));
 
-		/// Initialize the buffer with the specified size
+		// Initialize the buffer with the specified size
 		CreateVertexBuffer();
 
 		m_IsInitialized = true;
@@ -44,7 +79,7 @@ namespace SceneryEditorX
      */
     VertexBuffer::VertexBuffer(VertexBufferType type, VertexFormat vertexFormat, uint32_t initialCapacity) : m_BufferType(type), m_Format(vertexFormat), m_Capacity(initialCapacity)
     {
-        SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating vertex buffer: type={}, format={}, capacity={}", static_cast<int>(type), static_cast<int>(vertexFormat), initialCapacity);
+        SEDX_CORE_INFO_TAG("Vertex Buffer", "Creating vertex buffer: type={}, format={}, capacity={}", static_cast<int>(type), static_cast<int>(vertexFormat), initialCapacity);
 
         // Initialize MemoryAllocator
         m_MemoryAllocator = CreateRef<MemoryAllocator>("VertexBuffer");
@@ -65,20 +100,19 @@ namespace SceneryEditorX
      */
     VertexBuffer::VertexBuffer(const std::vector<Vertex>& initialVertices, VertexBufferType type) : m_Vertices(initialVertices), m_BufferType(type), m_Format(VertexFormat::Position3D_Color3)
     {
-        SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating vertex buffer with {} vertices", initialVertices.size());
+        SEDX_CORE_INFO_TAG("Vertex Buffer", "Creating vertex buffer with {} vertices", initialVertices.size());
 
-        /// Initialize MemoryAllocator
+        // Initialize MemoryAllocator
         m_MemoryAllocator = CreateRef<MemoryAllocator>("VertexBuffer");
 
         m_Size = m_Vertices.size() * sizeof(Vertex);
         m_Capacity = static_cast<uint32_t>(m_Vertices.size());
 
-        /// Create local data buffer
+        // Create local data buffer
         m_LocalData.Allocate(m_Size);
-        if (!m_Vertices.empty())
-            m_LocalData.Write(m_Vertices.data(), m_Size, 0);
+        if (!m_Vertices.empty()) m_LocalData.Write(m_Vertices.data(), m_Size, 0);
 
-        /// Create GPU buffer using MemoryAllocator
+        // Create GPU buffer using MemoryAllocator
         CreateVertexBuffer();
         UploadVertexData();
     }
@@ -92,20 +126,19 @@ namespace SceneryEditorX
      */
     VertexBuffer::VertexBuffer(const void *data, uint64_t size, VertexBufferType usage) : m_BufferType(usage), m_Format(VertexFormat::Custom), m_Size(size)
     {
-        SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating vertex buffer with raw data: {} bytes", size);
+        SEDX_CORE_INFO_TAG("Vertex Buffer", "Creating vertex buffer with raw data: {}", FILE_SIZE(size));
 
         // Initialize MemoryAllocator
         m_MemoryAllocator = CreateRef<MemoryAllocator>("VertexBuffer");
 
-        /// Create local data buffer
+        // Create local data buffer
         m_LocalData.Allocate(size);
-        if (data && size > 0)
-            m_LocalData.Write(data, size, 0);
+        if (data && size > 0) m_LocalData.Write(data, size, 0);
 
-        /// Calculate vertex count based on standard vertex size
+        // Calculate vertex count based on standard vertex size
         m_Capacity = static_cast<uint32_t>(size / sizeof(Vertex));
 
-        /// Create GPU buffer using MemoryAllocator
+        // Create GPU buffer using MemoryAllocator
         CreateVertexBuffer();
         UploadVertexData();
     }
@@ -118,15 +151,15 @@ namespace SceneryEditorX
      */
     VertexBuffer::~VertexBuffer()
     {
-        SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Destroying vertex buffer with {} vertices", GetVertexCount());
+        SEDX_CORE_INFO_TAG("Vertex Buffer", "Destroying vertex buffer with {} vertices", GetVertexCount());
 
-        /// Release local data
+        // Release local data
         m_LocalData.Release();
 
-        /// GPU buffer cleanup is handled automatically by Buffer destructor
+        // GPU buffer cleanup is handled automatically by Buffer destructor
         m_IsInitialized = false;
 
-        /// MemoryAllocator is automatically cleaned up by smart pointer
+        // MemoryAllocator is automatically cleaned up by smart pointer
     }
 
     /**
@@ -138,13 +171,13 @@ namespace SceneryEditorX
     void VertexBuffer::SetData(const std::vector<Vertex> &newVertices, bool recreateBuffer)
     {
         SEDX_PROFILE_SCOPE("VertexBuffer::SetData");
-        SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Setting data: {} vertices", newVertices.size());
+        SEDX_CORE_TRACE_TAG("Vertex Buffer", "Setting data: {} vertices", newVertices.size());
 
         m_Vertices = newVertices;
         m_Size = m_Vertices.size() * sizeof(Vertex);
         m_Capacity = static_cast<uint32_t>(m_Vertices.size());
 
-        /// Update local data buffer
+        // Update local data buffer
         m_LocalData.Release();
         m_LocalData.Allocate(m_Size);
 
@@ -167,16 +200,16 @@ namespace SceneryEditorX
     void VertexBuffer::AppendData(const std::vector<Vertex> &additionalVertices, bool recreateBuffer)
     {
         SEDX_PROFILE_SCOPE("VertexBuffer::AppendData");
-        SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Appending {} vertices to {} existing", additionalVertices.size(), m_Vertices.size());
+        SEDX_CORE_TRACE_TAG("Vertex Buffer", "Appending {} vertices to {} existing", additionalVertices.size(), m_Vertices.size());
 
-        /// Reserve space for better performance
+        // Reserve space for better performance
         m_Vertices.reserve(m_Vertices.size() + additionalVertices.size());
         m_Vertices.insert(m_Vertices.end(), additionalVertices.begin(), additionalVertices.end());
 
         m_Size = m_Vertices.size() * sizeof(Vertex);
         m_Capacity = static_cast<uint32_t>(m_Vertices.size());
 
-        /// Update local data buffer
+        // Update local data buffer
         m_LocalData.Release();
         m_LocalData.Allocate(m_Size);
         if (!m_Vertices.empty())
@@ -199,18 +232,18 @@ namespace SceneryEditorX
     {
         SEDX_PROFILE_SCOPE("VertexBuffer::UpdateData");
         SEDX_CORE_ASSERT(startIndex + updatedVertices.size() <= m_Vertices.size(), "Update range exceeds buffer size");
-        SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Updating {} vertices starting at index {}", updatedVertices.size(), startIndex);
+        SEDX_CORE_TRACE_TAG("Vertex Buffer", "Updating {} vertices starting at index {}", updatedVertices.size(), startIndex);
 
-        /// Update local vertex data
+        // Update local vertex data
         for (size_t i = 0; i < updatedVertices.size(); ++i)
             m_Vertices[startIndex + i] = updatedVertices[i];
 
-        /// Update local data buffer
+        // Update local data buffer
         const uint64_t offset = startIndex * sizeof(Vertex);
         const uint64_t updateSize = updatedVertices.size() * sizeof(Vertex);
         m_LocalData.Write(updatedVertices.data(), updateSize, offset);
 
-        /// For dynamic buffers, update GPU memory directly
+        // For dynamic buffers, update GPU memory directly
         if (m_BufferType == VertexBufferType::Dynamic && m_VertexBuffer.memory & MemoryType::CPU)
         {
             if (void* mapped = MapBuffer(m_VertexBuffer))
@@ -221,7 +254,7 @@ namespace SceneryEditorX
         }
         else
         {
-            /// For static buffers, use staging buffer to update
+            // For static buffers, use staging buffer to update
             UploadPartialVertexData(offset, updateSize);
         }
     }
@@ -233,7 +266,7 @@ namespace SceneryEditorX
      */
     void VertexBuffer::ClearData(bool releaseBuffer)
     {
-        SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Clearing vertex data (release buffer: {})", releaseBuffer);
+        SEDX_CORE_TRACE_TAG("Vertex Buffer", "Clearing vertex data (release buffer: {})", releaseBuffer);
 
         m_Vertices.clear();
         m_Size = 0;
@@ -241,7 +274,7 @@ namespace SceneryEditorX
 
         if (releaseBuffer)
         {
-            /// Reset GPU buffer
+            // Reset GPU buffer
             m_VertexBuffer = Buffer{};
             m_IsInitialized = false;
         }
@@ -255,7 +288,7 @@ namespace SceneryEditorX
      */
     void VertexBuffer::Reserve(uint32_t newCapacity, bool preserveData)
     {
-        SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Reserving capacity for {} vertices (preserve: {})", newCapacity, preserveData);
+        SEDX_CORE_TRACE_TAG("Vertex Buffer", "Reserving capacity for {} vertices (preserve: {})", newCapacity, preserveData);
 
         if (newCapacity <= m_Capacity)
             return;
@@ -273,10 +306,10 @@ namespace SceneryEditorX
 
         m_Capacity = newCapacity;
 
-        /// Update size for new capacity
+        // Update size for new capacity
         m_Size = preserveData ? m_Vertices.size() * sizeof(Vertex) : newCapacity * sizeof(Vertex);
 
-        /// Recreate buffer with new capacity
+        // Recreate buffer with new capacity
         CreateVertexBuffer();
         if (preserveData && !m_Vertices.empty())
             UploadVertexData();
@@ -330,13 +363,13 @@ namespace SceneryEditorX
     Ref<VertexBuffer> VertexBuffer::CreatePrimitive(PrimitiveType type, const Vec3 &size, const Vec3 &color)
     {
         SEDX_PROFILE_SCOPE("VertexBuffer::CreatePrimitive");
-        SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Creating primitive vertex buffer: type={}, size=({}, {}, {}), color=({}, {}, {})",
+        SEDX_CORE_INFO_TAG("Vertex Buffer", "Creating primitive vertex buffer: type={}, size=({}, {}, {}), color=({}, {}, {})",
                           static_cast<int>(type), size.x, size.y, size.z, color.r, color.g, color.b);
 
         /// Validate input parameters
         if (type == PrimitiveType::None)
         {
-            SEDX_CORE_WARN_TAG("VERTEX_BUFFER", "Cannot create vertex buffer for PrimitiveType::None");
+            SEDX_CORE_WARN_TAG("Vertex Buffer", "Cannot create vertex buffer for PrimitiveType::None");
             return nullptr;
         }
 
@@ -353,25 +386,25 @@ namespace SceneryEditorX
                 case Cylinder:	vertices = GenerateCylinderVertices(size.x, size.y, color); break;
                 case Plane:		vertices = GeneratePlaneVertices(Vec2(size.x, size.y), color);	break;
                 default:
-                    SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Unsupported primitive type: {}", static_cast<int>(type));
+                    SEDX_CORE_ERROR_TAG("Vertex Buffer", "Unsupported primitive type: {}", static_cast<int>(type));
                     return nullptr;
             }
 
             if (vertices.empty())
             {
-                SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to generate vertices for primitive type: {}", static_cast<int>(type));
+                SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to generate vertices for primitive type: {}", static_cast<int>(type));
                 return nullptr;
             }
 
             /// Create vertex buffer with the generated vertices
             auto vertexBuffer = CreateRef<VertexBuffer>(vertices, VertexBufferType::Static);
 
-            SEDX_CORE_INFO_TAG("VERTEX_BUFFER", "Primitive vertex buffer created successfully with {} vertices", vertices.size());
+            SEDX_CORE_INFO_TAG("Vertex Buffer", "Primitive vertex buffer created successfully with {} vertices", vertices.size());
             return vertexBuffer;
         }
         catch (const std::exception& e)
         {
-            SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Exception creating primitive vertex buffer: {}", e.what());
+            SEDX_CORE_ERROR_TAG("Vertex Buffer", "Exception creating primitive vertex buffer: {}", e.what());
             return nullptr;
         }
     }
@@ -416,38 +449,38 @@ namespace SceneryEditorX
 
         if (m_Size == 0)
         {
-            SEDX_CORE_WARN_TAG("VERTEX_BUFFER", "Attempting to create buffer with zero size");
+            SEDX_CORE_WARN_TAG("Vertex Buffer", "Attempting to create buffer with zero size");
             return;
         }
 
-        /// Initialize memory allocator if not already done
+        // Initialize memory allocator if not already done
         if (!m_MemoryAllocator)
             m_MemoryAllocator = CreateRef<MemoryAllocator>("VertexBuffer");
 
         try
         {
-            /// Determine memory type based on buffer type
+            // Determine memory type based on buffer type
             MemoryFlags memoryType = MemoryType::GPU;
             if (m_BufferType == VertexBufferType::Dynamic || m_BufferType == VertexBufferType::Streaming)
                 memoryType = MemoryType::CPU;
 
-            /// Create buffer using existing Buffer system
+            // Create buffer using existing Buffer system
             m_VertexBuffer = CreateBuffer(m_Size, BufferUsage::Vertex, memoryType);
 
             if (!m_VertexBuffer.resource || m_VertexBuffer.resource->buffer == VK_NULL_HANDLE)
             {
-                SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to create vertex buffer");
+                SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to create vertex buffer");
                 return;
             }
 
             m_IsInitialized = true;
 
-            SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Created vertex buffer: {} bytes, Type: {}",
-                               m_Size, static_cast<int>(m_BufferType));
+            SEDX_CORE_TRACE_TAG("Vertex Buffer", "Created vertex buffer: {}, Type: {}",
+                                FILE_SIZE(m_Size), static_cast<int>(m_BufferType));
         }
         catch (const std::exception& e)
         {
-            SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to create vertex buffer: {}", e.what());
+            SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to create vertex buffer: {}", e.what());
             m_IsInitialized = false;
             throw;
         }
@@ -467,51 +500,51 @@ namespace SceneryEditorX
         {
             if (m_VertexBuffer.memory & MemoryType::CPU)
             {
-                /// Direct memory mapping for CPU-accessible buffers
+                // Direct memory mapping for CPU-accessible buffers
                 if (void* mapped = MapBuffer(m_VertexBuffer))
                 {
                     memcpy(mapped, m_LocalData.data, m_Size);
                     UnmapBuffer(m_VertexBuffer);
-                    SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Uploaded {} bytes via direct mapping", m_Size);
+                    SEDX_CORE_TRACE_TAG("Vertex Buffer", "Uploaded {} via direct mapping", FILE_SIZE(m_Size));
                 }
                 else
                 {
-                    SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to map vertex buffer memory");
+                    SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to map vertex buffer memory");
                 }
             }
             else
             {
-                /// Use staging buffer for GPU-only memory
+                // Use staging buffer for GPU-only memory
                 Buffer stagingBuffer = CreateBuffer(m_Size, BufferUsage::TransferSrc, MemoryType::CPU);
 
                 if (!stagingBuffer.resource || stagingBuffer.resource->buffer == VK_NULL_HANDLE)
                 {
-                    SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to create staging buffer");
+                    SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to create staging buffer");
                     return;
                 }
 
-                /// Upload to staging buffer
+                // Upload to staging buffer
                 if (void* mapped = MapBuffer(stagingBuffer))
                 {
                     memcpy(mapped, m_LocalData.data, m_Size);
                     UnmapBuffer(stagingBuffer);
 
-                    /// Copy from staging to GPU buffer
+                    // Copy from staging to GPU buffer
                     CopyBuffer(stagingBuffer.resource->buffer, m_VertexBuffer.resource->buffer, m_Size);
 
-                    SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Uploaded {} bytes via staging buffer", m_Size);
+                    SEDX_CORE_TRACE_TAG("Vertex Buffer", "Uploaded {} via staging buffer", FILE_SIZE(m_Size));
                 }
                 else
                 {
-                    SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to map staging buffer memory");
+                    SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to map staging buffer memory");
                 }
 
-                /// Staging buffer is automatically cleaned up by Buffer destructor
+                // Staging buffer is automatically cleaned up by Buffer destructor
             }
         }
         catch (const std::exception& exept)
         {
-            SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to upload vertex data: {}", exept.what());
+            SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to upload vertex data: {}", exept.what());
             throw;
         }
     }
@@ -532,51 +565,53 @@ namespace SceneryEditorX
         {
             if (m_VertexBuffer.memory & MemoryType::CPU)
             {
-                /// Direct memory mapping for CPU-accessible buffers with offset
+                // Direct memory mapping for CPU-accessible buffers with offset
                 if (void* mapped = MapBuffer(m_VertexBuffer))
                 {
                     memcpy(static_cast<uint8_t*>(mapped) + offset, static_cast<uint8_t*>(m_LocalData.data) + offset, size);
                     UnmapBuffer(m_VertexBuffer);
-                    SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Uploaded {} bytes at offset {} via direct mapping", size, offset);
+                    SEDX_CORE_TRACE_TAG("Vertex Buffer", "Uploaded {} at offset {} via direct mapping",
+										FILE_SIZE(size), offset);
                 }
                 else
                 {
-                    SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to map vertex buffer memory");
+                    SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to map vertex buffer memory");
                 }
             }
             else
             {
-                /// Use staging buffer for partial updates with offset support
+                // Use staging buffer for partial updates with offset support
                 Buffer stagingBuffer = CreateBuffer(size, BufferUsage::TransferSrc, MemoryType::CPU);
 
                 if (!stagingBuffer.resource || stagingBuffer.resource->buffer == VK_NULL_HANDLE)
                 {
-                    SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to create staging buffer for partial update");
+                    SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to create staging buffer for partial update");
                     return;
                 }
 
-                /// Upload to staging buffer
+                // Upload to staging buffer
                 if (void* mapped = MapBuffer(stagingBuffer))
                 {
                     memcpy(mapped, static_cast<uint8_t*>(m_LocalData.data) + offset, size);
                     UnmapBuffer(stagingBuffer);
 
-                    /// Copy from staging to GPU buffer with offset using CopyBufferRegion
+                    // Copy from staging to GPU buffer with offset using CopyBufferRegion
                     CopyBufferRegion(stagingBuffer.resource->buffer, m_VertexBuffer.resource->buffer, size, 0, offset);
 
-                    SEDX_CORE_TRACE_TAG("VERTEX_BUFFER", "Uploaded {} bytes at offset {} via staging buffer", size, offset);
+                    SEDX_CORE_TRACE_TAG("Vertex Buffer", "Uploaded {} at offset {} via staging buffer",
+                                        FILE_SIZE(size), offset);
                 }
                 else
                 {
-                    SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to map staging buffer memory");
+                    SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to map staging buffer memory");
                 }
 
-                /// Staging buffer is automatically cleaned up by Buffer destructor
+                // Staging buffer is automatically cleaned up by Buffer destructor
             }
         }
         catch (const std::exception& e)
         {
-            SEDX_CORE_ERROR_TAG("VERTEX_BUFFER", "Failed to upload partial vertex data: {}", e.what());
+            SEDX_CORE_ERROR_TAG("Vertex Buffer", "Failed to upload partial vertex data: {}", e.what());
             throw;
         }
     }
@@ -594,46 +629,46 @@ namespace SceneryEditorX
     std::vector<VertexBuffer::Vertex> VertexBuffer::GenerateCubeVertices(const Vec3& size, const Vec3& color)
     {
         std::vector<Vertex> vertices;
-        vertices.reserve(24); /// 6 faces * 4 vertices per face
+        vertices.reserve(24); // 6 faces * 4 vertices per face
 
-        /// Define the 8 corner positions of the box
+        // Define the 8 corner positions of the box
         const Vec3 corners[8] = {
-            { -size.x / 2.0f, -size.y / 2.0f,  size.z / 2.0f }, /// 0: front-bottom-left
-            {  size.x / 2.0f, -size.y / 2.0f,  size.z / 2.0f }, /// 1: front-bottom-right
-            {  size.x / 2.0f,  size.y / 2.0f,  size.z / 2.0f }, /// 2: front-top-right
-            { -size.x / 2.0f,  size.y / 2.0f,  size.z / 2.0f }, /// 3: front-top-left
-            { -size.x / 2.0f, -size.y / 2.0f, -size.z / 2.0f }, /// 4: back-bottom-left
-            {  size.x / 2.0f, -size.y / 2.0f, -size.z / 2.0f }, /// 5: back-bottom-right
-            {  size.x / 2.0f,  size.y / 2.0f, -size.z / 2.0f }, /// 6: back-top-right
-            { -size.x / 2.0f,  size.y / 2.0f, -size.z / 2.0f }  /// 7: back-top-left
+            { -size.x / 2.0f, -size.y / 2.0f,  size.z / 2.0f }, // 0: front-bottom-left
+            {  size.x / 2.0f, -size.y / 2.0f,  size.z / 2.0f }, // 1: front-bottom-right
+            {  size.x / 2.0f,  size.y / 2.0f,  size.z / 2.0f }, // 2: front-top-right
+            { -size.x / 2.0f,  size.y / 2.0f,  size.z / 2.0f }, // 3: front-top-left
+            { -size.x / 2.0f, -size.y / 2.0f, -size.z / 2.0f }, // 4: back-bottom-left
+            {  size.x / 2.0f, -size.y / 2.0f, -size.z / 2.0f }, // 5: back-bottom-right
+            {  size.x / 2.0f,  size.y / 2.0f, -size.z / 2.0f }, // 6: back-top-right
+            { -size.x / 2.0f,  size.y / 2.0f, -size.z / 2.0f }  // 7: back-top-left
         };
 
-        /// Define texture coordinates for each vertex of a face
+        // Define texture coordinates for each vertex of a face
         Vec2 texCoords[4] = {
-            {0.0f, 0.0f}, /// bottom-left
-            {1.0f, 0.0f}, /// bottom-right
-            {1.0f, 1.0f}, /// top-right
-            {0.0f, 1.0f}  /// top-left
+            {0.0f, 0.0f}, // bottom-left
+            {1.0f, 0.0f}, // bottom-right
+            {1.0f, 1.0f}, // top-right
+            {0.0f, 1.0f}  // top-left
         };
 
-        /// Define faces using corner indices
+        // Define faces using corner indices
         const uint32_t faces[6][4] = {
-            {0, 1, 2, 3}, /// Front face
-            {5, 4, 7, 6}, /// Back face
-            {4, 0, 3, 7}, /// Left face
-            {1, 5, 6, 2}, /// Right face
-            {4, 5, 1, 0}, /// Bottom face
-            {3, 2, 6, 7}  /// Top face
+            {0, 1, 2, 3}, // Front face
+            {5, 4, 7, 6}, // Back face
+            {4, 0, 3, 7}, // Left face
+            {1, 5, 6, 2}, // Right face
+            {4, 5, 1, 0}, // Bottom face
+            {3, 2, 6, 7}  // Top face
         };
 
-        /// Generate vertices for each face
+        // Generate vertices for each face
         for (auto face : faces)
         {
             for (int vertex = 0; vertex < 4; ++vertex)
             {
                 const int cornerIndex = face[vertex];
 
-                /// Use constructor with position, color, and texture coordinates
+                // Use constructor with position, color, and texture coordinates
                 vertices.emplace_back(corners[cornerIndex], color, texCoords[vertex]);
             }
         }
@@ -651,7 +686,7 @@ namespace SceneryEditorX
         constexpr uint32_t latitudeBands = 30;
         constexpr uint32_t longitudeBands = 30;
 
-        /// Generate vertices
+        // Generate vertices
         for (uint32_t latitude = 0; latitude <= latitudeBands; latitude++)
         {
             const float theta = static_cast<float>(latitude) * xMath::PI / static_cast<float>(latitudeBands);
@@ -664,20 +699,20 @@ namespace SceneryEditorX
                 const float sinPhi = std::sin(phi);
                 const float cosPhi = std::cos(phi);
 
-                /// Calculate position
+                // Calculate position
                 Vec3 position = Vec3(
                     radius * cosPhi * sinTheta,
                     radius * cosTheta,
                     radius * sinPhi * sinTheta
                 );
 
-                /// Texture coordinates
+                // Texture coordinates
                 Vec2 texCoord = Vec2(
                     static_cast<float>(longitude) / static_cast<float>(longitudeBands),
                     static_cast<float>(latitude) / static_cast<float>(latitudeBands)
                 );
 
-                /// Use constructor with position, color, and texture coordinates
+                // Use constructor with position, color, and texture coordinates
                 vertices.emplace_back(position, color, texCoord);
             }
         }
@@ -695,11 +730,11 @@ namespace SceneryEditorX
         constexpr int segments = 30;
         const float halfHeight = height / 2.0f;
 
-        /// Create center vertices for top and bottom caps
-        vertices.emplace_back(Vec3(0.0f, halfHeight, 0.0f), color, Vec2(0.5f, 0.5f));   /// Index 0 - top center
-        vertices.emplace_back(Vec3(0.0f, -halfHeight, 0.0f), color, Vec2(0.5f, 0.5f));  /// Index 1 - bottom center
+        // Create center vertices for top and bottom caps
+        vertices.emplace_back(Vec3(0.0f, halfHeight, 0.0f), color, Vec2(0.5f, 0.5f));   // Index 0 - top center
+        vertices.emplace_back(Vec3(0.0f, -halfHeight, 0.0f), color, Vec2(0.5f, 0.5f));  // Index 1 - bottom center
 
-        /// Create side vertices
+        // Create side vertices
         for (int i = 0; i <= segments; ++i)
         {
             const float theta = static_cast<float>(i) / static_cast<float>(segments) * 2.0f * xMath::PI;
@@ -707,10 +742,10 @@ namespace SceneryEditorX
             const float z = radius * std::sin(theta);
             const float u = static_cast<float>(i) / static_cast<float>(segments);
 
-            /// Top ring vertex
+            // Top ring vertex
             vertices.emplace_back(Vec3(x, halfHeight, z), color, Vec2(u, 1.0f));
 
-            /// Bottom ring vertex
+            // Bottom ring vertex
             vertices.emplace_back(Vec3(x, -halfHeight, z), color, Vec2(u, 0.0f));
         }
 
@@ -723,23 +758,37 @@ namespace SceneryEditorX
     std::vector<VertexBuffer::Vertex> VertexBuffer::GeneratePlaneVertices(const Vec2& size, const Vec3& color)
     {
         std::vector<Vertex> vertices;
-        vertices.reserve(6); /// 2 triangles * 3 vertices per triangle
+        vertices.reserve(6); // 2 triangles * 3 vertices per triangle
 
         const float halfWidth = size.x / 2.0f;
         const float halfHeight = size.y / 2.0f;
 
-        /// First triangle: bottom-left, bottom-right, top-right
+        // First triangle: bottom-left, bottom-right, top-right
         vertices.emplace_back(Vec3(-halfWidth, -halfHeight, 0.0f), color, Vec2(0.0f, 0.0f));
         vertices.emplace_back(Vec3(halfWidth, -halfHeight, 0.0f), color, Vec2(1.0f, 0.0f));
         vertices.emplace_back(Vec3(halfWidth, halfHeight, 0.0f), color, Vec2(1.0f, 1.0f));
 
-        /// Second triangle: top-right, top-left, bottom-left
+        // Second triangle: top-right, top-left, bottom-left
         vertices.emplace_back(Vec3(halfWidth, halfHeight, 0.0f), color, Vec2(1.0f, 1.0f));
         vertices.emplace_back(Vec3(-halfWidth, halfHeight, 0.0f), color, Vec2(0.0f, 1.0f));
         vertices.emplace_back(Vec3(-halfWidth, -halfHeight, 0.0f), color, Vec2(0.0f, 0.0f));
 
         return vertices;
     }
-}
+
+
+    void VertexBufferLayout::CalculateOffsetsAndStride()
+    {
+        uint32_t offset = 0;
+        m_Stride = 0;
+        for (auto &element : m_Elements)
+        {
+            element.offset = offset;
+            offset += element.size;
+            m_Stride += element.size;
+        }
+    }
+
+} // namespace SceneryEditorX
 
 /// ---------------------------------------------------------

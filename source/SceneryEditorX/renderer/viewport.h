@@ -30,7 +30,6 @@ namespace SceneryEditorX
         bool operator==(const Viewport &data) const;
         bool operator!=(const Viewport &data) const { return !(*this == data); }
 
-
         float GetAspectRatio() const;
         bool IsDefined() const;
 

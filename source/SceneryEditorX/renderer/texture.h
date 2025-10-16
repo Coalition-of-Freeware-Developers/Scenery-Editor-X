@@ -154,7 +154,7 @@ namespace SceneryEditorX
 
 	    //void SetLayout(const Layout::ImageLayout layout, CommandList *cmd_list,  uint32_t mip_index = all_mips, uint32_t mip_range = 0);
         Layout::ImageLayout GetLayout(const uint32_t mip) const;
-        std::array<Layout::ImageLayout, max_mip_count> GetLayouts();
+        std::array<Layout::ImageLayout, MAX_MIP_COUNT> GetLayouts();
 
 		void Lock();
 		void Unlock();
@@ -205,9 +205,9 @@ namespace SceneryEditorX
         std::vector<TextureSlice> m_slices;
 
 	    void* m_srv = nullptr;										// an srv with all mips
-        std::array<void*, max_mip_count> m_srv_mips = {nullptr};	// an srv for each mip
-        std::array<void*, max_render_target_count> m_rtv = {nullptr};
-        std::array<void*, max_render_target_count> m_dsv = {nullptr};
+        std::array<void*, MAX_MIP_COUNT> m_srv_mips = {nullptr};	// an srv for each mip
+        std::array<void*, MAX_RENDER_TARGET_COUNT> m_rtv = {nullptr};
+        std::array<void*, MAX_RENDER_TARGET_COUNT> m_dsv = {nullptr};
         void* m_resource = nullptr;
         void* m_externalMemory = nullptr;
 	    void* m_mappedData = nullptr;

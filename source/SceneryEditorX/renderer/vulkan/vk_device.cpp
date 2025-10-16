@@ -13,6 +13,7 @@
 #include <SceneryEditorX/renderer/vulkan/vk_device.h>
 #include <utility>
 #include <SceneryEditorX/renderer/bindless_descriptor_manager.h>
+#include <SceneryEditorX/renderer/command_manager.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
@@ -442,7 +443,7 @@ namespace SceneryEditorX
 
 	/// -------------------------------------------------------
 
-    bool VulkanPhysicalDevice::QueueFamilyIndices::isComplete() const
+    bool VulkanPhysicalDevice::QueueFamilyIndices::IsComplete() const
     {
         return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value();
     }
@@ -779,10 +780,21 @@ namespace SceneryEditorX
 
 		/// ---------------------------------------------------------
 
-        // Prepare device extensions as vector<const char*>
-        std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	// Prepare device extensions as vector<const char*>
+	std::vector<const char*> deviceExtensions;
+	// In headless mode, avoid swapchain to keep validation silent and remove WSI requirements
+	bool headlessMode = false;
+#if defined(_WIN32)
+	if (const char* env = std::getenv("SEDX_HEADLESS"))
+	    headlessMode = (std::strcmp(env, "1") == 0 || _stricmp(env, "true") == 0);
+#else
+	if (const char* env = std::getenv("SEDX_HEADLESS"))
+	    headlessMode = (std::strcmp(env, "1") == 0 || std::strcmp(env, "true") == 0);
+#endif
+	if (!headlessMode)
+        deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-		/// ---------------------------------------------------------
+    /// ---------------------------------------------------------
 
         {
             // Optionally add NVIDIA/AMD extensions if supported
@@ -1078,16 +1090,13 @@ namespace SceneryEditorX
     #endif
 
         // Load device extension function pointers
-        LoadExtensionFunctions();
+				LoadExtensionFunctions();
 
-		uint32_t apiVersion = RenderData::GetVulkanAPIVersion(); // Get the Vulkan API version
+				uint32_t apiVersion = RenderData::GetVulkanAPIVersion(); // Get the Vulkan API version
 
-    #ifdef SEDX_DEBUG
+		#ifdef SEDX_DEBUG
 		SEDX_CORE_INFO("Retrieved the current Vulkan API Version: {}", apiVersion);
-    #endif
-
-        // Initialize memory allocator
-        //MemoryAllocator::Init(apiVersion);
+		#endif
 
 		// Set up bindless resources and initial buffers
 		//InitBindlessResources(device, bindlessResources);
@@ -1250,8 +1259,12 @@ namespace SceneryEditorX
         }
         */
 
+
 		// Shutdown bindless descriptor system prior to device destruction
 		//BindlessDescriptorManager::Shutdown();
+
+		// Shutdown memory allocator before destroying the device
+		MemoryAllocator::Shutdown();
 
 		/// Destroy logical device
 		if (device != VK_NULL_HANDLE)
@@ -1989,304 +2002,7 @@ namespace SceneryEditorX
 		return 0; /// Return a default value to avoid undefined behavior
 	}
 
-	/// -------------------------------------------------------
-
-	/// -------------------------------------------------------
-    /// CommandPool Implementation
     /// -------------------------------------------------------
-
-    /**
-	 * @fn CommandPool
-	 * @brief Creates command pools for graphics and compute operations
-	 *
-	 * @details This constructor initializes separate command pools for graphics and compute queues.
-	 * Command pools are memory managers for command buffers and should typically be created for
-	 * each thread that will record commands. This implementation:
-	 * 1. Creates a command pool using the queue type specified (graphics or compute)
-	 * 2. Creates a separate compute command pool if a dedicated compute queue is available
-	 * 3. Falls back to using the graphics command pool for compute operations if necessary
-	 *
-	 * Command pools are created with the @enum VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag,
-	 * allowing individual command buffers to be reset for reuse without resetting the entire pool.
-	 *
-	 * @param vulkanDevice Reference to the Vulkan device that will own these command pools
-	 * @param type Queue type to determine which command pool to create (graphics or compute)
-	 *
-	 * @note - Command pools are specific to queue families and buffers allocated from a pool
-	 *       can only be submitted to queues of the matching family.
-	 *
-	 * @see vkCreateCommandPool, VkCommandPoolCreateInfo
-	 */
-	CommandPool::CommandPool (const Ref<VulkanDevice>& vulkanDevice, Queue type)
-	{
-		const auto vulkanDeviceHandle = vulkanDevice->GetDevice ();
-		const auto& queueIndices = vulkanDevice->GetPhysicalDevice ()->GetQueueFamilyIndices ();
-
-		queueType = type;
-
-		// Create graphics command pool
-		VkCommandPoolCreateInfo cmdPoolInfo{};
-		cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		cmdPoolInfo.queueFamilyIndex = queueIndices.GetGraphicsFamily ();
-
-		VkResult result = vkCreateCommandPool (vulkanDeviceHandle, &cmdPoolInfo, nullptr, &GraphicsCmdPool);
-		if (result != VK_SUCCESS)
-			SEDX_CORE_ERROR_TAG ("Graphics Engine", "Failed to create graphics command pool! Error: {}", static_cast<int>(result));
-
-		// Create compute command pool if compute queue is available
-		if (queueIndices.computeFamily.has_value ())
-		{
-			cmdPoolInfo.queueFamilyIndex = queueIndices.GetComputeFamily ();
-
-			result = vkCreateCommandPool (vulkanDeviceHandle, &cmdPoolInfo, nullptr, &ComputeCmdPool);
-			if (result != VK_SUCCESS)
-			{
-				SEDX_CORE_ERROR_TAG ("Graphics Engine", "Failed to create compute command pool! Error: {}", static_cast<int>(result));
-				ComputeCmdPool = GraphicsCmdPool; // Fallback: use graphics pool for compute
-			}
-		}
-	}
-
-    /**
-	 * @fn ~CommandPool
-	 * @brief Destroys the command pools created by this object
-	 *
-	 * @details This destructor properly cleans up command pool resources by:
-	 * 1. Checking if the device is still valid before proceeding
-	 * 2. Destroying the compute command pool if it's distinct from the graphics pool
-	 * 3. Destroying the graphics command pool
-	 * 4. Setting all handles to VK_NULL_HANDLE to prevent use-after-free issues
-	 *
-	 * The destructor handles the case where the compute and graphics command pools
-	 * share the same handle to avoid double-deletion, which would cause a Vulkan
-	 * validation error.
-	 *
-	 * @note - Command pools must be destroyed before their parent device is destroyed.
-	 *       When a command pool is destroyed, all command buffers allocated from it
-	 *       are implicitly freed and should not be used afterward.
-	 *
-	 * @see @fn vkDestroyCommandPool
-	 */
-    CommandPool::~CommandPool()
-    {
-        const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
-        if (!device)
-            return;
-
-        /// Only destroy compute pool if it's different from graphics pool
-        if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
-            vkDestroyCommandPool(device, ComputeCmdPool, nullptr);
-
-        if (GraphicsCmdPool != VK_NULL_HANDLE)
-            vkDestroyCommandPool(device, GraphicsCmdPool, nullptr);
-
-        GraphicsCmdPool = VK_NULL_HANDLE;
-        ComputeCmdPool = VK_NULL_HANDLE;
-    }
-
-    /**
-	 * @fn AllocateCommandBuffer
-	 * @brief Allocates a command buffer from the appropriate command pool
-	 *
-	 * @details This method allocates a new command buffer from either the graphics or compute command pool
-	 * based on the provided parameters. It handles proper allocation, initialization, and error checking.
-	 * If requested, it will also automatically begin the command buffer with one-time-submit usage flag,
-	 * making it ready to record commands immediately.
-	 *
-	 * The command buffer is allocated as a primary command buffer, which can be submitted directly to a queue
-	 * and can call secondary command buffers. Primary command buffers cannot be called by other command buffers.
-	 *
-	 * @param begin If true, the command buffer will be automatically started with @enum VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-	 * @param compute If true, the command buffer will be allocated from the compute command pool;
-	 *                otherwise, it will be allocated from the graphics command pool
-	 *
-	 * @return VkCommandBuffer The newly allocated command buffer, or VK_NULL_HANDLE if allocation failed
-	 *
-	 * @note - Command buffers allocated with this method should either be freed manually or flushed using
-	 *       the FlushCmdBuffer method, which will handle submission and automatic cleanup.
-	 *
-	 * @see FlushCmdBuffer
-	 */
-    VkCommandBuffer CommandPool::AllocateCommandBuffer(const bool begin, const bool compute) const
-    {
-        const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
-        const VkCommandPool cmdPool = compute ? ComputeCmdPool : GraphicsCmdPool;
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = cmdPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer cmdBuffer;
-        VkResult result = vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to allocate command buffer! Error: {}", static_cast<int>(result));
-            return VK_NULL_HANDLE;
-        }
-
-        if (begin)
-        {
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-            result = vkBeginCommandBuffer(cmdBuffer, &beginInfo);
-            if (result != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR("Failed to begin command buffer! Error: {}", static_cast<int>(result));
-                vkFreeCommandBuffers(device, cmdPool, 1, &cmdBuffer);
-                return VK_NULL_HANDLE;
-            }
-        }
-
-        return cmdBuffer;
-    }
-
-    /**
-	 * @fn FlushCmdBuffer
-	 * @brief Submits a command buffer to a specified queue and waits for its completion
-	 *
-	 * @details This method handles the complete submission lifecycle of a command buffer:
-	 * 1. Ends the command buffer recording with vkEndCommandBuffer
-	 * 2. Creates a fence to synchronize execution completion
-	 * 3. Submits the command buffer to the specified queue
-	 * 4. Waits for execution to complete using the fence
-	 * 5. Cleans up resources (fence and command buffer)
-	 *
-	 * This implementation uses a fence-based synchronization approach to ensure the GPU has
-	 * completely processed the submitted commands before returning. This is suitable for
-	 * operations that need to be completed before the CPU continues execution, such as
-	 * resource initialization or one-time uploads to the GPU.
-	 *
-	 * @param cmdBuffer The command buffer to submit and execute
-	 * @param queue The queue to which the command buffer should be submitted
-	 *
-	 * @note - After this function returns, the command buffer has been freed and should not be used
-	 * @note - This function will block the calling thread until the GPU completes execution
-	 * @note - For regular rendering operations that don't need CPU synchronization,
-	 *       consider using semaphores instead for better performance
-	 *
-	 * @see vkEndCommandBuffer, vkCreateFence, vkQueueSubmit, vkWaitForFences
-	 */
-    /*
-    void CommandPool::FlushCmdBuffer(const VkCommandBuffer cmdBuffer, const VkQueue queue) const
-    {
-        auto device = RenderContext::GetCurrentDevice()->GetDevice();
-        if (cmdBuffer == VK_NULL_HANDLE)
-        {
-            SEDX_CORE_WARN_TAG("Graphics Engine", "Attempted to flush a null command buffer");
-            return;
-        }
-
-        /// End the command buffer
-        VkResult result = vkEndCommandBuffer(cmdBuffer);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to end command buffer! Error: {}", static_cast<int>(result));
-            return;
-        }
-
-        /// Create a fence to wait for the command buffer to complete
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-        VkFence fence;
-        result = vkCreateFence(device, &fenceInfo, nullptr, &fence);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to create fence! Error: {}", static_cast<int>(result));
-            return;
-        }
-
-        /// Submit the command buffer
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdBuffer;
-
-        result = vkQueueSubmit(queue, 1, &submitInfo, fence);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to submit command buffer! Error: {}", static_cast<int>(result));
-            vkDestroyFence(device, fence, nullptr);
-            return;
-        }
-
-        /// Wait for the fence
-        result = vkWaitForFences(device, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT);
-        if (result != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to wait for fence! Error: {}", static_cast<int>(result));
-        }
-
-        /// Clean up
-        vkDestroyFence(device, fence, nullptr);
-        vkFreeCommandBuffers(device, GraphicsCmdPool, 1, &cmdBuffer);
-    }
-    */
-
-	void CommandPool::FlushCmdBuffer (VkCommandBuffer cmdBuffer) const
-	{
-		auto deviceRef = RenderContext::GetCurrentDevice ();
-		SEDX_CORE_ASSERT (deviceRef, "No VulkanDevice available");
-		VkDevice device = deviceRef->GetDevice ();
-
-		// End the command buffer before submitting
-		VK_CHECK_RESULT (vkEndCommandBuffer (cmdBuffer))
-
-        VkQueue queue = deviceRef->GetGraphicsQueue (); // default submission queue
-
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cmdBuffer;
-
-		VkFenceCreateInfo fenceInfo{};
-		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		VkFence fence = VK_NULL_HANDLE;
-		VK_CHECK_RESULT (vkCreateFence (device, &fenceInfo, nullptr, &fence))
-
-		if (VkResult res = vkQueueSubmit (queue, 1, &submitInfo, fence); res != VK_SUCCESS)
-			SEDX_CORE_ERROR_TAG ("VULKAN", "Failed to submit command buffer (err {0})", res);
-
-		vkWaitForFences (device, 1, &fence, VK_TRUE, UINT64_MAX);
-		vkDestroyFence (device, fence, nullptr);
-
-		// Free the transient command buffer
-		vkFreeCommandBuffers (device, GraphicsCmdPool, 1, &cmdBuffer);
-	}
-
-	void CommandPool::FlushCmdBuffer (VkCommandBuffer cmdBuffer, VkQueue queue) const
-	{
-		auto deviceRef = RenderContext::GetCurrentDevice ();
-		SEDX_CORE_ASSERT (deviceRef, "No VulkanDevice available");
-		VkDevice device = deviceRef->GetDevice ();
-
-		// End the command buffer before submitting
-		VK_CHECK_RESULT (vkEndCommandBuffer (cmdBuffer))
-
-        VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cmdBuffer;
-
-		VkFenceCreateInfo fenceInfo{};
-		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		VkFence fence = VK_NULL_HANDLE;
-		VK_CHECK_RESULT (vkCreateFence (device, &fenceInfo, nullptr, &fence))
-
-		if (VkResult res = vkQueueSubmit (queue, 1, &submitInfo, fence); res != VK_SUCCESS)
-			SEDX_CORE_ERROR_TAG ("VULKAN", "Failed to submit command buffer (explicit queue) (err {0})", res);
-
-		vkWaitForFences (device, 1, &fence, VK_TRUE, UINT64_MAX);
-		vkDestroyFence (device, fence, nullptr);
-
-		// Free the transient command buffer
-		vkFreeCommandBuffers (device, GraphicsCmdPool, 1, &cmdBuffer);
-	}
 
 }
 

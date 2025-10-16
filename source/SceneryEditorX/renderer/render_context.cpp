@@ -11,8 +11,11 @@
 * -------------------------------------------------------
 */
 #include "render_context.h"
+#include "command_manager.h"
 #include "SceneryEditorX/core/application/application_data.h"
+#include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include "debug/renderdoc.h"
+#include "vulkan/vk_allocator.h"
 #include "vulkan/vk_checks.h"
 #include "vulkan/vk_pipeline_cache.h"
 #include "vulkan/vk_util.h"
@@ -77,6 +80,9 @@ namespace SceneryEditorX
 
     RenderContext::~RenderContext()
     {
+        // Ensure thread-local command pools are cleaned up before device teardown
+        ThreadCommandPools::Shutdown();
+
         if (vkDevice)
         {
             vkDevice->Destroy();
@@ -134,6 +140,7 @@ namespace SceneryEditorX
 
     void RenderContext::Init()
 	{
+        SEDX_TRACK_CALL("RenderContext::Init");
         // Idempotent guard: avoid double-initialization if called from multiple entry points
         if (m_IsInitialized)
         {
@@ -144,6 +151,16 @@ namespace SceneryEditorX
 		{
             SEDX_CORE_INFO("Initializing RenderContext");
             bool khronosAvailable = true;
+
+            // Headless mode: if set, do not require WSI/surface extensions
+            bool headlessMode = false;
+        #ifdef SEDX_PLATFORM_WINDOWS
+            if (const char* env = std::getenv("SEDX_HEADLESS"))
+                headlessMode = (std::strcmp(env, "1") == 0 || _stricmp(env, "true") == 0);
+        #else
+            if (const char* env = std::getenv("SEDX_HEADLESS"))
+                headlessMode = (std::strcmp(env, "1") == 0 || std::strcmp(env, "true") == 0);
+        #endif
 
             if (!VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion))
 			{
@@ -231,21 +248,23 @@ namespace SceneryEditorX
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer not available!");
             }
 
-            std::vector<const char *> instanceExtensions = {
-				    VK_KHR_SURFACE_EXTENSION_NAME,
-				#if defined(SEDX_PLATFORM_WINDOWS)
-				    VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-				#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-				    #error Android is not upported for Scenery Editor X,
-				#elif defined(SEDX_PLATFORM_LINUX)
-					#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-					    #error Wayland is not upported for Scenery Editor X,
-					#endif
-				#elif defined(SEDX_PLATFORM_APPLE)
-				    VK_EXT_LAYER_SETTINGS_EXTENSION_NAME,
-				    VK_MVK_MACOS_SURFACE_EXTENSION_NAME,
-				#endif
-            };
+            std::vector<const char *> instanceExtensions;
+            if (!headlessMode)
+            {
+                instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+            #ifdef SEDX_PLATFORM_WINDOWS
+                instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+            #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+            #error Android is not supported for Scenery Editor X
+            #elif defined(SEDX_PLATFORM_LINUX)
+                #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+                #error Wayland is not supported for Scenery Editor X
+                #endif
+            #elif defined(SEDX_PLATFORM_APPLE)
+                instanceExtensions.push_back(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME);
+                instanceExtensions.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
+            #endif
+            }
 
             VulkanChecks check;
             if (check.CheckExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, extensions.instanceExtensions))
@@ -262,18 +281,25 @@ namespace SceneryEditorX
             if (check.CheckExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
-			if (check.CheckExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, extensions.instanceExtensions))
-                instanceExtensions.push_back(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+            if (!headlessMode)
+            {
+                if (check.CheckExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, extensions.instanceExtensions))
+                    instanceExtensions.push_back(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
 
-			if (check.CheckExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, extensions.instanceExtensions))
-                instanceExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+                if (check.CheckExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, extensions.instanceExtensions))
+                    instanceExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+            }
 
             // Prefer enabling the same instance-level caps X-Plane reports, when available
-            if (check.CheckExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME, extensions.instanceExtensions))
-                instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+            // In headless mode, avoid WSI-related extensions to keep validation quiet
+            if (!headlessMode)
+            {
+                if (check.CheckExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME, extensions.instanceExtensions))
+                    instanceExtensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
 
-            if (check.CheckExtension(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME, extensions.instanceExtensions))
-                instanceExtensions.push_back(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME);
+                if (check.CheckExtension(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME, extensions.instanceExtensions))
+                    instanceExtensions.push_back(VK_KHR_SURFACE_PROTECTED_CAPABILITIES_EXTENSION_NAME);
+            }
 
             if (check.CheckExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME, extensions.instanceExtensions))
             {
@@ -293,8 +319,8 @@ namespace SceneryEditorX
 		        instanceExtensions.push_back(extensionName);
 		}
 
-        #if defined(SEDX_PLATFORM_APPLE)
-    		// Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
+        #ifdef SEDX_PLATFORM_APPLE
+        // Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
     		// "Invalid SPIR-V binary version 1.6 for target environment SPIR-V 1.5 (under Vulkan 1.2 semantics)."
             const VkValidationFeatureDisableEXT validationFeaturesDisabled[] = {
     			    VK_VALIDATION_FEATURE_DISABLE_SHADERS_EXT,
@@ -308,7 +334,7 @@ namespace SceneryEditorX
             const VkValidationFeaturesEXT features = {
                 .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
                 .pNext = nullptr,
-        #if defined(SEDX_PLATFORM_APPLE)
+        #ifdef SEDX_PLATFORM_APPLE
                 .disabledValidationFeatureCount = enableValidationLayers ? (uint32_t)SEDX_NUM_ARRAY_ELEMENTS(validationFeaturesDisabled) : 0u,
                 .pDisabledValidationFeatures = enableValidationLayers ? validationFeaturesDisabled : nullptr,
         #endif
@@ -317,11 +343,11 @@ namespace SceneryEditorX
             /// ---------------------------------------------------------
 
     		#if defined(VK_EXT_layer_settings) && VK_EXT_layer_settings
-    				// https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Configuration_Parameters.md
+    				/* https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Configuration_Parameters.md */
                     constexpr int useMetalArgumentBuffers = 1;
-                    constexpr VkBool32 gpuav_descriptor_checks = VK_FALSE;					// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8688
-                    constexpr VkBool32 gpuav_indirect_draws_buffers = VK_FALSE;				// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
-                    constexpr VkBool32 gpuav_post_process_descriptor_indexing = VK_FALSE;	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
+                    constexpr VkBool32 gpuavDescriptorChecks = VK_FALSE;				// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8688
+                    constexpr VkBool32 gpuavIndirectDrawsBuffers = VK_FALSE;			// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/8579
+                    constexpr VkBool32 gpuavPostProcessDescriptorIndexing = VK_FALSE;	// https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/9222
 
 				#define LAYER_SETTINGS_BOOL32(name, var)												\
     					VkLayerSettingEXT                                                               \
@@ -332,9 +358,9 @@ namespace SceneryEditorX
     					}
 
     					const VkLayerSettingEXT settings[] = {
-    					    LAYER_SETTINGS_BOOL32("gpuav_descriptor_checks", &gpuav_descriptor_checks),
-    					    LAYER_SETTINGS_BOOL32("gpuav_indirect_draws_buffers", &gpuav_indirect_draws_buffers),
-    					    LAYER_SETTINGS_BOOL32("gpuav_post_process_descriptor_indexing", &gpuav_post_process_descriptor_indexing),
+    					    LAYER_SETTINGS_BOOL32("gpuav_descriptor_checks", &gpuavDescriptorChecks),
+    					    LAYER_SETTINGS_BOOL32("gpuav_indirect_draws_buffers", &gpuavIndirectDrawsBuffers),
+    					    LAYER_SETTINGS_BOOL32("gpuav_post_process_descriptor_indexing", &gpuavPostProcessDescriptorIndexing),
     					    {"MoltenVK","MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS",VK_LAYER_SETTING_TYPE_INT32_EXT,1,&useMetalArgumentBuffers},
     					};
 				#undef LAYER_SETTINGS_BOOL32
@@ -352,8 +378,7 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             VkInstanceCreateFlags createFlags = 0;
-            // If portability enumeration is enabled, set the corresponding to create flag
-            #ifdef VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+            #ifdef VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR		// If portability enumeration is enabled, set the corresponding to create flag
             {
                 // Quick scan to decide if we enabled the portability extension above
                 bool hasPortabilityExt = false;
@@ -427,6 +452,9 @@ namespace SceneryEditorX
             }
 
             SEDX_CORE_INFO("Vulkan device created successfully");
+
+            // Initialize VMA now that the device is published via RenderContext
+            MemoryAllocator::Init(apiVersion);
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Pipeline Cache Creation

@@ -11,6 +11,9 @@
 * -------------------------------------------------------
 */
 #include <Editor/core/editor.h>
+
+#include "Editor/projects/project.h"
+
 #include <ImGuizmo.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -80,26 +83,6 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
     /*
-    Editor::Editor(const Ref<UserPreferences> &userPreferences) : m_UserPreferences(userPreferences)
-    {
-		renderContext = RenderContext::Get();
-        /*
-        for (auto it = m_UserPreferences->RecentProjects.begin(); it != m_UserPreferences->RecentProjects.end();)
-        {
-            if (!std::filesystem::exists(it->second.FilePath))
-                it = m_UserPreferences->RecentProjects.erase(it);
-            else
-                it++;
-        }
-
-        m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-        #1#
-
-
-    }
-    */
-
-    /*
     Editor::~Editor()
     {
         if (ImGui::GetCurrentContext())
@@ -131,25 +114,24 @@ namespace SceneryEditorX
 
     void EditorApplication::InitEditor()
     {
-
-        /// Log header information immediately after init and flush to ensure it's written
-        EDITOR_INFO("Scenery Editor X Graphics Engine is starting...");
+        EDITOR_INFO("Scenery Editor X is starting...");
         const auto start = std::chrono::high_resolution_clock::now();
         renderContext = RenderContext::Get();
         // Initialize the renderer (this creates the RenderDispatcher as well)
         Renderer::SetRenderData(Application::Get().GetWindow().GetRenderData());
-        Renderer::Init();
 
-        //Launcher::AdminCheck();
-        //Launcher::Loader loader{};
-        //loader.run();
-        //SceneryEditorX::ReadCache();
-        //assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+        // TODO: Move project loading to a separate function
+        //activeProject->ReadProjCache();
+        // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+        // m_UserPreferences->GetRecentProjects();
+        // scene = assetManager.GetInitialScene();
+        // camera = assetManager.GetMainCamera(scene);
+
+        // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
+        Renderer::Init();
 
         //ImGui::CreateContext(); //TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
 
-        //scene = assetManager.GetInitialScene();
-        //camera = assetManager.GetMainCamera(scene);
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     }
@@ -200,10 +182,7 @@ namespace SceneryEditorX
 
     void EditorApplication::UpdateWindowTitle(const std::string &sceneName)
     {
-        const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}",
-                                              sceneName,
-                                              Project::GetActive()->GetConfig().name,
-                                              SEDX_VERSION);
+        const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
         Application::Get().GetWindow().SetTitle(title);
     }
 
@@ -344,13 +323,6 @@ namespace SceneryEditorX
 
     }
 
-    void Editor::OnDetach()
-    {
-        //EditorResources::Shutdown();
-        CloseProject(false);
-        //AssetEditorPanel::UnregisterAllEditors();
-    }
-
     void Editor::OnUpdate(DeltaTime dt)
     {
         Module::OnUpdate(dt);
@@ -376,58 +348,61 @@ namespace SceneryEditorX
         return false;
     }
 
-    void Editor::OpenProject()
+    void EditorApplication::OpenProject()
     {
     }
 
-    void Editor::OpenProject(const std::filesystem::path &filepath)
+    void EditorApplication::OpenProject(const std::filesystem::path &filepath)
     {
     }
 
-    void Editor::CreateProject(const std::filesystem::path &projectPath)
+    void EditorApplication::CreateProject(const std::filesystem::path &projectPath)
     {
     }
 
-    void Editor::EmptyProject()
+    void EditorApplication::EmptyProject()
     {
     }
 
-    void Editor::UpdateCurrentProject()
+    void EditorApplication::UpdateCurrentProject()
     {
     }
 
-    void Editor::SaveProject()
+    void EditorApplication::SaveProject()
     {
     }
 
-    void Editor::CloseProject(bool unloadProject)
+    void EditorApplication::CloseProject(bool unloadProject)
     {
     }
 
-    void Editor::NewScene(const std::string &name)
+    void EditorApplication::NewScene(const std::string &name)
     {
     }
 
-    bool Editor::OpenScene()
+    bool EditorApplication::OpenScene()
     {
         return false;
     }
 
-    bool Editor::OpenScene(const std::filesystem::path &filepath, const bool checkAutoSave)
+    bool EditorApplication::OpenScene(const std::filesystem::path &filepath, const bool checkAutoSave)
     {
         return false;
     }
 
-    void Editor::SaveScene()
+    void EditorApplication::SaveScene()
     {
+
     }
 
-    void Editor::SaveSceneAuto()
+    void EditorApplication::SaveSceneAuto()
     {
+
     }
 
-    void Editor::SaveSceneAs()
+    void EditorApplication::SaveSceneAs()
     {
+
     }
 
     void Editor::UI_DrawMenubar()
@@ -586,19 +561,10 @@ namespace SceneryEditorX
     }
     */
 
-    auto operator<(const ImVec2 &lhs, const ImVec2 &rhs)
+    static auto operator<(const ImVec2 &lhs, const ImVec2 &rhs)
     {
         return lhs.x < rhs.x && lhs.y < rhs.y;
     }
-
-    /*
-    void Editor::UpdateWindowTitle(const std::string &sceneName)
-    {
-        const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
-        Application::Get().GetWindow().SetTitle(title);
-    }
-    */
-
 
     /// -------------------------------------------------------
 

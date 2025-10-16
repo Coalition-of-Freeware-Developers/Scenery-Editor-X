@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * application.h
@@ -71,8 +71,9 @@ namespace SceneryEditorX
         static std::thread::id GetMainThreadID();
         static bool IsMainThread();
 
-        ApplicationSettings &GetSettings() { return settings; }
-        [[nodiscard]] const ApplicationSettings &GetSettings() const { return settings;}
+        // Settings accessors (single authoritative instance for the app lifetime)
+        ApplicationSettings& GetSettings() { return settings; }
+        const ApplicationSettings& GetSettings() const { return settings; }
         void RenderUI();
 	    void SetShowStats(bool show) { m_ShowStats = show; }
 

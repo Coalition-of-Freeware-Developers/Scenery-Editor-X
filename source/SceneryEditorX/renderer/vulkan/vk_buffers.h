@@ -20,7 +20,7 @@
 
 namespace SceneryEditorX
 {
-	using Flags = uint32_t;
+using Flags = uint32_t;
 	using MemoryFlags = Flags;
 
     /// -------------------------------------------------------
@@ -408,8 +408,8 @@ namespace SceneryEditorX
 
         // Master switch (individual attachments can be disabled in FramebufferTextureSpecification)
         bool Blend = true;
-        // None means use BlendMode in FramebufferTextureSpecification
-        FramebufferBlendMode BlendMode = FramebufferBlendMode::None;
+        // NONE means use BlendMode in FramebufferTextureSpecification
+        FramebufferBlendMode BlendMode = FramebufferBlendMode::NONE;
 
         // SwapChainTarget = screen buffer (i.e. no framebuffer)
         bool swapChainTarget = false;

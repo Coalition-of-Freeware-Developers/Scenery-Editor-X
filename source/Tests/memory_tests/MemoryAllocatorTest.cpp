@@ -528,7 +528,7 @@ namespace SceneryEditorX
             SECTION("Speed optimized strategy")
             {
                 /// Set speed optimized strategy
-                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SpeedOptimized));
+                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::SPEED_OPTIMIZED));
 
                 auto& tracker = trackAllocation();
 
@@ -545,7 +545,7 @@ namespace SceneryEditorX
             SECTION("Memory optimized strategy")
             {
                 /// Set memory optimized strategy
-                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::MemoryOptimized));
+                REQUIRE_NOTHROW(allocator->SetAllocationStrategy(MemoryAllocator::AllocationStrategy::MEMORY_OPTIMIZED));
 
                 auto& tracker = trackAllocation();
 

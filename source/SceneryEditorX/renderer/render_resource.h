@@ -17,23 +17,23 @@
 namespace SceneryEditorX
 {
 
-    constexpr uint32_t resource_frame_lifetime	= 100;		// in frames, how long to keep a resource alive after last use
-    constexpr uint32_t max_draw_calls			= 20000;	// max number of draw calls per frame
-    constexpr uint32_t max_instance_count		= 1024;     // max number of instances per draw call
+    constexpr uint32_t RESOURCE_FRAME_LIFETIME	= 100;		// in frames, how long to keep a resource alive after last use
+    constexpr uint32_t MAX_DRAW_CALLS			= 20000;	// max number of draw calls per frame
+    constexpr uint32_t MAX_INSTANCE_COUNT		= 1024;     // max number of instances per draw call
 
     /// -------------------------------------------------------
 
     class Renderable;
-    struct Renderer_DrawCall
+    struct RendererDrawCall
     {
         Renderable *renderable;			// pointer to the renderable object
-        uint32_t instance_group_index;	// index of the instance group (used if instanced)
-        uint32_t instance_index;		// starting index in the instance buffer (used if instanced)
-        uint32_t instance_count;		// number of instances to draw (used if instanced)
-        uint32_t lod_index;				// level of detail index for the mesh
-        float distance_squared;			// distance for sorting or other purposes
-        bool is_occluder;				// is this draw call an occluder
-        bool camera_visible;			// is this draw call visible to the camera
+        uint32_t instanceGroupIndex;	// index of the instance group (used if instanced)
+        uint32_t instanceIndex;			// starting index in the instance buffer (used if instanced)
+        uint32_t instanceCount;			// number of instances to draw (used if instanced)
+        uint32_t lodIndex;				// level of detail index for the mesh
+        float distanceSquared;			// distance for sorting or other purposes
+        bool isOccluder;				// is this draw call an occluder
+        bool cameraVisible;				// is this draw call visible to the camera
     };
 
 }

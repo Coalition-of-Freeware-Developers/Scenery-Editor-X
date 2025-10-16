@@ -11,15 +11,15 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include "command_manager.h"
-//#include "texture.h"
-//#include "buffers/storage_buffer.h"
-//#include "buffers/uniform_buffer.h"
-//#include "vulkan/vk_enums.h"
-//#include "vulkan/vk_image_view.h"
+#include "command_manager.h"
+#include "texture.h"
+#include "buffers/storage_buffer.h"
+#include "buffers/uniform_buffer.h"
+#include "vulkan/vk_enums.h"
+#include "vulkan/vk_image_view.h"
 
 /// -------------------------------------------------------
-/*
+
 namespace SceneryEditorX
 {
 	
@@ -47,6 +47,8 @@ namespace SceneryEditorX
     	void Set(const Ref<ImageView>& image, uint32_t index = 0) { type = ResourceType::Image2D; if (input.size() <= index) input.resize(index+1); input[index] = image.As<RefCounted>(); }
     };
 
+    /// -------------------------------------------------------
+
     struct RenderPassInputDeclaration
     {
         ResourceInputType type = ResourceInputType::None;
@@ -55,6 +57,8 @@ namespace SceneryEditorX
         uint32_t count = 0;
         std::string name;
     };
+
+    /// -------------------------------------------------------
 
     class RenderPass : public RefCounted
     {
@@ -104,12 +108,11 @@ namespace SceneryEditorX
 
         // passes - utility
         static void Pass_Blit(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
-        static void Pass_Downscale(CommandManager* cmd_list, Texture* tex, const DownsampleFilter filter);
-        static void Pass_Blur(CommandManager* cmd_list, Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
+        //static void Pass_Downscale(CommandManager* cmd_list, Texture* tex, const DownsampleFilter filter);
+        //static void Pass_Blur(CommandManager* cmd_list, Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
 
     };
 
 }
-*/
 
 /// -------------------------------------------------------

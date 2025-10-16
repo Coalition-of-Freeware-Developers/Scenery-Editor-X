@@ -11,44 +11,42 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include <array>
-//#include <atomic>
-//#include <cstdint>
-//#include <mutex>
-//#include "vulkan/resource.h"
-//#include "vulkan/vk_enums.h"
+#include <array>
+#include <atomic>
+#include <cstdint>
+#include <mutex>
+#include "vulkan/resource.h"
+#include "vulkan/vk_enums.h"
 
 /// -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
 
-    class CommandQueue : public Resource
+    class CommandQueue : public RefCounted
 	{
     public:
 		CommandQueue(Queue queueType, const std::string &debugName);
-		~CommandQueue();
+        virtual ~CommandQueue() override;
 
-		/// Wait for any in-flight work (stub in refactor – no threaded queue).
+		// Wait for any in-flight work (stub in refactor – no threaded queue).
 		void Wait(const bool flush = false);
-		/// Submit raw command buffer to underlying Vulkan queue (temporary no-op).
+		// Submit raw command buffer to underlying Vulkan queue (temporary no-op).
 		void Submit(void *cmdBufferIn, uint32_t waitFlags);
-		/// Execute enqueued lambdas (legacy). Now a no-op to keep interfaces compiling.
+		// Execute enqueued lambdas (legacy). Now a no-op to keep interfaces compiling.
         void Execute();
-        /// Legacy signature retained to satisfy older call sites expecting parameters.
-        inline void Execute(void*, const uint32_t) { Execute(); }
-        /// Get the number of commands submitted (legacy, preserved for stats).
+        // Legacy signature retained to satisfy older call sites expecting parameters.
+        void Execute(void*, const uint32_t) { Execute(); }
+        // Get the number of commands submitted (legacy, preserved for stats).
         Queue GetQueueType() const { return qType; }
 
 	private:
-        uint8_t* cmdBuffer = nullptr;      ///< Legacy backing storage (unused in refactor)
-		uint8_t* cmdBufferPtr = nullptr;     ///< Legacy write pointer
-        std::atomic<uint32_t> cmdCount{0}; ///< Preserved for stats / future re-enable
+        uint8_t* cmdBuffer = nullptr;				// Legacy backing storage (unused in refactor)
+		uint8_t* cmdBufferPtr = nullptr;			// Legacy write pointer
+        std::atomic<uint32_t> cmdCount{0};		// Preserved for stats / future re-enable
         Queue qType;
 	};
 
 }
-*/
 
 /// -------------------------------------------------------

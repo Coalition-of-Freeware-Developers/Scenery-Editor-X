@@ -34,12 +34,12 @@ namespace SceneryEditorX
 	     #1#
 	    enum Stage
 	    {
-	        Vertex		= 0x00000001,   ///< Vertex shader stage for processing each vertex
-	        Geometry	= 0x00000008,   ///< Geometry shader stage for processing primitives
-	        Fragment	= 0x00000010,   ///< Fragment shader stage for processing fragments/pixels
-	        Compute		= 0x00000020,	///< Compute shader stage for general-purpose computation
-	        AllGraphics = 0x0000001F,	///< Combination of all graphics pipeline stages
-	        All			= 0x7FFFFFFF,	///< All possible shader stages
+	        Vertex		= 0x00000001,   // Vertex shader stage for processing each vertex
+	        Geometry	= 0x00000008,   // Geometry shader stage for processing primitives
+	        Fragment	= 0x00000010,   // Fragment shader stage for processing fragments/pixels
+	        Compute		= 0x00000020,	// Compute shader stage for general-purpose computation
+	        AllGraphics = 0x0000001F,	// Combination of all graphics pipeline stages
+	        All			= 0x7FFFFFFF,	// All possible shader stages
 	    };
 	}
 	*/
@@ -48,8 +48,8 @@ namespace SceneryEditorX
 
 	struct ShaderModule
 	{
-        ShaderStage::Stage stage = ShaderStage::Stage::Fragment; ///< The shader stage(s) this module is intended for
-        size_t dataSize = 0; /// if `dataSize` is non-zero, interpret `data` as binary shader data
+        ShaderStage::Stage stage = ShaderStage::Stage::Fragment; // The shader stage(s) this module is intended for
+        size_t dataSize = 0; // if `dataSize` is non-zero, interpret `data` as binary shader data
         const char *data = nullptr;
         const char *debugName = "";
 

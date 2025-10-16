@@ -20,29 +20,29 @@ namespace SceneryEditorX
 
     struct SamplerSpec
     {
-        FilterMode filter_min = FilterMode::Nearest;
-        FilterMode filter_mag = FilterMode::Nearest;
-        FilterMode filter_mipmap = FilterMode::Nearest;
-        SamplerWrap sampler_address_mode = SamplerWrap::Repeat;
-        DepthCompareOperator comparison_function = DepthCompareOperator::Never;
+        FilterMode filterMin = FilterMode::Nearest;
+        FilterMode filterMag = FilterMode::Nearest;
+        FilterMode filterMipMap = FilterMode::Nearest;
+        SamplerWrap samplerAddressMode = SamplerWrap::Repeat;
+        DepthCompareOperator comparisonFunction = DepthCompareOperator::Never;
         float anisotropy = 0.0f;
-        bool comparison_enabled = false;
-        float mip_bias = 0.0f;
+        bool comparisonEnabled = false;
+        float mipBias = 0.0f;
     };
 
     class Sampler : public RefCounted
     {
     public:
-        explicit Sampler(const SamplerSpec &samplerSpec, const std::string &debug_name);
+        explicit Sampler(const SamplerSpec &samplerSpec, const std::string &debugName);
 		virtual ~Sampler() override;
 
-		FilterMode GetFilterMin()						const { return m_samplerSpec.filter_min; }
-        FilterMode GetFilterMag()						const { return m_samplerSpec.filter_mag; }
-        FilterMode GetFilterMipmap()					const { return m_samplerSpec.filter_mipmap; }
-        SamplerWrap GetAddressMode()					const { return m_samplerSpec.sampler_address_mode; }
-        DepthCompareOperator GetComparisonFunction()	const { return m_samplerSpec.comparison_function; }
+		FilterMode GetFilterMin()						const { return m_samplerSpec.filterMin; }
+        FilterMode GetFilterMag()						const { return m_samplerSpec.filterMag; }
+        FilterMode GetFilterMipmap()					const { return m_samplerSpec.filterMipMap; }
+        SamplerWrap GetAddressMode()					const { return m_samplerSpec.samplerAddressMode; }
+        DepthCompareOperator GetComparisonFunction()	const { return m_samplerSpec.comparisonFunction; }
         bool GetAnisotropyEnabled()                     const { return m_samplerSpec.anisotropy != 0; }
-        bool GetComparisonEnabled()                     const { return m_samplerSpec.comparison_enabled; }
+        bool GetComparisonEnabled()                     const { return m_samplerSpec.comparisonEnabled; }
 		void* GetResource()								const { return m_resource; }
 
     private:

@@ -22,7 +22,7 @@ namespace SceneryEditorX
 	{
 	public:
         FrameSync(FrameSyncType type, const std::string &debugName);
-        ~FrameSync();
+        virtual ~FrameSync() override;
 
 		void Wait(const uint64_t timeout);
         void Signal(const uint64_t value);

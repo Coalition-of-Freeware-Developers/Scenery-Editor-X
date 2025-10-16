@@ -11,13 +11,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include <vulkan/vulkan.h>
-//#include "vk_descriptor_set_manager.h"
-//#include "vk_pipeline.h"
+#include <vulkan/vulkan.h>
+#include "vk_descriptor_set_manager.h"
+#include "vk_pipeline.h"
 
 /// -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
 
@@ -27,26 +26,24 @@ namespace SceneryEditorX
 	 *
 	 * The RenderSpec structure holds the pipeline reference and a debug name
 	 * for identifying and configuring a Vulkan render pass within the graphics engine.
-	 #1#
+	 */
 	struct RenderSpec
 	{
 	    /**
 	     * @brief Reference to the Vulkan pipeline used by this render pass.
-	     #1#
+	     */
 	    Ref<Pipeline> Pipeline;
 
         /**
          * @brief Reference to the Vulkan swap chain used for rendering.
-         #1#
+         */
         Vec4 idColor;
 
 	    /**
 	     * @brief Debug name for identifying the render pass instance.
-	     #1#
+	     */
 	    std::string debugName;
 	};
-
-    /// -------------------------------------------------------
 
     /// -------------------------------------------------------
 
@@ -60,7 +57,9 @@ namespace SceneryEditorX
 	 * resource allocation and deallocation.
 	 *
 	 * @note This class is part of the Scenery Editor X graphics engine.
-	 #1#
+	 */
+
+	/*
 	class RenderPass : public RefCounted
 	{
 	public:
@@ -80,7 +79,6 @@ namespace SceneryEditorX
 	    void AddInput(std::string_view name, Ref<TextureCube> &textureCube);
 	    void AddInput(std::string_view name, Ref<Image2D> &image);
 
-        /// -------------------------------------------------------
         /// -------------------------------------------------------
 
 		Ref<Image2D> GetOutput(uint32_t index);
@@ -105,15 +103,15 @@ namespace SceneryEditorX
 		const RenderPassInputDeclaration* GetInputDeclaration(std::string_view name) const;
 
 	private:
-        RenderSpec renderSpec;                  /// Render specification containing pipeline and debug name
-        RenderData renderData;					/// Render data containing information about the render pass
-	    DescriptorSetManager m_DescriptorSetManager;
+        RenderSpec renderSpec;                  // Render specification containing pipeline and debug name
+        RenderData renderData;					// Render data containing information about the render pass
+	    //DescriptorSetManager m_DescriptorSetManager;
 
         bool IsInvalidated(uint32_t set, uint32_t binding) const;
 
 	};
+	*/
 
 }
-*/
 
 /// -------------------------------------------------------

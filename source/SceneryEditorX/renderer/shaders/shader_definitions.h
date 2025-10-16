@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 
 /// -----------------------------------
 
@@ -42,6 +43,18 @@ namespace SceneryEditorX::ShaderSpecs
 		return AOMethod::None;
 	}
 
-}
+    static uint32_t ShaderStageToMask(ShaderStage::Stage type)
+    {
+        switch (type)
+        {
+			case ShaderStage::Stage::Vertex:				return 1 << 0;
+			case ShaderStage::Stage::TesselationControl:	return 1 << 1;
+			case ShaderStage::Stage::TesselationEval:		return 1 << 2;
+			case ShaderStage::Stage::Fragment:				return 1 << 3;
+			case ShaderStage::Stage::Compute:				return 1 << 4;
+			default:										return 0;
+        }
+    }
+    }
 
 /// -------------------------------------------------------

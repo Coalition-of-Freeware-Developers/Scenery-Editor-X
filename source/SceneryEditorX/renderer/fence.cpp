@@ -37,7 +37,7 @@ namespace SceneryEditorX
 	
 	bool Fence::IsSignaled(void *&resource)
 	{
-	    return vkGetFenceStatus(RenderContext::Get()->GetLogicDevice()->GetDevice(), reinterpret_cast<VkFence>(resource)) == VK_SUCCESS;
+	    return vkGetFenceStatus(RenderContext::Get()->GetLogicDevice()->GetDevice(), static_cast<VkFence>(resource)) == VK_SUCCESS;
 	}
 	
 	void Fence::WaitTime(uint64_t timeout, void *&resource)

@@ -24,7 +24,7 @@ namespace SceneryEditorX
 	#define VK_FLAGS_NONE 0
 	#define DEFAULT_FENCE_TIMEOUT 100000000000
 
-	using Flags = uint32_t;
+	typedef uint32_t Flags;
 
 	/// ---------------------------------------------------------
 
@@ -348,7 +348,7 @@ namespace SceneryEditorX
         /** @brief Dimension of shadow maps in pixels (both width and height) */
         int shadowMapSize = 1024;
 
-        /** @brief Number of samples used for shadow map filtering/anti-aliasing */
+        /** @brief Number of samples used for shadow map filtering/antialiasing */
         int shadowMapSamples = 4;
     };
 
@@ -374,7 +374,7 @@ namespace SceneryEditorX
 
 		/// --------------------------------------------------------
 
-		//const char *defaultValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
+		// const char *defaultValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
         static uint32_t GetVulkanAPIVersion()
         {
@@ -486,10 +486,10 @@ namespace SceneryEditorX
         /** @brief Flag indicating if vertical synchronization is enabled */
         bool VSync = false;
 
-        /** @brief Flag indicating if temporal anti-aliasing is enabled */
+        /** @brief Flag indicating if temporal antialiasing is enabled */
         bool taaEnabled = false;
 
-        /** @brief Flag indicating if temporal anti-aliasing should use reconstruction */
+        /** @brief Flag indicating if temporal antialiasing should use reconstruction */
         bool taaReconstruct = false;
 
         /**
@@ -505,7 +505,7 @@ namespace SceneryEditorX
 		 */
         static bool HasStencilComponent(const VkFormat format) { return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT; }
 
-        static uint32_t CalculateMipCount(uint32_t width, uint32_t height) { return (uint32_t)std::floor(std::log2((double)Min(width, height))) + 1; }
+        static uint32_t CalculateMipCount(uint32_t width, uint32_t height) { return static_cast<uint32_t>(std::floor(std::log2(static_cast<double>(Min(width, height))))) + 1; }
 
     };
 
@@ -516,9 +516,9 @@ namespace SceneryEditorX
     {
         uint32_t width = 1, height = 1, depth = 1;
 
-        [[nodiscard]] Dimensions divide1D(uint32_t v) const { return {.width = width / v, .height = height, .depth = depth}; }
-        [[nodiscard]] Dimensions divide2D(uint32_t v) const { return {.width = width / v, .height = height / v, .depth = depth}; }
-        [[nodiscard]] Dimensions divide3D(uint32_t v) const { return {.width = width / v, .height = height / v, .depth = depth / v}; }
+        [[nodiscard]] Dimensions Divide1D(uint32_t v) const { return {.width = width / v, .height = height, .depth = depth}; }
+        [[nodiscard]] Dimensions Divide2D(uint32_t v) const { return {.width = width / v, .height = height / v, .depth = depth}; }
+        [[nodiscard]] Dimensions Divide3D(uint32_t v) const { return {.width = width / v, .height = height / v, .depth = depth / v}; }
         bool operator==(const Dimensions &other) const { return width == other.width && height == other.height && depth == other.depth; }
     };
 
@@ -548,9 +548,9 @@ namespace SceneryEditorX
      */
     union ImageClearValue
     {
-        Vec4 FloatValues;
-        iVec4 IntValues;
-        UVec4 UIntValues;
+        Vec4 floatValues;
+        iVec4 intValues;
+        UVec4 uintValues;
     };
 
 	/// ClearColorValue is more compatible with C-style or raw data copying, practically identical to ImageClearValue
@@ -576,57 +576,57 @@ namespace SceneryEditorX
     /// -------------------------------------------------------
 
     // TODO: Refactor and move this when Hash code and serialization is re-implemented
-    static uint64_t hash_combine(uint64_t a, uint64_t b) { return a * 31 + b; }
+    static uint64_t HashCombine(uint64_t a, uint64_t b) { return a * 31 + b; }
 
     // shader register slot shifts (required to produce spirv from hlsl)
     // 000-099 is push constant buffer range
-    const uint32_t shader_register_shift_u = 100;
-    const uint32_t shader_register_shift_b = 200;
-    const uint32_t shader_register_shift_t = 300;
-    const uint32_t shader_register_shift_s = 400;
+    const uint32_t SHADER_REGISTER_SHIFT_U = 100;
+    const uint32_t SHADER_REGISTER_SHIFT_B = 200;
+    const uint32_t SHADER_REGISTER_SHIFT_T = 300;
+    const uint32_t SHADER_REGISTER_SHIFT_S = 400;
 
     /// -------------------------------------------------------
 
-    const float depth_dont_care = std::numeric_limits<float>::max();
-    const float depth_load = std::numeric_limits<float>::infinity();
+    const float DEPTH_DONT_CARE = std::numeric_limits<float>::max();
+    const float DEPTH_LOAD = std::numeric_limits<float>::infinity();
 
-    const xMath::Color color_dont_care = xMath::Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
-    const xMath::Color color_load = xMath::Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    const xMath::Color COLOR_DONT_CARE = xMath::Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    const xMath::Color COLOR_LOAD = xMath::Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
 
-    const uint8_t max_render_target_count = 8;
-    const uint8_t max_constant_buffer_count = 8;
-    const uint32_t stencil_dont_care = std::numeric_limits<uint32_t>::max();
-    const uint32_t stencil_load = std::numeric_limits<uint32_t>::infinity();
-    const uint32_t max_array_size = 16384;
-    const uint32_t max_descriptor_set_count = 512;
-    const uint32_t max_mip_count = 13;
-    const uint32_t all_mips = std::numeric_limits<uint32_t>::max();
-    const uint32_t dynamic_offset_empty = std::numeric_limits<uint32_t>::max();
-    const uint32_t max_buffer_update_size = 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
+    const uint8_t MAX_RENDER_TARGET_COUNT = 8;
+    const uint8_t MAX_CONSTANT_BUFFER_COUNT = 8;
+    const uint32_t STENCIL_DONT_CARE = std::numeric_limits<uint32_t>::max();
+    const uint32_t STENCIL_LOAD = std::numeric_limits<uint32_t>::infinity();
+    const uint32_t MAX_ARRAY_SIZE = 16384;
+    const uint32_t MAX_DESCRIPTOR_SET_COUNT = 512;
+    const uint32_t MAX_MIP_COUNT = 13;
+    const uint32_t ALL_MIPS = std::numeric_limits<uint32_t>::max();
+    const uint32_t DYNAMIC_OFFSET_EMPTY = std::numeric_limits<uint32_t>::max();
+    const uint32_t MAX_BUFFER_UPDATE_SIZE = 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
 
     /// -------------------------------------------------------
 
-	static const VkPolygonMode vulkan_polygon_mode[] =
+	static const VkPolygonMode VULKAN_POLYGON_MODE[] =
 	{
 	    VK_POLYGON_MODE_FILL,
 	    VK_POLYGON_MODE_LINE,
 	    VK_POLYGON_MODE_MAX_ENUM
 	};
 	
-	static const VkCullModeFlags vulkan_cull_mode[] =
+	static const VkCullModeFlags VULKAN_CULL_MODE[] =
 	{
 	    VK_CULL_MODE_BACK_BIT,
 	    VK_CULL_MODE_FRONT_BIT,
 	    VK_CULL_MODE_NONE
 	};
 	
-	static const VkPrimitiveTopology vulkan_primitive_topology[] =
+	static const VkPrimitiveTopology VULKAN_PRIMITIVE_TOPOLOGY[] =
 	{
 	    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
 	    VK_PRIMITIVE_TOPOLOGY_LINE_LIST
 	};
 	
-	static const VkFormat vulkan_format[] =
+	static const VkFormat VULKAN_FORMAT[] =
 	{
 	    // R
 	    VK_FORMAT_R8_UNORM,
@@ -666,7 +666,7 @@ namespace SceneryEditorX
 	    VK_FORMAT_UNDEFINED
 	};
 	
-	static const VkObjectType vulkan_object_type[] =
+	static const VkObjectType VULKAN_OBJECT_TYPE[] =
 	{
 	    VK_OBJECT_TYPE_FENCE,
 	    VK_OBJECT_TYPE_SEMAPHORE,
@@ -687,7 +687,7 @@ namespace SceneryEditorX
 	    VK_OBJECT_TYPE_UNKNOWN
 	};
 	
-	static const VkSamplerAddressMode vulkan_sampler_address_mode[] =
+	static const VkSamplerAddressMode VULKAN_SAMPLER_ADDRESS_MODE[] =
 	{
 	    VK_SAMPLER_ADDRESS_MODE_REPEAT,
 	    VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
@@ -696,7 +696,7 @@ namespace SceneryEditorX
 	    VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
 	};
 	
-	static const VkCompareOp vulkan_compare_operator[] =
+	static const VkCompareOp VULKAN_COMPARE_OPERATOR[] =
 	{
 	    VK_COMPARE_OP_NEVER,
 	    VK_COMPARE_OP_LESS,
@@ -708,7 +708,7 @@ namespace SceneryEditorX
 	    VK_COMPARE_OP_ALWAYS
 	};
 	
-	static const VkStencilOp vulkan_stencil_operation[] =
+	static const VkStencilOp VULKAN_STENCIL_OPERATION[] =
 	{
 	    VK_STENCIL_OP_KEEP,
 	    VK_STENCIL_OP_ZERO,
@@ -720,7 +720,7 @@ namespace SceneryEditorX
 	    VK_STENCIL_OP_DECREMENT_AND_WRAP
 	};
 	
-	static const VkBlendFactor vulkan_blend_factor[] =
+	static const VkBlendFactor VULKAN_BLEND_FACTOR[] =
 	{
 	    VK_BLEND_FACTOR_ZERO,
 	    VK_BLEND_FACTOR_ONE,
@@ -741,7 +741,7 @@ namespace SceneryEditorX
 	    VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
 	};
 	
-	static const VkBlendOp vulkan_blend_operation[] =
+	static const VkBlendOp VULKAN_BLEND_OPERATION[] =
 	{
 	    VK_BLEND_OP_ADD,
 	    VK_BLEND_OP_SUBTRACT,
@@ -750,19 +750,19 @@ namespace SceneryEditorX
 	    VK_BLEND_OP_MAX
 	};
 	
-	static const VkFilter vulkan_filter[] =
+	static const VkFilter VULKAN_FILTER[] =
 	{
 	    VK_FILTER_NEAREST,
 	    VK_FILTER_LINEAR
 	};
 	
-	static const VkSamplerMipmapMode vulkan_mipmap_mode[] =
+	static const VkSamplerMipmapMode VULKAN_MIPMAP_MODE[] =
 	{
 	    VK_SAMPLER_MIPMAP_MODE_NEAREST,
 	    VK_SAMPLER_MIPMAP_MODE_LINEAR
 	};
 	
-	static const VkImageLayout vulkan_image_layout[] =
+	static const VkImageLayout VULKAN_IMAGE_LAYOUT[] =
 	{
 	    VK_IMAGE_LAYOUT_GENERAL,
 	    VK_IMAGE_LAYOUT_PREINITIALIZED,

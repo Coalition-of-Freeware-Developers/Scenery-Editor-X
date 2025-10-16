@@ -13,10 +13,10 @@
 #pragma once
 #include "shader_resource.h"
 #include "shader_uniforms.h"
+#include "SceneryEditorX/renderer/render_context.h"
 #include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
-#include "SceneryEditorX/renderer/render_context.h"
 #include <spirv_cross/spirv_hlsl.hpp>
 
 /// -------------------------------------------------------
@@ -132,10 +132,10 @@ namespace SceneryEditorX
 
         struct ReflectionData
         {
-            std::vector<ShaderResource::ShaderDescriptorSet> ShaderDescriptorSets;
-            std::unordered_map<std::string, ShaderResourceDeclaration> Resources;
             std::unordered_map<std::string, ShaderBuffer> ConstantBuffers;
+            std::unordered_map<std::string, ShaderResourceDeclaration> Resources;
             std::vector<ShaderResource::PushConstantRange> PushConstantRanges;
+            std::vector<ShaderResource::ShaderDescriptorSet> ShaderDescriptorSets;
         };
 
 		/**
@@ -145,7 +145,6 @@ namespace SceneryEditorX
 		 * Called when a shader is reloaded to allow dependents to update resources.
 		 */
 		using ShaderReloadedCallback = std::function<void()>;
-
 		using ShaderModuleErrorCallback = void (*)(RenderContext*, Ref<Shader>, int line, int col, const char* debugName);
 
         /**
@@ -172,6 +171,13 @@ namespace SceneryEditorX
          */
         virtual ~Shader() override;
 
+        /**
+		 * @brief Declares the main entry point for the shader
+		 */
+	    const char* GetEntryPoint() const;
+
+		ShaderStage::Stage GetShaderStage() const { return m_shader_type; }
+
 		/**
 		 * @brief Load shader from a shader pack file.
 		 *
@@ -192,20 +198,22 @@ namespace SceneryEditorX
 		const std::unordered_map<std::string, ShaderBuffer>& GetShaderBuffers() const;
 		const std::unordered_map<std::string, ShaderResourceDeclaration>& GetResources() const;
 
+        void* GetRendererResource() const;
+
+
+        VkPipelineShaderStageCreateInfo CreateShaderStage(const Shader *shader);
+
 		/**
 		 * @brief Register a callback to be invoked when shader is reloaded.
-		 *
 		 * @param callback Function to call when shader is recompiled or reloaded
 		 */
 	    void AddShaderReloadedCallback(const ShaderReloadedCallback& callback);
 
         /**
          * @brief Get the name of the shader.
-         *
          * @return const std::string& The shader name, typically derived from the filename
          */
         [[nodiscard]] const std::string &GetName() const;
-
 
         /**
          * @brief Reload the shader from its source file.
@@ -215,7 +223,7 @@ namespace SceneryEditorX
 
 	    void ReloadRenderThreadShaders(bool forceCompile = false);
 
-	    size_t GetHash() const;
+        uint64_t GetHash() const { return m_hash; }
 
 	    /**
 	     * @brief Get the base directory path for shader assets.
@@ -236,32 +244,13 @@ namespace SceneryEditorX
 		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) const { return m_DescriptorSetLayouts.at(set); }
 		std::vector<VkDescriptorSetLayout> GetAllDescriptorSetLayouts();
 
-        ShaderResource::UniformBuffer GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0)
-        {
-            SEDX_CORE_ASSERT(m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.size() > binding);
-            const auto &ub = m_ReflectionData.ShaderDescriptorSets.at(set).uniformBuffers.at(binding);
+        ShaderResource::UniformBuffer GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0) const;
 
-            ShaderResource::UniformBuffer result;
-            result.descriptor = ub.GetDescriptor(1);
-            result.size = ub.GetBufferCount() > 0 ? ub.GetBufferCount() : ub.GetBufferCount(); /// You may want to set this to ub.size if available
-            result.bindingPoint = binding;
-            result.name = "";                                        /// If UniformBuffer has a name, set it here
-            result.ShaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; /// Set actual stage if available
+        uint32_t GetUniformBufferCount(const uint32_t set = 0) const;
 
-            return result;
-        }
-
-		uint32_t GetUniformBufferCount(const uint32_t set = 0) const
-        {
-			if (m_ReflectionData.ShaderDescriptorSets.size() < set)
-				return 0;
-
-			return (uint32_t)m_ReflectionData.ShaderDescriptorSets[set].uniformBuffers.size();
-		}
-
-		const std::vector<ShaderResource::ShaderDescriptorSet>& GetShaderDescriptorSets() const { return m_ReflectionData.ShaderDescriptorSets; }
-		bool HasDescriptorSet(uint32_t set) const { return m_TypeCounts.contains(set); }
+        const std::vector<ShaderResource::ShaderDescriptorSet>& GetShaderDescriptorSets() const { return m_ReflectionData.ShaderDescriptorSets; }
 		const std::vector<ShaderResource::PushConstantRange> &GetPushConstantRanges() const { return m_ReflectionData.PushConstantRanges; }
+        bool HasDescriptorSet(uint32_t set) const { return m_TypeCounts.contains(set); }
 
 		struct ShaderMaterialDescriptorSet
 		{
@@ -288,19 +277,22 @@ namespace SceneryEditorX
         /** @brief List of callbacks to invoke when shader is reloaded */
         std::vector<ShaderReloadedCallback> reloadCallbacks;
         ShaderModuleErrorCallback shaderModuleErrorCallback = nullptr;
-		std::string name;
         std::vector<VkPipelineShaderStageCreateInfo> m_PipelineShaderStageCreateInfos;
         std::unordered_map<uint32_t, std::vector<VkDescriptorPoolSize>> m_TypeCounts;
-
         std::filesystem::path m_AssetPath;
-        std::string m_Name;
         bool m_DisableOptimization = false;
+        std::string name;
+        uint64_t m_hash = 0;
+        void* m_resource = nullptr;
 
 		std::map<VkShaderStageFlagBits, std::vector<uint32_t>> m_ShaderData;
         ReflectionData m_ReflectionData;
 
         std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
         VkDescriptorSet m_DescriptorSet;
+
+	    ShaderStage::Stage m_shader_type = ShaderStage::Stage::MaxEnum;
+        ShaderStage::Stage m_vertex_type = ShaderStage::Stage::MaxEnum;
 
 	    friend class ShaderCache;
         friend class ShaderPack;

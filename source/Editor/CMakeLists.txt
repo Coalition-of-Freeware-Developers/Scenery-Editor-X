@@ -9,6 +9,7 @@ MESSAGE(STATUS "Generating Scenery Editor X Project")
 
 FILE(GLOB CORE core/*.cpp core/*.h core/*.hpp)
 FILE(GLOB MODULES modules/*.cpp modules/*.h modules/*.hpp)
+FILE(GLOB PROJECT projects/*.cpp projects/*.h projects/*.hpp)
 FILE(GLOB SETTINGS settings/*.cpp settings/*.h settings/*.hpp)
 
 FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
@@ -28,6 +29,7 @@ SET (PROJECT_CONFIG_FILES
 ADD_EXECUTABLE(SceneryEditorX
 	${CORE}
 	${MODULES}
+	${PROJECT}
 	${SETTINGS}
 	${UI_ACTIONS}
 	${UI_PANELS}
@@ -54,6 +56,9 @@ SOURCE_GROUP("Core" FILES
 )
 SOURCE_GROUP("Modules" FILES
 	${MODULES}
+)
+SOURCE_GROUP("Projects" FILES
+	${PROJECT}
 )
 SOURCE_GROUP("UI" FILES
 	${UI_FILES}/ui.cpp

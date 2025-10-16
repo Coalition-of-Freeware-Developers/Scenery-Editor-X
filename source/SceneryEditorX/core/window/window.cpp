@@ -20,6 +20,7 @@
 #include <SceneryEditorX/core/events/application_events.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <imgui/imgui.h>
+#include "SceneryEditorX\utils\repeat_call_tracker.h"
 
 /// -------------------------------------------------------
 
@@ -151,6 +152,7 @@ namespace SceneryEditorX
 	 */
     void Window::Init()
     {
+        SEDX_TRACK_CALL("Window::Init");
         m_winSpecs.title = winData.title;
         m_winSpecs.width = winData.width;
         m_winSpecs.height = winData.height;
@@ -270,7 +272,8 @@ namespace SceneryEditorX
             /// -------------------------------------------------------
 
             renderContext = RenderContext::Get();
-            renderContext->Init();
+            if (!renderContext->IsInitialized())
+                renderContext->Init();
 			SEDX_CORE_INFO_TAG ("Swapchain", "Got Renderer context handle");
 			//swapChain = new SwapChain(&winData.width, &winData.height, &winData.vsync);
             swapChain = new SwapChain();

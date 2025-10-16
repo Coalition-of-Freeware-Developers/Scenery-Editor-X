@@ -21,6 +21,7 @@
 namespace SceneryEditorX
 {
 
+
     /*
     CommandResources& CommandBuffer::GetCurrentCommandResources()
     {
@@ -75,6 +76,7 @@ namespace SceneryEditorX
     }
     */
 
+    /*
     CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : debugName(std::move(debugName))
     {
         /// Get the device from graphics engine
@@ -84,8 +86,8 @@ namespace SceneryEditorX
             count = data.framesInFlight; /// 0 = one per frame in flight
 
         SEDX_CORE_VERIFY(count > 0, "CommandBuffer count must be greater than 0");
-        /*
-        /// Allocate command buffers if count > 0
+
+        // Allocate command buffers if count > 0
         if (count > 0)
         {
             VkCommandBufferAllocateInfo allocInfo{};
@@ -99,7 +101,7 @@ namespace SceneryEditorX
 
             for (uint32_t i = 0; i < count; ++i)
             {
-                /// Set debug name for each command buffer
+                // Set debug name for each command buffer
                 if (device->vkSetDebugUtilsObjectNameEXT && !debugName.empty())
                 {
                     VkDebugUtilsObjectNameInfoEXT nameInfo{};
@@ -111,7 +113,6 @@ namespace SceneryEditorX
                 }
             }
         }
-        */
 
         VkCommandPoolCreateInfo cmdPoolInfo = {};
         cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -189,7 +190,9 @@ namespace SceneryEditorX
         pipelineQueryPools.resize(count);
 
     }
+    */
 
+    /*
     CommandBuffer::CommandBuffer(std::string debugName, bool swapchain) : ownedBySwapChain(true), debugName(std::move(debugName))
     {
         auto device = RenderContext::GetCurrentDevice();
@@ -200,11 +203,12 @@ namespace SceneryEditorX
         queryPoolCreateInfo.pNext = nullptr;
 
         // Timestamp queries
-        const uint32_t maxUserQueries = 16;
+        constexpr uint32_t maxUserQueries = 16;
         timeQueryCount = 2 + 2 * maxUserQueries;
 
         queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
         queryPoolCreateInfo.queryCount = timeQueryCount;
+
         timestampQueryPools.resize(framesInFlight);
         for (auto &timestampQueryPool : timestampQueryPools) VK_CHECK_RESULT(
             vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
@@ -235,17 +239,19 @@ namespace SceneryEditorX
 
         pipelineStatsQueryResults.resize(framesInFlight);
     }
+    */
 
+    /*
     CommandBuffer::~CommandBuffer()
     {
         if (ownedBySwapChain)
             return;
-
-        VkCommandPool commandPool = cmdPool;
     }
+    */
 
     /// -------------------------------------------------------
     
+    /*
     Ref<CommandBuffer> CommandBuffer::Get()  
     {  
         static Ref<CommandBuffer> cmdBuffersInstance; /// Static instance to ensure a single shared instance  
@@ -256,9 +262,11 @@ namespace SceneryEditorX
         }
         return cmdBuffersInstance;  
     }
+    */
 
     /// -------------------------------------------------------
 
+	/*
 	void CommandBuffer::Begin()
 	{
         availTimeQuery = 2;
@@ -296,6 +304,7 @@ namespace SceneryEditorX
 			vkCmdBeginQuery(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0, 0);
 		});
 	}
+	*/
 
     /*
     void CommandBuffer::Begin(const Queue queue)
@@ -397,13 +406,13 @@ namespace SceneryEditorX
      * 
      * @see Begin, End, Submit
      */
+
     /*
     VkCommandBuffer CommandBuffer::GetCommandBuffer(const RenderData &frameIndex) const
     {
         SEDX_CORE_ASSERT(frameIndex.frameIndex < cmdBuffers.size());
         return cmdBuffers[frameIndex.frameIndex];
-    }
-	*/
+    }*/
 
     /*
     void CommandBuffer::Submit()
@@ -435,7 +444,7 @@ namespace SceneryEditorX
         presentInfo.pResults = nullptr;
     }
     */
-	
+
 	/*
 	void CommandBuffer::Submit()
 	{
@@ -482,7 +491,8 @@ namespace SceneryEditorX
 		});
 	}
 	*/
-	
+
+	/*
 	uint32_t CommandBuffer::BeginTimestampQuery()
 	{
         uint32_t queryIndex = availTimeQuery;
@@ -496,7 +506,9 @@ namespace SceneryEditorX
 		});
 		return queryIndex;
 	}
+	*/
 
+	/*
 	void CommandBuffer::EndTimestampQuery(uint32_t queryID)
 	{
         Ref<CommandBuffer> instance(this);
@@ -507,6 +519,7 @@ namespace SceneryEditorX
 			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], queryID + 1);
 		});
 	}
+	*/
 
 }
 

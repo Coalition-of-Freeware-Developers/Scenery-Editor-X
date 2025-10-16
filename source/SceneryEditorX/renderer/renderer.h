@@ -26,11 +26,9 @@
 #include "SceneryEditorX/utils/pointers.h"
 #include "buffers/index_buffer.h"
 #include "fonts/font.h"
-
 #include "shaders/shader.h"
-
 #include "vulkan/vk_cmd_buffers.h"
-#include "vulkan/vk_render_pass.h"
+#include "render_pass.h"
 
 /// -------------------------------------------------------
 
@@ -151,7 +149,7 @@ namespace SceneryEditorX
          * @param samplerCreateInfo Mutable create info (fields may be adjusted internally).
          * @return Created VkSampler handle.
          */
-        static VkSampler CreateSampler(VkSamplerCreateInfo &samplerCreateInfo);
+        static VkSampler CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo);
 
         /**
          * @brief Destroy a Vulkan sampler previously created via CreateSampler().
@@ -283,13 +281,13 @@ namespace SceneryEditorX
 		 * @param renderPass RenderPass abstraction to prepare/begin.
 		 * @param explicitClear If true, forces explicit attachment clears.
 		 */
-		//static void BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
+		static void BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear = false);
 
 		/**
 		 * @brief End the active render pass (frame scope).
 		 * @param CommandBuffer Command buffer reference.
 		 */
-		//static void EndFrame(Ref<CommandBuffer> CommandBuffer);
+		static void EndFrame(Ref<CommandBuffer> CommandBuffer);
 
         /**
          * @brief Get a reference to a standard render target texture.
@@ -377,6 +375,12 @@ namespace SceneryEditorX
         static void CreateStandardMeshes();
         static void CreateStandardTextures();
         static void CreateStandardMaterials();
+
+        /// -------------------------------------------------------
+
+		// TODO: These are temporary and will be replaced with the Image and ImageView classes.
+		std::vector<VkImage> m_images;
+		std::vector<VkImageView> m_imageViews;
 
         /// -------------------------------------------------------
 

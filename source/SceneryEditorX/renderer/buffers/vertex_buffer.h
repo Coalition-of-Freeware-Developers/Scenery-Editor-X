@@ -76,14 +76,7 @@ namespace SceneryEditorX
              * @param inputRate Vertex input rate (vertex or instance).
              * @return VkVertexInputBindingDescription describing how to bind vertex data.
              */
-            static VkVertexInputBindingDescription GetBindingDescription( uint32_t binding = 0, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX)
-            {
-                VkVertexInputBindingDescription bindingDescription{};
-                bindingDescription.binding = binding;
-                bindingDescription.stride = sizeof(Vertex);
-                bindingDescription.inputRate = inputRate;
-                return bindingDescription;
-            }
+            static VkVertexInputBindingDescription GetBindingDescription( uint32_t binding = 0, VkVertexInputRate inputRate = VK_VERTEX_INPUT_RATE_VERTEX);
 
             /**
              * @brief Provides attribute descriptions for vertex data components.
@@ -91,27 +84,7 @@ namespace SceneryEditorX
              * @param binding The binding index these attributes are associated with.
              * @return Array of attribute descriptions for position, color, and texture coordinates.
              */
-            static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions(uint32_t binding = 0)
-            {
-                std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-                attributeDescriptions[0].binding = binding;
-                attributeDescriptions[0].location = 0;
-                attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-                attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-                attributeDescriptions[1].binding = binding;
-                attributeDescriptions[1].location = 1;
-                attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-                attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-                attributeDescriptions[2].binding = binding;
-                attributeDescriptions[2].location = 2;
-                attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-                attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-                return attributeDescriptions;
-            }
+            static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions(uint32_t binding = 0);
 
             /**
              * @brief Equality comparison operator for vertices.
@@ -119,10 +92,7 @@ namespace SceneryEditorX
              * @param other The vertex to compare against.
              * @return true if vertices are equal, false otherwise.
              */
-            bool operator==(const Vertex &other) const
-            {
-                return pos == other.pos && color == other.color && texCoord == other.texCoord;
-            }
+            bool operator==(const Vertex &other) const;
         };
 
 		/**
@@ -338,14 +308,14 @@ namespace SceneryEditorX
         //static Ref<VertexBuffer> CreatePrimitive(PrimitiveType type, const Vec3& size = Vec3(1.0f), const Vec3& color = Vec3(1.0f));
 
     private:
-        std::vector<Vertex> m_Vertices;						///< Storage for vertex data
-        VertexBufferType m_BufferType;						///< Type of vertex buffer
-        VertexFormat m_Format;								///< Format of vertices
-        Buffer m_VertexBuffer;								///< Vulkan buffer wrapper using project buffer system
-        Buffer m_LocalData;									///< Local data buffer for CPU access
-        uint32_t m_Capacity = 0;							///< Capacity in number of vertices
-        uint64_t m_Size = 0;								///< Size of the vertex buffer in bytes
-        bool m_IsInitialized = false;						///< Whether the buffer has been initialized
+        std::vector<Vertex> m_Vertices;	// Storage for vertex data
+        VertexBufferType m_BufferType;	// Type of vertex buffer
+        VertexFormat m_Format;			// Format of vertices
+        Buffer m_VertexBuffer;			// Vulkan buffer wrapper using project buffer system
+        Buffer m_LocalData;				// Local data buffer for CPU access
+        uint32_t m_Capacity = 0;		// Capacity in number of vertices
+        uint64_t m_Size = 0;			// Size of the vertex buffer in bytes
+        bool m_IsInitialized = false;	// Whether the buffer has been initialized
 
         /**
          * @brief Creates the internal GPU buffer using the MemoryAllocator system
@@ -441,11 +411,11 @@ namespace SceneryEditorX
      */
     struct VertexBufferElement
 	{
-        std::string name;       ///< Name of the element, typically used in shaders.
-        ShaderDataType type;    ///< Shader data type of the element.
-        uint32_t size;          ///< Size of the element in bytes, calculated based on the shader data type.
-        uint32_t offset;        ///< Offset of the element in the vertex buffer, used for layout calculations.
-		bool normalized;        ///< Whether the data should be normalized when accessed in shaders.
+        std::string name;		// Name of the element, typically used in shaders.
+        ShaderDataType type;	// Shader data type of the element.
+        uint32_t size;			// Size of the element in bytes, calculated based on the shader data type.
+        uint32_t offset;		// Offset of the element in the vertex buffer, used for layout calculations.
+		bool normalized;		// Whether the data should be normalized when accessed in shaders.
 
         VertexBufferElement() = default;
 
@@ -534,19 +504,9 @@ namespace SceneryEditorX
 		 * This function iterates through the elements and sets their offsets
 		 * based on their sizes, also calculating the total stride of the layout.
 		 */
-		void CalculateOffsetsAndStride()
-		{
-			uint32_t offset = 0;
-			m_Stride = 0;
-			for (auto& element : m_Elements)
-			{
-				element.offset = offset;
-				offset += element.size;
-				m_Stride += element.size;
-			}
-		}
+		void CalculateOffsetsAndStride();
 
-		std::vector<VertexBufferElement> m_Elements;
+        std::vector<VertexBufferElement> m_Elements;
 		uint32_t m_Stride = 0;
 	};
 

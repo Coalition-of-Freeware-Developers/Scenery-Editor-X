@@ -26,13 +26,15 @@
 namespace SceneryEditorX
 {
 
-    Ref<RenderDispatcher> RenderDispatcher::s_Instance;								// Singleton lifetime anchor instance (created in Init, released in Shutdown)
-	std::thread RenderDispatcher::s_Worker;											// Background worker thread executing FIFO jobs
-	RenderDispatcher::Queues RenderDispatcher::s_Queue;								// Active job queue + synchronization primitives
-    std::mutex RenderDispatcher::s_RFMutex;											// Mutex protecting the resource free ring structure
-	std::vector<RenderDispatcher::RFQueue> RenderDispatcher::s_ResourceFreeRing;	// Ring of per-frame deferred destruction job buckets
-    uint32_t RenderDispatcher::s_CurrentRFIndex = 0;								// Index of the frame bucket that just became safe for destruction
-    RenderData RenderDispatcher::renderData;
+    Ref<RenderDispatcher>
+    RenderDispatcher::s_Instance;       // Singleton lifetime anchor instance (created in Init, released in Shutdown)
+	std::thread RenderDispatcher::s_Worker; // Background worker thread executing FIFO jobs
+	RenderDispatcher::Queues RenderDispatcher::s_Queue; // Active job queue + synchronization primitives
+    std::mutex RenderDispatcher::s_RFMutex;             // Mutex protecting the resource free ring structure
+	RenderData RenderDispatcher::renderData;
+    std::vector<RenderDispatcher::RFQueue>
+    RenderDispatcher::s_ResourceFreeRing;        // Ring of per-frame deferred destruction job buckets
+    uint32_t RenderDispatcher::s_CurrentRFIndex = 0; // Index of the frame bucket that just became safe for destruction
 
     /// -------------------------------------------------------
 
@@ -67,9 +69,10 @@ namespace SceneryEditorX
 	void RenderDispatcher::Shutdown()
 	{
         {
-            std::lock_guard lock(s_Queue.mtx);
+            std::scoped_lock lock(s_Queue.mtx);
             s_Queue.quitting = true;
         }
+
         s_Queue.cv.notify_all();
         if (s_Worker.joinable())
             s_Worker.join();
@@ -107,7 +110,7 @@ namespace SceneryEditorX
 	{
 	    if (!s_Instance) { job(); return; }
 	    {
-            std::lock_guard lock(s_Queue.mtx);
+            std::scoped_lock lock(s_Queue.mtx);
             s_Queue.jobs.push(std::move(job));
 	    }
 	    s_Queue.cv.notify_one();
@@ -129,7 +132,7 @@ namespace SceneryEditorX
 	        job();
 	        return;
 	    }
-	    std::lock_guard lock(s_RFMutex);
+        std::scoped_lock lock(s_RFMutex);
         const uint32_t target = (s_CurrentRFIndex + renderData.framesInFlight - 1) % renderData.framesInFlight;
         s_ResourceFreeRing[target].jobs.push_back(std::move(job));
     }
@@ -165,7 +168,7 @@ namespace SceneryEditorX
             return;
         std::vector<Job> toRun;
         {
-            std::lock_guard lock(s_RFMutex);
+            std::scoped_lock lock(s_RFMutex);
             s_CurrentRFIndex = (s_CurrentRFIndex + 1) % renderData.framesInFlight;
             toRun.swap(s_ResourceFreeRing[s_CurrentRFIndex].jobs);
         }

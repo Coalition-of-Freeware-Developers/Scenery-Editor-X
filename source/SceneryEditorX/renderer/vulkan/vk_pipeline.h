@@ -15,6 +15,7 @@
 #include "SceneryEditorX/renderer/buffers/framebuffer.h"
 #include "SceneryEditorX/renderer/buffers/vertex_buffer.h"
 #include "SceneryEditorX/renderer/shaders/shader.h"
+#include <SceneryEditorX/renderer/texture.h>
 
 /// -------------------------------------------------------
 
@@ -29,8 +30,7 @@ namespace SceneryEditorX
         virtual ~PipelineResource() override
         {
 			// Guard against teardown order: RenderContext device can be null at shutdown
-			auto deviceRef = RenderContext::GetCurrentDevice();
-			if (deviceRef && deviceRef->GetDevice() != VK_NULL_HANDLE)
+            if (auto deviceRef = RenderContext::GetCurrentDevice(); deviceRef && deviceRef->GetDevice() != VK_NULL_HANDLE)
 			{
 				if (pipeline != VK_NULL_HANDLE)
 					vkDestroyPipeline (deviceRef->GetDevice(), pipeline, nullptr);
@@ -62,7 +62,7 @@ namespace SceneryEditorX
 	class Pipeline : public RefCounted
 	{
 	public:
-        explicit Pipeline(PipelineData &data);
+        explicit Pipeline(const PipelineData &data);
         virtual ~Pipeline() override;
 
 		PipelineData &GetSpecification() { return pipelineSpecs; }
@@ -81,6 +81,8 @@ namespace SceneryEditorX
         VkExtent2D GetFloatSwapExtent();
         VkPipeline GetPipeline() const { return pipeline; }
 		VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }
+        std::array<Color, MAX_RENDER_TARGET_COUNT> clear_color;
+        std::array<Texture*, MAX_RENDER_TARGET_COUNT> render_target_color_textures;
 
 	private:
         PipelineType point;
@@ -93,9 +95,16 @@ namespace SceneryEditorX
         bool cullFront = false;
         bool lineTopology = false;
 
+	    uint32_t m_width = 0;
+        uint32_t m_height = 0;
+        uint64_t m_hash = 0;
+
         PipelineData pipelineSpecs;
         Ref<PipelineResource> resource;
         std::vector<std::vector<char>> stageBytes;
+
+        void *m_resource = nullptr;
+        void *m_resource_layout = nullptr;
 
         VkPipeline pipeline = nullptr;
         VkPipelineLayout pipelineLayout = nullptr;

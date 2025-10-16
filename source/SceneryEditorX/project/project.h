@@ -74,7 +74,7 @@ namespace SceneryEditorX
 	    static std::filesystem::path GetCacheDirectory()
 		{
             SEDX_CORE_ASSERT(activeProject);
-            return std::filesystem::path(activeProject->GetConfig().projectPath) / "Cache";
+            return std::filesystem::path(activeProject->GetConfig().projectPath) / "cache";
 		}
 
 	private:

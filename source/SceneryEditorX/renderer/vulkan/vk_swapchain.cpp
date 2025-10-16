@@ -62,17 +62,17 @@ namespace SceneryEditorX
     }
 
     /// -------------------------------------------------------
-    // Legacy ImageID resource ID pools removed (bindless manager provides indices).
+    /// Legacy ImageID resource ID pools removed (bindless manager provides indices).
     /// -------------------------------------------------------
 
     void SwapChain::InitSurface(GLFWwindow *windowPtr)
     {
-        auto ctx = RenderContext::Get(); // Get render context reference
-        const VkPhysicalDevice physicalDevice = ctx->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+        //auto ctx = RenderContext::Get(); // Get render context reference
+        const VkPhysicalDevice physicalDevice = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
         GPUDevice gpuData;
 
         /// Create the surface
-        glfwCreateWindowSurface(ctx->GetInstance(), windowPtr, nullptr, &surface);
+        glfwCreateWindowSurface(RenderContext::GetInstance(), windowPtr, nullptr, &surface);
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &gpuData.surfaceCapabilities);
 
         /*
@@ -530,7 +530,7 @@ namespace SceneryEditorX
     {
         auto ctx = RenderContext::Get(); // Get render context reference
 
-        VkDevice device = ctx->GetCurrentDevice()->GetDevice();
+        VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
         RenderData data;
         data.width = *width;
         data.height = *height;
@@ -542,13 +542,13 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("Swapchain", "Got Old Swapchain Handle: {}", ToString(oldSwapChain));
 
 		// Get a valid graphics queue family index from the device
-        if (ctx->GetCurrentDevice()->GetPhysicalDevice()->GetQueueFamilyIndices().graphicsFamily.has_value())
-            queueIndex = ctx->GetCurrentDevice()->GetPhysicalDevice()->GetQueueFamilyIndices().graphicsFamily.value().second;
+        if (RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetQueueFamilyIndices().graphicsFamily.has_value())
+            queueIndex = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetQueueFamilyIndices().graphicsFamily.value().second;
 
         SEDX_CORE_INFO_TAG("Swapchain", "Using queue family index: {}", queueIndex);
 
         // Get physical device surface properties and formats
-        VkSurfaceCapabilitiesKHR surfaceInfo = ctx->GetCurrentDevice()->GetPhysicalDevice()->Selected().surfaceCapabilities;
+        VkSurfaceCapabilitiesKHR surfaceInfo = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->Selected().surfaceCapabilities;
 
 #ifdef SEDX_DEBUG
         SEDX_CORE_INFO_TAG("Swapchain", "Got Physical Device Surface Capabilities:");
@@ -571,7 +571,7 @@ namespace SceneryEditorX
         VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr))
         SEDX_CORE_ASSERT(presentModeCount > 0, "No present modes available!");
 
-        std::vector<VkPresentModeKHR> presentModes(ctx->GetCurrentDevice()->GetPhysicalDevice()->Selected().presentModes);
+        std::vector<VkPresentModeKHR> presentModes(RenderContext::GetCurrentDevice()->GetPhysicalDevice()->Selected().presentModes);
         presentModes.resize(presentModeCount);
         VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data()))
 
@@ -768,32 +768,6 @@ namespace SceneryEditorX
         }
 
         ///////////////////////////////////////////////////////////////////////////////////
-        /// SwapChain Command Buffers
-        ///////////////////////////////////////////////////////////////////////////////////
-        for (auto &[CommandPool, CommandBuffer] : cmdBuffers)
-        {
-            vkDestroyCommandPool(device, CommandPool, nullptr);
-        }
-
-        VkCommandPoolCreateInfo cmdPoolInfo = {};
-        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmdPoolInfo.queueFamilyIndex = queueIndex;
-        cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-
-        VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
-        commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        commandBufferAllocateInfo.commandBufferCount = 1;
-
-        cmdBuffers.resize(swapChainImageCount);
-        for (auto &commandBuffer : cmdBuffers)
-        {
-            VK_CHECK_RESULT(vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &commandBuffer.CommandPool))
-            commandBufferAllocateInfo.commandPool = commandBuffer.CommandPool;
-            VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &commandBuffer.CommandBuffer))
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////
         /// Synchronization Objects
         ///////////////////////////////////////////////////////////////////////////////////
         RenderData renderData;
@@ -936,8 +910,8 @@ namespace SceneryEditorX
         if (Window window = Application::Get().GetWindow(); window.IsMinimized())
             return;
 
-        auto ctx = RenderContext::Get(); // Get render context reference
-        auto device = ctx->GetCurrentDevice();
+        //auto ctx = RenderContext::Get(); // Get render context reference
+        auto device = RenderContext::GetCurrentDevice();
 
         auto renderData = RenderData();
         currentFrameIdx = (currentFrameIdx + 1) % renderData.framesInFlight;
@@ -958,8 +932,8 @@ namespace SceneryEditorX
 
     void SwapChain::Present()
     {
-        auto ctx = RenderContext::Get(); // Get render context reference
-        auto device = ctx->GetCurrentDevice();
+        //auto ctx = RenderContext::Get(); // Get render context reference
+        auto device = RenderContext::GetCurrentDevice();
 
         constexpr VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -1005,8 +979,8 @@ namespace SceneryEditorX
 
     void SwapChain::Destroy()
     {
-        auto ctx = RenderContext::Get(); // Get render context reference
-        auto devRef = ctx->GetCurrentDevice();
+        //auto ctx = RenderContext::Get(); // Get render context reference
+        auto devRef = RenderContext::GetCurrentDevice();
         VkDevice device = devRef ? devRef->GetDevice() : VK_NULL_HANDLE;
 
         // Destroy presentation swapchain and related images/views
@@ -1128,7 +1102,7 @@ namespace SceneryEditorX
         // Finally, destroy the VkSurfaceKHR if it exists (must happen before instance destruction)
         if (surface != VK_NULL_HANDLE)
         {
-            VkInstance inst = ctx->GetInstance();
+            VkInstance inst = RenderContext::GetInstance();
             if (inst != VK_NULL_HANDLE) vkDestroySurfaceKHR(inst, surface, nullptr);
 
             surface = VK_NULL_HANDLE;
@@ -1206,8 +1180,8 @@ namespace SceneryEditorX
 
     uint32_t SwapChain::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
     {
-        auto ctx = RenderContext::Get(); // Get render context reference
-        auto device = ctx->GetCurrentDevice()->GetPhysicalDevice()->Selected().physicalDevice;
+        //auto ctx = RenderContext::Get(); // Get render context reference
+        auto device = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->Selected().physicalDevice;
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(device, &memProperties);
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
@@ -1244,8 +1218,8 @@ namespace SceneryEditorX
 
     VkImageView SwapChain::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const
     {
-        auto ctx = RenderContext::Get(); // Get render context reference
-        auto device = ctx->GetCurrentDevice();
+        //auto ctx = RenderContext::Get(); // Get render context reference
+        auto device = RenderContext::GetCurrentDevice();
 
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1288,8 +1262,8 @@ namespace SceneryEditorX
 
     VkPresentModeKHR SwapChain::ChooseSwapPresentMode() const
     {
-        auto ctx = RenderContext::Get();
-        const auto physDevice = ctx->GetCurrentDevice()->GetPhysicalDevice();
+        //auto ctx = RenderContext::Get();
+        const auto physDevice = RenderContext::GetCurrentDevice()->GetPhysicalDevice();
 
         const auto &presentModes = physDevice->GetPresentModes();
 
@@ -1319,8 +1293,8 @@ namespace SceneryEditorX
     {
         for (const VkFormat format : candidates)
         {
-            auto ctx = RenderContext::Get(); // Get render context reference
-            auto physDevice = ctx->GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
+            //auto ctx = RenderContext::Get(); // Get render context reference
+            auto physDevice = RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices();
             VkFormatProperties props;
 
             vkGetPhysicalDeviceFormatProperties(physDevice, format, &props);

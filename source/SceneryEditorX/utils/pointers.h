@@ -695,7 +695,7 @@ namespace SceneryEditorX
 		 */
 		bool operator!=(std::nullptr_t) const noexcept { return m_Ptr != nullptr; }
 
-	private:
+    private:
 		// Helper for SFINAE-based object comparison
 		template <typename U>
 		static auto HasEqualityOperator(int) -> decltype(std::declval<U>() == std::declval<U>(), std::true_type{});

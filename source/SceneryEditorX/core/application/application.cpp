@@ -77,13 +77,13 @@ namespace SceneryEditorX
 
     Application::~Application()
     {
-        // Ensure renderer subsystems are torn down first
-        Renderer::Shutdown();
-
         // Let RAII handle Window destruction, or explicitly reset the unique_ptr once
         // to avoid double-destruction. Do NOT call the destructor directly.
         if (m_Window)
             m_Window.reset();
+
+        // Ensure renderer subsystems are torn down first
+        Renderer::Shutdown();
     }
 
     void Application::Run()
@@ -93,15 +93,12 @@ namespace SceneryEditorX
         // Main application loop
         while (isRunning && !m_Window->GetShouldClose())
         {
-
-            m_Window->Update();            // Update the window (poll events)
+            m_Window->Update();	// Update the window (poll events)
 
             // Skip frame if window is minimized
-            if (isMinimized)
-                continue;
+            if (isMinimized) continue;
 
-            // Call user-defined update function
-            OnUpdate();
+            OnUpdate();	// Call user-defined update function
         }
 
         OnShutdown();
@@ -129,8 +126,7 @@ namespace SceneryEditorX
 	{
 		Input::TransitionPressedKeys();
 		Input::TransitionPressedButtons();
-
-        m_Window->ProcessEvents();
+        Window::ProcessEvents();
 
 		// NOTE: we have no control over what func() does.  holding this lock while calling func() is a bad idea:
 		// 1) func() might be slow (means we hold the lock for ages)
@@ -143,8 +139,7 @@ namespace SceneryEditorX
 		while (!m_EventQueue.empty())
 		{
 			const auto& [synced, func] = m_EventQueue.front();
-			if (!synced)
-                break;
+			if (!synced) break;
 
             func();
 			m_EventQueue.pop_front();
@@ -161,12 +156,10 @@ namespace SceneryEditorX
 		for (auto it = m_ModuleStage.end(); it != m_ModuleStage.begin(); )
 		{
 			(*--it)->OnEvent(event);
-			if (event.Handled)
-				break;
+			if (event.Handled) break;
 		}
 
-		if (event.Handled)
-			return;
+		if (event.Handled) return;
 
 		// TODO: Should these callbacks be called BEFORE the layers receive events?
 		//				We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
@@ -174,9 +167,7 @@ namespace SceneryEditorX
 		for (auto& eventCallback : m_EventCallbacks)
 		{
 			eventCallback(event);
-
-			if (event.Handled)
-				break;
+			if (event.Handled) break;
 		}
 
 	}

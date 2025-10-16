@@ -66,19 +66,19 @@ namespace SceneryEditorX
             if (projPath.empty())
                 m_ProjectPath = "..\\Projects\\Default.edX";
                 
-            ///< Initialize application services
+            // Initialize application services
             initCrashHandlerServices();
         }
 
         virtual ~EditorX() override
         {
-            ///< Clean up application services
+            // Clean up application services
             endCrashHandlerServices();
         }
 
         virtual void OnInit() override  
         {  
-            ///< Initialize the user settings  
+            // Initialize the user settings  
             m_UserSettings = CreateRef<ApplicationSettings>("settings.cfg");
             if (!m_UserSettings->ReadSettings())  
             {  
@@ -90,6 +90,7 @@ namespace SceneryEditorX
             {
                 if (!m_EditorApp)
                     m_EditorApp = CreateScope<EditorApplication>();
+
                 m_EditorApp->InitEditor();
             }
             catch (const std::exception &e)
@@ -110,6 +111,7 @@ namespace SceneryEditorX
             if (m_EditorApp)
                 m_EditorApp.reset();
 
+            m_UserSettings.Reset();
             Application::OnShutdown();
         }
 
