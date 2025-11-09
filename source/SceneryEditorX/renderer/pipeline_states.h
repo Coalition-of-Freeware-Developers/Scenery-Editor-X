@@ -17,7 +17,7 @@
 //#include "shaders/shader.h"
 //#include "vulkan/vk_swapchain.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -37,7 +37,7 @@ namespace SceneryEditorX
         [[nodiscard]] bool IsCompute() const;
         bool HasTessellation();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    RasterizerState *rasterizerState			= nullptr;
         BlendState *blendState						= nullptr;
@@ -50,7 +50,7 @@ namespace SceneryEditorX
         std::array<Ref<Shader> *, static_cast<uint32_t>(ShaderStage::Stage::MaxEnum)> shaders = {};
         std::array< Ref<Texture2D>*, renderTargetCountLimit> render_target_color_textures;
 		
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 		
         // dynamic properties, changing these will not create a new PSO
         bool resolution = false;
@@ -70,4 +70,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

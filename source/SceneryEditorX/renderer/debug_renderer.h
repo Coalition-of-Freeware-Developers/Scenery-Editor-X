@@ -13,7 +13,7 @@
 #pragma once
 //#include "2d_renderer.h"
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -36,12 +36,12 @@ namespace SceneryEditorX
 		void DrawQuadBillboard(const Vec3& translation, const Vec2& size, const Vec4& color = Vec4(1.0f));
 		void SetLineWidth(float thickness);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		RenderQueue& GetRenderQueue() { return m_RenderQueue; }
 		void ClearRenderQueue() { m_RenderQueue.clear(); }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 		static bool HasValidationLayers() { return m_validation_layer_enabled; }
 		static bool IsRenderDocEnabled() { return m_renderdoc_enabled; }
@@ -56,4 +56,4 @@ namespace SceneryEditorX
 }
 */
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------

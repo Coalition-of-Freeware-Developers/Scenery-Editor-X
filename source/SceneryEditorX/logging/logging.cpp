@@ -19,7 +19,7 @@
 #include <vulkan/vulkan.h>
 #include "SceneryEditorX/core/application/application_data.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -81,7 +81,7 @@ namespace SceneryEditorX
             if (spdlog::get("Launcher"))
                 spdlog::drop("Launcher");
 
-	        /// -------------------------------------------------------
+	        // -------------------------------------------------------
 
 	        std::vector<spdlog::sink_ptr> coreSinks = {
                 std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/SceneryEditorX.log", true),
@@ -99,14 +99,14 @@ namespace SceneryEditorX
 				std::make_shared<spdlog::sinks::stdout_color_sink_mt>(),
                 std::make_shared<spdlog::sinks::basic_file_sink_mt>("../logs/Launcher.log", true)};
 
-	        /// -------------------------------------------------------
+	        // -------------------------------------------------------
 
 	        /// Pattern for console sinks
 	        coreSinks[1]->set_pattern("%^[%T] %n: %v%$");
 	        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");
             launcherSinks[1]->set_pattern("%^[%T] %n: %v%$");
 
-			/// -------------------------------------------------------
+			// -------------------------------------------------------
 
 	        /// Pattern for file sinks - note the correct indices
 	        coreSinks[0]->set_pattern("[%T] [%l] %n: %v");
@@ -116,7 +116,7 @@ namespace SceneryEditorX
             launcherSinks[1]->set_pattern("[%T] [%l] %n: %v");
 
 
-	        /// -------------------------------------------------------
+	        // -------------------------------------------------------
 
 	        CoreLogger = std::make_shared<spdlog::logger>("Core", coreSinks.begin(), coreSinks.end());
 	        CoreLogger->set_level(spdlog::level::trace);
@@ -134,7 +134,7 @@ namespace SceneryEditorX
             LauncherLogger->set_level(spdlog::level::trace);
             LauncherLogger->flush_on(spdlog::level::info); /// Flush on info level and above
 
-			/// -------------------------------------------------------
+			// -------------------------------------------------------
 
 	        /// Register loggers with spdlog
 	        spdlog::register_logger(CoreLogger);
@@ -151,7 +151,7 @@ namespace SceneryEditorX
 	        std::cerr << "Log initialization failed: " << ex.what() << '\n';
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 	}
 
 	void Log::SetDefaultTagSettings()
@@ -239,28 +239,28 @@ namespace SceneryEditorX
 	#endif
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void Log::LogHeader()
 	{
         AppData stats;
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 		/// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
 		SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 		SYSTEMTIME systemTime;
 		GetSystemTime(&systemTime);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		/// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
 		TIME_ZONE_INFORMATION timeZoneInfo;
 		GetTimeZoneInformation(&timeZoneInfo);
 		std::wstring timeZoneName = timeZoneInfo.StandardName[0] != L'\0' ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		SEDX_CORE_INFO("============================================");
 		SEDX_CORE_INFO("System Information");
@@ -326,7 +326,7 @@ namespace SceneryEditorX
 	    spdlog::shutdown();
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/// taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c
     [[maybe_unused]] static const char* vkErrorString(const VkResult result)
@@ -368,8 +368,8 @@ namespace SceneryEditorX
 		return "VK_<Unknown>";
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

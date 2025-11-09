@@ -16,14 +16,14 @@
 #include "vk_enums.h"
 #include "SceneryEditorX/core/memory/memory.h"
 
-/// --------------------------------------------
+// --------------------------------------------
 
 namespace SceneryEditorX
 {
 using Flags = uint32_t;
 	using MemoryFlags = Flags;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     // ReSharper disable twice IdentifierTypo
     namespace BufferUsage
@@ -58,7 +58,7 @@ using Flags = uint32_t;
     }
     using BufferUsageFlags = Flags;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * @brief Safely destroys a Vulkan buffer and frees its associated memory allocation
@@ -75,7 +75,7 @@ using Flags = uint32_t;
         void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation); //TODO: Swap VmaAllocation to the MemoryAllocator class
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * @struct BufferResource
@@ -142,7 +142,7 @@ using Flags = uint32_t;
 
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
 	 * @struct Buffer
@@ -244,7 +244,7 @@ using Flags = uint32_t;
         [[nodiscard]] uint64_t GetSize() const { return size; }
     };
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     /**
      * @brief Begins a single-use command buffer for immediate execution
@@ -359,7 +359,7 @@ using Flags = uint32_t;
 	 */
     void UnmapBuffer(const Buffer &buffer);
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     /*
     class Framebuffer;
@@ -433,7 +433,7 @@ using Flags = uint32_t;
     };
     */
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
 	/*
     class Framebuffer : public RefCounted
@@ -484,4 +484,4 @@ using Flags = uint32_t;
 
 }
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------

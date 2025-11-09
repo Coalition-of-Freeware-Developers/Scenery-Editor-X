@@ -13,7 +13,7 @@
 #pragma once
 #include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 
-/// -----------------------------------
+// -----------------------------------
 
 namespace SceneryEditorX
 {
@@ -24,7 +24,7 @@ namespace SceneryEditorX
 	    std::string debugName;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class StorageBuffer : public RefCounted
     {
@@ -51,7 +51,7 @@ namespace SceneryEditorX
         VkDescriptorBufferInfo m_DescriptorInfo{};
     };
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     class StorageBufferSet : public RefCounted
     {
@@ -65,11 +65,11 @@ namespace SceneryEditorX
         void Set(const Ref<StorageBuffer> &storageBuffer, uint64_t frame);
         void Resize(uint32_t newSize) const;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         //static Ref<StorageBufferSet> Create(const StorageBufferSpec &spec, uint32_t size, uint32_t framesInFlight = 0);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
     private:
         StorageBufferSpec m_spec;
@@ -79,4 +79,4 @@ namespace SceneryEditorX
 
 }
 
-/// ----------------------------------
+// ----------------------------------

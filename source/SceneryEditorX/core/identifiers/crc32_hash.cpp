@@ -15,7 +15,7 @@
 //#include "hash.h"
 //#include <string>
 
-/// ---------------------------------------------
+// ---------------------------------------------
 
 /**
  * @brief Generates a compile-time CRC32 lookup table using the IEEE 802.3 polynomial.
@@ -64,7 +64,7 @@ std::array<uint32_t, 256> gen_crc32_table()
 }
 */
 
-/// ---------------------------------------------
+// ---------------------------------------------
 
 /**
  * @brief Generated CRC32 lookup table for efficient hash computation.
@@ -75,7 +75,7 @@ std::array<uint32_t, 256> gen_crc32_table()
  */
 //static const auto crc32_table = gen_crc32_table();
 
-/// ---------------------------------------------
+// ---------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -154,4 +154,4 @@ namespace SceneryEditorX
 
 }
 
-/// ---------------------------------------------
+// ---------------------------------------------

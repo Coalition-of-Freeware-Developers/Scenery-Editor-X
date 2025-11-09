@@ -13,14 +13,14 @@
 #include "ui_fonts.h"
 #include "SceneryEditorX/logging/asserts.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
 
 	static std::unordered_map<std::string, ImFont*> s_Fonts;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void Fonts::Add(const FontConfiguration& config, bool isDefault)
 	{
@@ -67,4 +67,4 @@ namespace SceneryEditorX::UI
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

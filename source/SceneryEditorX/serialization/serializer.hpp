@@ -13,7 +13,7 @@
 #pragma once
 #include "SceneryEditorX/asset/managers/asset_manager.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -53,7 +53,7 @@ namespace SceneryEditorX
 
 	/*using Json = nlohmann::json;
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	inline void to_json(Json& j, const Vec3& v)
 	{
@@ -86,7 +86,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct BinaryStorage
 	{
@@ -106,7 +106,7 @@ namespace SceneryEditorX
 	    }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct Serializer
 	{
@@ -115,17 +115,17 @@ namespace SceneryEditorX
 	    AssetManager& manager;
 	    int directory = 0;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    std::filesystem::path filename;
 	    static constexpr int LOAD = 0;
 	    static constexpr int SAVE = 1;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    Serializer(Json& j, BinaryStorage& storage, int directory, AssetManager& manager) : j(j) , storage(storage) , manager(manager) , directory(directory) {}
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template<typename T>
 	    void Serialize(Ref<T>& object)
@@ -158,7 +158,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 	
 	    template<typename T>
 	    void operator()(const std::string& field, T& value)
@@ -173,7 +173,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template<typename T>
 	    void Vector(const std::string& field, std::vector<T>& v)
@@ -196,7 +196,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template<typename T>
 	    void VectorRef(const std::string& field, std::vector<T>& v)
@@ -227,7 +227,7 @@ namespace SceneryEditorX
              }
 	    }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template <typename T>
 	    void Asset(const std::string& field, Ref<T>& object)
@@ -249,7 +249,7 @@ namespace SceneryEditorX
 	        }
 	    }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    template <typename T>
 	    void Node(const std::string& field, Ref<T>& node, SceneAsset* scene)
@@ -271,10 +271,10 @@ namespace SceneryEditorX
 	        }
 	    }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 	};
 	*/
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

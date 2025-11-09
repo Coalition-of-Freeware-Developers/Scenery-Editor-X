@@ -19,7 +19,7 @@
 //#include <SceneryEditorX/utils/pointers.h>
 //#include <utility>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -27,7 +27,7 @@ namespace SceneryEditorX
 	/*
 	using namespace msdf_atlas;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct FontInput
     {
@@ -38,7 +38,7 @@ namespace SceneryEditorX
 		const char* fontName;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct Configuration
     {
@@ -56,7 +56,7 @@ namespace SceneryEditorX
 		GeneratorAttributes generatorAttributes;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	#define DEFAULT_ANGLE_THRESHOLD 3.0
 	#define DEFAULT_MITER_LIMIT 1.0
@@ -64,7 +64,7 @@ namespace SceneryEditorX
 	#define LCG_INCREMENT 1442695040888963407ull
 	#define THREADS 8
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	namespace Utils
     {
@@ -82,7 +82,7 @@ namespace SceneryEditorX
 		}
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct AtlasHeader
 	{
@@ -91,7 +91,7 @@ namespace SceneryEditorX
         uint32_t height = 0;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	static bool TryReadFontAtlasFromCache(const std::string& fontName, float fontSize, AtlasHeader& header, void*& pixels, Memory::Buffer& storageBuffer)
 	{
@@ -107,7 +107,7 @@ namespace SceneryEditorX
 		return false;
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	static void CacheFontAtlas(const std::string& fontName, float fontSize, AtlasHeader header, const void* pixels)
 	{
@@ -127,7 +127,7 @@ namespace SceneryEditorX
 		stream.write((char*)pixels, header.width * header.height * sizeof(float) * 4);
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	template <typename T, typename S, int N, GeneratorFunction<S, N> GEN_FN>
 	static Ref<Texture2D> CreateAndCacheAtlas(const std::string& fontName, float fontSize, const std::vector<GlyphGeometry>& glyphs, const FontGeometry& fontGeometry, const Configuration& config)
@@ -155,7 +155,7 @@ namespace SceneryEditorX
 		return texture;
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	static Ref<Texture2D> CreateCachedAtlas(AtlasHeader header, const void* pixels)
 	{
@@ -170,7 +170,7 @@ namespace SceneryEditorX
 		return texture;
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	Font::Font(const std::filesystem::path& filepath) : m_MSDFData(new MSDFData())
 	{
@@ -181,21 +181,21 @@ namespace SceneryEditorX
 		buffer.Release();
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	Font::Font(std::string name, Memory::Buffer buffer) : m_Name(std::move(name)), m_MSDFData(new MSDFData()), buffer(buffer)
 	{
 		CreateAtlas(buffer);
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	Font::~Font()
 	{
 		delete m_MSDFData;
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void Font::CreateAtlas(Memory::Buffer buffer)
 	{
@@ -412,7 +412,7 @@ namespace SceneryEditorX
 		}
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void Font::Init()
 	{
@@ -420,7 +420,7 @@ namespace SceneryEditorX
 		s_DefaultMonoSpacedFont = CreateRef<Font>("assets/fonts/roboto.ttf");
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void Font::Shutdown()
 	{
@@ -428,7 +428,7 @@ namespace SceneryEditorX
 		s_DefaultFont.Reset();
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	Ref<Font> Font::GetDefaultFont()
 	{
@@ -454,4 +454,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

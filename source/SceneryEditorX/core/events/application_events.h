@@ -14,7 +14,7 @@
 #include "event_system.h"
 #include <sstream>
 
-/// -------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -39,7 +39,7 @@ namespace SceneryEditorX
 		unsigned int m_Width, m_Height;
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
     class WindowMinimizeEvent : public Event
 	{
@@ -54,7 +54,7 @@ namespace SceneryEditorX
 		bool m_Minimized = false;
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class WindowCloseEvent : public Event
 	{
@@ -65,7 +65,7 @@ namespace SceneryEditorX
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class WindowTitleBarHitTestEvent : public Event
 	{
@@ -84,7 +84,7 @@ namespace SceneryEditorX
 		int& m_Hit;
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class AppTickEvent : public Event
 	{
@@ -95,7 +95,7 @@ namespace SceneryEditorX
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class AppUpdateEvent : public Event
 	{
@@ -106,7 +106,7 @@ namespace SceneryEditorX
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class AppRenderEvent : public Event
 	{
@@ -117,7 +117,7 @@ namespace SceneryEditorX
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class ScreenshotCapturedEvent : public Event
 	{
@@ -140,8 +140,8 @@ namespace SceneryEditorX
 		bool m_Success = false;
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 }
 
-/// -------------------------------------------------------------------
+// -------------------------------------------------------------------

@@ -14,7 +14,7 @@
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/serialization/serializer_writer.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -77,7 +77,7 @@ namespace SceneryEditorX
 		ShaderData* Data;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ShaderPack : public RefCounted
 	{
@@ -100,4 +100,4 @@ namespace SceneryEditorX
 }
 
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

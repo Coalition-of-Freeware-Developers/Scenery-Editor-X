@@ -18,7 +18,7 @@
 #include "vulkan/vk_enums.h"
 #include "vulkan/vk_image_view.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -47,7 +47,7 @@ namespace SceneryEditorX
     	void Set(const Ref<ImageView>& image, uint32_t index = 0) { type = ResourceType::Image2D; if (input.size() <= index) input.resize(index+1); input[index] = image.As<RefCounted>(); }
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct RenderPassInputDeclaration
     {
@@ -58,7 +58,7 @@ namespace SceneryEditorX
         std::string name;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class RenderPass : public RefCounted
     {
@@ -115,4 +115,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

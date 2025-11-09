@@ -13,7 +13,7 @@
 
 //#include "SceneryEditorX/ui/ui.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 //bool UI::showExitModal = false;
 //bool UI::showAboutModal = false;
@@ -26,7 +26,7 @@ namespace SceneryEditorX::UI
     static char projectName[128];
 	static char projectLocation[2048];
 
-	/// ---------------------------------------------------------
+	// ---------------------------------------------------------
 
     void UIManager::ExitConfirmationModal(GLFWwindow *window)
     {
@@ -126,4 +126,4 @@ namespace SceneryEditorX::UI
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

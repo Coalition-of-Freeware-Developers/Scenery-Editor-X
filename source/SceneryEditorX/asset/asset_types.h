@@ -13,7 +13,7 @@
 #pragma once
 #include "SceneryEditorX/logging/asserts.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -58,7 +58,7 @@ namespace SceneryEditorX
 
 	namespace Utils
     {
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Convert XPlaneAssetType enum to string representation
@@ -90,7 +90,7 @@ namespace SceneryEditorX
             }
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Convert string to XPlaneAssetType enum
@@ -117,7 +117,7 @@ namespace SceneryEditorX
             return XPlaneAssetType::None;
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    inline AssetType AssetTypeFromString(const std::string_view assetType)
 		{
@@ -139,7 +139,7 @@ namespace SceneryEditorX
 			return AssetType::None;
 		}
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    inline const char* AssetTypeToString(const AssetType assetType)
 		{
@@ -166,7 +166,7 @@ namespace SceneryEditorX
             }
 		}
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    /**
 		 * @brief Determines if an asset type string represents an X-Plane specific asset
@@ -197,4 +197,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

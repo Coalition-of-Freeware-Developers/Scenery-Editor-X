@@ -15,7 +15,7 @@
 #include "SceneryEditorX/renderer/vulkan/vk_enums.h"
 #include "SceneryEditorX/renderer/vulkan/vk_image.h"
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -34,7 +34,7 @@ namespace SceneryEditorX
         /// TODO: filtering/wrap
     };
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     struct FramebufferAttachmentSpecification
     {
@@ -44,7 +44,7 @@ namespace SceneryEditorX
         std::vector<FramebufferTextureSpecification> Attachments;
     };
 
-	/// ---------------------------------------------------------
+	// ---------------------------------------------------------
 
     struct FramebufferSpecification
 	{
@@ -87,7 +87,7 @@ namespace SceneryEditorX
 		std::string debugName;
 	};
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     class Framebuffer : public RefCounted
 	{
@@ -140,4 +140,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

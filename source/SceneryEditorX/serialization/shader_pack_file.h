@@ -14,7 +14,7 @@
 //#include "SceneryEditorX/filestreaming/filestream_writer.h"
 #include "serializer_reader.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -86,4 +86,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

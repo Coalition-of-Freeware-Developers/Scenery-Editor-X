@@ -22,12 +22,12 @@
  */
 #pragma once
 
-/// --------------------------------------------
+// --------------------------------------------
 
 namespace SceneryEditorX::Utils
 {
 
-    /// --------------------------------------------
+    // --------------------------------------------
 
 	template <class T>
 	class Delegate;
@@ -35,7 +35,7 @@ namespace SceneryEditorX::Utils
 	template <class T>
 	class MulticastDelegate;
 
-    /// --------------------------------------------
+    // --------------------------------------------
 
     /** Simple function delegate to bind a callback of some sort without unnecessary allocations. Faster than std::function. */
 	template <class TReturn, class... TArgs>
@@ -66,7 +66,7 @@ namespace SceneryEditorX::Utils
         bool operator==(const Delegate &other) const { return m_Invocation == other.m_Invocation; }
 	    bool operator!=(const Delegate &other) const { return m_Invocation != other.m_Invocation; }
 
-	    /// -----------------------------------------------------------------
+	    // -----------------------------------------------------------------
 
 	    /// Free function binding
 	    template <TReturn (*TFunction)(TArgs...)>
@@ -101,7 +101,7 @@ namespace SceneryEditorX::Utils
 	        }
 	    }
 
-	    /// -----------------------------------------------------------------
+	    // -----------------------------------------------------------------
 
 	    /// Unbind any binding
 	    void Unbind()
@@ -109,7 +109,7 @@ namespace SceneryEditorX::Utils
 	        m_Invocation = InvocationElement();
 	    }
 
-	    /// -----------------------------------------------------------------
+	    // -----------------------------------------------------------------
 
         [[nodiscard]] bool IsBound() const
 	    {
@@ -164,7 +164,7 @@ namespace SceneryEditorX::Utils
 	    InvocationElement m_Invocation;
 	};
 
-    /// -----------------------------------------------------------------
+    // -----------------------------------------------------------------
 
 	/** Simple multicast function delegate to bind multiple callbacks of some sort without unnecessary allocations. */
 	template <class TReturn, class... TArgs>
@@ -184,7 +184,7 @@ namespace SceneryEditorX::Utils
         bool operator==(const MulticastDelegate &other) const { return m_InvocationList == other.m_InvocationList; }
 	    bool operator!=(const MulticastDelegate &other) const { return m_InvocationList != other.m_InvocationList; }
 
-	    /// -----------------------------------------------------------------
+	    // -----------------------------------------------------------------
 
 	    /// Free function binding
 	    template <TReturn (*TFunction)(TArgs...)>
@@ -217,7 +217,7 @@ namespace SceneryEditorX::Utils
 	        }
 	    }
 
-	    /// -----------------------------------------------------------------
+	    // -----------------------------------------------------------------
 
 	    /// Free function unbinding
 	    template <TReturn (*TFunction)(TArgs...)>
@@ -247,7 +247,7 @@ namespace SceneryEditorX::Utils
 	        Remove(const_cast<TClass *>(object), ConstMemberFunctionStub<TClass, TFunction>);
 	    }
 
-	    /// -----------------------------------------------------------------
+	    // -----------------------------------------------------------------
 
         [[nodiscard]] bool IsBound() const { return !m_InvocationList.empty(); }
 
@@ -318,4 +318,4 @@ namespace SceneryEditorX::Utils
 
 }
 
-/// --------------------------------------------
+// --------------------------------------------

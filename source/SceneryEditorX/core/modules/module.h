@@ -14,7 +14,7 @@
 #include "SceneryEditorX/core/events/event_system.h"
 #include "SceneryEditorX/core/time/time.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -74,4 +74,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

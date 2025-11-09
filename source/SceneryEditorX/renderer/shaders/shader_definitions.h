@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 
-/// -----------------------------------
+// -----------------------------------
 
 namespace SceneryEditorX::ShaderSpecs
 {
@@ -57,4 +57,4 @@ namespace SceneryEditorX::ShaderSpecs
     }
     }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -23,7 +23,7 @@
 #include "SceneryEditorX/utils/pointers.h"
 #include "SceneryEditorX/utils/static_states.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -32,7 +32,7 @@ namespace SceneryEditorX
     public:
 	    using EventCallbackFn = std::function<void(Event&)>;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         struct PerformanceTimers
         {
@@ -44,7 +44,7 @@ namespace SceneryEditorX
             float ScriptUpdate = 0.0f;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         Application(const AppData &appData);
         virtual ~Application();
@@ -149,4 +149,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -21,7 +21,7 @@
 #include <SceneryEditorX/utils/static_states.h>
 #include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
 
-/// -----------------------------------------------------------
+// -----------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -604,4 +604,4 @@ namespace SceneryEditorX
 
 }
 
-/// -----------------------------------------------------------
+// -----------------------------------------------------------

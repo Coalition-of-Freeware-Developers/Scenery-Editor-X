@@ -20,7 +20,7 @@
 //#include "SceneryEditorX/core/time/timer.h"
 //#include "SceneryEditorX/logging/profiler.hpp"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -28,7 +28,7 @@ namespace SceneryEditorX
 	/*
 	static std::vector<std::thread> s_ThreadPool;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	SceneRenderer::SceneRenderer(const Ref<Scene> &scene, const SceneRendererSpecification &specification)
         : m_Scene(scene), m_Specification(specification), m_SceneData()
@@ -41,7 +41,7 @@ namespace SceneryEditorX
 		Shutdown();
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void SceneRenderer::Init()
 	{
@@ -3644,4 +3644,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

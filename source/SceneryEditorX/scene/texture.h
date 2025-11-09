@@ -14,7 +14,7 @@
 #include "SceneryEditorX/asset/asset.h"
 #include "SceneryEditorX/platform/config/editor_config.hpp"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -31,7 +31,7 @@ namespace SceneryEditorX
         virtual ~TextureAsset() override;
         //virtual void Serialize(Serializer &ser);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         virtual void Load(const std::string &path);
         virtual void Unload();
@@ -56,23 +56,23 @@ namespace SceneryEditorX
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, int mipLevels) const;
         WeakRef<EditorConfig> config;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         std::string texturePath;
         std::string textureName;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		VkImage textureImage = VK_NULL_HANDLE;
         VkSampler textureSampler = VK_NULL_HANDLE;
         VkImageView textureImageView = VK_NULL_HANDLE;
         VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         friend class AssetManager;
     };
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

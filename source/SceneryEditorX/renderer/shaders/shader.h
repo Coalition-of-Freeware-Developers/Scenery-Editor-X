@@ -19,11 +19,11 @@
 #include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
 #include <spirv_cross/spirv_hlsl.hpp>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 using namespace SPIRV_CROSS_NAMESPACE;
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -66,7 +66,7 @@ namespace SceneryEditorX
 		uint32_t m_Offset = 0;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct ShaderUniformBuffer
 	{
@@ -78,7 +78,7 @@ namespace SceneryEditorX
 		std::vector<ShaderUniform> Uniforms;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct ShaderStorageBuffer
 	{
@@ -90,7 +90,7 @@ namespace SceneryEditorX
 		std::vector<ShaderUniform> Uniforms;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct ShaderBuffer
 	{
@@ -116,7 +116,7 @@ namespace SceneryEditorX
 
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @class Shader
@@ -299,7 +299,7 @@ namespace SceneryEditorX
         friend class VulkanShaderCompiler;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class ShaderLibrary : public RefCounted
 	{
@@ -325,4 +325,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -17,7 +17,7 @@
 //#include <SceneryEditorX/renderer/shaders/shader.h>
 //#include <SceneryEditorX/renderer/vulkan/vk_enums.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -77,4 +77,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

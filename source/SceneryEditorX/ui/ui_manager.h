@@ -19,7 +19,7 @@
 //#include "SceneryEditorX/renderer/texture.h"
 //#include "SceneryEditorX/utils/static_states.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace UI
@@ -30,11 +30,11 @@ namespace UI
     extern bool showAboutModal;
     extern bool showSettingsPanel;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void SetDarkThemeColors();
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class UIManager
     {
@@ -50,7 +50,7 @@ namespace UI
 		static void AboutModal();
 		static void ViewportWindow(iVec2& viewportSize, bool& viewportHovered, VkImageView imageView);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		const char* GenerateID();
 		const char* GenerateLabelID(std::string_view label);
@@ -134,9 +134,9 @@ namespace UI
 		bool IsWindowFocused(const char* windowName, const bool checkRootWindow = true);
 		void HelpMarker(const char* desc);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 		///					Images / Textures
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		ImTextureID GetTextureID(const Ref<Image2D> &image);
 		ImTextureID GetTextureID(const Ref<Texture2D> &texture);
@@ -156,5 +156,5 @@ namespace UI
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 

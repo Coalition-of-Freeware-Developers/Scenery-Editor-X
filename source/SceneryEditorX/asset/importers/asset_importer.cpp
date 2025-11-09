@@ -15,7 +15,7 @@
 //#include <SceneryEditorX/project/project.h>
 //#include <SceneryEditorX/serialization/mesh_serializer.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -141,4 +141,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

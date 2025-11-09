@@ -13,7 +13,7 @@
 #pragma once
 #include "node.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -27,7 +27,7 @@ namespace SceneryEditorX
 	    FLY
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 	
 	enum class CameraType : uint8_t
 	{
@@ -35,7 +35,7 @@ namespace SceneryEditorX
 	    Orthographic
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class CameraNode : public Node
     {
@@ -46,7 +46,7 @@ namespace SceneryEditorX
 	    inline static const char* modeNames[] = { "ORBIT", "FLY" };
 	    inline static const char* typeNames[] = { "Perspective", "Orthographic" };
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    CameraType cameraType = CameraType::Perspective;
 	    CameraMode mode = ORBIT;
@@ -56,7 +56,7 @@ namespace SceneryEditorX
         Vec2 extent = Vec2(1.0f);
 	    Vec3 rotation = Vec3(0);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    bool useJitter = true;
 	    float zoom = 10.0f;
@@ -84,4 +84,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

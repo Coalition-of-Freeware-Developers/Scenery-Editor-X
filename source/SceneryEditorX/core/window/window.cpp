@@ -22,7 +22,7 @@
 #include <imgui/imgui.h>
 #include "SceneryEditorX\utils\repeat_call_tracker.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -269,7 +269,7 @@ namespace SceneryEditorX
                 glfwMaximizeWindow(m_window);
             }
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             renderContext = RenderContext::Get();
             if (!renderContext->IsInitialized())
@@ -286,7 +286,7 @@ namespace SceneryEditorX
             SEDX_CORE_INFO("Swapchain V-Sync Enabled: {}", (winData.vsync == 1) ? "Yes" : "No");
             //swapChain->Init(RenderContext::GetInstance(), RenderContext::Get()->GetLogicDevice());
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             glfwSetWindowUserPointer(m_window, &winData);
             DisableJoystickHandling();
@@ -1074,4 +1074,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

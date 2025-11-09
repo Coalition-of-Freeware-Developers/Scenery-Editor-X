@@ -23,7 +23,7 @@
 #include "SceneryEditorX/asset/asset_extensions.h"
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -31,7 +31,7 @@ namespace SceneryEditorX
 	/*
 	static AssetMetadata s_NullMetadata;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	EditorAssetManager::EditorAssetManager()
 	{
@@ -828,4 +828,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

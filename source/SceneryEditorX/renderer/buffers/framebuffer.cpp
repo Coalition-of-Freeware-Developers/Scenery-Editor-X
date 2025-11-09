@@ -16,7 +16,7 @@
 #include "SceneryEditorX/renderer/vulkan/vk_swapchain.h"
 #include "SceneryEditorX/renderer/vulkan/vk_util.h"
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -36,7 +36,7 @@ namespace SceneryEditorX
 		}
     }
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
 	Framebuffer::Framebuffer(const FramebufferSpecification &specification) : m_Specification(specification)
 	{
@@ -444,4 +444,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

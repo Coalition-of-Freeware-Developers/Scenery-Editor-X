@@ -13,7 +13,7 @@
 #pragma once
 #include "SceneryEditorX/core/memory/buffer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -120,7 +120,7 @@ namespace SceneryEditorX
 
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	template<>
 	inline void StreamWriter::WriteArray(const std::vector<std::string>& array, bool writeSize)
@@ -134,4 +134,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

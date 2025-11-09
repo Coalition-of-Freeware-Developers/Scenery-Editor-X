@@ -15,7 +15,7 @@
 #include <SceneryEditorX/renderer/shaders/shader.h>
 #include <SceneryEditorX/renderer/shaders/shader_pack.h>
 
-/// -----------------------------------------
+// -----------------------------------------
 
 namespace SceneryEditorX
 {
@@ -262,4 +262,4 @@ namespace SceneryEditorX
 
 }
 
-/// -----------------------------------------
+// -----------------------------------------

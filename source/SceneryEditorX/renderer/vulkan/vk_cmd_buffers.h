@@ -14,14 +14,14 @@
 #include "vk_data.h"
 #include "vk_swapchain.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
     /// Forward declarations
 	class CommandPool;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     inline InternalQueue queues[Present];
     inline Queue currentQueue = Present;
@@ -35,7 +35,7 @@ namespace SceneryEditorX
         GPU_QUEUE_UNKNOWN = static_cast<uint8_t>(-1)
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct PipelineStats
     {
@@ -48,7 +48,7 @@ namespace SceneryEditorX
         uint64_t ComputeShaderInvocations = 0;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class CommandBuffer : public RefCounted
 	{
@@ -114,4 +114,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

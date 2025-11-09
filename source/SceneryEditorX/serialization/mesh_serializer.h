@@ -17,7 +17,7 @@
 #include "SceneryEditorX/asset/asset_pack_header.h"
 #include "SceneryEditorX/utils/filestreaming/file_streaming.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -34,7 +34,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	class MeshSerializer : public AssetSerializer
@@ -49,7 +49,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/*
 	class StaticMeshSerializer : public AssetSerializer
@@ -66,4 +66,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

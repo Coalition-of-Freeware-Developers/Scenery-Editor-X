@@ -18,7 +18,7 @@
 //#include "SceneryEditorX/asset/asset_types.h"
 //#include "SceneryEditorX/renderer/texture.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -206,7 +206,7 @@ namespace SceneryEditorX
     struct Serializer;
 	class EditorConfig;
 	
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 	
 	class SceneAsset : public Asset
 	{
@@ -314,4 +314,4 @@ namespace SceneryEditorX
 }
 */
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------

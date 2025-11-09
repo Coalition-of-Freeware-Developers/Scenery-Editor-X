@@ -12,7 +12,7 @@
 */
 #pragma once
 
-/// ------------------------------------------------------
+// ------------------------------------------------------
 
 /*
 #define SEDX_SERIALIZE_PROPERTY(propName, propVal, outputNode) outputNode[#propName] = propVal

@@ -14,7 +14,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -41,7 +41,7 @@ namespace SceneryEditorX
     private:
         VkPipelineCache pipelineCache = nullptr;
 
-		/// -------------------------------------------
+		// -------------------------------------------
 
         uint32_t cacheHeader = 0;			/// An arbitrary magic header to make sure this is actually our file
         uint32_t cacheHeaderVersion = 0;    /// Equal to VK_PIPELINE_CACHE_HEADER_VERSION_ONE
@@ -54,4 +54,4 @@ namespace SceneryEditorX
     };
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

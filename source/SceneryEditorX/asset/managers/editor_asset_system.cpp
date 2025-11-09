@@ -19,7 +19,7 @@
 //#include "SceneryEditorX/platform/file_manager.hpp"
 //#include "SceneryEditorX/project/project.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -273,4 +273,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

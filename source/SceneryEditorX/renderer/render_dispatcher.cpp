@@ -21,22 +21,22 @@
 #include "render_dispatcher.h"
 #include "renderer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
     Ref<RenderDispatcher>
-    RenderDispatcher::s_Instance;       // Singleton lifetime anchor instance (created in Init, released in Shutdown)
-	std::thread RenderDispatcher::s_Worker; // Background worker thread executing FIFO jobs
+    RenderDispatcher::s_Instance;						// Singleton lifetime anchor instance (created in Init, released in Shutdown)
+	std::thread RenderDispatcher::s_Worker;				// Background worker thread executing FIFO jobs
 	RenderDispatcher::Queues RenderDispatcher::s_Queue; // Active job queue + synchronization primitives
     std::mutex RenderDispatcher::s_RFMutex;             // Mutex protecting the resource free ring structure
 	RenderData RenderDispatcher::renderData;
     std::vector<RenderDispatcher::RFQueue>
-    RenderDispatcher::s_ResourceFreeRing;        // Ring of per-frame deferred destruction job buckets
-    uint32_t RenderDispatcher::s_CurrentRFIndex = 0; // Index of the frame bucket that just became safe for destruction
+    RenderDispatcher::s_ResourceFreeRing;				// Ring of per-frame deferred destruction job buckets
+    uint32_t RenderDispatcher::s_CurrentRFIndex = 0;	// Index of the frame bucket that just became safe for destruction
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Initialize dispatcher: create singleton, size ring, start worker thread.
@@ -57,7 +57,7 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("RenderDispatch", "Initialized (framesInFlight={})", renderData.framesInFlight);
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Gracefully terminate dispatcher and execute all deferred destruction jobs.
@@ -89,14 +89,14 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("RenderDispatch", "Shutdown");
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @return True if the dispatcher singleton exists (Init has been called and not yet shut down).
 	 */
 	bool RenderDispatcher::IsInitialized() { return s_Instance != nullptr; }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Submit a generic background job.
@@ -116,7 +116,7 @@ namespace SceneryEditorX
 	    s_Queue.cv.notify_one();
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Schedule a deferred destruction job for execution after a safe GPU frame boundary.
@@ -137,7 +137,7 @@ namespace SceneryEditorX
         s_ResourceFreeRing[target].jobs.push_back(std::move(job));
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
 	 * @brief Block until the active background job queue is empty.
@@ -153,7 +153,7 @@ namespace SceneryEditorX
         s_Queue.cv.wait(lock, [] { return s_Queue.jobs.empty(); });
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
 	 * @brief Advance frame ring and execute resource free jobs for the now-safe bucket.
@@ -176,7 +176,7 @@ namespace SceneryEditorX
             job();
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Internal worker thread main loop.
@@ -211,4 +211,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

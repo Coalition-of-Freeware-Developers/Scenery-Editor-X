@@ -18,7 +18,7 @@
 #include "SceneryEditorX/logging/asserts.h"
 #include "SceneryEditorX/platform/config/editor_config.hpp"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -28,7 +28,7 @@ namespace SceneryEditorX
 	    Project();
 	    ~Project();
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 		const ProjectConfig &GetConfig() const { return config; }
 
@@ -57,7 +57,7 @@ namespace SceneryEditorX
 
         std::filesystem::path GetAssetDirectory();
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 		static const std::string &GetProjectName()
         {
@@ -88,8 +88,8 @@ namespace SceneryEditorX
 
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

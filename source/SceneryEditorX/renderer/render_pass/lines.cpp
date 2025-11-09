@@ -15,7 +15,7 @@
 //#include <SceneryEditorX/renderer/texture.h>
 //#include <SceneryEditorX/renderer/shaders/shader.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -67,4 +67,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

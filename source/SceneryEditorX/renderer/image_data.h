@@ -19,7 +19,7 @@
 #include "vulkan/resource.h"
 #include "vulkan/vk_allocator.h" /// Used by VmaAllocation in struct. !MUST KEEP!
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -118,12 +118,12 @@ namespace SceneryEditorX
     }
 	using AspectFlags = Flags;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /* Legacy resource ID pools removed */
     //struct ImageID {  };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct ImageResource : Resource
     {
@@ -137,7 +137,7 @@ namespace SceneryEditorX
 	    ResourceDescriptorInfo GetDescriptorInfo() const;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct Image
 	{
@@ -157,7 +157,7 @@ namespace SceneryEditorX
         [[nodiscard]] ImTextureID ImGuiRID(uint64_t layer) const;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     inline bool IsDepthFormat(const VkFormat format)
     {
@@ -169,7 +169,7 @@ namespace SceneryEditorX
         return false;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct ImageDescriptions
     {
@@ -182,7 +182,7 @@ namespace SceneryEditorX
         uint32_t mips = 1;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 
     void InsertImageMemoryBarrier(VkCommandBuffer cmdbuffer, VkImage image,
@@ -204,4 +204,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

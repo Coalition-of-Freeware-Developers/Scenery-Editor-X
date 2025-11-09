@@ -18,7 +18,7 @@
 #include <numbers>
 #include <SceneryEditorX/utils/size_macro_utils.h>
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -438,7 +438,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// ---- Private Implementation Methods ----
+    // ---- Private Implementation Methods ----
 
     /**
      * @brief Creates the internal GPU buffer using the MemoryAllocator system
@@ -616,7 +616,7 @@ namespace SceneryEditorX
         }
     }
 
-    /// ---- Primitive Generation Helper Methods ----
+    // ---- Primitive Generation Helper Methods ----
 
     /**
      * @brief Generates vertices for a cube primitive
@@ -791,4 +791,4 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------

@@ -16,13 +16,13 @@
 #include "steam_parser.h"
 #include "SceneryEditorX/core/application/application_data.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	using namespace libconfig;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /// Default section templates for use when creating config sections
     static constexpr const char *APPLICATION_SECTION_TEMPLATE = R"(
@@ -55,7 +55,7 @@ namespace SceneryEditorX
 	default_project_dir = "~\\Documents\\SceneryEditorX";
 	)";
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
 
     ApplicationSettings::ApplicationSettings(std::filesystem::path filepath) : filePath(std::move(filepath))
@@ -1015,4 +1015,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

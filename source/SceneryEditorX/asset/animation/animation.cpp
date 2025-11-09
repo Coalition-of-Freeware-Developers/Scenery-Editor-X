@@ -22,7 +22,7 @@
 #include "SceneryEditorX/core/memory/memory.h"
 #include "SceneryEditorX/project/project.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 
 namespace SceneryEditorX
@@ -266,5 +266,5 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 

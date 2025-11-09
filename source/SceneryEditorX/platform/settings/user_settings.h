@@ -17,16 +17,16 @@
 #include "SceneryEditorX/project/project_settings.h"
 #include "SceneryEditorX/utils/pointers.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	/// Forward declarations
 	class ApplicationSettings;
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 	/// Date/Time Formatting Utilities
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	/**
 	 * @brief Converts a time_t value to a formatted date/time string.
@@ -96,9 +96,9 @@ namespace SceneryEditorX
 		 */
         virtual ~UserPreferences() override;
 
-		/// ----------------------------------------------------
+		// ----------------------------------------------------
 		/// Preference Management
-		/// ----------------------------------------------------
+		// ----------------------------------------------------
 
 		/**
 		 * @brief Gets whether to show the welcome screen on startup.
@@ -147,9 +147,9 @@ namespace SceneryEditorX
 		 */
 		void ClearRecentProjects();
 
-		/// ----------------------------------------------------
+		// ----------------------------------------------------
 		/// Persistence
-		/// ----------------------------------------------------
+		// ----------------------------------------------------
 
 		/**
 		 * @brief Loads user preferences from the configuration file.
@@ -203,9 +203,9 @@ namespace SceneryEditorX
 		void TrimRecentProjects();
 	};
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 	/// Convenience Functions
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	/**
 	 * @brief Creates and loads user preferences from default location.
@@ -222,4 +222,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

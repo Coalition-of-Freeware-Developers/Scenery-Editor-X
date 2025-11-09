@@ -12,7 +12,7 @@
 #include "SceneryEditorX/renderer/vulkan/vk_data.h"
 #include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -108,7 +108,7 @@ namespace SceneryEditorX
         return frame < m_BindlessIndices.size() ? m_BindlessIndices[frame] : -1;
     }
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
 	UniformBufferSet::UniformBufferSet(uint32_t size, uint32_t framesInFlight) : m_framesInFlight(framesInFlight)
     {
@@ -146,4 +146,4 @@ namespace SceneryEditorX
 
 }
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------

@@ -12,7 +12,7 @@
 #include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -45,7 +45,7 @@ namespace SceneryEditorX
 		std::vector<int32_t> m_BindlessIndices;                 // per-frame bindless indices
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class UniformBufferSet : public RefCounted
 	{
@@ -53,7 +53,7 @@ namespace SceneryEditorX
 		UniformBufferSet(uint32_t size, uint32_t framesInFlight = 0);
 		virtual ~UniformBufferSet() override;
 
-        /// ----------------------------------------------------------
+        // ----------------------------------------------------------
 
         Ref<UniformBuffer> Get();
         Ref<UniformBuffer> GetRenderThread();
@@ -67,5 +67,5 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 

@@ -15,7 +15,7 @@
 #include "filestream_reader.h"
 #include "filestream_writer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -37,7 +37,7 @@ namespace SceneryEditorX
 		size_t m_WritePos = 0;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/// MemoryStreamReader
 	class MemoryStreamReader : public StreamReader
@@ -59,4 +59,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

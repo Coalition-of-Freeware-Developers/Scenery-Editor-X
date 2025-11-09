@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <Math/includes/aabb.h>
 
-/// -----------------------------------------------------
+// -----------------------------------------------------
 
 namespace SceneryEditorX
 {

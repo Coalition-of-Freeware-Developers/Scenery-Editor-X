@@ -13,7 +13,7 @@
 #pragma once
 #include "object.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -21,7 +21,7 @@ namespace SceneryEditorX
 	// ReSharper disable once CppRedundantQualifier
 	using AssetHandle = UUID;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Bitfield flags for tracking asset state and validation status
@@ -95,7 +95,7 @@ namespace SceneryEditorX
         virtual bool operator!=(const Asset &other) const { return !(*this == other); }
         virtual bool operator==(const Asset &other) const { return Handle == other.Handle; }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         virtual void OnDependencyUpdated(uint64_t handle)
         {
@@ -105,7 +105,7 @@ namespace SceneryEditorX
         virtual void Unload() = 0;
         virtual void SetName(const std::string &name) = 0;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
     private:
         //friend class EditorAssetManager;
@@ -132,7 +132,7 @@ namespace SceneryEditorX
         }
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     template <typename T>
     struct AsyncAssetResult
@@ -166,4 +166,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

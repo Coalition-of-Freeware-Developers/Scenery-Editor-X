@@ -28,7 +28,7 @@
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_vulkan.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /**
  * Implementation of missing ImGui functions to fix linker errors
@@ -73,7 +73,7 @@ extern "C"
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
@@ -96,7 +96,7 @@ namespace SceneryEditorX::UI
         CleanUp();
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     bool GUI::CreateDescriptorPool()
     {
@@ -136,7 +136,7 @@ namespace SceneryEditorX::UI
         return true;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void GUI::UpdateDpiScale()
     {
@@ -161,7 +161,7 @@ namespace SceneryEditorX::UI
         style.ScaleAllSizes(dpiFactor);
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     bool GUI::InitGUI()
     {
@@ -240,7 +240,7 @@ namespace SceneryEditorX::UI
         pool_info.pPoolSizes = pool_sizes;
         VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptorPool))
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         RenderData renderData;
         auto physDevice = RenderContext::GetCurrentDevice()->GetPhysicalDevice();
@@ -405,7 +405,7 @@ namespace SceneryEditorX::UI
         }
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void GUI::CleanUp()
     {
@@ -430,7 +430,7 @@ namespace SceneryEditorX::UI
         SEDX_CORE_INFO("GUI resources cleaned up");
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void GUI::Resize(uint32_t width, uint32_t height)
     {
@@ -443,7 +443,7 @@ namespace SceneryEditorX::UI
         SEDX_CORE_INFO("GUI resized to {}x{}", width, height);
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void GUI::Update(float deltaTime) const
     {
@@ -463,7 +463,7 @@ namespace SceneryEditorX::UI
     }
 #endif
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void GUI::ShowAppInfo(const std::string &appName) const
     {
@@ -487,7 +487,7 @@ namespace SceneryEditorX::UI
         ImGui::End();
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     bool GUI::InitViewport(const Viewport &size, VkImageView imageView)
@@ -500,7 +500,7 @@ namespace SceneryEditorX::UI
     }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     void GUI::ViewportWindow(ImVec2 &size, bool &hovered, VkImageView imageView) const
@@ -530,7 +530,7 @@ namespace SceneryEditorX::UI
     }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout) const
     {
@@ -566,7 +566,7 @@ namespace SceneryEditorX::UI
         return reinterpret_cast<ImTextureID>(descriptorSet);
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void GUI::SetStyle()
     {
@@ -660,7 +660,7 @@ namespace SceneryEditorX::UI
         style.GrabMinSize = 10.0f;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void GUI::SetFonts() const
     {
@@ -718,4 +718,4 @@ namespace SceneryEditorX::UI
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

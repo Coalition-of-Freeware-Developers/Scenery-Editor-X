@@ -18,7 +18,7 @@
 //#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
 //#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -116,7 +116,7 @@ namespace SceneryEditorX
     }
 
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     Ref<Image2D> RenderPass::GetOutput(uint32_t index)
     {
@@ -237,7 +237,7 @@ namespace SceneryEditorX
 	    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    VkAttachmentReference colorAttachmentRef{};
 	    colorAttachmentRef.attachment = 0;
@@ -247,7 +247,7 @@ namespace SceneryEditorX
 	    depthAttachmentRef.attachment = 1;
 	    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    VkSubpassDescription subpass{};
 	    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -255,7 +255,7 @@ namespace SceneryEditorX
 	    subpass.pColorAttachments = &colorAttachmentRef;
 	    subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    VkSubpassDependency dependency{};
 	    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -265,7 +265,7 @@ namespace SceneryEditorX
 	    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
         const auto device = RenderContext::Get()->GetLogicDevice()->GetDevice();
@@ -559,4 +559,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

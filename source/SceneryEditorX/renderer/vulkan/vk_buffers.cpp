@@ -17,7 +17,7 @@
 
 #include <vma/vk_mem_alloc.h>
 #include <vma/vk_mem_alloc.h>
-/// ----------------------------------------------------------
+// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -128,7 +128,7 @@ namespace SceneryEditorX
 			return {};
 		}
 
-	    /// ---------------------------------------------------------
+	    // ---------------------------------------------------------
 
 	    // Add transfer destination flag for vertex buffers
 	    if (usage & BufferUsage::Vertex)
@@ -251,7 +251,7 @@ namespace SceneryEditorX
         vmaUnmapMemory(device->GetMemoryAllocator(), buffer.resource->allocation);
     }
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
 	/**
 	 * @fn CreateStagingBuffer
@@ -352,7 +352,7 @@ namespace SceneryEditorX
         device->FlushCmdBuffer(commandBuffer);
     }
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     /*
     inline VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification &specification, const FramebufferTextureSpec &attachmentSpecification)
@@ -369,7 +369,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     /*
     Framebuffer::Framebuffer(const FramebufferSpecification &specification) : m_Specification(specification)
@@ -735,4 +735,4 @@ namespace SceneryEditorX
 
 }
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------

@@ -14,7 +14,7 @@
 //#include "SceneryEditorX/core/modules/module.h"
 //#include "SceneryEditorX/renderer/vulkan/vk_cmd_buffers.h"
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -39,4 +39,4 @@ namespace SceneryEditorX
 }
 */
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------

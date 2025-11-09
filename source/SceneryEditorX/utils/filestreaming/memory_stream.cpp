@@ -12,7 +12,7 @@
 */
 #include "memory_stream.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -35,7 +35,7 @@ namespace SceneryEditorX
 		return true;
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/** MemoryStreamReader */
 	MemoryStreamReader::MemoryStreamReader(const Memory::Buffer& buffer) : m_Buffer(buffer) {}
@@ -52,4 +52,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

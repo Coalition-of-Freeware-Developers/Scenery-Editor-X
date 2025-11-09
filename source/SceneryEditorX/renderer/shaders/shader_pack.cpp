@@ -13,7 +13,7 @@
 #include <SceneryEditorX/renderer/shaders/shader_pack.h>
 #include <SceneryEditorX/utils/filestreaming/file_streaming.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -264,4 +264,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

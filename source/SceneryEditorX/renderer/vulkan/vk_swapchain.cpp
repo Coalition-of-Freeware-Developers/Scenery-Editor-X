@@ -32,14 +32,14 @@ PFN_vkGetQueueCheckpointDataNV fpGetQueueCheckpointDataNV;
 
 /* Add AMD Specific extensions later when added */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 static uint32_t GetImageMemorySize(VkFormat format, uint32_t width, uint32_t height)
 {
     return width * height * SceneryEditorX::Utils::getBPP(format);
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 VKAPI_ATTR void VKAPI_CALL vkCmdSetCheckpointNV(VkCommandBuffer commandBuffer, const void *pCheckpointMarker)
 {
@@ -51,7 +51,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetQueueCheckpointDataNV(VkQueue queue, uint32_t *p
     fpGetQueueCheckpointDataNV(queue, pCheckpointDataCount, pCheckpointData);
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -61,9 +61,9 @@ namespace SceneryEditorX
 		if (swapChain != nullptr) Destroy();
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
     /// Legacy ImageID resource ID pools removed (bindless manager provides indices).
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void SwapChain::InitSurface(GLFWwindow *windowPtr)
     {
@@ -249,7 +249,7 @@ namespace SceneryEditorX
             return;
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         /// Get available surface formats
         /*
@@ -599,7 +599,7 @@ namespace SceneryEditorX
             return;
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         // Get available surface formats
         uint32_t formatCount;
@@ -1393,5 +1393,5 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 

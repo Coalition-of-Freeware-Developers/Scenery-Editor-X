@@ -18,7 +18,7 @@
 #include "sampler.h"
 #include "shaders/shader.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -45,12 +45,12 @@ namespace SceneryEditorX
     }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     //Ref<Font>& Renderer::GetFont() { return standard_font; }
     //Ref<Material>& Renderer::GetStandardMaterial() { return standard_material; }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     void Renderer::CreateDepthStencilStates()
@@ -690,4 +690,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

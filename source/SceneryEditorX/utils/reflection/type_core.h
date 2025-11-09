@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/core/memory/memory.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Values
 {
@@ -87,12 +87,12 @@ namespace SceneryEditorX::Types
          */
         [[nodiscard]] bool isObjectWithClassName(std::string_view name) const;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         bool operator==(const Type &) const;
         bool operator!=(const Type &) const;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    /**
 	     * Creates a type representing an empty array. Element types can be appended with addArrayElements().
@@ -122,7 +122,7 @@ namespace SceneryEditorX::Types
          */
         void addArrayElements(Type elementType, uint32_t numElements);
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 		/**
 		 * Returns a type representing an empty object, with the given class name.
@@ -139,7 +139,7 @@ namespace SceneryEditorX::Types
 
 	private:
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         enum class MainType : uint8_t
         {
@@ -221,7 +221,7 @@ namespace SceneryEditorX::Types
 		static Type createArray (Type elementType, uint32_t numElements, Allocator*);
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * This holds the type and location of a sub-element of a Type.
@@ -236,4 +236,4 @@ namespace SceneryEditorX::Types
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

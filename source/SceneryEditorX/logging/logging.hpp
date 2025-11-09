@@ -16,7 +16,7 @@
 #include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 #include "SceneryEditorX/utils/formatter.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 #define SEDX_ASSERT_MESSAGE_BOX (!SEDX_RELEASE && SEDX_PLATFORM_WINDOWS)
 #if defined SEDX_ASSERT_MESSAGE_BOX
@@ -25,7 +25,7 @@
 	#endif
 #endif
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -97,7 +97,7 @@ namespace SceneryEditorX
 	        Level LevelFilter = Level::Trace;
 	    };
 
-	    /// ------------------------------------------------
+	    // ------------------------------------------------
 
 	    /**
 	     * @fn Init
@@ -193,7 +193,7 @@ namespace SceneryEditorX
          */
 		static std::shared_ptr<spdlog::logger> &GetLauncherLogger() { return LauncherLogger; }
 
-	    /// -------------------------------------------------------------
+	    // -------------------------------------------------------------
 
         /**
          * @brief Checks if a tag is enabled.
@@ -215,7 +215,7 @@ namespace SceneryEditorX
          */
         static void SetDefaultTagSettings();
 
-	    /// -----------------------------------------------------------
+	    // -----------------------------------------------------------
 
 #ifdef SEDX_PLATFORM_WINDOWS
         template <typename... Args>
@@ -234,7 +234,7 @@ namespace SceneryEditorX
 
 	    static void PrintAssertMessage(Log::Type type, std::string_view prefix);
 
-	    /// -----------------------------------------------------------
+	    // -----------------------------------------------------------
 
 	    /**
 		 * @brief Converts a log level to a string.
@@ -303,7 +303,7 @@ namespace SceneryEditorX
 } // namespace SceneryEditorX
 
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Tagged logs (prefer these!)                                                                                    ///
@@ -362,7 +362,7 @@ namespace SceneryEditorX
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/// ----------------------------------------------------
+// ----------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -398,7 +398,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
@@ -428,7 +428,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
@@ -456,7 +456,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	template <typename... Args>
 	void Log::PrintAssertMessage(Log::Type type, std::string_view prefix, std::format_string<Args...> message, Args &&...args)
@@ -470,7 +470,7 @@ namespace SceneryEditorX
 	}
 
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	inline void Log::PrintAssertMessage(Log::Type type, std::string_view prefix)
 	{
@@ -483,7 +483,7 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-/// ----------------------------------------------------
+// ----------------------------------------------------
 
 
 /**
@@ -511,4 +511,4 @@ namespace SceneryEditorX
 #define EDITOR_LOG_ERROR(...)    ::SceneryEditorX::Log::GetEditorLogger()->error(__VA_ARGS__)
 #define EDITOR_LOG_CRITICAL(...) ::SceneryEditorX::Log::GetEditorLogger()->critical(__VA_ARGS__);
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

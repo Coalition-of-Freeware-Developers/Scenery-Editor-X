@@ -14,7 +14,7 @@
 #include "vk_util.h"
 #include "vk_data.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Utils
 {
@@ -176,7 +176,7 @@ namespace SceneryEditorX::Utils
 	    return "No Known Type";
 	}
 	
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 	
 	/**
 	 * @brief Load Vulkan debug utils extensions.
@@ -207,7 +207,7 @@ namespace SceneryEditorX::Utils
 	        fpCmdInsertDebugUtilsLabelEXT = [](VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT *pLabelInfo) {};
 	}
 	
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 	
 	/**
 	* @brief Get the number of bytes per pixel for a given format.
@@ -983,7 +983,7 @@ namespace SceneryEditorX::Utils
 		return VK_FORMAT_UNDEFINED;
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 	
     static ResourceAllocationCounts s_ResourceAllocationCounts;
 	
@@ -994,4 +994,4 @@ namespace SceneryEditorX::Utils
 	
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

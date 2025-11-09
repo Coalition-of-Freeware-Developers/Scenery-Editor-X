@@ -23,7 +23,7 @@
 #include "SceneryEditorX/project/project_settings.h"
 #include "SceneryEditorX/utils/string_utils.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 ///< Platform-specific includes for regional settings
 #ifdef SEDX_PLATFORM_WINDOWS
@@ -37,13 +37,13 @@
 	#include <locale.h>
 #endif
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 	/// Date/Time Formatting Implementation
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	std::string GetSystemDateTimeFormat()
 	{
@@ -279,7 +279,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	UserPreferences::UserPreferences() : m_ConfigPath("config/user_preferences.cfg")
 	{
@@ -584,9 +584,9 @@ namespace SceneryEditorX
 	    SEDX_CORE_INFO_TAG("USER_PREFS", "Trimmed {} old recent projects, keeping latest {}", removedCount, UserPreferences::MAX_RECENT_PROJECTS);
 	}
 
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 	/// Convenience Functions
-	/// ----------------------------------------------------
+	// ----------------------------------------------------
 
 	Ref<UserPreferences> CreateUserPreferences()
 	{

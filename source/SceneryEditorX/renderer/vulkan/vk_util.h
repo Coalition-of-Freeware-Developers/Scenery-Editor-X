@@ -15,12 +15,12 @@
 #include <vulkan/vulkan.h>
 #include "vk_enums.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     namespace Utils
     {
@@ -29,16 +29,16 @@ namespace SceneryEditorX
 		inline PFN_vkCmdEndDebugUtilsLabelEXT fpCmdEndDebugUtilsLabelEXT;
 		inline PFN_vkCmdInsertDebugUtilsLabelEXT fpCmdInsertDebugUtilsLabelEXT;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		void VulkanLoadDebugUtilsExtensions(VkInstance instance);
 		void RetrieveDiagnosticCheckpoints();
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     inline void VulkanCheckResult(const VkResult result)
 	{
@@ -56,7 +56,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	inline void VulkanCheckResult(const VkResult result, const char *file, int line)
 	{
@@ -74,7 +74,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	* @brief Macro to check the result of a Vulkan function.
@@ -91,7 +91,7 @@ namespace SceneryEditorX
 	    VulkanCheckResult(result, __FILE__, __LINE__);                                                                 \
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @brief Macro to check Vulkan features.
@@ -112,7 +112,7 @@ namespace SceneryEditorX
 	    SEDX_CORE_ERROR("  Missing feature: {}", #feature);                                                            \
 	}
 
-	/// ----------------------------------------------------------
+	// ----------------------------------------------------------
 
 	/**
 	 * @brief Macro to get the size of an array.
@@ -130,7 +130,7 @@ namespace SceneryEditorX
 		return false;                                                                                              \
 	}
 
-	/// ----------------------------------------------------------
+	// ----------------------------------------------------------
 
 	/**
 	 * @brief Log Vulkan result and return false if operation fails
@@ -147,7 +147,7 @@ namespace SceneryEditorX
 	    }                                                                                                              \
 	}
 
-	/// ----------------------------------------------------------
+	// ----------------------------------------------------------
 
 	/**
 	 * @brief Log Vulkan result and throw exception if operation fails
@@ -164,7 +164,7 @@ namespace SceneryEditorX
 	    }                                                                                                              \
 	}
 
-	/// ----------------------------------------------------------
+	// ----------------------------------------------------------
 
 	/**
 	 * @brief Log Vulkan result without any control flow change
@@ -208,7 +208,7 @@ namespace SceneryEditorX
 	    }                                                                                                              \
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     static void SetDebugUtilsObjectName(const VkDevice device, const VkObjectType objectType, const std::string& name, const void* handle)
     {
@@ -353,7 +353,7 @@ namespace SceneryEditorX
 		 */
         VkFormat ShaderDataTypeToVulkanFormat(ShaderDataType type);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		/**
 		 * @brief Generate a Halton sequence value for a given index and base.
@@ -377,7 +377,7 @@ namespace SceneryEditorX
 		    return r;
 		}
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		struct ResourceAllocationCounts
 		{
@@ -390,5 +390,5 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 

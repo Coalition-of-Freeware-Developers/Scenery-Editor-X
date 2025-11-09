@@ -19,7 +19,7 @@
 #include <vector>
 #include "SceneryEditorX/logging/logging.hpp"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -42,7 +42,7 @@ namespace SceneryEditorX
         class StringDictionary;
         struct MemberNameAndValue;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Custom exception for value system errors
@@ -56,7 +56,7 @@ namespace SceneryEditorX
             const char* description;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Throws an error exception with SceneryEditorX logging integration
@@ -78,7 +78,7 @@ namespace SceneryEditorX
                 ThrowError(errorMessage);
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Storage type for boolean values in the value system
@@ -86,7 +86,7 @@ namespace SceneryEditorX
          */
         using BoolStorageType = uint32_t;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Input data structure for deserialization operations
@@ -97,7 +97,7 @@ namespace SceneryEditorX
             const uint8_t* end;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Serialized data container for Value/ValueView objects
@@ -128,7 +128,7 @@ namespace SceneryEditorX
             void Write(const void* ptr, size_t size);
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief SceneryEditorX-integrated allocator wrapper
@@ -194,7 +194,7 @@ namespace SceneryEditorX
             const char* m_Category;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Fixed-size pool allocator for high-performance scenarios
@@ -304,7 +304,7 @@ namespace SceneryEditorX
             char m_Pool[totalSize];
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief String dictionary for efficient string storage and deduplication
@@ -419,7 +419,7 @@ namespace SceneryEditorX
             std::unordered_map<std::string, Handle> m_StringToHandle;
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Simple string dictionary implementation for basic use cases
@@ -430,7 +430,7 @@ namespace SceneryEditorX
             SimpleStringDictionary() : StringDictionary(std::make_shared<ValueAllocator>("Values::SimpleStrings")) {}
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Type wrapper that provides a simple interface for the value system
@@ -792,7 +792,7 @@ namespace SceneryEditorX
 
         };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Non-owning view of a Value for efficient access
@@ -904,9 +904,9 @@ namespace SceneryEditorX
         /// Implement Value::GetView() now that ValueView is defined
         inline ValueView Value::GetView() const { return ValueView(*this); }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
         /// Template specializations for common C++ types
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         template<>
         inline Type Value::GetTypeDescriptorImpl<bool>()
@@ -960,4 +960,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

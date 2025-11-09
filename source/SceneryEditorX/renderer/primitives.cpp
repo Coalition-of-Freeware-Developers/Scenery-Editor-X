@@ -14,7 +14,7 @@
 //#include "primitives.h"
 //#include "SceneryEditorX/scene/model_asset.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -103,7 +103,7 @@ namespace SceneryEditorX
 	    return {};
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	ObjectType Primitives::CreateSphere(const float radius)
 	{
@@ -173,7 +173,7 @@ namespace SceneryEditorX
         return {};
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	ObjectType Primitives::CreateCylinder(float radius, float height)
 	{
@@ -260,7 +260,7 @@ namespace SceneryEditorX
 	    return {};
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	ObjectType Primitives::CreatePlane(const Vec2 &size)
 	{
@@ -326,7 +326,7 @@ namespace SceneryEditorX
 	    return {};
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     ObjectType Primitives::CreatePrimitiveType(PrimitiveType type, const Vec3& size)
@@ -362,7 +362,7 @@ namespace SceneryEditorX
     }
     #1#
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     bool Primitives::ValidatePrimitiveDimensions(PrimitiveType type, const Vec3& size)
     {
@@ -379,7 +379,7 @@ namespace SceneryEditorX
         }
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /// UI Placeholder Methods - To be implemented when UI system is ready
 
@@ -413,9 +413,9 @@ namespace SceneryEditorX
         return false;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

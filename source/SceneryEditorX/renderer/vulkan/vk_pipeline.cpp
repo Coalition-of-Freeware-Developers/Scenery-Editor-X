@@ -18,7 +18,7 @@
 #include <SceneryEditorX/renderer/shaders/shader_definitions.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -371,7 +371,7 @@ namespace SceneryEditorX
             SEDX_CORE_INFO("Loading vertex shader from: {}", vertShaderPath);
             SEDX_CORE_INFO("Loading fragment shader from: {}", fragShaderPath);
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             auto vertShaderCode = IO::FileManager::ReadShaders(vertShaderPath);
             auto fragShaderCode = IO::FileManager::ReadShaders(fragShaderPath);
@@ -382,7 +382,7 @@ namespace SceneryEditorX
             VkShaderModule vertShaderModule = shaderPtr->CreateShaderModule(vertShaderCode);
             VkShaderModule fragShaderModule = shaderPtr->CreateShaderModule(fragShaderCode);
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
             vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -396,11 +396,11 @@ namespace SceneryEditorX
             fragShaderStageInfo.module = fragShaderModule;
             fragShaderStageInfo.pName = "main";
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             /// Configure vertex input
             VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -414,7 +414,7 @@ namespace SceneryEditorX
             vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
             vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             /// Configure input assembly
             VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -422,7 +422,7 @@ namespace SceneryEditorX
             inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             /// Configure viewport and scissor
             VkViewport viewport{};
@@ -437,7 +437,7 @@ namespace SceneryEditorX
             scissor.offset = {.x = 0,.y = 0};
             scissor.extent = vkSwapChain->GetSwapExtent();
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             VkPipelineViewportStateCreateInfo viewportState{};
             viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -457,7 +457,7 @@ namespace SceneryEditorX
             rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; /// Vertex winding order CCW(VK_FRONT_FACE_COUNTER_CLOCKWISE) or CW(VK_FRONT_FACE_CLOCKWISE)
             rasterizer.depthBiasEnable = VK_FALSE;
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             /// Configure multisampling
             VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -465,7 +465,7 @@ namespace SceneryEditorX
             multisampling.sampleShadingEnable = VK_FALSE;
             multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             VkPipelineDepthStencilStateCreateInfo depthStencil{};
             depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -475,7 +475,7 @@ namespace SceneryEditorX
             depthStencil.depthBoundsTestEnable = VK_FALSE;
             depthStencil.stencilTestEnable = VK_FALSE;
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             ///< Configure color blending
             VkPipelineColorBlendAttachmentState colorBlendAttachment{};
@@ -497,7 +497,7 @@ namespace SceneryEditorX
             colorBlending.blendConstants[2] = 0.0f;
             colorBlending.blendConstants[3] = 0.0f;
 
-            /// -------------------------------------------------------
+            // -------------------------------------------------------
 
             /// Set up descriptor set layouts
             std::vector<VkDescriptorSetLayout> layouts;
@@ -547,7 +547,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	void Pipeline::Invalidate()
@@ -813,7 +813,7 @@ namespace SceneryEditorX
     */
 
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /// Changed to utilize Shader class for shader module creation
 
@@ -839,7 +839,7 @@ namespace SceneryEditorX
     */
 
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 
     /*
@@ -859,4 +859,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

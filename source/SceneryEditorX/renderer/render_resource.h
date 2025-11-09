@@ -12,7 +12,7 @@
 */
 #pragma once
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -21,7 +21,7 @@ namespace SceneryEditorX
     constexpr uint32_t MAX_DRAW_CALLS			= 20000;	// max number of draw calls per frame
     constexpr uint32_t MAX_INSTANCE_COUNT		= 1024;     // max number of instances per draw call
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class Renderable;
     struct RendererDrawCall
@@ -38,4 +38,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

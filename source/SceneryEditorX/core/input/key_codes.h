@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <ostream>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -196,7 +196,7 @@ namespace SceneryEditorX
 
 }
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 
 // From glfw3.h
 #define SEDX_KEY_SPACE				::SceneryEditorX::Key::Space
@@ -250,9 +250,9 @@ namespace SceneryEditorX
 #define SEDX_KEY_WORLD_1			::SceneryEditorX::Key::World1           /* non-US #1 */
 #define SEDX_KEY_WORLD_2			::SceneryEditorX::Key::World2           /* non-US #2 */
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 ///									FUNCTION KEYS							///
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 #define SEDX_KEY_ESCAPE				::SceneryEditorX::Key::Escape
 #define SEDX_KEY_ENTER				::SceneryEditorX::Key::Enter
 #define SEDX_KEY_TAB				::SceneryEditorX::Key::Tab
@@ -298,9 +298,9 @@ namespace SceneryEditorX
 #define SEDX_KEY_F24				::SceneryEditorX::Key::F24
 #define SEDX_KEY_F25				::SceneryEditorX::Key::F25
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 ///									KEYPAD									///
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 #define SEDX_KEY_KP_0				::SceneryEditorX::Key::KP0
 #define SEDX_KEY_KP_1				::SceneryEditorX::Key::KP1
 #define SEDX_KEY_KP_2				::SceneryEditorX::Key::KP2
@@ -329,11 +329,11 @@ namespace SceneryEditorX
 #define SEDX_KEY_RIGHT_SUPER		::SceneryEditorX::Key::RightSuper
 #define SEDX_KEY_MENU				::SceneryEditorX::Key::Menu
 
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 ///									MOUSE									///
-/// ------------------------------------------------------------------------///
+// ------------------------------------------------------------------------///
 #define SEDX_MOUSE_BUTTON_LEFT		::SceneryEditorX::Button::Left
 #define SEDX_MOUSE_BUTTON_RIGHT		::SceneryEditorX::Button::Right
 #define SEDX_MOUSE_BUTTON_MIDDLE	::SceneryEditorX::Button::Middle
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

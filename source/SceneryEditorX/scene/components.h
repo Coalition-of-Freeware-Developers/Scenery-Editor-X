@@ -19,7 +19,7 @@
 //#include "material.h"
 //#include "SceneryEditorX/core/identifiers/uuid.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -30,7 +30,7 @@ namespace SceneryEditorX
         UUID ID = UUID(0);
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct TagComponent
 	{
@@ -44,7 +44,7 @@ namespace SceneryEditorX
 		operator const std::string& () const { return Tag; }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct RelationshipComponent
     {
@@ -56,7 +56,7 @@ namespace SceneryEditorX
         RelationshipComponent(const UUID &parent) : ParentHandle(parent) { }
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct PrefabComponent
     {
@@ -64,7 +64,7 @@ namespace SceneryEditorX
         UUID EntityID = UUID(0);
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct TransformComponent
     {
@@ -194,7 +194,7 @@ namespace SceneryEditorX
         //friend class SceneSerializer;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /// Entity with this component is the "root" of a dynamic mesh
     struct MeshComponent
@@ -229,7 +229,7 @@ namespace SceneryEditorX
         }
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct StaticMeshComponent
     {
@@ -248,7 +248,7 @@ namespace SceneryEditorX
         }
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     struct AnimationComponent
@@ -264,7 +264,7 @@ namespace SceneryEditorX
     };
     #1#
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct SpriteRendererComponent
     {
@@ -279,7 +279,7 @@ namespace SceneryEditorX
         SpriteRendererComponent(const SpriteRendererComponent &other) = default;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct TextComponent
     {
@@ -304,7 +304,7 @@ namespace SceneryEditorX
         TextComponent(const TextComponent &other) = default;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct DirectionalLightComponent
     {
@@ -317,7 +317,7 @@ namespace SceneryEditorX
         bool SoftShadows = true;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct PointLightComponent
     {
@@ -332,7 +332,7 @@ namespace SceneryEditorX
         bool SoftShadows = true;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct SpotLightComponent
     {
@@ -347,7 +347,7 @@ namespace SceneryEditorX
         bool CastsShadows = false;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct SkyLightComponent
     {
@@ -358,7 +358,7 @@ namespace SceneryEditorX
         Vec3 TurbidityAzimuthInclination = {2.0, 0.0, 0.0};
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct TileRendererComponent
     {
@@ -377,4 +377,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

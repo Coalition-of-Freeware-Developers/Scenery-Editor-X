@@ -14,7 +14,7 @@
 #include "SceneryEditorX/renderer/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 
-/// --------------------------------------------
+// --------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -32,7 +32,7 @@ namespace SceneryEditorX
         const VkBuffer stagingBuffer = nullptr;
         const VmaAllocation stagingBufferAllocation = nullptr;
 
-		/// --------------------------------------------
+		// --------------------------------------------
 
         CreateBuffer(bufferSize, BufferUsage::TransferSrc, MemoryType::CPU, "IndexStaging#");
 
@@ -49,7 +49,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// --------------------------------------------
+    // --------------------------------------------
 
     /*
     IndexBuffer::IndexBuffer(uint64_t size) : indices(size / sizeof(uint32_t))
@@ -59,7 +59,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// --------------------------------------------
+    // --------------------------------------------
 
     IndexBuffer::IndexBuffer(const void *data, uint64_t size) : indices(size / sizeof(uint32_t))
     {
@@ -84,4 +84,4 @@ namespace SceneryEditorX
 
 }
 
-/// --------------------------------------------
+// --------------------------------------------

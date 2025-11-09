@@ -47,7 +47,7 @@
 #include "SceneryEditorX/platform/filesystem/file_manager.hpp"
 #include "fonts/font.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -120,7 +120,7 @@ namespace SceneryEditorX
     // Legacy command queue system removed in favor of RenderDispatcher.
     //static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     struct ShaderDependencies
@@ -131,11 +131,11 @@ namespace SceneryEditorX
     };
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void Renderer::Init()
     {
@@ -164,7 +164,7 @@ namespace SceneryEditorX
         // Initialize async render dispatcher
         RenderDispatcher::Init();
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         s_Data = new RendererProperties;
 		SEDX_CORE_INFO_TAG("Renderer", "Initialized new RenderProperties: {}", ToString(s_Data));
@@ -312,7 +312,7 @@ namespace SceneryEditorX
         s_Initialized = false;
     }
 
-    /*
+    
     void Renderer::BeginFrame()
     {
         Submit([]()
@@ -321,7 +321,7 @@ namespace SceneryEditorX
 
             SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
 
-            /// Reset descriptor pools here
+            /** Reset descriptor pools here */
             VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
             uint32_t bufferIndex = swapChain.GetCurrentBufferIndex();
             vkResetDescriptorPool(device, s_Data->DescriptorPools[bufferIndex], 0);
@@ -345,7 +345,7 @@ namespace SceneryEditorX
 
         // Resource free ring advanced after GPU submission (see swapchain present/acquire logic)
     }
-    */
+    
 
     void Renderer::EndFrame()
     {
@@ -363,7 +363,6 @@ namespace SceneryEditorX
         // Submit the current frame to the GPU
         // This would involve submitting command buffers to the appropriate queues
     }
-
 
     // Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction.
 
@@ -655,12 +654,12 @@ namespace SceneryEditorX
     Ref<Environment> Renderer::GetEmptyEnvironment() { return s_Data->EmptyEnvironment; }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     //static std::unordered_map<size_t, ShaderDependencies> s_ShaderDependencies;
     //static std::shared_mutex s_ShaderDependenciesMutex; /// ShaderDependencies can be accessed (and modified) from multiple threads, hence require synchronization
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	struct GlobalShaderInfo
@@ -674,7 +673,7 @@ namespace SceneryEditorX
 
 	//static GlobalShaderInfo s_GlobalShaderInfo;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline)
@@ -754,4 +753,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

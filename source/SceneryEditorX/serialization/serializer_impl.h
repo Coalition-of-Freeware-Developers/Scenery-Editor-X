@@ -16,7 +16,7 @@
 #include "SceneryEditorX/core/identifiers/identifier.h"
 #include "SceneryEditorX/utils/reflection/type_descriptors.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 	
 	/**
 	 *  Non-intrusive Binary / Memory Serialization Interface.
@@ -89,9 +89,9 @@ namespace SceneryEditorX::Serialization
 		    return true;
 		}
 		
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 		/// Serialization specialization More default specializations can be added...
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 		
 		template <>
 		SEDX_EXPLICIT_STATIC inline bool SerializeImpl(SerializeWriter *writer, const UUID &v)
@@ -114,7 +114,7 @@ namespace SceneryEditorX::Serialization
 		    return true;
 		}
 		
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 
 		template <typename T>
 		SEDX_EXPLICIT_STATIC bool SerializeVec(SerializeWriter *writer, const std::vector<T> &vec)
@@ -128,7 +128,7 @@ namespace SceneryEditorX::Serialization
 		    return true;
 		}
 		
-		/// ----------------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
 
 		template <typename T>
 		SEDX_EXPLICIT_STATIC bool SerializeByType(SerializeWriter *writer, const T &v)
@@ -148,7 +148,7 @@ namespace SceneryEditorX::Serialization
 	    return (Impl::SerializeByType(writer, vs) && ...);
 	}
 
-	/// -----------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------
 
     /// Deserialization
 	template <typename... Ts>
@@ -167,9 +167,9 @@ namespace SceneryEditorX::Serialization
 	    return true;
 	}
 	
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
     /// Deserialization specialization More default specializations can be added...
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
 	
 	template <>
     SEDX_EXPLICIT_STATIC inline bool DeserializeImpl(SerializeReader *reader, UUID &v)
@@ -194,7 +194,7 @@ namespace SceneryEditorX::Serialization
 	    return true;
 	}
 	
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
 
 	template <typename T>
     SEDX_EXPLICIT_STATIC bool DeserializeVec(SerializeReader *reader, std::vector<T> &vec)
@@ -211,7 +211,7 @@ namespace SceneryEditorX::Serialization
 	    return true;
 	}
 	
-	/// ----------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------
 
 	template <typename T>
     SEDX_EXPLICIT_STATIC bool DeserializeByType(SerializeReader *reader, T &v)
@@ -231,9 +231,9 @@ namespace SceneryEditorX::Serialization
 	    return (Impl::DeserializeByType(reader, vs) && ...);
 	}
 
-    /// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
     */
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

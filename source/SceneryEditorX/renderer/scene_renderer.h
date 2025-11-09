@@ -34,7 +34,7 @@
 #include "vulkan/vk_image.h"
 #include "vulkan/vk_render_pass.h"*/
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -75,7 +75,7 @@ namespace SceneryEditorX
 		ShaderSpecs::AOMethod ReflectionOcclusionMethod = ShaderSpecs::AOMethod::None;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct SSROptionsUB
 	{
@@ -95,7 +95,7 @@ namespace SceneryEditorX
 		float LuminanceFactor = 1.0f;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct SceneRendererCamera
 	{
@@ -106,7 +106,7 @@ namespace SceneryEditorX
 		float FOV;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct BloomSettings
 	{
@@ -118,7 +118,7 @@ namespace SceneryEditorX
 		float DirtIntensity = 1.0f;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct CBGTAOData
 	{
@@ -142,7 +142,7 @@ namespace SceneryEditorX
 		float Padding;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct DOFSettings
 	{
@@ -151,7 +151,7 @@ namespace SceneryEditorX
 		float BlurSize = 1.0f;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct SceneRendererSpecification
 	{
@@ -165,7 +165,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class SceneRenderer : public RefCounted
@@ -301,7 +301,7 @@ namespace SceneryEditorX
 		};
 
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct DrawCommand
 		{
@@ -316,7 +316,7 @@ namespace SceneryEditorX
 			bool IsRigged = false;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct StaticDrawCommand
 		{
@@ -328,7 +328,7 @@ namespace SceneryEditorX
 			uint32_t InstanceCount = 0;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		void SubmitStaticDebugMesh(std::map<SceneRenderer::MeshKey, SceneRenderer::StaticDrawCommand>& drawList, Ref<StaticMesh> staticMesh, Ref<MeshSource> meshSource, const Mat4& transform, Ref<Material> material);
 		void CopyToBoneTransformStorage(const MeshKey& meshKey, const Ref<MeshSource>& meshSource, const std::vector<Mat4>& boneTransforms);
@@ -380,7 +380,7 @@ namespace SceneryEditorX
 
 		Mat4 m_ScreenSpaceProjectionMatrix{ 1.0f };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct SceneInfo
 		{
@@ -394,7 +394,7 @@ namespace SceneryEditorX
             DirectionalLightComponent ActiveLight;
 		} m_SceneData;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBOCamera
 		{
@@ -413,7 +413,7 @@ namespace SceneryEditorX
 
 		CBGTAOData GTAODataCB;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBOScreenData
 		{
@@ -423,14 +423,14 @@ namespace SceneryEditorX
 			Vec2 HalfResolution;
 		} m_ScreenDataUB;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBOShadow
 		{
 			Mat4 ViewProjection[4];
 		} ShadowData;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct DirLight
 		{
@@ -440,7 +440,7 @@ namespace SceneryEditorX
 			float Intensity;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBOPointLights
 		{
@@ -449,7 +449,7 @@ namespace SceneryEditorX
             PointLightComponent PointLights[1024]{};
 		} PointLightsUB;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBOSpotLights
 		{
@@ -458,14 +458,14 @@ namespace SceneryEditorX
             SpotLightComponent SpotLights[1000]{};
 		} SpotLightUB;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBOSpotShadowData
 		{
 			Mat4 ShadowMatrices[1000]{};
 		} SpotShadowDataUB;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBOScene
 		{
@@ -474,7 +474,7 @@ namespace SceneryEditorX
 			float EnvironmentMapIntensity = 1.0f;
 		} SceneDataUB;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct UBORendererData
 		{
@@ -494,7 +494,7 @@ namespace SceneryEditorX
 			char Padding3[3] = { 0,0,0 };
 		} RendererDataUB;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< GTAO
 		Ref<ComputePass> m_GTAOComputePass;
@@ -508,7 +508,7 @@ namespace SceneryEditorX
 		Ref<Image2D> m_GTAOOutputImage;
 		Ref<Image2D> m_GTAODenoiseImage;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         ///< Points to m_GTAOOutputImage or m_GTAODenoiseImage!
 		Ref<Image2D> m_GTAOFinalImage; ///TODO: WeakRef!
@@ -519,7 +519,7 @@ namespace SceneryEditorX
 		UVec3 m_GTAODenoiseWorkGroups{ 1 };
 		Ref<Shader> m_CompositeShader;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Shadows
 		Ref<Pipeline> m_SpotShadowPassPipeline;
@@ -537,7 +537,7 @@ namespace SceneryEditorX
 		Ref<UniformBufferSet> m_UBSSpotLights;
 		Ref<UniformBufferSet> m_UBSSpotShadowData;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		Ref<StorageBufferSet> m_SBSVisiblePointLightIndicesBuffer; ///< Visible point light indices per-tile
 		Ref<StorageBufferSet> m_SBSVisibleSpotLightIndicesBuffer;  ///< Visible spot light indices per-tile
@@ -553,7 +553,7 @@ namespace SceneryEditorX
 
 		Ref<ComputePass> m_LightCullingPass; ///< Light culling compute (HZB based)
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		float LightDistance = 0.1f;
 		float CascadeSplitLambda = 0.92f;
@@ -565,7 +565,7 @@ namespace SceneryEditorX
 
 		Ref<ComputePass> m_HierarchicalDepthPass; ///< HZB reduction pass
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< SSR
 		Ref<RenderPass> m_SSRCompositePass;
@@ -574,7 +574,7 @@ namespace SceneryEditorX
 		Ref<ComputePass> m_SSRUpscalePass; ///< (Optional) upscale pass if half-res enabled (not currently used)
 		Ref<Image2D> m_SSRImage;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Pre-Integration
 		Ref<ComputePass> m_PreIntegrationPass; ///< Visibility pre-integration for SSR
@@ -585,7 +585,7 @@ namespace SceneryEditorX
 		} m_PreIntegrationVisibilityTexture;
 		std::vector<Ref<Material>> m_PreIntegrationMaterials; ///< per-mip
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Hierarchical Depth
 		struct HierarchicalDepthTexture
@@ -595,7 +595,7 @@ namespace SceneryEditorX
 		} m_HierarchicalDepthTexture;
 		std::vector<Ref<Material>> m_HZBMaterials; ///< per-mip
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct PreConvolutionComputeTexture
 		{
@@ -606,7 +606,7 @@ namespace SceneryEditorX
 		Ref<Material> m_SSRCompositeMaterial;
 		UVec3 m_SSRWorkGroups { 1 };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		Vec2 FocusPoint = { 0.5f, 0.5f };
         Ref<Material> m_WireframeMaterial;
@@ -643,7 +643,7 @@ namespace SceneryEditorX
 
 		Ref<ComputePipeline> m_LightCullingPipeline;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Jump Flood Pass
 		Ref<RenderPass> m_JumpFloodInitPass;
@@ -652,14 +652,14 @@ namespace SceneryEditorX
 		Ref<Material> m_JumpFloodInitMaterial, m_JumpFloodPassMaterial[2];
 		Ref<Material> m_JumpFloodCompositeMaterial;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Bloom compute
 		Ref<ComputePass> m_BloomComputePass; ///< Compute based bloom pipeline
 		uint32_t m_BloomComputeWorkgroupSize = 4;
 		Ref<ComputePipeline> m_BloomComputePipeline;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct BloomComputeTextures
 		{
@@ -668,7 +668,7 @@ namespace SceneryEditorX
 		};
 		std::vector<BloomComputeTextures> m_BloomComputeTextures{ 3 };
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct BloomComputeMaterials
 		{
@@ -679,14 +679,14 @@ namespace SceneryEditorX
 			std::vector<Ref<Material>> UpsampleMaterials;
 		} m_BloomComputeMaterials;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct TransformVertexData
 		{
 			Vec4 MRow[3];
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct TransformBuffer
 		{
@@ -694,14 +694,14 @@ namespace SceneryEditorX
 			TransformVertexData* Data = nullptr;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		std::vector<TransformBuffer> m_SubmeshTransformBuffers;
 		Ref<StorageBufferSet> m_SBSBoneTransforms; ///< Bone transforms storage
 		Mat4 *m_BoneTransformsData = nullptr;
 		std::vector<Ref<Framebuffer>> m_TempFramebuffers;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct TransformMapData
 		{
@@ -709,7 +709,7 @@ namespace SceneryEditorX
 			uint32_t TransformOffset = 0;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct BoneTransformsMapData
 		{
@@ -718,7 +718,7 @@ namespace SceneryEditorX
 			uint32_t BoneTransformsStride = 0;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		std::map<MeshKey, TransformMapData> m_MeshTransformMap; ///< Aggregated instance transforms per mesh/material/submesh
 		std::map<MeshKey, BoneTransformsMapData> m_MeshBoneTransformsMap; ///< Bone transform ranges
@@ -732,7 +732,7 @@ namespace SceneryEditorX
 		std::map<MeshKey, StaticDrawCommand> m_SelectedStaticMeshDrawList;
 		std::map<MeshKey, StaticDrawCommand> m_StaticMeshShadowPassDrawList;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Debug
 		std::map<MeshKey, StaticDrawCommand> m_StaticColliderDrawList;
@@ -745,7 +745,7 @@ namespace SceneryEditorX
 		Ref<StaticMesh> m_BoneMesh;
 		Ref<MeshSource> m_BoneMeshSource;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Grid
 		Ref<RenderPass> m_GridRenderPass;
@@ -773,7 +773,7 @@ namespace SceneryEditorX
 		Vec4* m_ReadBackBuffer = nullptr;
 		float m_Opacity = 1.0f;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct GPUTimeQueries
 		{
@@ -795,7 +795,7 @@ namespace SceneryEditorX
 			uint32_t CompositePassQuery = 0;
 		} m_GPUTimeQueries;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		Statistics m_Statistics;
 		friend class SceneRendererPanel;
@@ -804,4 +804,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

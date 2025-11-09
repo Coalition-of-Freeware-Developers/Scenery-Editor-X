@@ -12,7 +12,7 @@
 */
 #pragma once
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -34,7 +34,7 @@ namespace SceneryEditorX
      */
     VkDescriptorSet CreateDescriptor(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorSetLayout layout, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout);
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * @brief Updates a descriptor set with new image information
@@ -49,4 +49,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

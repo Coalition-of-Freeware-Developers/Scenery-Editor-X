@@ -14,7 +14,7 @@
 #include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
 #include <SceneryEditorX/renderer/renderer.h>
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -90,7 +90,7 @@ namespace SceneryEditorX
 		Allocate();
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     StorageBufferSet::StorageBufferSet(StorageBufferSpec spec, uint32_t size, uint32_t framesInFlight) : m_spec(std::move(spec)), m_framesInFlight(framesInFlight)
     {
@@ -132,4 +132,4 @@ namespace SceneryEditorX
 
 }
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------

@@ -12,7 +12,7 @@
 */
 #include "ui_manager.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
@@ -22,7 +22,7 @@ namespace SceneryEditorX::UI
 	bool showAboutModal = false;
 	bool showSettingsPanel = false;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     bool PropertyScriptReference(const char* label, UUID& outScriptID, const PropertyAssetReferenceSettings& settings, bool doPushUndo)
@@ -850,4 +850,4 @@ namespace SceneryEditorX::UI
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

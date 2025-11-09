@@ -14,13 +14,13 @@
 #include <unordered_map>
 #include "SceneryEditorX/renderer/buffers/storage_buffer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 	class UniformBuffer;
 
-    /// -------------------------------------------------
+    // -------------------------------------------------
 
     /**
      * @brief Represents an image sampler resource used in shaders
@@ -52,7 +52,7 @@ namespace SceneryEditorX
             : Dimension(dimension), bindingPoint(binding), name(std::move(samplerName)), shaderStage(stage) {}
     };
 
-    /// -------------------------------------------------
+    // -------------------------------------------------
 
     class ShaderResource
     {
@@ -90,7 +90,7 @@ namespace SceneryEditorX
             explicit operator bool() const { return !(storageBuffers.empty() && uniformBuffers.empty() && imageSamplers.empty() && storageImages.empty() && separateTextures.empty() && separateSamplers.empty()); }
 		};
 
-        /// -------------------------------------------------
+        // -------------------------------------------------
 
         struct UniformBuffer
         {
@@ -133,4 +133,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

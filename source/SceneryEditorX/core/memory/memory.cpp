@@ -13,7 +13,7 @@
 #include "memory.h"
 #include <mutex>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -21,7 +21,7 @@ namespace SceneryEditorX
 	static AllocationStats GlobalStats;
 	static bool InInit_ = false;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * @brief Initializes the memory allocation tracking system

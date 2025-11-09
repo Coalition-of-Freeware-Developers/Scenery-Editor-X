@@ -14,7 +14,7 @@
 #include "event_system.h"
 #include "SceneryEditorX/core/input/key_codes.h"
 
-/// -------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -40,7 +40,7 @@ namespace SceneryEditorX
 		float m_MouseX, m_MouseY;
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class MouseScrolledEvent : public Event
 	{
@@ -63,7 +63,7 @@ namespace SceneryEditorX
 		float m_XOffset, m_YOffset;
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class MouseButtonEvent : public Event
 	{
@@ -77,7 +77,7 @@ namespace SceneryEditorX
 		MouseButton m_Button;
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class MouseButtonPressedEvent : public MouseButtonEvent
 	{
@@ -94,7 +94,7 @@ namespace SceneryEditorX
 		EVENT_CLASS_TYPE(MouseButtonPressed)
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class MouseButtonReleasedEvent : public MouseButtonEvent
 	{
@@ -111,7 +111,7 @@ namespace SceneryEditorX
 		EVENT_CLASS_TYPE(MouseButtonReleased)
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 	class MouseButtonDownEvent : public MouseButtonEvent
 	{
@@ -128,8 +128,8 @@ namespace SceneryEditorX
 		EVENT_CLASS_TYPE(MouseButtonDown)
 	};
 
-    /// -------------------------------------------------------------------
+    // -------------------------------------------------------------------
 
 }
 
-/// -------------------------------------------------------------------
+// -------------------------------------------------------------------

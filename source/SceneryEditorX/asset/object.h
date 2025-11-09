@@ -13,7 +13,7 @@
 #pragma once
 #include "SceneryEditorX/core/identifiers/uuid.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -392,7 +392,7 @@ namespace SceneryEditorX
         return "None";
     }
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @brief Base object class for all identifiable entities in the Scenery Editor X engine
@@ -646,4 +646,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

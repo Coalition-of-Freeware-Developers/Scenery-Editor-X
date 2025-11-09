@@ -19,7 +19,7 @@
 #include "SceneryEditorX/asset/asset.h"
 #include "SceneryEditorX/asset/asset_types.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -197,7 +197,7 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /// Internal animation data representation (engine-native, no external deps)
 /// Kept in header so importer/creator code can construct it without exposing details elsewhere.
@@ -231,4 +231,4 @@ namespace SceneryEditorX::AnimationInternal
 	};
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

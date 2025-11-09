@@ -18,14 +18,14 @@
 #include <SceneryEditorX/utils/size_macro_utils.h>
 #include <vma/vk_mem_alloc.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
     VkDeviceSize MemoryAllocator::customBufferSize = DEFAULT_CUSTOM_BUFFER_SIZE;
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
 	/**
 	 * @struct VulkanAllocatorData
@@ -120,7 +120,7 @@ namespace SceneryEditorX
 	 */
 	static std::map<VmaAllocation, AllocInfo> AllocationMap;
 
-	/// ---------------------------------------------------------
+	// ---------------------------------------------------------
 
     /**
      * @brief Constructs a memory allocator with the given tag.
@@ -147,7 +147,7 @@ namespace SceneryEditorX
      */
     MemoryAllocator::~MemoryAllocator() { Shutdown(); };
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
 	/**
 	 * @brief Begins a defragmentation process for GPU memory.
@@ -319,7 +319,7 @@ namespace SceneryEditorX
         }
     }
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
 	VmaAllocation MemoryAllocator::AllocateBuffer(const VkBufferCreateInfo &bufferCreateInfo, const VmaMemoryUsage usage, VkBuffer &outBuffer)
 	{
@@ -350,7 +350,7 @@ namespace SceneryEditorX
             allocCreateInfo.pool = pool;
         }
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         // Create the allocation
         VmaAllocation allocation = {};
@@ -430,7 +430,7 @@ namespace SceneryEditorX
         return allocation;
 	}
 
-    /// -------------------------------------------------
+    // -------------------------------------------------
 
 	/**
 	 * @fn Free
@@ -614,7 +614,7 @@ namespace SceneryEditorX
 		vmaUnmapMemory(memAllocatorData->allocator, allocation);
 	}
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     /**
      * @fn GetOrCreateBufferPool
@@ -804,7 +804,7 @@ namespace SceneryEditorX
         return size;
     }
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     /**
 	 * @brief Gets the current memory allocation statistics.
@@ -1432,4 +1432,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -15,11 +15,11 @@
 #include <xMath/includes/vec2.h>
 #include "SceneryEditorX/renderer/image_data.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 struct GLFWwindow;
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -30,7 +30,7 @@ namespace SceneryEditorX
 	    std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class SwapChain
 	{
@@ -50,7 +50,7 @@ namespace SceneryEditorX
         void Destroy();
 		void BeginFrame();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		// Getter methods
 		[[nodiscard]] VkFormat GetColorFormat() const { return colorFormat; }
@@ -63,13 +63,13 @@ namespace SceneryEditorX
 		[[nodiscard]] VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
         [[nodiscard]] VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         [[nodiscard]] uint32_t GetWidth() const { return swapWidth; }
         [[nodiscard]] uint32_t GetHeight() const { return swapHeight; }
 	    [[nodiscard]] Vec2 GetDimensions() const { return {swapWidth, swapHeight}; }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    [[nodiscard]] VkImage GetActiveImage() const;
         [[nodiscard]] VkImage GetSwapchainImage(uint32_t index) const;
@@ -115,9 +115,9 @@ namespace SceneryEditorX
         uint32_t swapHeight				= 0; // Height of the swapchain
         bool VSync = false;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
         /// Format and attachment data
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         VkFormat colorFormat;
         VkFormat depthFormat;
@@ -127,15 +127,15 @@ namespace SceneryEditorX
         VkAttachmentDescription colorAttachment{};
         VkAttachmentDescription depthAttachment{};
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 		/// Core swapchain objects
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         VkSurfaceKHR surface = nullptr;		// Window surface
         VkSwapchainKHR swapChain = nullptr; // Swapchain object
         VkRenderPass renderPass = nullptr;  // Render pass object
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    struct SwapchainCommandBuffer
         {
@@ -144,7 +144,7 @@ namespace SceneryEditorX
         };
         std::vector<SwapchainCommandBuffer> cmdBuffers;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    struct SwapchainImage
         {
@@ -153,7 +153,7 @@ namespace SceneryEditorX
         };
         std::vector<SwapchainImage> swapChainImage;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		// Image resources
         //std::vector<Image> swapChainImages;
@@ -170,33 +170,33 @@ namespace SceneryEditorX
 		// TODO: Replace with the Fence class
 		std::vector<VkFence> waitFences;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         VkImage textureImage = nullptr;
         VkSampler textureSampler = nullptr;
         VkImageView textureImageView = nullptr;
         VkDeviceMemory textureImageMemory = nullptr;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    // For depth buffering
         VkImage depthImage = nullptr;
         VkImageView depthImageView = nullptr;
         VkDeviceMemory depthImageMemory = nullptr;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    // For multisampling
         VkImage colorImage = nullptr;
         VkDeviceMemory colorImageMemory = nullptr;
         VkImageView colorImageView = nullptr;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		friend class RenderContext;
     };
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 

@@ -19,7 +19,7 @@
 #include "SceneryEditorX/renderer/vulkan/vk_data.h"
 #include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -32,7 +32,7 @@ namespace SceneryEditorX
 		FullScreen
 	};
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	struct WindowData
     {
@@ -57,7 +57,7 @@ namespace SceneryEditorX
         Vec2 deltaMousePos = Vec2(.0f, .0f);
     };
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	struct WindowCallbacks
     {
@@ -78,7 +78,7 @@ namespace SceneryEditorX
         void (*charCallback)(GLFWwindow *window, unsigned int codepoint) = nullptr;
     };
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     class SwapChain;
     class RenderContext;
@@ -87,7 +87,7 @@ namespace SceneryEditorX
     //bool glfwGetMouseButton(GLFWwindow* window, uint16_t uint16);
     //bool glfwWindowShouldClose(GLFWwindow* window);
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class Window
 	{
@@ -187,5 +187,5 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 

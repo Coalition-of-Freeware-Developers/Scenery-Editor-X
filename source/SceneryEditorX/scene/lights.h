@@ -15,12 +15,12 @@
 #include <SceneryEditorX/renderer/render_resource.h>
 #include <xMath/includes/colors.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	enum class LightType : uint8_t
 	{
@@ -30,7 +30,7 @@ namespace SceneryEditorX
 	    MaxEnum
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	enum VolumetricType : uint8_t
     {
@@ -40,7 +40,7 @@ namespace SceneryEditorX
         VolumetricLightCount = 3,
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     enum LightFlags : uint32_t
     {
@@ -50,7 +50,7 @@ namespace SceneryEditorX
         DayNightCycle		= 1U << 3 // only affects directional lights
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     enum class LightIntensity : uint8_t
     {
@@ -65,7 +65,7 @@ namespace SceneryEditorX
         custom           // custom intensity
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class LightNode : public Object
     {
@@ -75,18 +75,18 @@ namespace SceneryEditorX
 
         //virtual void Serialize(Serializer &ser);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		inline static const char* typeNames[] = { "Point", "Spot", "Directional" };
 		inline static const char* volumetricTypeNames[] = { "Disabled", "ScreenSpace", "ShadowMap"};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         // Flags
         bool GetFlag(const LightFlags flag) { return m_flags & flag; }
         void SetFlag(LightFlags flag, bool enable = true);
 		
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         // Type
         LightType GetLightType() const { return m_light_type; }
@@ -98,7 +98,7 @@ namespace SceneryEditorX
         void SetColor(const Color& rgb);
         const Color& GetColor() const { return m_color_rgb; }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         // Intensity
         void SetIntensity(float lumens_lux);
@@ -205,4 +205,4 @@ namespace SceneryEditorX
 
 } 
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

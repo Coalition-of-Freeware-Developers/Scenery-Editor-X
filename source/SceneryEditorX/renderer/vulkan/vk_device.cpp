@@ -19,7 +19,7 @@
 #include <SceneryEditorX/renderer/vulkan/vk_checks.h>
 #include <SceneryEditorX/renderer/vulkan/vk_util.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -214,7 +214,7 @@ namespace SceneryEditorX
             else
                 SEDX_CORE_WARN("No device extensions found.");
 
-            /// -----------------------------------------------
+            // -----------------------------------------------
 
             /*
             /// Get present modes
@@ -235,7 +235,7 @@ namespace SceneryEditorX
             int requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
             QFamilyIndices          = GetQueueFamilyIndices(requestedQueueTypes);
 
-            /// -----------------------------------------------
+            // -----------------------------------------------
 
             /// Dedicated Graphics Queue
             if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
@@ -248,7 +248,7 @@ namespace SceneryEditorX
                 devices[index].queueCreateInfos.push_back(queueCreateInfo);
             }
 
-            /// -----------------------------------------------
+            // -----------------------------------------------
 
             /// Dedicated Compute Queue
             if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
@@ -266,7 +266,7 @@ namespace SceneryEditorX
 
             }
 
-            /// -----------------------------------------------
+            // -----------------------------------------------
 
             /// Dedicated Transfer Queue
             if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
@@ -283,7 +283,7 @@ namespace SceneryEditorX
                 }
             }
 
-            /// -----------------------------------------------
+            // -----------------------------------------------
 
 
             FindDepthFormat(devices[index]);
@@ -369,7 +369,7 @@ namespace SceneryEditorX
         return candidates[0]; // Return the first format as a fallback
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 /*
 	/// Get surface formats
@@ -441,14 +441,14 @@ namespace SceneryEditorX
 	 */
 	VulkanPhysicalDevice::~VulkanPhysicalDevice() = default;
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     bool VulkanPhysicalDevice::QueueFamilyIndices::IsComplete() const
     {
         return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value();
     }
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetGraphicsFamily() const
     {
@@ -460,7 +460,7 @@ namespace SceneryEditorX
         return graphicsFamily.value().second;
     }
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetPresentFamily() const
     {
@@ -472,7 +472,7 @@ namespace SceneryEditorX
         return presentFamily.value().second;
     }
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetComputeFamily() const
     {
@@ -484,7 +484,7 @@ namespace SceneryEditorX
         return computeFamily.value().second;
     }
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetTransferFamily() const
     {
@@ -496,7 +496,7 @@ namespace SceneryEditorX
         return transferFamily.value().second;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
 	 * @fn Select
@@ -558,7 +558,7 @@ namespace SceneryEditorX
         return devices[deviceIndex];
 	}
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     VkPhysicalDevice VulkanPhysicalDevice::GetGPUDevices() const
     {
@@ -778,7 +778,7 @@ namespace SceneryEditorX
             return;
         }
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
 	// Prepare device extensions as vector<const char*>
 	std::vector<const char*> deviceExtensions;
@@ -794,7 +794,7 @@ namespace SceneryEditorX
 	if (!headlessMode)
         deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
         {
             // Optionally add NVIDIA/AMD extensions if supported
@@ -804,7 +804,7 @@ namespace SceneryEditorX
                 deviceExtensions.push_back (VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
         }
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
         {
             VulkanChecks checks; // Check device extension support
@@ -829,7 +829,7 @@ namespace SceneryEditorX
             }
         }
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         {
             VkPhysicalDeviceFeatures2 features2 = {};
@@ -863,42 +863,42 @@ namespace SceneryEditorX
 			*/
 
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			fragmentShadingRate.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
 			fragmentShadingRate.pNext = nullptr;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			robustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 			robustness.pNext = &fragmentShadingRate;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			vulkan12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 			vulkan12features.pNext = &robustness;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			vulkan13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 			vulkan13features.pNext = &vulkan12features;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			vulkan14features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
 			vulkan14features.pNext = &vulkan13features;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			barycentric.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
 			barycentric.pNext = &vulkan14features;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			mutableDescriptor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
 			mutableDescriptor.pNext = &barycentric;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
 			descriptorIndexingFeatures.pNext = &mutableDescriptor;
@@ -910,12 +910,12 @@ namespace SceneryEditorX
 			descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
 			descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = true;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 			bufferDeviceAddresFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
 			bufferDeviceAddresFeatures.bufferDeviceAddress = VK_TRUE;
 			bufferDeviceAddresFeatures.pNext = &descriptorIndexingFeatures;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
 			accelerationStructureFeatures.accelerationStructure = VK_TRUE;
@@ -923,25 +923,25 @@ namespace SceneryEditorX
 			accelerationStructureFeatures.accelerationStructureCaptureReplay = VK_TRUE;
 			accelerationStructureFeatures.pNext = &bufferDeviceAddresFeatures;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
 			dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 			dynamicRenderingFeatures.pNext = &accelerationStructureFeatures;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
 			sync2Features.synchronization2 = VK_TRUE;
 			sync2Features.pNext = &dynamicRenderingFeatures;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			atomicFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
 			atomicFeatures.shaderBufferFloat32AtomicAdd = VK_TRUE;
 			atomicFeatures.pNext = &sync2Features;
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
             features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 			features2.features.geometryShader = VK_TRUE;
@@ -949,7 +949,7 @@ namespace SceneryEditorX
 
 			vkGetPhysicalDeviceFeatures2 (physicalDevice, &features2);
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
 			{
 				if (vulkan12features.timelineSemaphore) { vulkan12features.timelineSemaphore = VK_TRUE; }
@@ -965,7 +965,7 @@ namespace SceneryEditorX
 				if (vulkan12features.scalarBlockLayout) { vulkan12features.scalarBlockLayout = VK_TRUE; }
 			}
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
             {
 				if (features2.features.logicOp) { features2.features.logicOp = VK_TRUE; }
@@ -992,7 +992,7 @@ namespace SceneryEditorX
 
             }
 
-			/// ---------------------------------------------------------
+			// ---------------------------------------------------------
 
             {
 				if (vulkan14features.pushDescriptor) { vulkan14features.pushDescriptor = VK_TRUE; }
@@ -1000,7 +1000,7 @@ namespace SceneryEditorX
 
         }
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
         // Create the logical device
         VkDeviceCreateInfo createInfo = {};
@@ -1283,7 +1283,7 @@ namespace SceneryEditorX
         vmaSetCurrentFrameIndex(GetMemoryAllocator(), static_cast<uint32_t>(frame_count));
     }
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @brief Get the memory allocator associated with this device
@@ -1603,7 +1603,7 @@ namespace SceneryEditorX
 		GetThreadLocalCommandPool()->FlushCmdBuffer (cmdBuffer, queue);
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Determine the maximum MSAA sample count supported by the GPU
@@ -2002,8 +2002,8 @@ namespace SceneryEditorX
 		return 0; /// Return a default value to avoid undefined behavior
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

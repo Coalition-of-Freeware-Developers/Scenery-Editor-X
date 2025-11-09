@@ -17,7 +17,7 @@
 #include "window.h"
 #include "SceneryEditorX/logging/logging.hpp"
 
-/// --------------------------------------------
+// --------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -559,5 +559,5 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-/// --------------------------------------------
+// --------------------------------------------
 

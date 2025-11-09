@@ -14,13 +14,13 @@
 #include "command_manager.h"
 #include "SceneryEditorX/core/application/application_data.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
-#include "debug/renderdoc.h"
+//#include "debug/renderdoc.h"
 #include "vulkan/vk_allocator.h"
 #include "vulkan/vk_checks.h"
 #include "vulkan/vk_pipeline_cache.h"
 #include "vulkan/vk_util.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -33,7 +33,7 @@ namespace SceneryEditorX
     static constexpr bool enableValidationLayers = false;
     #endif
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     // Static instance of the render context
     static Ref<RenderContext> s_Instance = nullptr;
@@ -64,7 +64,7 @@ namespace SceneryEditorX
         return VK_FALSE;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     RenderContext::RenderContext()
     {
@@ -76,7 +76,7 @@ namespace SceneryEditorX
     #endif
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     RenderContext::~RenderContext()
     {
@@ -110,7 +110,7 @@ namespace SceneryEditorX
         }
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     Ref<RenderContext> RenderContext::Get()
     {
@@ -120,7 +120,7 @@ namespace SceneryEditorX
         return s_Instance;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     static void PopulateDebugMsgCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo)
     {
@@ -136,7 +136,7 @@ namespace SceneryEditorX
         createInfo.pUserData = nullptr;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void RenderContext::Init()
 	{
@@ -340,7 +340,7 @@ namespace SceneryEditorX
         #endif
             };
 
-            /// ---------------------------------------------------------
+            // ---------------------------------------------------------
 
     		#if defined(VK_EXT_layer_settings) && VK_EXT_layer_settings
     				/* https://github.com/KhronosGroup/MoltenVK/blob/main/Docs/MoltenVK_Configuration_Parameters.md */
@@ -409,7 +409,7 @@ namespace SceneryEditorX
                 return;
             }
 
-            /// ---------------------------------------------------------
+            // ---------------------------------------------------------
 
             if (enableValidationLayers)
             {
@@ -432,7 +432,7 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         #ifdef SEDX_DEBUG
-            RenderDocDebug::PreDeviceCreation();
+            //RenderDocDebug::PreDeviceCreation();
         #endif
 
             vkPhysicalDevice = VulkanPhysicalDevice::Select(m_Instance);
@@ -479,7 +479,7 @@ namespace SceneryEditorX
         }
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     VkInstance RenderContext::GetInstance()
     {
@@ -494,4 +494,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

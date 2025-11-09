@@ -19,7 +19,7 @@
 #include "asset_serializer.h"
 #include "SceneryEditorX/utils/reflection/type_values.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -125,7 +125,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * Graph serializer base provides static utilities for implementation
@@ -145,7 +145,7 @@ namespace SceneryEditorX
 		static void SerializeNodes(nlohmann::json& out, const std::vector<GraphNode*>& nodes, std::function<void(nlohmann::json&, const GraphNode*)> nodeCallBack = {});
 		static void SerializeLinks(nlohmann::json& out, const std::vector<Link>& links, std::function<void(nlohmann::json&, const Link&)> linkCallBack = {});
 
-		/// -------------------------------------------------------------------------------
+		// -------------------------------------------------------------------------------
 
 		/**
 		 * Implementation must provide this factory to deserialize nodes with static
@@ -209,4 +209,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -15,7 +15,7 @@
 #include <type_traits>
 #include <vector>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Types
 {
@@ -48,7 +48,7 @@ namespace SceneryEditorX::Types
             impl::return_type_object<T>, impl::return_type_function<T>>> {};
 	}
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	template <typename, typename = void>
 	struct is_specialized : std::false_type {};
@@ -56,7 +56,7 @@ namespace SceneryEditorX::Types
 	template<typename T>
 	struct is_specialized < T, std::void_t<decltype(T{}) >> : std::true_type {};
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	namespace is_array_impl
     {
@@ -74,7 +74,7 @@ namespace SceneryEditorX::Types
 	template<typename T>
 	inline constexpr bool is_array_v = is_array<T>::value;
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	/// A helper trait to check if the type supports streaming (https://stackoverflow.com/a/66397194)
 	template<class T>
@@ -96,7 +96,7 @@ namespace SceneryEditorX::Types
 	template<class T>
 	inline constexpr bool is_streamable_v = is_streamable<T>::value;
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 	struct filter_void_alt {};
 
@@ -109,7 +109,7 @@ namespace SceneryEditorX::Types
 	template<class T>
 	using filter_void_t = filter_void<T>::type;
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 #if __cplusplus >= 202002L
 	template <typename TupleT, typename Fn>
@@ -137,7 +137,7 @@ namespace SceneryEditorX::Types
 	}
 #endif
 
-	/// --------------------------------------------------------
+	// --------------------------------------------------------
 
 #if __cplusplus >= 202002L
 		/// C++20
@@ -197,4 +197,4 @@ namespace SceneryEditorX::Types
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

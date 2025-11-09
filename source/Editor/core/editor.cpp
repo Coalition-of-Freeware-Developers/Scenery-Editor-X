@@ -11,9 +11,7 @@
 * -------------------------------------------------------
 */
 #include <Editor/core/editor.h>
-
 #include "Editor/projects/project.h"
-
 #include <ImGuizmo.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -27,7 +25,7 @@
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -55,8 +53,7 @@ namespace SceneryEditorX
 
     static std::filesystem::path s_ProjectSolutionPath = "";
 
-    /// -------------------------------------------------------
-
+    // -------------------------------------------------------
 
 	namespace UI
     {
@@ -80,7 +77,7 @@ namespace SceneryEditorX
 
     //static void initVulkan(GraphicsEngine &gfxEngine);
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     Editor::~Editor()
@@ -121,7 +118,7 @@ namespace SceneryEditorX
         Renderer::SetRenderData(Application::Get().GetWindow().GetRenderData());
 
         // TODO: Move project loading to a separate function
-        //activeProject->ReadProjCache();
+        // activeProject->ReadProjCache();
         // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
         // m_UserPreferences->GetRecentProjects();
         // scene = assetManager.GetInitialScene();
@@ -130,7 +127,7 @@ namespace SceneryEditorX
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
         Renderer::Init();
 
-        //ImGui::CreateContext(); //TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
+        // ImGui::CreateContext(); // TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -141,7 +138,7 @@ namespace SceneryEditorX
         //auto physDevice = vkDevice->GetPhysicalDevice();
         //physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
 
-        /// Set up the features we need
+        // Set up the features we need
         //VkPhysicalDeviceFeatures deviceFeatures{};
         //deviceFeatures = vkDeviceFeatures.GetPhysicalDeviceFeatures();
 

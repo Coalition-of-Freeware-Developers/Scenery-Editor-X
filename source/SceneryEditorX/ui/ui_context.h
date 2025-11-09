@@ -15,7 +15,7 @@
 #include "SceneryEditorX/core/modules/module.h"
 #include "SceneryEditorX/utils/static_states.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::UI
 {
@@ -53,4 +53,4 @@ namespace SceneryEditorX::UI
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

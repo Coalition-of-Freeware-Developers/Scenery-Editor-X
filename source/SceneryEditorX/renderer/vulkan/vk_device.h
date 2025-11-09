@@ -22,7 +22,7 @@
 #include <thread>
 #include <unordered_set>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -40,7 +40,7 @@ namespace SceneryEditorX
         VkPhysicalDeviceProperties2 deviceProperties;
         VkPhysicalDeviceMemoryProperties memoryProperties;
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
         std::vector<VkBool32> queueSupportPresent;
         std::vector<VkPresentModeKHR> presentModes;
@@ -48,12 +48,12 @@ namespace SceneryEditorX
 	    std::vector<VkQueueFamilyProperties> queueFamilyInfo;
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    GPUDevice() : depthFormat(), tilingFormat(), formatProperties(), GFXLimits({}), deviceFeatures(), surfaceCapabilities(), deviceProperties(), memoryProperties() {}
 	};
 
-    /// -----------------------------------------------------------
+    // -----------------------------------------------------------
 
 	class VulkanPhysicalDevice : public RefCounted
     {
@@ -164,7 +164,7 @@ namespace SceneryEditorX
         friend class VulkanQueue;
     };
 
-	/// ---------------------------------------------------------
+	// ---------------------------------------------------------
 
 	class VulkanDevice : public RefCounted
     {
@@ -216,9 +216,9 @@ namespace SceneryEditorX
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         void SetResourceName(void *resource, const ResourceType resourceType, const char *name);
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
         /// Function pointers for Vulkan extensions
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
         PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
         PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
         PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
@@ -307,7 +307,7 @@ namespace SceneryEditorX
 		Buffer scratchBuffer = {};
 		uint64_t scratchAddress;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         VkQueue GraphicsQueue = VK_NULL_HANDLE;
         VkQueue ComputeQueue = VK_NULL_HANDLE;
@@ -319,7 +319,7 @@ namespace SceneryEditorX
         std::mutex PresentQueueMutex;
         std::mutex TransferQueueMutex;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         /// Command pool management
         std::map<std::thread::id, Ref<CommandPool>> CmdPools;
@@ -338,7 +338,7 @@ namespace SceneryEditorX
          */
         void LoadExtensionFunctions();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    VkQueue vkQueue = VK_NULL_HANDLE;
         VkDevice vkDevice = VK_NULL_HANDLE;
@@ -348,4 +348,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

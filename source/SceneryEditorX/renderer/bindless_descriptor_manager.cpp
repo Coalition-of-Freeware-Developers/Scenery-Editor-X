@@ -16,7 +16,7 @@
 #include "vulkan/vk_util.h"
 #include <algorithm>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -81,7 +81,7 @@ namespace SceneryEditorX
 	    SEDX_CORE_ASSERT(s_Instance != nullptr, "BindlessDescriptorManager not initialized");
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	void BindlessDescriptorManager::AllocateSet()
 	{
@@ -113,7 +113,7 @@ namespace SceneryEditorX
 	
 	    VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &s_Layout))
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    std::vector<VkDescriptorPoolSize> poolSizes;
 	    poolSizes.reserve(5);
@@ -312,4 +312,4 @@ namespace SceneryEditorX
 	
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

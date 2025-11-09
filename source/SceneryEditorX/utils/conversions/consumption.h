@@ -12,7 +12,7 @@
 */
 #pragma once
 
-/// --------------------------------------------
+// --------------------------------------------
 
 namespace SceneryEditorX::Convert
 {
@@ -72,7 +72,7 @@ namespace SceneryEditorX::Convert
         return l_per_100km > 0.0f ? (100.0f / l_per_100km) : 0.0f;
     }
 
-    /// --- Direct cross-converters (economy <-> economy) ---
+    // --- Direct cross-converters (economy <-> economy) ---
     /// Note: Use guards for non-positive inputs to avoid nonsensical/negative results.
 
     /// mpg(US) <-> mpg(Imp)
@@ -128,4 +128,4 @@ namespace SceneryEditorX::Convert
 }
 
 
-/// -----------------------------------------------------
+// -----------------------------------------------------

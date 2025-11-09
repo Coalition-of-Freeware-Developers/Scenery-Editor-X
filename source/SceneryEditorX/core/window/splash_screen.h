@@ -14,7 +14,7 @@
 //#include "window.h"
 //#include <SceneryEditorX/renderer/texture.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -36,7 +36,7 @@ namespace SceneryEditorX
         Ref<SwapChain> splashSwap;
         Ref<Texture2D> splashTexture;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         bool InitializeSplashContext();
         bool CreateSplashTexture(unsigned char *imageData, int width, int height);
@@ -46,4 +46,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -26,7 +26,7 @@
 #include <vector>
 
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::IO
 {
@@ -82,7 +82,7 @@ namespace SceneryEditorX::IO
 
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class FileDialogs
 	{
@@ -91,7 +91,7 @@ namespace SceneryEditorX::IO
 		static std::string OpenFile(const char* filter);
 		static std::string SaveFile(const char* filter);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         static bool IsTexture(const std::filesystem::path &path);
         static bool IsModel(const std::filesystem::path &path);
@@ -100,7 +100,7 @@ namespace SceneryEditorX::IO
         static void WriteFileBytes(const std::filesystem::path &path, const std::vector<uint8_t> &content);
         static void WriteFile(const std::filesystem::path &path, const std::string &content);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    /*
         uint64_t Import(const std::filesystem::path &path, AssetManager &assets);
@@ -112,7 +112,7 @@ namespace SceneryEditorX::IO
         uint64_t Import3DS(const std::filesystem::path &path, const AssetManager &assets);
         */
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         //static void ImportTexture(const std::filesystem::path &path, Ref<TextureAsset> &t);
         //static uint64_t ImportTexture(const std::filesystem::path &path, AssetManager &assets);
@@ -176,4 +176,4 @@ namespace SceneryEditorX::IO
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

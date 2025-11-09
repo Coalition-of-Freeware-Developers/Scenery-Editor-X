@@ -18,7 +18,7 @@
 #include "SceneryEditorX/core/events/editor_events.h"
 #include "SceneryEditorX/platform/filesystem/file_manager.hpp"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -194,4 +194,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

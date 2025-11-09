@@ -17,13 +17,13 @@
 //#include "SceneryEditorX/renderer/shaders/shader.h"
 //#include "SceneryEditorX/renderer/vulkan/vk_image_view.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
 {
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     enum class MaterialFlag  // NOLINT(performance-enum-size)
 	{
@@ -34,7 +34,7 @@ namespace SceneryEditorX
 		DisableShadowCasting	= BIT(4)
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class Material : public RefCounted
 	{
@@ -124,7 +124,7 @@ namespace SceneryEditorX
 		virtual const std::string& GetName() const = 0;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class MaterialAsset : public Asset
     {
@@ -134,7 +134,7 @@ namespace SceneryEditorX
         virtual ~MaterialAsset() override;
         //virtual void Serialize(Serializer &ser);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         virtual void Load(const std::string &path) override;
         virtual void Unload() override;
@@ -146,7 +146,7 @@ namespace SceneryEditorX
         bool IsUsingNormalMap() const;
         void SetUseNormalMap(bool value) const;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         Vec3 &GetAlbedoColor() const;
         float &GetMetalness() const;
@@ -169,7 +169,7 @@ namespace SceneryEditorX
         void ClearMetalnessMap() const;
         void ClearNormalMap() const;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         Ref<Texture2D> GetAlbedoMap();
         Ref<Texture2D> GetRoughnessMap() const;
@@ -180,7 +180,7 @@ namespace SceneryEditorX
         void SetMaterial(const Ref<Material> &material) { m_Material = material; }
         bool IsTransparent() const { return m_Transparent; }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         Vec4 color = Vec4(1.0f);
         Vec3 emission = Vec3(0.0f);
@@ -211,7 +211,7 @@ namespace SceneryEditorX
         friend class AssetManager;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class MaterialTable : public RefCounted
 	{
@@ -244,4 +244,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

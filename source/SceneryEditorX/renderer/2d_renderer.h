@@ -21,7 +21,7 @@
 #include "vulkan/vk_render_pass.h"
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -32,7 +32,7 @@ namespace SceneryEditorX
     class Material;
     class Pipeline;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct Renderer2DSpecification
 	{
@@ -41,7 +41,7 @@ namespace SceneryEditorX
 		uint32_t MaxLines = 1000;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class Renderer2D : public RefCounted
 	{
@@ -59,37 +59,37 @@ namespace SceneryEditorX
 		void SetTargetFramebuffer(Ref<Framebuffer> &framebuffer);
 		void OnRecreateSwapchain();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Primitives
 		void DrawQuad(const Mat4 &transform, const Vec4 &color);
 		void DrawQuad(const Mat4 &transform, const Ref<Texture2D>& texture, float tilingFactor = 1.0f, const Vec4& tintColor = Vec4(1.0f), Vec2 uv0 = Vec2(0.0f), Vec2 uv1 = Vec2(1.0f));
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		void DrawQuad(const Vec2 &position, const Vec2& size, const Vec4& color);
 		void DrawQuad(const Vec3 &position, const Vec2& size, const Vec4& color);
 		void DrawQuad(const Vec2 &position, const Vec2& size, const Ref<Texture2D>& texture, float tilingFactor = 1.0f, const Vec4& tintColor = Vec4(1.0f), Vec2 uv0 = Vec2(0.0f), Vec2 uv1 = Vec2(1.0f));
 		void DrawQuad(const Vec3 &position, const Vec2& size, const Ref<Texture2D>& texture, float tilingFactor = 1.0f, const Vec4& tintColor = Vec4(1.0f), Vec2 uv0 = Vec2(0.0f), Vec2 uv1 = Vec2(1.0f));
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		void DrawQuadBillboard(const Vec3& position, const Vec2& size, const Vec4& color);
 		void DrawQuadBillboard(const Vec3& position, const Vec2& size, const Ref<Texture2D>& texture, float tilingFactor = 1.0f, const Vec4& tintColor = Vec4(1.0f));
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		void DrawRotatedQuad(const Vec2& position, const Vec2& size, float rotation, const Vec4& color);
 		void DrawRotatedQuad(const Vec3& position, const Vec2& size, float rotation, const Vec4& color);
 		void DrawRotatedQuad(const Vec2& position, const Vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor = 1.0f, const Vec4& tintColor = Vec4(1.0f));
 		void DrawRotatedQuad(const Vec3& position, const Vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor = 1.0f, const Vec4& tintColor = Vec4(1.0f));
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		void DrawRotatedRect(const Vec2& position, const Vec2& size, float rotation, const Vec4& color, bool onTop = false);
 		void DrawRotatedRect(const Vec3& position, const Vec2& size, float rotation, const Vec4& color, bool onTop = false);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Thickness is between 0 and 1
 		void DrawCircle(const Vec3& position, const Vec3& rotation, float radius, const Vec4& color, bool onTop = false);
@@ -97,7 +97,7 @@ namespace SceneryEditorX
 		void FillCircle(const Vec2& position, float radius, const Vec4& color, float thickness = 0.05f);
 		void FillCircle(const Vec3& position, float radius, const Vec4& color, float thickness = 0.05f);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		void DrawLine(const Vec3& p0, const Vec3& p1, const Vec4& color = Vec4(1.0f), bool onTop = false);
 		void DrawTransform(const Mat4& transform, float scale = 1.0f, bool onTop = true);
@@ -106,12 +106,12 @@ namespace SceneryEditorX
 		void DrawString(const std::string& string, const Ref<Font>& font, const Vec3& position, float maxWidth, const Vec4& color = Vec4(1.0f));
 		void DrawString(const std::string& string, const Ref<Font>& font, const Mat4& transform, float maxWidth, const Vec4& color = Vec4(1.0f), float lineHeightOffset = 0.0f, float kerningOffset = 0.0f);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		float GetLineWidth() const;
 		void SetLineWidth(float lineWidth);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Stats
 		struct DrawStatistics
@@ -123,7 +123,7 @@ namespace SceneryEditorX
             [[nodiscard]] uint32_t GetTotalIndexCount() const { return QuadCount * 6 + LineCount * 2; }
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct MemoryStatistics
 		{
@@ -132,7 +132,7 @@ namespace SceneryEditorX
             [[nodiscard]] uint64_t GetAllocatedPerFrame() const;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		void ResetStats();
 		DrawStatistics GetDrawStats() const;
@@ -146,7 +146,7 @@ namespace SceneryEditorX
 		void AddTextBuffer();
 		void AddCircleBuffer();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct QuadVertex
 		{
@@ -157,7 +157,7 @@ namespace SceneryEditorX
 			float TilingFactor;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct TextVertex
 		{
@@ -167,7 +167,7 @@ namespace SceneryEditorX
 			float TexIndex;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct LineVertex
 		{
@@ -175,7 +175,7 @@ namespace SceneryEditorX
 			Vec4 Color;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct CircleVertex
 		{
@@ -185,14 +185,14 @@ namespace SceneryEditorX
 			Vec4 Color;
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		QuadVertex* &GetWriteableQuadBuffer();
 		LineVertex* &GetWriteableLineBuffer(bool onTop);
 		TextVertex* &GetWriteableTextBuffer();
 		CircleVertex* &GetWriteableCircleBuffer();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		static constexpr uint32_t MaxTextureSlots = 32; ///< TODO: RenderCaps
 
@@ -207,7 +207,7 @@ namespace SceneryEditorX
 
 		using VertexBufferPerFrame = std::vector<Ref<VertexBuffer>>;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Quads
 		Ref<RenderPass> m_QuadPass;
@@ -235,7 +235,7 @@ namespace SceneryEditorX
 
 		Vec4 m_QuadVertexPositions[4];
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Lines
 		Ref<RenderPass> m_LinePass;
@@ -255,7 +255,7 @@ namespace SceneryEditorX
 		uint32_t m_LineBufferWriteIndex = 0;
 		uint32_t m_LineOnTopBufferWriteIndex = 0;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		///< Text
 		Ref<RenderPass> m_TextPass;
@@ -281,7 +281,7 @@ namespace SceneryEditorX
 
 		Ref<UniformBufferSet> m_UBSCamera;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    struct CameraUniformBuffer
 		{
@@ -293,4 +293,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

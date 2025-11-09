@@ -19,7 +19,7 @@
 #include "type_names.h"
 #include "type_utils.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Types
 {
@@ -31,15 +31,15 @@ namespace SceneryEditorX::Types
 	template<typename T, typename TTag = TDummyTag>
 	using Described = is_specialized<Description<std::remove_cvref_t<T>, TTag>>;
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 	///		Utility wrapper to operate on a list of member pointers.
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 	template<auto... MemberPointers>
 	struct MemberList
 	{
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 		/// Helper type definitions
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 		using TTuple = decltype(std::tuple(MemberPointers...));
 
 	private:
@@ -54,9 +54,9 @@ namespace SceneryEditorX::Types
 
 		static constexpr size_t Count() { return sizeof ... (MemberPointers); }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 		/// Call function on member list, or for each member
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		/** Apply a function to variadic pack of the member list. */
 		template<typename TObj, typename TFunc>
@@ -129,9 +129,9 @@ namespace SceneryEditorX::Types
 		}
 
 	public:
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 		/// Set member values
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		template<typename TValue, typename TObj>
 		static constexpr bool SetMemberValue(size_t memberIndex, const TValue& value, TObj&& Obj)
@@ -179,9 +179,9 @@ namespace SceneryEditorX::Types
 			return valueSet;
 		}
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 		/// Set member values
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 		template<size_t MemberIndex, typename TObj>
 		static constexpr auto GetMemberValue(const TObj& obj)
 		{
@@ -245,9 +245,9 @@ namespace SceneryEditorX::Types
 			return variant;
 		}
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 		/// Query type information
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    template<size_t MemberIndex>
 		static constexpr auto IsFunction()
@@ -331,9 +331,9 @@ namespace SceneryEditorX::Types
 	struct DescriptionInterface;
 
 #ifndef DESCRIBED
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 	/// Description provides reflection interface with access by strings.
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 #define DESCRIBED_TAGGED(Class, Tag, ...) template<>																											\
 struct SceneryEditorX::Types::Description<Class, Tag> : SceneryEditorX::Types::MemberList<__VA_ARGS__>,															\
@@ -358,9 +358,9 @@ public:																																							\
 #define DESCRIBED(Class, ...) DESCRIBED_TAGGED(Class, SceneryEditorX::Types::TDummyTag, __VA_ARGS__)
 #endif
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 	/// A convenience interface to move some stuff out of the macro.
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 	template<class TDescription, class TObjType, class TTag, class TList>
 	struct DescriptionInterface
 	{
@@ -512,8 +512,8 @@ public:																																							\
 		return os;
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

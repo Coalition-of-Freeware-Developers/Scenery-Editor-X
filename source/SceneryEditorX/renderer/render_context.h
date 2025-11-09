@@ -13,7 +13,7 @@
 #pragma once
 #include "vulkan/vk_device.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 struct GLFWwindow;
 
@@ -48,7 +48,7 @@ namespace SceneryEditorX
         VkInstance m_Instance		= VK_NULL_HANDLE;
         bool m_IsInitialized		= false;
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 #ifdef SEDX_DEBUG
         VkDebugReportCallbackEXT debugCallback = VK_NULL_HANDLE;
@@ -58,4 +58,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

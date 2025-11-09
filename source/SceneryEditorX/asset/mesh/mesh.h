@@ -21,7 +21,7 @@
 //#include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
 //#include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -403,4 +403,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

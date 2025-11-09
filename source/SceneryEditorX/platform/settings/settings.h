@@ -18,7 +18,7 @@
 #include "SceneryEditorX/core/application/application_data.h"
 #include "SceneryEditorX/utils/pointers.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -50,7 +50,7 @@ namespace SceneryEditorX
 	     */
 	    void WriteSettings();
 
-	    /// ----------------------------------------------------
+	    // ----------------------------------------------------
 
 	    /**
 	     * @brief Sets a string option with the specified key.
@@ -257,8 +257,8 @@ namespace SceneryEditorX
         bool configInitialized = false;                 ///< Flag indicating if config is initialized
 	};
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
 } // namespace SceneryEditorX
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

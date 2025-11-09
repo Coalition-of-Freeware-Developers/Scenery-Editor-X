@@ -15,18 +15,18 @@
 #include "vk_buffers.h"
 #include <xMath/includes/colors.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	#define VK_FLAGS_NONE 0
 	#define DEFAULT_FENCE_TIMEOUT 100000000000
 
 	typedef uint32_t Flags;
 
-	/// ---------------------------------------------------------
+	// ---------------------------------------------------------
 
     /**
      * @struct VulkanDeviceFeatures
@@ -101,7 +101,7 @@ namespace SceneryEditorX
         bool variableMultisampleRate				 = VK_FALSE; // Specifies whether all pipelines that will be bound to a command buffer during a subpass have the same value for VkPipelineMultisampleStateCreateInfo::rasterizationSamples.
         bool inheritedQueries						 = VK_FALSE; // Specifies whether a secondary command buffer may be executed while a query is active.
 
-		/// ------------------------------------------------------------------------------------------------------------------------------------------------
+		// ------------------------------------------------------------------------------------------------------------------------------------------------
 
         /// Helper function to initialize VkPhysicalDeviceFeatures from this struct
         [[nodiscard]] VkPhysicalDeviceFeatures GetPhysicalDeviceFeatures() const
@@ -166,7 +166,7 @@ namespace SceneryEditorX
         }
     };
 
-    /// -----------------------------------------------------------
+    // -----------------------------------------------------------
 
 	/**
 	* @struct Extensions
@@ -250,7 +250,7 @@ namespace SceneryEditorX
         uint32_t layerCount = 0;
     };
 
-    /// -----------------------------------------------------------
+    // -----------------------------------------------------------
 
     /**
 	 * @struct CommandResources
@@ -304,7 +304,7 @@ namespace SceneryEditorX
         std::vector<CommandResources> commands;
     };
 
-    /// -----------------------------------------------------------
+    // -----------------------------------------------------------
 
 	/**
 	 * @struct Viewport
@@ -330,7 +330,7 @@ namespace SceneryEditorX
         float maxDepth = 1.0f;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * @struct LightingData
@@ -352,7 +352,7 @@ namespace SceneryEditorX
         int shadowMapSamples = 4;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * @struct RenderData
@@ -372,7 +372,7 @@ namespace SceneryEditorX
         [[nodiscard]] uint32_t GetHeight() const { return height; }
         [[nodiscard]] uint32_t GetImageIndex() const { return imageIndex; }
 
-		/// --------------------------------------------------------
+		// --------------------------------------------------------
 
 		// const char *defaultValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
@@ -509,7 +509,7 @@ namespace SceneryEditorX
 
     };
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     /// Taken from the Vulkan 3D Graphics Cookbook Second Edition.
 	struct Dimensions
@@ -530,7 +530,7 @@ namespace SceneryEditorX
         uint32_t height = 0;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
      * @brief ImageClearValue is a union that holds clear values for images in Vulkan.
@@ -573,7 +573,7 @@ namespace SceneryEditorX
         int32_t x = 0,y = 0, z = 0;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     // TODO: Refactor and move this when Hash code and serialization is re-implemented
     static uint64_t HashCombine(uint64_t a, uint64_t b) { return a * 31 + b; }
@@ -585,7 +585,7 @@ namespace SceneryEditorX
     const uint32_t SHADER_REGISTER_SHIFT_T = 300;
     const uint32_t SHADER_REGISTER_SHIFT_S = 400;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     const float DEPTH_DONT_CARE = std::numeric_limits<float>::max();
     const float DEPTH_LOAD = std::numeric_limits<float>::infinity();
@@ -604,7 +604,7 @@ namespace SceneryEditorX
     const uint32_t DYNAMIC_OFFSET_EMPTY = std::numeric_limits<uint32_t>::max();
     const uint32_t MAX_BUFFER_UPDATE_SIZE = 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	static const VkPolygonMode VULKAN_POLYGON_MODE[] =
 	{
@@ -778,4 +778,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

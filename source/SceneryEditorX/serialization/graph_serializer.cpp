@@ -16,7 +16,7 @@
 #include "serialization_macros.h"
 #include "SceneryEditorX/utils/string_utils.h"
 
-/// -----------------------------------------------------------
+// -----------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -55,7 +55,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::SerializeNodes(nlohmann::json& out, const std::vector<GraphNode*>& nodes, std::function<void(nlohmann::json&, const GraphNode*)> nodeCallback)
@@ -122,7 +122,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::SerializeLinks(nlohmann::json& out, const std::vector<Link>& links, std::function<void(nlohmann::json&, const Link&)> linkCallback)
@@ -150,7 +150,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	using PinCandidate = DefaultGraphSerializer::DeserializationFactory::PinCandidate;
@@ -197,7 +197,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	[[nodiscard]] static std::optional<std::vector<PinCandidate>> TryLoadOutputs(const nlohmann::json& outputs, const NodeCandidate& node)
@@ -239,7 +239,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::TryLoadNodes(nlohmann::json& data, std::vector<GraphNode*>& nodes, const DeserializationFactory& factory)
@@ -420,7 +420,7 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	void DefaultGraphSerializer::TryLoadLinks(nlohmann::json &data, std::vector<Link>& links, std::function<void(nlohmann::json&, Link&)> linkCallback)
@@ -457,8 +457,8 @@ namespace SceneryEditorX
 	}
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 }
 
-/// -----------------------------------------------------------
+// -----------------------------------------------------------

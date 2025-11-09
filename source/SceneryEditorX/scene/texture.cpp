@@ -15,7 +15,7 @@
 #include "SceneryEditorX/logging/logging.hpp"
 #include "SceneryEditorX/renderer/render_context.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -39,7 +39,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /// TODO: Refactor this function with MemoryAllocator functions
 	void TextureAsset::Load(const std::string &path)
@@ -88,7 +88,7 @@ namespace SceneryEditorX
 
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /// TODO: Refactor this. Could probably be done cleaner and more efficiently.
     void TextureAsset::Unload()
@@ -127,7 +127,7 @@ namespace SceneryEditorX
         channels = 0;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     bool TextureAsset::IsLoaded() const
     {
@@ -149,7 +149,7 @@ namespace SceneryEditorX
         return textureName;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void TextureAsset::LoadWithAllocator()
     {
@@ -165,7 +165,7 @@ namespace SceneryEditorX
         /// Actual implementation will depend on the specific requirements and libraries used
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void TextureAsset::CreateTextureSampler()
 	{
@@ -192,14 +192,14 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR("Failed to create texture sampler!");
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void TextureAsset::CreateTextureImageView()
     {
         textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /// TODO: Refactor this function with MemoryAllocator functions
 	void TextureAsset::CreateTextureImage()
@@ -305,7 +305,7 @@ namespace SceneryEditorX
         vkFreeMemory(device, stagingBufferMemory, nullptr);
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	VkImageView TextureAsset::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlagBits aspectFlags, int mipLevels) const
     {
@@ -333,4 +333,4 @@ namespace SceneryEditorX
 
 }
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------

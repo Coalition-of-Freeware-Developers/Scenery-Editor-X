@@ -21,7 +21,7 @@
 //#include "SceneryEditorX/serialization/asset_serializer.h"
 //#include "SceneryEditorX/serialization/mesh_serializer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -307,4 +307,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

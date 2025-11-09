@@ -16,7 +16,7 @@
 //#include "material.h"
 //#include "SceneryEditorX/renderer/renderer.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -25,7 +25,7 @@ namespace SceneryEditorX
     /// Use nlohmann json for parsing material files
     using json = nlohmann::json;
     #1#
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     MaterialAsset::MaterialAsset(const std::string &path)
     {
@@ -37,7 +37,7 @@ namespace SceneryEditorX
         MaterialAsset::Unload();
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	static const std::string s_AlbedoColorUniform = "u_MaterialUniforms.AlbedoColor";
     static const std::string s_UseNormalMapUniform = "u_MaterialUniforms.UseNormalMap";
@@ -355,7 +355,7 @@ namespace SceneryEditorX
 		}
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	MaterialTable::MaterialTable(const uint32_t materialCount) : m_MaterialCount(materialCount) {}
 
@@ -388,4 +388,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

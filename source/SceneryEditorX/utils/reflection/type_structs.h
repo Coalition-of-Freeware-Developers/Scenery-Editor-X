@@ -17,7 +17,7 @@
 #include "type_descriptors.h"
 #include "SceneryEditorX/utils/string_utils.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX::Types
 {
@@ -44,7 +44,7 @@ namespace SceneryEditorX::Types
 			}
 		};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		struct ClassInfo
 		{
@@ -92,7 +92,7 @@ namespace SceneryEditorX::Types
 
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	struct TestStruct
 	{
@@ -106,14 +106,14 @@ namespace SceneryEditorX::Types
         { return true; }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	namespace Type
 	{
 		DESCRIBED(TestStruct, &TestStruct::i, &TestStruct::f, &TestStruct::ch, &TestStruct::pi, &TestStruct::vfunc, &TestStruct::bfunc);
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	namespace Reflection
 	{
@@ -180,4 +180,4 @@ namespace SceneryEditorX::Types
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

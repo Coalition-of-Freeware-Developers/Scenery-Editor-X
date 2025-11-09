@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <vulkan/vulkan.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -78,7 +78,7 @@ namespace SceneryEditorX
 	    VkCommandPool TransferCmdPool = VK_NULL_HANDLE;
 	};
 
-	/// ---------------------------------------------------------
+	// ---------------------------------------------------------
 
     /**
      * @brief Thread-local command pool manager for multithreaded recording
@@ -142,7 +142,7 @@ namespace SceneryEditorX
 	    SUBMITTED
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct ImageBarrierInfo
     {
@@ -156,7 +156,7 @@ namespace SceneryEditorX
         bool isDepth = false;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class CommandManager : public RefCounted
 	{
@@ -169,7 +169,7 @@ namespace SceneryEditorX
         void ExecutionWait(const bool waitTime = false);
         void PipelineState();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		// Draw
 		void Draw(const uint32_t count, const uint32_t vertexStartIdx = 0);
@@ -309,4 +309,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

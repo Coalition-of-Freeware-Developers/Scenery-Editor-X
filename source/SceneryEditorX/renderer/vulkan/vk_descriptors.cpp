@@ -13,7 +13,7 @@
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_descriptors.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -40,7 +40,7 @@ namespace SceneryEditorX
         return descriptor_set;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     void UpdateDescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout)
     {
@@ -61,10 +61,10 @@ namespace SceneryEditorX
         vkUpdateDescriptorSets(device, 1, descriptor_write, 0, nullptr);
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     // Deprecated per-resource bindless update helpers removed (BindlessDescriptorManager handles updates now).
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

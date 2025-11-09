@@ -14,7 +14,7 @@
 //#include <SceneryEditorX/renderer/render_pass.h>
 //#include <SceneryEditorX/renderer/texture.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -42,4 +42,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -11,28 +11,26 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "Editor/projects/project.h"
-
-
 #include <Editor/core/viewport.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/platform/settings/user_settings.h>
-#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/vulkan/vk_data.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
+#include "Editor/projects/project.h"
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
     #define MAX_PROJECT_NAME_LENGTH 255
     #define MAX_PROJECT_FILEPATH_LENGTH 512
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     /**
 	 * @class EditorApplication
@@ -68,12 +66,12 @@ namespace SceneryEditorX
         void UpdateWindowTitle(const std::string &sceneName);
         void UI_DrawMenubar();
 
-        /// Returns titlebar height
+        // Returns titlebar height
         float UI_DrawTitlebar();
         void UI_HandleManualWindowResize();
         bool UI_TitleBarHitTest(int x, int y) const;
 
-        /// Popups
+        // Popups
         void UI_ShowNewProjectPopup();
         void UI_ShowLoadAutoSavePopup();
         void UI_ShowCreateAssetsFromMeshSourcePopup();
@@ -87,13 +85,13 @@ namespace SceneryEditorX
 
         void UI_BuildAssetPackDialog();
 
-        /// Viewports
+        // Viewports
         /*
         Ref<Viewport> GetMainViewport();
         void SetMainViewport(const std::string &viewportName);
         */
 
-        /// Statistics Panel Rendering
+        // Statistics Panel Rendering
         void UI_StatisticsPanel();
 
         float GetSnapValue();

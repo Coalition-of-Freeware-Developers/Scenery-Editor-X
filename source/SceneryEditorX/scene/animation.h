@@ -13,7 +13,7 @@
 #pragma once
 //#include "SceneryEditorX/asset/asset.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -24,7 +24,7 @@ namespace SceneryEditorX
 	    Animation();
 	    virtual ~Animation() override;
 	
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 	
 	    virtual void Load(const std::string &path) override;
 	    virtual void Unload() override;
@@ -40,4 +40,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

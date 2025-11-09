@@ -16,7 +16,7 @@
 //#include "SceneryEditorX/logging/asserts.h"
 //#include "SceneryEditorX/renderer/render_context.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Check for cache validity																			  ///
@@ -26,7 +26,7 @@
 /// The code below supports SDK 0.10 Vulkan spec, which contains the following table:					  ///
 ///																										  ///
 /// Offset	 Size            Meaning																	  ///
-/// ------    ------------    ------------------------------------------------------------------		  ///
+// ------    ------------    ------------------------------------------------------------------		  ///
 ///      0               4    a device ID equal to VkPhysicalDeviceProperties::DeviceId written			  ///
 ///                           as a stream of bytes, with the least significant byte first				  ///
 ///																										  ///
@@ -36,7 +36,7 @@
 /// The code must be updated for latest Vulkan spec, which contains the following table:				  ///
 ///																										  ///
 /// Offset	 Size            Meaning																	  ///
-/// ------    ------------    ------------------------------------------------------------------		  ///
+// ------    ------------    ------------------------------------------------------------------		  ///
 ///      0               4    length in bytes of the entire pipeline cache header written as a			  ///
 ///                           stream of bytes, with the least significant byte first					  ///
 ///      4               4    a VkPipelineCacheHeaderVersion value written as a stream of bytes,		  ///
@@ -57,7 +57,7 @@ namespace SceneryEditorX
     static std::string PIPELINE_CACHE_FILE = "pipeline_cache.bin";
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     void PipelineCache::CheckCache(char *cacheData, size_t cacheDataSize)
@@ -74,7 +74,7 @@ namespace SceneryEditorX
         /// Check each field and report bad values before freeing existing cache
         bool badCache = false;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         if (cacheHeader <= 0)
         {
@@ -111,7 +111,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     void PipelineCache::LoadCache()
@@ -202,7 +202,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     void PipelineCache::DestroyCache()
@@ -216,7 +216,7 @@ namespace SceneryEditorX
     }
     */
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     void PipelineCache::SaveCache()
@@ -257,4 +257,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

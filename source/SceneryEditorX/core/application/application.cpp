@@ -17,18 +17,18 @@
 #include "SceneryEditorX/renderer/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/vk_swapchain.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 extern bool appRunning; /// Global variable to control the application loop
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
     Application *Application::appInstance = nullptr;
     static std::thread::id s_MainThreadID;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     Application::Application(const AppData &appData)
     {
@@ -211,4 +211,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------

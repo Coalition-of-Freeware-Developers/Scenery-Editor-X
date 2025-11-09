@@ -13,14 +13,14 @@
 #pragma once
 #include "SceneryEditorX/renderer/vulkan/vk_allocator.h"
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
     /// Forward Declaration
     enum class PrimitiveType : uint8_t;
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     /**
      * @class VertexBuffer
@@ -335,7 +335,7 @@ namespace SceneryEditorX
          */
         void UploadPartialVertexData(uint64_t offset, uint64_t size) const;
 
-        /// ---- Primitive Generation Helper Methods ----
+        // ---- Primitive Generation Helper Methods ----
 
         /**
          * @brief Generates vertices for a cube primitive
@@ -376,7 +376,7 @@ namespace SceneryEditorX
         mutable Ref<MemoryAllocator> m_MemoryAllocator;
     };
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     /**
      * @brief Returns the size in bytes of a given shader data type.
@@ -513,4 +513,4 @@ namespace SceneryEditorX
 
 }
 
-/// ----------------------------------------------------------
+// ----------------------------------------------------------

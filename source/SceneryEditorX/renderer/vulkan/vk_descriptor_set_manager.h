@@ -17,7 +17,7 @@
 //#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
 //#include "SceneryEditorX/renderer/shaders/shader.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -50,7 +50,7 @@ namespace SceneryEditorX
         return ResourceInputType::None;
     }
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     struct DescriptorSetManagerSpecification
     {
@@ -61,7 +61,7 @@ namespace SceneryEditorX
         bool DefaultResources = false;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class DescriptorSetManager
     {
@@ -93,7 +93,7 @@ namespace SceneryEditorX
         void AddInput(std::string_view name, Ref<Image2D>& image);
         void AddInput(std::string_view name, Ref<ImageView>& image);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         template<typename T>
         Ref<T> GetInput(std::string_view name)
@@ -109,7 +109,7 @@ namespace SceneryEditorX
             return nullptr;
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         void Bake();
         bool Validate();
@@ -131,4 +131,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -17,7 +17,7 @@
 #include "vulkan/vk_enums.h"
 #include "vulkan/vk_image.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -82,7 +82,7 @@ namespace SceneryEditorX
 		bool storeLocally = false;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class Texture : public Resource
 	{
@@ -108,7 +108,7 @@ namespace SceneryEditorX
 		virtual int32_t GetBindlessSamplerIndex() const { return -1; }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class Texture2D : public Texture
 	{
@@ -213,7 +213,7 @@ namespace SceneryEditorX
 	    void* m_mappedData = nullptr;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class TextureCube : public Texture
 	{
@@ -256,4 +256,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

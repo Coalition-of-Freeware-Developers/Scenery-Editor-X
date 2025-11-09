@@ -15,7 +15,7 @@
 #include "vk_descriptor_set_manager.h"
 #include "vk_pipeline.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	    std::string debugName;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /**
 	 * @class RenderPass
@@ -69,7 +69,7 @@ namespace SceneryEditorX
 	    RenderSpec& GetSpecification() { return renderSpec; }
 	    const RenderSpec& GetSpecification() const { return renderSpec; }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    void AddInput(std::string_view name, Ref<UniformBufferSet> &uniformBufferSet);
         void AddInput(std::string_view name, Ref<UniformBuffer> &uniformBuffer);
@@ -79,7 +79,7 @@ namespace SceneryEditorX
 	    void AddInput(std::string_view name, Ref<TextureCube> &textureCube);
 	    void AddInput(std::string_view name, Ref<Image2D> &image);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		Ref<Image2D> GetOutput(uint32_t index);
         Ref<Image2D> GetDepthOutput();
@@ -87,14 +87,14 @@ namespace SceneryEditorX
         Ref<Framebuffer> GetTargetFramebuffer() const;
         Ref<Pipeline> GetPipeline() const;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    bool Validate();
 		void Bake();
 		bool Baked() const { return (bool)m_DescriptorSetManager.GetDescriptorPool(); }
 		void Prepare();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		bool HasDescriptorSets() const;
 		const std::vector<VkDescriptorSet>& GetDescriptorSets(uint32_t frameIndex) const;
@@ -114,4 +114,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

@@ -27,7 +27,7 @@
  #include <type_traits>
  #include <unordered_map>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -102,7 +102,7 @@ namespace SceneryEditorX
 		mutable std::atomic<uint32_t> m_RefCount{0};
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Alias template for a unique pointer to type T.
@@ -128,7 +128,7 @@ namespace SceneryEditorX
 		return std::make_unique<T>(std::forward<Args>(args)...);
 	}
 
-    /// ----------------------------------------------------------
+    // ----------------------------------------------------------
 
     namespace Internal
     {
@@ -311,12 +311,12 @@ namespace SceneryEditorX
 		};
     } // namespace Internal
 
-    /// -----------------------------------------------------------
+    // -----------------------------------------------------------
 
 	template <typename T>
 	class WeakRef;
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
 	/**
 	 * @brief A reference-counting smart pointer that manages shared ownership of objects.
@@ -753,7 +753,7 @@ namespace SceneryEditorX
         friend class WeakRef;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief A weak reference to an object managed by Ref<T>.
@@ -934,7 +934,7 @@ namespace SceneryEditorX
 		friend class Ref;
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Creates a reference-counted object of type T.
@@ -1673,4 +1673,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

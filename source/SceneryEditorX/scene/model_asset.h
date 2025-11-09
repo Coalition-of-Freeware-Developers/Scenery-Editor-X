@@ -16,14 +16,14 @@
 //#include "node.h"
 //#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
 {
 	//struct Serializer;
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
     struct MeshVertex
     {
@@ -33,14 +33,14 @@ namespace SceneryEditorX
         Vec4 tangent;
         Vec2 texCoord;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         bool operator==(const MeshVertex &other) const
         {
             return position == other.position && normal == other.normal && texCoord == other.texCoord;
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         static VkVertexInputBindingDescription getBindingDescription()
         {
@@ -52,7 +52,7 @@ namespace SceneryEditorX
             return bindingDescription;
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions()
         {
@@ -92,7 +92,7 @@ namespace SceneryEditorX
         }
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     class ModelAsset : public Asset
 	{
@@ -119,7 +119,7 @@ namespace SceneryEditorX
         std::vector<MeshVertex> vertices;
         std::vector<uint32_t> indices;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         virtual void Load(const std::string &path) override;
         virtual void Unload() override;
@@ -153,9 +153,9 @@ namespace SceneryEditorX
     };
     #1#
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

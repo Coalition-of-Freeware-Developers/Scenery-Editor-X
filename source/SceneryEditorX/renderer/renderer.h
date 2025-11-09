@@ -30,12 +30,12 @@
 #include "vulkan/vk_cmd_buffers.h"
 #include "render_pass.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    /// Forward declaration to break circular dependency
+    // Forward declaration to break circular dependency
     class RenderContext;
 
     /**
@@ -73,6 +73,7 @@ namespace SceneryEditorX
 			RenderDispatcher::Enqueue(std::forward<FuncT>(func));
 		}
 
+		// Async resource free submission (deferred destruction)
 		template<typename FuncT>
 		static inline void SubmitResourceFree(FuncT&& func)
 		{
@@ -85,18 +86,18 @@ namespace SceneryEditorX
 		 */
 		static Ref<RenderContext> GetContext();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         static void Init();
 		static void Shutdown();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         static void BeginFrame();
         static void EndFrame();
         static void SubmitFrame();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
         * @brief Access current frame's aggregated immutable render data.
@@ -110,7 +111,7 @@ namespace SceneryEditorX
         */
         static void SetRenderData(const RenderData &renderData);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Get the current frame-in-flight index (ring buffer slot).
@@ -118,7 +119,7 @@ namespace SceneryEditorX
          */
         static uint64_t GetCurrentFrameIndex();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Build a VkDescriptorSetAllocateInfo helper struct.
@@ -142,7 +143,7 @@ namespace SceneryEditorX
          */
         //Ref<Material> &GetStandardMaterial();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         /**
          * @brief Create a Vulkan sampler object.
@@ -157,13 +158,13 @@ namespace SceneryEditorX
          */
         static void DestroySampler(VkSampler sampler);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		/**
 		 * @brief Access the global shader library.
 		 * @return Shared reference to ShaderLibrary.
 		 */
-		//static Ref<ShaderLibrary> GetShaderLibrary();
+		// static Ref<ShaderLibrary> GetShaderLibrary();
 
 		/**
 		 * @brief Get the current frame index as seen from the render thread (may differ from CPU).
@@ -210,7 +211,7 @@ namespace SceneryEditorX
         static const Vec2 &GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         //static void RenderStaticMesh(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<StaticMesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t instanceCount);
 		//static void RenderSubmeshInstanced(Ref<CommandBuffer> renderCommandBuffer, Ref<Pipeline> pipeline, Ref<Mesh> mesh, Ref<MeshSource> meshSource, uint32_t submeshIndex, Ref<MaterialTable> materialTable, Ref<VertexBuffer> transformBuffer, uint32_t transformOffset, uint32_t boneTransformsOffset, uint32_t instanceCount);
@@ -224,7 +225,7 @@ namespace SceneryEditorX
 		//static void SubmitQuad(Ref<CommandBuffer> renderCommandBuffer, Ref<Material> material, const Mat4& transform = Mat4(1.0f));
 		//static void BlitImage(Ref<CommandBuffer> renderCommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		//static Ref<Texture2D> GetWhiteTexture();
 		//static Ref<Texture2D> GetBlackTexture();
@@ -363,7 +364,7 @@ namespace SceneryEditorX
 		 */
         SwapChain m_SwapChain = {};
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
         static void CreateRenderTargets(bool create_render, bool create_output, bool create_dynamic);
         static void CreateDepthStencilStates();
@@ -376,13 +377,13 @@ namespace SceneryEditorX
         static void CreateStandardTextures();
         static void CreateStandardMaterials();
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 		// TODO: These are temporary and will be replaced with the Image and ImageView classes.
 		std::vector<VkImage> m_images;
 		std::vector<VkImageView> m_imageViews;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    std::array<Ref<Texture2D>, static_cast<uint32_t>(RenderTarget::MaxEnum)> &GetRenderTargets();
         std::array<Ref<Shader>, static_cast<uint32_t>(ShaderType::MaxEnum)> &GetShaders();
@@ -396,4 +397,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

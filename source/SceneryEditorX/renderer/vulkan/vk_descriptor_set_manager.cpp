@@ -19,7 +19,7 @@
 //#include "SceneryEditorX/renderer/renderer.h"
 //#include "SceneryEditorX/renderer/shaders/shader_resource.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -799,4 +799,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

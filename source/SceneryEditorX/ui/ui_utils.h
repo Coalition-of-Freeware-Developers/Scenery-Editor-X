@@ -18,7 +18,7 @@
 //#include "colors.h"
 //#include "SceneryEditorX/renderer/texture.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX::UI
@@ -29,7 +29,7 @@ namespace SceneryEditorX::UI
 
     ImTextureID GetTextureID(const Ref<Texture2D> &texture);
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedStyle
 	{
@@ -46,7 +46,7 @@ namespace SceneryEditorX::UI
 		~ScopedStyle() { ImGui::PopStyleVar(); }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedColour
 	{
@@ -63,7 +63,7 @@ namespace SceneryEditorX::UI
 		~ScopedColour() { ImGui::PopStyleColor(); }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedFont
 	{
@@ -74,7 +74,7 @@ namespace SceneryEditorX::UI
 		~ScopedFont() { ImGui::PopFont(); }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedID
 	{
@@ -91,7 +91,7 @@ namespace SceneryEditorX::UI
 		~ScopedID() { ImGui::PopID(); }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	template<>
 	inline ScopedID::ScopedID(const UUID id)
@@ -99,7 +99,7 @@ namespace SceneryEditorX::UI
 	    ImGui::PushID(reinterpret_cast<const void*>(static_cast<uint64_t>(id))); /// because otherwise it will call PushID(int) which is not what we want
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedColourStack
 	{
@@ -134,7 +134,7 @@ namespace SceneryEditorX::UI
 		}
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedStyleStack
 	{
@@ -169,7 +169,7 @@ namespace SceneryEditorX::UI
 		}
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedItemFlags
 	{
@@ -184,7 +184,7 @@ namespace SceneryEditorX::UI
 		~ScopedItemFlags() { ImGui::PopItemFlag(); }
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	class ScopedDisable
 	{
@@ -195,7 +195,7 @@ namespace SceneryEditorX::UI
 		~ScopedDisable();
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/// The delay won't work on texts, because the timer isn't tracked for them.
 	inline bool IsItemHovered(float delayInSeconds = 0.1f, ImGuiHoveredFlags flags = 0)
@@ -287,7 +287,7 @@ namespace SceneryEditorX::UI
 		return colRaw;
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/// TODO: move most of the functions in this header into the Draw namespace
 	namespace Draw
@@ -1047,4 +1047,4 @@ namespace SceneryEditorX::UI
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

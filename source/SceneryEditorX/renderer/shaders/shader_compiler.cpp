@@ -13,7 +13,7 @@
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/renderer/shaders/shader_compiler.h>
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -54,11 +54,11 @@ namespace SceneryEditorX
 	    return buffer;
 	}
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     //const std::string_view ShaderCompiler::GLSL_VALIDATOR = R"(glslangValidator)";
 
 } // namespace SceneryEditorX
 
-/// ---------------------------------------------------------
+// ---------------------------------------------------------
 

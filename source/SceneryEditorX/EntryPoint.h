@@ -15,12 +15,12 @@
 #include "core/application/application.h"
 #include "logging/asserts.h"
 
-/// ----------------------------------------------------
+// ----------------------------------------------------
 
 extern SceneryEditorX::Application* CreateApplication(int argc, char** argv);
 inline bool appRunning = true;
 
-/// ----------------------------------------------------
+// ----------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -40,7 +40,7 @@ namespace SceneryEditorX
 
 }
 
-/// ----------------------------------------------------
+// ----------------------------------------------------
 
 #if defined(SEDX_RELEASE) && defined(SEDX_PLATFORM_WINDOWS)
 	int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
@@ -56,4 +56,4 @@ namespace SceneryEditorX
 
 #endif // SEDX_RELEASE && SEDX_PLATFORM_WINDOWS
 
-/// ----------------------------------------------------
+// ----------------------------------------------------

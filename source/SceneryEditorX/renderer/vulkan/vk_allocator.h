@@ -14,7 +14,7 @@
 #include "vk_buffers.h"
 #include <vma/vk_mem_alloc.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -22,7 +22,7 @@ namespace SceneryEditorX
     class VulkanDevice;
     struct AppData;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @struct MemoryPool
@@ -48,7 +48,7 @@ namespace SceneryEditorX
         }
     };
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     // Constants for common sizes
     constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;					// 256KB
@@ -58,7 +58,7 @@ namespace SceneryEditorX
     /// This is a default value and will be overridden by users settings.
     constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024;	// 16MB
 
-    /// ---------------------------------------------------------
+    // ---------------------------------------------------------
 
     /**
 	 * @class MemoryAllocator
@@ -88,7 +88,7 @@ namespace SceneryEditorX
         // Method to mark an allocation as defragmentable
         void MarkForDefragmentation(VmaAllocation allocation);
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
 		/**
 		 * @struct AllocationStats
@@ -144,7 +144,7 @@ namespace SceneryEditorX
 		 */
 		static bool SetCustomBufferSize(VkDeviceSize size, const VulkanDevice& device);
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
 		/**
 		 * @struct MemoryBudget
@@ -167,11 +167,11 @@ namespace SceneryEditorX
         [[nodiscard]] MemoryBudget GetMemoryBudget() const;
         void SetMemoryUsageWarningThreshold(float percentage);
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
         void SetBufferAlignment(VkDeviceSize alignment);
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
 		/**
 		 * @struct BatchBufferAllocation
@@ -196,7 +196,7 @@ namespace SceneryEditorX
         [[nodiscard]] std::vector<BatchBufferAllocation> AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, BufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO) const;
         void FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations);
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
         VmaAllocation AllocateBuffer(const VkBufferCreateInfo &bufferCreateInfo, VmaMemoryUsage usage, VkBuffer &outBuffer);
         VmaAllocation AllocateImage(const VkImageCreateInfo &imageCreateInfo, VmaMemoryUsage usage, VkImage &outImage, VkDeviceSize* allocatedSize = nullptr);
@@ -204,7 +204,7 @@ namespace SceneryEditorX
         void Free(VmaAllocation allocation);
         void DestroyImage(VkImage image, VmaAllocation allocation);
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
 		/**
 		 * @tparam T
@@ -242,14 +242,14 @@ namespace SceneryEditorX
             return mappedMemory;
 		}
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
         static void UnmapMemory(VmaAllocation allocation);
         static VmaAllocator GetAllocator();
 		static void Init(const uint32_t &apiVersion);
 		static void Shutdown();
 
-		/// ---------------------------------------------------------
+		// ---------------------------------------------------------
 
     private:
         std::string tag_ = "default tag";
@@ -257,25 +257,25 @@ namespace SceneryEditorX
         VmaDefragmentationContext defragmentationContext = nullptr;
         AllocationStrategy currentStrategy = AllocationStrategy::DEFAULT;
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         // Fixed-size pools for common allocation sizes
         std::unordered_map<VkDeviceSize, MemoryPool> bufferPools;
         std::unordered_map<VkDeviceSize, MemoryPool> imagePools;
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         // Helper methods for pool creation and retrieval
         VmaPool GetOrCreateBufferPool(VkDeviceSize size, VmaMemoryUsage usage);
         VmaPool GetOrCreateImagePool(VkDeviceSize size, VmaMemoryUsage usage);
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         // For thread safety
         std::mutex allocationMutex;
         std::mutex poolMutex;
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         float memoryWarningThreshold = 0.9f; /// 90% usage generates warnings
         [[nodiscard]] bool CheckMemoryBudget() const;
@@ -290,4 +290,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

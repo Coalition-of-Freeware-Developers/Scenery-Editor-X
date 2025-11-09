@@ -14,11 +14,11 @@
 #pragma once
 #include <cstdint>
 
-/// -----------------------------------------------------
+// -----------------------------------------------------
 
 constexpr auto SEDX_FONT_ICON_FILE_NAME_FA = "fontawesome-webfont.ttf";
 
-/// -----------------------------------------------------
+// -----------------------------------------------------
 
 enum SEDX_ICON_FON : uint16_t
 {
@@ -26,7 +26,7 @@ enum SEDX_ICON_FON : uint16_t
     SEDX_ICON_MAX = 0xf307
 };
 
-/// -----------------------------------------------------
+// -----------------------------------------------------
 
 constexpr auto SEDX_ICON_GLASS							= "\uf000";
 constexpr auto SEDX_ICON_MUSIC							= "\uf001";
@@ -738,4 +738,4 @@ constexpr auto SEDX_ICON_DOGMAZIC						= "\uf303";
 constexpr auto SEDX_ICON_NEXTCLOUD						= "\uf306";
 constexpr auto SEDX_ICON_NEXTCLOUD_SQUARE				= "\uf307";
 
-/// -----------------------------------------------------
+// -----------------------------------------------------

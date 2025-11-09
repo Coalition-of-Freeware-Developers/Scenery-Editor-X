@@ -18,7 +18,7 @@
 #include <mutex>
 #include <utility>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -62,7 +62,7 @@ namespace SceneryEditorX
         const char *Category = nullptr;
     };
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	namespace Memory
 	{
@@ -81,7 +81,7 @@ namespace SceneryEditorX
 
 	}
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 	/**
 	 * @struct Mallocator
 	 * @brief A minimal STL-compatible allocator that uses malloc/free.
@@ -175,7 +175,7 @@ namespace SceneryEditorX
 		std::mutex MutexStats_;
 	};
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	/**
 	 * @class Allocator
@@ -276,7 +276,7 @@ namespace SceneryEditorX
 
 } // namespace SceneryEditorX
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 #if SEDX_TRACK_MEMORY
 

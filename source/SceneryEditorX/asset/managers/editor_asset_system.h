@@ -18,7 +18,7 @@
 #include "SceneryEditorX/asset/asset_metadata.h"
 #include "SceneryEditorX/core/threading/thread.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -80,4 +80,4 @@ namespace SceneryEditorX
 
 }
 
-/// --------------------------------------------------------
+// --------------------------------------------------------

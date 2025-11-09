@@ -16,7 +16,7 @@
 #include "SceneryEditorX/asset/asset_pack_header.h"
 #include "SceneryEditorX/utils/filestreaming/file_streaming.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -29,7 +29,7 @@ namespace SceneryEditorX
 	class Scene;
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	struct AssetSerializationInfo
@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class AssetSerializer
@@ -54,7 +54,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class TextureSerializer : public AssetSerializer
@@ -68,7 +68,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class FontSerializer : public AssetSerializer
@@ -82,7 +82,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class MaterialAssetSerializer : public AssetSerializer
@@ -104,7 +104,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class EnvironmentSerializer : public AssetSerializer
@@ -118,7 +118,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class PrefabSerializer : public AssetSerializer
@@ -135,7 +135,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class SceneAssetSerializer : public AssetSerializer
@@ -150,7 +150,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
     /*
     class MeshColliderSerializer : public AssetSerializer
@@ -167,7 +167,7 @@ namespace SceneryEditorX
 	};
 	*/
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/*
 	class ScriptFileSerializer : public AssetSerializer
@@ -183,4 +183,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

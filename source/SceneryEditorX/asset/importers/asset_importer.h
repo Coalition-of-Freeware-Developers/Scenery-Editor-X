@@ -18,7 +18,7 @@
 //#include "SceneryEditorX/serialization/asset_serializer.h"
 //#include "SceneryEditorX/utils/filestreaming/file_streaming.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -44,4 +44,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

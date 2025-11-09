@@ -19,7 +19,7 @@
 #include <vector>
 #include <SceneryEditorX/utils/system_detection.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 #ifdef SEDX_DEBUG
 constexpr bool enableValidationLayers = true;
@@ -27,7 +27,7 @@ constexpr bool enableValidationLayers = true;
 constexpr bool enableValidationLayers = false;
 #endif
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /**
 * Type aliases for fixed-width integer types
@@ -44,7 +44,7 @@ using f32 = float;    ///< 32-bit floating point
 using f64 = double;   ///< 64-bit floating point
 using ResourceID = u32;      ///< Resource Identifier, alias for unsigned 32-bit integer
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 // Forward declarations to avoid heavy includes and cycles
 namespace xMath
@@ -65,7 +65,7 @@ namespace xMath
 	
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 using Vec2	=	xMath::TVector2<float>;   	///< 2D vector
 using Vec3	=	xMath::TVector3<float>;   	///< 3D vector
@@ -84,11 +84,11 @@ using Mat3	=	xMath::Mat3;                ///< 3x3 matrix
 using Mat4	=	xMath::Mat4;                ///< 4x4 matrix
 using Quat	=	xMath::Quat;                ///< Quaternion for rotation
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 using namespace xMath;
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /**
  * @brief Aligns a size value to a specified alignment boundary.
@@ -195,7 +195,7 @@ using namespace xMath;
  */
 #define SEDX_BIND_EVENT_FN(fn) [this](auto &&...args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
@@ -298,7 +298,7 @@ namespace SceneryEditorX
 	    std::atomic_flag flag; ///< The underlying atomic flag that stores the state
 	};
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
 	/**
 	 * @struct Flag

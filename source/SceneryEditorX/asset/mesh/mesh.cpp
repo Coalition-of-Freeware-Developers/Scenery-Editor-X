@@ -14,7 +14,7 @@
 //#include "SceneryEditorX/asset/managers/asset_manager.h"
 //#include "SceneryEditorX/project/project.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX
@@ -325,4 +325,4 @@ namespace SceneryEditorX
 }
 */
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

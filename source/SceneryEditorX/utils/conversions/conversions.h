@@ -23,11 +23,11 @@
 #include "force.h"
 #include "consumption.h"
 
-/// --------------------------------------------
+// --------------------------------------------
 
 namespace SceneryEditorX::Convert
 {
   using PressureUnits = PressureUnit; /// Back-compat alias
 }
 
-/// --------------------------------------------
+// --------------------------------------------

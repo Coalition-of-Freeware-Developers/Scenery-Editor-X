@@ -22,17 +22,17 @@
 #include "SceneryEditorX/scene/scene.h"
 #include "SceneryEditorX/scene/texture.h"
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
 	/*
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	inline std::string ShadowTypeNames[] = {"Disabled", "RayTraced", "Map"};
 
-	/// -------------------------------------------------------
+	// -------------------------------------------------------
 
 	class AssetManager
     {
@@ -40,13 +40,13 @@ namespace SceneryEditorX
         AssetManager();
         ~AssetManager();
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		std::vector<Ref<Node>> AddAssetsToScene(Ref<Scene> &scene, const std::vector<std::string> &paths);
         void LoadProject(const std::filesystem::path& path, const std::filesystem::path& binPath);
         void SaveProject(const std::filesystem::path& path, const std::filesystem::path &binPath);
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		Ref<Scene> GetInitialScene();
         //static Ref<CameraNode> GetMainCamera(const Ref<Scene> &scene);
@@ -169,7 +169,7 @@ namespace SceneryEditorX
             return Project::GetAssetManager()->GetAssetType(assetHandle);
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 	    bool HasLoadRequest() const;
         void LoadRequestedProject();
@@ -178,7 +178,7 @@ namespace SceneryEditorX
         std::filesystem::path GetCurrentProjectPath();
         std::filesystem::path GetCurrentBinPath();
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		/**
 		 * @brief Gets the asset with the specified UUID.
@@ -195,7 +195,7 @@ namespace SceneryEditorX
             return assets[uuid].DynamicCast<T>();
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		/**
 		 * @brief Gets all assets of a specific type.
@@ -280,7 +280,7 @@ namespace SceneryEditorX
 		    Project::GetAssetManager()->RemoveAsset(handle);
 		}
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         template <typename T>
         std::vector<Ref<T>> GetAll(ObjectType type) const
@@ -294,7 +294,7 @@ namespace SceneryEditorX
             return all;
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
 		template <typename T>
         static Ref<T> CreateObject(const std::string &name, uint32_t uuid = 0)
@@ -308,7 +308,7 @@ namespace SceneryEditorX
             return a;
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         template <typename T>
         Ref<T> CreateAsset(const std::string &name, uint32_t uuid = 0)
@@ -326,7 +326,7 @@ namespace SceneryEditorX
             return a;
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         Ref<Object> CreateObject(ObjectType type, const std::string &name, const uint32_t uuid = 0)
         {
@@ -343,7 +343,7 @@ namespace SceneryEditorX
             }
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         template <typename T>
         static Ref<Object> CloneObject(const Ref<Object> &rhs)
@@ -353,7 +353,7 @@ namespace SceneryEditorX
             return object;
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         template <typename T>
         Ref<T> CloneAsset(const Ref<Object> &rhs)
@@ -363,7 +363,7 @@ namespace SceneryEditorX
             return asset;
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         Ref<Object> CloneAsset(ObjectType type, const Ref<Object> &rhs)
         {
@@ -376,7 +376,7 @@ namespace SceneryEditorX
             }
         }
 
-		/// -------------------------------------------------------
+		// -------------------------------------------------------
 
         static Ref<Object> CloneObject(ObjectType type, const Ref<Object> &rhs)
         {
@@ -390,7 +390,7 @@ namespace SceneryEditorX
             }
         }
 
-	    /// -------------------------------------------------------
+	    // -------------------------------------------------------
 
 	    template <typename T>
         Ref<T> Add()
@@ -405,11 +405,11 @@ namespace SceneryEditorX
             nodes.push_back(node);
         }
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
 	    struct AssetManagerImpl *impl;
 
-        /// -------------------------------------------------------
+        // -------------------------------------------------------
 
     private:
         RenderData renderData;
@@ -425,4 +425,4 @@ namespace SceneryEditorX
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
