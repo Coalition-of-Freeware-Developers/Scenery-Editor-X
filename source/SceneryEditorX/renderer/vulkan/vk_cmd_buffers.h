@@ -18,7 +18,7 @@
 
 namespace SceneryEditorX
 {
-    /// Forward declarations
+    // Forward declarations
 	class CommandPool;
 
     // -------------------------------------------------------
@@ -53,7 +53,7 @@ namespace SceneryEditorX
 	class CommandBuffer : public RefCounted
 	{
 	public:
-        //CommandBuffer() = default;
+        CommandBuffer() = default;
         explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
         CommandBuffer(std::string debugName, bool swapchain);
         virtual ~CommandBuffer() override;
@@ -61,13 +61,14 @@ namespace SceneryEditorX
 		static Ref<CommandBuffer> Get(); // Static accessor method to get the singleton instance
 
         void Begin();
+        void Begin(Queue queue);
+        void Submit();
         void Submit(void *cmdBuffer, uint32_t waitFlags);
+        void Wait(bool flush = false);
 
-        void Wait(const bool flush = false);
-
-        void Execute(void *swapchain, const uint32_t imageIdx);
+        void Execute(void *swapchain, uint32_t imageIdx);
         Queue GetQueueType() const { return qType;}
-
+        CommandResources &GetCurrentCommandResources();
 		const PipelineStats& GetPipelineStatistics(uint32_t frameIndex) const { return pipelineStatsQueryResults[frameIndex]; }
 
 		uint32_t BeginTimestampQuery();
@@ -76,11 +77,12 @@ namespace SceneryEditorX
         [[nodiscard]] VkCommandBuffer GetActiveCmdBuffer() const { return activeCmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
 
-	private:
-        Ref<VulkanDevice> vkDevice;
+    private:
         SwapChain swapChain;
-        VkCommandBuffer activeCmdBuffer = nullptr;
+        Ref<VulkanDevice> vkDevice;
+
         VkCommandPool cmdPool = nullptr;
+        VkCommandBuffer activeCmdBuffer = nullptr;
 
         std::vector<VkFence> waitFences;
         std::vector<VkCommandBuffer> cmdBuffers;
@@ -88,20 +90,21 @@ namespace SceneryEditorX
 
         std::vector<VkQueryPool> timestampQueryPools;
         std::vector<VkQueryPool> pipelineQueryPools;
-        std::vector<std::vector<uint64_t>> timestampQueryResults;
+
+	    std::map<std::string, float> timeStampTable;
         std::vector<std::vector<float>> executionGPUTimes;
+        std::vector<std::vector<uint64_t>> timestampQueryResults;
 
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;
 
-        std::map<std::string, float> timeStampTable;
-
+	    Queue qType;
         RenderData data;
+
         bool ownedBySwapChain = false;
         uint8_t *cmdBuffer;
         uint8_t *cmdBufferPtr;
         std::atomic<uint32_t> cmdCount = 0;
-        Queue qType;
 
         uint32_t availTimeQuery = 2;
         uint32_t timeQueryCount = 0;

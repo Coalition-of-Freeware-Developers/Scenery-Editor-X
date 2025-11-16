@@ -91,8 +91,6 @@ namespace SceneryEditorX
         static void Init();
 		static void Shutdown();
 
-        // -------------------------------------------------------
-
         static void BeginFrame();
         static void EndFrame();
         static void SubmitFrame();
@@ -110,8 +108,6 @@ namespace SceneryEditorX
         * @param renderData New data snapshot copied into internal storage.
         */
         static void SetRenderData(const RenderData &renderData);
-
-        // -------------------------------------------------------
 
         /**
          * @brief Get the current frame-in-flight index (ring buffer slot).
@@ -177,7 +173,7 @@ namespace SceneryEditorX
 		 * @param frameIndex Optional frame override (0 = current).
 		 * @return Allocation count.
 		 */
-		//static uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
+		static uint32_t GetDescriptorAllocationCount(uint32_t frameIndex = 0);
 
 		/**
 		 * @brief Submit a fullscreen triangle/quad draw call with provided pipeline & material.
@@ -199,15 +195,15 @@ namespace SceneryEditorX
         /// Viewport & Image Management
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // viewport
+        // Viewport
         static const Viewport &GetViewport();
         static void SetViewport(float width, float height);
 
-        // resolution render
+        // Resolution Render
         static const Vec2 &GetResolutionRender();
         static void SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources = true);
 
-        // resolution output
+        // Resolution Output
         static const Vec2 &GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
 
@@ -363,6 +359,7 @@ namespace SceneryEditorX
 		 * @brief Active swapchain reference (lifetime managed by renderer).
 		 */
         SwapChain m_SwapChain = {};
+        Scope<Framebuffer> m_ActiveFramebuffer;
 
         // -------------------------------------------------------
 
@@ -390,8 +387,8 @@ namespace SceneryEditorX
         std::array<Ref<Buffer>, static_cast<uint32_t>(RendererBufferId::MaxEnum)> &GetStructuredBuffers();
         std::array<Ref<Sampler>, static_cast<uint32_t>(SamplerPreset::MaxEnum)> &GetSamplers();
 
-        Rasterizer *GetRasterizerState(RasterizerState type);
-        BlendState *GetBlendState(const BlendMode type);
+        Rasterizer* GetRasterizerState(RasterizerState type);
+        BlendState* GetBlendState(const BlendMode type);
 
     };
 

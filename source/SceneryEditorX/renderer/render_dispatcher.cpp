@@ -10,14 +10,6 @@
 * Created: 27/8/2025
 * -------------------------------------------------------
 */
-
-/**
- * @file render_dispatcher.cpp
- * @brief Implementation of the RenderDispatcher asynchronous job & deferred resource free system.
- *
- * @see `render_dispatcher.h` and `docs/render-dispatcher-documentation.md` for detailed design notes.
- */
-
 #include "render_dispatcher.h"
 #include "renderer.h"
 
@@ -25,6 +17,8 @@
 
 namespace SceneryEditorX
 {
+
+    // -------------------------------------------------------
 
     Ref<RenderDispatcher>
     RenderDispatcher::s_Instance;						// Singleton lifetime anchor instance (created in Init, released in Shutdown)
@@ -57,8 +51,6 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("RenderDispatch", "Initialized (framesInFlight={})", renderData.framesInFlight);
 	}
 
-    // -------------------------------------------------------
-
 	/**
 	 * @brief Gracefully terminate dispatcher and execute all deferred destruction jobs.
 	 *
@@ -89,14 +81,10 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("RenderDispatch", "Shutdown");
 	}
 
-    // -------------------------------------------------------
-
 	/**
 	 * @return True if the dispatcher singleton exists (Init has been called and not yet shut down).
 	 */
 	bool RenderDispatcher::IsInitialized() { return s_Instance != nullptr; }
-
-    // -------------------------------------------------------
 
 	/**
 	 * @brief Submit a generic background job.
@@ -115,8 +103,6 @@ namespace SceneryEditorX
 	    }
 	    s_Queue.cv.notify_one();
 	}
-
-    // -------------------------------------------------------
 
 	/**
 	 * @brief Schedule a deferred destruction job for execution after a safe GPU frame boundary.
@@ -137,8 +123,6 @@ namespace SceneryEditorX
         s_ResourceFreeRing[target].jobs.push_back(std::move(job));
     }
 
-    // -------------------------------------------------------
-
     /**
 	 * @brief Block until the active background job queue is empty.
 	 *
@@ -152,8 +136,6 @@ namespace SceneryEditorX
         std::unique_lock lock(s_Queue.mtx);
         s_Queue.cv.wait(lock, [] { return s_Queue.jobs.empty(); });
     }
-
-    // -------------------------------------------------------
 
     /**
 	 * @brief Advance frame ring and execute resource free jobs for the now-safe bucket.
@@ -175,8 +157,6 @@ namespace SceneryEditorX
         for (auto &job : toRun)
             job();
 	}
-
-    // -------------------------------------------------------
 
 	/**
 	 * @brief Internal worker thread main loop.

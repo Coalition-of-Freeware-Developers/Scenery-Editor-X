@@ -177,11 +177,20 @@ namespace SceneryEditorX
         explicit VulkanDevice(const Ref<VulkanPhysicalDevice> &physDevice);
         virtual ~VulkanDevice() override;
 
+        // Delete copy constructor and assignment operator.
+        VulkanDevice(const VulkanDevice &) = delete;
+        VulkanDevice &operator=(const VulkanDevice &) = delete;
+
+        // Allow move operations if needed.
+        VulkanDevice(VulkanDevice &&) noexcept;
+        VulkanDevice &operator=(VulkanDevice &&) noexcept;
+
         void Tick(uint64_t frame_count) const;
         //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
         VkCommandBuffer GetCommandBuffer(bool cond);
 
+        /*
         // Immediate submit helper (one-shot command buffer already ended)
         void ImmediateSubmit(VkCommandBuffer cmd, VkQueue queue = VK_NULL_HANDLE)
         {
@@ -190,23 +199,16 @@ namespace SceneryEditorX
                 queue = GetGraphicsQueue();
             FlushCmdBuffer(cmd, queue);
         }
+        */
 
         bool IsValidResolution(uint32_t width, uint32_t height);
-
-        /// Delete copy constructor and assignment operator.
-        VulkanDevice(const VulkanDevice &) = delete;
-        VulkanDevice &operator=(const VulkanDevice &) = delete;
-
-		/// Allow move operations if needed.
-        VulkanDevice(VulkanDevice &&) noexcept;
-        VulkanDevice &operator=(VulkanDevice &&) noexcept;
 
         /**
          * @brief Clean up resources and destroy the logical device.
          */
         void Destroy();
 
-		/// Accessor methods.
+		// Accessor methods.
 	    [[nodiscard]] const VkDevice &Selected() const { return GetDevice(); }
         [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
         [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
@@ -216,9 +218,9 @@ namespace SceneryEditorX
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         void SetResourceName(void *resource, const ResourceType resourceType, const char *name);
 
-	    // -------------------------------------------------------
-        /// Function pointers for Vulkan extensions
-        // -------------------------------------------------------
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Function pointers for Vulkan extensions																		   ///
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
         PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT = nullptr;
         PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
@@ -253,45 +255,29 @@ namespace SceneryEditorX
          */
         void UnlockQueue(bool compute = false);
 
-        /**
-         * @brief Create a secondary command buffer for recording commands.
-         * @param debugName Name for debugging purposes.
-         * @return A new command buffer.
-         */
-        VkCommandBuffer CreateUICmdBuffer(const char *debugName);
+		/**
+		 * @brief Get the thread-local command pool.
+		 * @return Reference to the thread-local command pool.
+		 */
+        // Ref<CommandPool> GetThreadLocalCommandPool();
 
-        Ref<CommandPool> GetThreadLocalCommandPool();
-        Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
-
-        /**
-         * @brief Submit and wait for a command buffer to complete execution.
-         * @param cmdBuffer The command buffer to submit.
-         */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
-
-        /**
-         * @brief Submit a command buffer to a specific queue and wait for completion.
-         * @param cmdBuffer The command buffer to submit.
-         * @param queue The queue to submit to.
-         */
-        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
+		/**
+		 * @brief Get or create the thread-local command pool.
+		 * @return Reference to the thread-local command pool.
+		 */
+        // Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
 
         /**
          * @brief Get the scratch buffer address.
          * @return The device address of the scratch buffer.
          */
-        VkSampler GetSampler() const { return textureSampler; }
+        // VkSampler GetSampler() const { return textureSampler; }
 
         /**
          * @brief Get the bindless resources associated with this device.
          * @return The bindless resources associated with this device.
          */
-        //BindlessResources GetBindlessResources() const { return bindlessResources; }
-
-		/**
-         * @brief Initialize the memory allocator for this device.
-         */
-        //void InitializeMemoryAllocator();
+        // BindlessResources GetBindlessResources() const { return bindlessResources; }
 
     private:
         Layers vkLayers;
@@ -321,8 +307,8 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        /// Command pool management
-        std::map<std::thread::id, Ref<CommandPool>> CmdPools;
+        // Command pool management
+        //std::map<std::thread::id, Ref<CommandPool>> CmdPools;
 
         /**
          * @brief Create a texture sampler with specified parameters
@@ -333,8 +319,6 @@ namespace SceneryEditorX
 
         /**
          * @brief Load function pointers for extension functions
-         *
-         * @param device
          */
         void LoadExtensionFunctions();
 

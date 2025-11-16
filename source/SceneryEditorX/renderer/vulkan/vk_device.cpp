@@ -76,7 +76,7 @@ namespace SceneryEditorX
         vkEnumeratePhysicalDevices(*vkInstance, &GFXDevices, nullptr);
         //VK_CHECK_RESULT(vkEnumeratePhysicalDevices(vkInstance, &GFXDevices, device.data()))
 
-        std::vector<VkPhysicalDevice> device(GFXDevices); /// Vector to hold physical devices
+        std::vector<VkPhysicalDevice> device(GFXDevices); // Vector to hold physical devices
         if (GFXDevices > 0)
         {
             device.resize(GFXDevices);
@@ -188,7 +188,7 @@ namespace SceneryEditorX
 
             SEDX_CORE_INFO("Number of memory heaps: {}", ToString(devices[index].memoryProperties.memoryHeapCount));
 
-            /// Get queue family properties
+            // Get queue family properties
             uint32_t numQueueFamilies = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, nullptr);
             SEDX_CORE_ASSERT(numQueueFamilies > 0, "No queue families found for the physical device.");
@@ -217,7 +217,7 @@ namespace SceneryEditorX
             // -----------------------------------------------
 
             /*
-            /// Get present modes
+            // Get present modes
             uint32_t numPresentModes = 0;
             VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(vkDevice, nullptr, &numPresentModes, nullptr))
             devices[index].presentModes.resize(numPresentModes);
@@ -237,7 +237,7 @@ namespace SceneryEditorX
 
             // -----------------------------------------------
 
-            /// Dedicated Graphics Queue
+            // Dedicated Graphics Queue
             if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
             {
                 VkDeviceQueueCreateInfo queueCreateInfo{};
@@ -250,11 +250,10 @@ namespace SceneryEditorX
 
             // -----------------------------------------------
 
-            /// Dedicated Compute Queue
+            // Dedicated Compute Queue
             if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
             {
-                if ((QFamilyIndices.GetComputeFamily() != QFamilyIndices.GetGraphicsFamily()) &&
-					(QFamilyIndices.GetComputeFamily() != QFamilyIndices.GetTransferFamily()))
+                if ((QFamilyIndices.GetComputeFamily() != QFamilyIndices.GetGraphicsFamily()) && (QFamilyIndices.GetComputeFamily() != QFamilyIndices.GetTransferFamily()))
 				{
                     VkDeviceQueueCreateInfo queueCreateInfo{};
                     queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -268,7 +267,7 @@ namespace SceneryEditorX
 
             // -----------------------------------------------
 
-            /// Dedicated Transfer Queue
+            // Dedicated Transfer Queue
             if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
             {
                 if ((QFamilyIndices.GetTransferFamily() != QFamilyIndices.GetGraphicsFamily()) &&
@@ -371,56 +370,56 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-/*
-	/// Get surface formats
-	uint32_t numSurfaceFormats = 0;
-	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(vkDevice, nullptr, &numSurfaceFormats, nullptr))
-	SEDX_CORE_INFO("Number of surface formats: {}", ToString(numSurfaceFormats));
-
-	devices[index].surfaceFormats.resize(numSurfaceFormats);
-	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(vkDevice, nullptr, &numSurfaceFormats, devices[index].surfaceFormats.data()))
-	for (uint32_t format = 0; format < numSurfaceFormats; format++)
-	{
-		const VkSurfaceFormatKHR &surfaceFormat = devices[index].surfaceFormats[format];
+	/*
+		/// Get surface formats
+		uint32_t numSurfaceFormats = 0;
+		VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(vkDevice, nullptr, &numSurfaceFormats, nullptr))
+		SEDX_CORE_INFO("Number of surface formats: {}", ToString(numSurfaceFormats));
+	
+		devices[index].surfaceFormats.resize(numSurfaceFormats);
+		VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(vkDevice, nullptr, &numSurfaceFormats, devices[index].surfaceFormats.data()))
+		for (uint32_t format = 0; format < numSurfaceFormats; format++)
+		{
+			const VkSurfaceFormatKHR &surfaceFormat = devices[index].surfaceFormats[format];
+			SEDX_CORE_INFO("============================================");
+			SEDX_CORE_INFO("Surface Format: {}", ToString(surfaceFormat.format));
+			SEDX_CORE_INFO("Color Space: {}", ToString(surfaceFormat.colorSpace));
+			SEDX_CORE_INFO("============================================");
+		}
+	
+		/// Get surface capabilities
+		VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkDevice, nullptr, &(devices[index].surfaceCapabilities)))
 		SEDX_CORE_INFO("============================================");
-		SEDX_CORE_INFO("Surface Format: {}", ToString(surfaceFormat.format));
-		SEDX_CORE_INFO("Color Space: {}", ToString(surfaceFormat.colorSpace));
+		SEDX_CORE_INFO("Device Surface Capabilities:");
+		SEDX_CORE_INFO("____________________________________________");
+		SEDX_CORE_INFO("Min Image Count: {}",			ToString(devices[index].surfaceCapabilities.minImageCount));
+		SEDX_CORE_INFO("Max Image Count: {}",			ToString(devices[index].surfaceCapabilities.maxImageCount));
+		SEDX_CORE_INFO("Current Extent: {}",			ToString(devices[index].surfaceCapabilities.currentExtent.width));
+		SEDX_CORE_INFO("Min Image Extent: {}",			ToString(devices[index].surfaceCapabilities.minImageExtent.width));
+		SEDX_CORE_INFO("Max Image Extent: {}",			ToString(devices[index].surfaceCapabilities.maxImageExtent.width));
+		SEDX_CORE_INFO("Max Image Array Layers: {}",	ToString(devices[index].surfaceCapabilities.maxImageArrayLayers));
+		SEDX_CORE_INFO("Supported Transforms: {}",		ToString(devices[index].surfaceCapabilities.supportedTransforms));
+		SEDX_CORE_INFO("Current Transform: {}",			ToString(devices[index].surfaceCapabilities.currentTransform));
+		SEDX_CORE_INFO("Supported Composite Alpha: {}", ToString(devices[index].surfaceCapabilities.supportedCompositeAlpha));
+		SEDX_CORE_INFO("Supported Usage Flags: {}",     ToString(devices[index].surfaceCapabilities.supportedUsageFlags));
 		SEDX_CORE_INFO("============================================");
+	
+		// -------------------------------------------------------
+	
+		/// Get present modes
+		uint32_t numPresentModes = 0;
+		VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(vkDevice, nullptr, &numPresentModes, nullptr))
+		devices[index].presentModes.resize(numPresentModes);
+		VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(vkDevice, nullptr, &numPresentModes, devices[index].presentModes.data()))
+		SEDX_CORE_INFO("Number of present modes: {}", ToString(numPresentModes));
+	
+		// Store queue family properties for later queue index lookup
+		if (!devices.empty())
+		{
+			queueFamilyProperties = devices[0].queueFamilyInfo;
+		}
 	}
-
-	/// Get surface capabilities
-	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkDevice, nullptr, &(devices[index].surfaceCapabilities)))
-	SEDX_CORE_INFO("============================================");
-	SEDX_CORE_INFO("Device Surface Capabilities:");
-	SEDX_CORE_INFO("____________________________________________");
-	SEDX_CORE_INFO("Min Image Count: {}",			ToString(devices[index].surfaceCapabilities.minImageCount));
-	SEDX_CORE_INFO("Max Image Count: {}",			ToString(devices[index].surfaceCapabilities.maxImageCount));
-	SEDX_CORE_INFO("Current Extent: {}",			ToString(devices[index].surfaceCapabilities.currentExtent.width));
-	SEDX_CORE_INFO("Min Image Extent: {}",			ToString(devices[index].surfaceCapabilities.minImageExtent.width));
-	SEDX_CORE_INFO("Max Image Extent: {}",			ToString(devices[index].surfaceCapabilities.maxImageExtent.width));
-	SEDX_CORE_INFO("Max Image Array Layers: {}",	ToString(devices[index].surfaceCapabilities.maxImageArrayLayers));
-	SEDX_CORE_INFO("Supported Transforms: {}",		ToString(devices[index].surfaceCapabilities.supportedTransforms));
-	SEDX_CORE_INFO("Current Transform: {}",			ToString(devices[index].surfaceCapabilities.currentTransform));
-	SEDX_CORE_INFO("Supported Composite Alpha: {}", ToString(devices[index].surfaceCapabilities.supportedCompositeAlpha));
-	SEDX_CORE_INFO("Supported Usage Flags: {}",     ToString(devices[index].surfaceCapabilities.supportedUsageFlags));
-	SEDX_CORE_INFO("============================================");
-
-	// -------------------------------------------------------
-
-	/// Get present modes
-	uint32_t numPresentModes = 0;
-	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(vkDevice, nullptr, &numPresentModes, nullptr))
-	devices[index].presentModes.resize(numPresentModes);
-	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfacePresentModesKHR(vkDevice, nullptr, &numPresentModes, devices[index].presentModes.data()))
-	SEDX_CORE_INFO("Number of present modes: {}", ToString(numPresentModes));
-
-	// Store queue family properties for later queue index lookup
-	if (!devices.empty())
-	{
-		queueFamilyProperties = devices[0].queueFamilyInfo;
-	}
-}
-*/
+	*/
 
     /**
      * @fn VulkanPhysicalDevice
@@ -455,7 +454,7 @@ namespace SceneryEditorX
         if (!graphicsFamily.has_value())
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access graphics family when it's not initialized");
-            return 0; /// Return a default value to avoid crashing
+            return 0; // Return a default value to avoid crashing
         }
         return graphicsFamily.value().second;
     }
@@ -467,7 +466,7 @@ namespace SceneryEditorX
         if (!presentFamily.has_value())
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access present family when it's not initialized");
-            return 0; /// Return a default value to avoid crashing
+            return 0; // Return a default value to avoid crashing
         }
         return presentFamily.value().second;
     }
@@ -479,7 +478,7 @@ namespace SceneryEditorX
         if (!computeFamily.has_value())
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access compute family when it's not initialized");
-            return 0; /// Return a default value to avoid crashing
+            return 0; // Return a default value to avoid crashing
         }
         return computeFamily.value().second;
     }
@@ -491,7 +490,7 @@ namespace SceneryEditorX
         if (!transferFamily.has_value())
         {
             SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access transfer family when it's not initialized");
-            return 0; /// Return a default value to avoid crashing
+            return 0; // Return a default value to avoid crashing
         }
         return transferFamily.value().second;
     }
@@ -618,18 +617,18 @@ namespace SceneryEditorX
 	{
 		QueueFamilyIndices queueFamilies;
 
-		/// Early return if no devices available
+		// Early return if no devices available
 		if (devices.empty())
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine", "No physical devices available");
 			return queueFamilies;
 		}
 
-		/// Only process the selected device (or first device if none selected)
+		// Only process the selected device (or first device if none selected)
 		uint32_t deviceIdx = deviceIndex >= 0 && std::cmp_less(deviceIndex, devices.size()) ? deviceIndex : 0;
 		const VkPhysicalDevice vkDevice = devices[deviceIdx].physicalDevice;
 
-		/// Get queue family properties for the device
+		// Get queue family properties for the device
 		uint32_t numQueueFamilies = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, nullptr);
 		SEDX_CORE_ASSERT(numQueueFamilies > 0, "No queue families found for the physical device.");
@@ -637,7 +636,7 @@ namespace SceneryEditorX
 		std::vector<VkQueueFamilyProperties> queueFamilyProperties(numQueueFamilies);
 		vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, queueFamilyProperties.data());
 
-		/// Log queue family information
+		// Log queue family information
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
 			const VkQueueFamilyProperties &queueFamilyInfo = queueFamilyProperties[queueIdx];
 
@@ -650,7 +649,7 @@ namespace SceneryEditorX
         #endif
 		}
 
-		/// First pass: find a graphics queue
+		// First pass: find a graphics queue
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
 		{
             if (const auto &props = queueFamilyProperties[queueIdx]; props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
@@ -660,10 +659,10 @@ namespace SceneryEditorX
 			}
 		}
 
-		/// First pass: look for dedicated queues
+		// First pass: look for dedicated queues
 		if (qFlags & VK_QUEUE_COMPUTE_BIT)
 		{
-			/// Find dedicated compute queue (compute, but not graphics)
+			// Find dedicated compute queue (compute, but not graphics)
 			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
 			{
 				const auto &props = queueFamilyProperties[queueIdx];
@@ -679,7 +678,7 @@ namespace SceneryEditorX
 
 		if (qFlags & VK_QUEUE_TRANSFER_BIT)
 		{
-			/// Find dedicated transfer queue (transfer, but not graphics or compute)
+			// Find dedicated transfer queue (transfer, but not graphics or compute)
 			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
 		    {
 				const auto &props = queueFamilyProperties[queueIdx];
@@ -694,44 +693,44 @@ namespace SceneryEditorX
 			}
 		}
 
-		/// Second pass: set any remaining indices to general-purpose queues
+		// Second pass: set any remaining indices to general-purpose queues
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
 		{
 			const auto &props = queueFamilyProperties[queueIdx];
 
-			/// Set compute queue if not already set and if needed
+			// Set compute queue if not already set and if needed
 			if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
                 queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
 
-            /// Set transfer queue if not already set and if needed
+            // Set transfer queue if not already set and if needed
 			if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !queueFamilies.transferFamily.has_value() && (props.queueFlags & VK_QUEUE_TRANSFER_BIT))
 			{
 				queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
 				break;
 			}
 
-			/// Set presentation queue
-			/// Note: This would normally check presentation support against a surface
-			/// Since we don't have a surface at this point, we'll just use the graphics queue
+			// Set presentation queue
+			// Note: This would normally check presentation support against a surface
+			// Since we don't have a surface at this point, we'll just use the graphics queue
 			if (!queueFamilies.presentFamily.has_value() && queueFamilies.graphicsFamily.has_value() && queueFamilies.graphicsFamily.value().second == queueIdx)
                 queueFamilies.presentFamily = std::make_optional(std::make_pair(Queue::Present, queueIdx));
         }
 
-		/// Fallback: If we couldn't find dedicated compute/transfer queues, use the graphics queue
+		// Fallback: If we couldn't find dedicated compute/transfer queues, use the graphics queue
 		if (qFlags & VK_QUEUE_COMPUTE_BIT && !queueFamilies.computeFamily.has_value() && queueFamilies.graphicsFamily.has_value())
             queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueFamilies.graphicsFamily.value().second));
 
         if (qFlags & VK_QUEUE_TRANSFER_BIT && !queueFamilies.transferFamily.has_value() && queueFamilies.graphicsFamily.has_value())
             queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueFamilies.graphicsFamily.value().second));
-    #ifdef SEDX_DEBUG
-        SEDX_CORE_INFO("============================================");
-		SEDX_CORE_INFO("Selected Queue Families:");
-		SEDX_CORE_INFO("Graphics: {}", queueFamilies.graphicsFamily.has_value() ? ToString(queueFamilies.graphicsFamily.value().second) : "Not Available");
-		SEDX_CORE_INFO("Compute: {}", queueFamilies.computeFamily.has_value() ? ToString(queueFamilies.computeFamily.value().second) : "Not Available");
-		SEDX_CORE_INFO("Transfer: {}", queueFamilies.transferFamily.has_value() ? ToString(queueFamilies.transferFamily.value().second) : "Not Available");
-		SEDX_CORE_INFO("Present: {}", queueFamilies.presentFamily.has_value() ? ToString(queueFamilies.presentFamily.value().second) : "Not Available");
-		SEDX_CORE_INFO("============================================");
-    #endif
+		#ifdef SEDX_DEBUG
+		    SEDX_CORE_INFO("============================================");
+			SEDX_CORE_INFO("Selected Queue Families:");
+			SEDX_CORE_INFO("Graphics: {}", queueFamilies.graphicsFamily.has_value() ? ToString(queueFamilies.graphicsFamily.value().second) : "Not Available");
+			SEDX_CORE_INFO("Compute: {}", queueFamilies.computeFamily.has_value() ? ToString(queueFamilies.computeFamily.value().second) : "Not Available");
+			SEDX_CORE_INFO("Transfer: {}", queueFamilies.transferFamily.has_value() ? ToString(queueFamilies.transferFamily.value().second) : "Not Available");
+			SEDX_CORE_INFO("Present: {}", queueFamilies.presentFamily.has_value() ? ToString(queueFamilies.presentFamily.value().second) : "Not Available");
+			SEDX_CORE_INFO("============================================");
+		#endif
 
 		return queueFamilies;
 	}
@@ -778,30 +777,29 @@ namespace SceneryEditorX
             return;
         }
 
-		// ---------------------------------------------------------
+	    // Prepare device extensions as vector<const char*>
+	    std::vector<const char*> deviceExtensions;
 
-	// Prepare device extensions as vector<const char*>
-	std::vector<const char*> deviceExtensions;
-	// In headless mode, avoid swapchain to keep validation silent and remove WSI requirements
-	bool headlessMode = false;
-#if defined(_WIN32)
-	if (const char* env = std::getenv("SEDX_HEADLESS"))
-	    headlessMode = (std::strcmp(env, "1") == 0 || _stricmp(env, "true") == 0);
-#else
-	if (const char* env = std::getenv("SEDX_HEADLESS"))
-	    headlessMode = (std::strcmp(env, "1") == 0 || std::strcmp(env, "true") == 0);
-#endif
-	if (!headlessMode)
-        deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+	    // In headless mode, avoid swapchain to keep validation silent and remove WSI requirements
+	    bool headlessMode = false;
+		#ifdef SEDX_PLATFORM_WINDOWS
+		    if (const char* env = std::getenv("SEDX_HEADLESS"))
+		        headlessMode = (std::strcmp(env, "1") == 0 || _stricmp(env, "true") == 0);
+		#else
+		    if (const char* env = std::getenv("SEDX_HEADLESS"))
+		        headlessMode = (std::strcmp(env, "1") == 0 || std::strcmp(env, "true") == 0);
+		#endif
+		    if (!headlessMode)
+		        deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    // ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         {
             // Optionally add NVIDIA/AMD extensions if supported
             if (VulkanChecks::IsExtensionSupported (VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME))
-                deviceExtensions.push_back (VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+                deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
             if (VulkanChecks::IsExtensionSupported (VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
-                deviceExtensions.push_back (VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+                deviceExtensions.push_back(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
         }
 
 		// ---------------------------------------------------------
@@ -809,7 +807,7 @@ namespace SceneryEditorX
         {
             VulkanChecks checks; // Check device extension support
             std::vector<VkExtensionProperties> availableExtensions;
-            checks.CheckDeviceExtensionSupport (physicalDevice, availableExtensions, nullptr);
+            checks.CheckDeviceExtensionSupport(physicalDevice, availableExtensions, nullptr);
             for (const char* ext : deviceExtensions)
             {
                 bool found = false;
@@ -817,8 +815,7 @@ namespace SceneryEditorX
                 {
                     if (strcmp (ext, extensionName) == 0)
                     {
-                        found = true;
-                        break;
+                        found = true; break;
                     }
                 }
                 if (!found)
@@ -833,9 +830,9 @@ namespace SceneryEditorX
 
         {
             VkPhysicalDeviceFeatures2 features2 = {};
-			VkPhysicalDeviceVulkan12Features vulkan12features = {};
-			VkPhysicalDeviceVulkan13Features vulkan13features = {};
-			VkPhysicalDeviceVulkan14Features vulkan14features = {};
+			VkPhysicalDeviceVulkan12Features vulkan12Features = {};
+			VkPhysicalDeviceVulkan13Features vulkan13Features = {};
+			VkPhysicalDeviceVulkan14Features vulkan14Features = {};
 			VkPhysicalDeviceRobustness2FeaturesEXT robustness = {};
 
 			VkPhysicalDeviceFragmentShadingRateFeaturesKHR fragmentShadingRate = {};
@@ -844,7 +841,7 @@ namespace SceneryEditorX
 			VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
 			VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutableDescriptor = {};
 
-			VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddresFeatures{};
+			VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
 			VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures{};
 			VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features{};
 			VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFeatures{};
@@ -862,7 +859,6 @@ namespace SceneryEditorX
 			deviceFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE; // Enable storage image writes without format
 			*/
 
-
 			// ---------------------------------------------------------
 
 			fragmentShadingRate.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
@@ -875,23 +871,23 @@ namespace SceneryEditorX
 
 			// ---------------------------------------------------------
 
-			vulkan12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-			vulkan12features.pNext = &robustness;
+			vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+			vulkan12Features.pNext = &robustness;
 
 			// ---------------------------------------------------------
 
-			vulkan13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-			vulkan13features.pNext = &vulkan12features;
+			vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+			vulkan13Features.pNext = &vulkan12Features;
 
 			// ---------------------------------------------------------
 
-			vulkan14features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-			vulkan14features.pNext = &vulkan13features;
+			vulkan14Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+			vulkan14Features.pNext = &vulkan13Features;
 
 			// ---------------------------------------------------------
 
 			barycentric.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
-			barycentric.pNext = &vulkan14features;
+			barycentric.pNext = &vulkan14Features;
 
 			// ---------------------------------------------------------
 
@@ -911,9 +907,9 @@ namespace SceneryEditorX
 			descriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind = true;
 
 			// ---------------------------------------------------------
-			bufferDeviceAddresFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-			bufferDeviceAddresFeatures.bufferDeviceAddress = VK_TRUE;
-			bufferDeviceAddresFeatures.pNext = &descriptorIndexingFeatures;
+			bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+			bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+			bufferDeviceAddressFeatures.pNext = &descriptorIndexingFeatures;
 
 			// ---------------------------------------------------------
 
@@ -921,7 +917,7 @@ namespace SceneryEditorX
 			accelerationStructureFeatures.accelerationStructure = VK_TRUE;
 			accelerationStructureFeatures.descriptorBindingAccelerationStructureUpdateAfterBind = VK_TRUE;
 			accelerationStructureFeatures.accelerationStructureCaptureReplay = VK_TRUE;
-			accelerationStructureFeatures.pNext = &bufferDeviceAddresFeatures;
+			accelerationStructureFeatures.pNext = &bufferDeviceAddressFeatures;
 
 			// ---------------------------------------------------------
 
@@ -952,17 +948,17 @@ namespace SceneryEditorX
 			// ---------------------------------------------------------
 
 			{
-				if (vulkan12features.timelineSemaphore) { vulkan12features.timelineSemaphore = VK_TRUE; }
-				if (vulkan12features.descriptorBindingVariableDescriptorCount) { vulkan12features.descriptorBindingVariableDescriptorCount = VK_TRUE; }
-				if (vulkan12features.descriptorBindingSampledImageUpdateAfterBind) { vulkan12features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE; }
-				if (vulkan12features.descriptorBindingPartiallyBound) { vulkan12features.descriptorBindingPartiallyBound = VK_TRUE; }
-				if (vulkan12features.runtimeDescriptorArray) { vulkan12features.runtimeDescriptorArray = VK_TRUE; }
-				if (vulkan12features.descriptorIndexing) { vulkan12features.descriptorIndexing = VK_TRUE; }
-				if (vulkan12features.shaderStorageBufferArrayNonUniformIndexing) { vulkan12features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE; }
-				if (vulkan12features.shaderSubgroupExtendedTypes) { vulkan12features.shaderSubgroupExtendedTypes = VK_TRUE; }
-				if (vulkan12features.shaderFloat16) { vulkan12features.shaderFloat16 = VK_TRUE; }
-				if (vulkan12features.shaderInt8) { vulkan12features.shaderInt8 = VK_TRUE; }
-				if (vulkan12features.scalarBlockLayout) { vulkan12features.scalarBlockLayout = VK_TRUE; }
+				if (vulkan12Features.timelineSemaphore) { vulkan12Features.timelineSemaphore = VK_TRUE; }
+				if (vulkan12Features.descriptorBindingVariableDescriptorCount) { vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE; }
+				if (vulkan12Features.descriptorBindingSampledImageUpdateAfterBind) { vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE; }
+				if (vulkan12Features.descriptorBindingPartiallyBound) { vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE; }
+				if (vulkan12Features.runtimeDescriptorArray) { vulkan12Features.runtimeDescriptorArray = VK_TRUE; }
+				if (vulkan12Features.descriptorIndexing) { vulkan12Features.descriptorIndexing = VK_TRUE; }
+				if (vulkan12Features.shaderStorageBufferArrayNonUniformIndexing) { vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE; }
+				if (vulkan12Features.shaderSubgroupExtendedTypes) { vulkan12Features.shaderSubgroupExtendedTypes = VK_TRUE; }
+				if (vulkan12Features.shaderFloat16) { vulkan12Features.shaderFloat16 = VK_TRUE; }
+				if (vulkan12Features.shaderInt8) { vulkan12Features.shaderInt8 = VK_TRUE; }
+				if (vulkan12Features.scalarBlockLayout) { vulkan12Features.scalarBlockLayout = VK_TRUE; }
 			}
 
 			// ---------------------------------------------------------
@@ -980,27 +976,27 @@ namespace SceneryEditorX
 				if (features2.features.pipelineStatisticsQuery) { features2.features.pipelineStatisticsQuery = VK_TRUE; }
 				if (features2.features.shaderInt16) { features2.features.shaderInt16 = VK_TRUE; }
 				if (features2.features.geometryShader) { features2.features.geometryShader = VK_TRUE; }
+                
+                // ---------------------------------------------------------
 
-				if (vulkan13features.dynamicRendering) { vulkan13features.dynamicRendering = VK_TRUE; }
-				if (vulkan13features.synchronization2) { vulkan13features.synchronization2 = VK_TRUE; }
-				if (vulkan13features.shaderDemoteToHelperInvocation) { vulkan13features.shaderDemoteToHelperInvocation = VK_TRUE; }
-				if (vulkan13features.subgroupSizeControl) { vulkan13features.subgroupSizeControl = VK_TRUE; }
-				if (vulkan13features.shaderIntegerDotProduct) { vulkan13features.shaderIntegerDotProduct = VK_TRUE; }
+				if (vulkan13Features.dynamicRendering) { vulkan13Features.dynamicRendering = VK_TRUE; }
+				if (vulkan13Features.synchronization2) { vulkan13Features.synchronization2 = VK_TRUE; }
+				if (vulkan13Features.shaderDemoteToHelperInvocation) { vulkan13Features.shaderDemoteToHelperInvocation = VK_TRUE; }
+				if (vulkan13Features.subgroupSizeControl) { vulkan13Features.subgroupSizeControl = VK_TRUE; }
+				if (vulkan13Features.shaderIntegerDotProduct) { vulkan13Features.shaderIntegerDotProduct = VK_TRUE; }
 
 				if (robustness.nullDescriptor) { robustness.nullDescriptor = VK_TRUE; }
 				if (mutableDescriptor.mutableDescriptorType) { mutableDescriptor.mutableDescriptorType = VK_TRUE; }
 
             }
 
-			// ---------------------------------------------------------
+            // ---------------------------------------------------------
 
             {
-				if (vulkan14features.pushDescriptor) { vulkan14features.pushDescriptor = VK_TRUE; }
+				if (vulkan14Features.pushDescriptor) { vulkan14Features.pushDescriptor = VK_TRUE; }
             }
 
         }
-
-		// ---------------------------------------------------------
 
         // Create the logical device
         VkDeviceCreateInfo createInfo = {};
@@ -1053,17 +1049,17 @@ namespace SceneryEditorX
 
 		vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
 
-		properties::min_UniformBufferOffsetAlignment = deviceProperties2.properties.limits.minUniformBufferOffsetAlignment;
-		properties::min_StorageBufferOffsetAlignment = deviceProperties2.properties.limits.minStorageBufferOffsetAlignment;
-        properties::optimalBufferCopyOffsetAlignment = deviceProperties2.properties.limits.optimalBufferCopyOffsetAlignment;
-        properties::max_1D_TextureDimension = deviceProperties2.properties.limits.maxImageDimension1D;
-        properties::max_2D_TextureDimension = deviceProperties2.properties.limits.maxImageDimension2D;
-        properties::max_3D_TextureDimension = deviceProperties2.properties.limits.maxImageDimension3D;
-        properties::max_Cube_TextureDimension = deviceProperties2.properties.limits.maxImageDimensionCube;
-        properties::max_TextureArrayLayers = deviceProperties2.properties.limits.maxImageArrayLayers;
-        properties::max_PushConstantSize = deviceProperties2.properties.limits.maxPushConstantsSize;
-        properties::max_X_ShadingRateTexel = shadingRateProperties.maxFragmentShadingRateAttachmentTexelSize.width;
-        properties::max_Y_ShadingRateTexel = shadingRateProperties.maxFragmentShadingRateAttachmentTexelSize.height;
+		properties::min_UniformBufferOffsetAlignment	= deviceProperties2.properties.limits.minUniformBufferOffsetAlignment;
+		properties::min_StorageBufferOffsetAlignment	= deviceProperties2.properties.limits.minStorageBufferOffsetAlignment;
+        properties::optimalBufferCopyOffsetAlignment	= deviceProperties2.properties.limits.optimalBufferCopyOffsetAlignment;
+        properties::max_1D_TextureDimension				= deviceProperties2.properties.limits.maxImageDimension1D;
+        properties::max_2D_TextureDimension				= deviceProperties2.properties.limits.maxImageDimension2D;
+        properties::max_3D_TextureDimension				= deviceProperties2.properties.limits.maxImageDimension3D;
+        properties::max_Cube_TextureDimension			= deviceProperties2.properties.limits.maxImageDimensionCube;
+        properties::max_TextureArrayLayers				= deviceProperties2.properties.limits.maxImageArrayLayers;
+        properties::max_PushConstantSize				= deviceProperties2.properties.limits.maxPushConstantsSize;
+        properties::max_X_ShadingRateTexel				= shadingRateProperties.maxFragmentShadingRateAttachmentTexelSize.width;
+        properties::max_Y_ShadingRateTexel				= shadingRateProperties.maxFragmentShadingRateAttachmentTexelSize.height;
 
         // Create the logical device
         if (auto result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &device); result != VK_SUCCESS)
@@ -1081,37 +1077,36 @@ namespace SceneryEditorX
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetPresentFamily(), 0, &PresentQueue);
         vkGetDeviceQueue(device, physDevice->QFamilyIndices.GetTransferFamily(), 0, &TransferQueue);
 
-    #ifdef SEDX_DEBUG
-        SEDX_CORE_INFO_TAG("Graphics Engine", "Using queue family indices:");
-        SEDX_CORE_INFO("Graphics {}", physDevice->QFamilyIndices.GetGraphicsFamily());
-        SEDX_CORE_INFO("Compute {}", physDevice->QFamilyIndices.GetComputeFamily());
-        SEDX_CORE_INFO("Present {}", physDevice->QFamilyIndices.GetPresentFamily());
-        SEDX_CORE_INFO("Transfer {}", physDevice->QFamilyIndices.GetTransferFamily());
-    #endif
+		#ifdef SEDX_DEBUG
+		    SEDX_CORE_INFO_TAG("Graphics Engine", "Using queue family indices:");
+		    SEDX_CORE_INFO("Graphics {}", physDevice->QFamilyIndices.GetGraphicsFamily());
+		    SEDX_CORE_INFO("Compute {}", physDevice->QFamilyIndices.GetComputeFamily());
+		    SEDX_CORE_INFO("Present {}", physDevice->QFamilyIndices.GetPresentFamily());
+		    SEDX_CORE_INFO("Transfer {}", physDevice->QFamilyIndices.GetTransferFamily());
+		#endif
 
-        // Load device extension function pointers
-				LoadExtensionFunctions();
+		LoadExtensionFunctions(); // Load device extension function pointers
 
-				uint32_t apiVersion = RenderData::GetVulkanAPIVersion(); // Get the Vulkan API version
+		uint32_t apiVersion = RenderData::GetVulkanAPIVersion(); // Get the Vulkan API version
 
 		#ifdef SEDX_DEBUG
-		SEDX_CORE_INFO("Retrieved the current Vulkan API Version: {}", apiVersion);
+		    SEDX_CORE_INFO("Retrieved the current Vulkan API Version: {}", apiVersion);
 		#endif
 
 		// Set up bindless resources and initial buffers
-		//InitBindlessResources(device, bindlessResources);
+		// InitBindlessResources(device, bindlessResources);
 
 		/*
 		#ifdef SEDX_DEBUG
-				SEDX_CORE_INFO ("Creating Staging/Scratch Buffer");
+		    SEDX_CORE_INFO ("Creating Staging/Scratch Buffer");
 		#endif
 		*/
 
+        /*
 		// Create initial scratch buffer
-        //scratchBuffer = CreateStagingBuffer(initialScratchBufferSize, "ScratchBuffer");
-		//scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
+        scratchBuffer = CreateStagingBuffer(initialScratchBufferSize, "ScratchBuffer");
+		scratchBuffer = CreateBuffer(initialScratchBufferSize, BufferUsage::Address | BufferUsage::Storage, MemoryType::GPU,"ScratchBuffer");
 		// Get the device address for the scratch buffer
-		/*
 		if (vkGetBufferDeviceAddressKHR != nullptr)
 		{
 			VkBufferDeviceAddressInfo scratchInfo{};
@@ -1155,21 +1150,21 @@ namespace SceneryEditorX
 	 */
     void VulkanDevice::LoadExtensionFunctions()
 	{
+		
+		#ifdef SEDX_DEBUG
+			// Load debug utils functions
+			vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetDeviceProcAddr(this->device, "vkSetDebugUtilsObjectNameEXT"));
+		#endif
 
-    #ifdef SEDX_DEBUG
-		// Load debug utils functions
-		vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetDeviceProcAddr(this->device, "vkSetDebugUtilsObjectNameEXT"));
-    #endif
-
-	    // Load ray tracing functions
-    #ifdef SEDX_RAYTRACE
-		vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(this->device, "vkGetAccelerationStructureBuildSizesKHR"));
-		vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(this->device, "vkCreateAccelerationStructureKHR"));
-		vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(this->device, "vkGetBufferDeviceAddressKHR"));
-		vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(this->device, "vkCmdBuildAccelerationStructuresKHR"));
-		vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(this->device, "vkGetAccelerationStructureDeviceAddressKHR"));
-		vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(this->device, "vkDestroyAccelerationStructureKHR"));
-    #endif
+		    // Load ray tracing functions
+		#ifdef SEDX_RAYTRACE
+			vkGetAccelerationStructureBuildSizesKHR = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(this->device, "vkGetAccelerationStructureBuildSizesKHR"));
+			vkCreateAccelerationStructureKHR = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(this->device, "vkCreateAccelerationStructureKHR"));
+			vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetDeviceProcAddr(this->device, "vkGetBufferDeviceAddressKHR"));
+			vkCmdBuildAccelerationStructuresKHR = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(this->device, "vkCmdBuildAccelerationStructuresKHR"));
+			vkGetAccelerationStructureDeviceAddressKHR = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(this->device, "vkGetAccelerationStructureDeviceAddressKHR"));
+			vkDestroyAccelerationStructureKHR = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(this->device, "vkDestroyAccelerationStructureKHR"));
+		#endif
 	}
 
 	/*
@@ -1242,10 +1237,10 @@ namespace SceneryEditorX
 		if (device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
 
 		// Clean up scratch buffer
-		//scratchBuffer.Release();
+		// scratchBuffer.Release();
 
-		/*
-		/// Clean up bindless resources
+		// Clean up bindless resources
+        /*
 		if (device != VK_NULL_HANDLE)
 		{
             if (bindlessResources.bindlessDescriptorSetLayout != VK_NULL_HANDLE)
@@ -1261,12 +1256,12 @@ namespace SceneryEditorX
 
 
 		// Shutdown bindless descriptor system prior to device destruction
-		//BindlessDescriptorManager::Shutdown();
+		// BindlessDescriptorManager::Shutdown();
 
 		// Shutdown memory allocator before destroying the device
 		MemoryAllocator::Shutdown();
 
-		/// Destroy logical device
+		// Destroy logical device
 		if (device != VK_NULL_HANDLE)
 		{
 			vkDestroyDevice(device, nullptr);
@@ -1310,12 +1305,19 @@ namespace SceneryEditorX
 		return nullptr;
 	}
 
+    /**
+	 * @brief Get a command buffer from the command pool
+	 * @param begin Whether to begin the command buffer with ONE_TIME_SUBMIT
+	 * @return The allocated command buffer
+	 */
+	/*
 	VkCommandBuffer VulkanDevice::GetCommandBuffer (bool begin)
 	{
 		// Allocate a primary command buffer from the thread-local graphics command pool.
 		// If begin is true, it will be begun with ONE_TIME_SUBMIT.
-		return GetOrCreateThreadLocalCommandPool ()->AllocateCommandBuffer (begin, /*compute=*/false);
+		return GetOrCreateThreadLocalCommandPool ()->AllocateCommandBuffer (begin, /*compute=#1#false);
 	}
+	*/
 
     /*
     bool VulkanDevice::IsValidResolution(uint32_t width, uint32_t height)
@@ -1361,7 +1363,7 @@ namespace SceneryEditorX
     {
         other.device = nullptr;
         other.textureSampler = nullptr;
-        //other.scratchAddress = 0;
+        /* other.scratchAddress = 0; */
     }
 
 	/**
@@ -1391,10 +1393,10 @@ namespace SceneryEditorX
     {
         if (this != &other)
         {
-            /// Clean up existing resources
+            // Clean up existing resources
             Destroy();
 
-            /// Move resources from the other VulkanDevice
+            // Move resources from the other VulkanDevice
             device = other.device;
             vkPhysicalDevice = std::move(other.vkPhysicalDevice);
             vkEnabledFeatures = other.vkEnabledFeatures;
@@ -1404,7 +1406,7 @@ namespace SceneryEditorX
             memoryAllocator = std::move(other.memoryAllocator);
             /*bindlessResources = other.bindlessResources*/
 
-            /// Nullify the moved-from object
+            // Nullify the moved-from object
             other.device = nullptr;
             other.GraphicsQueue = VK_NULL_HANDLE;
             other.ComputeQueue = VK_NULL_HANDLE;
@@ -1428,10 +1430,7 @@ namespace SceneryEditorX
 	 */
 	void VulkanDevice::Destroy()
 	{
-		/// Clear command pools
-		CmdPools.clear();
-
-		/// Wait for device to be idle
+		// Wait for device to be idle
 		if (device != VK_NULL_HANDLE)
 		{
 			vkDeviceWaitIdle(device);
@@ -1454,6 +1453,7 @@ namespace SceneryEditorX
 	 *
 	 * @see UnlockQueue
 	 */
+	/*
 	void VulkanDevice::LockQueue(const bool compute)
 	{
 		if (compute)
@@ -1461,6 +1461,7 @@ namespace SceneryEditorX
 		else
 			GraphicsQueueMutex.lock();
 	}
+	*/
 
 	/**
 	 * @brief Unlocks a previously locked queue
@@ -1473,6 +1474,7 @@ namespace SceneryEditorX
 	 *
 	 * @see LockQueue
 	 */
+	/*
 	void VulkanDevice::UnlockQueue(const bool compute)
 	{
 		if (compute)
@@ -1480,14 +1482,18 @@ namespace SceneryEditorX
 		else
 			GraphicsQueueMutex.unlock();
 	}
+	*/
 
+    /*
     Ref<CommandPool> VulkanDevice::LocalCommandPool()
     {
         const auto threadID = std::this_thread::get_id();
         SEDX_CORE_VERIFY(CmdPools.contains(threadID));
         return CmdPools.at(threadID);
     }
+    */
 
+    /*
     Ref<CommandPool> VulkanDevice::CreateLocalCommandPool()
     {
         const auto threadID = std::this_thread::get_id();
@@ -1499,6 +1505,7 @@ namespace SceneryEditorX
         CmdPools[threadID] = commandPool;
         return commandPool;
     }
+    */
 
     /**
 	 * @brief Find the queue families for the device.
@@ -1546,9 +1553,11 @@ namespace SceneryEditorX
 	}
 	*/
 
+	// TODO: This should be moved to UI Renderer class
+	/*
 	VkCommandBuffer VulkanDevice::CreateUICmdBuffer(const char *debugName)
 	{
-		/// Get the command pool for the current thread
+		// Get the command pool for the current thread
         Ref<CommandPool> cmdPool = CreateLocalCommandPool();
 
 		VkCommandBufferAllocateInfo allocInfo{};
@@ -1560,7 +1569,7 @@ namespace SceneryEditorX
 		VkCommandBuffer cmdBuffer;
 		VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &cmdBuffer))
 
-		/// Set debug name if available
+		// Set debug name if available
 		if (debugName && vkSetDebugUtilsObjectNameEXT)
 		{
 			VkDebugUtilsObjectNameInfoEXT nameInfo{};
@@ -1573,7 +1582,9 @@ namespace SceneryEditorX
 
 		return cmdBuffer;
 	}
+	*/
 
+	/*
 	Ref<CommandPool> VulkanDevice::GetThreadLocalCommandPool()
     {
         const auto threadID = std::this_thread::get_id();
@@ -1581,7 +1592,9 @@ namespace SceneryEditorX
 
         return CmdPools.at(threadID);
     }
+    */
 
+	/*
 	Ref<CommandPool> VulkanDevice::GetOrCreateThreadLocalCommandPool()
     {
         const auto threadID = std::this_thread::get_id();
@@ -1592,16 +1605,12 @@ namespace SceneryEditorX
         CmdPools[threadID] = commandPool;
         return commandPool;
     }
+    */
 
-    void VulkanDevice::FlushCmdBuffer(VkCommandBuffer cmdBuffer)
-    {
-        GetThreadLocalCommandPool()->FlushCmdBuffer(cmdBuffer);
-    }
-
-    void VulkanDevice::FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue)
-    {
-		GetThreadLocalCommandPool()->FlushCmdBuffer (cmdBuffer, queue);
-    }
+    /*
+    void VulkanDevice::FlushCmdBuffer(VkCommandBuffer cmdBuffer) { GetThreadLocalCommandPool()->FlushCmdBuffer(cmdBuffer); }
+    void VulkanDevice::FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) { GetThreadLocalCommandPool()->FlushCmdBuffer (cmdBuffer, queue); }
+    */
 
     // -------------------------------------------------------
 
@@ -1609,7 +1618,7 @@ namespace SceneryEditorX
 	 * @brief Determine the maximum MSAA sample count supported by the GPU
 	 *
 	 * This method queries the physical device properties to determine the highest multisample
-	 * anti-aliasing (MSAA) sample count that is supported for both color and depth attachments.
+	 * antialiasing (MSAA) sample count that is supported for both color and depth attachments.
 	 * It performs a bitwise AND operation between the supported color and depth sample counts
 	 * to find values that are supported by both.
 	 *
@@ -1629,19 +1638,13 @@ namespace SceneryEditorX
 		VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts;
 		counts &= physicalDeviceProperties.limits.framebufferDepthSampleCounts;
 
-		/// Get the highest sample count that is supported
-		if (counts & VK_SAMPLE_COUNT_64_BIT)
-			return VK_SAMPLE_COUNT_64_BIT;
-		if (counts & VK_SAMPLE_COUNT_32_BIT)
-			return VK_SAMPLE_COUNT_32_BIT;
-		if (counts & VK_SAMPLE_COUNT_16_BIT)
-			return VK_SAMPLE_COUNT_16_BIT;
-		if (counts & VK_SAMPLE_COUNT_8_BIT)
-			return VK_SAMPLE_COUNT_8_BIT;
-		if (counts & VK_SAMPLE_COUNT_4_BIT)
-			return VK_SAMPLE_COUNT_4_BIT;
-		if (counts & VK_SAMPLE_COUNT_2_BIT)
-			return VK_SAMPLE_COUNT_2_BIT;
+		// Get the highest sample count that is supported
+		if (counts & VK_SAMPLE_COUNT_64_BIT) return VK_SAMPLE_COUNT_64_BIT;
+		if (counts & VK_SAMPLE_COUNT_32_BIT) return VK_SAMPLE_COUNT_32_BIT;
+		if (counts & VK_SAMPLE_COUNT_16_BIT) return VK_SAMPLE_COUNT_16_BIT;
+		if (counts & VK_SAMPLE_COUNT_8_BIT)  return VK_SAMPLE_COUNT_8_BIT;
+		if (counts & VK_SAMPLE_COUNT_4_BIT)  return VK_SAMPLE_COUNT_4_BIT;
+		if (counts & VK_SAMPLE_COUNT_2_BIT)  return VK_SAMPLE_COUNT_2_BIT;
 
 		return VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -2001,8 +2004,6 @@ namespace SceneryEditorX
 		SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to find suitable memory type!");
 		return 0; /// Return a default value to avoid undefined behavior
 	}
-
-    // -------------------------------------------------------
 
 }
 

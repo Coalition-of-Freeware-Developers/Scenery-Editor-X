@@ -20,17 +20,17 @@
 
 namespace SceneryEditorX
 {
-
-
-    /*
-    CommandResources& CommandBuffer::GetCurrentCommandResources()
+    /**
+     * @brief Get the current command resources for the active queue and frame.
+     * @return Reference to the CommandResources for the current frame in the active queue.
+     */
+    CommandResources & CommandBuffer::GetCurrentCommandResources()
     {
         RenderData renderData;
         return queues[currentQueue].commands[renderData.swapChainCurrentFrame];
     }
-    */
 
-    /*
+	/*
     CommandBuffer::CommandBuffer(bool swapchain)
     {
 		VkQueryPoolCreateInfo queryPoolCreateInfo = {};
@@ -76,14 +76,18 @@ namespace SceneryEditorX
     }
     */
 
-    /*
+    /**
+     * @brief Constructs a CommandBuffer object, allocating the specified number of Vulkan command buffers.
+     * @param count Number of command buffers to allocate. If 0, allocates one per frame in flight.
+     * @param debugName Debug name for the command buffers for easier identification in debugging tools.
+     */
     CommandBuffer::CommandBuffer(uint32_t count, std::string debugName) : debugName(std::move(debugName))
     {
-        /// Get the device from graphics engine
+        // Get the device from graphics engine
         auto device = vkDevice;
 
         if (count == 0)
-            count = data.framesInFlight; /// 0 = one per frame in flight
+            count = data.framesInFlight; // 0 = one per frame in flight
 
         SEDX_CORE_VERIFY(count > 0, "CommandBuffer count must be greater than 0");
 
@@ -95,9 +99,9 @@ namespace SceneryEditorX
             allocInfo.commandPool = cmdPool;
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocInfo.commandBufferCount = count;
-            commandBuffer.resize(count);
+            cmdBuffers.resize(count);
 
-            VK_CHECK_RESULT(vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, commandBuffer.data()))
+            VK_CHECK_RESULT(vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, cmdBuffers.data()))
 
             for (uint32_t i = 0; i < count; ++i)
             {
@@ -114,12 +118,14 @@ namespace SceneryEditorX
             }
         }
 
+        /*
         VkCommandPoolCreateInfo cmdPoolInfo = {};
         cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cmdPoolInfo.queueFamilyIndex = device->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
         cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         VK_CHECK_RESULT(vkCreateCommandPool(device->GetDevice(), &cmdPoolInfo, nullptr, &cmdPool))
         SetDebugUtilsObjectName(device->GetDevice(), VK_OBJECT_TYPE_COMMAND_POOL, debugName, cmdPool);
+        */
 
         VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
         commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -135,6 +141,7 @@ namespace SceneryEditorX
                                     std::format("{} (frame in flight: {})", debugName, i),
                                     cmdBuffers[i]);
 
+		// TODO: Use Fence Class here
         VkFenceCreateInfo fenceCreateInfo{};
         fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -152,7 +159,7 @@ namespace SceneryEditorX
         queryPoolCreateInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
         queryPoolCreateInfo.pNext = nullptr;
 
-        /// Timestamp queries
+        // Timestamp queries
         const uint32_t maxUserQueries = 16;
         timeQueryCount = 2 + 2 * maxUserQueries;
 
@@ -190,7 +197,6 @@ namespace SceneryEditorX
         pipelineQueryPools.resize(count);
 
     }
-    */
 
     /*
     CommandBuffer::CommandBuffer(std::string debugName, bool swapchain) : ownedBySwapChain(true), debugName(std::move(debugName))
@@ -241,20 +247,29 @@ namespace SceneryEditorX
     }
     */
 
-    /*
+    /**
+     * @brief Destructor for CommandBuffer class. Cleans up allocated Vulkan command buffers.
+     */
     CommandBuffer::~CommandBuffer()
     {
         if (ownedBySwapChain)
             return;
+
+		auto device = vkDevice;
+		for (auto &cmdBuffer : cmdBuffers)
+            vkFreeCommandBuffers(device->GetDevice(), cmdPool, cmdCount, &cmdBuffer);
+
     }
-    */
 
     // -------------------------------------------------------
-    
-    /*
+
+    /**
+     * @brief Static accessor method to get the singleton instance of CommandBuffer
+     * @return Reference to the singleton CommandBuffer instance
+     */
     Ref<CommandBuffer> CommandBuffer::Get()  
     {  
-        static Ref<CommandBuffer> cmdBuffersInstance; /// Static instance to ensure a single shared instance  
+        static Ref<CommandBuffer> cmdBuffersInstance; // Static instance to ensure a single shared instance  
         if (!cmdBuffersInstance)  
         {
             SEDX_CORE_WARN_TAG("CommandBuffer", "Creating command buffers for the first time");  
@@ -262,11 +277,19 @@ namespace SceneryEditorX
         }
         return cmdBuffersInstance;  
     }
-    */
 
     // -------------------------------------------------------
 
-	/*
+    /**
+	 * @fn Begin
+	 * @brief Begins recording commands into the command buffer.
+	 * 
+	 * @details This method prepares the command buffer for recording by setting up
+	 * the necessary Vulkan structures and states. It retrieves the appropriate command
+	 * buffer for the current frame index and begins the command buffer recording process.
+	 * Additionally, it resets and initializes timestamp and pipeline statistics query pools
+	 * to enable performance measurements during command execution.
+	 */
 	void CommandBuffer::Begin()
 	{
         availTimeQuery = 2;
@@ -304,9 +327,19 @@ namespace SceneryEditorX
 			vkCmdBeginQuery(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0, 0);
 		});
 	}
-	*/
 
-    /*
+    /**
+	 * @fn Begin
+	 * @brief Begins recording commands into the command buffer for the specified queue.
+	 * 
+	 * @param queue The queue type (Graphics, Compute, Transfer) for which to begin recording.
+	 * 
+	 * @details This method prepares the command buffer for recording by setting up
+	 * the necessary Vulkan structures and states for the specified queue type. It retrieves
+	 * the appropriate command buffer for the current frame index and begins the command buffer
+	 * recording process. Additionally, it resets and initializes timestamp query pools
+	 * to enable performance measurements during command execution.
+	 */
     void CommandBuffer::Begin(const Queue queue)
     {
         SEDX_ASSERT(currentQueue == Queue::Count, "Already recording a command buffer");
@@ -330,8 +363,7 @@ namespace SceneryEditorX
                 const uint64_t begin = cmd.timeStamps[2 * i];
                 const uint64_t end = cmd.timeStamps[2 * i + 1];
                 timeStampTable[cmd.timeStampNames[i]] =
-                    static_cast<float>(end - begin) *
-                    vkPhysDevice->GetDeviceProperties().limits.timestampPeriod / 1000000.0f;
+                    static_cast<float>(end - begin) * vkPhysDevice->GetDeviceProperties().properties.limits.timestampPeriod / 1000000.0f;
             }
             cmd.timeStamps.clear();
             cmd.timeStampNames.clear();
@@ -348,9 +380,15 @@ namespace SceneryEditorX
 		if (queue != Queue::Transfer)
             vkCmdResetQueryPool(cmd.buffer, cmd.queryPool, 0, timeStampPerPool);
     }
-    */
 
-    /*
+    /**
+     * @fn End
+     * @brief Ends the recording of commands into the command buffer.
+     *
+     * @details This method finalizes the command buffer recording process by ending
+     * the command buffer and writing a timestamp to the query pool. It ensures that
+     * the command buffer is properly closed and ready for submission to the GPU.
+     */
     void CommandBuffer::End()
     {
         Ref<CommandBuffer> instance(this);
@@ -368,9 +406,18 @@ namespace SceneryEditorX
             instance->activeCmdBuffer = nullptr;
         });
     }
-    */
 
-    /*
+    /**
+	 * @fn End
+	 * @brief Ends the recording of commands into the command buffer and submits it to the queue.
+	 * 
+	 * @param submitInfo Reference to a VkSubmitInfo structure that will be populated for submission.
+	 * 
+	 * @details This method finalizes the command buffer recording process by ending
+	 * the command buffer and preparing it for submission to the specified queue.
+	 * It fills out the provided VkSubmitInfo structure with the necessary information
+	 * to submit the command buffer for execution on the GPU.
+	 */
     void CommandBuffer::End(VkSubmitInfo submitInfo)
     {
         const auto &cmd = GetCurrentCommandResources();
@@ -383,7 +430,6 @@ namespace SceneryEditorX
         const auto result = vkQueueSubmit(queues[currentQueue].queue, 1, &submitInfo, cmd.fence);
         SEDX_ASSERT(result != VK_SUCCESS, "Failed to submit command buffer to queue");
     }
-    */
 
     /**
      * @fn GetCommandBuffer
@@ -406,18 +452,27 @@ namespace SceneryEditorX
      * 
      * @see Begin, End, Submit
      */
-
-    /*
     VkCommandBuffer CommandBuffer::GetCommandBuffer(const RenderData &frameIndex) const
     {
         SEDX_CORE_ASSERT(frameIndex.frameIndex < cmdBuffers.size());
         return cmdBuffers[frameIndex.frameIndex];
-    }*/
+    }
 
-    /*
+    /**
+     * @brief Submits the current command buffer to the graphics queue for execution
+     * @details This method handles the submission of the currently recorded command buffer
+     * to the graphics queue. It sets up the necessary synchronization primitives, 
+     * including semaphores for image availability and render completion.
+     * It constructs a VkSubmitInfo structure to specify the command buffer to be submitted,
+     * the semaphores to wait on before execution, and the semaphores to signal upon completion.
+     * After submission, it also prepares a VkPresentInfoKHR structure to present the rendered image
+     * to the swap chain.
+     *
+     * @note This method assumes that the command buffer has already been recorded and is ready
+     * for submission.
+     */
     void CommandBuffer::Submit()
     {
-
         RenderData renderData;
         const auto &cmd = GetCurrentCommandResources();
 
@@ -443,9 +498,15 @@ namespace SceneryEditorX
         presentInfo.pImageIndices = &renderData.imageIndex;
         presentInfo.pResults = nullptr;
     }
-    */
 
-	/*
+    /**
+	 * @brief Submits the command buffer for execution on the GPU.
+	 *
+	 * @details This method handles the submission of the command buffer to the graphics queue.
+	 * It sets up the necessary synchronization using fences to ensure that the command buffer
+	 * is executed in the correct order. After submission, it retrieves the results
+	 * of timestamp and pipeline statistics queries to provide performance metrics.
+	 */
 	void CommandBuffer::Submit()
 	{
 		if (ownedBySwapChain)
@@ -474,8 +535,11 @@ namespace SceneryEditorX
 			device->UnlockQueue();
 
 			// Retrieve timestamp query results
-			vkGetQueryPoolResults(device->GetDevice(), instance->timestampQueryPools[commandBufferIndex], 0, instance->availTimeQuery,
-				instance->availTimeQuery * sizeof(uint64_t), instance->timestampQueryResults[commandBufferIndex].data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+			vkGetQueryPoolResults(device->GetDevice(),
+				instance->timestampQueryPools[commandBufferIndex], 0, instance->availTimeQuery,
+				instance->availTimeQuery * sizeof(uint64_t),
+				instance->timestampQueryResults[commandBufferIndex].data(),
+				sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
 
 			for (uint32_t i = 0; i < instance->availTimeQuery; i += 2)
 			{
@@ -490,10 +554,14 @@ namespace SceneryEditorX
 				sizeof(PipelineStats), &instance->pipelineStatsQueryResults[commandBufferIndex], sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
 		});
 	}
-	*/
 
-	/*
-	uint32_t CommandBuffer::BeginTimestampQuery()
+    // -------------------------------------------------------
+
+    /**
+     * @brief Begins a timestamp query and returns the query index
+     * @return The index of the started timestamp query
+     */
+    uint32_t CommandBuffer::BeginTimestampQuery()
 	{
         uint32_t queryIndex = availTimeQuery;
         availTimeQuery += 2;
@@ -506,9 +574,11 @@ namespace SceneryEditorX
 		});
 		return queryIndex;
 	}
-	*/
 
-	/*
+    /**
+	 * @brief Ends a timestamp query for the given query ID
+	 * @param queryID The index of the timestamp query to end
+	 */
 	void CommandBuffer::EndTimestampQuery(uint32_t queryID)
 	{
         Ref<CommandBuffer> instance(this);
@@ -519,7 +589,6 @@ namespace SceneryEditorX
 			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], queryID + 1);
 		});
 	}
-	*/
 
 }
 

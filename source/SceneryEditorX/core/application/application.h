@@ -57,8 +57,8 @@ namespace SceneryEditorX
         virtual void OnShutdown();
 
 		DeltaTime GetDeltaTime() const { return m_deltaTime; }
-		DeltaTime GetFrametime() const { return m_frametime; }
-		float GetTime() const; /// TODO: This should be in "Platform"
+		DeltaTime GetFrameTime() const { return m_frameTime; }
+		float GetTime() const; // TODO: This should be in "Platform"
 
 	    PerformanceProfiler* GetPerformanceProfiler() const { return m_profiler; }
         inline Window& GetWindow() { return *m_Window; }
@@ -85,7 +85,12 @@ namespace SceneryEditorX
         bool OnWindowMinimize(const WindowMinimizeEvent &e);
         bool OnWindowClose(WindowCloseEvent &e);
 
-		template<typename Func>
+        /**
+		 * @brief Queues an event to be processed later.
+		 * @tparam Func The type of the function to be queued.
+		 * @param func The function to be queued.
+		 */
+        template <typename Func>
 		void QueueEvent(Func&& func)
 		{
 			std::scoped_lock<std::mutex> lock(m_EventQueueMutex);
@@ -125,14 +130,14 @@ namespace SceneryEditorX
         ModuleStage m_ModuleStage;
 
 		DeltaTime m_deltaTime;
-		DeltaTime m_frametime;
+		DeltaTime m_frameTime;
 	    bool isRunning = true;
         bool isMinimized = false;
         bool m_ShowStats = true;
 
         ApplicationSettings settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
         static Application *appInstance;
-        PerformanceProfiler *m_profiler = nullptr; /// TODO: Should be null in Dist
+        PerformanceProfiler *m_profiler = nullptr; // TODO: Should be null in Dist
         std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;
         std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
         std::mutex m_EventQueueMutex;
@@ -142,7 +147,7 @@ namespace SceneryEditorX
         //friend class RenderContext;
         //friend class Renderer;
     protected:
-        inline static bool isRuntime = false;
+        inline static bool isRunTime = false;
     };
 
     Application *CreateApplication(int argc, char **argv);

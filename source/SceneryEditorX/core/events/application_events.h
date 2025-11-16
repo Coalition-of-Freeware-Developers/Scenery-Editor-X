@@ -56,6 +56,23 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------------------
 
+    class WindowMaximizeEvent : public Event
+    {
+    public:
+        explicit WindowMaximizeEvent(const bool maximize) : m_Maximized(maximize)
+        {
+        }
+
+        [[nodiscard]] bool IsMaximized() const { return m_Maximized; }
+
+        EVENT_CLASS_TYPE(WindowMaximize)
+        EVENT_CLASS_CATEGORY(EventCategoryApplication)
+    private:
+        bool m_Maximized = false;
+    };
+
+    // -------------------------------------------------------------------
+
 	class WindowCloseEvent : public Event
 	{
 	public:

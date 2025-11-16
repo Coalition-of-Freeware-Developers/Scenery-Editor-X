@@ -135,15 +135,6 @@ namespace SceneryEditorX
 
     void EditorApplication::Create()
     {
-        //auto physDevice = vkDevice->GetPhysicalDevice();
-        //physDevice->SelectDevice(VK_QUEUE_GRAPHICS_BIT, true);
-
-        // Set up the features we need
-        //VkPhysicalDeviceFeatures deviceFeatures{};
-        //deviceFeatures = vkDeviceFeatures.GetPhysicalDeviceFeatures();
-
-        /// Update the vkDevice handle
-        //device = vkDevice->GetDevice();
 
         //Window::SetTitle("Scenery Editor X | " + assetManager.GetProjectName());
         //gfxEngine.CreateInstance(editorWindow);
@@ -153,28 +144,36 @@ namespace SceneryEditorX
         /// Initialize UI components
         ui.InitGUI();
 
-        //SceneryEditorX::CreateEditor();
-
-        //gfxEngine = CreateRef<GraphicsEngine>(*Window::GetWindow());
-        //gfxEngine->CreateInstance();
-
         //camera->extent = {viewportSize.x, viewportSize.y};
     }
 
     void EditorApplication::MainLoop()
     {
+        Renderer::GetRenderData();
+        while (!Application::Get().GetWindow().GetShouldClose())
+		{
+			Application::Get().OnUpdate();
+			// Update editor application state
+			Update();
+			// Render a frame
+			DrawFrame();
+		}
 
-        vkDeviceWaitIdle(device);
     }
 
     void EditorApplication::Update()
     {
-        /*
-        /// Update the viewport size if it has changed
+        // Update the viewport size if it has changed
+		/*
         if (viewportData.viewportResized)
             return;
-            //RecreateFrameResources();
-            */
+        // Update viewport size from the new size
+        viewportData.SetViewportSize(newViewportSize.GetViewportSize());
+        viewportData.viewportResized = false;
+        */
+    }
+    void EditorApplication::DrawFrame()
+    {
     }
 
     void EditorApplication::UpdateWindowTitle(const std::string &sceneName)
@@ -225,8 +224,8 @@ namespace SceneryEditorX
 		memset(s_OpenProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
 		memset(s_NewProjectFilePathBuffer, 0, MAX_PROJECT_FILEPATH_LENGTH);
 
-		/// Should we ever want to actually show editor layer panels in Hazel::Runtime
-		/// then these lines need to be added to RuntimeLayer::Attach()
+		// Should we ever want to actually show editor layer panels in Hazel::Runtime
+		// then these lines need to be added to RuntimeLayer::Attach()
 		EditorResources::Init();
 
 		for (int i = 0; i < 4; ++i)
@@ -298,8 +297,8 @@ namespace SceneryEditorX
 			EmptyProject();
 			*/
 
-		//AssetManager::UnloadAllAssetPacks();
-		//AssetManager::AddAssetPack(assetPack);
+		// AssetManager::UnloadAllAssetPacks();
+		// AssetManager::AddAssetPack(assetPack);
 
 		/*
 		for (Ref<Viewport>& viewport : m_EditorViewports)
@@ -309,9 +308,9 @@ namespace SceneryEditorX
 		*/
 
 		// TODO: do we need to do this for all viewports? when we set new main viewport
-		//sceneRendererPanel->SetContext(GetMainViewport()->GetRenderer());
+		// sceneRendererPanel->SetContext(GetMainViewport()->GetRenderer());
 
-		//AssetEditorPanel::RegisterDefaultEditors();
+		// AssetEditorPanel::RegisterDefaultEditors();
 
 		/*
 		if (m_UserPreferences->ShowWelcomeScreen)

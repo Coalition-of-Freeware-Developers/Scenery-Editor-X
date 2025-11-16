@@ -66,7 +66,9 @@ namespace SceneryEditorX
 		RenderPass() = delete;
 		virtual ~RenderPass() override = default;
 
-        // passes - core
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Core Render Passes
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         static void ProduceFrame(CommandManager* cmd_list_graphics_present, CommandManager* cmd_list_compute);
         static void Pass_VariableRateShading(CommandManager* cmd_list);
         static void Pass_ShadowMaps(CommandManager* cmd_list);
@@ -78,21 +80,27 @@ namespace SceneryEditorX
         static void Pass_ScreenSpaceShadows(CommandManager* cmd_list);
         static void Pass_Skysphere(CommandManager* cmd_list);
 
-        // passes - lighting
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Lighting Render Passes
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         static void Pass_Light(CommandManager* cmd_list, const bool is_transparent_pass);
         static void Pass_Light_Composition(CommandManager* cmd_list, const bool is_transparent_pass);
         static void Pass_Light_ImageBased(CommandManager* cmd_list);
         static void Pass_Lut_BrdfSpecular(CommandManager* cmd_list);
         static void Pass_Lut_AtmosphericScattering(CommandManager* cmd_list);
 
-        // passes - debug/editor
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Debug/Editor Render Passes
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         static void Pass_Grid(CommandManager* cmd_list, Texture* tex_out);
         static void Pass_Lines(CommandManager* cmd_list, Texture* tex_out);
         static void Pass_Outline(CommandManager* cmd_list, Texture* tex_out);
         static void Pass_Icons(CommandManager* cmd_list, Texture* tex_out);
         static void Pass_Text(CommandManager* cmd_list, Texture* tex_out);
 
-        // passes - post-process
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Post-Process Render Passes
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         static void Pass_PostProcess(CommandManager* cmd_list);
         static void Pass_Output(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
         static void Pass_Fxaa(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
@@ -106,7 +114,9 @@ namespace SceneryEditorX
         static void Pass_Dithering(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
         static void Pass_Upscale(CommandManager* cmd_list);
 
-        // passes - utility
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Utility Render Passes
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         static void Pass_Blit(CommandManager* cmd_list, Texture* tex_in, Texture* tex_out);
         //static void Pass_Downscale(CommandManager* cmd_list, Texture* tex, const DownsampleFilter filter);
         //static void Pass_Blur(CommandManager* cmd_list, Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);

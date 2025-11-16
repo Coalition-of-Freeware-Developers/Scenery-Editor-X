@@ -13,11 +13,13 @@
 #pragma once
 //#include <Editor/core/editor_camera.h>
 //#include <SceneryEditorX/core/events/event_system.h>
+//#include <SceneryEditorX/core/events/key_events.h>
+//#include <SceneryEditorX/core/events/mouse_events.h>
 //#include <SceneryEditorX/core/time/time.h>
 //#include <SceneryEditorX/renderer/scene_renderer.h>
 
-/// -------------------------------------------------------
-
+// -------------------------------------------------------
+/*
 namespace SceneryEditorX
 {
 
@@ -28,9 +30,9 @@ namespace SceneryEditorX
     //class KeyPressedEvent;
     //class MouseButtonPressedEvent;
 
-    /// -------------------------------------------------------
+    // -------------------------------------------------------
 
-    /*
+	/*
     class Viewport : public RefCounted
     {
     public:
@@ -43,13 +45,13 @@ namespace SceneryEditorX
         bool IsViewportVisible() const;
         bool IsMainViewport() const;
 
-        Ref<SceneRenderer> GetRenderer() const;
-        Ref<Renderer2D> GetRenderer2D() const;
+        //Ref<SceneRenderer> GetRenderer() const;
+        //Ref<Renderer2D> GetRenderer2D() const;
 
 		EditorCamera &GetViewportCamera();
         std::array<Vec2, 2> GetViewportBounds() const;
 
-        void Init(const Ref<Scene> &scene);
+        //void Init(const Ref<Scene> &scene);
         void SetIsMainViewport(bool isMain);
         void SetIsVisible(bool visible);
 
@@ -80,8 +82,6 @@ namespace SceneryEditorX
         Ref<SceneRenderer> m_ViewportRenderer;
         Ref<Renderer2D> m_ViewportRenderer2D;
         std::array<Vec2, 2> m_ViewportBounds = {};
-        */
-
 
 		/**
 		 * Main means the last active viewport.
@@ -114,9 +114,10 @@ namespace SceneryEditorX
         };
 
         TransformationTarget m_MultiTransformTarget = TransformationTarget::MedianPoint;
-    };
-	*/
+
+    }; 
+
 }
+*/
 
-
-/// -------------------------------------------------------
+// -------------------------------------------------------

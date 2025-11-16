@@ -28,8 +28,8 @@
 
 namespace SceneryEditorX
 {
-
     class SwapChain;
+
     class CommandPool : public RefCounted
 	{
 	public:
@@ -49,33 +49,34 @@ namespace SceneryEditorX
 	     *
 	     * @return A new command buffer
 	     */
-	    [[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;
+	    //[[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;
 
 	    /**
 	     * @brief Submit a command buffer to the graphics queue and wait for completion
 	     * @param cmdBuffer The command buffer to submit
 	     */
-	    void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
+	    //void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
 
 	    /**
 	     * @brief Submit a command buffer to a specific queue and wait for completion
 	     * @param cmdBuffer The command buffer to submit
 	     * @param queue The queue to submit to
 	     */
-	    void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
+	    //void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
 
+	    /*
 	    // Accessor methods
 	    [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
 	    [[nodiscard]] VkCommandPool GetComputeCmdPool()	 const { return ComputeCmdPool; }
 	    [[nodiscard]] VkCommandPool GetTransferCmdPool() const { return TransferCmdPool; }
-
-	    Queue queueType;
-	    VkCommandPool commandPool = VK_NULL_HANDLE;
+	    */
 
 	private:
-	    VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
+        Queue queueType;
+        VkCommandPool commandPool = VK_NULL_HANDLE;
+	    /*VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
 	    VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
-	    VkCommandPool TransferCmdPool = VK_NULL_HANDLE;
+	    VkCommandPool TransferCmdPool = VK_NULL_HANDLE;*/
 	};
 
 	// ---------------------------------------------------------
@@ -120,7 +121,7 @@ namespace SceneryEditorX
         }
 
     private:
-        using PoolMap = std::unordered_map<int, Ref<CommandPool>>;
+        typedef std::unordered_map<int, Ref<CommandPool>> PoolMap;
         static std::unordered_map<std::thread::id, PoolMap>& Pools()
         {
             static std::unordered_map<std::thread::id, PoolMap> s_pools;
@@ -169,60 +170,75 @@ namespace SceneryEditorX
         void ExecutionWait(const bool waitTime = false);
         void PipelineState();
 
-        // -------------------------------------------------------
-
-		// Draw
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// Draw Commands
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		void Draw(const uint32_t count, const uint32_t vertexStartIdx = 0);
 	    void DrawIndexed(const uint32_t count, const uint32_t indexOffset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
 
 		// Ref<VertexBuffer> SetBuffer();
 		// Ref<IndexBuffer>  SetBuffer();
 
-	    // Clear
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	    // Clear Commands
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void ClearPipelineStateRenderTargets(Pipeline& pipeline_state);
 
         /*
-        void ClearTexture(
-            Texture* texture,
-            const Color& clear_color     = colorLoad,
-            const float clear_depth      = depthLoad,
-            const uint32_t clear_stencil = stencilLoad
-        );
+        void ClearTexture(Texture* texture,const Color& clear_color = colorLoad, const float clear_depth = depthLoad,const uint32_t clear_stencil = stencilLoad);
         */
 
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Dispatch
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
         void Dispatch(Texture* texture);
 
-        // blit
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // BLIT Commands
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void Blit(Texture* source, Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
         void Blit(Texture* source, SwapChain* destination);
 
-        // copy
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Copy Commands
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void Copy(Texture* source, Texture* destination, const bool blit_mips);
         void Copy(Texture* source, SwapChain* destination);
 
-        // viewport
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Viewport
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void SetViewport(const Viewport& viewport) const;
 
-        // scissor
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Scissor
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void SetScissorRectangle(const xMath::Rectangle & scissor_rectangle) const;
 
-        // cull mode
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Cull Mode
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void SetCullMode(const CullMode cull_mode);
 
-        // buffers
-        void SetBufferVertex(const Buffer* vertex, Buffer* instance = nullptr);
-        void SetBufferIndex(const Buffer* buffer);
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Buffers
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        void SetVertexBuffer(const Buffer *vertex, Buffer *instance = nullptr);
+        void SetIndexBuffer(const Buffer *buffer);
         void SetBuffer(const uint32_t slot, Buffer* buffer) const;
         //void SetBuffer(const Renderer_BindingsUav slot, Buffer* buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer); }
         void UpdateBuffer(Buffer *buffer, const uint64_t offset, const uint64_t size, const void *data);
 
-        // constant buffer
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Constant Buffers
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void SetConstantBuffer(const uint32_t slot, Buffer* constant_buffer) const;
         //void SetConstantBuffer(const Renderer_BindingsCb slot, Buffer* constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer); }
-
-        // push constant buffer
+        
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Push-Constant Buffers
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
 
         template<typename T>
@@ -231,44 +247,60 @@ namespace SceneryEditorX
             PushConstants(0, sizeof(T), &data);
         }
 
-        // texture
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Texture
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // void SetTexture(const uint32_t slot, Texture* texture, const uint32_t mipIdx = allMips, uint32_t mip_range = 0, const bool uav = false);
         // void SetTexture(const Renderer_BindingsUav slot, Texture* texture,  const uint32_t mipIdx = allMips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mipIdx, mip_range, true); }
         // void SetTexture(const Renderer_BindingsSrv slot, Texture* texture,  const uint32_t mipIdx = allMips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mipIdx, mip_range, false); }
 
-        // markers
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Markers
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void BeginMarker(std::string debugName);
         void EndMarker();
 
-        // timestamp queries
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Timestamp Queries
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         uint32_t BeginTimestamp();
         void EndTimestamp();
         float GetTimestampResult(const uint32_t index_timestamp);
 
-        // occlusion queries
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Occlusion Queries
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void BeginOcclusionQuery(const uint64_t entity_id);
         void EndOcclusionQuery();
         bool GetOcclusionQueryResult(const uint64_t entity_id);
         void UpdateOcclusionQueries();
 
-        // time-blocks (cpu and gpu time measurement as well as gpu markers)
-        void BeginTimeblock(std::string debugName, const bool gpu_marker = true, const bool gpu_timing = true);
-        void EndTimeblock();
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Time-Blocks (cpu and gpu time measurement as well as gpu markers)
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        void BeginTimeBlock(std::string debugName, const bool gpu_marker = true, const bool gpu_timing = true);
+        void EndTimeBlock();
 
-        // memory barriers
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Memory Barriers
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void InsertBarrier(void* image, const VkFormat format, const uint32_t mipIdx, const uint32_t mip_range, const uint32_t arrayLength,const Layout::ImageLayout layoutNew);
         // void InsertBarrierReadWrite(Texture *texture, const BarrierType type);
         void InsertBarrierReadWrite(Buffer *buffer);
         void InsertPendingBarrierGroup();
 
-        // misc
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Misc
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void RenderPassEnd();
         FrameSync* GetRenderingCompleteSemaphore()		{ return m_rendering_complete_semaphore.Get(); }
         void* GetRhiResource() const                    { return m_resource; }
 	    CommandState GetState() const					{ return m_state; }
         Queue* GetQueue() const							{ return m_queue; }
 
-        // layouts
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Image Layouts
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         static void RemoveLayout(void* image);
         static Layout::ImageLayout GetImageLayout(void* image, uint32_t mipIdx);
 
@@ -276,11 +308,15 @@ namespace SceneryEditorX
         void PreDraw();
         void RenderPassBegin();
 
-        // sync
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Synchronization
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         Ref<FrameSync> m_rendering_complete_semaphore;
         Ref<FrameSync> m_rendering_complete_semaphore_timeline;
 
-        // misc
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Misc
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         uint64_t m_buffer_id_vertex                         = 0;
         uint64_t m_buffer_id_index                          = 0;
         uint32_t m_timestamp_index                          = 0;
@@ -291,7 +327,7 @@ namespace SceneryEditorX
         bool m_render_pass_active                           = false;
         uint32_t m_render_pass_draw_calls                   = 0;
         std::stack<const char*> m_active_timeblocks;
-        std::stack<const char *> m_debug_label_stack;
+        std::stack<const char*> m_debug_label_stack;
         std::mutex m_mutex_reset;
         Pipeline m_pso;
         std::vector<ImageBarrierInfo> m_image_barriers;
@@ -299,7 +335,9 @@ namespace SceneryEditorX
         bool m_load_depth_render_target						= false;
         //std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
 
-        // resources
+	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Resources
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void* m_resource						= nullptr;
         void* m_cmdPool_resource				= nullptr;
         void* m_queryPool_timestamps			= nullptr;

@@ -22,7 +22,7 @@ namespace SceneryEditorX
 {
 	namespace Utils
 	{
-	    inline VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification& specification, const FramebufferTextureSpecification& attachmentSpecification)
+        static VkAttachmentLoadOp GetVkAttachmentLoadOp(const FramebufferSpecification& specification, const FramebufferTextureSpecification& attachmentSpecification)
 		{
 			if (attachmentSpecification.LoadOp == AttachmentLoadOp::Inherit)
 			{
@@ -51,7 +51,7 @@ namespace SceneryEditorX
 			m_Height = (uint32_t)(specification.height * m_Specification.scale);
 		}
 
-		///< Create all image objects immediately so we can start referencing them elsewhere
+		// Create all image objects immediately so we can start referencing them elsewhere
         if (!m_Specification.existingFramebuffer)
         {
             uint32_t attachmentIndex = 0;
@@ -302,8 +302,8 @@ namespace SceneryEditorX
         if (m_DepthAttachmentImage)
             subpassDescription.pDepthStencilAttachment = &depthAttachmentReference;
 
-        /// TODO: do we need these?
-        /// Use subpass dependencies for layout transitions
+        // TODO: do we need these?
+        // Use subpass dependencies for layout transitions
         std::vector<VkSubpassDependency> dependencies;
 
         if (!m_AttachmentImages.empty())
@@ -355,7 +355,7 @@ namespace SceneryEditorX
             }
         }
 
-        ///< Create the actual render-pass
+        // Create the actual render-pass
         VkRenderPassCreateInfo renderPassInfo = {};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size());
@@ -417,7 +417,7 @@ namespace SceneryEditorX
                 vkDestroyFramebuffer(device, framebuffer, nullptr);
             });
 
-            ///< Don't free the images if we don't own them
+            // Don't free the images if we don't own them
             if (!m_Specification.existingFramebuffer)
             {
                 uint32_t attachmentIndex = 0;
@@ -426,7 +426,7 @@ namespace SceneryEditorX
                     if (m_Specification.existingImages.contains(attachmentIndex))
                         continue;
 
-                    ///< Only destroy deinterleaved image once and prevent clearing layer views on second framebuffer invalidation
+                    // Only destroy deinterleaved image once and prevent clearing layer views on second framebuffer invalidation
                     if (image->GetSpecification().layers == 1 || attachmentIndex == 0 && !image->GetLayerImageView(0))
                         image->Release();
                     attachmentIndex++;
@@ -434,7 +434,7 @@ namespace SceneryEditorX
 
                 if (m_DepthAttachmentImage)
                 {
-                    ///< Do we own the depth image?
+                    // Do we own the depth image?
                     if (!m_Specification.existingImages.contains((uint32_t)m_Specification.attachments.Attachments.size() - 1))
                         m_DepthAttachmentImage->Release();
                 }

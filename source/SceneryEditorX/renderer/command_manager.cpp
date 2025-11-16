@@ -21,77 +21,8 @@
 // Active implementations (outside of legacy commented block)
 namespace SceneryEditorX
 {
-	CommandPool::CommandPool(const Ref<VulkanDevice>& vulkanDevice, Queue type)
-	{
-		queueType = type;
 
-		const VkDevice device = vulkanDevice->GetDevice();
-		const auto& qIndices = vulkanDevice->GetPhysicalDevice()->GetQueueFamilyIndices();
-
-		// Graphics pool
-		VkCommandPoolCreateInfo ci{};
-		ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		ci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		ci.queueFamilyIndex = qIndices.GetGraphicsFamily();
-		if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &GraphicsCmdPool); res != VK_SUCCESS)
-		{
-			SEDX_CORE_ERROR_TAG("VULKAN", "Failed to create graphics command pool (err {0})", res);
-			GraphicsCmdPool = VK_NULL_HANDLE;
-		}
-
-		// Compute pool (fallback to graphics if same family or create fails)
-		ci.queueFamilyIndex = qIndices.GetComputeFamily();
-		if (ci.queueFamilyIndex != qIndices.GetGraphicsFamily())
-		{
-			if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &ComputeCmdPool); res != VK_SUCCESS)
-			{
-				SEDX_CORE_WARN_TAG("VULKAN", "Failed to create compute command pool (err {0}), using graphics pool", res);
-				ComputeCmdPool = GraphicsCmdPool;
-			}
-		}
-		else
-		{
-			ComputeCmdPool = GraphicsCmdPool;
-		}
-
-		// Transfer pool (optional, fallback to graphics)
-		ci.queueFamilyIndex = qIndices.GetTransferFamily();
-		if (ci.queueFamilyIndex != qIndices.GetGraphicsFamily() && ci.queueFamilyIndex != qIndices.GetComputeFamily())
-		{
-			if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &TransferCmdPool); res != VK_SUCCESS)
-			{
-				SEDX_CORE_WARN_TAG("VULKAN", "Failed to create transfer command pool (err {0}), using graphics pool", res);
-				TransferCmdPool = GraphicsCmdPool;
-			}
-		}
-		else
-		{
-			TransferCmdPool = GraphicsCmdPool;
-		}
-	}
-
-	CommandPool::~CommandPool()
-	{
-		const auto deviceRef = RenderContext::GetCurrentDevice();
-		if (!deviceRef)
-			return;
-
-		const VkDevice device = deviceRef->GetDevice();
-
-		if (TransferCmdPool != VK_NULL_HANDLE && TransferCmdPool != GraphicsCmdPool && TransferCmdPool != ComputeCmdPool)
-			vkDestroyCommandPool(device, TransferCmdPool, nullptr);
-
-		if (ComputeCmdPool != VK_NULL_HANDLE && ComputeCmdPool != GraphicsCmdPool)
-			vkDestroyCommandPool(device, ComputeCmdPool, nullptr);
-
-		if (GraphicsCmdPool != VK_NULL_HANDLE)
-			vkDestroyCommandPool(device, GraphicsCmdPool, nullptr);
-
-		GraphicsCmdPool = VK_NULL_HANDLE;
-		ComputeCmdPool = VK_NULL_HANDLE;
-		TransferCmdPool = VK_NULL_HANDLE;
-	}
-
+	/*
 	VkCommandBuffer CommandPool::AllocateCommandBuffer(bool begin, bool compute) const
 	{
 		const auto deviceRef = RenderContext::GetCurrentDevice();
@@ -185,6 +116,8 @@ namespace SceneryEditorX
 
 		vkFreeCommandBuffers(device, GraphicsCmdPool, 1, &cmdBuffer);
 	}
+	*/
+
 }
 
 // -------------------------------------------------------

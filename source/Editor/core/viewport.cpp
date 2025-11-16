@@ -24,7 +24,7 @@
 //#include <SceneryEditorX/scene/components.h>
 //#include <SceneryEditorX/scene/entity.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /*
 namespace SceneryEditorX

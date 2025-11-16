@@ -15,12 +15,12 @@
 #include "monitor_data.h"
 #include "SceneryEditorX/core/input/input.h"
 #include "SceneryEditorX/core/memory/memory.h"
+#include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include <stb_image.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/events/application_events.h>
 #include <SceneryEditorX/renderer/vulkan/vk_swapchain.h>
 #include <imgui/imgui.h>
-#include "SceneryEditorX\utils\repeat_call_tracker.h"
 
 // -------------------------------------------------------
 
@@ -220,7 +220,7 @@ namespace SceneryEditorX
         }
 
         // If fullscreen creation failed or not in fullscreen mode, create windowed
-        if (!windowCreated)
+        if (!windowCreated && monitorInitSuccess)
 		{
             SEDX_CORE_INFO("Creating window in windowed mode: {}x{}", static_cast<int>(winData.width), static_cast<int>(winData.height));
             m_window = glfwCreateWindow(static_cast<int>(winData.width), static_cast<int>(winData.height),winData.title.c_str(), nullptr, nullptr);
@@ -228,7 +228,7 @@ namespace SceneryEditorX
         }
 
         // Final fallback - try creating a minimal window
-        if (!windowCreated)
+        if (!windowCreated && monitorInitSuccess)
 		{
             SEDX_CORE_WARN("Window creation failed with specified parameters, trying fallback settings");
             // Reset window hints to defaults
@@ -274,6 +274,7 @@ namespace SceneryEditorX
             renderContext = RenderContext::Get();
             if (!renderContext->IsInitialized())
                 renderContext->Init();
+
 			SEDX_CORE_INFO_TAG ("Swapchain", "Got Renderer context handle");
 			//swapChain = new SwapChain(&winData.width, &winData.height, &winData.vsync);
             swapChain = new SwapChain();
@@ -299,7 +300,7 @@ namespace SceneryEditorX
             // Set up window callbacks
             glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, int width, int height)
             {
-                auto &data = *(WindowData *)glfwGetWindowUserPointer(window);
+                auto &data = *static_cast<WindowData *>(glfwGetWindowUserPointer(window));
                 data.width = width;
                 data.height = height;
             });
@@ -308,7 +309,7 @@ namespace SceneryEditorX
 
             // Set all the callbacks
             glfwSetWindowCloseCallback(m_window, windowCallbacks.windowCloseCallback);
-			glfwSetFramebufferSizeCallback (m_window, Window::FramebufferResizeCallback);
+			glfwSetFramebufferSizeCallback (m_window, FramebufferResizeCallback);
             glfwSetWindowPos(m_window, winData.posX, winData.posY);
             glfwSetCharCallback(m_window, windowCallbacks.charCallback);
             glfwSetCursorPosCallback(m_window, windowCallbacks.cursorPosCallback);
@@ -631,7 +632,7 @@ namespace SceneryEditorX
         }
 
 		// Dispatch engine event so Application::OnWindowResize runs and calls SwapChain::OnResize
-		Application::Get ().DispatchEvent<WindowResizeEvent, true> (
+		Application::Get().DispatchEvent<WindowResizeEvent, true> (
 			static_cast<unsigned int>(width),
 			static_cast<unsigned int>(height));
 	}
@@ -649,6 +650,9 @@ namespace SceneryEditorX
 	{
 	    auto windowInstance = static_cast<Window *>(glfwGetWindowUserPointer(window));
         windowInstance->winData.maximized = maximize;
+
+		// Dispatch engine event so Application::OnWindowMaximize runs
+        Application::Get().DispatchEvent<WindowMaximizeEvent, true>(maximize == GLFW_TRUE);
 	}
 
 	/**
@@ -677,7 +681,6 @@ namespace SceneryEditorX
                 windowInstance->leftAlt = false;
 
             windowInstance->windowCallbacks.keyCallback(window, key, scancode, action, mods);
-
         }
 
     }

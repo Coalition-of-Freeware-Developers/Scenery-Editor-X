@@ -30,6 +30,7 @@ namespace SceneryEditorX
         None = 0,                  // No event (sentinel).
         WindowClose,               // Window close requested by the OS or user.
         WindowMinimize,            // Window minimize/restore toggled.
+        WindowMaximize,			   // Window maximize/restore toggled.
         WindowResize,              // Window size changed.
         WindowFocus,               // Window gained input focus.
         WindowLostFocus,           // Window lost input focus.
@@ -113,7 +114,7 @@ namespace SceneryEditorX
          * @details
          *  Set to `true` by handlers to stop further propagation.
          */
-        bool Handled = false;
+        bool m_Handled = false;
 
         /**
          * @brief Synchronization flag for queued events.
@@ -121,7 +122,7 @@ namespace SceneryEditorX
          *  Queued events are only processed when this is `true`. It is set when the asset thread
          *  synchronizes with the main thread to ensure thread-safe delivery.
          */
-        bool Synced = false;
+        bool m_Synced = false;
 
         virtual ~Event() = default;
 
@@ -213,9 +214,9 @@ namespace SceneryEditorX
         template<typename T>
         bool Dispatch(EventFn<T> func)
         {
-            if (m_Event.GetEventType() == T::GetStaticType() && !m_Event.Handled)
+            if (m_Event.GetEventType() == T::GetStaticType() && !m_Event.m_Handled)
             {
-                m_Event.Handled = func(*(T*)&m_Event);
+                m_Event.m_Handled = func(*(T*)&m_Event);
                 return true;
             }
 

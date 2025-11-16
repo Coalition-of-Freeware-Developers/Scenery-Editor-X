@@ -10,15 +10,17 @@
 * Created: 18/8/2025
 * -------------------------------------------------------
 */
-//#include "render_pass.h"
+#include "render_pass.h"
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
 
-}
-*/
+	void RenderPass::ProduceFrame(CommandManager *cmd_list_graphics_present, CommandManager *cmd_list_compute)
+	{
+	}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

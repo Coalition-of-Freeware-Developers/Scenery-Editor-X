@@ -113,12 +113,11 @@ namespace SceneryEditorX
         uint32_t currentImageIdx		= 0; // Current image index for swapchain operations
         uint32_t swapWidth				= 0; // Width of the swapchain
         uint32_t swapHeight				= 0; // Height of the swapchain
-        bool VSync = false;
+        bool vSync = false;
 
-		// -------------------------------------------------------
-        /// Format and attachment data
-        // -------------------------------------------------------
-
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Format and attachment data
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         VkFormat colorFormat;
         VkFormat depthFormat;
         VkExtent2D swapChainExtent;
@@ -127,10 +126,9 @@ namespace SceneryEditorX
         VkAttachmentDescription colorAttachment{};
         VkAttachmentDescription depthAttachment{};
 
-		// -------------------------------------------------------
-		/// Core swapchain objects
-        // -------------------------------------------------------
-
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Core swapchain objects
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         VkSurfaceKHR surface = nullptr;		// Window surface
         VkSwapchainKHR swapChain = nullptr; // Swapchain object
         VkRenderPass renderPass = nullptr;  // Render pass object
@@ -153,9 +151,10 @@ namespace SceneryEditorX
         };
         std::vector<SwapchainImage> swapChainImage;
 
-        // -------------------------------------------------------
-
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Image resources
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         //std::vector<Image> swapChainImages;
         std::vector<VkImage> swapChainImageCounts;			// Raw VkImage handles
         std::vector<VkImageView> swapChainViews;			// Image views for the swapchain images

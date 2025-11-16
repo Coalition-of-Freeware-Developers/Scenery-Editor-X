@@ -24,7 +24,8 @@
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include "texture.h"
 #include "SceneryEditorX/core/time/timer.h"
-#include "SceneryEditorX/logging/profiler.hpp"
+// NOTE: Do not include profiler.hpp here to avoid pulling in Tracy symbols when not linked
+// #include "SceneryEditorX/logging/profiler.hpp"
 #include "shaders/shader.h"
 #include "vulkan/vk_allocator.h"
 #include "vulkan/vk_cmd_buffers.h"
@@ -40,7 +41,6 @@
 #include <stb_image_write.h>
 #include <utility>
 #include <vector>
-
 #include "primitives.h"
 #include "SceneryEditorX/core/events/application_events.h"
 #include "SceneryEditorX/core/time/time.h"
@@ -64,11 +64,11 @@ namespace SceneryEditorX
         VkDescriptorPool MaterialDescriptorPool;
         std::vector<uint32_t> DescriptorPoolAllocationCount;
 
-        /// UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor
+        /** UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor */
 		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
 		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
 
-        /// Default samplers
+        /** Default samplers */
         VkSampler SamplerClamp = nullptr;
         VkSampler SamplerPoint = nullptr;
 
@@ -113,7 +113,9 @@ namespace SceneryEditorX
 
     }
 
-    /// Static variable
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Static Variables
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     static RenderData m_renderData;
     static RendererProperties *s_Data = nullptr;
 	static bool s_Initialized = false;
@@ -312,14 +314,13 @@ namespace SceneryEditorX
         s_Initialized = false;
     }
 
-    
     void Renderer::BeginFrame()
     {
         Submit([]()
         {
-            SEDX_PROFILE_FUNC("VulkanRenderer::BeginFrame");
-
+            //SEDX_PROFILE_FUNC("VulkanRenderer::BeginFrame");
             SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
+            RenderDispatcher::NextFrame(swapChain.GetBufferIndex());
 
             /** Reset descriptor pools here */
             VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
@@ -330,22 +331,19 @@ namespace SceneryEditorX
 
             s_Data->DrawCallCount = 0;
 
-    #if 0
+
 			VkCommandBufferBeginInfo cmdBufInfo = {};
 			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			cmdBufInfo.pNext = nullptr;
 
-			VkCommandBuffer drawCommandBuffer = swapChain.GetCurrentDrawCommandBuffer();
-			commandBuffer = drawCommandBuffer;
-			SEDX_CORE_ASSERT(commandBuffer);
-			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &cmdBufInfo));
-    #endif
+			VkCommandBuffer drawCommandBuffer = swapChain.GetActiveDrawCommandBuffer();
+			//SEDX_CORE_ASSERT(commandBuffer);
+			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &cmdBufInfo))
         });
 
         // Resource free ring advanced after GPU submission (see swapchain present/acquire logic)
     }
-    
 
     void Renderer::EndFrame()
     {
@@ -360,11 +358,13 @@ namespace SceneryEditorX
 
     void Renderer::SubmitFrame()
     {
+        const uint32_t frame = GetCurrentRenderThreadFrameIndex();
         // Submit the current frame to the GPU
         // This would involve submitting command buffers to the appropriate queues
+        RenderDispatcher::NextFrame(frame);
     }
 
-    // Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction.
+    /** Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction. */
 
     //Ref<ShaderLibrary> Renderer::GetShaderLibrary() { return s_Data->m_ShaderLibrary; }
     RenderData &Renderer::GetRenderData() { return m_renderData; }
@@ -403,7 +403,7 @@ namespace SceneryEditorX
 
     uint32_t Renderer::GetCurrentRenderThreadFrameIndex()
     {
-        /// Swapchain owns the Render Thread frame index
+        // Swapchain owns the Render Thread frame index
         return Application::Get().GetWindow().GetSwapChain().GetCurrentBufferIndex();
     }
 
@@ -421,9 +421,19 @@ namespace SceneryEditorX
         }
     }
 
-    /*
     const Vec2& Renderer::GetResolutionRender() { return m_resolution_render; }
-    */
+    const Vec2 &Renderer::GetResolutionOutput() { return m_resolution_output; }
+    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->DescriptorPoolAllocationCount[frameIndex]; }
+
+    void Renderer::BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear)
+    {
+
+    }
+
+    void Renderer::EndFrame(Ref<CommandBuffer> CommandBuffer)
+    {
+
+    }
 
     /*
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources)
@@ -455,10 +465,6 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO("Render resolution has been set to %dx%d", width, height);
     }
-    */
-
-    /*
-    const Vec2 & Renderer::GetResolutionOutput() { return m_resolution_output; }
     */
 
     /*
@@ -494,10 +500,6 @@ namespace SceneryEditorX
 
         SEDX_CORE_INFO("Output resolution output has been set to %dx%d", width, height);
     }
-    */
-
-    /*
-    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->DescriptorPoolAllocationCount[frameIndex]; }
     */
 
     /*

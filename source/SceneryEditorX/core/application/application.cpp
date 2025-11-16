@@ -156,10 +156,10 @@ namespace SceneryEditorX
 		for (auto it = m_ModuleStage.end(); it != m_ModuleStage.begin(); )
 		{
 			(*--it)->OnEvent(event);
-			if (event.Handled) break;
+			if (event.m_Handled) break;
 		}
 
-		if (event.Handled) return;
+		if (event.m_Handled) return;
 
 		// TODO: Should these callbacks be called BEFORE the layers receive events?
 		//				We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
@@ -167,7 +167,7 @@ namespace SceneryEditorX
 		for (auto& eventCallback : m_EventCallbacks)
 		{
 			eventCallback(event);
-			if (event.Handled) break;
+			if (event.m_Handled) break;
 		}
 
 	}
@@ -177,10 +177,10 @@ namespace SceneryEditorX
 		const uint32_t width = e.GetWidth(), height = e.GetHeight();
 		if (width == 0 || height == 0)
 		{
-			//m_Minimized = true;
+			isMinimized = true;
 			return false;
 		}
-		//m_Minimized = false;
+        isMinimized = false;
 		
 		auto& window = m_Window;
 		Renderer::Submit([&window, width, height]() mutable
@@ -203,7 +203,7 @@ namespace SceneryEditorX
 		return false; // give other things a chance to react to window close
 	}
 
-	float Application::GetTime() const { return (float)glfwGetTime(); }
+	float Application::GetTime() const { return static_cast<float>(glfwGetTime()); }
     const char* Application::GetConfigurationName() { return SEDX_BUILD_TYPE; }
     const char* Application::GetPlatformName() { return SEDX_PLATFORM_NAME; }
 	std::thread::id Application::GetMainThreadID() { return s_MainThreadID; }
