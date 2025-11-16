@@ -71,20 +71,25 @@ namespace SceneryEditorX
 
 		/**
 		* @brief Structure to hold indices of different queue families.
-		* This structure contains optional indices for graphics, present, compute, and transfer queue families.
+		* Raw indices with UINT32_MAX as the invalid sentinel.
 		*/
 		struct QueueFamilyIndices
 		{
-		    std::optional<std::pair<Queue, uint32_t>> graphicsFamily;
-		    std::optional<std::pair<Queue, uint32_t>> presentFamily;
-		    std::optional<std::pair<Queue, uint32_t>> computeFamily;
-		    std::optional<std::pair<Queue, uint32_t>> transferFamily;
+            static constexpr uint32_t Invalid = std::numeric_limits<uint32_t>::max();
+
+            uint32_t graphics	= Invalid;
+            uint32_t present	= Invalid;
+            uint32_t compute	= Invalid;
+            uint32_t transfer	= Invalid;
 
             /**
              * @brief Check if all required queue families are initialized.
              * @return True if all required families are set, false otherwise.
              */
             [[nodiscard]] bool IsComplete() const;
+
+            // Unified accessor
+		    [[nodiscard]] uint32_t Get(Queue type) const;
 
             /**
              * @brief Get the family index.
@@ -94,6 +99,7 @@ namespace SceneryEditorX
             [[nodiscard]] uint32_t GetPresentFamily() const;
             [[nodiscard]] uint32_t GetComputeFamily() const;
             [[nodiscard]] uint32_t GetTransferFamily() const;
+
         };
 
 		/**

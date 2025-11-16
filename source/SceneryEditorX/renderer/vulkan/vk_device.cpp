@@ -444,57 +444,67 @@ namespace SceneryEditorX
 
     bool VulkanPhysicalDevice::QueueFamilyIndices::IsComplete() const
     {
-        return graphicsFamily.has_value() && computeFamily.has_value() && transferFamily.has_value();
+        return graphics != Invalid && compute != Invalid && transfer != Invalid;
     }
 
 	// -------------------------------------------------------
 
-    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetGraphicsFamily() const
+    [[nodiscard]] static uint32_t GetQueueIndex(const std::optional<std::pair<Queue, uint32_t>> &family, const char *familyName) noexcept
     {
-        if (!graphicsFamily.has_value())
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access graphics family when it's not initialized");
-            return 0; // Return a default value to avoid crashing
-        }
-        return graphicsFamily.value().second;
+		if (family)
+		    return family->second;
+
+		#ifdef SEDX_DEBUG
+		    SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempted to access {} queue family before initialization", familyName);
+		#endif
+
+		return 0;
+    }
+
+    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetGraphicsFamily() const noexcept
+    {
+        SEDX_CORE_ASSERT(graphics != Invalid, "Graphics queue must be initialized");
+        return graphics;
     }
 
 	// -------------------------------------------------------
 
-    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetPresentFamily() const
+    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetPresentFamily() const noexcept
     {
-        if (!presentFamily.has_value())
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access present family when it's not initialized");
-            return 0; // Return a default value to avoid crashing
-        }
-        return presentFamily.value().second;
+        SEDX_CORE_ASSERT(present != Invalid, "Present queue must be initialized");
+        return present;
     }
 
 	// -------------------------------------------------------
 
-    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetComputeFamily() const
+    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetComputeFamily() const noexcept
     {
-        if (!computeFamily.has_value())
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access compute family when it's not initialized");
-            return 0; // Return a default value to avoid crashing
-        }
-        return computeFamily.value().second;
+        SEDX_CORE_ASSERT(compute != Invalid, "Compute queue must be initialized");
+        return compute;
     }
 
 	// -------------------------------------------------------
 
-    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetTransferFamily() const
+    uint32_t VulkanPhysicalDevice::QueueFamilyIndices::GetTransferFamily() const noexcept
     {
-        if (!transferFamily.has_value())
-        {
-            SEDX_CORE_ERROR_TAG("Graphics Engine", "Attempting to access transfer family when it's not initialized");
-            return 0; // Return a default value to avoid crashing
-        }
-        return transferFamily.value().second;
+        SEDX_CORE_ASSERT(transfer != Invalid, "Transfer queue must be initialized");
+        return transfer;
     }
 
+    // Unified accessor
+    [[nodiscard]] uint32_t VulkanPhysicalDevice::QueueFamilyIndices::Get(Queue type) const
+    {
+        switch (type)
+        {
+			case Queue::Graphics: return GetGraphicsFamily();
+			case Queue::Present:  return GetPresentFamily();
+			case Queue::Compute:  return GetComputeFamily();
+			case Queue::Transfer: return GetTransferFamily();
+			default:
+			    SEDX_CORE_ASSERT(false, "Unknown queue type");
+			    return 0;
+        }
+    }
     // -------------------------------------------------------
 
     /**
@@ -636,101 +646,100 @@ namespace SceneryEditorX
 		std::vector<VkQueueFamilyProperties> queueFamilyProperties(numQueueFamilies);
 		vkGetPhysicalDeviceQueueFamilyProperties(vkDevice, &numQueueFamilies, queueFamilyProperties.data());
 
+        #ifdef SEDX_DEBUG
 		// Log queue family information
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++) {
 			const VkQueueFamilyProperties &queueFamilyInfo = queueFamilyProperties[queueIdx];
 
-        #ifdef SEDX_DEBUG
+
 			SEDX_CORE_INFO("============================================");
 			SEDX_CORE_INFO("Queue Family Index: {}", ToString(queueIdx));
 			SEDX_CORE_INFO("Queue Count: {}", ToString(queueFamilyInfo.queueCount));
 			SEDX_CORE_INFO("Queue Flags: {}", ToString(queueFamilyInfo.queueFlags));
 			SEDX_CORE_INFO("============================================");
-        #endif
 		}
+        #endif
 
 		// First pass: find a graphics queue
 		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
 		{
             if (const auto &props = queueFamilyProperties[queueIdx]; props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			{
-				queueFamilies.graphicsFamily = std::make_optional(std::make_pair(Queue::Graphics, queueIdx));
-				break;
-			}
+            {
+                queueFamilies.graphics = queueIdx;
+                break;
+            }
 		}
 
 		// First pass: look for dedicated queues
 		if (qFlags & VK_QUEUE_COMPUTE_BIT)
 		{
 			// Find dedicated compute queue (compute, but not graphics)
-			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
-			{
-				const auto &props = queueFamilyProperties[queueIdx];
-				const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
-                if (const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-					!= 0; supportsCompute && !supportsGraphics)
-				{
-					queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
-					break;
-				}
-			}
+            for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
+            {
+                const auto &props = queueFamilyProperties[queueIdx];
+                const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
+                if (const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0; supportsCompute && !supportsGraphics)
+                {
+                    queueFamilies.compute = queueIdx;
+                    break;
+                }
+            }
 		}
 
 		if (qFlags & VK_QUEUE_TRANSFER_BIT)
 		{
 			// Find dedicated transfer queue (transfer, but not graphics or compute)
-			for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
-		    {
-				const auto &props = queueFamilyProperties[queueIdx];
-				const bool supportsTransfer = (props.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
-				const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-                if (const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT)
-					!= 0; supportsTransfer && !supportsGraphics && !supportsCompute)
-				{
-					queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
-					break;
-				}
-			}
+            for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
+            {
+                const auto &props = queueFamilyProperties[queueIdx];
+                const bool supportsTransfer = (props.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
+                const bool supportsGraphics = (props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
+                if (const bool supportsCompute = (props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0; supportsTransfer && !supportsGraphics && !supportsCompute)
+                {
+                    queueFamilies.transfer = queueIdx;
+                    break;
+                }
+            }
 		}
 
 		// Second pass: set any remaining indices to general-purpose queues
-		for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
-		{
-			const auto &props = queueFamilyProperties[queueIdx];
+        for (uint32_t queueIdx = 0; queueIdx < numQueueFamilies; queueIdx++)
+        {
+            const auto &props = queueFamilyProperties[queueIdx];
 
-			// Set compute queue if not already set and if needed
-			if ((qFlags & VK_QUEUE_COMPUTE_BIT) && !queueFamilies.computeFamily.has_value() && (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
-                queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueIdx));
+            if ((qFlags & VK_QUEUE_COMPUTE_BIT) && queueFamilies.compute == QueueFamilyIndices::Invalid &&
+                (props.queueFlags & VK_QUEUE_COMPUTE_BIT))
+            {
+                queueFamilies.compute = queueIdx;
+            }
 
-            // Set transfer queue if not already set and if needed
-			if ((qFlags & VK_QUEUE_TRANSFER_BIT) && !queueFamilies.transferFamily.has_value() && (props.queueFlags & VK_QUEUE_TRANSFER_BIT))
-			{
-				queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueIdx));
-				break;
-			}
-
-			// Set presentation queue
-			// Note: This would normally check presentation support against a surface
-			// Since we don't have a surface at this point, we'll just use the graphics queue
-			if (!queueFamilies.presentFamily.has_value() && queueFamilies.graphicsFamily.has_value() && queueFamilies.graphicsFamily.value().second == queueIdx)
-                queueFamilies.presentFamily = std::make_optional(std::make_pair(Queue::Present, queueIdx));
+            if ((qFlags & VK_QUEUE_TRANSFER_BIT) && queueFamilies.transfer == QueueFamilyIndices::Invalid &&
+                (props.queueFlags & VK_QUEUE_TRANSFER_BIT))
+            {
+                queueFamilies.transfer = queueIdx;
+            }
         }
+        // Present: until surface exists, use graphics as a proxy
+        if (queueFamilies.present == QueueFamilyIndices::Invalid &&
+            queueFamilies.graphics != QueueFamilyIndices::Invalid)
+            queueFamilies.present = queueFamilies.graphics;
 
-		// Fallback: If we couldn't find dedicated compute/transfer queues, use the graphics queue
-		if (qFlags & VK_QUEUE_COMPUTE_BIT && !queueFamilies.computeFamily.has_value() && queueFamilies.graphicsFamily.has_value())
-            queueFamilies.computeFamily = std::make_optional(std::make_pair(Queue::Compute, queueFamilies.graphicsFamily.value().second));
+        // Single assert after discovery (per your plan)
+        SEDX_CORE_ASSERT(queueFamilies.graphics != QueueFamilyIndices::Invalid, "Graphics queue must be initialized");
+        if (qFlags & VK_QUEUE_COMPUTE_BIT)
+            SEDX_CORE_ASSERT(queueFamilies.compute != QueueFamilyIndices::Invalid, "Compute queue required but not found");
+        if (qFlags & VK_QUEUE_TRANSFER_BIT)
+            SEDX_CORE_ASSERT(queueFamilies.transfer != QueueFamilyIndices::Invalid, "Transfer queue required but not found");
 
-        if (qFlags & VK_QUEUE_TRANSFER_BIT && !queueFamilies.transferFamily.has_value() && queueFamilies.graphicsFamily.has_value())
-            queueFamilies.transferFamily = std::make_optional(std::make_pair(Queue::Transfer, queueFamilies.graphicsFamily.value().second));
-		#ifdef SEDX_DEBUG
-		    SEDX_CORE_INFO("============================================");
-			SEDX_CORE_INFO("Selected Queue Families:");
-			SEDX_CORE_INFO("Graphics: {}", queueFamilies.graphicsFamily.has_value() ? ToString(queueFamilies.graphicsFamily.value().second) : "Not Available");
-			SEDX_CORE_INFO("Compute: {}", queueFamilies.computeFamily.has_value() ? ToString(queueFamilies.computeFamily.value().second) : "Not Available");
-			SEDX_CORE_INFO("Transfer: {}", queueFamilies.transferFamily.has_value() ? ToString(queueFamilies.transferFamily.value().second) : "Not Available");
-			SEDX_CORE_INFO("Present: {}", queueFamilies.presentFamily.has_value() ? ToString(queueFamilies.presentFamily.value().second) : "Not Available");
-			SEDX_CORE_INFO("============================================");
-		#endif
+	    #ifdef SEDX_DEBUG
+	        SEDX_CORE_INFO("============================================");
+	        SEDX_CORE_INFO("Selected Queue Families:");
+	        SEDX_CORE_INFO("Graphics: {}", queueFamilies.graphics != QueueFamilyIndices::Invalid ? queueFamilies.graphics : 0u);
+	        SEDX_CORE_INFO("Compute: {}",  queueFamilies.compute != QueueFamilyIndices::Invalid ? queueFamilies.compute : 0u);
+	        SEDX_CORE_INFO("Transfer: {}", queueFamilies.transfer != QueueFamilyIndices::Invalid ? queueFamilies.transfer : 0u);
+	        SEDX_CORE_INFO("Present: {}",  queueFamilies.present != QueueFamilyIndices::Invalid ? queueFamilies.present : 0u);
+	        SEDX_CORE_INFO("============================================");
+	    #endif
 
 		return queueFamilies;
 	}
@@ -948,52 +957,52 @@ namespace SceneryEditorX
 			// ---------------------------------------------------------
 
 			{
-				if (vulkan12Features.timelineSemaphore) { vulkan12Features.timelineSemaphore = VK_TRUE; }
-				if (vulkan12Features.descriptorBindingVariableDescriptorCount) { vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE; }
-				if (vulkan12Features.descriptorBindingSampledImageUpdateAfterBind) { vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE; }
-				if (vulkan12Features.descriptorBindingPartiallyBound) { vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE; }
-				if (vulkan12Features.runtimeDescriptorArray) { vulkan12Features.runtimeDescriptorArray = VK_TRUE; }
-				if (vulkan12Features.descriptorIndexing) { vulkan12Features.descriptorIndexing = VK_TRUE; }
-				if (vulkan12Features.shaderStorageBufferArrayNonUniformIndexing) { vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE; }
-				if (vulkan12Features.shaderSubgroupExtendedTypes) { vulkan12Features.shaderSubgroupExtendedTypes = VK_TRUE; }
-				if (vulkan12Features.shaderFloat16) { vulkan12Features.shaderFloat16 = VK_TRUE; }
-				if (vulkan12Features.shaderInt8) { vulkan12Features.shaderInt8 = VK_TRUE; }
-				if (vulkan12Features.scalarBlockLayout) { vulkan12Features.scalarBlockLayout = VK_TRUE; }
+				if (vulkan12Features.timelineSemaphore) vulkan12Features.timelineSemaphore = VK_TRUE;
+                if (vulkan12Features.descriptorBindingVariableDescriptorCount) vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE;
+				if (vulkan12Features.descriptorBindingSampledImageUpdateAfterBind) vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+				if (vulkan12Features.descriptorBindingPartiallyBound) vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE;
+				if (vulkan12Features.runtimeDescriptorArray) vulkan12Features.runtimeDescriptorArray = VK_TRUE;
+				if (vulkan12Features.descriptorIndexing) vulkan12Features.descriptorIndexing = VK_TRUE;
+				if (vulkan12Features.shaderStorageBufferArrayNonUniformIndexing) vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+				if (vulkan12Features.shaderSubgroupExtendedTypes) vulkan12Features.shaderSubgroupExtendedTypes = VK_TRUE;
+				if (vulkan12Features.shaderFloat16) vulkan12Features.shaderFloat16 = VK_TRUE;
+				if (vulkan12Features.shaderInt8) vulkan12Features.shaderInt8 = VK_TRUE;
+				if (vulkan12Features.scalarBlockLayout) vulkan12Features.scalarBlockLayout = VK_TRUE;
 			}
 
 			// ---------------------------------------------------------
 
             {
-				if (features2.features.logicOp) { features2.features.logicOp = VK_TRUE; }
-				if (features2.features.shaderFloat64) { features2.features.shaderFloat64 = VK_TRUE; }
-				if (features2.features.samplerAnisotropy) { features2.features.samplerAnisotropy = VK_TRUE; }
-				if (features2.features.sampleRateShading) { features2.features.sampleRateShading = VK_TRUE; }
-				if (features2.features.fillModeNonSolid) { features2.features.fillModeNonSolid = VK_TRUE; }
-				if (features2.features.tessellationShader) { features2.features.tessellationShader = VK_TRUE; }
-				if (features2.features.wideLines) { features2.features.wideLines = VK_TRUE; }
-				if (features2.features.depthClamp) { features2.features.depthClamp = VK_TRUE; }
-				if (features2.features.imageCubeArray) { features2.features.imageCubeArray = VK_TRUE; }
-				if (features2.features.pipelineStatisticsQuery) { features2.features.pipelineStatisticsQuery = VK_TRUE; }
-				if (features2.features.shaderInt16) { features2.features.shaderInt16 = VK_TRUE; }
-				if (features2.features.geometryShader) { features2.features.geometryShader = VK_TRUE; }
-                
+				if (features2.features.logicOp) features2.features.logicOp = VK_TRUE;
+				if (features2.features.shaderFloat64) features2.features.shaderFloat64 = VK_TRUE;
+				if (features2.features.samplerAnisotropy) features2.features.samplerAnisotropy = VK_TRUE;
+				if (features2.features.sampleRateShading) features2.features.sampleRateShading = VK_TRUE;
+				if (features2.features.fillModeNonSolid) features2.features.fillModeNonSolid = VK_TRUE;
+				if (features2.features.tessellationShader) features2.features.tessellationShader = VK_TRUE;
+				if (features2.features.wideLines) features2.features.wideLines = VK_TRUE;
+				if (features2.features.depthClamp) features2.features.depthClamp = VK_TRUE;
+				if (features2.features.imageCubeArray) features2.features.imageCubeArray = VK_TRUE;
+				if (features2.features.pipelineStatisticsQuery) features2.features.pipelineStatisticsQuery = VK_TRUE;
+				if (features2.features.shaderInt16) features2.features.shaderInt16 = VK_TRUE;
+				if (features2.features.geometryShader) features2.features.geometryShader = VK_TRUE;
+
                 // ---------------------------------------------------------
 
-				if (vulkan13Features.dynamicRendering) { vulkan13Features.dynamicRendering = VK_TRUE; }
-				if (vulkan13Features.synchronization2) { vulkan13Features.synchronization2 = VK_TRUE; }
-				if (vulkan13Features.shaderDemoteToHelperInvocation) { vulkan13Features.shaderDemoteToHelperInvocation = VK_TRUE; }
-				if (vulkan13Features.subgroupSizeControl) { vulkan13Features.subgroupSizeControl = VK_TRUE; }
-				if (vulkan13Features.shaderIntegerDotProduct) { vulkan13Features.shaderIntegerDotProduct = VK_TRUE; }
+				if (vulkan13Features.dynamicRendering) vulkan13Features.dynamicRendering = VK_TRUE;
+				if (vulkan13Features.synchronization2) vulkan13Features.synchronization2 = VK_TRUE;
+				if (vulkan13Features.shaderDemoteToHelperInvocation) vulkan13Features.shaderDemoteToHelperInvocation = VK_TRUE;
+				if (vulkan13Features.subgroupSizeControl) vulkan13Features.subgroupSizeControl = VK_TRUE;
+				if (vulkan13Features.shaderIntegerDotProduct) vulkan13Features.shaderIntegerDotProduct = VK_TRUE;
 
-				if (robustness.nullDescriptor) { robustness.nullDescriptor = VK_TRUE; }
-				if (mutableDescriptor.mutableDescriptorType) { mutableDescriptor.mutableDescriptorType = VK_TRUE; }
+				if (robustness.nullDescriptor) robustness.nullDescriptor = VK_TRUE;
+				if (mutableDescriptor.mutableDescriptorType) mutableDescriptor.mutableDescriptorType = VK_TRUE;
 
             }
 
             // ---------------------------------------------------------
 
             {
-				if (vulkan14Features.pushDescriptor) { vulkan14Features.pushDescriptor = VK_TRUE; }
+				if (vulkan14Features.pushDescriptor) vulkan14Features.pushDescriptor = VK_TRUE;
             }
 
         }
