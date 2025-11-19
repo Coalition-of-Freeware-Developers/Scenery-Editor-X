@@ -11,12 +11,15 @@
 * -------------------------------------------------------
 */
 #include "render_context.h"
+
+#include <utility>
 #include "command_manager.h"
 #include "SceneryEditorX/core/application/application_data.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
 //#include "debug/renderdoc.h"
 #include "vulkan/vk_allocator.h"
 #include "vulkan/vk_checks.h"
+#include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_pipeline_cache.h"
 #include "vulkan/vk_util.h"
 
@@ -28,15 +31,17 @@ namespace SceneryEditorX
 
     // Define whether validation layers are enabled - usually tied to debug mode
     #ifdef SEDX_DEBUG
-    static constexpr bool enableValidationLayers = true;
+    static constexpr bool EnableValidationLayers = true;
     #else
-    static constexpr bool enableValidationLayers = false;
+    static constexpr bool EnableValidationLayers = false;
     #endif
 
     // -------------------------------------------------------
 
     // Static instance of the render context
     static Ref<RenderContext> s_Instance = nullptr;
+    constexpr uint32_t StagingBufferSize = 256 * 1024 * 1024;
+    constexpr uint32_t TimeStampPerPool = 64;
 
     // DebugUtilsMessenger utility functions
     static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
@@ -70,9 +75,9 @@ namespace SceneryEditorX
     {
         // Initialize any member variables
         allocatorCallback = nullptr;
-        debugMessenger = VK_NULL_HANDLE;
+        m_DebugMessenger = VK_NULL_HANDLE;
     #ifdef SEDX_DEBUG
-        debugCallback = VK_NULL_HANDLE;
+        m_DebugCallback = VK_NULL_HANDLE;
     #endif
     }
 
@@ -83,23 +88,23 @@ namespace SceneryEditorX
         // Ensure thread-local command pools are cleaned up before device teardown
         ThreadCommandPools::Shutdown();
 
-        if (vkDevice)
+        if (m_Device)
         {
-            vkDevice->Destroy();
-            vkDevice.Reset();
+            m_Device->Destroy();
+            m_Device.Reset();
         }
 
         // Now release physical device
-        vkPhysicalDevice.Reset();
+        m_PhysicalDevice.Reset();
 
     #ifdef SEDX_DEBUG
-        if (debugMessenger != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
-            DestroyDebugUtilsMessengerEXT(m_Instance, debugMessenger, nullptr);
+        if (m_DebugMessenger != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
+            DestroyDebugUtilsMessengerEXT(m_Instance, m_DebugMessenger, nullptr);
 
-        if (debugCallback != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
+        if (m_DebugCallback != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
         {
             if (auto func = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(vkGetInstanceProcAddr(m_Instance, "vkDestroyDebugReportCallbackEXT")))
-                func(m_Instance, debugCallback, nullptr);
+                func(m_Instance, m_DebugCallback, nullptr);
         }
     #endif
 
@@ -141,8 +146,7 @@ namespace SceneryEditorX
     void RenderContext::Init()
 	{
         SEDX_TRACK_CALL("RenderContext::Init");
-        // Idempotent guard: avoid double-initialization if called from multiple entry points
-        if (m_IsInitialized)
+        if (m_IsInitialized) // Idempotent guard: avoid double-initialization if called from multiple entry points
         {
             SEDX_CORE_INFO_TAG("Graphics Engine", "RenderContext::Init() called but already initialized. Skipping.");
             return;
@@ -203,11 +207,11 @@ namespace SceneryEditorX
             // Get all available layers
             uint32_t layerCount = 0;
             vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-            std::vector<VkLayerProperties> layerNames(layerCount); /// @brief Properties of all available Vulkan validation layers on the system.
+            std::vector<VkLayerProperties> layerNames(layerCount); // @brief Properties of all available Vulkan validation layers on the system.
             vkEnumerateInstanceLayerProperties(&layerCount, layerNames.data());
 
             // Check for validation layer availability
-            if (enableValidationLayers)
+            if (EnableValidationLayers)
             {
                 // More thorough validation layer checking
                 VulkanChecks layerChecker;
@@ -231,7 +235,7 @@ namespace SceneryEditorX
             extensions.instanceExtensions.resize(extensions.extensionCount);
 
             vkEnumerateInstanceExtensionProperties(nullptr, &extensions.extensionCount, extensions.instanceExtensions.data());
-            if (enableValidationLayers)
+            if (EnableValidationLayers)
             {
                 for (const char* valLayer : validationLayer)
                 {
@@ -270,10 +274,10 @@ namespace SceneryEditorX
             if (check.CheckExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, extensions.instanceExtensions))
                 instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-            if (enableValidationLayers)
+            if (EnableValidationLayers)
             {
                 instanceExtensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
-            #if defined(SEDX_VK_DEBUG_EXT) && SEDX_DEBUG //TODO: Check to see if this should just be SEDX_DEBUG instead of two defined macros
+            #if defined(SEDX_VK_DEBUG_EXT) && SEDX_DEBUG // TODO: Check to see if this should just be SEDX_DEBUG instead of two defined macros
                 instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
             #endif
             }
@@ -335,8 +339,8 @@ namespace SceneryEditorX
                 .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
                 .pNext = nullptr,
         #ifdef SEDX_PLATFORM_APPLE
-                .disabledValidationFeatureCount = enableValidationLayers ? (uint32_t)SEDX_NUM_ARRAY_ELEMENTS(validationFeaturesDisabled) : 0u,
-                .pDisabledValidationFeatures = enableValidationLayers ? validationFeaturesDisabled : nullptr,
+                .disabledValidationFeatureCount = EnableValidationLayers ? (uint32_t)SEDX_NUM_ARRAY_ELEMENTS(validationFeaturesDisabled) : 0u,
+                .pDisabledValidationFeatures = EnableValidationLayers ? validationFeaturesDisabled : nullptr,
         #endif
             };
 
@@ -367,8 +371,8 @@ namespace SceneryEditorX
 
     				VkLayerSettingsCreateInfoEXT layerSettingsCreateInfo;
                     layerSettingsCreateInfo.sType = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
-                    layerSettingsCreateInfo.pNext = enableValidationLayers ? &features : nullptr;
-                    layerSettingsCreateInfo.settingCount = (uint32_t)std::size(settings);
+                    layerSettingsCreateInfo.pNext = EnableValidationLayers ? &features : nullptr;
+                    layerSettingsCreateInfo.settingCount = static_cast<uint32_t>(std::size(settings));
                     layerSettingsCreateInfo.pSettings = settings;
 
     		#endif
@@ -392,13 +396,13 @@ namespace SceneryEditorX
     	    VkInstanceCreateInfo createInfo = {};
             createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         #if defined(VK_EXT_layer_settings) && VK_EXT_layer_settings
-            createInfo.pNext = &layerSettingsCreateInfo,
+            createInfo.pNext = &layerSettingsCreateInfo;
         #else
-            createInfo.pNext = enableValidationLayers ? &features : nullptr;
+            createInfo.pNext = EnableValidationLayers ? &features : nullptr;
         #endif
             createInfo.pApplicationInfo = &appInfo;
-            createInfo.enabledLayerCount = enableValidationLayers ? (uint32_t)std::size(validationLayer) : 0u;
-            createInfo.ppEnabledLayerNames = enableValidationLayers ? validationLayer : nullptr;
+            createInfo.enabledLayerCount = EnableValidationLayers ? static_cast<uint32_t>(std::size(validationLayer)) : 0u;
+            createInfo.ppEnabledLayerNames = EnableValidationLayers ? validationLayer : nullptr;
             createInfo.flags = createFlags;
             createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
             createInfo.ppEnabledExtensionNames = instanceExtensions.data();
@@ -411,11 +415,11 @@ namespace SceneryEditorX
 
             // ---------------------------------------------------------
 
-            if (enableValidationLayers)
+            if (EnableValidationLayers)
             {
                 VkDebugUtilsMessengerCreateInfoEXT messengerInfo;
                 PopulateDebugMsgCreateInfo(messengerInfo);
-                if (CreateDebugUtilsMessengerEXT(m_Instance, &messengerInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+                if (CreateDebugUtilsMessengerEXT(m_Instance, &messengerInfo, nullptr, &m_DebugMessenger) != VK_SUCCESS)
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to set up debug messenger!");
                 else
                     SEDX_CORE_INFO_TAG("Graphics Engine", "Debug messenger set up successfully");
@@ -435,17 +439,17 @@ namespace SceneryEditorX
             //RenderDocDebug::PreDeviceCreation();
         #endif
 
-            vkPhysicalDevice = VulkanPhysicalDevice::Select(m_Instance);
-            if (!vkPhysicalDevice)
+            m_PhysicalDevice = VulkanPhysicalDevice::Select(m_Instance);
+            if (!m_PhysicalDevice)
 			{
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
                 return;
             }
 
-            vkDevice = CreateRef<VulkanDevice>(vkPhysicalDevice);
+            m_Device = CreateRef<VulkanDevice>(m_PhysicalDevice);
 
             // Verify the device was created successfully before proceeding
-            if (!vkDevice || vkDevice->GetDevice() == VK_NULL_HANDLE)
+            if (!m_Device || m_Device->GetDevice() == VK_NULL_HANDLE)
 			{
                 SEDX_CORE_ERROR_TAG("Graphics Engine", "Failed to create valid Vulkan device!");
                 return;
@@ -465,6 +469,59 @@ namespace SceneryEditorX
             PipelineCache pipelineCache;
             pipelineCache.CreateCache();
             */
+
+			// TODO: In future move and replace with CommandManager, ThreadCommandPools system, and CommandPool class.
+            {
+                VkCommandPoolCreateInfo poolInfo{};
+                poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                poolInfo.flags = 0;
+
+                VkCommandBufferAllocateInfo allocInfo{};
+                allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                allocInfo.commandBufferCount = 1;
+
+				
+                for (int q = 0; q < Queue::Count; q++)
+                {
+                    InternalQueue &queue = queues[q];
+                    poolInfo.queueFamilyIndex = queue.family;
+                    queue.commands.resize(renderData.framesInFlight);
+                    for (int i = 0; std::cmp_less(i, renderData.framesInFlight); i++)
+                    {
+                        auto res = vkCreateCommandPool(m_Device->GetDevice(), &poolInfo, allocatorCallback, &queue.commands[i].pool);
+                        VK_CHECK_RESULT(res)
+
+                        allocInfo.commandPool = queue.commands[i].pool;
+                        res = vkAllocateCommandBuffers(m_Device->GetDevice(), &allocInfo, &queue.commands[i].buffer);
+                        VK_CHECK_RESULT(res)
+
+                        queue.commands[i].staging = CreateBuffer(StagingBufferSize, BufferUsage::TransferSrc, MemoryType::CPU,"StagingBuffer" + ToString(q) + "_" + ToString(i));
+                        void *mappedData = nullptr;
+                        vmaMapMemory(m_Device->GetMemoryAllocator(), queue.commands[i].staging.resource->allocation, &mappedData);
+                        queue.commands[i].stagingCpu = static_cast<uint8_t *>(mappedData);
+
+                        VkFenceCreateInfo fenceInfo{};
+                        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+                        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+                        vkCreateFence(m_Device->GetDevice(), &fenceInfo, allocatorCallback, &queue.commands[i].fence);
+
+                        VkQueryPoolCreateInfo queryPoolInfo{};
+                        queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+                        queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+                        queryPoolInfo.queryCount = TimeStampPerPool;
+                        res = vkCreateQueryPool(m_Device->GetDevice(), &queryPoolInfo, allocatorCallback, &queue.commands[i].queryPool);
+                        VK_CHECK_RESULT(res)
+
+                        queue.commands[i].timeStamps.clear();
+                        queue.commands[i].timeStampNames.clear();
+
+						SEDX_CORE_TRACE("Initialized command resources for queue {} frame {}", q, i);
+                    }
+
+					SEDX_CORE_INFO("Initialized command resources for queue {}", q);
+                }
+            }
 
             SEDX_CORE_INFO("RenderContext initialization complete");
             m_IsInitialized = true;

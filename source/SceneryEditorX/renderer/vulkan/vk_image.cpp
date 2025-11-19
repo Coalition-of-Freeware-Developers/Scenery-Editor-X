@@ -212,7 +212,7 @@ namespace SceneryEditorX
 
 		if (m_Specification.usage == Layout::ImageLayout::General)
 		{
-			/// Transition image to GENERAL layout
+			// Transition image to GENERAL layout
 			VkCommandBuffer commandBuffer = RenderContext::GetCurrentDevice()->GetCommandBuffer(true);
 
 			VkImageSubresourceRange subresourceRange = {};
@@ -227,11 +227,11 @@ namespace SceneryEditorX
 				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 				subresourceRange);
 
-			RenderContext::GetCurrentDevice()->FlushCmdBuffer(commandBuffer);
+			CommandBuffer::Get()->FlushCmdBuffer();
 		}
         else if (m_Specification.usage == Layout::ImageLayout::TransferDst)
 		{
-			/// Transition image to TRANSFER_DST layout
+			// Transition image to TRANSFER_DST layout
 			VkCommandBuffer commandBuffer = RenderContext::GetCurrentDevice()->GetCommandBuffer(true);
 
 			VkImageSubresourceRange subresourceRange = {};
@@ -246,7 +246,7 @@ namespace SceneryEditorX
 				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 				subresourceRange);
 
-			RenderContext::GetCurrentDevice()->FlushCmdBuffer(commandBuffer);
+			CommandBuffer::Get()->FlushCmdBuffer();
 		}
 
 		UpdateDescriptor();
@@ -514,7 +514,7 @@ namespace SceneryEditorX
 				subresourceRange);
 
 
-			device->FlushCmdBuffer(copyCmd);
+			CommandBuffer::Get()->FlushCmdBuffer();
 
 			/// Clean up staging resources
 			allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
@@ -591,7 +591,7 @@ namespace SceneryEditorX
 										VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 										subresourceRange);
 
-		device->FlushCmdBuffer(copyCmd);
+		CommandBuffer::Get()->FlushCmdBuffer();
 
 		/// Copy data from staging buffer
 		uint8_t* srcData = allocator.MapMemory<uint8_t>(stagingBufferAllocation);

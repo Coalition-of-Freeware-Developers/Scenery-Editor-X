@@ -119,6 +119,8 @@ namespace SceneryEditorX
     static RenderData m_renderData;
     static RendererProperties *s_Data = nullptr;
 	static bool s_Initialized = false;
+    std::vector<FrameSync> s_FrameSyncObjects;
+    uint32_t s_CurrentFrame = 0;
     // Legacy command queue system removed in favor of RenderDispatcher.
     //static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
 
@@ -162,15 +164,25 @@ namespace SceneryEditorX
             if (!context->IsInitialized())
                 context->Init();
         }
+        const auto &config = GetRenderData();
 
         // Initialize async render dispatcher
         RenderDispatcher::Init();
+
+
+        // Create synchronization objects for each frame in flight
+        s_FrameSyncObjects.clear();
+        s_FrameSyncObjects.reserve(config.framesInFlight);
+        for (uint32_t i = 0; i < config.framesInFlight; ++i)
+        {
+            s_FrameSyncObjects.emplace_back(FrameSyncType::SyncFence, fmt::format("FrameSync[{}]", i), true, true, true);
+            SEDX_CORE_INFO_TAG("RENDERER", "Frame sync objects created for frame {}", i);
+        }
 
 		// -------------------------------------------------------
 
         s_Data = new RendererProperties;
 		SEDX_CORE_INFO_TAG("Renderer", "Initialized new RenderProperties: {}", ToString(s_Data));
-        const auto &config = GetRenderData();
 
         // Make sure we don't have more frames in flight than swapchain images
         config.framesInFlight = xMath::Min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
@@ -291,7 +303,6 @@ namespace SceneryEditorX
 		auto devRef = RenderContext::GetCurrentDevice();
         if (VkDevice device = devRef ? devRef->GetDevice() : VK_NULL_HANDLE; device != VK_NULL_HANDLE) vkDeviceWaitIdle(device);
 
-        RenderDispatcher::Flush();
 		RenderDispatcher::Shutdown();
 
 		BindlessDescriptorManager::FlushPending();
@@ -389,7 +400,7 @@ namespace SceneryEditorX
 		VkSampler sampler;
 		VK_CHECK_RESULT(vkCreateSampler(vulkanDevice, &samplerCreateInfo, nullptr, &sampler))
 
-		Utils::GetResourceAllocationCounts().Samplers++;
+		Utils::GetResourceAllocationCounts().m_Samplers++;
 		return sampler;
 	}
 
@@ -398,7 +409,7 @@ namespace SceneryEditorX
 	    VkDevice vulkanDevice = RenderContext::GetCurrentDevice()->GetDevice();
 		vkDestroySampler(vulkanDevice, sampler, nullptr);
 
-		Utils::GetResourceAllocationCounts().Samplers--;
+		Utils::GetResourceAllocationCounts().m_Samplers--;
 	}
 
     uint32_t Renderer::GetCurrentRenderThreadFrameIndex()

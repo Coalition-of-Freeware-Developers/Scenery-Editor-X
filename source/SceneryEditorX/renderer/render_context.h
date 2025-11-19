@@ -17,10 +17,14 @@
 
 struct GLFWwindow;
 
+// -------------------------------------------------------
+
 namespace SceneryEditorX
 {
     class VulkanPhysicalDevice;
     class VulkanDevice;
+
+    // -------------------------------------------------------
 
     class RenderContext : public RefCounted
 	{
@@ -29,10 +33,9 @@ namespace SceneryEditorX
         virtual ~RenderContext() override;
 
 		void Init();
-
-        Ref<VulkanDevice> GetLogicDevice() { return vkDevice; }
-        const Ref<VulkanDevice>& GetLogicalDevice() const { return vkDevice; }
-        const Ref<VulkanPhysicalDevice>& GetPhysicalDevice() const { return vkPhysicalDevice; }
+        Ref<VulkanDevice> GetLogicDevice() { return m_Device; }
+        const Ref<VulkanDevice>& GetLogicalDevice() const { return m_Device; }
+        const Ref<VulkanPhysicalDevice>& GetPhysicalDevice() const { return m_PhysicalDevice; }
         [[nodiscard]] bool IsInitialized() const { return m_IsInitialized; }
 
         static Ref<RenderContext> Get();
@@ -43,17 +46,17 @@ namespace SceneryEditorX
         VkAllocationCallbacks* allocatorCallback = nullptr;
 
     private:
-        Ref<VulkanPhysicalDevice>	vkPhysicalDevice;
-        Ref<VulkanDevice>			vkDevice;
+        Ref<VulkanPhysicalDevice>	m_PhysicalDevice;
+        Ref<VulkanDevice>			m_Device;
         VkInstance m_Instance		= VK_NULL_HANDLE;
         bool m_IsInitialized		= false;
 
 		// -------------------------------------------------------
 
 #ifdef SEDX_DEBUG
-        VkDebugReportCallbackEXT debugCallback = VK_NULL_HANDLE;
+        VkDebugReportCallbackEXT m_DebugCallback = VK_NULL_HANDLE;
 #endif
-		VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
     };
 
 }

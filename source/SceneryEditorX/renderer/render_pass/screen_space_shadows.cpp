@@ -10,18 +10,18 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
-//#include <SceneryEditorX/scene/entity.h>
-//#include <SceneryEditorX/scene/lights.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/scene/lights.h>
 
 // -------------------------------------------------------
 
-/*
+
 namespace SceneryEditorX
 {
-	
+    /*	
     void RenderPass::Pass_ScreenSpaceShadows(CommandManager *cmd_list)
     {
         // get resources
@@ -39,7 +39,7 @@ namespace SceneryEditorX
 
             // set textures
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)); // read
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss);                                               // write
+            cmd_list->SetTexture(bindingsUav::tex_sss, tex_sss);                                               // write
 
             // iterate through all the lights
             static float array_slice_index = 0.0f;
@@ -106,7 +106,7 @@ namespace SceneryEditorX
 
         cmd_list->EndTimeblock();
     }
-}
-*/
+	*/
+} 
 
 // -------------------------------------------------------

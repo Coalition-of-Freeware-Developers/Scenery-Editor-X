@@ -11,13 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <cstdint>
-#include <xMath/includes/xmath.hpp>
-#include <imgui/imgui.h>
 #include "render_context.h"
 #include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 #include "vulkan/resource.h"
-#include "vulkan/vk_allocator.h" /// Used by VmaAllocation in struct. !MUST KEEP!
+#include "vulkan/vk_allocator.h" // Used by VmaAllocation in struct. !MUST KEEP!
+#include <cstdint>
+#include <imgui/imgui.h>
+#include <xMath/includes/xmath.hpp>
 
 // -------------------------------------------------------
 
@@ -35,7 +35,6 @@ namespace SceneryEditorX
 		    DepthAttachment = 0x00000020,
 		};
 	}
-	//using ImageUsageFlags = Flags;
     using ImageUsageFlags = uint32_t; // previously Flags (uint32_t) – localized to remove dependency on vk_data.h
 
 	namespace Layout
@@ -121,7 +120,6 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
     /* Legacy resource ID pools removed */
-    //struct ImageID {  };
 
     // -------------------------------------------------------
 

@@ -31,19 +31,12 @@ namespace SceneryEditorX
 	    CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
 	    virtual ~CommandPool() override;
 
-	    /*
-		// Accessor methods
-		[[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
-		[[nodiscard]] VkCommandPool GetComputeCmdPool()	 const { return ComputeCmdPool; }
-		[[nodiscard]] VkCommandPool GetTransferCmdPool() const { return TransferCmdPool; }
-		 */
+        static Ref<CommandPool> Get(); // Static accessor method to get the singleton instance
+		[[nodiscard]] VkCommandPool GetCmdPool() const { return m_CmdPool; } 
 	
 	private:
-	    Queue queueType;
-	    VkCommandPool commandPool = VK_NULL_HANDLE;
-	    /*VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
-		    VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
-		    VkCommandPool TransferCmdPool = VK_NULL_HANDLE;*/
+	    Queue m_QueueType;
+        VkCommandPool m_CmdPool = VK_NULL_HANDLE;
 	};
 	
 }

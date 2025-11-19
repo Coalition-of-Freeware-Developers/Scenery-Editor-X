@@ -10,17 +10,16 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
-//#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-	
+    /*
     void RenderPass::Pass_DepthOfField(CommandManager *cmd_list, Texture *tex_in, Texture *tex_out)
     {
         // acquire shader
@@ -41,7 +40,7 @@ namespace SceneryEditorX
         // set textures
         SetCommonTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+        cmd_list->SetTexture(bindingsUav::tex, tex_out);
         
 
         // render
@@ -49,8 +48,7 @@ namespace SceneryEditorX
 
         cmd_list->EndTimeblock();
     }
-
+	*/
 }
-*/
 
 // -------------------------------------------------------

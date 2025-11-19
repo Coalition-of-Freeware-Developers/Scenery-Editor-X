@@ -25,7 +25,7 @@ namespace SceneryEditorX
 	std::thread RenderDispatcher::s_Worker;				// Background worker thread executing FIFO jobs
 	RenderDispatcher::Queues RenderDispatcher::s_Queue; // Active job queue + synchronization primitives
     std::mutex RenderDispatcher::s_RFMutex;             // Mutex protecting the resource free ring structure
-	RenderData RenderDispatcher::renderData;
+    RenderData RenderDispatcher::s_RenderData;          // Renderer-provided data (frames in flight, etc.)
     std::vector<RenderDispatcher::RFQueue>
     RenderDispatcher::s_ResourceFreeRing;				// Ring of per-frame deferred destruction job buckets
     uint32_t RenderDispatcher::s_CurrentRFIndex = 0;	// Index of the frame bucket that just became safe for destruction
@@ -45,10 +45,10 @@ namespace SceneryEditorX
 	{
 	    if (s_Instance) return; // Already initialized
 	    s_Instance = CreateRef<RenderDispatcher>();
-	    renderData.framesInFlight = Renderer::GetRenderData().framesInFlight ? Renderer::GetRenderData().framesInFlight : 3;
-        s_ResourceFreeRing.resize(renderData.framesInFlight);
+	    s_RenderData.framesInFlight = Renderer::GetRenderData().framesInFlight ? Renderer::GetRenderData().framesInFlight : 3;
+        s_ResourceFreeRing.resize(s_RenderData.framesInFlight);
 	    s_Worker = std::thread(&RenderDispatcher::WorkerLoop);
-        SEDX_CORE_INFO_TAG("RenderDispatch", "Initialized (framesInFlight={})", renderData.framesInFlight);
+        SEDX_CORE_INFO_TAG("RenderDispatch", "Initialized (framesInFlight={})", s_RenderData.framesInFlight);
 	}
 
 	/**
@@ -60,19 +60,21 @@ namespace SceneryEditorX
 	 */
 	void RenderDispatcher::Shutdown()
 	{
+        Flush();
+
         {
-            std::scoped_lock lock(s_Queue.mtx);
-            s_Queue.quitting = true;
+            std::scoped_lock lock(s_Queue.m_Mtx);
+            s_Queue.m_Quitting = true;
         }
 
-        s_Queue.cv.notify_all();
+        s_Queue.m_Cv.notify_all();
         if (s_Worker.joinable())
             s_Worker.join();
 
         // Execute any remaining deferred frees
         for (auto& bucket : s_ResourceFreeRing)
         {
-            for (auto &job : bucket.jobs)
+            for (auto &job : bucket.m_Jobs)
                 job();
         }
 
@@ -98,10 +100,10 @@ namespace SceneryEditorX
 	{
 	    if (!s_Instance) { job(); return; }
 	    {
-            std::scoped_lock lock(s_Queue.mtx);
-            s_Queue.jobs.push(std::move(job));
+            std::scoped_lock lock(s_Queue.m_Mtx);
+            s_Queue.m_Jobs.push(std::move(job));
 	    }
-	    s_Queue.cv.notify_one();
+	    s_Queue.m_Cv.notify_one();
 	}
 
 	/**
@@ -119,8 +121,8 @@ namespace SceneryEditorX
 	        return;
 	    }
         std::scoped_lock lock(s_RFMutex);
-        const uint32_t target = (s_CurrentRFIndex + renderData.framesInFlight - 1) % renderData.framesInFlight;
-        s_ResourceFreeRing[target].jobs.push_back(std::move(job));
+        const uint32_t target = (s_CurrentRFIndex + s_RenderData.framesInFlight - 1) % s_RenderData.framesInFlight;
+        s_ResourceFreeRing[target].m_Jobs.push_back(std::move(job));
     }
 
     /**
@@ -133,8 +135,9 @@ namespace SceneryEditorX
     {
         if (!s_Instance)
             return;
-        std::unique_lock lock(s_Queue.mtx);
-        s_Queue.cv.wait(lock, [] { return s_Queue.jobs.empty(); });
+
+        std::unique_lock lock(s_Queue.m_Mtx);
+        s_Queue.m_Cv.wait(lock, [] { return s_Queue.m_Jobs.empty(); });
     }
 
     /**
@@ -148,12 +151,14 @@ namespace SceneryEditorX
 	{
         if (!s_Instance)
             return;
+
         std::vector<Job> toRun;
         {
             std::scoped_lock lock(s_RFMutex);
-            s_CurrentRFIndex = (s_CurrentRFIndex + 1) % renderData.framesInFlight;
-            toRun.swap(s_ResourceFreeRing[s_CurrentRFIndex].jobs);
+            s_CurrentRFIndex = (s_CurrentRFIndex + 1) % s_RenderData.framesInFlight;
+            toRun.swap(s_ResourceFreeRing[s_CurrentRFIndex].m_Jobs);
         }
+
         for (auto &job : toRun)
             job();
 	}
@@ -171,12 +176,12 @@ namespace SceneryEditorX
 		{
 	        Job job;
 	        {
-	            std::unique_lock lock(s_Queue.mtx);
-	            s_Queue.cv.wait(lock, [](){ return s_Queue.quitting || !s_Queue.jobs.empty(); });
-	            if (s_Queue.quitting && s_Queue.jobs.empty())
+	            std::unique_lock lock(s_Queue.m_Mtx);
+	            s_Queue.m_Cv.wait(lock, [](){ return s_Queue.m_Quitting || !s_Queue.m_Jobs.empty(); });
+	            if (s_Queue.m_Quitting && s_Queue.m_Jobs.empty())
 					break;
-	            job = std::move(s_Queue.jobs.front());
-	            s_Queue.jobs.pop();
+	            job = std::move(s_Queue.m_Jobs.front());
+	            s_Queue.m_Jobs.pop();
 	        }
 	        try
 	        {

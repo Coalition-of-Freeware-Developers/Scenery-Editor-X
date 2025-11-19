@@ -503,7 +503,7 @@ namespace SceneryEditorX
 										VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 										subresourceRange);
 
-		RenderContext::GetCurrentDevice()->FlushCmdBuffer(blitCmd);
+		//CommandBuffer::FlushCmdBuffer(blitCmd);
 
 #if 0
 		VkImageMemoryBarrier barrier = {};
@@ -632,6 +632,7 @@ namespace SceneryEditorX
             m_Image.As<Image2D>()->CopyToHostBuffer(buffer);
     }
 
+    /*
     void Texture2D::SetData(const Buffer &buffer)
     {
 	    const auto device = RenderContext::GetCurrentDevice();
@@ -747,6 +748,7 @@ namespace SceneryEditorX
 		if (m_Specification.generateMips && mipCount > 1)
 			GenerateMips();
     }
+    */
 
     /*
     void Texture2D::SaveAsImage(const std::string &file_path)
@@ -1034,6 +1036,7 @@ namespace SceneryEditorX
 	}
 	*/
 
+	/*
 	void TextureCube::GenerateMips(const bool readonly)
 	{
 		const auto device = RenderContext::GetCurrentDevice()->GetDevice();
@@ -1211,7 +1214,9 @@ namespace SceneryEditorX
 		allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
 	}
 #endif
+*/
 
+	/*
 	void TextureCube::CopyToHostBuffer(Buffer &buffer) const
     {
         const auto device = RenderContext::GetCurrentDevice();
@@ -1292,7 +1297,9 @@ namespace SceneryEditorX
 
 		allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
 	}
+	*/
 
+	/*
 	void TextureCube::CopyFromBuffer(const Buffer &buffer, const uint32_t mips) const
     {
 		const auto device = RenderContext::GetCurrentDevice();
@@ -1379,6 +1386,7 @@ namespace SceneryEditorX
 		device->FlushCmdBuffer(copyCmd);
 		allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
 	}
+	*/
 
 }
 

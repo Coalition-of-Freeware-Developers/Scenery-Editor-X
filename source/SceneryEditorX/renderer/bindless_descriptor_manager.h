@@ -57,9 +57,9 @@ namespace SceneryEditorX
 	private:
 	    struct PendingWrite
 	    {
-	        VkWriteDescriptorSet write{};
-	        VkDescriptorImageInfo imageInfo{};
-	        VkDescriptorBufferInfo bufferInfo{};
+	        VkWriteDescriptorSet m_write{};
+	        VkDescriptorImageInfo m_imageInfo{};
+	        VkDescriptorBufferInfo m_bufferInfo{};
 	    };
 	
 	    static void EnsureInitialized();

@@ -10,17 +10,16 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
-//#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-	
+    /*
     void RenderPass::Pass_Blit(CommandManager *cmd_list, Texture *tex_in, Texture *tex_out)
     {
         // we use a compute shader to blit from depth to float, as Vulkan doesn't support blitting depth to float formats
@@ -39,7 +38,7 @@ namespace SceneryEditorX
             cmd_list->SetPipelineState(pso);
             
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(bindingsUav::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
             
             // render
@@ -47,8 +46,7 @@ namespace SceneryEditorX
         }
         cmd_list->EndTimeblock();
     }
-
-}
-*/
+	*/
+} 
 
 // -------------------------------------------------------

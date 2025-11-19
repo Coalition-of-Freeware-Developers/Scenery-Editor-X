@@ -16,7 +16,7 @@ FUNCTION(SEDX_GROUP_TARGETS)
         ENDIF()
     ENDFOREACH()
 
-    FOREACH(T IN ITEMS xMath imgui json-cpp-gen nlohmann_json)
+	FOREACH(T IN ITEMS xMath imgui json-cpp-gen nlohmann_json TracyClient)
         IF(TARGET ${T})
             SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Dependency")
         ENDIF()

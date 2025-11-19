@@ -132,6 +132,8 @@ ADD_LIBRARY(AppCore
 	renderer/camera.h
 	renderer/command_manager.cpp
 	renderer/command_manager.h
+	renderer/command_pool.cpp
+	renderer/command_pool.h
 	renderer/command_queue.cpp
 	renderer/command_queue.h
 	renderer/compute_pass.cpp
@@ -353,6 +355,8 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/fence.h
 	renderer/frame_sync.cpp
 	renderer/frame_sync.h
+	renderer/command_pool.cpp
+	renderer/command_pool.h
 	renderer/icons.cpp
 	renderer/image_data.cpp
 	renderer/image_data.h
@@ -487,23 +491,23 @@ TARGET_INCLUDE_DIRECTORIES(AppCore
 )
 
 # --------------------------------
-
 TARGET_LINK_LIBRARIES(AppCore
-    PRIVATE
-		nlohmann_json::nlohmann_json
-        spdlog::spdlog_header_only
-        GPUOpen::VulkanMemoryAllocator
-        CURL::libcurl
-        Vulkan::Vulkan
-		imgui
-		libconfig
-		libconfig++
-		XPSceneryLib::XPSceneryLib
-        glfw
-        dxgi
-        d3d12
-        Shell32.lib
-		xMath::xMath
+	PRIVATE
+	nlohmann_json::nlohmann_json
+	spdlog::spdlog_header_only
+	GPUOpen::VulkanMemoryAllocator
+	CURL::libcurl
+	Vulkan::Vulkan
+	imgui
+	libconfig
+	libconfig++
+	XPSceneryLib::XPSceneryLib
+	glfw
+	dxgi
+	d3d12
+	Shell32.lib
+	xMath::xMath
+	TracyClient
 )
 
 # --------------------------------

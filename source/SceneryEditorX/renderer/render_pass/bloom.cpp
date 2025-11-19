@@ -10,17 +10,16 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
-//#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-	
+    /*
     void RenderPass::Pass_Bloom(CommandManager *cmd_list, Texture *tex_in, Texture *tex_out)
     {
         // acquire resources
@@ -43,7 +42,7 @@ namespace SceneryEditorX
             cmd_list->SetPipelineState(pso);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom);
+            cmd_list->SetTexture(bindingsUav::tex, tex_bloom);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
             // render
@@ -75,7 +74,7 @@ namespace SceneryEditorX
 
                 // set textures
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip_index_small, 1);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip_index_big, 1);
+                cmd_list->SetTexture(bindingsUav::tex, tex_bloom, mip_index_big, 1);
 
                 // blend
                 uint32_t thread_group_count    = 8;
@@ -102,7 +101,7 @@ namespace SceneryEditorX
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(bindingsUav::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bloom, 0, 1);
 
@@ -113,8 +112,7 @@ namespace SceneryEditorX
 
         cmd_list->EndTimeblock();
     }
-
+	*/
 }
-*/
 
 // -------------------------------------------------------

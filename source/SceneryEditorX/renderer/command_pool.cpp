@@ -42,10 +42,19 @@ namespace SceneryEditorX
 			default: return "Unknown";
 	    }
 	}
-	
+
+    /**
+	 * @brief Static accessor method to get the singleton instance of CommandPool
+	 * @return Reference to the singleton CommandPool instance
+	 */
+    Ref<CommandPool> CommandPool::Get()
+    {
+        return CreateRef<CommandPool>(RenderContext::Get()->GetLogicDevice(), Queue::Graphics);
+    }
+
 	CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type)
 	{
-	    queueType = type;
+	    m_QueueType = type;
 	    const uint32_t familyIndex = GetPoolType(type);
 	    const VkDevice device = vulkanDevice->GetDevice();
 	
@@ -53,14 +62,14 @@ namespace SceneryEditorX
 	    ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	    ci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	    ci.queueFamilyIndex = familyIndex;
-	    if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &commandPool); res != VK_SUCCESS)
+	    if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &m_CmdPool); res != VK_SUCCESS)
 	    {
-	        SEDX_CORE_ERROR_TAG("VULKAN", "Failed to create {0} command pool (err {1})", ToString(queueType), res);
-	        commandPool = VK_NULL_HANDLE;
+	        SEDX_CORE_ERROR_TAG("VULKAN", "Failed to create {0} command pool (err {1})", ToString(m_QueueType), res);
+	        m_CmdPool = VK_NULL_HANDLE;
 	    }
 	
 		#ifdef SEDX_DEBUG
-		    SEDX_CORE_INFO_TAG("VULKAN", "{0} command pool created successfully", ToString(queueType));
+		    SEDX_CORE_INFO_TAG("VULKAN", "{0} command pool created successfully", ToString(m_QueueType));
 		#endif
 	}
 	
@@ -72,14 +81,14 @@ namespace SceneryEditorX
 	
 	    const VkDevice device = deviceRef->GetDevice();
 	
-	    if (commandPool != VK_NULL_HANDLE)
+	    if (m_CmdPool != VK_NULL_HANDLE)
 	    {
-	        vkDestroyCommandPool(device, commandPool, nullptr);
+	        vkDestroyCommandPool(device, m_CmdPool, nullptr);
 	    }
 	
-	    commandPool = VK_NULL_HANDLE;
+	    m_CmdPool = VK_NULL_HANDLE;
 		#ifdef SEDX_DEBUG
-		    SEDX_CORE_INFO_TAG("VULKAN", "{0} command pool destroyed successfully", ToString(queueType));
+		    SEDX_CORE_INFO_TAG("VULKAN", "{0} command pool destroyed successfully", ToString(m_QueueType));
 		#endif
 	}
 	

@@ -39,13 +39,13 @@ namespace SceneryEditorX
 
     struct PipelineStats
     {
-        uint64_t InputAssemblyVertices = 0;
-        uint64_t InputAssemblyPrimitives = 0;
-        uint64_t VertexShaderInvocations = 0;
-        uint64_t ClippingInvocations = 0;
-        uint64_t ClippingPrimitives = 0;
-        uint64_t FragmentShaderInvocations = 0;
-        uint64_t ComputeShaderInvocations = 0;
+        uint64_t s_InputAssemblyVertices = 0;
+        uint64_t s_InputAssemblyPrimitives = 0;
+        uint64_t s_VertexShaderInvocations = 0;
+        uint64_t s_ClippingInvocations = 0;
+        uint64_t s_ClippingPrimitives = 0;
+        uint64_t s_FragmentShaderInvocations = 0;
+        uint64_t s_ComputeShaderInvocations = 0;
     };
 
     // -------------------------------------------------------
@@ -54,34 +54,61 @@ namespace SceneryEditorX
 	{
 	public:
         CommandBuffer() = default;
-        explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
         CommandBuffer(std::string debugName, bool swapchain);
+        explicit CommandBuffer(Queue queue, std::string debugName = "");
+        explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
         virtual ~CommandBuffer() override;
 
 		static Ref<CommandBuffer> Get(); // Static accessor method to get the singleton instance
 
         void Begin();
         void Begin(Queue queue);
+        void End();
+        void End(VkSubmitInfo submitInfo);
         void Submit();
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer);
         void Submit(void *cmdBuffer, uint32_t waitFlags);
-        void Wait(bool flush = false);
 
+        void Wait(bool flush = false);
         void Execute(void *swapchain, uint32_t imageIdx);
+
         Queue GetQueueType() const { return qType;}
-        CommandResources &GetCurrentCommandResources();
+        CommandResources& GetCurrentCommandResources();
 		const PipelineStats& GetPipelineStatistics(uint32_t frameIndex) const { return pipelineStatsQueryResults[frameIndex]; }
 
-		uint32_t BeginTimestampQuery();
+        void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
+        uint32_t BeginTimestampQuery();
 		void EndTimestampQuery(uint32_t queryID);
+        void FlushCmdBuffer();
 
         [[nodiscard]] VkCommandBuffer GetActiveCmdBuffer() const { return activeCmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
+
+        /**
+         * Immediate submit helper (one-shot command buffer already ended)
+         */
+        void ImmediateSubmit(const Ref<CommandBuffer> &cmd);
+
+        /**
+		 * @brief Get the thread-local command pool.
+		 * @return Reference to the thread-local command pool.
+		 */
+        Ref<CommandPool> GetThreadLocalCommandPool();
+
+        /**
+		 * @brief Get or create the thread-local command pool.
+		 * @return Reference to the thread-local command pool.
+		 */
+        Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
 
     private:
         SwapChain swapChain;
         Ref<VulkanDevice> vkDevice;
 
-        VkCommandPool cmdPool = nullptr;
+        Ref<CommandPool> LocalCommandPool();
+        Ref<CommandPool> CreateLocalCommandPool();
+
+        Ref<CommandPool> cmdPool = nullptr;
         VkCommandBuffer activeCmdBuffer = nullptr;
 
         std::vector<VkFence> waitFences;

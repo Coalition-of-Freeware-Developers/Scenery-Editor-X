@@ -10,18 +10,17 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
-//#include <SceneryEditorX/scene/entity.h>
-//#include <SceneryEditorX/scene/lights.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/scene/entity.h>
+#include <SceneryEditorX/scene/lights.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-	
+    /*
     void RenderPass::Pass_Icons(CommandManager *cmd_list, Texture *tex_out)
     {
         // append icons from entities
@@ -70,7 +69,7 @@ namespace SceneryEditorX
                 cmd_list->SetPipelineState(pso);
 
                 // bind output texture
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+                cmd_list->SetTexture(bindingsUav::tex, tex_out);
 
                 // lambda to dispatch a single icon
                 auto dispatch_icon = [&](Texture* texture, const Vec3& pos_world)
@@ -108,8 +107,8 @@ namespace SceneryEditorX
             cmd_list->EndTimeblock();
         }
     }
-
+	*/
 }
-*/
+
 
 // -------------------------------------------------------

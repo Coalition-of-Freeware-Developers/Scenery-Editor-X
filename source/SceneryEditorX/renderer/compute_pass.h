@@ -11,17 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-//#include "compute_pipeline.h"
-//#include "texture.h"
-//#include "vulkan/vk_descriptor_set_manager.h"
-//#include <Math/includes/vector.h>
+#include "compute_pipeline.h"
+#include "texture.h"
+#include "vulkan/vk_descriptor_set_manager.h"
+#include <xMath/includes/vector.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-
+    /*
 	struct ComputePassSpecification
 	{
 	    Ref<ComputePipeline> pipeline;
@@ -71,8 +70,7 @@ namespace SceneryEditorX
 	    ComputePassSpecification m_Specification;
         DescriptorSetManager m_DescriptorSetManager;
 	};
-
+	*/
 }
-*/
 
 // -------------------------------------------------------

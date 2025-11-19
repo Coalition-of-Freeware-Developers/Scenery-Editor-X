@@ -16,6 +16,7 @@
 #include <optional>
 #include <vulkan/vulkan.h>
 // PCH normally provides these in AppCore; include here for standalone TUs (tests)
+#include "SceneryEditorX/renderer/command_pool.h"
 #include <map>
 #include <mutex>
 #include <string>
@@ -26,7 +27,7 @@
 
 namespace SceneryEditorX
 {
-	class CommandPool;
+	//class CommandPool;
 
 	struct GPUDevice
 	{
@@ -95,10 +96,10 @@ namespace SceneryEditorX
              * @brief Get the family index.
              * @return The family index, or 0 if not initialized.
              */
-            [[nodiscard]] uint32_t GetGraphicsFamily() const;
-            [[nodiscard]] uint32_t GetPresentFamily() const;
-            [[nodiscard]] uint32_t GetComputeFamily() const;
-            [[nodiscard]] uint32_t GetTransferFamily() const;
+            [[nodiscard]] uint32_t GetGraphicsFamily() const noexcept;
+            [[nodiscard]] uint32_t GetPresentFamily() const noexcept;
+            [[nodiscard]] uint32_t GetComputeFamily() const noexcept;
+            [[nodiscard]] uint32_t GetTransferFamily() const noexcept;
 
         };
 
@@ -128,15 +129,15 @@ namespace SceneryEditorX
         // Accessor methods
         [[nodiscard]] VkPhysicalDevice GetGPUDevices() const;
 
-		[[nodiscard]] const QueueFamilyIndices &GetQueueFamilyIndices() const { return QFamilyIndices; }
-		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return devices.at(deviceIndex).GFXLimits; }
-        [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return devices.at(deviceIndex).memoryProperties; }
-		[[nodiscard]] VkFormat GetDepthFormat() const { return  devices.at(deviceIndex).depthFormat;}
-		[[nodiscard]] const VkPhysicalDeviceFeatures &GetDeviceFeatures() const { return devices.at(deviceIndex).deviceFeatures; }
-        [[nodiscard]] VkPhysicalDeviceProperties2 GetDeviceProperties() const { return devices.at(deviceIndex).deviceProperties; }
-		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return devices.at(deviceIndex).surfaceFormats; }
-		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return devices.at(deviceIndex).presentModes; }
-		[[nodiscard]] const std::vector<VkQueueFamilyProperties> &GetQueueFamilyProperties() const { return devices.at(deviceIndex).queueFamilyInfo; }
+		[[nodiscard]] const QueueFamilyIndices &GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
+		[[nodiscard]] const VkPhysicalDeviceLimits &GetLimits() const { return m_Devices.at(m_DeviceIndex).GFXLimits; }
+        [[nodiscard]] const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const { return m_Devices.at(m_DeviceIndex).memoryProperties; }
+		[[nodiscard]] VkFormat GetDepthFormat() const { return  m_Devices.at(m_DeviceIndex).depthFormat;}
+		[[nodiscard]] const VkPhysicalDeviceFeatures &GetDeviceFeatures() const { return m_Devices.at(m_DeviceIndex).deviceFeatures; }
+        [[nodiscard]] VkPhysicalDeviceProperties2 GetDeviceProperties() const { return m_Devices.at(m_DeviceIndex).deviceProperties; }
+		[[nodiscard]] const std::vector<VkSurfaceFormatKHR> &GetSurfaceFormats() const { return m_Devices.at(m_DeviceIndex).surfaceFormats; }
+		[[nodiscard]] const std::vector<VkPresentModeKHR> &GetPresentModes() const { return m_Devices.at(m_DeviceIndex).presentModes; }
+		[[nodiscard]] const std::vector<VkQueueFamilyProperties> &GetQueueFamilyProperties() const { return m_Devices.at(m_DeviceIndex).queueFamilyInfo; }
 
         /**
          * @brief Find queue families that meet specified criteria in the physical device.
@@ -146,14 +147,14 @@ namespace SceneryEditorX
         //QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
 
     private:
-        VkFormat depthFormat = VK_FORMAT_UNDEFINED;
-        VkInstance *vkInstance;
-        VkPhysicalDevice physicalDevice = nullptr;
-        QueueFamilyIndices QFamilyIndices;
+        VkFormat m_DepthFormat = VK_FORMAT_UNDEFINED;
+        VkInstance *m_Instance;
+        VkPhysicalDevice m_PhysicalDevice = nullptr;
+        QueueFamilyIndices m_QueueFamilyIndices;
 
-        int deviceIndex = -1;
-        std::vector<GPUDevice> devices;
-        std::unordered_set<std::string> supportedExtensions;
+        int m_DeviceIndex = -1;
+        std::vector<GPUDevice> m_Devices;
+        std::unordered_set<std::string> m_SupportedExtensions;
 
         static VkFormat FindDepthFormat(const GPUDevice& device);
 		static VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
@@ -196,17 +197,6 @@ namespace SceneryEditorX
         VmaAllocator GetMemoryAllocator() const;
         VkCommandBuffer GetCommandBuffer(bool cond);
 
-        /*
-        // Immediate submit helper (one-shot command buffer already ended)
-        void ImmediateSubmit(VkCommandBuffer cmd, VkQueue queue = VK_NULL_HANDLE)
-        {
-            if (!cmd) return;
-            if (queue == VK_NULL_HANDLE)
-                queue = GetGraphicsQueue();
-            FlushCmdBuffer(cmd, queue);
-        }
-        */
-
         bool IsValidResolution(uint32_t width, uint32_t height);
 
         /**
@@ -216,10 +206,10 @@ namespace SceneryEditorX
 
 		// Accessor methods.
 	    [[nodiscard]] const VkDevice &Selected() const { return GetDevice(); }
-        [[nodiscard]] VkQueue GetGraphicsQueue() const { return GraphicsQueue; }
-        [[nodiscard]] VkQueue GetComputeQueue() const { return ComputeQueue; }
-        [[nodiscard]] VkQueue GetPresentQueue() const { return PresentQueue; }
-        [[nodiscard]] const VkDevice& GetDevice() const { return device; }
+        [[nodiscard]] VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
+        [[nodiscard]] VkQueue GetComputeQueue() const { return m_ComputeQueue; }
+        [[nodiscard]] VkQueue GetPresentQueue() const { return m_PresentQueue; }
+        [[nodiscard]] const VkDevice &GetDevice() const { return m_Device; }
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
         void SetResourceName(void *resource, const ResourceType resourceType, const char *name);
@@ -261,18 +251,6 @@ namespace SceneryEditorX
          */
         void UnlockQueue(bool compute = false);
 
-		/**
-		 * @brief Get the thread-local command pool.
-		 * @return Reference to the thread-local command pool.
-		 */
-        // Ref<CommandPool> GetThreadLocalCommandPool();
-
-		/**
-		 * @brief Get or create the thread-local command pool.
-		 * @return Reference to the thread-local command pool.
-		 */
-        // Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
-
         /**
          * @brief Get the scratch buffer address.
          * @return The device address of the scratch buffer.
@@ -286,35 +264,37 @@ namespace SceneryEditorX
         // BindlessResources GetBindlessResources() const { return bindlessResources; }
 
     private:
-        Layers vkLayers;
-        VkDevice device = nullptr;
+        Layers m_Layers;
+        VkQueue m_Queue = VK_NULL_HANDLE;
+        VkDevice m_Device = VK_NULL_HANDLE;
+        VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
+        VkCommandBuffer m_CmdBuffer = VK_NULL_HANDLE;
         //BindlessResources bindlessResources;
-		Ref<MemoryAllocator> memoryAllocator;
-        VkSampler textureSampler = nullptr;
-        Ref<CommandPool> LocalCommandPool();
-        Ref<CommandPool> CreateLocalCommandPool();
+		Ref<MemoryAllocator> m_MemoryAlloc;
+        VkSampler m_TextureSampler = nullptr;
+
         Ref<VulkanPhysicalDevice> vkPhysicalDevice;
         VkPhysicalDeviceFeatures vkEnabledFeatures = {};
-        uint32_t initialScratchBufferSize = 64 * 1024 * 1024;
-		Buffer scratchBuffer = {};
-		uint64_t scratchAddress;
+        uint32_t m_InitScratchBufferSize = 64 * 1024 * 1024;
+		Buffer m_ScratchBuffer = {};
+		uint64_t m_ScratchAddress;
 
 		// -------------------------------------------------------
 
-        VkQueue GraphicsQueue = VK_NULL_HANDLE;
-        VkQueue ComputeQueue = VK_NULL_HANDLE;
-        VkQueue PresentQueue = VK_NULL_HANDLE;
-        VkQueue TransferQueue = VK_NULL_HANDLE;
+        VkQueue m_GraphicsQueue = VK_NULL_HANDLE;
+        VkQueue m_ComputeQueue = VK_NULL_HANDLE;
+        VkQueue m_PresentQueue = VK_NULL_HANDLE;
+        VkQueue m_TransferQueue = VK_NULL_HANDLE;
 
-        std::mutex GraphicsQueueMutex;
-        std::mutex ComputeQueueMutex;
-        std::mutex PresentQueueMutex;
-        std::mutex TransferQueueMutex;
+        std::mutex m_GraphicsQueueMutex;
+        std::mutex m_ComputeQueueMutex;
+        std::mutex m_PresentQueueMutex;
+        std::mutex m_TransferQueueMutex;
 
 		// -------------------------------------------------------
 
         // Command pool management
-        //std::map<std::thread::id, Ref<CommandPool>> CmdPools;
+        //std::map<std::thread::id, Ref<CommandPool>> m_CmdPools;
 
         /**
          * @brief Create a texture sampler with specified parameters
@@ -328,12 +308,6 @@ namespace SceneryEditorX
          */
         void LoadExtensionFunctions();
 
-        // -------------------------------------------------------
-
-	    VkQueue vkQueue = VK_NULL_HANDLE;
-        VkDevice vkDevice = VK_NULL_HANDLE;
-	    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
-        VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
     };
 
 }

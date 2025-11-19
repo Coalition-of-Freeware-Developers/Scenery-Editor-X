@@ -18,6 +18,10 @@
 
 namespace SceneryEditorX
 {
+    // Static instance of the sampler
+    static Ref<Sampler> s_Instance = nullptr;
+
+    // -------------------------------------------------------
 
     Sampler::Sampler(const SamplerSpec &samplerSpec, const std::string &debugName)
     {
@@ -28,6 +32,13 @@ namespace SceneryEditorX
 
     Sampler::~Sampler()
     {
+    }
+
+    Ref<Sampler> Sampler::Get()
+    {
+		if (!s_Instance)
+            s_Instance = CreateRef<Sampler>();
+        return s_Instance;
     }
 
     /*

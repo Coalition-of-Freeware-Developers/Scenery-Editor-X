@@ -18,21 +18,18 @@
 
 namespace SceneryEditorX
 {
-	Fence::Fence(void *&resource)
+	Fence::Fence(void *&resource) : m_Resource(resource)
 	{
-	    VkFenceCreateInfo fence_info = {};
-	    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	
-		SEDX_ASSERT(vkCreateFence(RenderContext::Get()->GetLogicDevice()->GetDevice(), &fence_info, nullptr, reinterpret_cast<VkFence*>(&resource)));
+	    SEDX_ASSERT(resource != nullptr, "Fence resource cannot be null");
 	}
 
-    // TODO: Evaluate if the 'Create' function should remain able to be called specifically or keep the RAII setup and create it directly in constructor?
     void Fence::Create(void* &resource)
 	{
-	    VkFenceCreateInfo fence_info = {};
-	    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	    VkFenceCreateInfo fenceInfo{};
+	    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Start in signaled state for first frame
 	
-		SEDX_ASSERT(vkCreateFence(RenderContext::Get()->GetLogicDevice()->GetDevice(), &fence_info, nullptr, reinterpret_cast<VkFence*>(&resource)));
+		SEDX_ASSERT(vkCreateFence(RenderContext::Get()->GetLogicDevice()->GetDevice(), &fenceInfo,nullptr, reinterpret_cast<VkFence*>(&resource)) == VK_SUCCESS);
 	}
 	
 	bool Fence::IsSignaled(void *&resource)
@@ -42,13 +39,12 @@ namespace SceneryEditorX
 	
 	void Fence::WaitTime(uint64_t timeout, void *&resource)
 	{
-	    SEDX_ASSERT(vkWaitForFences(RenderContext::Get()->GetLogicDevice()->GetDevice(), 1, reinterpret_cast<VkFence*>(&resource), true, timeout));
+	    SEDX_ASSERT(vkWaitForFences(RenderContext::Get()->GetLogicDevice()->GetDevice(), 1, reinterpret_cast<VkFence*>(&resource), VK_TRUE, timeout) == VK_SUCCESS);
 	}
 
-    // TODO: Evaluate if the Create function should remain to be called specifically or keep the RAII setup and create it directly in constructor?
 	void Fence::Reset(void *&resource)
 	{
-		SEDX_ASSERT(vkResetFences(RenderContext::Get()->GetLogicDevice()->GetDevice(), 1, reinterpret_cast<VkFence*>(&resource)));
+		SEDX_ASSERT(vkResetFences(RenderContext::Get()->GetLogicDevice()->GetDevice(),1, reinterpret_cast<VkFence*>(&resource)) == VK_SUCCESS);
 	}
 }
 

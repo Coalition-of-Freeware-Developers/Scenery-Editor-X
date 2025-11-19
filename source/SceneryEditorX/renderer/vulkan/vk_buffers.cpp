@@ -11,21 +11,24 @@
 * -------------------------------------------------------
 */
 #include "vk_buffers.h"
+#include "vk_cmd_buffers.h"
 #include "SceneryEditorX/renderer/image_data.h"
 #include "SceneryEditorX/renderer/render_context.h"
 #include "SceneryEditorX/renderer/bindless_descriptor_manager.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 #include <vma/vk_mem_alloc.h>
-#include <vma/vk_mem_alloc.h>
+
 // ----------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
     /*
     VkCommandBuffer BeginCommands()
     {
-        const VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
-        const VkCommandPool cmdPool = GraphicsEngine::Get()->GetCommandBuffer()->GetCommandPool()->GetComputeCmdPool();
+        const VkDevice vkDevice = RenderContext::GetCurrentDevice()->GetDevice();
+        const VkCommandPool cmdPool = Renderer::Get()->GetCommandPool();
 
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -43,16 +46,17 @@ namespace SceneryEditorX
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
         return commandBuffer;
-    }*/
+    }
+    */
 
     /*
     static void EndCommands(VkCommandBuffer commandBuffer)
     {
         vkEndCommandBuffer(commandBuffer);
 
-        const VkDevice vkDevice = GraphicsEngine::GetCurrentDevice()->GetDevice();
-        const VkQueue graphicsQueue = GraphicsEngine::GetCurrentDevice()->GetGraphicsQueue();
-        const VkCommandPool cmdPool = GraphicsEngine::Get()->GetCommandBuffer()->GetCommandPool()->GetComputeCmdPool();
+        const VkDevice vkDevice = RenderContext::GetCurrentDevice()->GetDevice();
+        const VkQueue graphicsQueue = RenderContext::GetCurrentDevice()->GetGraphicsQueue();
+        const VkCommandPool cmdPool = RenderContext::Get()->GetCommandBuffer()->GetCommandPool()->GetComputeCmdPool();
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -63,7 +67,8 @@ namespace SceneryEditorX
         vkQueueWaitIdle(graphicsQueue);
 
         vkFreeCommandBuffers(vkDevice, cmdPool, 1, &commandBuffer);
-    }*/
+    }
+    */
 
 	/**
 	 * @brief Retrieves the unique resource ID of the buffer.
@@ -181,16 +186,7 @@ namespace SceneryEditorX
 		}
 
 		// Create the buffer with VMA
-		VkResult vmaResult = vmaCreateBuffer(
-			vmaAllocator,
-			&bufferInfo,
-			&allocInfo,
-			&resource->buffer,
-			&resource->allocation,
-			nullptr
-		);
-
-		if (vmaResult != VK_SUCCESS)
+        if (VkResult vmaResult = vmaCreateBuffer(vmaAllocator, &bufferInfo, &allocInfo,&resource->buffer, &resource->allocation,nullptr); vmaResult != VK_SUCCESS)
 		{
 			SEDX_CORE_ERROR_TAG("Graphics Engine",
 				"vmaCreateBuffer failed (name: '{}', size: {}, usage: 0x{:X}) VkResult={}",
@@ -286,7 +282,7 @@ namespace SceneryEditorX
      */
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
-        /// Get device and command buffer from render context
+        // Get device and command buffer from render context
 	    auto device = RenderContext::Get()->GetLogicDevice();
         VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
@@ -294,7 +290,7 @@ namespace SceneryEditorX
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-        device->FlushCmdBuffer(commandBuffer);
+        CommandBuffer::Get()->FlushCmdBuffer();
     }
 
     /**
@@ -320,7 +316,7 @@ namespace SceneryEditorX
 
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-        device->FlushCmdBuffer(commandBuffer);
+        CommandBuffer::Get()->FlushCmdBuffer();
     }
 
     /**
@@ -333,7 +329,7 @@ namespace SceneryEditorX
 	 */
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
     {
-        /// Get device and command buffer from render context
+        // Get device and command buffer from render context
 	    auto device = RenderContext::Get()->GetLogicDevice();
         const VkCommandBuffer commandBuffer = device->GetCommandBuffer(true);
 
@@ -349,7 +345,7 @@ namespace SceneryEditorX
         region.imageExtent = {.width = width,.height = height,.depth = 1};
 
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-        device->FlushCmdBuffer(commandBuffer);
+        CommandBuffer::Get()->FlushCmdBuffer();
     }
 
     // ----------------------------------------------------------

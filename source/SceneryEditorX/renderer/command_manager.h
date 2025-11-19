@@ -11,12 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "command_pool.h"
 #include "frame_sync.h"
 #include "image_data.h"
 #include "texture.h"
 #include "viewport.h"
-#include "SceneryEditorX/utils/pointers.h"
 #include "vulkan/vk_device.h"
+#include "clear_value.h"
 #include "vulkan/vk_enums.h"
 #include "vulkan/vk_pipeline.h"
 #include <stack>
@@ -30,57 +31,6 @@ namespace SceneryEditorX
 {
     class SwapChain;
 
-    class CommandPool : public RefCounted
-	{
-	public:
-	    /**
-	     * @brief Create command pools for a device
-	     * @param vulkanDevice The device to create command pools for
-	     * @param type The type of queue this command pool will be used with (graphics, compute, transfer, etc.)
-	     */
-	    CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type);
-	    virtual ~CommandPool() override;
-
-	    /**
-	     * @brief Allocate a command buffer from the pool
-	     *
-	     * @param begin Whether to begin the command buffer
-	     * @param compute Whether to allocate from the compute pool
-	     *
-	     * @return A new command buffer
-	     */
-	    //[[nodiscard]] VkCommandBuffer AllocateCommandBuffer(bool begin = false, bool compute = false) const;
-
-	    /**
-	     * @brief Submit a command buffer to the graphics queue and wait for completion
-	     * @param cmdBuffer The command buffer to submit
-	     */
-	    //void FlushCmdBuffer(VkCommandBuffer cmdBuffer) const;
-
-	    /**
-	     * @brief Submit a command buffer to a specific queue and wait for completion
-	     * @param cmdBuffer The command buffer to submit
-	     * @param queue The queue to submit to
-	     */
-	    //void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue) const;
-
-	    /*
-	    // Accessor methods
-	    [[nodiscard]] VkCommandPool GetGraphicsCmdPool() const { return GraphicsCmdPool; }
-	    [[nodiscard]] VkCommandPool GetComputeCmdPool()	 const { return ComputeCmdPool; }
-	    [[nodiscard]] VkCommandPool GetTransferCmdPool() const { return TransferCmdPool; }
-	    */
-
-	private:
-        Queue queueType;
-        VkCommandPool commandPool = VK_NULL_HANDLE;
-	    /*VkCommandPool GraphicsCmdPool = VK_NULL_HANDLE;
-	    VkCommandPool ComputeCmdPool = VK_NULL_HANDLE;
-	    VkCommandPool TransferCmdPool = VK_NULL_HANDLE;*/
-	};
-
-	// ---------------------------------------------------------
-
     /**
      * @brief Thread-local command pool manager for multithreaded recording
      *
@@ -91,42 +41,12 @@ namespace SceneryEditorX
     class ThreadCommandPools final
     {
     public:
-        static Ref<CommandPool> GetOrCreate(const Ref<VulkanDevice>& device, Queue queueType)
-        {
-            const auto tid = std::this_thread::get_id();
-            auto& byQueue = Pools()[tid];
-            const auto key = static_cast<int>(queueType);
-            auto it = byQueue.find(key);
-            if (it != byQueue.end() && it->second)
-                return it->second;
-
-            auto pool = CreateRef<CommandPool>(device, queueType);
-            byQueue[key] = pool;
-            return pool;
-        }
-
-        static void Shutdown()
-        {
-            auto& all = Pools();
-            for (auto& entry : all)
-            {
-                auto& byQueue = entry.second;
-                for (auto& qentry : byQueue)
-                {
-                    auto& pool = qentry.second;
-                    pool.Reset();
-                }
-            }
-            all.clear();
-        }
+        static Ref<CommandPool> Get(const Ref<VulkanDevice> &device, Queue queueType);
+        static void Shutdown();
 
     private:
         typedef std::unordered_map<int, Ref<CommandPool>> PoolMap;
-        static std::unordered_map<std::thread::id, PoolMap>& Pools()
-        {
-            static std::unordered_map<std::thread::id, PoolMap> s_pools;
-            return s_pools;
-        }
+        static std::unordered_map<std::thread::id, PoolMap>& Pools();
     };
 
     /**
@@ -147,14 +67,14 @@ namespace SceneryEditorX
 
     struct ImageBarrierInfo
     {
-        void *image = nullptr;
-        uint32_t aspect = 0;
-        uint32_t mip = 0;
-        uint32_t mip_range = 0;
-        uint32_t arrayLen = 0;
-        Layout::ImageLayout layout_old = Layout::ImageLayout::Max;
-        Layout::ImageLayout layout_new = Layout::ImageLayout::Max;
-        bool isDepth = false;
+        void *image						= nullptr;
+        bool isDepth					= false;
+        uint32_t aspect					= 0;
+        uint32_t mip					= 0;
+        uint32_t mipRange				= 0;
+        uint32_t arrayLen				= 0;
+        Layout::ImageLayout layoutOld	= Layout::ImageLayout::Max;
+        Layout::ImageLayout layoutNew	= Layout::ImageLayout::Max;
     };
 
     // -------------------------------------------------------
@@ -166,78 +86,75 @@ namespace SceneryEditorX
         virtual ~CommandManager() override;
 
 		void Begin();
-        void Submit(FrameSync *semaphoreWait, const bool immediate);
-        void ExecutionWait(const bool waitTime = false);
+        void Submit(FrameSync *semaphoreWait, bool immediate);
+        void ExecutionWait(bool waitTime = false);
         void PipelineState();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// Draw Commands
+		/// Draw Commands																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		void Draw(const uint32_t count, const uint32_t vertexStartIdx = 0);
-	    void DrawIndexed(const uint32_t count, const uint32_t indexOffset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
+	    void DrawIndexed(const uint32_t count, const uint32_t indexOffset = 0, const uint32_t vertexOffset = 0, const uint32_t instanceIdx = 0, const uint32_t instanceCount = 1);
 
 		// Ref<VertexBuffer> SetBuffer();
 		// Ref<IndexBuffer>  SetBuffer();
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	    // Clear Commands
+	    /// Clear Commands																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void ClearPipelineStateRenderTargets(Pipeline& pipeline_state);
-
-        /*
-        void ClearTexture(Texture* texture,const Color& clear_color = colorLoad, const float clear_depth = depthLoad,const uint32_t clear_stencil = stencilLoad);
-        */
+        void ClearPipelineStateRenderTargets(Pipeline& pipelineState);
+        //void ClearTexture(Texture* texture,const Color& clearColor = colorLoad, const float clearDepth = depthLoad,const uint32_t clearStencil = stencilLoad);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Dispatch
+        /// Dispatch																									  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        void Dispatch(Texture *texture);
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
-        void Dispatch(Texture* texture);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // BLIT Commands
+        /// BLIT Commands																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void Blit(Texture* source, Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
-        void Blit(Texture* source, SwapChain* destination);
+        void Blit(Texture* src, SwapChain* dst);
+        void Blit(Texture* src, Texture* dst, const bool blitMips, const float srcScaling = 1.0f);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Copy Commands
+        /// Copy Commands																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void Copy(Texture* source, Texture* destination, const bool blit_mips);
-        void Copy(Texture* source, SwapChain* destination);
+        void Copy(Texture *src, SwapChain *dst);
+        void Copy(Texture* src, Texture* dst, const bool blitMips);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Viewport
+        /// Viewport																									  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void SetViewport(const Viewport& viewport) const;
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Scissor
+        /// Scissor																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetScissorRectangle(const xMath::Rectangle & scissor_rectangle) const;
+        void SetScissorRectangle(const xMath::Rectangle & scissorRectangle) const;
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Cull Mode
+        /// Cull Mode																									  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetCullMode(const CullMode cull_mode);
+        void SetCullMode(const CullMode cullMode);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Buffers
+        /// Buffers																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetVertexBuffer(const Buffer *vertex, Buffer *instance = nullptr);
         void SetIndexBuffer(const Buffer *buffer);
+        void SetVertexBuffer(const Buffer *vertex, Buffer *instance = nullptr);
         void SetBuffer(const uint32_t slot, Buffer* buffer) const;
-        //void SetBuffer(const Renderer_BindingsUav slot, Buffer* buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer); }
+        //void SetBuffer(const bindingsUav slot, Buffer* buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer); }
         void UpdateBuffer(Buffer *buffer, const uint64_t offset, const uint64_t size, const void *data);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Constant Buffers
+        /// Constant Buffers																							  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetConstantBuffer(const uint32_t slot, Buffer* constant_buffer) const;
+        void SetConstantBuffer(const uint32_t slot, Buffer* constBuffer) const;
         //void SetConstantBuffer(const Renderer_BindingsCb slot, Buffer* constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer); }
         
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Push-Constant Buffers
+        /// Push-Constant Buffers																						  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
 
@@ -248,58 +165,58 @@ namespace SceneryEditorX
         }
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Texture
+        /// Texture																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // void SetTexture(const uint32_t slot, Texture* texture, const uint32_t mipIdx = allMips, uint32_t mip_range = 0, const bool uav = false);
-        // void SetTexture(const Renderer_BindingsUav slot, Texture* texture,  const uint32_t mipIdx = allMips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mipIdx, mip_range, true); }
+        // void SetTexture(const bindingsUav slot, Texture* texture,  const uint32_t mipIdx = allMips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mipIdx, mip_range, true); }
         // void SetTexture(const Renderer_BindingsSrv slot, Texture* texture,  const uint32_t mipIdx = allMips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mipIdx, mip_range, false); }
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Markers
+        /// Markers																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void BeginMarker(std::string debugName);
         void EndMarker();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Timestamp Queries
+        /// Timestamp Queries																							  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         uint32_t BeginTimestamp();
         void EndTimestamp();
-        float GetTimestampResult(const uint32_t index_timestamp);
+        float GetTimestampResult(const uint32_t indexTimestamp);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Occlusion Queries
+        /// Occlusion Queries																							  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void BeginOcclusionQuery(const uint64_t entity_id);
+        void BeginOcclusionQuery(const uint64_t entityId);
         void EndOcclusionQuery();
-        bool GetOcclusionQueryResult(const uint64_t entity_id);
+        bool GetOcclusionQueryResult(const uint64_t entityId);
         void UpdateOcclusionQueries();
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Time-Blocks (cpu and gpu time measurement as well as gpu markers)
+        /// Time-Blocks (cpu and gpu time measurement as well as gpu markers)											  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void BeginTimeBlock(std::string debugName, const bool gpu_marker = true, const bool gpu_timing = true);
+        void BeginTimeBlock(std::string debugName, const bool gpuMarker = true, const bool gpuTiming = true);
         void EndTimeBlock();
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Memory Barriers
+        /// Memory Barriers																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void InsertBarrier(void* image, const VkFormat format, const uint32_t mipIdx, const uint32_t mip_range, const uint32_t arrayLength,const Layout::ImageLayout layoutNew);
+        void InsertBarrier(void* image, const VkFormat format, const uint32_t mipIdx, const uint32_t mipRange, const uint32_t arrayLength,const Layout::ImageLayout layoutNew);
         // void InsertBarrierReadWrite(Texture *texture, const BarrierType type);
         void InsertBarrierReadWrite(Buffer *buffer);
         void InsertPendingBarrierGroup();
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Misc
+        /// Misc																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void RenderPassEnd();
-        FrameSync* GetRenderingCompleteSemaphore()		{ return m_rendering_complete_semaphore.Get(); }
-        void* GetRhiResource() const                    { return m_resource; }
-	    CommandState GetState() const					{ return m_state; }
-        Queue* GetQueue() const							{ return m_queue; }
+        FrameSync* GetRenderingCompleteSemaphore()		{ return m_RenderingCompleteSemaphore.Get(); }
+        void* GetRhiResource() const                    { return m_Resource; }
+	    CommandState GetState() const					{ return m_State; }
+        Queue* GetQueue() const							{ return m_Queue; }
 
-	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Image Layouts
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Image Layouts																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         static void RemoveLayout(void* image);
         static Layout::ImageLayout GetImageLayout(void* image, uint32_t mipIdx);
@@ -309,40 +226,41 @@ namespace SceneryEditorX
         void RenderPassBegin();
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Synchronization
+        /// Synchronization																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        Ref<FrameSync> m_rendering_complete_semaphore;
-        Ref<FrameSync> m_rendering_complete_semaphore_timeline;
+        Ref<FrameSync> m_RenderingCompleteSemaphore;
+        Ref<FrameSync> m_RenderingCompleteSemaphoreTimeline;
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Misc
+        /// Misc																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        uint64_t m_buffer_id_vertex                         = 0;
-        uint64_t m_buffer_id_index                          = 0;
-        uint32_t m_timestamp_index                          = 0;
-        Ref<Pipeline> * m_pipeline							= nullptr;
+        uint64_t m_BufferID_Vertex							= 0;
+        uint64_t m_BufferID_Index							= 0;
+        uint32_t m_Timestamp_Index                          = 0;
+        Ref<Pipeline> *m_Pipeline							= nullptr;
         //DescriptorSetLayout* m_descriptor_layout_current	= nullptr;
-        std::atomic<CommandState> m_state					= CommandState::IDLE;
-        CullMode m_cull_mode								= CullMode::Back;
-        bool m_render_pass_active                           = false;
-        uint32_t m_render_pass_draw_calls                   = 0;
-        std::stack<const char*> m_active_timeblocks;
-        std::stack<const char*> m_debug_label_stack;
-        std::mutex m_mutex_reset;
-        Pipeline m_pso;
-        std::vector<ImageBarrierInfo> m_image_barriers;
-        Queue *m_queue										= nullptr;
-        bool m_load_depth_render_target						= false;
+        std::atomic<CommandState> m_State					= CommandState::IDLE;
+        CullMode m_CullMode									= CullMode::Back;
+        bool m_RenderPass_Active							= false;
+        uint32_t m_RenderPass_DrawCalls						= 0;
+        ClearValue m_ClearColor;
+        std::stack<const char*> m_ActiveTimeblocks;
+        std::stack<const char*> m_DebugLabelStack;
+        std::mutex m_MutexReset;
+        //Pipeline m_pso;
+        std::vector<ImageBarrierInfo> m_ImageBarriers;
+        Queue *m_Queue										= nullptr;
+        bool m_Load_Depth_RenderTarget						= false;
         //std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Resources
+        /// Resources																									  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void* m_resource						= nullptr;
-        void* m_cmdPool_resource				= nullptr;
-        void* m_queryPool_timestamps			= nullptr;
-        void* m_queryPool_pipelineStats			= nullptr;
-        void* m_queryPool_occlusion				= nullptr;
+        void* m_Resource						= nullptr;
+        void* m_CmdPool_Resource				= nullptr;
+        void* m_QueryPool_Timestamps			= nullptr;
+        void* m_QueryPool_PipelineStats			= nullptr;
+        void* m_QueryPool_Occlusion				= nullptr;
 	};
 
 }

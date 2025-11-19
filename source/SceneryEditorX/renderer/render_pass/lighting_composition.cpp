@@ -10,17 +10,16 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
-//#include <SceneryEditorX/renderer/shaders/shader.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/shaders/shader.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-	
+    /*	
     void RenderPass::Pass_Light_Composition(CommandManager *cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
@@ -48,7 +47,7 @@ namespace SceneryEditorX
 
             // set textures
             SetCommonTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
+            cmd_list->SetTexture(bindingsUav::tex,  tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,  GetStandardTexture(Renderer_StandardTexture::Foam));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
@@ -60,8 +59,7 @@ namespace SceneryEditorX
         }
         cmd_list->EndTimeblock();
     }
-
+    */
 }
-*/
 
 // -------------------------------------------------------

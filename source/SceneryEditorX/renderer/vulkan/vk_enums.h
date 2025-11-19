@@ -512,10 +512,10 @@ namespace SceneryEditorX
      */
     enum class FrameSyncType
     {
-        SyncFence             = 0,
-        SyncSemaphore         = 1,
-        SyncSemaphoreTimeline = 2,
-        MaxEnum               = 0x7FFFFFFF
+        SyncFence				= 0, // Use for CPU-GPU synchronization (Fence)
+        SyncSemaphore			= 1, // Use for binary semaphores (standard GPU-GPU sync)
+        SyncSemaphoreTimeline	= 2, // Use for timeline semaphores (advanced GPU-GPU sync)
+        MaxEnum					= 0x7FFFFFFF
     };
 
 	/**

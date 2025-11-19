@@ -63,81 +63,26 @@ INCLUDE("${CMAKE_SOURCE_DIR}/cmake/assets.cmake")
 # Build options (dependency toggles, features)
 ############################################
 
-OPTION(SEDX_ENABLE_TESTS              "Build test targets" ON)
-OPTION(SEDX_ENABLE_DOXYGEN            "Build Doxygen documentation" OFF)
-#OPTION(SEDX_ENABLE_VMA                "Enable Vulkan Memory Allocator (GPUOpen VMA)" ON)
-OPTION(SEDX_BUILD_IMGUI               "Build Dear ImGui (bundled sources)" ON)
-OPTION(SEDX_WITH_IMGUI_DEMO           "Compile ImGui demo window" ON)
-OPTION(SEDX_USE_SYSTEM_GLFW           "Prefer system-provided glfw3 package" OFF)
-OPTION(SEDX_USE_SYSTEM_JSON           "Prefer system-provided nlohmann_json package" OFF)
-OPTION(SEDX_USE_SYSTEM_ENTT           "Prefer system-provided EnTT package" OFF)
-#OPTION(SEDX_USE_SYSTEM_CATCH2         "Prefer system-provided Catch2 package" OFF)
-#OPTION(SEDX_USE_SYSTEM_SPDLOG         "Prefer system-provided spdlog package" ON)
-OPTION(SEDX_USE_FETCHCONTENT_XMATH    "Fetch xMath via FetchContent" ON)
-OPTION(SEDX_USE_FETCHCONTENT_EDX      "Fetch edX via FetchContent" ON)
-OPTION(SEDX_USE_FETCHCONTENT_XPLIB    "Fetch X-PlaneSceneryLibrary via FetchContent" ON)
-#OPTION(SEDX_ENABLE_MSDFGEN            "Enable msdfgen usage" ON)
-#OPTION(SEDX_ENABLE_CURL               "Enable CURL usage" ON)
+OPTION(SEDX_ENABLE_TESTS              	"Build test targets" ON)
+OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
+#OPTION(SEDX_ENABLE_VMA                	"Enable Vulkan Memory Allocator (GPUOpen VMA)" ON)
+OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" ON)
+OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" ON)
+OPTION(SEDX_USE_SYSTEM_GLFW           	"Prefer system-provided glfw3 package" OFF)
+OPTION(SEDX_USE_SYSTEM_JSON           	"Prefer system-provided nlohmann_json package" OFF)
+OPTION(SEDX_USE_SYSTEM_ENTT           	"Prefer system-provided EnTT package" OFF)
+#OPTION(SEDX_USE_SYSTEM_CATCH2         	"Prefer system-provided Catch2 package" OFF)
+#OPTION(SEDX_USE_SYSTEM_SPDLOG         	"Prefer system-provided spdlog package" ON)
+OPTION(SEDX_USE_FETCHCONTENT_XMATH    	"Fetch xMath via FetchContent" ON)
+OPTION(SEDX_USE_FETCHCONTENT_EDX      	"Fetch edX via FetchContent" ON)
+OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchContent" ON)
+OPTION(TRACY_ENABLE 					"Enable Tracy profiler" ON)
+OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
+#OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
+#OPTION(SEDX_ENABLE_CURL               	"Enable CURL usage" ON)
 
 SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
 SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
-
-############################################
-# Tracy Profiler Options
-############################################
-OPTION(TRACY_ENABLE "Enable Tracy profiler" ON)
-OPTION(TRACY_ON_DEMAND "Enable Tracy on-demand profiling" OFF)
-OPTION(TRACY_NO_EXIT "Enable Tracy profiler even without exit" OFF)
-OPTION(TRACY_NO_BROADCAST "Disable Tracy broadcast" OFF)
-# Use a STRING cache entry for callstack depth instead of OPTION to allow numeric values
-SET(SEDX_TRACY_CALLSTACK "48" CACHE STRING "Size of the collected call stacks for Tracy (numeric)")
-OPTION(SEDX_ENABLE_TRACY_CPU_MEMORY "Enable CPU memory profiling with Tracy" OFF)
-OPTION(SEDX_ENABLE_TRACY_GPU "Enable GPU profiling with Tracy" OFF)
-
-############################################
-# Tracy Profiler Setup
-############################################
-IF(TRACY_ENABLE)
-    # If both mimalloc and Tracy CPU memory are requested, abort early
-    IF(SEDX_ENABLE_TRACY_CPU_MEMORY AND USE_MIMALLOC)
-        MESSAGE(FATAL_ERROR "Tracy cannot be used with mimalloc")
-    ENDIF()
-	# --------------------------------
-    IF(NOT SEDX_TRACY_CALLSTACK OR SEDX_TRACY_CALLSTACK STREQUAL "OFF")
-        SET(SEDX_TRACY_CALLSTACK "48")
-    ENDIF()
-	# --------------------------------
-    ADD_COMPILE_DEFINITIONS(
-		TRACY_ENABLE
-		TRACY_CALLSTACK=${SEDX_TRACY_CALLSTACK}
-        TRACY_DELAYED_INIT
-		TRACY_MANUAL_LIFETIME
-	)
-	# --------------------------------
-	IF(SEDX_ENABLE_TRACY_CPU_MEMORY)
-    	ADD_COMPILE_DEFINITIONS(SEDX_TRACY_CPU_MEMORY)
-    ENDIF()
-	# --------------------------------
-    IF(SEDX_ENABLE_TRACY_GPU)
-        ADD_COMPILE_DEFINITIONS(
-            SEDX_TRACY_GPU
-            TRACY_VK_USE_SYMBOL_TABLE
-        )
-    ENDIF()
-	# --------------------------------
-    IF(TRACY_ON_DEMAND)
-        ADD_COMPILE_DEFINITIONS(TRACY_ON_DEMAND)
-    ENDIF()
-	# --------------------------------
-    IF(TRACY_NO_EXIT)
-        ADD_COMPILE_DEFINITIONS(TRACY_NO_EXIT)
-    ENDIF()
-	# --------------------------------
-    IF(TRACY_NO_BROADCAST)
-        ADD_COMPILE_DEFINITIONS(TRACY_NO_BROADCAST)
-    ENDIF()
-	# --------------------------------
-ENDIF()
 
 ############################################
 # Doxygen (optional)
@@ -146,14 +91,21 @@ IF(SEDX_ENABLE_DOXYGEN)
     INCLUDE(cmake/doxygen.cmake)
 ENDIF()
 
+# ###########################################
+# Tracy (optional)
+# ###########################################
+IF(TRACY_ENABLE)
+    INCLUDE(cmake/tracyprofiling.cmake)
+ENDIF()
+
 ############################################
 # Global build system defaults
 ############################################
 # Override libconfig/bundled defaults before adding subdirectories
-OPTION(BUILD_EXAMPLES  "Enable examples (3rd-party)" OFF)
-OPTION(BUILD_SHARED_LIBS "Build shared libraries by default" OFF)
-OPTION(BUILD_TESTS     "Enable 3rd-party tests" OFF)
-OPTION(BUILD_FUZZERS   "Enable 3rd-party fuzzers" OFF)
+OPTION(BUILD_EXAMPLES  		"Enable examples (3rd-party)" OFF)
+OPTION(BUILD_SHARED_LIBS 	"Build shared libraries by default" OFF)
+OPTION(BUILD_TESTS     		"Enable 3rd-party tests" OFF)
+OPTION(BUILD_FUZZERS  		"Enable 3rd-party fuzzers" OFF)
 
 ############################################
 # Build system defaults
@@ -194,7 +146,7 @@ FIND_PACKAGE(Stb REQUIRED)
 FIND_PACKAGE(spdlog CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen QUIET)
-FIND_PACKAGE(tracy CONFIG REQUIRED) # Tracy profiler package (imported target typically Tracy::TracyClient)
+#FIND_PACKAGE(tracy CONFIG REQUIRED) # Tracy profiler package (imported target typically Tracy::TracyClient)
 FIND_PACKAGE(VulkanMemoryAllocator CONFIG REQUIRED)
 FIND_PACKAGE(CURL CONFIG REQUIRED)
 

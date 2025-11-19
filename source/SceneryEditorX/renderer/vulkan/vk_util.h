@@ -11,9 +11,9 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "vk_enums.h"
 #include <utility> // for std::swap used in SwizzleBGRAtoRGBA
 #include <vulkan/vulkan.h>
-#include "vk_enums.h"
 
 // -------------------------------------------------------
 
@@ -33,8 +33,6 @@ namespace SceneryEditorX
 
 		void VulkanLoadDebugUtilsExtensions(VkInstance instance);
 		void RetrieveDiagnosticCheckpoints();
-
-		// -------------------------------------------------------
 
     }
 
@@ -74,8 +72,6 @@ namespace SceneryEditorX
 	    }
 	}
 
-    // -------------------------------------------------------
-
 	/**
 	* @brief Macro to check the result of a Vulkan function.
 	 *
@@ -84,14 +80,11 @@ namespace SceneryEditorX
 	 * @param result The result of the Vulkan function.
 	 * @param msg The error message to print.
 	 */
-
 	#define VK_CHECK_RESULT(f)                                                                                         \
 	{                                                                                                                  \
 	    VkResult result = (f);                                                                                         \
 	    VulkanCheckResult(result, __FILE__, __LINE__);                                                                 \
 	}
-
-	// -------------------------------------------------------
 
 	/**
 	 * @brief Macro to check Vulkan features.
@@ -102,7 +95,6 @@ namespace SceneryEditorX
 	 * @param requiredFeatures The required Vulkan features.
 	 * @param deviceFeatures The supported Vulkan features of the device.
 	 */
-	/// Helper macro to check each feature
 	#define CHECK_FEATURE(feature)                                                                                     \
 	if (requiredFeatures.feature && !deviceFeatures.feature)                                                           \
 	{                                                                                                                  \
@@ -112,8 +104,6 @@ namespace SceneryEditorX
 	    SEDX_CORE_ERROR("  Missing feature: {}", #feature);                                                            \
 	}
 
-	// ----------------------------------------------------------
-
 	/**
 	 * @brief Macro to get the size of an array.
 	 *
@@ -122,15 +112,23 @@ namespace SceneryEditorX
 	 * @param arr The array whose size is to be determined.
 	 * @return The number of elements in the array.
 	 */
-	#define VK_CHECK(result)                                                                                       \
-	if ((result) != VK_SUCCESS)                                                                                    \
-	{                                                                                                              \
-		SEDX_CORE_ERROR("Vulkan Error: {}", (result));                                                             \
-		__debugbreak();                                                                                            \
-		return false;                                                                                              \
+	#define VK_CHECK(result)                                                                                           \
+	if ((result) != VK_SUCCESS)                                                                                        \
+	{                                                                                                                  \
+		SEDX_CORE_ERROR("Vulkan Error: {}", (result));                                                                 \
+		__debugbreak();                                                                                                \
+		return false;                                                                                                  \
 	}
 
-	// ----------------------------------------------------------
+    /*
+    #define VK_CHECK_RESULT(result, ...)																			   \  
+	    if ((result) != VK_SUCCESS)																					   \
+	    {																											   \
+	        SEDX_CORE_ERROR("Vulkan Error: {}", VkErrorString(result));												   \
+	        __debugbreak();																							   \
+	        return false;																							   \
+	    }																											   \
+	*/
 
 	/**
 	 * @brief Log Vulkan result and return false if operation fails
@@ -147,8 +145,6 @@ namespace SceneryEditorX
 	    }                                                                                                              \
 	}
 
-	// ----------------------------------------------------------
-
 	/**
 	 * @brief Log Vulkan result and throw exception if operation fails
 	 *
@@ -163,8 +159,6 @@ namespace SceneryEditorX
 	        throw std::runtime_error((operation) + " failed with " + VK_ERROR_STRING(result));                         \
 	    }                                                                                                              \
 	}
-
-	// ----------------------------------------------------------
 
 	/**
 	 * @brief Log Vulkan result without any control flow change
@@ -216,7 +210,7 @@ namespace SceneryEditorX
 		nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 		nameInfo.objectType = objectType;
 		nameInfo.pObjectName = name.c_str();
-		nameInfo.objectHandle = (uint64_t)handle;
+		nameInfo.objectHandle = reinterpret_cast<uint64_t>(handle);
 		nameInfo.pNext = VK_NULL_HANDLE;
 
         VK_CHECK_RESULT(Utils::fpSetDebugUtilsObjectNameEXT(device, &nameInfo))
@@ -227,7 +221,6 @@ namespace SceneryEditorX
 		/**
 		 * @brief Helper function to get the bits per pixel of a Vulkan format.
 		 * @param format Vulkan format to check.
-		 * @param BPP = Bits-Per-Pixel.
 		 * @return The bits per pixel of the given format, -1 for invalid formats.
 		 */
 		extern int getBPP(VkFormat format);
@@ -353,8 +346,6 @@ namespace SceneryEditorX
 		 */
         VkFormat ShaderDataTypeToVulkanFormat(ShaderDataType type);
 
-		// -------------------------------------------------------
-
 		/**
 		 * @brief Generate a Halton sequence value for a given index and base.
 		 *
@@ -377,11 +368,9 @@ namespace SceneryEditorX
 		    return r;
 		}
 
-		// -------------------------------------------------------
-
 		struct ResourceAllocationCounts
 		{
-		    uint32_t Samplers = 0;
+		    uint32_t m_Samplers = 0;
 		};
 
 		ResourceAllocationCounts &GetResourceAllocationCounts();

@@ -147,15 +147,15 @@ namespace SceneryEditorX
 	    uint32_t index = s_AllocatedSampledImages++;
 
 	    PendingWrite pw{};
-	    pw.imageInfo.imageLayout = layout;
-	    pw.imageInfo.imageView = view;
-	    pw.write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    pw.write.dstSet = s_DescriptorSet;
-	    pw.write.dstBinding = 0;
-	    pw.write.dstArrayElement = index;
-	    pw.write.descriptorCount = 1;
-	    pw.write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	    pw.write.pImageInfo = &pw.imageInfo;
+	    pw.m_imageInfo.imageLayout = layout;
+	    pw.m_imageInfo.imageView = view;
+	    pw.m_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    pw.m_write.dstSet = s_DescriptorSet;
+	    pw.m_write.dstBinding = 0;
+	    pw.m_write.dstArrayElement = index;
+	    pw.m_write.descriptorCount = 1;
+	    pw.m_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    pw.m_write.pImageInfo = &pw.m_imageInfo;
 	    s_PendingWrites.emplace_back(pw);
 
 	    FlushPending();
@@ -170,14 +170,14 @@ namespace SceneryEditorX
 	    uint32_t index = s_AllocatedSamplers++;
 
 	    PendingWrite pw{};
-	    pw.imageInfo.sampler = sampler;
-	    pw.write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    pw.write.dstSet = s_DescriptorSet;
-	    pw.write.dstBinding = 1;
-	    pw.write.dstArrayElement = index;
-	    pw.write.descriptorCount = 1;
-	    pw.write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-	    pw.write.pImageInfo = &pw.imageInfo;
+	    pw.m_imageInfo.sampler = sampler;
+	    pw.m_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    pw.m_write.dstSet = s_DescriptorSet;
+	    pw.m_write.dstBinding = 1;
+	    pw.m_write.dstArrayElement = index;
+	    pw.m_write.descriptorCount = 1;
+	    pw.m_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	    pw.m_write.pImageInfo = &pw.m_imageInfo;
 	    s_PendingWrites.emplace_back(pw);
 
 	    FlushPending();
@@ -192,15 +192,15 @@ namespace SceneryEditorX
 	    uint32_t index = s_AllocatedStorageImages++;
 
 	    PendingWrite pw{};
-	    pw.imageInfo.imageLayout = layout;
-	    pw.imageInfo.imageView = view;
-	    pw.write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    pw.write.dstSet = s_DescriptorSet;
-	    pw.write.dstBinding = 2;
-	    pw.write.dstArrayElement = index;
-	    pw.write.descriptorCount = 1;
-	    pw.write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	    pw.write.pImageInfo = &pw.imageInfo;
+	    pw.m_imageInfo.imageLayout = layout;
+	    pw.m_imageInfo.imageView = view;
+	    pw.m_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    pw.m_write.dstSet = s_DescriptorSet;
+	    pw.m_write.dstBinding = 2;
+	    pw.m_write.dstArrayElement = index;
+	    pw.m_write.descriptorCount = 1;
+	    pw.m_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	    pw.m_write.pImageInfo = &pw.m_imageInfo;
 	    s_PendingWrites.emplace_back(pw);
 
 	    FlushPending();
@@ -215,16 +215,16 @@ namespace SceneryEditorX
 	    uint32_t index = s_AllocatedStorageBuffers++;
 
 	    PendingWrite pw{};
-	    pw.bufferInfo.buffer = buffer;
-	    pw.bufferInfo.offset = offset;
-	    pw.bufferInfo.range  = size;
-	    pw.write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    pw.write.dstSet = s_DescriptorSet;
-	    pw.write.dstBinding = 3;
-	    pw.write.dstArrayElement = index;
-	    pw.write.descriptorCount = 1;
-	    pw.write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	    pw.write.pBufferInfo = &pw.bufferInfo;
+	    pw.m_bufferInfo.buffer = buffer;
+	    pw.m_bufferInfo.offset = offset;
+	    pw.m_bufferInfo.range  = size;
+	    pw.m_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    pw.m_write.dstSet = s_DescriptorSet;
+	    pw.m_write.dstBinding = 3;
+	    pw.m_write.dstArrayElement = index;
+	    pw.m_write.descriptorCount = 1;
+	    pw.m_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	    pw.m_write.pBufferInfo = &pw.m_bufferInfo;
 	    s_PendingWrites.emplace_back(pw);
 
 	    FlushPending();
@@ -239,16 +239,16 @@ namespace SceneryEditorX
 	    uint32_t index = s_AllocatedUniformBuffers++;
 
 	    PendingWrite pw{};
-	    pw.bufferInfo.buffer = buffer;
-	    pw.bufferInfo.offset = offset;
-	    pw.bufferInfo.range  = size;
-	    pw.write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    pw.write.dstSet = s_DescriptorSet;
-	    pw.write.dstBinding = 4;
-	    pw.write.dstArrayElement = index;
-	    pw.write.descriptorCount = 1;
-	    pw.write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	    pw.write.pBufferInfo = &pw.bufferInfo;
+	    pw.m_bufferInfo.buffer = buffer;
+	    pw.m_bufferInfo.offset = offset;
+	    pw.m_bufferInfo.range  = size;
+	    pw.m_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    pw.m_write.dstSet = s_DescriptorSet;
+	    pw.m_write.dstBinding = 4;
+	    pw.m_write.dstArrayElement = index;
+	    pw.m_write.descriptorCount = 1;
+	    pw.m_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	    pw.m_write.pBufferInfo = &pw.m_bufferInfo;
 	    s_PendingWrites.emplace_back(pw);
 
 	    FlushPending();
@@ -263,7 +263,7 @@ namespace SceneryEditorX
 	    // Copy because vector elements contain pointers to their own members.
 	    std::vector<VkWriteDescriptorSet> writes;
 	    writes.reserve(s_PendingWrites.size());
-	    for (auto &pw : s_PendingWrites) writes.push_back(pw.write);
+	    for (auto &pw : s_PendingWrites) writes.push_back(pw.m_write);
 	
 	    vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 	    s_PendingWrites.clear();
@@ -276,15 +276,15 @@ namespace SceneryEditorX
 	    SEDX_CORE_ASSERT(index < s_AllocatedSampledImages, "Bindless sampled image update out of range");
 
 	    PendingWrite pw{};
-	    pw.imageInfo.imageLayout = layout;
-	    pw.imageInfo.imageView = view;
-	    pw.write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    pw.write.dstSet = s_DescriptorSet;
-	    pw.write.dstBinding = 0;
-	    pw.write.dstArrayElement = index;
-	    pw.write.descriptorCount = 1;
-	    pw.write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	    pw.write.pImageInfo = &pw.imageInfo;
+	    pw.m_imageInfo.imageLayout = layout;
+	    pw.m_imageInfo.imageView = view;
+	    pw.m_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    pw.m_write.dstSet = s_DescriptorSet;
+	    pw.m_write.dstBinding = 0;
+	    pw.m_write.dstArrayElement = index;
+	    pw.m_write.descriptorCount = 1;
+	    pw.m_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    pw.m_write.pImageInfo = &pw.m_imageInfo;
 	    s_PendingWrites.emplace_back(pw);
 
 	    FlushPending();
@@ -297,14 +297,14 @@ namespace SceneryEditorX
 	    SEDX_CORE_ASSERT(index < s_AllocatedSamplers, "Bindless sampler update out of range");
 
 	    PendingWrite pw{};
-	    pw.imageInfo.sampler = sampler;
-	    pw.write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    pw.write.dstSet = s_DescriptorSet;
-	    pw.write.dstBinding = 1;
-	    pw.write.dstArrayElement = index;
-	    pw.write.descriptorCount = 1;
-	    pw.write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-	    pw.write.pImageInfo = &pw.imageInfo;
+	    pw.m_imageInfo.sampler = sampler;
+	    pw.m_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    pw.m_write.dstSet = s_DescriptorSet;
+	    pw.m_write.dstBinding = 1;
+	    pw.m_write.dstArrayElement = index;
+	    pw.m_write.descriptorCount = 1;
+	    pw.m_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	    pw.m_write.pImageInfo = &pw.m_imageInfo;
 	    s_PendingWrites.emplace_back(pw);
 
 	    FlushPending();

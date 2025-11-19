@@ -38,13 +38,13 @@ namespace SceneryEditorX
         // Legacy signature retained to satisfy older call sites expecting parameters.
         void Execute(void*, const uint32_t) { Execute(); }
         // Get the number of commands submitted (legacy, preserved for stats).
-        Queue GetQueueType() const { return qType; }
+        Queue GetQueueType() const { return m_qType; }
 
 	private:
-        uint8_t* cmdBuffer = nullptr;				// Legacy backing storage (unused in refactor)
-		uint8_t* cmdBufferPtr = nullptr;			// Legacy write pointer
-        std::atomic<uint32_t> cmdCount{0};		// Preserved for stats / future re-enable
-        Queue qType;
+        uint8_t* m_cmdBuffer = nullptr;				// Legacy backing storage (unused in refactor)
+		uint8_t* m_cmdBufferPtr = nullptr;			// Legacy write pointer
+        std::atomic<uint32_t> m_cmdCount{0};		// Preserved for stats / future re-enable
+        Queue m_qType;
 	};
 
 }

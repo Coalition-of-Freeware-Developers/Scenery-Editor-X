@@ -10,15 +10,15 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
+    /*
     void RenderPass::Pass_ScreenSpaceAmbientOcclusion(CommandManager *cmd_list)
     {
         static bool cleared = false;
@@ -34,7 +34,7 @@ namespace SceneryEditorX
             {
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
+                cmd_list->SetTexture(bindingsUav::tex, tex_ssao);
                 cmd_list->Dispatch(tex_ssao);
 
                 cleared = false;
@@ -47,8 +47,7 @@ namespace SceneryEditorX
             cleared = true;
         }
     }
-
+	*/
 }
-*/
 
 // -------------------------------------------------------

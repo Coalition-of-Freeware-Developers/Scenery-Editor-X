@@ -12,14 +12,15 @@
 */
 #pragma once
 
-#define SEDX_PROFILING_ENABLED !defined(SEDX_RELEASE)
-#if SEDX_PROFILING_ENABLED
-#include <tracy/Tracy.hpp>
+// -------------------------------------------------------
+#ifdef SEDX_DEBUG
+#define SEDX_PROFILING_ENABLED 1
+#elif SEDX_RELEASE
+#define SEDX_PROFILING_ENABLED 0
 #endif
 
-// -------------------------------------------------------
-
 #if SEDX_PROFILING_ENABLED
+    #include <tracy/Tracy.hpp>
 	#define SEDX_PROFILE_FRAME() FrameMark
 	#define SEDX_PROFILE_FUNC(...)			  ZoneScoped##__VA_OPT__(N(__VA_ARGS__))
 	#define SEDX_PROFILE_SCOPE(...)			  SEDX_PROFILE_FUNC(__VA_ARGS__)

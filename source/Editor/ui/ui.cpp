@@ -208,7 +208,7 @@ namespace SceneryEditorX::UI
         //info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;
         info.ImageCount = renderData.imageIndex;
-        info.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
+        info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
         info.Allocator = nullptr;
         info.CheckVkResultFn = [](const VkResult result)
         {
@@ -475,6 +475,7 @@ namespace SceneryEditorX::UI
     }
     */
 
+    /*
     ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout) const
     {
         auto device = RenderContext::GetCurrentDevice();
@@ -508,6 +509,7 @@ namespace SceneryEditorX::UI
         VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(actualSampler, imageView, layout);
         return reinterpret_cast<ImTextureID>(descriptorSet);
     }
+    */
 	
     void GUI::SetStyle()
     {

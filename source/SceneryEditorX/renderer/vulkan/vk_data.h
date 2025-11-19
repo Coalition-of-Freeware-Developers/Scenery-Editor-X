@@ -481,10 +481,10 @@ namespace SceneryEditorX
         int viewports = 0;
 
         /** @brief Set Vsync true */
-        void SetVSync(const bool enabled) { VSync = enabled; }
+        void SetVSync(const bool enabled) { vSync = enabled; }
 
         /** @brief Flag indicating if vertical synchronization is enabled */
-        bool VSync = false;
+        bool vSync = false;
 
         /** @brief Flag indicating if temporal antialiasing is enabled */
         bool taaEnabled = false;

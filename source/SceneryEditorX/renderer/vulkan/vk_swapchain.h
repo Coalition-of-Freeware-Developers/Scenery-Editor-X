@@ -53,21 +53,21 @@ namespace SceneryEditorX
         // -------------------------------------------------------
 
 		// Getter methods
-		[[nodiscard]] VkFormat GetColorFormat() const { return colorFormat; }
-        [[nodiscard]] VkFormat GetDepthFormat() const { return depthFormat; }
-        [[nodiscard]] VkExtent2D GetSwapExtent() const { return swapChainExtent; }
-	    [[nodiscard]] VkRenderPass GetRenderPass() const { return renderPass; }
-	    [[nodiscard]] VkSwapchainKHR GetSwapchain() const { return swapChain; }
-	    [[nodiscard]] VkFramebuffer GetActiveFramebuffer() const { return GetFramebuffer(currentImageIdx); }
-        [[nodiscard]] VkCommandBuffer GetActiveDrawCommandBuffer() const { return GetDrawCommandBuffer(currentFrameIdx); }
-		[[nodiscard]] VkAttachmentDescription GetColorAttachment() const { return colorAttachment; }
-        [[nodiscard]] VkAttachmentDescription GetDepthAttachment() const { return depthAttachment; }
+		[[nodiscard]] VkFormat GetColorFormat() const { return m_colorFormat; }
+        [[nodiscard]] VkFormat GetDepthFormat() const { return m_depthFormat; }
+        [[nodiscard]] VkExtent2D GetSwapExtent() const { return m_swapChainExtent; }
+	    [[nodiscard]] VkRenderPass GetRenderPass() const { return m_renderPass; }
+	    [[nodiscard]] VkSwapchainKHR GetSwapchain() const { return m_swapChain; }
+	    [[nodiscard]] VkFramebuffer GetActiveFramebuffer() const { return GetFramebuffer(m_currentImageIdx); }
+        [[nodiscard]] VkCommandBuffer GetActiveDrawCommandBuffer() const { return GetDrawCommandBuffer(m_currentFrameIdx); }
+		[[nodiscard]] VkAttachmentDescription GetColorAttachment() const { return m_colorAttachment; }
+        [[nodiscard]] VkAttachmentDescription GetDepthAttachment() const { return m_depthAttachment; }
 
         // -------------------------------------------------------
 
-        [[nodiscard]] uint32_t GetWidth() const { return swapWidth; }
-        [[nodiscard]] uint32_t GetHeight() const { return swapHeight; }
-	    [[nodiscard]] Vec2 GetDimensions() const { return {swapWidth, swapHeight}; }
+        [[nodiscard]] uint32_t GetWidth() const { return m_swapWidth; }
+        [[nodiscard]] uint32_t GetHeight() const { return m_swapHeight; }
+	    [[nodiscard]] Vec2 GetDimensions() const { return {m_swapWidth, m_swapHeight}; }
 
         // -------------------------------------------------------
 
@@ -76,21 +76,21 @@ namespace SceneryEditorX
         [[nodiscard]] VkFramebuffer GetFramebuffer(uint32_t index) const;
         [[nodiscard]] VkCommandBuffer GetDrawCommandBuffer(uint32_t index) const;
 
-        [[nodiscard]] VkImageView GetTextureImageView() const { return textureImageView; }
-        [[nodiscard]] VkSampler GetTextureSampler() const { return textureSampler; }
-        [[nodiscard]] VkImageView GetDepthImageView() const { return depthImageView; }
+        [[nodiscard]] VkImageView GetTextureImageView() const { return m_textureImageView; }
+        [[nodiscard]] VkSampler GetTextureSampler() const { return m_textureSampler; }
+        [[nodiscard]] VkImageView GetDepthImageView() const { return m_depthImageView; }
 
-        [[nodiscard]] uint32_t GetSwapChainImageCount() const { return swapChainImageCount; }
-        [[nodiscard]] uint32_t GetBufferIndex() const { return currentFrameIdx; }
+        [[nodiscard]] uint32_t GetSwapChainImageCount() const { return m_swapChainImageCount; }
+        [[nodiscard]] uint32_t GetBufferIndex() const { return m_currentFrameIdx; }
 
 		// Image/view utility methods
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels) const;
 		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
 						 VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) const;
-        [[nodiscard]] uint32_t GetCurrentBufferIndex() const { return currentFrameIdx; }
+        [[nodiscard]] uint32_t GetCurrentBufferIndex() const { return m_currentFrameIdx; }
 
     private:
-        Ref<VulkanDevice> vkDevice;
+        Ref<VulkanDevice> m_vkDevice;
 
 		// Helper methods
         void CreateImageViews();
@@ -107,88 +107,88 @@ namespace SceneryEditorX
         [[nodiscard]] VkPresentModeKHR ChooseSwapPresentMode() const;
 
 		// Vulkan resources - derived after device is initialized
-        uint32_t queueIndex = UINT32_MAX;
-        uint32_t swapChainImageCount	= 0; // Number of images in the swapchain
-        uint32_t currentFrameIdx		= 0; // Current frame index for swapchain operations
-        uint32_t currentImageIdx		= 0; // Current image index for swapchain operations
-        uint32_t swapWidth				= 0; // Width of the swapchain
-        uint32_t swapHeight				= 0; // Height of the swapchain
-        bool vSync = false;
+        uint32_t m_queueIndex = UINT32_MAX;
+        uint32_t m_swapChainImageCount		= 0; // Number of images in the swapchain
+        uint32_t m_currentFrameIdx			= 0; // Current frame index for swapchain operations
+        uint32_t m_currentImageIdx			= 0; // Current image index for swapchain operations
+        uint32_t m_swapWidth				= 0; // Width of the swapchain
+        uint32_t m_swapHeight				= 0; // Height of the swapchain
+        bool m_vSync = false;
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Format and attachment data
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        VkFormat colorFormat;
-        VkFormat depthFormat;
-        VkExtent2D swapChainExtent;
-        VkColorSpaceKHR colorSpace;
-        VkSampleCountFlags sampleCounts;
-        VkAttachmentDescription colorAttachment{};
-        VkAttachmentDescription depthAttachment{};
+        VkFormat m_colorFormat;
+        VkFormat m_depthFormat;
+        VkExtent2D m_swapChainExtent;
+        VkColorSpaceKHR m_colorSpace;
+        VkSampleCountFlags m_sampleCounts;
+        VkAttachmentDescription m_colorAttachment{};
+        VkAttachmentDescription m_depthAttachment{};
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Core swapchain objects
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        VkSurfaceKHR surface = nullptr;		// Window surface
-        VkSwapchainKHR swapChain = nullptr; // Swapchain object
-        VkRenderPass renderPass = nullptr;  // Render pass object
+        VkSurfaceKHR m_surface = nullptr;		// Window surface
+        VkSwapchainKHR m_swapChain = nullptr;	// Swapchain object
+        VkRenderPass m_renderPass = nullptr;	// Render pass object
 
         // -------------------------------------------------------
 
 	    struct SwapchainCommandBuffer
         {
-            VkCommandPool CommandPool = nullptr;
-            VkCommandBuffer CommandBuffer = nullptr;
+            VkCommandPool m_CommandPool = nullptr;
+            VkCommandBuffer m_CommandBuffer = nullptr;
         };
-        std::vector<SwapchainCommandBuffer> cmdBuffers;
+        std::vector<SwapchainCommandBuffer> m_cmdBuffers;
 
         // -------------------------------------------------------
 
 	    struct SwapchainImage
         {
-            VkImage Image = nullptr;
-            VkImageView ImageView = nullptr;
+            VkImage m_Image = nullptr;
+            VkImageView m_ImageView = nullptr;
         };
-        std::vector<SwapchainImage> swapChainImage;
+        std::vector<SwapchainImage> m_swapChainImage;
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Image resources
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //std::vector<Image> swapChainImages;
-        std::vector<VkImage> swapChainImageCounts;			// Raw VkImage handles
-        std::vector<VkImageView> swapChainViews;			// Image views for the swapchain images
-        std::vector<VkFramebuffer> swapChainFramebuffers;	// Framebuffers for each swapchain image
+        std::vector<VkImage> m_swapChainImageCounts;			// Raw VkImage handles
+        std::vector<VkImageView> m_swapChainViews;			// Image views for the swapchain images
+        std::vector<VkFramebuffer> m_swapChainFramebuffers;	// Framebuffers for each swapchain image
 
 	    // Semaphores to signal that images are available for rendering and that rendering has finished (one pair for each frame in flight)
         // TODO: Replace with the Semaphore class
-        std::vector<VkSemaphore> imageAvailableSemaphores;
-        std::vector<VkSemaphore> renderFinishedSemaphores;
+        std::vector<VkSemaphore> m_imageAvailableSemaphores;
+        std::vector<VkSemaphore> m_renderFinishedSemaphores;
 
         // Fences to signal that command buffers are ready to be reused (one for each frame in flight)
 		// TODO: Replace with the Fence class
-		std::vector<VkFence> waitFences;
+		std::vector<VkFence> m_waitFences;
 
 		// -------------------------------------------------------
 
-        VkImage textureImage = nullptr;
-        VkSampler textureSampler = nullptr;
-        VkImageView textureImageView = nullptr;
-        VkDeviceMemory textureImageMemory = nullptr;
+        VkImage m_textureImage = nullptr;
+        VkSampler m_textureSampler = nullptr;
+        VkImageView m_textureImageView = nullptr;
+        VkDeviceMemory m_textureImageMemory = nullptr;
 
         // -------------------------------------------------------
 
 	    // For depth buffering
-        VkImage depthImage = nullptr;
-        VkImageView depthImageView = nullptr;
-        VkDeviceMemory depthImageMemory = nullptr;
+        VkImage m_depthImage = nullptr;
+        VkImageView m_depthImageView = nullptr;
+        VkDeviceMemory m_depthImageMemory = nullptr;
 
         // -------------------------------------------------------
 
 	    // For multisampling
-        VkImage colorImage = nullptr;
-        VkDeviceMemory colorImageMemory = nullptr;
-        VkImageView colorImageView = nullptr;
+        VkImage m_colorImage = nullptr;
+        VkDeviceMemory m_colorImageMemory = nullptr;
+        VkImageView m_colorImageView = nullptr;
 
         // -------------------------------------------------------
 

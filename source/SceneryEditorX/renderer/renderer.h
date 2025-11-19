@@ -354,6 +354,12 @@ namespace SceneryEditorX
 		 */
         [[nodiscard]] double GetTimestampPeriodInMS() const;
 
+        /**
+         * @brief Get synchronization objects for current frame
+         * @return Reference to current frame's FrameSync object
+         */
+        static Ref<FrameSync>& GetCurrentFrameSync();
+
     private:
 		/**
 		 * @brief Active swapchain reference (lifetime managed by renderer).

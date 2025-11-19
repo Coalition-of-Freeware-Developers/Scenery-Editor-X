@@ -18,6 +18,7 @@
 #include "SceneryEditorX/core/application/application.h"
 #include "SceneryEditorX/core/window/window.h"
 #include "SceneryEditorX/renderer/render_context.h"
+#include "SceneryEditorX/renderer/sampler.h"
 #include "SceneryEditorX/renderer/vulkan/vk_device.h"
 #include "SceneryEditorX/renderer/vulkan/vk_swapchain.h"
 #include "SceneryEditorX/renderer/vulkan/vk_util.h"
@@ -163,6 +164,7 @@ namespace SceneryEditorX::UI
 
     // -------------------------------------------------------
 
+    /*
     bool GUI::InitGUI()
     {
         auto device = RenderContext::GetCurrentDevice()->GetDevice();
@@ -179,7 +181,7 @@ namespace SceneryEditorX::UI
             SEDX_CORE_ERROR("Failed to get valid Vulkan device or swapchain");
             return false;
         }
-        */
+        #1#
 
         /// Create descriptor pool
         if (!CreateDescriptorPool())
@@ -273,7 +275,7 @@ namespace SceneryEditorX::UI
             if (result != VK_SUCCESS)
                 SEDX_CORE_ERROR("Vulkan UI Error: {}", static_cast<int>(result));
         };
-        */
+        #1#
 
         /// Initialize Vulkan implementation
         ImGui_ImplVulkan_Init(&info);
@@ -300,6 +302,7 @@ namespace SceneryEditorX::UI
         SEDX_CORE_INFO("ImGui initialized successfully");
         return true;
     }
+    */
 
     void GUI::BeginFrame() const
     {
@@ -532,6 +535,7 @@ namespace SceneryEditorX::UI
 
     // -------------------------------------------------------
 
+    /*
     ImTextureID GUI::GetTextureID(const VkImageView imageView, VkSampler sampler, const VkImageLayout layout) const
     {
         const auto device = RenderContext::GetCurrentDevice();
@@ -545,12 +549,12 @@ namespace SceneryEditorX::UI
             return reinterpret_cast<ImTextureID>(nullptr);
         }
 
-        /// Get a sampler if none was provided
+        // Get a sampler if none was provided
         VkSampler actualSampler = sampler;
         if (actualSampler == VK_NULL_HANDLE)
         {
-            /// If we have a valid device, use its sampler
-            actualSampler = device->GetSampler();
+            // If we have a valid device, use its sampler
+            actualSampler = CreateRef<Sampler>()->GetResource();
 
             /// If we still don't have a valid sampler, we can't proceed
             if (actualSampler == VK_NULL_HANDLE)
@@ -565,6 +569,7 @@ namespace SceneryEditorX::UI
         VkDescriptorSet descriptorSet = ImGui_ImplVulkan_AddTexture(actualSampler, imageView, layout);
         return reinterpret_cast<ImTextureID>(descriptorSet);
     }
+    */
 
     // -------------------------------------------------------
 

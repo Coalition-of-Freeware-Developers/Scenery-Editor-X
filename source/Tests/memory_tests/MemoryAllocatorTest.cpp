@@ -208,8 +208,8 @@ namespace SceneryEditorX
 
                 /// Get stats to verify allocation
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.allocationCount >= 1);
-                REQUIRE(stats.usedBytes >= 1024);
+                REQUIRE(stats.m_allocationCount >= 1);
+                REQUIRE(stats.m_usedBytes >= 1024);
 
                 /// Free the buffer
                 REQUIRE_NOTHROW(allocator->DestroyBuffer(tracker.buffer, tracker.allocation));
@@ -252,7 +252,7 @@ namespace SceneryEditorX
 
                 /// Get stats
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.allocationCount >= sizes.size());
+                REQUIRE(stats.m_allocationCount >= sizes.size());
 
                 /// Free buffers in reverse order
                 for (auto it = buffers.rbegin(); it != buffers.rend(); ++it)
@@ -428,10 +428,10 @@ namespace SceneryEditorX
                 auto stats = allocator->GetStats();
 
                 /// Check that stats have reasonable values
-                REQUIRE(stats.totalBytes >= 0);
-                REQUIRE(stats.usedBytes >= 0);
-                REQUIRE(stats.fragmentationRatio >= 0.0f);
-                REQUIRE(stats.fragmentationRatio <= 1.0f);
+                REQUIRE(stats.m_totalBytes >= 0);
+                REQUIRE(stats.m_usedBytes >= 0);
+                REQUIRE(stats.m_fragRatio >= 0.0f);
+                REQUIRE(stats.m_fragRatio <= 1.0f);
             }
 
             SECTION("Statistics after allocations")
@@ -459,10 +459,10 @@ namespace SceneryEditorX
                 auto updatedStats = allocator->GetStats();
 
                 /// Verify allocation count increased
-                REQUIRE(updatedStats.allocationCount >= initialStats.allocationCount + numBuffers);
+                REQUIRE(updatedStats.m_allocationCount >= initialStats.m_allocationCount + numBuffers);
 
                 /// Verify used bytes increased
-                REQUIRE(updatedStats.usedBytes >= initialStats.usedBytes + (bufferSize * numBuffers));
+                REQUIRE(updatedStats.m_usedBytes >= initialStats.m_usedBytes + (bufferSize * numBuffers));
 
                 /// Clean up
                 for (auto& tracker : buffers)
@@ -474,10 +474,10 @@ namespace SceneryEditorX
                 auto budget = allocator->GetMemoryBudget();
 
                 /// Check budget values
-                REQUIRE(budget.totalBytes > 0);
-                REQUIRE(budget.usedBytes >= 0);
-                REQUIRE(budget.usagePercentage >= 0.0f);
-                REQUIRE(budget.usagePercentage <= 1.0f);
+                REQUIRE(budget.m_totalBytes > 0);
+                REQUIRE(budget.m_usedBytes >= 0);
+                REQUIRE(budget.m_usagePercentage >= 0.0f);
+                REQUIRE(budget.m_usagePercentage <= 1.0f);
 
                 /// Set a custom warning threshold
                 constexpr float newThreshold = 0.95f;
@@ -501,8 +501,8 @@ namespace SceneryEditorX
 
                 /// The current allocation should still be accounted for
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.allocationCount >= 1);
-                REQUIRE(stats.usedBytes >= bufferInfo.size);
+                REQUIRE(stats.m_allocationCount >= 1);
+                REQUIRE(stats.m_usedBytes >= bufferInfo.size);
             }
 
             SECTION("Print detailed stats")

@@ -10,16 +10,15 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-	
+    /*
     void RenderPass::Pass_Lut_BrdfSpecular(CommandManager *cmd_list)
     {
         Texture* tex_lut_brdf_specular = GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular);
@@ -32,7 +31,7 @@ namespace SceneryEditorX
             pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
             cmd_list->SetPipelineState(pso);
 
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
+            cmd_list->SetTexture(bindingsUav::tex, tex_lut_brdf_specular);
             cmd_list->Dispatch(tex_lut_brdf_specular);
 
             // for the lifetime of the engine, this will be read as a srv, so transition here
@@ -40,8 +39,7 @@ namespace SceneryEditorX
         }
         cmd_list->EndTimeblock();
     }
-
+	*/
 }
-*/
 
 // -------------------------------------------------------

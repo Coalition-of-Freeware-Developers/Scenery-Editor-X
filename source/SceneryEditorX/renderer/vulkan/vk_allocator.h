@@ -18,7 +18,7 @@
 
 namespace SceneryEditorX
 {
-    /// Forward declarations
+    // Forward declarations
     class VulkanDevice;
     struct AppData;
 
@@ -41,7 +41,6 @@ namespace SceneryEditorX
         VmaPoolCreateInfo createInfo = {};
 
         MemoryPool() : createInfo({}) {}
-
         MemoryPool(const VkDeviceSize size, const VmaMemoryUsage usage) : blockSize(size), createInfo({})
         {
             createInfo.memoryTypeIndex = static_cast<uint32_t>(usage);
@@ -51,11 +50,11 @@ namespace SceneryEditorX
     // ---------------------------------------------------------
 
     // Constants for common sizes
-    constexpr VkDeviceSize SMALL_BUFFER_SIZE = 1024 * 256;					// 256KB
-    constexpr VkDeviceSize MEDIUM_BUFFER_SIZE = 1024 * 1 * 1024;			// 1MB
-    constexpr VkDeviceSize LARGE_BUFFER_SIZE = 1024 * 16 * 1024;			// 16MB
+    constexpr VkDeviceSize SMALL_BUFFER_SIZE	= 1024 * 256;				// 256KB
+    constexpr VkDeviceSize MEDIUM_BUFFER_SIZE	= 1024 * 1 * 1024;			// 1MB
+    constexpr VkDeviceSize LARGE_BUFFER_SIZE	= 1024 * 16 * 1024;			// 16MB
 
-    /// This is a default value and will be overridden by users settings.
+    // This is a default value and will be overridden by users settings.
     constexpr VkDeviceSize DEFAULT_CUSTOM_BUFFER_SIZE = 1024 * 16 * 1024;	// 16MB
 
     // ---------------------------------------------------------
@@ -101,10 +100,10 @@ namespace SceneryEditorX
 		 */
         struct AllocationStats
         {
-            uint64_t totalBytes = 0;
-            uint64_t usedBytes = 0;
-            uint64_t allocationCount = 0;
-            float fragmentationRatio = 0.0f;
+            uint64_t m_totalBytes		= 0;
+            uint64_t m_usedBytes		= 0;
+            uint64_t m_allocCount		= 0;
+            float m_fragRatio			= 0.0f;
         };
 
         [[nodiscard]] AllocationStats GetStats();
@@ -118,7 +117,7 @@ namespace SceneryEditorX
          */
         enum class AllocationStrategy : uint8_t
         {
-            DEFAULT,        // Let VMA decide
+            DEFAULT,         // Let VMA decide
             SPEED_OPTIMIZED, // Optimize for fast allocation
             MEMORY_OPTIMIZED // Optimize for minimal memory usage
         };
@@ -130,7 +129,6 @@ namespace SceneryEditorX
 
         /**
 		 * @brief Gets the current custom buffer size
-		 *
 		 * @return The custom buffer size in bytes
 		 */
         static VkDeviceSize GetCustomBufferSize();
@@ -158,10 +156,10 @@ namespace SceneryEditorX
 		 */
 		struct MemoryBudget
         {
-            uint64_t totalBytes = 0;
-            uint64_t usedBytes = 0;
-            bool isOverBudget = false;
-            float usagePercentage = 0.0f;
+            uint64_t m_totalBytes	= 0;
+            uint64_t m_usedBytes	= 0;
+            bool m_isOverBudget		= false;
+            float m_usagePercentage = 0.0f;
         };
 
         [[nodiscard]] MemoryBudget GetMemoryBudget() const;
@@ -192,7 +190,7 @@ namespace SceneryEditorX
             VkDeviceSize size;
         };
 
-        /// Batch allocation methods
+        // Batch allocation methods
         [[nodiscard]] std::vector<BatchBufferAllocation> AllocateBufferBatch(const std::vector<VkDeviceSize> &sizes, BufferUsageFlags usage, VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_AUTO) const;
         void FreeBufferBatch(const std::vector<BatchBufferAllocation> &allocations);
 
@@ -203,8 +201,6 @@ namespace SceneryEditorX
 
         void Free(VmaAllocation allocation);
         void DestroyImage(VkImage image, VmaAllocation allocation);
-
-		// ---------------------------------------------------------
 
 		/**
 		 * @tparam T
@@ -233,8 +229,8 @@ namespace SceneryEditorX
                     "Attempted to map non-host-visible memory. Use a staging buffer for uploads.");
 
             T* mappedMemory = nullptr;
-            VkResult res = vmaMapMemory(allocator, allocation, reinterpret_cast<void **>(&mappedMemory));
-            if (res != VK_SUCCESS)
+            if (VkResult res = vmaMapMemory(allocator, allocation, reinterpret_cast<void **>(&mappedMemory));
+                res != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR_TAG("VMA", "vmaMapMemory failed with error {}", static_cast<int>(res));
                 return nullptr;
@@ -277,12 +273,12 @@ namespace SceneryEditorX
 
         // ---------------------------------------------------------
 
-        float memoryWarningThreshold = 0.9f; /// 90% usage generates warnings
+        float memoryWarningThreshold = 0.9f; // 90% usage generates warnings
         [[nodiscard]] bool CheckMemoryBudget() const;
 
         VkDeviceSize customBufferAlignment = 0;
 
-        /// Helper function to align buffer sizes for better caching
+        // Helper function to align buffer sizes for better caching
         [[nodiscard]] VkDeviceSize AlignBufferSize(VkDeviceSize size) const;
 
 		static VkDeviceSize customBufferSize;

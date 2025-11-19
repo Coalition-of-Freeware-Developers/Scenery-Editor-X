@@ -140,7 +140,7 @@ namespace SceneryEditorX
 
                 /// Get fragmentation stats
                 auto stats = allocator->GetStats();
-                REQUIRE(stats.fragmentationRatio >= 0.0f);
+                REQUIRE(stats.m_fragRatio >= 0.0f);
 
                 /// Try to defragment
                 REQUIRE_NOTHROW(allocator->BeginDefragmentation());

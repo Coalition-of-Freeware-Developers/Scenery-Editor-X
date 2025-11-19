@@ -33,8 +33,11 @@ namespace SceneryEditorX
     class Sampler : public RefCounted
     {
     public:
+        Sampler() = default;
         explicit Sampler(const SamplerSpec &samplerSpec, const std::string &debugName);
 		virtual ~Sampler() override;
+
+		static Ref<Sampler> Get();
 
 		FilterMode GetFilterMin()						const { return m_samplerSpec.filterMin; }
         FilterMode GetFilterMag()						const { return m_samplerSpec.filterMag; }
@@ -44,13 +47,14 @@ namespace SceneryEditorX
         bool GetAnisotropyEnabled()                     const { return m_samplerSpec.anisotropy != 0; }
         bool GetComparisonEnabled()                     const { return m_samplerSpec.comparisonEnabled; }
 		void* GetResource()								const { return m_resource; }
+		
 
     private:
-        void CreateResource();
-        SamplerSpec m_samplerSpec;
-        std::string samplerName;
-        void* m_resource = nullptr;
-
+        void CreateResource();          // Create the sampler resource
+        SamplerSpec m_samplerSpec;      // Specification of the sampler
+        std::string samplerName;        // Debug name for the sampler
+        void *m_resource = nullptr;		// Internal representation of the sampler
+        VkSampler m_sampler = nullptr;	// Vulkan sampler handle
     };
 
 }

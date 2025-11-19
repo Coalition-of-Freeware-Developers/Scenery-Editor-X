@@ -10,16 +10,15 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
-	
+    /*
     void RenderPass::Pass_Skysphere(CommandManager *cmd_list)
     {
         Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
@@ -35,7 +34,7 @@ namespace SceneryEditorX
                 pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
                 cmd_list->SetPipelineState(pso);
     
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
+                cmd_list->SetTexture(bindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
                 cmd_list->Dispatch(tex_skysphere);
             }
@@ -58,7 +57,7 @@ namespace SceneryEditorX
             
                 for (uint32_t mip_level = 1; mip_level < tex_skysphere->GetMipCount(); mip_level++)
                 {
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere, mip_level, 1);
+                    cmd_list->SetTexture(bindingsUav::tex, tex_skysphere, mip_level, 1);
             
                     // Set pass constants
                     m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(tex_skysphere->GetMipCount()), 0.0f);
@@ -73,8 +72,7 @@ namespace SceneryEditorX
         }
         cmd_list->EndTimeblock();
     }
-
+    */
 }
-*/
 
 // -------------------------------------------------------

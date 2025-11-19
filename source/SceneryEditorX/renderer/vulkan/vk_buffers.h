@@ -11,16 +11,16 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <vma/vk_mem_alloc.h>
 #include "resource.h"
 #include "vk_enums.h"
 #include "SceneryEditorX/core/memory/memory.h"
+#include <vma/vk_mem_alloc.h>
 
 // --------------------------------------------
 
 namespace SceneryEditorX
 {
-using Flags = uint32_t;
+    using Flags = uint32_t;
 	using MemoryFlags = Flags;
 
     // -------------------------------------------------------
@@ -72,7 +72,7 @@ using Flags = uint32_t;
      */
     namespace VulkanMemoryUtils
     {
-        void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation); //TODO: Swap VmaAllocation to the MemoryAllocator class
+        void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation); // TODO: Swap VmaAllocation to the MemoryAllocator class
     }
 
     // -------------------------------------------------------

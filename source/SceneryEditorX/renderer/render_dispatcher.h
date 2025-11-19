@@ -120,14 +120,14 @@ namespace SceneryEditorX
 	     */
 	    struct Queues
 	    {
-	        std::mutex mtx;                 // Protects jobs / quitting flag
-	        std::condition_variable cv;     // Signals worker of new jobs or shutdown
-	        std::queue<Job> jobs;           // FIFO of pending background jobs
-	        bool quitting = false;          // Set true to terminate worker loop
+	        std::mutex m_Mtx;                 // Protects jobs / quitting flag
+	        std::condition_variable m_Cv;     // Signals worker of new jobs or shutdown
+	        std::queue<Job> m_Jobs;           // FIFO of pending background jobs
+	        bool m_Quitting = false;          // Set true to terminate worker loop
 	    };
 
 	    // Per-frame bucket of deferred resource free jobs.
-	    struct RFQueue { std::vector<Job> jobs; };
+	    struct RFQueue { std::vector<Job> m_Jobs; };
 
 	    // Worker thread main loop (blocks on cv until work or shutdown).
 	    static void WorkerLoop();
@@ -136,7 +136,7 @@ namespace SceneryEditorX
 	    static std::thread				s_Worker;               // Background worker thread
 	    static Queues					s_Queue;                // Active job queue + sync
 	    static std::mutex				s_RFMutex;              // Protects resource free ring operations
-        static RenderData				renderData;             // Number of concurrent frames (ring size)
+        static RenderData				s_RenderData;           // Number of concurrent frames (ring size)
 	    static std::vector<RFQueue>		s_ResourceFreeRing;     // Frame-delayed destruction buckets
 	    static uint32_t					s_CurrentRFIndex;       // Index of frame bucket most recently completed
 	};

@@ -32,16 +32,16 @@ namespace SceneryEditorX
 
 
 
-    CommandQueue::CommandQueue(Queue queueType, const std::string &debugName) : qType(queueType)
+    CommandQueue::CommandQueue(Queue queueType, const std::string &debugName) : m_qType(queueType)
     {
         // Legacy allocation (kept to avoid touching broader lifetime assumptions)
-        cmdBuffer = new uint8_t[1];
-        cmdBufferPtr = cmdBuffer;
+        m_cmdBuffer = new uint8_t[1];
+        m_cmdBufferPtr = m_cmdBuffer;
     }
 
     CommandQueue::~CommandQueue()
     {
-        delete[] cmdBuffer;
+        delete[] m_cmdBuffer;
     }
 
     void CommandQueue::Wait(const bool flush)

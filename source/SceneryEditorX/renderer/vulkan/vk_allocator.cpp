@@ -149,7 +149,118 @@ namespace SceneryEditorX
 
     // ---------------------------------------------------------
 
-	/**
+    /**
+	 * @brief Move constructor for MemoryAllocator.
+	 *
+	 * Transfers ownership of resources from another MemoryAllocator instance
+	 * to this instance. The other instance is left in a valid but empty state.
+	 *
+	 * @param other The other MemoryAllocator instance to move from
+	 */
+    MemoryAllocator::MemoryAllocator(MemoryAllocator &&other) noexcept
+    {
+        std::scoped_lock lock(other.allocationMutex);
+
+        // Move data from other
+        tag_ = std::move(other.tag_);
+        currentStrategy = other.currentStrategy;
+        defragmentationContext = other.defragmentationContext;
+        defragmentationCandidates = std::move(other.defragmentationCandidates);
+        bufferPools = std::move(other.bufferPools);
+        imagePools = std::move(other.imagePools);
+        customBufferAlignment = other.customBufferAlignment;
+        memoryWarningThreshold = other.memoryWarningThreshold;
+
+        // Reset other's state to a valid empty state
+        other.defragmentationContext = nullptr;
+        other.defragmentationCandidates.clear();
+        other.bufferPools.clear();
+        other.imagePools.clear();
+        other.currentStrategy = AllocationStrategy::DEFAULT;
+        other.customBufferAlignment = 0;
+        other.memoryWarningThreshold = 0.9f;
+    }
+
+    /**
+	 * @brief Move assignment operator for MemoryAllocator.
+	 *
+	 * Transfers ownership of resources from another MemoryAllocator instance
+	 * to this instance using move semantics. This operator performs a thread-safe
+	 * transfer by locking both allocators' mutexes to prevent data races during
+	 * the move operation.
+	 *
+	 * The operation follows these steps:
+	 * 1. Checks for self-assignment to avoid unnecessary operations
+	 * 2. Acquires locks on both the current and source allocator mutexes
+	 * 3. Cleans up any existing resources in the current allocator via Shutdown()
+	 * 4. Transfers all member data from the source allocator
+	 * 5. Resets the source allocator to a valid but empty state
+	 *
+	 * After the move, the source allocator will have:
+	 * - Null defragmentation context
+	 * - Empty defragmentation candidates list
+	 * - Empty buffer and image pools
+	 * - Default allocation strategy
+	 * - Reset alignment and threshold values
+	 *
+	 * @param other The MemoryAllocator instance to move from (must be an rvalue reference)
+	 * @return Reference to this MemoryAllocator instance after the move
+	 *
+	 * @note This operator is noexcept, guaranteeing no exceptions will be thrown
+	 * @note The source allocator remains in a valid state and can be safely destroyed
+	 * @note Both allocators are temporarily locked during the operation to ensure thread safety
+	 * @note Shutdown() is called on the current allocator before taking ownership of new resources
+	 *
+	 * @warning Do not use the source allocator for allocations after moving from it
+	 * @warning The moved-from allocator should typically only be destroyed or reassigned
+	 *
+	 * Example usage:
+	 * @code
+	 * MemoryAllocator allocator1("Primary");
+	 * MemoryAllocator allocator2("Secondary");
+	 * 
+	 * // Move allocator2's resources to allocator1
+	 * allocator1 = std::move(allocator2);
+	 * 
+	 * // allocator1 now owns all resources from allocator2
+	 * // allocator2 is now in a valid but empty state
+	 * @endcode
+	 */
+    MemoryAllocator &MemoryAllocator::operator=(MemoryAllocator &&other) noexcept
+    {
+        if (this != &other)
+        {
+            // Lock both mutexes to prevent data races
+            std::scoped_lock lock(allocationMutex, other.allocationMutex);
+
+            // Clean up existing resources before taking ownership of new ones
+            Shutdown();
+
+            // Move data from other
+            tag_ = std::move(other.tag_);
+            currentStrategy = other.currentStrategy;
+            defragmentationContext = other.defragmentationContext;
+            defragmentationCandidates = std::move(other.defragmentationCandidates);
+            bufferPools = std::move(other.bufferPools);
+            imagePools = std::move(other.imagePools);
+            customBufferAlignment = other.customBufferAlignment;
+            memoryWarningThreshold = other.memoryWarningThreshold;
+
+            // Reset other's state
+            other.defragmentationContext = nullptr;
+            other.defragmentationCandidates.clear();
+            other.bufferPools.clear();
+            other.imagePools.clear();
+            other.currentStrategy = AllocationStrategy::DEFAULT;
+            other.customBufferAlignment = 0;
+            other.memoryWarningThreshold = 0.9f;
+        }
+
+        return *this;
+
+    }
+
+    /**
 	 * @brief Begins a defragmentation process for GPU memory.
 	 *
 	 * This function initiates the memory defragmentation process.
@@ -260,7 +371,7 @@ namespace SceneryEditorX
 
         // Update peak memory usage stats after defragmentation
         const AllocationStats currentStats = GetStats();
-        memAllocatorData->peakMemoryUsage = currentStats.usedBytes;
+        memAllocatorData->peakMemoryUsage = currentStats.m_usedBytes;
     }
 
 	/**
@@ -510,7 +621,7 @@ namespace SceneryEditorX
 		    }
 		}
 
-    } /// namespace VulkanMemoryUtils
+    } // namespace VulkanMemoryUtils
 
     /**
      * @fn DestroyBuffer
@@ -831,18 +942,18 @@ namespace SceneryEditorX
         vmaCalculateStatistics(memAllocatorData->allocator, &vmaStats);
 
         // Fill our custom stats structure
-        stats.totalBytes = vmaStats.total.statistics.blockBytes;
-        stats.usedBytes = vmaStats.total.statistics.allocationBytes;
-        stats.allocationCount = vmaStats.total.statistics.allocationCount;
+        stats.m_totalBytes = vmaStats.total.statistics.blockBytes;
+        stats.m_usedBytes = vmaStats.total.statistics.allocationBytes;
+        stats.m_allocCount = vmaStats.total.statistics.allocationCount;
 
         // Calculate fragmentation ratio (if no blocks, fragmentation is 0)
         if (vmaStats.total.statistics.blockCount > 0)
             // Calculate fragmentation as 1 - (used / allocated)
             // This represents the proportion of allocated memory that's not being used
-            stats.fragmentationRatio = 1.0f - static_cast<float>(vmaStats.total.statistics.allocationBytes) /
+            stats.m_fragRatio = 1.0f - static_cast<float>(vmaStats.total.statistics.allocationBytes) /
                                                   static_cast<float>(vmaStats.total.statistics.blockBytes);
         else
-            stats.fragmentationRatio = 0.0f;
+            stats.m_fragRatio = 0.0f;
 
         return stats;
     }
@@ -1025,25 +1136,25 @@ namespace SceneryEditorX
         switch (currentStrategy)
         {
         case AllocationStrategy::SPEED_OPTIMIZED:
-            /// Optimize for speed - prefer pre-allocated memory
+            // Optimize for speed - prefer pre-allocated memory
             createInfo.flags |= VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
-            /// For speed-optimized allocations, we don't need to be as strict about finding the perfect fit
+            // For speed-optimized allocations, we don't need to be as strict about finding the perfect fit
             createInfo.flags &= ~VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
             createInfo.flags &= ~VMA_DEFRAGMENTATION_FLAG_ALGORITHM_FAST_BIT;
             break;
 
         case AllocationStrategy::MEMORY_OPTIMIZED:
-            /// Optimize for memory efficiency - try to find the smallest fitting block
+            // Optimize for memory efficiency - try to find the smallest fitting block
             createInfo.flags |= VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
-            /// For memory-optimized allocations, also try to minimize fragmentation
+            // For memory-optimized allocations, also try to minimize fragmentation
             createInfo.flags |= VMA_DEFRAGMENTATION_FLAG_ALGORITHM_BALANCED_BIT;
-            /// But we don't care about allocation time as much
+            // But we don't care about allocation time as much
             createInfo.flags &= ~VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT;
             break;
 
         case AllocationStrategy::DEFAULT:
         default:
-            /// Let VMA decide the best strategy - don't set any specific strategy flags
+            // Let VMA decide the best strategy - don't set any specific strategy flags
             createInfo.flags &=
                 ~(VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT | VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT |
                   VMA_ALLOCATION_CREATE_STRATEGY_MIN_TIME_BIT | VMA_DEFRAGMENTATION_FLAG_ALGORITHM_MASK);
@@ -1088,11 +1199,11 @@ namespace SceneryEditorX
             return budget;
         }
 
-        /// Get memory budget from VMA
+        // Get memory budget from VMA
         VmaBudget vmabudgets[VK_MAX_MEMORY_HEAPS];
         vmaGetHeapBudgets(memAllocatorData->allocator, vmabudgets);
 
-        /// Get physical device properties to determine number of heaps
+        // Get physical device properties to determine number of heaps
         VkPhysicalDeviceMemoryProperties memProps;
         vkGetPhysicalDeviceMemoryProperties(RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetGPUDevices(),
                                             &memProps);
@@ -1100,17 +1211,17 @@ namespace SceneryEditorX
         uint64_t totalBudget = 0;
         uint64_t totalUsage = 0;
 
-        /// Calculate totals across all heaps
+        // Calculate totals across all heaps
         for (uint32_t i = 0; i < memProps.memoryHeapCount; i++)
         {
             totalBudget += vmabudgets[i].budget;
             totalUsage += vmabudgets[i].usage;
         }
 
-        budget.totalBytes = totalBudget;
-        budget.usedBytes = totalUsage;
-        budget.usagePercentage = totalBudget > 0 ? static_cast<float>(totalUsage) / static_cast<float>(totalBudget) : 0.0f;
-        budget.isOverBudget = budget.usagePercentage > memoryWarningThreshold;
+        budget.m_totalBytes = totalBudget;
+        budget.m_usedBytes = totalUsage;
+        budget.m_usagePercentage = totalBudget > 0 ? static_cast<float>(totalUsage) / static_cast<float>(totalBudget) : 0.0f;
+        budget.m_isOverBudget = budget.m_usagePercentage > memoryWarningThreshold;
 
         return budget;
     }
@@ -1140,7 +1251,7 @@ namespace SceneryEditorX
         memoryWarningThreshold = percentage;
         SEDX_CORE_INFO_TAG("VulkanAllocator", "Memory usage warning threshold set to {:.1f}%", percentage * 100.0f);
 
-        /// Check current memory status against new threshold
+        // Check current memory status against new threshold
         if (memAllocatorData && memAllocatorData->allocator)
         {
             if (!CheckMemoryBudget())
@@ -1162,12 +1273,12 @@ namespace SceneryEditorX
     {
         std::scoped_lock lock(allocationMutex);
 
-        /// Ensure alignment is a power of 2
+        // Ensure alignment is a power of 2
         if (alignment & alignment - 1)
         {
             SEDX_CORE_WARN_TAG("VulkanAllocator", "Buffer alignment must be a power of 2, got {}", alignment);
 
-            /// Round up to the next power of 2
+            // Round up to the next power of 2
             VkDeviceSize powerOf2 = 1;
             while (powerOf2 < alignment)
             {
@@ -1215,12 +1326,12 @@ namespace SceneryEditorX
         allocations.reserve(sizes.size());
         uint64_t totalAllocation = 0;
 
-        /// Apply allocation strategy
+        // Apply allocation strategy
         VmaAllocationCreateInfo allocCreateInfo = {};
         allocCreateInfo.usage = memoryUsage;
         ApplyAllocationStrategy(allocCreateInfo);
 
-        /// Allocate each buffer
+        // Allocate each buffer
         for (const auto &size : sizes)
         {
             if (size == 0)
@@ -1245,19 +1356,19 @@ namespace SceneryEditorX
 
             allocation.size = alignedSize;
 
-            /// Update allocation tracking
+            // Update allocation tracking
             totalAllocation += allocInfo.size;
             memAllocatorData->bytesAllocated += allocInfo.size;
             memAllocatorData->bytesAllocated++;
             memAllocatorData->currentAllocations++;
 
-            /// Update per-memory-type statistics
+            // Update per-memory-type statistics
             const uint32_t memoryTypeIndex = allocInfo.memoryType;
             memoryTypeStats[memoryTypeIndex].bytesAllocated += allocInfo.size;
             memoryTypeStats[memoryTypeIndex].currentAllocations++;
             memoryTypeStats[memoryTypeIndex].bytesAllocated++;
 
-            /// Store allocation info
+            // Store allocation info
             AllocInfo info;
             info.allocatedSize = allocInfo.size;
             info.type = AllocationType::BUFFER;
@@ -1265,7 +1376,7 @@ namespace SceneryEditorX
             allocations.push_back(allocation);
         }
 
-        /// Update peak memory usage
+        // Update peak memory usage
         memAllocatorData->peakMemoryUsage = std::max(memAllocatorData->peakMemoryUsage, memAllocatorData->bytesAllocated);
 
         if (!allocations.empty())
@@ -1305,7 +1416,7 @@ namespace SceneryEditorX
             if (allocation.buffer == VK_NULL_HANDLE || allocation.allocation == nullptr)
                 continue;
 
-            /// Track total memory being freed
+            // Track total memory being freed
             if (AllocationMap.contains(allocation.allocation))
             {
                 const auto &[AllocatedSize, Type] = AllocationMap[allocation.allocation];
@@ -1314,7 +1425,7 @@ namespace SceneryEditorX
                 AllocationMap.erase(allocation.allocation);
             }
 
-            /// Destroy the buffer
+            // Destroy the buffer
             vmaDestroyBuffer(memAllocatorData->allocator, allocation.buffer, allocation.allocation);
             count++;
         }

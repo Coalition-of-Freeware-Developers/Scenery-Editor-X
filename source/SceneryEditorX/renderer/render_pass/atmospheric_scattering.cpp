@@ -10,15 +10,15 @@
 * Created: 29/8/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/renderer/command_manager.h>
-//#include <SceneryEditorX/renderer/render_pass.h>
-//#include <SceneryEditorX/renderer/texture.h>
+#include <SceneryEditorX/renderer/command_manager.h>
+#include <SceneryEditorX/renderer/render_pass.h>
+#include <SceneryEditorX/renderer/texture.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
+    /*
     void RenderPass::Pass_Lut_AtmosphericScattering(CommandManager *cmd_list)
     {
         Ref<Texture2D> *tex_lut_atmosphere_scatter = GetRenderTarget(RenderTarget::LUT_Atmosphere_Scatter);
@@ -31,7 +31,7 @@ namespace SceneryEditorX
             pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
             cmd_list->SetPipelineState(pso);
         
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
+            cmd_list->SetTexture(bindingsUav::tex3d, tex_lut_atmosphere_scatter);
             cmd_list->Dispatch(tex_lut_atmosphere_scatter);
         
             // for the lifetime of the engine, this will be read as a srv, so transition here
@@ -39,7 +39,7 @@ namespace SceneryEditorX
         }
         cmd_list->EndTimeblock();
     }
+	*/
 }
-*/
 
 // -------------------------------------------------------
