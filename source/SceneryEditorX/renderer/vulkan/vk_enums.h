@@ -498,6 +498,7 @@ namespace SceneryEditorX
         Transfer = 2,  // Transfer queue family dedicated to memory transfer operations
         Count    = 3,  // Total number of queue families
         Present  = 4,  // Present queue family for presenting rendered images to the display surface
+        Max		 = 0x7FFFFFFF
     };
 
     /**
@@ -512,10 +513,10 @@ namespace SceneryEditorX
      */
     enum class FrameSyncType
     {
-        SyncFence				= 0, // Use for CPU-GPU synchronization (Fence)
-        SyncSemaphore			= 1, // Use for binary semaphores (standard GPU-GPU sync)
-        SyncSemaphoreTimeline	= 2, // Use for timeline semaphores (advanced GPU-GPU sync)
-        MaxEnum					= 0x7FFFFFFF
+        Fence				= 0, // Use for CPU-GPU synchronization (Fence)
+        Semaphore			= 1, // Use for binary semaphores (standard GPU-GPU sync)
+        SemaphoreTimeline	= 2, // Use for timeline semaphores (advanced GPU-GPU sync)
+        MaxEnum				= 0x7FFFFFFF
     };
 
 	/**
@@ -534,7 +535,7 @@ namespace SceneryEditorX
         Front			= 0x00000001,
 		Back			= 0x00000002,
 		FrontAndBack	= 0x00000003,
-        MaxEnum			= 0x7FFFFFFF,
+        Max				= 0x7FFFFFFF,
     };
 
     /**

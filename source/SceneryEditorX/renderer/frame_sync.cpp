@@ -27,21 +27,21 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("FRAME-SYNC", "Creating FrameSync: {} (Type: {})", debugName, static_cast<int>(type));
 
         // Create primary resource based on type
-		if (type == FrameSyncType::SyncFence)
+		if (type == FrameSyncType::Fence)
         {
             Fence::Create(m_Resource);
             SEDX_CORE_INFO_TAG("FRAME-SYNC", "✓ Primary fence created for {}", debugName);
         }
-		else if (type == FrameSyncType::SyncSemaphore)
+		else if (type == FrameSyncType::Semaphore)
         {
-            Semaphore::Create(FrameSyncType::SyncSemaphore, m_Resource);
+            Semaphore::Create(FrameSyncType::Semaphore, m_Resource);
             SEDX_CORE_INFO_TAG("FRAME-SYNC", "✓ Primary binary semaphore created for {}", debugName);
         }
-        else if (type == FrameSyncType::SyncSemaphoreTimeline)
+        else if (type == FrameSyncType::SemaphoreTimeline)
         {
             void* timelineResource = nullptr;
-            Semaphore::Create(FrameSyncType::SyncSemaphoreTimeline, timelineResource);
-            m_TimelineSemaphore = CreateRef<Semaphore>(FrameSyncType::SyncSemaphoreTimeline, timelineResource);
+            Semaphore::Create(FrameSyncType::SemaphoreTimeline, timelineResource);
+            m_TimelineSemaphore = CreateRef<Semaphore>(FrameSyncType::SemaphoreTimeline, timelineResource);
             m_Resource = timelineResource;
             SEDX_CORE_INFO_TAG("FRAME-SYNC", "✓ Timeline semaphore created for {}", debugName);
         }
@@ -50,8 +50,8 @@ namespace SceneryEditorX
         if (createImageSemaphore)
         {
             void* imageAvailableResource = nullptr;
-            Semaphore::Create(FrameSyncType::SyncSemaphore, imageAvailableResource);
-            m_ImageAvailableSemaphore = CreateRef<Semaphore>(FrameSyncType::SyncSemaphore, imageAvailableResource);
+            Semaphore::Create(FrameSyncType::Semaphore, imageAvailableResource);
+            m_ImageAvailableSemaphore = CreateRef<Semaphore>(FrameSyncType::Semaphore, imageAvailableResource);
             m_HasImageSemaphore = true;
             SEDX_CORE_INFO_TAG("FRAME-SYNC", "✓ Image available semaphore created for {}", debugName);
         }
@@ -60,8 +60,8 @@ namespace SceneryEditorX
         if (createRenderSemaphore)
         {
             void* renderFinishedResource = nullptr;
-            Semaphore::Create(FrameSyncType::SyncSemaphore, renderFinishedResource);
-            m_RenderFinishedSemaphore = CreateRef<Semaphore>(FrameSyncType::SyncSemaphore, renderFinishedResource);
+            Semaphore::Create(FrameSyncType::Semaphore, renderFinishedResource);
+            m_RenderFinishedSemaphore = CreateRef<Semaphore>(FrameSyncType::Semaphore, renderFinishedResource);
             m_HasRenderSemaphore = true;
             SEDX_CORE_INFO_TAG("FRAME-SYNC", "✓ Render finished semaphore created for {}", debugName);
         }
@@ -130,7 +130,7 @@ namespace SceneryEditorX
 	
 	void FrameSync::WaitForTimelineValue(const uint64_t value, const uint64_t timeout)
 	{
-        SEDX_CORE_ASSERT(m_Type == FrameSyncType::SyncSemaphoreTimeline, "WaitForTimelineValue can only be called on timeline semaphores");
+        SEDX_CORE_ASSERT(m_Type == FrameSyncType::SemaphoreTimeline, "WaitForTimelineValue can only be called on timeline semaphores");
         SEDX_CORE_ASSERT(m_TimelineSemaphore != nullptr, "Timeline semaphore not created");
         SEDX_PROFILE_SCOPE("FrameSync::WaitForTimelineValue")
 
@@ -140,7 +140,7 @@ namespace SceneryEditorX
 	
 	void FrameSync::SignalTimeline(const uint64_t value)
 	{
-        SEDX_CORE_ASSERT(m_Type == FrameSyncType::SyncSemaphoreTimeline, "SignalTimeline can only be called on timeline semaphores");
+        SEDX_CORE_ASSERT(m_Type == FrameSyncType::SemaphoreTimeline, "SignalTimeline can only be called on timeline semaphores");
         SEDX_CORE_ASSERT(m_TimelineSemaphore != nullptr, "Timeline semaphore not created");
 
         void* semaphoreResource = m_TimelineSemaphore->GetResource();
@@ -150,7 +150,7 @@ namespace SceneryEditorX
 
     void FrameSync::SignalNextFrame()
     {
-        SEDX_CORE_ASSERT(m_Type == FrameSyncType::SyncSemaphoreTimeline, "SignalNextFrame can only be called on timeline semaphores");
+        SEDX_CORE_ASSERT(m_Type == FrameSyncType::SemaphoreTimeline, "SignalNextFrame can only be called on timeline semaphores");
         SEDX_CORE_ASSERT(m_TimelineSemaphore != nullptr, "Timeline semaphore not created");
 
         m_SignalValue++;

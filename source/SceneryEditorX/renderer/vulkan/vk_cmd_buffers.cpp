@@ -25,11 +25,13 @@ namespace SceneryEditorX
      * @brief Get the current command resources for the active queue and frame.
      * @return Reference to the CommandResources for the current frame in the active queue.
      */
+    /*
     CommandResources & CommandBuffer::GetCurrentCommandResources()
     {
         RenderData renderData;
         return queues[currentQueue].commands[renderData.swapChainCurrentFrame];
     }
+    */
 
 	/*
     CommandBuffer::CommandBuffer(bool swapchain)
@@ -188,12 +190,13 @@ namespace SceneryEditorX
 	 * @param debugName Debug name for the command buffers for easier identification in debugging tools.
      * @param swapchain
 	 */
-    CommandBuffer::CommandBuffer(std::string debugName, bool swapchain) : ownedBySwapChain(swapchain), debugName(std::move(debugName))
+    /*
+    CommandBuffer::CommandBuffer(std::string debugName, bool swapchain) : m_OwnedBySwapChain(swapchain), m_DebugName(std::move(debugName))
     {
         auto device = RenderContext::GetCurrentDevice();
-        vkDevice = device;
+        m_Device = device;
 
-        const uint32_t framesInFlight = data.framesInFlight;
+        const uint32_t framesInFlight = m_Data.framesInFlight;
 
         // Timestamp queries
         VkQueryPoolCreateInfo queryPoolCreateInfo{};
@@ -201,27 +204,27 @@ namespace SceneryEditorX
         queryPoolCreateInfo.pNext = nullptr;
 
         constexpr uint32_t maxUserQueries = 16;
-        timeQueryCount = 2 + 2 * maxUserQueries;
+        m_TimeQueryCount = 2 + 2 * maxUserQueries;
 
         queryPoolCreateInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
-        queryPoolCreateInfo.queryCount = timeQueryCount;
+        queryPoolCreateInfo.queryCount = m_TimeQueryCount;
 
-        timestampQueryPools.resize(framesInFlight);
-        for (auto &timestampQueryPool : timestampQueryPools)
+        m_TimestampQueryPools.resize(framesInFlight);
+        for (auto &timestampQueryPool : m_TimestampQueryPools)
             VK_CHECK_RESULT(vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &timestampQueryPool))
 
-        timestampQueryResults.resize(framesInFlight);
-        for (auto &timestampResults : timestampQueryResults)
-            timestampResults.resize(timeQueryCount);
+        m_TimestampQueryResults.resize(framesInFlight);
+        for (auto &timestampResults : m_TimestampQueryResults)
+            timestampResults.resize(m_TimeQueryCount);
 
-        executionGPUTimes.resize(framesInFlight);
-        for (auto &executionTimes : executionGPUTimes)
-            executionTimes.resize(timeQueryCount / 2);
+        m_ExecutionGpuTimes.resize(framesInFlight);
+        for (auto &executionTimes : m_ExecutionGpuTimes)
+            executionTimes.resize(m_TimeQueryCount / 2);
 
         // Pipeline statistics queries
-        pipelineQueryCount = 7;
+        m_PipelineQueryCount = 7;
         queryPoolCreateInfo.queryType = VK_QUERY_TYPE_PIPELINE_STATISTICS;
-        queryPoolCreateInfo.queryCount = pipelineQueryCount;
+        queryPoolCreateInfo.queryCount = m_PipelineQueryCount;
         queryPoolCreateInfo.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT |
                                                  VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT |
                                                  VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT |
@@ -230,13 +233,14 @@ namespace SceneryEditorX
                                                  VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT |
                                                  VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
 
-        pipelineQueryPools.resize(framesInFlight);
-        for (auto &pipelineStatisticsQueryPool : pipelineQueryPools)
+        m_PipelineQueryPools.resize(framesInFlight);
+        for (auto &pipelineStatisticsQueryPool : m_PipelineQueryPools)
             VK_CHECK_RESULT(
                 vkCreateQueryPool(device->GetDevice(), &queryPoolCreateInfo, nullptr, &pipelineStatisticsQueryPool))
 
-        pipelineStatsQueryResults.resize(framesInFlight);
+        m_PipelineStatsQueryResults.resize(framesInFlight);
     }
+    */
 
     /*
     CommandBuffer::CommandBuffer(Queue queue, std::string debugName)
@@ -303,15 +307,39 @@ namespace SceneryEditorX
     }
     */
 
+    /*
+    CommandBuffer::CommandBuffer(Queue queue, Ref<CommandPool> *cmdPool, std::string debugName)
+    {
+        m_QType = queue;
+        // command buffer
+        {
+            VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+            Ref<CommandPool> cmdPoolRef = *cmdPool;
+
+            VkCommandBufferAllocateInfo allocateInfo = {};
+            allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocateInfo.commandPool = cmdPoolRef->GetCmdPool();
+            allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocateInfo.commandBufferCount = 1;
+
+            // allocate
+            SEDX_ASSERT(vkAllocateCommandBuffers(device, &allocateInfo,reinterpret_cast<VkCommandBuffer *>(&m_Resource)));
+            RenderContext::Get()->GetLogicDevice()->SetDebugName(m_Resource, ResourceType::None, debugName.c_str());
+        }
+
+    }
+    */
+
     /**
 	 * @brief Destructor for CommandBuffer class. Cleans up allocated Vulkan command buffers.
 	 */
+    /*
     CommandBuffer::~CommandBuffer()
     {
-        if (ownedBySwapChain)
+        if (m_OwnedBySwapChain)
             return;
 
-        auto deviceRef = vkDevice ? vkDevice : RenderContext::GetCurrentDevice();
+        auto deviceRef = m_Device ? m_Device : RenderContext::GetCurrentDevice();
         auto dev = deviceRef->GetDevice();
 
         /*
@@ -321,30 +349,30 @@ namespace SceneryEditorX
             vkFreeCommandBuffers(dev, cmdPool, static_cast<uint32_t>(cmdBuffers.size()), cmdBuffers.data());
             cmdBuffers.clear();
         }
-        */
+        #1#
 
         // Destroy fences
-        for (auto &f : waitFences)
+        for (auto &f : m_WaitFences)
         {
             if (f)
                 vkDestroyFence(dev, f, nullptr);
         }
-        waitFences.clear();
+        m_WaitFences.clear();
 
         // Destroy query pools
-        for (auto &qp : timestampQueryPools)
+        for (auto &qp : m_TimestampQueryPools)
         {
             if (qp)
                 vkDestroyQueryPool(dev, qp, nullptr);
         }
-        timestampQueryPools.clear();
+        m_TimestampQueryPools.clear();
 
-        for (auto &qp : pipelineQueryPools)
+        for (auto &qp : m_PipelineQueryPools)
         {
             if (qp)
                 vkDestroyQueryPool(dev, qp, nullptr);
         }
-        pipelineQueryPools.clear();
+        m_PipelineQueryPools.clear();
 
         /*
         // Destroy command pool
@@ -352,8 +380,9 @@ namespace SceneryEditorX
         {
             vkDestroyCommandPool(dev, cmdPool, nullptr);
             cmdPool = nullptr;
-        }*/
+        }#1#
     }
+    */
 
     // -------------------------------------------------------
 
@@ -361,6 +390,7 @@ namespace SceneryEditorX
 	 * @brief Static accessor method to get the singleton instance of CommandBuffer
 	 * @return Reference to the singleton CommandBuffer instance
 	 */
+    /*
     Ref<CommandBuffer> CommandBuffer::Get()
     {
         static Ref<CommandBuffer> cmdBuffersInstance; // Static instance to ensure a single shared instance
@@ -372,6 +402,7 @@ namespace SceneryEditorX
         }
         return cmdBuffersInstance;
     }
+    */
 
     // -------------------------------------------------------
 
@@ -385,9 +416,10 @@ namespace SceneryEditorX
 	 * Additionally, it resets and initializes timestamp and pipeline statistics query pools
 	 * to enable performance measurements during command execution.
 	 */
+	/*
 	void CommandBuffer::Begin()
 	{
-        availTimeQuery = 2;
+        m_AvailTimeQuery = 2;
 
 		Ref<CommandBuffer> instance(this);
 		Renderer::Submit([instance]() mutable
@@ -400,28 +432,29 @@ namespace SceneryEditorX
 			cmdBufInfo.pNext = nullptr;
 
 			VkCommandBuffer commandBuffer = nullptr;
-			if (instance->ownedBySwapChain)
+			if (instance->m_OwnedBySwapChain)
 			{
 				SwapChain& swapChain = Application::Get().GetWindow().GetSwapChain();
 				commandBuffer = swapChain.GetDrawCommandBuffer(commandBufferIndex);
 			}
 			else
 			{
-				commandBufferIndex %= instance->cmdBuffers.size();
-                commandBuffer = instance->cmdBuffers[commandBufferIndex];
+				commandBufferIndex %= instance->m_CmdBuffers.size();
+                commandBuffer = instance->m_CmdBuffers[commandBufferIndex];
 			}
-			instance->activeCmdBuffer = commandBuffer;
+			instance->m_ActiveCmdBuffer = commandBuffer;
 			VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &cmdBufInfo))
 
 			// Timestamp query
-			vkCmdResetQueryPool(commandBuffer, instance->timestampQueryPools[commandBufferIndex], 0, instance->timeQueryCount);
-			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], 0);
+			vkCmdResetQueryPool(commandBuffer, instance->m_TimestampQueryPools[commandBufferIndex], 0, instance->m_TimeQueryCount);
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->m_TimestampQueryPools[commandBufferIndex], 0);
 
 			// Pipeline stats query
-			vkCmdResetQueryPool(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0, instance->pipelineQueryCount);
-			vkCmdBeginQuery(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0, 0);
+			vkCmdResetQueryPool(commandBuffer, instance->m_PipelineQueryPools[commandBufferIndex], 0, instance->m_PipelineQueryCount);
+			vkCmdBeginQuery(commandBuffer, instance->m_PipelineQueryPools[commandBufferIndex], 0, 0);
 		});
 	}
+	*/
 
     /**
 	 * @fn Begin
@@ -486,23 +519,25 @@ namespace SceneryEditorX
      * the command buffer and writing a timestamp to the query pool. It ensures that
      * the command buffer is properly closed and ready for submission to the GPU.
      */
+    /*
     void CommandBuffer::End()
     {
         Ref<CommandBuffer> instance(this);
         Renderer::Submit([instance]() mutable
         {
             uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex();
-            if (!instance->ownedBySwapChain)
-                commandBufferIndex %= instance->cmdBuffers.size();
+            if (!instance->m_OwnedBySwapChain)
+                commandBufferIndex %= instance->m_CmdBuffers.size();
 
-            VkCommandBuffer commandBuffer = instance->activeCmdBuffer;
-            vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,instance->timestampQueryPools[commandBufferIndex],1);
-            vkCmdEndQuery(commandBuffer, instance->pipelineQueryPools[commandBufferIndex], 0);
+            VkCommandBuffer commandBuffer = instance->m_ActiveCmdBuffer;
+            vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,instance->m_TimestampQueryPools[commandBufferIndex],1);
+            vkCmdEndQuery(commandBuffer, instance->m_PipelineQueryPools[commandBufferIndex], 0);
             VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer))
 
-            instance->activeCmdBuffer = nullptr;
+            instance->m_ActiveCmdBuffer = nullptr;
         });
     }
+    */
 
     /**
 	 * @fn End
@@ -515,6 +550,7 @@ namespace SceneryEditorX
 	 * It fills out the provided VkSubmitInfo structure with the necessary information
 	 * to submit the command buffer for execution on the GPU.
 	 */
+    /*
     void CommandBuffer::End(VkSubmitInfo submitInfo)
     {
         const auto &cmd = GetCurrentCommandResources();
@@ -527,6 +563,7 @@ namespace SceneryEditorX
         const auto result = vkQueueSubmit(queues[currentQueue].queue, 1, &submitInfo, cmd.fence);
         SEDX_ASSERT(result != VK_SUCCESS, "Failed to submit command buffer to queue");
     }
+    */
 
     /**
      * @fn GetCommandBuffer
@@ -549,21 +586,25 @@ namespace SceneryEditorX
      * 
      * @see Begin, End, Submit
      */
+    /*
     VkCommandBuffer CommandBuffer::GetCommandBuffer(const RenderData &frameIndex) const
     {
-        SEDX_CORE_ASSERT(frameIndex.frameIndex < cmdBuffers.size());
-        return cmdBuffers[frameIndex.frameIndex];
+        SEDX_CORE_ASSERT(frameIndex.frameIndex < m_CmdBuffers.size());
+        return m_CmdBuffers[frameIndex.frameIndex];
     }
+    */
 
     /**
 	 * @brief Submits a command buffer for immediate execution.
 	 * @param cmd Reference to the command buffer to be submitted.
 	 */
+    /*
     void CommandBuffer::ImmediateSubmit(const Ref<CommandBuffer> &cmd)
     {
         if (!cmd) return;
         FlushCmdBuffer();
     }
+    */
 
     /**
      * @brief Submits the current command buffer to the graphics queue for execution
@@ -578,23 +619,24 @@ namespace SceneryEditorX
      * @note This method assumes that the command buffer has already been recorded and is ready
      * for submission.
      */
+    /*
     void CommandBuffer::Submit()
     {
         RenderData renderData;
         const auto &cmd = GetCurrentCommandResources();
 
         constexpr VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        const VkSwapchainKHR swapchain = swapChain.GetSwapchain();
+        const VkSwapchainKHR swapchain = m_SwapChain.GetSwapchain();
 
         VkSubmitInfo submitInfo;
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &imageAvailableSemaphores[renderData.swapChainCurrentFrame];
+        submitInfo.pWaitSemaphores = &m_ImageAvailableSemaphores[renderData.swapChainCurrentFrame];
         submitInfo.pWaitDstStageMask = &waitStages;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &(cmd.buffer);
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &renderFinishedSemaphores[renderData.swapChainCurrentFrame];
+        submitInfo.pSignalSemaphores = &m_RenderFinishedSemaphores[renderData.swapChainCurrentFrame];
 
         VkPresentInfoKHR presentInfo;
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -607,6 +649,7 @@ namespace SceneryEditorX
 
         // NOTE: Actual queue submit/present handled elsewhere in renderer pipeline
     }
+    */
 
     /**
 	 * @brief Submits the command buffer for execution on the GPU.
@@ -671,47 +714,53 @@ namespace SceneryEditorX
      * @brief Begins a timestamp query and returns the query index
      * @return The index of the started timestamp query
      */
+    /*
     uint32_t CommandBuffer::BeginTimestampQuery()
 	{
-        uint32_t queryIndex = availTimeQuery;
-        availTimeQuery += 2;
+        uint32_t queryIndex = m_AvailTimeQuery;
+        m_AvailTimeQuery += 2;
         Ref<CommandBuffer> instance(this);
 		Renderer::Submit([instance, queryIndex]()
 		{
-			uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->cmdBuffers.size();
-			VkCommandBuffer commandBuffer = instance->cmdBuffers[commandBufferIndex];
-			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], queryIndex);
+			uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->m_CmdBuffers.size();
+			VkCommandBuffer commandBuffer = instance->m_CmdBuffers[commandBufferIndex];
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->m_TimestampQueryPools[commandBufferIndex], queryIndex);
 		});
 		return queryIndex;
 	}
+	*/
 
     /**
 	 * @brief Ends a timestamp query for the given query ID
 	 * @param queryID The index of the timestamp query to end
 	 */
+	/*
 	void CommandBuffer::EndTimestampQuery(uint32_t queryID)
 	{
         Ref<CommandBuffer> instance(this);
 		Renderer::Submit([instance, queryID]()
 		{
-            uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->cmdBuffers.size();
-            VkCommandBuffer commandBuffer = instance->cmdBuffers[commandBufferIndex];
-			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->timestampQueryPools[commandBufferIndex], queryID + 1);
+            uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->m_CmdBuffers.size();
+            VkCommandBuffer commandBuffer = instance->m_CmdBuffers[commandBufferIndex];
+			vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, instance->m_TimestampQueryPools[commandBufferIndex], queryID + 1);
 		});
 	}
+	*/
 
     // -------------------------------------------------------
 
+    /*
     void CommandBuffer::FlushCmdBuffer()
 	{
         Ref<CommandBuffer> instance(this);
 		Renderer::Submit([instance]()
 		{
-			uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->cmdBuffers.size();
-			VkCommandBuffer commandBuffer = instance->cmdBuffers[commandBufferIndex];
+			uint32_t commandBufferIndex = Renderer::GetCurrentRenderThreadFrameIndex() % instance->m_CmdBuffers.size();
+			VkCommandBuffer commandBuffer = instance->m_CmdBuffers[commandBufferIndex];
 			vkCmdEndRenderPass(commandBuffer);
 		});
 	}
+	*/
 
     // -------------------------------------------------------
 

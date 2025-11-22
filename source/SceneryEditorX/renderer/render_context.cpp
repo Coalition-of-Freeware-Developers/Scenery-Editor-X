@@ -179,7 +179,6 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             AppData appData;
-            RenderData renderData;
 
             // Get Vulkan API version
             VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion);
@@ -471,57 +470,56 @@ namespace SceneryEditorX
             */
 
 			// TODO: In future move and replace with CommandManager, ThreadCommandPools system, and CommandPool class.
-            {
-                VkCommandPoolCreateInfo poolInfo{};
-                poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-                poolInfo.flags = 0;
 
-                VkCommandBufferAllocateInfo allocInfo{};
-                allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-                allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                allocInfo.commandBufferCount = 1;
+			VkCommandPoolCreateInfo poolInfo{};
+			poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			poolInfo.flags = 0;
 
-				
-                for (int q = 0; q < Queue::Count; q++)
-                {
-                    InternalQueue &queue = queues[q];
-                    poolInfo.queueFamilyIndex = queue.family;
-                    queue.commands.resize(renderData.framesInFlight);
-                    for (int i = 0; std::cmp_less(i, renderData.framesInFlight); i++)
-                    {
-                        auto res = vkCreateCommandPool(m_Device->GetDevice(), &poolInfo, allocatorCallback, &queue.commands[i].pool);
-                        VK_CHECK_RESULT(res)
+			VkCommandBufferAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandBufferCount = 1;
 
-                        allocInfo.commandPool = queue.commands[i].pool;
-                        res = vkAllocateCommandBuffers(m_Device->GetDevice(), &allocInfo, &queue.commands[i].buffer);
-                        VK_CHECK_RESULT(res)
+			for (int q = 0; q < Queue::Count; q++)
+			{
+			    RenderData renderData;
+			    InternalQueue &queue = queues[q];
+			    poolInfo.queueFamilyIndex = queue.family;
+			    queue.commands.resize(renderData.framesInFlight);
+			    for (int i = 0; std::cmp_less(i, renderData.framesInFlight); i++)
+			    {
+			        auto res = vkCreateCommandPool(m_Device->GetDevice(), &poolInfo, allocatorCallback, &queue.commands[i].pool);
+			        VK_CHECK_RESULT(res)
 
-                        queue.commands[i].staging = CreateBuffer(StagingBufferSize, BufferUsage::TransferSrc, MemoryType::CPU,"StagingBuffer" + ToString(q) + "_" + ToString(i));
-                        void *mappedData = nullptr;
-                        vmaMapMemory(m_Device->GetMemoryAllocator(), queue.commands[i].staging.resource->allocation, &mappedData);
-                        queue.commands[i].stagingCpu = static_cast<uint8_t *>(mappedData);
+			        allocInfo.commandPool = queue.commands[i].pool;
+			        res = vkAllocateCommandBuffers(m_Device->GetDevice(), &allocInfo, &queue.commands[i].buffer);
+			        VK_CHECK_RESULT(res)
 
-                        VkFenceCreateInfo fenceInfo{};
-                        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-                        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-                        vkCreateFence(m_Device->GetDevice(), &fenceInfo, allocatorCallback, &queue.commands[i].fence);
+			        queue.commands[i].staging = CreateBuffer(StagingBufferSize, BufferUsage::TransferSrc, MemoryType::CPU,"StagingBuffer" + ToString(q) + "_" + ToString(i));
+			        void *mappedData = nullptr;
+			        vmaMapMemory(m_Device->GetMemoryAllocator(), queue.commands[i].staging.resource->allocation, &mappedData);
+			        queue.commands[i].stagingCpu = static_cast<uint8_t *>(mappedData);
 
-                        VkQueryPoolCreateInfo queryPoolInfo{};
-                        queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-                        queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
-                        queryPoolInfo.queryCount = TimeStampPerPool;
-                        res = vkCreateQueryPool(m_Device->GetDevice(), &queryPoolInfo, allocatorCallback, &queue.commands[i].queryPool);
-                        VK_CHECK_RESULT(res)
+			        VkFenceCreateInfo fenceInfo{};
+			        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+			        vkCreateFence(m_Device->GetDevice(), &fenceInfo, allocatorCallback, &queue.commands[i].fence);
 
-                        queue.commands[i].timeStamps.clear();
-                        queue.commands[i].timeStampNames.clear();
+			        VkQueryPoolCreateInfo queryPoolInfo{};
+			        queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+			        queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+			        queryPoolInfo.queryCount = TimeStampPerPool;
+			        res = vkCreateQueryPool(m_Device->GetDevice(), &queryPoolInfo, allocatorCallback, &queue.commands[i].queryPool);
+			        VK_CHECK_RESULT(res)
 
-						SEDX_CORE_TRACE("Initialized command resources for queue {} frame {}", q, i);
-                    }
+			        queue.commands[i].timeStamps.clear();
+			        queue.commands[i].timeStampNames.clear();
 
-					SEDX_CORE_INFO("Initialized command resources for queue {}", q);
-                }
-            }
+					SEDX_CORE_TRACE("Initialized command resources for queue {} frame {}", q, i);
+			    }
+
+				SEDX_CORE_INFO("Initialized command resources for queue {}", q);
+			}
 
             SEDX_CORE_INFO("RenderContext initialization complete");
             m_IsInitialized = true;

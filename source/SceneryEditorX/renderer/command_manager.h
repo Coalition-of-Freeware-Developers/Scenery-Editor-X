@@ -11,13 +11,13 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "clear_value.h"
 #include "command_pool.h"
 #include "frame_sync.h"
 #include "image_data.h"
 #include "texture.h"
 #include "viewport.h"
 #include "vulkan/vk_device.h"
-#include "clear_value.h"
 #include "vulkan/vk_enums.h"
 #include "vulkan/vk_pipeline.h"
 #include <stack>
@@ -30,6 +30,8 @@
 namespace SceneryEditorX
 {
     class SwapChain;
+
+    // -------------------------------------------------------
 
     /**
      * @brief Thread-local command pool manager for multithreaded recording
@@ -48,6 +50,8 @@ namespace SceneryEditorX
         typedef std::unordered_map<int, Ref<CommandPool>> PoolMap;
         static std::unordered_map<std::thread::id, PoolMap>& Pools();
     };
+
+    // -------------------------------------------------------
 
     /**
      * @enum CommandState
@@ -86,9 +90,9 @@ namespace SceneryEditorX
         virtual ~CommandManager() override;
 
 		void Begin();
-        void Submit(FrameSync *semaphoreWait, bool immediate);
-        void ExecutionWait(bool waitTime = false);
-        void PipelineState();
+        void Submit(FrameSync *semaphoreWait, const bool immediate);
+        void ExecutionWait(const bool waitTime = false);
+        void SetPipelineState();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Draw Commands																								  ///
@@ -211,9 +215,9 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void RenderPassEnd();
         FrameSync* GetRenderingCompleteSemaphore()		{ return m_RenderingCompleteSemaphore.Get(); }
-        void* GetRhiResource() const                    { return m_Resource; }
+        void* GetResource() const						{ return m_Resource; }
 	    CommandState GetState() const					{ return m_State; }
-        Queue* GetQueue() const							{ return m_Queue; }
+        //QueueManager* GetQueue() const					{ return m_Queue; }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Image Layouts																								  ///
@@ -247,11 +251,9 @@ namespace SceneryEditorX
         std::stack<const char*> m_ActiveTimeblocks;
         std::stack<const char*> m_DebugLabelStack;
         std::mutex m_MutexReset;
-        //Pipeline m_pso;
         std::vector<ImageBarrierInfo> m_ImageBarriers;
-        Queue *m_Queue										= nullptr;
+        //QueueManager *m_Queue								= nullptr;
         bool m_Load_Depth_RenderTarget						= false;
-        //std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Resources																									  ///

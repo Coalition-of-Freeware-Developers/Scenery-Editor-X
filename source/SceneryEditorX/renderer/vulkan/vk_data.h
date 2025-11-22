@@ -427,16 +427,16 @@ namespace SceneryEditorX
         uint32_t swapChainCurrentFrame = 0;
 
         /** @brief Hardware vendor name of the GPU device */
-        std::string Vendor;
+        std::string vendor;
 
 	    /** @brief Driver version information */
-        std::string Version;
+        std::string version;
 
         /** @brief Name of the GPU device being used */
-        std::string Device;
+        std::string device;
 
         /** @brief Vulkan API version supported by the device */
-        struct apiVersion { int Variant = 0, Major = 0, Minor = 0, Patch = 0; };
+        struct ApiVersion { int variant = 0, major = 0, minor = 0, patch = 0; };
 
         /**
 		 * @brief Check if the swap chain needs to be recreated
@@ -553,7 +553,7 @@ namespace SceneryEditorX
         UVec4 uintValues;
     };
 
-	/// ClearColorValue is more compatible with C-style or raw data copying, practically identical to ImageClearValue
+	// ClearColorValue is more compatible with C-style or raw data copying, practically identical to ImageClearValue
 	/*
 	union ClearColorValue
     {

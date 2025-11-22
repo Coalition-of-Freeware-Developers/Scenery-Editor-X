@@ -105,7 +105,7 @@ namespace SceneryEditorX
 	     * @param frameIndex (Reserved) Current frame index supplied by renderer; currently
 	     *                   unused but kept for future validation / diagnostics.
 	     */
-	    static void NextFrame(uint32_t frameIndex); // move resource free ring
+	    static void NextFrame(uint64_t frameIndex); // move resource free ring
 
 	    /**
 	     * @brief Query initialization state.
@@ -138,7 +138,7 @@ namespace SceneryEditorX
 	    static std::mutex				s_RFMutex;              // Protects resource free ring operations
         static RenderData				s_RenderData;           // Number of concurrent frames (ring size)
 	    static std::vector<RFQueue>		s_ResourceFreeRing;     // Frame-delayed destruction buckets
-	    static uint32_t					s_CurrentRFIndex;       // Index of frame bucket most recently completed
+	    static uint64_t					s_CurrentRFIndex;       // Index of frame bucket most recently completed
 	};
 
 }

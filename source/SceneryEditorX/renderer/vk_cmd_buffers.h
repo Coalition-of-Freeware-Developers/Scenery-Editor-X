@@ -77,7 +77,7 @@ namespace SceneryEditorX
      * @details This class provides a high-level interface for managing Vulkan command buffers
      * with proper frame-in-flight synchronization, query pools for performance monitoring,
      * and integration with the CommandPool system. It handles:
-     * 
+     *
      * 1. Command buffer allocation and management per frame
      * 2. Timestamp and pipeline statistics queries
      * 3. Proper synchronization with fences and semaphores
@@ -91,7 +91,7 @@ namespace SceneryEditorX
      *     .queueType = Queue::Graphics,
      *     .count = 0 // One per frame in flight
      * });
-     * 
+     *
      * cmdBuffer->Begin(frameIndex);
      * // Record commands...
      * cmdBuffer->End();
@@ -106,7 +106,7 @@ namespace SceneryEditorX
          * @param info Configuration for the command buffer creation
          */
         explicit CommandBuffer(const CommandBufferInfo& info);
-        
+
         /**
          * @brief Destructor - cleans up all Vulkan resources
          */
@@ -240,7 +240,7 @@ namespace SceneryEditorX
          * @param debugName Debug name for the command buffer
          * @return Configured command buffer ready for immediate use
          */
-        static Ref<CommandBuffer> CreateOneShot(Queue queueType = Queue::Graphics, 
+        static Ref<CommandBuffer> CreateOneShot(Queue queueType = Queue::Graphics,
                                                const std::string& debugName = "OneShot");
 
     private:

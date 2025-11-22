@@ -38,6 +38,13 @@ namespace SceneryEditorX
         uint32_t max_Y_ShadingRateTexel = 0;;
     }
 
+    namespace
+    {
+		std::mutex mutexAllocation;
+		std::mutex mutexDeletionQueue;
+		std::pmr::unordered_map<ResourceType, std::pmr::vector<void *>> deletionQueue;
+    }
+
 	//////////////////////////////////////////////////////////
 	/// VulkanPhysicalDevice Implementation
 	//////////////////////////////////////////////////////////
@@ -2014,6 +2021,23 @@ namespace SceneryEditorX
 		return 0; // Return a default value to avoid undefined behavior
 	}
 
-}
+    void VulkanDevice::SetDebugName(void *resource, const ResourceType resourceType, const char *name)
+    {
+        SEDX_ASSERT(resource != nullptr);
+        SEDX_ASSERT(vkSetDebugUtilsObjectNameEXT != nullptr);
+
+        VkDebugUtilsObjectNameInfoEXT nameInfo = {};
+        nameInfo.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        nameInfo.objectType		= static_cast<VkObjectType>(resourceType);
+        nameInfo.objectHandle	= reinterpret_cast<uint64_t>(resource);
+        nameInfo.pObjectName	= name;
+
+        // Set the debug name
+        vkSetDebugUtilsObjectNameEXT(m_Device, &nameInfo);
+    }
+
+
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

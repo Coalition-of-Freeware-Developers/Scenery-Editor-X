@@ -894,7 +894,7 @@ namespace SceneryEditorX::Utils
 	
 		///< Create or update the global render data structure
 		SceneryEditorX::RenderData deviceData;
-		deviceData.Device = deviceName;
+		deviceData.device = deviceName;
 	
 		//SEDX_CORE_DEBUG_TAG("VULKAN", "Device name successfully stored in render data structure");
 		

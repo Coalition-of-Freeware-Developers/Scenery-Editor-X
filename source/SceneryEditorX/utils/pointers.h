@@ -950,7 +950,10 @@ namespace SceneryEditorX
 	template <typename T, typename... Args>
 	Ref<T> CreateRef(Args&&... args)
 	{
-		static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted");
+        static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted");
+        static_assert(std::is_constructible_v<T, Args &&...>,
+            "Type T is not constructible with the provided arguments. Check that T's constructor matches Args.");
+
         return Ref<T>(new T(std::forward<Args>(args)...));
 	}
 

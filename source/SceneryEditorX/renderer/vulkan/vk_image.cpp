@@ -107,6 +107,7 @@ namespace SceneryEditorX
 		return { width >> mipLevel, height >> mipLevel };
 	}
 
+	/*
 	void Image2D::Invalidate_RenderThread()
 	{
 		SEDX_CORE_VERIFY(m_Specification.width > 0 && m_Specification.height > 0);
@@ -257,6 +258,7 @@ namespace SceneryEditorX
 			BindlessDescriptorManager::RegisterStorageImage(m_Info.view, VK_IMAGE_LAYOUT_GENERAL);
 		}
 	}
+	*/
 
     void Image2D::CreatePerLayerImageViews()
     {
@@ -399,6 +401,7 @@ namespace SceneryEditorX
 		return s_ImageReferences;
 	}
 
+	/*
 	void Image2D::SetData(Buffer buffer)
 	{
 		SEDX_CORE_VERIFY(m_Specification.transfer, "Image must be created with ImageSpecification::Transfer enabled!");
@@ -495,7 +498,7 @@ namespace SceneryEditorX
 			 * Insert a memory dependency at the proper pipeline stages that will execute the image layout transition
 			 * Source pipeline stage is copy command execution (VK_PIPELINE_STAGE_TRANSFER_BIT)
 			 * Destination pipeline stage fragment shader access (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
-             */
+             #1#
 			vkCmdPipelineBarrier(
 				copyCmd,
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -522,7 +525,9 @@ namespace SceneryEditorX
 			UpdateDescriptor();
 		}
 	}
+	*/
 
+	/*
 	void Image2D::CopyToHostBuffer(Buffer &buffer) const
 	{
 		auto device = RenderContext::GetCurrentDevice();
@@ -601,6 +606,7 @@ namespace SceneryEditorX
 
 		allocator.DestroyBuffer(stagingBuffer, stagingBufferAllocation);
 	}
+	*/
 
 }
 

@@ -431,6 +431,7 @@ namespace SceneryEditorX
         return {width, height};
     }
 
+    /*
     void Texture2D::GenerateMips()
     {
 	    const auto device = RenderContext::GetCurrentDevice()->GetDevice();
@@ -583,6 +584,7 @@ namespace SceneryEditorX
 		RenderContext::GetCurrentDevice()->FlushCmdBuffer(commandBuffer);
 #endif
     }
+    */
 
     size_t Texture2D::CalculateMipSize(const TextureSpecification &spec, uint32_t bits_per_channel, uint32_t channel_count)
     {

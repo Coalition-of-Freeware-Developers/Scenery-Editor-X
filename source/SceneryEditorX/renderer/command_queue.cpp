@@ -11,7 +11,6 @@
 * -------------------------------------------------------
 */
 #include "command_queue.h"
-#include "SceneryEditorX/core/memory/memory.h"
 #include <mutex>
 
 // -------------------------------------------------------
@@ -30,23 +29,21 @@ namespace SceneryEditorX
 		}
     }
 
-
-
-    CommandQueue::CommandQueue(Queue queueType, const std::string &debugName) : m_qType(queueType)
+    CommandQueue::CommandQueue(Queue queueType, const std::string &debugName) : m_QType(queueType)
     {
         // Legacy allocation (kept to avoid touching broader lifetime assumptions)
-        m_cmdBuffer = new uint8_t[1];
-        m_cmdBufferPtr = m_cmdBuffer;
+        m_CmdBuffer = new uint8_t[1];
+        m_CmdBufferPtr = m_CmdBuffer;
     }
 
     CommandQueue::~CommandQueue()
     {
-        delete[] m_cmdBuffer;
+        delete[] m_CmdBuffer;
     }
 
     void CommandQueue::Wait(const bool flush)
     {
-        std::lock_guard<std::mutex> lock(GetMutex(this)); (void)flush;
+        std::scoped_lock lock(GetMutex(this)); (void)flush;
     }
 
     void CommandQueue::Submit(void *cmdBufferIn, uint32_t waitFlags)

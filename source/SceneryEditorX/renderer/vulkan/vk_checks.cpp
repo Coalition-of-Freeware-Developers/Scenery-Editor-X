@@ -54,10 +54,10 @@ namespace SceneryEditorX
 	        return false;
 	    }
 
-	    RenderData::apiVersion vulkanVersion = {.Variant = vulkanVersion.Variant = VK_API_VERSION_VARIANT(instanceVersion),
-                                                .Major = vulkanVersion.Major = VK_API_VERSION_MAJOR(instanceVersion),
-                                                .Minor = vulkanVersion.Minor = VK_API_VERSION_MINOR(instanceVersion),
-                                                .Patch = vulkanVersion.Patch = VK_API_VERSION_PATCH(instanceVersion)};
+	    RenderData::ApiVersion vulkanVersion = {.variant = vulkanVersion.variant = VK_API_VERSION_VARIANT(instanceVersion),
+                                                .major = vulkanVersion.major = VK_API_VERSION_MAJOR(instanceVersion),
+                                                .minor = vulkanVersion.minor = VK_API_VERSION_MINOR(instanceVersion),
+                                                .patch = vulkanVersion.patch = VK_API_VERSION_PATCH(instanceVersion)};
 
 	    if (instanceVersion < minVulkanVersion)
 	    {

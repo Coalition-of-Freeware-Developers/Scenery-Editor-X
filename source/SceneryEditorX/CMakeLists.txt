@@ -62,7 +62,6 @@ FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQ
 SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
 
 # --------------------------------
-
 ADD_LIBRARY(AppCore
 	${ASSET_ANIMATION_FILES}
 	${ASSET_IMPORTER_FILES}
@@ -103,7 +102,8 @@ ADD_LIBRARY(AppCore
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
 	${UTILS_FILESTREAM}
-    # --------------------------------
+
+	# --------------------------------
 	asset/asset.cpp
 	asset/asset.h
 	asset/asset_extensions.h
@@ -115,12 +115,14 @@ ADD_LIBRARY(AppCore
 	asset/mesh_file.h
 	asset/object.cpp
 	asset/object.h
+
 	# --------------------------------
 	${CMAKE_SOURCE_DIR}/source/SceneryEditorX/EntryPoint.h
 	core/base.hpp
 	core/initializer.cpp
 	core/initializer.h
 	core/version.h
+
 	# --------------------------------
 	renderer/2d_renderer.cpp
 	renderer/2d_renderer.h
@@ -130,6 +132,7 @@ ADD_LIBRARY(AppCore
 	renderer/blend_state.h
 	renderer/camera.cpp
 	renderer/camera.h
+	renderer/clear_value.h
 	renderer/command_manager.cpp
 	renderer/command_manager.h
 	renderer/command_pool.cpp
@@ -154,6 +157,8 @@ ADD_LIBRARY(AppCore
 	renderer/pipeline_states.h
 	renderer/primitives.cpp
 	renderer/primitives.h
+	#renderer/queue_manager.cpp
+	#renderer/queue_manager.h
 	renderer/rasterizer.cpp
 	renderer/rasterizer.h
 	renderer/render_config.h
@@ -178,6 +183,7 @@ ADD_LIBRARY(AppCore
 	renderer/texture.h
 	renderer/viewport.cpp
 	renderer/viewport.h
+
 	# --------------------------------
 	ui/colors.h
 	ui/fonts.h
@@ -196,7 +202,8 @@ ADD_LIBRARY(AppCore
 	ui/ui_renderer.h
 	ui/ui_utils.cpp
 	ui/ui_utils.h
-    # --------------------------------
+
+	# --------------------------------
 	utils/container_utils.h
 	utils/delegations.h
 	utils/formatter.h
@@ -208,8 +215,9 @@ ADD_LIBRARY(AppCore
 	utils/system_detection.h
 	utils/repeat_call_tracker.h
 	utils/repeat_call_tracker.cpp
-    # --------------------------------
-    ${RESOURCE_FILE}
+
+	# --------------------------------
+	${RESOURCE_FILE}
 	cpp.hint
 )
 
@@ -340,10 +348,11 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/blend_state.h
 	renderer/camera.cpp
 	renderer/camera.h
+	renderer/clear_value.h
 	renderer/command_manager.cpp
 	renderer/command_manager.h
-	renderer/command_queue.cpp
-	renderer/command_queue.h
+	#renderer/command_queue.cpp
+	#renderer/command_queue.h
 	renderer/compute_pass.cpp
 	renderer/compute_pass.h
 	renderer/dds.h
@@ -364,6 +373,8 @@ SOURCE_GROUP("Renderer" FILES
 	renderer/pipeline_states.h
 	renderer/primitives.cpp
 	renderer/primitives.h
+	#renderer/queue_manager.cpp
+	#renderer/queue_manager.h
 	renderer/rasterizer.cpp
 	renderer/rasterizer.h
 	renderer/render_config.h

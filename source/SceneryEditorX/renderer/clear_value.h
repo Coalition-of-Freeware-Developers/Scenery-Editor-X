@@ -11,8 +11,8 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include <xMath/includes/colors.h>
 #include <vulkan/vulkan.h>
+#include <xMath/includes/colors.h>
 
 // -------------------------------------------------------
 

@@ -67,10 +67,10 @@ namespace SceneryEditorX
         virtual ~Pipeline() override;
         void Invalidate();
 
-		PipelineData &GetSpecification() { return m_pipelineSpecs; }
-	    const PipelineData &GetSpecification() const { return m_pipelineSpecs; }
+		PipelineData &GetSpecification() { return m_PipelineSpecs; }
+	    const PipelineData &GetSpecification() const { return m_PipelineSpecs; }
 
-	    Ref<Shader> GetShader() const { return m_pipelineSpecs.shader; }
+	    Ref<Shader> GetShader() const { return m_PipelineSpecs.shader; }
         bool DynamicLineWidth() const;
 
         struct Stage
@@ -81,36 +81,36 @@ namespace SceneryEditorX
         };
 
         VkExtent2D GetFloatSwapExtent();
-        VkPipeline GetPipeline() const { return m_pipeline; }
-		VkPipelineLayout GetPipelineLayout() const { return m_pipelineLayout; }
-        std::array<Color, MAX_RENDER_TARGET_COUNT> clear_color;
-        std::array<Texture*, MAX_RENDER_TARGET_COUNT> render_target_color_textures;
+        VkPipeline GetPipeline() const { return m_Pipeline; }
+		VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
+        std::array<Color, MAX_RENDER_TARGET_COUNT> clearColor;
+        std::array<Texture*, MAX_RENDER_TARGET_COUNT> render_TargetColorTextures;
 
 	private:
-        PipelineType m_point;
-        std::vector<Stage> m_stages;
-        std::string m_name;
-        std::vector<VkFormat> m_vertexAttributes;
-        std::vector<VkFormat> m_colorFormats;
-        bool m_useDepth = false;
-        VkFormat m_depthFormat;
-        bool m_cullFront = false;
-        bool m_lineTopology = false;
+        PipelineType m_Point;
+        std::vector<Stage> m_Stages;
+        std::string m_Name;
+        std::vector<VkFormat> m_VertexAttributes;
+        std::vector<VkFormat> m_ColorFormats;
+        bool m_UseDepth = false;
+        VkFormat m_DepthFormat;
+        bool m_CullFront = false;
+        bool m_LineTopology = false;
 
-	    uint32_t m_width = 0;
-        uint32_t m_height = 0;
-        uint64_t m_hash = 0;
+	    uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
+        uint64_t m_Hash = 0;
 
-        PipelineData m_pipelineSpecs;
-        Ref<PipelineResource> m_pipeResource;
-        std::vector<std::vector<char>> m_stageBytes;
+        PipelineData m_PipelineSpecs;
+        Ref<PipelineResource> m_PipeResource;
+        std::vector<std::vector<char>> m_StageBytes;
 
-        void *m_resource = nullptr;
-        void *m_resource_layout = nullptr;
+        void *m_Resource = nullptr;
+        void *m_Resource_Layout = nullptr;
 
-        VkPipeline m_pipeline = nullptr;
-        VkPipelineLayout m_pipelineLayout = nullptr;
-        VkPipelineCache m_pipelineCache = nullptr;
+        VkPipeline m_Pipeline = nullptr;
+        VkPipelineLayout m_PipelineLayout = nullptr;
+        VkPipelineCache m_PipelineCache = nullptr;
 	};
 
 }

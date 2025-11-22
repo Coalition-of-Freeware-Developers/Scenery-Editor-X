@@ -16,6 +16,7 @@
 #include "compute_pass.h"
 #include "rasterizer.h"
 #include "render_dispatcher.h"
+#include "render_pass.h"
 #include "sampler.h"
 #include "texture.h"
 #include "viewport.h"
@@ -28,7 +29,6 @@
 #include "fonts/font.h"
 #include "shaders/shader.h"
 #include "vulkan/vk_cmd_buffers.h"
-#include "render_pass.h"
 
 // -------------------------------------------------------
 
@@ -90,7 +90,6 @@ namespace SceneryEditorX
 
         static void Init();
 		static void Shutdown();
-
         static void BeginFrame();
         static void EndFrame();
         static void SubmitFrame();
@@ -101,13 +100,13 @@ namespace SceneryEditorX
         * @brief Access current frame's aggregated immutable render data.
         * @return Reference to the active RenderData structure.
         */
-        static RenderData &GetRenderData();
+        static RenderData& GetRenderData();
 
         /**
         * @brief Replace the active frame RenderData.
         * @param renderData New data snapshot copied into internal storage.
         */
-        static void SetRenderData(const RenderData &renderData);
+        static void SetRenderData(const RenderData& renderData);
 
         /**
          * @brief Get the current frame-in-flight index (ring buffer slot).
@@ -125,7 +124,7 @@ namespace SceneryEditorX
          * @param pool Optional explicit pool override.
          * @return Populated VkDescriptorSetAllocateInfo ready for vkAllocateDescriptorSets.
          */
-        //VkDescriptorSetAllocateInfo DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count = 1, VkDescriptorPool pool = nullptr);
+        VkDescriptorSetAllocateInfo DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count = 1, VkDescriptorPool pool = nullptr);
 
         /**
          * @brief Allocate one or more descriptor sets from the current frame's pool.
@@ -146,7 +145,7 @@ namespace SceneryEditorX
          * @param samplerCreateInfo Mutable create info (fields may be adjusted internally).
          * @return Created VkSampler handle.
          */
-        static VkSampler CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo);
+        static VkSampler CreateSampler(const VkSamplerCreateInfo& samplerCreateInfo);
 
         /**
          * @brief Destroy a Vulkan sampler previously created via CreateSampler().
@@ -383,15 +382,15 @@ namespace SceneryEditorX
         // -------------------------------------------------------
 
 		// TODO: These are temporary and will be replaced with the Image and ImageView classes.
-		std::vector<VkImage> m_images;
-		std::vector<VkImageView> m_imageViews;
+		std::vector<VkImage> m_Images;
+		std::vector<VkImageView> m_ImageViews;
 
         // -------------------------------------------------------
 
-	    std::array<Ref<Texture2D>, static_cast<uint32_t>(RenderTarget::MaxEnum)> &GetRenderTargets();
-        std::array<Ref<Shader>, static_cast<uint32_t>(ShaderType::MaxEnum)> &GetShaders();
-        std::array<Ref<Buffer>, static_cast<uint32_t>(RendererBufferId::MaxEnum)> &GetStructuredBuffers();
-        std::array<Ref<Sampler>, static_cast<uint32_t>(SamplerPreset::MaxEnum)> &GetSamplers();
+	    std::array<Ref<Texture2D>,	static_cast<uint32_t>(RenderTarget::MaxEnum)>		&GetRenderTargets();
+        std::array<Ref<Shader>,		static_cast<uint32_t>(ShaderType::MaxEnum)>			&GetShaders();
+        std::array<Ref<Buffer>,		static_cast<uint32_t>(RendererBufferId::MaxEnum)>	&GetStructuredBuffers();
+        std::array<Ref<Sampler>,	static_cast<uint32_t>(SamplerPreset::MaxEnum)>		&GetSamplers();
 
         Rasterizer* GetRasterizerState(RasterizerState type);
         BlendState* GetBlendState(const BlendMode type);

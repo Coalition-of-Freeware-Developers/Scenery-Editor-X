@@ -11,6 +11,7 @@
 * -------------------------------------------------------
 */
 #include "command_manager.h"
+#include "debug/debugging.h"
 #include "vulkan/vk_cmd_buffers.h"
 #include "vulkan/vk_util.h"
 
@@ -107,37 +108,314 @@ namespace SceneryEditorX
     }
 
     // -------------------------------------------------------
+    namespace timestamp
+    {
+        constexpr uint32_t QueryCount = 256;
+        std::array<uint64_t, QueryCount> data;
+
+		void Update(void *queryPool)
+		{
+            VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+		    if (Debugging::IsGpuTimingEnabled())
+                vkGetQueryPoolResults(device,                               // Device
+                                      static_cast<VkQueryPool>(queryPool),	// Query Pool
+                                      0,                                    // First Query
+                                      QueryCount,                           // Query Count
+                                      QueryCount * sizeof(uint64_t),        // Data Size
+                                      data.data(),                          // pData
+                                      sizeof(uint64_t),                     // Stride
+                                      VK_QUERY_RESULT_64_BIT                // Flags
+                );
+        }
+
+		void Reset(void *cmdList, void *&queryPool)
+		{
+		    if (Debugging::IsGpuTimingEnabled())
+                vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmdList), static_cast<VkQueryPool>(queryPool), 0, QueryCount);
+        }
+
+    } // namespace timestamp
+
+    namespace occlusion
+    {
+		uint32_t index = 0;
+		uint32_t indexActive = 0;
+		bool occlusionQueryActive = false;
+        constexpr uint32_t QueryCount = 4096;
+		std::array<uint64_t, QueryCount> data;
+		std::unordered_map<uint64_t, uint32_t> idToIndex;
+
+		void Update(void *queryPool)
+		{
+            VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+		    vkGetQueryPoolResults(device,												// Device
+		                          static_cast<VkQueryPool>(queryPool),					// Query Pool
+		                          0,													// First Query
+		                          QueryCount,											// Query Count
+		                          QueryCount * sizeof(uint64_t),						// Data Size
+		                          data.data(),											// pData
+		                          sizeof(uint64_t),										// Stride
+		                          VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT	// Flags
+		    );
+		}
+
+		void Reset(void *cmdList, void *&queryPool)
+		{
+		    vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmdList),
+		                        static_cast<VkQueryPool>(queryPool),
+		                        0,
+		                        QueryCount);
+		}
+
+    } // namespace occlusion
+
+    void Init(void *&poolTimestamp, void *&poolOcclusion, void *&poolPipelineStats)
+	{
+        VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+        // Timestamps
+        if (Debugging::IsGpuTimingEnabled())
+        {
+            VkQueryPoolCreateInfo query_pool_info = {};
+            query_pool_info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+            query_pool_info.queryType = VK_QUERY_TYPE_TIMESTAMP;
+            query_pool_info.queryCount = timestamp::QueryCount;
+
+            auto queryPool = reinterpret_cast<VkQueryPool *>(&poolTimestamp);
+            SEDX_ASSERT(vkCreateQueryPool(device, &query_pool_info, nullptr, queryPool));
+            RenderContext::Get()->GetLogicDevice()->SetDebugName(poolTimestamp, ResourceType::None,"query_pool_timestamp");
+
+            timestamp::data.fill(0);
+        }
+
+        // Occlusion
+        {
+            VkQueryPoolCreateInfo query_pool_info = {};
+            query_pool_info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+            query_pool_info.queryType = VK_QUERY_TYPE_OCCLUSION;
+            query_pool_info.queryCount = occlusion::QueryCount;
+
+            auto queryPool = reinterpret_cast<VkQueryPool *>(&poolOcclusion);
+            SEDX_ASSERT(vkCreateQueryPool(device, &query_pool_info, nullptr, queryPool));
+            RenderContext::Get()->GetLogicDevice()->SetDebugName(poolTimestamp, ResourceType::None,"query_pool_occlusion");
+
+            occlusion::data.fill(0);
+        }  
+	}
+
+    void Shutdown(void *&poolTimestamp, void *&poolOcclusion, void *&poolPipelineStatistics)
+    {
+        auto device = RenderContext::Get()->GetLogicDevice();
+        //QueueManager::DeletionQueueAdd(ResourceType::QueryPool, poolTimestamp);
+        //QueueManager::DeletionQueueAdd(ResourceType::QueryPool, poolOcclusion);
+        //QueueManager::DeletionQueueAdd(ResourceType::QueryPool, poolPipelineStatistics);
+    }
+
+    // -------------------------------------------------------
 
     CommandManager::CommandManager(Queue *queue, void *cmdPool, const std::string &debugName)
     {
-        m_Queue = queue;
-        //Ref<CommandBuffer> cmdBuffer = CreateRef<CommandBuffer>(cmdPool, debugName);
+        //m_Queue = queue;
+
+        // Command Buffer
+        {
+            VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+            VkCommandBufferAllocateInfo allocateInfo = {};
+            allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocateInfo.commandPool = static_cast<VkCommandPool>(cmdPool);
+            allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocateInfo.commandBufferCount = 1;
+
+            // Allocate Command Buffer
+            SEDX_ASSERT(vkAllocateCommandBuffers(device, &allocateInfo, reinterpret_cast<VkCommandBuffer *>(&m_Resource)));
+            RenderContext::Get()->GetLogicDevice()->SetDebugName(m_Resource, ResourceType::None, debugName.c_str());
+        }
+
+		// Semaphores
+        m_RenderingCompleteSemaphore			= CreateRef<FrameSync>(FrameSyncType::Semaphore, debugName.c_str());
+		m_RenderingCompleteSemaphoreTimeline	= CreateRef<FrameSync>(FrameSyncType::SemaphoreTimeline, debugName.c_str());
+		Init(m_QueryPool_Timestamps, m_QueryPool_Occlusion, m_QueryPool_PipelineStats);
     }
 
     CommandManager::~CommandManager()
     {
-
+        Shutdown(m_QueryPool_Timestamps, m_QueryPool_Occlusion, m_QueryPool_PipelineStats);
     }
 
+    /*
     void CommandManager::Begin()
     {
+        SEDX_ASSERT(m_State == CommandState::IDLE);
+
+        // Begin Command Buffer
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        SEDX_ASSERT(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_Resource), &beginInfo) == VK_SUCCESS,"Failed to begin command buffer");
+
+        // enable breadcrumbs for this command list
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(this, m_Queue, m_name.c_str());
+        }
+
+        // set states
+        m_State = CommandState::RECORDING;
+        m_Pso = PipelineState();
+        m_CullMode = CullMode::Max;
+
+        // set dynamic states
+        if (m_Queue->GetType() == Queue::Graphics)
+        {
+            // cull mode
+            SetCullMode(CullMode::Back);
+
+            // scissor rectangle
+            xMath::Rectangle scissorRect;
+            scissorRect.x = 0.0f;
+            scissorRect.y = 0.0f;
+            scissorRect.width = static_cast<float>(m_Pso.GetWidth());
+            scissorRect.height = static_cast<float>(m_Pso.GetHeight());
+            SetScissorRectangle(scissorRect);
+        }
+
+        // queries
+        if (m_Queue->GetType() != Queue::Transfer)
+        {
+            if (m_Timestamp_Index != 0)
+            {
+                timestamp::Update(m_QueryPool_Timestamps);
+            }
+
+            // queries need to be reset before they are first used and they
+            // also need to be reset after every use, so we just reset them always
+            m_Timestamp_Index = 0;
+            timestamp::Reset(m_Resource, m_QueryPool_Timestamps);
+            occlusion::Reset(m_Resource, m_QueryPool_Occlusion);
+        }
 
     }
+    */
 
+    /*
     void CommandManager::Submit(FrameSync *semaphoreWait, bool immediate)
     {
+        SEDX_ASSERT(m_State == CommandState::RECORDING);
 
+        // End
+        RenderPassEnd();
+        SEDX_ASSERT(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_Resource)));
+
+        // immediate command lists wait on the CPU using the timeline semaphore
+        FrameSync *semaphoreBinary = is_immediate ? nullptr : m_RenderingCompleteSemaphore.Get();
+
+        m_Queue->Submit(static_cast<VkCommandBuffer>(m_Resource),	// cmd buffer
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,          // wait flags
+                        semaphoreWait,                              // wait semaphore
+                        semaphoreBinary,                           // signal semaphore
+                        m_RenderingCompleteSemaphoreTimeline.Get()	// signal semaphore
+        );
+
+        if (semaphoreWait)
+            semaphoreWait->SetUserCmdList(this);
+
+        m_State = CommandState::SUBMITTED;
     }
+    */
 
     void CommandManager::ExecutionWait(bool waitTime)
     {
 
     }
 
-    void CommandManager::PipelineState()
+    /*
+    void CommandManager::SetPipelineState()
     {
+        SEDX_ASSERT(m_State == CommandState::RECORDING);
 
+        // early exit if the pipeline state hasn't changed
+        pso.Prepare();
+        if (m_Pso.GetHash() == pso.GetHash())
+            return;
+
+        // determine if the new render pass should clear the render targets or not
+        if ((m_Pso.shaders[ShaderStage::Stage::Vertex] != nullptr &&
+             m_Pso.shaders[ShaderStage::Stage::Vertex] == pso.shaders[ShaderStage::Stage::Vertex]) &&
+            m_Pso.render_target_array_index == pso.render_target_array_index)
+        {
+            m_Load_Depth_RenderTarget = (pso.render_target_depth_texture == m_Pso.render_target_depth_texture);
+            for (uint32_t i = 0; i < m_MaxRenderTargetCount; i++)
+            {
+                m_LoadColorRenderTargets[i] =
+                    (pso.render_target_color_textures[i] == m_Pso.render_TargetColorTextures[i]);
+            }
+        }
+        else
+        {
+            m_Load_Depth_RenderTarget = false;
+            for (uint32_t i = 0; i < m_MaxRenderTargetCount; i++)
+            {
+                m_LoadColorRenderTargets[i] = false;
+            }
+        }
+
+        // get (or create) a pipeline which matches the requested pipeline state
+        m_Pso = pso;
+        RenderContext::GetCurrentDevice()->GetOrCreatePipeline(m_Pso, m_pipeline, m_descriptor_layout_current);
+
+        RenderPassBegin();
+
+        // set pipeline
+        {
+            // get vulkan pipeline object
+            SEDX_ASSERT(m_Pipeline != nullptr);
+            VkPipeline vk_pipeline = static_cast<VkPipeline>(m_Pipeline->GetResource());
+            SEDX_ASSERT(vk_pipeline != nullptr);
+
+            // bind
+            VkPipelineBindPoint pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+            pipelineBindPoint = m_Pso.IsGraphics() ? VK_PIPELINE_BIND_POINT_GRAPHICS : pipelineBindPoint;
+            pipelineBindPoint = m_Pso.IsRayTracing() ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : pipelineBindPoint;
+            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_Resource), pipelineBindPoint, vk_pipeline);
+            Profiler::m_rhi_bindings_pipeline++;
+
+            // set some dynamic states
+            if (m_Pso.IsGraphics())
+            {
+                // cull mode
+                if (m_Pso.rasterizer_state->GetPolygonMode() == PolygonMode::Line)
+                    SetCullMode(CullMode::None);
+
+                // scissor rectangle
+                xMath::Rectangle scissorRect;
+                scissorRect.x = 0.0f;
+                scissorRect.y = 0.0f;
+                scissorRect.width = static_cast<float>(m_Pso.GetWidth());
+                scissorRect.height = static_cast<float>(m_Pso.GetHeight());
+                SetScissorRectangle(scissorRect);
+
+                // vertex and index buffer state
+                m_BufferID_Index = 0;
+                m_BufferID_Vertex = 0;
+                m_BufferID_Instance = 0;
+            }
+
+            if (Debugging::IsBreadcrumbsEnabled())
+                RHI_VendorTechnology::Breadcrumbs_SetPipelineState(this, m_pipeline);
+        }
+
+        // Bind Descriptors
+        {
+            // Set Bindless Descriptors
+            descriptor_sets::set_bindless(m_Pso, m_Resource, m_pipeline->GetRhiResourceLayout());
+
+            // Set standard resources (dynamic descriptors)
+            Renderer::SetStandardResources(this);
+            descriptor_sets::set_dynamic(m_Pso,
+                                         m_Resource,
+                                         m_Pipeline->GetResourceLayout(),
+                                         m_descriptor_layout_current);
+        }
     }
+    */
 
     void CommandManager::Draw(const uint32_t count, const uint32_t vertexStartIdx)
     {
@@ -161,13 +439,96 @@ namespace SceneryEditorX
 
     void CommandManager::Dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
-
+        /*SEDX_ASSERT(m_State == CommandState::RECORDING);
+        PreDraw();
+        vkCmdDispatch(static_cast<VkCommandBuffer>(m_Resource), x, y, z);*/
     }
 
+    /*
     void CommandManager::Blit(Texture *src, Texture *dst, const bool blitMips, const float srcScaling)
     {
+        SEDX_ASSERT(src && dst, "Source and destination textures cannot be null");
+        SEDX_ASSERT((src->GetFlags() & TextureClearBlit) != 0, "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+        SEDX_ASSERT((dst->GetFlags() & Texture_ClearBlit) != 0, "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+        SEDX_ASSERT(src->GetChannelCount() == dst->GetChannelCount(), "Source and destination must have matching channel counts for blit compatibility");
+        SEDX_ASSERT(src->GetBitsPerChannel() == dst->GetBitsPerChannel() || (src->IsColorFormat() && dst->IsColorFormat()), "Source and destination bit depths must match or be convertible color formats");
+        SEDX_ASSERT(!src->IsDepthFormat() || !dst->IsDepthFormat() || src->GetFormat() == dst->GetFormat(), "Depth formats must be identical for blit");
+        if (blitMips)
+            SEDX_ASSERT(src->GetMipCount() == dst->GetMipCount(),
+                        "If the mips are blitted, then the mip count between the source and the destination textures "
+                        "must match");
+
+        // compute a blit region for each mip
+        std::array<VkOffset3D, MAX_MIP_COUNT> blitOffsetsSource = {};
+        std::array<VkOffset3D, MAX_MIP_COUNT> blitOffsetsDestination = {};
+        std::array<VkImageBlit, MAX_MIP_COUNT> blitRegions = {};
+        uint32_t blitRegionCount = blitMips ? src->GetMipCount() : 1;
+        for (uint32_t mipIndex = 0; mipIndex < blitRegionCount; mipIndex++)
+        {
+            VkOffset3D &source_blit_size = blitOffsetsSource[mipIndex];
+            source_blit_size.x = static_cast<int32_t>(src->GetWidth() * srcScaling) >> mipIndex;
+            source_blit_size.y = static_cast<int32_t>(src->GetHeight() * srcScaling) >> mipIndex;
+            source_blit_size.z = 1;
+
+            VkOffset3D &destination_blit_size = blitOffsetsDestination[mipIndex];
+            destination_blit_size.x = dst->GetWidth() >> mipIndex;
+            destination_blit_size.y = dst->GetHeight() >> mipIndex;
+            destination_blit_size.z = 1;
+
+            VkImageBlit &blit_region = blitRegions[mipIndex];
+            blit_region.srcSubresource.mipLevel = mipIndex;
+            blit_region.srcSubresource.baseArrayLayer = 0;
+            blit_region.srcSubresource.layerCount = 1;
+            blit_region.srcSubresource.aspectMask = get_spect_mask(src->GetFormat());
+            blit_region.srcOffsets[0] = {0, 0, 0};
+            blit_region.srcOffsets[1] = source_blit_size;
+            blit_region.dstSubresource.mipLevel = mipIndex;
+            blit_region.dstSubresource.baseArrayLayer = 0;
+            blit_region.dstSubresource.layerCount = 1;
+            blit_region.dstSubresource.aspectMask = get_aspect_mask(dst->GetFormat());
+            blit_region.dstOffsets[0] = {0, 0, 0};
+            blit_region.dstOffsets[1] = destination_blit_size;
+        }
+
+        // save the initial layouts
+        std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts_initial_source = src->GetLayouts();
+        std::array<Layout::ImageLayout, MAX_MIP_COUNT> layouts_initial_destination = dst->GetLayouts();
+
+        // transition to blit appropriate layouts
+        src->SetLayout(Layout::ImageLayout::Transfer_Source, this);
+        dst->SetLayout(Layout::ImageLayout::Transfer_Destination, this);
+
+        VkFilter filter =
+            (src->IsDepthFormat() || dst->IsDepthFormat() ||
+             (src->GetWidth() == dst->GetWidth() && src->GetHeight() == dst->GetHeight())) ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+
+        // blit
+        vkCmdBlitImage(static_cast<VkCommandBuffer>(m_Resource),
+                       static_cast<VkImage>(src->GetResource()),
+                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       static_cast<VkImage>(dst->GetResource()),
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                       blitRegionCount,
+                       &blitRegions[0],
+                       filter);
+
+        // transition to the initial layouts
+        if (blitMips)
+        {
+            for (uint32_t i = 0; i < src->GetMipCount(); i++)
+            {
+                src->SetLayout(layouts_initial_source[i], this, i, 1);
+                dst->SetLayout(layouts_initial_destination[i], this, i, 1);
+            }
+        }
+        else
+        {
+            src->SetLayout(layouts_initial_source[0], this);
+            dst->SetLayout(layouts_initial_destination[0], this);
+        }
 
     }
+    */
 
     /*
     void CommandManager::Blit(Texture *source, SwapChain *destination)

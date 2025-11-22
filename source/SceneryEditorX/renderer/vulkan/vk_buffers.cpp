@@ -280,6 +280,7 @@ namespace SceneryEditorX
      * @param dstBuffer
      * @param size
      */
+    /*
     void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         // Get device and command buffer from render context
@@ -292,6 +293,7 @@ namespace SceneryEditorX
 
         CommandBuffer::Get()->FlushCmdBuffer();
     }
+	*/
 
     /**
      * @brief Copies data between two Vulkan buffers with offset support
@@ -302,8 +304,8 @@ namespace SceneryEditorX
      * @param srcOffset Offset in the source buffer (in bytes)
      * @param dstOffset Offset in the destination buffer (in bytes)
      */
-    void CopyBufferRegion(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
-                         VkDeviceSize srcOffset, VkDeviceSize dstOffset)
+    /*
+    void CopyBufferRegion(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkDeviceSize srcOffset, VkDeviceSize dstOffset)
     {
         /// Get device and command buffer from render context
 	    auto device = RenderContext::Get()->GetLogicDevice();
@@ -318,6 +320,7 @@ namespace SceneryEditorX
 
         CommandBuffer::Get()->FlushCmdBuffer();
     }
+    */
 
     /**
 	 * @brief Copies data from a Vulkan buffer to a Vulkan image
@@ -327,6 +330,7 @@ namespace SceneryEditorX
 	 * @param width The width of the image in pixels
 	 * @param height The height of the image in pixels
 	 */
+    /*
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
     {
         // Get device and command buffer from render context
@@ -347,6 +351,7 @@ namespace SceneryEditorX
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
         CommandBuffer::Get()->FlushCmdBuffer();
     }
+    */
 
     // ----------------------------------------------------------
 

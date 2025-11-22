@@ -59,21 +59,21 @@ namespace SceneryEditorX
 
         //Shader::ShaderMaterialDescriptorSet QuadDescriptorSet;
         //std::unordered_map<SceneRenderer*, std::vector<Shader::ShaderMaterialDescriptorSet>> RendererDescriptorSet;
-        VkDescriptorSet ActiveRendererDescriptorSet = nullptr;
-        std::vector<VkDescriptorPool> DescriptorPools;
-        VkDescriptorPool MaterialDescriptorPool;
-        std::vector<uint32_t> DescriptorPoolAllocationCount;
+        VkDescriptorSet activeRendererDescriptorSet = nullptr;
+        std::vector<VkDescriptorPool> descriptorPools;
+        VkDescriptorPool materialDescriptorPool;
+        std::vector<uint32_t> descriptorPoolAllocationCount;
 
         /** UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor */
-		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> UniformBufferWriteDescriptorCache;
-		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> StorageBufferWriteDescriptorCache;
+		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> uniformBufferWriteDescriptorCache;
+		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> storageBufferWriteDescriptorCache;
 
         /** Default samplers */
-        VkSampler SamplerClamp = nullptr;
-        VkSampler SamplerPoint = nullptr;
+        VkSampler samplerClamp = nullptr;
+        VkSampler samplerPoint = nullptr;
 
-        int32_t SelectedDrawCall = -1;
-        int32_t DrawCallCount = 0;
+        int32_t selectedDrawCall = -1;
+        int32_t drawCallCount = 0;
 
         //Ref<ShaderLibrary> m_ShaderLibrary;
         //Ref<Texture2D> WhiteTexture;
@@ -99,24 +99,23 @@ namespace SceneryEditorX
 
     namespace
     {
-		// resolution & viewport
-		Vec2 m_resolution_render = Vec2(0.0f);
-		Vec2 m_resolution_output = Vec2(0.0f, 0.0f);
-		Viewport m_viewport = Viewport(0, 0, 0, 0);
+		// Resolution & Viewport
+		Vec2 m_ResolutionRender = Vec2(0.0f);
+		Vec2 m_ResolutionOutput = Vec2(0.0f, 0.0f);
+		Viewport m_Viewport = Viewport(0, 0, 0, 0);
 
-        uint64_t frame_num = 0;
-        Vec2 jitter_offset = Vec2(0.0f, 0.0f);
+        uint64_t frameNumber = 0;
+        Vec2 jitterOffset = Vec2(0.0f, 0.0f);
         constexpr uint32_t RESOLUTION_SHADOW_MIN = 128;
-        float near_plane = 0.0f;
-        float far_plane = 1.0f;
-        bool dirty_orthographic_projection = true;
-
+        float nearPlane = 0.0f;
+        float farPlane = 1.0f;
+        bool dirtyOrthographicProjection = true;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Static Variables
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    static RenderData m_renderData;
+    static RenderData m_RenderData;
     static RendererProperties *s_Data = nullptr;
 	static bool s_Initialized = false;
     std::vector<FrameSync> s_FrameSyncObjects;
@@ -169,13 +168,12 @@ namespace SceneryEditorX
         // Initialize async render dispatcher
         RenderDispatcher::Init();
 
-
         // Create synchronization objects for each frame in flight
         s_FrameSyncObjects.clear();
         s_FrameSyncObjects.reserve(config.framesInFlight);
         for (uint32_t i = 0; i < config.framesInFlight; ++i)
         {
-            s_FrameSyncObjects.emplace_back(FrameSyncType::SyncFence, fmt::format("FrameSync[{}]", i), true, true, true);
+            s_FrameSyncObjects.emplace_back(FrameSyncType::Fence, fmt::format("FrameSync[{}]", i), true, true, true);
             SEDX_CORE_INFO_TAG("RENDERER", "Frame sync objects created for frame {}", i);
         }
 
@@ -189,9 +187,9 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO_TAG("Renderer", "Checked Swapchain image count:");
 		SEDX_CORE_INFO("Frames-in-flight: {}", config.framesInFlight);
 
-        s_Data->DescriptorPools.resize(config.framesInFlight);
+        s_Data->descriptorPools.resize(config.framesInFlight);
 		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPools");
-        s_Data->DescriptorPoolAllocationCount.resize(config.framesInFlight);
+        s_Data->descriptorPoolAllocationCount.resize(config.framesInFlight);
 		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPool Allocation Count");
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +198,7 @@ namespace SceneryEditorX
 
         Submit([]() mutable
         {
-            /// Create Descriptor Pool
+            // Create Descriptor Pool
 			const VkDescriptorPoolSize poolSizes[] =
 			{
 				{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
@@ -216,38 +214,38 @@ namespace SceneryEditorX
 				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
 			};
 
-			VkDescriptorPoolCreateInfo pool_info = {};
-            pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-            pool_info.maxSets = 100000;
-            pool_info.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(poolSizes));
-            pool_info.pPoolSizes = poolSizes;
+			VkDescriptorPoolCreateInfo poolInfo = {};
+            poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+            poolInfo.maxSets = 100000;
+            poolInfo.poolSizeCount = static_cast<uint32_t>(IM_ARRAYSIZE(poolSizes));
+            poolInfo.pPoolSizes = poolSizes;
             const VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
             const uint32_t framesInFlight = GetRenderData().framesInFlight;
             for (uint32_t i = 0; i < framesInFlight; i++)
             {
-                VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &s_Data->DescriptorPools[i]))
-                s_Data->DescriptorPoolAllocationCount[i] = 0;
+                VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &s_Data->descriptorPools[i]))
+                s_Data->descriptorPoolAllocationCount[i] = 0;
             }
 
-            VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &s_Data->MaterialDescriptorPool))
+            VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &s_Data->materialDescriptorPool))
         });
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Create Fullscreen Quad
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        /*
         constexpr float x = -1;
         constexpr float y = -1;
         constexpr float width = 2;
         constexpr float height = 2;
 		struct QuadVertex
 		{
-			Vec3 Position;
-			Vec2 TexCoord;
+			Vec3 position;
+			Vec2 texCoord;
 		};
 
+        /*
 		QuadVertex* data = new QuadVertex[4];
 
 		data[0].Position = Vec3(x, y, 0.0f);
@@ -308,8 +306,8 @@ namespace SceneryEditorX
 		BindlessDescriptorManager::FlushPending();
 		BindlessDescriptorManager::Shutdown();
 
-		if (s_Data->SamplerPoint) { DestroySampler(s_Data->SamplerPoint); s_Data->SamplerPoint = nullptr; }
-		if (s_Data->SamplerClamp) { DestroySampler(s_Data->SamplerClamp); s_Data->SamplerClamp = nullptr; }
+		if (s_Data->samplerPoint) { DestroySampler(s_Data->samplerPoint); s_Data->samplerPoint = nullptr; }
+		if (s_Data->samplerClamp) { DestroySampler(s_Data->samplerClamp); s_Data->samplerClamp = nullptr; }
 
 #if SEDX_HAS_SHADER_COMPILER
         VulkanShaderCompiler::ClearUniformBuffers();
@@ -336,11 +334,11 @@ namespace SceneryEditorX
             /** Reset descriptor pools here */
             VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
             uint32_t bufferIndex = swapChain.GetCurrentBufferIndex();
-            vkResetDescriptorPool(device, s_Data->DescriptorPools[bufferIndex], 0);
-            memset(s_Data->DescriptorPoolAllocationCount.data(),0,
-                   s_Data->DescriptorPoolAllocationCount.size() * sizeof(uint32_t));
+            vkResetDescriptorPool(device, s_Data->descriptorPools[bufferIndex], 0);
+            memset(s_Data->descriptorPoolAllocationCount.data(),0,
+                   s_Data->descriptorPoolAllocationCount.size() * sizeof(uint32_t));
 
-            s_Data->DrawCallCount = 0;
+            s_Data->drawCallCount = 0;
 
 
 			VkCommandBufferBeginInfo cmdBufInfo = {};
@@ -378,9 +376,9 @@ namespace SceneryEditorX
     /** Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction. */
 
     //Ref<ShaderLibrary> Renderer::GetShaderLibrary() { return s_Data->m_ShaderLibrary; }
-    RenderData &Renderer::GetRenderData() { return m_renderData; }
-    void Renderer::SetRenderData(const RenderData &renderData) { m_renderData = renderData; }
-	uint64_t Renderer::GetCurrentFrameIndex() { return m_renderData.frameIndex; }
+    RenderData &Renderer::GetRenderData() { return m_RenderData; }
+    void Renderer::SetRenderData(const RenderData &renderData) { m_RenderData = renderData; }
+	uint64_t Renderer::GetCurrentFrameIndex() { return m_RenderData.frameIndex; }
 
 	/*
 	VkDescriptorSetAllocateInfo Renderer::DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count, VkDescriptorPool pool)
@@ -418,23 +416,23 @@ namespace SceneryEditorX
         return Application::Get().GetWindow().GetSwapChain().GetCurrentBufferIndex();
     }
 
-    const Viewport& Renderer::GetViewport() { return m_viewport; }
+    const Viewport& Renderer::GetViewport() { return m_Viewport; }
 
     void Renderer::SetViewport(float width, float height)
     {
         SEDX_ASSERT(width != 0, "Width can't be zero");
         SEDX_ASSERT(height != 0, "Height can't be zero");
 
-        if (m_viewport.GetWidth() != width || m_viewport.GetHeight() != height)
+        if (m_Viewport.GetWidth() != width || m_Viewport.GetHeight() != height)
         {
-            m_viewport.SetSize(width, height);
-            dirty_orthographic_projection = true;
+            m_Viewport.SetSize(width, height);
+            dirtyOrthographicProjection = true;
         }
     }
 
-    const Vec2& Renderer::GetResolutionRender() { return m_resolution_render; }
-    const Vec2 &Renderer::GetResolutionOutput() { return m_resolution_output; }
-    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->DescriptorPoolAllocationCount[frameIndex]; }
+    const Vec2& Renderer::GetResolutionRender() { return m_ResolutionRender; }
+    const Vec2 &Renderer::GetResolutionOutput() { return m_ResolutionOutput; }
+    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->descriptorPoolAllocationCount[frameIndex]; }
 
     void Renderer::BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear)
     {

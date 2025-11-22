@@ -28,7 +28,7 @@ namespace SceneryEditorX
     RenderData RenderDispatcher::s_RenderData;          // Renderer-provided data (frames in flight, etc.)
     std::vector<RenderDispatcher::RFQueue>
     RenderDispatcher::s_ResourceFreeRing;				// Ring of per-frame deferred destruction job buckets
-    uint32_t RenderDispatcher::s_CurrentRFIndex = 0;	// Index of the frame bucket that just became safe for destruction
+    uint64_t RenderDispatcher::s_CurrentRFIndex = 0;	// Index of the frame bucket that just became safe for destruction
 
     // -------------------------------------------------------
 
@@ -147,7 +147,7 @@ namespace SceneryEditorX
 	 * previous frame), typically at the end of a frame just before recording the next.
 	 * @param frameIndex (Reserved for future validation) - currently unused.
 	 */
-	void RenderDispatcher::NextFrame(uint32_t frameIndex)
+	void RenderDispatcher::NextFrame(uint64_t frameIndex)
 	{
         if (!s_Instance)
             return;

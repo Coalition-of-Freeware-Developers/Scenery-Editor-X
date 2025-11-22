@@ -39,13 +39,13 @@ namespace SceneryEditorX
 
     struct PipelineStats
     {
-        uint64_t s_InputAssemblyVertices = 0;
-        uint64_t s_InputAssemblyPrimitives = 0;
-        uint64_t s_VertexShaderInvocations = 0;
-        uint64_t s_ClippingInvocations = 0;
-        uint64_t s_ClippingPrimitives = 0;
-        uint64_t s_FragmentShaderInvocations = 0;
-        uint64_t s_ComputeShaderInvocations = 0;
+        uint64_t inputAssemblyVertices = 0;
+        uint64_t inputAssemblyPrimitives = 0;
+        uint64_t vertexShaderInvocations = 0;
+        uint64_t clippingInvocations = 0;
+        uint64_t clippingPrimitives = 0;
+        uint64_t fragmentShaderInvocations = 0;
+        uint64_t computeShaderInvocations = 0;
     };
 
     // -------------------------------------------------------
@@ -55,8 +55,9 @@ namespace SceneryEditorX
 	public:
         CommandBuffer() = default;
         CommandBuffer(std::string debugName, bool swapchain);
-        explicit CommandBuffer(Queue queue, std::string debugName = "");
-        explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
+        //explicit CommandBuffer(Queue queue, std::string debugName = "");
+        //explicit CommandBuffer(uint32_t count = 0, std::string debugName = "");
+        explicit CommandBuffer(Queue queue, Ref<CommandPool> *cmdPool, std::string debugName = "");
         virtual ~CommandBuffer() override;
 
 		static Ref<CommandBuffer> Get(); // Static accessor method to get the singleton instance
@@ -72,16 +73,16 @@ namespace SceneryEditorX
         void Wait(bool flush = false);
         void Execute(void *swapchain, uint32_t imageIdx);
 
-        Queue GetQueueType() const { return qType;}
+        Queue GetQueueType() const { return m_QType;}
         CommandResources& GetCurrentCommandResources();
-		const PipelineStats& GetPipelineStatistics(uint32_t frameIndex) const { return pipelineStatsQueryResults[frameIndex]; }
+		const PipelineStats& GetPipelineStatistics(uint32_t frameIndex) const { return m_PipelineStatsQueryResults[frameIndex]; }
 
         void FlushCmdBuffer(VkCommandBuffer cmdBuffer, VkQueue queue);
         uint32_t BeginTimestampQuery();
 		void EndTimestampQuery(uint32_t queryID);
         void FlushCmdBuffer();
 
-        [[nodiscard]] VkCommandBuffer GetActiveCmdBuffer() const { return activeCmdBuffer; }
+        [[nodiscard]] VkCommandBuffer GetActiveCmdBuffer() const { return m_ActiveCmdBuffer; }
         [[nodiscard]] VkCommandBuffer GetCommandBuffer(const RenderData &frameIndex) const;
 
         /**
@@ -102,42 +103,42 @@ namespace SceneryEditorX
         Ref<CommandPool> GetOrCreateThreadLocalCommandPool();
 
     private:
-        SwapChain swapChain;
-        Ref<VulkanDevice> vkDevice;
+        SwapChain m_SwapChain;
+        Ref<VulkanDevice> m_Device;
 
         Ref<CommandPool> LocalCommandPool();
         Ref<CommandPool> CreateLocalCommandPool();
 
-        Ref<CommandPool> cmdPool = nullptr;
-        VkCommandBuffer activeCmdBuffer = nullptr;
+        Ref<CommandPool> m_CmdPool = nullptr;
+        VkCommandBuffer m_ActiveCmdBuffer = nullptr;
 
-        std::vector<VkFence> waitFences;
-        std::vector<VkCommandBuffer> cmdBuffers;
-        std::vector<PipelineStats> pipelineStatsQueryResults;
+        std::vector<VkFence> m_WaitFences;
+        std::vector<VkCommandBuffer> m_CmdBuffers;
+        std::vector<PipelineStats> m_PipelineStatsQueryResults;
 
-        std::vector<VkQueryPool> timestampQueryPools;
-        std::vector<VkQueryPool> pipelineQueryPools;
+        std::vector<VkQueryPool> m_TimestampQueryPools;
+        std::vector<VkQueryPool> m_PipelineQueryPools;
 
-	    std::map<std::string, float> timeStampTable;
-        std::vector<std::vector<float>> executionGPUTimes;
-        std::vector<std::vector<uint64_t>> timestampQueryResults;
+	    std::map<std::string, float> m_TimeStampTable;
+        std::vector<std::vector<float>> m_ExecutionGpuTimes;
+        std::vector<std::vector<uint64_t>> m_TimestampQueryResults;
 
-        std::vector<VkSemaphore> imageAvailableSemaphores;
-        std::vector<VkSemaphore> renderFinishedSemaphores;
+        std::vector<VkSemaphore> m_ImageAvailableSemaphores;
+        std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 
-	    Queue qType;
-        RenderData data;
+	    Queue m_QType;
+        RenderData m_Data;
+        void *m_Resource = nullptr;
+        bool m_OwnedBySwapChain = false;
+        uint8_t *m_CmdBuffer;
+        uint8_t *m_CmdBufferPtr;
+        std::atomic<uint32_t> m_CmdCount = 0;
 
-        bool ownedBySwapChain = false;
-        uint8_t *cmdBuffer;
-        uint8_t *cmdBufferPtr;
-        std::atomic<uint32_t> cmdCount = 0;
-
-        uint32_t availTimeQuery = 2;
-        uint32_t timeQueryCount = 0;
-        uint32_t pipelineQueryCount = 0;
-        uint32_t timeStampPerPool = 64;
-        std::string debugName;
+        uint32_t m_AvailTimeQuery = 2;
+        uint32_t m_TimeQueryCount = 0;
+        uint32_t m_PipelineQueryCount = 0;
+        uint32_t m_TimeStampPerPool = 64;
+        std::string m_DebugName;
 
         friend class RenderContext;
 	};

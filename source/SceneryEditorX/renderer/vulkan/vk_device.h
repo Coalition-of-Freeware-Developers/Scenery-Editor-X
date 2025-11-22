@@ -195,7 +195,7 @@ namespace SceneryEditorX
         void Tick(uint64_t frame_count) const;
         //Ref<MemoryAllocator> GetValue() const;
         VmaAllocator GetMemoryAllocator() const;
-        VkCommandBuffer GetCommandBuffer(bool cond);
+        //VkCommandBuffer GetCommandBuffer(bool cond);
 
         bool IsValidResolution(uint32_t width, uint32_t height);
 
@@ -212,7 +212,7 @@ namespace SceneryEditorX
         [[nodiscard]] const VkDevice &GetDevice() const { return m_Device; }
 		[[nodiscard]] const Ref<VulkanPhysicalDevice> &GetPhysicalDevice() const {return vkPhysicalDevice;}
         [[nodiscard]] uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-        void SetResourceName(void *resource, const ResourceType resourceType, const char *name);
+        void SetDebugName(void *resource, const ResourceType resourceType, const char *name);
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Function pointers for Vulkan extensions																		   ///

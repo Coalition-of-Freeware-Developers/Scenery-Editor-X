@@ -22,6 +22,7 @@ namespace SceneryEditorX
 	Semaphore::Semaphore(const FrameSyncType type, void*& resource) : m_Resource(resource), m_Type(type)
 	{
 	    SEDX_ASSERT(resource != nullptr, "Semaphore resource cannot be null");
+        Create(m_Type, m_Resource);
 	}
 
     void Semaphore::Create(const FrameSyncType type, void*& resource)
@@ -36,7 +37,7 @@ namespace SceneryEditorX
 	
 	    VkSemaphoreCreateInfo semaphoreCreateInfo;
 	    semaphoreCreateInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	    semaphoreCreateInfo.pNext                 = type == FrameSyncType::SyncSemaphoreTimeline ? &semaphoreTypeInfo : nullptr;
+	    semaphoreCreateInfo.pNext                 = type == FrameSyncType::SemaphoreTimeline ? &semaphoreTypeInfo : nullptr;
 	    semaphoreCreateInfo.flags                 = 0;
 	
 		VK_CHECK_RESULT(vkCreateSemaphore(RenderContext::Get()->GetLogicDevice()->GetDevice(), &semaphoreCreateInfo,nullptr, reinterpret_cast<VkSemaphore*>(&resource)))
