@@ -25,6 +25,7 @@
 namespace SceneryEditorX
 {
 
+    /*
     class Launcher
     {
     public:
@@ -37,28 +38,28 @@ namespace SceneryEditorX
          * 
          * Sets up the graphics engine, UI system, and other core components
          * required for the editor to function properly.
-         */
+         #1#
 		void InitLauncher();
 
         /**
          * @brief Starts the launcher application.
          * 
          * Launches the main application loop and begins processing events.
-         */
+         #1#
 		void Run();
         
         /**
          * @brief Updates the launcher state.
          * 
          * Called each frame to update UI, process input, and manage the editor state.
-         */
+         #1#
         void Update() const;
         
         /**
          * @brief Renders a single frame.
          * 
          * Coordinates the rendering of UI and scene elements for the current frame.
-         */
+         #1#
         void DrawFrame();
         
         /**
@@ -66,14 +67,14 @@ namespace SceneryEditorX
          * 
          * Initializes graphics resources, viewport, and other components
          * needed for launcher operation.
-         */
+         #1#
         void Create();
         
         /**
          * @brief Contains the main application loop.
          * 
          * Manages the continuous execution of the update and render cycle.
-         */
+         #1#
         void MainLoop();
 
         bool isUpdate = false;      /// Flag indicating whether an update is available.
@@ -90,7 +91,7 @@ namespace SceneryEditorX
 		 * This function uses cURL to fetch the latest release information from the GitHub API.
 		 * It then parses the JSON response to extract the latest version tag and compares it with the current version.
 		 * If an update is available, it prints a message indicating the new version. Otherwise, it confirms that the user is using the latest version.
-		 */
+		 #1#
         void UpdateCheck() const;
 
         static void cleanInstall();
@@ -101,49 +102,49 @@ namespace SceneryEditorX
          * @brief Graphics engine instance for rendering.
          * 
          * Manages Vulkan resources, rendering operations, and the window surface.
-         */
+         #1#
         GraphicsEngine gfxEngine;
 
         /**
          * @brief UI system for the editor interface.
          * 
          * Handles drawing and interaction with the editor user interface.
-         */
+         #1#
         UI::GUI ui;
 
         /**
          * @brief Context for UI rendering and interaction.
          * 
          * Provides state and resources needed for UI operations.
-         */
+         #1#
         Ref<UI::UIContext> uiContext;
 
         /**
          * @brief Viewport configuration and state.
          * 
          * Contains settings related to the editor's main viewport.
-         */
+         #1#
         Viewport viewportData;
 
         /**
          * @brief Core rendering configuration and state.
          * 
          * Holds settings and state information used throughout the rendering pipeline.
-         */
+         #1#
         RenderData renderData;
 
         /**
          * @brief Vulkan device features enabled for the application.
          * 
          * Specifies which Vulkan hardware features are used by the editor.
-         */
+         #1#
         VulkanDeviceFeatures vkDeviceFeatures;
 
         /**
          * @brief Index of the current frame being rendered.
          * 
          * Used to track frame-specific resources in the rendering cycle.
-         */
+         #1#
         uint32_t currentFrame = 0;
 
         /// ---------------------------------------------------------
@@ -164,26 +165,26 @@ namespace SceneryEditorX
 		 * @param nmemb Number of data elements.
 		 * @param userp Pointer to the user-defined string where the data will be appended.
 		 * @return The number of bytes actually taken care of.
-		 */
+		 #1#
         static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
         /**
          * @brief New size for viewport when resizing occurs.
          * 
          * Stores the target size for viewport recreation when dimensions change.
-         */
+         #1#
         Viewport newViewportSize = viewportData.GetViewportSize();
 
         /**
 	     * @brief Counter for total frames rendered since application start.
-	     */
+	     #1#
         uint32_t frameCount = 0;
 
         /**
          * @brief Handle to the logical Vulkan device.
          * 
          * Direct access to the Vulkan device for resource management operations.
-         */
+         #1#
         VkDevice device = VK_NULL_HANDLE;
 
         /**
@@ -191,7 +192,7 @@ namespace SceneryEditorX
          * 
          * Allocates and initializes framebuffers, render targets, and other 
          * resources required for rendering to the viewport.
-         */
+         #1#
         void CreateViewportResources();
 
         /**
@@ -199,7 +200,7 @@ namespace SceneryEditorX
          * 
          * Releases framebuffers, render targets, and other resources 
          * associated with viewport rendering.
-         */
+         #1#
         void CleanupViewportResources();
 
         /**
@@ -210,7 +211,7 @@ namespace SceneryEditorX
          * 
          * @param width New surface width in pixels
          * @param height New surface height in pixels
-         */
+         #1#
         void OnSurfaceUpdate(uint32_t width, uint32_t height);
 
         /**
@@ -218,10 +219,11 @@ namespace SceneryEditorX
          * 
          * Rebuilds swap chain images, framebuffers, and other resources
          * needed for rendering when the rendering context changes.
-         */
+         #1#
         //void RecreateFrameResources();
 
     };
+    */
 
 }
 

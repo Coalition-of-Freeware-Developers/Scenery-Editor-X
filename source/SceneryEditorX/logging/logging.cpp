@@ -38,25 +38,25 @@ namespace SceneryEditorX
 	 */
 	std::map<std::string, Log::TagDetails> Log::DefaultTagDetails_ =
 	{
-	    {"Animation",			    TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-	    {"Asset Pack",			TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-	    {"AssetManager",		    TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
-	    {"LibraryManager",		TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
-		{"AssetLoader",			TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-		{"AssetLoaderGLTF",		TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-		{"AssetLoaderOBJ",		TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-		{"AssetLoaderFBX",		TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-	    {"AssetSystem",			TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
-	    {"Assimp",				TagDetails{.Enabled = true,.LevelFilter = Level::Error}},
-	    {"Core",					TagDetails{.Enabled = true,.LevelFilter = Level::Trace}},
-	    {"GLFW",					TagDetails{.Enabled = true,.LevelFilter = Level::Error}},
-	    {"Memory",				TagDetails{.Enabled = true,.LevelFilter = Level::Error}},
-	    {"Mesh",				    TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-	    {"Project",				TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-	    {"Renderer",				TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
-	    {"Scene",					TagDetails{.Enabled = true,.LevelFilter = Level::Info}},
-	    {"Scripting",				TagDetails{.Enabled = true,.LevelFilter = Level::Warn}},
-	    {"Timer",					TagDetails{.Enabled = false,.LevelFilter = Level::Trace}},
+	    {"Animation",			    TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+	    {"Asset Pack",			TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+	    {"AssetManager",		    TagDetails{.enabled = true,.levelFilter = Level::Info}},
+	    {"LibraryManager",		TagDetails{.enabled = true,.levelFilter = Level::Info}},
+		{"AssetLoader",			TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+		{"AssetLoaderGLTF",		TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+		{"AssetLoaderOBJ",		TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+		{"AssetLoaderFBX",		TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+	    {"AssetSystem",			TagDetails{.enabled = true,.levelFilter = Level::Info}},
+	    {"Assimp",				TagDetails{.enabled = true,.levelFilter = Level::Error}},
+	    {"Core",					TagDetails{.enabled = true,.levelFilter = Level::Trace}},
+	    {"GLFW",					TagDetails{.enabled = true,.levelFilter = Level::Error}},
+	    {"Memory",				TagDetails{.enabled = true,.levelFilter = Level::Error}},
+	    {"Mesh",				    TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+	    {"Project",				TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+	    {"Renderer",				TagDetails{.enabled = true,.levelFilter = Level::Info}},
+	    {"Scene",					TagDetails{.enabled = true,.levelFilter = Level::Info}},
+	    {"Scripting",				TagDetails{.enabled = true,.levelFilter = Level::Warn}},
+	    {"Timer",					TagDetails{.enabled = false,.levelFilter = Level::Trace}},
 	};
 
 	/**
@@ -255,11 +255,21 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-		/// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
-		TIME_ZONE_INFORMATION timeZoneInfo;
-		GetTimeZoneInformation(&timeZoneInfo);
-		std::wstring timeZoneName = timeZoneInfo.StandardName[0] != L'\0' ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
+        /// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
+        TIME_ZONE_INFORMATION timeZoneInfo;
+        GetTimeZoneInformation(&timeZoneInfo);
+        std::wstring timeZoneNameWide = timeZoneInfo.StandardName[0] != L'\0' ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
 
+        // Convert wide string to narrow string using Windows API
+        std::string timeZoneName;
+        if (!timeZoneNameWide.empty())
+        {
+            if (int size = WideCharToMultiByte(CP_UTF8, 0, timeZoneNameWide.c_str(), -1, nullptr, 0, nullptr, nullptr); size > 0)
+            {
+                timeZoneName.resize(size - 1); // -1 to exclude null terminator
+                WideCharToMultiByte(CP_UTF8, 0, timeZoneNameWide.c_str(), -1, timeZoneName.data(), size, nullptr, nullptr);
+            }
+        }
 		// -------------------------------------------------------
 
 		SEDX_CORE_INFO("============================================");
@@ -272,7 +282,7 @@ namespace SceneryEditorX
 					 systemTime.wDay,
 					 systemTime.wMonth,
 					 systemTime.wYear);
-		SEDX_CORE_INFO("Time Zone: {}", std::string(timeZoneName.begin(), timeZoneName.end()));
+        SEDX_CORE_INFO("Time Zone: {}", timeZoneName);
 		SEDX_CORE_INFO("Processor Architecture: {}", sysInfo.wProcessorArchitecture);
 		SEDX_CORE_INFO("Processor Cores: {}", sysInfo.dwNumberOfProcessors);
 		SEDX_CORE_INFO("Page Size: {}", sysInfo.dwPageSize);

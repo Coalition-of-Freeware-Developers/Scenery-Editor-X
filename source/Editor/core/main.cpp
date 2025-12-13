@@ -24,7 +24,7 @@ std::string getDumpDirectory()
 */
 
 // Initialize the application log and crash handler
-void initCrashHandlerServices()
+void InitCrashHandlerServices()
 {
     // Initialize the application logging system
     //SceneryEditorX::Log::Init();
@@ -46,7 +46,7 @@ void initCrashHandlerServices()
 }
 
 // Shutdown application services
-void endCrashHandlerServices()
+void EndCrashHandlerServices()
 {
     // Shut down crash handler before exit
     // CrashHandler::CrashService::Shutdown();
@@ -56,6 +56,7 @@ void endCrashHandlerServices()
     //SceneryEditorX::Log::ShutDown();
 }
 
+/*
 namespace SceneryEditorX
 {
     class EditorX : public Application
@@ -63,17 +64,16 @@ namespace SceneryEditorX
     public:
         EditorX(const AppData &appData, std::string_view projPath) : Application(appData), m_ProjectPath(projPath)
         {
-            if (projPath.empty())
-                m_ProjectPath = "..\\Projects\\Default.edX";
+            if (projPath.empty()) m_ProjectPath = "..\\Projects\\Default.edX";
                 
             // Initialize application services
-            initCrashHandlerServices();
+            InitCrashHandlerServices();
         }
 
         virtual ~EditorX() override
         {
             // Clean up application services
-            endCrashHandlerServices();
+            EndCrashHandlerServices();
         }
 
         virtual void OnInit() override  
@@ -89,7 +89,7 @@ namespace SceneryEditorX
             try 
             {
                 if (!m_EditorApp)
-                    m_EditorApp = CreateScope<EditorApplication>();
+                    m_EditorApp = CreateScope<Editor>();
 
                 m_EditorApp->InitEditor();
             }
@@ -99,17 +99,16 @@ namespace SceneryEditorX
             }
         }
         
-        virtual void OnUpdate() override
+        void OnUpdate() override
         {
             if (m_EditorApp)
                 m_EditorApp->Update();
         }
         
-        virtual void OnShutdown() override
+        void OnShutdown() override
         {
             // Clean up editor application before the main Application is destroyed
-            if (m_EditorApp)
-                m_EditorApp.reset();
+            if (m_EditorApp) m_EditorApp.reset();
 
             m_UserSettings.Reset();
             Application::OnShutdown();
@@ -118,30 +117,18 @@ namespace SceneryEditorX
     private:
         std::string m_ProjectPath;
         Ref<ApplicationSettings> m_UserSettings{};
-        Scope<EditorApplication> m_EditorApp{};
+        Scope<Editor> m_EditorApp{};
     };
 }
+*/
 
 /// -------------------------------------------------------
 
-SceneryEditorX::Application *SceneryEditorX::CreateApplication(int argc, char **argv)
+SceneryEditorX::Application *SceneryEditorX::CreateApplication(const std::vector<std::string> &args)
 {
-    /// Parse command line arguments for project path
-    std::string_view projectPath;
-    if (argc > 1)
-        projectPath = argv[1];
 
-    /// Create the application with default settings
-    AppData windowData;
-    windowData.appName = "Scenery Editor X";
-    windowData.WinWidth = 1280;
-    windowData.WinHeight = 720;
-    windowData.Resizable = true;
-    windowData.Fullscreen = true;
-    windowData.VSync = true;
-
-    /// Return a new instance of the editor application
-    return new EditorX(windowData, projectPath);
+    // Return a new instance of the editor application
+    return new Editor(args);
 }
 
 /// -------------------------------------------------------

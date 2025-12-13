@@ -10,7 +10,9 @@
 * Created: 22/6/2025
 * -------------------------------------------------------
 */
+#ifndef GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
+#endif
 #include "thread.h"
 
 // -------------------------------------------------------

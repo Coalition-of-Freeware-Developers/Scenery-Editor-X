@@ -25,21 +25,20 @@
 namespace SceneryEditorX
 {
 
-	class EditorXLauncher : public Application
+	/*
+	class Launcher : public Application
 	{
 	public:
-        EditorXLauncher(const AppData &appData, std::string_view projPath)
-            : Application(appData), m_ProjectPath(projPath)
+        Launcher(const AppData &appData, std::string_view projPath) : Application(appData), m_ProjectPath(projPath)
         {
-            if (projPath.empty())
-                m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
+            if (projPath.empty()) m_ProjectPath = "SceneryEditorX/Projects/Default.edX";
         }
 
-        virtual ~EditorXLauncher() override;
+        virtual ~Launcher() override;
 
 		virtual void OnInit() override
         {
-            ///< Initialize the user settings
+            // Initialize the user settings
             m_UserSettings = CreateRef<ApplicationSettings>("settings.cfg");
             if (!m_UserSettings->ReadSettings())
             {
@@ -49,7 +48,7 @@ namespace SceneryEditorX
 
             try
             {
-                m_EditorXLauncher->InitLauncher();
+                m_Launcher->InitLauncher();
             }
             catch (const std::exception &e)
             {
@@ -57,13 +56,13 @@ namespace SceneryEditorX
             }
         }
 
-	    virtual void OnUpdate() override
+	    void OnUpdate() override
         {
             if (m_EditorXLauncher)
                 m_EditorXLauncher->Update();
         }
 
-	    virtual void OnShutdown() override
+	    void OnShutdown() override
         {
             if (m_EditorXLauncher)
                 m_EditorXLauncher.reset();
@@ -77,6 +76,7 @@ namespace SceneryEditorX
         Ref<ApplicationSettings> m_UserSettings{};
         Scope<Launcher> m_EditorXLauncher{};
 	};
+	*/
 
 }
 
@@ -115,25 +115,11 @@ static void SplashImg()
     file.seekg(0,std::ios::beg);
 }
 
-SceneryEditorX::Application *SceneryEditorX::CreateApplication(int argc, char **argv)
+SceneryEditorX::Application *SceneryEditorX::CreateApplication(const std::vector<std::string> &args)
 {
-    /// Parse command line arguments for project path
-    std::string_view projectPath;
-    if (argc > 1)
-        projectPath = argv[1];
 
-        /// Configure window data
-        AppData windowData;
-        windowData.appName = "Scenery Editor X";
-        windowData.WinWidth = 978;
-        windowData.WinHeight = 526;
-        windowData.Resizable = false;
-        windowData.Fullscreen = false;
-        windowData.VSync = true;
-        windowData.NoTitlebar = true;
-
-        /// Return a new instance of the editor application
-        return new EditorXLauncher(windowData, projectPath);
+    // Return a new instance of the editor application
+    //return new Launcher(args);
 }
 
 /// -------------------------------------------------------

@@ -47,6 +47,7 @@ namespace SceneryEditorX
         // -------------------------------------------------------
 
         Application(const AppData &appData);
+        explicit Application(const std::vector<std::string> & args);
         virtual ~Application();
 
 		void Run();
@@ -55,14 +56,15 @@ namespace SceneryEditorX
 		virtual void OnInit() {}
         virtual void OnUpdate() {}
         virtual void OnShutdown();
+        virtual void Tick() {}
 
-		DeltaTime GetDeltaTime() const { return m_deltaTime; }
-		DeltaTime GetFrameTime() const { return m_frameTime; }
+		DeltaTime GetDeltaTime() const { return m_DeltaTime; }
+		DeltaTime GetFrameTime() const { return m_FrameTime; }
 		float GetTime() const; // TODO: This should be in "Platform"
 
-	    PerformanceProfiler* GetPerformanceProfiler() const { return m_profiler; }
+	    PerformanceProfiler* GetPerformanceProfiler() const { return m_Profiler; }
         inline Window& GetWindow() { return *m_Window; }
-        uint32_t GetCurrentFrameIndex() const { return currentFrameIndex; }
+        uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
 
         static Application &Get() { return *appInstance; }
@@ -72,10 +74,8 @@ namespace SceneryEditorX
         static bool IsMainThread();
 
         // Settings accessors (single authoritative instance for the app lifetime)
-        ApplicationSettings& GetSettings() { return settings; }
-        const ApplicationSettings& GetSettings() const { return settings; }
-        void RenderUI();
-	    void SetShowStats(bool show) { m_ShowStats = show; }
+        ApplicationSettings& GetSettings() { return m_Settings; }
+        const ApplicationSettings& GetSettings() const { return m_Settings; }
 
 	    void AddEventCallback(const EventCallbackFn& eventCallback) { m_EventCallbacks.push_back(eventCallback); }
         void SyncEvents();
@@ -118,8 +118,8 @@ namespace SceneryEditorX
 			}
 			else
 			{
-				std::scoped_lock<std::mutex> lock(m_EventQueueMutex);
-				m_EventQueue.emplace_back(false, [event](){ Application::Get().OnEvent(*event); });
+				std::scoped_lock lock(m_EventQueueMutex);
+				m_EventQueue.emplace_back(false, [event](){ Get().OnEvent(*event); });
 			}
 		}
 
@@ -129,28 +129,28 @@ namespace SceneryEditorX
         AppData m_AppData;
         ModuleStage m_ModuleStage;
 
-		DeltaTime m_deltaTime;
-		DeltaTime m_frameTime;
-	    bool isRunning = true;
-        bool isMinimized = false;
+		DeltaTime m_DeltaTime;
+		DeltaTime m_FrameTime;
+	    bool m_IsRunning = true;
+        bool m_IsMinimized = false;
         bool m_ShowStats = true;
 
-        ApplicationSettings settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
+        ApplicationSettings m_Settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
         static Application *appInstance;
-        PerformanceProfiler *m_profiler = nullptr; // TODO: Should be null in Dist
+        PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
         std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;
         std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
         std::mutex m_EventQueueMutex;
         std::vector<EventCallbackFn> m_EventCallbacks;
 
-		uint32_t currentFrameIndex = 0;
+		uint32_t m_CurrentFrameIndex = 0;
         //friend class RenderContext;
         //friend class Renderer;
     protected:
-        inline static bool isRunTime = false;
+        inline static bool m_IsRunningTime = false;
     };
 
-    Application *CreateApplication(int argc, char **argv);
+    Application *CreateApplication(const std::vector<std::string> &args);
 
 }
 

@@ -11,10 +11,10 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <spdlog/logger.h>
-#include <spdlog/spdlog.h>
 #include "SceneryEditorX/renderer/vulkan/vk_includes.h"
 #include "SceneryEditorX/utils/formatter.h"
+#include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 // -------------------------------------------------------
 
@@ -56,9 +56,9 @@ namespace SceneryEditorX
 		 */
 	    enum class Type : uint8_t
 	    {
-	        Core = 0,
-	        Editor = 1,
-            Launcher = 2
+	        Core		= 0,
+	        Editor		= 1,
+            Launcher	= 2
 	    };
 
 	    /**
@@ -71,11 +71,11 @@ namespace SceneryEditorX
 		 */
 	    enum class Level : uint8_t
 	    {
-	        Trace = 0,
-	        Info,
-	        Warn,
-	        Error,
-	        Fatal
+	        Trace	= 0,
+	        Info	= 1,
+	        Warn	= 2,
+	        Error	= 3,
+	        Fatal	= 4
 	    };
 
 	    /**
@@ -93,8 +93,8 @@ namespace SceneryEditorX
 		 */
 	    struct TagDetails
 	    {
-	        bool Enabled = true;
-	        Level LevelFilter = Level::Trace;
+	        bool enabled = true;
+	        Level levelFilter = Level::Trace;
 	    };
 
 	    // ------------------------------------------------
@@ -374,7 +374,7 @@ namespace SceneryEditorX
 	void Log::PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args &&...args)
 #endif
 	{
-        if (auto &detail = EnabledTags_[""]; detail.Enabled && detail.LevelFilter <= level)
+        if (auto &detail = EnabledTags_[""]; detail.enabled && detail.levelFilter <= level)
 	    {
 	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
 	        switch (level)
@@ -403,9 +403,10 @@ namespace SceneryEditorX
 	template <typename... Args>
 	void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, const std::format_string<Args...> format, Args &&...args)
 	{
-        if (auto &detail = EnabledTags_[std::string(tag)]; detail.Enabled && detail.LevelFilter <= level)
+        if (auto &detail = EnabledTags_[std::string(tag)]; detail.enabled && detail.levelFilter <= level)
 	    {
 	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
+            if (!logger) return;
 	        std::string formatted = std::format(format, std::forward<Args>(args)...);
 	        switch (level)
 	        {
@@ -432,7 +433,7 @@ namespace SceneryEditorX
 
 	inline void Log::PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::string_view message)
 	{
-        if (auto &detail = EnabledTags_[std::string(tag.data(), tag.size())]; detail.Enabled && detail.LevelFilter <= level)
+        if (auto &detail = EnabledTags_[std::string(tag.data(), tag.size())]; detail.enabled && detail.levelFilter <= level)
 	    {
 	        auto logger = (type == Type::Core) ? GetCoreLogger() : GetEditorLogger();
 	        switch (level)

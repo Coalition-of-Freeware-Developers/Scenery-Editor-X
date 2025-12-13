@@ -29,11 +29,11 @@ constexpr float DEFAULT_PANEL_PROPERTY = -1.0f;
 
 /// -------------------------------------------------------
 
-class UI_Panel
+class UI_Panel : public RefCounted
 {
 public:
     UI_Panel(Editor *editor);
-    virtual ~UI_Panel() = default;
+    virtual ~UI_Panel() override = default;
 
     void Tick();
 

@@ -146,19 +146,21 @@ namespace SceneryEditorX
         std::string steamPath;
 
     #ifdef SEDX_PLATFORM_WINDOWS
-        /// Windows: Check registry or default locations
-        /// Try WOW6432Node first (Steam in 32-bit registry view on 64-bit Windows)
+        /* 
+         * Windows: Check registry or default locations
+         * Try WOW6432Node first (Steam in 32-bit registry view on 64-bit Windows)
+         */
         const std::wstring steamRegPath = L"SOFTWARE\\WOW6432Node\\Valve\\Steam";
         std::wstring steamInstallPath = GetRegValue(HKEY_LOCAL_MACHINE, steamRegPath, L"InstallPath");
 
-        /// If not found, try without WOW6432Node
+        // If not found, try without WOW6432Node
         if (steamInstallPath.empty())
         {
             const std::wstring steamRegPathAlt = L"SOFTWARE\\Valve\\Steam";
             steamInstallPath = GetRegValue(HKEY_LOCAL_MACHINE, steamRegPathAlt, L"InstallPath");
         }
 
-        /// If still not found, try current user registry
+        // If still not found, try current user registry
         if (steamInstallPath.empty())
 		{
             const std::wstring steamRegPathUser = L"SOFTWARE\\Valve\\Steam";
@@ -166,11 +168,15 @@ namespace SceneryEditorX
         }
 
         if (!steamInstallPath.empty())
-		{
-            /// Convert to UTF-8 string
-            steamPath = std::string(steamInstallPath.begin(), steamInstallPath.end());
+        {
+            // Convert wide string to narrow string using Windows API
+            if (int size = WideCharToMultiByte(CP_UTF8, 0, steamInstallPath.c_str(), -1, nullptr, 0, nullptr, nullptr); size > 0)
+            {
+                steamPath.resize(size - 1); // -1 to exclude null terminator
+                WideCharToMultiByte(CP_UTF8, 0, steamInstallPath.c_str(), -1, &steamPath[0], size, nullptr, nullptr);
+            }
 
-            /// Replace forward slashes with backslashes for consistent path format
+            // Replace forward slashes with backslashes for consistent path format
             std::ranges::replace(steamPath, '/', '\\');
 
             if (fs::exists(steamPath))

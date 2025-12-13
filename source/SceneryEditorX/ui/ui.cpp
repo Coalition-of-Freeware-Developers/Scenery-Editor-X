@@ -324,6 +324,13 @@ namespace SceneryEditorX::UI
         /// Render the ImGui frame
         ImGui::Render();
 
+		// TODO: Implement proper SwapChain access through CommandManager or Renderer
+		// The Window class does not have a GetSwapChain() method - need to refactor
+		// this to use the proper rendering architecture once it's fully implemented
+		
+		SEDX_CORE_WARN_TAG("UI", "UI rendering not yet implemented - SwapChain access needs refactoring");
+		
+		/* Commented out until SwapChain access is properly implemented
 		SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
 
         VkClearValue clearValues[2];
@@ -398,6 +405,7 @@ namespace SceneryEditorX::UI
         vkCmdEndRenderPass(drawCommandBuffer);
 
         VK_CHECK_RESULT(vkEndCommandBuffer(drawCommandBuffer))
+		*/
 
         /// Update and render additional platform windows
         ImGuiIO& io = ImGui::GetIO(); (void)io;

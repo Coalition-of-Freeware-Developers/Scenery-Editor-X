@@ -37,9 +37,6 @@ namespace SceneryEditorX
 	struct WindowData
     {
         static inline GLFWwindow* window;
-        std::string title = "Scenery Editor X";
-        uint32_t width = 1280;
-        uint32_t height = 720;
         int posX = 0;
         int posY = 30;
         WindowMode mode = WindowMode::Windowed;
@@ -80,12 +77,7 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-    class SwapChain;
     class RenderContext;
-
-    //bool glfwGetKey(GLFWwindow* window, uint16_t key);
-    //bool glfwGetMouseButton(GLFWwindow* window, uint16_t uint16);
-    //bool glfwWindowShouldClose(GLFWwindow* window);
 
     // -------------------------------------------------------
 
@@ -95,84 +87,78 @@ namespace SceneryEditorX
 	    using EventCallbackFn = std::function<void(Event&)>;
 
         Window();
-        Window(WindowData winData);
+        Window(WindowData m_WinData);
         virtual ~Window();
 
         virtual void Init();
         virtual void Update();
         virtual void Maximize();
         virtual void CenterWindow();
-        virtual void SplashScreen();
         virtual void SetResizable(bool resizable) const;
-
-        virtual const std::string &GetTitle() const { return winData.title; }
+        virtual const std::string &GetTitle() const { return m_WindowSpecs.m_title; }
         virtual void SetTitle(const std::string &title);
 
-        GLFWwindow* GetWindow() const { return m_window; }
-	    uint32_t GetWidth()		const { return m_winSpecs.width; }
-		uint32_t GetHeight()	const { return m_winSpecs.height; }
+        GLFWwindow* GetWindow() const { return m_Window; }
+	    uint32_t GetWidth()		const { return m_WindowSpecs.m_width; }
+		uint32_t GetHeight()	const { return m_WindowSpecs.m_height; }
 
 	    static void ProcessEvents();
 		virtual void ChangeWindowMode();
         virtual void ApplyChanges();
 
-        virtual SwapChain &GetSwapChain();
-        virtual VkExtent2D GetSize() const								{ return {m_winSpecs.width, m_winSpecs.height}; }
-	    virtual Ref<RenderContext> GetRenderContext()                   { return renderContext; }
+        virtual VkExtent2D GetSize() const								{ return {m_WindowSpecs.m_width, m_WindowSpecs.m_height}; }
+	    virtual Ref<RenderContext> GetRenderContext()                   { return m_RenderContext; }
 
-	    RenderData			GetRenderData()								{ return renderData; }
-		IconData			GetIconData()								{ return iconData; }
+	    RenderData			GetRenderData()								{ return m_RenderData; }
+		IconData			GetIconData()								{ return m_IconData; }
 
         static Window*		Create(const WindowData &windowSpecs = WindowData());
         static std::string  VideoModeText(const GLFWvidmode &mode);
 
 		void				UpdateFramebufferSize();
-        void			    SetFramebufferResized(const bool resized)   { winData.framebufferResized = resized; }
+        void			    SetFramebufferResized(const bool resized)   { m_WinData.framebufferResized = resized; }
 		void			    WaitEvents()								{ glfwWaitEvents(); }
-	    Vec2			    GetDeltaMouse()								{ return winData.deltaMousePos; }
-        bool			    GetFramebufferResized()						{ return winData.framebufferResized; }
-		bool				IsKeyDown(uint16_t keyCode) const			{ return glfwGetKey(m_window, keyCode); }
-		bool				IsMouseDown(uint16_t buttonCode) const		{ return glfwGetMouseButton(m_window, buttonCode); }
-        bool				IsDirty()									{ return winData.dirty; }
-        bool				IsMinimized()								{ return glfwGetWindowAttrib(m_window, GLFW_ICONIFIED) == GLFW_TRUE; }
+	    Vec2			    GetDeltaMouse()								{ return m_WinData.deltaMousePos; }
+        bool			    GetFramebufferResized()						{ return m_WinData.framebufferResized; }
+		bool				IsKeyDown(uint16_t keyCode) const			{ return glfwGetKey(m_Window, keyCode); }
+		bool				IsMouseDown(uint16_t buttonCode) const		{ return glfwGetMouseButton(m_Window, buttonCode); }
+        bool				IsDirty()									{ return m_WinData.dirty; }
+        bool				IsMinimized()								{ return glfwGetWindowAttrib(m_Window, GLFW_ICONIFIED) == GLFW_TRUE; }
 	    bool				IsKeyPressed(uint16_t keyCode) const;
-	    bool				GetShouldClose() const						{ return glfwWindowShouldClose(m_window); }
-	    static float		GetDeltaTime()								{ return deltaTime; }
+	    bool				GetShouldClose() const						{ return glfwWindowShouldClose(m_Window); }
+	    static float		GetDeltaTime()								{ return m_DeltaTime; }
 
 	private:
-        GLFWwindow* m_window = nullptr;
-        IconData iconData;
-        SwapChain *swapChain;
-        RenderData renderData;
-        WindowCallbacks windowCallbacks;
-        Ref<RenderContext> renderContext;
+        GLFWwindow* m_Window = nullptr;
+        IconData m_IconData;
+        RenderData m_RenderData;
+        WindowCallbacks m_WindowCallbacks;
+        Ref<RenderContext> m_RenderContext;
 
-		GLFWcursor *ImGuiMouseCursors[9] = { nullptr };
-
-        WindowData winData;
-        int leftAlt;
+		GLFWcursor *m_ImGuiMouseCursors[9] = { nullptr };
+        WindowData m_WinData;
 
         struct WindowSpecs
 		{
-            std::string title;
-            uint32_t width = 1280;
-            uint32_t height = 720;
+            std::string m_title;
+            uint32_t m_width = 1280;
+            uint32_t m_height = 720;
 		};
-		WindowSpecs m_winSpecs;
+		WindowSpecs m_WindowSpecs;
 
-		bool initState;
-        bool mousePressed;
-        bool captureMovement;
+		bool m_InitState;
+        bool m_MousePressed;
+        bool m_CaptureMovement;
 
 		virtual void Shutdown();
-        virtual void SwapBuffers();
         virtual std::pair<float, float> GetWindowPos() const;
 
-        static std::chrono::high_resolution_clock::time_point lastTime;
-        static std::vector<std::string> pathsDrop;
-        static float deltaTime;
-        static char lastKeyState[GLFW_KEY_LAST + 1];
-        static WindowMode mode;
+        static std::chrono::high_resolution_clock::time_point m_LastTime;
+        static std::vector<std::string> m_PathsDrop;
+        static float m_DeltaTime;
+        static char m_LastKeyState[GLFW_KEY_LAST + 1];
+        static WindowMode m_WindowMode;
+
         static void SetWindowIcon(GLFWwindow *window);
         static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
         static void ScrollCallback(GLFWwindow *window, double x, double y);

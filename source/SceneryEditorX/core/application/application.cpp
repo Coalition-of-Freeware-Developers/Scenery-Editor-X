@@ -30,37 +30,12 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    Application::Application(const AppData &appData)
+    Application::Application(const std::vector<std::string> &args)
     {
-        SEDX_CORE_INFO("Creating application with window: {}x{}", appData.WinWidth, appData.WinHeight);
-
         appInstance = this;
 
         /// Create the window
         m_Window = CreateScope<Window>();
-
-        /// Set window properties from appData
-        if (appData.WinWidth > 0 && appData.WinHeight > 0)
-        {
-            /// Update window properties if provided
-            // m_Window->winData.width = appData.WinWidth;
-            // m_Window->winData.height = appData.WinHeight;
-            // Use public API to set window size if available.
-            // If not, set via m_winSpecs (public struct)
-            // But m_winSpecs is private, so use SetSize if exists
-            // Otherwise, fallback to constructor or expose a setter
-            // Here, we use ApplyChanges after setting width/height
-            // But since winData is private, we cannot access it directly
-            // Instead, set via a public method or constructor
-            // If not available, this is a design issue
-            // For now, skip direct assignment and rely on ApplyChanges
-        }
-
-        if (!appData.appName.empty())
-        {
-            m_Window->SetTitle(appData.appName);
-            SEDX_CORE_INFO_TAG("Application", "Window title Changed to {}", appData.appName);
-        }
 
 		SEDX_CORE_INFO("Initializing Window");
         /// Initialize the window first
@@ -71,8 +46,8 @@ namespace SceneryEditorX
         m_Window->ApplyChanges();
         SEDX_CORE_INFO("Window changes applied");
 
-        isRunning   = true;
-        isMinimized = false;
+        m_IsRunning   = true;
+        m_IsMinimized = false;
     }
 
     Application::~Application()
@@ -91,12 +66,12 @@ namespace SceneryEditorX
         OnInit();
 
         // Main application loop
-        while (isRunning && !m_Window->GetShouldClose())
+        while (m_IsRunning && !m_Window->GetShouldClose())
         {
-            m_Window->Update();	// Update the window (poll events)
+            m_Window->Update(); // Update the window (poll events)
 
-            // Skip frame if window is minimized
-            if (isMinimized) continue;
+            if (m_IsMinimized)
+				continue; // Skip frame if window is minimized
 
             OnUpdate();	// Call user-defined update function
         }
@@ -104,7 +79,7 @@ namespace SceneryEditorX
         OnShutdown();
     }
 
-    void Application::Stop() { isRunning = false; }
+    void Application::Stop() { m_IsRunning = false; }
 
     void Application::OnShutdown()
     {
@@ -121,21 +96,24 @@ namespace SceneryEditorX
         }
     }
 
-
 	void Application::ProcessEvents()
 	{
 		Input::TransitionPressedKeys();
 		Input::TransitionPressedButtons();
         Window::ProcessEvents();
 
-		// NOTE: we have no control over what func() does.  holding this lock while calling func() is a bad idea:
-		// 1) func() might be slow (means we hold the lock for ages)
-		// 2) func() might result in events getting queued, in which case we have a deadlock
+		/*
+		 * NOTE: we have no control over what func() does.  holding this lock while calling func() is a bad idea:
+		 * 1) func() might be slow (means we hold the lock for ages)
+		 * 2) func() might result in events getting queued, in which case we have a deadlock
+         */
 		std::scoped_lock lock(m_EventQueueMutex);
 
-		// Process custom event queue, up until we encounter an event that is not yet synced
-		// If application queues such events, then it is the application's responsibility to call
-		// SyncEvents() at the appropriate time.
+		/*
+		 * Process custom event queue, up until we encounter an event that is not yet synced
+		 * If application queues such events, then it is the application's responsibility to call
+		 * SyncEvents() at the appropriate time.
+         */
 		while (!m_EventQueue.empty())
 		{
 			const auto& [synced, func] = m_EventQueue.front();
@@ -161,9 +139,11 @@ namespace SceneryEditorX
 
 		if (event.m_Handled) return;
 
-		// TODO: Should these callbacks be called BEFORE the layers receive events?
-		//				We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
-		//				to work, and if a layer has already handled the event we may end up with problems
+		/*
+		 * TODO: Should these callbacks be called BEFORE the layers receive events?
+		 * We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
+		 * to work, and if a layer has already handled the event we may end up with problems.
+         */
 		for (auto& eventCallback : m_EventCallbacks)
 		{
 			eventCallback(event);
@@ -177,15 +157,17 @@ namespace SceneryEditorX
 		const uint32_t width = e.GetWidth(), height = e.GetHeight();
 		if (width == 0 || height == 0)
 		{
-			isMinimized = true;
+			m_IsMinimized = true;
 			return false;
 		}
-        isMinimized = false;
+        m_IsMinimized = false;
 		
-		auto& window = m_Window;
-		Renderer::Submit([&window, width, height]() mutable
+		Renderer::Submit([width, height]() mutable
 		{
-			window->GetSwapChain().OnResize(width, height);
+			if (auto* swapChain = Renderer::GetSwapChain())
+			{
+			    swapChain->OnResize(width, height);
+			}
 		});
 
 		return false;
@@ -193,7 +175,7 @@ namespace SceneryEditorX
 
 	bool Application::OnWindowMinimize(const WindowMinimizeEvent& e)
 	{
-        isMinimized = e.IsMinimized();
+        m_IsMinimized = e.IsMinimized();
 		return false;
 	}
 

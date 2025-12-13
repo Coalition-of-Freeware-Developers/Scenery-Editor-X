@@ -29,7 +29,7 @@
 // -------------------------------------------------------
 
 #ifdef SEDX_DEBUG
-#define SEDX_ENABLE_ASSERTS
+    #define SEDX_ENABLE_ASSERTS
 #endif
 
 // -------------------------------------------------------
