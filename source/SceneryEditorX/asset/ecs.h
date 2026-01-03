@@ -25,7 +25,7 @@ namespace SceneryEditorX
     /*
     struct EntityID
     {
-        ///< Use explicit UUID constructor for zero value
+        // Use explicit UUID constructor for zero value
         UUID ID = UUID(0);
     };
 
@@ -47,13 +47,13 @@ namespace SceneryEditorX
         std::string TextString;
         size_t TextHash = 0;
 
-        ///< Font
+        // Font
         UUID32 FontHandle;
         Vec4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
         float LineSpacing = 0.0f;
         float Kerning = 0.0f;
 
-        ///< Layout
+        // Layout
         float MaxWidth = 10.0f;
 
         bool ScreenSpace = false;

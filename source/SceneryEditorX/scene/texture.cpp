@@ -14,6 +14,7 @@
 #include <stb_image.h>
 #include "SceneryEditorX/logging/logging.hpp"
 #include "SceneryEditorX/renderer/render_context.h"
+#include "SceneryEditorX/renderer/swapchain.h"
 
 // -------------------------------------------------------
 
@@ -169,7 +170,7 @@ namespace SceneryEditorX
 
     void TextureAsset::CreateTextureSampler()
 	{
-        auto physDevice = RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->Selected().physicalDevice;
+        auto physDevice = RenderContext::Get()->GetPhysicalDevice()->GetDevice();
 	    VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(physDevice, &properties);
 	
@@ -236,7 +237,7 @@ namespace SceneryEditorX
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = RenderContext::GetCurrentDevice()->FindMemoryType(memRequirements.memoryTypeBits,
+        allocInfo.memoryTypeIndex = SwapChain::FindMemoryType(memRequirements.memoryTypeBits,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         
         if (vkAllocateMemory(device, &allocInfo, nullptr, &stagingBufferMemory) != VK_SUCCESS)

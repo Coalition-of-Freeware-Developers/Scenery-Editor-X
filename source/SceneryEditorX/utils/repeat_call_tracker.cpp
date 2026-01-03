@@ -12,7 +12,10 @@
 #include <mutex>
 #include <unordered_set>
 
-namespace SceneryEditorX { namespace Utils {
+//---------------------------------------------------------
+
+namespace SceneryEditorX::Utils 
+{
 
     static std::mutex s_Mutex;
     static std::unordered_set<std::string> s_Called;
@@ -34,4 +37,4 @@ namespace SceneryEditorX { namespace Utils {
         }
     }
 
-}} // namespace
+}

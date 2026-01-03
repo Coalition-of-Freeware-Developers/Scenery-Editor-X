@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/vulkan/vk_buffers.h"
+#include "SceneryEditorX/renderer/vulkan_buffers.h"
 
 // -------------------------------------------------------
 

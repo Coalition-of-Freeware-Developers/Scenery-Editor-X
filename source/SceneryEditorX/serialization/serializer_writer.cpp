@@ -18,7 +18,7 @@ namespace SceneryEditorX
 {
 
 	/*
-	void SerializeWriter::WriteBuffer(Memory::Buffer buffer, const bool writeSize)
+	void SerializeWriter::WriteBuffer(Buffer buffer, const bool writeSize)
 	{
 		if (writeSize)
 			WriteData((char*)&buffer.size, sizeof(uint64_t));

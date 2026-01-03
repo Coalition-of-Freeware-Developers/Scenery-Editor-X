@@ -11,19 +11,19 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "clear_value.h"
 #include "command_pool.h"
-#include "frame_sync.h"
 #include "image_data.h"
+#include "pipeline_state.h"
 #include "texture.h"
 #include "viewport.h"
-#include "vulkan/vk_device.h"
-#include "vulkan/vk_enums.h"
-#include "vulkan/vk_pipeline.h"
+#include "device.h"
+#include "enums.h"
+#include "pipeline.h"
 #include <stack>
 #include <thread>
 #include <unordered_map>
 #include <vulkan/vulkan.h>
+#include <SceneryEditorX\core\threading\render_thread.h>
 
 // -------------------------------------------------------
 
@@ -69,6 +69,15 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
+    enum class BarrierType : uint8_t
+    {
+        EnsureWriteThenRead, // RAW: Make prior write visible before read (e.g., post-dispatch)
+        EnsureReadThenWrite, // WAR: Order read before write (execution dep; e.g., pre-dispatch)
+        EnsureWriteThenWrite // WAW: Order prior write before new write (e.g., sequential computes on same UAV)
+    };
+
+    // -------------------------------------------------------
+
     struct ImageBarrierInfo
     {
         void *image						= nullptr;
@@ -86,19 +95,42 @@ namespace SceneryEditorX
 	class CommandManager : public RefCounted
 	{
 	public:
-		CommandManager(Queue *queue, void *cmdPool, const std::string &debugName);
+        typedef void (*RenderCommandFn)(void *);
+
+        CommandManager(/*Queue *queue, */ const Ref<CommandPool> *cmdPool, const std::string &debugName);
+        CommandManager(uint32_t count = 0, std::string debugName = "");
+        CommandManager(std::string debugName, bool swapchain);
         virtual ~CommandManager() override;
+        static Ref<CommandManager> Get(); // Static accessor method to get the singleton instance
+
+        CommandManager(const CommandManager &) 				= default;
+        CommandManager(CommandManager &&) 					= delete;
+        CommandManager &operator=(const CommandManager &) 	= default;
+        CommandManager &operator=(CommandManager &&) 		= delete;
 
 		void Begin();
-        void Submit(FrameSync *semaphoreWait, const bool immediate);
-        void ExecutionWait(const bool waitTime = false);
+        void End();
+        void Submit();
+        void ExecuteCommandQueue();
+        void ExecutionWait(bool waitTime = false);
         void SetPipelineState();
+
+		VkCommandBuffer GetActiveCommandBuffer() const { return m_ActiveCommandBuffer; }
+        VkCommandBuffer GetCommandBuffer(uint32_t frameIndex) const
+        {
+            SEDX_CORE_ASSERT(frameIndex < m_CommandBuffers.size());
+            return m_CommandBuffers[frameIndex];
+        }
+
+		void CreateCommandQueue();
+		void DeleteCommandQueue();
+        void *Allocate(RenderCommandFn func, uint32_t size);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Draw Commands																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		void Draw(const uint32_t count, const uint32_t vertexStartIdx = 0);
-	    void DrawIndexed(const uint32_t count, const uint32_t indexOffset = 0, const uint32_t vertexOffset = 0, const uint32_t instanceIdx = 0, const uint32_t instanceCount = 1);
+		void Draw(uint32_t count, uint32_t vertexStartIdx = 0);
+	    void DrawIndexed(uint32_t count, uint32_t indexOffset = 0, uint32_t vertexOffset = 0, uint32_t instanceIdx = 0, uint32_t instanceCount = 1);
 
 		// Ref<VertexBuffer> SetBuffer();
 		// Ref<IndexBuffer>  SetBuffer();
@@ -112,30 +144,30 @@ namespace SceneryEditorX
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Dispatch																									  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void Dispatch(Texture *texture);
+        void Dispatch(Texture *texture, float resolutionScale);
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// BLIT Commands																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void Blit(Texture* src, SwapChain* dst);
-        void Blit(Texture* src, Texture* dst, const bool blitMips, const float srcScaling = 1.0f);
+        void Blit(Texture* src, Texture* dst, bool blitMips, float srcScaling = 1.0f);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Copy Commands																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void Copy(Texture *src, SwapChain *dst);
-        void Copy(Texture* src, Texture* dst, const bool blitMips);
+        void Copy(Texture* src, Texture* dst, bool blitMips);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Viewport																									  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetViewport(const Viewport& viewport) const;
+        void SetViewport(Viewport& viewport) const;
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Scissor																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetScissorRectangle(const xMath::Rectangle & scissorRectangle) const;
+        void SetScissorRectangle(xMath::Rectangle & scissorRectangle) const;
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Cull Mode																									  ///
@@ -147,20 +179,20 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void SetIndexBuffer(const Buffer *buffer);
         void SetVertexBuffer(const Buffer *vertex, Buffer *instance = nullptr);
-        void SetBuffer(const uint32_t slot, Buffer* buffer) const;
+        void SetBuffer(uint32_t slot, Buffer* buffer) const;
         //void SetBuffer(const bindingsUav slot, Buffer* buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer); }
-        void UpdateBuffer(Buffer *buffer, const uint64_t offset, const uint64_t size, const void *data);
+        void UpdateBuffer(Buffer *buffer, uint64_t offset, uint64_t size, const void *data);
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Constant Buffers																							  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetConstantBuffer(const uint32_t slot, Buffer* constBuffer) const;
+        void SetConstantBuffer(uint32_t slot, Buffer* constBuffer) const;
         //void SetConstantBuffer(const Renderer_BindingsCb slot, Buffer* constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer); }
-        
+
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Push-Constant Buffers																						  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
+        void PushConstants(uint32_t offset, uint32_t size, void* data);
 
         template<typename T>
         void PushConstants(const T& data)
@@ -206,7 +238,7 @@ namespace SceneryEditorX
         /// Memory Barriers																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void InsertBarrier(void* image, const VkFormat format, const uint32_t mipIdx, const uint32_t mipRange, const uint32_t arrayLength,const Layout::ImageLayout layoutNew);
-        // void InsertBarrierReadWrite(Texture *texture, const BarrierType type);
+        void InsertBarrierReadWrite(Texture *texture, const BarrierType type);
         void InsertBarrierReadWrite(Buffer *buffer);
         void InsertPendingBarrierGroup();
 
@@ -214,10 +246,9 @@ namespace SceneryEditorX
         /// Misc																										  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         void RenderPassEnd();
-        FrameSync* GetRenderingCompleteSemaphore()		{ return m_RenderingCompleteSemaphore.Get(); }
+        //FrameSync* GetRenderingCompleteSemaphore()		{ return m_RenderingCompleteSemaphore.Get(); }
         void* GetResource() const						{ return m_Resource; }
 	    CommandState GetState() const					{ return m_State; }
-        //QueueManager* GetQueue() const					{ return m_Queue; }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Image Layouts																								  ///
@@ -232,8 +263,8 @@ namespace SceneryEditorX
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Synchronization																								  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        Ref<FrameSync> m_RenderingCompleteSemaphore;
-        Ref<FrameSync> m_RenderingCompleteSemaphoreTimeline;
+        //Ref<FrameSync> m_RenderingCompleteSemaphore;
+        //Ref<FrameSync> m_RenderingCompleteSemaphoreTimeline;
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Misc																										  ///
@@ -242,18 +273,41 @@ namespace SceneryEditorX
         uint64_t m_BufferID_Index							= 0;
         uint32_t m_Timestamp_Index                          = 0;
         Ref<Pipeline> *m_Pipeline							= nullptr;
+        //Ref<PipelineState> m_PSO;
         //DescriptorSetLayout* m_descriptor_layout_current	= nullptr;
         std::atomic<CommandState> m_State					= CommandState::IDLE;
         CullMode m_CullMode									= CullMode::Back;
         bool m_RenderPass_Active							= false;
         uint32_t m_RenderPass_DrawCalls						= 0;
-        ClearValue m_ClearColor;
+        VkClearValue m_ClearColor;
         std::stack<const char*> m_ActiveTimeblocks;
         std::stack<const char*> m_DebugLabelStack;
         std::mutex m_MutexReset;
         std::vector<ImageBarrierInfo> m_ImageBarriers;
-        //QueueManager *m_Queue								= nullptr;
         bool m_Load_Depth_RenderTarget						= false;
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        std::string m_DebugName;
+        VkCommandPool m_CommandPool = nullptr;
+        std::vector<VkCommandBuffer> m_CommandBuffers;
+        VkCommandBuffer m_ActiveCommandBuffer = nullptr;
+        std::vector<VkFence> m_WaitFences;
+        uint32_t m_TimestampQueryCount = 0;
+        uint32_t m_TimestampNextAvailableQuery = 2;
+        std::vector<VkQueryPool> m_TimestampQueryPools;
+        std::vector<VkQueryPool> m_PipelineStatisticsQueryPools;
+        std::vector<std::vector<uint64_t>> m_TimestampQueryResults;
+        std::vector<std::vector<float>> m_ExecutionGPUTimes;
+        bool m_OwnedBySwapChain = false;
+        uint32_t m_PipelineQueryCount = 0;
+        std::vector<PipelineStatistics> m_PipelineStatisticsQueryResults;
+
+		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        uint8_t *m_CommandBuffer;
+        uint8_t *m_CommandBufferPtr;
+        uint32_t m_CommandCount = 0;
 
 	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Resources																									  ///

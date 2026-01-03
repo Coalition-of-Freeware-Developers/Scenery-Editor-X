@@ -97,9 +97,8 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
 
-        virtual void OnDependencyUpdated(uint64_t handle)
-        {
-        }
+        virtual void OnDependencyUpdated(uint64_t handle) {}
+
         //virtual void Serialize(SerializeWriter &ser) override = 0;
         virtual void Load(const std::string &path) = 0;
         virtual void Unload() = 0;
@@ -126,9 +125,13 @@ namespace SceneryEditorX
         void SetFlag(AssetFlag flag, const bool value = true)
         {
             if (value)
+            {
                 Flags |= static_cast<uint16_t>(flag);
+            }
             else
+            {
                 Flags &= ~static_cast<uint16_t>(flag);
+            }
         }
     };
 
@@ -143,24 +146,13 @@ namespace SceneryEditorX
         AsyncAssetResult() = default;
         AsyncAssetResult(const AsyncAssetResult<T> &other) = default;
 
-        explicit AsyncAssetResult(Ref<T> asset, const bool isReady = false) : Asset(asset), IsReady(isReady)
-        {
-        }
+        explicit AsyncAssetResult(Ref<T> asset, const bool isReady = false) : Asset(asset), IsReady(isReady) {}
 
         template <typename T2>
-        explicit AsyncAssetResult(const AsyncAssetResult<T2> &other)
-            : Asset(other.Asset.template As<T>()), IsReady(other.IsReady)
-        {
-        }
+        explicit AsyncAssetResult(const AsyncAssetResult<T2> &other) : Asset(other.Asset.template As<T>()), IsReady(other.IsReady) {}
 
-        explicit operator Ref<T>() const
-        {
-            return Asset;
-        }
-        explicit operator bool() const
-        {
-            return IsReady;
-        }
+        explicit operator Ref<T>() const { return Asset; }
+        explicit operator bool() const { return IsReady; }
     };
 
 

@@ -67,7 +67,7 @@ namespace SceneryEditorX
 		const Ref<Font> font = AssetManager::Get<Font>(handle);
 		const auto path = Project::GetEditorAssetManager()->GetFileSystemPath(handle);
 		stream.WriteString(font->GetName());
-        const Memory::Buffer fontData = IO::FileSystem::ReadBytes(path);
+        const Buffer fontData = IO::FileSystem::ReadBytes(path);
 		stream.WriteBuffer(fontData);
 
 		outInfo.Size = stream.GetStreamPosition() - outInfo.Offset;
@@ -80,7 +80,7 @@ namespace SceneryEditorX
 
 		std::string name;
 		stream.ReadString(name);
-        Memory::Buffer &fontData = nullptr;
+        Buffer &fontData = nullptr;
 		stream.ReadBuffer(fontData);
 
 		return CreateRef<Font>(name, fontData);

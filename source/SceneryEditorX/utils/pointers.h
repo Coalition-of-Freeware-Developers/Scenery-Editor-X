@@ -334,12 +334,19 @@ namespace SceneryEditorX
 		/**
 		 * @brief Default constructor creates a null reference.
 		 */
-		constexpr Ref() noexcept = default;
+        constexpr Ref() : m_Ptr(nullptr) {};
 
 		/**
 		 * @brief Constructor from nullptr creates a null reference.
 		 */
-		constexpr Ref(std::nullptr_t) noexcept {}
+        constexpr Ref(std::nullptr_t) : m_Ptr(nullptr) {};
+
+		Ref(T *instance) : m_Ptr(instance)
+		{
+            static_assert(std::is_base_of_v<RefCounted, T>, "Class is not RefCounted!");
+
+            InternalAddRef();
+		};
 
 		/**
 		 * @brief Constructor from raw pointer. Takes ownership of the object.
@@ -740,7 +747,7 @@ namespace SceneryEditorX
 
 	private:
 
-		T* m_Ptr = nullptr;
+		mutable T* m_Ptr = nullptr;
 
 		void InternalAddRef() const noexcept;
 		void InternalRelease() noexcept;
@@ -951,9 +958,7 @@ namespace SceneryEditorX
 	Ref<T> CreateRef(Args&&... args)
 	{
         static_assert(std::is_base_of_v<RefCounted, T>, "Type must inherit from RefCounted");
-        static_assert(std::is_constructible_v<T, Args &&...>,
-            "Type T is not constructible with the provided arguments. Check that T's constructor matches Args.");
-
+        static_assert(std::is_constructible_v<T, Args &&...>, "Type T is not constructible with the provided arguments. Check that T's constructor matches Args.");
         return Ref<T>(new T(std::forward<Args>(args)...));
 	}
 
@@ -1280,6 +1285,7 @@ namespace SceneryEditorX
             m_ControlBlock = other.m_ControlBlock;
             other.m_ControlBlock = nullptr;
         }
+
         return *this;
     }
 

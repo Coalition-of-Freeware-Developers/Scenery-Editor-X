@@ -19,33 +19,33 @@
 
 namespace SceneryEditorX
 {
-	Thread::Thread(const std::string &name) { this->name = name; }
+	Thread::Thread(const std::string &name) { this->m_Name = name; }
 
     void Thread::SetName(const std::string &name)
 	{
-	    const HANDLE threadHandle = mem_thread.native_handle();
+	    const HANDLE threadHandle = m_Thread.native_handle();
 		const std::wstring str(name.begin(), name.end());
 		SetThreadDescription(threadHandle, str.c_str());
         SetThreadAffinityMask(threadHandle, 8);
-        this->name = name;
+        this->m_Name = name;
 	}
 
     void Thread::Join()
     {
-        if (mem_thread.joinable())
-            mem_thread.join();
+        if (m_Thread.joinable())
+            m_Thread.join();
     }
 
     ThreadSignal::ThreadSignal(const std::string &name, const bool manualReset)
     {
         const std::wstring str(name.begin(), name.end());
-        signalHandle = CreateEventW(nullptr, manualReset ? TRUE : FALSE, FALSE, str.c_str());
+        m_SignalHandle = CreateEventW(nullptr, manualReset ? TRUE : FALSE, FALSE, str.c_str());
     }
 
-    void ThreadSignal::Wait() const { WaitForSingleObject(signalHandle, INFINITE); }
-    void ThreadSignal::Signal() const { SetEvent(signalHandle); }
-    void ThreadSignal::Reset() const { ResetEvent(signalHandle); }
-    std::thread::id Thread::GetThreadID() const { return mem_thread.get_id(); }
+    void ThreadSignal::Wait() const { WaitForSingleObject(m_SignalHandle, INFINITE); }
+    void ThreadSignal::Signal() const { SetEvent(m_SignalHandle); }
+    void ThreadSignal::Reset() const { ResetEvent(m_SignalHandle); }
+    std::thread::id Thread::GetThreadID() const { return m_Thread.get_id(); }
 
 }
 

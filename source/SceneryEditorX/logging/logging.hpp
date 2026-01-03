@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
+#include "SceneryEditorX/renderer/vulkan_includes.h"
 #include "SceneryEditorX/utils/formatter.h"
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>

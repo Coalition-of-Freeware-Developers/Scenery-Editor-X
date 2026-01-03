@@ -31,7 +31,7 @@ namespace SceneryEditorX
 
         explicit operator bool() const { return IsStreamGood(); }
 
-		void ReadBuffer(Memory::Buffer& buffer, uint32_t size = 0);
+		void ReadBuffer(Buffer& buffer, uint32_t size = 0);
 		void ReadString(std::string& string);
 
 		template<typename T>

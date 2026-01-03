@@ -31,7 +31,7 @@ namespace SceneryEditorX
 
 	struct FontInput
     {
-		Memory::Buffer fontData;
+		Buffer fontData;
 		GlyphIdentifierType glyphIdentifierType;
 		const char* charsetFilename;
 		double fontScale;
@@ -93,7 +93,7 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-	static bool TryReadFontAtlasFromCache(const std::string& fontName, float fontSize, AtlasHeader& header, void*& pixels, Memory::Buffer& storageBuffer)
+	static bool TryReadFontAtlasFromCache(const std::string& fontName, float fontSize, AtlasHeader& header, void*& pixels, Buffer& storageBuffer)
 	{
 		const std::string filename = std::format("{0}-{1}.fCache", fontName, fontSize);
 
@@ -176,14 +176,14 @@ namespace SceneryEditorX
 	{
 		m_Name = filepath.stem().string();
 
-		Memory::Buffer buffer = IO::FileSystem::ReadBytes(filepath);
+		Buffer buffer = IO::FileSystem::ReadBytes(filepath);
 		CreateAtlas(buffer);
 		buffer.Release();
 	}
 
     // -------------------------------------------------------
 
-	Font::Font(std::string name, Memory::Buffer buffer) : m_Name(std::move(name)), m_MSDFData(new MSDFData()), buffer(buffer)
+	Font::Font(std::string name, Buffer buffer) : m_Name(std::move(name)), m_MSDFData(new MSDFData()), buffer(buffer)
 	{
 		CreateAtlas(buffer);
 	}
@@ -197,7 +197,7 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-	void Font::CreateAtlas(Memory::Buffer buffer)
+	void Font::CreateAtlas(Buffer buffer)
 	{
 		FontInput fontInput = { };
 		Configuration config = { };
@@ -239,7 +239,7 @@ namespace SceneryEditorX
 				}
 			}
 
-			bool load(const Memory::Buffer &buffer)
+			bool load(const Buffer &buffer)
 			{
 				if (ft && buffer)
 				{
@@ -372,7 +372,7 @@ namespace SceneryEditorX
 		}
 
 		/// Check cache here
-		Memory::Buffer storageBuffer;
+		Buffer storageBuffer;
         void* pixels;
 		if (AtlasHeader header; TryReadFontAtlasFromCache(m_Name, static_cast<float>(config.emSize), header, pixels, storageBuffer))
 		{

@@ -83,7 +83,7 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("RenderDispatch", "Shutdown");
 	}
 
-	/**
+    /**
 	 * @return True if the dispatcher singleton exists (Init has been called and not yet shut down).
 	 */
 	bool RenderDispatcher::IsInitialized() { return s_Instance != nullptr; }

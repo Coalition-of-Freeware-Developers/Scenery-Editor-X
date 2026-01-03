@@ -36,7 +36,7 @@ namespace SceneryEditorX
 			Kick
 		};
 
-        explicit RenderThread(ThreadingPolicy coreThreadingPolicy);
+	    RenderThread(ThreadingPolicy policy);
 		~RenderThread();
 
 		void Run();
@@ -46,22 +46,18 @@ namespace SceneryEditorX
 		void Wait(State waitForState);
 		void WaitAndSet(State waitForState, State setToState);
 		void Set(State setToState);
-
 		void NextFrame();
 		void BlockUntilRenderComplete();
 		void Kick();
-		
 		void Pump();
-
 		static bool IsCurrentThreadRT();
+
 	private:
 		RenderThreadData* m_Data;
 		ThreadingPolicy m_ThreadingPolicy;
-
 		Thread m_RenderThread;
 
 		bool m_IsRunning = false;
-
 		std::atomic<uint32_t> m_AppThreadFrame = 0;
 	};
 

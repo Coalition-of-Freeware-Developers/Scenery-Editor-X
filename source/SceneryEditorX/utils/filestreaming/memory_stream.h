@@ -23,7 +23,7 @@ namespace SceneryEditorX
 	class MemoryStreamWriter : public StreamWriter
 	{
 	public:
-		MemoryStreamWriter(Memory::Buffer& buffer, size_t size);
+		MemoryStreamWriter(Buffer& buffer, size_t size);
 		MemoryStreamWriter(const MemoryStreamWriter&) = delete;
         virtual ~MemoryStreamWriter() override;
 
@@ -33,7 +33,7 @@ namespace SceneryEditorX
         virtual bool WriteData(const char* data, size_t size) override final;
 
 	private:
-        Memory::Buffer& m_Buffer;
+        Buffer& m_Buffer;
 		size_t m_WritePos = 0;
 	};
 
@@ -43,7 +43,7 @@ namespace SceneryEditorX
 	class MemoryStreamReader : public StreamReader
 	{
 	public:
-		MemoryStreamReader(const Memory::Buffer& buffer);
+		MemoryStreamReader(const Buffer& buffer);
 		MemoryStreamReader(const MemoryStreamReader&) = delete;
         virtual ~MemoryStreamReader() override;
 
@@ -53,7 +53,7 @@ namespace SceneryEditorX
         virtual bool ReadData(char* destination, size_t size) override final;
 
 	private:
-		const Memory::Buffer& m_Buffer;
+		const Buffer& m_Buffer;
 		size_t m_ReadPos = 0;
 	};
 

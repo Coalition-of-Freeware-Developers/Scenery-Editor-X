@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * shader_resource.h
@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
+#include "SceneryEditorX/renderer/storage_buffer.h"
 #include <unordered_map>
-#include "SceneryEditorX/renderer/buffers/storage_buffer.h"
 
 // -------------------------------------------------------
 
@@ -24,23 +24,23 @@ namespace SceneryEditorX
 
     /**
      * @brief Represents an image sampler resource used in shaders
-     * 
+     *
      * This structure contains information about image samplers including
      * their dimensionality and binding information for shader reflection.
      */
     struct ImageSampler
     {
-        uint32_t Dimension = 2;                                      ///< Texture dimension (1D, 2D, 3D, Cube)
-        uint32_t bindingPoint = 0;                                   ///< Binding point in shader
-        std::string name;                                            ///< Name of the sampler in shader
+        uint32_t dimension = 2;                                      // Texture dimension (1D, 2D, 3D, Cube)
+        uint32_t bindingPoint = 0;                                   // Binding point in shader
+        std::string name;                                            // Name of the sampler in shader
         VkShaderStageFlagBits shaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; ///< Shader stage flags
         VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; ///< Descriptor type
-        
+
         /**
          * @brief Default constructor for ImageSampler
          */
         ImageSampler() = default;
-        
+
         /**
          * @brief Constructor with parameters
          * @param dimension Texture dimension (1, 2, 3 for 1D, 2D, 3D respectively)
@@ -49,7 +49,7 @@ namespace SceneryEditorX
          * @param stage Shader stage where this sampler is used
          */
         ImageSampler(uint32_t dimension, uint32_t binding, std::string samplerName, VkShaderStageFlagBits stage)
-            : Dimension(dimension), bindingPoint(binding), name(std::move(samplerName)), shaderStage(stage) {}
+            : dimension(dimension), bindingPoint(binding), name(std::move(samplerName)), shaderStage(stage) {}
     };
 
     // -------------------------------------------------
@@ -58,14 +58,13 @@ namespace SceneryEditorX
     {
     public:
 		ShaderResource() = default;
-        ShaderResource(std::string name, const uint32_t set, const uint32_t resourceRegister, const uint32_t count)
-            : name(std::move(name)), set(set), Register(resourceRegister), count(count) { }
+        ShaderResource(std::string name, const uint32_t set, const uint32_t resourceRegister, const uint32_t count) : name(std::move(name)), set(set), Register(resourceRegister), count(count) { }
 
 		[[nodiscard]] virtual const std::string& GetName() const { return name; }
         [[nodiscard]] virtual uint32_t GetSet() const { return set; }
 		[[nodiscard]] virtual uint32_t GetRegister() const { return Register; }
 		[[nodiscard]] virtual uint32_t GetCount() const { return count; }
-		
+
 		struct PushConstantRange
 		{
 			VkShaderStageFlagBits shaderStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;

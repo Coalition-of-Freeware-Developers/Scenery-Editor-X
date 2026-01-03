@@ -15,37 +15,38 @@
 #include "compute_pass.h"
 #include "image_data.h"
 #include "render_context.h"
-#include "buffers/framebuffer.h"
-#include "buffers/index_buffer.h"
-#include "buffers/vertex_buffer.h"
+#include "framebuffer.h"
+#include "index_buffer.h"
+#include "vertex_buffer.h"
 //#include "scene_renderer.h"
-#include "bindless_descriptor_manager.h"
+//#include "bindless_descriptor_manager.h"
 #include "render_dispatcher.h"
-#include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include "texture.h"
 #include "SceneryEditorX/core/time/timer.h"
+#include "SceneryEditorX/utils/repeat_call_tracker.h"
 // NOTE: Do not include profiler.hpp here to avoid pulling in Tracy symbols when not linked
 // #include "SceneryEditorX/logging/profiler.hpp"
+#include "command_buffer.h"
 #include "shaders/shader.h"
-#include "vulkan/vk_allocator.h"
-#include "vulkan/vk_cmd_buffers.h"
-#include "vulkan/vk_pipeline.h"
-#include "vulkan/vk_render_pass.h"
-#include "vulkan/vk_util.h"
+#include "memory_allocator.h"
+#include "pipeline.h"
+#include "render_pass.h"
+#include "swapchain.h"
+#include "vulkan_utils.h"
 
-// #include <imgui.h>
-// #include <imgui/backends/imgui_impl_glfw.h>
-// #include <imgui/backends/imgui_impl_vulkan.h>
+#include <imgui.h>
+#include <imgui/backends/imgui_impl_glfw.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
 
-#include <algorithm>
-#include <stb_image_write.h>
-#include <utility>
-#include <vector>
-#include "primitives.h"
 #include "SceneryEditorX/core/events/application_events.h"
 #include "SceneryEditorX/core/time/time.h"
 #include "SceneryEditorX/platform/filesystem/file_manager.hpp"
 #include "fonts/font.h"
+#include <algorithm>
+#include <shared_mutex>
+#include <stb_image_write.h>
+#include <utility>
+#include <vector>
 
 // -------------------------------------------------------
 
@@ -65,8 +66,8 @@ namespace SceneryEditorX
         std::vector<uint32_t> descriptorPoolAllocationCount;
 
         /** UniformBufferSet -> Shader Hash -> Frame -> WriteDescriptor */
-		std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> uniformBufferWriteDescriptorCache;
-		std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> storageBufferWriteDescriptorCache;
+		//std::unordered_map<UniformBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> uniformBufferWriteDescriptorCache;
+		//std::unordered_map<StorageBufferSet*, std::unordered_map<uint64_t, std::vector<std::vector<VkWriteDescriptorSet>>>> storageBufferWriteDescriptorCache;
 
         /** Default samplers */
         VkSampler samplerClamp = nullptr;
@@ -76,17 +77,15 @@ namespace SceneryEditorX
         int32_t drawCallCount = 0;
 
         //Ref<ShaderLibrary> m_ShaderLibrary;
-        //Ref<Texture2D> WhiteTexture;
-        //Ref<Texture2D> BlackTexture;
-        //Ref<Texture2D> BRDFLutTexture;
-        //Ref<Texture2D> HilbertLut;
-        //Ref<TextureCube> BlackCubeTexture;
-        //Ref<Environment> EmptyEnvironment;
-
+        Ref<Texture2D> WhiteTexture;
+        Ref<Texture2D> BlackTexture;
+        Ref<Texture2D> BRDFLutTexture;
+        Ref<Texture2D> HilbertLut;
+        Ref<TextureCube> BlackCubeTexture;
+        Ref<Environment> EmptyEnvironment;
         //std::unordered_map<std::string, std::string> GlobalShaderMacros;
 
     };
-
 
     // misc
     //uint32_t Renderer::m_resource_index = 0;
@@ -104,7 +103,10 @@ namespace SceneryEditorX
 		Vec2 m_ResolutionOutput = Vec2(0.0f, 0.0f);
 		Viewport m_Viewport = Viewport(0, 0, 0, 0);
 
-        uint64_t frameNumber = 0;
+        constexpr static uint32_t s_RenderCommandQueueCount = 2;
+        static CommandManager *s_CommandQueue[s_RenderCommandQueueCount];
+
+        uint32_t frameNumber = 0;
         Vec2 jitterOffset = Vec2(0.0f, 0.0f);
         constexpr uint32_t RESOLUTION_SHADOW_MIN = 128;
         float nearPlane = 0.0f;
@@ -113,30 +115,36 @@ namespace SceneryEditorX
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Static Variables
+    // Static Variables																								  ///
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    static RenderData m_RenderData;
-    static RendererProperties *s_Data = nullptr;
-	static bool s_Initialized = false;
-    std::vector<FrameSync> s_FrameSyncObjects;
-    uint32_t s_CurrentFrame = 0;
-    // Legacy command queue system removed in favor of RenderDispatcher.
-    //static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
 
-    // -------------------------------------------------------
-
-    /*
     struct ShaderDependencies
     {
         std::vector<Ref<ComputePipeline>> ComputePipelines;
         std::vector<Ref<Pipeline>> Pipelines;
         std::vector<Ref<Material>> Materials;
     };
-    */
+
+    static RenderData m_RenderData;
+    static RendererProperties *s_Data = nullptr;
+	static bool s_Initialized = false;
+    static SwapChain* s_SwapChain = nullptr;
+    // static std::vector<FrameSync> s_FrameSyncObjects;
+    static uint32_t s_CurrentFrame = 0;
+    static std::atomic<uint32_t> s_RenderCommandQueueSubmissionIndex = 0;
+    static std::unordered_map<size_t, ShaderDependencies> s_ShaderDependencies;
+    static std::shared_mutex s_ShaderDependenciesMutex; // ShaderDependencies can be accessed (and modified) from multiple threads, hence require synchronization
+
+    // Legacy command queue system removed in favor of RenderDispatcher.
+    //static std::unordered_map<size_t, Ref<Pipeline>> s_PipelineCache;
 
     // -------------------------------------------------------
 
     Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
+
+    // -------------------------------------------------------
+
+    SwapChain* Renderer::GetSwapChain() { return s_SwapChain; }
 
     // -------------------------------------------------------
 
@@ -165,9 +173,31 @@ namespace SceneryEditorX
         }
         const auto &config = GetRenderData();
 
-        // Initialize async render dispatcher
+        s_Data = new RendererProperties;
+        SEDX_CORE_INFO_TAG("Renderer", "Initialized new RenderProperties: {}", ToString(s_Data));
+
+        // Make sure we don't have more frames in flight than swapchain images
+        config.framesInFlight = xMath::Min<uint32_t>(config.framesInFlight, GetSwapChain()->GetSwapChainImageCount());
+        SEDX_CORE_INFO_TAG("Renderer", "Frames-in-flight: {}", config.framesInFlight);
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// SwapChain																									  ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        auto& window = Application::Get().GetWindow();
+        GLFWwindow* glfwWindow = window.GetWindow();
+        
+        SEDX_CORE_INFO_TAG("Renderer", "Creating SwapChain");
+        s_SwapChain = new SwapChain();
+        s_SwapChain->Init(RenderContext::GetCurrentDevice());
+        s_SwapChain->InitSurface(glfwWindow);
+        s_SwapChain->Create();
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Render Dispatcher																							  ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         RenderDispatcher::Init();
 
+        /*
         // Create synchronization objects for each frame in flight
         s_FrameSyncObjects.clear();
         s_FrameSyncObjects.reserve(config.framesInFlight);
@@ -176,16 +206,9 @@ namespace SceneryEditorX
             s_FrameSyncObjects.emplace_back(FrameSyncType::Fence, fmt::format("FrameSync[{}]", i), true, true, true);
             SEDX_CORE_INFO_TAG("RENDERER", "Frame sync objects created for frame {}", i);
         }
+        */
 
 		// -------------------------------------------------------
-
-        s_Data = new RendererProperties;
-		SEDX_CORE_INFO_TAG("Renderer", "Initialized new RenderProperties: {}", ToString(s_Data));
-
-        // Make sure we don't have more frames in flight than swapchain images
-        config.framesInFlight = xMath::Min<uint32_t>(config.framesInFlight, Application::Get().GetWindow().GetSwapChain().GetSwapChainImageCount());
-		SEDX_CORE_INFO_TAG("Renderer", "Checked Swapchain image count:");
-		SEDX_CORE_INFO("Frames-in-flight: {}", config.framesInFlight);
 
         s_Data->descriptorPools.resize(config.framesInFlight);
 		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPools");
@@ -193,7 +216,7 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO_TAG("Renderer", "Resized DescriptorPool Allocation Count");
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// Create Descriptor pools
+        /// Create Descriptor pools																						   ///
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         Submit([]() mutable
@@ -237,8 +260,10 @@ namespace SceneryEditorX
 
         constexpr float x = -1;
         constexpr float y = -1;
+        /*
         constexpr float width = 2;
         constexpr float height = 2;
+        */
 		struct QuadVertex
 		{
 			Vec3 position;
@@ -267,7 +292,7 @@ namespace SceneryEditorX
 		s_Data->BRDFLut = GetBRDFLutTexture();
 
         uint32_t whiteTextureData = 0xffffffff;
-        TextureSpecification spec;
+        TextureSpec spec;
         spec.format = VK_FORMAT_R8G8B8A8_UNORM;
 		spec.width = 1;
 		spec.height = 1;
@@ -277,7 +302,7 @@ namespace SceneryEditorX
         s_Data->BlackTexture = CreateRef<Texture2D>(spec, Buffer(&blackTextureData, sizeof(uint32_t)));
 
 		{
-			TextureSpecification textureSpec;
+			TextureSpec textureSpec;
             textureSpec.samplerWrap = SamplerWrap::Clamp_Edge;
 			s_Data->BRDFLutTexture = CreateRef<Texture2D>(textureSpec, std::filesystem::path("assets/Renderer/BRDF_LUT.png"));
 		}
@@ -287,7 +312,7 @@ namespace SceneryEditorX
         */
 
 		// Initialize bindless descriptor manager
-		BindlessDescriptorManager::Init();
+		//BindlessDescriptorManager::Init();
 
         s_Initialized = true;
 		SEDX_CORE_TRACE("Renderer Initialized");
@@ -303,18 +328,32 @@ namespace SceneryEditorX
 
 		RenderDispatcher::Shutdown();
 
+		/*
 		BindlessDescriptorManager::FlushPending();
 		BindlessDescriptorManager::Shutdown();
+		*/
 
 		if (s_Data->samplerPoint) { DestroySampler(s_Data->samplerPoint); s_Data->samplerPoint = nullptr; }
 		if (s_Data->samplerClamp) { DestroySampler(s_Data->samplerClamp); s_Data->samplerClamp = nullptr; }
 
-#if SEDX_HAS_SHADER_COMPILER
+    #if SEDX_HAS_SHADER_COMPILER
         VulkanShaderCompiler::ClearUniformBuffers();
-#endif
+    #endif
+
+		// Destroy SwapChain before destroying device
+		if (s_SwapChain)
+		{
+		    SEDX_CORE_INFO_TAG("Renderer", "Destroying SwapChain");
+		    s_SwapChain->Destroy();
+		    
+		    SEDX_CORE_ASSERT(s_SwapChain->GetSwapchain() == VK_NULL_HANDLE, "[Renderer] Swapchain handle must be null after destroy");
+		    SEDX_CORE_ASSERT(s_SwapChain->GetRenderPass() == VK_NULL_HANDLE, "[Renderer] RenderPass handle must be null after destroy");
+		    
+		    delete s_SwapChain;
+		    s_SwapChain = nullptr;
+		}
 
 		devRef->Destroy();
-
         delete s_Data;
 
         /// Resource release queue
@@ -328,25 +367,23 @@ namespace SceneryEditorX
         Submit([]()
         {
             //SEDX_PROFILE_FUNC("VulkanRenderer::BeginFrame");
-            SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
-            RenderDispatcher::NextFrame(swapChain.GetBufferIndex());
+            SwapChain* swapChain = Renderer::GetSwapChain();
 
             /** Reset descriptor pools here */
             VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
-            uint32_t bufferIndex = swapChain.GetCurrentBufferIndex();
+            uint32_t bufferIndex = swapChain->GetCurrentBufferIndex();
             vkResetDescriptorPool(device, s_Data->descriptorPools[bufferIndex], 0);
             memset(s_Data->descriptorPoolAllocationCount.data(),0,
                    s_Data->descriptorPoolAllocationCount.size() * sizeof(uint32_t));
 
             s_Data->drawCallCount = 0;
 
-
 			VkCommandBufferBeginInfo cmdBufInfo = {};
 			cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			cmdBufInfo.pNext = nullptr;
 
-			VkCommandBuffer drawCommandBuffer = swapChain.GetActiveDrawCommandBuffer();
+			VkCommandBuffer drawCommandBuffer = swapChain->GetActiveDrawCommandBuffer();
 			//SEDX_CORE_ASSERT(commandBuffer);
 			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &cmdBufInfo))
         });
@@ -356,21 +393,104 @@ namespace SceneryEditorX
 
     void Renderer::EndFrame()
     {
-    #if 0
-		Renderer::Submit([]()
-		{
-			VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
-			commandBuffer = nullptr;
-		});
-    #endif
+        Submit([]()
+        {
+            SwapChain* swapChain = Renderer::GetSwapChain();
+            VkCommandBuffer commandBuffer = swapChain->GetActiveDrawCommandBuffer();
+            
+            // End command buffer recording
+            SEDX_CORE_ASSERT(commandBuffer, "Command buffer cannot be null");
+            VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+        });
     }
 
     void Renderer::SubmitFrame()
     {
-        const uint32_t frame = GetCurrentRenderThreadFrameIndex();
-        // Submit the current frame to the GPU
-        // This would involve submitting command buffers to the appropriate queues
+        Submit([]()
+        {
+            SwapChain* swapChain = Renderer::GetSwapChain();
+            
+            // Present the swapchain image to the screen
+            swapChain->Present();
+            
+            // Advance to next frame for resource free ring
+            const uint32_t frame = swapChain->GetBufferIndex();
+            RenderDispatcher::NextFrame(frame);
+        });
+    }
+
+	// TODO:
+    // 1) Acquire Next swapchain image
+    // 2) Begin the primary graphics command list
+    // 3) Update CPU and GPU resources
+    //		- Fill draw call list and determine ideal occluders
+    //		- Update TLAS
+    //      - Handle dynamic buffers and resource deletion
+    //		- Update bindless resources
+    //			- Lights
+    //		    - Materials
+    //          - Samplers
+    //			- World Space AABB
+    //		- Update constant buffer and lines
+    // 4) Produce frame if window isn't minimized
+    // 5) Blit to back buffer when standalone
+    // 6) Clear per-frame data
+    // 7) Increment frame counter and trigger first-frame event
+    void Renderer::Tick()
+    {
+        // Check if window is minimized - skip rendering if so
+        if (Application::Get().GetWindow().IsMinimized())
+            return;
+
+        // 1) Acquire next swapchain image and begin swapchain frame (must happen on main thread)
+        SwapChain* swapChain = Renderer::GetSwapChain();
+
+		// Verify swapchain is initialized before rendering
+        if (!swapChain || swapChain->GetSwapChainImageCount() == 0)
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "Swapchain not initialized, skipping frame");
+            return;
+        }
+
+        swapChain->BeginFrame();
+
+        // 2) Begin command buffer recording (synchronous to ensure proper sequencing)
+        VkCommandBufferBeginInfo cmdBufInfo = {};
+        cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cmdBufInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        cmdBufInfo.pNext = nullptr;
+
+        VkCommandBuffer drawCommandBuffer = swapChain->GetActiveDrawCommandBuffer();
+        SEDX_CORE_ASSERT(drawCommandBuffer != VK_NULL_HANDLE, "Command buffer cannot be null");
+        VK_CHECK_RESULT(vkBeginCommandBuffer(drawCommandBuffer, &cmdBufInfo))
+        
+        // Reset descriptor pools for current frame
+        VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+        uint32_t bufferIndex = swapChain->GetCurrentBufferIndex();
+        vkResetDescriptorPool(device, s_Data->descriptorPools[bufferIndex], 0);
+        memset(s_Data->descriptorPoolAllocationCount.data(), 0, s_Data->descriptorPoolAllocationCount.size() * sizeof(uint32_t));
+
+        s_Data->drawCallCount = 0;
+
+        // 3) Execute render passes to produce the frame
+        // Currently only clears the screen - expand with more passes as needed
+        RenderPass::ProduceFrame(nullptr, nullptr);
+
+        // 4) End command buffer recording
+        SEDX_CORE_ASSERT(drawCommandBuffer != VK_NULL_HANDLE, "Command buffer cannot be null");
+        VK_CHECK_RESULT(vkEndCommandBuffer(drawCommandBuffer))
+
+        // 5) Submit to GPU and present to screen
+        swapChain->Present();
+        
+        // Advance to next frame for resource free ring
+        const uint32_t frame = swapChain->GetBufferIndex();
         RenderDispatcher::NextFrame(frame);
+
+        // 6) Increment frame counter
+        frameNumber++;
+        
+        // TODO: Trigger first-frame event if this is frame 0
     }
 
     /** Legacy GetRenderResourceReleaseQueue removed – use SubmitResourceFree for deferred destruction. */
@@ -378,9 +498,21 @@ namespace SceneryEditorX
     //Ref<ShaderLibrary> Renderer::GetShaderLibrary() { return s_Data->m_ShaderLibrary; }
     RenderData &Renderer::GetRenderData() { return m_RenderData; }
     void Renderer::SetRenderData(const RenderData &renderData) { m_RenderData = renderData; }
-	uint64_t Renderer::GetCurrentFrameIndex() { return m_RenderData.frameIndex; }
+	uint32_t Renderer::GetCurrentFrameIndex() { return m_RenderData.frameIndex; }
 
-	/*
+
+    void Renderer::RenderUI()
+    {
+        //SEDX_PROFILE_FUNC();
+        SEDX_SCOPE_PERF("Application::RenderImGui");
+
+        m_ImGuiLayer->Begin();
+
+        for (int i = 0; i < m_LayerStack.Size(); i++)
+            m_LayerStack[i]->OnImGuiRender();
+    }
+
+    /*
 	VkDescriptorSetAllocateInfo Renderer::DescriptorSetAllocInfo(const VkDescriptorSetLayout* layouts, uint32_t count, VkDescriptorPool pool)
 	{
 		VkDescriptorSetAllocateInfo info{};
@@ -391,6 +523,8 @@ namespace SceneryEditorX
 		return info;
 	}
 	*/
+
+    // -------------------------------------------------------
 
 	VkSampler Renderer::CreateSampler(const VkSamplerCreateInfo &samplerCreateInfo)
 	{
@@ -410,10 +544,16 @@ namespace SceneryEditorX
 		Utils::GetResourceAllocationCounts().m_Samplers--;
 	}
 
+    // -------------------------------------------------------
+
+    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->descriptorPoolAllocationCount[frameIndex]; }
+
+    // Swapchain owns the Render Thread frame index
     uint32_t Renderer::GetCurrentRenderThreadFrameIndex()
     {
-        // Swapchain owns the Render Thread frame index
-        return Application::Get().GetWindow().GetSwapChain().GetCurrentBufferIndex();
+        if (SwapChain* swapChain = Renderer::GetSwapChain())
+            return swapChain->GetCurrentBufferIndex();
+        return 0;
     }
 
     const Viewport& Renderer::GetViewport() { return m_Viewport; }
@@ -431,8 +571,30 @@ namespace SceneryEditorX
     }
 
     const Vec2& Renderer::GetResolutionRender() { return m_ResolutionRender; }
-    const Vec2 &Renderer::GetResolutionOutput() { return m_ResolutionOutput; }
-    uint32_t Renderer::GetDescriptorAllocationCount(uint32_t frameIndex) { return s_Data->descriptorPoolAllocationCount[frameIndex]; }
+    const Vec2& Renderer::GetResolutionOutput() { return m_ResolutionOutput; }
+
+    // -------------------------------------------------------
+
+	void Renderer::RegisterShader(Ref<Shader> shader, Ref<ComputePipeline> computePipeline)
+    {
+        std::scoped_lock lock(s_ShaderDependenciesMutex);
+        s_ShaderDependencies[shader->GetHash()].ComputePipelines.push_back(computePipeline);
+    }
+
+    void Renderer::RegisterShader(Ref<Shader> shader, Ref<Pipeline> pipeline)
+    {
+        std::scoped_lock lock(s_ShaderDependenciesMutex);
+        s_ShaderDependencies[shader->GetHash()].Pipelines.push_back(pipeline);
+    }
+
+    void Renderer::RegisterShader(Ref<Shader> shader, Ref<Material> material)
+    {
+        std::scoped_lock lock(s_ShaderDependenciesMutex);
+        s_ShaderDependencies[shader->GetHash()].Materials.push_back(material);
+    }
+
+    // -------------------------------------------------------
+
 
     void Renderer::BeginFrame(Ref<CommandBuffer> CommandBuffer, Ref<RenderPass> renderPass, bool explicitClear)
     {
@@ -655,7 +817,8 @@ namespace SceneryEditorX
     }
     */
 
-    /*
+    // -------------------------------------------------------
+
     Ref<Texture2D> Renderer::GetWhiteTexture() { return s_Data->WhiteTexture; }
     Ref<Texture2D> Renderer::GetBlackTexture() { return s_Data->BlackTexture; }
     Ref<Texture2D> Renderer::GetHilbertLut() { return s_Data->HilbertLut; }
@@ -663,44 +826,8 @@ namespace SceneryEditorX
 
     Ref<TextureCube> Renderer::GetBlackCubeTexture() { return s_Data->BlackCubeTexture; }
     Ref<Environment> Renderer::GetEmptyEnvironment() { return s_Data->EmptyEnvironment; }
-    */
 
     // -------------------------------------------------------
-
-    //static std::unordered_map<size_t, ShaderDependencies> s_ShaderDependencies;
-    //static std::shared_mutex s_ShaderDependenciesMutex; /// ShaderDependencies can be accessed (and modified) from multiple threads, hence require synchronization
-
-    // -------------------------------------------------------
-
-	/*
-	struct GlobalShaderInfo
-	{
-		/// Macro name, set of shaders with that macro.
-		std::unordered_map<std::string, std::unordered_map<size_t, WeakRef<Shader>>> ShaderGlobalMacrosMap;
-		/// Shaders waiting to be reloaded.
-		//std::unordered_set<WeakRef<Shader>> DirtyShaders;
-	};
-	*/
-
-	//static GlobalShaderInfo s_GlobalShaderInfo;
-
-    // -------------------------------------------------------
-
-	/*
-	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline)
-	{
-		std::scoped_lock lock(s_ShaderDependenciesMutex);
-		s_ShaderDependencies[shader->GetHash()].ComputePipelines.push_back(computePipeline);
-	}
-    */
-
-	/*
-	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<Pipeline> &pipeline)
-	{
-		std::scoped_lock lock(s_ShaderDependenciesMutex);
-		s_ShaderDependencies[shader->GetHash()].Pipelines.push_back(pipeline);
-	}
-	*/
 
     /**
      * @brief Get number of nanoseconds required for a timestamp query to be incremented by 1
@@ -710,18 +837,47 @@ namespace SceneryEditorX
      */
     double Renderer::GetTimestampPeriodInMS() const
     {
-        return static_cast<double>(RenderContext::Get()->GetLogicDevice()->GetPhysicalDevice()->GetDeviceProperties().properties.limits.timestampPeriod) * 1e-6;
+        return static_cast<double>(RenderContext::Get()->GetPhysicalDevice()->GetDeviceProperties().properties.limits.timestampPeriod) * 1e-6;
     }
 
-    /*
-	void Renderer::RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material)
-	{
-		std::scoped_lock lock(s_ShaderDependenciesMutex);
-		s_ShaderDependencies[shader->GetHash()].Materials.push_back(material);
-	}
-	*/
+    void Renderer::WaitAndRender(RenderThread *renderThread)
+    {
+        auto &performanceTimers = Application::Get().m_PerformanceTimers;
 
-	/*
+        // Wait for kick, then set render thread to busy
+        {
+            Timer waitTimer;
+            renderThread->WaitAndSet(RenderThread::State::Kick, RenderThread::State::Busy);
+            performanceTimers.RenderThreadWaitTime = waitTimer.ElapsedMillis();
+        }
+
+        Timer workTimer;
+        s_CommandQueue[GetRenderQueueIndex()]->ExecuteCommandQueue();
+
+        // Rendering has completed, set state to idle
+        renderThread->Set(RenderThread::State::Idle);
+
+        performanceTimers.RenderThreadWorkTime = workTimer.ElapsedMillis();
+    }
+
+    void Renderer::RenderThreadFunc(RenderThread *renderThread)
+    {
+        while (renderThread->IsRunning())
+        {
+            WaitAndRender(renderThread);
+        }
+    }
+
+    uint32_t Renderer::GetRenderQueueIndex()
+    {
+        return (s_RenderCommandQueueSubmissionIndex + 1) % s_RenderCommandQueueCount;
+    }
+
+    uint32_t Renderer::GetRenderQueueSubmissionIndex()
+    {
+        return s_RenderCommandQueueSubmissionIndex;
+    }
+
 	void Renderer::OnShaderReloaded(const size_t hash)
 	{
 		ShaderDependencies dependencies;
@@ -729,7 +885,7 @@ namespace SceneryEditorX
 			std::shared_lock lock(s_ShaderDependenciesMutex);
 			if (const auto it = s_ShaderDependencies.find(hash); it != s_ShaderDependencies.end())
 			{
-				dependencies = it->second; /// expensive to copy, but we need to release the lock (in particular to avoid potential deadlock if things like material->OnShaderReloaded() happen to ask for the lock)
+				dependencies = it->second; // expensive to copy, but we need to release the lock (in particular to avoid potential deadlock if things like material->OnShaderReloaded() happen to ask for the lock)
 			}
 		}
 
@@ -742,7 +898,6 @@ namespace SceneryEditorX
         for (const auto &material : dependencies.Materials)
             material->OnShaderReloaded();
     }
-    */
 
     /*
     bool Renderer::UpdateDirtyShaders()

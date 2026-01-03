@@ -16,8 +16,8 @@
 #include "monitor_data.h"
 #include "SceneryEditorX/core/events/event_system.h"
 #include "SceneryEditorX/renderer/render_context.h"
-#include "SceneryEditorX/renderer/vulkan/vk_data.h"
-#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
+#include "SceneryEditorX/renderer/vulkan_data.h"
+#include "SceneryEditorX/renderer/vulkan_includes.h"
 
 // -------------------------------------------------------
 
@@ -114,7 +114,7 @@ namespace SceneryEditorX
 
         static Window*		Create(const WindowData &windowSpecs = WindowData());
         static std::string  VideoModeText(const GLFWvidmode &mode);
-
+        void				SetEventCallback(const EventCallbackFn &callback) { m_WindowSpecs.EventCallback = callback; }
 		void				UpdateFramebufferSize();
         void			    SetFramebufferResized(const bool resized)   { m_WinData.framebufferResized = resized; }
 		void			    WaitEvents()								{ glfwWaitEvents(); }
@@ -143,6 +143,8 @@ namespace SceneryEditorX
             std::string m_title;
             uint32_t m_width = 1280;
             uint32_t m_height = 720;
+
+			EventCallbackFn EventCallback;
 		};
 		WindowSpecs m_WindowSpecs;
 

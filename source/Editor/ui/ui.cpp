@@ -19,7 +19,7 @@
 #include <imgui/imgui_internal.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/vk_device.h>
+#include <SceneryEditorX/renderer/device.h>
 #include <SceneryEditorX/ui/ui.h>
 
 // -------------------------------------------------------
@@ -166,7 +166,7 @@ namespace SceneryEditorX::UI
             return true;
         }
 
-        /// Get essential Vulkan objects
+        // Get essential Vulkan objects
         //device = GraphicsEngine::GetDevice()->GetDevice();
         //swapchain = renderer.GetSwapChain().Get();
 
@@ -176,16 +176,16 @@ namespace SceneryEditorX::UI
             return false;
         }
 
-        /// Create descriptor pool
+        // Create descriptor pool
         if (!CreateDescriptorPool())
             return false;
 
-        /// Initialize ImGui context
+        // Initialize ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
 
-        /// Configure ImGui features
+        // Configure ImGui features
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   /// Enable docking
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; /// Enable multi-viewport
         io.ConfigDockingWithShift = false;                  /// Don't require shift for docking
@@ -195,20 +195,20 @@ namespace SceneryEditorX::UI
         /// Initialize GLFW backend
         ImGui_ImplGlfw_InitForVulkan(window, true);
 
-        /// Get queue family info
+        // Get queue family info
         RenderData renderData;
 
-        /// Initialize Vulkan backend
+        // Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
         info.Instance = RenderContext::GetInstance();
-        info.PhysicalDevice = device->GetPhysicalDevice()->GetGPUDevices();
+        info.PhysicalDevice = device->GetPhysicalDevice()->GetDevice();
         info.QueueFamily = device->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
         info.Queue = device->GetGraphicsQueue();
         info.DescriptorPool = imguiPool;
         //info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;
         info.ImageCount = renderData.imageIndex;
-        info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT; /// Use MSAA samples from renderer later
+        info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT; // Use MSAA samples from renderer later
         info.Allocator = nullptr;
         info.CheckVkResultFn = [](const VkResult result)
         {
@@ -216,7 +216,7 @@ namespace SceneryEditorX::UI
                 EDITOR_ERROR("ImGui Vulkan Error: {}", static_cast<int>(result));
         };
 
-        /// Initialize Vulkan implementation
+        // Initialize Vulkan implementation
         if (!ImGui_ImplVulkan_Init(&info))
         {
             EDITOR_ERROR("Failed to initialize ImGui Vulkan implementation");
@@ -361,7 +361,7 @@ namespace SceneryEditorX::UI
 	        return;
 	    }
 	
-	    SceneryEditorX::QueueFamilyIndices indices = device->GetPhysicalDevice()->GetQueueFamilyIndices();
+	    SceneryEditorX::QueueFamilyIndices indices = device->GetDevice()->GetQueueFamilyIndices();
 	
 	    ImGui::CreateContext();
 	    ImGuiIO& io = ImGui::GetIO();
@@ -375,7 +375,7 @@ namespace SceneryEditorX::UI
 	    ImGui_ImplVulkan_InitInfo info{};
 	    info.ApiVersion = VK_API_VERSION_1_3;
 	    info.Instance = SceneryEditorX::GraphicsEngine::GetInstance();
-	    info.PhysicalDevice = device->GetPhysicalDevice()->GetGPUDevice();
+	    info.PhysicalDevice = device->GetDevice()->GetGPUDevice();
 	    info.Device = device->GetDevice();
 	    info.QueueFamily = indices.graphicsFamily.value();
 	    info.Queue = device->GetGraphicsQueue();

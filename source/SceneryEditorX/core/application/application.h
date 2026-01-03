@@ -15,11 +15,12 @@
 #include "application_data.h"
 #include "SceneryEditorX/core/events/application_events.h"
 #include "SceneryEditorX/core/events/event_system.h"
-#include "SceneryEditorX/core/modules/module_stage.h"
+#include "SceneryEditorX/core/layers/layer_stack.h"
 #include "SceneryEditorX/core/time/time.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/core/window/window.h"
-#include "SceneryEditorX/platform/settings/settings.h"
+#include "SceneryEditorX/core/platform/settings/settings.h"
+#include "SceneryEditorX/ui/ui_layer.h"
 #include "SceneryEditorX/utils/pointers.h"
 #include "SceneryEditorX/utils/static_states.h"
 
@@ -58,14 +59,26 @@ namespace SceneryEditorX
         virtual void OnShutdown();
         virtual void Tick() {}
 
+	    void PushLayer(Layer *module);
+        void PushOverlay(Layer *module);
+        void PopLayer(Layer *module);
+        void PopOverlay(Layer *module);
+
+        // -------------------------------------------------------
+
 		DeltaTime GetDeltaTime() const { return m_DeltaTime; }
 		DeltaTime GetFrameTime() const { return m_FrameTime; }
 		float GetTime() const; // TODO: This should be in "Platform"
+
+        // -------------------------------------------------------
 
 	    PerformanceProfiler* GetPerformanceProfiler() const { return m_Profiler; }
         inline Window& GetWindow() { return *m_Window; }
         uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
+        PerformanceTimers m_PerformanceTimers;
+
+        // -------------------------------------------------------
 
         static Application &Get() { return *appInstance; }
 	    static const char* GetConfigurationName();
@@ -73,17 +86,23 @@ namespace SceneryEditorX
         static std::thread::id GetMainThreadID();
         static bool IsMainThread();
 
+        // -------------------------------------------------------
+
         // Settings accessors (single authoritative instance for the app lifetime)
         ApplicationSettings& GetSettings() { return m_Settings; }
         const ApplicationSettings& GetSettings() const { return m_Settings; }
 
-	    void AddEventCallback(const EventCallbackFn& eventCallback) { m_EventCallbacks.push_back(eventCallback); }
+        // -------------------------------------------------------
+
+	    void SetEventCallback(const EventCallbackFn& eventCallback) { m_EventCallbacks.push_back(eventCallback); }
         void SyncEvents();
         void ProcessEvents();
         void OnEvent(Event &event);
         bool OnWindowResize(const WindowResizeEvent &e);
         bool OnWindowMinimize(const WindowMinimizeEvent &e);
         bool OnWindowClose(WindowCloseEvent &e);
+
+        // -------------------------------------------------------
 
         /**
 		 * @brief Queues an event to be processed later.
@@ -127,10 +146,11 @@ namespace SceneryEditorX
         Scope<Window> m_Window;
         WindowData m_WindowData;
         AppData m_AppData;
-        ModuleStage m_ModuleStage;
-
+        LayerStack m_ModuleStage;
+        UI::UILayer *m_UILayer = nullptr;
 		DeltaTime m_DeltaTime;
 		DeltaTime m_FrameTime;
+		float m_LastFrameTime = 0.0f;
 	    bool m_IsRunning = true;
         bool m_IsMinimized = false;
         bool m_ShowStats = true;

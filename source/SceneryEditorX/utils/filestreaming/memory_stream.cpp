@@ -18,7 +18,7 @@ namespace SceneryEditorX
 {
 
 	/** MemoryStreamWriter */
-	MemoryStreamWriter::MemoryStreamWriter(Memory::Buffer& buffer, size_t size) : m_Buffer(buffer)
+	MemoryStreamWriter::MemoryStreamWriter(Buffer& buffer, size_t size) : m_Buffer(buffer)
 	{
 		if (size > buffer.size)
 			buffer.Allocate((uint32_t)size);
@@ -38,7 +38,7 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
 	/** MemoryStreamReader */
-	MemoryStreamReader::MemoryStreamReader(const Memory::Buffer& buffer) : m_Buffer(buffer) {}
+	MemoryStreamReader::MemoryStreamReader(const Buffer& buffer) : m_Buffer(buffer) {}
 	MemoryStreamReader::~MemoryStreamReader() = default;
 
     bool MemoryStreamReader::ReadData(char* destination, size_t size)

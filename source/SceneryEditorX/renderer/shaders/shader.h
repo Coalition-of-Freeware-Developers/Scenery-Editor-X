@@ -14,7 +14,7 @@
 #include "shader_resource.h"
 #include "shader_uniforms.h"
 #include "SceneryEditorX/renderer/render_context.h"
-#include "SceneryEditorX/renderer/buffers/uniform_buffer.h"
+#include "SceneryEditorX/renderer/uniform_buffer.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_reader.h"
 #include "SceneryEditorX/utils/filestreaming/filestream_writer.h"
 #include <spirv_cross/spirv_hlsl.hpp>
@@ -144,39 +144,39 @@ namespace SceneryEditorX
 		 *
 		 * Called when a shader is reloaded to allow dependents to update resources.
 		 */
-		using ShaderReloadedCallback = std::function<void()>;
-		using ShaderModuleErrorCallback = void (*)(RenderContext*, Ref<Shader>, int line, int col, const char* debugName);
+		//using ShaderReloadedCallback = std::function<void()>;
+		//using ShaderModuleErrorCallback = void (*)(RenderContext*, Ref<Shader>, int line, int col, const char* debugName);
 
-        /**
-         * @brief Default constructor.
-         *
-         * Creates an uninitialized shader instance that must be loaded before use.
-         */
         Shader() = default;
+        Shader(const std::string &path, bool forceCompile, bool disableOptimization);
+        virtual ~Shader();
+
+        void Release();
+
+	    /**
+         * @brief Reload the shader from its source file.
+         * @param forceCompile Whether to force recompilation even if a cached version exists
+         */
+        void Reload(bool forceCompile = false);
+
+        void Reload_RenderThread(bool forceCompile = false);
+
+        virtual size_t GetHash() const;
 
         /**
-         * @brief Construct shader from file.
-         *
-         * @param filepath Path to the shader file, relative to shader directory
-         * @param forceCompile Whether to force recompilation even if cached version exists
-         * @param disableOptimization Whether to disable shader optimization during compilation
-         * @param name Name of the shader
-         */
-        explicit Shader(const std::string &filepath);
+	     * @brief Get the base directory path for shader assets.
+	     * @return const char* Path to the shader directory
+	     */
+        static constexpr const char *GetShaderDirectoryPath() { return "assets/shaders/"; }
+        const std::vector<VkPipelineShaderStageCreateInfo> &GetPipelineShaderStageCreateInfos() const { return m_PipelineShaderStageCreateInfos; }
 
-        /**
-         * @brief Virtual destructor.
-         *
-         * Cleans up Vulkan shader module resources.
-         */
-        virtual ~Shader() override;
 
         /**
 		 * @brief Declares the main entry point for the shader
 		 */
 	    const char* GetEntryPoint() const;
 
-		ShaderStage::Stage GetShaderStage() const { return m_shader_type; }
+		ShaderType GetShaderStage() const { return m_ShaderType; }
 
 		/**
 		 * @brief Load shader from a shader pack file.
@@ -215,22 +215,6 @@ namespace SceneryEditorX
          */
         [[nodiscard]] const std::string &GetName() const;
 
-        /**
-         * @brief Reload the shader from its source file.
-         * @param forceCompile Whether to force recompilation even if a cached version exists
-         */
-	    void Reload(bool forceCompile = false);
-
-	    void ReloadRenderThreadShaders(bool forceCompile = false);
-
-        uint64_t GetHash() const { return m_hash; }
-
-	    /**
-	     * @brief Get the base directory path for shader assets.
-	     * @return const char* Path to the shader directory
-	     */
-	    static constexpr const char* GetShaderDirectoryPath() { return "assets/shaders/"; }
-	    const std::vector<VkPipelineShaderStageCreateInfo>& GetPipelineShaderStageCreateInfos() const { return m_PipelineShaderStageCreateInfos; }
 
 	    /**
 	     * @brief Create a Vulkan shader module from compiled bytecode.
@@ -240,11 +224,11 @@ namespace SceneryEditorX
 	     */
 	    [[nodiscard]] VkShaderModule CreateShaderModule(const std::vector<char> &code) const;
 
-	    VkDescriptorSet GetDescriptorSet() const { return m_DescriptorSet; }
-		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) const { return m_DescriptorSetLayouts.at(set); }
+	    VkDescriptorSet GetDescriptorSet() { return m_DescriptorSet; }
+		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) { return m_DescriptorSetLayouts.at(set); }
 		std::vector<VkDescriptorSetLayout> GetAllDescriptorSetLayouts();
 
-        ShaderResource::UniformBuffer GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0) const;
+        ShaderResource::UniformBuffer GetUniformBuffer(const uint32_t binding = 0, const uint32_t set = 0);
 
         uint32_t GetUniformBufferCount(const uint32_t set = 0) const;
 
@@ -269,21 +253,21 @@ namespace SceneryEditorX
 
 	private:
         /** @brief Vulkan shader module handle */
-        VkShaderModule shaderModule = VK_NULL_HANDLE;
+        VkShaderModule m_ShaderModule = VK_NULL_HANDLE;
 
         void LoadAndCreateShaders(const std::map<VkShaderStageFlagBits, std::vector<uint32_t>> &shaderData);
         void CreateDescriptors();
 
         /** @brief List of callbacks to invoke when shader is reloaded */
-        std::vector<ShaderReloadedCallback> reloadCallbacks;
-        ShaderModuleErrorCallback shaderModuleErrorCallback = nullptr;
+        std::vector<ShaderReloadedCallback> m_ReloadCallbacks;
+        ShaderModuleErrorCallback m_ShaderModuleErrorCallback = nullptr;
         std::vector<VkPipelineShaderStageCreateInfo> m_PipelineShaderStageCreateInfos;
         std::unordered_map<uint32_t, std::vector<VkDescriptorPoolSize>> m_TypeCounts;
         std::filesystem::path m_AssetPath;
         bool m_DisableOptimization = false;
-        std::string name;
-        uint64_t m_hash = 0;
-        void* m_resource = nullptr;
+        std::string m_Name;
+        uint64_t m_Hash = 0;
+        void* m_Resource = nullptr;
 
 		std::map<VkShaderStageFlagBits, std::vector<uint32_t>> m_ShaderData;
         ReflectionData m_ReflectionData;
@@ -291,8 +275,8 @@ namespace SceneryEditorX
         std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
         VkDescriptorSet m_DescriptorSet;
 
-	    ShaderStage::Stage m_shader_type = ShaderStage::Stage::MaxEnum;
-        ShaderStage::Stage m_vertex_type = ShaderStage::Stage::MaxEnum;
+	    ShaderType m_ShaderType = ShaderType::MaxEnum;
+        ShaderType m_VertexType = ShaderType::MaxEnum;
 
 	    friend class ShaderCache;
         friend class ShaderPack;

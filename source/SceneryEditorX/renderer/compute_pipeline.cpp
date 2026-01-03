@@ -10,27 +10,30 @@
 * Created: 25/7/2025
 * -------------------------------------------------------
 */
-//#include <SceneryEditorX/core/time/timer.h>
-//#include <SceneryEditorX/renderer/compute_pipeline.h>
-//#include <SceneryEditorX/renderer/vulkan/vk_util.h>
-//#include <utility>
+#include <SceneryEditorX/core/time/timer.h>
+#include "compute_pipeline.h"
+#include "renderer.h"
+#include "vulkan_utils.h"
+#include "debug/frame_diagnostics.h"
+
+#include <utility>
+#include <format>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
 
 	static VkFence s_ComputeFence = nullptr;
 
-	ComputePipeline::ComputePipeline(const Ref<Shader> &computeShader) : m_Shader(computeShader.As<Shader>())
+	ComputePipeline::ComputePipeline(Ref<Shader> computeShader) : m_Shader(computeShader.As<Shader>())
 	{
 		Ref<ComputePipeline> instance(this);
 		Renderer::Submit([instance]() mutable
 		{
 			instance->CreateRenderThreadPipeline();
 		});
-		Renderer::RegisterShaderDependency(computeShader, this);
+		Renderer::RegisterShader(computeShader, this);
 	}
 
 	void ComputePipeline::CreatePipeline()
@@ -43,19 +46,19 @@ namespace SceneryEditorX
 		BufferMemoryBarrier(std::move(commandBuffer), std::move(storageBuffer), PipelineStage::ComputeShader, fromAccess, PipelineStage::ComputeShader, toAccess);
 	}
 
-	void ComputePipeline::BufferMemoryBarrier(const Ref<CommandBuffer> commandBuffer, const Ref<StorageBuffer> storageBuffer, PipelineStage fromStage, ResourceAccessFlags fromAccess, PipelineStage toStage, ResourceAccessFlags toAccess)
+	void ComputePipeline::BufferMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<StorageBuffer> storageBuffer, PipelineStage fromStage, ResourceAccessFlags fromAccess, PipelineStage toStage, ResourceAccessFlags toAccess)
 	{
-		Renderer::Submit([vulkanRenderCommandBuffer = commandBuffer.As<CommandBuffer>(), StorageBuffer = storageBuffer.As<StorageBuffer>(), fromStage, fromAccess, toStage, toAccess]() mutable
+		Renderer::Submit([cmdBuffer = commandBuffer.As<CommandBuffer>(), StorageBuffer = storageBuffer.As<StorageBuffer>(), fromStage, fromAccess, toStage, toAccess]() mutable
 		{
 			VkBufferMemoryBarrier bufferMemoryBarrier = {};
 			bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-			bufferMemoryBarrier.buffer = StorageBuffer->GetVulkanBuffer();
+			bufferMemoryBarrier.buffer = StorageBuffer->GetBuffer();
 			bufferMemoryBarrier.offset = 0;
 			bufferMemoryBarrier.size = VK_WHOLE_SIZE;
 			bufferMemoryBarrier.srcAccessMask = (VkAccessFlags)fromAccess;
 			bufferMemoryBarrier.dstAccessMask = (VkAccessFlags)toAccess;
 			vkCmdPipelineBarrier(
-				vulkanRenderCommandBuffer->GetActiveCmdBuffer(),
+				cmdBuffer->GetCommandBuffer(),
 				(VkPipelineStageFlagBits)fromStage,
 				(VkPipelineStageFlagBits)toStage,
 				0,
@@ -81,7 +84,7 @@ namespace SceneryEditorX
 			imageMemoryBarrier.oldLayout = imageLayout;
 			imageMemoryBarrier.newLayout = imageLayout;
 			imageMemoryBarrier.image = vulkanImage->GetImageInfo().image;
-			///< TODO: get layer count from image; also take SubresourceRange as parameter
+			// TODO: get layer count from image; also take SubresourceRange as parameter
 			imageMemoryBarrier.subresourceRange = {
 			    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 			    .baseMipLevel = 0,
@@ -104,7 +107,7 @@ namespace SceneryEditorX
 
 	void ComputePipeline::CreateRenderThreadPipeline()
 	{
-		VkDevice device = RenderContext::GetCurrentDevice();
+		VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 
 		///< TODO: Abstract into some sort of compute pipeline
 		const auto descriptorSetLayouts = m_Shader->GetAllDescriptorSetLayouts();
@@ -151,15 +154,15 @@ namespace SceneryEditorX
 		SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_PIPELINE, m_Shader->GetName(), m_ComputePipeline);
 	}
 
-	void ComputePipeline::Execute(const VkDescriptorSet* descriptorSets, uint32_t descriptorSetCount, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+	void ComputePipeline::Execute(VkDescriptorSet* descriptorSets, uint32_t descriptorSetCount, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 	{
-		const VkDevice device = RenderContext::GetCurrentDevice();
-		const VkQueue computeQueue = RenderContext::GetLogicDevice()->GetComputeQueue();
+        const VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
+        const VkQueue computeQueue = RenderContext::GetCurrentDevice()->GetComputeQueue();
 		//vkQueueWaitIdle(computeQueue); // TODO: don't
 
-		VkCommandBuffer computeCommandBuffer = RenderContext::GetLogicDevice()->GetCommandBuffer(true, true);
+		VkCommandBuffer computeCommandBuffer = CommandManager::Get()->GetActiveCommandBuffer();
 
-		SetVulkanCheckpoint(computeCommandBuffer, "ComputePipeline::Execute");
+        Utils::SetCheckpoint(computeCommandBuffer, "ComputePipeline::Execute");
 
 		vkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline);
 		for (uint32_t i = 0; i < descriptorSetCount; i++)
@@ -180,7 +183,7 @@ namespace SceneryEditorX
 			SetDebugUtilsObjectName(device, VK_OBJECT_TYPE_FENCE, std::format("Compute pipeline fence"), s_ComputeFence);
 		}
 
-		///< Make sure previous compute shader in pipeline has completed (TODO: this shouldn't be needed for all cases)
+		// Make sure previous compute shader in pipeline has completed (TODO: this shouldn't be needed for all cases)
 		vkWaitForFences(device, 1, &s_ComputeFence, VK_TRUE, UINT64_MAX);
 		vkResetFences(device, 1, &s_ComputeFence);
 
@@ -190,15 +193,15 @@ namespace SceneryEditorX
 		computeSubmitInfo.pCommandBuffers = &computeCommandBuffer;
 		VK_CHECK_RESULT(vkQueueSubmit(computeQueue, 1, &computeSubmitInfo, s_ComputeFence));
 
-		/// Wait for execution of compute shader to complete
-		/// Currently this is here for "safety"
+		// Wait for execution of compute shader to complete
+		// Currently this is here for "safety"
 		{
-			SEDX_SCOPE_TIMER("Compute shader execution");
+			SEDX_SCOPE_TIMER("Compute shader execution")
 			vkWaitForFences(device, 1, &s_ComputeFence, VK_TRUE, UINT64_MAX);
 		}
 	}
 
-	void ComputePipeline::Begin(const Ref<CommandBuffer> commandBuffer)
+	void ComputePipeline::Begin(Ref<CommandBuffer> commandBuffer)
 	{
 		SEDX_CORE_ASSERT(!m_ActiveComputeCommandBuffer);
 
@@ -210,13 +213,13 @@ namespace SceneryEditorX
 		}
 		else
 		{
-            m_ActiveComputeCommandBuffer = RenderContext::GetLogicDevice()->GetCommandBuffer(true, true);
+            m_ActiveComputeCommandBuffer = CommandManager::Get()->GetActiveCommandBuffer();
 			m_UsingGraphicsQueue = false;
 		}
 		vkCmdBindPipeline(m_ActiveComputeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline);
 	}
 
-	void ComputePipeline::Begin_RenderThread(const Ref<CommandBuffer> commandBuffer)
+	void ComputePipeline::Begin_RenderThread(Ref<CommandBuffer> commandBuffer)
 	{
 		SEDX_CORE_ASSERT(!m_ActiveComputeCommandBuffer);
 
@@ -228,7 +231,7 @@ namespace SceneryEditorX
 		}
 		else
 		{
-            m_ActiveComputeCommandBuffer = RenderContext::GetLogicDevice()->GetCommandBuffer(true, true);
+            m_ActiveComputeCommandBuffer = CommandManager::Get()->GetActiveCommandBuffer();
 			m_UsingGraphicsQueue = false;
 		}
 		vkCmdBindPipeline(m_ActiveComputeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline);
@@ -244,10 +247,10 @@ namespace SceneryEditorX
 	{
 		SEDX_CORE_ASSERT(m_ActiveComputeCommandBuffer);
 
-		const VkDevice device = RenderContext::GetCurrentDevice();
+		const VkDevice device = RenderContext::GetCurrentDevice()->GetDevice();
 		if (!m_UsingGraphicsQueue)
 		{
-            const VkQueue computeQueue = RenderContext::GetLogicDevice()->GetComputeQueue();
+            const VkQueue computeQueue = RenderContext::GetCurrentDevice()->GetComputeQueue();
 			vkEndCommandBuffer(m_ActiveComputeCommandBuffer);
 
 			if (!s_ComputeFence)
@@ -267,8 +270,8 @@ namespace SceneryEditorX
 			computeSubmitInfo.pCommandBuffers = &m_ActiveComputeCommandBuffer;
 			VK_CHECK_RESULT(vkQueueSubmit(computeQueue, 1, &computeSubmitInfo, s_ComputeFence))
 
-			///< Wait for execution of compute shader to complete
-			///< Currently this is here for "safety"
+			// Wait for execution of compute shader to complete
+			// Currently this is here for "safety"
 			{
 				SEDX_SCOPE_TIMER("Compute shader execution")
 				vkWaitForFences(device, 1, &s_ComputeFence, VK_TRUE, UINT64_MAX);
@@ -283,6 +286,5 @@ namespace SceneryEditorX
 	}
 
 }
-*/
 
 // -------------------------------------------------------

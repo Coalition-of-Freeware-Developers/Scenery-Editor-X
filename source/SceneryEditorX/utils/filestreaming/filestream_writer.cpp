@@ -16,7 +16,7 @@
 
 namespace SceneryEditorX
 {
-	void StreamWriter::WriteBuffer(Memory::Buffer buffer, const bool writeSize)
+	void StreamWriter::WriteBuffer(Buffer buffer, const bool writeSize)
 	{
 		if (writeSize)
 			WriteData((char*)&buffer.size, sizeof(uint64_t));

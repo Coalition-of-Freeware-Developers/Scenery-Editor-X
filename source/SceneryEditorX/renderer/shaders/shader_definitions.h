@@ -33,12 +33,12 @@ namespace SceneryEditorX::ShaderSpecs
 		}
 		return 0;
 	}
+
     constexpr static ShaderSpecs::AOMethod ROMETHODS[4] = {AOMethod::None, AOMethod::GTAO};
 
 	constexpr static AOMethod GetAOMethod(const bool gtaoEnabled)
 	{
-		if (gtaoEnabled)
-			return AOMethod::GTAO;
+		if (gtaoEnabled) return AOMethod::GTAO;
 
 		return AOMethod::None;
 	}

@@ -31,9 +31,9 @@
 *       to resolve ambiguities between X-Plane objects and mesh source files.
 */
 #pragma once
+#include "asset_types.h"
 #include <unordered_map>
 #include <variant>
-#include "asset_types.h"
 
 // -------------------------------------------------------
 

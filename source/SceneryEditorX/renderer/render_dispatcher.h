@@ -11,7 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "vulkan/vk_data.h"
+#include "enums.h"
+#include "vulkan_data.h"
 #include <condition_variable>
 #include <queue>
 
@@ -20,8 +21,9 @@
 namespace SceneryEditorX
 {
 
-    // Job function signature executed by the dispatcher worker.
-    typedef std::function<void()> Job;
+    typedef std::function<void()> Job; // Job function signature executed by the dispatcher worker.
+
+    // -------------------------------------------------------
 
 	/**
 	 * @brief Asynchronous render job dispatcher and deferred GPU resource destruction manager.
@@ -56,6 +58,12 @@ namespace SceneryEditorX
 	class RenderDispatcher : public RefCounted
 	{
 	public:
+
+        /**
+	     * @brief Query initialization state.
+	     * @return True if Init() has been successfully called and not yet shut down.
+	     */
+        static bool IsInitialized();
 
 	    /**
 	     * @brief Initialize the dispatcher singleton and spawn the worker thread.
@@ -107,12 +115,6 @@ namespace SceneryEditorX
 	     */
 	    static void NextFrame(uint64_t frameIndex); // move resource free ring
 
-	    /**
-	     * @brief Query initialization state.
-	     * @return True if Init() has been successfully called and not yet shut down.
-	     */
-	    static bool IsInitialized();
-
 	private:
 
 	    /**
@@ -128,10 +130,6 @@ namespace SceneryEditorX
 
 	    // Per-frame bucket of deferred resource free jobs.
 	    struct RFQueue { std::vector<Job> m_Jobs; };
-
-	    // Worker thread main loop (blocks on cv until work or shutdown).
-	    static void WorkerLoop();
-
 	    static Ref<RenderDispatcher>	s_Instance;             // Lifetime anchor (Ref-counted singleton)
 	    static std::thread				s_Worker;               // Background worker thread
 	    static Queues					s_Queue;                // Active job queue + sync
@@ -139,6 +137,9 @@ namespace SceneryEditorX
         static RenderData				s_RenderData;           // Number of concurrent frames (ring size)
 	    static std::vector<RFQueue>		s_ResourceFreeRing;     // Frame-delayed destruction buckets
 	    static uint64_t					s_CurrentRFIndex;       // Index of frame bucket most recently completed
+
+	    // Worker thread main loop (blocks on cv until work or shutdown).
+        static void WorkerLoop();
 	};
 
 }

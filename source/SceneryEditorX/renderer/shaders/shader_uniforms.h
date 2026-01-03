@@ -2,7 +2,7 @@
 * -------------------------------------------------------
 * Scenery Editor X
 * -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray 
+* Copyright (c) 2025 Thomas Ray
 * Copyright (c) 2025 Coalition of Freeware Developers
 * -------------------------------------------------------
 * shader_uniforms.h
@@ -29,8 +29,7 @@ namespace SceneryEditorX
 	{
 	public:
 		ShaderResourceDeclaration() = default;
-		ShaderResourceDeclaration(std::string name, uint32_t set, uint32_t resourceRegister, uint32_t count)
-			: m_Name(std::move(name)), m_Set(set), m_Register(resourceRegister), m_Count(count) { }
+		ShaderResourceDeclaration(std::string name, uint32_t set, uint32_t resourceRegister, uint32_t count) : m_Name(std::move(name)), m_Set(set), m_Register(resourceRegister), m_Count(count) { }
 
         [[nodiscard]] virtual const std::string& GetName() const { return m_Name; }
 		[[nodiscard]] virtual uint32_t GetSet() const { return m_Set; }

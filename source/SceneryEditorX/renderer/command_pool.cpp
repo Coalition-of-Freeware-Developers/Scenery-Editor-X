@@ -20,7 +20,7 @@ namespace SceneryEditorX
 {
 	static uint32_t GetPoolType(Queue queueType)
 	{
-	    const auto &indices = RenderContext::Get()->GetPhysicalDevice()->GetQueueFamilyIndices();
+	    auto &indices = RenderContext::Get()->GetPhysicalDevice()->GetQueueFamilyIndices();
 	    switch (queueType)
 	    {
 			case Queue::Graphics: return indices.GetGraphicsFamily();
@@ -52,30 +52,31 @@ namespace SceneryEditorX
         return CreateRef<CommandPool>(RenderContext::Get()->GetLogicDevice(), Queue::Graphics);
     }
 
-	CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type)
+	CommandPool::CommandPool(const Ref<VulkanDevice> &vulkanDevice, Queue type, const std::string& name)
 	{
 	    m_QueueType = type;
-	    const uint32_t familyIndex = GetPoolType(type);
-	    const VkDevice device = vulkanDevice->GetDevice();
-	
+        m_Name = name;
+	    uint32_t familyIndex = GetPoolType(type);
+	    VkDevice device = vulkanDevice->GetDevice();
+
 	    VkCommandPoolCreateInfo ci{};
 	    ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	    ci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 	    ci.queueFamilyIndex = familyIndex;
 	    if (VkResult res = vkCreateCommandPool(device, &ci, nullptr, &m_CmdPool); res != VK_SUCCESS)
 	    {
-	        SEDX_CORE_ERROR_TAG("VULKAN", "Failed to create {0} command pool (err {1})", ToString(m_QueueType), res);
+	        SEDX_CORE_ERROR_TAG("Command Pool", "Failed to create {0} command pool {1} (err {2})", ToString(m_QueueType), m_Name, res);
 	        m_CmdPool = VK_NULL_HANDLE;
 	    }
 	
 		#ifdef SEDX_DEBUG
-		    SEDX_CORE_INFO_TAG("VULKAN", "{0} command pool created successfully", ToString(m_QueueType));
+		    SEDX_CORE_INFO_TAG("Command Pool", "{0} command pool called {1} created successfully", ToString(m_QueueType), m_Name);
 		#endif
 	}
 	
 	CommandPool::~CommandPool()
 	{
-	    const auto deviceRef = RenderContext::GetCurrentDevice();
+	    auto deviceRef = RenderContext::GetCurrentDevice();
 	    if (!deviceRef)
 	        return;
 	
@@ -86,9 +87,10 @@ namespace SceneryEditorX
 	        vkDestroyCommandPool(device, m_CmdPool, nullptr);
 	    }
 	
+		m_Name = "";
 	    m_CmdPool = VK_NULL_HANDLE;
 		#ifdef SEDX_DEBUG
-		    SEDX_CORE_INFO_TAG("VULKAN", "{0} command pool destroyed successfully", ToString(m_QueueType));
+		    SEDX_CORE_INFO_TAG("Command Pool", "{0} command pool called {1} destroyed successfully", ToString(m_QueueType), m_Name);
 		#endif
 	}
 	

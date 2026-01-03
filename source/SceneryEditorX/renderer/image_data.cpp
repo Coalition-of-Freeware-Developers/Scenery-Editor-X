@@ -29,8 +29,8 @@ namespace SceneryEditorX
      */
     uint32_t Image::ID() const
     {
-        SEDX_ASSERT(resource->resourceID != -1, "Invalid Image Resource ID!");
-        return static_cast<uint32_t>(resource->resourceID);
+        SEDX_ASSERT(resource->m_ResourceID != -1, "Invalid Image Resource ID!");
+        return static_cast<uint32_t>(resource->m_ResourceID);
     }
 
 	/**
@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	 */
 	ImTextureID Image::ImGuiRID() const
 	{
-	    if (!resource || resource->resourceID == -1 || resource->imguiRIDs.empty())
+	    if (!resource || resource->m_ResourceID == -1 || resource->imguiRIDs.empty())
             return reinterpret_cast<ImTextureID>(nullptr);
 
         return resource->imguiRIDs[0];
@@ -64,7 +64,7 @@ namespace SceneryEditorX
 	 */
 	ImTextureID Image::ImGuiRID(uint64_t layer) const
 	{
-		if (!resource || resource->resourceID == -1 || resource->imguiRIDs.size() <= layer)
+		if (!resource || resource->m_ResourceID == -1 || resource->imguiRIDs.size() <= layer)
             return reinterpret_cast<ImTextureID>(nullptr);
 
         return resource->imguiRIDs[layer];

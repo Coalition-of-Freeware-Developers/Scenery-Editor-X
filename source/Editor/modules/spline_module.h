@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include <SceneryEditorX/core/modules/module.h>
+#include <SceneryEditorX/core/modules/Layer.h>
 
 /// -------------------------------------------------------
 

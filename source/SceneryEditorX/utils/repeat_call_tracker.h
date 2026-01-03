@@ -8,10 +8,12 @@
 * -------------------------------------------------------
 */
 #pragma once
-
 #include <string>
 
-namespace SceneryEditorX { namespace Utils {
+// -------------------------------------------------------
+
+namespace SceneryEditorX::Utils 
+{
     /**
      * @brief Simple thread-safe tracker to detect and log repeated calls to sensitive functions.
      *
@@ -23,7 +25,10 @@ namespace SceneryEditorX { namespace Utils {
     {
     public:
         static void Track(const char* token, const char* file, int line);
+
+
     };
-}}
+
+}
 
 #define SEDX_TRACK_CALL(token) ::SceneryEditorX::Utils::RepeatCallTracker::Track((token), __FILE__, __LINE__)

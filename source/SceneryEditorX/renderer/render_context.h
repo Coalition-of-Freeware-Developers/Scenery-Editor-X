@@ -11,9 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "vulkan/vk_device.h"
-
-// -------------------------------------------------------
+#include "device.h"
 
 struct GLFWwindow;
 
@@ -32,6 +30,14 @@ namespace SceneryEditorX
 		RenderContext();
         virtual ~RenderContext() override;
 
+        // Delete copy constructor and assignment operator.
+		RenderContext(const RenderContext &) = delete;
+        RenderContext &operator=(const RenderContext &) = delete;
+
+        // Allow move operations if needed.
+        RenderContext(RenderContext &&) noexcept;
+        RenderContext &operator=(RenderContext &&) noexcept;
+
 		void Init();
         Ref<VulkanDevice> GetLogicDevice() { return m_Device; }
         const Ref<VulkanDevice>& GetLogicalDevice() const { return m_Device; }
@@ -48,8 +54,9 @@ namespace SceneryEditorX
     private:
         Ref<VulkanPhysicalDevice>	m_PhysicalDevice;
         Ref<VulkanDevice>			m_Device;
-        VkInstance m_Instance		= VK_NULL_HANDLE;
+        inline static VkInstance	m_Instance = VK_NULL_HANDLE;
         bool m_IsInitialized		= false;
+        VkPipelineCache m_PipelineCache = nullptr;
 
 		// -------------------------------------------------------
 

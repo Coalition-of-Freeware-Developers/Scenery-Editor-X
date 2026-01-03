@@ -27,8 +27,8 @@ namespace SceneryEditorX
 		template<typename Func, typename... Args>
         void Dispatch(Func &&func, Args &&...args)
 		{
-            mem_thread = std::thread(func, std::forward<Args>(args)...);
-            SetName(name);
+            m_Thread = std::thread(func, std::forward<Args>(args)...);
+            SetName(m_Name);
 		}
 
 		void SetName(const std::string &name);
@@ -36,8 +36,8 @@ namespace SceneryEditorX
 
         [[nodiscard]] std::thread::id GetThreadID() const;
 	private:
-        std::string name;
-        std::thread mem_thread;
+        std::string m_Name;
+        std::thread m_Thread;
 	};
 
     // -------------------------------------------------------
@@ -51,7 +51,7 @@ namespace SceneryEditorX
         void Signal() const;
         void Reset() const;
     private:
-        void *signalHandle = nullptr;
+        void *m_SignalHandle = nullptr;
     };
 
 }

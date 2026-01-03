@@ -13,9 +13,9 @@
 #pragma once
 //#include "SceneryEditorX/asset/asset.h"
 #include "viewport.h"
-#include "vulkan/vk_buffers.h"
-#include "vulkan/vk_enums.h"
-#include "vulkan/vk_image.h"
+#include "vulkan_buffers.h"
+#include "enums.h"
+#include "image.h"
 
 // -------------------------------------------------------
 
@@ -63,7 +63,7 @@ namespace SceneryEditorX
         uint32_t GetMipCount() { return static_cast<uint32_t>(mips.size()); }
     };
 
-	struct TextureSpecification
+	struct TextureSpec
 	{
         TextureType type;
 		VkFormat format;
@@ -72,30 +72,29 @@ namespace SceneryEditorX
         uint32_t depth;
         uint32_t mipCount;
         uint32_t flags;
-		SamplerWrap samplerWrap = SamplerWrap::Repeat;
-		SamplerFilter samplerFilter = SamplerFilter::Linear;
-        std::vector<TextureSlice> data = {};
+		SamplerWrap samplerWrap			= SamplerWrap::Repeat;
+		SamplerFilter samplerFilter		= SamplerFilter::Linear;
+        std::vector<TextureSlice> data	= {};
         std::string debugName;
 
-		bool generateMips = true;
-		bool storage = false;
-		bool storeLocally = false;
+		bool generateMips	= true;
+		bool storage		= false;
+		bool storeLocally	= false;
 	};
 
     // -------------------------------------------------------
 
-	class Texture : public Resource
+	class Texture : public RenderResource
 	{
 	public:
         //AssetHandle handle = AssetHandle(0);
-
-		virtual ~Texture() override = default;
+		virtual ~Texture() = default;
         virtual void Bind(uint32_t slot = 0) const = 0;
 
-		virtual VkFormat GetFormat() const = 0;
-		virtual uint32_t GetWidth() const = 0;
-		virtual uint32_t GetHeight() const = 0;
-		virtual UVec2 GetSize() const = 0;
+		virtual VkFormat GetFormat() const	= 0;
+		virtual uint32_t GetWidth() const	= 0;
+		virtual uint32_t GetHeight() const	= 0;
+		virtual UVec2 GetSize() const		= 0;
 
 		virtual uint32_t GetMipLevelCount() const = 0;
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const = 0;
@@ -103,9 +102,15 @@ namespace SceneryEditorX
 		virtual uint64_t GetHash() const = 0;
 		virtual TextureType GetType() const = 0;
 
+        void *&GetResource()		{ return m_Resource; }
+		uint32_t GetDepth() const	{ return m_Depth; }
+
 		// Bindless indices (optional; valid after first Invalidate when bindless manager active)
-		virtual int32_t GetBindlessImageIndex() const { return -1; }
+		virtual int32_t GetBindlessImageIndex() const	{ return -1; }
 		virtual int32_t GetBindlessSamplerIndex() const { return -1; }
+	protected:
+        uint32_t m_Depth = 0;
+        void *m_Resource = nullptr;
 	};
 
     // -------------------------------------------------------
@@ -114,23 +119,22 @@ namespace SceneryEditorX
 	{
 	public:
         Texture2D() = default;
+	    Texture2D(const TextureSpec &specification);
+        Texture2D(const TextureSpec &specification, const std::filesystem::path &filePath);
+        Texture2D(const TextureSpec &specification, const Buffer &imageData = Buffer());
 
-        explicit Texture2D(const TextureSpecification &specification);
-        Texture2D(const TextureSpecification &specification, const std::filesystem::path &filePath);
-        Texture2D(const TextureSpecification &specification, const Buffer &imageData = Buffer());
+		//static Ref<Texture2D> Create(const TextureSpec &specification);
+		//static Ref<Texture2D> Create(const TextureSpec &specification, const std::filesystem::path& filePath);
+        //static Ref<Texture2D> Create(const TextureSpec &specification, const Buffer &imageData = Buffer());
 
-		//static Ref<Texture2D> Create(const TextureSpecification &specification);
-		//static Ref<Texture2D> Create(const TextureSpecification &specification, const std::filesystem::path& filePath);
-        //static Ref<Texture2D> Create(const TextureSpecification &specification, const Buffer &imageData = Buffer());
-
-		///< reinterpret the given texture's data as if it was sRGB
+		// reinterpret the given texture's data as if it was sRGB
 		static Ref<Texture2D> CreateFromSRGB(const Ref<Texture2D> &texture);
 
-		void CreateFromFile(const TextureSpecification &specification, const std::filesystem::path& filePath);
-        void ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filePath);
-        //virtual void CreateFromBuffer(const TextureSpecification &specification, Buffer data = Buffer());
+		void CreateFromFile(const TextureSpec &specification, const std::filesystem::path& filePath);
+        void ReplaceFromFile(const TextureSpec &specification, const std::filesystem::path &filePath);
+        //virtual void CreateFromBuffer(const TextureSpec &specification, Buffer data = Buffer());
 
-		void CreateFromBuffer(const TextureSpecification &specification, const Buffer &data);
+		void CreateFromBuffer(const TextureSpec &specification, const Buffer &data);
 
         void Resize(const UVec2 &size);
         void Resize(uint32_t width, uint32_t height);
@@ -145,8 +149,8 @@ namespace SceneryEditorX
 		virtual void Bind(uint32_t slot = 0) const override;
 
 		virtual Ref<Image2D> GetImage() const { return m_Image; }
-		ResourceDescriptorInfo GetDescriptorInfo() const;
-		const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const;
+        virtual ResourceDescriptorInfo GetDescriptorInfo() const { return m_Image.As<Image2D>()->GetDescriptorInfo(); }
+        const VkDescriptorImageInfo &GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo *)GetDescriptorInfo(); }
 
         void ClearData();
         void PrepareForGpu();
@@ -169,7 +173,7 @@ namespace SceneryEditorX
         TextureSlice &GetSlice(uint32_t array_index);
         void GenerateMips();
         void AllocateMip();
-        static size_t CalculateMipSize(const TextureSpecification &spec, uint32_t bits_per_channel, uint32_t channel_count);
+        static size_t CalculateMipSize(const TextureSpec &spec, uint32_t bits_per_channel, uint32_t channel_count);
 
 		virtual uint64_t GetHash() const override;
         void CopyToHostBuffer(Buffer &buffer) const;
@@ -178,12 +182,12 @@ namespace SceneryEditorX
 		virtual int32_t GetBindlessImageIndex() const override { return m_BindlessImageIndex; }
 		virtual int32_t GetBindlessSamplerIndex() const override { return m_BindlessSamplerIndex; }
 
-        const auto& GetViewport() const { return m_viewport; }
+        const auto& GetViewport() const { return m_Viewport; }
 
     private:
         void SetData(const Buffer &buffer);
 
-        TextureSpecification m_Specification;
+        TextureSpec m_Specification;
         std::filesystem::path m_Path;
         Buffer m_ImageData = {};
         Ref<Image2D> m_Image;
@@ -193,24 +197,23 @@ namespace SceneryEditorX
 	protected:
         bool CreateResource();
 
-        uint32_t m_width = 0;
-        uint32_t m_height = 0;
-        uint32_t m_depth = 0;
-        uint32_t m_mip_count = 0;
-        uint32_t m_bits_per_channel = 0;
-        uint32_t m_channel_count = 0;
-        VkFormat m_format = VK_FORMAT_MAX_ENUM;
-        TextureType m_type = TextureType::MaxEnum;
-        Viewport m_viewport;
-        std::vector<TextureSlice> m_slices;
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
+        uint32_t m_MipCount = 0;
+        uint32_t m_BitsPerChannel = 0;
+        uint32_t m_ChannelCount = 0;
+        VkFormat m_Format = VK_FORMAT_MAX_ENUM;
+        TextureType m_Type = TextureType::MaxEnum;
+        Viewport m_Viewport;
+        std::vector<TextureSlice> m_Slices;
 
-	    void* m_srv = nullptr;										// an srv with all mips
-        std::array<void*, MAX_MIP_COUNT> m_srv_mips = {nullptr};	// an srv for each mip
-        std::array<void*, MAX_RENDER_TARGET_COUNT> m_rtv = {nullptr};
-        std::array<void*, MAX_RENDER_TARGET_COUNT> m_dsv = {nullptr};
-        void* m_resource = nullptr;
-        void* m_externalMemory = nullptr;
-	    void* m_mappedData = nullptr;
+	    void* m_Srv = nullptr;									// an srv with all mips
+        std::array<void*, MAX_MIP_COUNT> m_SrvMips = {nullptr};	// an srv for each mip
+        std::array<void*, MAX_RENDER_TARGET_COUNT> m_Rtv = {nullptr};
+        std::array<void*, MAX_RENDER_TARGET_COUNT> m_Dsv = {nullptr};
+        void* m_Resource = nullptr;
+        void* m_ExternalMemory = nullptr;
+	    void* m_MappedData = nullptr;
     };
 
     // -------------------------------------------------------
@@ -218,7 +221,7 @@ namespace SceneryEditorX
 	class TextureCube : public Texture
 	{
 	public:
-        TextureCube(TextureSpecification specification, const Buffer &data);
+        TextureCube(TextureSpec specification, const Buffer &data);
 		virtual ~TextureCube() override;
 		void Release();
 
@@ -231,10 +234,10 @@ namespace SceneryEditorX
 		virtual uint32_t GetMipLevelCount() const override;
 		virtual std::pair<uint32_t, uint32_t> GetMipSize(uint32_t mip) const override;
 
-		virtual uint64_t GetHash() const override { return (uint64_t)m_Image; }
+		virtual uint64_t GetHash() const override { return reinterpret_cast<uint64_t>(m_Image); }
 
-		//virtual ResourceDescriptorInfo GetDescriptorInfo() const override { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
-		//const VkDescriptorImageInfo& GetDescriptorInfoVulkan() const { return *(VkDescriptorImageInfo*)GetDescriptorInfo(); }
+		virtual ResourceDescriptorInfo GetDescriptorResourceInfo() const { return (ResourceDescriptorInfo)&m_DescriptorImageInfo; }
+		const VkDescriptorImageInfo& GetDescriptorInfo() const { return *(VkDescriptorImageInfo*)GetDescriptorResourceInfo(); }
 
 		VkImageView CreateImageViewSingleMip(uint32_t mip);
 
@@ -243,7 +246,7 @@ namespace SceneryEditorX
         void CopyFromBuffer(const Buffer &buffer, uint32_t mips) const;
 	private:
 		void Invalidate();
-		TextureSpecification m_Specification;
+		TextureSpec m_Specification;
 
 		bool m_MipsGenerated = false;
 

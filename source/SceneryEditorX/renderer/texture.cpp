@@ -13,14 +13,12 @@
 #include "texture.h"
 #include <utility>
 #include "renderer.h"
-#include "bindless_descriptor_manager.h"
+//#include "bindless_descriptor_manager.h"
 #include <format>
-
-#include "sampler.h"
-
+//#include "sampler.h"
 #include "SceneryEditorX/asset/importers/texture_importer.h"
-#include "vulkan/vk_image.h"
-#include "vulkan/vk_util.h"
+#include "image.h"
+#include "vulkan_utils.h"
 
 // -------------------------------------------------------
 
@@ -72,7 +70,7 @@ namespace SceneryEditorX
 			return 0;
 		}
 
-	
+
         bool IsCompressedFormat(const VkFormat format)
         {
             return format == VK_FORMAT_BC1_RGB_UNORM_BLOCK ||
@@ -82,7 +80,7 @@ namespace SceneryEditorX
                    format == VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
         }
 
-        static bool ValidateSpecification(const TextureSpecification& specification)
+        static bool ValidateSpecification(const TextureSpec& specification)
 		{
             bool result = specification.width > 0 && specification.height > 0 && specification.width < 65536 && specification.height < 65536;
 			SEDX_CORE_VERIFY(result);
@@ -97,7 +95,7 @@ namespace SceneryEditorX
     /// Texture2D Constructor Implementations
 
     /*
-    Texture2D::Texture2D(const TextureSpecification &specification) : m_Specification(specification)
+    Texture2D::Texture2D(const TextureSpec &specification) : m_Specification(specification)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D with specification: {}x{}", specification.width, specification.height);
         /// Initialize with empty data
@@ -105,13 +103,13 @@ namespace SceneryEditorX
     }
     */
 
-    Texture2D::Texture2D(const TextureSpecification& specification, const std::filesystem::path& filePath) : m_Specification(specification), m_Path(filePath)
+    Texture2D::Texture2D(const TextureSpec& specification, const std::filesystem::path& filePath) : m_Specification(specification), m_Path(filePath)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from file: {}", filePath.string());
         Texture2D::CreateFromFile(specification, filePath);
     }
 
-    Texture2D::Texture2D(const TextureSpecification& specification, const Buffer& imageData) : m_Specification(specification), m_ImageData(imageData)
+    Texture2D::Texture2D(const TextureSpec& specification, const Buffer& imageData) : m_Specification(specification), m_ImageData(imageData)
     {
         SEDX_CORE_INFO_TAG("TEXTURE", "Creating Texture2D from buffer data: {} bytes", imageData.size);
         if (m_Specification.height == 0)
@@ -161,17 +159,17 @@ namespace SceneryEditorX
     }
 
 	/*
-	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification)
+	Ref<Texture2D> Texture2D::Create(const TextureSpec &specification)
 	{
         return CreateRef<Texture2D>(specification);
 	}
 
-	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification, const std::filesystem::path &filePath)
+	Ref<Texture2D> Texture2D::Create(const TextureSpec &specification, const std::filesystem::path &filePath)
 	{
         return CreateRef<Texture2D>(specification, filePath);
 	}
 
-	Ref<Texture2D> Texture2D::Create(const TextureSpecification &specification, const Buffer &imageData)
+	Ref<Texture2D> Texture2D::Create(const TextureSpec &specification, const Buffer &imageData)
 	{
         return CreateRef<Texture2D>(specification, imageData);
 	}
@@ -179,7 +177,7 @@ namespace SceneryEditorX
 
     Ref<Texture2D> Texture2D::CreateFromSRGB(const Ref<Texture2D> &texture)
     {
-        TextureSpecification spec;
+        TextureSpec spec;
         spec.width = texture->GetWidth();
         spec.height = texture->GetHeight();
         spec.format = VK_FORMAT_R8G8B8A8_UNORM;
@@ -189,7 +187,7 @@ namespace SceneryEditorX
         return srgbTexture;
     }
 
-    void Texture2D::CreateFromFile(const TextureSpecification &specification, const std::filesystem::path &filePath)
+    void Texture2D::CreateFromFile(const TextureSpec &specification, const std::filesystem::path &filePath)
     {
 		Utils::ValidateSpecification(specification);
 
@@ -215,7 +213,7 @@ namespace SceneryEditorX
 		Invalidate();
     }
 
-    void Texture2D::ReplaceFromFile(const TextureSpecification &specification, const std::filesystem::path &filePath)
+    void Texture2D::ReplaceFromFile(const TextureSpec &specification, const std::filesystem::path &filePath)
     {
 	    Utils::ValidateSpecification(specification);
 
@@ -242,7 +240,7 @@ namespace SceneryEditorX
 		Renderer::Submit([instance]() mutable { instance->Invalidate(); });
     }
 
-    void Texture2D::CreateFromBuffer(const TextureSpecification &specification, const Buffer &data)
+    void Texture2D::CreateFromBuffer(const TextureSpec &specification, const Buffer &data)
     {
         Utils::ValidateSpecification(specification);
 
@@ -321,7 +319,7 @@ namespace SceneryEditorX
 			subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			subresourceRange.layerCount = 1;
 			subresourceRange.levelCount = GetMipLevelCount();
-			SetImageLayout(transitionCommandBuffer, info.image, VK_IMAGE_LAYOUT_UNDEFINED, image->GetDescriptorInfoVulkan().imageLayout, subresourceRange);
+			SetImageLayout(transitionCommandBuffer, info.image, VK_IMAGE_LAYOUT_UNDEFINED, image->GetDescriptorInfo().imageLayout, subresourceRange);
 			device->FlushCmdBuffer(transitionCommandBuffer);
 		}
 
@@ -586,7 +584,7 @@ namespace SceneryEditorX
     }
     */
 
-    size_t Texture2D::CalculateMipSize(const TextureSpecification &spec, uint32_t bits_per_channel, uint32_t channel_count)
+    size_t Texture2D::CalculateMipSize(const TextureSpec &spec, uint32_t bits_per_channel, uint32_t channel_count)
     {
         SEDX_ASSERT(spec.width > 0);
         SEDX_ASSERT(spec.height > 0);
@@ -736,7 +734,7 @@ namespace SceneryEditorX
 		{
 			InsertImageMemoryBarrier(copyCmd, info.image,
 				VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, image->GetDescriptorInfoVulkan().imageLayout,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, image->GetDescriptorInfo().imageLayout,
 				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				subresourceRange);
 		}
@@ -763,8 +761,8 @@ namespace SceneryEditorX
 
     void Texture2D::ClearData()
     {
-        m_slices.clear();
-        m_slices.shrink_to_fit();
+        m_Slices.clear();
+        m_Slices.shrink_to_fit();
     }
 
 	//////////////////////////////////////////////////////////////////////////////////
@@ -773,7 +771,7 @@ namespace SceneryEditorX
 
 	static std::map<VkImage, WeakRef<TextureCube>> s_TextureCubeReferences;
 
-    TextureCube::TextureCube(TextureSpecification specification, const Buffer &data) : m_Specification(std::move(specification))
+    TextureCube::TextureCube(TextureSpec specification, const Buffer &data) : m_Specification(std::move(specification))
     {
         if (data)
         {

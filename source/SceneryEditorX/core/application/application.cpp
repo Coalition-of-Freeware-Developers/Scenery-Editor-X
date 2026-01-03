@@ -15,7 +15,8 @@
 #include "SceneryEditorX/core/input/input.h"
 #include "SceneryEditorX/logging/logging.hpp"
 #include "SceneryEditorX/renderer/renderer.h"
-#include "SceneryEditorX/renderer/vulkan/vk_swapchain.h"
+#include "SceneryEditorX/renderer/swapchain.h"
+#include "SceneryEditorX/ui/ui_layer.h"
 
 // -------------------------------------------------------
 
@@ -33,18 +34,39 @@ namespace SceneryEditorX
     Application::Application(const std::vector<std::string> &args)
     {
         appInstance = this;
+        s_MainThreadID = std::this_thread::get_id();
+        AppData specification;
 
-        /// Create the window
+        /*
+        if (!specification.WorkingDirectory.empty())
+            std::filesystem::current_path(specification.WorkingDirectory);
+        */
+
+        // Create the window
         m_Window = CreateScope<Window>();
 
 		SEDX_CORE_INFO("Initializing Window");
-        /// Initialize the window first
-        m_Window->Init();
 
-        SEDX_CORE_INFO("Window Initialized");
-        /// Update window properties
-        m_Window->ApplyChanges();
-        SEDX_CORE_INFO("Window changes applied");
+        m_Window->Init();         // Initialize the window first
+        //m_Window->ApplyChanges(); // Update window properties
+        m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
+
+        // Init renderer and execute command queue to compile all shaders
+        Renderer::Init();
+        //m_RenderThread.Pump(); // Render one frame (TODO: maybe make a func called Pump or something)
+
+        if (specification.StartMaximized)
+        {
+            m_Window->Maximize();
+        }
+        else
+        {
+            m_Window->CenterWindow();
+        }
+        m_Window->SetResizable(specification.Resizable);
+
+        m_UILayer = UI::UILayer::Create();
+        PushOverlay(m_UILayer);
 
         m_IsRunning   = true;
         m_IsMinimized = false;
@@ -52,8 +74,10 @@ namespace SceneryEditorX
 
     Application::~Application()
     {
-        // Let RAII handle Window destruction, or explicitly reset the unique_ptr once
-        // to avoid double-destruction. Do NOT call the destructor directly.
+        /** 
+         * Let RAII handle Window destruction, or explicitly reset the RefCounter once
+         * to avoid double-destruction. Do NOT call the destructor directly.
+         */
         if (m_Window)
             m_Window.reset();
 
@@ -68,12 +92,53 @@ namespace SceneryEditorX
         // Main application loop
         while (m_IsRunning && !m_Window->GetShouldClose())
         {
-            m_Window->Update(); // Update the window (poll events)
+            static uint32_t frameCount = 0;
 
-            if (m_IsMinimized)
-				continue; // Skip frame if window is minimized
+            m_Window->Update(); // Update the window (poll events)
+            //m_RenderThread.BlockUntilRenderComplete();
+
+            //m_RenderThread.NextFrame();
+
+            //m_RenderThread.Kick(); // Start rendering previous frame
+
+            if (!m_IsMinimized)
+            {
+
+                Renderer::BeginFrame();
+                {
+					for (Layer *module : m_ModuleStage)
+                        module->OnUpdate(m_DeltaTime);
+                }
+
+                // Render ImGui on render thread
+                Application *app = this;
+                if (m_AppData.EnableImGui)
+                {
+                    Renderer::Submit([app]() { app->RenderUI(); });
+                    Renderer::Submit([=]() { m_UILayer->End(); });
+                }
+                Renderer::EndFrame();
+
+                // On Render thread
+                Renderer::Submit([&]() {
+                    // m_Window->GetSwapChain().BeginFrame();
+                    // Renderer::WaitAndRender();
+                    //m_Window->SwapBuffers();
+                });
+
+                m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % Renderer::GetRenderData().framesInFlight;
+                m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
+            }
 
             OnUpdate();	// Call user-defined update function
+
+            Input::ClearReleasedKeys();
+
+            float time = GetTime();
+            m_FrameTime = time - m_LastFrameTime;
+            m_DeltaTime = xMath::Min(m_FrameTime <=> 0.333f);
+            m_LastFrameTime = time;
+			frameCount++;
         }
 
         OnShutdown();
@@ -84,7 +149,32 @@ namespace SceneryEditorX
     void Application::OnShutdown()
     {
         SEDX_CORE_INFO("Shutting down application");
+        m_EventCallbacks.clear();
         appRunning = false;
+    }
+
+    void Application::PushLayer(Layer *module)
+    {
+        m_ModuleStage.PushModule(module);
+        module->OnAttach();
+    }
+
+    void Application::PushOverlay(Layer *module)
+    {
+		m_ModuleStage.PushOverlay(module);
+        module->OnAttach();
+    }
+
+    void Application::PopLayer(Layer *module)
+    {
+		m_ModuleStage.PopModule(module);
+        module->OnDetach();
+    }
+
+    void Application::PopOverlay(Layer *module)
+    {
+		m_ModuleStage.PopOverlay(module);
+        module->OnDetach();
     }
 
     void Application::SyncEvents()
@@ -157,18 +247,10 @@ namespace SceneryEditorX
 		const uint32_t width = e.GetWidth(), height = e.GetHeight();
 		if (width == 0 || height == 0)
 		{
-			m_IsMinimized = true;
+			//m_IsMinimized = true;
 			return false;
 		}
-        m_IsMinimized = false;
-		
-		Renderer::Submit([width, height]() mutable
-		{
-			if (auto* swapChain = Renderer::GetSwapChain())
-			{
-			    swapChain->OnResize(width, height);
-			}
-		});
+        //m_IsMinimized = false;
 
 		return false;
 	}

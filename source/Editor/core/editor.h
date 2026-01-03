@@ -21,7 +21,7 @@
 #include <SceneryEditorX/platform/settings/user_settings.h>
 #include <SceneryEditorX/renderer/render_context.h>
 #include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan/vk_data.h>
+#include <SceneryEditorX/renderer/vulkan_data.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 

@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "vulkan/vk_enums.h"
+#include "enums.h"
 
 // -------------------------------------------------------
 
@@ -24,7 +24,7 @@ namespace SceneryEditorX
         FilterMode filterMag = FilterMode::Nearest;
         FilterMode filterMipMap = FilterMode::Nearest;
         SamplerWrap samplerAddressMode = SamplerWrap::Repeat;
-        DepthCompareOperator comparisonFunction = DepthCompareOperator::Never;
+        CompareFunc comparisonFunction = CompareFunc::Never;
         float anisotropy = 0.0f;
         bool comparisonEnabled = false;
         float mipBias = 0.0f;
@@ -34,7 +34,7 @@ namespace SceneryEditorX
     {
     public:
         Sampler() = default;
-        explicit Sampler(const SamplerSpec &samplerSpec, const std::string &debugName);
+        Sampler(const SamplerSpec &samplerSpec, const std::string &debugName);
 		virtual ~Sampler() override;
 
 		static Ref<Sampler> Get();
@@ -43,11 +43,10 @@ namespace SceneryEditorX
         FilterMode GetFilterMag()						const { return m_samplerSpec.filterMag; }
         FilterMode GetFilterMipmap()					const { return m_samplerSpec.filterMipMap; }
         SamplerWrap GetAddressMode()					const { return m_samplerSpec.samplerAddressMode; }
-        DepthCompareOperator GetComparisonFunction()	const { return m_samplerSpec.comparisonFunction; }
+        CompareFunc GetComparisonFunction()				const { return m_samplerSpec.comparisonFunction; }
         bool GetAnisotropyEnabled()                     const { return m_samplerSpec.anisotropy != 0; }
         bool GetComparisonEnabled()                     const { return m_samplerSpec.comparisonEnabled; }
 		void* GetResource()								const { return m_resource; }
-		
 
     private:
         void CreateResource();          // Create the sampler resource

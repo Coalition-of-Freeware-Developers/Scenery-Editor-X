@@ -11,8 +11,8 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "vulkan/resource.h"
-#include "vulkan/vk_data.h"
+#include <SceneryEditorX/renderer/resource.h>
+#include "vulkan_data.h"
 
 // -------------------------------------------------------
 
@@ -22,7 +22,7 @@ namespace SceneryEditorX
     class Viewport : public Resource
     {
     public:
-        explicit Viewport(const float x = 0.0f, const float y = 0.0f, const float width = 0.0f, const float height = 0.0f, const float minDepth = 0.0f, const float maxDepth = 1.0f);
+        explicit Viewport(float x = 0.0f, float y = 0.0f, float width = 0.0f, float height = 0.0f, float minDepth = 0.0f, float maxDepth = 1.0f);
         Viewport(const Viewport &viewport);
         Viewport(const ViewportData& data);
         virtual ~Viewport() = default;

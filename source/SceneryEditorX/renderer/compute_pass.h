@@ -13,14 +13,14 @@
 #pragma once
 #include "compute_pipeline.h"
 #include "texture.h"
-#include "vulkan/vk_descriptor_set_manager.h"
+#include "descriptor_set_manager.h"
 #include <xMath/includes/vector.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /*
+
 	struct ComputePassSpecification
 	{
 	    Ref<ComputePipeline> pipeline;
@@ -33,14 +33,14 @@ namespace SceneryEditorX
 	class ComputePass : public RefCounted
 	{
 	public:
-        explicit ComputePass(const ComputePassSpecification &spec);
-        virtual ~ComputePass() override;
+	    ComputePass(const ComputePassSpecification &spec);
+        virtual ~ComputePass() = default;
 
 		ComputePassSpecification &GetSpecification() { return m_Specification; }
 		const ComputePassSpecification &GetSpecification() const { return m_Specification; }
-        bool HasDescriptorSets() const;
 
 		Ref<Shader> GetShader() const { return m_Specification.pipeline->GetShader(); }
+
 		void AddInput(std::string_view name, Ref<UniformBufferSet> uniformBufferSet);
         void AddInput(std::string_view name, Ref<UniformBuffer> uniformBuffer);
 		void AddInput(std::string_view name, Ref<StorageBufferSet> storageBufferSet);
@@ -53,6 +53,7 @@ namespace SceneryEditorX
 		Ref<Image2D> GetOutput(uint32_t index);
 		Ref<Image2D> GetDepthOutput();
 
+        bool HasDescriptorSets() const;
 		bool Validate();
         void Prepare();
 		void Bake();
@@ -70,7 +71,7 @@ namespace SceneryEditorX
 	    ComputePassSpecification m_Specification;
         DescriptorSetManager m_DescriptorSetManager;
 	};
-	*/
+
 }
 
 // -------------------------------------------------------

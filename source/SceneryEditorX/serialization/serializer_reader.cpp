@@ -17,7 +17,7 @@ namespace SceneryEditorX
 {
 
     /*
-    void SerializeReader::ReadBuffer(Memory::Buffer& buffer, uint32_t size)
+    void SerializeReader::ReadBuffer(Buffer& buffer, uint32_t size)
 	{
 		buffer.size = size;
 		if (size == 0)

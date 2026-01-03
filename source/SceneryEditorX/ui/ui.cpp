@@ -84,7 +84,7 @@ namespace SceneryEditorX::UI
     static std::vector<VkCommandBuffer> uiCommandBuffers;
 
 	/// Additional ImGui initialization functions can be placed here if needed
-	void initImGuiExtensions()
+	void initUItensions()
 	{
 	    /// This function can be called from main ImGui setup to initialize any extensions
 	    /// Currently empty, but could be expanded if more ImGui features need integration
@@ -245,7 +245,7 @@ namespace SceneryEditorX::UI
         // -------------------------------------------------------
 
         RenderData renderData;
-        auto physDevice = RenderContext::GetCurrentDevice()->GetPhysicalDevice();
+        auto physDevice = RenderContext::GetCurrentDevice()->GetDevice();
         SwapChain &swapChain = Application::Get().GetWindow().GetSwapChain();
 
 		ImGui_ImplGlfw_InitForVulkan(window, true);

@@ -11,17 +11,19 @@
 * -------------------------------------------------------
 */
 #include "render_context.h"
-
-#include <utility>
-#include "command_manager.h"
+//#include "command_manager.h"
 #include "SceneryEditorX/core/application/application_data.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
+#include <utility>
 //#include "debug/renderdoc.h"
-#include "vulkan/vk_allocator.h"
-#include "vulkan/vk_checks.h"
-#include "vulkan/vk_cmd_buffers.h"
-#include "vulkan/vk_pipeline_cache.h"
-#include "vulkan/vk_util.h"
+#include "memory_allocator.h"
+#include "vulkan_checks.h"
+//#include "vk_cmd_buffers.h"
+#include "pipeline_cache.h"
+#include "vulkan_utils.h"
+#ifdef SEDX_PLATFORM_WINDOWS
+    #include <Windows.h>
+#endif
 
 // -------------------------------------------------------
 
@@ -35,6 +37,42 @@ namespace SceneryEditorX
     #else
     static constexpr bool EnableValidationLayers = false;
     #endif
+
+    // -------------------------------------------------------
+
+    namespace
+    {
+		bool GetHeadlessMode()
+		{
+		    static bool initialized = false;
+		    static bool cachedValue = false;
+
+		    if (!initialized)
+		    {
+		    #ifdef SEDX_PLATFORM_WINDOWS
+		        char envBuffer[32] = {0};
+		        DWORD result = GetEnvironmentVariableA("SEDX_HEADLESS", envBuffer, sizeof(envBuffer));
+		        if (result > 0 && result < sizeof(envBuffer))
+		        {
+		            cachedValue = (_stricmp(envBuffer, "1") == 0 || _stricmp(envBuffer, "true") == 0);
+		        }
+			#else
+				#if defined(__GLIBC__) && defined(_GNU_SOURCE)
+				    if (const char *env = secure_getenv("SEDX_HEADLESS"))
+				        cachedValue = (std::strcmp(env, "1") == 0 || std::strcmp(env, "true") == 0);
+				#else
+				    static std::mutex envMutex;
+				    std::lock_guard<std::mutex> lock(envMutex);
+				    if (const char *env = std::getenv("SEDX_HEADLESS"))
+				        cachedValue = (std::strcmp(env, "1") == 0 || std::strcmp(env, "true") == 0);
+				#endif
+		    #endif
+		        initialized = true;
+		    }
+
+		    return cachedValue;
+		}
+    }
 
     // -------------------------------------------------------
 
@@ -86,16 +124,18 @@ namespace SceneryEditorX
     RenderContext::~RenderContext()
     {
         // Ensure thread-local command pools are cleaned up before device teardown
-        ThreadCommandPools::Shutdown();
+        //ThreadCommandPools::Shutdown();
 
-        if (m_Device)
+        /*if (m_Device)
         {
             m_Device->Destroy();
             m_Device.Reset();
-        }
+        }*/
 
+        /*
         // Now release physical device
         m_PhysicalDevice.Reset();
+        */
 
     #ifdef SEDX_DEBUG
         if (m_DebugMessenger != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
@@ -143,6 +183,42 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
+    RenderContext::RenderContext(RenderContext &&other) noexcept
+    {
+		// Move resources from the other VulkanDevice
+		m_Device = other.m_Device;
+		m_PhysicalDevice = std::move(other.m_PhysicalDevice);
+		m_Instance = other.m_Instance;
+		m_DebugCallback = other.m_DebugCallback;
+
+		// Nullify the moved-from object
+		other.m_Device = nullptr;
+		other.m_PhysicalDevice = nullptr;
+		other.m_Instance = VK_NULL_HANDLE;
+        other.m_DebugCallback = VK_NULL_HANDLE;
+
+    }
+
+    RenderContext &RenderContext::operator=(RenderContext &&other) noexcept
+    {
+        if (this != &other)
+        {
+            // Move resources from the other VulkanDevice
+            m_Device = other.m_Device;
+            m_PhysicalDevice = std::move(other.m_PhysicalDevice);
+            m_Instance = other.m_Instance;
+            m_DebugCallback = other.m_DebugCallback;
+
+            // Nullify the moved-from object
+            other.m_Device = nullptr;
+            other.m_PhysicalDevice = nullptr;
+            other.m_Instance = VK_NULL_HANDLE;
+            other.m_DebugCallback = VK_NULL_HANDLE;
+        }
+
+        return *this;
+    }
+
     void RenderContext::Init()
 	{
         SEDX_TRACK_CALL("RenderContext::Init");
@@ -157,14 +233,7 @@ namespace SceneryEditorX
             bool khronosAvailable = true;
 
             // Headless mode: if set, do not require WSI/surface extensions
-            bool headlessMode = false;
-        #ifdef SEDX_PLATFORM_WINDOWS
-            if (const char* env = std::getenv("SEDX_HEADLESS"))
-                headlessMode = (std::strcmp(env, "1") == 0 || _stricmp(env, "true") == 0);
-        #else
-            if (const char* env = std::getenv("SEDX_HEADLESS"))
-                headlessMode = (std::strcmp(env, "1") == 0 || std::strcmp(env, "true") == 0);
-        #endif
+            bool headlessMode = GetHeadlessMode();
 
             if (!VulkanChecks::CheckAPIVersion(RenderData::minVulkanVersion))
 			{
@@ -293,8 +362,10 @@ namespace SceneryEditorX
                     instanceExtensions.push_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
             }
 
-            // Prefer enabling the same instance-level caps X-Plane reports, when available
-            // In headless mode, avoid WSI-related extensions to keep validation quiet
+            /* 
+             * Prefer enabling the same instance-level caps X-Plane reports, when available
+             * In headless mode, avoid WSI-related extensions to keep validation quiet
+             */
             if (!headlessMode)
             {
                 if (check.CheckExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME, extensions.instanceExtensions))
@@ -323,7 +394,7 @@ namespace SceneryEditorX
 		}
 
         #ifdef SEDX_PLATFORM_APPLE
-        // Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
+            // Shader validation doesn't work in MoltenVK for SPIR-V 1.6 under Vulkan 1.3:
     		// "Invalid SPIR-V binary version 1.6 for target environment SPIR-V 1.5 (under Vulkan 1.2 semantics)."
             const VkValidationFeatureDisableEXT validationFeaturesDisabled[] = {
     			    VK_VALIDATION_FEATURE_DISABLE_SHADERS_EXT,
@@ -381,7 +452,8 @@ namespace SceneryEditorX
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             VkInstanceCreateFlags createFlags = 0;
-            #ifdef VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR		// If portability enumeration is enabled, set the corresponding to create flag
+            // If portability enumeration is enabled, set the corresponding to create flag
+            #ifdef VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR		
             {
                 // Quick scan to decide if we enabled the portability extension above
                 bool hasPortabilityExt = false;
@@ -428,23 +500,21 @@ namespace SceneryEditorX
 
         #ifdef SEDX_DEBUG
             Utils::VulkanLoadDebugUtilsExtensions(m_Instance);
+			#ifdef SEDX_RENDERDOC
+			    //RenderDocDebug::PreDeviceCreation();
+			#endif
         #endif
 
-    	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            /// Initialize the Vulkan Physical Device & Vulkan Device
-            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            m_PhysicalDevice = VulkanPhysicalDevice::Select();
 
-        #ifdef SEDX_DEBUG
-            //RenderDocDebug::PreDeviceCreation();
-        #endif
-
-            m_PhysicalDevice = VulkanPhysicalDevice::Select(m_Instance);
-            if (!m_PhysicalDevice)
-			{
-                SEDX_CORE_ERROR_TAG("Graphics Engine", "No suitable Vulkan physical device found!");
-                return;
-            }
-
+            VkPhysicalDeviceFeatures enabledFeatures;
+            memset(&enabledFeatures, 0, sizeof(VkPhysicalDeviceFeatures));
+            enabledFeatures.samplerAnisotropy = true;
+            enabledFeatures.wideLines = true;
+            enabledFeatures.fillModeNonSolid = true;
+            enabledFeatures.independentBlend = true;
+            enabledFeatures.pipelineStatisticsQuery = true;
+            enabledFeatures.shaderStorageImageReadWithoutFormat = true;
             m_Device = CreateRef<VulkanDevice>(m_PhysicalDevice);
 
             // Verify the device was created successfully before proceeding
@@ -454,22 +524,33 @@ namespace SceneryEditorX
                 return;
             }
 
-            SEDX_CORE_INFO("Vulkan device created successfully");
-
             // Initialize VMA now that the device is published via RenderContext
             MemoryAllocator::Init(apiVersion);
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Pipeline Cache Creation
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			// TODO: Reimplement later
+
+            VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
+            pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+            VK_CHECK_RESULT(vkCreatePipelineCache(m_Device->GetDevice(), &pipelineCacheCreateInfo, nullptr, &m_PipelineCache));
+
 
             /*
             PipelineCache pipelineCache;
             pipelineCache.CreateCache();
             */
+            /*// Initialize queue family indices BEFORE creating command pools
+            queues[Queue::Graphics].family	= m_PhysicalDevice->GetQueueFamilyIndices().graphics;
+            queues[Queue::Compute].family	= m_PhysicalDevice->GetQueueFamilyIndices().compute;
+            queues[Queue::Transfer].family	= m_PhysicalDevice->GetQueueFamilyIndices().transfer;
+            queues[Queue::Present].family	= m_PhysicalDevice->GetQueueFamilyIndices().present;
 
-			// TODO: In future move and replace with CommandManager, ThreadCommandPools system, and CommandPool class.
+            // Also retrieve the actual queue handles from the device
+            queues[Queue::Graphics].queue	= m_Device->GetGraphicsQueue();
+            queues[Queue::Compute].queue	= m_Device->GetComputeQueue();
+            queues[Queue::Transfer].queue	= m_Device->GetTransferQueue();
+            queues[Queue::Present].queue	= m_Device->GetPresentQueue();
 
 			VkCommandPoolCreateInfo poolInfo{};
 			poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -520,7 +601,7 @@ namespace SceneryEditorX
 
 				SEDX_CORE_INFO("Initialized command resources for queue {}", q);
 			}
-
+			*/
             SEDX_CORE_INFO("RenderContext initialization complete");
             m_IsInitialized = true;
         }

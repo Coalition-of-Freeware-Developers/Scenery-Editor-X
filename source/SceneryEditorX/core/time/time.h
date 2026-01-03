@@ -175,7 +175,7 @@ namespace SceneryEditorX
 	{
 	public:
         DeltaTime() = default;
-        explicit DeltaTime(float time);
+        DeltaTime(float time);
 
 		/**
 	     * @brief Get the time elapsed since the last frame in seconds.

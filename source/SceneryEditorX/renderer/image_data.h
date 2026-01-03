@@ -12,9 +12,9 @@
 */
 #pragma once
 #include "render_context.h"
-#include "SceneryEditorX/renderer/vulkan/vk_includes.h"
-#include "vulkan/resource.h"
-#include "vulkan/vk_allocator.h" // Used by VmaAllocation in struct. !MUST KEEP!
+#include "SceneryEditorX/renderer/vulkan_includes.h"
+#include "resource.h"
+#include "memory_allocator.h" // Used by VmaAllocation in struct. !MUST KEEP!
 #include <cstdint>
 #include <imgui/imgui.h>
 #include <xMath/includes/xmath.hpp>
@@ -95,7 +95,9 @@ namespace SceneryEditorX
 
     inline void GetDepthFormat()
     {
-		RenderContext::GetCurrentDevice()->GetPhysicalDevice()->GetDepthFormat();
+	    // Store the return value to avoid discarding it
+        auto depthFormat = RenderContext::GetCurrentDevice()->GetDepthFormat();
+        (void)depthFormat; // Explicitly mark as unused if not needed
     }
 
     struct ImageSubresourceRange

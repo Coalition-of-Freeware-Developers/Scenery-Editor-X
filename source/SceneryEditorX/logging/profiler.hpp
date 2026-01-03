@@ -14,9 +14,11 @@
 
 // -------------------------------------------------------
 #ifdef SEDX_DEBUG
-#define SEDX_PROFILING_ENABLED 1
+    #ifdef SEDX_PROFILING_ENABLED	
+        #define SEDX_PROFILING_ENABLED 1
+    #endif
 #elif SEDX_RELEASE
-#define SEDX_PROFILING_ENABLED 0
+    #define SEDX_PROFILING_ENABLED 0
 #endif
 
 #if SEDX_PROFILING_ENABLED

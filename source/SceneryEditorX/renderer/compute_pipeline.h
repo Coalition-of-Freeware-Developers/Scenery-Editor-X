@@ -13,40 +13,39 @@
 #pragma once
 #include "texture.h"
 #include "shaders/shader.h"
-#include "vulkan/vk_enums.h"
+#include "enums.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /*
+
 	// Forward declarations
 	class CommandBuffer;
 
 	class ComputePipeline : public RefCounted
 	{
 	public:
-		ComputePipeline(const Ref<Shader>& computeShader);
+		ComputePipeline(Ref<Shader> computeShader);
 
-		void Execute(const VkDescriptorSet* descriptorSets, uint32_t descriptorSetCount, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+		void Execute(VkDescriptorSet* descriptorSets, uint32_t descriptorSetCount, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
-		virtual void Begin(Ref<CommandBuffer> commandBuffer = nullptr);
-		virtual void Begin_RenderThread(Ref<CommandBuffer> commandBuffer = nullptr);
+		void Begin(Ref<CommandBuffer> commandBuffer = nullptr);
+		void Begin_RenderThread(Ref<CommandBuffer> commandBuffer = nullptr);
 		void Dispatch(const UVec3& workGroups) const;
-		virtual void End();
+		void End();
 
-		[[nodiscard]] virtual Ref<Shader> GetShader() const { return m_Shader; }
-
-		[[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() const { return m_ActiveComputeCommandBuffer; }
+		[[nodiscard]] Ref<Shader> GetShader() const { return m_Shader; }
+		[[nodiscard]] VkCommandBuffer GetActiveCommandBuffer() { return m_ActiveComputeCommandBuffer; }
 		[[nodiscard]] VkPipelineLayout GetLayout() const { return m_ComputePipelineLayout; }
 
 		void SetPushConstants(const Buffer& constants) const;
 		void CreatePipeline();
 
-		virtual void BufferMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<StorageBuffer> storageBuffer, ResourceAccessFlags fromAccess, ResourceAccessFlags toAccess);
-		virtual void BufferMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<StorageBuffer> storageBuffer, PipelineStage fromStage, ResourceAccessFlags fromAccess, PipelineStage toStage, ResourceAccessFlags toAccess);
-		virtual void ImageMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<Image2D> image, ResourceAccessFlags fromAccess, ResourceAccessFlags toAccess);
-		virtual void ImageMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<Image2D> image, PipelineStage fromStage, ResourceAccessFlags fromAccess, PipelineStage toStage, ResourceAccessFlags toAccess);
+		void BufferMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<StorageBuffer> storageBuffer, ResourceAccessFlags fromAccess, ResourceAccessFlags toAccess);
+		void BufferMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<StorageBuffer> storageBuffer, PipelineStage fromStage, ResourceAccessFlags fromAccess, PipelineStage toStage, ResourceAccessFlags toAccess);
+		void ImageMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<Image2D> image, ResourceAccessFlags fromAccess, ResourceAccessFlags toAccess);
+		void ImageMemoryBarrier(Ref<CommandBuffer> commandBuffer, Ref<Image2D> image, PipelineStage fromStage, ResourceAccessFlags fromAccess, PipelineStage toStage, ResourceAccessFlags toAccess);
 	private:
 		void CreateRenderThreadPipeline();
 
@@ -54,10 +53,11 @@ namespace SceneryEditorX
 		VkPipelineLayout m_ComputePipelineLayout = nullptr;
 		VkPipelineCache m_PipelineCache = nullptr;
 		VkPipeline m_ComputePipeline = nullptr;
+
 		VkCommandBuffer m_ActiveComputeCommandBuffer = nullptr;
 		bool m_UsingGraphicsQueue = false;
 	};
-	*/
+
 }
 
 // -------------------------------------------------------

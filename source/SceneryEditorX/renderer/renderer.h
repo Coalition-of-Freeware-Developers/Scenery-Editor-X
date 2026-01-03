@@ -12,23 +12,31 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "blend_state.h"
-#include "compute_pass.h"
-#include "rasterizer.h"
+//#include "blend_state.h"
+//#include "compute_pass.h"
+#include "framebuffer.h"
+//#include "rasterizer.h"
 #include "render_dispatcher.h"
 #include "render_pass.h"
-#include "sampler.h"
+//#include "sampler.h"
 #include "texture.h"
-#include "viewport.h"
+//#include "viewport.h"
+#include "command_buffer.h"
+#include "command_manager.h"
+#include "compute_pass.h"
+#include "compute_pipeline.h"
+#include "index_buffer.h"
+#include "scene_environment.h"
+#include "SceneryEditorX/asset/material/material.h"
 #include "SceneryEditorX/asset/mesh/mesh.h"
 #include "SceneryEditorX/core/application/application.h"
+#include "SceneryEditorX/core/threading/render_thread.h"
 #include "SceneryEditorX/scene/material.h"
 #include "SceneryEditorX/scene/scene.h"
+#include "SceneryEditorX/ui/ui_layer.h"
 #include "SceneryEditorX/utils/pointers.h"
-#include "buffers/index_buffer.h"
 #include "fonts/font.h"
 #include "shaders/shader.h"
-#include "vulkan/vk_cmd_buffers.h"
 
 // -------------------------------------------------------
 
@@ -93,6 +101,62 @@ namespace SceneryEditorX
         static void BeginFrame();
         static void EndFrame();
         static void SubmitFrame();
+        static void Tick();
+
+        // -------------------------------------------------------
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Render Command Submission																					  ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /*
+        template <typename FuncT>
+        static void Submit(FuncT &&func)
+        {
+            auto renderCmd = [](void *ptr) 
+            {
+                auto pFunc = (FuncT *)ptr;
+                (*pFunc)();
+
+                // NOTE: Instead of destroying we could try and enforce all items to be trivially destructible
+                // however some items like uniforms which contain std::strings still exist for now
+                // static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+                pFunc->~FuncT();
+            };
+            auto storageBuffer = GetCommandManagerQueue().Allocate(renderCmd, sizeof(func));
+            new (storageBuffer) FuncT(std::forward<FuncT>(func));
+        }
+
+        template <typename FuncT>
+        static void SubmitResourceFree(FuncT &&func)
+        {
+            auto renderCmd = [](void *ptr) 
+            {
+                auto pFunc = (FuncT *)ptr;
+                (*pFunc)();
+
+                // NOTE: Instead of destroying we could try and enforce all items to be trivially destructible
+                // however some items like uniforms which contain std::strings still exist for now
+                // static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+                pFunc->~FuncT();
+            };
+
+            if (RenderThread::IsCurrentThreadRT())
+            {
+                const uint32_t index = Renderer::RT_GetCurrentFrameIndex();
+                auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
+                new (storageBuffer) FuncT(std::forward<FuncT>((FuncT &&)func));
+            }
+            else
+            {
+                const uint32_t index = Renderer::GetCurrentFrameIndex();
+                Submit([renderCmd, func, index]() {
+                    auto storageBuffer = GetRenderResourceReleaseQueue(index).Allocate(renderCmd, sizeof(func));
+                    new (storageBuffer) FuncT(std::forward<FuncT>((FuncT &&)func));
+                });
+            }
+        }
+        */
 
         // -------------------------------------------------------
 
@@ -112,7 +176,13 @@ namespace SceneryEditorX
          * @brief Get the current frame-in-flight index (ring buffer slot).
          * @return Frame index.
          */
-        static uint64_t GetCurrentFrameIndex();
+        static uint32_t GetCurrentFrameIndex();
+
+        // -------------------------------------------------------
+        
+        static void BeginRenderPass(Ref<CommandManager> renderCmdBuffer, Ref<RenderPass> renderPass,  bool explicitClear = false);
+        static void EndRenderPass(Ref<CommandManager> renderCmdBuffer);
+		void RenderUI();
 
         // -------------------------------------------------------
 
@@ -136,7 +206,7 @@ namespace SceneryEditorX
          * @brief Get a reference to the standard material (used for untextured meshes).
          * @return Shared reference to the standard material.
          */
-        //Ref<Material> &GetStandardMaterial();
+        Ref<Material> &GetStandardMaterial();
 
         // -------------------------------------------------------
 
@@ -152,6 +222,12 @@ namespace SceneryEditorX
          * @param sampler Sampler handle to destroy (ignored if VK_NULL_HANDLE).
          */
         static void DestroySampler(VkSampler sampler);
+
+        /**
+         * @brief Get the SwapChain instance managed by the Renderer.
+         * @return Pointer to the active SwapChain, or nullptr if not initialized.
+         */
+        static SwapChain* GetSwapChain();
 
         // -------------------------------------------------------
 
@@ -222,12 +298,12 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
 
-		//static Ref<Texture2D> GetWhiteTexture();
-		//static Ref<Texture2D> GetBlackTexture();
-		//static Ref<Texture2D> GetHilbertLut();
-		//static Ref<Texture2D> GetBRDFLutTexture();
-		//static Ref<TextureCube> GetBlackCubeTexture();
-		//static Ref<Environment> GetEmptyEnvironment();
+		static Ref<Texture2D> GetWhiteTexture();
+		static Ref<Texture2D> GetBlackTexture();
+		static Ref<Texture2D> GetHilbertLut();
+		static Ref<Texture2D> GetBRDFLutTexture();
+		static Ref<TextureCube> GetBlackCubeTexture();
+		static Ref<Environment> GetEmptyEnvironment();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Shader Management
@@ -235,37 +311,36 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Register a shader -> pipeline dependency for hot reload propagation.
-		 * @param type
 		 * @param shader Shader reference.
 		 * @param pipeline Dependent graphics pipeline.
 		 */
-		//void RegisterShaderDependency(Ref<Shader> &shader, Ref<Pipeline> &pipeline);
+		void RegisterShader(Ref<Shader> shader, Ref<Pipeline> pipeline);
 
 		/**
 		 * @brief Register a shader -> material dependency.
 		 * @param shader Shader reference.
 		 * @param material Dependent material.
 		 */
-		//void RegisterShaderDependency(Ref<Shader> &shader, Ref<Material> &material);
+		void RegisterShader(Ref<Shader> shader, Ref<Material> material);
 
 		/**
 		 * @brief Register a shader -> compute pipeline dependency.
 		 * @param shader Shader reference.
 		 * @param computePipeline Dependent compute pipeline.
 		 */
-		//void RegisterShaderDependency(Ref<Shader> &shader, Ref<ComputePipeline> &computePipeline);
+        void RegisterShader(Ref<Shader> shader, Ref<ComputePipeline> computePipeline);
 
 		/**
 		 * @brief Callback invoked when a shader finishes reloading.
 		 * @param hash Shader unique identifier hash.
 		 */
-		//void OnShaderReloaded(size_t hash);
+		void OnShaderReloaded(size_t hash);
 
 		/**
 		 * @brief Process all shaders marked dirty and propagate changes to dependents.
 		 * @return True if any shader refresh occurred.
 		 */
-		//static bool UpdateDirtyShaders();
+		static bool UpdateDirtyShaders();
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// Render Pass
@@ -294,7 +369,6 @@ namespace SceneryEditorX
         static Ref<Texture2D> *GetRenderTarget(RenderTarget type);
 
         Shader *GetShader(const ShaderType type);
-
         Buffer *GetBuffer(const RendererBufferId type);
 
         void SwapVisibilityBuffers();
@@ -309,14 +383,14 @@ namespace SceneryEditorX
          * @param CommandBuffer Command buffer reference.
          * @param computePass Compute pass object.
          */
-        //static void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+        static void BeginComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
 
         /**
 		 * @brief End a previously begun compute pass.
 		 * @param CommandBuffer Command buffer reference.
 		 * @param computePass Compute pass object.
 		 */
-		//static void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
+		static void EndComputePass(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass);
 
 		/**
 		 * @brief Dispatch a compute workload.
@@ -326,7 +400,7 @@ namespace SceneryEditorX
 		 * @param workGroups 3D work group counts.
 		 * @param constants Optional push constant buffer.
 		 */
-		//static void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
+		static void DispatchCompute(Ref<CommandBuffer> CommandBuffer, Ref<ComputePass> computePass, Ref<Material> material, const UVec3& workGroups, Buffer constants = Buffer());
 
 		/**
 		 * @brief Clear an image with specified clear value.
@@ -335,7 +409,7 @@ namespace SceneryEditorX
 		 * @param clearValue Clear color/depth/stencil specification.
 		 * @param subresourceRange Optional subresource range (defaults to whole image).
 		 */
-		//static void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
+		static void ClearImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> image, const ImageClearValue& clearValue, ImageSubresourceRange subresourceRange = ImageSubresourceRange());
 
 		/**
 		 * @brief Copy contents of a source image to a destination image.
@@ -343,7 +417,7 @@ namespace SceneryEditorX
 		 * @param sourceImage Source image.
 		 * @param destinationImage Destination image.
 		 */
-		//static void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
+		static void CopyImage(Ref<CommandBuffer> CommandBuffer, Ref<Image2D> sourceImage, Ref<Image2D> destinationImage);
 
 		/**
 		 * @brief Get number of nanoseconds required for a timestamp query to be incremented by 1
@@ -357,14 +431,18 @@ namespace SceneryEditorX
          * @brief Get synchronization objects for current frame
          * @return Reference to current frame's FrameSync object
          */
-        static Ref<FrameSync>& GetCurrentFrameSync();
+        //static Ref<FrameSync>& GetCurrentFrameSync();
+
+        static void WaitAndRender(RenderThread *renderThread);
+        static void RenderThreadFunc(RenderThread *renderThread);
 
     private:
-		/**
-		 * @brief Active swapchain reference (lifetime managed by renderer).
-		 */
-        SwapChain m_SwapChain = {};
         Scope<Framebuffer> m_ActiveFramebuffer;
+        Scope<CommandManager> m_CommandManager;
+        UI::UILayer *m_UILayer;
+
+        static uint32_t GetRenderQueueIndex();
+        static uint32_t GetRenderQueueSubmissionIndex();
 
         // -------------------------------------------------------
 
@@ -390,10 +468,10 @@ namespace SceneryEditorX
 	    std::array<Ref<Texture2D>,	static_cast<uint32_t>(RenderTarget::MaxEnum)>		&GetRenderTargets();
         std::array<Ref<Shader>,		static_cast<uint32_t>(ShaderType::MaxEnum)>			&GetShaders();
         std::array<Ref<Buffer>,		static_cast<uint32_t>(RendererBufferId::MaxEnum)>	&GetStructuredBuffers();
-        std::array<Ref<Sampler>,	static_cast<uint32_t>(SamplerPreset::MaxEnum)>		&GetSamplers();
+        //std::array<Ref<Sampler>,	static_cast<uint32_t>(SamplerPreset::MaxEnum)>		&GetSamplers();
 
-        Rasterizer* GetRasterizerState(RasterizerState type);
-        BlendState* GetBlendState(const BlendMode type);
+        //Rasterizer* GetRasterizerState(RasterizerState type);
+        //BlendState* GetBlendState(const BlendMode type);
 
     };
 
