@@ -1,28 +1,47 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* application.h
-* -------------------------------------------------------
-* Created: 25/5/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * application.h
+ * -------------------------------------------------------
+ * Created: 25/5/2025
+ * -------------------------------------------------------
+ */
 #pragma once
-#include <deque>
 #include "application_data.h"
 #include "SceneryEditorX/core/events/application_events.h"
 #include "SceneryEditorX/core/events/event_system.h"
 #include "SceneryEditorX/core/layers/layer_stack.h"
+#include "SceneryEditorX/core/platform/platform_context.h"
+#include "SceneryEditorX/core/platform/settings/settings.h"
 #include "SceneryEditorX/core/time/time.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/core/window/window.h"
-#include "SceneryEditorX/core/platform/settings/settings.h"
 #include "SceneryEditorX/ui/ui_layer.h"
 #include "SceneryEditorX/utils/pointers.h"
 #include "SceneryEditorX/utils/static_states.h"
+#include <deque>
 
 // -------------------------------------------------------
 
@@ -31,7 +50,7 @@ namespace SceneryEditorX
 	class Application
     {
     public:
-	    using EventCallbackFn = std::function<void(Event&)>;
+	    typedef std::function<void(Event &)> EventCallbackFn;
 
         // -------------------------------------------------------
 
@@ -47,8 +66,8 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
 
-        Application(const AppData &appData);
-        explicit Application(const std::vector<std::string> & args);
+        Application(const PlatformContext& context);
+        Application(const PlatformContext& context, const AppData& appData);
         virtual ~Application();
 
 		void Run();
@@ -68,7 +87,7 @@ namespace SceneryEditorX
 
 		DeltaTime GetDeltaTime() const { return m_DeltaTime; }
 		DeltaTime GetFrameTime() const { return m_FrameTime; }
-		float GetTime() const; // TODO: This should be in "Platform"
+        static float GetTime(); // TODO: This should be in "Platform"
 
         // -------------------------------------------------------
 
@@ -76,6 +95,7 @@ namespace SceneryEditorX
         inline Window& GetWindow() { return *m_Window; }
         uint32_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		const AppData &GetAppData() const { return m_AppData; }
+        const PlatformContext* GetPlatformContext() const { return m_PlatformContext; }
         PerformanceTimers m_PerformanceTimers;
 
         // -------------------------------------------------------
@@ -98,7 +118,7 @@ namespace SceneryEditorX
         void SyncEvents();
         void ProcessEvents();
         void OnEvent(Event &event);
-        bool OnWindowResize(const WindowResizeEvent &e);
+        static bool OnWindowResize(const WindowResizeEvent &e);
         bool OnWindowMinimize(const WindowMinimizeEvent &e);
         bool OnWindowClose(WindowCloseEvent &e);
 
@@ -112,7 +132,7 @@ namespace SceneryEditorX
         template <typename Func>
 		void QueueEvent(Func&& func)
 		{
-			std::scoped_lock<std::mutex> lock(m_EventQueueMutex);
+			std::scoped_lock lock(m_EventQueueMutex);
 			m_EventQueue.emplace_back(true, func);
 		}
 
@@ -125,12 +145,12 @@ namespace SceneryEditorX
 		template<typename TEvent, bool DispatchImmediately = false, typename... TEventArgs>
 		void DispatchEvent(TEventArgs&&... args)
 		{
-#ifndef SEDX_COMPILER_GCC
+    #ifndef SEDX_COMPILER_GCC
 			// TODO: GCC causes this to fail for AnimationGraphCompiledEvent for some reason. Investigate.
 			static_assert(std::is_assignable_v<Event, TEvent>);
-#endif
+    #endif
 
-			std::shared_ptr<TEvent> event = std::make_shared<TEvent>(std::forward<TEventArgs>(args)...);
+			Ref<TEvent> event = CreateRef<TEvent>(std::forward<TEventArgs>(args)...);
 			if constexpr (DispatchImmediately)
 			{
 				OnEvent(*event);
@@ -143,9 +163,10 @@ namespace SceneryEditorX
 		}
 
 	private:
+        void InitializeApplication(const AppData& appData);
+
         Scope<Window> m_Window;
-        WindowData m_WindowData;
-        AppData m_AppData;
+	    AppData m_AppData;
         LayerStack m_ModuleStage;
         UI::UILayer *m_UILayer = nullptr;
 		DeltaTime m_DeltaTime;
@@ -155,6 +176,7 @@ namespace SceneryEditorX
         bool m_IsMinimized = false;
         bool m_ShowStats = true;
 
+        const PlatformContext* m_PlatformContext = nullptr;
         ApplicationSettings m_Settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
         static Application *appInstance;
         PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
@@ -164,13 +186,14 @@ namespace SceneryEditorX
         std::vector<EventCallbackFn> m_EventCallbacks;
 
 		uint32_t m_CurrentFrameIndex = 0;
-        //friend class RenderContext;
-        //friend class Renderer;
     protected:
         inline static bool m_IsRunningTime = false;
     };
 
+    // -------------------------------------------------------
+
     Application *CreateApplication(const std::vector<std::string> &args);
+    Application *CreateApplication(const PlatformContext& context);
 
 }
 

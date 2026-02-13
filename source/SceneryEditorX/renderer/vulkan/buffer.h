@@ -1,0 +1,72 @@
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * buffer.h
+ * -------------------------------------------------------
+ * Created: 09/02/2026
+ * -------------------------------------------------------
+ */
+#pragma once
+#include "memory_allocator.h"
+
+// -------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	class Buffer 
+	{
+	public:
+	    Buffer() = default;
+	    Buffer(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
+	    ~Buffer();
+	
+	    Buffer(const Buffer&) = delete;
+	    Buffer& operator=(const Buffer&) = delete;
+	    Buffer(Buffer&& other) noexcept;
+	    Buffer& operator=(Buffer&& other) noexcept;
+
+        [[nodiscard]] VkBuffer Get() const { return m_Buffer; }
+        [[nodiscard]] VmaAllocation Allocation() const { return m_Allocation; }
+	    void* Map();
+	    void Unmap();
+	    VkDeviceAddress DeviceAddress();
+	
+	    [[nodiscard]] bool Valid() const { return m_Buffer != VK_NULL_HANDLE; }
+	
+	    // Explicitly free underlying VMA resources before m_Allocator destruction
+	    void Destroy();
+	
+	private:
+	    VkDevice m_Device{ VK_NULL_HANDLE };
+	    VkBuffer m_Buffer{ VK_NULL_HANDLE };
+	    VmaAllocation m_Allocation{ VK_NULL_HANDLE };
+        VmaAllocator m_Allocator{VK_NULL_HANDLE};
+	    void* m_MappedData{ nullptr };
+	    VkDeviceAddress m_DeviceAddress{ 0 };
+	};
+
+}
+
+// -------------------------------------------------------

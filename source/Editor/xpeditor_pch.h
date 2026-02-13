@@ -57,15 +57,11 @@
 
 /**
 ##########################################################
-					 GLFW INCLUDES & DEFINES
+					 SDL3 INCLUDES & DEFINES
 ##########################################################
 */
-
-//#define VK_NO_PROTOTYPES
-#define GLFW_INCLUDE_VULKAN
-//#define IMGUI_IMPL_VULKAN_USE_VOLK
-
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 /**
 ##########################################################
@@ -125,7 +121,7 @@
 
 #include <resource.h>
 #include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/core/base.hpp>
+#include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/utils/static_states.h>

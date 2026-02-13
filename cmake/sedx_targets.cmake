@@ -1,7 +1,7 @@
 # Grouping into solution folders (only if targets exist)
 FUNCTION(SEDX_GROUP_TARGETS)
-    IF(TARGET CrashHandler)
-        SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
+	IF(TARGET CrashHandler)
+		SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
     ENDIF()
 
     FOREACH(T IN ITEMS MemoryAllocatorTests MathTests RefTests SettingsTest ConversionTests EdxTests EdxDemoGenerator)
@@ -16,15 +16,15 @@ FUNCTION(SEDX_GROUP_TARGETS)
         ENDIF()
     ENDFOREACH()
 
-	FOREACH(T IN ITEMS xMath imgui json-cpp-gen nlohmann_json TracyClient)
+	FOREACH(T IN ITEMS xMath uninstall imgui ktx json-cpp-gen nlohmann_json TracyClient)
         IF(TARGET ${T})
             SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Dependency")
         ENDIF()
     ENDFOREACH()
 
-	FOREACH(T IN ITEMS glfw uninstall update_mappings docs)
+	FOREACH(T IN ITEMS SDL3 SDL3-static SDL3_test)
         IF(TARGET ${T})
-            SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Dependency/GLFW")
+            SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Dependency/SDL3")
         ENDIF()
     ENDFOREACH()
 
@@ -55,12 +55,12 @@ ENDIF()
 
 # Apply common output directories (guarded)
 FUNCTION(SEDX_APPLY_OUTPUT_DIRS LIBS_DIR BIN_DIR)
-    SET(CANDIDATES
-        Launcher SceneryEditorX AppCore CrashHandler
-        MathTests MemoryAllocatorTests ConversionTests RefTests SettingsTest EdxTests EdxDemoGenerator
-        nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ edX XPSceneryLib glfw
-        Catch2 Catch2WithMain
-    )
+	SET(CANDIDATES
+		Launcher SceneryEditorX AppCore CrashHandler uninstall
+		MathTests MemoryAllocatorTests ConversionTests RefTests SettingsTest EdxTests EdxDemoGenerator
+		nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ edX XPSceneryLib ktx SDL3
+		Catch2 Catch2WithMain
+	)
     FOREACH(t ${CANDIDATES})
         IF(TARGET ${t})
             SET_TARGET_PROPERTIES(${t} PROPERTIES

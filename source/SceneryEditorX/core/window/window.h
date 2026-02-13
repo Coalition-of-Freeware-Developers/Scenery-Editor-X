@@ -1,178 +1,135 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* window.h
-* -------------------------------------------------------
-* Created: 16/3/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * window.h
+ * -------------------------------------------------------
+ * Created: 16/3/2025
+ * -------------------------------------------------------
+ */
 #pragma once
-#include <GLFW/glfw3.h>
-#include "icon.h"
-#include "monitor_data.h"
-#include "SceneryEditorX/core/events/event_system.h"
-#include "SceneryEditorX/renderer/render_context.h"
-#include "SceneryEditorX/renderer/vulkan_data.h"
-#include "SceneryEditorX/renderer/vulkan_includes.h"
+#include <functional>
+#include <SDL3/SDL.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Window;
+	class Event;
 
-    enum class WindowMode : uint8_t
+	enum class WindowMode : uint8_t
 	{
-		Windowed,
-		WindowedFullScreen,
-		FullScreen
+	    Windowed,
+	    WindowedFullScreen,
+	    FullScreen
 	};
-
-	// -------------------------------------------------------
-
-	struct WindowData
-    {
-        static inline GLFWwindow* window;
-        int posX = 0;
-        int posY = 30;
-        WindowMode mode = WindowMode::Windowed;
-        bool framebufferResized = false;
-        bool dirty = true;
-        bool resizable = true;
-        bool decorated = true;
-        bool maximized = true;
-        bool focused = true;
-        bool vsync = false;
-        bool startMaximized = false;
-        float scroll = .0f;
-        float deltaScroll = .0f;
-        Vec2 mousePos = Vec2(.0f, .0f);
-        Vec2 deltaMousePos = Vec2(.0f, .0f);
-    };
-
-	// -------------------------------------------------------
-
-	struct WindowCallbacks
-    {
-        void (*scrollCallback)(GLFWwindow *window, double x, double y) = nullptr;
-        void (*keyCallback)(GLFWwindow *window, int key, int scancode, int action, int mods) = nullptr;
-        void (*mouseButtonCallback)(GLFWwindow *window, int button, int action, int mods) = nullptr;
-        void (*cursorPosCallback)(GLFWwindow *window, double x, double y) = nullptr;
-        void (*frameBufferSizeCallback)(GLFWwindow *window, int width, int height) = nullptr;
-        void (*framebufferResizeCallback)(GLFWwindow *window, int width, int height) = nullptr;
-        void (*windowMaximizeCallback)(GLFWwindow *window, int maximize) = nullptr;
-        void (*windowChangePosCallback)(GLFWwindow *window, int x, int y) = nullptr;
-        void (*mousePositionCallback)(GLFWwindow *window, double x, double y) = nullptr;
-        void (*windowDropCallback)(GLFWwindow *window, int count, const char *paths[]) = nullptr;
-        void (*windowCloseCallback)(GLFWwindow *window) = nullptr;
-        void (*windowFocusCallback)(GLFWwindow *window, int focused) = nullptr;
-        void (*windowIconifyCallback)(GLFWwindow *window, int iconified) = nullptr;
-        void (*windowSizeCallback)(GLFWwindow *window, int width, int height) = nullptr;
-        void (*charCallback)(GLFWwindow *window, unsigned int codepoint) = nullptr;
-    };
-
-	// -------------------------------------------------------
-
-    class RenderContext;
 
     // -------------------------------------------------------
 
 	class Window
 	{
+        // Forward declared private event types to avoid circular dependency with event_system.h
+        typedef std::function<void(Event &)> EventCallbackFn;
+        static EventCallbackFn s_EventCallback;
+
 	public:
-	    using EventCallbackFn = std::function<void(Event&)>;
-
-        Window();
-        Window(WindowData m_WinData);
-        virtual ~Window();
-
-        virtual void Init();
-        virtual void Update();
-        virtual void Maximize();
-        virtual void CenterWindow();
-        virtual void SetResizable(bool resizable) const;
-        virtual const std::string &GetTitle() const { return m_WindowSpecs.m_title; }
-        virtual void SetTitle(const std::string &title);
-
-        GLFWwindow* GetWindow() const { return m_Window; }
-	    uint32_t GetWidth()		const { return m_WindowSpecs.m_width; }
-		uint32_t GetHeight()	const { return m_WindowSpecs.m_height; }
-
+	    static void Create();
+	    static void Update();
 	    static void ProcessEvents();
-		virtual void ChangeWindowMode();
-        virtual void ApplyChanges();
+	    static void OnImgui();
+	    static void Destroy();
 
-        virtual VkExtent2D GetSize() const								{ return {m_WindowSpecs.m_width, m_WindowSpecs.m_height}; }
-	    virtual Ref<RenderContext> GetRenderContext()                   { return m_RenderContext; }
+	    static void ApplyChanges();
+	    static void UpdateFramebufferSize();
+	    static bool IsKeyPressed(SDL_Scancode keyCode);
+	    static void SetTitle(const std::string &title);
 
-	    RenderData			GetRenderData()								{ return m_RenderData; }
-		IconData			GetIconData()								{ return m_IconData; }
+	    static SDL_Window *GetWindow() { return window; }
+		static Ref<Window> Get() { return m_Window; }
+	    static uint32_t GetWidth();
+	    static uint32_t GetHeight();
+        static Vec2 GetWindowSize();
 
-        static Window*		Create(const WindowData &windowSpecs = WindowData());
-        static std::string  VideoModeText(const GLFWvidmode &mode);
-        void				SetEventCallback(const EventCallbackFn &callback) { m_WindowSpecs.EventCallback = callback; }
-		void				UpdateFramebufferSize();
-        void			    SetFramebufferResized(const bool resized)   { m_WinData.framebufferResized = resized; }
-		void			    WaitEvents()								{ glfwWaitEvents(); }
-	    Vec2			    GetDeltaMouse()								{ return m_WinData.deltaMousePos; }
-        bool			    GetFramebufferResized()						{ return m_WinData.framebufferResized; }
-		bool				IsKeyDown(uint16_t keyCode) const			{ return glfwGetKey(m_Window, keyCode); }
-		bool				IsMouseDown(uint16_t buttonCode) const		{ return glfwGetMouseButton(m_Window, buttonCode); }
-        bool				IsDirty()									{ return m_WinData.dirty; }
-        bool				IsMinimized()								{ return glfwGetWindowAttrib(m_Window, GLFW_ICONIFIED) == GLFW_TRUE; }
-	    bool				IsKeyPressed(uint16_t keyCode) const;
-	    bool				GetShouldClose() const						{ return glfwWindowShouldClose(m_Window); }
-	    static float		GetDeltaTime()								{ return m_DeltaTime; }
+	    static bool IsDirty();
+        static void WaitEvents();
+
+	    static float GetDeltaTime();
+	    static bool GetShouldClose();
+	    static float GetDeltaScroll();
+	    static Vec2 GetDeltaMouse();
+	    static bool GetFramebufferResized();
+	    static bool IsKeyDown(SDL_Scancode keyCode);
+	    static bool IsMouseDown(uint8_t buttonCode);
+	    static void SetMode(WindowMode newMode);
+	    static void SetShouldClose(bool close);
+	    static std::vector<std::string> GetAndClearPaths();
+	    static void SetEventCallback(const EventCallbackFn &callback);
+	    static void Maximize();
+        static bool IsMaximized();
+		static void Minimize();
+        static bool IsMinimized();
+	    static void CenterWindow();
+	    static void SetResizable(bool value);
+	    static void SetDecorated(bool value);
 
 	private:
-        GLFWwindow* m_Window = nullptr;
-        IconData m_IconData;
-        RenderData m_RenderData;
-        WindowCallbacks m_WindowCallbacks;
-        Ref<RenderContext> m_RenderContext;
+        static Ref<Window> m_Window;
+        static SDL_Window *window;
+        static SDL_DisplayID *displays;
+        static const char *name;
+        static int width;
+        static int height;
+        static int posX;
+        static int posY;
+        static int displayIndex;
+        static int displayCount;
+        static int displayModeIndex;
+        static bool framebufferResized;
 
-		GLFWcursor *m_ImGuiMouseCursors[9] = { nullptr };
-        WindowData m_WinData;
+        static std::chrono::high_resolution_clock::time_point lastTime;
+        static float deltaTime;
 
-        struct WindowSpecs
-		{
-            std::string m_title;
-            uint32_t m_width = 1280;
-            uint32_t m_height = 720;
+        static std::vector<std::string> pathsDrop;
 
-			EventCallbackFn EventCallback;
-		};
-		WindowSpecs m_WindowSpecs;
+        static float scroll;
+        static float deltaScroll;
+        static Vec2 mousePos;
+        static Vec2 deltaMousePos;
 
-		bool m_InitState;
-        bool m_MousePressed;
-        bool m_CaptureMovement;
+        static char lastKeyState[SDL_SCANCODE_COUNT];
+        static WindowMode mode;
+        static bool dirty;
+        static bool resizable;
+        static bool decorated;
+        static bool maximized;
+        static bool shouldClose;
 
-		virtual void Shutdown();
-        virtual std::pair<float, float> GetWindowPos() const;
-
-        static std::chrono::high_resolution_clock::time_point m_LastTime;
-        static std::vector<std::string> m_PathsDrop;
-        static float m_DeltaTime;
-        static char m_LastKeyState[GLFW_KEY_LAST + 1];
-        static WindowMode m_WindowMode;
-
-        static void SetWindowIcon(GLFWwindow *window);
-        static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
-        static void ScrollCallback(GLFWwindow *window, double x, double y);
-        static void MouseClickCallback(GLFWwindow *window, int button, int action, int mod);
-        static void WindowDropCallback(GLFWwindow *window, int count, const char *paths[]);
-	    static void MousePositionCallback(GLFWwindow *window, double x, double y);
-        static void WindowMaximizeCallback(GLFWwindow *window, int maximize);
-        static void WindowChangePosCallback(GLFWwindow *window, int x, int y);
-        static void DisableJoystickHandling();
-	    static void FramebufferResizeCallback(GLFWwindow *window, int width, int height);
+        static void HandleEvent(const SDL_Event &event);
+	
 	};
-
+	
 }
 
 // -------------------------------------------------------

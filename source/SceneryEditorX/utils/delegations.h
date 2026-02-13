@@ -1,16 +1,33 @@
 /**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* delegations.h
-* -------------------------------------------------------
-* Created: 11/7/2025
-* -------------------------------------------------------
-*/
-/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * delegations.h
+ * -------------------------------------------------------
+ * Created: 11/7/2025
+ * -------------------------------------------------------
+ *
  *	Based on:
  *	- original work by Sergey Ryazanov (MIT)
  *	"The Impossibly Fast C++ Delegates", 18 Jul 2005
@@ -68,15 +85,15 @@ namespace SceneryEditorX::Utils
 
 	    // -----------------------------------------------------------------
 
-	    /// Free function binding
+	    // Free function binding
 	    template <TReturn (*TFunction)(TArgs...)>
 	    void Bind()
 	    {
 	        Assign(nullptr, FreeFunctionStub<TFunction>);
 	    }
 
-	    /// Lambda binding. For now this only forks with persistent or captureless
-	    /// lambdas. (TODO: store copy of the lambda)
+	    // Lambda binding. For now this only forks with persistent or captureless
+	    // lambdas. (TODO: store copy of the lambda)
 	    template <class TLambda>
 	    void BindLambda(const TLambda &lambda)
 	    {
@@ -103,23 +120,14 @@ namespace SceneryEditorX::Utils
 
 	    // -----------------------------------------------------------------
 
-	    /// Unbind any binding
-	    void Unbind()
-	    {
-	        m_Invocation = InvocationElement();
-	    }
+	    // Unbind any binding
+	    void Unbind() { m_Invocation = InvocationElement(); }
 
 	    // -----------------------------------------------------------------
 
-        [[nodiscard]] bool IsBound() const
-	    {
-	        return m_Invocation.Stub;
-	    }
+        [[nodiscard]] bool IsBound() const { return m_Invocation.Stub; }
 
-        explicit operator bool() const
-	    {
-	        return IsBound();
-	    }
+        explicit operator bool() const { return IsBound(); }
 
 	    TReturn Invoke(TArgs... args) const
 	    {
@@ -186,7 +194,7 @@ namespace SceneryEditorX::Utils
 
 	    // -----------------------------------------------------------------
 
-	    /// Free function binding
+	    // Free function binding
 	    template <TReturn (*TFunction)(TArgs...)>
 	    void Bind()
 	    {
@@ -199,7 +207,7 @@ namespace SceneryEditorX::Utils
 	        Add((TDelegate::TInstancePtr)(&lambda), LambdaStub<TLambda>);
 	    }
 
-	    /// Member function binding
+	    // Member function binding
 	    template <auto TFunction, class TClass>
 	    void Bind(TClass *object)
 	    {
@@ -219,28 +227,28 @@ namespace SceneryEditorX::Utils
 
 	    // -----------------------------------------------------------------
 
-	    /// Free function unbinding
+	    // Free function unbinding
 	    template <TReturn (*TFunction)(TArgs...)>
 	    void Unbind()
 	    {
 	        Remove(nullptr, FreeFunctionStub<TFunction>);
 	    }
 
-	    /// Lambda unbinding
+	    // Lambda unbinding
 	    template <class TLambda>
 	    void Unbind(const TLambda &lambda)
 	    {
 	        Remove((TDelegate::TInstancePtr)(&lambda), LambdaStub<TLambda>);
 	    }
 
-	    /// Member function unbinding
+	    // Member function unbinding
 	    template <class TClass, TReturn (TClass::*TFunction)(TArgs...)>
 	    void Unbind(TClass *object)
 	    {
 	        Remove((TDelegate::TInstancePtr)(object), MemberFunctionStub<TClass, TFunction>);
 	    }
 
-	    /// Const member function unbinding
+	    // Const member function unbinding
 	    template <class TClass, TReturn (TClass::*TFunction)(TArgs...) const>
 	    void Unbind(const TClass *object)
 	    {
@@ -258,10 +266,12 @@ namespace SceneryEditorX::Utils
 	    {
 	       SEDX_CORE_ASSERT(IsBound(), "Trying to invoke unbound delegate.");
 
-	        /// We don't want to Invoke new functions that may be added
-	        /// in one of the delegate calls.
-	        /// Hopefully none of the elements are removed from the list
-	        /// during the iteration.
+	        /*
+	         * We don't want to Invoke new functions that may be added
+	         * in one of the delegate calls.
+	         * Hopefully none of the elements are removed from the list
+	         * during the iteration.
+             */
 	        const uint32_t numberOfInvocations = m_InvocationList.size();
 
 	        uint32_t i = 0;

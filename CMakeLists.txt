@@ -68,7 +68,7 @@ OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
 #OPTION(SEDX_ENABLE_VMA                	"Enable Vulkan Memory Allocator (GPUOpen VMA)" ON)
 OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" ON)
 OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" ON)
-OPTION(SEDX_USE_SYSTEM_GLFW           	"Prefer system-provided glfw3 package" OFF)
+OPTION(SEDX_USE_SYSTEM_SDL           	"Prefer system-provided sdl3 package" OFF)
 OPTION(SEDX_USE_SYSTEM_JSON           	"Prefer system-provided nlohmann_json package" OFF)
 OPTION(SEDX_USE_SYSTEM_ENTT           	"Prefer system-provided EnTT package" OFF)
 #OPTION(SEDX_USE_SYSTEM_CATCH2         	"Prefer system-provided Catch2 package" OFF)
@@ -145,20 +145,58 @@ FIND_PACKAGE(Vulkan REQUIRED)
 FIND_PACKAGE(Stb REQUIRED)
 FIND_PACKAGE(spdlog CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen CONFIG REQUIRED)
+#FIND_PACKAGE(unofficial-skia CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen QUIET)
 #FIND_PACKAGE(tracy CONFIG REQUIRED) # Tracy profiler package (imported target typically Tracy::TracyClient)
 FIND_PACKAGE(VulkanMemoryAllocator CONFIG REQUIRED)
 FIND_PACKAGE(CURL CONFIG REQUIRED)
 
 FIND_PATH(PORTABLE_FILE_DIALOGS_INCLUDE_DIRS "portable-file-dialogs.h") # Portable File Dialogs header-only
+FIND_LIBRARY(Slang_LIBRARY NAMES slang HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
+
+IF(WIN32)
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_WIN32_KHR")
+ELSEIF(LINUX)
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_WAYLAND_KHR")
+ENDIF()
+
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOMINMAX -D_USE_MATH_DEFINES")
+
+IF(MSVC)
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+ENDIF()
 
 ############################################
-# GLFW (system or bundled)
+# Add KTX library (bundled sources)
 ############################################
-IF(SEDX_USE_SYSTEM_GLFW)
-    FIND_PACKAGE(glfw3 CONFIG REQUIRED)
+SET(KTX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dependency/ktx)
+SET(KTX_SOURCES
+	${KTX_DIR}/lib/texture.c
+	${KTX_DIR}/lib/hashlist.c
+	${KTX_DIR}/lib/checkheader.c
+	${KTX_DIR}/lib/swap.c
+	${KTX_DIR}/lib/memstream.c
+	${KTX_DIR}/lib/filestream.c
+	${KTX_DIR}/lib/vkloader.c)
+
+ADD_LIBRARY(ktx STATIC ${KTX_SOURCES})
+TARGET_INCLUDE_DIRECTORIES(ktx PUBLIC
+	${KTX_DIR}/include
+	${KTX_DIR}/other_include
+	${KTX_DIR}/lib
+)
+
+############################################
+# SDL (system or bundled)
+############################################
+IF(SEDX_USE_SYSTEM_SDL)
+    FIND_PACKAGE(SDL3 CONFIG REQUIRED)
 ELSE()
-    ADD_SUBDIRECTORY(dependency/glfw)
+    # Disable precompiled headers for SDL to avoid SDL_internal.h include issues
+    SET(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "" FORCE)
+    ADD_SUBDIRECTORY(dependency/SDL)
+    # Re-enable precompiled headers for other projects
+    SET(CMAKE_DISABLE_PRECOMPILE_HEADERS OFF CACHE BOOL "" FORCE)
 ENDIF()
 
 ############################################
@@ -367,7 +405,7 @@ IF(SEDX_BUILD_IMGUI)
         ${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_widgets.cpp
         ${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_tables.cpp
         $<$<BOOL:${SEDX_WITH_IMGUI_DEMO}>:${CMAKE_SOURCE_DIR}/dependency/imgui/imgui_demo.cpp>
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_glfw.cpp
+        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_sdl3.cpp
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends/imgui_impl_vulkan.cpp
     )
     TARGET_INCLUDE_DIRECTORIES(imgui
@@ -378,7 +416,7 @@ IF(SEDX_BUILD_IMGUI)
     )
     TARGET_LINK_LIBRARIES(imgui
         PRIVATE
-            $<IF:$<TARGET_EXISTS:glfw>,glfw,glfw>
+            $<IF:$<TARGET_EXISTS:sdl>,sdl,sdl>
             Vulkan::Vulkan
             GPUOpen::VulkanMemoryAllocator
     )

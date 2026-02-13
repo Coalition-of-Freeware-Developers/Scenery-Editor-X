@@ -1,69 +1,85 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* uuid.h
-* -------------------------------------------------------
-* Created: 13/7/2025
-* -------------------------------------------------------
-*/
-
-/**
-* This file provides UUID (Universally Unique Identifier) functionality for the
-* Scenery Editor X application. It implements 32-bit, 64-bit, and 128-bit UUID variants
-* to optimize memory usage and performance for different use cases.
-*
-* Key Features:
-* - Thread-safe UUID generation using cryptographically secure RNG
-* - STL hash specializations for use in hash-based containers
-* - Explicit conversion operators to prevent accidental type confusion
-* - Minimal memory footprint with optimized storage
-* - Support for deterministic construction from explicit values
-* - Standard 128-bit UUID support for maximum uniqueness
-* - Base64 encoding/decoding utilities for UUID serialization
-* - Hash combination utilities for creating composite identifiers
-*
-* Usage Examples:
-* @code
-* // Generate random UUIDs
-* UUID entityId;           // 64-bit UUID for persistent entities
-* UUID32 eventToken;       // 32-bit UUID for temporary objects
-* UUID128 standardId;      // 128-bit standard UUID for maximum uniqueness
-*
-* // Create from explicit values (e.g., for serialization)
-* UUID loadedEntity(0x123456789ABCDEF0);
-* UUID32 savedToken(0x12345678);
-* UUID128 loadedStandardId({0x12345678, 0x9ABCDEF0, 0x11111111, 0x22222222});
-*
-* // Use in containers
-* std::unordered_map<UUID, Entity> entityMap;
-* std::unordered_set<UUID32> activeTokens;
-* std::unordered_map<UUID128, Asset> assetRegistry;
-*
-* // Convert for serialization
-* uint64_t serializedId = static_cast<uint64_t>(entityId);
-* std::string base64Id = UUID::EncodeBase64(reinterpret_cast<const unsigned char*>(&entityId), sizeof(entityId));
-* @endcode
-*
-* @see uuid-system-documentation.md for comprehensive usage guide
-* @see Identifier class for string-based identifiers
-* @see Hash class for additional hashing utilities
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * uuid.h
+ * -------------------------------------------------------
+ * Created: 13/7/2025
+ * -------------------------------------------------------
+ *
+ * This file provides UUID (Universally Unique Identifier) functionality for the
+ * Scenery Editor X application. It implements 32-bit, 64-bit, and 128-bit UUID variants
+ * to optimize memory usage and performance for different use cases.
+ *
+ * Key Features:
+ * - Thread-safe UUID generation using cryptographically secure RNG
+ * - STL hash specializations for use in hash-based containers
+ * - Explicit conversion operators to prevent accidental type confusion
+ * - Minimal memory footprint with optimized storage
+ * - Support for deterministic construction from explicit values
+ * - Standard 128-bit UUID support for maximum uniqueness
+ * - Base64 encoding/decoding utilities for UUID serialization
+ * - Hash combination utilities for creating composite identifiers
+ *
+ * Usage Examples:
+ * @code
+ * // Generate random UUIDs
+ * UUID entityId;           // 64-bit UUID for persistent entities
+ * UUID32 eventToken;       // 32-bit UUID for temporary objects
+ * UUID128 standardId;      // 128-bit standard UUID for maximum uniqueness
+ *
+ * // Create from explicit values (e.g., for serialization)
+ * UUID loadedEntity(0x123456789ABCDEF0);
+ * UUID32 savedToken(0x12345678);
+ * UUID128 loadedStandardId({0x12345678, 0x9ABCDEF0, 0x11111111, 0x22222222});
+ *
+ * // Use in containers
+ * std::unordered_map<UUID, Entity> entityMap;
+ * std::unordered_set<UUID32> activeTokens;
+ * std::unordered_map<UUID128, Asset> assetRegistry;
+ *
+ * // Convert for serialization
+ * uint64_t serializedId = static_cast<uint64_t>(entityId);
+ * std::string base64Id = UUID::EncodeBase64(reinterpret_cast<const unsigned char*>(&entityId), sizeof(entityId));
+ * @endcode
+ *
+ * @see uuid-system-documentation.md for comprehensive usage guide
+ * @see Identifier class for string-based identifiers
+ * @see Hash class for additional hashing utilities
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <array>
 #include <functional>
 #include <string>
 #include <vector>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	///< Forward declarations
+	// Forward declarations
 	class UUID;
 	class UUID32;
 	class UUID128;
@@ -625,8 +641,8 @@ namespace SceneryEditorX
 		bool operator!=(const UUID& other) const { return m_UUID != other.m_UUID; }
 
 	private:
-		friend struct std::hash<UUID>;  ///< Allow hash specialization access
-		uint64_t m_UUID;               ///< The underlying 64-bit identifier value
+		friend struct std::hash<UUID>;  // Allow hash specialization access
+		uint64_t m_UUID;                // The underlying 64-bit identifier value
 	};
 
 	/**

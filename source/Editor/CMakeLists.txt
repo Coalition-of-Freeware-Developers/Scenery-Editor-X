@@ -92,21 +92,22 @@ SOURCE_GROUP("Resource/Fonts" FILES
 )
 
 # --------------------------------
-
 TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/source
+	PRIVATE
+		${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
+		${CMAKE_SOURCE_DIR}/dependency/SDL/include/SDL3
 		${CMAKE_SOURCE_DIR}/dependency/xMath
 		${CMAKE_SOURCE_DIR}/dependency/entt/src
-        ${CMAKE_SOURCE_DIR}/dependency/imgui
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
-        ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
-        $ENV{VULKAN_SDK}/Include/
-        ${Stb_INCLUDE_DIR}
-        ${CURL_INCLUDE_DIRS}
+		${CMAKE_SOURCE_DIR}/dependency/imgui
+		${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+		${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
+		${CMAKE_SOURCE_DIR}/dependency/taskflow
+		${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+		$ENV{VULKAN_SDK}/Include/
+		${Stb_INCLUDE_DIR}
+		${CURL_INCLUDE_DIRS}
 )
 
 # --------------------------------
@@ -123,7 +124,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 		libconfig
 		libconfig++
 		XPSceneryLib::XPSceneryLib
-        glfw
+    	SDL3::SDL3
         dxgi
         d3d12
         Shell32.lib

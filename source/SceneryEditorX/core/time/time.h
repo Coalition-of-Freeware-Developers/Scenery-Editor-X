@@ -1,15 +1,33 @@
 /**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* time.h
-* -------------------------------------------------------
-* Created: 17/4/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * time.h
+ * -------------------------------------------------------
+ * Created: 17/4/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <deque>
 
@@ -155,16 +173,16 @@ namespace SceneryEditorX
 	        bool isActive;
 	    };
 
-	    /// Time tracking
+	    // Time tracking
 	    static inline float s_LastFrameTime = 0.0f;
 	    static inline float s_ApplicationStartTime = 0.0f;
 
-	    /// FPS tracking
+	    // FPS tracking
 	    static inline std::deque<float> s_FrameTimes;
 	    static inline float s_CurrentFPS = 0.0f;
 	    static constexpr size_t s_MaxFrameTimesSamples = 60;
 
-	    /// Timer system
+	    // Timer system
 	    static inline std::vector<Timer> s_Timers;
 	    static inline uint32_t s_NextTimerID = 1;
     };

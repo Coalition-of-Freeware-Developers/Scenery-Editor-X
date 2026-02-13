@@ -38,7 +38,7 @@ namespace SceneryEditorX
                 cleanup();
             }
 
-            [[nodiscard]] Ref<VulkanDevice> GetDevice() const { return device; }
+            [[nodiscard]] Ref<Device> GetDevice() const { return device; }
             [[nodiscard]] Ref<MemoryAllocator> GetAllocator() const { return allocator; }
 
         private:
@@ -52,7 +52,7 @@ namespace SceneryEditorX
                     renderContext->Init();
 
                     /// Get the device
-                    device = renderContext->GetLogicDevice();
+                    device = renderContext->GetDevice();
 
                     /// Create memory allocator
                     allocator = CreateRef<MemoryAllocator>("TestAllocator");
@@ -77,7 +77,7 @@ namespace SceneryEditorX
             }
 
             Ref<RenderContext> renderContext;
-            Ref<VulkanDevice> device;
+            Ref<Device> device;
             Ref<MemoryAllocator> allocator;
         };
 
@@ -161,7 +161,7 @@ namespace SceneryEditorX
 
             static std::shared_ptr<VulkanTestEnvironment> environment;
             Ref<MemoryAllocator> allocator;
-            Ref<VulkanDevice> device;
+            Ref<Device> device;
             std::vector<MockAllocationTracker> allocationTrackers;
         };
 

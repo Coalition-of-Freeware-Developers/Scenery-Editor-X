@@ -1,15 +1,33 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* base.hpp
-* -------------------------------------------------------
-* Created: 16/3/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * base.hpp
+ * -------------------------------------------------------
+ * Created: 16/3/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include <atomic>
 #include <cstdint>
@@ -22,9 +40,9 @@
 // -------------------------------------------------------
 
 #ifdef SEDX_DEBUG
-constexpr bool enableValidationLayers = true;
+    constexpr bool ENABLE_VALIDATION_LAYERS = true;
 #else
-constexpr bool enableValidationLayers = false;
+    constexpr bool ENABLE_VALIDATION_LAYERS = false;
 #endif
 
 // -------------------------------------------------------
@@ -32,17 +50,17 @@ constexpr bool enableValidationLayers = false;
 /**
 * Type aliases for fixed-width integer types
 */
-using u8  = uint8_t;		// Unsigned 8-bit integer
-using u16 = uint16_t;		// Unsigned 16-bit integer
-using u32 = uint32_t;		// Unsigned 32-bit integer
-using u64 = uint64_t;		// Unsigned 64-bit integer
-using i8  = int8_t;			// Signed 8-bit integer
-using i16 = int16_t;		// Signed 16-bit integer
-using i32 = int32_t;		// Signed 32-bit integer
-using i64 = int64_t;		// Signed 64-bit integer
-using f32 = float;			// 32-bit floating point
-using f64 = double;			// 64-bit floating point
-using ResourceID = u32;     // Resource Identifier, alias for unsigned 32-bit integer
+typedef uint8_t u8;			// Unsigned 8-bit integer
+typedef uint16_t u16;		// Unsigned 16-bit integer
+typedef uint32_t u32;		// Unsigned 32-bit integer
+typedef uint64_t u64;		// Unsigned 64-bit integer
+typedef int8_t i8;			// Signed 8-bit integer
+typedef int16_t i16;		// Signed 16-bit integer
+typedef int32_t i32;		// Signed 32-bit integer
+typedef int64_t i64;		// Signed 64-bit integer
+typedef float f32;			// 32-bit floating point
+typedef double f64;			// 64-bit floating point
+typedef u32 ResourceID;     // Resource Identifier, alias for unsigned 32-bit integer
 
 // -------------------------------------------------------
 
@@ -67,22 +85,22 @@ namespace xMath
 
 // -------------------------------------------------------
 
-using Vec2	=	xMath::TVector2<float>;   	// 2D vector
-using Vec3	=	xMath::TVector3<float>;   	// 3D vector
-using Vec4	=	xMath::TVector4<float>;   	// 4D vector
-using iVec2 =	xMath::TVector2<int32_t>; 	// 2D integer vector
-using iVec3 =	xMath::TVector3<int32_t>; 	// 3D integer vector
-using iVec4 =	xMath::TVector4<int32_t>; 	// 4D integer vector
-using UVec2 = 	xMath::TVector2<uint32_t>; 	// 2D unsigned integer vector
-using UVec3 = 	xMath::TVector3<uint32_t>; 	// 3D unsigned integer vector
-using UVec4 = 	xMath::TVector4<uint32_t>; 	// 4D unsigned integer vector
-using Bool2 = 	xMath::TVector2<bool>;     	// 2D boolean vector
-using Bool3 = 	xMath::TVector3<bool>;     	// 3D boolean vector
-using Bool4 = 	xMath::TVector4<bool>;     	// 4D boolean vector
-using Mat2	=	xMath::Mat2;                // 2x2 matrix
-using Mat3	=	xMath::Mat3;                // 3x3 matrix
-using Mat4	=	xMath::Mat4;                // 4x4 matrix
-using Quat	=	xMath::Quat;                // Quaternion for rotation
+typedef xMath::TVector2<float> Vec2;   		// 2D vector
+typedef xMath::TVector3<float> Vec3;   		// 3D vector
+typedef xMath::TVector4<float> Vec4;   		// 4D vector
+typedef xMath::TVector2<int32_t> iVec2; 	// 2D integer vector
+typedef xMath::TVector3<int32_t> iVec3; 	// 3D integer vector
+typedef xMath::TVector4<int32_t> iVec4; 	// 4D integer vector
+typedef xMath::TVector2<uint32_t> UVec2; 	// 2D unsigned integer vector
+typedef xMath::TVector3<uint32_t> UVec3; 	// 3D unsigned integer vector
+typedef xMath::TVector4<uint32_t> UVec4; 	// 4D unsigned integer vector
+typedef xMath::TVector2<bool> Bool2;     	// 2D boolean vector
+typedef xMath::TVector3<bool> Bool3;     	// 3D boolean vector
+typedef xMath::TVector4<bool> Bool4;     	// 4D boolean vector
+typedef xMath::Mat2 Mat2;					// 2x2 matrix
+typedef xMath::Mat3 Mat3;					// 3x3 matrix
+typedef xMath::Mat4 Mat4;					// 4x4 matrix
+typedef xMath::Quat Quat;					// Quaternion for rotation
 
 // -------------------------------------------------------
 
@@ -209,7 +227,7 @@ namespace SceneryEditorX
      *
      * @note - Equivalent to uint8_t from <cstdint>
      */
-    using byte = uint8_t;
+    typedef uint8_t byte;
 
 	/**
 	 * @struct AtomicFlag
@@ -259,8 +277,6 @@ namespace SceneryEditorX
 	     *
 	     * When copying an AtomicFlag, the new instance is always initialized to
 	     * the clean state, regardless of whether the source was dirty or clean.
-	     *
-	     * @param other The source AtomicFlag (its state is not copied).
 	     */
 	    AtomicFlag(const AtomicFlag&) noexcept {}
 
@@ -268,8 +284,6 @@ namespace SceneryEditorX
 	     * @brief Copy assignment operator preserves the current instance's state.
 	     *
 	     * The copy assignment operator doesn't modify the current instance's state.
-	     *
-	     * @param other The source AtomicFlag (its state is ignored).
 	     * @return Reference to this instance.
 	     */
 	    AtomicFlag& operator=(const AtomicFlag&) noexcept { return *this; }
@@ -279,8 +293,6 @@ namespace SceneryEditorX
 	     *
 	     * When moving an AtomicFlag, the new instance is always initialized to
 	     * the clean state, regardless of whether the source was dirty or clean.
-	     *
-	     * @param other The source AtomicFlag being moved (its state is not transferred).
 	     */
 	    AtomicFlag(AtomicFlag&&) noexcept {};
 
@@ -288,8 +300,6 @@ namespace SceneryEditorX
 	     * @brief Move assignment operator preserves the current instance's state.
 	     *
 	     * The move assignment operator doesn't modify the current instance's state.
-	     *
-	     * @param other The source AtomicFlag being moved (its state is ignored).
 	     * @return Reference to this instance.
 	     */
 	    AtomicFlag& operator=(AtomicFlag&&) noexcept { return *this; }
@@ -326,7 +336,9 @@ namespace SceneryEditorX
 		SEDX_FORCE_INLINE bool CheckAndResetIfDirty() noexcept
 		{
 			if (flag)
-				return !((flag = !flag));
+			{
+			    return !((flag = !flag));
+			}
 
 		    return false;
         }
@@ -395,13 +407,12 @@ std::string ToString(const T &value)
 
 /**
  * @brief Convert a string to a value.
- * @tparam T The type of the value to convert.
+ * @tparam N The type of the value to convert.
  * @param arr
- * @param str The string to convert.
  * @return The value representation of the string.
  */
 template <size_t N>
-std::vector<std::string> arrayToVector(const std::array<const char *, N> &arr)
+std::vector<std::string> ArrayToVector(const std::array<const char *, N> &arr)
 {
 	std::vector<std::string> vec;
 	for (const char *str : arr)

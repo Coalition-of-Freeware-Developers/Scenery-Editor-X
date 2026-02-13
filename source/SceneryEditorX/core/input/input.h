@@ -1,24 +1,44 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* input.h
-* -------------------------------------------------------
-* Created: 14/7/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * input.h
+ * -------------------------------------------------------
+ * Created: 14/7/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include "key_codes.h"
+#include <SDL3/SDL.h>
+#include <map>
+#include <optional>
+#include <utility>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    // -------------------------------------------------------
 
 	enum class KeyMods : int  // NOLINT(performance-enum-size)
 	{
@@ -90,6 +110,11 @@ namespace SceneryEditorX
 	{
 	public:
 		static void Update();
+		static void OnKeyEvent(const SDL_KeyboardEvent &event);
+		static void OnMouseButtonEvent(const SDL_MouseButtonEvent &event);
+		static std::optional<KeyCode> FromSDLScancode(SDL_Scancode scancode);
+		static std::optional<MouseButton> FromSDLMouseButton(uint8_t button);
+		static std::optional<KeyCode> FromCharacter(char c);
 
 		static bool IsKeyPressed(KeyCode keycode);
 		static bool IsKeyHeld(KeyCode keycode);
@@ -122,15 +147,5 @@ namespace SceneryEditorX
 	};
 
 }
-
-// -------------------------------------------------------
-
-/*
-template <>
-struct magic_enum::customize::enum_range<SceneryEditorX::KeyMods>
-{
-    static constexpr bool is_flags = true;
-};
-*/
 
 // -------------------------------------------------------

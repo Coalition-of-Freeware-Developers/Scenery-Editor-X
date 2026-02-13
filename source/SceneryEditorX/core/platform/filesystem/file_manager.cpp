@@ -1,27 +1,43 @@
-﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* FileManager.cpp
-* -------------------------------------------------------
-* Created: 17/3/2025
-* -------------------------------------------------------
-*/
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * FileManager.cpp
+ * -------------------------------------------------------
+ * Created: 17/3/2025
+ * -------------------------------------------------------
+ */
 #include <commdlg.h>
-#include <GLFW/glfw3native.h>
 //#include "SceneryEditorX/asset/asset_manager.h"
 #include "file_manager.hpp"
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
-#include "SceneryEditorX/core/time/time.h"
-#include "SceneryEditorX/platform/config/editor_config.hpp"
-#include "SceneryEditorX/scene/material.h"
-#include "SceneryEditorX/scene/model_asset.h"
-#include "SceneryEditorX/utils/string_utils.h"
-
+#include <SceneryEditorX/core/time/time.h>
+#include <SceneryEditorX/core/platform/config/editor_config.hpp>
+#include <SceneryEditorX/scene/material.h>
+#include <SceneryEditorX/scene/model_asset.h>
+#include <SceneryEditorX/utils/string_utils.h>
 #include <codecvt>
 
 // -------------------------------------------------------
@@ -301,6 +317,112 @@ namespace SceneryEditorX::IO
         return converter.from_bytes(str);
     }
 
+    std::string FileSystem::GetDirectoryFromFilePath(const std::string &path)
+    {
+        const size_t last_index = path.find_last_of("\\/");
+
+        if (last_index != std::string::npos)
+            return path.substr(0, last_index + 1);
+
+        return "";
+    }
+
+    std::string FileSystem::GetWorkingDirectory()
+    {
+        return std::filesystem::current_path().generic_string();
+    }
+
+    std::string FileSystem::GetRootDirectory(const std::string &path)
+    {
+        return std::filesystem::path(path).root_directory().generic_string();
+    }
+
+    std::string FileSystem::GetRelativePath(const std::string &path)
+    {
+        if (std::filesystem::path(path).is_relative())
+            return path;
+
+        // create absolute paths
+        const std::filesystem::path p = std::filesystem::absolute(path);
+        const std::filesystem::path r = std::filesystem::absolute(GetWorkingDirectory());
+
+        // if root paths are different, return absolute path
+        if (p.root_path() != r.root_path())
+            return p.generic_string();
+
+        // initialize relative path
+        std::filesystem::path result;
+
+        // find out where the two paths diverge
+        std::filesystem::path::const_iterator itr_path = p.begin();
+        std::filesystem::path::const_iterator itr_relative_to = r.begin();
+        while (*itr_path == *itr_relative_to && itr_path != p.end() && itr_relative_to != r.end())
+        {
+            ++itr_path;
+            ++itr_relative_to;
+        }
+
+        // add "../" for each remaining token in relative_to
+        if (itr_relative_to != r.end())
+        {
+            ++itr_relative_to;
+            while (itr_relative_to != r.end())
+            {
+                result /= "..";
+                ++itr_relative_to;
+            }
+        }
+
+        // add remaining path
+        while (itr_path != p.end())
+        {
+            result /= *itr_path;
+            ++itr_path;
+        }
+
+        return result.generic_string();
+    }
+
+    std::string FileSystem::GetFileNameWithoutExtensionFromFilePath(const std::string &path)
+    {
+        const auto file_name = GetFileNameFromFilePath(path);
+        const size_t last_index = file_name.find_last_of('.');
+
+        if (last_index != std::string::npos)
+            return file_name.substr(0, last_index);
+
+        return "";
+    }
+
+    std::string FileSystem::GetFileNameFromFilePath(const std::string &path)
+    {
+        return std::filesystem::path(path).filename().generic_string();
+    }
+
+    std::vector<std::string> FileSystem::GetFilesInDirectory(const std::string &path)
+    {
+        std::vector<std::string> file_paths;
+        const std::filesystem::directory_iterator it_end; // default construction yields past-the-end
+        for (std::filesystem::directory_iterator it(path); it != it_end; ++it)
+        {
+            if (!std::filesystem::is_regular_file(it->status()))
+                continue;
+
+            try
+            {
+                // a crash is possible if the characters are
+                // something that can't be converted, like Russian.
+                file_paths.emplace_back(it->path().string());
+            }
+            catch (std::system_error &e)
+            {
+                SEDX_CORE_WARN("Failed to read a file path. %s", e.what());
+            }
+        }
+
+        return file_paths;
+    }
+
     // -------------------------------------------------------
 
 	/*
@@ -499,15 +621,15 @@ namespace SceneryEditorX::IO
 
 	    if (!file.is_open())
 	    {
-	        SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
-	        ErrMsg(std::string("Failed to open file: ") + ToString(filename));
+            SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
+            ErrMsg(std::string("Failed to open file: ") + ToString(filename));
 	        return {}; // Return empty vector on failure
 	    }
 
 	    size_t fileSize = file.tellg();
 	    if (fileSize == 0)
 	    {
-	        SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
+            SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
 	        return {};
 	    }
 
@@ -518,8 +640,8 @@ namespace SceneryEditorX::IO
 
 	    if (!file)
 	    {
-	        SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
-	        ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
+            SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
+            ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
 	        return {};
 	    }
 
@@ -545,15 +667,15 @@ namespace SceneryEditorX::IO
 
 	    if (!file.is_open())
 	    {
-	        SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
-	        ErrMsg(std::string("Failed to open file: ") + ToString(filename));
+            SEDX_CORE_ERROR("Failed to open file: {}", ToString(filename));
+            ErrMsg(std::string("Failed to open file: ") + ToString(filename));
 	        return {}; /// Return empty vector on failure
 	    }
 
 	    size_t fileSize = file.tellg();
 	    if (fileSize == 0)
 	    {
-	        SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
+            SEDX_CORE_ERROR("File is empty: {}", ToString(filename));
 	        return {};
 	    }
 
@@ -564,8 +686,8 @@ namespace SceneryEditorX::IO
 
 	    if (!file)
 	    {
-	        SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
-	        ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
+            SEDX_CORE_ERROR("Failed to read entire file: {}", ToString(filename));
+            ErrMsg(std::string("Failed to read entire file: ") + ToString(filename));
 	        return {};
 	    }
 

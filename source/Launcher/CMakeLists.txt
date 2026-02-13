@@ -57,6 +57,7 @@ TARGET_INCLUDE_DIRECTORIES(Launcher
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
+		${CMAKE_SOURCE_DIR}/dependency/SDL/include/SDL3
 		${CMAKE_SOURCE_DIR}/dependency/xMath
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
@@ -82,7 +83,7 @@ TARGET_LINK_LIBRARIES(Launcher
 		libconfig
 		libconfig++
 		XPSceneryLib::XPSceneryLib
-        glfw
+        SDL3::SDL3
         dxgi
         d3d12
         Shell32.lib
@@ -98,8 +99,6 @@ TARGET_COMPILE_DEFINITIONS(Launcher
         $<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
-        GLFW_INCLUDE_VULKAN
-        GLFW_EXPOSE_NATIVE_WIN32
         CURL_STATICLIB
 )
 

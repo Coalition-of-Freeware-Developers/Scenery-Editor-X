@@ -57,15 +57,12 @@
 
 /**
 ##########################################################
-					 GLFW INCLUDES & DEFINES
+					 SDL3 INCLUDES & DEFINES
 ##########################################################
 */
 
-//#define VK_NO_PROTOTYPES
-#define GLFW_INCLUDE_VULKAN
-//#define IMGUI_IMPL_VULKAN_USE_VOLK
-
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 /**
 ##########################################################

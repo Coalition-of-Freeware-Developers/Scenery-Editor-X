@@ -45,7 +45,7 @@ namespace SceneryEditorX
              * @brief Get the VulkanDevice reference
              * @return Reference to the Vulkan device
              */
-            Ref<VulkanDevice> GetDevice() const { return device; }
+            Ref<Device> GetDevice() const { return device; }
 
             /**
              * @brief Get the MemoryAllocator reference
@@ -64,7 +64,7 @@ namespace SceneryEditorX
              */
             void cleanup();
 
-            Ref<VulkanDevice> device;
+            Ref<Device> device;
             Ref<MemoryAllocator> allocator;
         };
 
@@ -126,7 +126,7 @@ namespace SceneryEditorX
 
             static std::shared_ptr<VulkanTestEnvironment> environment;
             Ref<MemoryAllocator> allocator;
-            Ref<VulkanDevice> device;
+            Ref<Device> device;
             std::vector<MockAllocationTracker> allocationTrackers;
         };
     }  // namespace Tests

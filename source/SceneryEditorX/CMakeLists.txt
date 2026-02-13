@@ -22,6 +22,7 @@ FILE(GLOB CORE_MEMORY core/memory/*.h core/memory/*.hpp core/memory/*.cpp)
 FILE(GLOB CORE_LAYERS core/layers/*.h core/layers/*.hpp core/layers/*.cpp)
 FILE(GLOB CORE_THREADING core/threading/*.h core/threading/*.hpp core/threading/*.cpp)
 FILE(GLOB CORE_TIME core/time/*.h core/time/*.hpp core/time/*.cpp)
+FILE(GLOB CORE_RESOURCE core/resource/*.cpp core/resource/*.h)
 FILE(GLOB CORE_WINDOW core/window/*.h core/window/*.hpp core/window/*.cpp)
 FILE(GLOB CORE_PLATFORM_CONFIG_FILES core/platform/config/*.h core/platform/config/*.hpp core/platform/config/*.cpp)
 FILE(GLOB CORE_PLATFORM_FILESYSTEM core/platform/filesystem/*.h core/platform/filesystem/*.hpp core/platform/filesystem/*.cpp)
@@ -30,6 +31,9 @@ FILE(GLOB CORE_PLATFORM_SETTINGS core/platform/settings/*.h core/platform/settin
 FILE(GLOB CORE_WINDOWS_PLATFORM core/platform/windows/*.h core/platform/windows/*.hpp core/platform/windows/*.cpp)
 FILE(GLOB CORE_MAC_PLATFORM core/platform/mac/*.h core/platform/mac/*.hpp core/platform/mac/*.cpp)
 FILE(GLOB CORE_LINUX_PLATFORM core/platform/linux/*.h core/platform/linux/*.hpp core/platform/linux/*.cpp)
+
+FILE(GLOB RENDERER_VULKAN renderer/vulkan/*.h renderer/vulkan/*.hpp renderer/vulkan/*.cpp)
+FILE(GLOB RENDERER_KOSMICKRISP renderer/kosmickrisp/*.h renderer/kosmickrisp/*.hpp renderer/kosmickrisp/*.cpp)
 
 FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
 FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
@@ -76,6 +80,7 @@ ADD_LIBRARY(AppCore
 	${CORE_INPUT}
 	${CORE_MEMORY}
 	${CORE_LAYERS}
+	${CORE_RESOURCE}
 	${CORE_THREADING}
 	${CORE_TIME}
 	${CORE_WINDOW}
@@ -87,6 +92,8 @@ ADD_LIBRARY(AppCore
 	${CORE_WINDOWS_PLATFORM}
 	${CORE_MAC_PLATFORM}
 	${CORE_LINUX_PLATFORM}
+	${RENDERER_VULKAN}
+	${RENDERER_KOSMICKRISP}
 	${SCENE}
 	${PROJECT_CONFIG_FILES}
 	${SERIALIZER_FILES}
@@ -106,17 +113,17 @@ ADD_LIBRARY(AppCore
 	${UTILS_FILESTREAM}
 
 	# --------------------------------
-	asset/asset.cpp
-	asset/asset.h
-	asset/asset_extensions.h
-	asset/asset_metadata.h
-	asset/asset_pack_header.h
-	asset/asset_types.h
-	asset/ecs.cpp
-	asset/ecs.h
-	asset/mesh_file.h
-	asset/object.cpp
-	asset/object.h
+	# asset/asset.cpp
+	# asset/asset.h
+	# asset/asset_extensions.h
+	# asset/asset_metadata.h
+	# asset/asset_pack_header.h
+	# asset/asset_types.h
+	# asset/ecs.cpp
+	# asset/ecs.h
+	# asset/mesh_file.h
+	# asset/object.cpp
+	# asset/object.h
 
 	# --------------------------------
 	core/base.h
@@ -127,41 +134,7 @@ ADD_LIBRARY(AppCore
 	core/platform/platform_context.h
 
 	# --------------------------------
-	renderer/command_buffer.cpp
-	renderer/command_buffer.h
-	renderer/command_manager.cpp
-	renderer/command_manager.h
-	renderer/command_pool.cpp
-	renderer/command_pool.h
-	renderer/dds.h
-	renderer/device.cpp
-	renderer/device.h
-	renderer/enums.h
-	renderer/framebuffer.cpp
-	renderer/framebuffer.h
-	renderer/memory_allocator.cpp
-	renderer/memory_allocator.h
-	renderer/render_config.h
-	renderer/render_context.cpp
-	renderer/render_context.h
-	renderer/render_resource.cpp
-	renderer/render_resource.h
-	renderer/renderer.cpp
-	renderer/renderer.h
-	renderer/resource.h
-	renderer/stb_image_impl.cpp
-	renderer/swapchain.cpp
-	renderer/swapchain.h
-	renderer/vulkan_buffers.cpp
-	renderer/vulkan_buffers.h
-	renderer/vulkan_checks.cpp
-	renderer/vulkan_checks.h
-	renderer/vulkan_data.h
-	renderer/vulkan_includes.h
-	renderer/vulkan_utils.cpp
-	renderer/vulkan_utils.h
 
-	# --------------------------------
 
 	# --------------------------------
 	utils/container_utils.h
@@ -250,6 +223,9 @@ SOURCE_GROUP("Core/Time" FILES
 SOURCE_GROUP("Core/Window" FILES
 	${CORE_WINDOW}
 )
+SOURCE_GROUP("Core/Resource" FILES
+	${CORE_RESOURCE}
+)
 SOURCE_GROUP("Core/Platform" FILES
 	core/platform/initializer.cpp
 	core/platform/initializer.h
@@ -277,9 +253,12 @@ SOURCE_GROUP("Core/Platform/Linux" FILES
 SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
-#SOURCE_GROUP("Renderer/Vulkan/Buffers" FILES
-#	${VULKAN_BUFFERS}
-#)
+SOURCE_GROUP("Renderer/Vulkan" FILES
+	${RENDERER_VULKAN}
+)
+SOURCE_GROUP("Renderer/Kosmickrisp" FILES
+	${RENDERER_KOSMICKRISP}
+)
 SOURCE_GROUP("Renderer/Debug" FILES
 	${DEBUG_RENDERER_FILES}
 )
@@ -309,84 +288,6 @@ SOURCE_GROUP("Steam" FILES
 )
 SOURCE_GROUP("Project" FILES
 	${PROJECT}
-)
-SOURCE_GROUP("Renderer" FILES
-	renderer/bindless_descriptor_manager.cpp
-	renderer/bindless_descriptor_manager.h
-	renderer/command_buffer.cpp
-	renderer/command_buffer.h
-	renderer/command_manager.cpp
-	renderer/command_manager.h
-	renderer/command_pool.cpp
-	renderer/command_pool.h
-	renderer/compute_pass.cpp
-	renderer/compute_pass.h
-	renderer/compute_pipeline.cpp
-	renderer/compute_pipeline.h
-	renderer/dds.h
-	renderer/descriptor_set.cpp
-	renderer/descriptor_set.h
-	renderer/descriptor_set_manager.cpp
-	renderer/descriptor_set_manager.h
-	renderer/descriptors.cpp
-	renderer/descriptors.h
-	renderer/device.cpp
-	renderer/device.h
-	renderer/enums.h
-	renderer/framebuffer.cpp
-	renderer/framebuffer.h
-	renderer/image.cpp
-	renderer/image.h
-	renderer/image_data.cpp
-	renderer/image_data.h
-	renderer/image_view.cpp
-	renderer/image_view.h
-	renderer/index_buffer.cpp
-	renderer/index_buffer.h
-	renderer/memory_allocator.cpp
-	renderer/memory_allocator.h
-	renderer/pipeline.cpp
-	renderer/pipeline.h
-	renderer/pipeline_cache.cpp
-	renderer/pipeline_cache.h
-	renderer/pipeline_state.cpp
-	renderer/pipeline_state.h
-	renderer/render_config.h
-	renderer/render_context.cpp
-	renderer/render_context.h
-	renderer/render_dispatcher.cpp
-	renderer/render_dispatcher.h
-	renderer/render_pass.cpp
-	renderer/render_pass.h
-	renderer/render_resource.cpp
-	renderer/render_resource.h
-	renderer/renderer.cpp
-	renderer/renderer.h
-	renderer/resource.h
-	renderer/stb_image_impl.cpp
-	renderer/staging_buffer.cpp
-	renderer/staging_buffer.h
-	renderer/storage_buffer.cpp
-	renderer/storage_buffer.h
-	renderer/swapchain.cpp
-	renderer/swapchain.h
-	renderer/texture.cpp
-	renderer/texture.h
-	renderer/uniform_buffer.cpp
-	renderer/uniform_buffer.h
-	renderer/vertex_buffer.cpp
-	renderer/vertex_buffer.h
-	renderer/viewport.cpp
-	renderer/viewport.h
-	renderer/vulkan_buffers.cpp
-	renderer/vulkan_buffers.h
-	renderer/vulkan_checks.cpp
-	renderer/vulkan_checks.h
-	renderer/vulkan_data.h
-	renderer/vulkan_includes.h
-	renderer/vulkan_utils.cpp
-	renderer/vulkan_utils.h
-
 )
 SOURCE_GROUP("Renderer/Vulkan" FILES
 	${VULKAN_FILES}
@@ -473,24 +374,28 @@ ELSE()
 ENDIF()
 MESSAGE("GLSL VALIDATOR ${GLSL_VALIDATOR}")
 ADD_COMPILE_DEFINITIONS(GLSL_VALIDATOR="${GLSL_VALIDATOR}")
+TARGET_COMPILE_FEATURES(AppCore PRIVATE cxx_std_20)
 
 # --------------------------------
-
 TARGET_INCLUDE_DIRECTORIES(AppCore
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/source
-		${CMAKE_SOURCE_DIR}/dependency
-		${CMAKE_SOURCE_DIR}/dependency/xMath
-		${CMAKE_SOURCE_DIR}/dependency/entt/src
-        ${CMAKE_SOURCE_DIR}/dependency/imgui
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
-        ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
-        ${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
-        ${REGISTRY_KEYS}
-        ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
-        $ENV{VULKAN_SDK}/Include/
-        ${Stb_INCLUDE_DIR}
-        ${CURL_INCLUDE_DIRS}
+	PRIVATE
+	${CMAKE_SOURCE_DIR}/source
+	${CMAKE_SOURCE_DIR}/dependency
+	${CMAKE_SOURCE_DIR}/dependency/xMath
+	${CMAKE_SOURCE_DIR}/dependency/entt/src
+	${CMAKE_SOURCE_DIR}/dependency/imgui
+	${CMAKE_SOURCE_DIR}/dependency/imgui/backends
+	${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
+	${CMAKE_SOURCE_DIR}/dependency/taskflow
+	${CMAKE_SOURCE_DIR}/dependency/tinyobj
+	${CMAKE_SOURCE_DIR}/dependency/ktx/include
+	${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
+	${REGISTRY_KEYS}
+	${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
+	$ENV{VULKAN_SDK}/Include/
+	${Stb_INCLUDE_DIR}
+	${CURL_INCLUDE_DIRS}
 )
 
 # --------------------------------
@@ -506,26 +411,27 @@ TARGET_LINK_LIBRARIES(AppCore
 		libconfig
 		libconfig++
 		XPSceneryLib::XPSceneryLib
-		glfw
+    	SDL3::SDL3
 		dxgi
 		d3d12
+		ktx
+		${Slang_LIBRARY}
 		Shell32.lib
 		xMath::xMath
 		TracyClient
+		msdfgen::msdfgen
 )
 
 # --------------------------------
-
 TARGET_COMPILE_DEFINITIONS(AppCore
-    PUBLIC
-        APPCORE
-        $<$<CONFIG:Debug>:SEDX_DEBUG>
-        $<$<CONFIG:Release>:SEDX_RELEASE>
+	PUBLIC
+		APPCORE
+		$<$<CONFIG:Debug>:SEDX_DEBUG>
+		$<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
-        VK_USE_PLATFORM_WIN32_KHR
-        GLFW_INCLUDE_VULKAN
-        GLFW_EXPOSE_NATIVE_WIN32
-        CURL_STATICLIB
+		VK_NO_PROTOTYPES
+		VK_USE_PLATFORM_WIN32_KHR
+		CURL_STATICLIB
 )
 
 # --------------------------------

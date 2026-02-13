@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="xMath::TVector4&lt;float&gt;">
+    <DisplayString>r={r} g={g} b={b} a={a}</DisplayString>
+    <Expand>
+      <Item Name="r">r</Item>
+      <Item Name="g">g</Item>
+      <Item Name="b">b</Item>
+      <Item Name="a">a</Item>
+    </Expand>
+  </Type>
+  <Type Name="xMath::Vec4">
+    <DisplayString>r={r} g={g} b={b} a={a}</DisplayString>
+    <Expand>
+      <Item Name="r">r</Item>
+      <Item Name="g">g</Item>
+      <Item Name="b">b</Item>
+      <Item Name="a">a</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

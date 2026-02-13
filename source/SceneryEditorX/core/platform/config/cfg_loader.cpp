@@ -1,15 +1,33 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* cfg_loader.cpp
-* -------------------------------------------------------
-* Created: 7/4/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * cfg_loader.cpp
+ * -------------------------------------------------------
+ * Created: 7/4/2025
+ * -------------------------------------------------------
+ */
 #include <fstream>
 #include "cfg_loader.h"
 
@@ -45,7 +63,7 @@ namespace SceneryEditorX::IO
 	 *
 	 * @return CfgLoader* A pointer to the singleton instance of the CfgLoader.
 	 */
-	ConfigLoader *ConfigLoader::instance()
+	ConfigLoader *ConfigLoader::Instance()
 	{
 		static ConfigLoader ldr;
 		return &ldr;
@@ -62,7 +80,7 @@ namespace SceneryEditorX::IO
 	 * @param cfgPath The path to the configuration file.
 	 * @return int Returns 0 on success, -1 if the file could not be opened.
 	 */
-	int ConfigLoader::init(const std::string & cfgPath)
+	int ConfigLoader::Init(const std::string & cfgPath)
 	{
 		std::ifstream in(cfgPath.c_str(), std::ios::in | std::ios::binary);
 		if (!in.is_open())
@@ -86,7 +104,7 @@ namespace SceneryEditorX::IO
 			{
 				continue;
 			}
-			posComment = line.find(m_commentChar);
+			posComment = line.find(m_CommentChar);
 			if (posComment != std::string::npos)
 			{
 				line = std::string(line, 0, posComment);
@@ -106,7 +124,7 @@ namespace SceneryEditorX::IO
 				seg = Segment_LOGGER;
 				continue;
 			}
-			posKeyValueSplit = line.find(m_kvSplit);
+			posKeyValueSplit = line.find(m_KvSplit);
 			if (posKeyValueSplit == std::string::npos)
 			{
 				continue;
@@ -121,11 +139,11 @@ namespace SceneryEditorX::IO
 			trim(v);
 			if (seg == Segment_COMMON)
 			{
-				m_commonMap[k] = v;
+				m_CommonMap[k] = v;
 			}
 			else if (seg == Segment_LOGGER)
 			{
-				m_loggerMap[k] = v;
+				m_LoggerMap[k] = v;
 			}
 		}
 
@@ -140,9 +158,9 @@ namespace SceneryEditorX::IO
 	 * This function resets the configuration loader by clearing all stored configuration data.
 	 * It is typically called when the configuration loader is no longer needed.
 	 */
-	void ConfigLoader::fini()
+	void ConfigLoader::Fini()
 	{
-		reset();
+		Reset();
 	}
 
 	/**
@@ -151,10 +169,10 @@ namespace SceneryEditorX::IO
 	 * This function clears all stored configuration data from both the common and logger maps.
 	 * It is typically called to reinitialize the configuration loader with new data.
 	 */
-	void ConfigLoader::reset()
+	void ConfigLoader::Reset()
 	{
-		m_commonMap.clear();
-		m_loggerMap.clear();
+		m_CommonMap.clear();
+		m_LoggerMap.clear();
 	}
 
 	/**
@@ -167,18 +185,18 @@ namespace SceneryEditorX::IO
 	 *
 	 * @return std::string A string representation of the configuration data.
 	 */
-	std::string ConfigLoader::toString()
+	std::string ConfigLoader::ToString()
 	{
 		std::string s;
 		s += "===== Common =====\n";
-		auto it = m_commonMap.begin();
-		for (; it != m_commonMap.end(); ++it)
+		auto it = m_CommonMap.begin();
+		for (; it != m_CommonMap.end(); ++it)
 		{
 			s += it->first + " = " + it->second + "\n";
 		}
 		s += "===== Logger =====\n";
-		it = m_loggerMap.begin();
-		for (; it != m_loggerMap.end(); ++it)
+		it = m_LoggerMap.begin();
+		for (; it != m_LoggerMap.end(); ++it)
 		{
 			s += it->first + " = " + it->second + "\n";
 		}
@@ -198,11 +216,11 @@ namespace SceneryEditorX::IO
 	 * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
 	 * @return int Returns 0 if the configuration key is found, -1 otherwise.
 	 */
-	int ConfigLoader::getCfgByName(std::string &value, const std::string & name, int segment)
+	int ConfigLoader::GetCfgByName(std::string &value, const std::string & name, int segment)
 	{
 		if (segment == Segment_COMMON)
 		{
-            if (auto it = m_commonMap.find(name.c_str()); it != m_commonMap.end())
+            if (auto it = m_CommonMap.find(name.c_str()); it != m_CommonMap.end())
 			{
 				value = it->second;
 				return 0;
@@ -210,7 +228,7 @@ namespace SceneryEditorX::IO
 		}
 		else if (segment == Segment_LOGGER)
 		{
-            if (auto it = m_loggerMap.find(name.c_str()); it != m_loggerMap.end())
+            if (auto it = m_LoggerMap.find(name.c_str()); it != m_LoggerMap.end())
 			{
 				value = it->second;
 				return 0;
@@ -232,21 +250,21 @@ namespace SceneryEditorX::IO
 	 * @param segment The segment to search in (Segment_COMMON or Segment_LOGGER).
 	 * @return int Returns 0 if the configuration key is found and successfully converted, -1 otherwise.
 	 */
-	int ConfigLoader::getCfgByName(int& value, const std::string & name, int segment)
+	int ConfigLoader::GetCfgByName(int& value, const std::string & name, int segment)
 	{
 		std::string s;
 		if (segment == Segment_COMMON)
 		{
-			auto it = m_commonMap.find(name.c_str());
-			if (it != m_commonMap.end())
+			auto it = m_CommonMap.find(name.c_str());
+			if (it != m_CommonMap.end())
 			{
 				s = it->second;
 			}
 		}
 		else if (segment == Segment_LOGGER)
 		{
-			auto it = m_loggerMap.find(name.c_str());
-			if (it != m_loggerMap.end())
+			auto it = m_LoggerMap.find(name.c_str());
+			if (it != m_LoggerMap.end())
 			{
 				s = it->second;
 			}
@@ -298,7 +316,7 @@ namespace SceneryEditorX::IO
 		std::string s;
 		if (segment == Segment_COMMON)
 		{
-            if (auto it = m_commonMap.find(name.c_str()); it != m_commonMap.end())
+            if (auto it = m_CommonMap.find(name.c_str()); it != m_CommonMap.end())
 			{
 				s = it->second;
 				if (s == "false" || s == "FALSE" || s == "False" || s == "0")
@@ -310,7 +328,7 @@ namespace SceneryEditorX::IO
 		}
 		else if (segment == Segment_LOGGER)
 		{
-            if (auto it = m_loggerMap.find(name.c_str()); it != m_loggerMap.end())
+            if (auto it = m_LoggerMap.find(name.c_str()); it != m_LoggerMap.end())
 			{
 				s = it->second;
 				if (s == "true" || s == "TRUE" || s == "True" || s == "1")

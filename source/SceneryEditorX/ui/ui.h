@@ -13,12 +13,12 @@
 #pragma once
 #include <IconsFontAwesome5.h>
 
-#include <SceneryEditorX/renderer/viewport.h>
+//#include <SceneryEditorX/renderer/viewport.h>
 
 #include <imgui/imgui.h>
 #include "ui_manager.h"
-#include "SceneryEditorX/renderer/image_data.h"
-#include "SceneryEditorX/renderer/render_context.h"
+//#include "SceneryEditorX/renderer/image_data.h"
+#include "SceneryEditorX/renderer/vulkan/render_context.h"
 
 // -------------------------------------------------------
 
@@ -30,7 +30,7 @@ struct Image
     //ImageUsageFlags usage;
     //Format format;
     //Layout::ImageLayout layout;
-    SceneryEditorX::AspectFlags aspect;
+    //SceneryEditorX::AspectFlags aspect;
     uint32_t layers = 1;
     uint32_t RID();
     ImTextureID ImGuiRID();

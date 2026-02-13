@@ -1,0 +1,213 @@
+/**
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * resource_cache.h
+ * -------------------------------------------------------
+ * Created: 10/01/2025
+ * -------------------------------------------------------
+ */
+#pragma once
+//#include "SceneryEditorX/renderer/vulkan/enums.h"
+//#include "SceneryEditorX/renderer/vulkan/resource.h"
+
+// -----------------------------------------------------------
+
+namespace SceneryEditorX
+{
+	enum class ResourceDirectory
+	{
+	    Environment,
+	    Fonts,
+	    Icons,
+	    ShaderCompiler,
+	    Shaders,
+	    Textures
+	};
+	
+	enum class IconType : uint8_t
+	{
+	    Undefined,
+	    Console,
+	    File,
+	    Folder,
+	    Model,
+	    World,
+	    Material,
+	    Shader,
+	    Xml,
+		Cfg,
+	    Dll,
+	    Txt,
+	    Ini,
+	    Exe,
+	    Font,
+	    Screenshot,
+	    Gear,
+	    Play,
+	    Profiler,
+	    ResourceCache,
+	    RenderDoc,
+	    Texture,
+	    Minimize,
+	    Maximize,
+	    Close,
+	    Entity,
+	    Hybrid,
+	    Audio,
+	    Terrain,
+	    Light,
+	    Camera,
+	    Physics,
+	    Compressed,
+	    Max
+	};
+	
+	class ResourceCache
+	{
+	public:
+	    static void Initialize();
+	    static void Shutdown();
+	
+	    // default resources
+	    static void LoadDefaultResources();
+	    static void UnloadDefaultResources();
+	
+	    /*
+	    // get by name
+	    static std::shared_ptr<Resource> &GetByName(const std::string &name, ResourceType type);
+	    template <class T>
+	    static std::shared_ptr<T> GetByName(const std::string &name)
+	    {
+	        return std::static_pointer_cast<T>(GetByName(name, Resource::TypeToEnum<T>()));
+	    }
+	    */
+	
+	    // get by type
+        //static std::vector<Ref<Resource>> GetByType(ResourceType type = ResourceType::MaxEnum);
+	
+	    /*
+	    // get by path
+	    template <class T>
+	    static std::shared_ptr<T> GetByPath(const std::string &path)
+	    {
+	        for (std::shared_ptr<Resource> &resource : GetResources())
+	        {
+	            if (path == resource->GetResourceFilePath())
+	                return std::static_pointer_cast<T>(resource);
+	        }
+	        return nullptr;
+	    }
+	    */
+	
+	    /*
+	    // caches resource, or replaces with existing cached resource
+	    template <class T>
+	    static Ref<T> Cache(const Ref<T> resource)
+	    {
+	        if (!resource)
+	            return nullptr;
+	
+	        if (resource->GetResourceFilePath().empty())
+	        {
+	            SEDX_CORE_ERROR("Resource \"%s\" has an empty file path and cannot be cached.", resource->GetObjectName().c_str());
+	            return nullptr;
+	        }
+	
+	        // return cached resource if it already exists
+	        Ref<T> existing = GetByPath<T>(resource->GetResourceFilePath());
+	        if (existing.get() != nullptr)
+	            return existing;
+	
+	        // if not, cache it and return the cached resource
+            std::scoped_lock guard(GetMutex());
+	        return std::static_pointer_cast<T>(GetResources().emplace_back(resource));
+	    }
+	
+	    /*
+	    // loads a resource and adds it to the resource cache
+	    template <class T>
+	    static std::shared_ptr<T> Load(const std::string &file_path, uint32_t flags = 0)
+	    {
+	        if (!IO::FileSystem::Exists(file_path))
+	        {
+	            SEDX_CORE_ERROR("\"%s\" doesn't exist.", file_path.c_str());
+	            return nullptr;
+	        }
+	
+	        // return cached resource if it already exists
+	        const std::string name = IO::FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+	        std::shared_ptr<T> existing = GetByPath<T>(file_path);
+	        if (existing.get() != nullptr)
+	            return existing;
+	
+	        // create new resource
+	        std::shared_ptr<T> resource = std::make_shared<T>();
+	        if (flags != 0)
+	        {
+	            resource->SetFlags(flags);
+	        }
+	        resource->SetResourceFilePath(file_path);
+	        resource->LoadFromFile(file_path);
+	        return Cache<T>(resource); // cache and return
+	    }
+	    */
+	
+	    /*
+	    template <class T>
+	    static void Remove(std::shared_ptr<T> &resource)
+	    {
+	        if (!resource)
+	            return;
+
+	        GetResources().erase(std::remove_if(GetResources().begin(), GetResources().end(),
+				[](std::shared_ptr<Resource> resource) { return dynamic_cast<Object *>(resource.get())->GetObjectId() == resource->GetObjectId(); }),
+				GetResources().end());
+	    }
+	    */
+	
+	    // memory
+	    /*
+	    static uint64_t GetMemoryUsage(ResourceType type = ResourceType::MaxEnum);
+        static uint32_t GetResourceCount(ResourceType type = ResourceType::MaxEnum);
+        */
+	
+	    // directories
+	    static void AddResourceDirectory(ResourceDirectory type, const std::string &directory);
+	    static std::string GetResourceDirectory(ResourceDirectory type);
+	    static void SetProjectDirectory(const char *directory);
+	    static std::string GetProjectDirectoryAbsolute();
+	    static const char *GetProjectDirectory();
+	    static const char *GetDataDirectory();
+	
+	    // misc
+	    //static std::vector<Ref<Resource>> &GetResources();
+	    static std::mutex &GetMutex();
+	    static bool GetUseRootShaderDirectory();
+	    static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
+	    //static Texture *GetIcon(IconType type);
+	};
+}
+
+// -----------------------------------------------------------

@@ -1,24 +1,42 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* pointers.h
-* -------------------------------------------------------
-* Created: 31/5/2025
-* -------------------------------------------------------
-* Scenery Editor X - Smart Pointer System (Consolidated)
-* -------------------------------------------------------
-* This header previously contained two competing implementations of the
-* engine smart pointer system. The duplicate (control-block based) version
-* injected ahead of the original project version has been removed to resolve
-* redefinition and ODR errors. The surviving implementation below is the
-* original project design that other engine modules expect (m_Ptr +
-* InternalAddRef/Release + ControlBlockRegistry for weak refs).
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * pointers.h
+ * -------------------------------------------------------
+ * Created: 31/5/2025
+ * -------------------------------------------------------
+ * Scenery Editor X - Smart Pointer System (Consolidated)
+ * -------------------------------------------------------
+ * This header previously contained two competing implementations of the
+ * engine smart pointer system. The duplicate (control-block based) version
+ * injected ahead of the original project version has been removed to resolve
+ * redefinition and ODR errors. The surviving implementation below is the
+ * original project design that other engine modules expect (m_Ptr +
+ * InternalAddRef/Release + ControlBlockRegistry for weak refs).
+ * -------------------------------------------------------
+ */
  #pragma once
  #include <atomic>
  #include <cassert>
@@ -41,38 +59,28 @@ namespace SceneryEditorX
 	class RefCounted
 	{
 	public:
-		/**
-		 * @brief Default constructor initializes reference count to 0.
-		 */
+		/** @brief Default constructor initializes reference count to 0. */
 		RefCounted() = default;
 
 		/**
 		 * @brief Copy constructor maintains the reference count at 0.
-		 *
 		 * When an object is copied, the new instance starts with a fresh reference count.
 		 */
 		RefCounted(const RefCounted&) noexcept {}
 
 		/**
 		 * @brief Copy assignment operator doesn't affect reference count.
-		 *
 		 * Reference count is associated with object identity, not with its contents.
 		 */
 		RefCounted& operator=(const RefCounted&) noexcept { return *this; }
 
-		/**
-		 * @brief Move constructor maintains the reference count at 0.
-		 */
+		/** @brief Move constructor maintains the reference count at 0. */
 		RefCounted(RefCounted&&) noexcept {}
 
-		/**
-		 * @brief Move assignment operator doesn't affect reference count.
-		 */
+		/** @brief Move assignment operator doesn't affect reference count. */
 		RefCounted& operator=(RefCounted&&) noexcept { return *this; }
 
-		/**
-		 * @brief Virtual destructor for proper polymorphic behavior.
-		 */
+		/** @brief Virtual destructor for proper polymorphic behavior. */
 		virtual ~RefCounted() = default;
 
 		/**
@@ -98,7 +106,7 @@ namespace SceneryEditorX
 		uint32_t GetRefCount() const noexcept { return m_RefCount; }
 
 	private:
-		/// Using mutable to allow const objects to be reference counted
+		// Using mutable to allow const objects to be reference counted
 		mutable std::atomic<uint32_t> m_RefCount{0};
 	};
 
@@ -151,14 +159,12 @@ namespace SceneryEditorX
 		public:
 		    /**
 		     * @brief Constructs a control block for the specified object
-		     *
 		     * @param ptr Pointer to the object being tracked
 		     */
 		    explicit ControlBlock(T *ptr) noexcept : m_Ptr(ptr), m_WeakCount(0) {}
 
 		    /**
 		     * @brief Increments the weak reference count
-		     *
 		     * Called when a new WeakRef is created or copied to point to this object
 		     */
 		    void IncWeakCount() noexcept { ++m_WeakCount; }
@@ -180,7 +186,6 @@ namespace SceneryEditorX
 
 		    /**
 		     * @brief Gets the pointer to the managed object
-		     *
 		     * @return The pointer to the object, or nullptr if the object has been destroyed
 		     */
 		    T *GetPtr() const noexcept { return m_Ptr; }
@@ -193,24 +198,20 @@ namespace SceneryEditorX
 		     *
 		     * @param ptr The new object pointer value
 		     */
-		    void SetPtr(T *ptr) noexcept
-		    {
-		        m_Ptr = ptr;
-		    }
+		    void SetPtr(T *ptr) noexcept { m_Ptr = ptr; }
 
 		    /**
 		     * @brief Gets the current weak reference count
-		     *
 		     * @return The number of weak references pointing to this control block
 		     */
-		    uint32_t GetWeakCount() const noexcept
-		    {
-		        return m_WeakCount;
-		    }
+		    uint32_t GetWeakCount() const noexcept { return m_WeakCount; }
 
 		private:
-		    T *m_Ptr;                          ///< Pointer to the managed object, or nullptr if destroyed
-		    std::atomic<uint32_t> m_WeakCount; ///< Number of weak references to this object
+            // Pointer to the managed object, or nullptr if destroyed
+		    T *m_Ptr;
+
+		    // Number of weak references to this object
+		    std::atomic<uint32_t> m_WeakCount;
 		};
 
 		/**
@@ -306,9 +307,13 @@ namespace SceneryEditorX
 		        }
 		    }
 
+			// Mapping from object pointers to their control blocks
 		    std::unordered_map<T *, Internal::ControlBlock<T> *> m_Blocks;
+
+			// Mutex for thread-safe access to the registry
 		    std::mutex m_Mutex;
 		};
+
     } // namespace Internal
 
     // -----------------------------------------------------------
@@ -331,16 +336,16 @@ namespace SceneryEditorX
 	class Ref
 	{
 	public:
-		/**
-		 * @brief Default constructor creates a null reference.
-		 */
+		/** @brief Default constructor creates a null reference. */
         constexpr Ref() : m_Ptr(nullptr) {};
 
-		/**
-		 * @brief Constructor from nullptr creates a null reference.
-		 */
+		/** @brief Constructor from nullptr creates a null reference. */
         constexpr Ref(std::nullptr_t) : m_Ptr(nullptr) {};
 
+		/**
+		 * @brief Constructor from raw pointer. Takes ownership of the object.
+		 * @param instance Pointer to the object to manage.
+		 */
 		Ref(T *instance) : m_Ptr(instance)
 		{
             static_assert(std::is_base_of_v<RefCounted, T>, "Class is not RefCounted!");
@@ -350,9 +355,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Constructor from raw pointer. Takes ownership of the object.
-		 *
-		 * This constructor increments the reference count of the object.
-		 *
 		 * @param ptr Pointer to the object to manage.
 		 */
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
@@ -363,15 +365,9 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Copy constructor. Shares ownership of the object.
-		 *
-		 * This constructor increments the reference count of the object.
-		 *
 		 * @param other The Ref to copy from.
 		 */
-		Ref(const Ref& other) noexcept : m_Ptr(other.m_Ptr)
-		{
-			InternalAddRef();
-		}
+		Ref(const Ref& other) noexcept : m_Ptr(other.m_Ptr) { InternalAddRef(); }
 
 		/**
 		 * @brief Copy constructor with type conversion. Shares ownership of the object.
@@ -390,9 +386,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Move constructor. Takes ownership from another Ref.
-		 *
-		 * This constructor doesn't change the reference count of the object.
-		 *
 		 * @param other The Ref to move from.
 		 */
 		Ref(Ref&& other) noexcept : m_Ptr(other.m_Ptr) { other.m_Ptr = nullptr; }
@@ -411,9 +404,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Constructor from std::shared_ptr. Shares ownership of the object.
-		 *
-		 * This constructor allows interoperability with std::shared_ptr.
-		 *
 		 * @param shared The std::shared_ptr to convert from.
 		 */
 		explicit Ref(const std::shared_ptr<T>& shared) noexcept : m_Ptr(shared.get())
@@ -433,13 +423,9 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Destructor. Decrements the reference count of the object.
-		 *
 		 * If the reference count reaches 0, the object is destroyed.
 		 */
-		~Ref()
-		{
-			InternalRelease();
-		}
+		~Ref() { InternalRelease(); }
 
 		/**
 		 * @brief Copy assignment operator. Shares ownership of the object.
@@ -475,11 +461,15 @@ namespace SceneryEditorX
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
 		Ref& operator=(const Ref<U>& other) noexcept
 		{
-		    /// Self-assignment or assigning same pointer: do nothing
+		    // Self-assignment or assigning same pointer: do nothing
 		    if (static_cast<const void*>(this) == static_cast<const void*>(&other) || m_Ptr == other.Get())
+		    {
 		        return *this;
+		    }
+
 		    InternalRelease();
 		    m_Ptr = other.Get();
+
 		    InternalAddRef();
 		    return *this;
 		}
@@ -502,6 +492,7 @@ namespace SceneryEditorX
 				m_Ptr = other.m_Ptr;
 				other.m_Ptr = nullptr;
 			}
+
 			return *this;
 		}
 
@@ -521,10 +512,14 @@ namespace SceneryEditorX
 		{
 		    // Self-move or moving same pointer: do nothing
 		    if (static_cast<void*>(this) == static_cast<void*>(&other) || m_Ptr == other.Get())
+		    {
 		        return *this;
+		    }
+
 		    InternalRelease();
 		    m_Ptr = other.Get();
 		    other.m_Ptr = nullptr;
+
 		    return *this;
 		}
 
@@ -544,7 +539,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Dereference operator. Provides access to the managed object.
-		 *
 		 * @return Reference to the managed object.
 		 */
 		T& operator*() const noexcept
@@ -555,7 +549,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Arrow operator. Provides access to the managed object's members.
-		 *
 		 * @return Pointer to the managed object.
 		 */
 		T* operator->() const noexcept
@@ -566,14 +559,12 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Boolean conversion operator. Checks if the Ref is not null.
-		 *
 		 * @return True if the Ref is not null, false otherwise.
 		 */
 		explicit operator bool() const noexcept { return m_Ptr != nullptr; }
 
 		/**
 		 * @brief Gets the raw pointer to the managed object.
-		 *
 		 * @return Pointer to the managed object.
 		 */
 		T* Get() const noexcept { return m_Ptr; }
@@ -595,14 +586,12 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Checks if this Ref is the only one managing the object.
-		 *
 		 * @return True if the reference count is 1, false otherwise or if null.
 		 */
 		bool IsUnique() const noexcept { return m_Ptr && m_Ptr->GetRefCount() == 1; }
 
 		/**
 		 * @brief Converts this Ref to a Ref of another type using static_cast.
-		 *
 		 * @tparam U The type to convert to.
 		 * @return A Ref<U> managing the same object.
 		 */
@@ -611,7 +600,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Converts this Ref to a Ref of another type using dynamic_cast.
-		 *
 		 * @tparam U The type to convert to.
 		 * @return A Ref<U> managing the same object, or null if the cast fails.
 		 */
@@ -635,12 +623,14 @@ namespace SceneryEditorX
 		std::shared_ptr<T> ToSharedPtr() const noexcept
 		{
 			if (!m_Ptr)
-				return nullptr;
+			{
+			    return nullptr;
+			}
 
-			/// Increment the ref count for the shared_ptr
+			// Increment the ref count for the shared_ptr
 			InternalAddRef();
 
-			/// Create a shared_ptr with a custom deleter that decrements the ref count
+			// Create a shared_ptr with a custom deleter that decrements the ref count
 			return std::shared_ptr<T>(m_Ptr, [](T* ptr)
 			{
 				if (ptr && ptr->DecRefCount() == 0)
@@ -650,7 +640,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Swaps the contents of this Ref with another.
-		 *
 		 * @param other The Ref to swap with.
 		 */
 		void Swap(Ref& other) noexcept
@@ -660,21 +649,18 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Checks if the Ref is not null.
-		 *
 		 * @return True if the Ref is not null, false otherwise.
 		 */
 		bool IsValid() const noexcept { return m_Ptr != nullptr; }
 
 		/**
 		 * @brief Gets the reference count of the managed object.
-		 *
 		 * @return The reference count, or 0 if the Ref is null.
 		 */
 		uint32_t UseCount() const noexcept { return m_Ptr ? m_Ptr->GetRefCount() : 0; }
 
 		/**
 		 * @brief Equality operator. Compares the managed objects.
-		 *
 		 * @param other The Ref to compare with.
 		 * @return True if both Refs manage the same object, false otherwise.
 		 */
@@ -682,7 +668,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Inequality operator. Compares the managed objects.
-		 *
 		 * @param other The Ref to compare with.
 		 * @return True if the Refs manage different objects, false otherwise.
 		 */
@@ -690,14 +675,12 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Equality operator with nullptr. Checks if the Ref is null.
-		 *
 		 * @return True if the Ref is null, false otherwise.
 		 */
 		bool operator==(std::nullptr_t) const noexcept { return m_Ptr == nullptr; }
 
 		/**
 		 * @brief Inequality operator with nullptr. Checks if the Ref is not null.
-		 *
 		 * @return True if the Ref is not null, false otherwise.
 		 */
 		bool operator!=(std::nullptr_t) const noexcept { return m_Ptr != nullptr; }
@@ -719,7 +702,8 @@ namespace SceneryEditorX
 		template <typename U>
 		static bool CompareObjectsImpl(const U& a, const U& b, std::false_type)
 		{
-		    return false; // No equality operator available
+            // No equality operator available
+		    return false; 
 		}
 
 	public:
@@ -746,16 +730,20 @@ namespace SceneryEditorX
 		 }
 
 	private:
-
+	    // Pointer to the managed object
 		mutable T* m_Ptr = nullptr;
 
+		// Internal method to add a reference
 		void InternalAddRef() const noexcept;
+
+		// Internal method to release the reference
 		void InternalRelease() noexcept;
 
-        /// Grant access to specific classes or functions
+        // Grant access to specific classes or functions
         template <typename U>
         friend class Ref;
 
+		// Allow WeakRef to access m_Ptr
         template <typename U>
         friend class WeakRef;
 	};
@@ -774,19 +762,14 @@ namespace SceneryEditorX
 	class WeakRef
 	{
 	public:
-		/**
-		 * @brief Default constructor creates an empty weak reference.
-		 */
+		/** @brief Default constructor creates an empty weak reference. */
 		constexpr WeakRef() noexcept = default;
 
-		/**
-		 * @brief Constructor from nullptr creates an empty weak reference.
-		 */
+		/** @brief Constructor from nullptr creates an empty weak reference. */
 		constexpr WeakRef(std::nullptr_t) noexcept {}
 
 		/**
 		 * @brief Constructor from a Ref<T>. Creates a weak reference to the object managed by ref.
-		 *
 		 * @param ref The Ref<T> to observe.
 		 */
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
@@ -794,14 +777,12 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Copy constructor.
-		 *
 		 * @param other The WeakRef to copy from.
 		 */
 		WeakRef(const WeakRef& other) noexcept;
 
 		/**
 		 * @brief Copy constructor with type conversion.
-		 *
 		 * @tparam U The type of the other WeakRef.
 		 * @param other The WeakRef to copy from.
 		 */
@@ -810,33 +791,25 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Move constructor.
-		 *
 		 * @param other The WeakRef to move from.
 		 */
 		WeakRef(WeakRef&& other) noexcept;
 
 		/**
 		 * @brief Move constructor with type conversion.
-		 *
 		 * @tparam U The type of the other WeakRef.
 		 * @param other The WeakRef to move from.
 		 */
 		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
 		WeakRef(WeakRef<U>&& other) noexcept;
 
-		/**
-		 * @brief Destructor.
-		 */
 		~WeakRef();
 
-        Internal::ControlBlock<T> *GetControlBlock() const noexcept
-        {
-            return m_ControlBlock;
-        }
+		// Internal method to access the control block
+        Internal::ControlBlock<T> *GetControlBlock() const noexcept { return m_ControlBlock; }
 
 		/**
 		 * @brief Copy assignment operator.
-		 *
 		 * @param other The WeakRef to copy from.
 		 * @return Reference to this WeakRef.
 		 */
@@ -844,7 +817,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Copy assignment operator with type conversion.
-		 *
 		 * @tparam U The type of the other WeakRef.
 		 * @param other The WeakRef to copy from.
 		 * @return Reference to this WeakRef.
@@ -854,7 +826,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Move assignment operator.
-		 *
 		 * @param other The WeakRef to move from.
 		 * @return Reference to this WeakRef.
 		 */
@@ -862,7 +833,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Move assignment operator with type conversion.
-		 *
 		 * @tparam U The type of the other WeakRef.
 		 * @param other The WeakRef to move from.
 		 * @return Reference to this WeakRef.
@@ -872,7 +842,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Assignment operator from Ref<T>.
-		 *
 		 * @param ref The Ref<T> to observe.
 		 * @return Reference to this WeakRef.
 		 */
@@ -881,42 +850,34 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Assignment operator from nullptr.
-		 *
 		 * @return Reference to this WeakRef.
 		 */
 		WeakRef& operator=(std::nullptr_t) noexcept;
 
 		/**
 		 * @brief Checks if the WeakRef is expired.
-		 *
 		 * A WeakRef is expired if the object it points to has been destroyed.
-		 *
 		 * @return True if the WeakRef is expired, false otherwise.
 		 */
 		bool Expired() const noexcept;
 
 		/**
 		 * @brief Attempts to get a strong reference to the object.
-		 *
 		 * @return A Ref<T> to the object, or an empty Ref<T> if the object has been destroyed.
 		 */
 		Ref<T> Lock() const noexcept;
 
-		/**
-		 * @brief Resets the WeakRef.
-		 */
+		/** @brief Resets the WeakRef. */
 		void Reset() noexcept;
 
 		/**
 		 * @brief Gets the reference count of the object.
-		 *
 		 * @return The number of Ref<T> instances that share ownership of the object, or 0 if the WeakRef is expired.
 		 */
 		uint32_t UseCount() const noexcept;
 
 		/**
 		 * @brief Equality operator.
-		 *
 		 * @param other The WeakRef to compare with.
 		 * @return True if both WeakRefs observe the same object, false otherwise.
 		 */
@@ -924,7 +885,6 @@ namespace SceneryEditorX
 
 		/**
 		 * @brief Inequality operator.
-		 *
 		 * @param other The WeakRef to compare with.
 		 * @return True if the WeakRefs observe different objects, false otherwise.
 		 */
@@ -936,7 +896,7 @@ namespace SceneryEditorX
         // Allow all WeakRef instantiations to access each other's private members
         template <typename> friend class WeakRef;
 
-		/// Allow Ref<T> to access m_ControlBlock
+		// Allow Ref<T> to access m_ControlBlock
 		template <typename U>
 		friend class Ref;
 	};

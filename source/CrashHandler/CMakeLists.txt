@@ -64,7 +64,7 @@ TARGET_LINK_LIBRARIES(CrashHandler
 		imgui
 		libconfig
 		libconfig++
-        glfw
+    	SDL3::SDL3
         dxgi
         d3d12
         Shell32.lib
@@ -80,8 +80,6 @@ TARGET_COMPILE_DEFINITIONS(CrashHandler
         $<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
-        GLFW_INCLUDE_VULKAN
-        GLFW_EXPOSE_NATIVE_WIN32
         CURL_STATICLIB
 )
 

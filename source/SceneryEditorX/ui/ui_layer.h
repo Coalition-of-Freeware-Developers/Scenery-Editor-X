@@ -11,7 +11,7 @@
 * -------------------------------------------------------
 */
 #pragma once
-#include "SceneryEditorX/renderer/command_buffer.h"
+//#include "SceneryEditorX/renderer/command_buffer.h"
 #include <SceneryEditorX/core/layers/layer.h>
 
 // -------------------------------------------------------
@@ -37,7 +37,7 @@ namespace SceneryEditorX::UI
         void AllowInputEvents(bool allowEvents);
 
     private:
-        Ref<CommandBuffer> m_CommandBuffer;
+        //Ref<CommandBuffer> m_CommandBuffer;
         float m_Time = 0.0f;
 	};
 

@@ -1,26 +1,50 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* time.cpp
-* -------------------------------------------------------
-* Created: 17/4/2025
-* -------------------------------------------------------
-*/
-#include "time.h"
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * time.cpp
+ * -------------------------------------------------------
+ * Created: 17/4/2025
+ * -------------------------------------------------------
+ */
+#include <SceneryEditorX/core/time/time.h>
 #include <algorithm>
 #include <chrono>
 #include <ctime>
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_timer.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    float Time::GetTime() { return (float)glfwGetTime(); }
+    
+    float Time::GetTime() 
+    {         
+        // SDL_GetTicks() returns milliseconds since SDL initialization as Uint64
+        // Convert to seconds as float
+        return static_cast<float>(SDL_GetTicks()) / 1000.0f;
+    }
 
     void Time::Init()
     {
@@ -34,23 +58,27 @@ namespace SceneryEditorX
 
     void Time::Update(const DeltaTime dt)
     {
-        /// Calculate delta time
+        // Calculate delta time
         const float currentTime = GetTime();
         s_LastFrameTime = currentTime;
 
-        /// Update FPS counter
+        // Update FPS counter
         if (static_cast<float>(dt) > 0.0f)
 		{
             s_FrameTimes.push_back(static_cast<float>(dt));
 
-            /// Keep only the most recent samples
+            // Keep only the most recent samples
             while (s_FrameTimes.size() > s_MaxFrameTimesSamples)
+            {
                 s_FrameTimes.pop_front();
+            }
 
-            /// Calculate average FPS from samples
+            // Calculate average FPS from samples
             float totalTime = 0.0f;
             for (const float frameTime : s_FrameTimes)
+            {
                 totalTime += frameTime;
+            }
 
             s_CurrentFPS = s_FrameTimes.size() / totalTime;
         }
@@ -136,6 +164,16 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
     DeltaTime::DeltaTime(const float time) : dt(time) {}
+
+    auto DeltaTime::operator<=>(float x) const
+    {
+        if (dt < x)
+            return std::strong_ordering::less;
+        if (dt > x)
+            return std::strong_ordering::greater;
+
+        return std::strong_ordering::equal;
+    }
 
     // -------------------------------------------------------
 

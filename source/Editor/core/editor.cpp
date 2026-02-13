@@ -1,15 +1,33 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* editor.cpp
-* -------------------------------------------------------
-* Created: 13/4/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * editor.cpp
+ * -------------------------------------------------------
+ * Created: 13/4/2025
+ * -------------------------------------------------------
+ */
 #include <Editor/core/editor.h>
 #include "Editor/projects/project.h"
 #include <ImGuizmo.h>
@@ -18,10 +36,10 @@
 #include <imgui_internal.h>
 #include <Editor/settings/editor_settings.h>
 #include <SceneryEditorX/core/application/application.h>
+#include <SceneryEditorX/core/platform/settings/settings.h>
 #include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/platform/settings/settings.h>
 #include <SceneryEditorX/project/project.h>
-#include <SceneryEditorX/renderer/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
@@ -94,10 +112,11 @@ namespace SceneryEditorX
 	 * -------------------------------------------------------
 	 */
 
-    //static void initVulkan(GraphicsEngine &gfxEngine);
+    // static void initVulkan(GraphicsEngine &gfxEngine);
 
     // -------------------------------------------------------
 
+    /*
     Editor::Editor(const std::vector<std::string> &args) : Application(args)
     {
         arguments = args;
@@ -123,13 +142,18 @@ namespace SceneryEditorX
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     }
+    */
 
-    Editor::Editor(const Ref<UserPreferences> &userPreferences, const std::vector<std::string> &args)
-        : Application(args), m_UserPreferences(userPreferences)
+    Editor::Editor(const PlatformContext& context) : Application(context)
     {
-        arguments = args;
+        arguments = context.GetCommandLineArgs();
 
         const auto start = std::chrono::high_resolution_clock::now();
+        
+        SEDX_CORE_INFO_TAG("EDITOR", "=== Initializing Editor with PlatformContext ===");
+        SEDX_CORE_INFO_TAG("EDITOR", "  Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_INFO_TAG("EDITOR", "  Temp Directory: {}", context.GetTempDirectory());
+        
         renderContext = RenderContext::Get();
 
         // Initialize the renderer (this creates the RenderDispatcher as well)
@@ -145,10 +169,41 @@ namespace SceneryEditorX
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
         Renderer::Init();
 
-        // ImGui::CreateContext(); // TODO: Not sure if this is the right location for this. Maybe move to UI initialization.
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        
+        SEDX_CORE_INFO_TAG("EDITOR", "✓ Editor initialization complete ({} ms)", duration);
+    }
+
+    Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : Application(context), m_UserPreferences(userPreferences)
+    {
+        arguments = context.GetCommandLineArgs();
+
+        const auto start = std::chrono::high_resolution_clock::now();
+        
+        SEDX_CORE_INFO_TAG("EDITOR", "=== Initializing Editor with PlatformContext and UserPreferences ===");
+        SEDX_CORE_INFO_TAG("EDITOR", "  Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_INFO_TAG("EDITOR", "  Temp Directory: {}", context.GetTempDirectory());
+        
+        renderContext = RenderContext::Get();
+
+        // Initialize the renderer (this creates the RenderDispatcher as well)
+        Renderer::SetRenderData(Get().GetWindow().GetRenderData());
+
+        // TODO: Move project loading to a separate function
+        // activeProject->ReadProjCache();
+        // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
+        // m_UserPreferences->GetRecentProjects();
+        // scene = assetManager.GetInitialScene();
+        // camera = assetManager.GetMainCamera(scene);
+
+        // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
+        Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        
+        SEDX_CORE_INFO_TAG("EDITOR", "✓ Editor initialization complete ({} ms)", duration);
     }
 
     Editor::~Editor()
@@ -164,15 +219,18 @@ namespace SceneryEditorX
         renderContext.Reset();
     }
 
+    /**
+     * @brief Main application loop
+     */
     void Editor::Tick()
     {
         Renderer::GetRenderData();
 
         // Main loop
-        while (!Application::Get().GetWindow().GetShouldClose())
+        while (!Get().GetWindow().GetShouldClose())
         {
 			bool isEditor = true;
-            Application::Get().OnUpdate();
+            Get().Tick();
             
 			// Logic update
             {
@@ -239,14 +297,10 @@ namespace SceneryEditorX
 
                 // dockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
                 ImGuiID dock_main_id = window_id;
-                ImGuiID dock_right_id =
-                    ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
-                ImGuiID dock_right_down_id =
-                    ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.6f, nullptr, &dock_right_id);
-                ImGuiID dock_down_id =
-                    ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.22f, nullptr, &dock_main_id);
-                ImGuiID dock_down_right_id =
-                    ImGui::DockBuilderSplitNode(dock_down_id, ImGuiDir_Right, 0.3f, nullptr, &dock_down_id);
+                ImGuiID dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
+                ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.6f, nullptr, &dock_right_id);
+                ImGuiID dock_down_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.22f, nullptr, &dock_main_id);
+                ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id, ImGuiDir_Right, 0.3f, nullptr, &dock_down_id);
 
                 // Dock Windows
                 ImGui::DockBuilderDockWindow("World", dock_right_id);

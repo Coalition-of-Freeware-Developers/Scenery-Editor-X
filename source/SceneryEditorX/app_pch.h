@@ -13,7 +13,7 @@
 #pragma once
 #include <SceneryEditorX/utils/system_detection.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /**
 ##########################################################
@@ -48,15 +48,6 @@
 
 /**
 ##########################################################
-					 GLFW INCLUDES & DEFINES
-##########################################################
-*/
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
-/**
-##########################################################
                         GLM LIBRARY
 ##########################################################
 */
@@ -82,20 +73,9 @@
 ##########################################################
 */
 
-#include <stb_image.h>
 #include <portable-file-dialogs.h>
+#include <stb_image.h>
 #include <nlohmann/json.hpp>
-
-/**
-##########################################################
-                        SPDLOG LOGGER
-##########################################################
-*/
-
-//#include <spdlog/logger.h>
-//#include <spdlog/sinks/basic_file_sink.h>
-//#include <spdlog/sinks/stdout_color_sinks.h>
-//#include <spdlog/spdlog.h>
 
 /**
 ##########################################################
@@ -112,11 +92,10 @@
 */
 
 #include <resource.h>
-#include <SceneryEditorX/utils/pointers.h>
-#include <SceneryEditorX/core/base.hpp>
-#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/logging/asserts.h>
-#include <SceneryEditorX/utils/static_states.h>
+#include <SceneryEditorX/logging/logging.hpp>
+#include <SceneryEditorX/utils/pointers.h>
 
 /**
 ##########################################################
@@ -136,7 +115,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
 /**
  * @brief - A macro to display an error message
@@ -146,11 +125,11 @@
 template <typename T>
 void ErrMsg(const T &errorMessage)
 {
-    /// Use fmt::format to convert errorMessage to a string
+    // Use fmt::format to convert errorMessage to a string
     std::string errorStr = fmt::format("{}", errorMessage);
 
 #ifdef SEDX_PLATFORM_WINDOWS
-    /// Convert to wide string for Windows
+    // Convert to wide string for Windows
     const std::wstring errorWStr(errorStr.begin(), errorStr.end());
     MessageBoxW(nullptr, errorWStr.c_str(), L"Error", MB_OK | MB_ICONERROR);
 #endif
@@ -162,12 +141,12 @@ void ErrMsg(const T &errorMessage)
     	NSAlert *alert = [[NSAlert alloc] init];
 		[alert setMessageText:nsTitle];
 		[alert setInformativeText:errorStr];
-		[alert setAlertStyle:NSAlertStyleCritical]; /// Use Critical style for errors
+		[alert setAlertStyle:NSAlertStyleCritical]; // Use Critical style for errors
 		[alert runModal];
     }
-    /// For other platforms, log to console and potentially show via GLFW
+    // For other platforms, log to console and potentially show via GLFW
     spdlog::error("Error: {}", errorStr);
-    /// Note: If you have an active GLFW window, you could trigger a custom ImGui popup here
+    // Note: If you have an active GLFW window, you could trigger a custom ImGui popup here
 #endif
 #ifdef SEDX_PLATFORM_LINUX
     throw std::runtime_error(errorStr);

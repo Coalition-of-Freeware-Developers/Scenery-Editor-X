@@ -1,27 +1,44 @@
 ﻿/**
-* -------------------------------------------------------
-* Scenery Editor X
-* -------------------------------------------------------
-* Copyright (c) 2025 Thomas Ray
-* Copyright (c) 2025 Coalition of Freeware Developers
-* -------------------------------------------------------
-* editor.h
-* -------------------------------------------------------
-* Created: 13/4/2025
-* -------------------------------------------------------
-*/
+ * -------------------------------------------------------
+ * Scenery Editor X
+ * -------------------------------------------------------
+ * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Coalition of Freeware Developers
+ * -------------------------------------------------------
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * -------------------------------------------------------
+ * editor.h
+ * -------------------------------------------------------
+ * Created: 13/4/2025
+ * -------------------------------------------------------
+ */
 #pragma once
 #include "Editor/projects/project.h"
 #include "Editor/ui/panels/ui_panel.h"
-
 #include <Editor/core/viewport.h>
+#include <SceneryEditorX/core/application/application.h>
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
+#include <SceneryEditorX/core/platform/settings/user_settings.h>
 #include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/platform/settings/user_settings.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
-#include <SceneryEditorX/renderer/vulkan_data.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/renderer.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 
@@ -46,8 +63,8 @@ namespace SceneryEditorX
     class Editor : public Application
     {
     public:
-        explicit Editor(const std::vector<std::string> &args);
-        explicit Editor(const Ref<UserPreferences> &userPreferences, const std::vector<std::string> &args);
+        explicit Editor(const PlatformContext& context);
+        explicit Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences);
         virtual ~Editor() override;
 
 		void Tick();
@@ -94,7 +111,7 @@ namespace SceneryEditorX
         // Scope<PanelManager> m_PanelManager;
         // Ref<EditorConsolePanel> m_ConsolePanel;
 
-        /// ---------------------------------------------------------
+        // ---------------------------------------------------------
 
         float GetSnapValue();
         float UI_DrawTitlebar();
