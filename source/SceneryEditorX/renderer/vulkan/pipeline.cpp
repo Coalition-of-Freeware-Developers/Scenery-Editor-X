@@ -37,8 +37,8 @@
 
 namespace SceneryEditorX
 {
-	VkPipeline Pipeline::CreateGraphics(const GraphicsCreateInfo& info) const
-	{
+	VkPipeline Pipeline::CreateGraphics(const GraphicsCreateInfo& info)
+{
 	    if (!info.shaderManager || info.device == VK_NULL_HANDLE) return VK_NULL_HANDLE;
 	
 	    const ShaderManager& shaderManager = *info.shaderManager;
@@ -122,8 +122,9 @@ namespace SceneryEditorX
 	
 	    VkPipeline pipeline = VK_NULL_HANDLE;
 	    VkResult r = vkCreateGraphicsPipelines(info.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &pipeline);
-	    if (r != VK_SUCCESS) {
-	        std::cerr << "vkCreateGraphicsPipelines failed: " << r << std::endl;
+	    if (r != VK_SUCCESS)
+		{
+	        SEDX_CORE_ERROR_TAG("Pipeline","vkCreateGraphicsPipelines failed: {}", r);
 	        return VK_NULL_HANDLE;
 	    }
 	

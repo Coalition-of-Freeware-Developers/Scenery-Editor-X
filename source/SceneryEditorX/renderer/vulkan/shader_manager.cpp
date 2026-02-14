@@ -56,7 +56,7 @@ namespace SceneryEditorX
 	        m_Modules.emplace_back(s.second.first, s.second.second);
 	    }
 	}
-	
-}
+
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

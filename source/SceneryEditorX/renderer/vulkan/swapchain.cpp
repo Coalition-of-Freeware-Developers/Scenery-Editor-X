@@ -31,7 +31,6 @@
 #include "swapchain.h"
 #include "render_context.h"
 #include "SceneryEditorX/core/window/window.h"
-
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -86,7 +85,7 @@ namespace SceneryEditorX
 		vkGetPhysicalDeviceSurfaceSupportKHR(m_Device->GetPhysicalDevice(), queueFamilyIndex, surface, &presentSupported);
 		if (!presentSupported)
 		{
-			std::cerr << "Selected queue family does not support presentation\n";
+			SEDX_CORE_ERROR_TAG("Swapchain", "Selected queue family does not support presentation");
 			return VK_NULL_HANDLE;
 		}
 	
@@ -129,21 +128,22 @@ namespace SceneryEditorX
 		}
 	
 		VkSwapchainKHR newSwap = VK_NULL_HANDLE;
-        if (VkResult r = vkCreateSwapchainKHR(m_Device->GetDevice(), &ci, nullptr, &newSwap); r != VK_SUCCESS)
+        if (VkResult r = vkCreateSwapchainKHR(m_Device->GetLogicalDevice(), &ci, nullptr, &newSwap); r != VK_SUCCESS)
 		{
-			std::cerr << "vkCreateSwapchainKHR failed: " << r << '\n';
+            SEDX_CORE_ERROR_TAG("Swapchain","Failed to create swapchain: {}", r);
 			return VK_NULL_HANDLE;
 		}
 	
 		// Fetch images for the new swapchain first
 		uint32_t imgCount = 0;
-		vkGetSwapchainImagesKHR(m_Device->GetDevice(), newSwap, &imgCount, nullptr);
+		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), newSwap, &imgCount, nullptr);
 		std::vector<VkImage> newImages(imgCount);
-		vkGetSwapchainImagesKHR(m_Device->GetDevice(), newSwap, &imgCount, newImages.data());
+		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), newSwap, &imgCount, newImages.data());
 	
 		// Create image views for the new images
 		std::vector<VkImageView> newImageViews(imgCount, VK_NULL_HANDLE);
-		for (uint32_t i = 0; i < imgCount; ++i) {
+		for (uint32_t i = 0; i < imgCount; ++i)
+		{
 			VkImageViewCreateInfo viewCI{};
 			viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			viewCI.image = newImages[i];
@@ -152,7 +152,7 @@ namespace SceneryEditorX
 			viewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			viewCI.subresourceRange.levelCount = 1;
 			viewCI.subresourceRange.layerCount = 1;
-			chk(vkCreateImageView(m_Device->GetDevice(), &viewCI, nullptr, &newImageViews[i]));
+			chk(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &newImageViews[i]));
 		}
 	
 		// Create a new depth image for the new extent
@@ -186,7 +186,7 @@ namespace SceneryEditorX
 		depthViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 		depthViewCI.subresourceRange.levelCount = 1;
 		depthViewCI.subresourceRange.layerCount = 1;
-		chk(vkCreateImageView(m_Device->GetDevice(), &depthViewCI, nullptr, &newDepthView));
+		chk(vkCreateImageView(m_Device->GetLogicalDevice(), &depthViewCI, nullptr, &newDepthView));
 	
 		// At this point the new swapchain and its images/views/depth exist. Now
 		// we can safely destroy old resources (if any) and update our members.
@@ -195,13 +195,13 @@ namespace SceneryEditorX
 			// Destroy old image views
 			for (auto &iv : m_ImageViews)
 			{
-			    if (iv != VK_NULL_HANDLE) vkDestroyImageView(m_Device->GetDevice(), iv, nullptr);
+			    if (iv != VK_NULL_HANDLE) vkDestroyImageView(m_Device->GetLogicalDevice(), iv, nullptr);
 			}
 
 			// Destroy old depth resources
 			if (m_DepthView != VK_NULL_HANDLE)
 			{
-			    vkDestroyImageView(m_Device->GetDevice(), m_DepthView, nullptr); m_DepthView = VK_NULL_HANDLE;
+			    vkDestroyImageView(m_Device->GetLogicalDevice(), m_DepthView, nullptr); m_DepthView = VK_NULL_HANDLE;
 			}
 
 			if (m_DepthImage != VK_NULL_HANDLE)
@@ -212,7 +212,7 @@ namespace SceneryEditorX
 			// Destroy old swapchain handle
 			if (m_Swapchain != VK_NULL_HANDLE)
 			{
-			    vkDestroySwapchainKHR(m_Device->GetDevice(), m_Swapchain, nullptr);
+			    vkDestroySwapchainKHR(m_Device->GetLogicalDevice(), m_Swapchain, nullptr);
 			}
 		}
 	
@@ -243,7 +243,7 @@ namespace SceneryEditorX
 		// The create() implementation already handles passing the old swapchain
 		// through the create-info, and replaces resources after the new ones are
 		// successfully created.
-		vkDeviceWaitIdle(device->GetDevice());
+		vkDeviceWaitIdle(device->GetLogicalDevice());
 		VkSurfaceCapabilitiesKHR caps{};
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice(), surface, &caps);
 		(void)caps; // currently unused here but helpful for future policies
@@ -266,7 +266,7 @@ namespace SceneryEditorX
         // Try to acquire, with retry after swapchain recreation
 		for (uint32_t attempt = 0; attempt < 2; ++attempt)
         {
-            VkResult r = vkAcquireNextImageKHR(m_Device->GetDevice(), m_Swapchain, 100000000 /* 100ms timeout */, VK_NULL_HANDLE, VK_NULL_HANDLE, &m_ImageIndex);
+            VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, 100000000 /* 100ms timeout */, VK_NULL_HANDLE, VK_NULL_HANDLE, &m_ImageIndex);
 			if (r == VK_SUCCESS)
 			{
 				m_ImageAcquired = true;
@@ -281,7 +281,7 @@ namespace SceneryEditorX
             }
             else
             {
-                std::cerr << "Failed to acquire swapchain image: " << r << '\n';
+                SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
                 return;
             }
         }
@@ -297,7 +297,7 @@ namespace SceneryEditorX
         Ref<Device> device = RenderContext::Get()->GetDevice(); // Avoid passing VkDevice and just fetch it from the RenderContext singleton
 		if (m_DepthView != VK_NULL_HANDLE)
 		{
-		    vkDestroyImageView(device->GetDevice(), m_DepthView, nullptr); m_DepthView = VK_NULL_HANDLE;
+		    vkDestroyImageView(device->GetLogicalDevice(), m_DepthView, nullptr); m_DepthView = VK_NULL_HANDLE;
 		}
 
 		if (m_DepthImage != VK_NULL_HANDLE)
@@ -309,7 +309,7 @@ namespace SceneryEditorX
 		{
 		    if (iv != VK_NULL_HANDLE)
 		    {
-		        vkDestroyImageView(device->GetDevice(), iv, nullptr);
+		        vkDestroyImageView(device->GetLogicalDevice(), iv, nullptr);
 		    }
 		}
 
@@ -318,7 +318,7 @@ namespace SceneryEditorX
 
 		if (m_Swapchain != VK_NULL_HANDLE)
 		{
-		    vkDestroySwapchainKHR(device->GetDevice(), m_Swapchain, nullptr);
+		    vkDestroySwapchainKHR(device->GetLogicalDevice(), m_Swapchain, nullptr);
 		    m_Swapchain = VK_NULL_HANDLE;
 		}
 

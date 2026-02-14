@@ -44,6 +44,8 @@ namespace SceneryEditorX
 	    uint32_t variant = 0, major = 0, minor = 0, patch = 0;
 	};
 
+    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+
 }
 
 // -----------------------------------------------------------------

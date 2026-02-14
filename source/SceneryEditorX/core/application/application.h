@@ -71,12 +71,12 @@ namespace SceneryEditorX
         virtual ~Application();
 
 		void Run();
+        void Tick();
         void Stop();
 
 		virtual void OnInit() {}
         virtual void OnUpdate() {}
         virtual void OnShutdown();
-        virtual void Tick() {}
 
 	    void PushLayer(Layer *module);
         void PushOverlay(Layer *module);

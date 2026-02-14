@@ -58,7 +58,7 @@ namespace SceneryEditorX
 	
 	    // Create a graphics pipeline using a single grouped input structure.
 	    // Returns VK_NULL_HANDLE on failure.
-	    VkPipeline CreateGraphics(const GraphicsCreateInfo& info) const;
+        static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
 	};
 
 }

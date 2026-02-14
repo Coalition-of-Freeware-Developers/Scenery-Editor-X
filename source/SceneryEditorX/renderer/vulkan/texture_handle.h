@@ -49,7 +49,7 @@ namespace SceneryEditorX
 	        TextureImage loader;
 	        m_Texture = loader.Load(allocator, cmdPool, queue, filename);
 
-			SEDX_CORE_ASSERT(m_Texture.image != VK_NULL_HANDLE, "Failed to load texture: " + filename);
+	        SEDX_CORE_ASSERT(m_Texture.image != VK_NULL_HANDLE, "Failed to load texture: {}", filename);
 	    }
 	
 	    ~TextureHandle()
@@ -68,11 +68,11 @@ namespace SceneryEditorX
 			{
 	            if (m_Texture.view != VK_NULL_HANDLE)
 	            {
-	                vkDestroyImageView(device->GetDevice(), m_Texture.view, nullptr);
+	                vkDestroyImageView(device->GetLogicalDevice(), m_Texture.view, nullptr);
 	            }
 	            if (m_Texture.sampler != VK_NULL_HANDLE)
 	            {
-	                vkDestroySampler(device->GetDevice(), m_Texture.sampler, nullptr);
+	                vkDestroySampler(device->GetLogicalDevice(), m_Texture.sampler, nullptr);
 	            }
 	            if (m_Texture.image != VK_NULL_HANDLE)
 	            {

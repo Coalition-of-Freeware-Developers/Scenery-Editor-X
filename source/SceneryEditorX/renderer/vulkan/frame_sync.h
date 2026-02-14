@@ -30,10 +30,7 @@
  */
 #pragma once
 #include "render_context.h"
-
-
 #include <cstdint>
-#include <iostream>
 #include <vector>
 
 // -------------------------------------------------------
@@ -54,7 +51,7 @@ namespace SceneryEditorX
 	
 	    ~FrameSync()
 	    {
-	        if (!m_Destroyed && m_Device != VK_NULL_HANDLE)
+            if (!m_Destroyed)
 			{
 	            Destroy(); // Best-effort cleanup; explicit Destroy() is preferred.
 	        }
@@ -62,7 +59,7 @@ namespace SceneryEditorX
 	
 	    void Create(uint32_t framesInFlight, uint32_t swapchainImageCount)
 	    {
-	        m_Device = RenderContext::Get()->GetDevice();
+            Ref<Device> device = RenderContext::Get()->GetDevice();
 
 	        m_Fences.resize(framesInFlight, VK_NULL_HANDLE);
 	        m_PresentSemaphores.resize(framesInFlight, VK_NULL_HANDLE);
@@ -80,18 +77,18 @@ namespace SceneryEditorX
 	
 	        for (uint32_t i = 0; i < framesInFlight; ++i)
 			{
-                VkResult r = vkCreateFence(Device::GetDevice(), &fenceCI, nullptr, &m_Fences[i]);
-                SEDX_CORE_ASSERT(r == VK_SUCCESS, "vkCreateFence failed: " + ToString(r));
+                VkResult r = vkCreateFence(device->GetLogicalDevice(), &fenceCI, nullptr, &m_Fences[i]);
+                SEDX_CORE_ASSERT(r == VK_SUCCESS, "vkCreateFence failed: {}", r);
 
-	            r = vkCreateSemaphore(Device::GetDevice(), &semaphoreCI, nullptr, &m_PresentSemaphores[i]);
-                SEDX_CORE_ASSERT(r == VK_SUCCESS, "vkCreateSemaphore failed: " + ToString(r));
+	            r = vkCreateSemaphore(device->GetLogicalDevice(), &semaphoreCI, nullptr, &m_PresentSemaphores[i]);
+                SEDX_CORE_ASSERT(r == VK_SUCCESS, "vkCreateSemaphore failed: {}", r);
 	        }
 	
 	        m_RenderSemaphores.resize(swapchainImageCount, VK_NULL_HANDLE);
 	        for (auto& s : m_RenderSemaphores)
 			{
                 SEDX_CORE_ASSERT(s == VK_NULL_HANDLE, "Expected uninitialized semaphore handle");
-                if (VkResult r = vkCreateSemaphore(Device::GetDevice(), &semaphoreCI, nullptr, &s); r != VK_SUCCESS)
+                if (VkResult r = vkCreateSemaphore(device->GetLogicalDevice(), &semaphoreCI, nullptr, &s); r != VK_SUCCESS)
 	            {
                     SEDX_CORE_ERROR_TAG("FrameSync", "vkCreateSemaphore failed with error code: {}", r);
 	            }
@@ -100,11 +97,13 @@ namespace SceneryEditorX
 	
 	    void Destroy()
 	    {
+            Ref<Device> device = RenderContext::Get()->GetDevice();
+
 	        for (auto& s : m_RenderSemaphores)
 			{
 	            if (s != VK_NULL_HANDLE)
 				{
-                    vkDestroySemaphore(Device::GetDevice(), s, nullptr);
+                    vkDestroySemaphore(device->GetLogicalDevice(), s, nullptr);
 	                s = VK_NULL_HANDLE;
 	            }
 	        }
@@ -114,7 +113,7 @@ namespace SceneryEditorX
 			{
 	            if (s != VK_NULL_HANDLE)
 				{
-                    vkDestroySemaphore(Device::GetDevice(), s, nullptr);
+                    vkDestroySemaphore(device->GetLogicalDevice(), s, nullptr);
 	                s = VK_NULL_HANDLE;
 	            }
 	        }
@@ -123,13 +122,12 @@ namespace SceneryEditorX
 			{
 	            if (f != VK_NULL_HANDLE)
 				{
-                    vkDestroyFence(Device::GetDevice(), f, nullptr);
+                    vkDestroyFence(device->GetLogicalDevice(), f, nullptr);
 	                f = VK_NULL_HANDLE;
 	            }
 	        }
 	
 	        m_Destroyed = true;
-	        m_Device.Reset();
 	    }
 	
 	    std::vector<VkFence>& Fences() { return m_Fences; }
@@ -137,7 +135,6 @@ namespace SceneryEditorX
 	    std::vector<VkSemaphore>& RenderSemaphores() { return m_RenderSemaphores; }
 	
 	private:
-	    Ref<Device> m_Device;
 	    std::vector<VkFence> m_Fences{};
 	    std::vector<VkSemaphore> m_PresentSemaphores{};
 	    std::vector<VkSemaphore> m_RenderSemaphores{};

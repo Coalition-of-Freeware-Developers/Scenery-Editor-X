@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	{
 	public:
 	    Buffer() = default;
-	    Buffer(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
+	    Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
 	    ~Buffer();
 	
 	    Buffer(const Buffer&) = delete;

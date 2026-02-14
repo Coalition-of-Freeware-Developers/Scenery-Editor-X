@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -46,7 +46,7 @@
  * @brief Global flag controlling the application run loop
  * Set to false to exit the application after the current iteration
  */
-inline bool appRunning = true;
+extern bool appRunning;
 
 // ----------------------------------------------------
 

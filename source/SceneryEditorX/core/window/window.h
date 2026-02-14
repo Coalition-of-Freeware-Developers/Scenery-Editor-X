@@ -67,7 +67,7 @@ namespace SceneryEditorX
 	    static void SetTitle(const std::string &title);
 
 	    static SDL_Window *GetWindow() { return window; }
-		static Ref<Window> Get() { return m_Window; }
+		static Window Get() { return m_Window; }
 	    static uint32_t GetWidth();
 	    static uint32_t GetHeight();
         static Vec2 GetWindowSize();
@@ -80,22 +80,25 @@ namespace SceneryEditorX
 	    static float GetDeltaScroll();
 	    static Vec2 GetDeltaMouse();
 	    static bool GetFramebufferResized();
+
 	    static bool IsKeyDown(SDL_Scancode keyCode);
 	    static bool IsMouseDown(uint8_t buttonCode);
 	    static void SetMode(WindowMode newMode);
 	    static void SetShouldClose(bool close);
 	    static std::vector<std::string> GetAndClearPaths();
 	    static void SetEventCallback(const EventCallbackFn &callback);
+
 	    static void Maximize();
         static bool IsMaximized();
 		static void Minimize();
         static bool IsMinimized();
 	    static void CenterWindow();
+
 	    static void SetResizable(bool value);
 	    static void SetDecorated(bool value);
 
 	private:
-        static Ref<Window> m_Window;
+        static Window m_Window;
         static SDL_Window *window;
         static SDL_DisplayID *displays;
         static const char *name;

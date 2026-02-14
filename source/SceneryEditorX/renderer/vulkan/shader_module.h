@@ -35,6 +35,26 @@
 
 namespace SceneryEditorX
 {
+	
+	struct ShaderData
+	{
+	    Mat4 projection;
+	    Mat4 view;
+	    Mat4 model[3];
+	    Vec4 lightPos{0.0f, -10.0f, 10.0f, 0.0f};
+	    uint32_t selected{1};
+	};
+	
+	struct ShaderDataBuffer
+	{
+	    VmaAllocation allocation{VK_NULL_HANDLE};
+	    VkBuffer buffer{VK_NULL_HANDLE};
+	    VkDeviceAddress deviceAddress{};
+	    void *mapped{nullptr};
+	};
+
+    // -------------------------------------------------------
+
 	class ShaderModule 
     {
 	public:

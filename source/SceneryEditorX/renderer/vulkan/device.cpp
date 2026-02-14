@@ -41,7 +41,6 @@
 
 namespace SceneryEditorX
 {
-
 	struct DeviceFeatures
 	{
 	    VkPhysicalDeviceFeatures2 s_Features = {};
@@ -59,6 +58,64 @@ namespace SceneryEditorX
 	    bool s_IsRayTracingSupported = false;
 	    bool s_IsBindlessSupported = false;
 	    bool s_WideLines = false;
+
+	    /**
+	     * @brief Rebuild the pNext chain after copying the structure to fix dangling pointers.
+	     * 
+	     * When DeviceFeatures is copied, the pNext pointers still reference the old structure's
+	     * member addresses. This method reconstructs the chain to point to this instance's members.
+	     * The chain is built conditionally based on which features are supported.
+	     */
+	    void RebuildPNextChain()
+	    {
+	        // Start from the end of the chain and work backwards
+	        // The final element always has pNext = nullptr
+	        s_FeaturesVrs.pNext = nullptr;
+	
+	        // Build chain based on supported features
+	        void *nextInChain = nullptr;
+	
+	        // VRS is conditionally included
+	        if (s_IsShadingRateSupported)
+	        {
+	            nextInChain = &s_FeaturesVrs;
+	        }
+	
+	        // Robustness links to VRS if supported, otherwise nullptr
+	        s_FeaturesRobustness.pNext = nextInChain;
+	        nextInChain = &s_FeaturesRobustness;
+	
+	        // Vulkan 1.2 features
+	        s_Features_1_2.pNext = nextInChain;
+	        nextInChain = &s_Features_1_2;
+	
+	        // Vulkan 1.3 features
+	        s_Features_1_3.pNext = nextInChain;
+	        nextInChain = &s_Features_1_3;
+	
+	        // Vulkan 1.4 features
+	        s_Features_1_4.pNext = nextInChain;
+	        nextInChain = &s_Features_1_4;
+	
+	        // Mutable descriptor is conditionally included for XeSS
+	        if (s_XessSupported)
+	        {
+	            s_FeaturesMutableDescriptor.pNext = nextInChain;
+	            nextInChain = &s_FeaturesMutableDescriptor;
+	        }
+	
+	        // Ray tracing features are conditionally included
+	        if (s_IsRayTracingSupported)
+	        {
+	            s_FeaturesAccelStruct.pNext = nextInChain;
+	            s_FeaturesRayQuery.pNext = &s_FeaturesAccelStruct;
+	            s_FeaturesRayTracingPipeline.pNext = &s_FeaturesRayQuery;
+	            nextInChain = &s_FeaturesRayTracingPipeline;
+	        }
+	
+	        // s_Features is the head of the chain
+	        s_Features.pNext = nextInChain;
+	    }
 	};
 
     /**
@@ -80,7 +137,6 @@ namespace SceneryEditorX
         void *data = nullptr;										// pointer to device-specific extra data
 	};
 
-    Ref<Device> Device::m_Device = nullptr;							// Singleton instance of the Device class
     uint32_t Device::m_PhysicalDeviceIndex = 0;						// Index of the currently selected physical device (GPU)
     static std::vector<HWDeviceInfo> s_PhysicalDevice;				// Cache all GPU device info
     static std::vector<VkPhysicalDevice> s_PhysicalDeviceHandles;	// Cache of Vulkan physical device handles corresponding to the GPU info list
@@ -119,7 +175,7 @@ namespace SceneryEditorX
      */
     static DeviceType GetDeviceType(VkPhysicalDeviceType type)
     {
-        SEDX_CORE_ASSERT(false, "Invalid VkPhysicalDeviceType enum value");
+		SEDX_CORE_ASSERT(type != VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM, "Invalid VkPhysicalDeviceType enum value");
 
         switch (type)
         {
@@ -475,11 +531,43 @@ namespace SceneryEditorX
 				totalMemory += memProps.memoryProperties.memoryHeaps[i].size;
 			}
 		}
-		deviceInfo.memory = static_cast<uint32_t>(totalMemory / (1024 * 1024)); // Convert to MB
+        deviceInfo.memory = static_cast<uint32_t>(totalMemory / (1024 * 1024)); // Convert to MB
 
         // -----------------------------------------------------------------
 
-		deviceInfo.s_SupportedFeatures = DetectGPUFeatures(physicalDevice);
+        deviceInfo.s_SupportedFeatures = DetectGPUFeatures(physicalDevice);
+
+        // CRITICAL: Rebuild pNext chain after copying to fix dangling pointers
+        // The pNext chain in the copied structure still points to the original stack addresses
+        // from DetectGPUFeatures, which are now invalid. This rebuilds the chain to point to
+        // the copied structure's members.
+        deviceInfo.s_SupportedFeatures.RebuildPNextChain();
+
+        // -----------------------------------------------------------------
+
+        // XeSS support check (must occur after DetectGPUFeatures)
+        {
+            SEDX_CORE_ASSERT(deviceInfo.s_SupportedFeatures.s_Features_1_2.shaderInt8 == VK_TRUE);
+            deviceInfo.s_SupportedFeatures.s_Features_1_2.shaderInt8 = VK_TRUE;
+
+            SEDX_CORE_ASSERT(deviceInfo.s_SupportedFeatures.s_Features_1_3.shaderIntegerDotProduct == VK_TRUE);
+            deviceInfo.s_SupportedFeatures.s_Features_1_3.shaderIntegerDotProduct = VK_TRUE;
+
+            SEDX_CORE_ASSERT(deviceInfo.s_SupportedFeatures.s_Features_1_2.scalarBlockLayout == VK_TRUE);
+            deviceInfo.s_SupportedFeatures.s_Features_1_2.scalarBlockLayout = VK_TRUE;
+
+            if (deviceInfo.s_SupportedFeatures.s_FeaturesMutableDescriptor.mutableDescriptorType == VK_TRUE)
+            {
+                deviceInfo.s_SupportedFeatures.s_FeaturesMutableDescriptor.mutableDescriptorType = VK_TRUE;
+                deviceInfo.s_SupportedFeatures.s_XessSupported = true;
+            }
+            else
+            {
+                // XeSS not supported - mutable descriptor will be excluded from chain in RebuildPNextChain
+                deviceInfo.s_SupportedFeatures.s_XessSupported = false;
+            }
+        }
+
     }
 
     /**
@@ -491,7 +579,7 @@ namespace SceneryEditorX
         uint32_t deviceCount = 0;
         if (VkResult r = vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr); r != VK_SUCCESS || deviceCount == 0)
         {
-            SEDX_CORE_ERROR_TAG("VULKAN", "No Vulkan physical devices found (VkResult: {})", static_cast<int>(r));
+            SEDX_CORE_ERROR_TAG("Device", "No Vulkan physical devices found (VkResult: {})", static_cast<int>(r));
             s_PhysicalDevice.clear();
             s_PhysicalDeviceHandles.clear();
             return;
@@ -503,7 +591,7 @@ namespace SceneryEditorX
         // Enumerate all physical devices in a single call
         if (VkResult r = vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()); r != VK_SUCCESS)
         {
-            SEDX_CORE_ERROR_TAG("VULKAN", "Failed to enumerate physical devices (VkResult: {})", static_cast<int>(r));
+            SEDX_CORE_ERROR_TAG("Device", "Failed to enumerate physical devices (VkResult: {})", static_cast<int>(r));
             s_PhysicalDevice.clear();
             s_PhysicalDeviceHandles.clear();
             return;
@@ -549,7 +637,7 @@ namespace SceneryEditorX
             features.s_Features_1_2.timelineSemaphore != VK_TRUE || features.s_Features_1_2.shaderInt8 != VK_TRUE ||
             features.s_Features_1_2.scalarBlockLayout != VK_TRUE)
         {
-            SEDX_CORE_WARN_TAG("DEVICE", "Device '{}' missing critical Vulkan 1.2 features", deviceInfo.name);
+            SEDX_CORE_WARN_TAG("Device", "Device '{}' missing critical Vulkan 1.2 features", deviceInfo.name);
             hasCriticalFeatures = false;
         }
 
@@ -558,7 +646,7 @@ namespace SceneryEditorX
             features.s_Features_1_3.synchronization2 != VK_TRUE ||
             features.s_Features_1_3.shaderIntegerDotProduct != VK_TRUE)
         {
-            SEDX_CORE_WARN_TAG("DEVICE", "Device '{}' missing critical Vulkan 1.3 features", deviceInfo.name);
+            SEDX_CORE_WARN_TAG("Device", "Device '{}' missing critical Vulkan 1.3 features", deviceInfo.name);
             hasCriticalFeatures = false;
         }
 
@@ -568,7 +656,7 @@ namespace SceneryEditorX
             features.s_Features.features.geometryShader != VK_TRUE ||
             features.s_Features.features.tessellationShader != VK_TRUE)
         {
-            SEDX_CORE_WARN_TAG("DEVICE", "Device '{}' missing critical core features", deviceInfo.name);
+            SEDX_CORE_WARN_TAG("Device", "Device '{}' missing critical core features", deviceInfo.name);
             hasCriticalFeatures = false;
         }
 
@@ -584,60 +672,60 @@ namespace SceneryEditorX
         if (features.s_IsRayTracingSupported)
         {
             score += 10;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Ray Tracing supported (+10)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Ray Tracing supported (+10)", deviceInfo.name);
         }
 
         if (features.s_IsShadingRateSupported)
         {
             score += 10;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Variable Shading Rate supported (+10)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Variable Shading Rate supported (+10)", deviceInfo.name);
         }
 
         if (features.s_XessSupported)
         {
             score += 10;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': XeSS supported (+10)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': XeSS supported (+10)", deviceInfo.name);
         }
 
         if (features.s_IsBindlessSupported)
         {
             score += 5;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Bindless descriptors supported (+5)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Bindless descriptors supported (+5)", deviceInfo.name);
         }
 
         if (features.s_WideLines)
         {
             score += 2;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Wide lines supported (+2)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Wide lines supported (+2)", deviceInfo.name);
         }
 
         // Score optional shader features (5 points each)
         if (features.s_Features_1_2.shaderFloat16 == VK_TRUE)
         {
             score += 5;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Float16 shaders supported (+5)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Float16 shaders supported (+5)", deviceInfo.name);
         }
 
         if (features.s_Features.features.shaderInt16 == VK_TRUE)
         {
             score += 5;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Int16 shaders supported (+5)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Int16 shaders supported (+5)", deviceInfo.name);
         }
 
         if (features.s_Features_1_3.subgroupSizeControl == VK_TRUE)
         {
             score += 5;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Subgroup size control supported (+5)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Subgroup size control supported (+5)", deviceInfo.name);
         }
 
         // Vulkan 1.4 features (8 points each)
         if (features.s_Features_1_4.pushDescriptor == VK_TRUE)
         {
             score += 8;
-            SEDX_CORE_TRACE_TAG("DEVICE", "Device '{}': Push descriptors supported (+8)", deviceInfo.name);
+            SEDX_CORE_TRACE_TAG("Device", "Device '{}': Push descriptors supported (+8)", deviceInfo.name);
         }
 
-        SEDX_CORE_INFO_TAG("DEVICE", "Device '{}' scored: {} points", deviceInfo.name, score);
+        SEDX_CORE_INFO_TAG("Device", "Device '{}' scored: {} points", deviceInfo.name, score);
         return score;
     }
 
@@ -699,7 +787,7 @@ namespace SceneryEditorX
         PopulatePhysicalDevices(m_Instance);
 
         // Select best device
-        m_PhysicalDevice = Device::Choose();
+        m_PhysicalDevice = Choose();
         SEDX_CORE_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "No suitable physical device found");
 
         // Query properties from the selected device
@@ -718,13 +806,49 @@ namespace SceneryEditorX
             SEDX_CORE_WARN("- Performance may be degraded");
             // TODO: Show warning window to user
         }
-	
+
+        // Detect queue families first (static method, no Device instance needed)
+        const QueueManager::QueueFamilyIndices familyIndices = QueueManager::DetectQueueFamilies(m_PhysicalDevice);
+
+        // Store family indices for device creation
+        m_FamilyIndices = familyIndices;
+
+        // Create logical device with detected queue families
+        m_LogicalDevice = Create();
+        SEDX_CORE_ASSERT(m_LogicalDevice != VK_NULL_HANDLE, "Failed to create logical device");
+
+        // Initialize QueueManager after device is created
+        QueueManager::QueueConfig config{};
+        config.cmdListsPerQueue = 4; // Default value, adjust as needed
+        m_QueueManager = CreateRef<QueueManager>(this, config);
+        SEDX_CORE_ASSERT(m_QueueManager, "Failed to create QueueManager");
+
+        // Initialize memory allocator
+        m_MemAllocator = CreateRef<MemoryAllocator>();
+        SEDX_CORE_INFO_TAG("Device", "Device initialization complete");
     }
 
     Device::~Device()
     {
         SEDX_CORE_TRACE_TAG("Device", "Device destructor called");
 
+        if (m_PhysicalDevice != VK_NULL_HANDLE)
+        {
+            m_PhysicalDevice = VK_NULL_HANDLE;
+        }
+
+        if (m_LogicalDevice != VK_NULL_HANDLE)
+        {
+            vkDestroyDevice(m_LogicalDevice, nullptr);
+            m_LogicalDevice = VK_NULL_HANDLE;
+            SEDX_CORE_INFO_TAG("Device", "Logical device destroyed");
+        }
+
+        if (m_WindowSurface != VK_NULL_HANDLE)
+        {
+            vkDestroySurfaceKHR(m_Instance, m_WindowSurface, nullptr);
+            m_WindowSurface = VK_NULL_HANDLE;
+        }
         // QueueManager cleanup is automatic via smart pointers
         if (m_QueueManager)
         {
@@ -738,58 +862,6 @@ namespace SceneryEditorX
 
 		m_LogicalDevice = VK_NULL_HANDLE;
         m_PhysicalDevice = VK_NULL_HANDLE;
-    }
-
-    /** 
-     * @brief Initialize the device, creating necessary Vulkan resources and setting up the logical device. 
-     *
-     */
-    void Device::Init()
-    {
-        SEDX_CORE_ASSERT(m_Device.IsValid(), "Device singleton is not initialized before Init().");
-
-        // Detect queue families first (static method, no Device instance needed)
-        const QueueManager::QueueFamilyIndices familyIndices = QueueManager::DetectQueueFamilies(m_Device);
-
-        // Store family indices for device creation
-        m_Device->m_FamilyIndices = familyIndices;
-
-        // Create logical device with detected queue families
-        m_Device->m_LogicalDevice = m_Device->Create();
-        SEDX_CORE_ASSERT(m_Device->m_LogicalDevice != VK_NULL_HANDLE, "Failed to create logical device");
-
-        // Initialize QueueManager after device is created
-        QueueManager::QueueConfig config{};
-        config.cmdListsPerQueue = 4; // Default value, adjust as needed
-        m_Device->m_QueueManager = CreateRef<QueueManager>(config);
-        SEDX_CORE_ASSERT(m_Device->m_QueueManager, "Failed to create QueueManager");
-
-        // Initialize memory allocator
-        m_Device->m_MemAllocator = CreateRef<MemoryAllocator>();
-
-        SEDX_CORE_INFO_TAG("Device", "Device initialization complete");
-    }
-
-    /**
-     * @brief Destroy the device, cleaning up Vulkan resources and resetting handles.
-     */
-    void Device::Destroy()
-    {
-        if (!m_Device.IsValid())
-            return;
-
-        if (m_Device->m_LogicalDevice != VK_NULL_HANDLE)
-        {
-            vkDestroyDevice(m_Device->m_LogicalDevice, nullptr);
-            m_Device->m_LogicalDevice = VK_NULL_HANDLE;
-            SEDX_CORE_INFO_TAG("Device", "Logical device destroyed");
-        }
-
-        if (m_Device->m_WindowSurface != VK_NULL_HANDLE)
-        {
-            vkDestroySurfaceKHR(m_Device->m_Instance, m_Device->m_WindowSurface, nullptr);
-            m_Device->m_WindowSurface = VK_NULL_HANDLE;
-        }
     }
 
     /**
@@ -811,8 +883,9 @@ namespace SceneryEditorX
      */
     DeviceStatics Device::GetDeviceStatics()
     {
-        SEDX_CORE_ASSERT(m_Device.IsValid(), "Device singleton is not initialized");
-        SEDX_CORE_ASSERT(m_Device->m_PhysicalDevice != VK_NULL_HANDLE, "Physical device is null");
+        Ref<Device> device;
+        SEDX_CORE_ASSERT(device.IsValid(), "Device singleton is not initialized");
+        SEDX_CORE_ASSERT(device->m_PhysicalDevice != VK_NULL_HANDLE, "Physical device is null");
         SEDX_CORE_ASSERT(m_PhysicalDeviceIndex < s_PhysicalDevice.size(), "Invalid physical device index");
 
         DeviceStatics statics{};
@@ -833,7 +906,7 @@ namespace SceneryEditorX
         deviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         deviceProps.pNext = &shadingRateProps;
 
-        vkGetPhysicalDeviceProperties2(m_Device->m_PhysicalDevice, &deviceProps);
+        vkGetPhysicalDeviceProperties2(device->m_PhysicalDevice, &deviceProps);
         const VkPhysicalDeviceLimits &limits = deviceProps.properties.limits;
 
         // Populate core limits
@@ -905,7 +978,7 @@ namespace SceneryEditorX
      * @param queueFamilyIndex Index of the queue family to create the device with
      * @return VkDevice handle of the created logical device, or VK_NULL_HANDLE on failure
      */
-    VkDevice Device::Create() const
+    VkDevice Device::Create()
 	{
         SEDX_CORE_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "Physical device not initialized");
 
@@ -921,12 +994,17 @@ namespace SceneryEditorX
 
         // Get required extensions from instance properties
         std::vector<const char *> deviceExtensions = GraphicsChecks::GetExtensionList(m_InstanceProps.requestedExtensions);
+
+        // Add VK_KHR_swapchain extension which is required for rendering
+        deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
         deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
         // Add enabled features from detection
-        const DeviceFeatures &features = s_PhysicalDevice[m_PhysicalDeviceIndex].s_SupportedFeatures;
-        deviceCreateInfo.pNext = &features.s_Features; // Chain enabled features
+        DeviceFeatures features = s_PhysicalDevice[m_PhysicalDeviceIndex].s_SupportedFeatures;
+        features.RebuildPNextChain(); // Fix dangling pointers
+        deviceCreateInfo.pNext = &features.s_Features;
 
         VkDevice device = VK_NULL_HANDLE;
         if (VkResult r = vkCreateDevice(m_PhysicalDevice, &deviceCreateInfo, nullptr, &device); r != VK_SUCCESS)
@@ -935,10 +1013,33 @@ namespace SceneryEditorX
             return VK_NULL_HANDLE;
         }
 
+        // Load device-level function pointers via volk
         volkLoadDevice(device);
-        SEDX_CORE_INFO_TAG("Device", "Logical device created successfully");
 
-        return device;
+        // CRITICAL: Validate that device-level functions were loaded correctly
+        // If these are null, volk failed to load from the correct Vulkan driver
+        if (vkGetDeviceQueue == nullptr || vkCreateCommandPool == nullptr || vkAllocateCommandBuffers == nullptr ||
+            vkDestroyDevice == nullptr)
+        {
+            SEDX_CORE_ERROR_TAG("Device", "volkLoadDevice() failed to load device-level function pointers!");
+            SEDX_CORE_ERROR_TAG("Device", "vkGetDeviceQueue: {}", static_cast<void *>(vkGetDeviceQueue));
+            SEDX_CORE_ERROR_TAG("Device", "vkCreateCommandPool: {}", static_cast<void *>(vkCreateCommandPool));
+            SEDX_CORE_ERROR_TAG("Device", "vkAllocateCommandBuffers: {}", static_cast<void *>(vkAllocateCommandBuffers));
+            SEDX_CORE_ERROR_TAG("Device", "vkDestroyDevice: {}", static_cast<void *>(vkDestroyDevice));
+            SEDX_CORE_ERROR_TAG("Device", "This usually means the Vulkan loader picked the wrong driver (e.g., OpenGL instead of Vulkan)");
+
+            // Clean up the device we just created
+            if (device != VK_NULL_HANDLE)
+            {
+                vkDestroyDevice(device, nullptr);
+            }
+            return VK_NULL_HANDLE;
+        }
+
+        SEDX_CORE_INFO_TAG("Device", "Logical device created successfully");
+        SEDX_CORE_TRACE_TAG("Device", "Device-level function pointers loaded via volk");
+        m_LogicalDevice = device;
+        return m_LogicalDevice;
 	}
 
     // TODO: re-enable when debugging is added back

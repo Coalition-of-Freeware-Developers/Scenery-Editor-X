@@ -28,17 +28,17 @@
  * Created: 25/3/2025
  * -------------------------------------------------------
  */
+#include <SceneryEditorX/ui/ui.h>
 #include <Editor/core/viewport.h>
 #include <SceneryEditorX/core/application/application.h>
-#include <imgui/backends/imgui_impl_glfw.h>
-#include <imgui/backends/imgui_impl_vulkan.h>
+#include <SceneryEditorX/core/window/window.h>
+#include <SceneryEditorX/renderer/vulkan/device.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <imgui/imconfig.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
-#include <SceneryEditorX/core/window/window.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/device.h>
-#include <SceneryEditorX/ui/ui.h>
+#include <imgui/backends/imgui_impl_sdl3.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
 
 // -------------------------------------------------------
 
@@ -92,7 +92,7 @@ namespace SceneryEditorX::UI
 
 
 	/// Additional ImGui initialization functions can be placed here if needed
-	void initImGuiExtensions()
+	void InitImGuiExtensions()
 	{
 	    // This function can be called from main ImGui setup to initialize any extensions
 	    // Currently empty, but could be expanded if more ImGui features need integration
@@ -107,7 +107,7 @@ namespace SceneryEditorX::UI
 
     bool GUI::CreateDescriptorPool()
     {
-        auto device = RenderContext::GetCurrentDevice();
+        Ref<Device> device = RenderContext::Get()->GetDevice();
         RenderContext context;
         if (!device)
         {
@@ -147,24 +147,26 @@ namespace SceneryEditorX::UI
     void GUI::UpdateDpiScale()
     {
         auto &app = Application::Get();
-        GLFWwindow *window = static_cast<GLFWwindow *>(app.GetWindow().GetWindow());
+        Window window = app.GetWindow();
         
-        // Get content scale from GLFW
+        /*
+        // Get content scale from SDL3
         float xScale, yScale;
         glfwGetWindowContentScale(window, &xScale, &yScale);
         contentScaleFactor = xScale;
 
         // Get monitor DPI info if available
-        if (GLFWmonitor *monitor = glfwGetPrimaryMonitor())
+        if (SDL_Display *monitor = SDL_GetPrimaryMonitor())
         {
             float xDpi, yDpi;
-            glfwGetMonitorContentScale(monitor, &xDpi, &yDpi);
+            SDL_GetMonitorContentScale(monitor, &xDpi, &yDpi);
             dpiFactor = xDpi;
         }
         else
         {
             dpiFactor = xScale;
         }
+        */
 
         // Update ImGui style to reflect DPI changes
         ImGuiStyle &style = ImGui::GetStyle();
@@ -175,8 +177,8 @@ namespace SceneryEditorX::UI
 
     bool GUI::InitGUI()
     {
-        auto device = RenderContext::GetCurrentDevice();
-        auto* window = static_cast<GLFWwindow*>(Application::Get().GetWindow().GetWindow());
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        Window window = Application::Get().GetWindow();
 
         if (initialized)
         {
@@ -210,18 +212,20 @@ namespace SceneryEditorX::UI
         io.ConfigWindowsResizeFromEdges = true;             /// Enable resizing windows from edges
         io.ConfigWindowsMoveFromTitleBarOnly = false;       /// Allow moving windows from anywhere
 
-        /// Initialize GLFW backend
-        ImGui_ImplGlfw_InitForVulkan(window, true);
+        // Initialize SDL3 backend
 
+        ImGui_ImplSDL3_InitForVulkan(window.GetWindow());
+
+        /*
         // Get queue family info
-        RenderData renderData;
+        RenderData renderData;*/
 
         // Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
         info.Instance = RenderContext::GetInstance();
-        info.PhysicalDevice = device->GetPhysicalDevice()->GetDevice();
-        info.QueueFamily = device->GetPhysicalDevice()->GetQueueFamilyIndices().GetGraphicsFamily();
-        info.Queue = device->GetGraphicsQueue();
+        info.PhysicalDevice = device->GetPhysicalDevice();
+        info.QueueFamily = device->GetQueueManager()->GetFamilyIndexByType(QueueType::Graphics);
+        info.Queue = device->GetQueueManager()->GetQueueHandleByType(QueueType::Graphics);
         info.DescriptorPool = imguiPool;
         //info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;
@@ -269,7 +273,7 @@ namespace SceneryEditorX::UI
 
         /// Start the ImGui frame
         ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
     }
 
@@ -296,14 +300,14 @@ namespace SceneryEditorX::UI
 	
     void GUI::CleanUp()
     {
-        auto device = RenderContext::GetCurrentDevice();
+        Ref<Device> device = RenderContext::Get()->GetDevice();
         if (!initialized)
             return;
 
         vkDeviceWaitIdle(device->GetDevice());
 
         ImGui_ImplVulkan_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
 
         if (imguiPool != VK_NULL_HANDLE)
         {
@@ -344,7 +348,7 @@ namespace SceneryEditorX::UI
     }
 	
 	/*
-	void GUI::InitGUI(GLFWwindow *window, SceneryEditorX::GraphicsEngine &renderer)
+	void GUI::InitGUI(SDL_Window *window, SceneryEditorX::GraphicsEngine &renderer)
 	{
 	    // Store the engine reference
 	    this->renderer = &renderer;

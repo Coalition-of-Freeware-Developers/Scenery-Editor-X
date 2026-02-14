@@ -147,7 +147,7 @@ namespace SceneryEditorX
 
 	Queue::Queue(const QueueType type, const char *name) : /*IObject(),*/ name(name)
     {
-        m_Device = Ref<Device>();
+        m_Device = RenderContext::Get()->GetDevice();
         //m_ObjectName = name;
         m_Type = type;
 
@@ -190,7 +190,7 @@ namespace SceneryEditorX
         m_SwapChain = Renderer::GetSwapChain()->Get();
 	
 	    VkPhysicalDevice phys = m_Device->GetPhysicalDevice();
-	    VkDevice logical = m_Device->GetDevice();
+	    VkDevice logical = m_Device->GetLogicalDevice();
 	    VkSurfaceKHR surface = m_Device->GetWindowSurface();
 	
 	    uint32_t familyIndex = FindQueueFamily(phys, m_Type, surface);
@@ -211,8 +211,8 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::Destroy");
         SEDX_CORE_ASSERT(m_PresentSemaphore != VK_NULL_HANDLE, "Invalid present semaphore in Queue::Destroy");
 
-	    vkDestroySemaphore(m_Device->GetDevice(), m_RenderSemaphore, nullptr);
-	    vkDestroySemaphore(m_Device->GetDevice(), m_PresentSemaphore, nullptr);
+	    vkDestroySemaphore(m_Device->GetLogicalDevice(), m_RenderSemaphore, nullptr);
+	    vkDestroySemaphore(m_Device->GetLogicalDevice(), m_PresentSemaphore, nullptr);
 
         m_RenderSemaphore = VK_NULL_HANDLE;
         m_PresentSemaphore = VK_NULL_HANDLE;
@@ -229,7 +229,7 @@ namespace SceneryEditorX
 	    SEDX_CORE_ASSERT(q != nullptr, "No Graphics queue available for Queue::AcquireNextImage.");
 	
 	    uint32_t ImageIndex = 0;
-	    VkResult result = vkAcquireNextImageKHR(q->m_Device->GetDevice(), q->m_SwapChain, UINT64_MAX, q->m_PresentSemaphore, nullptr, &ImageIndex);
+	    VkResult result = vkAcquireNextImageKHR(q->m_Device->GetLogicalDevice(), q->m_SwapChain, UINT64_MAX, q->m_PresentSemaphore, nullptr, &ImageIndex);
 	    SEDX_CORE_ASSERT(result == VK_SUCCESS, "vkAcquireNextImageKHR failed");
 	    return ImageIndex;
 	}
@@ -386,6 +386,7 @@ namespace SceneryEditorX
 	{
 	    std::scoped_lock guard(mutexDeletionQueue);
 	
+		Ref<Device> device;
 	    for (auto &it : deletionQueue)
 	    {
 	        ResourceType resourceType = it.first;
@@ -396,36 +397,36 @@ namespace SceneryEditorX
 	            case ResourceType::Image: /*MemoryAllocator::DestroyMemoryTexture(resource);*/
 	                break;
 	            case ResourceType::ImageView:
-	                vkDestroyImageView(Device::GetDevice(), static_cast<VkImageView>(resource), nullptr);
+                    vkDestroyImageView(device->GetLogicalDevice(), static_cast<VkImageView>(resource), nullptr);
 	                break;
 	            case ResourceType::Sampler:
-	                vkDestroySampler(Device::GetDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
+                    vkDestroySampler(device->GetLogicalDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
 	                break;
 	            case ResourceType::Buffer: /*MemoryAllocator::DestroyMemoryBuffer(resource); */
 	                break;
 	            case ResourceType::Shader:
-                    vkDestroyShaderModule(Device::GetDevice(), static_cast<VkShaderModule>(resource), nullptr);
+                    vkDestroyShaderModule(device->GetLogicalDevice(), static_cast<VkShaderModule>(resource), nullptr);
 	                break;
 	            case ResourceType::Semaphore:
-                    vkDestroySemaphore(Device::GetDevice(), static_cast<VkSemaphore>(resource), nullptr);
+                    vkDestroySemaphore(device->GetLogicalDevice(), static_cast<VkSemaphore>(resource), nullptr);
 	                break;
 	            case ResourceType::Fence:
-                    vkDestroyFence(Device::GetDevice(), static_cast<VkFence>(resource), nullptr);
+                    vkDestroyFence(device->GetLogicalDevice(), static_cast<VkFence>(resource), nullptr);
 	                break;
 	            case ResourceType::DescriptorSetLayout:
-                    vkDestroyDescriptorSetLayout(Device::GetDevice(), static_cast<VkDescriptorSetLayout>(resource), nullptr);
+                    vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), static_cast<VkDescriptorSetLayout>(resource), nullptr);
 	                break;
 	            case ResourceType::QueryPool:
-	                vkDestroyQueryPool(Device::GetDevice(), static_cast<VkQueryPool>(resource), nullptr);
+	                vkDestroyQueryPool(device->GetLogicalDevice(), static_cast<VkQueryPool>(resource), nullptr);
 	                break;
 	            case ResourceType::Pipeline:
-	                vkDestroyPipeline(Device::GetDevice(), static_cast<VkPipeline>(resource), nullptr);
+                    vkDestroyPipeline(device->GetLogicalDevice(), static_cast<VkPipeline>(resource), nullptr);
 	                break;
 	            case ResourceType::PipelineLayout:
-	                vkDestroyPipelineLayout(Device::GetDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
+                    vkDestroyPipelineLayout(device->GetLogicalDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
 	                break;
 	            case ResourceType::AccelerationStructure:
-	                vkDestroyAccelerationStructureKHR(Device::GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);
+                    vkDestroyAccelerationStructureKHR(device->GetLogicalDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);
 	                break;
 	            default:
 	                SEDX_CORE_ASSERT(false, "Unknown resource");
@@ -485,8 +486,8 @@ namespace SceneryEditorX
 	
 	void Queue::CreateSemaphores()
 	{
-        m_PresentSemaphore = InitSemaphore(Device::GetDevice());
-        m_RenderSemaphore = InitSemaphore(Device::GetDevice());
+        m_PresentSemaphore = InitSemaphore(m_Device->GetLogicalDevice());
+        m_RenderSemaphore = InitSemaphore(m_Device->GetLogicalDevice());
 	}
 	
 }

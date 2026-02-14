@@ -91,10 +91,6 @@ namespace SceneryEditorX
         Device(VkInstance instance, GraphicsChecks::InstanceProperties gpuProps = GraphicsChecks::GetDefaultInstanceProperties());
         virtual ~Device() override;
 
-        static void Init();
-        static void Destroy();
-
-        [[nodiscard]] VkPhysicalDevice GetPhysicalDevice() const  { return m_PhysicalDevice; }
         [[nodiscard]] VkInstance GetInstance() const { return m_Instance; }
         [[nodiscard]] VkSurfaceKHR GetWindowSurface() const { return m_WindowSurface; }
         [[nodiscard]] VkPhysicalDeviceLimits GetDeviceLimits() const { return m_PhysDeviceProp.properties.limits; }
@@ -107,13 +103,25 @@ namespace SceneryEditorX
 	     * @brief Get the global Device instance
 	     * @return a reference count (increments ref count)
 	     */
-        static Ref<Device> Get() { return m_Device; }
+        Ref<Device> Get() { return m_Device; }
+
+        /**
+		 * @brief Get the Vulkan logical device handle associated with this Device instance
+		 * @return VkDevice handle of the logical device, or VK_NULL_HANDLE if not initialized
+		 */
+		[[nodiscard]] VkDevice GetLogicalDevice() const { return m_LogicalDevice; }
+
+        /**
+		 * @brief Get the Vulkan physical device handle associated with this Device instance
+		 * @return VkPhysicalDevice handle of the physical device, or VK_NULL_HANDLE if not initialized
+		 */
+		[[nodiscard]] VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
 
         /**
 	     * @brief Get the Vulkan logical device handle
 	     * @return VkDevice handle or VK_NULL_HANDLE if no device is available
 	     */
-        static VkDevice GetDevice() { return Get() ? Get()->GetDevice() : VK_NULL_HANDLE; }
+        VkDevice GetDevice() { return Get() ? Get()->GetLogicalDevice() : VK_NULL_HANDLE; }
 
         /**
 	     * @brief Get a snapshot of internal static capabilities populated during device setup
@@ -147,7 +155,7 @@ namespace SceneryEditorX
 	     *
 	     * @note It also sets up the QueueManager with the allocated queues from the created device.
 	     */
-	    VkDevice Create() const;
+	    VkDevice Create();
 
         /**
          * @brief Select the best physical device available on the system based on scoring of features, memory, and device type.
@@ -161,7 +169,9 @@ namespace SceneryEditorX
         Ref<MemoryAllocator> m_MemAllocator;
         QueueManager::QueueFamilyIndices m_FamilyIndices;
 
-        static Ref<Device> m_Device;
+        Ref<Device> m_Device;
+        VkDevice m_LogicalDevice = VK_NULL_HANDLE;
+        VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
         static uint32_t m_PhysicalDeviceIndex;
 
         GraphicsChecks::InstanceProperties m_InstanceProps;
@@ -169,9 +179,7 @@ namespace SceneryEditorX
 
         VkInstance m_Instance = VK_NULL_HANDLE;
         VkSurfaceKHR m_WindowSurface = VK_NULL_HANDLE;
-        VkDevice m_LogicalDevice = VK_NULL_HANDLE;
-        VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
-	
+
         VkPhysicalDeviceFeatures2 m_PhysDeviceFeat;
         VkPhysicalDeviceProperties2 m_PhysDeviceProp;
         VkPhysicalDeviceMemoryProperties2 m_PhysDeviceMemProp;

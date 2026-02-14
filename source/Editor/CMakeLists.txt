@@ -26,7 +26,8 @@ SET (PROJECT_CONFIG_FILES
 
 # --------------------------------
 
-ADD_EXECUTABLE(SceneryEditorX
+ADD_EXECUTABLE(SceneryEditorX WIN32
+	entrypoint.cpp
 	${CORE}
 	${MODULES}
 	${PROJECT}
@@ -96,7 +97,6 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 	PRIVATE
 		${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
-		${CMAKE_SOURCE_DIR}/dependency/SDL/include/SDL3
 		${CMAKE_SOURCE_DIR}/dependency/xMath
 		${CMAKE_SOURCE_DIR}/dependency/entt/src
 		${CMAKE_SOURCE_DIR}/dependency/imgui
@@ -104,6 +104,8 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 		${CMAKE_SOURCE_DIR}/dependency/imgui/misc
 		${CMAKE_SOURCE_DIR}/dependency/ImGuizmo
 		${CMAKE_SOURCE_DIR}/dependency/taskflow
+		${CMAKE_SOURCE_DIR}/dependency/ktx/include
+		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
 		${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
 		$ENV{VULKAN_SDK}/Include/
 		${Stb_INCLUDE_DIR}
@@ -120,6 +122,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
+		ktx
 		imgui
 		libconfig
 		libconfig++
@@ -141,8 +144,6 @@ TARGET_COMPILE_DEFINITIONS(SceneryEditorX
         $<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
         VK_USE_PLATFORM_WIN32_KHR
-        GLFW_INCLUDE_VULKAN
-        GLFW_EXPOSE_NATIVE_WIN32
         CURL_STATICLIB
 )
 

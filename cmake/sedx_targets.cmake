@@ -58,7 +58,7 @@ FUNCTION(SEDX_APPLY_OUTPUT_DIRS LIBS_DIR BIN_DIR)
 	SET(CANDIDATES
 		Launcher SceneryEditorX AppCore CrashHandler uninstall
 		MathTests MemoryAllocatorTests ConversionTests RefTests SettingsTest EdxTests EdxDemoGenerator
-		nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ edX XPSceneryLib ktx SDL3
+		nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ edX XPSceneryLib ktx SDL3_test SDL3 SDL3 SDL3-static
 		Catch2 Catch2WithMain
 	)
     FOREACH(t ${CANDIDATES})

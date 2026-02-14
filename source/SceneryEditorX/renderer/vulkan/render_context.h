@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "VulkanApp.h" // TODO: remove dependency
 #include "device.h"
+#include "shader_module.h"
 #include <array>
 #include <vector>
 #include <vma/vk_mem_alloc.h>
@@ -88,8 +88,8 @@ namespace SceneryEditorX
 	    VkDeviceSize indexCount = 0;
 
 	    std::vector<Renderable>* renderables = nullptr; // optional: if provided, renderer will draw these
-	    std::array<ShaderDataBuffer, VulkanApp::MAX_FRAMES_IN_FLIGHT>* shaderDataBuffers = nullptr;
-	    std::array<VkCommandBuffer, VulkanApp::MAX_FRAMES_IN_FLIGHT>* commandBuffers = nullptr;
+	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT>* shaderDataBuffers = nullptr;
+	    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>* commandBuffers = nullptr;
 	    // Sync objects are managed by FrameSync (vectors sized at runtime)
 	    std::vector<VkFence>* fences = nullptr;
 	    std::vector<VkSemaphore>* presentSemaphores = nullptr;

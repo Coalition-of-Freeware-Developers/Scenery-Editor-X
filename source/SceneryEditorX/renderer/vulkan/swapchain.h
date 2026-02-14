@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "device.h"
+
+
 #include <vector>
 #include <vma/vk_mem_alloc.h>
 
@@ -36,7 +39,6 @@
 
 namespace SceneryEditorX
 {
-    class Device;
 
     class Swapchain : public RefCounted
 	{
@@ -73,7 +75,7 @@ namespace SceneryEditorX
 	    [[nodiscard]] uint32_t GetImageIndex() const { return m_ImageIndex; }
 
 	private:
-        Ref<Device> m_Device;
+        Ref<Device> m_Device = nullptr;
 	    VkSwapchainKHR m_Swapchain{ VK_NULL_HANDLE };
 	    std::vector<VkImage> m_Images;
 	    std::vector<VkImageView> m_ImageViews;

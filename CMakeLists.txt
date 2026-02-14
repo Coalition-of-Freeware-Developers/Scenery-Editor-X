@@ -186,6 +186,13 @@ TARGET_INCLUDE_DIRECTORIES(ktx PUBLIC
 	${KTX_DIR}/lib
 )
 
+# ktx's vkloader.c includes <vulkan/vulkan.h> via ktxvulkan.h
+IF(TARGET Vulkan::Headers)
+	TARGET_LINK_LIBRARIES(ktx PRIVATE Vulkan::Headers)
+ELSE()
+	TARGET_INCLUDE_DIRECTORIES(ktx PRIVATE ${Vulkan_INCLUDE_DIRS})
+ENDIF()
+
 ############################################
 # SDL (system or bundled)
 ############################################
@@ -416,7 +423,7 @@ IF(SEDX_BUILD_IMGUI)
     )
     TARGET_LINK_LIBRARIES(imgui
         PRIVATE
-            $<IF:$<TARGET_EXISTS:sdl>,sdl,sdl>
+            SDL3::SDL3
             Vulkan::Vulkan
             GPUOpen::VulkanMemoryAllocator
     )

@@ -7,20 +7,31 @@
 * -------------------------------------------------------
 * entrypoint.cpp
 * -------------------------------------------------------
-* Created: Current Date
+* Main entry point for the Editor executable.
+* Uses the APP_MAIN macro from entrypoint.h which creates
+* the platform-appropriate entry point (WinMain on Windows,
+* main on Linux/macOS) and wires up the PlatformContext.
 * -------------------------------------------------------
 */
-#include <SceneryEditorX/EntryPoint.h>
+#include <SceneryEditorX/core/platform/entrypoint.h>
 
 /// -------------------------------------------------------
 
 /**
- * Main entry point for the application.
- * This file ensures there's an actual implementation of main in the executable.
+ * @brief Platform entry point defined via the APP_MAIN macro.
+ *
+ * The APP_MAIN macro expands to the correct platform entry point
+ * (WinMain on Windows, main on Linux/macOS), creates the
+ * PlatformContext, and invokes SceneryEditorX::Main(context).
+ *
+ * The body below is the platform_initializer function which is
+ * called before SceneryEditorX::Main for any pre-init work.
  */
-int main(int argc, char** argv)
+APP_MAIN(context)
 {
-    return SceneryEditorX::Main(argc, argv);
+    // Pre-initialization (before SceneryEditorX::Main is called)
+    // Additional platform-specific setup can go here if needed.
+    return 0;
 }
 
 /// -------------------------------------------------------

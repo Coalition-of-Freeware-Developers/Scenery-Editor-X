@@ -31,15 +31,24 @@
 #include "memory_allocator.h"
 #include "render_context.h"
 #include <mutex>
+
+/// VMA implementation — must be defined in exactly ONE translation unit.
+/// VK_NO_PROTOTYPES is active (volk is used), so we disable VMA's static
+/// Vulkan function resolution and enable dynamic resolution via the
+/// VmaVulkanFunctions struct populated in MemoryAllocator::Init().
+#define VMA_IMPLEMENTATION
+#define VMA_STATIC_VULKAN_FUNCTIONS  0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include <vma/vk_mem_alloc.h>
+#include <volk/volk.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    static std::mutex s_MutexAllocator;
     static VmaAllocator s_Allocator;
+    static std::mutex s_MutexAllocator;
     static std::unordered_map<void *, VmaAllocation> s_Allocations;
 
     // -------------------------------------------------------
@@ -59,14 +68,22 @@ namespace SceneryEditorX
 
     void MemoryAllocator::Init()
 	{
+        // Zero-initialize and provide the two root function pointers.
+        // With VMA_DYNAMIC_VULKAN_FUNCTIONS=1, VMA will use these to
+        // resolve all other Vulkan function pointers at runtime.
+        VmaVulkanFunctions vkFunctions = {};
+        vkFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+        vkFunctions.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
+
         Ref<RenderContext> ctx = RenderContext::Get();
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.physicalDevice = ctx->GetDevice()->GetPhysicalDevice();
-        allocatorInfo.device = ctx->GetDevice()->GetDevice();
+        allocatorInfo.device = ctx->GetDevice()->GetLogicalDevice();
         allocatorInfo.instance = ctx->GetInstance();
         allocatorInfo.vulkanApiVersion = ctx->GetDevice()->GetDeviceProperties().apiVersion;
+        allocatorInfo.pVulkanFunctions = &vkFunctions, 
         allocatorInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-        if (Ref<Device> device = ctx->GetDevice(); device->GetDeviceStatics().isRayTracingSupported)
+        if (Ref<Device> device = ctx->GetLogicalDevice(); Device::GetDeviceStatics().isRayTracingSupported)
         {
             allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
         }

@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,61 +23,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * model.h
+ * volk_impl.cpp
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 13/02/2026
+ * -------------------------------------------------------
+ *
+ * Single compilation unit for the volk meta-loader.
+ *
+ * volk is a meta-loader for Vulkan that replaces the need to
+ * link against the Vulkan loader at build time. It loads all
+ * Vulkan function pointers at runtime, including extension
+ * functions like vkDestroyAccelerationStructureKHR.
+ *
+ * VOLK_IMPLEMENTATION must be defined in exactly ONE translation
+ * unit in the entire project. This file serves that purpose.
+ * -------------------------------------------------------
+ * Created: 14/02/2026
  * -------------------------------------------------------
  */
-#pragma once
-#include "buffer.h"
-#include <string>
-#include <vector>
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
-{
-
-	struct Vertex
-	{
-	    Vec3 pos;
-	    Vec3 normal;
-	    Vec2 uv;
-	};
-	
-	// -------------------------------------------------------
-
-    class Model : public RefCounted
-	{
-	public:
-	    Model() = default;
-	    ~Model() = default;
-	
-	    // Load an OBJ and create a single mapped host-visible buffer containing
-	    // vertices followed by indices. Returns true on success.
-	    bool LoadFromObj(const std::string& filename, VmaAllocator allocator, const VmaAllocationCreateInfo& allocInfo);
-	
-	    VkBuffer GetBuffer() const { return m_Buffer.Get(); }
-	    VkDeviceSize GetVertexBufferSize() const { return m_VBufferSize; }
-	    VkDeviceSize GetIndexBufferSize() const { return m_IBufferSize; }
-	    uint32_t GetIndexCount() const { return m_IndexCount; }
-	
-	    void Destroy() { m_Buffer.Destroy(); }
-	
-	    // Helpers for vertex input setup
-	    static VkVertexInputBindingDescription BindingDescription();
-	    static std::vector<VkVertexInputAttributeDescription> AttributeDescriptions();
-	
-	private:
-	    Buffer m_Buffer;
-        Ref<Device> m_Device;
-	    VkDeviceSize m_VBufferSize{ 0 };
-	    VkDeviceSize m_IBufferSize{ 0 };
-	    uint32_t m_IndexCount{ 0 };
-	    std::vector<Vertex> m_Vertices;
-	    std::vector<uint16_t> m_Indices;
-	};
-
-}
+/// Define VOLK_IMPLEMENTATION before including volk.h to generate
+/// the function definitions (volkInitialize, volkLoadInstance, etc.)
+#define VOLK_IMPLEMENTATION
+#include <volk/volk.h>
 
 // -------------------------------------------------------

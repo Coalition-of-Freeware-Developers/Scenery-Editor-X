@@ -29,9 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "VulkanApp.h" // for ShaderDataBuffer and VulkanApp::maxFramesInFlight
+#include "shader_module.h"
 #include <array>
-#include <iostream>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
@@ -46,7 +45,7 @@ namespace SceneryEditorX
 	{
 	public:
 	    UniformBufferSet() = default;
-	    UniformBufferSet(VmaAllocator allocator) : m_Allocator(allocator), m_Device(VK_NULL_HANDLE)
+	    UniformBufferSet(VmaAllocator allocator) : m_Device(VK_NULL_HANDLE), m_Allocator(allocator)
 	    {
 	        Create();
 	    }
@@ -65,7 +64,7 @@ namespace SceneryEditorX
 	        if (!m_Allocator || m_Device == VK_NULL_HANDLE)
 	            return;
 
-	        for (size_t i = 0; i < VulkanApp::MAX_FRAMES_IN_FLIGHT; ++i)
+	        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	        {
 	            VkBufferCreateInfo uBufferCI
 	            {
@@ -95,7 +94,7 @@ namespace SceneryEditorX
 	                .buffer = m_Buffers[i].buffer
 	            };
 
-	            m_Buffers[i].deviceAddress = vkGetBufferDeviceAddress(Device::GetDevice(), &uBufferBdaInfo);
+	            m_Buffers[i].deviceAddress = vkGetBufferDeviceAddress(m_Device->GetLogicalDevice(), &uBufferBdaInfo);
 	        }
 	    }
 	
@@ -106,7 +105,7 @@ namespace SceneryEditorX
 	            return;
 	        }
 
-	        for (size_t i = 0; i < VulkanApp::MAX_FRAMES_IN_FLIGHT; ++i)
+	        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	        {
 	            if (m_Buffers[i].allocation != VK_NULL_HANDLE)
 	            {
@@ -123,12 +122,12 @@ namespace SceneryEditorX
 	        m_Destroyed = true;
 	    }
 	
-	    std::array<ShaderDataBuffer, VulkanApp::MAX_FRAMES_IN_FLIGHT> &Buffers() { return m_Buffers; }
+	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> &Buffers() { return m_Buffers; }
 	
 	private:
         Ref<Device> m_Device;
 	    VmaAllocator m_Allocator;
-	    std::array<ShaderDataBuffer, VulkanApp::MAX_FRAMES_IN_FLIGHT> m_Buffers{};
+	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> m_Buffers{};
 	    bool m_Destroyed = false;
 	};
 	

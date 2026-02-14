@@ -51,14 +51,14 @@ namespace SceneryEditorX
 	{
 
 	    // Load model
-	    if (!m_Model.LoadFromObj(modelFile, allocator, Device::GetDevice(), modelAllocInfo))
+	    if (!m_Model.LoadFromObj(modelFile, allocator, modelAllocInfo))
 	    {
 	        return false;
 	    }
 
         // Load textures
 	    m_Textures.clear();
-	    std::vector<VkDescriptorImageInfo> imageInfos;
+	    std::vector<::VkDescriptorImageInfo> imageInfos;
 	    for (auto& tf : textureFiles) 
 	    {
 	        m_Textures.emplace_back(allocator, cmdPool, queue, tf);
@@ -86,7 +86,7 @@ namespace SceneryEditorX
 
 	    m_Textures.clear();
 	    m_DescriptorOwned.Destroy();			// Destroy descriptor resources
-	    m_Model.Destroy(Device::GetDevice());	// Destroy model buffer
+	    m_Model.Destroy();						// Destroy model buffer
 	}
 
 }

@@ -29,14 +29,17 @@
  * -------------------------------------------------------
  */
 #include "buffer.h"
+#include "render_context.h"
 #include <volk/volk.h>
 
 // --------------------------------
 
 namespace SceneryEditorX
 {
-	Buffer::Buffer(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo) : m_Device(device), m_Allocator(allocator)
+	Buffer::Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo) :  m_Allocator(allocator)
 	{
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        m_Device = device->GetLogicalDevice();
 	    VkBufferCreateInfo bufferCI{ .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = size, .usage = usage };
 	    vmaCreateBuffer(m_Allocator, &bufferCI, &allocInfo, &m_Buffer, &m_Allocation, nullptr);
 	}

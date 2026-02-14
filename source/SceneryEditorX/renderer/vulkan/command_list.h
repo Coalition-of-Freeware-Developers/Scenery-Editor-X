@@ -29,30 +29,51 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "buffer.h"
 #include "command_pool.h"
 #include "frame_sync.h"
 #include "pipeline.h"
 #include "queue.h"
+#include "viewport.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	enum class CommandState : uint8_t
+	{
+	    Idle,
+		Recording, 
+	    Submitted
+	};
 
     class CommandList : public RefCounted
     {
     public:
-        CommandList(Ref<Queue>* queue, CommandPool cmdPool, const char* name);
+        CommandList(Queue* queue, CommandPool cmdPool, const char* name);
         virtual ~CommandList() override;
 
         void Begin();
         void Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal = nullptr);
         void WaitForExecution(const bool logWaitTime = false);
+        void SetVertexBuffer(const Buffer *vertexBuffer, Buffer *instance);
         //void SetPipelineState(PipelineState &pso);
 
+        const CommandState GetState() const { return m_State; }
+
+		void Draw(const uint32_t vertexCount, const uint32_t vertexOffset = 0);
+        void DrawIndexed(uint32_t indexCount, uint32_t instCount, uint32_t indexOffset, uint32_t vertexOffset, uint32_t instIndex);
+
+        void SetViewport(const Viewport& viewport) const;
+        void SetScissor(const xMath::Rectangle &scissorRect) const;
+        void SetCullMode(const VkCullModeFlags cullMode);
+
     private:
-        Ref<Queue> *m_Queue;
+        Queue *m_Queue;
         Pipeline m_Pipeline;
+        VkCommandBuffer m_CmdBuffer;
+		std::atomic<CommandState> m_State = CommandState::Idle;
+		VkCullModeFlags m_CullMode = VK_CULL_MODE_BACK_BIT;
     };
 
 } // namespace SceneryEditorX

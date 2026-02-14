@@ -46,12 +46,9 @@ namespace SceneryEditorX
 	    // Convenience ctor: use the same SPIR-V blob for both vertex and fragment
 	    // stages (matches the original sample behavior).
 	    ShaderManager(const void* spirvCode, size_t codeSize);
-	
-	    // General ctor: provide stages and blobs (ownership copied into modules)
 	    ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void*, size_t>>>& stages);
-	
 	    ~ShaderManager() = default;
-	
+
 	    size_t StageCount() const { return m_Stages.size(); }
 	    VkShaderStageFlagBits StageAt(size_t i) const { return m_Stages[i]; }
 	    VkShaderModule ModuleAt(size_t i) const { return m_Modules[i].Get(); }

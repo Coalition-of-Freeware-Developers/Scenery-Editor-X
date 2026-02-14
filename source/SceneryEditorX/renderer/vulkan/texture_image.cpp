@@ -46,7 +46,8 @@ namespace SceneryEditorX
 		ktxTexture* ktxTexture = nullptr;
 		KTX_error_code ktxres = ktxTexture_CreateFromNamedFile(path.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 
-		SEDX_CORE_ASSERT(ktxres == KTX_SUCCESS && ktxTexture != nullptr, "ktxTexture_CreateFromNamedFile failed for: " + path);
+		Ref<Device> device = RenderContext::GetDevice();
+		SEDX_CORE_ASSERT(ktxres == KTX_SUCCESS && ktxTexture != nullptr, "ktxTexture_CreateFromNamedFile failed for: {}", path);
 	
 		VkImageCreateInfo texImgCI{};
 		texImgCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -79,7 +80,7 @@ namespace SceneryEditorX
 		texVewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		texVewCI.subresourceRange.levelCount = texImgCI.mipLevels;
 		texVewCI.subresourceRange.layerCount = 1;
-		if (vkCreateImageView(Device::GetDevice(), &texVewCI, nullptr, &out.view) != VK_SUCCESS)
+        if (vkCreateImageView(device->GetLogicalDevice(), &texVewCI, nullptr, &out.view) != VK_SUCCESS)
 		{
 			SEDX_CORE_WARN_TAG("Texture", "vkCreateImageView failed");
 			vmaDestroyImage(allocator, out.image, out.allocation);
@@ -104,7 +105,7 @@ namespace SceneryEditorX
 		if (vmaCreateBuffer(allocator, &imgSrcBufferCI, &imgSrcAllocCI, &imgSrcBuffer, &imgSrcAllocation, nullptr) != VK_SUCCESS)
 		{
             SEDX_CORE_WARN_TAG("Texture", "vmaCreateBuffer (staging) failed");
-			vkDestroyImageView(Device::GetDevice(), out.view, nullptr);
+            vkDestroyImageView(device->GetLogicalDevice(), out.view, nullptr);
 			vmaDestroyImage(allocator, out.image, out.allocation);
 			ktxTexture_Destroy(ktxTexture);
 			out.image = VK_NULL_HANDLE;
@@ -118,14 +119,14 @@ namespace SceneryEditorX
 		VkFence fenceOneTime = VK_NULL_HANDLE;
 		VkFenceCreateInfo fenceOneTimeCI{};
 		fenceOneTimeCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		vkCreateFence(Device::GetDevice(), &fenceOneTimeCI, nullptr, &fenceOneTime);
+		vkCreateFence(device->GetLogicalDevice(), &fenceOneTimeCI, nullptr, &fenceOneTime);
 	
 		VkCommandBuffer cbOneTime = VK_NULL_HANDLE;
 		VkCommandBufferAllocateInfo cbOneTimeAI{};
 		cbOneTimeAI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		cbOneTimeAI.commandPool = oneTimeCmdPool;
 		cbOneTimeAI.commandBufferCount = 1;
-        vkAllocateCommandBuffers(Device::GetDevice(), &cbOneTimeAI, &cbOneTime);
+        vkAllocateCommandBuffers(device->GetLogicalDevice(), &cbOneTimeAI, &cbOneTime);
 	
 		VkCommandBufferBeginInfo cbOneTimeBI{};
 		cbOneTimeBI.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -191,8 +192,8 @@ namespace SceneryEditorX
 		oneTimeSI.commandBufferCount = 1;
 		oneTimeSI.pCommandBuffers = &cbOneTime;
 		vkQueueSubmit(queue, 1, &oneTimeSI, fenceOneTime);
-		vkWaitForFences(Device::GetDevice(), 1, &fenceOneTime, VK_TRUE, UINT64_MAX);
-		vkDestroyFence(Device::GetDevice(), fenceOneTime, nullptr);
+		vkWaitForFences(device->GetLogicalDevice(), 1, &fenceOneTime, VK_TRUE, UINT64_MAX);
+		vkDestroyFence(device->GetLogicalDevice(), fenceOneTime, nullptr);
 	
 		vmaUnmapMemory(allocator, imgSrcAllocation);
 		vmaDestroyBuffer(allocator, imgSrcBuffer, imgSrcAllocation);
@@ -205,10 +206,10 @@ namespace SceneryEditorX
 		samplerCI.anisotropyEnable = VK_TRUE;
 		samplerCI.maxAnisotropy = 8.0f;
 		samplerCI.maxLod = (float)texImgCI.mipLevels;
-		if (vkCreateSampler(Device::GetDevice(), &samplerCI, nullptr, &out.sampler) != VK_SUCCESS)
+		if (vkCreateSampler(device->GetLogicalDevice(), &samplerCI, nullptr, &out.sampler) != VK_SUCCESS)
 		{
 			SEDX_CORE_WARN_TAG("Texture", "vkCreateSampler failed");
-			vkDestroyImageView(Device::GetDevice(), out.view, nullptr);
+			vkDestroyImageView(device->GetLogicalDevice(), out.view, nullptr);
 			vmaDestroyImage(allocator, out.image, out.allocation);
 			ktxTexture_Destroy(ktxTexture);
 			out.image = VK_NULL_HANDLE;

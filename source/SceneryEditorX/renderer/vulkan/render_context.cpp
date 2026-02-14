@@ -47,6 +47,10 @@ namespace SceneryEditorX
     constexpr uint32_t StagingBufferSize = 256 * 1024 * 1024;
     constexpr uint32_t TimeStampPerPool = 64;
 
+    // Static member definitions
+    VkInstance RenderContext::m_Instance = VK_NULL_HANDLE;
+    Ref<Device> RenderContext::m_Device = nullptr;
+
     // -------------------------------------------------------
 	
     static uint32_t GetVulkanAPIVersion()
@@ -177,7 +181,7 @@ namespace SceneryEditorX
 
             if (VkResult res = vkCreateInstance(&createInfo, nullptr, &m_Instance); res != VK_SUCCESS)
             {
-                std::cerr << "Failed to create Vulkan instance: " << res << '\n';
+                SEDX_CORE_ERROR("Failed to create Vulkan instance: {}", res);
                 m_Instance = VK_NULL_HANDLE;
                 return;
             }
@@ -240,11 +244,11 @@ namespace SceneryEditorX
             }*/
 
 			m_Device = CreateRef<Device>(m_Instance);
-			if (!m_Device)
-			{
-				SEDX_CORE_ERROR("Failed to create Device in RenderContext initialization");
-				return;
-			}
+			if (!m_Device || m_Device->GetLogicalDevice() == VK_NULL_HANDLE)
+            {
+                SEDX_CORE_ERROR_TAG("RenderContext", "Failed to create valid Vulkan device!");
+                return;
+            }
 
             m_IsInitialized = true;
 

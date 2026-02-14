@@ -56,10 +56,10 @@ namespace SceneryEditorX
 	    layoutCI.bindingCount = 1;
 	    layoutCI.pBindings = &binding;
 	
-	    VkResult r = vkCreateDescriptorSetLayout(m_Device->GetDevice(), &layoutCI, nullptr, &m_Layout);
+	    VkResult r = vkCreateDescriptorSetLayout(m_Device->GetLogicalDevice(), &layoutCI, nullptr, &m_Layout);
 	    if (r != VK_SUCCESS) 
 	    {
-	        std::cerr << "vkCreateDescriptorSetLayout failed: " << r << '\n';
+	        SEDX_CORE_ERROR_TAG("DescriptorSet", "vkCreateDescriptorSetLayout failed: {}", r);
 	        return false;
 	    }
 	
@@ -74,11 +74,11 @@ namespace SceneryEditorX
 	    poolCI.poolSizeCount = 1;
 	    poolCI.pPoolSizes = &poolSize;
 	
-	    r = vkCreateDescriptorPool(m_Device->GetDevice(), &poolCI, nullptr, &m_Pool);
+	    r = vkCreateDescriptorPool(m_Device->GetLogicalDevice(), &poolCI, nullptr, &m_Pool);
 	    if (r != VK_SUCCESS) 
 	    {
-	        std::cerr << "vkCreateDescriptorPool failed: " << r << '\n';
-            vkDestroyDescriptorSetLayout(m_Device->GetDevice(), m_Layout, nullptr);
+	        SEDX_CORE_ERROR_TAG("DescriptorSet", "vkCreateDescriptorPool failed: {}", r);
+            vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
 	        m_Layout = VK_NULL_HANDLE;
 	        return false;
 	    }
@@ -106,10 +106,10 @@ namespace SceneryEditorX
 	    allocInfo.descriptorSetCount = 1;
 	    allocInfo.pSetLayouts = &m_Layout;
 	
-	    VkResult r = vkAllocateDescriptorSets(m_Device->GetDevice(), &allocInfo, &descriptorSet);
+	    VkResult r = vkAllocateDescriptorSets(m_Device->GetLogicalDevice(), &allocInfo, &descriptorSet);
 	    if (r != VK_SUCCESS)
 	    {
-	        std::cerr << "vkAllocateDescriptorSets failed: " << r << '\n';
+	        SEDX_CORE_ERROR_TAG("DescriptorSet", "vkAllocateDescriptorSets failed: {}", r);
 	        return VK_NULL_HANDLE;
 	    }
 	
@@ -120,7 +120,7 @@ namespace SceneryEditorX
 	    writeDescSet.descriptorCount = variableDescCount;
 	    writeDescSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	    writeDescSet.pImageInfo = imageInfos.data();
-	    vkUpdateDescriptorSets(m_Device->GetDevice(), 1, &writeDescSet, 0, nullptr);
+	    vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &writeDescSet, 0, nullptr);
 	
 	    return descriptorSet;
 	}
@@ -154,13 +154,13 @@ namespace SceneryEditorX
         {
             if (m_DescriptorPool != VK_NULL_HANDLE)
             {
-                vkDestroyDescriptorPool(m_Device->GetDevice(), m_DescriptorPool, nullptr);
+                vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_DescriptorPool, nullptr);
                 m_DescriptorPool = VK_NULL_HANDLE;
             }
 
             if (m_Layout != VK_NULL_HANDLE)
             {
-                vkDestroyDescriptorSetLayout(m_Device->GetDevice(), m_Layout, nullptr);
+                vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
                 m_Layout = VK_NULL_HANDLE;
             }
 

@@ -39,6 +39,7 @@
 
 namespace SceneryEditorX
 {
+
     class Asset : public RefCounted
 	{
 	public:

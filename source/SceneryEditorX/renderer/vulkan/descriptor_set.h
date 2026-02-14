@@ -39,14 +39,14 @@ namespace SceneryEditorX
 {
     class Device;
 
-    // RAII wrapper for descriptor layout + pool + set. Uses the existing Descriptor
+	// RAII wrapper for descriptor layout + pool + set. Uses the existing Descriptor
 	// helper to create resources and exposes an explicit destroy(m_Device) method.
 	class DescriptorSet
-    {
+	{
 	public:
-	    DescriptorSet() = default;
-	    DescriptorSet(const std::vector<VkDescriptorImageInfo>& textureDescriptors);
-        ~DescriptorSet();
+		DescriptorSet() = default;
+		DescriptorSet(const std::vector<::VkDescriptorImageInfo>& textureDescriptors);
+		~DescriptorSet();
 
         void Destroy();
 

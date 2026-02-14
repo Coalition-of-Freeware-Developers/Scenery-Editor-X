@@ -783,7 +783,7 @@ Buffer CreateBuffer(uint64_t size, BufferUsageFlags usage, MemoryFlags memory, c
 ## Dependencies:
 
 * **Vulkan Graphics API:** The core graphics library for rendering the various scenes, UI, and assets in the application.
-* **GLFW3:** This Scenery Editor X utilizes GLFW3/GLFW for its multi-platform windowing and interaction library.
+* **SDL3:** This Scenery Editor X utilizes SDL3/SDL for its multi-platform windowing and interaction library.
 * **ImGui:** The library for creating and managing the GUI elements and interactions in the application. Used for the multiple viewports and ImGui panel docking.
 * **ImGuizmo:** ImGizmo is a small (.h and .cpp) library built ontop of Dear ImGui that allow you to manipulate(Rotate & translate at the moment) 4x4 float matrices. No other dependancies. Coded with Immediate Mode (IM) philosophy in mind.
 * **libconfig:** C/C++ library for processing structured configuration files. Scenery Editor X uses this library for creating, reading, and structuring the user settings, system settings, and core application settings. This library is to be use with any operation requring reading and writing configuration data to and from `.cfg` files.
@@ -1554,7 +1554,7 @@ SceneryEditorX/
 ├── cmake/                           # Custom CMake modules
 ├── dependency/                      # Third-party dependencies (vcpkg managed)
 │   ├── Catch2/                      # Testing framework
-│   ├── glfw/                        # Window management
+│   ├── SDL/                         # Window management
 │   ├── imgui/                       # Immediate mode GUI
 │   ├── json/                        # JSON library
 │   ├── libconfig/                   # Configuration library
@@ -1599,7 +1599,7 @@ SET(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/dependency/vcpkg/scripts/buildsyste
 
 # Dependency management
 FIND_PACKAGE(Vulkan REQUIRED)
-FIND_PACKAGE(glfw3 CONFIG REQUIRED)
+FIND_PACKAGE(sdl CONFIG REQUIRED)
 FIND_PACKAGE(nlohmann_json CONFIG REQUIRED)
 FIND_PACKAGE(Catch2 CONFIG REQUIRED)
 
@@ -1607,7 +1607,7 @@ FIND_PACKAGE(Catch2 CONFIG REQUIRED)
 ADD_EXECUTABLE(SceneryEditorX ${SOURCES})
 TARGET_LINK_LIBRARIES(SceneryEditorX PRIVATE
     Vulkan::Vulkan
-    glfw
+    sdl
     nlohmann_json::nlohmann_json
     imgui
     libconfig++

@@ -126,21 +126,21 @@ namespace SceneryEditorX
 	
 	// ---------------------------------------------------------
 	
-	QueueManager::QueueFamilyIndices QueueManager::DetectQueueFamilies(const Ref<Device> &physicalDevice)
+	QueueManager::QueueFamilyIndices QueueManager::DetectQueueFamilies(const VkPhysicalDevice &physicalDevice)
 	{
 	    QueueFamilyIndices indices;
 	    if (!physicalDevice)
 	    {
 	        return indices;
 	    }
-	
-	    uint32_t queueFamilyCount = 0;
-	    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice->GetPhysicalDevice(), &queueFamilyCount, nullptr);
-	
-	    std::vector<VkQueueFamilyProperties> queueFamiliesProperties(queueFamilyCount);
-	    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice->GetPhysicalDevice(), &queueFamilyCount, queueFamiliesProperties.data());
-	
-	    uint32_t index = 0;
+
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+		std::vector<VkQueueFamilyProperties> queueFamiliesProperties(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamiliesProperties.data());
+
+		uint32_t index = 0;
 	    if (GetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamiliesProperties, &index))
 	    {
 	        indices.graphics = index;
@@ -215,14 +215,13 @@ namespace SceneryEditorX
 	    }
 	}
 	
-	QueueManager::QueueManager(const QueueConfig &config) : m_Config(config)
+	QueueManager::QueueManager(const Ref<Device> &device, const QueueConfig &config) : m_Device(device), m_Config(config)
 	{
 	    SEDX_CORE_INFO_TAG("QueueManager", "=== Initializing Queue Manager ===");
 	
-	    m_Device = RenderContext::Get()->GetDevice();
 	    SEDX_CORE_ASSERT(m_Device, "Device must be initialized before QueueManager");
 	
-	    m_FamilyIndices = DetectQueueFamilies(RenderContext::Get()->GetDevice());
+	    m_FamilyIndices = DetectQueueFamilies(m_Device->GetPhysicalDevice());
 	    SEDX_CORE_INFO_TAG("QueueManager",
 	                       "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
 	                       m_FamilyIndices.graphics,
@@ -258,13 +257,10 @@ namespace SceneryEditorX
 	            break;
 	        }
 	
-	        // Create queue instance with pre-allocated command lists
-	        m_GPUQueues[i] = CreateRef<Queue>(type, m_Config.cmdListsPerQueue, queueName);
+	        // Create queue instance and store in m_GPUQueues and s_Regular
+	        AllocateQueue(type, m_Config.cmdListsPerQueue, queueName);
 	        SEDX_CORE_ASSERT(m_GPUQueues[i], "Failed to create Queue of type {}", i);
 	
-	        // Store in static array for global access
-	        s_Regular[i] = m_GPUQueues[i];
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Stored {} in static array at index {}", queueName, i);
 	
 	        SEDX_CORE_INFO_TAG("QueueManager", "Created {} (family index: {})", queueName, GetFamilyIndexByType(type));
 	    }
@@ -298,16 +294,13 @@ namespace SceneryEditorX
 	    if (m_GPUQueues[typeIndex])
 	    {
 	        SEDX_CORE_INFO_TAG("QueueManager", "Returning existing queue for type {}", typeIndex);
-	        m_GPUQueues[typeIndex];
+	        return;
 	    }
-	
 	    // Determine queue name
 	    const char *queueName = name ? name : "Unnamed Queue";
 	
 	    // Create new queue instance
-	    Ref<Queue> queue =
-	        CreateRef<Queue>(type, preAllocCmdList > 0 ? preAllocCmdList : m_Config.cmdListsPerQueue, queueName);
-	    SEDX_CORE_ASSERT(queue, "Failed to create Queue object");
+	    Ref<Queue> queue = CreateRef<Queue>(type, queueName);
 	
 	    // Store the queue
 	    m_GPUQueues[typeIndex] = queue;
@@ -343,7 +336,7 @@ namespace SceneryEditorX
 	
 	    // Ensure queue is idle before freeing
 	    SEDX_CORE_INFO_TAG("QueueManager", "Freeing queue of type {}...", typeIndex);
-	    queue->WaitIdle();
+        Queue::WaitIdle(*queue);
 	
 	    // Clear from tracked queues
 	    if (m_GPUQueues[typeIndex] == queue)
@@ -369,12 +362,12 @@ namespace SceneryEditorX
 	
 	    // Iterate all GPU queues and wait for them to become idle
 	    uint32_t idleCount = 0;
-	    for (auto &queueRef : m_GPUQueues)
+	    for (auto &queueRef : s_Regular)
 	    {
 	        if (queueRef)
 	        {
 	            // Flush pending work and wait for completion
-	            queueRef->WaitIdle();
+	            Queue::WaitIdle(*queueRef);
 	            idleCount++;
 	            SEDX_CORE_TRACE_TAG("QueueManager", "{} queue is now idle", static_cast<uint32_t>(queueRef->GetType()));
 	        }
@@ -388,10 +381,10 @@ namespace SceneryEditorX
 	}
 	
 	/**
-	     * @brief Return a pointer to the GPUQueue for the given QueueType.
-	     * @param type The QueueType to query.
-	     * @return Pointer to GPUQueue inside m_GPUQueues or nullptr if out-of-range.
-	     */
+	 * @brief Return a pointer to the GPUQueue for the given QueueType.
+	 * @param type The QueueType to query.
+	 * @return Pointer to GPUQueue inside m_GPUQueues or nullptr if out-of-range.
+	 */
 	Ref<Queue> *QueueManager::GetQueue(QueueType type)
 	{
 	    const uint32_t idx = static_cast<uint32_t>(type);

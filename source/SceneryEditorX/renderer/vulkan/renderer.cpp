@@ -29,14 +29,11 @@
  * -------------------------------------------------------
  */
 #include "renderer.h"
+#include "asset_manager.h"
 #include "swapchain.h"
 #include "SceneryEditorX/core/application/application.h"
-#include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include <array>
-#include <cstdlib>
-#include <iostream>
-#include <optional>
 #include <glm/glm.hpp>
 #include <volk/volk.h>
 
@@ -46,54 +43,46 @@ namespace SceneryEditorX
 {
 
     struct RendererProperties
-	{
-	    VkDescriptorSet activeRendererDescriptorSet = nullptr;
-	    std::vector<VkDescriptorPool> descriptorPools;
-	    VkDescriptorPool materialDescriptorPool;
-	    std::vector<uint32_t> descriptorPoolAllocationCount;
-	
-	    /** Default samplers */
-	    VkSampler samplerClamp = nullptr;
-	    VkSampler samplerPoint = nullptr;
-	
-	    int32_t selectedDrawCall = -1;
-	    int32_t drawCallCount = 0;
-	};
-
-	static inline void chk(VkResult result) 
-	{
-	    if (result != VK_SUCCESS) {
-	        std::cerr << "Vulkan call returned an error (" << result << ")\n";
-	        exit(result);
-	    }
-	}
-
-	static inline void chk(bool result) 
-	{
-	    if (!result) {
-	        std::cerr << "Call returned an error\n";
-	        exit(EXIT_FAILURE);
-	    }
-	}
+    {
+        VkDescriptorSet activeRendererDescriptorSet = nullptr;
+        std::vector<VkDescriptorPool> descriptorPools;
+        VkDescriptorPool materialDescriptorPool;
+        std::vector<uint32_t> descriptorPoolAllocationCount;
+    
+        /** Default samplers */
+        VkSampler samplerClamp = nullptr;
+        VkSampler samplerPoint = nullptr;
+    
+        int32_t selectedDrawCall = -1;
+        int32_t drawCallCount = 0;
+    };
 
     // -------------------------------------------------------
+    // Static Member Definitions
+    // -------------------------------------------------------
 
-    static RendererProperties *s_Data = nullptr;
-    static bool s_Initialized = false;
-    static uint64_t s_FrameNumber = 0;
-    static float s_NearPlane = 0.0f;
-    static float s_FarPlane = 1.0f;
-    static Ref<Swapchain> s_SwapChain = nullptr;
-    const uint8_t SWAPCHAIN_IMAGE_COUNT = 2;
-    std::atomic<bool> Renderer::m_ResourcesInitialized = false;
-    CommandList* Renderer::m_CurrentCmdList = nullptr;
+    RendererProperties* Renderer::s_Data = nullptr;
+    Ref<Swapchain> Renderer::s_SwapChain = nullptr;
+    std::atomic<bool> Renderer::s_ResourcesInitialized = false;
+    CommandList* Renderer::s_CurrentCmdList = nullptr;
 
-    // resolution & viewport
+    Scope<FrameSync> Renderer::s_FrameSync = nullptr;
+    Scope<CommandPool> Renderer::s_CommandPool = nullptr;
+    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::s_CommandBuffers = {};
+
+    uint32_t Renderer::s_CurrentFrameIndex = 0;
+    uint64_t Renderer::s_FrameNumber = 0;
+    uint32_t Renderer::s_SwapchainImageIndex = 0;
+    bool Renderer::s_FrameInProgress = false;
+
+    // Resolution & viewport (internal state)
     static xMath::Vec2 s_RendererResolution(0.0f, 0.0f);
     static xMath::Vec2 s_OutputResolution(0.0f, 0.0f);
     static Viewport s_Viewport = Viewport(0, 0, 0, 0);
     static bool s_OrthoProjection_Dirty = true;
 
+    // -------------------------------------------------------
+    // Lifecycle Methods
     // -------------------------------------------------------
 
     void Renderer::Init()
@@ -103,14 +92,14 @@ namespace SceneryEditorX
         // Prevent double-initialization
         if (s_Data)
         {
-            SEDX_CORE_INFO_TAG("Renderer", R"(Init() called but renderer is already initialized — skipping)");
+            SEDX_CORE_INFO_TAG("Renderer", "Init() called but renderer is already initialized — skipping");
             return;
         }
 
-        // Initialize volk loader then create an instance.
-        volkInitialize();
+        SEDX_CORE_INFO_TAG("Renderer", "=== Initializing Renderer ===");
 
-        m_Ctx = new RenderContext();
+        // Initialize volk loader
+        volkInitialize();
 
         // Get the render context (Initialize the context if needed)
         if (const Ref<RenderContext> ctx = GetContext())
@@ -122,7 +111,6 @@ namespace SceneryEditorX
         }
 
         s_Data = new RendererProperties;
-        SEDX_CORE_INFO_TAG("Renderer", "Initialized new RenderProperties: {}");
 
         /*
 		if (Debugging::IsRenderdocEnabled())
@@ -131,8 +119,7 @@ namespace SceneryEditorX
         }
         */
 
-        m_Window = Window::Get();
-
+        // Get window dimensions
         uint32_t width = Window::GetWidth();
         uint32_t height = Window::GetHeight();
 
@@ -141,73 +128,453 @@ namespace SceneryEditorX
         SetViewport(static_cast<float>(width), static_cast<float>(height));
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// SwapChain																									  ///
+        /// SwapChain                                                                                                     ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         s_SwapChain = CreateRef<Swapchain>();
-        s_SwapChain->Create(m_Ctx->surface, m_Ctx->queueFamily, m_Ctx->allocator);
+        // Swapchain will be created when the surface is available from the render context
+        // s_SwapChain->Create(surface, queueFamily, allocator);
+        SEDX_CORE_INFO_TAG("Renderer", "✓ Created Swapchain");
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Frame Resources                                                                                               ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        CreateFrameResources();
+
+        s_ResourcesInitialized = true;
+        SEDX_CORE_INFO_TAG("Renderer", "=== Renderer Initialization Complete ===");
     }
 
     void Renderer::Shutdown()
     {
-        RenderContext::GetDevice()->GetQueueManager()->WaitIdleAll(); // Ensure device is idle before destroying resources
-        s_SwapChain->Destroy();
+        SEDX_CORE_INFO_TAG("Renderer", "=== Shutting Down Renderer ===");
+
+        // Wait for all GPU work to complete
+        if (RenderContext::GetDevice())
+        {
+            RenderContext::GetDevice()->GetQueueManager()->WaitIdleAll();
+        }
+
+        // Destroy frame resources
+        DestroyFrameResources();
+
+        // Destroy swapchain
+        if (s_SwapChain)
+        {
+            s_SwapChain->Destroy();
+            s_SwapChain.Reset();
+        }
+
+        // Cleanup renderer data
         delete s_Data;
         s_Data = nullptr;
+
+        s_ResourcesInitialized = false;
+        SEDX_CORE_INFO_TAG("Renderer", "=== Renderer Shutdown Complete ===");
     }
 
     void Renderer::Tick()
     {
-		s_SwapChain->AcquireNextImage();
-        RenderContext::GetDevice()->GetMemoryAllocator()->Tick(s_FrameNumber);
+        // Memory allocator housekeeping
+        if (RenderContext::GetDevice() && RenderContext::GetDevice()->GetMemoryAllocator())
+        {
+            RenderContext::GetDevice()->GetMemoryAllocator()->Tick(s_FrameNumber);
+        }
+    }
 
-		const uint32_t minRenderDimension = 64;
-		bool isValidResolution = s_RendererResolution.x >= minRenderDimension && s_RendererResolution.y >= minRenderDimension;
-        bool canRender = !Window::IsMinimized() && m_ResourcesInitialized && isValidResolution;
+    // -------------------------------------------------------
+    // Frame Resources
+    // -------------------------------------------------------
 
-		{
-            Ref<Queue> *queue = RenderContext::GetDevice()->GetQueueManager()->GetQueue(Graphics);
-		}
+    void Renderer::CreateFrameResources()
+    {
+        SEDX_CORE_INFO_TAG("Renderer", "Creating frame resources for {} frames in flight", MAX_FRAMES_IN_FLIGHT);
 
-		if (canRender)
-		{
-            DrawFrame(m_CurrentCmdList, nullptr);
-		}
+        // Get queue family index from render context
+        uint32_t queueFamily = 0; // TODO: Get from RenderContext when available
 
+        // Create command pool
+        s_CommandPool = CreateScope<CommandPool>(queueFamily, CommandPoolType::Resettable);
+        SEDX_CORE_INFO_TAG("Renderer", "✓ Created command pool");
+
+        // Allocate command buffers
+        auto allocatedBuffers = s_CommandPool->Allocate(MAX_FRAMES_IN_FLIGHT);
+        for (size_t i = 0; i < allocatedBuffers.size() && i < s_CommandBuffers.size(); ++i)
+        {
+            s_CommandBuffers[i] = allocatedBuffers[i];
+        }
+        SEDX_CORE_INFO_TAG("Renderer", "✓ Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
+
+        // Create frame sync objects (fences and semaphores)
+        uint32_t swapchainImageCount = s_SwapChain ? static_cast<uint32_t>(s_SwapChain->Images().size()) : 2;
+        s_FrameSync = CreateScope<FrameSync>(MAX_FRAMES_IN_FLIGHT, swapchainImageCount);
+        SEDX_CORE_INFO_TAG("Renderer", "✓ Created frame sync objects");
+    }
+
+    void Renderer::DestroyFrameResources()
+    {
+        SEDX_CORE_INFO_TAG("Renderer", "Destroying frame resources");
+
+        // Destroy sync objects
+        if (s_FrameSync)
+        {
+            s_FrameSync->Destroy();
+            s_FrameSync.reset();
+        }
+
+        // Command buffers are freed when command pool is destroyed
+        s_CommandBuffers.fill(VK_NULL_HANDLE);
+
+        // Destroy command pool
+        if (s_CommandPool)
+        {
+            s_CommandPool->Destroy();
+            s_CommandPool.reset();
+        }
+
+        SEDX_CORE_INFO_TAG("Renderer", "✓ Frame resources destroyed");
+    }
+
+    // -------------------------------------------------------
+    // Frame Rendering Methods
+    // -------------------------------------------------------
+
+    bool Renderer::BeginFrame()
+    {
+        // Check if we can render
+        if (!s_ResourcesInitialized)
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "BeginFrame called but renderer not initialized");
+            return false;
+        }
+
+        // Skip if window is minimized
+        const uint32_t minRenderDimension = 64;
+        bool isValidResolution = s_RendererResolution.x >= minRenderDimension && 
+                                  s_RendererResolution.y >= minRenderDimension;
+        
+        if (Window::IsMinimized() || !isValidResolution)
+        {
+            return false;
+        }
+
+        // Acquire next swapchain image
+        if (s_SwapChain)
+        {
+            s_SwapChain->AcquireNextImage();
+            s_SwapchainImageIndex = s_SwapChain->GetImageIndex();
+        }
+
+        // Wait for the fence of the current frame-in-flight
+        auto& fences = s_FrameSync->Fences();
+        if (s_CurrentFrameIndex < fences.size() && fences[s_CurrentFrameIndex] != VK_NULL_HANDLE)
+        {
+            VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+            vkWaitForFences(device, 1, &fences[s_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
+            vkResetFences(device, 1, &fences[s_CurrentFrameIndex]);
+        }
+
+        // Begin command buffer recording
+        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
+        if (cb != VK_NULL_HANDLE)
+        {
+            vkResetCommandBuffer(cb, 0);
+            
+            VkCommandBufferBeginInfo beginInfo{
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+            };
+            
+            VkResult result = vkBeginCommandBuffer(cb, &beginInfo);
+            if (result != VK_SUCCESS)
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "vkBeginCommandBuffer failed: {}", static_cast<int>(result));
+                return false;
+            }
+        }
+
+        s_FrameInProgress = true;
+        return true;
+    }
+
+    void Renderer::EndFrame()
+    {
+        if (!s_FrameInProgress)
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "EndFrame called but no frame in progress");
+            return;
+        }
+
+        if (VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex]; cb != VK_NULL_HANDLE)
+        {
+            // Transition swapchain image to present layout
+            if (s_SwapChain)
+            {
+                auto& swapchainImages = s_SwapChain->Images();
+                if (s_SwapchainImageIndex < swapchainImages.size())
+                {
+                    VkImageMemoryBarrier2 barrierPresent{
+                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        .dstAccessMask = 0,
+                        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        .image = swapchainImages[s_SwapchainImageIndex],
+                        .subresourceRange{
+                            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                            .levelCount = 1,
+                            .layerCount = 1
+                        }
+                    };
+
+                    VkDependencyInfo dependencyInfo{
+                        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                        .imageMemoryBarrierCount = 1,
+                        .pImageMemoryBarriers = &barrierPresent
+                    };
+
+                    vkCmdPipelineBarrier2(cb, &dependencyInfo);
+                }
+            }
+
+            // End command buffer recording
+            if (VkResult result = vkEndCommandBuffer(cb); result != VK_SUCCESS)
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "vkEndCommandBuffer failed: {}", static_cast<int>(result));
+            }
+        }
+
+        s_FrameInProgress = false;
+    }
+
+    void Renderer::SubmitAndPresent()
+    {
+        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
+        if (cb == VK_NULL_HANDLE || !s_FrameSync)
+        {
+            return;
+        }
+
+        auto& fences = s_FrameSync->Fences();
+        auto& presentSemaphores = s_FrameSync->PresentSemaphores();
+        auto& renderSemaphores = s_FrameSync->RenderSemaphores();
+
+        // Get graphics queue from context
+        VkQueue graphicsQueue = VK_NULL_HANDLE;
+        if (RenderContext::GetDevice() && RenderContext::GetDevice()->GetQueueManager())
+        {
+            if (Ref<Queue> *queueRef = RenderContext::GetDevice()->GetQueueManager()->GetQueue(Graphics); queueRef && *queueRef)
+            {
+                graphicsQueue = (*queueRef)->GetQueue();
+            }
+        }
+
+        if (graphicsQueue == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "No graphics queue available for submission");
+            return;
+        }
+
+        // Submit command buffer
+        VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        VkSubmitInfo submitInfo{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &presentSemaphores[s_CurrentFrameIndex],
+            .pWaitDstStageMask = &waitStages,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &cb,
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &renderSemaphores[s_SwapchainImageIndex]
+        };
+
+        if (VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, fences[s_CurrentFrameIndex]); submitResult != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "vkQueueSubmit failed: {}", static_cast<int>(submitResult));
+        }
+
+        // Present
+        if (s_SwapChain)
+        {
+            s_SwapChain->Present(graphicsQueue, s_SwapchainImageIndex, renderSemaphores[s_SwapchainImageIndex]);
+        }
+
+        // Advance to next frame-in-flight
+        s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
         s_FrameNumber++;
     }
 
     void Renderer::DrawFrame(CommandList *cmdList, CommandList *computeCmdList)
     {
-        /*
-        // early exit if one or more shaders aren't ready
-        for (const auto &shader : GetShaders())
+        // This method will be called by modules to record their draw commands
+        // For now, placeholder implementation
+        
+        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
+        if (cb == VK_NULL_HANDLE || !s_SwapChain)
         {
-            if (!shader || !shader->IsCompiled())
-                return;
+            return;
         }
 
-        // acquire render targets
-        Texture *renderThread_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        Texture *renderThread_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
-        */
-
+        // Record render commands
+        RecordRenderCommands(cb, s_SwapchainImageIndex);
     }
 
-    Ref<RenderContext> Renderer::GetContext() { return RenderContext::Get(); }
+    void Renderer::RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex)
+    {
+        if (!s_SwapChain)
+        {
+            return;
+        }
 
-    uint64_t Renderer::GetCurrentFrameIndex()
+        auto& swapchainImages = s_SwapChain->Images();
+        auto& swapchainImageViews = s_SwapChain->ImageViews();
+        VkImageView depthImageView = s_SwapChain->GetDepthView();
+
+        if (imageIndex >= swapchainImages.size() || imageIndex >= swapchainImageViews.size())
+        {
+            return;
+        }
+
+        // Transition images to attachment optimal
+        std::array<VkImageMemoryBarrier2, 2> outputBarriers{
+            VkImageMemoryBarrier2{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .srcAccessMask = 0,
+                .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                .image = swapchainImages[imageIndex],
+                .subresourceRange{
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .levelCount = 1,
+                    .layerCount = 1
+                }
+            },
+            VkImageMemoryBarrier2{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                .image = s_SwapChain->GetDepthImage(),
+                .subresourceRange{
+                    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+                    .levelCount = 1,
+                    .layerCount = 1
+                }
+            }
+        };
+
+        VkDependencyInfo barrierDependencyInfo{
+            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = 2,
+            .pImageMemoryBarriers = outputBarriers.data()
+        };
+
+        vkCmdPipelineBarrier2(cb, &barrierDependencyInfo);
+
+        // Begin dynamic rendering
+        VkRenderingAttachmentInfo colorAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = swapchainImageViews[imageIndex],
+            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue{.color{{0.0f, 0.0f, 0.0f, 1.0f}}}
+        };
+
+        VkRenderingAttachmentInfo depthAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = depthImageView,
+            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .clearValue = {.depthStencil = {1.0f, 0}}
+        };
+
+        VkExtent2D extent = s_SwapChain->GetExtent();
+        VkRenderingInfo renderingInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .renderArea{
+                .extent{
+                    .width = extent.width,
+                    .height = extent.height
+                }
+            },
+            .layerCount = 1,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachmentInfo,
+            .pDepthAttachment = &depthAttachmentInfo
+        };
+
+        vkCmdBeginRendering(cb, &renderingInfo);
+
+        // Set viewport and scissor
+        VkViewport vp{
+            .width = static_cast<float>(extent.width),
+            .height = static_cast<float>(extent.height),
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+        };
+        vkCmdSetViewport(cb, 0, 1, &vp);
+
+        VkRect2D scissor{
+            .extent{
+                .width = extent.width,
+                .height = extent.height
+            }
+        };
+        vkCmdSetScissor(cb, 0, 1, &scissor);
+
+        // TODO: Bind pipeline and draw renderables
+        // This is where module-specific draw commands would be recorded
+
+        vkCmdEndRendering(cb);
+    }
+
+    // -------------------------------------------------------
+    // Accessors
+    // -------------------------------------------------------
+
+    Ref<RenderContext> Renderer::GetContext()
+    {
+        return RenderContext::Get();
+    }
+
+    uint32_t Renderer::GetCurrentFrameIndex()
+    {
+        return s_CurrentFrameIndex;
+    }
+
+    uint64_t Renderer::GetFrameNumber()
     {
         return s_FrameNumber;
     }
 
-    Swapchain *Renderer::GetSwapChain() { return s_SwapChain.Get(); }
-
-    void Renderer::SubmitAndPresent()
+    Swapchain* Renderer::GetSwapChain()
     {
-
+        return s_SwapChain.Get();
     }
 
-    const Viewport &Renderer::GetViewport() { return s_Viewport; }
+    uint32_t Renderer::GetSwapchainImageIndex()
+    {
+        return s_SwapchainImageIndex;
+    }
+
+    VkCommandBuffer Renderer::GetCurrentCommandBuffer()
+    {
+        return s_CommandBuffers[s_CurrentFrameIndex];
+    }
+
+    const Viewport& Renderer::GetViewport()
+    {
+        return s_Viewport;
+    }
 
     void Renderer::SetViewport(float width, float height)
     {
@@ -222,354 +589,91 @@ namespace SceneryEditorX
         }
     }
 
-    const Vec2 &Renderer::GetRendererResolution()
+    const Vec2& Renderer::GetRendererResolution()
     {
+        return s_RendererResolution;
     }
 
     void Renderer::SetRendererResolution(uint32_t width, uint32_t height, bool recreateResources)
     {
-        /*if (!RHI_Device::IsValidResolution(width, height))
+        if (s_RendererResolution.x == static_cast<float>(width) && 
+            s_RendererResolution.y == static_cast<float>(height))
         {
-            SEDX_CORE_WARN_TAG("Renderer","Can't set %dx% as it's an invalid resolution", width, height);
             return;
         }
-
-        if (s_RendererResolution.x == width && s_RendererResolution.y == height)
-            return;
 
         s_RendererResolution.x = static_cast<float>(width);
         s_RendererResolution.y = static_cast<float>(height);
-        if (recreateResources)
+
+        if (recreateResources && s_ResourcesInitialized)
         {
-            // if frames are in-flight, wait for them to finish before resizing
-            if (m_cb_frame_cpu.frame > 1)
+            // Wait for GPU to finish before recreating resources
+            if (RenderContext::GetDevice())
             {
-                bool flush = true;
-                m_Ctx->GetDevice()->GetQueueManager()->WaitIdleAll(flush);
+                RenderContext::GetDevice()->GetQueueManager()->WaitIdleAll();
             }
 
             CreateRenderTargets(true, false, true);
-            CreateSamplers();
         }
 
-        SEDX_CORE_INFO_TAG("Renderer", "Render resolution has been set to %dx%d", width, height);*/
-
+        SEDX_CORE_INFO_TAG("Renderer", "Render resolution set to {}x{}", width, height);
     }
 
-    const Vec2 &Renderer::GetOutputResolution()
+    const Vec2& Renderer::GetOutputResolution()
     {
+        return s_OutputResolution;
     }
 
     void Renderer::SetOutputResolution(uint32_t width, uint32_t height, bool recreateResources)
     {
+        if (s_OutputResolution.x == static_cast<float>(width) && 
+            s_OutputResolution.y == static_cast<float>(height))
+        {
+            return;
+        }
+
+        s_OutputResolution.x = static_cast<float>(width);
+        s_OutputResolution.y = static_cast<float>(height);
+
+        if (recreateResources && s_ResourcesInitialized)
+        {
+            CreateRenderTargets(false, true, false);
+        }
+
+        SEDX_CORE_INFO_TAG("Renderer", "Output resolution set to {}x{}", width, height);
     }
 
-    int Renderer::Run(const RenderContext& ctx)
-	{
-	    // Copied render loop from previous monolithic implementation and
-	    // refactored to operate on the references passed in by the app.
-	    Timer clock;
-	    uint32_t imageIndex{ 0 };
-	    uint32_t frameIndex{ 0 };
-	    ShaderData shaderData{};
-	    Vec3 camPos{ 0.0f, 0.0f, -6.0f };
-	    Vec3 objectRotations[3]{};
-	    Vec2 lastMousePos { 0,0};
+    void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
+    {
+        uint32_t renderWidth = static_cast<uint32_t>(GetRendererResolution().x);
+        uint32_t renderHeight = static_cast<uint32_t>(GetRendererResolution().y);
+        uint32_t outputWidth = static_cast<uint32_t>(GetOutputResolution().x);
+        uint32_t outputHeight = static_cast<uint32_t>(GetOutputResolution().y);
 
-	    auto& device = ctx.device;
-	    auto& queue = ctx.queue;
-	    auto& allocator = ctx.allocator;
-	    auto& swapHelper = *ctx.swapchain;
-	    auto& pipeline = ctx.pipeline;
-	    auto& pipelineLayout = ctx.pipelineLayout;
-	    auto& descriptorSetTex = ctx.descriptorSetTex;
-	    auto& vBuffer = ctx.vBuffer;
-	    auto vBufSize = ctx.vBufSize;
-	    auto indexCount = ctx.indexCount;
-	    auto& shaderDataBuffers = *ctx.shaderDataBuffers;
-	    auto& commandBuffers = *ctx.commandBuffers;
-	    auto& fences = *ctx.fences;
-	    auto& presentSemaphores = *ctx.presentSemaphores;
-	    auto& renderSemaphores = *ctx.renderSemaphores;
-	    auto queueFamily = ctx.queueFamily;
-	
-	    while (window.IsOpen()) 
-	    {
+        auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t smallestDimension) 
+        {
+            uint32_t maxDimension = std::max(width, height);
+            uint32_t mipCount = 1;
 
-	        // Sync
-	        chk(vkWaitForFences(device, 1, &fences[frameIndex], true, UINT64_MAX));
-	        chk(vkResetFences(device, 1, &fences[frameIndex]));
-	        VkSwapchainKHR swapchain = swapHelper.Get();
-	        auto &swapchainImages = swapHelper.Images();
-	        auto &swapchainImageViews = swapHelper.ImageViews();
-	        VkImageView depthImageView = swapHelper.GetDepthView();
-	        VkResult acquireRes = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, presentSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
-	        if (acquireRes == VK_ERROR_OUT_OF_DATE_KHR || acquireRes == VK_SUBOPTIMAL_KHR) 
-	        {
-	            // Swapchain no longer compatible with window; recreate and skip this frame.
-	            swapHelper.Recreate(ctx.surface, queueFamily, allocator);
-	            continue;
-	        }
+            while (maxDimension >= smallestDimension)
+            {
+                maxDimension /= 2;
+                mipCount++;
+            }
+            return mipCount;
+        };
 
-            SEDX_CORE_ASSERT(acquireRes == VK_SUCCESS, "vkAcquireNextImageKHR failed with error code: {}", acquireRes);
+        if (createRender)
+        {
+            // TODO: Create render targets
+        }
 
-            // --------------------------------------------------------------
+        if (createOutput)
+        {
+            // TODO: Create output targets
+        }
+    }
 
-	        // Update shader data
-	        shaderData.projection = Perspective(glm::radians(45.0f), static_cast<float>(Window::GetWidth()) / static_cast<float>(Window::GetHeight()), 0.1f, 32.0f);
-	        shaderData.view = Translate(Mat4(1.0f), camPos);
-	        for (auto i = 0; i < 3; i++) 
-	        {
-	            auto instancePos = Vec3(static_cast<float>(i - 1) * 3.0f, 0.0f, 0.0f);
-	            shaderData.model[i] = Translate(Mat4(1.0f), instancePos) * Mat4(Quat(objectRotations[i]));
-	        }
-	        memcpy(shaderDataBuffers[frameIndex].mapped, &shaderData, sizeof(ShaderData));
-			
-            // --------------------------------------------------------------
-
-	        // Build command buffer
-	        auto cb = commandBuffers[frameIndex];
-	        vkResetCommandBuffer(cb, 0);
-	        VkCommandBufferBeginInfo cbBI 
-	        { 
-	            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, 
-	            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT 
-	        };
-
-	        vkBeginCommandBuffer(cb, &cbBI);
-	        std::array<VkImageMemoryBarrier2, 2> outputBarriers
-	        {
-	            VkImageMemoryBarrier2
-	            {
-	                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-	                .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                .srcAccessMask = 0,
-	                .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-	                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-	                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-	                .image = swapchainImages[imageIndex],
-	                .subresourceRange{
-	                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
-	                    .levelCount = 1, 
-	                    .layerCount = 1 
-	                }
-	            },
-
-	            VkImageMemoryBarrier2
-	            {
-	                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-	                .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-	                .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-	                .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-	                .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-	                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-	                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-	                .image = swapHelper.GetDepthImage(),
-	                .subresourceRange{
-	                    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 
-	                    .levelCount = 1, 
-	                    .layerCount = 1 
-	                }
-	            }
-	        };
-
-	        VkDependencyInfo barrierDependencyInfo{ 
-	            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, 
-	            .imageMemoryBarrierCount = 2, 
-	            .pImageMemoryBarriers = outputBarriers.data() 
-	        };
-
-	        vkCmdPipelineBarrier2(cb, &barrierDependencyInfo);
-	        VkRenderingAttachmentInfo colorAttachmentInfo{
-	            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-	            .imageView = swapchainImageViews[imageIndex],
-	            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-	            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-	            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-	            .clearValue{.color{{0.0f, 0.0f, 0.0f, 1.0f}}}
-	        };
-
-	        VkRenderingAttachmentInfo depthAttachmentInfo{
-	            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-	            .imageView = depthImageView,
-	            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-	            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-	            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-	            .clearValue = {.depthStencil = {1.0f,  0}}
-	        };
-
-	        VkRenderingInfo renderingInfo{
-	            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-	            .renderArea{
-					.extent{
-					.width = Window::GetWidth(),
-					.height = Window::GetHeight() }},
-	            .layerCount = 1,
-	            .colorAttachmentCount = 1,
-	            .pColorAttachments = &colorAttachmentInfo,
-	            .pDepthAttachment = &depthAttachmentInfo
-	        };
-
-	        vkCmdBeginRendering(cb, &renderingInfo);
-	        VkViewport vp{
-	            .width = static_cast<float>(Window::GetWidth()), 
-	            .height = static_cast<float>(Window::GetHeight()), 
-	            .minDepth = 0.0f, 
-	            .maxDepth = 1.0f
-	        };
-
-	        vkCmdSetViewport(cb, 0, 1, &vp);
-	        VkRect2D scissor{ 
-	            .extent{ 
-	                .width = Window::GetWidth(), 
-	                .height = Window::GetHeight() 
-	            }
-	        };
-
-	        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-	        vkCmdSetScissor(cb, 0, 1, &scissor);
-
-	        // If a list of renderables is provided in the context, draw each one.
-	        if (ctx.renderables && !ctx.renderables->empty())
-			{
-	            for (const auto& r : *ctx.renderables) 
-	            {
-	                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &r.descriptorSet, 0, nullptr);
-	                VkDeviceSize vOffset{ 0 };
-	                vkCmdBindVertexBuffers(cb, 0, 1, &r.buffer, &vOffset);
-	                vkCmdBindIndexBuffer(cb, r.buffer, r.vertexByteSize, VK_INDEX_TYPE_UINT16);
-	                vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VkDeviceAddress), &shaderDataBuffers[frameIndex].deviceAddress);
-	                vkCmdDrawIndexed(cb, r.indexCount, 3, 0, 0, 0);
-	            }
-	        } 
-	        else 
-	        {
-	            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSetTex, 0, nullptr);
-	            VkDeviceSize vOffset{ 0 };
-	            vkCmdBindVertexBuffers(cb, 0, 1, &vBuffer, &vOffset);
-	            vkCmdBindIndexBuffer(cb, vBuffer, vBufSize, VK_INDEX_TYPE_UINT16);
-	            vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VkDeviceAddress), &shaderDataBuffers[frameIndex].deviceAddress);
-	            vkCmdDrawIndexed(cb, indexCount, 3, 0, 0, 0);
-	        }
-	        vkCmdEndRendering(cb);
-	        VkImageMemoryBarrier2 barrierPresent
-	        {
-	            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-	            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-	            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	            .dstAccessMask = 0,
-	            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-	            .image = swapchainImages[imageIndex],
-	            .subresourceRange{
-	                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, 
-	                .levelCount = 1, 
-	                .layerCount = 1 
-	            }
-	        };
-
-	        VkDependencyInfo barrierPresentDependencyInfo{ 
-	            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, 
-	            .imageMemoryBarrierCount = 1, 
-	            .pImageMemoryBarriers = &barrierPresent 
-	        };
-
-	        vkCmdPipelineBarrier2(cb, &barrierPresentDependencyInfo);
-	        vkEndCommandBuffer(cb);
-
-            // --------------------------------------------------------------
-
-	        // Submit to graphics queue
-	        VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	        VkSubmitInfo submitInfo{
-	            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-	            .waitSemaphoreCount = 1,
-	            .pWaitSemaphores = &presentSemaphores[frameIndex],
-	            .pWaitDstStageMask = &waitStages,
-	            .commandBufferCount = 1,
-	            .pCommandBuffers = &cb,
-	            .signalSemaphoreCount = 1,
-	            .pSignalSemaphores = &renderSemaphores[imageIndex],
-	        };
-
-	        chk(vkQueueSubmit(queue, 1, &submitInfo, fences[frameIndex]));
-	        frameIndex = (frameIndex + 1) % VulkanApp::MAX_FRAMES_IN_FLIGHT;
-
-	        VkPresentInfoKHR presentInfo
-	        {
-	            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-	            .waitSemaphoreCount = 1,
-	            .pWaitSemaphores = &renderSemaphores[imageIndex],
-	            .swapchainCount = 1,
-	            .pSwapchains = &swapchain,
-	            .pImageIndices = &imageIndex
-	        };
-
-	        VkResult presentRes = vkQueuePresentKHR(queue, &presentInfo);
-	        if (presentRes == VK_ERROR_OUT_OF_DATE_KHR || presentRes == VK_SUBOPTIMAL_KHR) 
-	        {
-	            // Present situation requires swapchain recreation
-	            swapHelper.Recreate(ctx.surface, queueFamily, allocator);
-	            continue;
-	        }
-
-	        if (presentRes != VK_SUCCESS)
-	        {
-                SEDX_CORE_ERROR_TAG("Renderer", "vkQueuePresentKHR failed with error code: {}", presentRes);
-	            return -1;
-	        }
-			
-            // --------------------------------------------------------------
-
-	        // Event polling
-	        Time elapsed = clock.Reset();
-	        while (const std::optional event = window.ProcessEvents()) 
-	        {
-	            if (event->is<Event::Closed>()) 
-	            {
-                    Window::GetShouldClose();
-	            }
-	            if (const auto* mouseMoved = event->getIf<Event::MouseMoved>()) 
-	            {
-	                if (Mouse::isButtonPressed(Mouse::Button::Left)) 
-	                {
-	                    auto delta = lastMousePos - mouseMoved->position;
-	                    objectRotations[shaderData.selected].x += (float)delta.y * 0.0005f * (float)elapsed.asMilliseconds();
-	                    objectRotations[shaderData.selected].y -= (float)delta.x * 0.0005f * (float)elapsed.asMilliseconds();
-	                }
-	                lastMousePos = mouseMoved->position;
-	            }
-	            if (const auto* mouseWheelScrolled = event->getIf<Event::MouseWheelScrolled>()) 
-	            {
-	                camPos.z += static_cast<float>(mouseWheelScrolled->delta) * 0.025f * static_cast<float>(elapsed.asMilliseconds());
-	            }
-	            if (const auto* keyPressed = event->getIf<Event::KeyPressed>()) 
-	            {
-	                if (keyPressed->code == Keyboard::Key::Add) 
-	                {
-	                    shaderData.selected = (shaderData.selected < 2) ? shaderData.selected + 1 : 0;
-	                }
-	                if (keyPressed->code == Keyboard::Key::Subtract) 
-	                {
-	                    shaderData.selected = (shaderData.selected > 0) ? shaderData.selected - 1 : 2;
-	                }
-	            }
-	
-	            // Window resize - recreate swapchain and depth image
-	            if (const auto* resized = event->getIf<Event::Resized>()) 
-	            {
-	                // Delegate full recreation to Swapchain::recreate which handles
-	                // device idle and surface capability refresh internally.
-	                swapHelper.Recreate(ctx.surface, queueFamily, allocator);
-	            }
-	        }
-	    }
-	
-	    return 0;
-	}
-
-}
+} // namespace SceneryEditorX
 
 // --------------------------------------------------------------

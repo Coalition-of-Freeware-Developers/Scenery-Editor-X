@@ -57,11 +57,12 @@ TARGET_INCLUDE_DIRECTORIES(Launcher
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
 		${CMAKE_SOURCE_DIR}/dependency
-		${CMAKE_SOURCE_DIR}/dependency/SDL/include/SDL3
 		${CMAKE_SOURCE_DIR}/dependency/xMath
         ${CMAKE_SOURCE_DIR}/dependency/imgui
         ${CMAKE_SOURCE_DIR}/dependency/imgui/backends
         ${CMAKE_SOURCE_DIR}/dependency/imgui/misc
+		${CMAKE_SOURCE_DIR}/dependency/ktx/include
+		${CMAKE_SOURCE_DIR}/dependency/ktx/other_include
         ${REGISTRY_KEYS}
         ${PORTABLE_FILE_DIALOGS_INCLUDE_DIRS}
         $ENV{VULKAN_SDK}/Include/
@@ -78,6 +79,7 @@ TARGET_LINK_LIBRARIES(Launcher
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
+		ktx
 		imgui
 		AppCore
 		libconfig

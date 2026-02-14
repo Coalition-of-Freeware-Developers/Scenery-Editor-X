@@ -42,8 +42,7 @@ namespace SceneryEditorX
     {
 	public:
 	    OwnedPipeline() = default;
-	    OwnedPipeline(VkDevice device, VkPipeline pipeline, VkPipelineLayout layout)
-	        : device_(device), pipeline_(pipeline), layout_(layout) {}
+	    OwnedPipeline(VkDevice device, VkPipeline pipeline, VkPipelineLayout layout) : device_(device), pipeline_(pipeline), layout_(layout) {}
 	
 	    ~OwnedPipeline()
 	    {

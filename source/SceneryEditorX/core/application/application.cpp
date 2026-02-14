@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -37,7 +37,7 @@
 
 // -------------------------------------------------------
 
-extern bool appRunning; // Global variable to control the application loop
+bool appRunning = true; // Global variable to control the application loop
 
 // -------------------------------------------------------
 
@@ -155,6 +155,12 @@ namespace SceneryEditorX
         }
     }
 
+    void Application::Tick()
+    {
+        // Per-frame housekeeping
+        Renderer::Tick();
+    }
+
     void Application::Run()
     {
         OnInit(); // Call user-defined initialization function
@@ -177,33 +183,39 @@ namespace SceneryEditorX
             {
                 Timer cpuTimer;
 
-                Renderer::BeginFrame();
+                // Begin frame - acquires swapchain image and waits for fence
+                if (Renderer::BeginFrame())
                 {
-					for (Layer *module : m_ModuleStage)
-                        module->OnUpdate(m_DeltaTime);
+                    // Record draw commands via modules
+                    for (Layer *module : m_ModuleStage)
+                    {
+                        module->Tick(m_DeltaTime);
+                    }
+
+
+                    // Render ImGui on render thread
+                    Application *app = this;
+                    /*if (m_AppData.EnableImGui)
+                    {
+                        //Renderer::Submit([app]() { app->RenderUI(); });
+                        //Renderer::Submit([=]() { m_UILayer->End(); });
+                    }*/
+
+                    // End frame - finalizes command buffer recording
+                    Renderer::EndFrame();
+
+                    // Submit to GPU and present
+                    Renderer::SubmitAndPresent();
+
+                    // Update frame index
+                    m_CurrentFrameIndex = Renderer::GetCurrentFrameIndex();
                 }
 
-                // Render ImGui on render thread
-                Application *app = this;
-                if (m_AppData.EnableImGui)
-                {
-                    //Renderer::Submit([app]() { app->RenderUI(); });
-                    //Renderer::Submit([=]() { m_UILayer->End(); });
-                    return;
-                }
-                Renderer::EndFrame();
-
-                /*// On Render thread
-                Renderer::Submit([&]()
-                {
-                    // m_Window->GetSwapChain().BeginFrame();
-                    // Renderer::WaitAndRender();
-                    //m_Window->SwapBuffers();
-                });*/
-
-                //m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % Renderer::GetRenderData().framesInFlight;
-                //m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
+                m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
             }
+
+            // Per-frame housekeeping
+            Renderer::Tick();
 
             OnUpdate();	// Call user-defined update function
             Input::ClearReleasedKeys();

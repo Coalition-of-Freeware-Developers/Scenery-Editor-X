@@ -12,8 +12,8 @@
 */
 #include <catch2/catch_test_macros.hpp>
 #include <SceneryEditorX/core/application/application_data.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/vk_allocator.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/memory_allocator.h>
 #include <SceneryEditorX/utils/pointers.h>
 #include <thread>
 #include <vector>

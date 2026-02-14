@@ -82,7 +82,7 @@ namespace SceneryEditorX
 	     * @param physicalDevice Reference to the physical device to query.
 	     * @return QueueFamilyIndices structure containing the detected queue family indices.
 	     */
-	    static QueueFamilyIndices DetectQueueFamilies(const Ref<Device> &physicalDevice);
+        static QueueFamilyIndices DetectQueueFamilies(const VkPhysicalDevice &physicalDevice);
 	
 	    /**
 	     * @brief Build the VkDeviceQueueCreateInfo structures based on the detected queue families.
@@ -94,13 +94,14 @@ namespace SceneryEditorX
 	
 	    /**
 	     * @brief Construct a new Queue Manager object with the given configuration.
+	     * @param device Reference to the Device object.
 	     * @param config Configuration options for the QueueManager.
 	     */
-	    QueueManager(const QueueConfig &config = {});
+        QueueManager(const Ref<Device> &device, const QueueConfig &config = {});
 	    virtual ~QueueManager() override;
 	
 	    QueueManager(const QueueManager &) = delete;
-	    QueueManager &operator=(const QueueManager &) = delete;
+        QueueManager &operator=(const QueueManager &) = delete;
 	
 	    /**
 	     * @brief Allocate a GPU queue of the specified type.

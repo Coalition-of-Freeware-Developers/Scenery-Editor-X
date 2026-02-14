@@ -29,70 +29,150 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "SceneryEditorX/core/window/window.h"
-#include "render_context.h"
-#include "VulkanApp.h" // for ShaderDataBuffer, Texture, Vertex types
 #include "command_list.h"
-
-#include <array>
-#include <vector>
-#include <vma/vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
+#include "command_pool.h"
+#include "frame_sync.h"
+#include "render_context.h"
 #include "viewport.h"
+#include "SceneryEditorX/core/window/window.h"
+#include <array>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	struct RendererProperties;
-	class Swapchain; // forward
-	
-	class Renderer 
-	{
-	public:
-	    Renderer() = default;
-	    ~Renderer() = default;
+    struct RendererProperties;
+    class Swapchain;
 
+    /**
+     * @brief Static renderer class managing Vulkan rendering lifecycle.
+     * 
+     * The Renderer integrates with the Application main loop, providing:
+     * - Frame synchronization (fences, semaphores)
+     * - Command buffer management
+     * - Swapchain presentation
+     * 
+     * Usage pattern (called by Application::Run):
+     *   Renderer::BeginFrame();  // Acquire swapchain image, wait for fence
+     *   // ... module Tick() calls and rendering ...
+     *   Renderer::EndFrame();    // End command recording
+     *   Renderer::SubmitAndPresent(); // Submit to GPU and present
+     */
+    class Renderer 
+    {
+    public:
+        Renderer() = default;
+        ~Renderer() = default;
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Lifecycle Methods - Called by Application                                                                     ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /**
+         * @brief Initialize the renderer subsystem.
+         * 
+         * Creates Vulkan instance, device, swapchain, command pools, sync objects,
+         * and all per-frame resources. Must be called once before any other Renderer method.
+         */
         static void Init();
+
+        /**
+         * @brief Shutdown the renderer and release all resources.
+         * 
+         * Waits for GPU idle, destroys all Vulkan objects in correct order.
+         * After calling Shutdown, Init must be called again before rendering.
+         */
         static void Shutdown();
+
+        /**
+         * @brief Per-frame tick for memory/resource management.
+         * 
+         * Performs housekeeping tasks like memory allocator updates.
+         * Called once per frame by Application.
+         */
         static void Tick();
 
-        static void BeginFrame();
-        static void EndFrame();
-        static void SubmitFrame();
-
-		static void DrawFrame(CommandList *cmdList, CommandList *computeCmdList);
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		/// Render Context Management																					  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                
-	    /**
-		 * @brief Retrieve the global render context instance.
-		 * @return Shared reference to RenderContext.
-		 */
+        /// Frame Rendering Methods - Called each frame in sequence                                                       ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /**
+         * @brief Begin a new frame.
+         * 
+         * Acquires the next swapchain image, waits for the previous frame's fence,
+         * resets the fence, and begins command buffer recording. This must be called
+         * at the start of each frame before any draw calls.
+         * 
+         * @return true if frame can proceed, false if rendering should be skipped
+         *         (e.g., window minimized or swapchain out of date)
+         */
+        static bool BeginFrame();
+
+        /**
+         * @brief End command buffer recording for the current frame.
+         * 
+         * Finalizes command buffer recording and transitions swapchain image
+         * to present layout. Must be called after all draw commands are recorded.
+         */
+        static void EndFrame();
+
+        /**
+         * @brief Submit command buffers and present the swapchain image.
+         * 
+         * Submits the recorded command buffer to the graphics queue with proper
+         * synchronization, then presents the image. Handles swapchain recreation
+         * if VK_ERROR_OUT_OF_DATE_KHR is returned.
+         */
+        static void SubmitAndPresent();
+
+        /**
+         * @brief Record draw commands to the current frame's command buffer.
+         * 
+         * @param cmdList Graphics command list for 3D rendering
+         * @param computeCmdList Compute command list (optional, may be nullptr)
+         */
+        static void DrawFrame(CommandList *cmdList, CommandList *computeCmdList);
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Render Context Management                                                                                     ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        /**
+         * @brief Retrieve the global render context instance.
+         * @return Shared reference to RenderContext.
+         */
         static Ref<RenderContext> GetContext();
 
-	    /**
+        /**
          * @brief Get the current frame-in-flight index (ring buffer slot).
-         * @return Frame index.
+         * @return Frame index (0 to MAX_FRAMES_IN_FLIGHT-1).
          */
-        static uint64_t GetCurrentFrameIndex();
+        static uint32_t GetCurrentFrameIndex();
+
+        /**
+         * @brief Get the total frame number since renderer initialization.
+         * @return Total frame count.
+         */
+        static uint64_t GetFrameNumber();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// Swapchain Management																						  ///
+        /// Swapchain Management                                                                                          ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	    /**
+        /**
          * @brief Get the SwapChain instance managed by the Renderer.
          * @return Pointer to the active SwapChain, or nullptr if not initialized.
          */
         static Swapchain *GetSwapChain();
-        //static void BlitToBackBuffer(CommandList *cmd_list, Image *texture);
-        static void SubmitAndPresent();
 
-	    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// Viewport & Image Management																					  ///
+        /**
+         * @brief Get the current swapchain image index.
+         * @return Index of the acquired swapchain image.
+         */
+        static uint32_t GetSwapchainImageIndex();
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Viewport & Image Management                                                                                   ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         static const Viewport &GetViewport();
@@ -106,20 +186,44 @@ namespace SceneryEditorX
         static const Vec2 &GetOutputResolution();
         static void SetOutputResolution(uint32_t width, uint32_t height, bool recreateResources = true);
 
-	    // Run the renderer loop using the provided RenderContext. The function
-	    // returns when the window is closed; it does not own the resources in
-	    // the context (ownership remains with the caller).
-	    int Run(const RenderContext& ctx);
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Command Buffer Access                                                                                         ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	private:
-        static Ref<Window> m_Window;
+        /**
+         * @brief Get the command buffer for the current frame.
+         * @return VkCommandBuffer for recording draw commands.
+         */
+        static VkCommandBuffer GetCurrentCommandBuffer();
+
+    private:
+        static void CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic);
+        static void CreateFrameResources();
+        static void DestroyFrameResources();
+        static void RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex);
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Static State                                                                                                  ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         static RendererProperties *s_Data;
-        static RenderContext *m_Ctx; // Optional: store a reference to the context if needed for internal use
         static Ref<Swapchain> s_SwapChain;
+        static std::atomic<bool> s_ResourcesInitialized;
+        static CommandList *s_CurrentCmdList;
 
-        static std::atomic<bool> m_ResourcesInitialized;
-        static CommandList *m_CurrentCmdList;
-	};
+        /// Frame synchronization
+        static Scope<FrameSync> s_FrameSync;
+        static Scope<CommandPool> s_CommandPool;
+        static std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> s_CommandBuffers;
+
+        /// Frame tracking
+        static uint32_t s_CurrentFrameIndex;     ///< Ring buffer index (0 to MAX_FRAMES_IN_FLIGHT-1)
+        static uint64_t s_FrameNumber;           ///< Total frames rendered
+        static uint32_t s_SwapchainImageIndex;   ///< Current swapchain image
+
+        /// Frame state
+        static bool s_FrameInProgress;           ///< True between BeginFrame and EndFrame
+    };
 
 }
 

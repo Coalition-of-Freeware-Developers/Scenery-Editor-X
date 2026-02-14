@@ -307,6 +307,7 @@ namespace SceneryEditorX
 	        displayModes = nullptr;
 	        modesCount = 0;
 	    }
+
 	    if (displayModeIndex >= modesCount && modesCount > 0)
 	    {
 	        displayModeIndex = modesCount - 1;
@@ -394,11 +395,13 @@ namespace SceneryEditorX
 	        SDL_DestroyWindow(window);
 	        window = nullptr;
 	    }
+
 	    if (displays)
 	    {
 	        SDL_free(displays);
 	        displays = nullptr;
 	    }
+
 	    SDL_Quit();
 	}
 	
@@ -644,10 +647,7 @@ namespace SceneryEditorX
         maximized = true;
     }
 
-    bool Window::IsMaximized()
-    {
-        return SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN;
-    }
+    bool Window::IsMaximized() { return SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN; }
 
     void Window::Minimize()
     {
@@ -657,10 +657,7 @@ namespace SceneryEditorX
         SDL_MinimizeWindow(window);
     }
 
-    bool Window::IsMinimized()
-    {
-        return SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED;
-    }
+    bool Window::IsMinimized() { return SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED; }
 
     void Window::CenterWindow()
     {
@@ -676,7 +673,9 @@ namespace SceneryEditorX
         resizable = value;
 
         if (window)
+        {
             SDL_SetWindowResizable(window, value);
+        }
     }
 	
 	void Window::SetDecorated(bool value)
@@ -684,7 +683,9 @@ namespace SceneryEditorX
         decorated = value;
 
         if (window)
+        {
             SDL_SetWindowBordered(window, value);
+        }
     }
 		
 }

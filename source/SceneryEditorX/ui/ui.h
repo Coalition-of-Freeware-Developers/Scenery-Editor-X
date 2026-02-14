@@ -208,7 +208,7 @@ namespace SceneryEditorX::UI
     /**
      * @brief Initialize custom ImGui extensions
      */
-	void initImGuiExtensions();
+	void InitImGuiExtensions();
 
 }
 

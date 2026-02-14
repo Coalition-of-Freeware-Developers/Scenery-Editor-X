@@ -30,7 +30,6 @@
  */
 #include "command_pool.h"
 #include "render_context.h"
-#include <iostream>
 #include <utility>
 #include <vector>
 #include <volk/volk.h>
@@ -54,21 +53,36 @@ namespace SceneryEditorX
 
     CommandPool::CommandPool(uint32_t queueFamilyIndex, CommandPoolType pool)
 	{
-        Ref<Device> device = RenderContext::Get()->GetDevice();
+        m_Device = RenderContext::Get()->GetDevice();
         m_PoolType = pool;
 
-		VkCommandPoolCreateInfo ci{};
-		ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		ci.queueFamilyIndex = queueFamilyIndex;
+        // Validate that device is properly initialized
+        SEDX_CORE_ASSERT(m_Device.IsValid(), "Device reference is null - RenderContext not initialized");
+        SEDX_CORE_ASSERT(m_Device->GetLogicalDevice() != VK_NULL_HANDLE,
+                         "Logical device is null - Device::Create() was not called or failed");
+
+        // Validate that volk has loaded device-level functions
+        SEDX_CORE_ASSERT(vkCreateCommandPool != nullptr,
+                         "vkCreateCommandPool is null - volkLoadDevice() was not called after device creation");
+
+        VkCommandPoolCreateInfo ci{};
+        ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        ci.queueFamilyIndex = queueFamilyIndex;
         ci.flags = GetPoolFlags(m_PoolType);
 
-        if (VkResult r = vkCreateCommandPool(Device::GetDevice(), &ci, nullptr, &m_CmdPool); r != VK_SUCCESS) 
-		{
-            SEDX_CORE_ERROR("CommandPool", "Failed to create command pool: {}", r);
-			m_CmdPool = VK_NULL_HANDLE;
-		}
+        if (VkResult r = vkCreateCommandPool(m_Device->GetLogicalDevice(), &ci, nullptr, &m_CmdPool); r != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("CommandPool", "Failed to create command pool: VkResult = {}", static_cast<int>(r));
+            m_CmdPool = VK_NULL_HANDLE;
+        }
+        else
+        {
+            SEDX_CORE_INFO_TAG("CommandPool",
+                               "Command pool created successfully (queue family: {}, type: {})",
+                               queueFamilyIndex,
+                               static_cast<int>(pool));
+        }
 
-		m_Device = device;
 	}
 	
 	CommandPool::~CommandPool()
@@ -97,7 +111,7 @@ namespace SceneryEditorX
 	{
 		if (m_Device.IsValid() && m_CmdPool != VK_NULL_HANDLE)
 		{
-            vkDestroyCommandPool(Device::GetDevice(), m_CmdPool, nullptr);
+            vkDestroyCommandPool(m_Device->GetLogicalDevice(), m_CmdPool, nullptr);
 			m_CmdPool = VK_NULL_HANDLE;
 		}
 	}
@@ -114,9 +128,9 @@ namespace SceneryEditorX
 		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocateInfo.commandBufferCount = count;
 
-        if (VkResult r = vkAllocateCommandBuffers(Device::GetDevice(), &allocateInfo, buffers.data()); r != VK_SUCCESS) 
+        if (VkResult r = vkAllocateCommandBuffers(m_Device->GetLogicalDevice(), &allocateInfo, buffers.data()); r != VK_SUCCESS) 
 		{
-            SEDX_CORE_ERROR("CommandPool", "Failed to allocate command buffers: {}", r);
+            SEDX_CORE_ERROR("CommandPool", "Failed to allocate command buffers: {}", static_cast<int>(r));
 			return {};
 		}
 

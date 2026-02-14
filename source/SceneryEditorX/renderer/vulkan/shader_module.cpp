@@ -49,7 +49,7 @@ namespace SceneryEditorX
             .pCode = reinterpret_cast<const uint32_t *>(code)
         };
 
-        if (VkResult res = vkCreateShaderModule(Device::GetDevice(), &ci, nullptr, &m_Module); res != VK_SUCCESS)
+        if (VkResult res = vkCreateShaderModule(m_Device->GetLogicalDevice(), &ci, nullptr, &m_Module); res != VK_SUCCESS)
         {
             SEDX_CORE_ERROR("vkCreateShaderModule failed: {}", res);
             m_Module = VK_NULL_HANDLE;
@@ -60,7 +60,7 @@ namespace SceneryEditorX
     {
         if (m_Module != VK_NULL_HANDLE)
         {
-            vkDestroyShaderModule(Device::GetDevice(), m_Module, nullptr);
+            vkDestroyShaderModule(m_Device->GetLogicalDevice(), m_Module, nullptr);
         }
     }
 
@@ -76,7 +76,7 @@ namespace SceneryEditorX
         {
             if (m_Module != VK_NULL_HANDLE)
             {
-                vkDestroyShaderModule(Device::GetDevice(), m_Module, nullptr);
+                vkDestroyShaderModule(m_Device->GetLogicalDevice(), m_Module, nullptr);
             }
 
             m_Device = other.m_Device;

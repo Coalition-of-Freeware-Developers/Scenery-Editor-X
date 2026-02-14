@@ -43,12 +43,12 @@ namespace SceneryEditorX
 	    {
 	        if (m_Pool != VK_NULL_HANDLE)
 	        {
-	            vkDestroyDescriptorPool(m_Device->GetDevice(), m_Pool, nullptr);
+	            vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_Pool, nullptr);
 	            m_Pool = VK_NULL_HANDLE;
 	        }
 	        if (m_Layout != VK_NULL_HANDLE)
 	        {
-	            vkDestroyDescriptorSetLayout(m_Device->GetDevice(), m_Layout, nullptr);
+	            vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
 	            m_Layout = VK_NULL_HANDLE;
 	        }
 	
@@ -71,9 +71,9 @@ namespace SceneryEditorX
 	    ci.pBindings = &binding;
 	
 	    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-	    if (VkResult r = vkCreateDescriptorSetLayout(m_Device->GetDevice(), &ci, nullptr, &layout); r != VK_SUCCESS)
+	    if (VkResult r = vkCreateDescriptorSetLayout(m_Device->GetLogicalDevice(), &ci, nullptr, &layout); r != VK_SUCCESS)
 	    {
-	        std::cerr << "vkCreateDescriptorSetLayout failed: " << r << '\n';
+	        SEDX_CORE_ERROR_TAG("Descriptor", "vkCreateDescriptorSetLayout failed: {}", r);
 	        return VK_NULL_HANDLE;
 	    }
 	    return layout;
@@ -92,15 +92,15 @@ namespace SceneryEditorX
 	    ci.pPoolSizes = &poolSize;
 	
 	    VkDescriptorPool pool = VK_NULL_HANDLE;
-	    if (VkResult r = vkCreateDescriptorPool(m_Device->GetDevice(), &ci, nullptr, &pool); r != VK_SUCCESS)
+	    if (VkResult r = vkCreateDescriptorPool(m_Device->GetLogicalDevice(), &ci, nullptr, &pool); r != VK_SUCCESS)
 	    {
-	        std::cerr << "vkCreateDescriptorPool failed: " << r << '\n';
+	        SEDX_CORE_ERROR_TAG("Descriptor","vkCreateDescriptorPool failed: {} ", r);
 	        return VK_NULL_HANDLE;
 	    }
 	    return pool;
 	}
 	
-	VkDescriptorSet Descriptor::AllocateAndWrite(VkDescriptorPool pool, VkDescriptorSetLayout layout, const std::vector<VkDescriptorImageInfo> &imageInfos) const
+	VkDescriptorSet Descriptor::AllocateAndWrite(VkDescriptorPool pool, VkDescriptorSetLayout layout, const std::vector<::VkDescriptorImageInfo> &imageInfos) const
 	{
 	    if (pool == VK_NULL_HANDLE)
 	        return VK_NULL_HANDLE;
@@ -120,9 +120,9 @@ namespace SceneryEditorX
 	    allocInfo.descriptorSetCount = 1;
 	    allocInfo.pSetLayouts = &layout;
 	
-	    if (VkResult r = vkAllocateDescriptorSets(m_Device->GetDevice(), &allocInfo, &descriptorSet); r != VK_SUCCESS)
+	    if (VkResult r = vkAllocateDescriptorSets(m_Device->GetLogicalDevice(), &allocInfo, &descriptorSet); r != VK_SUCCESS)
 	    {
-	        std::cerr << "vkAllocateDescriptorSets failed: " << r << '\n';
+	        SEDX_CORE_ERROR_TAG("Descriptor", "vkAllocateDescriptorSets failed: {}", r);
 	        return VK_NULL_HANDLE;
 	    }
 	
@@ -133,7 +133,7 @@ namespace SceneryEditorX
 	    writeDescSet.descriptorCount = variableDescCount;
 	    writeDescSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	    writeDescSet.pImageInfo = imageInfos.data();
-	    vkUpdateDescriptorSets(m_Device->GetDevice(), 1, &writeDescSet, 0, nullptr);
+	    vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &writeDescSet, 0, nullptr);
 	
 	    return descriptorSet;
 	}
@@ -153,9 +153,9 @@ namespace SceneryEditorX
 	        if (m_Device.IsValid())
 	        {
 	            if (m_Pool != VK_NULL_HANDLE)
-	                vkDestroyDescriptorPool(m_Device->GetDevice(), m_Pool, nullptr);
+	                vkDestroyDescriptorPool(m_Device->GetLogicalDevice(), m_Pool, nullptr);
 	            if (m_Layout != VK_NULL_HANDLE)
-	                vkDestroyDescriptorSetLayout(m_Device->GetDevice(), m_Layout, nullptr);
+	                vkDestroyDescriptorSetLayout(m_Device->GetLogicalDevice(), m_Layout, nullptr);
 	        }
 	        m_Device = other.m_Device;
 	        m_Pool = other.m_Pool;

@@ -30,8 +30,8 @@
  */
 #pragma once
 #include <IconsFontAwesome5.h>
-#include <SceneryEditorX/renderer/render_context.h>
-#include <SceneryEditorX/renderer/renderer.h>
+#include <SceneryEditorX/renderer/vulkan/render_context.h>
+#include <SceneryEditorX/renderer/vulkan/renderer.h>
 #include <SceneryEditorX/ui/ui_manager.h>
 #include <imgui/imgui.h>
 
@@ -227,7 +227,7 @@ namespace SceneryEditorX::UI
          * @param renderer Graphics engine reference
          * @return True if initialization was successful
          */
-        bool InitGUI(GLFWwindow *window, Renderer &renderer);
+        bool InitGUI(SDL_Window *window, Renderer &renderer);
 	
         /**
          * @brief Set the command buffer for rendering ImGui
@@ -321,17 +321,15 @@ namespace SceneryEditorX::UI
         static const std::string defaultFont; /// Default font name
 
 	private:
-        /// Vulkan resources
         //Window *window = nullptr;
-        GLFWwindow *window = nullptr;
-        SwapChain *swapchain = nullptr;
-        VulkanDevice *device = nullptr;
-        //VkDevice device = VK_NULL_HANDLE;
+        SDL_Window *window = nullptr;
+        Swapchain *swapchain = nullptr;
+        Device *device = nullptr;
         Renderer *renderer = nullptr;
         VkDescriptorPool imguiPool = VK_NULL_HANDLE;
         VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
 
-	    /// State tracking
+	    // State tracking
 	    bool initialized = false;
 		float contentScaleFactor = 1.0f; ///  Scale factor to apply due to a difference between the window and GL pixel sizes
         float dpiFactor = 1.0f;          /// Scale factor to apply to the size of gui elements (expressed in dp)
@@ -351,7 +349,7 @@ namespace SceneryEditorX::UI
     /**
      * @brief Initialize custom ImGui extensions
      */
-	void initImGuiExtensions();
+	void InitImGuiExtensions();
 
 }
 

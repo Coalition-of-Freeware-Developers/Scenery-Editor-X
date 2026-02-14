@@ -6,10 +6,10 @@
 #define SEDX_MAJOR             			0
 #define SEDX_MINOR             			2
 #define SEDX_PATCH             			27
-#define SEDX_BUILD             			480
+#define SEDX_BUILD             			495
 //----------------------------------------------------------------------------
-#define SEDX_VERSION_STRING            	"0.2.27.480"
-#define SEDX_VERSION                    0x00021B01E0
+#define SEDX_VERSION_STRING            	"0.2.27.495"
+#define SEDX_VERSION                    0x00021B01EF
 #define SEDX_FILE_VERSION               SEDX_MAJOR,SEDX_MINOR,SEDX_PATCH,SEDX_BUILD
 //----------------------------------------------------------------------------
 // Scenery Editor X - Launcher Version
@@ -17,10 +17,10 @@
 #define LAUNCHER_MAJOR		 			0
 #define LAUNCHER_MINOR		 			0
 #define LAUNCHER_PATCH		 			08
-#define LAUNCHER_BUILD		 			86
+#define LAUNCHER_BUILD		 			91
 //----------------------------------------------------------------------------
-#define LAUNCHER_VERSION_STRING    		"0.0.8.86"
-#define LAUNCHER_VERSION           		0x0000080056
+#define LAUNCHER_VERSION_STRING    		"0.0.8.91"
+#define LAUNCHER_VERSION           		0x000008005B
 #define LAUNCHER_FILE_VERSION       	LAUNCHER_MAJOR,LAUNCHER_MINOR,LAUNCHER_PATCH,LAUNCHER_BUILD
 //----------------------------------------------------------------------------
 // Scenery Editor X - Crash Handler Version
@@ -28,10 +28,10 @@
 #define CRASH_HANDLER_MAJOR       		0
 #define CRASH_HANDLER_MINOR       		0
 #define CRASH_HANDLER_PATCH       		01
-#define CRASH_HANDLER_BUILD       		73
+#define CRASH_HANDLER_BUILD       		78
 //----------------------------------------------------------------------------
-#define CRASH_VERSION_STRING 	   		"0.0.1.73"
-#define CRASH_HANDLER_VERSION     		0x0000010049
+#define CRASH_VERSION_STRING 	   		"0.0.1.78"
+#define CRASH_HANDLER_VERSION     		0x000001004E
 #define CRASH_HANDLER_FILE_VERSION 		CRASH_HANDLER_MAJOR,CRASH_HANDLER_MINOR,CRASH_HANDLER_PATCH,CRASH_HANDLER_BUILD
 //----------------------------------------------------------------------------
 // Scenery Editor X - XPlane Scenery Library Version

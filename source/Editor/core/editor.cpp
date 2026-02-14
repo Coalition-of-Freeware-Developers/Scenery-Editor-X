@@ -32,7 +32,7 @@
 #include "Editor/projects/project.h"
 #include <ImGuizmo.h>
 #include <imgui.h>
-#include <imgui_impl_glfw.h>
+#include <imgui_impl_sdl3.h>
 #include <imgui_internal.h>
 #include <Editor/settings/editor_settings.h>
 #include <SceneryEditorX/core/application/application.h>
@@ -156,8 +156,6 @@ namespace SceneryEditorX
         
         renderContext = RenderContext::Get();
 
-        // Initialize the renderer (this creates the RenderDispatcher as well)
-        Renderer::SetRenderData(Application::Get().GetWindow().GetRenderData());
 
         // TODO: Move project loading to a separate function
         // activeProject->ReadProjCache();
@@ -187,9 +185,6 @@ namespace SceneryEditorX
         
         renderContext = RenderContext::Get();
 
-        // Initialize the renderer (this creates the RenderDispatcher as well)
-        Renderer::SetRenderData(Get().GetWindow().GetRenderData());
-
         // TODO: Move project loading to a separate function
         // activeProject->ReadProjCache();
         // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
@@ -211,7 +206,7 @@ namespace SceneryEditorX
         if (ImGui::GetCurrentContext())
         {
             ImGui::Shutdown();
-            ImGui_ImplGlfw_Shutdown();
+            ImGui_ImplSDL3_Shutdown();
             ImGui::DestroyContext();
         }
 
@@ -224,7 +219,6 @@ namespace SceneryEditorX
      */
     void Editor::Tick()
     {
-        Renderer::GetRenderData();
 
         // Main loop
         while (!Get().GetWindow().GetShouldClose())
@@ -237,7 +231,7 @@ namespace SceneryEditorX
                 // ImGui
                 if (isEditor)
                 {
-                    ImGui_ImplGlfw_NewFrame();
+                    ImGui_ImplSDL3_NewFrame();
                     ImGui::NewFrame();
                 }
 
