@@ -65,6 +65,7 @@ INCLUDE("${CMAKE_SOURCE_DIR}/cmake/assets.cmake")
 
 OPTION(SEDX_ENABLE_TESTS              	"Build test targets" ON)
 OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
+OPTION(SEDX_ENABLE_VERSION_INCREMENT  	"Enable automatic build version increment" ON)
 #OPTION(SEDX_ENABLE_VMA                	"Enable Vulkan Memory Allocator (GPUOpen VMA)" ON)
 OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" ON)
 OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" ON)

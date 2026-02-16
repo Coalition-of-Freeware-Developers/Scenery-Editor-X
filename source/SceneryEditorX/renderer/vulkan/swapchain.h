@@ -53,8 +53,8 @@ namespace SceneryEditorX
 	    // Recreate the swapchain: waits for m_Device idle, refreshes surface caps,
 	    // creates a new swapchain and replaces internal resources safely.
 	    VkSwapchainKHR Recreate(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator);
-        void AcquireNextImage();
-        void Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
+        bool AcquireNextImage(VkSemaphore imageAvailableSemaphore);
+        VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
 	    void Destroy();
 	
 	    // Accessors

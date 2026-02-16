@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #include "descriptor.h"
+
+#include "render_context.h"
+
 #include <iostream>
 #include <vector>
 #include <volk/volk.h>
@@ -37,6 +40,11 @@
 
 namespace SceneryEditorX
 {
+	Descriptor::Descriptor()
+	{
+        m_Device = RenderContext::Get()->GetDevice();
+	}
+
 	Descriptor::~Descriptor()
 	{
 	    if (m_Device.IsValid())

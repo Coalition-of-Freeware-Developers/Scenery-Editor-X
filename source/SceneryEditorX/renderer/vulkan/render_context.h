@@ -85,13 +85,13 @@ namespace SceneryEditorX
 	    VkDeviceSize indexCount = 0;
 
 	    std::vector<Renderable>* renderables = nullptr; // optional: if provided, renderer will draw these
-	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT>* shaderDataBuffers = nullptr;
-	    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>* commandBuffers = nullptr;
+	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT>* s_ShaderDataBuffers = nullptr;
+	    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>* s_CommandBuffers = nullptr;
 	    // Sync objects are managed by FrameSync (vectors sized at runtime)
-	    std::vector<VkFence>* fences = nullptr;
-	    std::vector<VkSemaphore>* presentSemaphores = nullptr;
-	    std::vector<VkSemaphore>* renderSemaphores = nullptr;
-	    VkSurfaceCapabilitiesKHR* surfaceCaps = nullptr;
+	    std::vector<VkFence>* s_Fences = nullptr;
+	    std::vector<VkSemaphore>* s_PresentSemaphores = nullptr;
+	    std::vector<VkSemaphore>* s_RenderSemaphores = nullptr;
+	    VkSurfaceCapabilitiesKHR* s_SurfaceCaps = nullptr;
 
 	private:
         VkInstance m_Instance = VK_NULL_HANDLE;

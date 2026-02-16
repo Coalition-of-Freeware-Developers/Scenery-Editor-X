@@ -156,7 +156,6 @@ namespace SceneryEditorX
         
         renderContext = RenderContext::Get();
 
-
         // TODO: Move project loading to a separate function
         // activeProject->ReadProjCache();
         // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
@@ -165,7 +164,6 @@ namespace SceneryEditorX
         // camera = assetManager.GetMainCamera(scene);
 
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-        Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

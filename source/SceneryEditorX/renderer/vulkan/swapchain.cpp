@@ -50,16 +50,33 @@ namespace SceneryEditorX
     {
        m_Device = RenderContext::Get()->GetDevice();
 
+
         VkSurfaceKHR surface = VK_NULL_HANDLE;
-        if (SDL_Vulkan_CreateSurface(Window::GetWindow(), RenderContext::Get()->GetInstance(), nullptr, &surface) != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR("Failed to create Vulkan surface!");
-            return;
-        }
 
-        m_Surface = surface;
+       SDL_Window *sdlWindow = Window::GetWindow();
+       if (!sdlWindow)
+       {
+           SEDX_CORE_ERROR_TAG("Swapchain", "SDL window is null — cannot create Vulkan surface");
+           return;
+       }
 
-        SEDX_CORE_INFO_TAG("RenderContext", "Vulkan surface created successfully");
+       VkInstance instance = RenderContext::Get()->GetInstance();
+       if (instance == VK_NULL_HANDLE)
+       {
+           SEDX_CORE_ERROR_TAG("Swapchain", "Vulkan instance is null — cannot create Vulkan surface");
+           return;
+       }
+
+       // SDL3's SDL_Vulkan_CreateSurface returns bool, not VkResult
+       if (!SDL_Vulkan_CreateSurface(sdlWindow, instance, nullptr, &surface))
+       {
+           SEDX_CORE_ERROR_TAG("Swapchain", "Failed to create Vulkan surface: {}", SDL_GetError());
+           return;
+       }
+
+       m_Surface = surface;
+
+       SEDX_CORE_INFO_TAG("Swapchain", "Vulkan surface created successfully");
     }
 
     VkSwapchainKHR Swapchain::Create(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
@@ -258,46 +275,76 @@ namespace SceneryEditorX
 		return Create(surface, queueFamilyIndex, allocator);
 	}
 
-    void Swapchain::AcquireNextImage()
+    bool Swapchain::AcquireNextImage(VkSemaphore imageAvailableSemaphore)
     {
         // Reset acquisition state
         m_ImageAcquired = false;
 
-        // when the window is minimized acquisition will fail and it's not necessary either
+        // When the window is minimized acquisition will fail and it's not necessary either
         if (Window::IsMinimized())
-            return;
+            return false;
 
-        // ensure swapchain is valid
+        // Ensure swapchain is valid
         if (!m_Swapchain)
-            return;
+            return false;
 
         // Try to acquire, with retry after swapchain recreation
-		for (uint32_t attempt = 0; attempt < 2; ++attempt)
+        for (uint32_t attempt = 0; attempt < 2; ++attempt)
         {
-            VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, 100000000 /* 100ms timeout */, VK_NULL_HANDLE, VK_NULL_HANDLE, &m_ImageIndex);
-			if (r == VK_SUCCESS)
-			{
-				m_ImageAcquired = true;
-				return;
-			}
+            VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(),
+                                               m_Swapchain,
+                                               UINT64_MAX,
+                                               imageAvailableSemaphore,
+                                               VK_NULL_HANDLE,
+                                               &m_ImageIndex);
 
-            if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
+            if (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR)
             {
-                // Swapchain is out of date (e.g. window resized) or suboptimal (e.g. window moved to different display).
+                m_ImageAcquired = true;
+                return true;
+            }
+
+            if (r == VK_ERROR_OUT_OF_DATE_KHR)
+            {
+                // Swapchain is out of date (e.g. window resized).
                 // Recreate the swapchain and try acquiring again.
-                Recreate(m_Surface, m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics), MemoryAllocator::GetAllocator());
+                Recreate(m_Surface,
+                         m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics),
+                         MemoryAllocator::GetAllocator());
             }
             else
             {
                 SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
-                return;
+                return false;
             }
         }
+
+        return false;
     }
 
-    void Swapchain::Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore)
+    VkResult Swapchain::Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore)
     {
+        VkSwapchainKHR swapchain = m_Swapchain;
 
+        VkPresentInfoKHR presentInfo{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                                     .waitSemaphoreCount = (waitSemaphore != VK_NULL_HANDLE) ? 1u : 0u,
+                                     .pWaitSemaphores = (waitSemaphore != VK_NULL_HANDLE) ? &waitSemaphore : nullptr,
+                                     .swapchainCount = 1,
+                                     .pSwapchains = &swapchain,
+                                     .pImageIndices = &imageIndex};
+
+        VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        {
+            SEDX_CORE_INFO_TAG("Swapchain", "Swapchain out of date or suboptimal during present — recreation needed");
+        }
+        else if (result != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("Swapchain", "vkQueuePresentKHR failed: {}", static_cast<int>(result));
+        }
+
+        return result;
     }
 
     void Swapchain::Destroy()

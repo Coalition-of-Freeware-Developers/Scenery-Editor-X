@@ -40,7 +40,7 @@ namespace SceneryEditorX
 	class Descriptor 
 	{
 	public:
-		Descriptor() = default;
+		Descriptor();
 		~Descriptor();
 
 		VkDescriptorSetLayout CreateLayout(uint32_t bindingCount) const;

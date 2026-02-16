@@ -37,7 +37,7 @@ namespace SceneryEditorX
 
 	bool AssetManager::AddAsset(VmaAllocator allocator, VkCommandPool cmdPool, VkQueue queue, const std::string &modelFile, const std::vector<std::string> &textureFiles, const VmaAllocationCreateInfo &modelAllocInfo)
 	{
-	    m_AssetSets.emplace_back(std::make_unique<Asset>());
+	    m_AssetSets.emplace_back(CreateScope<Asset>());
 	    if (!m_AssetSets.back()->Load(allocator, cmdPool, queue, modelFile, textureFiles, modelAllocInfo))
 	    {
 	        m_AssetSets.pop_back();
@@ -46,13 +46,32 @@ namespace SceneryEditorX
 	    return true;
 	}
 
-    void AssetManager::DestroyAll(VmaAllocator allocator)
+    /**
+	 * @brief Destroy all assets managed by this AssetManager instance.
+	 * 
+	 * This method iterates through all loaded assets and properly destroys their
+	 * Vulkan resources using the device's memory allocator, then clears the asset list.
+	 */
+    void AssetManager::DestroyAll()
     {
-        for (auto &a : m_AssetSets)
+        SEDX_CORE_INFO_TAG("AssetManager", "Destroying all assets ({} total)", m_AssetSets.size());
+
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        SEDX_CORE_ASSERT(device.IsValid(), "Device must be valid to destroy assets");
+
+        VmaAllocator allocator = device->GetMemoryAllocator()->GetAllocator();
+
+        for (auto &asset : m_AssetSets)
         {
-            a->Destroy(allocator);
+            if (asset)
+            {
+                asset->Destroy(allocator);
+            }
         }
+
         m_AssetSets.clear();
+
+        SEDX_CORE_INFO_TAG("AssetManager", "✓ All assets destroyed");
     }
 
 

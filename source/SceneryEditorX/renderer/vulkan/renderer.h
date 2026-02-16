@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "asset_manager.h"
 #include "command_list.h"
 #include "command_pool.h"
 #include "frame_sync.h"
@@ -67,6 +68,16 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Lifecycle Methods - Called by Application                                                                     ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		/**
+		 * @brief Create models and upload to GPU. This is separate from shader creation to allow for better error handling and resource management.
+		 */
+        static void CreateModels();
+
+        /**
+         * @brief Create shader modules and pipelines.
+         */
+        static void CreateShaders();
 
         /**
          * @brief Initialize the renderer subsystem.
@@ -230,6 +241,7 @@ namespace SceneryEditorX
         static Ref<Swapchain> s_SwapChain;
         static std::atomic<bool> s_ResourcesInitialized;
         static CommandList *s_CurrentCmdList;
+        static Scope<AssetManager> s_AssetManager;
 
         // Frame synchronization
         static Scope<FrameSync> s_FrameSync;

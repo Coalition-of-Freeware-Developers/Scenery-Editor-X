@@ -31,8 +31,11 @@
 #include "renderer.h"
 #include "asset_manager.h"
 #include "swapchain.h"
+#include "uniform_buffer_set.h"
 #include "SceneryEditorX/core/application/application.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
+#include "slang/slang-com-ptr.h"
+#include "slang/slang.h"
 #include <array>
 #include <SDL3/SDL.h>
 #include <glm/glm.hpp>
@@ -47,7 +50,7 @@ namespace SceneryEditorX
     {
         VkDescriptorSet activeRendererDescriptorSet = nullptr;
         std::vector<VkDescriptorPool> descriptorPools;
-        VkDescriptorPool materialDescriptorPool;
+        VkDescriptorPool materialDescriptorPool = VK_NULL_HANDLE;
         std::vector<uint32_t> descriptorPoolAllocationCount;
     
         /** Default samplers */
@@ -75,12 +78,15 @@ namespace SceneryEditorX
     uint64_t Renderer::s_FrameNumber = 0;
     uint32_t Renderer::s_SwapchainImageIndex = 0;
     bool Renderer::s_FrameInProgress = false;
+    Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 
     // Resolution & viewport (internal state)
     static xMath::Vec2 s_RendererResolution(0.0f, 0.0f);
     static xMath::Vec2 s_OutputResolution(0.0f, 0.0f);
     static Viewport s_Viewport = Viewport(0, 0, 0, 0);
     static bool s_OrthoProjection_Dirty = true;
+    static Scope<UniformBufferSet> s_UniformBuffers = nullptr;
+    static VkSurfaceCapabilitiesKHR s_SurfaceCaps = {};
 
     // -------------------------------------------------------
     // Lifecycle Methods
@@ -102,9 +108,14 @@ namespace SceneryEditorX
         // Initialize volk loader
         volkInitialize();
 
-		if (RenderContext::IsInitialized())
-		{
-			SEDX_CORE_FATAL_TAG("Renderer", "RenderContext is already initialized before Renderer::Init() — this may indicate a problem with initialization order");
+        if (!RenderContext::IsInitialized())
+        {
+            RenderContext::Init();
+        }
+
+        if (!RenderContext::IsInitialized())
+        {
+            SEDX_CORE_FATAL_TAG("Renderer", "RenderContext failed to initialize — cannot proceed with renderer setup");
             return;
         }
 
@@ -159,17 +170,44 @@ namespace SceneryEditorX
             else
             {
                 SEDX_CORE_ERROR_TAG("Renderer", "Failed to create swapchain");
+                return;
             }
         }
         else
         {
             SEDX_CORE_WARN_TAG("Renderer", "Surface not available - swapchain creation deferred");
+            return;
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Frame Resources                                                                                               ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        s_AssetManager = CreateScope<AssetManager>();
+
         CreateFrameResources();
+        CreateModels();
+        CreateShaders();
+
+        // Query surface capabilities
+        VkPhysicalDevice physicalDevice = RenderContext::Get()->GetDevice()->GetPhysicalDevice();
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, s_SwapChain->GetSurface(), &s_SurfaceCaps);
+
+        std::vector<RenderContext::Renderable> renderables;
+        Asset asset;
+        renderables.push_back({.descriptorSet = asset.GetDescriptorSet(),
+                               .buffer = asset.GetModelBuffer(),
+                               .vertexByteSize = asset.GetModelVertexSize(),
+                               .indexByteSize = asset.GetModelIndexSize(),
+                               .indexCount = asset.GetModelIndexCount()});
+
+        RenderContext::Get()->renderables = &renderables;
+        RenderContext::Get()->s_ShaderDataBuffers = s_UniformBuffers ? &s_UniformBuffers->Buffers() : nullptr;
+        RenderContext::Get()->s_CommandBuffers = &s_CommandBuffers;
+        RenderContext::Get()->s_Fences = s_FrameSync ? &s_FrameSync->Fences() : nullptr;
+        RenderContext::Get()->s_PresentSemaphores = s_FrameSync ? &s_FrameSync->PresentSemaphores() : nullptr;
+        RenderContext::Get()->s_RenderSemaphores = s_FrameSync ? &s_FrameSync->RenderSemaphores() : nullptr;
+        RenderContext::Get()->s_SurfaceCaps = &s_SurfaceCaps;
 
         s_ResourcesInitialized = true;
         SEDX_CORE_INFO_TAG("Renderer", "=== Renderer Initialization Complete ===");
@@ -187,6 +225,8 @@ namespace SceneryEditorX
 
         // Destroy frame resources
         DestroyFrameResources();
+        s_AssetManager->DestroyAll();
+        s_AssetManager.reset();
 
         // Destroy swapchain
         if (s_SwapChain)
@@ -225,7 +265,7 @@ namespace SceneryEditorX
 
         // Create command pool
         s_CommandPool = CreateScope<CommandPool>(queueFamily, CommandPoolType::Resettable);
-        SEDX_CORE_INFO_TAG("Renderer", "✓ Created command pool");
+        SEDX_CORE_INFO_TAG("Renderer", "Created command pool");
 
         // Allocate command buffers
         auto allocatedBuffers = s_CommandPool->Allocate(MAX_FRAMES_IN_FLIGHT);
@@ -233,11 +273,11 @@ namespace SceneryEditorX
         {
             s_CommandBuffers[i] = allocatedBuffers[i];
         }
-        SEDX_CORE_INFO_TAG("Renderer", "✓ Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
+        SEDX_CORE_INFO_TAG("Renderer", "Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
 
         // Create frame sync objects - use actual swapchain image count or fallback
         uint32_t swapchainImageCount = 2; // Default fallback
-        if (s_SwapChain && s_SwapChain->Images().size() > 0)
+        if (s_SwapChain && !s_SwapChain->Images().empty())
         {
             swapchainImageCount = static_cast<uint32_t>(s_SwapChain->Images().size());
             SEDX_CORE_INFO_TAG("Renderer", "Using swapchain image count: {}", swapchainImageCount);
@@ -248,11 +288,7 @@ namespace SceneryEditorX
         }
 
         s_FrameSync = CreateScope<FrameSync>(MAX_FRAMES_IN_FLIGHT, swapchainImageCount);
-        SEDX_CORE_INFO_TAG("Renderer",
-                           "✓ Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})",
-                           s_FrameSync->Fences().size(),
-                           s_FrameSync->PresentSemaphores().size(),
-                           s_FrameSync->RenderSemaphores().size());
+        SEDX_CORE_INFO_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})", s_FrameSync->Fences().size(), s_FrameSync->PresentSemaphores().size(), s_FrameSync->RenderSemaphores().size());
     }
 
     void Renderer::DestroyFrameResources()
@@ -310,7 +346,8 @@ namespace SceneryEditorX
 
         if (s_SwapChain->Images().empty())
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain has no images - VkSwapchainKHR handle: {}, surface valid: {}", (void *)s_SwapChain->Get(), s_SwapChain->GetSurface() != VK_NULL_HANDLE);
+            SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain has no images - VkSwapchainKHR handle: {}, surface valid: {}",
+                                (void *)s_SwapChain->Get(), s_SwapChain->GetSurface() != VK_NULL_HANDLE);
 
             // Attempt to recreate swapchain if surface is available
             if (s_SwapChain->GetSurface() != VK_NULL_HANDLE)
@@ -334,12 +371,8 @@ namespace SceneryEditorX
             }
         }
 
-        // Acquire next swapchain image
-        s_SwapChain->AcquireNextImage();
-        s_SwapchainImageIndex = s_SwapChain->GetImageIndex();
-
-        // Wait for the fence of the current frame-in-flight
-        auto& fences = s_FrameSync->Fences();
+        // Wait for the fence of the current frame-in-flight BEFORE acquiring the image
+        auto &fences = s_FrameSync->Fences();
         if (s_CurrentFrameIndex < fences.size() && fences[s_CurrentFrameIndex] != VK_NULL_HANDLE)
         {
             VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
@@ -347,16 +380,25 @@ namespace SceneryEditorX
             vkResetFences(device, 1, &fences[s_CurrentFrameIndex]);
         }
 
+        // Acquire next swapchain image with the present semaphore for synchronization
+        auto &presentSemaphores = s_FrameSync->PresentSemaphores();
+        VkSemaphore acquireSemaphore = (s_CurrentFrameIndex < presentSemaphores.size()) ? presentSemaphores[s_CurrentFrameIndex] : VK_NULL_HANDLE;
+
+        if (!s_SwapChain->AcquireNextImage(acquireSemaphore))
+        {
+            // Acquisition failed (minimized, out-of-date handled internally)
+            return false;
+        }
+        s_SwapchainImageIndex = s_SwapChain->GetImageIndex();
+
         // Begin command buffer recording
         VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
         if (cb != VK_NULL_HANDLE)
         {
             vkResetCommandBuffer(cb, 0);
-            
-            VkCommandBufferBeginInfo beginInfo{
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-            };
+
+            VkCommandBufferBeginInfo beginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
 
             if (VkResult result = vkBeginCommandBuffer(cb, &beginInfo); result != VK_SUCCESS)
             {
@@ -377,12 +419,16 @@ namespace SceneryEditorX
             return;
         }
 
-        if (VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex]; cb != VK_NULL_HANDLE)
+        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
+        if (cb != VK_NULL_HANDLE)
         {
+            // Record the actual render commands for this frame
+            RecordRenderCommands(cb, s_SwapchainImageIndex);
+
             // Transition swapchain image to present layout
             if (s_SwapChain)
             {
-                auto& swapchainImages = s_SwapChain->Images();
+                auto &swapchainImages = s_SwapChain->Images();
                 if (s_SwapchainImageIndex < swapchainImages.size())
                 {
                     VkImageMemoryBarrier2 barrierPresent{
@@ -394,18 +440,11 @@ namespace SceneryEditorX
                         .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                         .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         .image = swapchainImages[s_SwapchainImageIndex],
-                        .subresourceRange{
-                            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                            .levelCount = 1,
-                            .layerCount = 1
-                        }
-                    };
+                        .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
 
-                    VkDependencyInfo dependencyInfo{
-                        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                        .imageMemoryBarrierCount = 1,
-                        .pImageMemoryBarriers = &barrierPresent
-                    };
+                    VkDependencyInfo dependencyInfo{.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                                                    .imageMemoryBarrierCount = 1,
+                                                    .pImageMemoryBarriers = &barrierPresent};
 
                     vkCmdPipelineBarrier2(cb, &dependencyInfo);
                 }
@@ -489,10 +528,29 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Renderer", "vkQueueSubmit failed: {}", static_cast<int>(submitResult));
         }
 
-        // Present
-        if (s_SwapChain)
+        // Present the rendered image
+        VkSwapchainKHR swapchainHandle = s_SwapChain->Get();
+        VkPresentInfoKHR presentInfo{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                                     .waitSemaphoreCount = 1,
+                                     .pWaitSemaphores = &renderSemaphores[s_SwapchainImageIndex],
+                                     .swapchainCount = 1,
+                                     .pSwapchains = &swapchainHandle,
+                                     .pImageIndices = &s_SwapchainImageIndex};
+
+        VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
+        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
         {
-            s_SwapChain->Present(graphicsQueue, s_SwapchainImageIndex, renderSemaphores[s_SwapchainImageIndex]);
+            // Swapchain needs recreation (e.g., window resize)
+            uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
+            VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
+            s_SwapChain->Recreate(s_SwapChain->GetSurface(), queueFamily, allocator);
+            SEDX_CORE_INFO_TAG("Renderer",
+                               "Swapchain recreated after present (result: {})",
+                               static_cast<int>(presentResult));
+        }
+        else if (presentResult != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "vkQueuePresentKHR failed: {}", static_cast<int>(presentResult));
         }
 
         // Advance to next frame-in-flight
@@ -630,6 +688,70 @@ namespace SceneryEditorX
         // This is where module-specific draw commands would be recorded
 
         vkCmdEndRendering(cb);
+    }
+
+    void Renderer::CreateModels()
+    {
+        VmaAllocationCreateInfo bufferAllocCI{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
+                                                       VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                                              .usage = VMA_MEMORY_USAGE_AUTO};
+
+        VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
+
+        // GetQueue() returns Ref<Queue>*, so we need to get the pointer first
+        Ref<Queue> *queuePtr = RenderContext::Get()->GetDevice()->GetQueueManager()->GetQueue(Graphics);
+        SEDX_CORE_ASSERT(queuePtr && *queuePtr, "Graphics queue not available");
+
+        std::vector<std::string> texFiles = {"resources/textures/suzanne0.ktx",
+                                             "resources/textures/suzanne1.ktx",
+                                             "resources/textures/suzanne2.ktx"};
+        // Dereference the pointer to access the Ref, then call GetQueue()
+        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(), (*queuePtr)->GetQueue(), "resources/models/suzanne.obj", texFiles, bufferAllocCI));
+
+        const Asset &asset = s_AssetManager->GetAsset(0);
+        VkBuffer vBuffer = asset.GetModelBuffer();
+        VkDeviceSize vBufSize = asset.GetModelVertexSize();
+        VkDeviceSize iBufSize = asset.GetModelIndexSize();
+        VkDeviceSize indexCount = asset.GetModelIndexCount();
+
+        // Create uniform buffers as static resource (per-frame) managed by UniformBufferSet RAII helper
+        s_UniformBuffers = CreateScope<UniformBufferSet>(allocator);
+    }
+
+    void Renderer::CreateShaders()
+    {
+        // Initialize Slang shader compiler
+        Slang::ComPtr<slang::IGlobalSession> slangGlobalSession;
+        slang::createGlobalSession(slangGlobalSession.writeRef());
+        auto slangTargets{std::to_array<slang::TargetDesc>(
+            {
+                {
+                    .format = SLANG_SPIRV, 
+                    .profile = slangGlobalSession->findProfile("spirv_1_4")
+                }
+            })};
+        auto slangOptions{
+            std::to_array<slang::CompilerOptionEntry>({
+                {
+                    .name = slang::CompilerOptionName::EmitSpirvDirectly,
+                    .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}})};
+        slang::SessionDesc slangSessionDesc{.targets = slangTargets.data(),
+                                            .targetCount{static_cast<SlangInt>(slangTargets.size())},
+                                            .defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
+                                            .compilerOptionEntries{slangOptions.data()},
+                                            .compilerOptionEntryCount{static_cast<uint32_t>(slangOptions.size())}};
+
+        // Load shader
+        Slang::ComPtr<slang::ISession> slangSession;
+        slangGlobalSession->createSession(slangSessionDesc, slangSession.writeRef());
+        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle", "resources/shaders/shader.slang", nullptr, nullptr)};
+        Slang::ComPtr<ISlangBlob> spirv;
+        slangModule->getTargetCode(0, spirv.writeRef());
+
+        // Create ShaderManager owning shader modules for the pipeline stages.
+        ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
+
     }
 
     // -------------------------------------------------------

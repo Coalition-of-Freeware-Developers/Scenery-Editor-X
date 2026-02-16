@@ -28,9 +28,12 @@
  * Created: 09/02/2026
  * -------------------------------------------------------
  */
+
+// Define implementation BEFORE including the header
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 #include "model.h"
 #include "device.h"
-#include <tiny_obj_loader.h>
 
 // -------------------------------------------------------
 

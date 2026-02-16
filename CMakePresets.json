@@ -36,6 +36,19 @@
       }
     },
     {
+      "name": "QuickDebug-MSVC",
+      "displayName": "Windows Quick Debug (MSVC)",
+      "description": "Fast debug build without version increment for rapid iteration",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "SEDX_ENABLE_VERSION_INCREMENT": "OFF"
+      }
+    },
+    {
       "name": "Release-MSVC",
       "displayName": "Windows Release (MSVC)",
       "description": "Release build for Windows using MSVC compiler",
@@ -171,6 +184,12 @@
       "verbose": false
     },
     {
+      "name": "QuickDebug-MSVC",
+      "configurePreset": "QuickDebug-MSVC",
+      "configuration": "Debug",
+      "verbose": false
+    },
+    {
       "name": "Release-MSVC",
       "configurePreset": "Release-MSVC",
       "configuration": "Release",
@@ -217,6 +236,14 @@
     {
       "name": "Debug-MSVC",
       "configurePreset": "Debug-MSVC",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "QuickDebug-MSVC",
+      "configurePreset": "QuickDebug-MSVC",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true

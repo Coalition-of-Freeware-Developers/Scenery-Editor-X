@@ -149,7 +149,7 @@ TARGET_COMPILE_DEFINITIONS(SceneryEditorX
 
 # ---------------------------------
 
-IF (WIN32)
+IF (WIN32 AND SEDX_ENABLE_VERSION_INCREMENT)
     FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
 
     # Script path
@@ -175,6 +175,10 @@ IF (WIN32)
             BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
         )
         ADD_DEPENDENCIES(SceneryEditorX IncrementSceneryEditorXVersion)
+    ENDIF()
+ELSE()
+    IF (WIN32)
+        MESSAGE(STATUS "Version increment disabled for QuickDebug configuration")
     ENDIF()
 ENDIF()
 

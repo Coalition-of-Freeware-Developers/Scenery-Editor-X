@@ -37,7 +37,7 @@
 
 namespace SceneryEditorX
 {
-	class AssetManager 
+    class AssetManager : public RefCounted
 	{
 	public:
 	    AssetManager() = default;
@@ -51,7 +51,7 @@ namespace SceneryEditorX
 
         [[nodiscard]] size_t Count() const { return m_AssetSets.size(); }
 	
-	    void DestroyAll(VmaAllocator allocator);
+	    void DestroyAll();
 
     private:
 	    std::vector<Scope<Asset>> m_AssetSets;

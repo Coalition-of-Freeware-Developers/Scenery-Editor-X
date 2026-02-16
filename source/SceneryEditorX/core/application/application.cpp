@@ -34,10 +34,9 @@
 #include "SceneryEditorX/renderer/vulkan/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/swapchain.h"
 #include "SceneryEditorX/ui/ui_layer.h"
-
 #include <imgui_impl_sdl3.h>
 
-    // -------------------------------------------------------
+// -------------------------------------------------------
 
 bool appRunning = true; // Global variable to control the application loop
 
@@ -195,21 +194,23 @@ namespace SceneryEditorX
             Tick();
 
             // ImGui frame
-            ImGui_ImplSDL3_NewFrame();
-            ImGui::NewFrame();
+            //ImGui_ImplSDL3_NewFrame();
+            //ImGui::NewFrame();
 
             // Call user rendering (panels, viewports, etc.)
             OnRender();
 
             // Finalize ImGui rendering
-            ImGui::Render();
+            //ImGui::Render();
             
             // Handle multi-viewport windows
+            /*
             if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault();
             }
+            */
 
             // End frame and submit
             Renderer::EndFrame();
