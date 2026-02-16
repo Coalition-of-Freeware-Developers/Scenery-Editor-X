@@ -34,6 +34,7 @@
 #include "SceneryEditorX/core/application/application.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include <array>
+#include <SDL3/SDL.h>
 #include <glm/glm.hpp>
 #include <volk/volk.h>
 
@@ -101,13 +102,10 @@ namespace SceneryEditorX
         // Initialize volk loader
         volkInitialize();
 
-        // Get the render context (Initialize the context if needed)
-        if (const Ref<RenderContext> ctx = GetContext())
-        {
-            if (!ctx->IsInitialized())
-            {
-                ctx->Init();
-            }
+		if (RenderContext::IsInitialized())
+		{
+			SEDX_CORE_FATAL_TAG("Renderer", "RenderContext is already initialized before Renderer::Init() — this may indicate a problem with initialization order");
+            return;
         }
 
         s_Data = new RendererProperties;
@@ -119,6 +117,26 @@ namespace SceneryEditorX
         }
         */
 
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// SwapChain                                                                                                     ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        s_SwapChain = CreateRef<Swapchain>();
+        if (Window::GetWindow())
+        {
+            // Verify surface was created
+            if (s_SwapChain->GetSurface() == VK_NULL_HANDLE)
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "Failed to create Vulkan surface - surface is still VK_NULL_HANDLE");
+                return;
+            }
+        }
+        else
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Failed to get SDL window for surface creation");
+            return;
+        }
+
         // Get window dimensions
         uint32_t width = Window::GetWidth();
         uint32_t height = Window::GetHeight();
@@ -127,13 +145,26 @@ namespace SceneryEditorX
         SetRendererResolution(1920, 1080, false);
         SetViewport(static_cast<float>(width), static_cast<float>(height));
 
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// SwapChain                                                                                                     ///
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        s_SwapChain = CreateRef<Swapchain>();
-        // Swapchain will be created when the surface is available from the render context
-        // s_SwapChain->Create(surface, queueFamily, allocator);
-        SEDX_CORE_INFO_TAG("Renderer", "✓ Created Swapchain");
+        // Create the swapchain now that render context is initialized
+        if (RenderContext::Get() && s_SwapChain->GetSurface() != VK_NULL_HANDLE)
+        {
+            uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
+            VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
+
+            VkSwapchainKHR swapchainHandle = s_SwapChain->Create(s_SwapChain->GetSurface(), queueFamily, allocator);
+            if (swapchainHandle != VK_NULL_HANDLE)
+            {
+                SEDX_CORE_INFO_TAG("Renderer", "Swapchain created successfully with {} images", s_SwapChain->Images().size());
+            }
+            else
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "Failed to create swapchain");
+            }
+        }
+        else
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "Surface not available - swapchain creation deferred");
+        }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Frame Resources                                                                                               ///
@@ -149,9 +180,9 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("Renderer", "=== Shutting Down Renderer ===");
 
         // Wait for all GPU work to complete
-        if (RenderContext::GetDevice())
+        if (RenderContext::Get())
         {
-            RenderContext::GetDevice()->GetQueueManager()->WaitIdleAll();
+            RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
         }
 
         // Destroy frame resources
@@ -175,9 +206,9 @@ namespace SceneryEditorX
     void Renderer::Tick()
     {
         // Memory allocator housekeeping
-        if (RenderContext::GetDevice() && RenderContext::GetDevice()->GetMemoryAllocator())
+        if (RenderContext::Get() && RenderContext::Get()->GetDevice()->GetMemoryAllocator())
         {
-            RenderContext::GetDevice()->GetMemoryAllocator()->Tick(s_FrameNumber);
+            RenderContext::Get()->GetDevice()->GetMemoryAllocator()->Tick(s_FrameNumber);
         }
     }
 
@@ -189,8 +220,8 @@ namespace SceneryEditorX
     {
         SEDX_CORE_INFO_TAG("Renderer", "Creating frame resources for {} frames in flight", MAX_FRAMES_IN_FLIGHT);
 
-        // Get queue family index from render context
-        uint32_t queueFamily = 0; // TODO: Get from RenderContext when available
+        // Get queue family index from queue manager
+        uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
 
         // Create command pool
         s_CommandPool = CreateScope<CommandPool>(queueFamily, CommandPoolType::Resettable);
@@ -204,10 +235,24 @@ namespace SceneryEditorX
         }
         SEDX_CORE_INFO_TAG("Renderer", "✓ Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
 
-        // Create frame sync objects (fences and semaphores)
-        uint32_t swapchainImageCount = s_SwapChain ? static_cast<uint32_t>(s_SwapChain->Images().size()) : 2;
+        // Create frame sync objects - use actual swapchain image count or fallback
+        uint32_t swapchainImageCount = 2; // Default fallback
+        if (s_SwapChain && s_SwapChain->Images().size() > 0)
+        {
+            swapchainImageCount = static_cast<uint32_t>(s_SwapChain->Images().size());
+            SEDX_CORE_INFO_TAG("Renderer", "Using swapchain image count: {}", swapchainImageCount);
+        }
+        else
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "Swapchain not ready - using default image count: {}", swapchainImageCount);
+        }
+
         s_FrameSync = CreateScope<FrameSync>(MAX_FRAMES_IN_FLIGHT, swapchainImageCount);
-        SEDX_CORE_INFO_TAG("Renderer", "✓ Created frame sync objects");
+        SEDX_CORE_INFO_TAG("Renderer",
+                           "✓ Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})",
+                           s_FrameSync->Fences().size(),
+                           s_FrameSync->PresentSemaphores().size(),
+                           s_FrameSync->RenderSemaphores().size());
     }
 
     void Renderer::DestroyFrameResources()
@@ -249,20 +294,49 @@ namespace SceneryEditorX
 
         // Skip if window is minimized
         const uint32_t minRenderDimension = 64;
-        bool isValidResolution = s_RendererResolution.x >= minRenderDimension && 
-                                  s_RendererResolution.y >= minRenderDimension;
-        
+        bool isValidResolution = s_RendererResolution.x >= minRenderDimension && s_RendererResolution.y >= minRenderDimension;
+
         if (Window::IsMinimized() || !isValidResolution)
         {
             return false;
         }
 
-        // Acquire next swapchain image
-        if (s_SwapChain)
+        // Check swapchain validity with detailed diagnostics
+        if (!s_SwapChain)
         {
-            s_SwapChain->AcquireNextImage();
-            s_SwapchainImageIndex = s_SwapChain->GetImageIndex();
+            SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain is null - was Init() called successfully?");
+            return false;
         }
+
+        if (s_SwapChain->Images().empty())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain has no images - VkSwapchainKHR handle: {}, surface valid: {}", (void *)s_SwapChain->Get(), s_SwapChain->GetSurface() != VK_NULL_HANDLE);
+
+            // Attempt to recreate swapchain if surface is available
+            if (s_SwapChain->GetSurface() != VK_NULL_HANDLE)
+            {
+                SEDX_CORE_WARN_TAG("Renderer", "Attempting to recreate swapchain...");
+                uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
+                VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
+                VkSwapchainKHR handle = s_SwapChain->Recreate(s_SwapChain->GetSurface(), queueFamily, allocator);
+                if (handle != VK_NULL_HANDLE && !s_SwapChain->Images().empty())
+                {
+                    SEDX_CORE_INFO_TAG("Renderer", "Swapchain recreated successfully with {} images", s_SwapChain->Images().size());
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        // Acquire next swapchain image
+        s_SwapChain->AcquireNextImage();
+        s_SwapchainImageIndex = s_SwapChain->GetImageIndex();
 
         // Wait for the fence of the current frame-in-flight
         auto& fences = s_FrameSync->Fences();
@@ -283,9 +357,8 @@ namespace SceneryEditorX
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                 .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
             };
-            
-            VkResult result = vkBeginCommandBuffer(cb, &beginInfo);
-            if (result != VK_SUCCESS)
+
+            if (VkResult result = vkBeginCommandBuffer(cb, &beginInfo); result != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR_TAG("Renderer", "vkBeginCommandBuffer failed: {}", static_cast<int>(result));
                 return false;
@@ -360,19 +433,41 @@ namespace SceneryEditorX
         auto& presentSemaphores = s_FrameSync->PresentSemaphores();
         auto& renderSemaphores = s_FrameSync->RenderSemaphores();
 
-        // Get graphics queue from context
-        VkQueue graphicsQueue = VK_NULL_HANDLE;
-        if (RenderContext::GetDevice() && RenderContext::GetDevice()->GetQueueManager())
+        if (renderSemaphores.empty())
         {
-            if (Ref<Queue> *queueRef = RenderContext::GetDevice()->GetQueueManager()->GetQueue(Graphics); queueRef && *queueRef)
-            {
-                graphicsQueue = (*queueRef)->GetQueue();
-            }
+            SEDX_CORE_ERROR_TAG("Renderer", "Cannot submit - renderSemaphores vector is empty. Swapchain may not be initialized.");
+            return;
         }
 
+        if (s_SwapchainImageIndex >= renderSemaphores.size())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain image index {} out of bounds (renderSemaphores size: {})", s_SwapchainImageIndex, renderSemaphores.size());
+            return;
+        }
+
+        // Get graphics queue from context
+        VkQueue graphicsQueue = VK_NULL_HANDLE;
+
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        SEDX_CORE_VERIFY(device.IsValid(), "Device is not valid during submit");
+
+        if (device.IsValid())
+        {
+            Ref<QueueManager> queueManager = device->GetQueueManager();
+            SEDX_CORE_VERIFY(queueManager.IsValid(), "QueueManager is not valid during submit");
+
+            if (queueManager.IsValid())
+            {
+                if (Ref<Queue> *queueRef = queueManager->GetQueue(Graphics); queueRef && *queueRef)
+                {
+                    graphicsQueue = (*queueRef)->GetQueue();
+                }
+            }
+        }
+    
+        SEDX_CORE_VERIFY(graphicsQueue != VK_NULL_HANDLE, "No graphics queue available for submission");
         if (graphicsQueue == VK_NULL_HANDLE)
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "No graphics queue available for submission");
             return;
         }
 
@@ -596,11 +691,8 @@ namespace SceneryEditorX
 
     void Renderer::SetRendererResolution(uint32_t width, uint32_t height, bool recreateResources)
     {
-        if (s_RendererResolution.x == static_cast<float>(width) && 
-            s_RendererResolution.y == static_cast<float>(height))
-        {
+        if (s_RendererResolution.x == static_cast<float>(width) && s_RendererResolution.y == static_cast<float>(height))
             return;
-        }
 
         s_RendererResolution.x = static_cast<float>(width);
         s_RendererResolution.y = static_cast<float>(height);
@@ -608,9 +700,9 @@ namespace SceneryEditorX
         if (recreateResources && s_ResourcesInitialized)
         {
             // Wait for GPU to finish before recreating resources
-            if (RenderContext::GetDevice())
+            if (RenderContext::Get()->GetDevice())
             {
-                RenderContext::GetDevice()->GetQueueManager()->WaitIdleAll();
+                RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
             }
 
             CreateRenderTargets(true, false, true);
@@ -626,8 +718,7 @@ namespace SceneryEditorX
 
     void Renderer::SetOutputResolution(uint32_t width, uint32_t height, bool recreateResources)
     {
-        if (s_OutputResolution.x == static_cast<float>(width) && 
-            s_OutputResolution.y == static_cast<float>(height))
+        if (s_OutputResolution.x == static_cast<float>(width) && s_OutputResolution.y == static_cast<float>(height))
         {
             return;
         }

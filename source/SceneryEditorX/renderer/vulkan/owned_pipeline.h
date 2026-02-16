@@ -42,11 +42,11 @@ namespace SceneryEditorX
     {
 	public:
 	    OwnedPipeline() = default;
-	    OwnedPipeline(VkDevice device, VkPipeline pipeline, VkPipelineLayout layout) : device_(device), pipeline_(pipeline), layout_(layout) {}
+	    OwnedPipeline(VkDevice device, VkPipeline pipeline, VkPipelineLayout layout) : m_Device(device), m_Pipeline(pipeline), m_Layout(layout) {}
 	
 	    ~OwnedPipeline()
 	    {
-	        if (!destroyed_)
+	        if (!m_Destroyed)
 			{
 	            // best-effort cleanup; explicit destroy(m_Device) preferred
 	        }
@@ -54,29 +54,29 @@ namespace SceneryEditorX
 	
 	    void Destroy(VkDevice device)
 	    {
-	        if (!destroyed_) {
-	            if (pipeline_ != VK_NULL_HANDLE)
+	        if (!m_Destroyed) {
+	            if (m_Pipeline != VK_NULL_HANDLE)
 				{
-	                vkDestroyPipeline(device, pipeline_, nullptr);
-	                pipeline_ = VK_NULL_HANDLE;
+	                vkDestroyPipeline(device, m_Pipeline, nullptr);
+	                m_Pipeline = VK_NULL_HANDLE;
 	            }
-	            if (layout_ != VK_NULL_HANDLE)
+	            if (m_Layout != VK_NULL_HANDLE)
 				{
-	                vkDestroyPipelineLayout(device, layout_, nullptr);
-	                layout_ = VK_NULL_HANDLE;
+	                vkDestroyPipelineLayout(device, m_Layout, nullptr);
+	                m_Layout = VK_NULL_HANDLE;
 	            }
-	            destroyed_ = true;
+	            m_Destroyed = true;
 	        }
 	    }
 	
-	    VkPipeline GetPipeline() const { return pipeline_; }
-	    VkPipelineLayout GetLayout() const { return layout_; }
+	    VkPipeline GetPipeline() const { return m_Pipeline; }
+	    VkPipelineLayout GetLayout() const { return m_Layout; }
 	
 	private:
-	    VkDevice device_{ VK_NULL_HANDLE };
-	    VkPipeline pipeline_{ VK_NULL_HANDLE };
-	    VkPipelineLayout layout_{ VK_NULL_HANDLE };
-	    bool destroyed_{ false };
+	    VkDevice m_Device;
+	    VkPipeline m_Pipeline{ VK_NULL_HANDLE };
+	    VkPipelineLayout m_Layout{ VK_NULL_HANDLE };
+	    bool m_Destroyed = false;
 	};
 
 }

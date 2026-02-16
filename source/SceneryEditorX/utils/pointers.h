@@ -964,7 +964,7 @@ namespace SceneryEditorX
         {
             if (m_Ptr->DecRefCount() == 0)
             {
-                /// Update any weak references before deleting the object
+                /// Tick any weak references before deleting the object
                 Internal::ControlBlockRegistry<T>::GetInstance().RemoveControlBlock(m_Ptr);
                 delete m_Ptr;
             }

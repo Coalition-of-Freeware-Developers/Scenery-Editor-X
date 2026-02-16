@@ -109,7 +109,7 @@ namespace SceneryEditorX
 	class Input
 	{
 	public:
-		static void Update();
+		static void Tick();
 		static void OnKeyEvent(const SDL_KeyboardEvent &event);
 		static void OnMouseButtonEvent(const SDL_MouseButtonEvent &event);
 		static std::optional<KeyCode> FromSDLScancode(SDL_Scancode scancode);

@@ -68,7 +68,7 @@ namespace SceneryEditorX
 	
 	private:
         Ref<Device> m_Device; // Store m_Device so we can destroy the pool in the destructor (RAII)
-	    VkCommandPool m_CmdPool= VK_NULL_HANDLE ;
+	    VkCommandPool m_CmdPool = VK_NULL_HANDLE ;
         CommandPoolType m_PoolType = CommandPoolType::MaxEnum;
 	};
 

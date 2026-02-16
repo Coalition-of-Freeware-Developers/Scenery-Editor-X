@@ -120,7 +120,7 @@ namespace SceneryEditorX
         void Tick() override
         {
             if (m_EditorApp)
-                m_EditorApp->Update();
+                m_EditorApp->Tick();
         }
         
         void OnShutdown() override

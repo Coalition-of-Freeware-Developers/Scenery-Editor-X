@@ -43,18 +43,18 @@ namespace SceneryEditorX
      * @param wstr The wide string to convert
      * @return The converted standard UTF8 string
      */
-	inline std::string wstr_to_str(const std::wstring &wstr)
+	inline std::string WstrToStr(const std::wstring &wstr)
 	{
 	    if (wstr.empty())
 	    {
 	        return {};
 	    }
 	
-	    auto wstr_len = static_cast<int>(wstr.size());
-	    auto str_len = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstr_len, nullptr, 0, nullptr, nullptr);
+	    auto wstrLen = static_cast<int>(wstr.size());
+	    auto strLen = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstrLen, nullptr, 0, nullptr, nullptr);
 	
-	    std::string str(str_len, 0);
-	    WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstr_len, str.data(), str_len, nullptr, nullptr);
+	    std::string str(strLen, 0);
+	    WideCharToMultiByte(CP_UTF8, 0, wstr.data(), wstrLen, str.data(), strLen, nullptr, nullptr);
 	
 	    return str;
 	}
@@ -71,7 +71,7 @@ namespace SceneryEditorX
 	    }
 	    else
 	    {
-	        tempPath = wstr_to_str(std::wstring(tempBuffer)) + "/";
+	        tempPath = WstrToStr(std::wstring(tempBuffer)) + "/";
 	    }
 	
 	    return tempPath;
@@ -83,13 +83,13 @@ namespace SceneryEditorX
 	    LPWSTR *argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	
 	    // Ignore the first argument containing the application full path
-	    std::vector<std::wstring> arg_strings(argv + 1, argv + argc);
+	    std::vector<std::wstring> argStrings(argv + 1, argv + argc);
 	    std::vector<std::string> args;
 
-        args.reserve(arg_strings.size());
-        for (auto &arg : arg_strings)
+        args.reserve(argStrings.size());
+        for (auto &arg : argStrings)
 	    {
-	        args.push_back(wstr_to_str(arg));
+	        args.push_back(WstrToStr(arg));
 	    }
 	
 	    return args;

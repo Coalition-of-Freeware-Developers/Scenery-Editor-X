@@ -94,7 +94,7 @@ namespace SceneryEditorX
 
     void Launcher::Update() const
     {
-        /// Update the viewport size if it has changed
+        /// Tick the viewport size if it has changed
         if (viewportData.viewportResized)
             return;
         //RecreateFrameResources();
@@ -201,7 +201,7 @@ namespace SceneryEditorX
 	    /// Perform URL check before continuing
 	    if (!urlCheck())
 	    {
-			LAUNCHER_CORE_TRACE("Update URL is not reachable. Skipping update check.");
+			LAUNCHER_CORE_TRACE("Tick URL is not reachable. Skipping update check.");
 	        return;
 	    }  
 	
@@ -248,7 +248,7 @@ namespace SceneryEditorX
 	        }
 	        else
 	        {
-	            LAUNCHER_CORE_TRACE("Update available! ");
+	            LAUNCHER_CORE_TRACE("Tick available! ");
 	            LAUNCHER_CORE_TRACE("Current version: ",currentVersion);
 	            LAUNCHER_CORE_TRACE("Would you like to update ? (yes / no)");
 	            std::string userInput;

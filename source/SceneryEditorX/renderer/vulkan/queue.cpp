@@ -47,7 +47,7 @@ namespace SceneryEditorX
 	
 	    VkSemaphore semaphore;
 	    VkResult result = vkCreateSemaphore(device, &CreateInfo, nullptr, &semaphore);
-	    SEDX_CORE_ASSERT(result, "Semaphore creation failed");
+	    SEDX_VK_RESULT_ASSERT(result, "Semaphore creation failed");
 	    return semaphore;
 	}
 
@@ -145,14 +145,12 @@ namespace SceneryEditorX
 	
     // -------------------------------------------------------
 
-	Queue::Queue(const QueueType type, const char *name) : /*IObject(),*/ name(name)
-    {
-        m_Device = RenderContext::Get()->GetDevice();
-        //m_ObjectName = name;
-        m_Type = type;
+    Queue::Queue(const Ref<Device>& device, const QueueType type, const char *name) : name(name)
+	{
+		m_Device = device;  // Use the passed device directly
+		m_Type = type;
+	}
 
-        //SetObjectName(name ? name : "Unnamed Queue");
-    }
 
     Queue::~Queue()
     {
@@ -182,24 +180,23 @@ namespace SceneryEditorX
 
 	}
 
-    /**
-	 * @brief Wait for all queues to become idle. If flush is true, also flushes the deletion queue before waiting.
+	/**
+	 * @brief Initialize the queue by finding the appropriate queue family and retrieving the queue handle.
+	 * Note: Swapchain is not accessed here to avoid initialization order issues - it's retrieved dynamically when needed.
 	 */
 	void Queue::Init()
 	{
-        m_SwapChain = Renderer::GetSwapChain()->Get();
-	
-	    VkPhysicalDevice phys = m_Device->GetPhysicalDevice();
-	    VkDevice logical = m_Device->GetLogicalDevice();
-	    VkSurfaceKHR surface = m_Device->GetWindowSurface();
-	
-	    uint32_t familyIndex = FindQueueFamily(phys, m_Type, surface);
-	    SEDX_CORE_ASSERT(familyIndex != INVALID_VK_INDEX, "Failed to find suitable queue family for requested Queue type.");
-	
-	    m_Queue.familyIndex = familyIndex;
-	    vkGetDeviceQueue(logical, m_Queue.familyIndex,0, &m_Queue.handle); // Retrieve the device queue handle for the chosen family.
-	
-	    CreateSemaphores();
+		VkPhysicalDevice phys = m_Device->GetPhysicalDevice();
+		VkDevice logical = m_Device->GetLogicalDevice();
+		VkSurfaceKHR surface = m_Device->GetWindowSurface();
+
+		uint32_t familyIndex = FindQueueFamily(phys, m_Type, surface);
+		SEDX_CORE_ASSERT(familyIndex != INVALID_VK_INDEX, "Failed to find suitable queue family for requested Queue type.");
+
+		m_Queue.familyIndex = familyIndex;
+		vkGetDeviceQueue(logical, m_Queue.familyIndex, 0, &m_Queue.handle); // Retrieve the device queue handle for the chosen family.
+
+		CreateSemaphores();
 	}
 
     /**
@@ -218,20 +215,26 @@ namespace SceneryEditorX
         m_PresentSemaphore = VK_NULL_HANDLE;
 	}
 
-    /**
+	/**
 	 * @brief Acquire the next image from the swapchain for rendering. This method uses the Graphics queue instance to call vkAcquireNextImageKHR and returns the index of the acquired image. The caller is responsible for ensuring that the Graphics queue is properly initialized and that the swapchain is valid before calling this method.
 	 * @return The index of the acquired swapchain image.
 	 */
 	uint32_t Queue::AcquireNextImage()
 	{
-	    // Acquire next image from the swapchain using the Graphics queue instance
-	    Queue *q = Queue::GetQueue(QueueType::Graphics);
-	    SEDX_CORE_ASSERT(q != nullptr, "No Graphics queue available for Queue::AcquireNextImage.");
-	
-	    uint32_t ImageIndex = 0;
-	    VkResult result = vkAcquireNextImageKHR(q->m_Device->GetLogicalDevice(), q->m_SwapChain, UINT64_MAX, q->m_PresentSemaphore, nullptr, &ImageIndex);
-	    SEDX_CORE_ASSERT(result == VK_SUCCESS, "vkAcquireNextImageKHR failed");
-	    return ImageIndex;
+		// Acquire next image from the swapchain using the Graphics queue instance
+		Queue *q = Queue::GetQueue(QueueType::Graphics);
+		SEDX_CORE_ASSERT(q != nullptr, "No Graphics queue available for Queue::AcquireNextImage.");
+
+		// Retrieve swapchain dynamically to avoid initialization order issues
+		Swapchain* swapchain = Renderer::GetSwapChain();
+		SEDX_CORE_ASSERT(swapchain != nullptr, "Swapchain not initialized");
+		VkSwapchainKHR swapchainHandle = swapchain->Get();
+		SEDX_CORE_ASSERT(swapchainHandle != VK_NULL_HANDLE, "Invalid swapchain handle");
+
+		uint32_t ImageIndex = 0;
+		VkResult result = vkAcquireNextImageKHR(q->m_Device->GetLogicalDevice(), swapchainHandle, UINT64_MAX, q->m_PresentSemaphore, nullptr, &ImageIndex);
+		SEDX_CORE_ASSERT(result == VK_SUCCESS, "vkAcquireNextImageKHR failed");
+		return ImageIndex;
 	}
 	
     // TODO: Replace the VkCommandBuffer parameter with a higher-level CommandList or CommandBuffer wrapper that manages command recording and submission more robustly. 
@@ -286,33 +289,38 @@ namespace SceneryEditorX
 	    SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to submit queue.");
 	}
 
-    /**
+	/**
 	 * @brief Present the rendered image to the screen by submitting a present request to the graphics queue. This method uses the render semaphore to ensure that rendering is complete before presentation and waits for the presentation to finish across all queues to maintain synchronization. The caller must ensure that the image index provided is valid and corresponds to an acquired swapchain image.
 	 * @param imageIdx The index of the swapchain image to present, which should have been acquired using AcquireNextImage() and rendered to before calling this method.
 	 */
 	void Queue::Present(uint32_t imageIdx)
 	{
-	    Queue *q = GetQueue(QueueType::Graphics);
-	    SEDX_CORE_ASSERT(q != nullptr, "No Graphics queue available for Queue::Present.");
-        SEDX_CORE_ASSERT(q->m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::Present.");
-        SEDX_CORE_ASSERT(q->m_SwapChain != VK_NULL_HANDLE, "Invalid swapchain in Queue::Present.");
+		Queue *q = GetQueue(QueueType::Graphics);
+		SEDX_CORE_ASSERT(q != nullptr, "No Graphics queue available for Queue::Present.");
+		SEDX_CORE_ASSERT(q->m_RenderSemaphore != VK_NULL_HANDLE, "Invalid render semaphore in Queue::Present.");
 
-	    VkPresentInfoKHR PresentInfo = {
-	        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-	        .pNext = nullptr,
-	        .waitSemaphoreCount = 1,
-	        .pWaitSemaphores = &q->m_RenderSemaphore,
-	        .swapchainCount = 1,
-	        .pSwapchains = &q->m_SwapChain,
-	        .pImageIndices = &imageIdx,
-	        //.pResults = NULL,
-	    };
+		// Retrieve swapchain dynamically to avoid initialization order issues
+		Swapchain* swapchain = Renderer::GetSwapChain();
+		SEDX_CORE_ASSERT(swapchain != nullptr, "Swapchain not initialized");
+		VkSwapchainKHR swapchainHandle = swapchain->Get();
+		SEDX_CORE_ASSERT(swapchainHandle != VK_NULL_HANDLE, "Invalid swapchain handle in Queue::Present.");
 
-	    VkResult result = vkQueuePresentKHR(q->m_Queue.handle, &PresentInfo);
-	    SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to present queue.");
-	
-	    // Wait for presentation to finish across all queues (keeps previous behavior)
-	    WaitIdle(*q);
+		VkPresentInfoKHR PresentInfo = {
+			.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+			.pNext = nullptr,
+			.waitSemaphoreCount = 1,
+			.pWaitSemaphores = &q->m_RenderSemaphore,
+			.swapchainCount = 1,
+			.pSwapchains = &swapchainHandle,
+			.pImageIndices = &imageIdx,
+			//.pResults = NULL,
+		};
+
+		VkResult result = vkQueuePresentKHR(q->m_Queue.handle, &PresentInfo);
+		SEDX_CORE_ASSERT(result == VK_SUCCESS, "Failed to present queue.");
+
+		// Wait for presentation to finish across all queues (keeps previous behavior)
+		WaitIdle(*q);
 	}
 	
 	// -------------------------------------------------------
@@ -478,7 +486,7 @@ namespace SceneryEditorX
 	        framesEquilibrium = 0;
 	    }
 	
-	    // Update the previous object count to the current count
+	    // Tick the previous object count to the current count
 	    objectsToDeletePrevious = objectsToDelete;
 	
 	    return false;

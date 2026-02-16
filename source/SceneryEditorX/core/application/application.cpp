@@ -1,4 +1,4 @@
-/**
+    /**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -35,7 +35,9 @@
 #include "SceneryEditorX/renderer/vulkan/swapchain.h"
 #include "SceneryEditorX/ui/ui_layer.h"
 
-// -------------------------------------------------------
+#include <imgui_impl_sdl3.h>
+
+    // -------------------------------------------------------
 
 bool appRunning = true; // Global variable to control the application loop
 
@@ -64,9 +66,7 @@ namespace SceneryEditorX
 
         // Create the window
         m_Window = CreateScope<Window>();
-
         SEDX_CORE_INFO("Initializing Window");
-
         m_Window->Create();
         m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 
@@ -90,7 +90,7 @@ namespace SceneryEditorX
         m_Window->SetDecorated(appData.Decorated);
 
         //m_UILayer = UI::UILayer::Create();
-        PushOverlay(m_UILayer);
+        //PushOverlay(m_UILayer);
 
         m_IsRunning   = true;
         m_IsMinimized = false;
@@ -151,13 +151,17 @@ namespace SceneryEditorX
          */
         if (m_Window)
         {
+            m_Window->Destroy();
             m_Window.reset();
         }
     }
 
     void Application::Tick()
     {
+        Input::Tick();
+
         // Per-frame housekeeping
+        Window::Tick();
         Renderer::Tick();
     }
 
@@ -170,70 +174,64 @@ namespace SceneryEditorX
         {
             static uint64_t frameCount = 0;
 
+            // Poll events
             ProcessEvents();
+            m_Window->Tick();
 
-            m_Window->Update(); // Update the window (poll events)
-            //m_RenderThread.BlockUntilRenderComplete();
-
-            //m_RenderThread.Tick();
-
-            //m_RenderThread.Kick(); // Start rendering previous frame
-
-            if (!m_IsMinimized)
+            // Skip rendering if minimized
+            if (m_IsMinimized || Window::IsMinimized())
             {
-                Timer cpuTimer;
-
-                // Begin frame - acquires swapchain image and waits for fence
-                if (Renderer::BeginFrame())
-                {
-                    // Record draw commands via modules
-                    for (Layer *module : m_ModuleStage)
-                    {
-                        module->Tick(m_DeltaTime);
-                    }
-
-
-                    // Render ImGui on render thread
-                    Application *app = this;
-                    /*if (m_AppData.EnableImGui)
-                    {
-                        //Renderer::Submit([app]() { app->RenderUI(); });
-                        //Renderer::Submit([=]() { m_UILayer->End(); });
-                    }*/
-
-                    // End frame - finalizes command buffer recording
-                    Renderer::EndFrame();
-
-                    // Submit to GPU and present
-                    Renderer::SubmitAndPresent();
-
-                    // Update frame index
-                    m_CurrentFrameIndex = Renderer::GetCurrentFrameIndex();
-                }
-
-                m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
+                continue;
             }
 
-            // Per-frame housekeeping
-            Renderer::Tick();
+            // Begin frame rendering
+            if (!Renderer::BeginFrame())
+            {
+                // Frame acquisition failed (e.g., swapchain out of date)
+                continue;
+            }
 
-            OnUpdate();	// Call user-defined update function
-            Input::ClearReleasedKeys();
+            // Call application/editor update
+            Tick();
 
-            float time = GetTime();
-            m_FrameTime = time - m_LastFrameTime;
-            m_DeltaTime = DeltaTime(xMath::Min(static_cast<float>(m_FrameTime), 0.333f /* ~3 FPS*/)); 
-            m_LastFrameTime = time;
-			frameCount++;
+            // ImGui frame
+            ImGui_ImplSDL3_NewFrame();
+            ImGui::NewFrame();
+
+            // Call user rendering (panels, viewports, etc.)
+            OnRender();
+
+            // Finalize ImGui rendering
+            ImGui::Render();
+            
+            // Handle multi-viewport windows
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+            }
+
+            // End frame and submit
+            Renderer::EndFrame();
+            Renderer::SubmitAndPresent();
+
+            frameCount++;
         }
 
+        //SEDX_CORE_INFO_TAG("APP", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
         OnShutdown();
     }
 
     void Application::Stop() { m_IsRunning = false; }
 
+    void Application::OnRender()
+    {
+        // Override in derived class (Editor::OnRender())
+    }
+
     void Application::OnShutdown()
     {
+        SEDX_CORE_INFO_TAG("APP", "Application::OnShutdown()");
         SEDX_CORE_INFO("Shutting down application");
         m_EventCallbacks.clear();
         appRunning = false;

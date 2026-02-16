@@ -64,7 +64,6 @@ namespace SceneryEditorX
     inline int Main(const PlatformContext& context)
     {
 
-
         while (appRunning)
 		{
             InitCore();

@@ -127,7 +127,6 @@ namespace SceneryEditorX
 
         /**
          * @brief Record draw commands to the current frame's command buffer.
-         * 
          * @param cmdList Graphics command list for 3D rendering
          * @param computeCmdList Compute command list (optional, may be nullptr)
          */
@@ -197,9 +196,30 @@ namespace SceneryEditorX
         static VkCommandBuffer GetCurrentCommandBuffer();
 
     private:
+
+        /**
+         * @brief Create render targets (swapchain images, depth buffer) based on current swapchain configuration.
+         * @param createRender Whether to create render targets (color/depth) for the swapchain images.
+         * @param createOutput Whether to create output render targets.
+         * @param createDynamic Whether to create dynamic render targets.
+         */
         static void CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic);
+
+        /**
+         * @brief Create per-frame resources such as command buffers and synchronization objects.
+         */
         static void CreateFrameResources();
+
+        /**
+         * @brief Destroy per-frame resources such as command buffers and synchronization objects.
+         */
         static void DestroyFrameResources();
+
+        /**
+         * @brief Record draw commands for the current frame using the provided command lists.
+         * @param cb Command buffer to record into (retrieved via GetCurrentCommandBuffer())
+         * @param imageIndex Index of the swapchain image being rendered to (for resource binding)
+         */
         static void RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,18 +231,16 @@ namespace SceneryEditorX
         static std::atomic<bool> s_ResourcesInitialized;
         static CommandList *s_CurrentCmdList;
 
-        /// Frame synchronization
+        // Frame synchronization
         static Scope<FrameSync> s_FrameSync;
         static Scope<CommandPool> s_CommandPool;
         static std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> s_CommandBuffers;
 
-        /// Frame tracking
-        static uint32_t s_CurrentFrameIndex;     ///< Ring buffer index (0 to MAX_FRAMES_IN_FLIGHT-1)
-        static uint64_t s_FrameNumber;           ///< Total frames rendered
-        static uint32_t s_SwapchainImageIndex;   ///< Current swapchain image
-
-        /// Frame state
-        static bool s_FrameInProgress;           ///< True between BeginFrame and EndFrame
+        // Frame tracking
+        static uint32_t s_CurrentFrameIndex;     // Ring buffer index (0 to MAX_FRAMES_IN_FLIGHT-1)
+        static uint64_t s_FrameNumber;           // Total frames rendered
+        static uint32_t s_SwapchainImageIndex;   // Current swapchain image
+        static bool s_FrameInProgress;           // True between BeginFrame and EndFrame
     };
 
 }

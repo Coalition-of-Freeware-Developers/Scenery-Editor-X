@@ -186,6 +186,7 @@ namespace SceneryEditorX::UI
 	private:
         VkDescriptorPool imguiPool = VK_NULL_HANDLE;
         VkCommandBuffer activeCommandBuffer = VK_NULL_HANDLE;
+        Ref<Device> m_Device;
 
 	    /// State tracking
 	    bool initialized = false;

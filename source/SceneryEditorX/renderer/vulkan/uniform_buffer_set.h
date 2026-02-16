@@ -23,36 +23,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * memory_allocator.h
+ * uniform_buffer_set.h
  * -------------------------------------------------------
  * Created: 09/02/2026
  * -------------------------------------------------------
  */
 #pragma once
+#include "shader_module.h"
+#include <array>
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class Device;
 
-	class MemoryAllocator : public RefCounted
+	// Manages a set of per-frame uniform buffers (ShaderDataBuffer). Uses VMA to
+	// allocate buffers that are host-visible and retrieves m_Device addresses for
+	// shader m_Device address push-constant usage.
+	class UniformBufferSet
 	{
 	public:
-	    MemoryAllocator(Device *device);
-        virtual ~MemoryAllocator() override;
-        static void Tick(uint64_t frameCount);
+	    UniformBufferSet() = default;
+	    UniformBufferSet(VmaAllocator allocator);
+        ~UniformBufferSet();
 
-        static void SaveAllocation(void* resource, VmaAllocation allocation);
-        static void FreeAllocation(void *resource);
-        static VmaAllocation GetAllocation(void *resource);
-        static VmaAllocator GetAllocator();
-
+        void Create();
+	    void Destroy();
+	
+	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> &Buffers() { return m_Buffers; }
+	
 	private:
         Ref<Device> m_Device;
+	    VmaAllocator m_Allocator;
+	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> m_Buffers{};
+	    bool m_Destroyed = false;
 	};
 	
-}
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

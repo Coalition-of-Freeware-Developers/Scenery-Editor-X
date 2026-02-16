@@ -49,7 +49,7 @@ namespace SceneryEditorX
 	class Queue : public RefCounted
 	{ 
 	public:
-	    Queue(QueueType type, const char *name);
+	    Queue(const Ref<Device>& device, const QueueType type, const char *name);
 	    virtual ~Queue() override;
 	
 	    void Init();

@@ -46,7 +46,7 @@ namespace SceneryEditorX
 		ktxTexture* ktxTexture = nullptr;
 		KTX_error_code ktxres = ktxTexture_CreateFromNamedFile(path.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktxTexture);
 
-		Ref<Device> device = RenderContext::GetDevice();
+		Ref<Device> device = RenderContext::Get()->GetDevice();
 		SEDX_CORE_ASSERT(ktxres == KTX_SUCCESS && ktxTexture != nullptr, "ktxTexture_CreateFromNamedFile failed for: {}", path);
 	
 		VkImageCreateInfo texImgCI{};

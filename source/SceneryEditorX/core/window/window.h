@@ -56,18 +56,19 @@ namespace SceneryEditorX
 
 	public:
 	    static void Create();
-	    static void Update();
+	    static void Tick();
 	    static void ProcessEvents();
 	    static void OnImgui();
 	    static void Destroy();
 
 	    static void ApplyChanges();
-	    static void UpdateFramebufferSize();
+        static void UpdateFramebufferSize();
 	    static bool IsKeyPressed(SDL_Scancode keyCode);
 	    static void SetTitle(const std::string &title);
 
-	    static SDL_Window *GetWindow() { return window; }
-		static Window Get() { return m_Window; }
+	    static SDL_Window *GetWindow();
+        static void *GetRawHandle();
+        static Window Get() { return m_Window; }
 	    static uint32_t GetWidth();
 	    static uint32_t GetHeight();
         static Vec2 GetWindowSize();
@@ -91,6 +92,9 @@ namespace SceneryEditorX
 	    static void Maximize();
         static bool IsMaximized();
 		static void Minimize();
+        static void Show();
+        static void Hide();
+        static void Focus();
         static bool IsMinimized();
 	    static void CenterWindow();
 
@@ -99,8 +103,6 @@ namespace SceneryEditorX
 
 	private:
         static Window m_Window;
-        static SDL_Window *window;
-        static SDL_DisplayID *displays;
         static const char *name;
         static int width;
         static int height;
@@ -130,7 +132,6 @@ namespace SceneryEditorX
         static bool shouldClose;
 
         static void HandleEvent(const SDL_Event &event);
-	
 	};
 	
 }

@@ -222,12 +222,8 @@ namespace SceneryEditorX
 	    SEDX_CORE_ASSERT(m_Device, "Device must be initialized before QueueManager");
 	
 	    m_FamilyIndices = DetectQueueFamilies(m_Device->GetPhysicalDevice());
-	    SEDX_CORE_INFO_TAG("QueueManager",
-	                       "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
-	                       m_FamilyIndices.graphics,
-	                       m_FamilyIndices.compute,
-	                       m_FamilyIndices.transfer,
-	                       m_FamilyIndices.present);
+	    SEDX_CORE_INFO_TAG("QueueManager", "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
+	                       m_FamilyIndices.graphics, m_FamilyIndices.compute, m_FamilyIndices.transfer, m_FamilyIndices.present);
 	
 	    // Reserve space for all queue types up to QueueType::Unknown
 	    m_GPUQueues.resize(static_cast<size_t>(QueueType::Unknown));
@@ -287,27 +283,30 @@ namespace SceneryEditorX
 	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type requested: {}", typeIndex);
 	    }
 	
-	    // Thread-safe allocation
-	    std::scoped_lock lock(s_MutexAllocation);
-	
-	    // Check if queue already exists for this type
-	    if (m_GPUQueues[typeIndex])
-	    {
-	        SEDX_CORE_INFO_TAG("QueueManager", "Returning existing queue for type {}", typeIndex);
-	        return;
-	    }
-	    // Determine queue name
-	    const char *queueName = name ? name : "Unnamed Queue";
-	
-	    // Create new queue instance
-	    Ref<Queue> queue = CreateRef<Queue>(type, queueName);
-	
-	    // Store the queue
-	    m_GPUQueues[typeIndex] = queue;
-	    s_Regular[typeIndex] = queue;
-	
-	    //SEDX_CORE_INFO_TAG("QueueManager", "Allocated {} with {} pre-allocated command lists", queueName, queue->GetPreAllocatedCmdLists());
-	}
+			// Thread-safe allocation
+			std::scoped_lock lock(s_MutexAllocation);
+
+			// Check if queue already exists for this type
+			if (m_GPUQueues[typeIndex])
+			{
+				SEDX_CORE_INFO_TAG("QueueManager", "Returning existing queue for type {}", typeIndex);
+				return;
+			}
+			// Determine queue name
+			const char *queueName = name ? name : "Unnamed Queue";
+
+			// Create new queue instance
+			Ref<Queue> queue = CreateRef<Queue>(m_Device, type, queueName);  // Pass m_Device
+
+			// Initialize the queue - retrieves VkQueue handle from device
+			queue->Init();
+
+			// Store the queue
+			m_GPUQueues[typeIndex] = queue;
+			s_Regular[typeIndex] = queue;
+
+			//SEDX_CORE_INFO_TAG("QueueManager", "Allocated {} with {} pre-allocated command lists", queueName, queue->GetPreAllocatedCmdLists());
+		}
 	
 	void QueueManager::FreeQueue(Ref<Queue> queue)
 	{
@@ -413,18 +412,13 @@ namespace SceneryEditorX
             return (std::numeric_limits<uint32_t>::max)();
         }
 
-        Ref<QueueManager> manager = device->GetQueueManager(); // Get by value, not by reference
-        if (manager)
+        if (Ref<QueueManager> manager = device->GetQueueManager())
         {
-            SEDX_CORE_TRACE_TAG("QueueManager",
-                                "Getting family index for queue type {}",
-                                static_cast<uint32_t>(queue->GetType()));
+            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for queue type {}", static_cast<uint32_t>(queue->GetType()));
             return manager->GetFamilyIndexByType(queue->GetType());
         }
 
-        SEDX_CORE_WARN_TAG("QueueManager",
-                           "GetFamilyIndex called for unallocated queue type {}",
-                           static_cast<uint32_t>(queue->GetType()));
+        SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndex called for unallocated queue type {}", static_cast<uint32_t>(queue->GetType()));
         return (std::numeric_limits<uint32_t>::max)();
 	}
 	
@@ -432,9 +426,7 @@ namespace SceneryEditorX
 	{
 	    if (queue)
 	    {
-	        SEDX_CORE_TRACE_TAG("QueueManager",
-	                            "Getting VkQueue handle for queue type {}",
-	                            static_cast<uint32_t>(queue->GetType()));
+	        SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", static_cast<uint32_t>(queue->GetType()));
 	        return static_cast<VkQueue>(Queue::GetQueueResource(queue->GetType()));
 	    }
 	
@@ -463,9 +455,7 @@ namespace SceneryEditorX
 	        return static_cast<VkQueue>(Queue::GetQueueResource(type));
 	    }
 	
-	    SEDX_CORE_WARN_TAG("QueueManager",
-	                       "GetQueueHandleByType called for unallocated queue type {}",
-	                       static_cast<uint32_t>(type));
+	    SEDX_CORE_WARN_TAG("QueueManager",  "GetQueueHandleByType called for unallocated queue type {}", static_cast<uint32_t>(type));
 	    return VK_NULL_HANDLE;
 	}
 	

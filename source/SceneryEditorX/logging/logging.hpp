@@ -145,7 +145,14 @@ namespace SceneryEditorX
 		 */
 	    static void ShutDown();
 
-	    /**
+        /**
+         * @brief Converts a Vulkan result code to a human-readable string.
+         * @param result The Vulkan result code to convert.
+         * @return A string representation of the Vulkan result code.
+         */
+        static const char *VkErrorString(VkResult result);
+
+        /**
 	     * @fn LogVulkanDebug
 		 * @brief Logs a message with the specified vulkan log level.
 		 *

@@ -330,6 +330,17 @@
     static_assert(std::is_final<type>::value, "Type " SEDX_STRINGIFY(type) " must be final!")
 
 // -------------------------------------------------------
+// Vulkan Validation Assertions
+// -------------------------------------------------------
+
+#define SEDX_VK_RESULT_ASSERT(result, ...)  \
+	        if (result != VK_SUCCESS) { \
+				 ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Vulkan Error (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", "Vulkan operation failed with error code {}" __VA_OPT__(": ") __VA_ARGS__, ::SceneryEditorX::Log::VkErrorString(result)); \
+				 SEDX_DEBUG_BREAK; \
+			}
+
+
+// -------------------------------------------------------
 // Static Assertions - Size and Alignment
 // -------------------------------------------------------
 

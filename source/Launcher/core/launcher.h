@@ -71,7 +71,7 @@ namespace SceneryEditorX
          * 
          * Called each frame to update UI, process input, and manage the editor state.
          #1#
-        void Update() const;
+        void Tick() const;
         
         /**
          * @brief Renders a single frame.

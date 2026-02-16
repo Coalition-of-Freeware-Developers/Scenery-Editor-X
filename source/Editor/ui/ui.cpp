@@ -107,9 +107,9 @@ namespace SceneryEditorX::UI
 
     bool GUI::CreateDescriptorPool()
     {
-        Ref<Device> device = RenderContext::Get()->GetDevice();
+        m_Device = RenderContext::Get()->GetDevice();
         RenderContext context;
-        if (!device)
+        if (!m_Device)
         {
             EDITOR_ERROR("Cannot create ImGui descriptor pool: device is null");
             return false;
@@ -135,7 +135,7 @@ namespace SceneryEditorX::UI
         poolInfo.poolSizeCount = std::size(poolSizes);
         poolInfo.pPoolSizes = poolSizes;
 
-        if (vkCreateDescriptorPool(device->GetDevice(), &poolInfo, nullptr /* context.allocatorCallback*/, &imguiPool) != VK_SUCCESS)
+        if (vkCreateDescriptorPool(m_Device->GetDevice(), &poolInfo, nullptr /* context.allocatorCallback*/, &imguiPool) != VK_SUCCESS)
         {
             EDITOR_ERROR("Failed to create ImGui descriptor pool!");
             return false;
@@ -168,7 +168,7 @@ namespace SceneryEditorX::UI
         }
         */
 
-        // Update ImGui style to reflect DPI changes
+        // Tick ImGui style to reflect DPI changes
         ImGuiStyle &style = ImGui::GetStyle();
         style.ScaleAllSizes(dpiFactor);
         
@@ -177,7 +177,7 @@ namespace SceneryEditorX::UI
 
     bool GUI::InitGUI()
     {
-        Ref<Device> device = RenderContext::Get()->GetDevice();
+        m_Device = RenderContext::Get()->GetDevice();
         Window window = Application::Get().GetWindow();
 
         if (initialized)
@@ -190,7 +190,7 @@ namespace SceneryEditorX::UI
         //device = GraphicsEngine::GetDevice()->GetDevice();
         //swapchain = renderer.GetSwapChain().Get();
 
-        if (!device /*|| !swapchain*/)
+        if (!m_Device /*|| !swapchain*/)
         {
             EDITOR_ERROR("Failed to get valid Vulkan device or swapchain");
             return false;
@@ -223,9 +223,9 @@ namespace SceneryEditorX::UI
         // Initialize Vulkan backend
         ImGui_ImplVulkan_InitInfo info{};
         info.Instance = RenderContext::GetInstance();
-        info.PhysicalDevice = device->GetPhysicalDevice();
-        info.QueueFamily = device->GetQueueManager()->GetFamilyIndexByType(QueueType::Graphics);
-        info.Queue = device->GetQueueManager()->GetQueueHandleByType(QueueType::Graphics);
+        info.PhysicalDevice = m_Device->GetPhysicalDevice();
+        info.QueueFamily = m_Device->GetQueueManager()->GetFamilyIndexByType(QueueType::Graphics);
+        info.Queue = m_Device->GetQueueManager()->GetQueueHandleByType(QueueType::Graphics);
         info.DescriptorPool = imguiPool;
         //info.RenderPass = renderer.GetRenderPass();
         info.MinImageCount = 2;
@@ -250,7 +250,7 @@ namespace SceneryEditorX::UI
         //renderer.EndSingleTimeCommands(commandBuffer);
 
         /// Wait for font upload to complete
-        vkDeviceWaitIdle(device->GetDevice());
+        vkDeviceWaitIdle(m_Device->GetDevice());
 
         /// Font upload objects are now handled by ImGui internally
 
@@ -258,7 +258,7 @@ namespace SceneryEditorX::UI
         SetStyle();
         SetFonts();
 
-        /// Update DPI scale
+        /// Tick DPI scale
         UpdateDpiScale();
 
         initialized = true;
@@ -288,7 +288,7 @@ namespace SceneryEditorX::UI
         if (activeCommandBuffer != VK_NULL_HANDLE)
             ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), activeCommandBuffer);
 
-        /// Update and render additional platform windows
+        /// Tick and render additional platform windows
         ImGuiIO &io = ImGui::GetIO();
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
@@ -300,18 +300,16 @@ namespace SceneryEditorX::UI
 	
     void GUI::CleanUp()
     {
-        Ref<Device> device = RenderContext::Get()->GetDevice();
         if (!initialized)
             return;
 
-        vkDeviceWaitIdle(device->GetDevice());
-
+        vkDeviceWaitIdle(m_Device->GetDevice());
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
 
         if (imguiPool != VK_NULL_HANDLE)
         {
-            vkDestroyDescriptorPool(device->GetDevice(), imguiPool, nullptr);
+            vkDestroyDescriptorPool(m_Device->GetDevice(), imguiPool, nullptr);
             imguiPool = VK_NULL_HANDLE;
         }
 
@@ -326,7 +324,7 @@ namespace SceneryEditorX::UI
         if (!initialized)
             return;
 
-        /// Update DPI scale if needed
+        /// Tick DPI scale if needed
         UpdateDpiScale();
 
         EDITOR_INFO("GUI resized to {}x{}", width, height);

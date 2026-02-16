@@ -193,12 +193,12 @@ namespace SceneryEditorX
         // camera = assetManager.GetMainCamera(scene);
 
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-        Renderer::Init();
+        // Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         
-        SEDX_CORE_INFO_TAG("EDITOR", "✓ Editor initialization complete ({} ms)", duration);
+        SEDX_CORE_INFO_TAG("EDITOR", "Editor initialization complete ({} ms)", duration);
     }
 
     Editor::~Editor()
@@ -210,58 +210,73 @@ namespace SceneryEditorX
             ImGui::DestroyContext();
         }
 
-        Renderer::Shutdown();
+        // Note: Renderer::Shutdown() is called by Application destructor
         renderContext.Reset();
     }
 
+    void Editor::Run()
+    {
+        SEDX_CORE_INFO_TAG("EDITOR", "=== Starting Editor Main Loop ===");
+
+        // Call base class Run() which contains the main application loop
+        Application::Run();
+
+        SEDX_CORE_INFO_TAG("EDITOR", "=== Editor Main Loop Ended ===");
+    }
+
     /**
-     * @brief Main application loop
-     */
+	 * @brief Per-frame update - called by Application::Run()
+	 */
     void Editor::Tick()
     {
+        //SEDX_PROFILE_SCOPE("Editor::Tick");
 
-        // Main loop
-        while (!Get().GetWindow().GetShouldClose())
+        // Per-frame editor logic
+        /*
+        if (m_ShowStatisticsPanel)
         {
-			bool isEditor = true;
-            Get().Tick();
-            
-			// Logic update
-            {
-                // ImGui
-                if (isEditor)
-                {
-                    ImGui_ImplSDL3_NewFrame();
-                    ImGui::NewFrame();
-                }
-
-            }
-
-			// Render Update
-			if (isEditor)
-			{
-                ImGui::Render();
-
-			    // Child Windows
-                if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-                {
-                    ImGui::UpdatePlatformWindows();
-                    ImGui::RenderPlatformWindowsDefault();
-                }
-            }
+            UI_StatisticsPanel();
+        }
+        */
+        
+        // Tick project systems
+        if (Project::GetActive())
+        {
+            UpdateCurrentProject();
         }
 
-    };
+        Application::Tick();
+    }
+
+    void Editor::Stop()
+    {
+        Application::Stop();
+    }
+
+    void Editor::OnRender()
+    {
+        Application::OnRender();
+    }
+
+    void Editor::OnUpdate()
+    {
+        Application::OnUpdate();
+    }
+
+    void Editor::OnShutdown()
+    {
+        Application::OnShutdown();
+    }
 
     void Editor::InitEditor()
     {
-        const auto window_flags =
-			ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
-			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-			ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-			ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-    
-        // Set window position and size - this keeps the MenuBar in the right place and at the right size
+        /*SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
+
+        const auto window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                  ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+        // Set window position and size
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y));
         ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y));
@@ -270,17 +285,16 @@ namespace SceneryEditorX
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    
+
         // Begin Window
         const char *name = "##main_window";
         bool open = true;
         ImGui::Begin(name, &open, window_flags);
         ImGui::PopStyleVar(3);
 
-        // Begin Dock Space
+        // Setup docking space
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
         {
-            // Dock Space
             const auto window_id = ImGui::GetID(name);
             if (!ImGui::DockBuilderGetNode(window_id))
             {
@@ -289,12 +303,16 @@ namespace SceneryEditorX
                 ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
                 ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
 
-                // dockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
+                // Create dock layout
                 ImGuiID dock_main_id = window_id;
-                ImGuiID dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
-                ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.6f, nullptr, &dock_right_id);
-                ImGuiID dock_down_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.22f, nullptr, &dock_main_id);
-                ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id, ImGuiDir_Right, 0.3f, nullptr, &dock_down_id);
+                ImGuiID dock_right_id =
+                    ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
+                ImGuiID dock_right_down_id =
+                    ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down, 0.6f, nullptr, &dock_right_id);
+                ImGuiID dock_down_id =
+                    ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.22f, nullptr, &dock_main_id);
+                ImGuiID dock_down_right_id =
+                    ImGui::DockBuilderSplitNode(dock_down_id, ImGuiDir_Right, 0.3f, nullptr, &dock_down_id);
 
                 // Dock Windows
                 ImGui::DockBuilderDockWindow("World", dock_right_id);
@@ -310,7 +328,11 @@ namespace SceneryEditorX
             ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
             ImGui::PopStyleVar();
         }
-    
+
+        ImGui::End();*/
+    }
+    void Editor::OnEvent(Event &event)
+    {
     }
 
     void Editor::UpdateWindowTitle(const std::string &sceneName)
@@ -318,6 +340,27 @@ namespace SceneryEditorX
         const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
         Application::Get().GetWindow().SetTitle(title);
     }
+
+    void Editor::OnInit()
+    {
+        SEDX_CORE_INFO_TAG("EDITOR", "=== Editor OnInit ===");
+
+        // Initialize ImGui after window is created
+        InitEditor();
+
+        /*// Load default or startup project
+        if (m_UserPreferences && !m_UserPreferences->StartupProject.empty())
+        {
+            OpenProject(m_UserPreferences->StartupProject);
+        }
+        else
+        {
+            EmptyProject();
+        }
+		*/
+        SEDX_CORE_INFO_TAG("EDITOR", "Editor initialization complete");
+    }
+
 
     /**
      * @brief Recreates frame-related resources.
@@ -337,7 +380,7 @@ namespace SceneryEditorX
         // Clean up existing viewport resources
         CleanupViewportResources();
 
-        // Update viewport size from the new size
+        // Tick viewport size from the new size
         viewportData.SetViewportSize(newViewportSize.GetViewportSize());
         viewportData.viewportResized = false;
 

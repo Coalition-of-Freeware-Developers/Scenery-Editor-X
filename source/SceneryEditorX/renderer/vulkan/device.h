@@ -171,7 +171,7 @@ namespace SceneryEditorX
 
         Ref<Device> m_Device;
         VkDevice m_LogicalDevice = VK_NULL_HANDLE;
-        VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
+        static VkPhysicalDevice m_PhysicalDevice;
         static uint32_t m_PhysicalDeviceIndex;
 
         GraphicsChecks::InstanceProperties m_InstanceProps;

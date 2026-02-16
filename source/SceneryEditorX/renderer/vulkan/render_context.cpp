@@ -30,12 +30,15 @@
  */
 #include "render_context.h"
 #include "SceneryEditorX/core/application/application_data.h"
+#include "SceneryEditorX/core/window/window.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
+#include <SDL3/SDL_vulkan.h>
 #include <volk/volk.h>
 
 #ifdef SEDX_PLATFORM_WINDOWS
     #include <Windows.h>
 #endif
+
 
 // -------------------------------------------------------
 
@@ -43,13 +46,11 @@ namespace SceneryEditorX
 {
 
     // Static instance of the render context
-    static Scope<RenderContext> s_Instance = nullptr;
+    static Ref<RenderContext> s_Instance = nullptr;
     constexpr uint32_t StagingBufferSize = 256 * 1024 * 1024;
     constexpr uint32_t TimeStampPerPool = 64;
 
-    // Static member definitions
-    VkInstance RenderContext::m_Instance = VK_NULL_HANDLE;
-    Ref<Device> RenderContext::m_Device = nullptr;
+    static bool s_IsInitialized = false;
 
     // -------------------------------------------------------
 	
@@ -65,7 +66,7 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-	RenderContext::RenderContext() = default;
+    RenderContext::RenderContext() = default;
 
     RenderContext::~RenderContext()
     {
@@ -81,17 +82,6 @@ namespace SceneryEditorX
             vkDestroyInstance(m_Instance, nullptr);
             m_Instance = VK_NULL_HANDLE;
         }
-
-    }
-
-    Ref<RenderContext> RenderContext::Get()
-    {
-        if (!s_Instance)
-        {
-            s_Instance = CreateScope<RenderContext>();
-        }
-
-        return s_Instance.get();
     }
 
     RenderContext::RenderContext(RenderContext &&other) noexcept
@@ -121,34 +111,31 @@ namespace SceneryEditorX
         return *this;
     }
 
-    VkInstance RenderContext::GetInstance()
-    {
-        if (auto rc = Get(); !rc || m_Instance == VK_NULL_HANDLE)
-        {
-            SEDX_CORE_WARN("GetInstance() called before Vulkan instance creation");
-            return VK_NULL_HANDLE;
-        }
-
-        return m_Instance;
-    }
-
     void RenderContext::Init()
     {
         SEDX_TRACK_CALL("RenderContext::Init");
-        if (m_IsInitialized) // Idempotent guard: avoid double-initialization if called from multiple entry points
+        if (s_IsInitialized) // Idempotent guard: avoid double-initialization if called from multiple entry points
         {
-            SEDX_CORE_INFO_TAG("Graphics Engine", "RenderContext::Init() called but already initialized. Skipping.");
+            SEDX_CORE_INFO_TAG("RenderContext", "RenderContext::Init() called but already initialized. Skipping.");
             return;
         }
+
         try
         {
             SEDX_CORE_INFO("Initializing RenderContext");
+
+            // Create the singleton instance if it doesn't exist
+            if (!s_Instance)
+            {
+                s_Instance = CreateRef<RenderContext>();
+            }
+
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Application Info
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             AppData appData;
-            uint32_t apiVersion = GetVulkanAPIVersion(); // Get the users highest available version
+            //uint32_t apiVersion = GetVulkanAPIVersion(); // Get the users highest available version
 
             // Initialize volk loader then create an instance via the RAII wrapper.
             volkInitialize();
@@ -167,27 +154,48 @@ namespace SceneryEditorX
             createInfo.pApplicationInfo = &appInfo;
 
             /**
-             * Enable required surface extensions so windowing libraries (SFML) can
+             * Enable required surface extensions so windowing libraries (SDL) can
              * create platform-specific surfaces. On Windows we need VK_KHR_surface
              * and VK_KHR_win32_surface. If you later add runtime queries for
              * required extensions, prefer those instead of hard-coding.
              */
-            const char *extensions[] = {
-                VK_KHR_SURFACE_EXTENSION_NAME, 
-                VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+            const char *extensions[] = {VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
+                                        VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+                                        VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME,
+                                        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+                                        VK_KHR_SURFACE_EXTENSION_NAME,
+                                        VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+
+            const char *deviceExtensions[] = {
+                VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, // to obtain precise memory usage information from Vulkan Memory Allocator
+                VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME,
+                VK_EXT_HDR_METADATA_EXTENSION_NAME,
+                VK_KHR_ROBUSTNESS_2_EXTENSION_NAME,
+                VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+                VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+                VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+                VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME,
+                VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+                VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
+                VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+                VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+                VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
             };
+
             createInfo.enabledExtensionCount = sizeof(extensions) / sizeof(extensions[0]);
             createInfo.ppEnabledExtensionNames = extensions;
 
-            if (VkResult res = vkCreateInstance(&createInfo, nullptr, &m_Instance); res != VK_SUCCESS)
+            if (VkResult res = vkCreateInstance(&createInfo, nullptr, &s_Instance->m_Instance); res != VK_SUCCESS)
             {
                 SEDX_CORE_ERROR("Failed to create Vulkan instance: {}", res);
-                m_Instance = VK_NULL_HANDLE;
+                s_Instance->m_Instance = VK_NULL_HANDLE;
                 return;
             }
 
+
             // Initialize volk instance-level function pointers
-            volkLoadInstance(m_Instance);
+            volkLoadInstance(s_Instance->m_Instance);
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Instance Extensions and Validation Layers
@@ -243,15 +251,14 @@ namespace SceneryEditorX
                     SEDX_CORE_ERROR_TAG("Render Context", "Khronos validation layer not available!");
             }*/
 
-			m_Device = CreateRef<Device>(m_Instance);
-			if (!m_Device || m_Device->GetLogicalDevice() == VK_NULL_HANDLE)
+            s_Instance->m_Device = CreateRef<Device>(s_Instance->m_Instance);
+            if (!s_Instance->m_Device || s_Instance->m_Device->GetLogicalDevice() == VK_NULL_HANDLE)
             {
                 SEDX_CORE_ERROR_TAG("RenderContext", "Failed to create valid Vulkan device!");
                 return;
             }
 
-            m_IsInitialized = true;
-
+            s_IsInitialized = true;
         }
         catch (const std::exception &e)
         {
@@ -263,8 +270,34 @@ namespace SceneryEditorX
         }
     }
 
+    Ref<RenderContext> RenderContext::Get()
+    {
+        if (!s_Instance)
+        {
+            s_Instance = CreateRef<RenderContext>();
+        }
+
+        return s_Instance;
+    }
+
+    bool RenderContext::IsInitialized()
+    {
+        return s_IsInitialized;
+    }
+
+    VkInstance RenderContext::GetInstance()
+    {
+        auto rc = Get();
+        if (!rc || rc->m_Instance == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_WARN("GetInstance() called before Vulkan instance creation");
+            return VK_NULL_HANDLE;
+        }
+
+        return rc->m_Instance;
+    }
 
 
-}
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

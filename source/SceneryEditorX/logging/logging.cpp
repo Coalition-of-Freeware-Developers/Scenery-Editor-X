@@ -67,7 +67,7 @@ namespace SceneryEditorX
 	    {"AssetSystem",			TagDetails{.enabled = true,.levelFilter = Level::Info}},
 	    {"Assimp",				TagDetails{.enabled = true,.levelFilter = Level::Error}},
 	    {"Core",					TagDetails{.enabled = true,.levelFilter = Level::Trace}},
-	    {"GLFW",					TagDetails{.enabled = true,.levelFilter = Level::Error}},
+	    {"SDL",					TagDetails{.enabled = true,.levelFilter = Level::Error}},
 	    {"Memory",				TagDetails{.enabled = true,.levelFilter = Level::Error}},
 	    {"Mesh",				    TagDetails{.enabled = true,.levelFilter = Level::Warn}},
 	    {"Project",				TagDetails{.enabled = true,.levelFilter = Level::Warn}},
@@ -357,7 +357,7 @@ namespace SceneryEditorX
 	// -------------------------------------------------------
 
 	/// taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c
-    [[maybe_unused]] static const char* vkErrorString(const VkResult result)
+    [[maybe_unused]] const char *Log::VkErrorString(const VkResult result)
 	{
 		switch (static_cast<int>(result))
 		{

@@ -86,7 +86,7 @@ namespace SceneryEditorX
 	
 	private:
 	    Texture m_Texture{};
-	    bool m_Destroyed{ false };
+	    bool m_Destroyed = false;
 	};
 
 }

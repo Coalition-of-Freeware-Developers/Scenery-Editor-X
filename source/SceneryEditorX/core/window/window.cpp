@@ -43,8 +43,8 @@ namespace SceneryEditorX
 {
     // Static member definitions
 	Window::EventCallbackFn Window::s_EventCallback = nullptr;
-    SDL_Window *Window::window = nullptr;
-	SDL_DisplayID *Window::displays = nullptr;
+    SDL_Window *window = nullptr;
+	SDL_DisplayID *displays = nullptr;
 
     // -------------------------------------------------------
 
@@ -56,6 +56,7 @@ namespace SceneryEditorX
 	int Window::displayIndex = 0;
 	int Window::displayCount = 0;
 	int Window::displayModeIndex = 0;
+    float s_DPI_Scale = 1.0f;
 
     // -------------------------------------------------------
 
@@ -81,7 +82,94 @@ namespace SceneryEditorX
 	bool Window::maximized = true;
 	bool Window::shouldClose = false;
 
+    // custom title bar
+    float s_Titlebar_Height = 40.0f;        // default height, updated by editor
+    float s_Titlebar_Button_Width = 150.0f; // default width, updated by editor
+    const float RESIZE_BORDER = 8.0f;     // thickness of resize borders
+    int s_Titlebar_HoveredFrames = 0;      // persistence counter for hover state
+
     // -------------------------------------------------------
+
+	
+    SDL_HitTestResult HitTestCallback(SDL_Window *win, const SDL_Point *area, void *data)
+    {
+        int w, h;
+        SDL_GetWindowSize(win, &w, &h);
+
+        const int x = area->x;
+        const int y = area->y;
+        const int resizeMargin = static_cast<int>(RESIZE_BORDER * s_DPI_Scale);
+
+        // check corners first (for diagonal resize)
+        bool top = y < resizeMargin;
+        bool bottom = y >= h - resizeMargin;
+        bool left = x < resizeMargin;
+        bool right = x >= w - resizeMargin;
+
+        // corner hit tests
+        if (top && left)
+            return SDL_HITTEST_RESIZE_TOPLEFT;
+        if (top && right)
+            return SDL_HITTEST_RESIZE_TOPRIGHT;
+        if (bottom && left)
+            return SDL_HITTEST_RESIZE_BOTTOMLEFT;
+        if (bottom && right)
+            return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+
+        // edge hit tests
+        if (top)
+            return SDL_HITTEST_RESIZE_TOP;
+        if (bottom)
+            return SDL_HITTEST_RESIZE_BOTTOM;
+        if (left)
+            return SDL_HITTEST_RESIZE_LEFT;
+        if (right)
+            return SDL_HITTEST_RESIZE_RIGHT;
+
+        // title bar area - make draggable only when no imgui items are hovered
+        if (y < static_cast<int>(s_Titlebar_Height))
+        {
+            // exclude window buttons area on the right
+            if (x < w - static_cast<int>(s_Titlebar_Button_Width))
+            {
+                // only allow dragging when no imgui items were hovered recently
+                // use persistence to avoid timing issues between hit test and imgui frame
+                if (s_Titlebar_HoveredFrames == 0)
+                {
+                    return SDL_HITTEST_DRAGGABLE;
+                }
+            }
+        }
+
+        return SDL_HITTEST_NORMAL;
+    }
+
+    static void InitSDLSubSystems()
+	{
+        if (!SDL_WasInit(SDL_INIT_AUDIO))
+        {
+            if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
+            {
+                SEDX_CORE_ERROR_TAG("Window","Failed to initialise SDL audio subsystem: %s.", SDL_GetError());
+            }
+        }
+
+        if (!SDL_WasInit(SDL_INIT_VIDEO))
+        {
+            if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
+            {
+                SEDX_CORE_ERROR_TAG("Window", "Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+            }
+        }
+
+        if (!SDL_WasInit(SDL_INIT_GAMEPAD))
+        {
+            if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
+            {
+                SEDX_CORE_ERROR_TAG("Window", "Failed to initialise SDL gamepad subsystem: %s.", SDL_GetError());
+            }
+        }
+    }
 
 	static std::string VideoModeText(const SDL_DisplayMode *mode)
     {
@@ -252,14 +340,26 @@ namespace SceneryEditorX
 	
 	void Window::Create()
 	{
-	    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
-	    {
-	        return;
-	    }
+        // set the process to be per monitor DPI aware - Windows 10 v1607+ (Creators Tick)
+        #ifdef SEDX_PLATFORM_WINDOWS
+		#pragma comment(lib, "Shcore.lib")
+
+        if (HMODULE user32 = LoadLibrary(TEXT("user32.dll")))
+        {
+            typedef DPI_AWARENESS_CONTEXT(WINAPI * pfn)(DPI_AWARENESS_CONTEXT);
+            if (pfn SetThreadDpiAwarenessContext = (pfn)GetProcAddress(user32, "SetThreadDpiAwarenessContext"))
+            {
+                SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+            }
+            FreeLibrary(user32);
+        }
+        #endif
+        
+		InitSDLSubSystems();
 
 	    displays = SDL_GetDisplays(&displayCount);
 		
-	    SDL_WindowFlags flags = SDL_WINDOW_VULKAN;
+        uint32_t flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN;
 	    if (resizable)
 	    {
 	        flags |= SDL_WINDOW_RESIZABLE;
@@ -272,22 +372,31 @@ namespace SceneryEditorX
 	    window = SDL_CreateWindow(name, width, height, flags);
 	    if (!window)
 	    {
-	        SDL_Quit();
+            SEDX_CORE_ERROR_TAG("Window", "Failed to create window: {}", SDL_GetError());
 	        return;
 	    }
 
+		        // set up hit test callback for custom title bar dragging and resizing
+        if (!SDL_SetWindowHitTest(window, HitTestCallback, nullptr))
+        {
+            SEDX_CORE_WARN_TAG("Window","Failed to set window hit test callback: %s", SDL_GetError());
+        }
+
 	    SDL_SetWindowPosition(window, posX, posY);
 
+		        // get the DPI scale - has to be done after window creation
+    #ifdef SEDX_PLATFORM_WINDOWS
+        s_DPI_Scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetRawHandle()))) / 96.0f;
+    #endif
+
+		Show();
 	    dirty = false;
-	    ApplyChanges();
+	    //ApplyChanges();
 	}
 	
 	void Window::ApplyChanges()
 	{
-	    if (!window)
-	    {
-	        return;
-	    }
+        SEDX_CORE_ASSERT(window, "Window not created");
 	
 		displays = SDL_GetDisplays(&displayCount);
 		if (!displays || displayCount <= 0)
@@ -357,6 +466,24 @@ namespace SceneryEditorX
 	    dirty = false;
 	}
 	
+    void *Window::GetRawHandle()
+    {
+        SDL_PropertiesID props = SDL_GetWindowProperties(window);
+
+        // windows
+        if (void *handle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr))
+            return handle;
+
+        // wayland
+        if (void *handle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr))
+            return handle;
+
+        // x11
+        if (Uint64 x11_window = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0))
+            return reinterpret_cast<void *>(x11_window);
+
+        return nullptr;
+    }
 	/**
 	 * @brief Sets the window title
 	 * @param title The new title for the window
@@ -368,8 +495,13 @@ namespace SceneryEditorX
 	        SDL_SetWindowTitle(window, title.c_str());
 	    }
 	}
-	
-	bool Window::IsMouseDown(uint8_t buttonCode)
+
+    SDL_Window *Window::GetWindow()
+    {
+        return window;
+    }
+
+    bool Window::IsMouseDown(const uint8_t buttonCode)
 	{
 	    return (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_MASK(buttonCode)) != 0;
 	}
@@ -405,7 +537,7 @@ namespace SceneryEditorX
 	    SDL_Quit();
 	}
 	
-	void Window::Update()
+	void Window::Tick()
 	{
 		const bool *keyboardState = SDL_GetKeyboardState(nullptr);
 		for (int i = 0; i < SDL_SCANCODE_COUNT; i++)
@@ -655,6 +787,27 @@ namespace SceneryEditorX
             return;
 
         SDL_MinimizeWindow(window);
+    }
+
+    void Window::Show()
+    {
+        SEDX_CORE_ASSERT(window);
+
+        SDL_ShowWindow(window);
+    }
+
+    void Window::Hide()
+    {
+        SEDX_CORE_ASSERT(window != nullptr);
+
+        SDL_HideWindow(window);
+    }
+
+    void Window::Focus()
+    {
+        SEDX_CORE_ASSERT(window);
+
+        SDL_RaiseWindow(window);
     }
 
     bool Window::IsMinimized() { return SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED; }

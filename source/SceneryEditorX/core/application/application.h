@@ -70,9 +70,10 @@ namespace SceneryEditorX
         Application(const PlatformContext& context, const AppData& appData);
         virtual ~Application();
 
-		void Run();
-        void Tick();
-        void Stop();
+	    virtual void Run();
+        virtual void OnRender();
+        virtual void Tick();
+        virtual void Stop();
 
 		virtual void OnInit() {}
         virtual void OnUpdate() {}

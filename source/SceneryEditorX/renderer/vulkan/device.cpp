@@ -138,6 +138,7 @@ namespace SceneryEditorX
 	};
 
     uint32_t Device::m_PhysicalDeviceIndex = 0;						// Index of the currently selected physical device (GPU)
+    VkPhysicalDevice Device::m_PhysicalDevice = VK_NULL_HANDLE;
     static std::vector<HWDeviceInfo> s_PhysicalDevice;				// Cache all GPU device info
     static std::vector<VkPhysicalDevice> s_PhysicalDeviceHandles;	// Cache of Vulkan physical device handles corresponding to the GPU info list
     static bool s_SubparDevice = false;								// Flag to indicate if device was selected with suboptimal features but will still run
@@ -824,7 +825,7 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(m_QueueManager, "Failed to create QueueManager");
 
         // Initialize memory allocator
-        m_MemAllocator = CreateRef<MemoryAllocator>();
+        m_MemAllocator = CreateRef<MemoryAllocator>(this);
         SEDX_CORE_INFO_TAG("Device", "Device initialization complete");
     }
 
@@ -855,11 +856,6 @@ namespace SceneryEditorX
             m_QueueManager.Reset();
         }
 
-        if (m_MemAllocator.IsValid())
-        {
-            MemoryAllocator::Destroy();
-        }
-
 		m_LogicalDevice = VK_NULL_HANDLE;
         m_PhysicalDevice = VK_NULL_HANDLE;
     }
@@ -883,9 +879,7 @@ namespace SceneryEditorX
      */
     DeviceStatics Device::GetDeviceStatics()
     {
-        Ref<Device> device;
-        SEDX_CORE_ASSERT(device.IsValid(), "Device singleton is not initialized");
-        SEDX_CORE_ASSERT(device->m_PhysicalDevice != VK_NULL_HANDLE, "Physical device is null");
+        SEDX_CORE_ASSERT(m_PhysicalDevice != VK_NULL_HANDLE, "Physical device is null");
         SEDX_CORE_ASSERT(m_PhysicalDeviceIndex < s_PhysicalDevice.size(), "Invalid physical device index");
 
         DeviceStatics statics{};
@@ -906,7 +900,7 @@ namespace SceneryEditorX
         deviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         deviceProps.pNext = &shadingRateProps;
 
-        vkGetPhysicalDeviceProperties2(device->m_PhysicalDevice, &deviceProps);
+        vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &deviceProps);
         const VkPhysicalDeviceLimits &limits = deviceProps.properties.limits;
 
         // Populate core limits

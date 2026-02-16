@@ -77,7 +77,7 @@ namespace SceneryEditorX
 	    void Tick() override
         {
             if (m_EditorXLauncher)
-                m_EditorXLauncher->Update();
+                m_EditorXLauncher->Tick();
         }
 
 	    void OnShutdown() override

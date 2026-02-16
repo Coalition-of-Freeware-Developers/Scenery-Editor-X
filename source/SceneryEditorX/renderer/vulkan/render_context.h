@@ -53,15 +53,13 @@ namespace SceneryEditorX
         RenderContext(RenderContext &&) noexcept;
         RenderContext &operator=(RenderContext &&) noexcept;
 
-        void Init();
+        static void Init();
         static Ref<RenderContext> Get();
-        [[nodiscard]] bool IsInitialized() const { return m_IsInitialized; }
-
+        static bool IsInitialized();
         static VkInstance GetInstance();
-        static Ref<Device> GetDevice() { return m_Device; }
-        static const Ref<Device> &GetLogicalDevice() { return m_Device; }
 
-        //Scope<MemoryAllocator> *GetMemoryAllocator() { return &m_MemAllocator;  }
+        Ref<Device> GetDevice() { return m_Device; }
+        const Ref<Device> &GetLogicalDevice() { return m_Device; }
         static std::vector<uint8_t> GetPipelineCacheData() { return {}; }
 
         struct Renderable
@@ -74,7 +72,6 @@ namespace SceneryEditorX
         };
 	    
 	    VkPhysicalDevice physical = VK_NULL_HANDLE;
-	    VkSurfaceKHR surface = VK_NULL_HANDLE;
 	    uint32_t queueFamily = 0;
 	    VkDevice device = VK_NULL_HANDLE;
 	    VkQueue queue = VK_NULL_HANDLE;
@@ -97,12 +94,8 @@ namespace SceneryEditorX
 	    VkSurfaceCapabilitiesKHR* surfaceCaps = nullptr;
 
 	private:
-        static VkInstance m_Instance;
-        static Ref<Device> m_Device;
-        //Scope<MemoryAllocator>		m_MemAllocator;
-
-        Window *window = nullptr;
-        bool m_IsInitialized = false;
+        VkInstance m_Instance = VK_NULL_HANDLE;
+        Ref<Device> m_Device;
         VkPipelineCache m_PipelineCache = nullptr;
 
 	};

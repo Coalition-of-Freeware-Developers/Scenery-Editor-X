@@ -326,7 +326,7 @@ namespace
 namespace SceneryEditorX
 {
 
-	void Input::Update()
+	void Input::Tick()
 	{
 		/*
 		// Cleanup disconnected controller
@@ -339,7 +339,7 @@ namespace SceneryEditorX
 				it++;
 		}
 
-		// Update controllers
+		// Tick controllers
 		for (int id = GLFW_JOYSTICK_1; id < GLFW_JOYSTICK_LAST; id++)
 		{
 			if (glfwJoystickPresent(id) == GLFW_TRUE)

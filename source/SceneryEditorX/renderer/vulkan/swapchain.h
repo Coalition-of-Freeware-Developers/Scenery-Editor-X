@@ -30,8 +30,6 @@
  */
 #pragma once
 #include "device.h"
-
-
 #include <vector>
 #include <vma/vk_mem_alloc.h>
 
@@ -39,33 +37,28 @@
 
 namespace SceneryEditorX
 {
+    class Window;
 
     class Swapchain : public RefCounted
 	{
 	public:
 	    Swapchain();
-	    ~Swapchain() = default;
+        ~Swapchain() = default;
 	
 	    // Create the swapchain and associated image views and depth buffer.
 	    // Returns the created VkSwapchainKHR or VK_NULL_HANDLE on failure.
 	    VkSwapchainKHR Create(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator);
-	
+
 	    // Recreate the swapchain (destroys previous images/views/depth and creates new ones).
 	    // Recreate the swapchain: waits for m_Device idle, refreshes surface caps,
 	    // creates a new swapchain and replaces internal resources safely.
 	    VkSwapchainKHR Recreate(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator);
-	
         void AcquireNextImage();
-
         void Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
-
-	    // Destroy all resources owned by this helper.
 	    void Destroy();
 	
 	    // Accessors
         [[nodiscard]] VkSwapchainKHR Get() const { return m_Swapchain; }
-	    std::vector<VkImage>& Images() { return m_Images; }
-	    std::vector<VkImageView>& ImageViews() { return m_ImageViews; }
         [[nodiscard]] VkImage GetDepthImage() const { return m_DepthImage; }
 	    [[nodiscard]] VmaAllocation GetDepthAllocation() const { return m_DepthAlloc; }
 	    [[nodiscard]] VkImageView GetDepthView() const { return m_DepthView; }
@@ -73,9 +66,14 @@ namespace SceneryEditorX
 	    [[nodiscard]] VkFormat GetDepthFormat() const { return m_DepthFormat; }
 	    [[nodiscard]] VkExtent2D GetExtent() const { return m_Extent; }
 	    [[nodiscard]] uint32_t GetImageIndex() const { return m_ImageIndex; }
+        [[nodiscard]] VkSurfaceKHR GetSurface() const { return m_Surface; }
+
+		std::vector<VkImage> &Images() { return m_Images; }
+        std::vector<VkImageView> &ImageViews() { return m_ImageViews; }
 
 	private:
         Ref<Device> m_Device = nullptr;
+        VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 	    VkSwapchainKHR m_Swapchain{ VK_NULL_HANDLE };
 	    std::vector<VkImage> m_Images;
 	    std::vector<VkImageView> m_ImageViews;

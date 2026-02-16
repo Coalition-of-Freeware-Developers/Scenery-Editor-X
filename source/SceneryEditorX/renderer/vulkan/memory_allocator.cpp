@@ -53,43 +53,40 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    MemoryAllocator::MemoryAllocator()
+    MemoryAllocator::MemoryAllocator(Device *device)
     {
-        m_Device = RenderContext::Get()->GetDevice();
-
-    }
-
-    MemoryAllocator::~MemoryAllocator()
-    {
-        Destroy();
-        m_Device.Reset();
-        m_Device = nullptr;
-    }
-
-    void MemoryAllocator::Init()
-	{
+        SEDX_CORE_ASSERT(device != nullptr, "Device cannot be null");
+        m_Device = device;
         // Zero-initialize and provide the two root function pointers.
         // With VMA_DYNAMIC_VULKAN_FUNCTIONS=1, VMA will use these to
         // resolve all other Vulkan function pointers at runtime.
         VmaVulkanFunctions vkFunctions = {};
         vkFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
-        vkFunctions.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
+        vkFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 
-        Ref<RenderContext> ctx = RenderContext::Get();
         VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.physicalDevice = ctx->GetDevice()->GetPhysicalDevice();
-        allocatorInfo.device = ctx->GetDevice()->GetLogicalDevice();
-        allocatorInfo.instance = ctx->GetInstance();
-        allocatorInfo.vulkanApiVersion = ctx->GetDevice()->GetDeviceProperties().apiVersion;
-        allocatorInfo.pVulkanFunctions = &vkFunctions, 
+        allocatorInfo.physicalDevice = device->GetPhysicalDevice();
+        allocatorInfo.device = device->GetLogicalDevice();
+        allocatorInfo.instance = RenderContext::GetInstance();
+        allocatorInfo.vulkanApiVersion = device->GetDeviceProperties().apiVersion;
+        allocatorInfo.pVulkanFunctions = &vkFunctions;
         allocatorInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-        if (Ref<Device> device = ctx->GetLogicalDevice(); Device::GetDeviceStatics().isRayTracingSupported)
+        if (device->GetDeviceStatics().isRayTracingSupported)
         {
             allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
         }
 
-        SEDX_CORE_ASSERT(vmaCreateAllocator(&allocatorInfo, &s_Allocator));
-	}
+        SEDX_VK_RESULT_ASSERT(vmaCreateAllocator(&allocatorInfo, &s_Allocator));
+    }
+
+    MemoryAllocator::~MemoryAllocator()
+    {
+        SEDX_CORE_ASSERT(s_Allocator != nullptr);
+        SEDX_CORE_ASSERT(s_Allocations.empty(), "There are still allocations");
+        vmaDestroyAllocator(s_Allocator);
+        s_Allocator = nullptr;
+        m_Device.Reset();
+    }
 
     /**
      * @brief Per-frame update for the device, used to manage memory allocation frames.
@@ -109,16 +106,18 @@ namespace SceneryEditorX
             return;
         }
 
-        vmaSetCurrentFrameIndex(MemoryAllocator::GetAllocator(), static_cast<uint32_t>(frameCount));
-    }
+    #ifdef SEDX_DEBUG
 
-	void MemoryAllocator::Destroy()
-	{
-        SEDX_CORE_ASSERT(s_Allocator != nullptr);
-        SEDX_CORE_ASSERT(s_Allocations.empty(), "There are still allocations");
-        vmaDestroyAllocator(s_Allocator);
-        s_Allocator = nullptr;
-	}
+        // Add null check for s_Allocator
+        if (s_Allocator == nullptr)
+        {
+            SEDX_CORE_WARN_TAG("MemoryAllocator", "VMA allocator not initialized");
+            return;
+        }
+    #endif
+
+        vmaSetCurrentFrameIndex(GetAllocator(), static_cast<uint32_t>(frameCount));
+    }
 
 	void MemoryAllocator::SaveAllocation(void *resource, VmaAllocation allocation)
 	{

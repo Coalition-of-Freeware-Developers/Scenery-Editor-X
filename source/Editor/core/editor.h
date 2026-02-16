@@ -67,10 +67,16 @@ namespace SceneryEditorX
         explicit Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences);
         virtual ~Editor() override;
 
-		void Tick();
-        void InitEditor();
+        void Run() override;
+        void Tick() override;
+        void Stop() override;
 
+        void OnRender() override;
+        void OnUpdate() override;
+        void OnShutdown() override;
+        void InitEditor();
         void OnEvent(Event &event);
+
         bool OnKeyPressedEvent(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 
@@ -99,6 +105,7 @@ namespace SceneryEditorX
         typedef Renderer GraphicsEngine;
 
         void UpdateWindowTitle(const std::string &sceneName);
+        void OnInit() override;
 
         Ref<UserPreferences> m_UserPreferences;
         Ref<RenderContext> renderContext;
@@ -152,6 +159,7 @@ namespace SceneryEditorX
         void ReloadCSharp();
         void FocusLogPanel();
 
+    private:
         uint32_t m_TitleBarTargetColor;
         uint32_t m_TitleBarActiveColor;
         uint32_t m_TitleBarPreviousColor;

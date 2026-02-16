@@ -34,24 +34,32 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <SDL3/SDL_vulkan.h>
 #include <volk/volk.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	static inline void chk(VkResult r) 
-	{
-		if (r != VK_SUCCESS) {
-			std::cerr << "Vulkan error: " << r << '\n';
-			exit((int)r);
-		}
-	}
+
+    //static VkSurfaceKHR s_Surface = VK_NULL_HANDLE;
+
+    // -------------------------------------------------------
 
     Swapchain::Swapchain()
     {
-       Ref<Device> device = RenderContext::Get()->GetDevice();
-       m_Device = device;
+       m_Device = RenderContext::Get()->GetDevice();
+
+        VkSurfaceKHR surface = VK_NULL_HANDLE;
+        if (SDL_Vulkan_CreateSurface(Window::GetWindow(), RenderContext::Get()->GetInstance(), nullptr, &surface) != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR("Failed to create Vulkan surface!");
+            return;
+        }
+
+        m_Surface = surface;
+
+        SEDX_CORE_INFO_TAG("RenderContext", "Vulkan surface created successfully");
     }
 
     VkSwapchainKHR Swapchain::Create(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
@@ -61,7 +69,7 @@ namespace SceneryEditorX
         vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device->GetPhysicalDevice(), surface, &formatCount, nullptr);
 		if (formatCount == 0)
 		{
-			std::cerr << "No surface formats available" << '\n';
+			SEDX_CORE_ERROR_TAG("Swapchain", "No surface formats available");
 			return VK_NULL_HANDLE;
 		}
 
@@ -152,7 +160,7 @@ namespace SceneryEditorX
 			viewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			viewCI.subresourceRange.levelCount = 1;
 			viewCI.subresourceRange.layerCount = 1;
-			chk(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &newImageViews[i]));
+			SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &newImageViews[i]));
 		}
 	
 		// Create a new depth image for the new extent
@@ -176,7 +184,7 @@ namespace SceneryEditorX
 		VmaAllocationCreateInfo allocCI{
 		    .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
 		    .usage = VMA_MEMORY_USAGE_AUTO };
-		chk(vmaCreateImage(allocator, &depthImageCI, &allocCI, &newDepthImage, &newDepthAlloc, nullptr));
+        SEDX_VK_RESULT_ASSERT(vmaCreateImage(allocator, &depthImageCI, &allocCI, &newDepthImage, &newDepthAlloc, nullptr));
 
 		VkImageViewCreateInfo depthViewCI{};
 		depthViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -186,7 +194,7 @@ namespace SceneryEditorX
 		depthViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 		depthViewCI.subresourceRange.levelCount = 1;
 		depthViewCI.subresourceRange.layerCount = 1;
-		chk(vkCreateImageView(m_Device->GetLogicalDevice(), &depthViewCI, nullptr, &newDepthView));
+		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &depthViewCI, nullptr, &newDepthView));
 	
 		// At this point the new swapchain and its images/views/depth exist. Now
 		// we can safely destroy old resources (if any) and update our members.
@@ -216,7 +224,7 @@ namespace SceneryEditorX
 			}
 		}
 	
-		// Update internal state to the newly created resources
+		// Tick internal state to the newly created resources
 		m_Swapchain = newSwap;
 		m_Images = std::move(newImages);
 		m_ImageViews = std::move(newImageViews);
@@ -231,8 +239,8 @@ namespace SceneryEditorX
         m_ImageAcquired = false;
 		return m_Swapchain;
 	}
-	
-	VkSwapchainKHR Swapchain::Recreate(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
+
+    VkSwapchainKHR Swapchain::Recreate(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
 	{
         Ref<Device> device = RenderContext::Get()->GetDevice();
 		// Centralized recreation flow:
@@ -277,7 +285,7 @@ namespace SceneryEditorX
             {
                 // Swapchain is out of date (e.g. window resized) or suboptimal (e.g. window moved to different display).
                 // Recreate the swapchain and try acquiring again.
-                Recreate(RenderContext::Get()->surface, m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics), MemoryAllocator::GetAllocator());
+                Recreate(m_Surface, m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics), MemoryAllocator::GetAllocator());
             }
             else
             {
@@ -322,6 +330,11 @@ namespace SceneryEditorX
 		    m_Swapchain = VK_NULL_HANDLE;
 		}
 
+		if (m_Surface != VK_NULL_HANDLE)
+		{
+			vkDestroySurfaceKHR(device->GetInstance(), m_Surface, nullptr);
+			m_Surface = VK_NULL_HANDLE;
+        }
 	}
 
 }

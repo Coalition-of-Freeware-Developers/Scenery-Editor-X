@@ -98,7 +98,7 @@ namespace SceneryEditorX
 	{
 	    try
 	    {
-	        // Update monitor data if needed
+	        // Tick monitor data if needed
 	        RefreshDisplayCount();
 	
 	        // If we already have monitors, return them
