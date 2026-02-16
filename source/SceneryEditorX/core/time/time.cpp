@@ -33,6 +33,7 @@
 #include <chrono>
 #include <ctime>
 #include <SDL3/SDL_timer.h>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

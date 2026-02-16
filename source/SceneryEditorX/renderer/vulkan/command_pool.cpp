@@ -32,6 +32,7 @@
 #include "render_context.h"
 #include <utility>
 #include <vector>
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -------------------------------------------------------

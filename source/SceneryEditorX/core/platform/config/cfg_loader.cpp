@@ -28,8 +28,9 @@
  * Created: 7/4/2025
  * -------------------------------------------------------
  */
-#include <fstream>
 #include "cfg_loader.h"
+#include <fstream>
+#include <tracy/Tracy.hpp>
 
 // ---------------------------------------------------------
 

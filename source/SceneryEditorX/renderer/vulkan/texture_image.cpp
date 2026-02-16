@@ -32,6 +32,7 @@
 #include "render_context.h"
 #include <ktx.h>
 #include <ktxvulkan.h>
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -------------------------------------------------------

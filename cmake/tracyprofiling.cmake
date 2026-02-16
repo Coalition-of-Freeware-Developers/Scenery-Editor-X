@@ -13,7 +13,6 @@ IF(SEDX_USE_FETCHCONTENT_TRACY AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
 
 	IF(NOT tracy_POPULATED)
 		FETCHCONTENT_POPULATE(tracy)
-
 		ADD_SUBDIRECTORY("${tracy_SOURCE_DIR}" "${tracy_BINARY_DIR}")
 	ENDIF()
 ENDIF()
@@ -21,14 +20,14 @@ ENDIF()
 # ###########################################
 # Tracy Profiler Options
 # ###########################################
-OPTION(TRACY_ON_DEMAND "Enable Tracy on-demand profiling" OFF)
+OPTION(TRACY_ON_DEMAND "Enable Tracy on-demand profiling" ON)
 OPTION(TRACY_NO_EXIT "Enable Tracy profiler even without exit" OFF)
 OPTION(TRACY_NO_BROADCAST "Disable Tracy broadcast" OFF)
 
 # Use a STRING cache entry for callstack depth instead of OPTION to allow numeric values
 SET(SEDX_TRACY_CALLSTACK "48" CACHE STRING "Size of the collected call stacks for Tracy (numeric)")
-OPTION(SEDX_ENABLE_TRACY_CPU_MEMORY "Enable CPU memory profiling with Tracy" OFF)
-OPTION(SEDX_ENABLE_TRACY_GPU "Enable GPU profiling with Tracy" OFF)
+OPTION(SEDX_ENABLE_TRACY_CPU_MEMORY "Enable CPU memory profiling with Tracy" ON)
+OPTION(SEDX_ENABLE_TRACY_GPU "Enable GPU profiling with Tracy" ON)
 
 # ###########################################
 # Tracy Profiler Setup

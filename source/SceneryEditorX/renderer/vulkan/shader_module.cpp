@@ -30,6 +30,7 @@
  */
 #include "shader_module.h"
 #include "render_context.h"
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -------------------------------------------------------

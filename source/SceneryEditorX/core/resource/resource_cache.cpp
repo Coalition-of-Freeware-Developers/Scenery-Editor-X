@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #include "resource_cache.h"
-
 #include "SceneryEditorX/core/platform/filesystem/file_manager.hpp"
+#include <tracy/Tracy.hpp>
 
 // -----------------------------------------------------------
 

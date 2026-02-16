@@ -31,6 +31,7 @@
 #include "command_list.h"
 #include "buffer.h"
 #include "renderer.h"
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

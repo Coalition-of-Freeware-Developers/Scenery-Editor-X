@@ -385,6 +385,7 @@ TARGET_INCLUDE_DIRECTORIES(AppCore
 	${CMAKE_SOURCE_DIR}/dependency/xMath
 	${CMAKE_SOURCE_DIR}/dependency/entt/src
 	${CMAKE_SOURCE_DIR}/dependency/imgui
+	${CMAKE_SOURCE_DIR}/dependency/tracy/public
 	${CMAKE_SOURCE_DIR}/dependency/imgui/backends
 	${CMAKE_SOURCE_DIR}/dependency/imgui/misc
 	${CMAKE_SOURCE_DIR}/dependency/ImGuizmo

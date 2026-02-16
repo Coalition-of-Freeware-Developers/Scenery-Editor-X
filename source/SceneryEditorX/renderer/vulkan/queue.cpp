@@ -31,6 +31,7 @@
 #include "queue.h"
 #include "renderer.h"
 #include "swapchain.h"
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

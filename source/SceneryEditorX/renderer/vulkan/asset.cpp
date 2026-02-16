@@ -30,6 +30,7 @@
  */
 #include "asset.h"
 #include "render_context.h"
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

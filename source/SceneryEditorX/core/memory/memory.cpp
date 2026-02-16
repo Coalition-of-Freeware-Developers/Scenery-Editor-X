@@ -30,6 +30,7 @@
  */
 #include "memory.h"
 #include <mutex>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

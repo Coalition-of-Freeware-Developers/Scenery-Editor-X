@@ -39,6 +39,7 @@
 #include <array>
 #include <SDL3/SDL.h>
 #include <glm/glm.hpp>
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // --------------------------------------------------------------
@@ -312,7 +313,7 @@ namespace SceneryEditorX
             s_CommandPool.reset();
         }
 
-        SEDX_CORE_INFO_TAG("Renderer", "✓ Frame resources destroyed");
+        SEDX_CORE_INFO_TAG("Renderer", " Frame resources destroyed");
     }
 
     // -------------------------------------------------------
@@ -544,9 +545,7 @@ namespace SceneryEditorX
             uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
             VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
             s_SwapChain->Recreate(s_SwapChain->GetSurface(), queueFamily, allocator);
-            SEDX_CORE_INFO_TAG("Renderer",
-                               "Swapchain recreated after present (result: {})",
-                               static_cast<int>(presentResult));
+            SEDX_CORE_INFO_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
         }
         else if (presentResult != VK_SUCCESS)
         {
@@ -702,12 +701,31 @@ namespace SceneryEditorX
         // GetQueue() returns Ref<Queue>*, so we need to get the pointer first
         Ref<Queue> *queuePtr = RenderContext::Get()->GetDevice()->GetQueueManager()->GetQueue(Graphics);
         SEDX_CORE_ASSERT(queuePtr && *queuePtr, "Graphics queue not available");
+        // DIAGNOSTIC: Log current working directory
+        std::filesystem::path cwd = std::filesystem::current_path();
+        SEDX_CORE_INFO_TAG("Renderer", "Current working directory: {}", cwd.string());
+
+        // DIAGNOSTIC: Check if model file exists
+        std::filesystem::path modelPath = "resources/models/suzanne.obj";
+        SEDX_CORE_INFO_TAG("Renderer", "Looking for model at: {}", std::filesystem::absolute(modelPath).string());
+        SEDX_CORE_INFO_TAG("Renderer", "Model file exists: {}", std::filesystem::exists(modelPath));
 
         std::vector<std::string> texFiles = {"resources/textures/suzanne0.ktx",
                                              "resources/textures/suzanne1.ktx",
                                              "resources/textures/suzanne2.ktx"};
+
+        // Only proceed if file exists
+        if (!std::filesystem::exists(modelPath))
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Model file not found at expected path: {}",
+                                std::filesystem::absolute(modelPath).string());
+            return; // Skip model loading instead of asserting
+        }
+
         // Dereference the pointer to access the Ref, then call GetQueue()
-        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(), (*queuePtr)->GetQueue(), "resources/models/suzanne.obj", texFiles, bufferAllocCI));
+        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(),
+			(*queuePtr)->GetQueue(), modelPath.string(), texFiles, bufferAllocCI));
+
 
         const Asset &asset = s_AssetManager->GetAsset(0);
         VkBuffer vBuffer = asset.GetModelBuffer();

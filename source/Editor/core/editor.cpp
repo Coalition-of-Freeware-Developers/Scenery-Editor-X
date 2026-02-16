@@ -42,6 +42,7 @@
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
+#include <tracy/Tracy.hpp>
 
 // ---------------------------------------------------------
 
@@ -150,9 +151,9 @@ namespace SceneryEditorX
 
         const auto start = std::chrono::high_resolution_clock::now();
         
-        SEDX_CORE_INFO_TAG("EDITOR", "=== Initializing Editor with PlatformContext ===");
-        SEDX_CORE_INFO_TAG("EDITOR", "  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO_TAG("EDITOR", "  Temp Directory: {}", context.GetTempDirectory());
+        SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext ===");
+        SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
         
         renderContext = RenderContext::Get();
 
@@ -168,7 +169,7 @@ namespace SceneryEditorX
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         
-        SEDX_CORE_INFO_TAG("EDITOR", "✓ Editor initialization complete ({} ms)", duration);
+        SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
     }
 
     Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : Application(context), m_UserPreferences(userPreferences)
@@ -177,9 +178,9 @@ namespace SceneryEditorX
 
         const auto start = std::chrono::high_resolution_clock::now();
         
-        SEDX_CORE_INFO_TAG("EDITOR", "=== Initializing Editor with PlatformContext and UserPreferences ===");
-        SEDX_CORE_INFO_TAG("EDITOR", "  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO_TAG("EDITOR", "  Temp Directory: {}", context.GetTempDirectory());
+        SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext and UserPreferences ===");
+        SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
         
         renderContext = RenderContext::Get();
 
@@ -196,7 +197,7 @@ namespace SceneryEditorX
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         
-        SEDX_CORE_INFO_TAG("EDITOR", "Editor initialization complete ({} ms)", duration);
+        SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
     }
 
     Editor::~Editor()
@@ -214,12 +215,12 @@ namespace SceneryEditorX
 
     void Editor::Run()
     {
-        SEDX_CORE_INFO_TAG("EDITOR", "=== Starting Editor Main Loop ===");
+        SEDX_CORE_INFO_TAG("Editor", "=== Starting Editor Main Loop ===");
 
         // Call base class Run() which contains the main application loop
         Application::Run();
 
-        SEDX_CORE_INFO_TAG("EDITOR", "=== Editor Main Loop Ended ===");
+        SEDX_CORE_INFO_TAG("Editor", "=== Editor Main Loop Ended ===");
     }
 
     /**
@@ -341,7 +342,7 @@ namespace SceneryEditorX
 
     void Editor::OnInit()
     {
-        SEDX_CORE_INFO_TAG("EDITOR", "=== Editor OnInit ===");
+        SEDX_CORE_INFO("=== Editor OnInit ===");
 
         // Initialize ImGui after window is created
         InitEditor();
@@ -356,7 +357,7 @@ namespace SceneryEditorX
             EmptyProject();
         }
 		*/
-        SEDX_CORE_INFO_TAG("EDITOR", "Editor initialization complete");
+        SEDX_CORE_INFO("Editor initialization complete");
     }
 
 

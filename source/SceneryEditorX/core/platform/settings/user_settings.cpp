@@ -28,6 +28,11 @@
  * Created: 11/7/2025
  * -------------------------------------------------------
  */
+#include "user_settings.h"
+#include "settings.h"
+#include "SceneryEditorX/logging/logging.hpp"
+#include "SceneryEditorX/project/project_settings.h"
+#include "SceneryEditorX/utils/string_utils.h"
 #include <algorithm>
 #include <chrono>
 #include <ctime>
@@ -35,11 +40,7 @@
 #include <iomanip>
 #include <locale>
 #include <sstream>
-#include "user_settings.h"
-#include "settings.h"
-#include "SceneryEditorX/logging/logging.hpp"
-#include "SceneryEditorX/project/project_settings.h"
-#include "SceneryEditorX/utils/string_utils.h"
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

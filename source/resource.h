@@ -6,10 +6,10 @@
 #define SEDX_MAJOR             			0
 #define SEDX_MINOR             			2
 #define SEDX_PATCH             			27
-#define SEDX_BUILD             			495
+#define SEDX_BUILD             			504
 //----------------------------------------------------------------------------
-#define SEDX_VERSION_STRING            	"0.2.27.495"
-#define SEDX_VERSION                    0x00021B01EF
+#define SEDX_VERSION_STRING            	"0.2.27.504"
+#define SEDX_VERSION                    0x00021B01F8
 #define SEDX_FILE_VERSION               SEDX_MAJOR,SEDX_MINOR,SEDX_PATCH,SEDX_BUILD
 //----------------------------------------------------------------------------
 // Scenery Editor X - Launcher Version

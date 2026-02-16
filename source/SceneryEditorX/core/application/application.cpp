@@ -1,4 +1,4 @@
-    /**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -35,6 +35,7 @@
 #include "SceneryEditorX/renderer/vulkan/swapchain.h"
 #include "SceneryEditorX/ui/ui_layer.h"
 #include <imgui_impl_sdl3.h>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 
@@ -102,10 +103,22 @@ namespace SceneryEditorX
         appInstance = this;
         s_MainThreadID = std::this_thread::get_id();
 
-        SEDX_CORE_INFO_TAG("INIT", "=== Initializing Application with PlatformContext ===");
-        SEDX_CORE_INFO_TAG("INIT", "  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO_TAG("INIT", "  Temp Directory: {}", context.GetTempDirectory());
-        SEDX_CORE_INFO_TAG("INIT", "  Command Line Args: {}", context.GetCommandLineArgs().size());
+        // Set working directory to application root (2 levels up from bin/Debug)
+        std::filesystem::path exePath = std::filesystem::current_path();
+        std::filesystem::path repoRoot = exePath.parent_path().parent_path();
+        std::filesystem::current_path(repoRoot);
+
+        SEDX_CORE_INFO("Executable directory: {}", exePath.string());
+        SEDX_CORE_INFO("Repository root: {}", repoRoot.string());
+        SEDX_CORE_INFO("Working directory set to: {}", std::filesystem::current_path().string());
+
+        // -------------------------------------------------------
+
+        SEDX_CORE_INFO("=== Initializing Application with PlatformContext ===");
+        SEDX_CORE_INFO("  Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_INFO("  Temp Directory: {}", context.GetTempDirectory());
+        SEDX_CORE_INFO("  Command Line Args: {}", context.GetCommandLineArgs().size());
+
 
         AppData specification;
         
@@ -123,10 +136,21 @@ namespace SceneryEditorX
         appInstance = this;
         s_MainThreadID = std::this_thread::get_id();
 
-        SEDX_CORE_INFO_TAG("INIT", "=== Initializing Application with PlatformContext ===");
-        SEDX_CORE_INFO_TAG("INIT", "  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO_TAG("INIT", "  Temp Directory: {}", context.GetTempDirectory());
-        SEDX_CORE_INFO_TAG("INIT", "  Command Line Args: {}", context.GetCommandLineArgs().size());
+        // Set working directory to application root (2 levels up from bin/Debug)
+        std::filesystem::path exePath = std::filesystem::current_path();
+        std::filesystem::path repoRoot = exePath.parent_path().parent_path();
+        std::filesystem::current_path(repoRoot);
+
+        SEDX_CORE_INFO("Executable directory: {}", exePath.string());
+        SEDX_CORE_INFO("Repository root: {}", repoRoot.string());
+        SEDX_CORE_INFO("Working directory set to: {}", std::filesystem::current_path().string());
+
+        // -------------------------------------------------------
+
+        SEDX_CORE_INFO("=== Initializing Application with PlatformContext ===");
+        SEDX_CORE_INFO("  Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_INFO("  Temp Directory: {}", context.GetTempDirectory());
+        SEDX_CORE_INFO("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
         AppData specification = appData;
         
@@ -175,7 +199,6 @@ namespace SceneryEditorX
 
             // Poll events
             ProcessEvents();
-            m_Window->Tick();
 
             // Skip rendering if minimized
             if (m_IsMinimized || Window::IsMinimized())

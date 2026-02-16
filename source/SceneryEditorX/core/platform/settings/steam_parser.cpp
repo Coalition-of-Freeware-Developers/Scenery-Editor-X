@@ -28,11 +28,12 @@
  * Created: 13/6/2025
  * -------------------------------------------------------
  */
+#include "steam_parser.h"
 #include <filesystem>
 #include <fstream>
 #include <libconfig.h++>
 #include <regex>
-#include "steam_parser.h"
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

@@ -33,6 +33,7 @@
 #include <SceneryEditorX/core/platform/windows/context.h>
 #include <cassert>
 #include <stdexcept>
+#include <tracy/Tracy.hpp>
 
 // -----------------------------------------------
 

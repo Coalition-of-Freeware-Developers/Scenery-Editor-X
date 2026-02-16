@@ -36,6 +36,7 @@
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <imgui/imgui.h>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

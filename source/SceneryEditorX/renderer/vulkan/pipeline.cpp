@@ -31,6 +31,7 @@
 #include "pipeline.h"
 #include <iostream>
 #include <vector>
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -------------------------------------------------------

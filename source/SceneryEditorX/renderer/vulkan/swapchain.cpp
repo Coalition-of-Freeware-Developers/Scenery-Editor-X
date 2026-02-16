@@ -35,6 +35,7 @@
 #include <utility>
 #include <vector>
 #include <SDL3/SDL_vulkan.h>
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -------------------------------------------------------

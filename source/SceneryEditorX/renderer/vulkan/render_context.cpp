@@ -34,7 +34,7 @@
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include <SDL3/SDL_vulkan.h>
 #include <volk/volk.h>
-
+#include <tracy/Tracy.hpp>
 #ifdef SEDX_PLATFORM_WINDOWS
     #include <Windows.h>
 #endif

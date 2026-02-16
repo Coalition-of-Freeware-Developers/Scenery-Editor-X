@@ -29,11 +29,12 @@
  * -------------------------------------------------------
  */
 #include "monitor_data.h"
+#include "window.h"
 #include <algorithm>
 #include <SDL3/SDL_video.h>
-#include <fmt/format.h>
-#include "window.h"
 #include <SceneryEditorX/logging/logging.hpp>
+#include <fmt/format.h>
+#include <tracy/Tracy.hpp>
 
 // --------------------------------------------
 

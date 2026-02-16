@@ -28,11 +28,12 @@
  * Created: 23/4/2025
  * -------------------------------------------------------
  */
-#include <filesystem>
-#include <libconfig.h++>
 #include "settings.h"
 #include "steam_parser.h"
 #include "SceneryEditorX/core/application/application_data.h"
+#include <filesystem>
+#include <libconfig.h++>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

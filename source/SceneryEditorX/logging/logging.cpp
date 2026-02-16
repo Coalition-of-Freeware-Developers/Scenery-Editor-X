@@ -32,10 +32,11 @@
 #include <minwinbase.h>
 #include <sysinfoapi.h>
 #include <timezoneapi.h>
+#include <SceneryEditorX/core/application/application_data.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <tracy/Tracy.hpp>
 #include <vulkan/vulkan.h>
-#include <SceneryEditorX/core/application/application_data.h>
 
 // -------------------------------------------------------
 

@@ -30,6 +30,7 @@
  */
 #include "buffer.h"
 #include "render_context.h"
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // --------------------------------

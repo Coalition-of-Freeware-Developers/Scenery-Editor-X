@@ -3,11 +3,11 @@ MESSAGE(STATUS "Configuring project assets")
 # --------------------------------
 # DIRECTORIES
 # --------------------------------
-SET(ASSET_DIR   "${CMAKE_SOURCE_DIR}/resources")
-SET(FONT_DIR    "${CMAKE_SOURCE_DIR}/resources/fonts")
-SET(MODEL_DIR   "${CMAKE_SOURCE_DIR}/resources/models")
-SET(SHADER_DIR  "${CMAKE_SOURCE_DIR}/resources/shaders")
-SET(TEXTURE_DIR "${CMAKE_SOURCE_DIR}/resources/textures")
+SET(ASSET_DIR     "${CMAKE_SOURCE_DIR}/resources")
+SET(FONT_DIR      "${CMAKE_SOURCE_DIR}/resources/fonts")
+SET(MODEL_DIR     "${CMAKE_SOURCE_DIR}/resources/models")
+SET(SHADER_DIR    "${CMAKE_SOURCE_DIR}/resources/shaders")
+SET(TEXTURE_DIR   "${CMAKE_SOURCE_DIR}/resources/textures")
 SET(RESOURCE_FILE "${CMAKE_SOURCE_DIR}/source/resource.h")
 
 SET(FONT_FILES

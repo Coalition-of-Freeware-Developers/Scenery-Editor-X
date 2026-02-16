@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "asset_manager.h"
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 
@@ -71,7 +72,7 @@ namespace SceneryEditorX
 
         m_AssetSets.clear();
 
-        SEDX_CORE_INFO_TAG("AssetManager", "✓ All assets destroyed");
+        SEDX_CORE_INFO_TAG("AssetManager", "All assets destroyed");
     }
 
 

@@ -33,6 +33,7 @@
 #include "memory_allocator.h"
 #include "render_context.h"
 #include <algorithm>
+#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -----------------------------------------------------------------
@@ -568,7 +569,6 @@ namespace SceneryEditorX
                 deviceInfo.s_SupportedFeatures.s_XessSupported = false;
             }
         }
-
     }
 
     /**
@@ -969,7 +969,6 @@ namespace SceneryEditorX
 
     /**
      * @brief Create a logical device from the selected physical device and specified queue family index.
-     * @param queueFamilyIndex Index of the queue family to create the device with
      * @return VkDevice handle of the created logical device, or VK_NULL_HANDLE on failure
      */
     VkDevice Device::Create()
@@ -1012,8 +1011,7 @@ namespace SceneryEditorX
 
         // CRITICAL: Validate that device-level functions were loaded correctly
         // If these are null, volk failed to load from the correct Vulkan driver
-        if (vkGetDeviceQueue == nullptr || vkCreateCommandPool == nullptr || vkAllocateCommandBuffers == nullptr ||
-            vkDestroyDevice == nullptr)
+        if (vkGetDeviceQueue == nullptr || vkCreateCommandPool == nullptr || vkAllocateCommandBuffers == nullptr || vkDestroyDevice == nullptr)
         {
             SEDX_CORE_ERROR_TAG("Device", "volkLoadDevice() failed to load device-level function pointers!");
             SEDX_CORE_ERROR_TAG("Device", "vkGetDeviceQueue: {}", static_cast<void *>(vkGetDeviceQueue));
@@ -1113,8 +1111,7 @@ namespace SceneryEditorX
             // Log device evaluation
             if (featureScore < 0)
             {
-                SEDX_CORE_WARN_TAG("Device", "[{}] {} - {} ({} MB) - REJECTED (missing required features)",
-                                   i, deviceInfo.name, deviceInfo.vendorName, deviceInfo.memory);
+                SEDX_CORE_WARN_TAG("Device", "[{}] {} - {} ({} MB) - REJECTED (missing required features)", i, deviceInfo.name, deviceInfo.vendorName, deviceInfo.memory);
                 continue; // Skip devices that don't meet requirements
             }
 
@@ -1128,7 +1125,7 @@ namespace SceneryEditorX
 				    if (candidate.IsBetterThan(bestDiscrete))
 				    {
 				        bestDiscrete = candidate;
-				        SEDX_CORE_TRACE_TAG("Device", "  → New best Discrete GPU");
+				        SEDX_CORE_TRACE_TAG("Device", "New best Discrete GPU");
 				    }
 				    break;
 
@@ -1137,7 +1134,7 @@ namespace SceneryEditorX
 				    if (candidate.IsBetterThan(bestIntegrated))
 				    {
 				        bestIntegrated = candidate;
-				        SEDX_CORE_TRACE_TAG("Device", "  → New best Integrated GPU");
+				        SEDX_CORE_TRACE_TAG("Device", "New best Integrated GPU");
 				    }
 				    break;
 
@@ -1146,7 +1143,7 @@ namespace SceneryEditorX
 				    if (candidate.IsBetterThan(bestExternal))
 				    {
 				        bestExternal = candidate;
-				        SEDX_CORE_TRACE_TAG("Device", "  → New best External GPU");
+				        SEDX_CORE_TRACE_TAG("Device", "New best External GPU");
 				    }
 				    break;
 
@@ -1155,7 +1152,7 @@ namespace SceneryEditorX
 				    if (candidate.IsBetterThan(bestVirtual))
 				    {
 				        bestVirtual = candidate;
-				        SEDX_CORE_TRACE_TAG("Device", "  → New best Virtual GPU");
+				        SEDX_CORE_TRACE_TAG("Device", "New best Virtual GPU");
 				    }
 				    break;
 
@@ -1166,7 +1163,7 @@ namespace SceneryEditorX
 				    if (candidate.IsBetterThan(bestOther))
 				    {
 				        bestOther = candidate;
-				        SEDX_CORE_TRACE_TAG("DEVICE", "  → New best Other/Unknown GPU");
+				        SEDX_CORE_TRACE_TAG("DEVICE", "New best Other/Unknown GPU");
 				    }
 				    break;
             }
@@ -1174,11 +1171,11 @@ namespace SceneryEditorX
 
         // Log device type summary
         SEDX_CORE_INFO_TAG("Device", "Device Type Summary:");
-        SEDX_CORE_INFO("  - Discrete GPUs: {} (best score: {})", discreteCount, bestDiscrete.IsValid() ? bestDiscrete.featureScore : -1);
-        SEDX_CORE_INFO("  - Integrated GPUs: {} (best score: {})", integratedCount, bestIntegrated.IsValid() ? bestIntegrated.featureScore : -1);
-        SEDX_CORE_INFO("  - External GPUs: {} (best score: {})", externalCount, bestExternal.IsValid() ? bestExternal.featureScore : -1);
-        SEDX_CORE_INFO("  - Virtual GPUs: {} (best score: {})", virtualCount, bestVirtual.IsValid() ? bestVirtual.featureScore : -1);
-        SEDX_CORE_INFO("  - Other/Unknown: {} (best score: {})", otherCount, bestOther.IsValid() ? bestOther.featureScore : -1);
+        SEDX_CORE_INFO("- Discrete GPUs: {} (best score: {})", discreteCount, bestDiscrete.IsValid() ? bestDiscrete.featureScore : -1);
+        SEDX_CORE_INFO("- Integrated GPUs: {} (best score: {})", integratedCount, bestIntegrated.IsValid() ? bestIntegrated.featureScore : -1);
+        SEDX_CORE_INFO("- External GPUs: {} (best score: {})", externalCount, bestExternal.IsValid() ? bestExternal.featureScore : -1);
+        SEDX_CORE_INFO("- Virtual GPUs: {} (best score: {})", virtualCount, bestVirtual.IsValid() ? bestVirtual.featureScore : -1);
+        SEDX_CORE_INFO("- Other/Unknown: {} (best score: {})", otherCount, bestOther.IsValid() ? bestOther.featureScore : -1);
 
         // Select best device based on priority: Discrete > Integrated > External > Virtual > Other
         DeviceCandidate selectedCandidate;
@@ -1186,32 +1183,32 @@ namespace SceneryEditorX
         if (bestDiscrete.IsValid())
         {
             selectedCandidate = bestDiscrete;
-            SEDX_CORE_INFO_TAG("Device", "✓ Selected: Discrete GPU (highest priority)");
+            SEDX_CORE_INFO_TAG("Device", "Selected: Discrete GPU (highest priority)");
         }
         else if (bestIntegrated.IsValid())
         {
             selectedCandidate = bestIntegrated;
-            SEDX_CORE_WARN_TAG("Device", "⚠ No suitable Discrete GPU, using Integrated GPU");
+            SEDX_CORE_WARN_TAG("Device", "No suitable Discrete GPU, using Integrated GPU");
         }
         else if (bestExternal.IsValid())
         {
             selectedCandidate = bestExternal;
-            SEDX_CORE_WARN_TAG("Device", "⚠ No suitable Discrete/Integrated GPU, using External GPU");
+            SEDX_CORE_WARN_TAG("Device", "No suitable Discrete/Integrated GPU, using External GPU");
         }
         else if (bestVirtual.IsValid())
         {
             selectedCandidate = bestVirtual;
-            SEDX_CORE_WARN_TAG("Device", "⚠ No suitable physical GPU, using Virtual GPU");
+            SEDX_CORE_WARN_TAG("Device", "No suitable physical GPU, using Virtual GPU");
         }
         else if (bestOther.IsValid())
         {
             selectedCandidate = bestOther;
-            SEDX_CORE_WARN_TAG("Device", "⚠ Using fallback device (type: Other/Unknown)");
+            SEDX_CORE_WARN_TAG("Device", "Using fallback device (type: Other/Unknown)");
         }
         else
         {
             // No device meets requirements
-            SEDX_CORE_ERROR_TAG("Device", "✗ No physical device meets minimum feature requirements!");
+            SEDX_CORE_ERROR_TAG("Device", "No physical device meets minimum feature requirements!");
             SEDX_CORE_ASSERT(false, "No suitable physical device found");
             return VK_NULL_HANDLE;
         }
@@ -1250,10 +1247,10 @@ namespace SceneryEditorX
 
         // Log supported advanced features
         SEDX_CORE_INFO("Advanced Features:");
-        SEDX_CORE_INFO("  - Ray Tracing: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsRayTracingSupported ? "Yes" : "No");
-        SEDX_CORE_INFO("  - Variable Shading Rate: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsShadingRateSupported ? "Yes" : "No");
-        SEDX_CORE_INFO("  - XeSS Support: {}", selectedDeviceInfo.s_SupportedFeatures.s_XessSupported ? "Yes" : "No");
-        SEDX_CORE_INFO("  - Bindless Descriptors: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsBindlessSupported ? "Yes" : "No");
+        SEDX_CORE_INFO("- Ray Tracing: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsRayTracingSupported ? "Yes" : "No");
+        SEDX_CORE_INFO("- Variable Shading Rate: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsShadingRateSupported ? "Yes" : "No");
+        SEDX_CORE_INFO("- XeSS Support: {}", selectedDeviceInfo.s_SupportedFeatures.s_XessSupported ? "Yes" : "No");
+        SEDX_CORE_INFO("- Bindless Descriptors: {}", selectedDeviceInfo.s_SupportedFeatures.s_IsBindlessSupported ? "Yes" : "No");
 
         return selectedDevice;
     }

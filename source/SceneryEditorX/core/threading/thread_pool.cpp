@@ -30,6 +30,7 @@
  */
 #include "thread_pool.h"
 #include <deque>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

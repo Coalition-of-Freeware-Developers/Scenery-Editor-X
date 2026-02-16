@@ -31,14 +31,15 @@
 #include <commdlg.h>
 //#include "SceneryEditorX/asset/asset_manager.h"
 #include "file_manager.hpp"
+#include <codecvt>
 #include <tiny_gltf.h>
 #include <tiny_obj_loader.h>
-#include <SceneryEditorX/core/time/time.h>
 #include <SceneryEditorX/core/platform/config/editor_config.hpp>
+#include <SceneryEditorX/core/time/time.h>
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/model_asset.h>
 #include <SceneryEditorX/utils/string_utils.h>
-#include <codecvt>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

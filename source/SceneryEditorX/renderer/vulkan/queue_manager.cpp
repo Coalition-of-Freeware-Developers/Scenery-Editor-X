@@ -32,6 +32,7 @@
 #include "device.h"
 #include "render_context.h"
 #include <algorithm>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 
@@ -39,10 +40,10 @@ namespace SceneryEditorX
 {
 	
 	static std::array<Ref<Queue>, static_cast<uint32_t>(QueueType::Unknown)> s_Regular; // graphics, compute, and copy
-	
-	std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
-	std::mutex s_MutexDeletionQueue; // Mutex for thread-safe deletion queue access
-	std::unordered_map<ResourceType, std::vector<void *>> s_DeletionQueue;
+
+    static std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
+    static std::mutex s_MutexDeletionQueue; // Mutex for thread-safe deletion queue access
+    static std::unordered_map<ResourceType, std::vector<void *>> s_DeletionQueue;
 	
 	// -------------------------------------------------------
 	
@@ -53,7 +54,7 @@ namespace SceneryEditorX
 	 * @param index The output index of the matching queue family.
 	 * @return True if a matching queue family was found, false otherwise.
 	 */
-	static bool GetQueueFamilyIndex(VkQueueFlagBits flags, const std::vector<VkQueueFamilyProperties> &familyProp, uint32_t *index)
+	static bool GetQueueFamilyIndex(const VkQueueFlagBits flags, const std::vector<VkQueueFamilyProperties> &familyProp, uint32_t *index)
 	{
 	
 	    // Try to find a queue that only supports compute (dedicated)
@@ -124,6 +125,25 @@ namespace SceneryEditorX
 	    return false;
 	};
 	
+	/**
+	 * @brief Convert QueueType enum to human-readable string representation
+	 * @param type The QueueType to convert
+	 * @return String representation of the queue type
+	 */
+    static constexpr const char *QueueToString(const QueueType type)
+    {
+        switch (type)
+        {
+        case QueueType::Graphics: return "Graphics";
+        case QueueType::Compute:  return "Compute";
+        case QueueType::Transfer: return "Transfer";
+        case QueueType::Present:  return "Present";
+        case QueueType::Unknown:  return "Unknown";
+        default:
+            return "Invalid";
+        }
+    }
+
 	// ---------------------------------------------------------
 	
 	QueueManager::QueueFamilyIndices QueueManager::DetectQueueFamilies(const VkPhysicalDevice &physicalDevice)
@@ -255,13 +275,13 @@ namespace SceneryEditorX
 	
 	        // Create queue instance and store in m_GPUQueues and s_Regular
 	        AllocateQueue(type, m_Config.cmdListsPerQueue, queueName);
-	        SEDX_CORE_ASSERT(m_GPUQueues[i], "Failed to create Queue of type {}", i);
+	        SEDX_CORE_ASSERT(m_GPUQueues[i], "Failed to create Queue of type {}", QueueToString(static_cast<QueueType>(i)));
 	
 	
-	        SEDX_CORE_INFO_TAG("QueueManager", "Created {} (family index: {})", queueName, GetFamilyIndexByType(type));
+	        SEDX_CORE_INFO_TAG("QueueManager", "Created {} (family index: {})", queueName, QueueToString(static_cast<QueueType>(GetFamilyIndexByType(type))));
 	    }
 	
-	    SEDX_CORE_INFO_TAG("QueueManager", "✓ Queue Manager initialization complete");
+	    SEDX_CORE_INFO_TAG("QueueManager", " Queue Manager initialization complete");
 	}
 	
 	QueueManager::~QueueManager()
@@ -280,7 +300,7 @@ namespace SceneryEditorX
 	    const uint32_t typeIndex = static_cast<uint32_t>(type);
 	    if (typeIndex >= static_cast<uint32_t>(QueueType::Unknown))
 	    {
-	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type requested: {}", typeIndex);
+	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type requested: {}", QueueToString(static_cast<QueueType>(typeIndex)));
 	    }
 	
 			// Thread-safe allocation
@@ -289,7 +309,7 @@ namespace SceneryEditorX
 			// Check if queue already exists for this type
 			if (m_GPUQueues[typeIndex])
 			{
-				SEDX_CORE_INFO_TAG("QueueManager", "Returning existing queue for type {}", typeIndex);
+				SEDX_CORE_INFO_TAG("QueueManager", "Returning existing queue for type {}", QueueToString(static_cast<QueueType>(typeIndex)));
 				return;
 			}
 			// Determine queue name
@@ -306,7 +326,7 @@ namespace SceneryEditorX
 			s_Regular[typeIndex] = queue;
 
 			//SEDX_CORE_INFO_TAG("QueueManager", "Allocated {} with {} pre-allocated command lists", queueName, queue->GetPreAllocatedCmdLists());
-		}
+	}
 	
 	void QueueManager::FreeQueue(Ref<Queue> queue)
 	{
@@ -324,17 +344,17 @@ namespace SceneryEditorX
 	    // Validate queue type
 	    if (typeIndex >= static_cast<uint32_t>(QueueType::Unknown))
 	    {
-	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type for free: {}", typeIndex);
+	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type for free: {}", QueueToString(static_cast<QueueType>(typeIndex)));
 	        return;
 	    }
 	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Freeing queue of type {}", typeIndex);
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Freeing queue of type {}", QueueToString(static_cast<QueueType>(typeIndex)));
 	
 	    // Thread-safe deallocation
 	    std::scoped_lock lock(s_MutexAllocation);
 	
 	    // Ensure queue is idle before freeing
-	    SEDX_CORE_INFO_TAG("QueueManager", "Freeing queue of type {}...", typeIndex);
+	    SEDX_CORE_INFO_TAG("QueueManager", "Freeing queue of type {}...", QueueToString(static_cast<QueueType>(typeIndex)));
         Queue::WaitIdle(*queue);
 	
 	    // Clear from tracked queues
@@ -348,7 +368,7 @@ namespace SceneryEditorX
 	    }
 	
 	    // Queue object will be destroyed when last reference is released
-	    SEDX_CORE_INFO_TAG("QueueManager", "✓ Queue freed successfully");
+	    SEDX_CORE_INFO_TAG("QueueManager", "Queue freed successfully");
 	}
 	
 	void QueueManager::WaitIdleAll(const bool flush)
@@ -368,32 +388,27 @@ namespace SceneryEditorX
 	            // Flush pending work and wait for completion
 	            Queue::WaitIdle(*queueRef);
 	            idleCount++;
-	            SEDX_CORE_TRACE_TAG("QueueManager", "{} queue is now idle", static_cast<uint32_t>(queueRef->GetType()));
+	            SEDX_CORE_TRACE_TAG("QueueManager", "{} queue is now idle", QueueToString(queueRef->GetType()));
 	        }
 	    }
 	
-	    SEDX_CORE_INFO_TAG("QueueManager", "✓ {} queues are now idle", idleCount);
+	    SEDX_CORE_INFO_TAG("QueueManager", "{} queues are now idle", idleCount);
 	
 	    // After queues are idle it's safe to destroy thread-local command pools and
 	    // any Vulkan command pools owned by the CommandBuffer/CommandPool system.
 	    // This ensures no pending GPU work is using these resources.
 	}
-	
-	/**
-	 * @brief Return a pointer to the GPUQueue for the given QueueType.
-	 * @param type The QueueType to query.
-	 * @return Pointer to GPUQueue inside m_GPUQueues or nullptr if out-of-range.
-	 */
+
 	Ref<Queue> *QueueManager::GetQueue(QueueType type)
 	{
 	    const uint32_t idx = static_cast<uint32_t>(type);
 	    if (idx >= m_GPUQueues.size())
 	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}", idx);
+	        SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}", QueueToString(static_cast<QueueType>(idx)));
 	        return nullptr;
 	    }
 	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", idx);
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", QueueToString(static_cast<QueueType>(idx)));
 	    return &m_GPUQueues[idx];
 	}
 	
@@ -414,11 +429,11 @@ namespace SceneryEditorX
 
         if (Ref<QueueManager> manager = device->GetQueueManager())
         {
-            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for queue type {}", static_cast<uint32_t>(queue->GetType()));
+            SEDX_CORE_TRACE_TAG("QueueManager", "Getting family index for queue type {}", QueueToString(queue->GetType()));
             return manager->GetFamilyIndexByType(queue->GetType());
         }
 
-        SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndex called for unallocated queue type {}", static_cast<uint32_t>(queue->GetType()));
+        SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndex called for unallocated queue type {}", QueueToString(queue->GetType()));
         return (std::numeric_limits<uint32_t>::max)();
 	}
 	
@@ -426,7 +441,7 @@ namespace SceneryEditorX
 	{
 	    if (queue)
 	    {
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", static_cast<uint32_t>(queue->GetType()));
+	        SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", QueueToString(queue->GetType()));
 	        return static_cast<VkQueue>(Queue::GetQueueResource(queue->GetType()));
 	    }
 	
@@ -439,11 +454,13 @@ namespace SceneryEditorX
 	    const uint32_t idx = static_cast<uint32_t>(type);
 	    if (idx >= m_GPUQueues.size())
 	    {
-	        SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}", idx);
+            SEDX_CORE_WARN_TAG("QueueManager", "GetQueue called with out-of-range queue type {}",
+				QueueToString(static_cast<QueueType>(idx)));
+
 	        return nullptr;
 	    }
 	
-	    SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", idx);
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Returning queue for type {}", QueueToString(static_cast<QueueType>(idx)));
 	    return &m_GPUQueues[idx];
 	}
 	
@@ -451,11 +468,11 @@ namespace SceneryEditorX
 	{
 	    if (const Ref<Queue> *queueRef = GetQueue(type); queueRef && *queueRef)
 	    {
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", static_cast<uint32_t>(type));
+            SEDX_CORE_TRACE_TAG("QueueManager", "Getting VkQueue handle for queue type {}", QueueToString(type));
 	        return static_cast<VkQueue>(Queue::GetQueueResource(type));
 	    }
 	
-	    SEDX_CORE_WARN_TAG("QueueManager",  "GetQueueHandleByType called for unallocated queue type {}", static_cast<uint32_t>(type));
+	    SEDX_CORE_WARN_TAG("QueueManager", "GetQueueHandleByType called for unallocated queue type {}", QueueToString(type));
 	    return VK_NULL_HANDLE;
 	}
 	
@@ -487,17 +504,13 @@ namespace SceneryEditorX
 	        }
 	        default:
 	        {
-	            SEDX_CORE_WARN_TAG("QueueManager",
-	                               "GetFamilyIndexByType called with unknown queue type {}",
-	                               static_cast<uint32_t>(type));
+	            SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called with unknown queue type {}", static_cast<uint32_t>(type));
 	            break;
 	        }
 	        }
 	    }
 	
-	    SEDX_CORE_WARN_TAG("QueueManager",
-	                       "GetFamilyIndexByType called for unallocated queue type {}",
-	                       static_cast<uint32_t>(type));
+	    SEDX_CORE_WARN_TAG("QueueManager", "GetFamilyIndexByType called for unallocated queue type {}", static_cast<uint32_t>(type));
 	    return (std::numeric_limits<uint32_t>::max)();
 	}
 	
@@ -546,9 +559,7 @@ namespace SceneryEditorX
 	                vkDestroyFence(device->GetDevice(), static_cast<VkFence>(resource), nullptr);
 	                break;
 	            case ResourceType::DescriptorSetLayout:
-	                vkDestroyDescriptorSetLayout(device->GetDevice(),
-	                                             static_cast<VkDescriptorSetLayout>(resource),
-	                                             nullptr);
+	                vkDestroyDescriptorSetLayout(device->GetDevice(), static_cast<VkDescriptorSetLayout>(resource), nullptr);
 	                break;
 	            case ResourceType::QueryPool:
 	                vkDestroyQueryPool(device->GetDevice(), static_cast<VkQueryPool>(resource), nullptr);
@@ -604,10 +615,7 @@ namespace SceneryEditorX
 	    for (uint32_t i = 0; i < static_cast<uint32_t>(ResourceType::MaxEnum); i++)
 	    {
 	        objectsToDelete += static_cast<uint32_t>(s_DeletionQueue[static_cast<ResourceType>(i)].size());
-	        SEDX_CORE_TRACE_TAG("QueueManager",
-	                            "ResourceType {} has {} objects pending deletion",
-	                            i,
-	                            s_DeletionQueue[static_cast<ResourceType>(i)].size());
+	        SEDX_CORE_TRACE_TAG("QueueManager", "ResourceType {} has {} objects pending deletion", i, s_DeletionQueue[static_cast<ResourceType>(i)].size());
 	    }
 	
 	    // check if the number of objects to delete has remained unchanged
@@ -622,23 +630,16 @@ namespace SceneryEditorX
 	            return true;
 	        }
 	
-	        SEDX_CORE_TRACE_TAG("QueueManager",
-	                            "Deletion queue stable for {} frames with {} objects pending deletion",
-	                            framesEquilibrium,
-	                            objectsToDelete);
+	        SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue stable for {} frames with {} objects pending deletion", framesEquilibrium, objectsToDelete);
 	    }
 	    else
 	    {
-	        SEDX_CORE_TRACE_TAG("QueueManager",
-	                            "Deletion queue changed or empty at frame {} with {} objects pending deletion",
-	                            framesEquilibrium,
-	                            objectsToDelete);
-	        // reset counter if the count changed or if nothing is in the queue
-	        framesEquilibrium = 0;
+	        SEDX_CORE_TRACE_TAG("QueueManager", "Deletion queue changed or empty at frame {} with {} objects pending deletion", framesEquilibrium, objectsToDelete);
+	        framesEquilibrium = 0; // Reset counter if the count changed or if nothing is in the queue
 	    }
 	
-	    // update the previous object count to the current count
-	    objectsToDeletePrevious = objectsToDelete;
+	    
+	    objectsToDeletePrevious = objectsToDelete; // Update the previous object count to the current count
 	    SEDX_CORE_TRACE_TAG("QueueManager", "Updated previous deletion count to {}", objectsToDeletePrevious);
 	
 	    return false;

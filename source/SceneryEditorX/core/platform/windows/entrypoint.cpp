@@ -33,6 +33,7 @@
 #include <Windows.h>
 #include <memory>
 #include <SceneryEditorX/core/platform/windows/context.h>
+#include <tracy/Tracy.hpp>
 
 // -----------------------------------------------
 

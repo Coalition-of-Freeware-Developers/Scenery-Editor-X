@@ -29,10 +29,11 @@
  * -------------------------------------------------------
  */
 #include "initializer.h"
+#include <resource.h>
 #include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/logging/logging.hpp>
-#include <resource.h>
+#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 
