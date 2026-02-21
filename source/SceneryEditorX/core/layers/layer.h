@@ -38,7 +38,7 @@ namespace SceneryEditorX
 {
 	/**
 	 * @class Layer
-	 * @brief Base Module class representing a logical section of the application.
+	 * @brief Base "Module" class representing a logical section of the application.
 	 *
 	 * Layer are used to organize different functional components of the application
 	 * that can be attached, detached and updated independently. Each module can handle

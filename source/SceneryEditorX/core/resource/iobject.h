@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,38 +23,58 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * identifier.h
+ * iobject.h
  * -------------------------------------------------------
- * Created: 13/7/2025
+ * Created: 16/02/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include "hash.h"
 
-// ---------------------------------------------
+// -----------------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Identifier
+	class IObject
 	{
 	public:
-		constexpr Identifier() = default;
-
-        explicit constexpr Identifier(const std::string_view name) noexcept : m_Hash(Hash::CreateFNV1A(name.data())), dbgName(name) {}
-        explicit constexpr Identifier(Hash hash) noexcept : m_Hash(std::move(hash)) {}
-
-		constexpr bool operator==(const Identifier& other) const noexcept { return m_Hash == other.m_Hash; }
-		constexpr bool operator!=(const Identifier& other) const noexcept { return m_Hash != other.m_Hash; }
-
-        explicit constexpr operator Hash() const noexcept { return m_Hash; }
-        [[nodiscard]] constexpr std::string_view GetDBGName() const { return dbgName; }
-
+	    IObject()
+	    {
+	        // stack-only, deterministic pseudo-random ID
+	        auto timeNow = static_cast<uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+	
+	        // simple stack-safe thread-unique value
+	        uint64_t threadUnique = reinterpret_cast<uint64_t>(GetThreadUniqueAddress());
+	
+	        uint64_t randomValue = (timeNow ^ threadUnique) * 2654435761u;
+	        randomValue ^= (randomValue >> 16);
+	
+	        m_ObjectId = randomValue;
+	    }
+	
+	    // Object name
+	    const std::string &GetObjectName() const { return m_ObjectName; }
+	    void SetObjectName(const std::string &name) { m_ObjectName = name; }
+	
+	    // Object ID
+	    const uint64_t GetObjectId() const { return m_ObjectId; }
+	    void SetObjectId(const uint64_t id) { m_ObjectId = id; }
+	
+	    // Object size
+	    const uint64_t GetObjectSize() const { return m_ObjectSize; }
+	
+	protected:
+	    std::string m_ObjectName;
+	    uint64_t m_ObjectId = 0;
+	    uint64_t m_ObjectSize = 0;
+	
 	private:
-		friend Hash<Identifier>;
-		Hash m_Hash;
-		std::string_view dbgName;
+	    static void *GetThreadUniqueAddress()
+	    {
+	        thread_local int dummy;
+	        return &dummy;
+	    }
 	};
-
+	
 }
 
-// ---------------------------------------------
+// -----------------------------------------------------------------

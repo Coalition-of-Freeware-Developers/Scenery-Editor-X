@@ -49,10 +49,14 @@
 namespace SceneryEditorX
 {
     // Static renderer instance (declared in editor.h)
-    Editor::GraphicsEngine Editor::gfxEngine;
+    Renderer Editor::s_GfxEngine;
+	
+    // ---------------------------------------------------------
 
     #define MAX_PROJECT_NAME_LENGTH 255
 	#define MAX_PROJECT_FILEPATH_LENGTH 512
+	
+    // ---------------------------------------------------------
 
 	static char* s_ProjectNameBuffer = new char[MAX_PROJECT_NAME_LENGTH];
 	static char* s_OpenProjectFilePathBuffer = new char[MAX_PROJECT_FILEPATH_LENGTH];

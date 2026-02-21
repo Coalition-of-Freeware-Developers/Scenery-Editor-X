@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,38 +23,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * identifier.h
+ * flag.h
  * -------------------------------------------------------
- * Created: 13/7/2025
+ * Created: 16/02/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include "hash.h"
 
-// ---------------------------------------------
+// -----------------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Identifier
+	
+	/**
+	 * @struct Flag
+	 * @brief A lightweight boolean flag class that tracks and resets dirty state.
+	 *
+	 * The Flag class provides a simple mechanism to track whether something has been
+	 * marked as "dirty" (needing attention) and to atomically check and reset this state.
+	 * Unlike AtomicFlag, this implementation uses a regular bool and is not thread-safe.
+	 */
+	struct Flag
 	{
-	public:
-		constexpr Identifier() = default;
+		/**
+		 * @brief Sets the flag to dirty state.
+		 *
+		 * Marks the flag as dirty, indicating that some action or update is needed.
+		 */
+		SEDX_FORCE_INLINE void SetDirty() noexcept { m_Flag = true; }
 
-        explicit constexpr Identifier(const std::string_view name) noexcept : m_Hash(Hash::CreateFNV1A(name.data())), dbgName(name) {}
-        explicit constexpr Identifier(Hash hash) noexcept : m_Hash(std::move(hash)) {}
+		/**
+		 * @brief Checks if the flag is dirty and atomically resets it if it is.
+		 *
+		 * @return true if the flag was dirty before the reset operation.
+		 * @return false if the flag was not dirty.
+		 */
+		SEDX_FORCE_INLINE bool CheckAndResetIfDirty() noexcept
+		{
+			if (m_Flag)
+			{
+			    return !((m_Flag = !m_Flag));
+			}
 
-		constexpr bool operator==(const Identifier& other) const noexcept { return m_Hash == other.m_Hash; }
-		constexpr bool operator!=(const Identifier& other) const noexcept { return m_Hash != other.m_Hash; }
+		    return false;
+        }
 
-        explicit constexpr operator Hash() const noexcept { return m_Hash; }
-        [[nodiscard]] constexpr std::string_view GetDBGName() const { return dbgName; }
+		/**
+		 * @brief Checks if the flag is currently in a dirty state.
+		 *
+		 * Unlike CheckAndResetIfDirty(), this method does not modify the flag's state.
+		 *
+		 * @return true if the flag is dirty.
+		 * @return false if the flag is not dirty.
+		 */
+		SEDX_FORCE_INLINE bool IsDirty() const noexcept { return m_Flag; }
 
 	private:
-		friend Hash<Identifier>;
-		Hash m_Hash;
-		std::string_view dbgName;
+		bool m_Flag = false; ///< Internal boolean that stores the dirty state, initially not dirty
 	};
+
 
 }
 
-// ---------------------------------------------
+// -----------------------------------------------------------------

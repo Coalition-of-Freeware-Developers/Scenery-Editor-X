@@ -64,36 +64,39 @@ namespace SceneryEditorX
             std::filesystem::current_path(appData.WorkingDirectory);
         }
 
-        // Create the window
-        m_Window = CreateScope<Window>();
-        SEDX_CORE_INFO("Initializing Window");
-        m_Window->Create();
-        m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
-
-        // Init renderer and execute command queue to compile all shaders
-        Renderer::Init();
-
+		// Create window
+		m_Window = CreateScope<Window>();
+		SEDX_CORE_INFO("Initializing Window");
+		m_Window->Create();
+		
+		// Configure window properties BEFORE renderer init
 		if (appData.SplashScreen)
-        {
-            m_Window->SetResizable(false);
-            m_Window->SetDecorated(false);
-        }
-        if (appData.StartMaximized)
-        {
-            m_Window->Maximize();
-        }
-        else
-        {
-            m_Window->CenterWindow();
-        }
-        m_Window->SetResizable(appData.Resizable);
-        m_Window->SetDecorated(appData.Decorated);
+		{
+		    m_Window->SetResizable(false);
+		    m_Window->SetDecorated(false);
+		}
+		else
+		{
+		    m_Window->SetResizable(appData.Resizable);
+		    m_Window->SetDecorated(appData.Decorated);
+		}
+		
+		if (appData.StartMaximized)
+		{
+		    m_Window->Maximize();
+		}
+		else
+		{
+		    m_Window->CenterWindow();
+		}
+		
+		// Set event callback before renderer init (so it can handle any initialization events)
+		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 
-        //m_UILayer = UI::UILayer::Create();
-        //PushOverlay(m_UILayer);
+		Renderer::Init();
 
-        m_IsRunning   = true;
-        m_IsMinimized = false;
+		m_IsRunning = true;
+		m_IsMinimized = false;
     }
 
     // -------------------------------------------------------
@@ -329,7 +332,7 @@ namespace SceneryEditorX
 		dispatcher.Dispatch<WindowMinimizeEvent>([this](const WindowMinimizeEvent& e) { return OnWindowMinimize(e); });
 		dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& e) { return OnWindowClose(e); });
         
-		for (auto it = m_ModuleStage.end(); it != m_ModuleStage.begin(); )
+		for (auto it = m_ModuleStage.End(); it != m_ModuleStage.Begin(); )
 		{
 			(*--it)->OnEvent(event);
 			if (event.m_Handled) break;

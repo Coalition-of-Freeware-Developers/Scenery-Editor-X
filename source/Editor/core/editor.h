@@ -75,8 +75,8 @@ namespace SceneryEditorX
         void OnUpdate() override;
         void OnShutdown() override;
         void InitEditor();
-        void OnEvent(Event &event);
 
+        void OnEvent(Event &event);
         bool OnKeyPressedEvent(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 
@@ -102,15 +102,13 @@ namespace SceneryEditorX
         void SaveSceneAs();
 
     private:
-        typedef Renderer GraphicsEngine;
-
         void UpdateWindowTitle(const std::string &sceneName);
         void OnInit() override;
 
         Ref<UserPreferences> m_UserPreferences;
         Ref<RenderContext> renderContext;
 
-        static GraphicsEngine gfxEngine; // Graphics engine instance
+        static Renderer s_GfxEngine; // Graphics engine instance
 		std::vector<Ref<UI_Panel>> m_Panels;
         bool m_ShowStatisticsPanel = false;
         // std::vector<Ref<Viewport>> m_EditorViewports;
@@ -164,9 +162,9 @@ namespace SceneryEditorX
         uint32_t m_TitleBarActiveColor;
         uint32_t m_TitleBarPreviousColor;
 
-        int m_GizmoType = -1; /// -1 = no gizmo
+        int m_GizmoType = -1; // -1 = no gizmo
 
-        /// ImGui Tools
+        // ImGui Tools
         bool m_ShowMetricsTool = false;
         bool m_ShowStackTool = false;
         bool m_ShowStyleEditor = false;

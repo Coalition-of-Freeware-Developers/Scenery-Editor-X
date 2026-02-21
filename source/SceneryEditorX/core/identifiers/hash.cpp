@@ -1,4 +1,4 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -25,68 +25,134 @@
  * -------------------------------------------------------
  * hash.cpp
  * -------------------------------------------------------
- * Created: 16/7/2025
+ * Created: 19/02/2026
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #include "hash.h"
+#include <cstdint>
 
-// ---------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    /*
-    Hash128 CalculateHash128(const void *data, size_t length)
+	Hash::Hash() : m_Hash(0)
 	{
-		XXH128_hash_t hash = XXH3_128bits(data, length);
-		Hash128 out;
-		out.high64 = hash.high64;
-		out.low64 = hash.low64;
-		return out;
 	}
-	*/
-
-	/*
-	size_t CalculateHash(const void *data, size_t length)
+	
+	Hash::~Hash()
 	{
-#if IS_64BIT
-		return XXH64(data, length, 0);
-#else
-		return XXH32(data, length, 0);
-#endif
+	    m_Hash = 0;
 	}
-	*/
-
-	/*
-	uint32_t CalculateCRC(const void *data, size_t size)
+	
+	Hash::Hash(const uint64_t value) : m_Hash(value)
 	{
-		return CRC::Calculate(data, size, CRC::CRC_32());
+
 	}
 
-    uint32_t CalculateCRC(const void *data, size_t size, uint32_t crc)
+    Hash::Hash(const Hash &other)
+    {
+        m_Hash = other.m_Hash;
+    }
+
+    Hash &Hash::operator=(const Hash& other)
 	{
-		return CRC::Calculate(data, size, CRC::CRC_32(), crc);
+	    if (this != &other)
+	    {
+	        m_Hash = other.m_Hash;
+	    }
+	    return *this;
 	}
-	*/
 
-    /*
-    size_t GetCombinedHashes(const Array<size_t> &hashes)
+    Hash::Hash(Hash &&other) noexcept : m_Hash(other.m_Hash)
 	{
-		if (hashes.GetSize() == 0)
-			return 0;
-		
-		size_t hash = hashes[0];
+	    other.m_Hash = 0;
+	}
 
-		for (int i = 1; i < hashes.GetSize(); i++)
-		{
-			hash = GetCombinedHash(hash, hashes[i]);
-		}
+	Hash &Hash::operator=(Hash &&other) noexcept
+	{
+	    if (this != &other)
+	    {
+	        m_Hash = other.m_Hash;
+	        other.m_Hash = 0;
+	    }
+	    return *this;
+	}
 
-		return hash;
-	} 
-	*/
+	bool Hash::operator==(const Hash &other) const
+	{
+	    return m_Hash == other.m_Hash;
+	}
 
+	bool Hash::operator!=(const Hash &other) const
+	{
+	    return m_Hash != other.m_Hash;
+	}
 
-}
+	uint64_t Hash::GenerateFNV1A(std::string_view str)
+	{
+	    return GenerateFNV1A(str.data(), str.size());
+	}
 
-// ---------------------------------------------
+	uint64_t Hash::GenerateFNV1A(const void *data, size_t size)
+	{
+	    uint64_t hash = FNV1A_OFFSET_BASIS;
+	    const uint8_t *bytes = static_cast<const uint8_t *>(data);
+	
+	    for (size_t i = 0; i < size; ++i)
+	    {
+	        hash ^= static_cast<uint64_t>(bytes[i]);
+	        hash *= FNV1A_PRIME;
+	    }
+	
+	    return hash;
+	}
+
+	Hash Hash::CreateFNV1A(std::string_view str)
+	{
+	    return Hash(GenerateFNV1A(str));
+	}
+
+	Hash Hash::CreateFNV1A(const void *data, size_t size)
+	{
+	    return Hash(GenerateFNV1A(data, size));
+	}
+
+	uint64_t Hash::Combine(uint64_t a, uint64_t b)
+	{
+	    // Use multiplication-based combination for good distribution
+	    return a * 31 + b;
+	}
+
+	uint64_t Hash::CombineXOR(uint64_t a, uint64_t b)
+	{
+	    // XOR-based combination with bit rotation for better mixing
+	    return a ^ RotateLeft(b, 17);
+	}
+
+	uint64_t Hash::RotateLeft(uint64_t hash, uint32_t bits)
+	{
+	    bits %= 64; // Ensure bits is in valid range
+	    return (hash << bits) | (hash >> (64 - bits));
+	}
+
+	uint64_t Hash::RotateRight(uint64_t hash, uint32_t bits)
+	{
+	    bits %= 64; // Ensure bits is in valid range
+	    return (hash >> bits) | (hash << (64 - bits));
+	}
+
+	uint64_t Hash::Mix(uint64_t hash)
+	{
+	    // MurmurHash3 finalizer - provides good avalanche properties
+	    hash ^= hash >> 33;
+	    hash *= 0xff51afd7ed558ccdULL;
+	    hash ^= hash >> 33;
+	    hash *= 0xc4ceb9fe1a85ec53ULL;
+	    hash ^= hash >> 33;
+	    return hash;
+	}
+
+} // namespace SceneryEditorX
+
+// -------------------------------------------------------

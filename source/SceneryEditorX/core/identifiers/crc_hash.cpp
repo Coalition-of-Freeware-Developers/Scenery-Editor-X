@@ -1,4 +1,4 @@
-/**
+﻿/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
@@ -23,58 +23,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * shader_module.h
+ * crc_hash.cpp
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 16/7/2025
  * -------------------------------------------------------
  */
-#pragma once
-#include "device.h"
+#include "crc_hash.h"
 
-// -------------------------------------------------------
+// ---------------------------------------------
 
 namespace SceneryEditorX
 {
-	
-	struct ShaderData
-	{
-	    Mat4 projection;
-	    Mat4 view;
-	    Mat4 model[3];
-	    Vec4 lightPos{0.0f, -10.0f, 10.0f, 0.0f};
-	    uint32_t selected{1};
-	};
-	
-	struct ShaderDataBuffer
-	{
-	    VmaAllocation allocation{VK_NULL_HANDLE};
-	    VkBuffer buffer{VK_NULL_HANDLE};
-	    VkDeviceAddress deviceAddress{};
-	    void *mapped{nullptr};
-	};
 
-    // -------------------------------------------------------
+    /*
+    Hash128 CalculateHash128(const void *data, size_t length)
+	{
+		XXH128_hash_t hash = XXH3_128bits(data, length);
+		Hash128 out;
+		out.high64 = hash.high64;
+		out.low64 = hash.low64;
+		return out;
+	}
 
-	class ShaderModule 
-    {
-	public:
-	    ShaderModule() = default;
-	    ShaderModule(const void* code, size_t codeSize);
-	    ~ShaderModule();
-	
-	    ShaderModule(const ShaderModule&) = delete;
-	    ShaderModule& operator=(const ShaderModule&) = delete;
-	    ShaderModule(ShaderModule&& other) noexcept;
-	    ShaderModule& operator=(ShaderModule&& other) noexcept;
-	
-	    VkShaderModule Get() const { return m_Module; }
-	    bool Valid() const { return m_Module != VK_NULL_HANDLE; }
-	
-	private:
-	    Ref<Device> m_Device;
-	    VkShaderModule m_Module = VK_NULL_HANDLE;
-	};
-	
+	size_t CalculateHash(const void *data, size_t length)
+	{
+#if IS_64BIT
+		return XXH64(data, length, 0);
+#else
+		return XXH32(data, length, 0);
+#endif
+	}
+
+
+	uint32_t CalculateCRC(const void *data, size_t size)
+	{
+		return CRC::Calculate(data, size, CRC::CRC_32());
+	}
+
+    uint32_t CalculateCRC(const void *data, size_t size, uint32_t crc)
+	{
+		return CRC::Calculate(data, size, CRC::CRC_32(), crc);
+	}
+
+    size_t GetCombinedHashes(const Array<size_t> &hashes)
+	{
+		if (hashes.GetSize() == 0)
+			return 0;
+		
+		size_t hash = hashes[0];
+
+		for (int i = 1; i < hashes.GetSize(); i++)
+		{
+			hash = GetCombinedHash(hash, hashes[i]);
+		}
+
+		return hash;
+	} 
+	*/
+
+
 }
 
-// -------------------------------------------------------
+// ---------------------------------------------

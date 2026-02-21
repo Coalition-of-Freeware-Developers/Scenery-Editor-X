@@ -29,25 +29,44 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "render_context.h"
 #include <cstdint>
 #include <vector>
+#include <SceneryEditorX/core/resource/iobject.h>
+#include <volk/volk.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
+    class RenderContext;
+
 	// Non-templated FrameSync owning fences and semaphores. The caller should
 	// call destroy(m_Device) before destroying the VkDevice to guarantee safe
 	// teardown ordering.
-	class FrameSync 
+    class FrameSync : public RefCounted, public IObject
     {
 	public:
-	    FrameSync() = default;
+        /**
+	     * @brief Construct a new FrameSync object with the specified number of frames in flight and swapchain images.
+	     * @param framesInFlight Number of frames that can be processed concurrently.
+	     * @param swapchainImageCount Number of images in the swapchain.
+	     */
 	    FrameSync(uint32_t framesInFlight, uint32_t swapchainImageCount);
-        ~FrameSync();
+        FrameSync() = default;
+        virtual ~FrameSync() override;
 
+        /**
+         * @brief Create synchronization objects for the specified number of frames in flight and swapchain images.
+         * @param framesInFlight Number of frames that can be processed concurrently.
+         * @param swapchainImageCount Number of images in the swapchain.
+         */
         void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
+
+        /**
+         * @brief Destroy the synchronization objects created by this FrameSync instance.
+         * This should be called before destroying the VkDevice to ensure proper cleanup of Vulkan resources.
+         */
         void Destroy();
 
         std::vector<VkFence>& Fences() { return m_Fences; }

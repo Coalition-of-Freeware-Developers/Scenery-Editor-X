@@ -32,10 +32,12 @@
 #include "render_context.h"
 #include <mutex>
 
-/// VMA implementation — must be defined in exactly ONE translation unit.
-/// VK_NO_PROTOTYPES is active (volk is used), so we disable VMA's static
-/// Vulkan function resolution and enable dynamic resolution via the
-/// VmaVulkanFunctions struct populated in MemoryAllocator::Init().
+/**
+ * VMA implementation — must be defined in exactly ONE translation unit.
+ * VK_NO_PROTOTYPES is active (volk is used), so we disable VMA's static
+ * Vulkan function resolution and enable dynamic resolution via the
+ * VmaVulkanFunctions struct populated in MemoryAllocator::Init().
+ */
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS  0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
@@ -143,6 +145,52 @@ namespace SceneryEditorX
     VmaAllocator MemoryAllocator::GetAllocator()
     {
         return s_Allocator;
+    }
+
+    uint64_t MemoryAllocator::GetAllocatedMemory()
+    {
+        uint64_t bytes = 0;
+    
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(device->GetPhysicalDevice()), &memoryProperties);
+    
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+        vmaGetHeapBudgets(s_Allocator, budgets);
+    
+        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
+        {
+            if (memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                if (budgets[i].budget < (1ull << 60))
+                    bytes += budgets[i].usage;
+            }
+        }
+    
+        return bytes / (1024ull * 1024ull);
+    }
+
+	uint64_t MemoryAllocator::GetAvailableMemory()
+	{
+        uint64_t bytes = 0;
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(device->GetPhysicalDevice()), &memoryProperties);
+    
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+        vmaGetHeapBudgets(s_Allocator, budgets);
+    
+        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
+        {
+            if (memoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                if (budgets[i].budget < (1ull << 60))
+                    bytes += budgets[i].budget;
+            }
+        }
+    
+        return bytes / (1024ull * 1024ull);
     }
 
 } // namespace SceneryEditorX

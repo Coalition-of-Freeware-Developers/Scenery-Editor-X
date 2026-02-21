@@ -69,6 +69,7 @@
  * @see Hash class for additional hashing utilities
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <array>
 #include <functional>

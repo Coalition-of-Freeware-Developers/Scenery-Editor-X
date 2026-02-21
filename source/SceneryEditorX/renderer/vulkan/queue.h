@@ -31,6 +31,7 @@
 #pragma once
 #include "enums.h"
 #include "render_data.h"
+#include "SceneryEditorX/core/resource/iobject.h"
 
 // -------------------------------------------------------
 
@@ -46,7 +47,7 @@ namespace SceneryEditorX
 	    uint32_t familyIndex = INVALID_VK_INDEX; // Queue family index
 	};
 	
-	class Queue : public RefCounted
+	class Queue : public IObject ,public RefCounted
 	{ 
 	public:
 	    Queue(const Ref<Device>& device, const QueueType type, const char *name);

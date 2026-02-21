@@ -44,7 +44,7 @@ namespace SceneryEditorX
 		inline unsigned int GetWidth() const { return m_Width; }
 		inline unsigned int GetHeight() const { return m_Height; }
 
-        [[nodiscard]] virtual std::string ToString() const override
+        [[nodiscard]] std::string ToString() const override
 		{
 			std::stringstream ss;
 			ss << "WindowResizeEvent: " << m_Width << ", " << m_Height;
@@ -77,9 +77,7 @@ namespace SceneryEditorX
     class WindowMaximizeEvent : public Event
     {
     public:
-        explicit WindowMaximizeEvent(const bool maximize) : m_Maximized(maximize)
-        {
-        }
+        explicit WindowMaximizeEvent(const bool maximize) : m_Maximized(maximize) {}
 
         [[nodiscard]] bool IsMaximized() const { return m_Maximized; }
 
@@ -109,7 +107,7 @@ namespace SceneryEditorX
 
 		inline int GetX() const { return m_X; }
 		inline int GetY() const { return m_Y; }
-		inline void SetHit(const bool hit) const { m_Hit = (int)hit; }
+		inline void SetHit(const bool hit) const { m_Hit = static_cast<int>(hit); }
 
 		EVENT_CLASS_TYPE(WindowTitleBarHitTest)
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
@@ -157,15 +155,16 @@ namespace SceneryEditorX
 	class ScreenshotCapturedEvent : public Event
 	{
 	public:
-		ScreenshotCapturedEvent(std::string path, bool success)
-			: m_Path(std::move(path)), m_Success(success) {}
+		ScreenshotCapturedEvent(std::string path, bool success) : m_Path(std::move(path)), m_Success(success) {}
 
 		[[nodiscard]] const std::string &GetPath() const { return m_Path; }
 		[[nodiscard]] bool IsSuccess() const { return m_Success; }
 
 		[[nodiscard]] std::string ToString() const override
 		{
-			std::stringstream ss; ss << "ScreenshotCapturedEvent: " << (m_Success ? "Success" : "Failure") << ", path='" << m_Path << "'"; return ss.str();
+			std::stringstream ss;
+		    ss << "ScreenshotCapturedEvent: " << (m_Success ? "Success" : "Failure") << ", path='" << m_Path << "'"; 
+		    return ss.str();
 		}
 
 		EVENT_CLASS_TYPE(ScreenshotCaptured)
@@ -174,8 +173,6 @@ namespace SceneryEditorX
 		std::string m_Path;
 		bool m_Success = false;
 	};
-
-    // -------------------------------------------------------------------
 
 }
 

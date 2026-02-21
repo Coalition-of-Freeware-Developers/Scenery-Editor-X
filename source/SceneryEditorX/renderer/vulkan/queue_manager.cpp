@@ -40,7 +40,6 @@ namespace SceneryEditorX
 {
 	
 	static std::array<Ref<Queue>, static_cast<uint32_t>(QueueType::Unknown)> s_Regular; // graphics, compute, and copy
-
     static std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
     static std::mutex s_MutexDeletionQueue; // Mutex for thread-safe deletion queue access
     static std::unordered_map<ResourceType, std::vector<void *>> s_DeletionQueue;
@@ -645,6 +644,28 @@ namespace SceneryEditorX
 	    return false;
 	}
 	
+    CommandList* QueueManager::NextCommandList()
+    {
+        m_Index = (m_Index + 1) % static_cast<uint32_t>(m_CmdLists.size());
+        auto& cmdList = m_CmdLists[m_Index];
+
+        // submit any pending work (toggling between fullscreen and windowed mode can leave work)
+        if (cmdList->GetState() == CommandState::Recording)
+        {
+            cmdList->Submit(0, false);
+        }
+
+        // with enough command lists available, there is no wait time
+        if (cmdList->GetState() == CommandState::Submitted)
+        {
+            cmdList->WaitForExecution();
+        }
+
+        SEDX_CORE_ASSERT(cmdList->GetState() == CommandState::Idle);
+
+        return cmdList.Get();
+    }
+
 }
 
 // -------------------------------------------------------

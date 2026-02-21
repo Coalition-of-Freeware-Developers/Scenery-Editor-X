@@ -29,14 +29,14 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "shader_module.h"
+#include "shader.h"
 #include <vector>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	// Small manager that owns one or more ShaderModule objects along with their
+	// Small manager that owns one or more Shader objects along with their
 	// corresponding shader stage flags. This allows Pipeline to accept a single
 	// object that may contain multiple stages (vertex, fragment, etc.).
 	class ShaderManager 
@@ -51,11 +51,11 @@ namespace SceneryEditorX
 
 	    size_t StageCount() const { return m_Stages.size(); }
 	    VkShaderStageFlagBits StageAt(size_t i) const { return m_Stages[i]; }
-	    VkShaderModule ModuleAt(size_t i) const { return m_Modules[i].Get(); }
+	    VkShaderModule ModuleAt(size_t i) const { return m_Modules[i].GetShaderModule(); }
 	
 	private:
 	    std::vector<VkShaderStageFlagBits> m_Stages{};
-	    std::vector<ShaderModule> m_Modules{};
+	    std::vector<Shader> m_Modules{};
 	};
 
 }

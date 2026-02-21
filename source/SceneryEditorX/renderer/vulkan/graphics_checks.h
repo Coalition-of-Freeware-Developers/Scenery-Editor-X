@@ -29,6 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "enums.h"
+
+
 #include <volk/volk.h>
 
 // -------------------------------------------------------
@@ -97,7 +100,7 @@ namespace SceneryEditorX
 	    static std::vector<const char *> GetLayerList(const std::vector<GPULayer> &requestedLayers);
 	    static bool CheckAPIVersion(uint32_t minVulkanVersion);
 	    static bool CheckValidationLayerSupport();
-	
+
 	    void CheckLayers(const std::vector<const char *> &layers);
 	    void CheckExtensions(const std::vector<const char *> &extensions);
 	

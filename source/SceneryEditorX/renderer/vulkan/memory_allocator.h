@@ -46,10 +46,13 @@ namespace SceneryEditorX
 
         static void SaveAllocation(void* resource, VmaAllocation allocation);
         static void FreeAllocation(void *resource);
+
         static VmaAllocation GetAllocation(void *resource);
         static VmaAllocator GetAllocator();
+        static uint64_t GetAllocatedMemory();
+        static uint64_t GetAvailableMemory();
 
-	private:
+    private:
         Ref<Device> m_Device;
 	};
 	

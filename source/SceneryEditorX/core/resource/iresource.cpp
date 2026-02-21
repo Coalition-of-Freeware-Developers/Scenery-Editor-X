@@ -23,34 +23,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * render_data.h
+ * iresource.cpp
  * -------------------------------------------------------
- * Created: 11/02/2026
+ * Created: 16/02/2026
  * -------------------------------------------------------
  */
-#pragma once
+#include "iresource.h"
+#include "SceneryEditorX/renderer/vulkan/model.h"
 
 // -----------------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    /* Constant representing an invalid Vulkan index. */
-    #define INVALID_VK_INDEX 0xFFFFFFFF
-
-    /* Vulkan API version supported by the m_Device */
-	struct ApiVersion
+	
+	IResource::IResource(const ResourceType type)
 	{
-	    uint32_t variant = 0, major = 0, minor = 0, patch = 0;
-        [[nodiscard]] std::string VulkanVersionStr() const
-		{
-			return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
-        }
-	};
-
-    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-    constexpr uint32_t MIP_LIST = std::numeric_limits<uint32_t>::max();
-
+	    m_ResourceType = type;
+	}
+	
+	template <typename T>
+	ResourceType IResource::TypeToEnum()
+	{
+	    return ResourceType::Unknown;
+	}
+	
+	template <typename T>
+    static constexpr void ValidateResourceType()
+	{
+	    static_assert(std::is_base_of_v<IResource, T>, "Provided type does not implement IResource");
+	}
+	
+	// Explicit template instantiation
+	#define INSTANTIATE_TO_RESOURCE_TYPE(T, enumT)                                                                         \
+	    template <>                                                                                                        \
+	    ResourceType IResource::TypeToEnum<T>()                                                                            \
+	    {                                                                                                                  \
+	        ValidateResourceType<T>();                                                                                     \
+	        return enumT;                                                                                                  \
+	    }
+	
+	// To add a new resource to the engine, simply register it here
+	//INSTANTIATE_TO_RESOURCE_TYPE(Image, ResourceType::Texture)
+	//INSTANTIATE_TO_RESOURCE_TYPE(Material, ResourceType::Material)
+	//INSTANTIATE_TO_RESOURCE_TYPE(Animation, ResourceType::Animation)
+	//INSTANTIATE_TO_RESOURCE_TYPE(Font, ResourceType::Font)
+	//INSTANTIATE_TO_RESOURCE_TYPE(Model, ResourceType::Model)
+	
 }
 
 // -----------------------------------------------------------------

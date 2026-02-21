@@ -29,13 +29,15 @@
  * -------------------------------------------------------
  */
 #include "graphics_checks.h"
+#include "device.h"
+#include "render_context.h"
 #include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	
+
 	GraphicsChecks::InstanceProperties GraphicsChecks::GetDefaultInstanceProperties()
 	{
 	    InstanceProperties defaultProps;
@@ -244,8 +246,8 @@ namespace SceneryEditorX
 	    SEDX_CORE_WARN_TAG("Vulkan", "Khronos validation layer is not available");
 	    return false;
 	}
-	
-	void GraphicsChecks::CheckLayers(const std::vector<const char *> &layers)
+
+    void GraphicsChecks::CheckLayers(const std::vector<const char *> &layers)
 	{
 	    uint32_t layerCount = 0;
 	    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);

@@ -55,13 +55,13 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
 	std::array<Ref<Queue>, static_cast<uint32_t>(QueueType::Unknown)> Queue::regular = {};
-	void *Queue::graphics = nullptr;
-	void *Queue::compute = nullptr;
-	void *Queue::copy = nullptr;
+	void *Queue::graphics	= nullptr;
+	void *Queue::compute	= nullptr;
+	void *Queue::copy		= nullptr;
 
-	uint32_t Queue::indexGraphics = (std::numeric_limits<uint32_t>::max)();
-	uint32_t Queue::indexCompute = (std::numeric_limits<uint32_t>::max)();
-	uint32_t Queue::indexCopy = (std::numeric_limits<uint32_t>::max)();
+	uint32_t Queue::indexGraphics	= (std::numeric_limits<uint32_t>::max)();
+	uint32_t Queue::indexCompute	= (std::numeric_limits<uint32_t>::max)();
+	uint32_t Queue::indexCopy		= (std::numeric_limits<uint32_t>::max)();
 	
 	std::map<ResourceType, std::vector<void *>> Queue::deletionQueue = {};
 	std::mutex Queue::mutexDeletionQueue;
@@ -152,7 +152,6 @@ namespace SceneryEditorX
 		m_Type = type;
 	}
 
-
     Queue::~Queue()
     {
         m_Device.Reset();
@@ -163,7 +162,6 @@ namespace SceneryEditorX
 	// Static methods do not have access to instance members (m_...). To operate on actual Vulkan
 	// queues we use the static `Queue::regular` array which holds Ref<Queue> objects created by Device.
 	// The implementations below reference the appropriate Queue instance via Queue::GetQueue(...).
-
 
     /**
 	 * @brief Wait for the specified queue to become idle.

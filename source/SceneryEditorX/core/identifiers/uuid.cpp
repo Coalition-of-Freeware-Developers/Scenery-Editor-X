@@ -47,27 +47,25 @@
 
 namespace SceneryEditorX
 {
-	/// @brief Base64 character set used for encoding binary data to text
-	static const std::string base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	/* @brief Base64 character set used for encoding binary data to text */
+	static const std::string BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	/// @brief Random device for UUID generation
+	/* @brief Random device for UUID generation */
 	static std::random_device s_RandomDevice;
 
-	/// @brief 64-bit Mersenne Twister random number generator
+	/* @brief 64-bit Mersenne Twister random number generator */
 	static std::mt19937_64 s_Engine64(s_RandomDevice());
 
-	/// @brief Uniform distribution for generating 64-bit UUID values
+	/* @brief Uniform distribution for generating 64-bit UUID values */
 	static std::uniform_int_distribution<uint64_t> s_UniformDistribution64;
 
-	/// @brief 32-bit Mersenne Twister random number generator
+	/* @brief 32-bit Mersenne Twister random number generator */
 	static std::mt19937 s_Engine32(s_RandomDevice());
 
-	/// @brief Uniform distribution for generating 32-bit UUID values
+	/* @brief Uniform distribution for generating 32-bit UUID values */
 	static std::uniform_int_distribution<uint32_t> s_UniformDistribution32;
 
-	/**
-	 * @brief Checks if a character is a valid Base64 character
-	 */
+	/* @brief Checks if a character is a valid Base64 character */
 	static bool IsBase64(const unsigned char c)
 	{
 		return (c == 43 ||              // +
@@ -77,7 +75,7 @@ namespace SceneryEditorX
 	}
 
 	// -------------------------------------------------------
-	// UUIDUtilities Implementation
+	// UUID Utilities Implementation
 	// -------------------------------------------------------
 
 	/*
@@ -242,7 +240,7 @@ namespace SceneryEditorX
 	UUID::UUID(const UUID& other) = default;
 
 	// -------------------------------------------------------
-	// UUID32 Implementation
+	// UUID32 (32-bit) Implementation
 	// -------------------------------------------------------
 
 	UUID32::UUID32() : m_UUID(s_UniformDistribution32(s_Engine32)) {}

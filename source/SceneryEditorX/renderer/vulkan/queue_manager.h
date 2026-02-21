@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "command_list.h"
 #include "queue.h"
 #include <limits>
 
@@ -68,13 +69,18 @@ namespace SceneryEditorX
 	        uint32_t cmdListsPerQueue = 2; // Number of reusable command lists per queue
 	        bool serializeByType = false;  // Whether to serialize access to queues by type
 	    };
-	
+
+        /**
+	     * @struct QueueFamilyIndices
+	     * @brief Structure to hold the indices of different queue families.
+	     * Each member is initialized to the maximum uint32_t value to indicate an invalid index by default.
+	     */
 	    struct QueueFamilyIndices
 	    {
 	        uint32_t graphics = (std::numeric_limits<uint32_t>::max)();
-	        uint32_t compute = (std::numeric_limits<uint32_t>::max)();
+	        uint32_t compute  = (std::numeric_limits<uint32_t>::max)();
 	        uint32_t transfer = (std::numeric_limits<uint32_t>::max)();
-	        uint32_t present = (std::numeric_limits<uint32_t>::max)();
+	        uint32_t present  = (std::numeric_limits<uint32_t>::max)();
 	    };
 	
 	    /**
@@ -188,11 +194,19 @@ namespace SceneryEditorX
 	     * @return True if the deletion queue needs to be parsed, false otherwise.
 	     */
 	    static bool NeedToParseDeletionQueue();
-	
-	private:
+
+        /**
+         * @brief Get the next available command list for the current queue index, cycling through the pre-allocated command lists.
+         * @return Reference to the next CommandList for the current queue index.
+         */
+        CommandList *NextCommandList();
+
+    private:
 	    Ref<Device> m_Device = nullptr;
 	    QueueConfig m_Config;
+		std::array<Ref<CommandList>, 2> m_CmdLists = { nullptr };
 	    QueueFamilyIndices m_FamilyIndices;
+	    std::atomic<uint32_t> m_Index = 0;
 	    std::vector<Ref<Queue>> m_GPUQueues; // Available GPU queues indexed by QueueType
 	};
 	
