@@ -29,15 +29,18 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "shader_module.h"
-#include <array>
-#include <vma/vk_mem_alloc.h>
+//#include "shader_module.h"
+//#include "render_data.h"
+//#include <array>
+//#include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
-
+	class Device;
+	
 	// Manages a set of per-frame uniform buffers (ShaderDataBuffer). Uses VMA to
 	// allocate buffers that are host-visible and retrieves m_Device addresses for
 	// shader m_Device address push-constant usage.
@@ -51,15 +54,16 @@ namespace SceneryEditorX
         void Create();
 	    void Destroy();
 	
-	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> &Buffers() { return m_Buffers; }
+	    //std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> &Buffers() { return m_Buffers; }
 	
 	private:
         Ref<Device> m_Device;
 	    VmaAllocator m_Allocator;
-	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> m_Buffers{};
+	    //std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> m_Buffers{};
 	    bool m_Destroyed = false;
 	};
 	
 } // namespace SceneryEditorX
+*/
 
 // -------------------------------------------------------

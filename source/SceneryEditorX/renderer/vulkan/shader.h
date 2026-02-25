@@ -23,44 +23,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * pipeline.h
+ * shader.h
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 24/02/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include "shader_manager.h"
-#include <vector>
+#include "enums.h"
+#include "shader_stage.h"
 
-// --------------------------------------------------------------
+// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    // Pipeline helper: creates pipelines from an input descriptor struct to make
-	// constructing different kinds of pipelines (graphics/compute) easier.
-	class Pipeline 
-    {
-	public:
-	    Pipeline() = default;
-	    ~Pipeline() = default;
-	
-	    // Descriptor grouping inputs required for creating a graphics pipeline.
-	    struct GraphicsCreateInfo 
-	    {
-	        VkDevice device{ VK_NULL_HANDLE };
-	        VkPipelineLayout layout{ VK_NULL_HANDLE };
-	        //const ShaderManager* shaderManager{ nullptr };
-	        VkVertexInputBindingDescription vertexBinding{};
-	        std::vector<VkVertexInputAttributeDescription> vertexAttributes{};
-	        VkFormat colorFormat{ VK_FORMAT_UNDEFINED };
-	        VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
-	    };
-	
-	    // Create a graphics pipeline using a single grouped input structure.
-	    // Returns VK_NULL_HANDLE on failure.
-        static VkPipeline CreateGraphics(const GraphicsCreateInfo& info);
+
+    class Shader : public RefCounted
+	{
+    public:
+        Shader() = default;
+        virtual ~Shader() override;
+
+		/*
+		void CreateDescriptorSetLayouts();
+		void AddShaderStage(Stage stage, const std::string& filepath);
+		Ref<ShaderStage> GetShaderStage(Stage stage);
+		bool HasStage(Stage stage);
+        std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> GetDescriptorSetLayoutBindings();
+		const std::vector<VkDescriptorSetLayout>& GetDescriptorSetLayouts()
+		{
+			return m_DescriptorSetLayouts;
+		}
+
+		VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t set) { return m_DescriptorSetLayouts[set]; }
+
+		VkPipelineShaderStageCreateInfo const GetStageCreateInfo(ShaderStage stage);
+
+	    const std::vector<ShaderInput> GetInputs(uint32_t set) { return m_Input[set]; }
+	    uint32_t GetNumberOfSets() { return (uint32_t)m_DescriptorSetLayouts.size(); }
+	    */
+
+	private:
+
+		/*
+		std::unordered_map<Stage, Ref<ShaderStage>> m_Stages;
+		std::map<uint32_t, std::vector<ShaderInput>> m_Input;
+		std::set<uint32_t> m_BindlessSets;
+		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
+		*/
+
 	};
 
 }
 
-// --------------------------------------------------------------
+// -------------------------------------------------------

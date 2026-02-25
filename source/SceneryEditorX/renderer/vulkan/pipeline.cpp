@@ -28,18 +28,20 @@
  * Created: 09/02/2026
  * -------------------------------------------------------
  */
-#include "pipeline.h"
-#include <iostream>
-#include <vector>
-#include <tracy/Tracy.hpp>
-#include <volk/volk.h>
+//#include "pipeline.h"
+//#include <iostream>
+//#include <vector>
+//#include <tracy/Tracy.hpp>
+//#include <volk/volk.h>
 
 // -------------------------------------------------------
 
+/*
 namespace SceneryEditorX
 {
+
 	VkPipeline Pipeline::CreateGraphics(const GraphicsCreateInfo& info)
-{
+    {
 	    if (!info.shaderManager || info.device == VK_NULL_HANDLE) return VK_NULL_HANDLE;
 	
 	    const ShaderManager& shaderManager = *info.shaderManager;
@@ -133,5 +135,6 @@ namespace SceneryEditorX
 	}
 
 }
+*/
 
 // -------------------------------------------------------

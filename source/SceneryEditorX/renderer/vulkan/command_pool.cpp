@@ -76,7 +76,7 @@ namespace SceneryEditorX
         }
         else
         {
-            SEDX_CORE_INFO_TAG("CommandPool", "Command pool created successfully (queue family: {}, type: {})", queueFamilyIndex, static_cast<int>(pool));
+            SEDX_CORE_TRACE_TAG("CommandPool", "Command pool created successfully (queue family: {}, type: {})", queueFamilyIndex, static_cast<int>(pool));
         }
     }
 

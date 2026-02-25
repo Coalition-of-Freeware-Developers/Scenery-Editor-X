@@ -95,7 +95,7 @@ namespace SceneryEditorX
         emissionMap = nullptr;
         metallicRoughnessMap = nullptr;
         
-        SEDX_CORE_INFO("Material initialized with default values: {}", path);
+        SEDX_CORE_TRACE("Material initialized with default values: {}", path);
     }
 
     void MaterialAsset::Unload()

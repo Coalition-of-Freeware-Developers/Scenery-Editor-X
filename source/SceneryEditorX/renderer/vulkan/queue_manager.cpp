@@ -236,12 +236,12 @@ namespace SceneryEditorX
 	
 	QueueManager::QueueManager(const Ref<Device> &device, const QueueConfig &config) : m_Device(device), m_Config(config)
 	{
-	    SEDX_CORE_INFO_TAG("QueueManager", "=== Initializing Queue Manager ===");
+	    SEDX_CORE_TRACE_TAG("QueueManager", "=== Initializing Queue Manager ===");
 	
 	    SEDX_CORE_ASSERT(m_Device, "Device must be initialized before QueueManager");
 	
 	    m_FamilyIndices = DetectQueueFamilies(m_Device->GetPhysicalDevice());
-	    SEDX_CORE_INFO_TAG("QueueManager", "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
 	                       m_FamilyIndices.graphics, m_FamilyIndices.compute, m_FamilyIndices.transfer, m_FamilyIndices.present);
 	
 	    // Reserve space for all queue types up to QueueType::Unknown
@@ -277,10 +277,10 @@ namespace SceneryEditorX
 	        SEDX_CORE_ASSERT(m_GPUQueues[i], "Failed to create Queue of type {}", QueueToString(static_cast<QueueType>(i)));
 	
 	
-	        SEDX_CORE_INFO_TAG("QueueManager", "Created {} (family index: {})", queueName, QueueToString(static_cast<QueueType>(GetFamilyIndexByType(type))));
+	        SEDX_CORE_TRACE_TAG("QueueManager", "Created {} (family index: {})", queueName, QueueToString(static_cast<QueueType>(GetFamilyIndexByType(type))));
 	    }
 	
-	    SEDX_CORE_INFO_TAG("QueueManager", " Queue Manager initialization complete");
+	    SEDX_CORE_TRACE_TAG("QueueManager", " Queue Manager initialization complete");
 	}
 	
 	QueueManager::~QueueManager()
@@ -308,7 +308,7 @@ namespace SceneryEditorX
 			// Check if queue already exists for this type
 			if (m_GPUQueues[typeIndex])
 			{
-				SEDX_CORE_INFO_TAG("QueueManager", "Returning existing queue for type {}", QueueToString(static_cast<QueueType>(typeIndex)));
+				SEDX_CORE_TRACE_TAG("QueueManager", "Returning existing queue for type {}", QueueToString(static_cast<QueueType>(typeIndex)));
 				return;
 			}
 			// Determine queue name
@@ -324,7 +324,7 @@ namespace SceneryEditorX
 			m_GPUQueues[typeIndex] = queue;
 			s_Regular[typeIndex] = queue;
 
-			//SEDX_CORE_INFO_TAG("QueueManager", "Allocated {} with {} pre-allocated command lists", queueName, queue->GetPreAllocatedCmdLists());
+			//SEDX_CORE_TRACE_TAG("QueueManager", "Allocated {} with {} pre-allocated command lists", queueName, queue->GetPreAllocatedCmdLists());
 	}
 	
 	void QueueManager::FreeQueue(Ref<Queue> queue)
@@ -353,7 +353,7 @@ namespace SceneryEditorX
 	    std::scoped_lock lock(s_MutexAllocation);
 	
 	    // Ensure queue is idle before freeing
-	    SEDX_CORE_INFO_TAG("QueueManager", "Freeing queue of type {}...", QueueToString(static_cast<QueueType>(typeIndex)));
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Freeing queue of type {}...", QueueToString(static_cast<QueueType>(typeIndex)));
         Queue::WaitIdle(*queue);
 	
 	    // Clear from tracked queues
@@ -367,13 +367,13 @@ namespace SceneryEditorX
 	    }
 	
 	    // Queue object will be destroyed when last reference is released
-	    SEDX_CORE_INFO_TAG("QueueManager", "Queue freed successfully");
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Queue freed successfully");
 	}
 	
 	void QueueManager::WaitIdleAll(const bool flush)
 	{
 	    //SEDX_PROFILE_SCOPE("QueueManager::WaitIdleAll");
-	    SEDX_CORE_INFO_TAG("QueueManager", "Waiting for all GPU queues to become idle...");
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Waiting for all GPU queues to become idle...");
 	
 	    // Thread-safe iteration with proper synchronization
 	    std::scoped_lock lock(s_MutexAllocation);
@@ -391,7 +391,7 @@ namespace SceneryEditorX
 	        }
 	    }
 	
-	    SEDX_CORE_INFO_TAG("QueueManager", "{} queues are now idle", idleCount);
+	    SEDX_CORE_TRACE_TAG("QueueManager", "{} queues are now idle", idleCount);
 	
 	    // After queues are idle it's safe to destroy thread-local command pools and
 	    // any Vulkan command pools owned by the CommandBuffer/CommandPool system.

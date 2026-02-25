@@ -36,6 +36,7 @@
 namespace SceneryEditorX
 {
 
+	/*
 	UniformBufferSet::UniformBufferSet(VmaAllocator allocator) : m_Device(VK_NULL_HANDLE), m_Allocator(allocator)
 	{
 	    Create();
@@ -49,7 +50,9 @@ namespace SceneryEditorX
             Destroy();
         }
     }
+    */
 
+    /*
     void UniformBufferSet::Create()
     {
         if (!m_Allocator || m_Device == VK_NULL_HANDLE)
@@ -110,6 +113,7 @@ namespace SceneryEditorX
 
         m_Destroyed = true;
     }
+    */
 
     };
 

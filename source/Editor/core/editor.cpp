@@ -111,14 +111,6 @@ namespace SceneryEditorX
     // Unique pointer to the application window
     static Scope<Window> g_Window;
 
-    /**
-	 * -------------------------------------------------------
-	 * FORWARD FUNCTION DECLARATIONS
-	 * -------------------------------------------------------
-	 */
-
-    // static void initVulkan(GraphicsEngine &gfxEngine);
-
     // -------------------------------------------------------
 
     /*
@@ -169,6 +161,7 @@ namespace SceneryEditorX
         // camera = assetManager.GetMainCamera(scene);
 
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
+		Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -196,7 +189,7 @@ namespace SceneryEditorX
         // camera = assetManager.GetMainCamera(scene);
 
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-        // Renderer::Init();
+        Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -213,7 +206,7 @@ namespace SceneryEditorX
             ImGui::DestroyContext();
         }
 
-        // Note: Renderer::Shutdown() is called by Application destructor
+		Renderer::Shutdown();
         renderContext.Reset();
     }
 
@@ -227,9 +220,6 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("Editor", "=== Editor Main Loop Ended ===");
     }
 
-    /**
-	 * @brief Per-frame update - called by Application::Run()
-	 */
     void Editor::Tick()
     {
         //SEDX_PROFILE_SCOPE("Editor::Tick");
@@ -248,6 +238,7 @@ namespace SceneryEditorX
             UpdateCurrentProject();
         }
 
+        Renderer::Tick();
         Application::Tick();
     }
 
@@ -273,6 +264,8 @@ namespace SceneryEditorX
 
     void Editor::InitEditor()
     {
+        Renderer::Init();
+
         /*SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
 
         const auto window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
@@ -342,6 +335,7 @@ namespace SceneryEditorX
     {
         const std::string title = std::format("{0} ({1}) - Scenery Editor X {2}", sceneName, Project::GetActive()->GetConfig().name, SEDX_VERSION);
         Application::Get().GetWindow().SetTitle(title);
+		SEDX_CORE_TRACE_TAG("Editor", "Window title updated to: {}", title);
     }
 
     void Editor::OnInit()
@@ -361,7 +355,7 @@ namespace SceneryEditorX
             EmptyProject();
         }
 		*/
-        SEDX_CORE_INFO("Editor initialization complete");
+        SEDX_CORE_TRACE_TAG("Editor", "Initialization complete");
     }
 
 

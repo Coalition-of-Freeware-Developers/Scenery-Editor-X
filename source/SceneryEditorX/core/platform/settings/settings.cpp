@@ -166,7 +166,7 @@ namespace SceneryEditorX
             /// Load Application stats
             if (cfg.exists("application"))
             {
-                SEDX_CORE_INFO_TAG("SETTINGS", "Loading SceneryEditorX settings");
+                SEDX_CORE_TRACE_TAG("SETTINGS", "Loading SceneryEditorX settings");
                 if (const Setting &app = cfg.lookup("application");
                     app.exists("no_titlebar"))
                     app.lookupValue("no_titlebar", appStats.NoTitlebar);
@@ -207,7 +207,7 @@ namespace SceneryEditorX
 
             /// Write config to file.
             cfg.writeFile(filePath.string().c_str());
-            SEDX_CORE_INFO_TAG("SETTINGS", "Settings successfully written to: {}", filePath.string());
+            SEDX_CORE_TRACE_TAG("SETTINGS", "Settings successfully written to: {}", filePath.string());
 
             /// Update the settings map
             LoadSettingsToMap();
@@ -524,7 +524,7 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("SETTINGS", "Attempting to detect X-Plane 12 via Steam...");
         if (const auto steamPath = SteamGameFinder::FindXPlane12())
         {
-            SEDX_CORE_INFO_TAG("SETTINGS", "Found X-Plane 12 via Steam: {}", *steamPath);
+            SEDX_CORE_TRACE_TAG("SETTINGS", "Found X-Plane 12 via Steam: {}", *steamPath);
             xPlaneStats.isSteam = true;
             return SetXPlanePath(*steamPath);
         }
@@ -574,10 +574,10 @@ namespace SceneryEditorX
 
         for (const auto& path : commonPaths)
         {
-            SEDX_CORE_TRACE_TAG("SETTINGS", "Checking potential X-Plane path: {}", path);
+            SEDX_CORE_TRACE_TAG("Settings", "Checking potential X-Plane path: {}", path);
             if (SteamGameFinder::ValidateXPlanePath(path))
             {
-                SEDX_CORE_INFO_TAG("SETTINGS", "Found X-Plane 12 at common path: {}", path);
+                SEDX_CORE_INFO_TAG("Settings", "Found X-Plane 12 at common path: {}", path);
                 return SetXPlanePath(path);
             }
         }
@@ -650,7 +650,7 @@ namespace SceneryEditorX
             settings["x_plane.resources_path"] = xPlaneStats.xPlaneResourcesPath;
             settings["x_plane.is_steam"] = xPlaneStats.isSteam ? "true" : "false";
 
-            SEDX_CORE_INFO_TAG("SETTINGS", "X-Plane 12 path set to: {}", path);
+            SEDX_CORE_TRACE_TAG("SETTINGS", "X-Plane 12 path set to: {}", path);
             return true;
         }
         catch (const ConfigException &e)

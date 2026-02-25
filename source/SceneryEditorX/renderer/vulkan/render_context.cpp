@@ -122,7 +122,7 @@ namespace SceneryEditorX
 
         try
         {
-            SEDX_CORE_INFO("Initializing RenderContext");
+            SEDX_CORE_TRACE("Initializing RenderContext");
 
             // Create the singleton instance if it doesn't exist
             if (!s_Instance)
@@ -224,7 +224,7 @@ namespace SceneryEditorX
                 if (!khronosAvailable)
                     SEDX_CORE_ERROR_TAG("Graphics Engine", "Khronos validation layer requested but not available!");
                 else
-                    SEDX_CORE_INFO_TAG("Graphics Engine", "Validation layers are available and will be enabled");
+                    SEDX_CORE_TRACE_TAG("Graphics Engine", "Validation layers are available and will be enabled");
             }*/
 
             /*

@@ -323,7 +323,7 @@ namespace SceneryEditorX
 	    if (m_ShowWelcomeScreen != show)
 	    {
 	        m_ShowWelcomeScreen = show;
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Welcome screen setting changed: {}", show ? "enabled" : "disabled");
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Welcome screen setting changed: {}", show ? "enabled" : "disabled");
 	    }
 	}
 
@@ -332,7 +332,7 @@ namespace SceneryEditorX
 	    if (m_StartupProject != projectPath)
 	    {
 	        m_StartupProject = projectPath;
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Startup project changed: {}", projectPath.empty() ? "none" : projectPath);
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Startup project changed: {}", projectPath.empty() ? "none" : projectPath);
 	    }
 	}
 
@@ -347,7 +347,7 @@ namespace SceneryEditorX
 	    /// Trim list to maximum size
 	    TrimRecentProjects();
 
-	    SEDX_CORE_INFO_TAG("USER_PREFS", "Added recent project: {}", project.name);
+	    SEDX_CORE_TRACE_TAG("USER_PREFS", "Added recent project: {}", project.name);
 	}
 
 	void UserPreferences::RemoveRecentProject(const std::string& projectPath)
@@ -357,7 +357,7 @@ namespace SceneryEditorX
 
 	    if (it != m_RecentProjects.end())
 	    {
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Removed recent project: {}", it->second.name);
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Removed recent project: {}", it->second.name);
 	        m_RecentProjects.erase(it);
 	    }
 	}
@@ -366,7 +366,7 @@ namespace SceneryEditorX
 	{
 	    size_t count = m_RecentProjects.size();
 	    m_RecentProjects.clear();
-	    SEDX_CORE_INFO_TAG("USER_PREFS", "Cleared {} recent projects", count);
+	    SEDX_CORE_TRACE_TAG("USER_PREFS", "Cleared {} recent projects", count);
 	}
 
 	bool UserPreferences::LoadPreferences()
@@ -379,7 +379,7 @@ namespace SceneryEditorX
 
 	    try
 	    {
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Loading user preferences from: {}", m_ConfigPath.string());
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Loading user preferences from: {}", m_ConfigPath.string());
 
 	        /// Load basic preferences with defaults
 	        m_ShowWelcomeScreen = m_Settings->GetBoolOption("user.show_welcome_screen", true);
@@ -388,10 +388,10 @@ namespace SceneryEditorX
 	        /// Load recent projects
 	        LoadRecentProjectsFromSettings();
 
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "User preferences loaded successfully");
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "  Welcome screen: {}", m_ShowWelcomeScreen ? "enabled" : "disabled");
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "  Startup project: {}", m_StartupProject.empty() ? "none" : m_StartupProject);
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "  Recent projects: {}", m_RecentProjects.size());
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "User preferences loaded successfully");
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "  Welcome screen: {}", m_ShowWelcomeScreen ? "enabled" : "disabled");
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "  Startup project: {}", m_StartupProject.empty() ? "none" : m_StartupProject);
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "  Recent projects: {}", m_RecentProjects.size());
 
 	        return true;
 	    }
@@ -412,7 +412,7 @@ namespace SceneryEditorX
 
 	    try
 	    {
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Saving user preferences to: {}", m_ConfigPath.string());
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Saving user preferences to: {}", m_ConfigPath.string());
 
 	        /// Save basic preferences
 	        m_Settings->AddBoolOption("user.show_welcome_screen", m_ShowWelcomeScreen);
@@ -424,7 +424,7 @@ namespace SceneryEditorX
 	        /// Write to file
 	        m_Settings->WriteSettings();
 
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "User preferences saved successfully");
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "User preferences saved successfully");
 	        return true;
 	    }
 	    catch (const std::exception& e)
@@ -442,7 +442,7 @@ namespace SceneryEditorX
             if (const std::filesystem::path configDir = m_ConfigPath.parent_path(); !configDir.empty() && !std::filesystem::exists(configDir))
 	        {
 	            std::filesystem::create_directories(configDir);
-	            SEDX_CORE_INFO_TAG("USER_PREFS", "Created config directory: {}", configDir.string());
+	            SEDX_CORE_TRACE_TAG("USER_PREFS", "Created config directory: {}", configDir.string());
 	        }
 
 	        /// Create the ApplicationSettings instance
@@ -451,7 +451,7 @@ namespace SceneryEditorX
 	        /// Try to read existing settings, if file doesn't exist it will be created
 	        if (!m_Settings->ReadSettings())
 	        {
-	            SEDX_CORE_INFO_TAG("USER_PREFS", "Creating new user preferences file: {}", m_ConfigPath.string());
+	            SEDX_CORE_TRACE_TAG("USER_PREFS", "Creating new user preferences file: {}", m_ConfigPath.string());
 
 	            /// Set default values
 	            m_Settings->AddBoolOption("user.show_welcome_screen", true);
@@ -462,7 +462,7 @@ namespace SceneryEditorX
 	            m_Settings->WriteSettings();
 	        }
 
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Settings initialized for: {}", m_ConfigPath.string());
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Settings initialized for: {}", m_ConfigPath.string());
 
 	        /// Test time conversion functions (only in debug builds)
 	#ifdef SEDX_DEBUG
@@ -513,7 +513,7 @@ namespace SceneryEditorX
                     if (const auto oldTimestamp = static_cast<int64_t>(m_Settings->GetIntOption(basePath + ".last_opened", 0)); oldTimestamp > 0)
 	                {
 	                    lastOpened = static_cast<time_t>(oldTimestamp);
-	                    SEDX_CORE_INFO_TAG("USER_PREFS", "Converted old timestamp format for project: {}", name);
+	                    SEDX_CORE_TRACE_TAG("USER_PREFS", "Converted old timestamp format for project: {}", name);
 	                }
 	            }
 
@@ -536,7 +536,7 @@ namespace SceneryEditorX
 	            }
 	        }
 
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Loaded {} valid recent projects", m_RecentProjects.size());
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Loaded {} valid recent projects", m_RecentProjects.size());
 	    }
 	    catch (const std::exception& e)
 	    {
@@ -576,7 +576,7 @@ namespace SceneryEditorX
 	        /// Update the count
 	        m_Settings->AddIntOption("user.recent_projects.count", static_cast<int>(m_RecentProjects.size()));
 
-	        SEDX_CORE_INFO_TAG("USER_PREFS", "Saved {} recent projects to settings", m_RecentProjects.size());
+	        SEDX_CORE_TRACE_TAG("USER_PREFS", "Saved {} recent projects to settings", m_RecentProjects.size());
 	    }
 	    catch (const std::exception& e)
 	    {
@@ -600,7 +600,7 @@ namespace SceneryEditorX
 	        ++removedCount;
 	    }
 
-	    SEDX_CORE_INFO_TAG("USER_PREFS", "Trimmed {} old recent projects, keeping latest {}", removedCount, UserPreferences::MAX_RECENT_PROJECTS);
+	    SEDX_CORE_TRACE_TAG("USER_PREFS", "Trimmed {} old recent projects, keeping latest {}", removedCount, UserPreferences::MAX_RECENT_PROJECTS);
 	}
 
 	// ----------------------------------------------------

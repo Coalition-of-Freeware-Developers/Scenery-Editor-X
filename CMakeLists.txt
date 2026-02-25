@@ -85,18 +85,27 @@ OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
 SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
 SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
 
+# ###########################################
+# Tracy Profiler (optional)
+# ###########################################
+IF(TRACY_ENABLE)
+	INCLUDE(cmake/tracyprofiling.cmake)
+    # Add Tracy public include dir to all main targets if tracy is available
+    if(DEFINED tracy_SOURCE_DIR)
+        message(STATUS "Adding Tracy public include dir: ${tracy_SOURCE_DIR}/public")
+        foreach(_tracy_target SceneryEditorX Launcher Editor CrashHandler)
+            if(TARGET ${_tracy_target})
+                target_include_directories(${_tracy_target} PRIVATE ${tracy_SOURCE_DIR}/public)
+            endif()
+        endforeach()
+    endif()
+ENDIF()
+
 ############################################
 # Doxygen (optional)
 ############################################
 IF(SEDX_ENABLE_DOXYGEN)
     INCLUDE(cmake/doxygen.cmake)
-ENDIF()
-
-# ###########################################
-# Tracy (optional)
-# ###########################################
-IF(TRACY_ENABLE)
-    INCLUDE(cmake/tracyprofiling.cmake)
 ENDIF()
 
 ############################################
@@ -115,7 +124,6 @@ SET(CMAKE_C_STANDARD 17)
 SET(CMAKE_C_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ADD_COMPILE_DEFINITIONS(
     $<$<CONFIG:Debug>:SEDX_DEBUG>
@@ -146,9 +154,7 @@ FIND_PACKAGE(Vulkan REQUIRED)
 FIND_PACKAGE(Stb REQUIRED)
 FIND_PACKAGE(spdlog CONFIG REQUIRED)
 FIND_PACKAGE(msdfgen CONFIG REQUIRED)
-#FIND_PACKAGE(unofficial-skia CONFIG REQUIRED)
 FIND_PACKAGE(Doxygen QUIET)
-#FIND_PACKAGE(tracy CONFIG REQUIRED) # Tracy profiler package (imported target typically Tracy::TracyClient)
 FIND_PACKAGE(VulkanMemoryAllocator CONFIG REQUIRED)
 FIND_PACKAGE(CURL CONFIG REQUIRED)
 

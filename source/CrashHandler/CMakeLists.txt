@@ -31,7 +31,6 @@ ADD_EXECUTABLE(CrashHandler
 	service_ipc.h
 	# --------------------------------
 )
-
 # Set the output name to xService while keeping CrashHandler as target name
 SET_TARGET_PROPERTIES(CrashHandler PROPERTIES OUTPUT_NAME "xService")
 

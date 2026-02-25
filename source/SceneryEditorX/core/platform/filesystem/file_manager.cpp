@@ -648,7 +648,7 @@ namespace SceneryEditorX::IO
 
 	    file.close();
 
-	    SEDX_CORE_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
+	    SEDX_CORE_TRACE("Successfully read file: {} ({} bytes)", filename, fileSize);
 	    return buffer;
 	}
 
@@ -694,7 +694,7 @@ namespace SceneryEditorX::IO
 
 	    file.close();
 
-	    SEDX_CORE_INFO("Successfully read file: {} ({} bytes)", filename, fileSize);
+	    SEDX_CORE_TRACE("Successfully read file: {} ({} bytes)", filename, fileSize);
 	    return buffer;
 	}
 
@@ -1238,7 +1238,7 @@ namespace SceneryEditorX::IO
 	        }
 	    }
 
-	    SEDX_CORE_INFO("Objects: %d", parentNode->children.size());
+	    SEDX_CORE_TRACE("Objects: %d", parentNode->children.size());
 	    return scene->uuid;
 	}
 	*/

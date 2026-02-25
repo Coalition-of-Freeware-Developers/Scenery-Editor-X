@@ -186,7 +186,7 @@ namespace SceneryEditorX
 	            mon.handle = displayID;
 	
 	            monitors.push_back(mon);
-	            SEDX_CORE_INFO("Monitor {}: {}", i, mon.monitorID);
+	            SEDX_CORE_TRACE("Monitor {}: {}", i, mon.monitorID);
 	        }
 	
 	        return monitors;
@@ -381,7 +381,7 @@ namespace SceneryEditorX
 	    }
 	    else
 	    {
-            SEDX_CORE_INFO("Detected {} monitor(s)", monitorCount);
+            SEDX_CORE_TRACE("Detected {} monitor(s)", monitorCount);
 	    }
 	
 	    // Make sure the current monitor index is valid
@@ -413,7 +413,7 @@ namespace SceneryEditorX
 	
 	    if (monitorCount > 0 && monitorHandles)
 	    {
-            SEDX_CORE_INFO("Successfully refreshed monitor list: {} monitor(s) detected", monitorCount);
+            SEDX_CORE_TRACE("Successfully refreshed monitor list: {} monitor(s) detected", monitorCount);
 	        primaryMonitor = SDL_GetPrimaryDisplay();
 	    }
 	    else
@@ -466,7 +466,7 @@ namespace SceneryEditorX
 	        // Log result
 	        if (modes && *count > 0)
 	        {
-	            SEDX_CORE_INFO("Retrieved {} video modes for monitor {}", *count, monitorIndex);
+	            SEDX_CORE_TRACE("Retrieved {} video modes for monitor {}", *count, monitorIndex);
 	        }
 	        else
 	        {

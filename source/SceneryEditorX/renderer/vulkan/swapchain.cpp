@@ -77,7 +77,7 @@ namespace SceneryEditorX
 
        m_Surface = surface;
 
-       SEDX_CORE_INFO_TAG("Swapchain", "Vulkan surface created successfully");
+       SEDX_CORE_TRACE_TAG("Swapchain", "Vulkan surface created successfully");
     }
 
     VkSwapchainKHR Swapchain::Create(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
@@ -338,7 +338,7 @@ namespace SceneryEditorX
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
         {
-            SEDX_CORE_INFO_TAG("Swapchain", "Swapchain out of date or suboptimal during present — recreation needed");
+            SEDX_CORE_TRACE_TAG("Swapchain", "Swapchain out of date or suboptimal during present — recreation needed");
         }
         else if (result != VK_SUCCESS)
         {

@@ -614,7 +614,7 @@ namespace SceneryEditorX
             s_PhysicalDevice.push_back(deviceInfo);
             s_PhysicalDeviceHandles.push_back(devices[i]); // Store VkPhysicalDevice handle
 
-            SEDX_CORE_INFO_TAG("Device", "[{}] {} - {} ({} MB VRAM)", i, deviceInfo.name, deviceInfo.vendorName, deviceInfo.memory);
+            SEDX_CORE_TRACE_TAG("Device", "[{}] {} - {} ({} MB VRAM)", i, deviceInfo.name, deviceInfo.vendorName, deviceInfo.memory);
         }
     }
 
@@ -726,7 +726,7 @@ namespace SceneryEditorX
             SEDX_CORE_TRACE_TAG("Device", "Device '{}': Push descriptors supported (+8)", deviceInfo.name);
         }
 
-        SEDX_CORE_INFO_TAG("Device", "Device '{}' scored: {} points", deviceInfo.name, score);
+        SEDX_CORE_TRACE_TAG("Device", "Device '{}' scored: {} points", deviceInfo.name, score);
         return score;
     }
 
@@ -826,7 +826,7 @@ namespace SceneryEditorX
 
         // Initialize memory allocator
         m_MemAllocator = CreateRef<MemoryAllocator>(this);
-        SEDX_CORE_INFO_TAG("Device", "Device initialization complete");
+        SEDX_CORE_TRACE_TAG("Device", "Device initialization complete");
     }
 
     Device::~Device()
@@ -842,7 +842,7 @@ namespace SceneryEditorX
         {
             vkDestroyDevice(m_LogicalDevice, nullptr);
             m_LogicalDevice = VK_NULL_HANDLE;
-            SEDX_CORE_INFO_TAG("Device", "Logical device destroyed");
+            SEDX_CORE_TRACE_TAG("Device", "Logical device destroyed");
         }
 
         if (m_WindowSurface != VK_NULL_HANDLE)
@@ -1028,7 +1028,7 @@ namespace SceneryEditorX
             return VK_NULL_HANDLE;
         }
 
-        SEDX_CORE_INFO_TAG("Device", "Logical device created successfully");
+        SEDX_CORE_TRACE_TAG("Device", "Logical device created successfully");
         SEDX_CORE_TRACE_TAG("Device", "Device-level function pointers loaded via volk");
         m_LogicalDevice = device;
         return m_LogicalDevice;
@@ -1061,7 +1061,7 @@ namespace SceneryEditorX
      */
     VkPhysicalDevice Device::Choose()
     {
-        SEDX_CORE_INFO("=== Selecting Physical Device ===");
+        SEDX_CORE_TRACE("=== Selecting Physical Device ===");
 
         // Validate that we have devices to choose from
         SEDX_CORE_ASSERT(!s_PhysicalDevice.empty(), "No physical devices available for selection");
@@ -1089,7 +1089,7 @@ namespace SceneryEditorX
         DeviceCandidate bestVirtual;
         DeviceCandidate bestOther;
 
-        SEDX_CORE_INFO_TAG("Device", "Evaluating {} physical device(s)...", s_PhysicalDevice.size());
+        SEDX_CORE_TRACE_TAG("Device", "Evaluating {} physical device(s)...", s_PhysicalDevice.size());
 
         // Iterate through all devices, score them, and track best per category
         for (uint32_t i = 0; i < s_PhysicalDevice.size(); ++i)
@@ -1115,7 +1115,7 @@ namespace SceneryEditorX
                 continue; // Skip devices that don't meet requirements
             }
 
-            SEDX_CORE_INFO_TAG("Device", "[{}] {} - {} ({} MB, Score: {})", i, deviceInfo.name, deviceInfo.vendorName, deviceInfo.memory, featureScore);
+            SEDX_CORE_TRACE_TAG("Device", "[{}] {} - {} ({} MB, Score: {})", i, deviceInfo.name, deviceInfo.vendorName, deviceInfo.memory, featureScore);
 
             // Update best candidate per device type
             switch (type)
@@ -1183,7 +1183,7 @@ namespace SceneryEditorX
         if (bestDiscrete.IsValid())
         {
             selectedCandidate = bestDiscrete;
-            SEDX_CORE_INFO_TAG("Device", "Selected: Discrete GPU (highest priority)");
+            SEDX_CORE_TRACE_TAG("Device", "Selected: Discrete GPU (highest priority)");
         }
         else if (bestIntegrated.IsValid())
         {
@@ -1232,7 +1232,7 @@ namespace SceneryEditorX
         }
 
         // Log comprehensive selection details
-        SEDX_CORE_INFO("Device", "=== Selected Physical Device ===");
+        SEDX_CORE_INFO_TAG("Device", "=== Selected Physical Device ===");
         SEDX_CORE_INFO("Index: {}", selectedCandidate.index);
         SEDX_CORE_INFO("Name: {}", selectedDeviceInfo.name);
         SEDX_CORE_INFO("Vendor: {}", selectedDeviceInfo.vendorName);

@@ -83,7 +83,7 @@ namespace SceneryEditorX
         /// Construct the model path using the modelFolder from config
         std::string fullModelPath = config.modelFolder + "/" + path;
 
-        SEDX_CORE_INFO("Loading 3D model from: {}", fullModelPath);
+        SEDX_CORE_TRACE("Loading 3D model from: {}", fullModelPath);
 
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
@@ -98,7 +98,7 @@ namespace SceneryEditorX
             return;
         }
 
-        SEDX_CORE_INFO("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
+        SEDX_CORE_TRACE("Model loaded successfully: {} vertices, {} shapes", attrib.vertices.size() / 3, shapes.size());
 
         std::unordered_map<MeshVertex, uint32_t> uniqueVertices{};
 
@@ -130,7 +130,7 @@ namespace SceneryEditorX
             }
         }
 
-        SEDX_CORE_INFO("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
+        SEDX_CORE_TRACE("Model processing complete: {} unique vertices, {} indices", vertices.size(), indices.size());
         loaded = true;
 	}
     
@@ -139,7 +139,7 @@ namespace SceneryEditorX
         vertices.clear();
         indices.clear();
         loaded = false;
-        SEDX_CORE_INFO("Model unloaded: {}", modelPath);
+        SEDX_CORE_TRACE("Model unloaded: {}", modelPath);
     }
     
     void ModelAsset::SetName(const std::string &name)

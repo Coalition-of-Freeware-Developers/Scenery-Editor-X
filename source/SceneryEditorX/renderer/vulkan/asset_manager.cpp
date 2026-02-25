@@ -55,7 +55,7 @@ namespace SceneryEditorX
 	 */
     void AssetManager::DestroyAll()
     {
-        SEDX_CORE_INFO_TAG("AssetManager", "Destroying all assets ({} total)", m_AssetSets.size());
+        SEDX_CORE_TRACE_TAG("AssetManager", "Destroying all assets ({} total)", m_AssetSets.size());
 
         Ref<Device> device = RenderContext::Get()->GetDevice();
         SEDX_CORE_ASSERT(device.IsValid(), "Device must be valid to destroy assets");
@@ -72,7 +72,7 @@ namespace SceneryEditorX
 
         m_AssetSets.clear();
 
-        SEDX_CORE_INFO_TAG("AssetManager", "All assets destroyed");
+        SEDX_CORE_TRACE_TAG("AssetManager", "All assets destroyed");
     }
 
 

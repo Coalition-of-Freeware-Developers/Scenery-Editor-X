@@ -1,8 +1,10 @@
 # Grouping into solution folders (only if targets exist)
 FUNCTION(SEDX_GROUP_TARGETS)
-	IF(TARGET CrashHandler)
-		SET_PROPERTY(TARGET CrashHandler PROPERTY FOLDER "Tools")
-    ENDIF()
+	FOREACH(T IN ITEMS CrashHandler TracyClient)
+		IF(TARGET ${T})
+			SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Tools")
+		ENDIF()
+	ENDFOREACH()
 
     FOREACH(T IN ITEMS MemoryAllocatorTests MathTests RefTests SettingsTest ConversionTests EdxTests EdxDemoGenerator)
         IF(TARGET ${T})
@@ -16,7 +18,7 @@ FUNCTION(SEDX_GROUP_TARGETS)
         ENDIF()
     ENDFOREACH()
 
-	FOREACH(T IN ITEMS xMath uninstall imgui ktx json-cpp-gen nlohmann_json TracyClient)
+	FOREACH(T IN ITEMS xMath uninstall imgui ktx json-cpp-gen nlohmann_json)
         IF(TARGET ${T})
             SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Dependency")
         ENDIF()
@@ -56,7 +58,7 @@ ENDIF()
 # Apply common output directories (guarded)
 FUNCTION(SEDX_APPLY_OUTPUT_DIRS LIBS_DIR BIN_DIR)
 	SET(CANDIDATES
-		Launcher SceneryEditorX AppCore CrashHandler uninstall
+		Launcher SceneryEditorX AppCore CrashHandler uninstall TracyClient
 		MathTests MemoryAllocatorTests ConversionTests RefTests SettingsTest EdxTests EdxDemoGenerator
 		nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ edX XPSceneryLib ktx SDL3_test SDL3 SDL3 SDL3-static
 		Catch2 Catch2WithMain

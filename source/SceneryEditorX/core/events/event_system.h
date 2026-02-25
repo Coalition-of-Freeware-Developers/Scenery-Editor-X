@@ -257,7 +257,7 @@ namespace SceneryEditorX
      * @param e Event to serialize.
      * @return Reference to the output stream.
      * @details Writes `e.ToString()` into the stream, enabling simple logging like:
-     *  `SEDX_CORE_INFO("Event: {}", event.ToString());`
+     *  `SEDX_CORE_TRACE("Event: {}", event.ToString());`
      */
     inline std::ostream& operator<<(std::ostream& os, const Event& e)
     {

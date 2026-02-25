@@ -91,7 +91,7 @@ namespace SceneryEditorX
                 const float elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count() / 1000.0f;
                 if (logged)
                 {
-                    SEDX_CORE_INFO("{} took {} seconds", title.c_str(), elapsed / 1000.0f);
+                    SEDX_CORE_TRACE("{} took {} seconds", title.c_str(), elapsed / 1000.0f);
                 }
                 else
                 {

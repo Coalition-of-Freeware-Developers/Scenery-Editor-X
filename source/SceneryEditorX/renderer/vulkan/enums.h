@@ -129,6 +129,51 @@ namespace SceneryEditorX
         MaxEnum
     };
 
+    /**
+     * @enum Stage
+	 * @brief Enumeration of shader stages in Vulkan
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different stages of a shader in the rendering system.
+	 *
+	 * @note - The values in this enum are designed to be compatible with Vulkan's VkShaderStageFlagBits.
+	 * @see @enum VkShaderStageFlagBits
+	 */
+	enum class Stage : uint32_t
+	{
+	    Vertex,
+		Geometry,
+        TessellationControl,
+        TessellationEvaluation,
+        Fragment,
+		Compute,
+		None,
+		All,
+		MaxEnum
+	};
+
+    /**
+	 * @enum ShaderInputType
+	 * @brief Enumeration of shader input types in Vulkan
+	 *
+	 * This enum provides a type-safe way to identify and reference
+	 * the different types of inputs that a shader can accept in the rendering system.
+	 *
+	 * @note - The values in this enum are designed to be compatible with Vulkan's shader input types.
+	 * @see @enum VkDescriptorType
+	 */
+	enum class ShaderInputType : uint32_t
+	{
+		UniformBuffer,
+		UniformBufferSet,
+		StorageBuffer,
+		StorageBufferSet,
+		CombinedImageSampler,
+		Sampler,
+		Texture,
+		StorageImage
+	};
+
 
 } // namespace SceneryEditorX
 

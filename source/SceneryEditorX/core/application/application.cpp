@@ -66,7 +66,7 @@ namespace SceneryEditorX
 
 		// Create window
 		m_Window = CreateScope<Window>();
-		SEDX_CORE_INFO("Initializing Window");
+		SEDX_CORE_TRACE("Initializing Window");
 		m_Window->Create();
 		
 		// Configure window properties BEFORE renderer init
@@ -93,8 +93,6 @@ namespace SceneryEditorX
 		// Set event callback before renderer init (so it can handle any initialization events)
 		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
 
-		Renderer::Init();
-
 		m_IsRunning = true;
 		m_IsMinimized = false;
     }
@@ -111,16 +109,16 @@ namespace SceneryEditorX
         std::filesystem::path repoRoot = exePath.parent_path().parent_path();
         std::filesystem::current_path(repoRoot);
 
-        SEDX_CORE_INFO("Executable directory: {}", exePath.string());
-        SEDX_CORE_INFO("Repository root: {}", repoRoot.string());
-        SEDX_CORE_INFO("Working directory set to: {}", std::filesystem::current_path().string());
+        SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
+        SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
+        SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
 
         // -------------------------------------------------------
 
-        SEDX_CORE_INFO("=== Initializing Application with PlatformContext ===");
-        SEDX_CORE_INFO("  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO("  Temp Directory: {}", context.GetTempDirectory());
-        SEDX_CORE_INFO("  Command Line Args: {}", context.GetCommandLineArgs().size());
+        SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
+        SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
+        SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
 
         AppData specification;
@@ -144,16 +142,16 @@ namespace SceneryEditorX
         std::filesystem::path repoRoot = exePath.parent_path().parent_path();
         std::filesystem::current_path(repoRoot);
 
-        SEDX_CORE_INFO("Executable directory: {}", exePath.string());
-        SEDX_CORE_INFO("Repository root: {}", repoRoot.string());
-        SEDX_CORE_INFO("Working directory set to: {}", std::filesystem::current_path().string());
+        SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
+        SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
+        SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
 
         // -------------------------------------------------------
 
-        SEDX_CORE_INFO("=== Initializing Application with PlatformContext ===");
-        SEDX_CORE_INFO("  Working Directory: {}", context.GetWorkingDirectory());
-        SEDX_CORE_INFO("  Temp Directory: {}", context.GetTempDirectory());
-        SEDX_CORE_INFO("  Command Line Args: {}", context.GetCommandLineArgs().size());
+        SEDX_CORE_TRACE("=== Initializing Application with PlatformContext ===");
+        SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
+        SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
+        SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
         AppData specification = appData;
         
@@ -168,8 +166,6 @@ namespace SceneryEditorX
 
     Application::~Application()
     {
-        // Ensure renderer subsystems are torn down first
-        Renderer::Shutdown();
 
         /** 
          * Let RAII handle Window destruction, or explicitly reset the RefCounter once
@@ -188,7 +184,6 @@ namespace SceneryEditorX
 
         // Per-frame housekeeping
         Window::Tick();
-        Renderer::Tick();
     }
 
     void Application::Run()
@@ -245,7 +240,7 @@ namespace SceneryEditorX
             frameCount++;
         }
 
-        //SEDX_CORE_INFO_TAG("APP", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
+        //SEDX_CORE_INFO_TAG("Application", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
         OnShutdown();
     }
 
@@ -258,8 +253,8 @@ namespace SceneryEditorX
 
     void Application::OnShutdown()
     {
-        SEDX_CORE_INFO_TAG("APP", "Application::OnShutdown()");
-        SEDX_CORE_INFO("Shutting down application");
+        SEDX_CORE_INFO_TAG("Application", "Application::OnShutdown()");
+        SEDX_CORE_TRACE("Shutting down application");
         m_EventCallbacks.clear();
         appRunning = false;
     }
@@ -340,7 +335,7 @@ namespace SceneryEditorX
 
 		if (event.m_Handled) return;
 
-		/*
+		/**
 		 * TODO: Should these callbacks be called BEFORE the layers receive events?
 		 * We may actually want that since most of these callbacks will be functions REQUIRED in order for the game
 		 * to work, and if a layer has already handled the event we may end up with problems.

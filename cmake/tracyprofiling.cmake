@@ -1,19 +1,20 @@
 # ###########################################
-# Math Library (xMath via FetchContent)
+# Tracy (optional)
 # ###########################################
-IF(SEDX_USE_FETCHCONTENT_TRACY AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
-	FETCHCONTENT_DECLARE(
-		tracy
-		GIT_REPOSITORY https://github.com/wolfpld/tracy.git
-		GIT_TAG master
-		GIT_SHALLOW TRUE
-		GIT_PROGRESS TRUE
-	)
-	FETCHCONTENT_GETPROPERTIES(tracy)
-
-	IF(NOT tracy_POPULATED)
-		FETCHCONTENT_POPULATE(tracy)
-		ADD_SUBDIRECTORY("${tracy_SOURCE_DIR}" "${tracy_BINARY_DIR}")
+IF(TRACY_ENABLE)
+	IF(CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
+		INCLUDE(FetchContent)
+		FetchContent_Declare(
+			tracy
+			GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+			GIT_TAG master
+			GIT_SHALLOW TRUE
+			GIT_PROGRESS TRUE
+			GIT_SUBMODULES ""
+		)
+		FetchContent_MakeAvailable(tracy)
+	ELSE()
+		MESSAGE(FATAL_ERROR "CMake >= 3.11 required for Tracy FetchContent integration")
 	ENDIF()
 ENDIF()
 

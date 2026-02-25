@@ -53,7 +53,7 @@ namespace SceneryEditorX
             return;
         }
 
-        SEDX_CORE_INFO_TAG("SPLASH", "Loaded splash screen image: {}x{} with {} channels", width, height, channels);
+        SEDX_CORE_TRACE_TAG("SPLASH", "Loaded splash screen image: {}x{} with {} channels", width, height, channels);
 
         // Set window hints for splash screen
         glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);   // Borderless
@@ -77,7 +77,7 @@ namespace SceneryEditorX
             const int xPos = (videoMode->width - width) / 2;
             const int yPos = (videoMode->height - height) / 2;
             glfwSetWindowPos(splashWindow, xPos, yPos);
-            SEDX_CORE_INFO_TAG("SPLASH", "Splash screen positioned at: {}x{}", xPos, yPos);
+            SEDX_CORE_TRACE_TAG("SPLASH", "Splash screen positioned at: {}x{}", xPos, yPos);
         }
 
         // Set window icon for splash screen (reuse existing icon logic)
@@ -115,7 +115,7 @@ namespace SceneryEditorX
         glfwShowWindow(splashWindow);
         SDL_PollEvent();
 
-        SEDX_CORE_INFO_TAG("SPLASH", "Splash screen displayed successfully");
+        SEDX_CORE_TRACE_TAG("SPLASH", "Splash screen displayed successfully");
     }
     */
 
@@ -156,7 +156,7 @@ namespace SceneryEditorX
                 return false;
             }
 
-            SEDX_CORE_INFO_TAG("SPLASH", "Splash texture created successfully: {}x{}", width, height);
+            SEDX_CORE_TRACE_TAG("SPLASH", "Splash texture created successfully: {}x{}", width, height);
             return true;
         }
         catch (const std::exception &e)
@@ -246,7 +246,7 @@ namespace SceneryEditorX
     {
         if (splashWindow)
         {
-            SEDX_CORE_INFO_TAG("SPLASH", "Hiding splash screen");
+            SEDX_CORE_TRACE_TAG("SPLASH", "Hiding splash screen");
 
             // Cleanup Vulkan resources
             CleanupSplashContext();
@@ -255,7 +255,7 @@ namespace SceneryEditorX
             glfwDestroyWindow(splashWindow);
             splashWindow = nullptr;
 
-            SEDX_CORE_INFO_TAG("SPLASH", "Splash screen cleanup complete");
+            SEDX_CORE_TRACE_TAG("SPLASH", "Splash screen cleanup complete");
         }
     }
     */

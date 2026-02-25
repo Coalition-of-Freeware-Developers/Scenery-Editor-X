@@ -102,7 +102,7 @@ namespace SceneryEditorX
         void SaveSceneAs();
 
     private:
-        void UpdateWindowTitle(const std::string &sceneName);
+        static void UpdateWindowTitle(const std::string &sceneName);
         void OnInit() override;
 
         Ref<UserPreferences> m_UserPreferences;
@@ -157,7 +157,6 @@ namespace SceneryEditorX
         void ReloadCSharp();
         void FocusLogPanel();
 
-    private:
         uint32_t m_TitleBarTargetColor;
         uint32_t m_TitleBarActiveColor;
         uint32_t m_TitleBarPreviousColor;
@@ -189,14 +188,14 @@ namespace SceneryEditorX
         float m_RequiredProjectVersion = 0.0f;
         float m_AssetUpdatePerf = 0.0f;
 
-#ifdef SEDX_PLATFORM_WINDOWS
+    #ifdef SEDX_PLATFORM_WINDOWS
 		typedef std::wstring WatcherString;
-#else
+    #else
 		typedef std::string WatcherString;
-#endif
+    #endif
 		//std::unique_ptr<filewatch::FileWatch<WatcherString>> m_ScriptFileWatcher = nullptr;
     };
 
 }
 
-/// -------------------------------------------------------
+// -------------------------------------------------------

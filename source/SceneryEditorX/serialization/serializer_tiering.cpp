@@ -105,7 +105,7 @@ namespace SceneryEditorX
             CreateDirectoriesIfNeeded(filepath);
             cfg.writeFile(filepath.string().c_str());
 
-            SEDX_CORE_INFO_TAG("TIERING", "Tiering settings serialized to: {}", filepath.string());
+            SEDX_CORE_TRACE_TAG("TIERING", "Tiering settings serialized to: {}", filepath.string());
         }
         catch (const ConfigException& ex)
         {
@@ -267,7 +267,7 @@ namespace SceneryEditorX
                 outTieringSettings.RendererTS.SSRQuality = SSRQualitySettingFromString(ssrStr);
             }
 
-            SEDX_CORE_INFO_TAG("TIERING", "Tiering settings loaded from: {}", filepath.string());
+            SEDX_CORE_TRACE_TAG("TIERING", "Tiering settings loaded from: {}", filepath.string());
             return true;
         }
         catch (const FileIOException& ex)

@@ -68,7 +68,7 @@ namespace SceneryEditorX
 	    m_resources.clear();
 	    if (resource_count != 0)
 	    {
-	        SEDX_CORE_INFO("%d resources have been cleared", resource_count);
+	        SEDX_CORE_TRACE("%d resources have been cleared", resource_count);
 	    }
 	}
 	*/

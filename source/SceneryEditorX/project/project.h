@@ -53,8 +53,7 @@ namespace SceneryEditorX
         static std::filesystem::path GetAssetRegistryPath()
 		{
             SEDX_CORE_ASSERT(activeProject);
-            return std::filesystem::path(activeProject->GetConfig().projectPath) /
-                   activeProject->GetConfig().assetRegistry;
+            return std::filesystem::path(activeProject->GetConfig().projectPath) / activeProject->GetConfig().assetRegistry;
 		}
 
         static std::filesystem::path GetActiveAssetDirectory()
@@ -105,8 +104,6 @@ namespace SceneryEditorX
         inline static Ref<Project> activeProject;
 
 	};
-
-    // -------------------------------------------------------
 
 }
 

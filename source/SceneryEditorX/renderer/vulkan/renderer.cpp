@@ -66,27 +66,27 @@ namespace SceneryEditorX
     // Static Member Definitions
     // -------------------------------------------------------
 
-    RendererProperties* Renderer::s_Data = nullptr;
+    RendererProperties *Renderer::s_Data = nullptr;
     Ref<Swapchain> Renderer::s_SwapChain = nullptr;
     std::atomic<bool> Renderer::s_ResourcesInitialized = false;
-    CommandList* Renderer::s_CurrentCmdList = nullptr;
+    CommandList *Renderer::s_CurrentCmdList = nullptr;
 
+    Scope<AssetManager> Renderer::s_AssetManager = nullptr;
     Scope<FrameSync> Renderer::s_FrameSync = nullptr;
     Scope<CommandPool> Renderer::s_CommandPool = nullptr;
-    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::s_CommandBuffers = {};
 
+    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::s_CommandBuffers = {};
     uint32_t Renderer::s_CurrentFrameIndex = 0;
     uint64_t Renderer::s_FrameNumber = 0;
     uint32_t Renderer::s_SwapchainImageIndex = 0;
     bool Renderer::s_FrameInProgress = false;
-    Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 
     // Resolution & viewport (internal state)
     static xMath::Vec2 s_RendererResolution(0.0f, 0.0f);
     static xMath::Vec2 s_OutputResolution(0.0f, 0.0f);
     static Viewport s_Viewport = Viewport(0, 0, 0, 0);
     static bool s_OrthoProjection_Dirty = true;
-    static Scope<UniformBufferSet> s_UniformBuffers = nullptr;
+    //static Scope<UniformBufferSet> s_UniformBuffers = nullptr;
     static VkSurfaceCapabilitiesKHR s_SurfaceCaps = {};
 
     // -------------------------------------------------------
@@ -95,16 +95,16 @@ namespace SceneryEditorX
 
     void Renderer::Init()
     {
-        SEDX_TRACK_CALL("Renderer::Init");
+        //SEDX_TRACK_CALL("Renderer::Init");
 
         // Prevent double-initialization
         if (s_Data)
         {
-            SEDX_CORE_INFO_TAG("Renderer", "Init() called but renderer is already initialized — skipping");
+            SEDX_CORE_INFO_TAG("Renderer", "Init called but renderer is already initialized — skipping");
             return;
         }
 
-        SEDX_CORE_INFO_TAG("Renderer", "=== Initializing Renderer ===");
+        SEDX_CORE_TRACE_TAG("Renderer", "=== Initializing Renderer ===");
 
         // Initialize volk loader
         volkInitialize();
@@ -166,7 +166,7 @@ namespace SceneryEditorX
             VkSwapchainKHR swapchainHandle = s_SwapChain->Create(s_SwapChain->GetSurface(), queueFamily, allocator);
             if (swapchainHandle != VK_NULL_HANDLE)
             {
-                SEDX_CORE_INFO_TAG("Renderer", "Swapchain created successfully with {} images", s_SwapChain->Images().size());
+                SEDX_CORE_TRACE_TAG("Renderer", "Swapchain created successfully with {} images", s_SwapChain->Images().size());
             }
             else
             {
@@ -203,7 +203,7 @@ namespace SceneryEditorX
                                .indexCount = asset.GetModelIndexCount()});
 
         RenderContext::Get()->renderables = &renderables;
-        RenderContext::Get()->s_ShaderDataBuffers = s_UniformBuffers ? &s_UniformBuffers->Buffers() : nullptr;
+        //RenderContext::Get()->s_ShaderDataBuffers = s_UniformBuffers ? &s_UniformBuffers->Buffers() : nullptr;
         RenderContext::Get()->s_CommandBuffers = &s_CommandBuffers;
         RenderContext::Get()->s_Fences = s_FrameSync ? &s_FrameSync->Fences() : nullptr;
         RenderContext::Get()->s_PresentSemaphores = s_FrameSync ? &s_FrameSync->PresentSemaphores() : nullptr;
@@ -241,7 +241,7 @@ namespace SceneryEditorX
         s_Data = nullptr;
 
         s_ResourcesInitialized = false;
-        SEDX_CORE_INFO_TAG("Renderer", "=== Renderer Shutdown Complete ===");
+        SEDX_CORE_TRACE_TAG("Renderer", "=== Renderer Shutdown Complete ===");
     }
 
     void Renderer::Tick()
@@ -259,14 +259,14 @@ namespace SceneryEditorX
 
     void Renderer::CreateFrameResources()
     {
-        SEDX_CORE_INFO_TAG("Renderer", "Creating frame resources for {} frames in flight", MAX_FRAMES_IN_FLIGHT);
+        SEDX_CORE_TRACE_TAG("Renderer", "Creating frame resources for {} frames in flight", MAX_FRAMES_IN_FLIGHT);
 
         // Get queue family index from queue manager
         uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
 
         // Create command pool
         s_CommandPool = CreateScope<CommandPool>(queueFamily, CommandPoolType::Resettable);
-        SEDX_CORE_INFO_TAG("Renderer", "Created command pool");
+        SEDX_CORE_TRACE_TAG("Renderer", "Created command pool");
 
         // Allocate command buffers
         auto allocatedBuffers = s_CommandPool->Allocate(MAX_FRAMES_IN_FLIGHT);
@@ -274,14 +274,14 @@ namespace SceneryEditorX
         {
             s_CommandBuffers[i] = allocatedBuffers[i];
         }
-        SEDX_CORE_INFO_TAG("Renderer", "Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
+        SEDX_CORE_TRACE_TAG("Renderer", "Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
 
         // Create frame sync objects - use actual swapchain image count or fallback
         uint32_t swapchainImageCount = 2; // Default fallback
         if (s_SwapChain && !s_SwapChain->Images().empty())
         {
             swapchainImageCount = static_cast<uint32_t>(s_SwapChain->Images().size());
-            SEDX_CORE_INFO_TAG("Renderer", "Using swapchain image count: {}", swapchainImageCount);
+            SEDX_CORE_TRACE_TAG("Renderer", "Using swapchain image count: {}", swapchainImageCount);
         }
         else
         {
@@ -289,12 +289,12 @@ namespace SceneryEditorX
         }
 
         s_FrameSync = CreateScope<FrameSync>(MAX_FRAMES_IN_FLIGHT, swapchainImageCount);
-        SEDX_CORE_INFO_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})", s_FrameSync->Fences().size(), s_FrameSync->PresentSemaphores().size(), s_FrameSync->RenderSemaphores().size());
+        SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})", s_FrameSync->Fences().size(), s_FrameSync->PresentSemaphores().size(), s_FrameSync->RenderSemaphores().size());
     }
 
     void Renderer::DestroyFrameResources()
     {
-        SEDX_CORE_INFO_TAG("Renderer", "Destroying frame resources");
+        SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
 
         // Destroy sync objects
         if (s_FrameSync)
@@ -313,7 +313,7 @@ namespace SceneryEditorX
             s_CommandPool.reset();
         }
 
-        SEDX_CORE_INFO_TAG("Renderer", " Frame resources destroyed");
+        SEDX_CORE_TRACE_TAG("Renderer", " Frame resources destroyed");
     }
 
     // -------------------------------------------------------
@@ -359,7 +359,7 @@ namespace SceneryEditorX
                 VkSwapchainKHR handle = s_SwapChain->Recreate(s_SwapChain->GetSurface(), queueFamily, allocator);
                 if (handle != VK_NULL_HANDLE && !s_SwapChain->Images().empty())
                 {
-                    SEDX_CORE_INFO_TAG("Renderer", "Swapchain recreated successfully with {} images", s_SwapChain->Images().size());
+                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images", s_SwapChain->Images().size());
                 }
                 else
                 {
@@ -531,12 +531,13 @@ namespace SceneryEditorX
 
         // Present the rendered image
         VkSwapchainKHR swapchainHandle = s_SwapChain->Get();
-        VkPresentInfoKHR presentInfo{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-                                     .waitSemaphoreCount = 1,
-                                     .pWaitSemaphores = &renderSemaphores[s_SwapchainImageIndex],
-                                     .swapchainCount = 1,
-                                     .pSwapchains = &swapchainHandle,
-                                     .pImageIndices = &s_SwapchainImageIndex};
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &renderSemaphores[s_SwapchainImageIndex];
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &swapchainHandle;
+        presentInfo.pImageIndices = &s_SwapchainImageIndex;
 
         VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
         if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
@@ -545,7 +546,7 @@ namespace SceneryEditorX
             uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
             VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
             s_SwapChain->Recreate(s_SwapChain->GetSurface(), queueFamily, allocator);
-            SEDX_CORE_INFO_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
+            SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
         }
         else if (presentResult != VK_SUCCESS)
         {
@@ -622,13 +623,14 @@ namespace SceneryEditorX
             }
         };
 
-        VkDependencyInfo barrierDependencyInfo{
-            .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = 2,
-            .pImageMemoryBarriers = outputBarriers.data()
-        };
+        VkDependencyInfo barrierDependencyInfo{};
+        barrierDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        barrierDependencyInfo.imageMemoryBarrierCount = 2;
+        barrierDependencyInfo.pImageMemoryBarriers = outputBarriers.data();
 
         vkCmdPipelineBarrier2(cb, &barrierDependencyInfo);
+
+		// -----------------------------------------------------------------
 
         // Begin dynamic rendering
         VkRenderingAttachmentInfo colorAttachmentInfo{
@@ -691,10 +693,11 @@ namespace SceneryEditorX
 
     void Renderer::CreateModels()
     {
-        VmaAllocationCreateInfo bufferAllocCI{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
-                                                       VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                                              .usage = VMA_MEMORY_USAGE_AUTO};
+        VmaAllocationCreateInfo bufferAllocCI;
+        bufferAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                              VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
+                              VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        bufferAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
 
         VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
 
@@ -703,12 +706,12 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(queuePtr && *queuePtr, "Graphics queue not available");
         // DIAGNOSTIC: Log current working directory
         std::filesystem::path cwd = std::filesystem::current_path();
-        SEDX_CORE_INFO_TAG("Renderer", "Current working directory: {}", cwd.string());
+        SEDX_CORE_ERROR_TAG("Renderer", "Current working directory: {}", cwd.string());
 
         // DIAGNOSTIC: Check if model file exists
         std::filesystem::path modelPath = "resources/models/suzanne.obj";
-        SEDX_CORE_INFO_TAG("Renderer", "Looking for model at: {}", std::filesystem::absolute(modelPath).string());
-        SEDX_CORE_INFO_TAG("Renderer", "Model file exists: {}", std::filesystem::exists(modelPath));
+        SEDX_CORE_TRACE_TAG("Renderer", "Looking for model at: {}", std::filesystem::absolute(modelPath).string());
+        SEDX_CORE_TRACE_TAG("Renderer", "Model file exists: {}", std::filesystem::exists(modelPath));
 
         std::vector<std::string> texFiles = {"resources/textures/suzanne0.ktx",
                                              "resources/textures/suzanne1.ktx",
@@ -717,15 +720,12 @@ namespace SceneryEditorX
         // Only proceed if file exists
         if (!std::filesystem::exists(modelPath))
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "Model file not found at expected path: {}",
-                                std::filesystem::absolute(modelPath).string());
+            SEDX_CORE_ERROR_TAG("Renderer", "Model file not found at expected path: {}", std::filesystem::absolute(modelPath).string());
             return; // Skip model loading instead of asserting
         }
 
         // Dereference the pointer to access the Ref, then call GetQueue()
-        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(),
-			(*queuePtr)->GetQueue(), modelPath.string(), texFiles, bufferAllocCI));
-
+        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(), (*queuePtr)->GetQueue(), modelPath.string(), texFiles, bufferAllocCI));
 
         const Asset &asset = s_AssetManager->GetAsset(0);
         VkBuffer vBuffer = asset.GetModelBuffer();
@@ -734,7 +734,7 @@ namespace SceneryEditorX
         VkDeviceSize indexCount = asset.GetModelIndexCount();
 
         // Create uniform buffers as static resource (per-frame) managed by UniformBufferSet RAII helper
-        s_UniformBuffers = CreateScope<UniformBufferSet>(allocator);
+        //s_UniformBuffers = CreateScope<UniformBufferSet>(allocator);
     }
 
     void Renderer::CreateShaders()
@@ -742,33 +742,49 @@ namespace SceneryEditorX
         // Initialize Slang shader compiler
         Slang::ComPtr<slang::IGlobalSession> slangGlobalSession;
         slang::createGlobalSession(slangGlobalSession.writeRef());
-        auto slangTargets{std::to_array<slang::TargetDesc>(
-            {
-                {
-                    .format = SLANG_SPIRV, 
-                    .profile = slangGlobalSession->findProfile("spirv_1_4")
-                }
-            })};
+        auto slangTargets{
+            std::to_array<slang::TargetDesc>({{
+                .format = SLANG_SPIRV, 
+                .profile = slangGlobalSession->findProfile("spirv_1_4")
+            }})
+        };
         auto slangOptions{
-            std::to_array<slang::CompilerOptionEntry>({
-                {
-                    .name = slang::CompilerOptionName::EmitSpirvDirectly,
-                    .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}})};
-        slang::SessionDesc slangSessionDesc{.targets = slangTargets.data(),
-                                            .targetCount{static_cast<SlangInt>(slangTargets.size())},
-                                            .defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
-                                            .compilerOptionEntries{slangOptions.data()},
-                                            .compilerOptionEntryCount{static_cast<uint32_t>(slangOptions.size())}};
+            std::to_array<slang::CompilerOptionEntry>({{
+                .name = slang::CompilerOptionName::EmitSpirvDirectly,
+				.value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}})
+        };
+
+        slang::SessionDesc slangSessionDesc = {};
+        slangSessionDesc.targets = slangTargets.data();
+        slangSessionDesc.targetCount = static_cast<SlangInt>(slangTargets.size());
+        slangSessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+        slangSessionDesc.compilerOptionEntries = slangOptions.data();
+        slangSessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(slangOptions.size());
 
         // Load shader
         Slang::ComPtr<slang::ISession> slangSession;
+        Slang::ComPtr<slang::IBlob> diagnosticsBlob; // Blob to capture any diagnostics from shader compilation
         slangGlobalSession->createSession(slangSessionDesc, slangSession.writeRef());
-        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle", "resources/shaders/shader.slang", nullptr, nullptr)};
+        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle", "resources/shaders/shader.slang", diagnosticsBlob, diagnosticsBlob.writeRef())};
+		if (!slangModule)
+		{
+		    SEDX_CORE_ERROR_TAG("Renderer", "Failed to load shader module from source: resources/shaders/shader.slang");
+		    if (diagnosticsBlob)
+		    {
+		        const char* errorMessage = static_cast<const char*>(diagnosticsBlob->getBufferPointer());
+		        SEDX_CORE_ERROR_TAG("Renderer", "Slang diagnostics: {}", errorMessage);
+		    }
+		    else
+		    {
+		        SEDX_CORE_ERROR_TAG("Renderer", "No diagnostics available from Slang.");
+		    }
+		    return;
+		}
         Slang::ComPtr<ISlangBlob> spirv;
         slangModule->getTargetCode(0, spirv.writeRef());
 
         // Create ShaderManager owning shader modules for the pipeline stages.
-        ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
+        //ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
 
     }
 
@@ -813,15 +829,19 @@ namespace SceneryEditorX
 
     void Renderer::SetViewport(float width, float height)
     {
-        SEDX_CORE_ASSERT(width != 0, "Width can't be zero");
-        SEDX_CORE_ASSERT(height != 0, "Height can't be zero");
+        constexpr float epsilon = 1e-5f;
 
-        if (s_Viewport.width != width || s_Viewport.height != height)
-        {
-            s_Viewport.width = width;
-            s_Viewport.height = height;
-            s_OrthoProjection_Dirty = true;
-        }
+        // Check if absolute value is greater than epsilon (instead of != 0)
+        SEDX_CORE_ASSERT(std::abs(width) > epsilon, "Width can't be zero");
+        SEDX_CORE_ASSERT(std::abs(height) > epsilon, "Height can't be zero");
+
+		// Check if the difference is greater than epsilon (instead of !=)
+		if (std::abs(s_Viewport.width - width) > epsilon ||  std::abs(s_Viewport.height - height) > epsilon)
+		{
+		    s_Viewport.width = width;
+		    s_Viewport.height = height;
+		    s_OrthoProjection_Dirty = true;
+		}
     }
 
     const Vec2& Renderer::GetRendererResolution()
@@ -829,10 +849,14 @@ namespace SceneryEditorX
         return s_RendererResolution;
     }
 
-    void Renderer::SetRendererResolution(uint32_t width, uint32_t height, bool recreateResources)
+    void Renderer::SetRendererResolution(uint32_t width, uint32_t height, const bool recreateResources)
     {
-        if (s_RendererResolution.x == static_cast<float>(width) && s_RendererResolution.y == static_cast<float>(height))
-            return;
+        
+       // Check if the difference is smaller than epsilon (safe ==)
+       if (constexpr float epsilon = 1e-5f;
+           std::abs(s_RendererResolution.x - static_cast<float>(width)) < epsilon && 
+           std::abs(s_RendererResolution.y - static_cast<float>(height)) < epsilon)
+           return;
 
         s_RendererResolution.x = static_cast<float>(width);
         s_RendererResolution.y = static_cast<float>(height);
@@ -848,7 +872,7 @@ namespace SceneryEditorX
             CreateRenderTargets(true, false, true);
         }
 
-        SEDX_CORE_INFO_TAG("Renderer", "Render resolution set to {}x{}", width, height);
+        SEDX_CORE_TRACE_TAG("Renderer", "Render resolution set to {}x{}", width, height);
     }
 
     const Vec2& Renderer::GetOutputResolution()
@@ -858,7 +882,10 @@ namespace SceneryEditorX
 
     void Renderer::SetOutputResolution(uint32_t width, uint32_t height, bool recreateResources)
     {
-        if (s_OutputResolution.x == static_cast<float>(width) && s_OutputResolution.y == static_cast<float>(height))
+
+        // Check if the difference is smaller than epsilon (safe ==)
+        if (constexpr float epsilon = 1e-5f; std::abs(s_OutputResolution.x - static_cast<float>(width)) < epsilon && 
+            std::abs(s_OutputResolution.y - static_cast<float>(height)) < epsilon)
         {
             return;
         }
@@ -871,7 +898,7 @@ namespace SceneryEditorX
             CreateRenderTargets(false, true, false);
         }
 
-        SEDX_CORE_INFO_TAG("Renderer", "Output resolution set to {}x{}", width, height);
+        SEDX_CORE_TRACE_TAG("Renderer", "Output resolution set to {}x{}", width, height);
     }
 
     void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)

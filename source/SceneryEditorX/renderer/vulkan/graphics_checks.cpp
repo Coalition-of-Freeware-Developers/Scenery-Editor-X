@@ -268,7 +268,7 @@ namespace SceneryEditorX
 	            if (strcmp(required, layer.layerName) == 0)
 	            {
 	                found = true;
-	                SEDX_CORE_INFO("Found layer: {}", required);
+	                SEDX_CORE_TRACE("Found layer: {}", required);
 	                break;
 	            }
 	        }
@@ -289,7 +289,7 @@ namespace SceneryEditorX
 	
 	#ifdef RAILNEX_DEBUG
 	    for (const auto &[extensionName, specVersion] : availableExtensions)
-	        SEDX_CORE_INFO("Available extension: {}", extensionName);
+	        SEDX_CORE_TRACE("Available extension: {}", extensionName);
 	#endif
 	
 	    for (const char *required : extensions)
@@ -300,7 +300,7 @@ namespace SceneryEditorX
 	            if (strcmp(required, extensionName) == 0)
 	            {
 	                found = true;
-	                SEDX_CORE_INFO("Found extension: {}", required);
+	                SEDX_CORE_TRACE("Found extension: {}", required);
 	                break;
 	            }
 	        }
