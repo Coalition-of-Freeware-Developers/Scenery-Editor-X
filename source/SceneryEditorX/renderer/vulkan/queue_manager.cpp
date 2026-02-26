@@ -538,7 +538,7 @@ namespace SceneryEditorX
 	        {
 	            switch (type)
 	            {
-	            case ResourceType::Image: /* DestroyMemoryTexture(resource);*/
+	            case ResourceType::Image: Buffer::FreeImageBuffer(resource);
 	                break;
 	            case ResourceType::ImageView:
 	                vkDestroyImageView(device->GetDevice(), static_cast<VkImageView>(resource), nullptr);
@@ -546,7 +546,7 @@ namespace SceneryEditorX
 	            case ResourceType::Sampler:
 	                vkDestroySampler(device->GetDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
 	                break;
-	            case ResourceType::Buffer: /*DestroyMemoryBuffer(resource);*/
+	            case ResourceType::Buffer: Buffer::FreeBuffer(resource);
 	                break;
 	            case ResourceType::Shader:
 	                vkDestroyShaderModule(device->GetDevice(), static_cast<VkShaderModule>(resource), nullptr);
@@ -569,31 +569,32 @@ namespace SceneryEditorX
 	            case ResourceType::PipelineLayout:
 	                vkDestroyPipelineLayout(device->GetDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
 	                break;
-	            case ResourceType::
-	                AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
+	            case ResourceType::AccelerationStructure: /*functions::destroy_acceleration_structure(device->GetDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);*/
 	                break;
 	            default:
 	                SEDX_CORE_ASSERT(false, "Unknown resource");
 	                break;
 	            }
 	
-	            /*// delete descriptor sets which are now invalid (because they are referring to a deleted resource)
-	                if (type == ResourceType::ImageView || type == ResourceType::Buffer)
+	            /*
+	            // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
+	            if (type == ResourceType::ImageView || type == ResourceType::Buffer)
+	            {
+	                for (auto it = Descriptor::sets.begin(); it != Descriptor::sets.end();)
 	                {
-	                    for (auto it = Descriptor::sets.begin(); it != Descriptor::sets.end();)
+	                    if (it->second.IsReferingToResource(resource))
 	                    {
-	                        if (it->second.IsReferingToResource(resource))
-	                        {
-	                            it = Descriptor::sets.erase(it);
-	                            // ideally the descriptor set pool is not oblivious to the fact that we don't use this set anymore
-	                            // maybe after a certain number of deletions we reset the entire pool to free memory
-	                        }
-	                        else
-	                        {
-	                            ++it;
-	                        }
+	                        it = Descriptor::sets.erase(it);
+	                        // ideally the descriptor set pool is not oblivious to the fact that we don't use this set anymore
+	                        // maybe after a certain number of deletions we reset the entire pool to free memory
 	                    }
-	                }*/
+	                    else
+	                    {
+	                        ++it;
+	                    }
+	                }
+	            }
+	            */
 	
 	            // samplers are bindless so they just update the set again
 	        }

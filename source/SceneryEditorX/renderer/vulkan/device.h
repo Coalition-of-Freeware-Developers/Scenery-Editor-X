@@ -163,6 +163,9 @@ namespace SceneryEditorX
          */
         static VkPhysicalDevice Choose();
 
+        static bool IsDeviceLost()                                        { return m_DeviceLost; }
+        static void SetDeviceLost()                                       { m_DeviceLost = true; }
+
     private:
         std::string m_GPUName;
         Ref<QueueManager> m_QueueManager;
@@ -173,7 +176,7 @@ namespace SceneryEditorX
         VkDevice m_LogicalDevice = VK_NULL_HANDLE;
         static VkPhysicalDevice m_PhysicalDevice;
         static uint32_t m_PhysicalDeviceIndex;
-
+        static bool m_DeviceLost;
         GraphicsChecks::InstanceProperties m_InstanceProps;
         HWDeviceInfo *m_HWDeviceInfo;
 

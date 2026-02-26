@@ -174,6 +174,21 @@ namespace SceneryEditorX
 		StorageImage
 	};
 
+    /**
+     * @enum SyncType
+     * @brief Types of synchronization objects.
+     *
+     * This enum can be used to specify which type of synchronization object is being referred to in various contexts (e.g., when waiting or signaling). 
+     * The FrameSync class manages fences and semaphores, so this enum helps identify them.
+     */
+    enum class SyncType : uint8_t
+    {
+        Fence,
+        Semaphore,
+        SemaphoreTimeline,
+        MaxEnum
+    };
+
 
 } // namespace SceneryEditorX
 

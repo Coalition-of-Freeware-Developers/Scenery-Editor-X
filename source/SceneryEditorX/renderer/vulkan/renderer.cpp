@@ -67,7 +67,7 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
     RendererProperties *Renderer::s_Data = nullptr;
-    Ref<Swapchain> s_SwapChain = nullptr;
+    Ref<Swapchain> s_Swapchain = nullptr;
     std::atomic<bool> Renderer::s_ResourcesInitialized = false;
     CommandList *Renderer::s_CurrentCmdList = nullptr;
 
@@ -141,11 +141,11 @@ namespace SceneryEditorX
             return;
         }
 
-        s_SwapChain = CreateRef<Swapchain>();
+        s_Swapchain = CreateRef<Swapchain>();
         if (Window::GetWindow())
         {
             // Verify surface was created
-            if (s_SwapChain->GetSurface() == VK_NULL_HANDLE)
+            if (s_Swapchain->GetSurface() == VK_NULL_HANDLE)
             {
                 SEDX_CORE_ERROR_TAG("Renderer", "Failed to create Vulkan surface - surface is still VK_NULL_HANDLE");
                 return;
@@ -167,15 +167,15 @@ namespace SceneryEditorX
         SetViewport(static_cast<float>(width), static_cast<float>(height));
 
         // Create the swapchain now that render context is initialized
-        if (RenderContext::Get() && s_SwapChain->GetSurface() != VK_NULL_HANDLE)
+        if (RenderContext::Get() && s_Swapchain->GetSurface() != VK_NULL_HANDLE)
         {
             uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
             VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
 
-            s_SwapChain->Create(s_SwapChain->GetSurface(), queueFamily, allocator);
-            if (s_SwapChain == nullptr)
+            s_Swapchain->Create(s_Swapchain->GetSurface(), queueFamily, allocator);
+            if (s_Swapchain == nullptr)
             {
-                SEDX_CORE_TRACE_TAG("Renderer", "Swapchain created successfully with {} images", s_SwapChain->Images().size());
+                SEDX_CORE_TRACE_TAG("Renderer", "Swapchain created successfully with {} images", s_Swapchain->Images().size());
             }
             else
             {
@@ -201,7 +201,7 @@ namespace SceneryEditorX
 
         // Query surface capabilities
         VkPhysicalDevice physicalDevice = RenderContext::Get()->GetDevice()->GetPhysicalDevice();
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, s_SwapChain->GetSurface(), &s_SurfaceCaps);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, s_Swapchain->GetSurface(), &s_SurfaceCaps);
 
         std::vector<RenderContext::Renderable> renderables;
         Asset asset;
@@ -239,10 +239,10 @@ namespace SceneryEditorX
         s_AssetManager.reset();
 
         // Destroy swapchain
-        if (s_SwapChain)
+        if (s_Swapchain)
         {
-            s_SwapChain->Destroy();
-            s_SwapChain.Reset();
+            s_Swapchain->Destroy();
+            s_Swapchain.Reset();
         }
 
         // Cleanup renderer data
@@ -255,6 +255,7 @@ namespace SceneryEditorX
 
     void Renderer::Tick()
     {
+		s_Swapchain->AcquireNextImage();
         // Memory allocator housekeeping
         if (RenderContext::Get() && RenderContext::Get()->GetDevice()->GetMemoryAllocator())
         {
@@ -287,9 +288,9 @@ namespace SceneryEditorX
 
         // Create frame sync objects - use actual swapchain image count or fallback
         uint32_t swapchainImageCount = 2; // Default fallback
-        if (s_SwapChain && !s_SwapChain->Images().empty())
+        if (s_Swapchain && !s_Swapchain->Images().empty())
         {
-            swapchainImageCount = static_cast<uint32_t>(s_SwapChain->Images().size());
+            swapchainImageCount = static_cast<uint32_t>(s_Swapchain->Images().size());
             SEDX_CORE_TRACE_TAG("Renderer", "Using swapchain image count: {}", swapchainImageCount);
         }
         else
@@ -348,27 +349,27 @@ namespace SceneryEditorX
         }
 
         // Check swapchain validity with detailed diagnostics
-        if (!s_SwapChain)
+        if (!s_Swapchain)
         {
             SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain is null - was Init() called successfully?");
             return false;
         }
 
-        if (s_SwapChain->Images().empty())
+        if (s_Swapchain->Images().empty())
         {
             SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain has no images - VkSwapchainKHR handle: {}, surface valid: {}",
-                                (void *)s_SwapChain->Get(), s_SwapChain->GetSurface() != VK_NULL_HANDLE);
+                                static_cast<void *>(s_Swapchain->Get()), s_Swapchain->GetSurface() != VK_NULL_HANDLE);
 
             // Attempt to recreate swapchain if surface is available and window is visible
-            if (s_SwapChain->GetSurface() != VK_NULL_HANDLE)
+            if (s_Swapchain->GetSurface() != VK_NULL_HANDLE)
             {
                 SEDX_CORE_WARN_TAG("Renderer", "Attempting to recreate swapchain...");
                 uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
                 VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
-                VkSwapchainKHR handle = s_SwapChain->Recreate(s_SwapChain->GetSurface(), queueFamily, allocator);
-                if (handle != VK_NULL_HANDLE && !s_SwapChain->Images().empty())
+                s_Swapchain->Recreate(s_Swapchain->GetSurface(), queueFamily, allocator);
+                if (s_Swapchain != nullptr && !s_Swapchain->Images().empty())
                 {
-                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images", s_SwapChain->Images().size());
+                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images", s_Swapchain->Images().size());
                 }
                 else
                 {
@@ -394,12 +395,12 @@ namespace SceneryEditorX
         auto &presentSemaphores = s_FrameSync->PresentSemaphores();
         VkSemaphore acquireSemaphore = (s_CurrentFrameIndex < presentSemaphores.size()) ? presentSemaphores[s_CurrentFrameIndex] : VK_NULL_HANDLE;
 
-        if (!s_SwapChain->AcquireNextImage(acquireSemaphore))
+        if (!s_Swapchain->AcquireNextImage(acquireSemaphore))
         {
             // Acquisition failed (minimized, out-of-date handled internally)
             return false;
         }
-        s_SwapchainImageIndex = s_SwapChain->GetImageIndex();
+        s_SwapchainImageIndex = s_Swapchain->GetImageIndex();
 
         // Begin command buffer recording
         VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
@@ -407,14 +408,12 @@ namespace SceneryEditorX
         {
             vkResetCommandBuffer(cb, 0);
 
-            VkCommandBufferBeginInfo beginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-            if (VkResult result = vkBeginCommandBuffer(cb, &beginInfo); result != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR_TAG("Renderer", "vkBeginCommandBuffer failed: {}", static_cast<int>(result));
-                return false;
-            }
+            VkResult result = vkBeginCommandBuffer(cb, &beginInfo);
+			SEDX_VK_RESULT_ASSERT(result, "vkBeginCommandBuffer failed");
         }
 
         s_FrameInProgress = true;
@@ -436,9 +435,9 @@ namespace SceneryEditorX
             RecordRenderCommands(cb, s_SwapchainImageIndex);
 
             // Transition swapchain image to present layout
-            if (s_SwapChain)
+            if (s_Swapchain)
             {
-                auto &swapchainImages = s_SwapChain->Images();
+                auto &swapchainImages = s_Swapchain->Images();
                 if (s_SwapchainImageIndex < swapchainImages.size())
                 {
                     VkImageMemoryBarrier2 barrierPresent{
@@ -452,19 +451,18 @@ namespace SceneryEditorX
                         .image = swapchainImages[s_SwapchainImageIndex],
                         .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
 
-                    VkDependencyInfo dependencyInfo{.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                                                    .imageMemoryBarrierCount = 1,
-                                                    .pImageMemoryBarriers = &barrierPresent};
+                    VkDependencyInfo dependencyInfo{};
+                    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                    dependencyInfo.imageMemoryBarrierCount = 1;
+                    dependencyInfo.pImageMemoryBarriers = &barrierPresent;
 
                     vkCmdPipelineBarrier2(cb, &dependencyInfo);
                 }
             }
 
             // End command buffer recording
-            if (VkResult result = vkEndCommandBuffer(cb); result != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR_TAG("Renderer", "vkEndCommandBuffer failed: {}", static_cast<int>(result));
-            }
+            VkResult result = vkEndCommandBuffer(cb);
+			SEDX_VK_RESULT_ASSERT(result, "vkEndCommandBuffer failed");
         }
 
         s_FrameInProgress = false;
@@ -522,24 +520,22 @@ namespace SceneryEditorX
 
         // Submit command buffer
         VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        VkSubmitInfo submitInfo{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &presentSemaphores[s_CurrentFrameIndex],
-            .pWaitDstStageMask = &waitStages,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &cb,
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &renderSemaphores[s_SwapchainImageIndex]
-        };
 
-        if (VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, fences[s_CurrentFrameIndex]); submitResult != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "vkQueueSubmit failed: {}", static_cast<int>(submitResult));
-        }
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &presentSemaphores[s_CurrentFrameIndex];
+        submitInfo.pWaitDstStageMask = &waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cb;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &renderSemaphores[s_SwapchainImageIndex];
+
+        VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, fences[s_CurrentFrameIndex]);
+		SEDX_VK_RESULT_ASSERT(submitResult, "vkQueueSubmit failed");
 
         // Present the rendered image
-        VkSwapchainKHR swapchainHandle = s_SwapChain->Get();
+        VkSwapchainKHR swapchainHandle = s_Swapchain->Get();
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
@@ -554,7 +550,7 @@ namespace SceneryEditorX
             // Swapchain needs recreation (e.g., window resize)
             uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
             VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
-            s_SwapChain->Recreate(s_SwapChain->GetSurface(), queueFamily, allocator);
+            s_Swapchain->Recreate(s_Swapchain->GetSurface(), queueFamily, allocator);
             SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
         }
         else if (presentResult != VK_SUCCESS)
@@ -573,7 +569,7 @@ namespace SceneryEditorX
         // For now, placeholder implementation
         
         VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
-        if (cb == VK_NULL_HANDLE || !s_SwapChain)
+        if (cb == VK_NULL_HANDLE || !s_Swapchain)
         {
             return;
         }
@@ -584,14 +580,14 @@ namespace SceneryEditorX
 
     void Renderer::RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex)
     {
-        if (!s_SwapChain)
+        if (!s_Swapchain)
         {
             return;
         }
 
-        auto& swapchainImages = s_SwapChain->Images();
-        auto& swapchainImageViews = s_SwapChain->ImageViews();
-        VkImageView depthImageView = s_SwapChain->GetDepthView();
+        auto& swapchainImages = s_Swapchain->Images();
+        auto& swapchainImageViews = s_Swapchain->ImageViews();
+        VkImageView depthImageView = s_Swapchain->GetDepthView();
 
         if (imageIndex >= swapchainImages.size() || imageIndex >= swapchainImageViews.size())
         {
@@ -623,7 +619,7 @@ namespace SceneryEditorX
                 .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                 .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                .image = s_SwapChain->GetDepthImage(),
+                .image = s_Swapchain->GetDepthImage(),
                 .subresourceRange{
                     .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
                     .levelCount = 1,
@@ -660,7 +656,7 @@ namespace SceneryEditorX
             .clearValue = {.depthStencil = {1.0f, 0}}
         };
 
-        VkExtent2D extent = s_SwapChain->GetExtent();
+        VkExtent2D extent = s_Swapchain->GetExtent();
         VkRenderingInfo renderingInfo{
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
             .renderArea{
@@ -819,7 +815,7 @@ namespace SceneryEditorX
 
     Swapchain* Renderer::GetSwapChain()
     {
-        return s_SwapChain.Get();
+        return s_Swapchain.Get();
     }
 
     uint32_t Renderer::GetSwapchainImageIndex()

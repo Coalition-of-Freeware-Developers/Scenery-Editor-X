@@ -53,7 +53,7 @@ namespace SceneryEditorX
 	    // Recreate the swapchain: waits for m_Device idle, refreshes surface caps,
 	    // creates a new swapchain and replaces internal resources safely.
         void Recreate(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator);
-        bool AcquireNextImage(VkSemaphore imageAvailableSemaphore);
+        void AcquireNextImage();
         VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
 	    void Destroy();
 	
@@ -75,6 +75,10 @@ namespace SceneryEditorX
         Ref<Device> m_Device = nullptr;
         VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 	    VkSwapchainKHR m_Swapchain{ VK_NULL_HANDLE };
+		uint32_t m_ImageIndex = 0;
+        std::array<Ref<FrameSync>, 2> m_Acquired_Semaphore;
+        std::array<Ref<FrameSync>, 2> m_Complete_Semaphore;
+
 	    std::vector<VkImage> m_Images;
 	    std::vector<VkImageView> m_ImageViews;
 	    VkImage m_DepthImage{ VK_NULL_HANDLE };
@@ -83,7 +87,7 @@ namespace SceneryEditorX
 	    VkFormat m_ImageFormat{ VK_FORMAT_B8G8R8A8_SRGB };
 	    VkFormat m_DepthFormat{ VK_FORMAT_D24_UNORM_S8_UINT };
 	    VkExtent2D m_Extent{ 0, 0 };
-        uint32_t m_ImageIndex = 0;
+        
 		bool m_ImageAcquired = false;
 	};
 

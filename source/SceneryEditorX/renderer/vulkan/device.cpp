@@ -143,6 +143,7 @@ namespace SceneryEditorX
     static std::vector<HWDeviceInfo> s_PhysicalDevice;				// Cache all GPU device info
     static std::vector<VkPhysicalDevice> s_PhysicalDeviceHandles;	// Cache of Vulkan physical device handles corresponding to the GPU info list
     static bool s_SubparDevice = false;								// Flag to indicate if device was selected with suboptimal features but will still run
+    bool Device::m_DeviceLost = false;
 
     // -------------------------------------------------------
 

@@ -23,43 +23,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * frame_sync.cpp
+ * inheritance.h
  * -------------------------------------------------------
- * Created: 12/02/2026
+ * Created: 26/02/2026
  * -------------------------------------------------------
  */
-#include "frame_sync.h"
-#include "graphics_debug.h"
-#include "render_context.h"
+#pragma once
+#include <SceneryEditorX/core/resource/iobject.h>
+#include <SceneryEditorX/core/resource/iresource.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    FrameSync::FrameSync(const SyncType type) : m_Type(type)
+    template <typename... Bases>
+	struct InheritanceBundle : Bases... 
     {
-	    if (m_Type == SyncType::Fence)
-        {
-            m_Fence = CreateRef<Fence>();
-            m_Fence->CreateSyncObject();
-	        Debugging::SetResourceName(m_Fence.Get()->GetFence(), ResourceType::Fence, "Fence");
-        }
-        else
-        { 
-			m_RenderSemaphore = CreateRef<Semaphore>();
-            m_RenderSemaphore->CreateSyncObject();
-	        Debugging::SetResourceName(m_RenderSemaphore.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
-        }
-    }
+	    // Bring constructors into scope if needed
+	    using Bases::Bases...; 
+	};
 
-	void FrameSync::Create(const uint32_t framesInFlight, const uint32_t swapchainImageCount)
-	{
-	    // Intentionally minimal for now; keep placeholder for future allocation strategy.
-	    (void)framesInFlight;
-	    (void)swapchainImageCount;
-	}
+	typedef InheritanceBundle<RefCounted, IObject> SharedObject;
 
-} // namespace SceneryEditorX
+	typedef InheritanceBundle<RefCounted, IResource> SharedResource;
+
+
+}
 
 // -------------------------------------------------------

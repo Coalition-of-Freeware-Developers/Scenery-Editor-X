@@ -23,43 +23,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * frame_sync.cpp
+ * frame_sync.h
  * -------------------------------------------------------
- * Created: 12/02/2026
+ * Created: 09/02/2026
  * -------------------------------------------------------
  */
-#include "frame_sync.h"
-#include "graphics_debug.h"
-#include "render_context.h"
+#pragma once
+#include "enums.h"
+#include <cstdint>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+    class CommandList;
+    class RenderContext;
 
-    FrameSync::FrameSync(const SyncType type) : m_Type(type)
+    class SyncObject
     {
-	    if (m_Type == SyncType::Fence)
-        {
-            m_Fence = CreateRef<Fence>();
-            m_Fence->CreateSyncObject();
-	        Debugging::SetResourceName(m_Fence.Get()->GetFence(), ResourceType::Fence, "Fence");
-        }
-        else
-        { 
-			m_RenderSemaphore = CreateRef<Semaphore>();
-            m_RenderSemaphore->CreateSyncObject();
-	        Debugging::SetResourceName(m_RenderSemaphore.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
-        }
-    }
+	public:
+        virtual void CreateSyncObject() = 0;
+        virtual ~SyncObject() = default;
 
-	void FrameSync::Create(const uint32_t framesInFlight, const uint32_t swapchainImageCount)
-	{
-	    // Intentionally minimal for now; keep placeholder for future allocation strategy.
-	    (void)framesInFlight;
-	    (void)swapchainImageCount;
-	}
+		virtual void Wait(const uint64_t timeout) = 0;
+        virtual bool IsSignaled() = 0;
+        virtual void Destroy() = 0;
 
-} // namespace SceneryEditorX
+	protected:
+		SyncType m_Type = SyncType::MaxEnum;
+	};
+
+}
 
 // -------------------------------------------------------

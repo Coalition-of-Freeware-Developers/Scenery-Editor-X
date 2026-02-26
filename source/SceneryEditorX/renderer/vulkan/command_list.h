@@ -54,7 +54,7 @@ namespace SceneryEditorX
         virtual ~CommandList() override;
 
         void Begin();
-        void Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal = nullptr);
+        void Submit(Sync *semaphoreWait, const bool isImmediate, Sync *semaphoreSignal = nullptr);
         void WaitForExecution(const bool logWaitTime = false);
         void SetVertexBuffer(const Buffer *vertexBuffer, Buffer *instance);
         //void SetPipelineState(PipelineState &pso);

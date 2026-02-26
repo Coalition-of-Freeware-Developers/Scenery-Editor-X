@@ -35,14 +35,14 @@
 
 namespace SceneryEditorX
 {
-	class Buffer 
+    class Buffer : public RefCounted
 	{
 	public:
 	    Buffer() = default;
 	    Buffer(VmaAllocator allocator, VkDeviceSize size, VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo);
-	    ~Buffer();
-	
-	    Buffer(const Buffer&) = delete;
+        virtual ~Buffer() override;
+
+        Buffer(const Buffer&) = delete;
 	    Buffer& operator=(const Buffer&) = delete;
 	    Buffer(Buffer&& other) noexcept;
 	    Buffer& operator=(Buffer&& other) noexcept;
@@ -55,11 +55,11 @@ namespace SceneryEditorX
 	
 	    [[nodiscard]] bool Valid() const { return m_Buffer != VK_NULL_HANDLE; }
 	
-	    // Explicitly free underlying VMA resources before m_Allocator destruction
-	    void Destroy();
+        static void FreeBuffer(void* &buffer); // Free the buffer and its associated VMA allocation, nullifying the buffer reference to prevent dangling.
+        static void FreeImageBuffer(void* &buffer); // Free an image buffer and its associated VMA allocation, nullifying the reference to prevent dangling.
+	    void Destroy(); // Explicitly free underlying VMA resources before m_Allocator destruction
 	
 	private:
-	    VkDevice m_Device{ VK_NULL_HANDLE };
 	    VkBuffer m_Buffer{ VK_NULL_HANDLE };
 	    VmaAllocation m_Allocation{ VK_NULL_HANDLE };
         VmaAllocator m_Allocator{VK_NULL_HANDLE};

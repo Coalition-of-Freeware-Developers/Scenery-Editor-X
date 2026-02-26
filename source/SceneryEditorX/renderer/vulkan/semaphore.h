@@ -23,43 +23,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * frame_sync.cpp
+ * semaphore.h
  * -------------------------------------------------------
- * Created: 12/02/2026
+ * Created: 26/02/2026
  * -------------------------------------------------------
  */
-#include "frame_sync.h"
-#include "graphics_debug.h"
-#include "render_context.h"
+#pragma once
+#include "sync_object.h"
+#include "SceneryEditorX/utils/inheritance.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
-    FrameSync::FrameSync(const SyncType type) : m_Type(type)
+	
+    /**
+     * @class Semaphore
+     * @brief Represents a Vulkan semaphore used for synchronization between GPU operations.
+     */
+    class Semaphore : public SyncObject, public SharedObject
     {
-	    if (m_Type == SyncType::Fence)
-        {
-            m_Fence = CreateRef<Fence>();
-            m_Fence->CreateSyncObject();
-	        Debugging::SetResourceName(m_Fence.Get()->GetFence(), ResourceType::Fence, "Fence");
-        }
-        else
-        { 
-			m_RenderSemaphore = CreateRef<Semaphore>();
-            m_RenderSemaphore->CreateSyncObject();
-	        Debugging::SetResourceName(m_RenderSemaphore.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
-        }
-    }
+    public:
+        Semaphore();
+        virtual ~Semaphore() override;
 
-	void FrameSync::Create(const uint32_t framesInFlight, const uint32_t swapchainImageCount)
-	{
-	    // Intentionally minimal for now; keep placeholder for future allocation strategy.
-	    (void)framesInFlight;
-	    (void)swapchainImageCount;
-	}
 
-} // namespace SceneryEditorX
+        void CreateSyncObject() override;
+        void Wait(const uint64_t timeout) override;
+        static void Signal(const uint64_t value, const VkSemaphore &semaphore);
+        bool IsSignaled() override;
+        void Destroy() override;
+
+        static uint64_t GetValue(const VkSemaphore &semaphore);
+        [[nodiscard]] VkSemaphore GetSemaphore() const { return m_Semaphore; }
+    private:
+        VkSemaphore m_Semaphore = VK_NULL_HANDLE;
+        SyncType m_Type = SyncType::Semaphore;
+    };
+
+}
 
 // -------------------------------------------------------

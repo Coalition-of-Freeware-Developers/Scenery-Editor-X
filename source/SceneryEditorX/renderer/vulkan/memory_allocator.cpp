@@ -97,7 +97,7 @@ namespace SceneryEditorX
      */
     void MemoryAllocator::Tick(const uint64_t frameCount)
     {
-        Ref<Device> device = RenderContext::Get()->GetDevice();
+        const Ref<Device> device = RenderContext::Get()->GetDevice();
         /**
          * https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
          * make sure to call vmaSetCurrentFrameIndex() every frame
@@ -151,7 +151,7 @@ namespace SceneryEditorX
     {
         uint64_t bytes = 0;
     
-		Ref<Device> device = RenderContext::Get()->GetDevice();
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
         VkPhysicalDeviceMemoryProperties memoryProperties;
         vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(device->GetPhysicalDevice()), &memoryProperties);
     

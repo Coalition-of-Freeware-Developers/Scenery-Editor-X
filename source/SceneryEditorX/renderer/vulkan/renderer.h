@@ -243,7 +243,7 @@ namespace SceneryEditorX
         static Scope<AssetManager> s_AssetManager;
 
         // Frame synchronization
-        static Scope<FrameSync> s_FrameSync;
+        static Scope<Sync> s_FrameSync;
         static Scope<CommandPool> s_CommandPool;
         static std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> s_CommandBuffers;
 

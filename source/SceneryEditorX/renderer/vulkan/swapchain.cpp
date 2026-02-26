@@ -30,6 +30,7 @@
  */
 #include "swapchain.h"
 #include "render_context.h"
+#include "renderer.h"
 #include "SceneryEditorX/core/window/window.h"
 #include <utility>
 #include <vector>
@@ -582,29 +583,46 @@ namespace SceneryEditorX
 		Create(surface, queueFamilyIndex, allocator);
 	}
 
-    bool Swapchain::AcquireNextImage(VkSemaphore imageAvailableSemaphore)
+    void Swapchain::AcquireNextImage()
     {
         // Reset acquisition state
         m_ImageAcquired = false;
 
         // When the window is minimized acquisition will fail and it's not necessary either
         if (Window::IsMinimized())
-            return false;
+            return;
 
         // Ensure swapchain is valid
         if (!m_Swapchain)
-            return false;
+            return;
 
         // Try to acquire, with retry after swapchain recreation
         for (uint32_t attempt = 0; attempt < 2; ++attempt)
         {
-            VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
+            // use per-image FrameSync objects indexed by the current semaphore_index
+            // this avoids reusing a semaphore that may still be in use by presentation
+            FrameSync *frameSync = m_Acquired_Semaphore[m_ImageIndex].Get();
+            SEDX_CORE_ASSERT(frameSync != nullptr, "FrameSync for acquired semaphore is null");
+
+            // ensure the semaphore is free; wait for any command list that used this semaphore
+            if (CommandList* cmdList = frameSync->GetUserCmdList())
+            {
+                if (cmdList->GetState() == CommandState::Submitted)
+                { 
+                    cmdList->WaitForExecution();
+                }
+                SEDX_CORE_ASSERT(cmdList->GetState() == CommandState::Idle);
+            }
+			
+            VkSemaphore vkSemaphore = frameSync->GetVkSemaphore();
+
+            VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, 100000000 /*100ms timeout*/, vkSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
             SEDX_VK_RESULT_ASSERT(r, "Failed to acquire next swapchain image")
 
             if (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR)
             {
                 m_ImageAcquired = true;
-                return true;
+                return;
             }
 
             if (r == VK_ERROR_OUT_OF_DATE_KHR)
@@ -615,11 +633,9 @@ namespace SceneryEditorX
             else
             {
                 SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
-                return false;
+                return;
             }
         }
-
-        return false;
     }
 
     VkResult Swapchain::Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore)

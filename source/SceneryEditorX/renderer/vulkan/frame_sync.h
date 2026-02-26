@@ -29,86 +29,49 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "fence.h"
+#include "semaphore.h"
 #include <cstdint>
-#include <vector>
-#include <SceneryEditorX/core/resource/iobject.h>
-#include <volk/volk.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-
+    class CommandList;
     class RenderContext;
+	
+    // -------------------------------------------------------
 
-	// Non-templated FrameSync owning fences and semaphores. The caller should
-	// call destroy(m_Device) before destroying the VkDevice to guarantee safe
-	// teardown ordering.
-    class FrameSync : public RefCounted, public IObject
+    class FrameSync : public RefCounted
     {
 	public:
-        /**
-	     * @brief Construct a new FrameSync object with the specified number of frames in flight and swapchain images.
-	     * @param framesInFlight Number of frames that can be processed concurrently.
-	     * @param swapchainImageCount Number of images in the swapchain.
-	     */
-	    FrameSync(uint32_t framesInFlight, uint32_t swapchainImageCount);
-        FrameSync() = default;
-        virtual ~FrameSync() override;
+        FrameSync(const SyncType type);
+        ~FrameSync() = default;
+        static void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
 
-        /**
-         * @brief Create synchronization objects for the specified number of frames in flight and swapchain images.
-         * @param framesInFlight Number of frames that can be processed concurrently.
-         * @param swapchainImageCount Number of images in the swapchain.
-         */
-        void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
+        uint64_t GetNextSignalValue() { return ++m_Value; }
+        [[nodiscard]] uint64_t GetValue() const { return m_Value; }
 
-        /**
-         * @brief Destroy the synchronization objects created by this FrameSync instance.
-         * This should be called before destroying the VkDevice to ensure proper cleanup of Vulkan resources.
-         */
-        void Destroy();
+        // Signaler command list
+        void SetUserCmdList(CommandList *cmdList) { m_User_CmdList = cmdList; }
+        [[nodiscard]] CommandList *GetUserCmdList() const { return m_User_CmdList; }
 
-        std::vector<VkFence>& Fences() { return m_Fences; }
-	    std::vector<VkSemaphore>& PresentSemaphores() { return m_PresentSemaphores; }
-	    std::vector<VkSemaphore>& RenderSemaphores() { return m_RenderSemaphores; }
-	
+        // Access the underlying Vulkan handles (null-safe)
+        [[nodiscard]] VkSemaphore GetVkSemaphore() const { return m_RenderSemaphore ? m_RenderSemaphore->GetSemaphore() : VK_NULL_HANDLE; }
+        [[nodiscard]] VkFence GetVkFence() const { return m_Fence ? m_Fence->GetFence() : VK_NULL_HANDLE; }
+
+        // Expose refs if callers need strong access
+        [[nodiscard]] Ref<Semaphore> GetSemaphoreRef() const { return m_RenderSemaphore; }
+        [[nodiscard]] Ref<Fence> GetFenceRef() const { return m_Fence; }
+
 	private:
-	    std::vector<VkFence> m_Fences{};
-	    std::vector<VkSemaphore> m_PresentSemaphores{};
-	    std::vector<VkSemaphore> m_RenderSemaphores{};
-	    bool m_Destroyed = false;
+		Ref<Fence> m_Fence;
+        Ref<Semaphore> m_RenderSemaphore;
+
+		uint64_t m_Value = 0;
+		SyncType m_Type = SyncType::MaxEnum;
+		CommandList *m_User_CmdList = nullptr;
 	};
-	
-	// Small helper to create fences and semaphores and populate caller-owned
-	// containers. Implemented as a header-only template for convenience.
-	template <size_t N>
-	inline void CreateSyncObjects(uint32_t swapchainImageCount, std::array<VkFence, N>& fences, std::array<VkSemaphore, N>& presentSemaphores, std::vector<VkSemaphore>& renderSemaphores)
-	{
-        VkDevice device = RenderContext::Get()->GetDevice()->GetDevice();
-	    VkSemaphoreCreateInfo semaphoreCI
-	    {
-	        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO 
-	    };
-
-	    VkFenceCreateInfo fenceCI
-	    { 
-	        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, 
-	        .flags = VK_FENCE_CREATE_SIGNALED_BIT 
-	    };
-	
-	    for (size_t i = 0; i < N; ++i)
-		{
-	        vkCreateFence(device, &fenceCI, nullptr, &fences[i]);
-	        vkCreateSemaphore(device, &semaphoreCI, nullptr, &presentSemaphores[i]);
-	    }
-
-	    renderSemaphores.resize(swapchainImageCount);
-	    for (auto& s : renderSemaphores)
-		{
-	        vkCreateSemaphore(device, &semaphoreCI, nullptr, &s);
-	    }
-	}
 
 }
 
