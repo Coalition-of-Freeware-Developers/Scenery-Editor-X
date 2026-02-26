@@ -105,34 +105,34 @@ TARGET_COMPILE_DEFINITIONS(Launcher
 )
 
 # --------------------------------
+IF(SEDX_ENABLE_VERSION_INCREMENT STREQUAL "ON")
+	IF (WIN32)
+	    FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
 
-IF (WIN32)
-    FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
+	    # Script path
+	    SET(LAUNCHER_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_launcher_build.py)
 
-    # Script path
-    SET(LAUNCHER_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_launcher_build.py)
-
-    IF (MSVC)
-        # PRE_BUILD supported by Visual Studio
-        ADD_CUSTOM_COMMAND(
-            TARGET Launcher
-            PRE_BUILD
-            COMMAND ${Python3_EXECUTABLE} ${LAUNCHER_VERSION_SCRIPT}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "Incrementing Launcher build number (resource.h)"
-            VERBATIM
-        )
-    ELSE()
-        # Fallback for other Windows generators
-        ADD_CUSTOM_TARGET(IncrementedLauncherVersion
-            COMMAND ${Python3_EXECUTABLE} ${LAUNCHER_VERSION_SCRIPT}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "Incrementing Launcher build number (resource.h)"
-            VERBATIM
-            BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
-        )
-        ADD_DEPENDENCIES(Launcher IncrementedLauncherVersion)
-    ENDIF()
+	    IF (MSVC)
+	        # PRE_BUILD supported by Visual Studio
+	        ADD_CUSTOM_COMMAND(
+	            TARGET Launcher
+	            PRE_BUILD
+	            COMMAND ${Python3_EXECUTABLE} ${LAUNCHER_VERSION_SCRIPT}
+	            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	            COMMENT "Incrementing Launcher build number (resource.h)"
+	            VERBATIM
+	        )
+	    ELSE()
+	        # Fallback for other Windows generators
+	        ADD_CUSTOM_TARGET(IncrementedLauncherVersion
+	            COMMAND ${Python3_EXECUTABLE} ${LAUNCHER_VERSION_SCRIPT}
+	            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	            COMMENT "Incrementing Launcher build number (resource.h)"
+	            VERBATIM
+	            BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
+	        )
+	        ADD_DEPENDENCIES(Launcher IncrementedLauncherVersion)
+	    ENDIF()
+	ENDIF()
 ENDIF()
-
 # --------------------------------

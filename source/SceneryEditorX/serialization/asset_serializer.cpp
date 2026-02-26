@@ -360,7 +360,7 @@ namespace SceneryEditorX
 			if (!entity || !entity.HasComponent<IDComponent>())
 				return;
 
-			///< Use the existing binary serialization system for entities
+			// Use the existing binary serialization system for entities
 			nlohmann::json entityJson;
 			nlohmann::json serializedEntity;
 			BinaryStorage storage;
@@ -494,7 +494,7 @@ namespace SceneryEditorX
 			return;
 		}
 
-		///< Write file header for standalone scene files
+		// Write file header for standalone scene files
 		constexpr uint32_t SCENE_FILE_VERSION = 1;
 		constexpr char SCENE_MAGIC[4] = {'S', 'C', 'N', 'E'};
 
@@ -503,11 +503,11 @@ namespace SceneryEditorX
 		writer.WriteString(sceneAsset->name);
 		writer.WriteRaw(sceneAsset->uuid);
 
-		///< Use the existing binary serialization system
+		// Use the existing binary serialization system
 		using namespace SceneryEditorX::Serialization;
 
-		///< Serialize scene data - this would need Scene to implement the binary serialization interface
-		///< The Scene should have static Serialize/Deserialize methods or use SERIALIZABLE macro
+		// Serialize scene data - this would need Scene to implement the binary serialization interface
+		// The Scene should have static Serialize/Deserialize methods or use SERIALIZABLE macro
 		Serialize(&writer, *sceneAsset);
 
 
@@ -531,7 +531,7 @@ namespace SceneryEditorX
 			return false;
 		}
 
-		///< Read and validate file header
+		// Read and validate file header
 		char magic[4];
 		reader.ReadRaw(magic);
 		if (std::memcmp(magic, "SCENE", 4) != 0)
@@ -548,22 +548,22 @@ namespace SceneryEditorX
 			return false;
 		}
 
-		///< Read basic scene info
+		// Read basic scene info
 		std::string sceneName;
 		uint32_t sceneUuid;
 		reader.ReadString(sceneName);
 		reader.ReadRaw(sceneUuid);
 
-		///< Create scene asset
+		// Create scene asset
 		const Ref<Scene> sceneAsset = CreateRef<Scene>();
 		sceneAsset->name = sceneName;
 		sceneAsset->uuid = sceneUuid;
 		sceneAsset->Handle = metadata.Handle;
 
-		///< Use the existing binary serialization system
+		// Use the existing binary serialization system
 		using namespace SceneryEditorX::Serialization;
 
-		///< Deserialize scene data - this would need Scene to implement the binary serialization interface
+		// Deserialize scene data - this would need Scene to implement the binary serialization interface
 		if (!Deserialize(&reader, *sceneAsset))
 		{
 			SEDX_CORE_ERROR_TAG("SceneAssetSerializer", "Failed to deserialize scene data");
@@ -573,7 +573,7 @@ namespace SceneryEditorX
 		asset = sceneAsset;
 		return true;
 
-		///< For now, scenes are only loaded as part of the project through AssetManager
+		// For now, scenes are only loaded as part of the project through AssetManager
 		SEDX_CORE_WARN_TAG("SceneAssetSerializer", "Individual scene loading not implemented - scenes are loaded as part of project files");
 		return false;
 	}
@@ -582,24 +582,24 @@ namespace SceneryEditorX
 	{
 		outInfo.Offset = stream.GetStreamPosition();
 
-		///< SceneAsset serialization for asset packs uses the existing binary serialization system.
-		///< This leverages the same system used in AssetManager::SaveProject()
+		// SceneAsset serialization for asset packs uses the existing binary serialization system.
+		// This leverages the same system used in AssetManager::SaveProject()
 
-		///< The scene data would be serialized using the binary system:
+		// The scene data would be serialized using the binary system:
 
 		const Ref<Scene> sceneAsset = AssetManager::Get<Scene>(handle);
 
-		///< Use the existing binary serialization system
+		// Use the existing binary serialization system
 		using namespace SceneryEditorX::Serialization;
 
-		///< This would serialize the scene using the same system as the main project files
+		// This would serialize the scene using the same system as the main project files
 		if (!Serialize(&stream, *sceneAsset))
 		{
 			SEDX_CORE_ERROR_TAG("SceneAssetSerializer", "Failed to serialize scene to asset pack");
 			return false;
 		}
 
-		///< For now, write a placeholder
+		// For now, write a placeholder
 		stream.WriteString("SCENE_PLACEHOLDER");
 
 		outInfo.Size = stream.GetStreamPosition() - outInfo.Offset;
@@ -610,13 +610,13 @@ namespace SceneryEditorX
 	{
 		stream.SetStreamPosition(assetInfo.PackedOffset);
 
-		///< SceneAsset deserialization from asset packs uses the existing binary serialization system
+		// SceneAsset deserialization from asset packs uses the existing binary serialization system
 
 		using namespace SceneryEditorX::Serialization;
 
 		Ref<Scene> sceneAsset = CreateRef<Scene>();
 
-		///< This would deserialize the scene using the same system as the main project files
+		// This would deserialize the scene using the same system as the main project files
 		if (!Deserialize(&stream, *sceneAsset))
 		{
 			SEDX_CORE_ERROR_TAG("SceneAssetSerializer", "Failed to deserialize scene from asset pack");
@@ -750,7 +750,7 @@ namespace SceneryEditorX
 		targetMeshCollider->AlwaysShareShape = data.value("AlwaysShareShape", false);
 		targetMeshCollider->CollisionComplexity = static_cast<ECollisionComplexity>(data.value("CollisionComplexity", static_cast<uint8_t>(0)));
 
-		///< Handle ColliderScale
+		// Handle ColliderScale
 		if (data.contains("ColliderScale") && data["ColliderScale"].is_array() && data["ColliderScale"].size() == 3) {
 			targetMeshCollider->ColliderScale = Vec3(
 				data["ColliderScale"][0].get<float>(),
@@ -762,7 +762,7 @@ namespace SceneryEditorX
 			targetMeshCollider->ColliderScale = Vec3(1.0f);
 		}
 
-		///< Handle PreviewScale
+		// Handle PreviewScale
 		if (data.contains("PreviewScale") && data["PreviewScale"].is_array() && data["PreviewScale"].size() == 3)
 		{
 			targetMeshCollider->PreviewScale = Vec3(

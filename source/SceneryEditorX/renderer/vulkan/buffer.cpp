@@ -41,7 +41,10 @@ namespace SceneryEditorX
 	{
         Ref<Device> device = RenderContext::Get()->GetDevice();
         m_Device = device->GetLogicalDevice();
-	    VkBufferCreateInfo bufferCI{ .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = size, .usage = usage };
+	    VkBufferCreateInfo bufferCI{ 
+	        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, 
+	        .size = size, 
+	        .usage = usage };
 	    vmaCreateBuffer(m_Allocator, &bufferCI, &allocInfo, &m_Buffer, &m_Allocation, nullptr);
 	}
 	

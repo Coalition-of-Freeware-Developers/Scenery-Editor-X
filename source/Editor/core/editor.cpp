@@ -189,6 +189,11 @@ namespace SceneryEditorX
         // camera = assetManager.GetMainCamera(scene);
 
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
+        if (!Window::IsVisible())
+        {
+            SEDX_CORE_WARN_TAG("Editor", "Main window is not visible after creation.");
+        }
+
         Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();

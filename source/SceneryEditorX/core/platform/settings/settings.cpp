@@ -262,7 +262,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            ///< TODO: If direct update fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+            // TODO: If direct update fails, we'll rely on UpdateConfigFromData() during WriteSettings()
         }
     }
 
@@ -306,7 +306,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            ///< TODO: If direct removal fails, we'll rely on UpdateConfigFromData() during WriteSettings()
+            // TODO: If direct removal fails, we'll rely on UpdateConfigFromData() during WriteSettings()
         }
     }
 
@@ -513,7 +513,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            ///< TODO: Better handing instead of just a fallthrough to default
+            // TODO: Better handing instead of just a fallthrough to default
         }
         return defaultValue;
     }

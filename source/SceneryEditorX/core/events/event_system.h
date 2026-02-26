@@ -28,9 +28,9 @@
  * Created: 14/7/2025
  */
 #pragma once
-#include <SceneryEditorX/core/base.h>
 #include <functional>
 #include <string>
+#include <SceneryEditorX/core/base.h>
 
 // -------------------------------------------------------------------
 
@@ -53,6 +53,8 @@ namespace SceneryEditorX
         WindowFocus,               // Window gained input focus.
         WindowLostFocus,           // Window lost input focus.
         WindowMoved,               // Window position changed.
+        WindowShow,				   // Window was shown.
+        WindowHide,				   // Window was hidden.
         WindowTitleBarHitTest,     // Title bar hit testing (for custom chrome).
         AppTick,                   // Application tick (fixed timestep).
         AppUpdate,                 // Per-frame application update.

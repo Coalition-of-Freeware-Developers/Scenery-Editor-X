@@ -267,12 +267,12 @@ namespace SceneryEditorX
 	    template <typename T>
 	    void CreateSettingPath(const std::string &path, const T &value);
 
-	    libconfig::Config cfg;							///< Configuration object
-	    XPlaneStats xPlaneStats;						///< X-Plane statistics and paths
-        AppData appStats;                               ///< Application statistics
-	    std::filesystem::path filePath;					///< Path to configuration file
-        std::map<std::string, std::string> settings;    ///< Key-value settings map
-        bool configInitialized = false;                 ///< Flag indicating if config is initialized
+	    libconfig::Config cfg;							// Configuration object
+	    XPlaneStats xPlaneStats;						// X-Plane statistics and paths
+        AppData appStats;                               // Application statistics
+	    std::filesystem::path filePath;					// Path to configuration file
+        std::map<std::string, std::string> settings;    // Key-value settings map
+        bool configInitialized = false;                 // Flag indicating if config is initialized
 	};
 
     // ----------------------------------------------------------

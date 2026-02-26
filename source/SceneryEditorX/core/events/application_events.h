@@ -39,7 +39,7 @@ namespace SceneryEditorX
 	class WindowResizeEvent : public Event
 	{
 	public:
-		WindowResizeEvent(unsigned int width, unsigned int height) : m_Width(width), m_Height(height) {}
+		WindowResizeEvent(const unsigned int width, const unsigned int height) : m_Width(width), m_Height(height) {}
 
 		inline unsigned int GetWidth() const { return m_Width; }
 		inline unsigned int GetHeight() const { return m_Height; }
@@ -98,12 +98,43 @@ namespace SceneryEditorX
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
 	};
 
+    // ------------------------------------------------------------------
+
+    class WindowShowEvent : public Event
+    {
+    public:
+		explicit WindowShowEvent(const bool shown) : m_IsShown(shown) {}
+
+        [[nodiscard]] bool IsShown() const { return m_IsShown; }
+
+        EVENT_CLASS_TYPE(WindowShow)
+		EVENT_CLASS_CATEGORY(EventCategoryApplication)
+    private:
+        bool m_IsShown = false;
+    };
+
+    // -------------------------------------------------------------------
+	
+    class WindowHiddenEvent : public Event
+    {
+    public:
+		explicit WindowHiddenEvent(const bool hidden) : m_IsHidden(hidden) {}
+
+        [[nodiscard]] bool IsHidden() const { return m_IsHidden; }
+
+        EVENT_CLASS_TYPE(WindowHide)
+		EVENT_CLASS_CATEGORY(EventCategoryApplication)
+
+    private:
+        bool m_IsHidden = false;
+    };
+
     // -------------------------------------------------------------------
 
 	class WindowTitleBarHitTestEvent : public Event
 	{
 	public:
-		WindowTitleBarHitTestEvent(int x, int y, int& hit) : m_X(x), m_Y(y), m_Hit(hit) {}
+		WindowTitleBarHitTestEvent(const int x, const int y, int& hit) : m_X(x), m_Y(y), m_Hit(hit) {}
 
 		inline int GetX() const { return m_X; }
 		inline int GetY() const { return m_Y; }

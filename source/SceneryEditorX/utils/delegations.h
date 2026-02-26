@@ -113,7 +113,7 @@ namespace SceneryEditorX::Utils
 	        }
 	        else
 	        {
-	            static_assert(std::is_same_v<decltype(TFunction), TMembFunc>, "Invalid function signature."); ///< TODO: C++20 'requires' would've solved this
+	            static_assert(std::is_same_v<decltype(TFunction), TMembFunc>, "Invalid function signature."); // TODO: C++20 'requires' would've solved this
 	            Assign((TInstancePtr)(object), MemberFunctionStub<TClass, TFunction>);
 	        }
 	    }
@@ -220,7 +220,7 @@ namespace SceneryEditorX::Utils
 	        }
 	        else
 	        {
-	            static_assert(std::is_same_v<decltype(TFunction), TMembFunc>, "Invalid function signature."); ///< TODO: C++20 'requires' would've solved this
+	            static_assert(std::is_same_v<decltype(TFunction), TMembFunc>, "Invalid function signature."); // TODO: C++20 'requires' would've solved this
 	            Add((TInstancePtr)(object), MemberFunctionStub<TClass, TFunction>);
 	        }
 	    }

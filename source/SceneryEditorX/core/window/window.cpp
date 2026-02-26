@@ -44,8 +44,8 @@ namespace SceneryEditorX
 {
     // Static member definitions
 	Window::EventCallbackFn Window::s_EventCallback = nullptr;
-    SDL_Window *window = nullptr;
-	SDL_DisplayID *displays = nullptr;
+    SDL_Window *s_Window = nullptr;
+	SDL_DisplayID *s_Displays = nullptr;
 
     // -------------------------------------------------------
 
@@ -91,8 +91,8 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-	
-    SDL_HitTestResult HitTestCallback(SDL_Window *win, const SDL_Point *area, void *data)
+
+    static SDL_HitTestResult HitTestCallback(SDL_Window *win, const SDL_Point *area, void *data)
     {
         int w, h;
         SDL_GetWindowSize(win, &w, &h);
@@ -214,6 +214,26 @@ namespace SceneryEditorX
 	        }
 	        break;
 	    }
+	    case SDL_EVENT_WINDOW_SHOWN:
+		{
+			if (s_EventCallback)
+			{
+				WindowHiddenEvent hiddenEvent(false);
+				WindowShowEvent showEvent(true);
+				s_EventCallback(showEvent);
+			}
+			break;
+        }
+        case SDL_EVENT_WINDOW_HIDDEN:
+	    {
+			Window::maximized = false;
+	        if (s_EventCallback)
+			{
+				WindowHiddenEvent hiddenEvent(true);
+				s_EventCallback(hiddenEvent);
+			}
+			break;
+	    }
 	    case SDL_EVENT_WINDOW_MINIMIZED:
 	    {
 	        if (s_EventCallback)
@@ -228,6 +248,7 @@ namespace SceneryEditorX
 	        Window::maximized = false;
 	        if (s_EventCallback)
 	        {
+                WindowHiddenEvent hiddenEvent(false);
 	            WindowMinimizeEvent minimizeEvent(false);
 	            s_EventCallback(minimizeEvent);
 	            WindowMaximizeEvent maximizeEvent(false);
@@ -358,7 +379,7 @@ namespace SceneryEditorX
         
 		InitSDLSubSystems();
 
-	    displays = SDL_GetDisplays(&displayCount);
+	    s_Displays = SDL_GetDisplays(&displayCount);
 		
         uint32_t flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN;
 	    if (resizable)
@@ -370,37 +391,38 @@ namespace SceneryEditorX
 	        flags |= SDL_WINDOW_MAXIMIZED;
 	    }
 
-	    window = SDL_CreateWindow(name, width, height, flags);
-	    if (!window)
+	    s_Window = SDL_CreateWindow(name, width, height, flags);
+	    if (!s_Window)
 	    {
             SEDX_CORE_ERROR_TAG("Window", "Failed to create window: {}", SDL_GetError());
 	        return;
 	    }
 
-		        // set up hit test callback for custom title bar dragging and resizing
-        if (!SDL_SetWindowHitTest(window, HitTestCallback, nullptr))
+	    // set up hit test callback for custom title bar dragging and resizing
+        if (!SDL_SetWindowHitTest(s_Window, HitTestCallback, nullptr))
         {
             SEDX_CORE_WARN_TAG("Window","Failed to set window hit test callback: %s", SDL_GetError());
         }
 
-	    SDL_SetWindowPosition(window, posX, posY);
+	    SDL_SetWindowPosition(s_Window, posX, posY);
 
-		        // get the DPI scale - has to be done after window creation
+	    // get the DPI scale - has to be done after window creation
     #ifdef SEDX_PLATFORM_WINDOWS
         s_DPI_Scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetRawHandle()))) / 96.0f;
     #endif
 
 		Show();
 	    dirty = false;
-	    //ApplyChanges();
+	    ApplyChanges();
+		SEDX_CORE_TRACE_TAG("Window", "Window created: {}", s_Window ? "success" : "failure");
 	}
 	
 	void Window::ApplyChanges()
 	{
-        SEDX_CORE_ASSERT(window, "Window not created");
+        SEDX_CORE_ASSERT(s_Window, "Window not created");
 	
-		displays = SDL_GetDisplays(&displayCount);
-		if (!displays || displayCount <= 0)
+		s_Displays = SDL_GetDisplays(&displayCount);
+		if (!s_Displays || displayCount <= 0)
 		{
 		    return;
 		}
@@ -409,7 +431,7 @@ namespace SceneryEditorX
 		    displayIndex = 0;
 		}
 
-	    SDL_DisplayID display = displays[displayIndex];
+	    SDL_DisplayID display = s_Displays[displayIndex];
 	    int modesCount = 0;
 	    SDL_DisplayMode **displayModes = SDL_GetFullscreenDisplayModes(display, &modesCount);
 	    if (modesCount <= 0)
@@ -426,34 +448,34 @@ namespace SceneryEditorX
 	    switch (mode)
 	    {
 	    case WindowMode::Windowed:
-	        SDL_SetWindowFullscreen(window, false);
-	        SDL_SetWindowSize(window, width, height);
-	        SDL_SetWindowPosition(window, posX, posY);
-	        SDL_SetWindowResizable(window, resizable);
-	        SDL_SetWindowBordered(window, decorated);
+	        SDL_SetWindowFullscreen(s_Window, false);
+	        SDL_SetWindowSize(s_Window, width, height);
+	        SDL_SetWindowPosition(s_Window, posX, posY);
+	        SDL_SetWindowResizable(s_Window, resizable);
+	        SDL_SetWindowBordered(s_Window, decorated);
 	        if (maximized)
 	        {
-	            SDL_MaximizeWindow(window);
+	            SDL_MaximizeWindow(s_Window);
 	        }
 	        else
 	        {
-	            SDL_RestoreWindow(window);
+	            SDL_RestoreWindow(s_Window);
 	        }
 	        break;
 	    case WindowMode::WindowedFullScreen:
 	    {
 	        if (const SDL_DisplayMode *desktopMode = SDL_GetDesktopDisplayMode(display))
 	        {
-	            SDL_SetWindowFullscreenMode(window, desktopMode);
-	            SDL_SetWindowFullscreen(window, true);
+	            SDL_SetWindowFullscreenMode(s_Window, desktopMode);
+	            SDL_SetWindowFullscreen(s_Window, true);
 	        }
 	    }
 	    break;
 	    case WindowMode::FullScreen:
 	        if (displayModes && displayModeIndex >= 0 && displayModeIndex < modesCount)
 	        {
-	            SDL_SetWindowFullscreenMode(window, displayModes[displayModeIndex]);
-	            SDL_SetWindowFullscreen(window, true);
+	            SDL_SetWindowFullscreenMode(s_Window, displayModes[displayModeIndex]);
+	            SDL_SetWindowFullscreen(s_Window, true);
 	        }
 	        break;
 	    }
@@ -469,7 +491,7 @@ namespace SceneryEditorX
 	
     void *Window::GetRawHandle()
     {
-        SDL_PropertiesID props = SDL_GetWindowProperties(window);
+        SDL_PropertiesID props = SDL_GetWindowProperties(s_Window);
 
         // windows
         if (void *handle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr))
@@ -485,21 +507,22 @@ namespace SceneryEditorX
 
         return nullptr;
     }
-	/**
+	
+    /**
 	 * @brief Sets the window title
 	 * @param title The new title for the window
 	 */
 	void Window::SetTitle(const std::string &title)
 	{
-	    if (window)
+	    if (s_Window)
 	    {
-	        SDL_SetWindowTitle(window, title.c_str());
+	        SDL_SetWindowTitle(s_Window, title.c_str());
 	    }
 	}
 
     SDL_Window *Window::GetWindow()
     {
-        return window;
+        return s_Window;
     }
 
     bool Window::IsMouseDown(const uint8_t buttonCode)
@@ -522,17 +545,17 @@ namespace SceneryEditorX
 	
 	void Window::Destroy()
 	{
-	    if (window)
+	    if (s_Window)
 	    {
-	        SDL_GetWindowPosition(window, &posX, &posY);
-	        SDL_DestroyWindow(window);
-	        window = nullptr;
+	        SDL_GetWindowPosition(s_Window, &posX, &posY);
+	        SDL_DestroyWindow(s_Window);
+	        s_Window = nullptr;
 	    }
 
-	    if (displays)
+	    if (s_Displays)
 	    {
-	        SDL_free(displays);
-	        displays = nullptr;
+	        SDL_free(s_Displays);
+	        s_Displays = nullptr;
 	    }
 
 	    SDL_Quit();
@@ -571,9 +594,9 @@ namespace SceneryEditorX
 	void Window::UpdateFramebufferSize()
 	{
 	    framebufferResized = false;
-	    if (window)
+	    if (s_Window)
 	    {
-	        SDL_GetWindowSizeInPixels(window, &width, &height);
+	        SDL_GetWindowSizeInPixels(s_Window, &width, &height);
 	    }
 	}
 
@@ -773,62 +796,93 @@ namespace SceneryEditorX
 	
 	void Window::Maximize()
     {
-        if (!window)
+        if (!s_Window)
             return;
 
-        SDL_MaximizeWindow(window);
+        SDL_MaximizeWindow(s_Window);
         maximized = true;
     }
 
-    bool Window::IsMaximized() { return SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN; }
+	bool Window::IsVisible()
+	{
+	    SDL_Window* win = GetWindow();
+	    if (!win)
+	    {
+	        return false;
+	    }
+
+	    uint64_t flags = SDL_GetWindowFlags(win);
+		if (flags & SDL_WINDOW_HIDDEN)
+		{
+			return false;
+        }
+        if (flags & SDL_WINDOW_MINIMIZED)
+        {
+			return false;
+        }
+		if (flags & SDL_EVENT_WINDOW_SHOWN)
+		{
+            return true;
+		}
+
+	    return false;
+	}
+
+    bool Window::IsMaximized() { return SDL_GetWindowFlags(s_Window) & SDL_WINDOW_FULLSCREEN; }
 
     void Window::Minimize()
     {
-        if (!window)
+        if (!s_Window)
+        {
             return;
+        }
 
-        SDL_MinimizeWindow(window);
+        SDL_MinimizeWindow(s_Window);
     }
 
     void Window::Show()
     {
-        SEDX_CORE_ASSERT(window);
+        SEDX_CORE_ASSERT(s_Window);
 
-        SDL_ShowWindow(window);
+        SDL_ShowWindow(s_Window);
+		SDL_Event event;
+		event.type = SDL_EVENT_WINDOW_SHOWN;
+		event.window.windowID = SDL_GetWindowID(s_Window);
+		SDL_PushEvent(&event);
     }
 
     void Window::Hide()
     {
-        SEDX_CORE_ASSERT(window != nullptr);
+        SEDX_CORE_ASSERT(s_Window != nullptr);
 
-        SDL_HideWindow(window);
+        SDL_HideWindow(s_Window);
     }
 
     void Window::Focus()
     {
-        SEDX_CORE_ASSERT(window);
+        SEDX_CORE_ASSERT(s_Window);
 
-        SDL_RaiseWindow(window);
+        SDL_RaiseWindow(s_Window);
     }
 
-    bool Window::IsMinimized() { return SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED; }
+    bool Window::IsMinimized() { return SDL_GetWindowFlags(s_Window) & SDL_WINDOW_MINIMIZED; }
 
     void Window::CenterWindow()
     {
-        if (!window)
+        if (!s_Window)
             return;
 
-        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-        SDL_GetWindowPosition(window, &posX, &posY);
+        SDL_SetWindowPosition(s_Window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        SDL_GetWindowPosition(s_Window, &posX, &posY);
     }
 	
 	void Window::SetResizable(bool value)
     {
         resizable = value;
 
-        if (window)
+        if (s_Window)
         {
-            SDL_SetWindowResizable(window, value);
+            SDL_SetWindowResizable(s_Window, value);
         }
     }
 	
@@ -836,9 +890,9 @@ namespace SceneryEditorX
     {
         decorated = value;
 
-        if (window)
+        if (s_Window)
         {
-            SDL_SetWindowBordered(window, value);
+            SDL_SetWindowBordered(s_Window, value);
         }
     }
 		

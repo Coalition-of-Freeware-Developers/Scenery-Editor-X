@@ -47,7 +47,7 @@ namespace SceneryEditorX::IO
                                         {"Scenery Editor-X Files", "*.edX *.edX-lib *.wed", "All Files", "*"},
                                         pfd::opt::multiselect).result();
 
-        ///< TODO: Write open code and do something with selection
+        // TODO: Write open code and do something with selection
         for (const auto &filename : selection)
             std::cout << "Selected file: " << filename << "\n";
     }
@@ -65,7 +65,7 @@ namespace SceneryEditorX::IO
                                           {"Scenery Editor-X Files", "*.edX", "All Files", "*"},
                                           pfd::opt::force_overwrite).result();
 
-        ///< TODO: Write open code and do something with selection
+        // TODO: Write open code and do something with selection
         std::cout << "Selected file: " << destination << "\n";
     }
 
@@ -78,7 +78,7 @@ namespace SceneryEditorX::IO
     {
         const auto selection = pfd::select_folder("Select a folder", ".").result();
 
-        ///< TODO: Write open code and do something with selection
+        // TODO: Write open code and do something with selection
         std::cout << "Selected folder: " << selection << "\n";
     }
 
@@ -91,7 +91,7 @@ namespace SceneryEditorX::IO
     {
         const auto destination = pfd::select_folder("Select a folder", ".").result();
 
-        ///< TODO: Write open code and do something with selection
+        // TODO: Write open code and do something with selection
         std::cout << "Selected folder: " << destination << "\n";
     }
 

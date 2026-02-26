@@ -43,7 +43,7 @@ namespace SceneryEditorX
 {
 
     /*
-    ///< Type definitions that need to be declared before use
+    // Type definitions that need to be declared before use
     enum class StorageKind : uint8_t
     {
         Value,
@@ -71,13 +71,13 @@ namespace SceneryEditorX
     */
 
     /*
-    ///< Forward declarations
+    // Forward declarations
     struct Pin;
     struct Link;
     */
     
     /*
-    ///< Graph Node class (different from scene Node)
+    // Graph Node class (different from scene Node)
     class GraphNode
     {
     public:
@@ -98,7 +98,7 @@ namespace SceneryEditorX
     */
 
     /*
-    ///< Basic Pin structure declaration
+    // Basic Pin structure declaration
     struct Pin
     {
         UUID ID;
@@ -118,7 +118,7 @@ namespace SceneryEditorX
     */
 
     /*
-    ///< Basic Link structure declaration  
+    // Basic Link structure declaration  
     struct Link
     {
         UUID ID;
@@ -171,18 +171,18 @@ namespace SceneryEditorX
 		 #1#
 		struct DeserializationFactory
 		{
-			///< Deserialized info about a Pin of a Node, may or may not be valid
+			// Deserialized info about a Pin of a Node, may or may not be valid
 			struct PinCandidate : Pin
 			{
 				using Pin::Pin;
 
-				std::string TypeString;	///< implementation specific
+				std::string TypeString;	// implementation specific
 
                 static int GetType() { return -1; }
                 [[nodiscard]] virtual std::string_view GetTypeString() const override { return TypeString; }
 			};
 
-			///< Deserialized info about a Node, may or may not be valid
+			// Deserialized info about a Node, may or may not be valid
 			struct NodeCandidate
 			{
 				UUID ID;

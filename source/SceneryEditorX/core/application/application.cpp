@@ -105,12 +105,16 @@ namespace SceneryEditorX
         s_MainThreadID = std::this_thread::get_id();
 
         // Set working directory to application root (2 levels up from bin/Debug)
+        /*
         std::filesystem::path exePath = std::filesystem::current_path();
         std::filesystem::path repoRoot = exePath.parent_path().parent_path();
         std::filesystem::current_path(repoRoot);
+        */
 
+        /*
         SEDX_CORE_TRACE("Executable directory: {}", exePath.string());
         SEDX_CORE_TRACE("Repository root: {}", repoRoot.string());
+        */
         SEDX_CORE_TRACE("Working directory set to: {}", std::filesystem::current_path().string());
 
         // -------------------------------------------------------
@@ -119,7 +123,6 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE("  Working Directory: {}", context.GetWorkingDirectory());
         SEDX_CORE_TRACE("  Temp Directory: {}", context.GetTempDirectory());
         SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
-
 
         AppData specification;
         

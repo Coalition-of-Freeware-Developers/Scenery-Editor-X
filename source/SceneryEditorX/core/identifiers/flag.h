@@ -79,7 +79,7 @@ namespace SceneryEditorX
 		SEDX_FORCE_INLINE bool IsDirty() const noexcept { return m_Flag; }
 
 	private:
-		bool m_Flag = false; ///< Internal boolean that stores the dirty state, initially not dirty
+		bool m_Flag = false; // Internal boolean that stores the dirty state, initially not dirty
 	};
 
 

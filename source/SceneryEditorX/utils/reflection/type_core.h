@@ -61,8 +61,8 @@ namespace SceneryEditorX::Types
         ~Type() noexcept;
 
 		explicit Type(const std::string_view &typeName) : Name(typeName) {}
-		std::string Name;  ///< The name of the type
-		int ID = -1;       ///< Unique identifier for the type, -1 if not set
+		std::string Name;  // The name of the type
+		int ID = -1;       // Unique identifier for the type, -1 if not set
         [[nodiscard]] bool IsValid() const { return !Name.empty(); }
 
 	    /**
@@ -170,8 +170,8 @@ namespace SceneryEditorX::Types
             string         = 0x40 + sizeof(uint32_t),
             vector         = 0x50,
             primitiveArray = 0x60,
-            object         = 0x80, ///< these two must have the top bit set to make it quick
-            complexArray   = 0x90  ///< to decide whether the content references a heap object
+            object         = 0x80, // these two must have the top bit set to make it quick
+            complexArray   = 0x90  // to decide whether the content references a heap object
         };
 
 	    static constexpr uint32_t maxNumVectorElements = 256;
@@ -248,7 +248,7 @@ namespace SceneryEditorX::Types
     struct ElementTypeAndOffset
     {
         Type elementType;
-        size_t offset; ///< The byte position within its parent value of the data representing this element
+        size_t offset; // The byte position within its parent value of the data representing this element
     };
 
 

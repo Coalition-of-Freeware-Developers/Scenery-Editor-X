@@ -238,7 +238,6 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         static RendererProperties *s_Data;
-        static Ref<Swapchain> s_SwapChain;
         static std::atomic<bool> s_ResourcesInitialized;
         static CommandList *s_CurrentCmdList;
         static Scope<AssetManager> s_AssetManager;

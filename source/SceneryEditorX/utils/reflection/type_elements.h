@@ -42,7 +42,7 @@ namespace SceneryEditorX::Values
 	struct ElementTypeAndOffset
 	{
 	    Type elementType;
-	    size_t offset; ///< The byte position within its parent value of the data representing this element
+	    size_t offset; // The byte position within its parent value of the data representing this element
 	};
 
 

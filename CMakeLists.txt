@@ -65,7 +65,7 @@ INCLUDE("${CMAKE_SOURCE_DIR}/cmake/assets.cmake")
 
 OPTION(SEDX_ENABLE_TESTS              	"Build test targets" OFF)
 OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)
-OPTION(SEDX_ENABLE_VERSION_INCREMENT  	"Enable automatic build version increment" ON)
+OPTION(SEDX_ENABLE_VERSION_INCREMENT 	"Enable automatic semantic versioning, increment on build" OFF)
 #OPTION(SEDX_ENABLE_VMA                	"Enable Vulkan Memory Allocator (GPUOpen VMA)" ON)
 OPTION(SEDX_BUILD_IMGUI               	"Build Dear ImGui (bundled sources)" ON)
 OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" ON)
@@ -90,15 +90,15 @@ SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
 # ###########################################
 IF(TRACY_ENABLE)
 	INCLUDE(cmake/tracyprofiling.cmake)
-    # Add Tracy public include dir to all main targets if tracy is available
-    if(DEFINED tracy_SOURCE_DIR)
-        message(STATUS "Adding Tracy public include dir: ${tracy_SOURCE_DIR}/public")
-        foreach(_tracy_target SceneryEditorX Launcher Editor CrashHandler)
-            if(TARGET ${_tracy_target})
-                target_include_directories(${_tracy_target} PRIVATE ${tracy_SOURCE_DIR}/public)
-            endif()
-        endforeach()
-    endif()
+
+	IF(DEFINED tracy_SOURCE_DIR) # Add Tracy public include dir to all main targets if tracy is available
+        MESSAGE(STATUS "Adding Tracy public include dir: ${tracy_SOURCE_DIR}/public")
+        FOREACH(_tracy_target SceneryEditorX Launcher Editor CrashHandler)
+            IF(TARGET ${_tracy_target})
+                TARGET_INCLUDE_DIRECTORIES(${_tracy_target} PRIVATE ${tracy_SOURCE_DIR}/public)
+            ENDIF()
+        ENDFOREACH()
+    ENDIF()
 ENDIF()
 
 ############################################

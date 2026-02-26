@@ -79,7 +79,9 @@ namespace SceneryEditorX
 	    m_IndexCount = static_cast<uint32_t>(m_Indices.size());
 	
 	    // Create combined buffer
-	    m_Buffer = Buffer(allocator, m_VBufferSize + m_IBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, allocInfo);
+	    m_Buffer = Buffer(allocator, m_VBufferSize + m_IBufferSize,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+			allocInfo);
 	    void* ptr = m_Buffer.Map();
 
         SEDX_CORE_ASSERT(ptr, "Model: failed to map buffer");

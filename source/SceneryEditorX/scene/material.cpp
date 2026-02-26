@@ -350,22 +350,22 @@ namespace SceneryEditorX
     {
 		if (m_Transparent)
 		{
-			///< Set defaults
+			// Set defaults
 			SetAlbedoColor(Vec3(0.8f));
 
-			///< Maps
+			// Maps
 			ClearAlbedoMap();
 		}
 		else
 		{
-			///< Set defaults
+			// Set defaults
 			SetAlbedoColor(Vec3(0.8f));
 			SetEmission(0.0f);
 			SetUseNormalMap(false);
 			SetMetalness(0.0f);
 			SetRoughness(0.4f);
 
-			///< Maps
+			// Maps
 			ClearAlbedoMap();
 			ClearNormalMap();
 			ClearMetalnessMap();

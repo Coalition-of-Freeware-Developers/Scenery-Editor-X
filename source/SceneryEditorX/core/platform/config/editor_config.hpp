@@ -51,11 +51,11 @@ namespace SceneryEditorX
          */
         struct EditorConfig : RefCounted
         {
-            std::string shaderFolder    = "../../resources/shaders";          ///< Directory containing shader files
-            std::string textureFolder   = "../../resources/textures";         ///< Directory containing texture files
-            std::string modelFolder     = "../../resources/models";           ///< Directory containing 3D model files
-            std::string fontFolder      = "../../resources/fonts";            ///< Directory containing font files
-            const char *defaultFontPath = R"(C:\Windows\Fonts\arial.ttf)"; ///< System default font path for Windows
+            std::string shaderFolder    = "../../resources/shaders";          // Directory containing shader files
+            std::string textureFolder   = "../../resources/textures";         // Directory containing texture files
+            std::string modelFolder     = "../../resources/models";           // Directory containing 3D model files
+            std::string fontFolder      = "../../resources/fonts";            // Directory containing font files
+            const char *defaultFontPath = R"(C:\Windows\Fonts\arial.ttf)"; // System default font path for Windows
         };
 
     #elif SEDX_PLATFORM_LINUX
@@ -69,11 +69,11 @@ namespace SceneryEditorX
          */
         struct EditorConfig : RefCounted
         {
-            std::string shaderFolder    = "../../resources/shaders";   ///< Directory containing shader files
-            std::string textureFolder   = "../../resources/textures";  ///< Directory containing texture files
-            std::string modelFolder     = "../../resources/models";    ///< Directory containing 3D model files
-            std::string fontFolder      = "../../resources/fonts";     ///< Directory containing font files
-            const char *defaultFontPath = "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf"; ///< System default font path for Linux
+            std::string shaderFolder    = "../../resources/shaders";   // Directory containing shader files
+            std::string textureFolder   = "../../resources/textures";  // Directory containing texture files
+            std::string modelFolder     = "../../resources/models";    // Directory containing 3D model files
+            std::string fontFolder      = "../../resources/fonts";     // Directory containing font files
+            const char *defaultFontPath = "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf"; // System default font path for Linux
         };
 
     #elif SEDX_PLATFORM_MACOS
@@ -87,11 +87,11 @@ namespace SceneryEditorX
          */
         struct EditorConfig : RefCounted
         {
-            std::string shaderFolder    = "../../resources/shaders";   ///< Directory containing shader files
-            std::string textureFolder   = "../../resources/textures";  ///< Directory containing texture files
-            std::string modelFolder     = "../../resources/models";    ///< Directory containing 3D model files
-            std::string fontFolder      = "../../resources/fonts";     ///< Directory containing font files
-            const char *defaultFontPath = "/Library/Fonts/Arial Unicode.ttf"; ///< System default font path for macOS
+            std::string shaderFolder    = "../../resources/shaders";   // Directory containing shader files
+            std::string textureFolder   = "../../resources/textures";  // Directory containing texture files
+            std::string modelFolder     = "../../resources/models";    // Directory containing 3D model files
+            std::string fontFolder      = "../../resources/fonts";     // Directory containing font files
+            const char *defaultFontPath = "/Library/Fonts/Arial Unicode.ttf"; // System default font path for macOS
         };
 
     #else

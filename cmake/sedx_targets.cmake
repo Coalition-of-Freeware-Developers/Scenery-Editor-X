@@ -73,11 +73,11 @@ FUNCTION(SEDX_APPLY_OUTPUT_DIRS LIBS_DIR BIN_DIR)
 
                 # Explicit per-config (avoids accidental Debug/Debug nesting)
                 ARCHIVE_OUTPUT_DIRECTORY_DEBUG   ${LIBS_DIR}/Debug
-                ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${LIBS_DIR}/Release
+                ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${LIBS_DIR}
                 LIBRARY_OUTPUT_DIRECTORY_DEBUG   ${LIBS_DIR}/Debug
-                LIBRARY_OUTPUT_DIRECTORY_RELEASE ${LIBS_DIR}/Release
+                LIBRARY_OUTPUT_DIRECTORY_RELEASE ${LIBS_DIR}
                 RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${BIN_DIR}/Debug
-                RUNTIME_OUTPUT_DIRECTORY_RELEASE ${BIN_DIR}/Release
+                RUNTIME_OUTPUT_DIRECTORY_RELEASE ${BIN_DIR}
             )
         ENDIF()
     ENDFOREACH()

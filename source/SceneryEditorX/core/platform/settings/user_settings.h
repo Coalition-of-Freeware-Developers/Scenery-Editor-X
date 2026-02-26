@@ -29,11 +29,11 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "SceneryEditorX/project/project_settings.h"
+#include "SceneryEditorX/utils/pointers.h"
 #include <filesystem>
 #include <map>
 #include <string>
-#include "SceneryEditorX/project/project_settings.h"
-#include "SceneryEditorX/utils/pointers.h"
 
 // -------------------------------------------------------
 

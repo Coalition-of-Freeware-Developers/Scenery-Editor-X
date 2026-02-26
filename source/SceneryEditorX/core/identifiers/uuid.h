@@ -459,8 +459,8 @@ namespace SceneryEditorX
 		static UUID128 FromBase64(const std::string& base64);
 
 	private:
-		friend struct std::hash<UUID128>;  ///< Allow hash specialization access
-		std::array<uint32_t, 4> m_UUID;   ///< The underlying 128-bit identifier value
+		friend struct std::hash<UUID128>;  // Allow hash specialization access
+		std::array<uint32_t, 4> m_UUID;   // The underlying 128-bit identifier value
 	};
 
 	/**
@@ -823,8 +823,8 @@ namespace SceneryEditorX
         bool operator==(const UUID & uuid) const;
 
     private:
-		friend struct std::hash<UUID32>;  ///< Allow hash specialization access
-		uint32_t m_UUID;                  ///< The underlying 32-bit identifier value
+		friend struct std::hash<UUID32>;  // Allow hash specialization access
+		uint32_t m_UUID;                  // The underlying 32-bit identifier value
 	};
 
 }

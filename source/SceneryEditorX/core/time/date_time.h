@@ -87,12 +87,12 @@ namespace SceneryEditorX
             {
                 struct
                 {
-                    uint64_t year	: 16; ///< 16 bits for year (up to 65535)
-                    uint64_t month	: 4;  ///< 4 bits for month (up to 12)
-                    uint64_t day	: 5;  ///< 5 bits for day (up to 31)
-                    uint64_t hour   : 5;  ///< 5 bits for hour (up to 23)
-                    uint64_t minute : 6;  ///< 6 bits for minute (up to 60)
-                    uint64_t second : 6;  ///< 6 bits for second (up to 60)
+                    uint64_t year	: 16; // 16 bits for year (up to 65535)
+                    uint64_t month	: 4;  // 4 bits for month (up to 12)
+                    uint64_t day	: 5;  // 5 bits for day (up to 31)
+                    uint64_t hour   : 5;  // 5 bits for hour (up to 23)
+                    uint64_t minute : 6;  // 6 bits for minute (up to 60)
+                    uint64_t second : 6;  // 6 bits for second (up to 60)
                 };
 
                 uint64_t finalValue = 0;

@@ -41,10 +41,10 @@
 
 namespace SceneryEditorX
 {
-    ///< Forward declare existing classes for integration
+    // Forward declare existing classes for integration
     class Allocator;
 
-    ///< Forward declare Types namespace for integration
+    // Forward declare Types namespace for integration
     namespace Types
     {
         class Type;
@@ -54,7 +54,7 @@ namespace SceneryEditorX
 
     namespace Values
     {
-        ///< Forward declarations
+        // Forward declarations
         class Value;
         class ValueView;
         class StringDictionary;
@@ -173,8 +173,8 @@ namespace SceneryEditorX
             virtual void* Allocate(const size_t size)
             {
                 if (size == 0) return nullptr;
-                ///< For now, use standard allocation - this will be properly integrated with SceneryEditorX allocator
-                ///< TODO: Integrate with SceneryEditorX::Allocator::Allocate(size, m_Category)
+                // For now, use standard allocation - this will be properly integrated with SceneryEditorX allocator
+                // TODO: Integrate with SceneryEditorX::Allocator::Allocate(size, m_Category)
                 return std::malloc(size);
             }
 
@@ -186,8 +186,8 @@ namespace SceneryEditorX
              */
             virtual void* ResizeIfPossible(void* data, size_t requestedSize)
             {
-                ///< Standard allocator doesn't support in-place resize
-                ///< Return original pointer to indicate resize not possible
+                // Standard allocator doesn't support in-place resize
+                // Return original pointer to indicate resize not possible
                 return data;
             }
 
@@ -197,8 +197,8 @@ namespace SceneryEditorX
              */
             virtual void Free(void* ptr) noexcept
             {
-                ///< For now, use standard free - this will be properly integrated with SceneryEditorX allocator
-                ///< TODO: Integrate with SceneryEditorX::Allocator::Free(ptr)
+                // For now, use standard free - this will be properly integrated with SceneryEditorX allocator
+                // TODO: Integrate with SceneryEditorX::Allocator::Free(ptr)
                 std::free(ptr);
             }
 
@@ -253,7 +253,7 @@ namespace SceneryEditorX
             {
                 if (size == 0) return nullptr;
 
-                ///< Align to pointer size for better performance
+                // Align to pointer size for better performance
                 constexpr size_t alignment = sizeof(void*);
                 const size_t alignedSize = (size + alignment - 1) & ~(alignment - 1);
 
@@ -278,27 +278,27 @@ namespace SceneryEditorX
                 if (!data)
                     return nullptr;
 
-                ///< Check if this is the last allocation
+                // Check if this is the last allocation
                 if (data != &m_Pool[m_LastAllocationPosition])
-                    return data; ///< Can't resize, not the last allocation
+                    return data; // Can't resize, not the last allocation
 
                 constexpr size_t alignment = sizeof(void*);
                 const size_t alignedSize = (requiredSize + alignment - 1) & ~(alignment - 1);
                 if (const size_t currentSize = m_Position - m_LastAllocationPosition; alignedSize <= currentSize)
                 {
-                    ///< Shrinking - adjust position
+                    // Shrinking - adjust position
                     m_Position = m_LastAllocationPosition + alignedSize;
                     return data;
                 }
 
-                ///< Growing - check if we have space
+                // Growing - check if we have space
                 if (m_LastAllocationPosition + alignedSize <= totalSize)
                 {
                     m_Position = m_LastAllocationPosition + alignedSize;
                     return data;
                 }
 
-                return data; ///< Can't resize
+                return data; // Can't resize
             }
 
             /**
@@ -652,7 +652,7 @@ namespace SceneryEditorX
             {
                 if (m_Data)
                 {
-                    ///< Use SceneryEditorX memory allocator for cleanup
+                    // Use SceneryEditorX memory allocator for cleanup
                     GetValueAllocator().Free(m_Data);
                     m_Data = nullptr;
                 }
@@ -714,8 +714,8 @@ namespace SceneryEditorX
             [[nodiscard]] ValueView GetView() const;
 
         private:
-            Type m_Type;      ///< Type descriptor
-            void* m_Data;     ///< Raw data pointer
+            Type m_Type;      // Type descriptor
+            void* m_Data;     // Raw data pointer
 
             /** Get the global value allocator */
             static ValueAllocator& GetValueAllocator()
@@ -886,15 +886,15 @@ namespace SceneryEditorX
                 if (!IsValid())
                     return {}; /// Empty value
 
-                ///< TODO: Implementation will copy data using type system
+                // TODO: Implementation will copy data using type system
                 Value result;
                 // SEDX_CORE_TRACE_TAG("VALUE", "Created copy from ValueView");
                 return result;
             }
 
         private:
-            Type m_Type;         ///< Type descriptor (not owned)
-            const void* m_Data;  ///< Data pointer (not owned)
+            Type m_Type;         // Type descriptor (not owned)
+            const void* m_Data;  // Data pointer (not owned)
 
             /** Validate type match */
             template<typename T>

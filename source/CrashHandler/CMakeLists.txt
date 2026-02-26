@@ -85,33 +85,34 @@ TARGET_COMPILE_DEFINITIONS(CrashHandler
 # --------------------------------
 # Windows-only: auto-increment CrashHandler build number before compiling
 # --------------------------------
-IF (WIN32)
-    FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
+IF(SEDX_ENABLE_VERSION_INCREMENT STREQUAL "ON")
+	IF(WIN32)
+    	FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
 
-    # Script path
-    SET(CRASH_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_crash_handler_build.py)
+    	# Script path
+    	SET(CRASH_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_crash_handler_build.py)
 
-    IF (MSVC)
-        # PRE_BUILD supported by Visual Studio
-        ADD_CUSTOM_COMMAND(
-            TARGET CrashHandler
-            PRE_BUILD
-            COMMAND ${Python3_EXECUTABLE} ${CRASH_VERSION_SCRIPT}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "Incrementing Crash Handler build number (resource.h)"
-            VERBATIM
-        )
-    ELSE()
-        # Fallback for other Windows generators
-        ADD_CUSTOM_TARGET(IncrementCrashHandlerVersion
-            COMMAND ${Python3_EXECUTABLE} ${CRASH_VERSION_SCRIPT}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "Incrementing Crash Handler build number (resource.h)"
-            VERBATIM
-            BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
-        )
-        ADD_DEPENDENCIES(CrashHandler IncrementCrashHandlerVersion)
-    ENDIF()
+    	IF (MSVC)
+    	    # PRE_BUILD supported by Visual Studio
+    	    ADD_CUSTOM_COMMAND(
+    	        TARGET CrashHandler
+    	        PRE_BUILD
+    	        COMMAND ${Python3_EXECUTABLE} ${CRASH_VERSION_SCRIPT}
+    	        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    	        COMMENT "Incrementing Crash Handler build number (resource.h)"
+    	        VERBATIM
+    	    )
+    	ELSE()
+    	    # Fallback for other Windows generators
+    	    ADD_CUSTOM_TARGET(IncrementCrashHandlerVersion
+    	        COMMAND ${Python3_EXECUTABLE} ${CRASH_VERSION_SCRIPT}
+    	        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    	        COMMENT "Incrementing Crash Handler build number (resource.h)"
+    	        VERBATIM
+    	        BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
+    	    )
+    	    ADD_DEPENDENCIES(CrashHandler IncrementCrashHandlerVersion)
+    	ENDIF()
+	ENDIF()
 ENDIF()
-
 # --------------------------------

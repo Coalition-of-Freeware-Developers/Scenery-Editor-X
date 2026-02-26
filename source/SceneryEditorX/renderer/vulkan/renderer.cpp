@@ -67,7 +67,7 @@ namespace SceneryEditorX
     // -------------------------------------------------------
 
     RendererProperties *Renderer::s_Data = nullptr;
-    Ref<Swapchain> Renderer::s_SwapChain = nullptr;
+    Ref<Swapchain> s_SwapChain = nullptr;
     std::atomic<bool> Renderer::s_ResourcesInitialized = false;
     CommandList *Renderer::s_CurrentCmdList = nullptr;
 
@@ -96,13 +96,15 @@ namespace SceneryEditorX
     void Renderer::Init()
     {
         //SEDX_TRACK_CALL("Renderer::Init");
-
+        
         // Prevent double-initialization
+		/*
         if (s_Data)
         {
-            SEDX_CORE_INFO_TAG("Renderer", "Init called but renderer is already initialized — skipping");
+            SEDX_CORE_INFO_TAG("Renderer", "Init called but renderer is already initialized, skipping");
             return;
         }
+        */
 
         SEDX_CORE_TRACE_TAG("Renderer", "=== Initializing Renderer ===");
 
@@ -133,6 +135,12 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// SwapChain                                                                                                     ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if (!Window::IsVisible())
+		{
+            SEDX_CORE_ERROR_TAG("Swapchain", "Window is not visible or is minimized/hidden. Swapchain creation aborted.");
+            return;
+        }
+
         s_SwapChain = CreateRef<Swapchain>();
         if (Window::GetWindow())
         {
@@ -142,6 +150,7 @@ namespace SceneryEditorX
                 SEDX_CORE_ERROR_TAG("Renderer", "Failed to create Vulkan surface - surface is still VK_NULL_HANDLE");
                 return;
             }
+
         }
         else
         {
@@ -163,8 +172,8 @@ namespace SceneryEditorX
             uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
             VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
 
-            VkSwapchainKHR swapchainHandle = s_SwapChain->Create(s_SwapChain->GetSurface(), queueFamily, allocator);
-            if (swapchainHandle != VK_NULL_HANDLE)
+            s_SwapChain->Create(s_SwapChain->GetSurface(), queueFamily, allocator);
+            if (s_SwapChain == nullptr)
             {
                 SEDX_CORE_TRACE_TAG("Renderer", "Swapchain created successfully with {} images", s_SwapChain->Images().size());
             }
@@ -350,7 +359,7 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain has no images - VkSwapchainKHR handle: {}, surface valid: {}",
                                 (void *)s_SwapChain->Get(), s_SwapChain->GetSurface() != VK_NULL_HANDLE);
 
-            // Attempt to recreate swapchain if surface is available
+            // Attempt to recreate swapchain if surface is available and window is visible
             if (s_SwapChain->GetSurface() != VK_NULL_HANDLE)
             {
                 SEDX_CORE_WARN_TAG("Renderer", "Attempting to recreate swapchain...");
@@ -693,11 +702,12 @@ namespace SceneryEditorX
 
     void Renderer::CreateModels()
     {
-        VmaAllocationCreateInfo bufferAllocCI;
+        VmaAllocationCreateInfo bufferAllocCI{};
         bufferAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
                               VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
                               VMA_ALLOCATION_CREATE_MAPPED_BIT;
         bufferAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
+		//bufferAllocCI.pool = VK_NULL_HANDLE; // Only set if using a custom pool
 
         VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
 

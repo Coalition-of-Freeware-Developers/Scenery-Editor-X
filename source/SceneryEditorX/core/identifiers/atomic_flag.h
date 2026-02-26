@@ -121,7 +121,7 @@ namespace SceneryEditorX
 	    AtomicFlag& operator=(AtomicFlag&&) noexcept { return *this; }
 
 	private:
-	    std::atomic_flag m_Flag; ///< The underlying atomic flag that stores the state
+	    std::atomic_flag m_Flag; // The underlying atomic flag that stores the state
 	};
 
 }

@@ -230,25 +230,22 @@ namespace SceneryEditorX
 
         /**
          * @brief Gets the tag details for a specific tag.
-         *
          * @return The tag details for the specified tag.
          */
         static std::map<std::string, TagDetails> &EnabledTags() { return EnabledTags_; }
 
-        /**
-         * @brief Sets the tag details for a specific tag.
-         */
+        /* @brief Sets the tag details for a specific tag. */
         static void SetDefaultTagSettings();
 
 	    // -----------------------------------------------------------
 
-#ifdef SEDX_PLATFORM_WINDOWS
+    #ifdef SEDX_PLATFORM_WINDOWS
         template <typename... Args>
         static void PrintMessage(Log::Type type, Log::Level level, std::format_string<Args...> format, Args &&...args);
-#else
+    #else
 		template<typename... Args>
 		static void PrintMessage(Log::Type type, Log::Level level, const std::string_view format, Args&&... args);
-#endif
+    #endif
 	    template <typename... Args>
 	    static void PrintMessageTag(Log::Type type, Log::Level level, std::string_view tag, std::format_string<Args...> format, Args &&...args);
 
@@ -270,11 +267,11 @@ namespace SceneryEditorX
 	    {
 	        switch (level)
 	        {
-	        case Level::Trace: return "Trace";
-	        case Level::Info: return "Info";
-	        case Level::Warn: return "Warn";
-	        case Level::Error: return "Error";
-	        case Level::Fatal: return "Fatal";
+				case Level::Trace: return "Trace";
+				case Level::Info: return "Info";
+				case Level::Warn: return "Warn";
+				case Level::Error: return "Error";
+				case Level::Fatal: return "Fatal";
 	        }
 	        return "";
 	    }

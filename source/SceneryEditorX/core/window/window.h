@@ -90,6 +90,7 @@ namespace SceneryEditorX
 	    static void SetEventCallback(const EventCallbackFn &callback);
 
 	    static void Maximize();
+        static bool IsVisible();
         static bool IsMaximized();
 		static void Minimize();
         static void Show();
