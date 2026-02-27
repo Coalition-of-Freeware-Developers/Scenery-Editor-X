@@ -78,6 +78,20 @@ namespace SceneryEditorX
 	    {"Timer",					TagDetails{.enabled = false,.levelFilter = Level::Trace}},
 	};
 
+    static std::string LevelToString(const Log::Level lvl)
+    {
+        switch (lvl)
+        {
+			case Log::Level::Trace:	return "Trace";
+			case Log::Level::Info:	return "Info";
+			case Log::Level::Warn:	return "Warn";
+			case Log::Level::Error:	return "Error";
+			case Log::Level::Fatal:	return "Fatal";
+            default:
+                return "Unknown";
+        }
+    }
+
 	/**
 	 * @brief Initializes the logging system with console and file sinks.
 	 *
@@ -90,7 +104,6 @@ namespace SceneryEditorX
 	{
 	    try
 	    {
-
             // Check if loggers already exist and drop them
             if (spdlog::get("SceneryEditorX-Core"))
             {
@@ -171,10 +184,6 @@ namespace SceneryEditorX
 	        SetDefaultTagSettings();
 	        SetGlobalLevel(m_InitialLevel); // Ensure the default global filter is Info (prevents trace spam)
 
-	        /*
-	         * SetGlobalLevel(Level::Info);
-             */
-
 	        m_CoreLogger->info("Log system initialized successfully");
 	        m_CoreLogger->flush();
 	    }
@@ -227,7 +236,9 @@ namespace SceneryEditorX
             };
             if (m_CoreLogger)
             {
+				m_CoreLogger->info("============================================");
                 m_CoreLogger->info("Verbose logging enabled (Trace)");
+                m_CoreLogger->info("============================================");
             }
         }
         else
@@ -246,7 +257,43 @@ namespace SceneryEditorX
         }
     }
 
-	void Log::LogVulkanDebug(const std::string &message)
+	spdlog::level::level_enum Log::GetGlobalLogLevel()
+	{
+	    // Prefer Core logger as the canonical global logger. Fall back to other loggers.
+	    if (m_CoreLogger)
+	        return m_CoreLogger->level();
+	    /*
+	    if (m_EditorLogger)
+	        return m_EditorLogger->level();
+	    if (m_ConsoleLogger)
+	        return m_ConsoleLogger->level();
+	    if (m_LauncherLogger)
+	        return m_LauncherLogger->level();
+	        */
+	
+	    // No loggers yet — return sensible default.
+	    return spdlog::level::info;
+	}
+
+    Log::Level Log::GetTagLevel(const std::string &tag)
+    {
+        // Look for explicit tag entry
+        if (auto it = m_EnabledTags.find(tag); it != m_EnabledTags.end())
+        {
+            return it->second.levelFilter;
+        }
+
+        // Fallback to default/global tag entry (empty string)
+        if (auto it = m_EnabledTags.find(""); it != m_EnabledTags.end())
+        {
+            return it->second.levelFilter;
+        }
+
+        // As a last resort return Info
+        return Level::Info;
+    }
+
+    void Log::LogVulkanDebug(const std::string &message)
 	{
 	    if (m_CoreLogger)
 	    {
@@ -383,7 +430,7 @@ namespace SceneryEditorX
 		SEDX_CORE_INFO("Build Date: {}", __DATE__);
 		SEDX_CORE_INFO("Build Time: {}", __TIME__);
 		SEDX_CORE_INFO("Coalition of Freeware Developers");
-		SEDX_CORE_INFO("Copyright (C) 2025");
+		SEDX_CORE_INFO("Copyright (C) 2026");
 		SEDX_CORE_INFO("============================================");
 		SEDX_CORE_INFO("============================================");
 	}

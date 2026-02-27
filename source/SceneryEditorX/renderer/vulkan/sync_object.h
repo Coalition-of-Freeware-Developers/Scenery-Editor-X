@@ -45,8 +45,8 @@ namespace SceneryEditorX
         virtual void CreateSyncObject() = 0;
         virtual ~SyncObject() = default;
 
-		virtual void Wait(const uint64_t timeout) = 0;
-        virtual bool IsSignaled() = 0;
+		virtual void Wait(const uint64_t timeout) { (void)timeout; }
+        virtual bool IsSignaled() { return false; }
         virtual void Destroy() = 0;
 
 	protected:

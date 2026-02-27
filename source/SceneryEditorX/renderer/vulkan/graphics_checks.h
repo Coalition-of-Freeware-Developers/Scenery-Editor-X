@@ -101,8 +101,8 @@ namespace SceneryEditorX
 	    static bool CheckAPIVersion(uint32_t minVulkanVersion);
 	    static bool CheckValidationLayerSupport();
 
-	    void CheckLayers(const std::vector<const char *> &layers);
-	    void CheckExtensions(const std::vector<const char *> &extensions);
+        static void CheckLayers(const std::vector<const char *> &layers);
+        static void CheckExtensions(const std::vector<const char *> &extensions);
 	
 	    bool portabilityEnumEnabled = false;
 	};

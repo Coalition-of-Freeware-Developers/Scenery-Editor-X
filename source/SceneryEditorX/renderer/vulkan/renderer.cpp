@@ -30,6 +30,7 @@
  */
 #include "renderer.h"
 #include "asset_manager.h"
+#include "graphics_debug.h"
 #include "swapchain.h"
 #include "uniform_buffer_set.h"
 #include "SceneryEditorX/core/application/application.h"
@@ -88,6 +89,16 @@ namespace SceneryEditorX
     static bool s_OrthoProjection_Dirty = true;
     //static Scope<UniformBufferSet> s_UniformBuffers = nullptr;
     static VkSurfaceCapabilitiesKHR s_SurfaceCaps = {};
+
+    static std::vector<Ref<Fence>> s_FenceRefs;
+    static std::vector<VkFence> s_FenceHandles;
+
+    static std::vector<Ref<Semaphore>> s_PresentSemaphoreRefs;
+    static std::vector<VkSemaphore> s_PresentSemaphoreHandles;
+
+    static std::vector<Ref<Semaphore>> s_RenderSemaphoreRefs;
+    static std::vector<VkSemaphore> s_RenderSemaphoreHandles;
+
 
     // -------------------------------------------------------
     // Lifecycle Methods
@@ -214,9 +225,10 @@ namespace SceneryEditorX
         RenderContext::Get()->renderables = &renderables;
         //RenderContext::Get()->s_ShaderDataBuffers = s_UniformBuffers ? &s_UniformBuffers->Buffers() : nullptr;
         RenderContext::Get()->s_CommandBuffers = &s_CommandBuffers;
-        RenderContext::Get()->s_Fences = s_FrameSync ? &s_FrameSync->Fences() : nullptr;
-        RenderContext::Get()->s_PresentSemaphores = s_FrameSync ? &s_FrameSync->PresentSemaphores() : nullptr;
-        RenderContext::Get()->s_RenderSemaphores = s_FrameSync ? &s_FrameSync->RenderSemaphores() : nullptr;
+        // Provide pointers to the internal handle vectors so other subsystems can read them (null-safe)
+        RenderContext::Get()->s_Fences = s_FenceHandles.empty() ? nullptr : &s_FenceHandles;
+        RenderContext::Get()->s_PresentSemaphores = s_PresentSemaphoreHandles.empty() ? nullptr : &s_PresentSemaphoreHandles;
+        RenderContext::Get()->s_RenderSemaphores = s_RenderSemaphoreHandles.empty() ? nullptr : &s_RenderSemaphoreHandles;
         RenderContext::Get()->s_SurfaceCaps = &s_SurfaceCaps;
 
         s_ResourcesInitialized = true;
@@ -298,20 +310,96 @@ namespace SceneryEditorX
             SEDX_CORE_WARN_TAG("Renderer", "Swapchain not ready - using default image count: {}", swapchainImageCount);
         }
 
-        s_FrameSync = CreateScope<FrameSync>(MAX_FRAMES_IN_FLIGHT, swapchainImageCount);
-        SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})", s_FrameSync->Fences().size(), s_FrameSync->PresentSemaphores().size(), s_FrameSync->RenderSemaphores().size());
+        // Create per-frame fences and semaphores and keep wrapper refs alive.
+        s_FenceRefs.clear();
+        s_FenceHandles.clear();
+        s_PresentSemaphoreRefs.clear();
+        s_PresentSemaphoreHandles.clear();
+        s_RenderSemaphoreRefs.clear();
+        s_RenderSemaphoreHandles.clear();
+
+        // Create fences (one per frame in flight)
+        s_FenceRefs.reserve(MAX_FRAMES_IN_FLIGHT);
+        s_FenceHandles.reserve(MAX_FRAMES_IN_FLIGHT);
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            Ref<Fence> fence = CreateRef<Fence>();
+            fence->CreateSyncObject();
+            s_FenceRefs.push_back(fence);
+            s_FenceHandles.push_back(fence->GetFence());
+            Debugging::SetResourceName(fence.Get()->GetFence(), ResourceType::Fence, "FrameFence");
+        }
+
+        // Create present semaphores (one per frame in flight)
+        s_PresentSemaphoreRefs.reserve(MAX_FRAMES_IN_FLIGHT);
+        s_PresentSemaphoreHandles.reserve(MAX_FRAMES_IN_FLIGHT);
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            Ref<Semaphore> sem = CreateRef<Semaphore>();
+            sem->CreateSyncObject();
+            s_PresentSemaphoreRefs.push_back(sem);
+            s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
+            Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "PresentSemaphore");
+        }
+
+        // Create render semaphores (one per swapchain image)
+        s_RenderSemaphoreRefs.reserve(swapchainImageCount);
+        s_RenderSemaphoreHandles.reserve(swapchainImageCount);
+        for (uint32_t i = 0; i < swapchainImageCount; ++i)
+        {
+            Ref<Semaphore> sem = CreateRef<Semaphore>();
+            sem->CreateSyncObject();
+            s_RenderSemaphoreRefs.push_back(sem);
+            s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
+            Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
+        }
+
+        s_FrameSync = CreateScope<FrameSync>(SyncType::Fence); // keep a simple FrameSync in case other systems expect it
+        SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})",
+            static_cast<uint32_t>(s_FenceHandles.size()),
+            static_cast<uint32_t>(s_PresentSemaphoreHandles.size()),
+            static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
+
+        s_FrameSync->SetUserCmdList(nullptr);
     }
 
     void Renderer::DestroyFrameResources()
     {
         SEDX_CORE_TRACE_TAG("Renderer", "Destroying frame resources");
 
-        // Destroy sync objects
-        if (s_FrameSync)
+        // Destroy semaphores and fences through wrapper Destroy() so they get scheduled for deletion properly.
+        for (auto &semRef : s_PresentSemaphoreRefs)
         {
-            s_FrameSync->Destroy();
-            s_FrameSync.reset();
+            if (semRef)
+            {
+                semRef->Destroy();
+                semRef.Reset();
+            }
         }
+        s_PresentSemaphoreHandles.clear();
+        s_PresentSemaphoreRefs.clear();
+
+        for (auto &semRef : s_RenderSemaphoreRefs)
+        {
+            if (semRef)
+            {
+                semRef->Destroy();
+                semRef.Reset();
+            }
+        }
+        s_RenderSemaphoreHandles.clear();
+        s_RenderSemaphoreRefs.clear();
+
+        for (auto &fRef : s_FenceRefs)
+        {
+            if (fRef)
+            {
+                fRef->Destroy();
+                fRef.Reset();
+            }
+        }
+        s_FenceHandles.clear();
+        s_FenceRefs.clear();
 
         // Command buffers are freed when command pool is destroyed
         s_CommandBuffers.fill(VK_NULL_HANDLE);
@@ -322,6 +410,9 @@ namespace SceneryEditorX
             s_CommandPool->Destroy();
             s_CommandPool.reset();
         }
+
+        // Reset simple FrameSync wrapper
+        s_FrameSync.reset();
 
         SEDX_CORE_TRACE_TAG("Renderer", " Frame resources destroyed");
     }
@@ -383,28 +474,30 @@ namespace SceneryEditorX
         }
 
         // Wait for the fence of the current frame-in-flight BEFORE acquiring the image
-        auto &fences = s_FrameSync->Fences();
-        if (s_CurrentFrameIndex < fences.size() && fences[s_CurrentFrameIndex] != VK_NULL_HANDLE)
+        if (!s_FenceHandles.empty())
         {
-            VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
-            vkWaitForFences(device, 1, &fences[s_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
-            vkResetFences(device, 1, &fences[s_CurrentFrameIndex]);
+            if (s_CurrentFrameIndex < s_FenceHandles.size() && s_FenceHandles[s_CurrentFrameIndex] != VK_NULL_HANDLE)
+            {
+                VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+                vkWaitForFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
+                vkResetFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex]);
+            }
         }
 
-        // Acquire next swapchain image with the present semaphore for synchronization
-        auto &presentSemaphores = s_FrameSync->PresentSemaphores();
-        VkSemaphore acquireSemaphore = (s_CurrentFrameIndex < presentSemaphores.size()) ? presentSemaphores[s_CurrentFrameIndex] : VK_NULL_HANDLE;
-
-        if (!s_Swapchain->AcquireNextImage(acquireSemaphore))
+        // Validate the acquired image index to detect acquisition failure (AcquireNextImage is void)
         {
-            // Acquisition failed (minimized, out-of-date handled internally)
-            return false;
+            uint32_t acquiredIndex = s_Swapchain->GetImageIndex();
+            if (acquiredIndex >= s_Swapchain->Images().size())
+            {
+                // Acquisition failed (minimized, out-of-date handled internally)
+                SEDX_CORE_WARN_TAG("Renderer", "AcquireNextImage failed or returned invalid index: {}", acquiredIndex);
+                return false;
+            }
+            s_SwapchainImageIndex = acquiredIndex;
         }
-        s_SwapchainImageIndex = s_Swapchain->GetImageIndex();
 
         // Begin command buffer recording
-        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
-        if (cb != VK_NULL_HANDLE)
+        if (VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex]; cb != VK_NULL_HANDLE)
         {
             vkResetCommandBuffer(cb, 0);
 
@@ -471,24 +564,14 @@ namespace SceneryEditorX
     void Renderer::SubmitAndPresent()
     {
         VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
-        if (cb == VK_NULL_HANDLE || !s_FrameSync)
+        if (cb == VK_NULL_HANDLE)
         {
             return;
         }
 
-        auto& fences = s_FrameSync->Fences();
-        auto& presentSemaphores = s_FrameSync->PresentSemaphores();
-        auto& renderSemaphores = s_FrameSync->RenderSemaphores();
-
-        if (renderSemaphores.empty())
+        if (s_PresentSemaphoreHandles.empty() || s_RenderSemaphoreHandles.empty() || s_FenceHandles.empty())
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "Cannot submit - renderSemaphores vector is empty. Swapchain may not be initialized.");
-            return;
-        }
-
-        if (s_SwapchainImageIndex >= renderSemaphores.size())
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain image index {} out of bounds (renderSemaphores size: {})", s_SwapchainImageIndex, renderSemaphores.size());
+            SEDX_CORE_ERROR_TAG("Renderer", "Cannot submit - synchronization primitives not created or empty.");
             return;
         }
 
@@ -521,17 +604,29 @@ namespace SceneryEditorX
         // Submit command buffer
         VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
+        // Ensure indices are valid
+        if (s_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Current frame index {} out of bounds for present semaphores (size {})", s_CurrentFrameIndex, s_PresentSemaphoreHandles.size());
+            return;
+        }
+        if (s_SwapchainImageIndex >= s_RenderSemaphoreHandles.size())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain image index {} out of bounds for render semaphores (size {})", s_SwapchainImageIndex, s_RenderSemaphoreHandles.size());
+            return;
+        }
+
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &presentSemaphores[s_CurrentFrameIndex];
+        submitInfo.pWaitSemaphores = &s_PresentSemaphoreHandles[s_CurrentFrameIndex];
         submitInfo.pWaitDstStageMask = &waitStages;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cb;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &renderSemaphores[s_SwapchainImageIndex];
+        submitInfo.pSignalSemaphores = &s_RenderSemaphoreHandles[s_SwapchainImageIndex];
 
-        VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, fences[s_CurrentFrameIndex]);
+        VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, s_FenceHandles[s_CurrentFrameIndex]);
 		SEDX_VK_RESULT_ASSERT(submitResult, "vkQueueSubmit failed");
 
         // Present the rendered image
@@ -539,7 +634,7 @@ namespace SceneryEditorX
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &renderSemaphores[s_SwapchainImageIndex];
+        presentInfo.pWaitSemaphores = &s_RenderSemaphoreHandles[s_SwapchainImageIndex];
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &swapchainHandle;
         presentInfo.pImageIndices = &s_SwapchainImageIndex;

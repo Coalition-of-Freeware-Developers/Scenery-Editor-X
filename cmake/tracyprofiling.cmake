@@ -63,7 +63,7 @@ IF(TRACY_ENABLE)
 		ADD_COMPILE_DEFINITIONS(
 			SEDX_TRACY_GPU
 			TRACY_VK_USE_SYMBOL_TABLE
-		)
+			)
 	ENDIF()
 
 	# --------------------------------

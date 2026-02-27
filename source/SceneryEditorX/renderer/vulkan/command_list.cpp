@@ -52,7 +52,7 @@ namespace SceneryEditorX
 	{
 	}
 	
-	void CommandList::Submit(Sync *semaphoreWait, const bool isImmediate, Sync *semaphoreSignal)
+	void CommandList::Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal)
 	{
 	}
 	

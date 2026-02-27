@@ -503,9 +503,9 @@ namespace SceneryEditorX
 			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		};
 
-		VmaAllocationCreateInfo allocCI{
-		    .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-		    .usage = VMA_MEMORY_USAGE_AUTO };
+		VmaAllocationCreateInfo allocCI{};
+        allocCI.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+		allocCI.usage = VMA_MEMORY_USAGE_AUTO;
         SEDX_VK_RESULT_ASSERT(vmaCreateImage(allocator, &depthImageCI, &allocCI, &newDepthImage, &newDepthAlloc, nullptr), "Failed to create depth image")
 
 		VkImageViewCreateInfo depthViewCI{};
@@ -518,8 +518,10 @@ namespace SceneryEditorX
 		depthViewCI.subresourceRange.layerCount = 1;
 		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &depthViewCI, nullptr, &newDepthView), "Failed to create depth image view")
 	
-		// At this point the new swapchain and its images/views/depth exist. Now
-		// we can safely destroy old resources (if any) and update our members.
+		/**
+		 * At this point the new swapchain and its images/views/depth exist. 
+		 * Now we can safely destroy old resources (if any) and update our members.
+		 */
 		if (oldSwap != VK_NULL_HANDLE)
 		{
 			// Destroy old image views

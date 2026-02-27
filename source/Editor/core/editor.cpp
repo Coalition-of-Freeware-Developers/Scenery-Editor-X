@@ -589,7 +589,7 @@ namespace SceneryEditorX
 		    */
 
 		    // Example: --run-task=name  -> you could dispatch internal tasks or tests
-            constexpr std::string taskPrefix = "--run-task=";
+            constexpr std::string_view taskPrefix = "--run-task=";
 		    if (arg.starts_with(taskPrefix))
 		    {
 		        std::string taskName = arg.substr(taskPrefix.size());

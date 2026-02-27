@@ -65,12 +65,10 @@
     #define SEDX_PROFILE_FUNC_COLOR(color)		ZoneScopedC(color)
     #define SEDX_PROFILE_FRAME(name)			FrameMarkNamed(name)
     #define SEDX_PROFILE_THREAD(name)			SetThreadName(name)
-    #define SEDX_PROFILE_ZONE(name, color)						\
-    {															\
+    #define SEDX_PROFILE_ZONE(name, color) {					\
 		ZoneName(name, strlen(name));							\
-		ZoneScopedC(color);
-        #define SEDX_PROFILE_ZONE_END()
-    }
+		ZoneScopedC(color);										
+    #define SEDX_PROFILE_ZONE_END() }
 
 #else
 	#define SEDX_PROFILER_FUNC()

@@ -47,7 +47,6 @@ namespace SceneryEditorX
         Semaphore();
         virtual ~Semaphore() override;
 
-
         void CreateSyncObject() override;
         void Wait(const uint64_t timeout) override;
         static void Signal(const uint64_t value, const VkSemaphore &semaphore);
@@ -57,8 +56,9 @@ namespace SceneryEditorX
         static uint64_t GetValue(const VkSemaphore &semaphore);
         [[nodiscard]] VkSemaphore GetSemaphore() const { return m_Semaphore; }
     private:
-        VkSemaphore m_Semaphore = VK_NULL_HANDLE;
+		uint64_t m_Value = 0;
         SyncType m_Type = SyncType::Semaphore;
+        VkSemaphore m_Semaphore = VK_NULL_HANDLE;
     };
 
 }

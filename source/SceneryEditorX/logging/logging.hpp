@@ -162,17 +162,6 @@ namespace SceneryEditorX
 		 */
 	    static void LogVulkanDebug(const std::string &message);
 
-        /**
-         * @fn LogVulkanDebug
-         * @brief Logs a Vulkan result with the specified operation.
-         *
-         * This function logs a Vulkan result with the specified operation to the console and the log file.
-         *
-         * @param result The Vulkan result to log.
-         * @param operation The operation that was performed.
-         */
-        static void LogVulkanResult(VkResult result, const std::string &operation);
-
 	    /**
 		 * @brief Gets the logger instance.
 		 * @return A shared pointer to the logger instance.
@@ -244,6 +233,12 @@ namespace SceneryEditorX
         static void SetGlobalLevel(Level level);
 
         /**
+         * @brief Gets the global spdlog log level.
+         * @return The global spdlog log level.
+         */
+        static spdlog::level::level_enum GetGlobalLogLevel();
+
+        /**
 		 * @brief Sets the initial log level.
 		 * @param level The initial log level to set.
 		 */
@@ -254,6 +249,13 @@ namespace SceneryEditorX
 		 * @return The initial log level.
 		 */
 		static Level GetInitialLevel() { return m_InitialLevel; }
+
+        /** 
+		 * @brief Get the log level filter for a specific tag.
+		 * @param tag Tag name (empty string = default/global tag)
+		 * @return The configured Level for the tag or the default level if not configured.
+		 */
+		static Level GetTagLevel(const std::string &tag);
 
         // -----------------------------------------------------------
 

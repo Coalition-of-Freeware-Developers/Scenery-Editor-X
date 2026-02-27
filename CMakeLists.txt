@@ -78,7 +78,7 @@ OPTION(SEDX_VERBOSE_LOGGING			 	"Enable verbose logging of Scenery Editor X" ON)
 OPTION(SEDX_USE_FETCHCONTENT_XMATH    	"Fetch xMath via FetchContent" ON)
 OPTION(SEDX_USE_FETCHCONTENT_EDX      	"Fetch edX via FetchContent" ON)
 OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchContent" ON)
-OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
+#OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
 OPTION(TRACY_ENABLE 					"Enable Tracy profiler" ON)
 OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
 #OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
@@ -87,27 +87,28 @@ OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
 SET(XMATH_BUILD_TESTS OFF CACHE BOOL "Build xMath tests" FORCE)
 SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
 
-# ###########################################
-# Tracy Profiler (optional)
-# ###########################################
-IF(TRACY_ENABLE AND OR SEDX_PROFILING_ENABLED)
-	INCLUDE(cmake/tracyprofiling.cmake)
-
-	IF(DEFINED tracy_SOURCE_DIR) # Add Tracy public include dir to all main targets if tracy is available
-        MESSAGE(STATUS "Adding Tracy public include dir: ${tracy_SOURCE_DIR}/public")
-        FOREACH(_tracy_target SceneryEditorX Launcher Editor CrashHandler)
-            IF(TARGET ${_tracy_target})
-                TARGET_INCLUDE_DIRECTORIES(${_tracy_target} PRIVATE ${tracy_SOURCE_DIR}/public)
-            ENDIF()
-        ENDFOREACH()
-    ENDIF()
-ENDIF()
-
 ############################################
 # Doxygen (optional)
 ############################################
 IF(SEDX_ENABLE_DOXYGEN)
     INCLUDE(cmake/doxygen.cmake)
+ENDIF()
+
+# ###########################################
+# Tracy Profiler (optional)
+# ###########################################
+IF(TRACY_ENABLE)
+	INCLUDE(cmake/tracyprofiling.cmake)
+
+	IF(DEFINED tracy_SOURCE_DIR) # Add Tracy public include dir to all main targets if tracy is available
+		MESSAGE(STATUS "Adding Tracy public include dir: ${tracy_SOURCE_DIR}/public")
+
+		FOREACH(_tracy_target SceneryEditorX Launcher Editor CrashHandler)
+			IF(TARGET ${_tracy_target})
+				TARGET_INCLUDE_DIRECTORIES(${_tracy_target} PRIVATE ${tracy_SOURCE_DIR}/public)
+			ENDIF()
+		ENDFOREACH()
+	ENDIF()
 ENDIF()
 
 ############################################
@@ -485,7 +486,7 @@ SEDX_APPLY_OUTPUT_DIRS(${LIBS_DIR} ${BIN_DIR})
 # If the CMake option SEDX_VERBOSE_LOGGING is enabled and the build config is Debug,
 # pass the `--verbose` CLI flag to the debugger so developers get verbose logging
 # automatically when launching from the IDE.
-FOREACH(_sedx_dbg_target SceneryEditorX Launcher AppCore CrashHandler)
+FOREACH(_sedx_dbg_target SceneryEditorX Launcher CrashHandler)
     IF(TARGET ${_sedx_dbg_target})
         # Only add --verbose when building Debug and SEDX_VERBOSE_LOGGING is true
         SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>" )

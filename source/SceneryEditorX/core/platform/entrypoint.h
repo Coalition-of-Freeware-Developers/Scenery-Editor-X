@@ -66,7 +66,7 @@ namespace SceneryEditorX
 
         while (appRunning)
 		{
-            InitCore();
+            InitCore(context);
             Application* app = CreateApplication(context);
             SEDX_CORE_ASSERT(app != nullptr, "Failed to create application");
             app->Run();
