@@ -44,7 +44,7 @@ namespace SceneryEditorX
      * @param wstr The wide string to convert
      * @return The converted standard UTF8 string
      */
-	inline std::string WstrToStr(const std::wstring &wstr)
+    static std::string WstrToStr(const std::wstring &wstr)
 	{
 	    if (wstr.empty())
 	    {
@@ -59,14 +59,14 @@ namespace SceneryEditorX
 	
 	    return str;
 	}
-	
-	inline const std::string GetTempDir()
-	{
+
+    static std::string GetTempDir()
+    {
 	    std::string tempPath = "temp/";
 	
 	    WCHAR tempBuffer[MAX_PATH];
-	    DWORD temp_path_ret = GetTempPathW(MAX_PATH, tempBuffer);
-	    if (temp_path_ret > MAX_PATH || temp_path_ret == 0)
+	    DWORD tempPathRet = GetTempPathW(MAX_PATH, tempBuffer);
+	    if (tempPathRet > MAX_PATH || tempPathRet == 0)
 	    {
 	        tempPath = "temp/";
 	    }
@@ -77,8 +77,8 @@ namespace SceneryEditorX
 	
 	    return tempPath;
 	}
-	
-	inline std::vector<std::string> GetArgs()
+
+    static std::vector<std::string> GetArgs()
 	{
 	    int argc;
 	    LPWSTR *argv = CommandLineToArgvW(GetCommandLineW(), &argc);

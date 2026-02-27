@@ -29,12 +29,13 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "platform_context.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	void InitCore();
+	void InitCore(const PlatformContext& ctx);
 	void Shutdown();
 }
 

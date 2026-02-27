@@ -46,16 +46,16 @@ namespace SceneryEditorX
 	/**
 	 * @brief Static member to hold the logger instance.
 	 */
-	std::shared_ptr<spdlog::logger> Log::CoreLogger;
-	std::shared_ptr<spdlog::logger> Log::EditorLogger;
-	std::shared_ptr<spdlog::logger> Log::EditorConsoleLogger;
-    std::shared_ptr<spdlog::logger> Log::LauncherLogger;
+	std::shared_ptr<spdlog::logger> Log::m_CoreLogger;
+	std::shared_ptr<spdlog::logger> Log::m_EditorLogger;
+	std::shared_ptr<spdlog::logger> Log::m_ConsoleLogger;
+    std::shared_ptr<spdlog::logger> Log::m_LauncherLogger;
 
 
 	/**
 	 * @brief Static member to hold the enabled tags.
 	 */
-	std::map<std::string, Log::TagDetails> Log::DefaultTagDetails_ =
+	std::map<std::string, Log::TagDetails> Log::m_DefaultTagDetails =
 	{
 	    {"Animation",			    TagDetails{.enabled = true,.levelFilter = Level::Warn}},
 	    {"Asset Pack",			TagDetails{.enabled = true,.levelFilter = Level::Warn}},
@@ -90,15 +90,22 @@ namespace SceneryEditorX
 	{
 	    try
 	    {
-            /// Check if loggers already exist and drop them
+
+            // Check if loggers already exist and drop them
             if (spdlog::get("SceneryEditorX-Core"))
+            {
                 spdlog::drop("SceneryEditorX-Core");
+            }
             if (spdlog::get("SceneryEditorX-Editor"))
+            {
                 spdlog::drop("SceneryEditorX-Editor");
+            }
             //if (spdlog::get("VulkanDebug"))
             //    spdlog::drop("VulkanDebug");
             if (spdlog::get("Launcher"))
+            {
                 spdlog::drop("Launcher");
+            }
 
 	        // -------------------------------------------------------
 
@@ -120,88 +127,149 @@ namespace SceneryEditorX
 
 	        // -------------------------------------------------------
 
-	        /// Pattern for console sinks
+	        // Pattern for console sinks
 	        coreSinks[1]->set_pattern("%^[%T] %n: %v%$");
 	        editorSinks[0]->set_pattern("%^[%T] %n: %v%$");
             launcherSinks[1]->set_pattern("%^[%T] %n: %v%$");
 
 			// -------------------------------------------------------
 
-	        /// Pattern for file sinks - note the correct indices
+	        // Pattern for file sinks - note the correct indices
 	        coreSinks[0]->set_pattern("[%T] [%l] %n: %v");
 	        editorSinks[1]->set_pattern("[%T] [%l] %n: %v");
             for (const auto &sink : editorConsoleSinks)
+            {
                 sink->set_pattern("%^%v%$");
+            }
             launcherSinks[1]->set_pattern("[%T] [%l] %n: %v");
-
 
 	        // -------------------------------------------------------
 
-	        CoreLogger = std::make_shared<spdlog::logger>("Core", coreSinks.begin(), coreSinks.end());
-	        CoreLogger->set_level(spdlog::level::trace);
-	        CoreLogger->flush_on(spdlog::level::info); /// Flush on info level and above
+	        m_CoreLogger = std::make_shared<spdlog::logger>("Core", coreSinks.begin(), coreSinks.end());
+	        m_CoreLogger->set_level(spdlog::level::trace);
+	        m_CoreLogger->flush_on(spdlog::level::info); // Flush on info level and above
 
-	        EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
-	        EditorLogger->set_level(spdlog::level::trace);
-	        EditorLogger->flush_on(spdlog::level::info); /// Flush on info level and above
+	        m_EditorLogger = std::make_shared<spdlog::logger>("SceneryEditorX", editorSinks.begin(), editorSinks.end());
+	        m_EditorLogger->set_level(spdlog::level::trace);
+	        m_EditorLogger->flush_on(spdlog::level::info); // Flush on info level and above
 
-	        EditorConsoleLogger = std::make_shared<spdlog::logger>("Vulkan", editorConsoleSinks.begin(), editorConsoleSinks.end());
-	        EditorConsoleLogger->set_level(spdlog::level::trace);
-	        EditorConsoleLogger->flush_on(spdlog::level::info); /// Flush on info level and above
+	        m_ConsoleLogger = std::make_shared<spdlog::logger>("Vulkan", editorConsoleSinks.begin(), editorConsoleSinks.end());
+	        m_ConsoleLogger->set_level(spdlog::level::trace);
+	        m_ConsoleLogger->flush_on(spdlog::level::info); // Flush on info level and above
 
-			LauncherLogger = std::make_shared<spdlog::logger>("Launcher", launcherSinks.begin(), launcherSinks.end());
-            LauncherLogger->set_level(spdlog::level::trace);
-            LauncherLogger->flush_on(spdlog::level::info); /// Flush on info level and above
+			m_LauncherLogger = std::make_shared<spdlog::logger>("Launcher", launcherSinks.begin(), launcherSinks.end());
+            m_LauncherLogger->set_level(spdlog::level::trace);
+            m_LauncherLogger->flush_on(spdlog::level::info); // Flush on info level and above
 
 			// -------------------------------------------------------
 
-	        /// Register loggers with spdlog
-	        spdlog::register_logger(CoreLogger);
-	        spdlog::register_logger(EditorLogger);
-	        spdlog::register_logger(EditorConsoleLogger);
-			spdlog::register_logger(LauncherLogger);
+	        // Register loggers with spdlog
+	        spdlog::register_logger(m_CoreLogger);
+	        spdlog::register_logger(m_EditorLogger);
+	        spdlog::register_logger(m_ConsoleLogger);
+			spdlog::register_logger(m_LauncherLogger);
 	        SetDefaultTagSettings();
+	        SetGlobalLevel(m_InitialLevel); // Ensure the default global filter is Info (prevents trace spam)
 
-	        CoreLogger->info("Log system initialized successfully");
-	        CoreLogger->flush();
+	        /*
+	         * SetGlobalLevel(Level::Info);
+             */
+
+	        m_CoreLogger->info("Log system initialized successfully");
+	        m_CoreLogger->flush();
 	    }
 	    catch (const spdlog::spdlog_ex& ex)
 	    {
 	        std::cerr << "Log initialization failed: " << ex.what() << '\n';
 	    }
 
-	    // -------------------------------------------------------
 	}
 
 	void Log::SetDefaultTagSettings()
     {
-        EnabledTags_ = DefaultTagDetails_;
+        m_EnabledTags = m_DefaultTagDetails;
+        // ensure default tag entry exists and defaults to Info
+        m_EnabledTags[""] = TagDetails{
+            .enabled = true, 
+            .levelFilter = Level::Info
+        };
+    }
+
+    void Log::SetGlobalLevel(const Level level)
+    {
+        // Map Log::Level to spdlog level
+        spdlog::level::level_enum spdLevel = spdlog::level::info;
+        switch (level)
+        {
+            case Level::Trace: spdLevel = spdlog::level::trace; break;
+            case Level::Info:  spdLevel = spdlog::level::info;  break;
+            case Level::Warn:  spdLevel = spdlog::level::warn;  break;
+            case Level::Error: spdLevel = spdlog::level::err;   break;
+            case Level::Fatal: spdLevel = spdlog::level::critical; break;
+        }
+
+        if (m_CoreLogger) m_CoreLogger->set_level(spdLevel);
+        if (m_EditorLogger) m_EditorLogger->set_level(spdLevel);
+        if (m_ConsoleLogger) m_ConsoleLogger->set_level(spdLevel);
+        if (m_LauncherLogger) m_LauncherLogger->set_level(spdLevel);
+
+        // If enabling trace, lower tag filters so trace messages appear for all tags.
+        if (level == Level::Trace)
+        {
+            // Lower existing tag filters to Trace so verbose messages can pass tag checks.
+            for (auto &kv : m_EnabledTags)
+            {
+                kv.second.levelFilter = Level::Trace;
+            }
+            m_EnabledTags[""] = TagDetails{
+                .enabled = true, 
+                .levelFilter = Level::Trace
+            };
+            if (m_CoreLogger)
+            {
+                m_CoreLogger->info("Verbose logging enabled (Trace)");
+            }
+        }
+        else
+        {
+            // Restore default per-tag filters from DefaultTagDetails_.
+            m_EnabledTags = m_DefaultTagDetails;
+            // ensure default tag entry exists with the requested base level
+            m_EnabledTags[""] = TagDetails{
+                .enabled = true, 
+                .levelFilter = level
+            };
+            if (m_CoreLogger)
+            {
+                m_CoreLogger->info("Log level set to {}", LevelToString(level));
+            }
+        }
     }
 
 	void Log::LogVulkanDebug(const std::string &message)
 	{
-	    if (CoreLogger)
+	    if (m_CoreLogger)
 	    {
-	        /// Parse severity from the formatted message
+	        // Parse severity from the formatted message
 	        if (message.find("[ERROR]") != std::string::npos)
-                CoreLogger->error(message);
+                m_CoreLogger->error(message);
             else if (message.find("[WARNING]") != std::string::npos)
-                CoreLogger->warn(message);
+                m_CoreLogger->warn(message);
             else if (message.find("[INFO]") != std::string::npos)
-                CoreLogger->info(message);
+                m_CoreLogger->info(message);
             else if (message.find("[VERBOSE]") != std::string::npos)
-                CoreLogger->debug(message);
+                m_CoreLogger->debug(message);
             else if (message.find("error") != std::string::npos || message.find("ERROR") != std::string::npos)
-                CoreLogger->error(message);
+                m_CoreLogger->error(message);
             else if (message.find("warning") != std::string::npos || message.find("WARNING") != std::string::npos)
-                CoreLogger->warn(message);
+                m_CoreLogger->warn(message);
             else if (message.find("performance") != std::string::npos || message.find("PERFORMANCE") != std::string::npos)
-                CoreLogger->warn("PERFORMANCE: {}", message);
+                m_CoreLogger->warn("PERFORMANCE: {}", message);
             else
-                CoreLogger->trace(message);
+                m_CoreLogger->trace(message);
 
-            /// Always flush to ensure messages are written immediately
-	        CoreLogger->flush();
+            // Always flush to ensure messages are written immediately
+	        m_CoreLogger->flush();
 	    }
 	}
 
@@ -235,13 +303,12 @@ namespace SceneryEditorX
 	}
 	*/
 
-
     /**
      * @brief Get the name of the operating system.
      * @return The name of the operating system as a string.
      */
 	// TODO: This needs to be refactored to a more modern approach to detect OS and architecture.
-    [[nodiscard]] static constexpr std::string getOsName()
+    [[nodiscard]] static constexpr std::string GetOsName()
 	{
 	#ifdef _WIN32
 		return "Windows 32-bit";
@@ -264,7 +331,7 @@ namespace SceneryEditorX
 	{
         AppData stats;
 		// -------------------------------------------------------
-		/// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
+		// TODO: Refactor this code to use enum case values for the different processor architectures. (Example: x86, x64, ARM/ AMD, Intel i9)
 		SYSTEM_INFO sysInfo;
 		GetSystemInfo(&sysInfo);
 
@@ -274,7 +341,7 @@ namespace SceneryEditorX
 
 		// -------------------------------------------------------
 
-        /// TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
+        // TODO: Add enum case values for the different time zones to return. (Example: EST,GMT,DST)
         TIME_ZONE_INFORMATION timeZoneInfo;
         GetTimeZoneInformation(&timeZoneInfo);
         std::wstring timeZoneNameWide = timeZoneInfo.StandardName[0] != L'\0' ? timeZoneInfo.StandardName : timeZoneInfo.DaylightName;
@@ -293,7 +360,7 @@ namespace SceneryEditorX
 
 		SEDX_CORE_INFO("============================================");
 		SEDX_CORE_INFO("System Information");
-		SEDX_CORE_INFO("Operating System: {}", getOsName());
+		SEDX_CORE_INFO("Operating System: {}", GetOsName());
 		SEDX_CORE_INFO("{:02}:{:02}:{:02} {:02}/{:02}/{:04}",
 					 systemTime.wHour,
 					 systemTime.wMinute,
@@ -323,32 +390,32 @@ namespace SceneryEditorX
 
 	void Log::ShutDown()
 	{
-        if (CoreLogger)
+        if (m_CoreLogger)
         {
-            CoreLogger->flush();
-            spdlog::drop(CoreLogger->name()); // Explicitly drop by name
-            CoreLogger.reset();
+            m_CoreLogger->flush();
+            spdlog::drop(m_CoreLogger->name()); // Explicitly drop by name
+            m_CoreLogger.reset();
         }
 
-        if (EditorLogger)
+        if (m_EditorLogger)
         {
-            EditorLogger->flush();
-            spdlog::drop(EditorLogger->name()); // Explicitly drop by name
-            EditorLogger.reset();
+            m_EditorLogger->flush();
+            spdlog::drop(m_EditorLogger->name()); // Explicitly drop by name
+            m_EditorLogger.reset();
         }
 
-        if (EditorConsoleLogger)
+        if (m_ConsoleLogger)
         {
-            EditorConsoleLogger->flush();
-            spdlog::drop(EditorConsoleLogger->name()); // Explicitly drop by name
-            EditorConsoleLogger.reset();
+            m_ConsoleLogger->flush();
+            spdlog::drop(m_ConsoleLogger->name()); // Explicitly drop by name
+            m_ConsoleLogger.reset();
         }
 
-	    if (LauncherLogger)
+	    if (m_LauncherLogger)
         {
-            LauncherLogger->flush();
-            spdlog::drop(LauncherLogger->name()); // Explicitly drop by name
-            LauncherLogger.reset();
+            m_LauncherLogger->flush();
+            spdlog::drop(m_LauncherLogger->name()); // Explicitly drop by name
+            m_LauncherLogger.reset();
         }
 
 	    spdlog::drop_all(); // Drop all loggers
@@ -357,7 +424,8 @@ namespace SceneryEditorX
 
 	// -------------------------------------------------------
 
-	/// taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c
+    // ReSharper disable once CommentTypo
+    // taken from Sam Lantiga: https://www.libsdl.org/tmp/SDL/test/testvulkan.c
     [[maybe_unused]] const char *Log::VkErrorString(const VkResult result)
 	{
 		switch (static_cast<int>(result))
@@ -396,8 +464,6 @@ namespace SceneryEditorX
 
 		return "VK_<Unknown>";
 	}
-
-	// -------------------------------------------------------
 
 }
 

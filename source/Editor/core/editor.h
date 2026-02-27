@@ -102,6 +102,7 @@ namespace SceneryEditorX
         void SaveSceneAs();
 
     private:
+        static void ProcessClArgs();
         static void UpdateWindowTitle(const std::string &sceneName);
         void OnInit() override;
 

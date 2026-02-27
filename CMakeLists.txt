@@ -72,11 +72,13 @@ OPTION(SEDX_WITH_IMGUI_DEMO           	"Compile ImGui demo window" ON)
 OPTION(SEDX_USE_SYSTEM_SDL           	"Prefer system-provided sdl3 package" OFF)
 OPTION(SEDX_USE_SYSTEM_JSON           	"Prefer system-provided nlohmann_json package" OFF)
 OPTION(SEDX_USE_SYSTEM_ENTT           	"Prefer system-provided EnTT package" OFF)
+OPTION(SEDX_VERBOSE_LOGGING			 	"Enable verbose logging of Scenery Editor X" ON)
 #OPTION(SEDX_USE_SYSTEM_CATCH2         	"Prefer system-provided Catch2 package" OFF)
 #OPTION(SEDX_USE_SYSTEM_SPDLOG         	"Prefer system-provided spdlog package" ON)
 OPTION(SEDX_USE_FETCHCONTENT_XMATH    	"Fetch xMath via FetchContent" ON)
 OPTION(SEDX_USE_FETCHCONTENT_EDX      	"Fetch edX via FetchContent" ON)
 OPTION(SEDX_USE_FETCHCONTENT_XPLIB    	"Fetch X-PlaneSceneryLibrary via FetchContent" ON)
+OPTION(SEDX_PROFILING_ENABLED 			"Enable profiling features (Tracy, etc.)" ON)
 OPTION(TRACY_ENABLE 					"Enable Tracy profiler" ON)
 OPTION(SEDX_USE_FETCHCONTENT_TRACY    	"Fetch Tracy via FetchContent" ON)
 #OPTION(SEDX_ENABLE_MSDFGEN            	"Enable msdfgen usage" ON)
@@ -88,7 +90,7 @@ SET(XMATH_VENDOR_DEPS OFF CACHE BOOL "Vendor deps for xMath" FORCE)
 # ###########################################
 # Tracy Profiler (optional)
 # ###########################################
-IF(TRACY_ENABLE)
+IF(TRACY_ENABLE AND OR SEDX_PROFILING_ENABLED)
 	INCLUDE(cmake/tracyprofiling.cmake)
 
 	IF(DEFINED tracy_SOURCE_DIR) # Add Tracy public include dir to all main targets if tracy is available
@@ -475,6 +477,20 @@ SEDX_GROUP_TARGETS()
 ## Note: Avoid mixing target properties with global per-config variables to prevent
 ## paths like lib/Debug/Debug from occurring (especially with multi-config generators).
 SEDX_APPLY_OUTPUT_DIRS(${LIBS_DIR} ${BIN_DIR})
+
+############################################
+# Set Command Line Definitions
+############################################
+## Configure Visual Studio debugger to pass `--verbose` to our executables
+# If the CMake option SEDX_VERBOSE_LOGGING is enabled and the build config is Debug,
+# pass the `--verbose` CLI flag to the debugger so developers get verbose logging
+# automatically when launching from the IDE.
+FOREACH(_sedx_dbg_target SceneryEditorX Launcher AppCore CrashHandler)
+    IF(TARGET ${_sedx_dbg_target})
+        # Only add --verbose when building Debug and SEDX_VERBOSE_LOGGING is true
+        SET_TARGET_PROPERTIES(${_sedx_dbg_target} PROPERTIES VS_DEBUGGER_COMMAND_ARGUMENTS "$<$<AND:$<CONFIG:Debug>,$<BOOL:${SEDX_VERBOSE_LOGGING}>>:--verbose>" )
+    ENDIF()
+ENDFOREACH()
 
 # Ensure debugger working directory is set for startup target (after it exists)
 IF(TARGET SceneryEditorX)

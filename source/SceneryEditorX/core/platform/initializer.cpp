@@ -39,10 +39,33 @@
 
 namespace SceneryEditorX
 {
+	static void ApplyCliLoggingOptions(const std::vector<std::string>& args)
+	{
+	    // simple handling: --verbose or --verbose=<Level>
+	    for (const auto &arg : args)
+	    {
+	        if (arg == "--verbose")
+	        {
+	            Log::SetInitialLevel(Log::Level::Trace);
+	            return;
+	        }
+	        constexpr const char prefix[] = "--verbose=";
+	        if (arg.starts_with(prefix))
+	        {
+	            std::string val = arg.substr(sizeof(prefix)-1);
+	            Log::SetInitialLevel(Log::LevelFromString(val));
+	            return;
+	        }
+	    }
+	}
 
-    void InitCore()
+    void InitCore(const PlatformContext& ctx)
     {
 		Allocator::Init();
+
+	    // parse CLI and configure desired logging level BEFORE Log::Init()
+        ApplyCliLoggingOptions(ctx.GetCommandLineArgs());
+
 		Log::Init();
         Log::LogHeader();
     }

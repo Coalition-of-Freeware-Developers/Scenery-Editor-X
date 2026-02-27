@@ -42,9 +42,8 @@
     #define SEDX_PROFILING_ENABLED 0
 #endif
 
-
 #if SEDX_PROFILING_ENABLED
-    #include "tracy/Tracy.hpp"
+    //#include "tracy/Tracy.hpp"
 
     // -------------------------------------------------------
 
