@@ -52,7 +52,7 @@ namespace SceneryEditorX
 	    // Recreate the swapchain (destroys previous images/views/depth and creates new ones).
 	    // Recreate the swapchain: waits for m_Device idle, refreshes surface caps,
 	    // creates a new swapchain and replaces internal resources safely.
-        void Recreate(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator);
+        void Recreate(uint32_t queueFamilyIndex, VmaAllocator allocator);
         void AcquireNextImage();
         VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
 	    void Destroy();

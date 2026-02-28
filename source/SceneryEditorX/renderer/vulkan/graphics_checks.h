@@ -30,8 +30,6 @@
  */
 #pragma once
 #include "enums.h"
-
-
 #include <volk/volk.h>
 
 // -------------------------------------------------------

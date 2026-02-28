@@ -39,7 +39,6 @@
     #include <Windows.h>
 #endif
 
-
 // -------------------------------------------------------
 
 namespace SceneryEditorX
@@ -51,6 +50,7 @@ namespace SceneryEditorX
     constexpr uint32_t TimeStampPerPool = 64;
 
     static bool s_IsInitialized = false;
+	static VkSurfaceKHR s_Surface = VK_NULL_HANDLE;
 
     // -------------------------------------------------------
 	
@@ -76,6 +76,13 @@ namespace SceneryEditorX
         }
 
         //m_MemAllocator = nullptr; // Destroy memory allocator before device
+
+		SDL_Window *window = Window::GetWindow();
+		if (s_Surface != VK_NULL_HANDLE && window)
+		{
+			vkDestroySurfaceKHR(m_Instance, s_Surface, nullptr);
+			s_Surface = VK_NULL_HANDLE;
+        }
 
         if (m_Instance != VK_NULL_HANDLE)
         {
@@ -164,7 +171,14 @@ namespace SceneryEditorX
                                         VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME,
                                         VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
                                         VK_KHR_SURFACE_EXTENSION_NAME,
-                                        VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+            #ifdef SEDX_PLATFORM_WINDOWS
+                                        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+            #elif defined(SEDX_PLATFORM_LINUX)
+                                        VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
+            #elif defined(SEDX_PLATFORM_MACOS)
+                                        VK_EXT_METAL_SURFACE_EXTENSION_NAME,
+            #endif
+            };
 
             const char *deviceExtensions[] = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -186,13 +200,8 @@ namespace SceneryEditorX
             createInfo.enabledExtensionCount = sizeof(extensions) / sizeof(extensions[0]);
             createInfo.ppEnabledExtensionNames = extensions;
 
-            if (VkResult res = vkCreateInstance(&createInfo, nullptr, &s_Instance->m_Instance); res != VK_SUCCESS)
-            {
-                SEDX_CORE_ERROR("Failed to create Vulkan instance: {}", res);
-                s_Instance->m_Instance = VK_NULL_HANDLE;
-                return;
-            }
-
+            VkResult result = vkCreateInstance(&createInfo, nullptr, &s_Instance->m_Instance);
+            SEDX_VK_RESULT_ASSERT(result, "Failed to create Vulkan instance")
 
             // Initialize volk instance-level function pointers
             volkLoadInstance(s_Instance->m_Instance);
@@ -251,6 +260,15 @@ namespace SceneryEditorX
                     SEDX_CORE_ERROR_TAG("Render Context", "Khronos validation layer not available!");
             }*/
 
+			SDL_Window *sdlWindow = Window::GetWindow();
+			if (!sdlWindow)
+			{
+			    SEDX_CORE_ERROR_TAG("Swapchain", "SDL3 window is null, cannot create Vulkan surface");
+			    return;
+			}
+
+			SEDX_CORE_ASSERT(SDL_Vulkan_CreateSurface(sdlWindow, s_Instance->m_Instance, nullptr, &s_Surface), "Failed to create Vulkan surface for SDL window");
+
             s_Instance->m_Device = CreateRef<Device>(s_Instance->m_Instance);
             if (!s_Instance->m_Device || s_Instance->m_Device->GetLogicalDevice() == VK_NULL_HANDLE)
             {
@@ -297,6 +315,11 @@ namespace SceneryEditorX
         return rc->m_Instance;
     }
 
+    VkSurfaceKHR RenderContext::GetSurface()
+    {
+        SEDX_CORE_ASSERT(s_Surface != VK_NULL_HANDLE, "GetSurface() called before Vulkan surface creation");
+        return s_Surface;
+    }
 
 } // namespace SceneryEditorX
 

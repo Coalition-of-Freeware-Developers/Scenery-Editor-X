@@ -57,7 +57,7 @@ namespace SceneryEditorX
 	int Window::displayIndex = 0;
 	int Window::displayCount = 0;
 	int Window::displayModeIndex = 0;
-    float s_DPI_Scale = 1.0f;
+    static float s_DPI_Scale = 1.0f;
 
     // -------------------------------------------------------
 
@@ -78,16 +78,17 @@ namespace SceneryEditorX
 	char Window::lastKeyState[SDL_SCANCODE_COUNT];
 	WindowMode Window::mode = WindowMode::Windowed;
 	bool Window::dirty = true;
+    bool Window::borderless = false;
 	bool Window::resizable = true;
 	bool Window::decorated = true;
 	bool Window::maximized = true;
 	bool Window::shouldClose = false;
 
-    // custom title bar
-    float s_Titlebar_Height = 40.0f;        // default height, updated by editor
-    float s_Titlebar_Button_Width = 150.0f; // default width, updated by editor
-    const float RESIZE_BORDER = 8.0f;     // thickness of resize borders
-    int s_Titlebar_HoveredFrames = 0;      // persistence counter for hover state
+    // Custom Title Bar
+    static float s_Titlebar_Height = 40.0f;        // default height, updated by editor
+    static float s_Titlebar_Button_Width = 150.0f; // default width, updated by editor
+    static const float RESIZE_BORDER = 8.0f;     // thickness of resize borders
+    static int s_Titlebar_HoveredFrames = 0;      // persistence counter for hover state
 
     // -------------------------------------------------------
 
@@ -381,7 +382,7 @@ namespace SceneryEditorX
 
 	    s_Displays = SDL_GetDisplays(&displayCount);
 		
-        uint32_t flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_VULKAN;
+        uint32_t flags = SDL_WINDOW_VULKAN;
 	    if (resizable)
 	    {
 	        flags |= SDL_WINDOW_RESIZABLE;
@@ -390,8 +391,14 @@ namespace SceneryEditorX
 	    {
 	        flags |= SDL_WINDOW_MAXIMIZED;
 	    }
+        if (borderless)
+		{
+			flags |= SDL_WINDOW_BORDERLESS;
+		}
 
 	    s_Window = SDL_CreateWindow(name, width, height, flags);
+		SEDX_CORE_TRACE_TAG("Window", "Window created with flags: {}", flags);
+		SEDX_CORE_TRACE_TAG("Window", "Window created with dimensions: {}x{}", width, height);
 	    if (!s_Window)
 	    {
             SEDX_CORE_ERROR_TAG("Window", "Failed to create window: {}", SDL_GetError());
@@ -409,17 +416,18 @@ namespace SceneryEditorX
 	    // get the DPI scale - has to be done after window creation
     #ifdef SEDX_PLATFORM_WINDOWS
         s_DPI_Scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetRawHandle()))) / 96.0f;
+        SEDX_CORE_TRACE_TAG("Window", "DPI Scale factor: {}", s_DPI_Scale);
     #endif
 
 		Show();
 	    dirty = false;
-	    ApplyChanges();
+	    //ApplyChanges();
 		SEDX_CORE_TRACE_TAG("Window", "Window created: {}", s_Window ? "success" : "failure");
 	}
 	
 	void Window::ApplyChanges()
 	{
-        SEDX_CORE_ASSERT(s_Window, "Window not created");
+        SEDX_CORE_ASSERT(s_Window != nullptr, "Window not created");
 	
 		s_Displays = SDL_GetDisplays(&displayCount);
 		if (!s_Displays || displayCount <= 0)
@@ -482,7 +490,7 @@ namespace SceneryEditorX
 
 	    if (displayModes)
 	    {
-	        SDL_free(static_cast<void *>(displayModes));
+	        SDL_free(displayModes);
 	    }
 
 	    framebufferResized = false;
@@ -491,6 +499,8 @@ namespace SceneryEditorX
 	
     void *Window::GetRawHandle()
     {
+	    SEDX_CORE_ASSERT(s_Window, "Window is not initialized");
+
         SDL_PropertiesID props = SDL_GetWindowProperties(s_Window);
 
         // windows
@@ -796,53 +806,44 @@ namespace SceneryEditorX
 	
 	void Window::Maximize()
     {
-        if (!s_Window)
-            return;
+        SEDX_CORE_ASSERT(s_Window, "Window is not initialized");
 
         SDL_MaximizeWindow(s_Window);
+		SDL_Event event;
+        event.type = SDL_EVENT_WINDOW_MAXIMIZED;
+        event.window.windowID = SDL_GetWindowID(s_Window);
+        SDL_PushEvent(&event);
         maximized = true;
     }
 
 	bool Window::IsVisible()
 	{
-	    SDL_Window* win = GetWindow();
-	    if (!win)
-	    {
-	        return false;
-	    }
+        SEDX_CORE_ASSERT(s_Window, "Window is not initialized");
 
-	    uint64_t flags = SDL_GetWindowFlags(win);
-		if (flags & SDL_WINDOW_HIDDEN)
-		{
-			return false;
-        }
-        if (flags & SDL_WINDOW_MINIMIZED)
-        {
-			return false;
-        }
-		if (flags & SDL_EVENT_WINDOW_SHOWN)
-		{
-            return true;
-		}
+	    uint64_t flags = SDL_GetWindowFlags(s_Window);
+		if (flags & SDL_EVENT_WINDOW_SHOWN) return true;
+		if (flags & SDL_EVENT_WINDOW_MAXIMIZED) return true;
+        if (flags & SDL_EVENT_WINDOW_RESIZED) return true;
 
-	    return false;
+        return false;
 	}
 
     bool Window::IsMaximized() { return SDL_GetWindowFlags(s_Window) & SDL_WINDOW_FULLSCREEN; }
 
     void Window::Minimize()
     {
-        if (!s_Window)
-        {
-            return;
-        }
+        SEDX_CORE_ASSERT(s_Window, "Window is not initialized");
 
         SDL_MinimizeWindow(s_Window);
+        SDL_Event event;
+	    event.type = SDL_EVENT_WINDOW_MINIMIZED;
+        event.window.windowID = SDL_GetWindowID(s_Window);
+        SDL_PushEvent(&event);
     }
 
     void Window::Show()
     {
-        SEDX_CORE_ASSERT(s_Window);
+        SEDX_CORE_ASSERT(s_Window, "Window is not initialized");
 
         SDL_ShowWindow(s_Window);
 		SDL_Event event;
@@ -853,16 +854,24 @@ namespace SceneryEditorX
 
     void Window::Hide()
     {
-        SEDX_CORE_ASSERT(s_Window != nullptr);
+        SEDX_CORE_ASSERT(s_Window, "Window is not initialized");
 
-        SDL_HideWindow(s_Window);
+		SDL_HideWindow(s_Window);
+		SDL_Event event;
+        event.type = SDL_EVENT_WINDOW_HIDDEN;
+        event.window.windowID = SDL_GetWindowID(s_Window);
+        SDL_PushEvent(&event);
     }
 
     void Window::Focus()
     {
-        SEDX_CORE_ASSERT(s_Window);
+        SEDX_CORE_ASSERT(s_Window, "Window is not initialized");
 
         SDL_RaiseWindow(s_Window);
+		SDL_Event event;
+		event.type = SDL_EVENT_WINDOW_FOCUS_GAINED;
+		event.window.windowID = SDL_GetWindowID(s_Window);
+        SDL_PushEvent(&event);
     }
 
     bool Window::IsMinimized() { return SDL_GetWindowFlags(s_Window) & SDL_WINDOW_MINIMIZED; }

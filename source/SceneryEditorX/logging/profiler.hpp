@@ -34,11 +34,10 @@
 
 // -------------------------------------------------------
 
-#ifdef SEDX_DEBUG
-    #ifdef SEDX_PROFILING_ENABLED	
-        #define SEDX_PROFILING_ENABLED 1
-    #endif
-#elif SEDX_RELEASE
+#ifdef SEDX_DEBUG && SEDX_PROFILING_ENABLED
+    #define TRACY_ENABLE
+    #define SEDX_PROFILING_ENABLED 1
+#else SEDX_RELEASE
     #define SEDX_PROFILING_ENABLED 0
 #endif
 

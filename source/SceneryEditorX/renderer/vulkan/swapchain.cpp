@@ -345,15 +345,12 @@ namespace SceneryEditorX
         return "Unknown Color Space";
     }
 
-    //static VkSurfaceKHR s_Surface = VK_NULL_HANDLE;
 
     // -------------------------------------------------------
 
     Swapchain::Swapchain()
     {
        m_Device = RenderContext::Get()->GetDevice();
-
-       VkSurfaceKHR surface = VK_NULL_HANDLE;
 
        SDL_Window *sdlWindow = Window::GetWindow();
        if (!sdlWindow)
@@ -369,21 +366,22 @@ namespace SceneryEditorX
            return;
        }
 
-       // SDL3's SDL_Vulkan_CreateSurface returns bool, not VkResult
-       if (!SDL_Vulkan_CreateSurface(sdlWindow, instance, nullptr, &surface))
-       {
-           SEDX_CORE_ERROR_TAG("Swapchain", "Failed to create Vulkan surface: {}", SDL_GetError());
-           return;
-       }
+	   if (RenderContext::IsInitialized())
+		{
+		    m_Surface = RenderContext::GetSurface(); // <-- missing assignment
+		}
+		else
+		{
+		    SEDX_CORE_ERROR_TAG("Swapchain", "RenderContext not initialized — cannot obtain surface");
+		    return;
+		}
 
-       m_Surface = surface;
 	   SEDX_CORE_ASSERT(m_Surface != VK_NULL_HANDLE, "Vulkan surface creation failed");
        SEDX_CORE_TRACE_TAG("Swapchain", "Vulkan surface created successfully");
     }
 
     void Swapchain::Create(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
 	{
-
 		// Query surface formats and pick a reasonable default.
 		uint32_t formatCount = 0;
         vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device->GetPhysicalDevice(), surface, &formatCount, nullptr);
@@ -564,10 +562,9 @@ namespace SceneryEditorX
 		SEDX_CORE_TRACE_TAG("Swapchain", "Swapchain created successfully with {} images (format: {}, extent: {}x{})",
                             imgCount, FormatToString(surfaceFormat.format),
                             extent.width, extent.height);
-		return;
 	}
 
-    void Swapchain::Recreate(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
+    void Swapchain::Recreate(uint32_t queueFamilyIndex, VmaAllocator allocator)
 	{
         Ref<Device> device = RenderContext::Get()->GetDevice();
 		// Centralized recreation flow:
@@ -580,9 +577,9 @@ namespace SceneryEditorX
 		// successfully created.
 		vkDeviceWaitIdle(device->GetLogicalDevice());
 		VkSurfaceCapabilitiesKHR caps{};
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice(), surface, &caps);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice(), m_Surface, &caps);
 		(void)caps; // currently unused here but helpful for future policies
-		Create(surface, queueFamilyIndex, allocator);
+		Create(m_Surface, queueFamilyIndex, allocator);
 	}
 
     void Swapchain::AcquireNextImage()
@@ -595,8 +592,7 @@ namespace SceneryEditorX
             return;
 
         // Ensure swapchain is valid
-        if (!m_Swapchain)
-            return;
+        SEDX_CORE_ASSERT(m_Swapchain != VK_NULL_HANDLE, "Swapchain is not valid for image acquisition");
 
         // Try to acquire, with retry after swapchain recreation
         for (uint32_t attempt = 0; attempt < 2; ++attempt)
@@ -621,22 +617,20 @@ namespace SceneryEditorX
             VkResult r = vkAcquireNextImageKHR(m_Device->GetLogicalDevice(), m_Swapchain, 100000000 /*100ms timeout*/, vkSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
             SEDX_VK_RESULT_ASSERT(r, "Failed to acquire next swapchain image")
 
-            if (r == VK_SUCCESS || r == VK_SUBOPTIMAL_KHR)
+            if (r == VK_SUCCESS)
             {
                 m_ImageAcquired = true;
                 return;
             }
 
-            if (r == VK_ERROR_OUT_OF_DATE_KHR)
+            if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
             {
                 // Swapchain is out of date (e.g. window resized), recreate the swapchain and try acquiring again.
-                Recreate(m_Surface, m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics), MemoryAllocator::GetAllocator());
+                Recreate(m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics), MemoryAllocator::GetAllocator());
             }
-            else
-            {
-                SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
-                return;
-            }
+
+            SEDX_CORE_ERROR_TAG("Swapchain", "Failed to acquire swapchain image: {}", r);
+            return;
         }
     }
 
@@ -655,6 +649,7 @@ namespace SceneryEditorX
         VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
         {
+			Recreate(m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics), MemoryAllocator::GetAllocator());
             SEDX_CORE_TRACE_TAG("Swapchain", "Swapchain out of date or suboptimal during present — recreation needed");
         }
 
@@ -693,11 +688,6 @@ namespace SceneryEditorX
 		    m_Swapchain = VK_NULL_HANDLE;
 		}
 
-		if (m_Surface != VK_NULL_HANDLE)
-		{
-			vkDestroySurfaceKHR(device->GetInstance(), m_Surface, nullptr);
-			m_Surface = VK_NULL_HANDLE;
-        }
 	}
 
 }

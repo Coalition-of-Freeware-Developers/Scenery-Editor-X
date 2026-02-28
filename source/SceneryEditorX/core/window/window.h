@@ -31,7 +31,6 @@
 #pragma once
 #include <functional>
 #include <SDL3/SDL.h>
-#include <SceneryEditorX/renderer/vulkan/render_context.h>
 
 // -------------------------------------------------------
 
@@ -126,6 +125,7 @@ namespace SceneryEditorX
 
         static char lastKeyState[SDL_SCANCODE_COUNT];
         static WindowMode mode;
+        static bool borderless;
         static bool dirty;
         static bool resizable;
         static bool decorated;

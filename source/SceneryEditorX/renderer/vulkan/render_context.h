@@ -57,10 +57,13 @@ namespace SceneryEditorX
         static Ref<RenderContext> Get();
         static bool IsInitialized();
         static VkInstance GetInstance();
+        static VkSurfaceKHR GetSurface();
 
         Ref<Device> GetDevice() { return m_Device; }
         const Ref<Device> &GetLogicalDevice() { return m_Device; }
         static std::vector<uint8_t> GetPipelineCacheData() { return {}; }
+
+        Swapchain *swapchain = nullptr;
 
         struct Renderable
         {
@@ -76,7 +79,7 @@ namespace SceneryEditorX
 	    VkDevice device = VK_NULL_HANDLE;
 	    VkQueue queue = VK_NULL_HANDLE;
 	    VmaAllocator allocator = VK_NULL_HANDLE;
-	    Swapchain* swapchain = nullptr;
+	    
 	    VkPipeline pipeline = VK_NULL_HANDLE;
 	    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	    VkDescriptorSet descriptorSetTex = VK_NULL_HANDLE;
@@ -87,17 +90,20 @@ namespace SceneryEditorX
 	    std::vector<Renderable>* renderables = nullptr; // optional: if provided, renderer will draw these
 	    //std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT>* s_ShaderDataBuffers = nullptr;
 	    std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>* s_CommandBuffers = nullptr;
+
 	    // Sync objects are managed by FrameSync (vectors sized at runtime)
 	    std::vector<VkFence>* s_Fences = nullptr;
 	    std::vector<VkSemaphore>* s_PresentSemaphores = nullptr;
 	    std::vector<VkSemaphore>* s_RenderSemaphores = nullptr;
-	    VkSurfaceCapabilitiesKHR* s_SurfaceCaps = nullptr;
+	    //VkSurfaceCapabilitiesKHR* s_SurfaceCaps = nullptr;
 
 	private:
+        friend class Swapchain;
+
         VkInstance m_Instance = VK_NULL_HANDLE;
+        //VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
         Ref<Device> m_Device;
         VkPipelineCache m_PipelineCache = nullptr;
-
 	};
 
 }

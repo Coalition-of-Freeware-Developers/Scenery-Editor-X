@@ -32,6 +32,7 @@
 #include "enums.h"
 #include "memory_allocator.h"
 #include "render_context.h"
+#include "SceneryEditorX/core/window/window.h"
 #include <algorithm>
 #include <tracy/Tracy.hpp>
 #include <volk/volk.h>
@@ -135,6 +136,8 @@ namespace SceneryEditorX
 	    uint32_t vendorId = 0;										// vendor unique id
 	    uint32_t memory = 0;										// total device memory in mb
         DeviceFeatures s_SupportedFeatures = {};					// Supported Vulkan features
+		VkSurfaceCapabilitiesKHR surfaceCaps;						// Surface capabilities for the device (if it supports presentation)
+		std::vector<VkExtensionProperties> extensions;				// List of supported Vulkan extensions for this device
         void *data = nullptr;										// pointer to device-specific extra data
 	};
 
@@ -169,6 +172,35 @@ namespace SceneryEditorX
 			    SEDX_CORE_ERROR_TAG("Device", "Unknown DeviceType value: {}", static_cast<int>(deviceType));
 			    return VK_PHYSICAL_DEVICE_TYPE_OTHER;
         }
+    }
+
+    /**
+     * @brief Get the surface capabilities for a given physical device.
+     * @param physicalDevice Vulkan physical device handle
+     * @return VkSurfaceCapabilitiesKHR structure containing the surface capabilities
+     */
+    static VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(const VkPhysicalDevice physicalDevice)
+	{
+        VkSurfaceKHR surface = RenderContext::Get()->GetSurface();
+		VkSurfaceCapabilitiesKHR surfaceCaps{};
+		VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCaps);
+		SEDX_VK_RESULT_ASSERT(result, "Failed to get physical device surface capabilities");
+		return surfaceCaps;
+    }
+
+    /**
+     * @brief Check if a given physical device supports presentation to a specific surface.
+     * @param physicalDevice Vulkan physical device handle
+     * @param queueFamilyIndex Index of the queue family to check
+     * @return true if the surface is supported, false otherwise
+     */
+    static bool GetSurfaceSupport(const VkPhysicalDevice physicalDevice, const uint32_t queueFamilyIndex)
+	{
+		VkSurfaceKHR surface = RenderContext::Get()->GetSurface();
+		VkBool32 supported = VK_FALSE;
+		VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, &supported);
+		SEDX_VK_RESULT_ASSERT(result, "Failed to query physical device surface support");
+		return supported == VK_TRUE;
     }
 
     /**
@@ -538,7 +570,9 @@ namespace SceneryEditorX
 
         // -----------------------------------------------------------------
 
+		deviceInfo.surfaceCaps = GetSurfaceCapabilities(physicalDevice);
         deviceInfo.s_SupportedFeatures = DetectGPUFeatures(physicalDevice);
+
 
         // CRITICAL: Rebuild pNext chain after copying to fix dangling pointers
         // The pNext chain in the copied structure still points to the original stack addresses
@@ -815,6 +849,7 @@ namespace SceneryEditorX
         // Store family indices for device creation
         m_FamilyIndices = familyIndices;
 
+
         // Create logical device with detected queue families
         m_LogicalDevice = Create();
         SEDX_CORE_ASSERT(m_LogicalDevice != VK_NULL_HANDLE, "Failed to create logical device");
@@ -846,11 +881,11 @@ namespace SceneryEditorX
             SEDX_CORE_TRACE_TAG("Device", "Logical device destroyed");
         }
 
-        if (m_WindowSurface != VK_NULL_HANDLE)
+        /*if (m_WindowSurface != VK_NULL_HANDLE)
         {
             vkDestroySurfaceKHR(m_Instance, m_WindowSurface, nullptr);
             m_WindowSurface = VK_NULL_HANDLE;
-        }
+        }*/
         // QueueManager cleanup is automatic via smart pointers
         if (m_QueueManager)
         {

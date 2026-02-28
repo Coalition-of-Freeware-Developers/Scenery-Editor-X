@@ -31,7 +31,7 @@
 #include "graphics_checks.h"
 #include "device.h"
 #include "render_context.h"
-#include <tracy/Tracy.hpp>
+
 
 // -------------------------------------------------------
 

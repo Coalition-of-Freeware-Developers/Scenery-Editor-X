@@ -115,7 +115,7 @@ namespace SceneryEditorX
 		 * @brief Get the Vulkan physical device handle associated with this Device instance
 		 * @return VkPhysicalDevice handle of the physical device, or VK_NULL_HANDLE if not initialized
 		 */
-		[[nodiscard]] VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
+		[[nodiscard]] static VkPhysicalDevice GetPhysicalDevice() { return m_PhysicalDevice; }
 
         /**
 	     * @brief Get the Vulkan logical device handle
@@ -163,8 +163,8 @@ namespace SceneryEditorX
          */
         static VkPhysicalDevice Choose();
 
-        static bool IsDeviceLost()                                        { return m_DeviceLost; }
-        static void SetDeviceLost()                                       { m_DeviceLost = true; }
+        static bool IsDeviceLost()  { return m_DeviceLost; }
+        static void SetDeviceLost() { m_DeviceLost = true; }
 
     private:
         std::string m_GPUName;
