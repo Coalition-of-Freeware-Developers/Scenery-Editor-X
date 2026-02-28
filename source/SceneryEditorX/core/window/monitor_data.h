@@ -45,7 +45,7 @@ namespace SceneryEditorX
 	    int refreshRate;        // Monitor Refresh Rate.
 	    bool isPrimary;         // True if primary monitor.
 	    SDL_DisplayID handle;   // Handle to the SDL3 display.
-	};
+    };
 	
 	class MonitorData
 	{
@@ -83,7 +83,7 @@ namespace SceneryEditorX
 	    static float GetLuminanceMax();
 	    static float GetGamma();
 	    static const char *GetName();
-	
+
 	private:
 	    // Core monitor data
 	    std::vector<Monitor> monitors;

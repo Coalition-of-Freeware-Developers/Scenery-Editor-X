@@ -183,10 +183,10 @@ namespace SceneryEditorX
             uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
             VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
 
-            s_Swapchain->Create(s_Swapchain->GetSurface(), queueFamily, allocator);
+            s_Swapchain->CreateSwapchain();
             if (s_Swapchain == nullptr)
             {
-                SEDX_CORE_TRACE_TAG("Renderer", "Swapchain created successfully with {} images", s_Swapchain->Images().size());
+
             }
             else
             {
@@ -252,7 +252,6 @@ namespace SceneryEditorX
         // Destroy swapchain
         if (s_Swapchain)
         {
-            s_Swapchain->Destroy();
             s_Swapchain.Reset();
         }
 
@@ -297,18 +296,6 @@ namespace SceneryEditorX
         }
         SEDX_CORE_TRACE_TAG("Renderer", "Allocated {} command buffers", MAX_FRAMES_IN_FLIGHT);
 
-        // Create frame sync objects - use actual swapchain image count or fallback
-        uint32_t swapchainImageCount = 2; // Default fallback
-        if (s_Swapchain && !s_Swapchain->Images().empty())
-        {
-            swapchainImageCount = static_cast<uint32_t>(s_Swapchain->Images().size());
-            SEDX_CORE_TRACE_TAG("Renderer", "Using swapchain image count: {}", swapchainImageCount);
-        }
-        else
-        {
-            SEDX_CORE_WARN_TAG("Renderer", "Swapchain not ready - using default image count: {}", swapchainImageCount);
-        }
-
         // Create per-frame fences and semaphores and keep wrapper refs alive.
         s_FenceRefs.clear();
         s_FenceHandles.clear();
@@ -317,6 +304,7 @@ namespace SceneryEditorX
         s_RenderSemaphoreRefs.clear();
         s_RenderSemaphoreHandles.clear();
 
+        /*
         // Create fences (one per frame in flight)
         s_FenceRefs.reserve(MAX_FRAMES_IN_FLIGHT);
         s_FenceHandles.reserve(MAX_FRAMES_IN_FLIGHT);
@@ -340,7 +328,9 @@ namespace SceneryEditorX
             s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
             Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "PresentSemaphore");
         }
+        */
 
+        /*
         // Create render semaphores (one per swapchain image)
         s_RenderSemaphoreRefs.reserve(swapchainImageCount);
         s_RenderSemaphoreHandles.reserve(swapchainImageCount);
@@ -352,6 +342,7 @@ namespace SceneryEditorX
             s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
             Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
         }
+        */
 
         s_FrameSync = CreateScope<FrameSync>(SyncType::Fence); // keep a simple FrameSync in case other systems expect it
         SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})",
@@ -445,7 +436,7 @@ namespace SceneryEditorX
             return false;
         }
 
-        if (s_Swapchain->Images().empty())
+        if (s_Swapchain->GetImages().empty())
         {
             SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain has no images - VkSwapchainKHR handle: {}, surface valid: {}",
                                 static_cast<void *>(s_Swapchain->Get()), s_Swapchain->GetSurface() != VK_NULL_HANDLE);
@@ -457,9 +448,9 @@ namespace SceneryEditorX
                 uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
                 VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
                 s_Swapchain->Recreate(queueFamily, allocator);
-                if (s_Swapchain != nullptr && !s_Swapchain->Images().empty())
+                if (s_Swapchain != nullptr && !s_Swapchain->GetImages().empty())
                 {
-                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images", s_Swapchain->Images().size());
+                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images", s_Swapchain->GetImages().size());
                 }
                 else
                 {
@@ -486,7 +477,7 @@ namespace SceneryEditorX
         // Validate the acquired image index to detect acquisition failure (AcquireNextImage is void)
         {
             uint32_t acquiredIndex = s_Swapchain->GetImageIndex();
-            if (acquiredIndex >= s_Swapchain->Images().size())
+            if (acquiredIndex >= s_Swapchain->GetImages().size())
             {
                 // Acquisition failed (minimized, out-of-date handled internally)
                 SEDX_CORE_WARN_TAG("Renderer", "AcquireNextImage failed or returned invalid index: {}", acquiredIndex);
@@ -529,7 +520,7 @@ namespace SceneryEditorX
             // Transition swapchain image to present layout
             if (s_Swapchain)
             {
-                auto &swapchainImages = s_Swapchain->Images();
+                auto &swapchainImages = s_Swapchain->GetImages();
                 if (s_SwapchainImageIndex < swapchainImages.size())
                 {
                     VkImageMemoryBarrier2 barrierPresent{
@@ -679,8 +670,8 @@ namespace SceneryEditorX
             return;
         }
 
-        auto& swapchainImages = s_Swapchain->Images();
-        auto& swapchainImageViews = s_Swapchain->ImageViews();
+        auto& swapchainImages = s_Swapchain->GetImages();
+        auto& swapchainImageViews = s_Swapchain->GetImageViews();
         VkImageView depthImageView = s_Swapchain->GetDepthView();
 
         if (imageIndex >= swapchainImages.size() || imageIndex >= swapchainImageViews.size())

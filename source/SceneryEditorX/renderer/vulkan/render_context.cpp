@@ -77,13 +77,6 @@ namespace SceneryEditorX
 
         //m_MemAllocator = nullptr; // Destroy memory allocator before device
 
-		SDL_Window *window = Window::GetWindow();
-		if (s_Surface != VK_NULL_HANDLE && window)
-		{
-			vkDestroySurfaceKHR(m_Instance, s_Surface, nullptr);
-			s_Surface = VK_NULL_HANDLE;
-        }
-
         if (m_Instance != VK_NULL_HANDLE)
         {
             vkDestroyInstance(m_Instance, nullptr);

@@ -101,7 +101,6 @@ namespace SceneryEditorX
         friend class Swapchain;
 
         VkInstance m_Instance = VK_NULL_HANDLE;
-        //VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
         Ref<Device> m_Device;
         VkPipelineCache m_PipelineCache = nullptr;
 	};

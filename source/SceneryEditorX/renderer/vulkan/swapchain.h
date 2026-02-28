@@ -42,22 +42,23 @@ namespace SceneryEditorX
     class Swapchain : public RefCounted
 	{
 	public:
-	    Swapchain();
-        ~Swapchain() = default;
-	
-	    // Create the swapchain and associated image views and depth buffer.
-	    // Returns the created VkSwapchainKHR or VK_NULL_HANDLE on failure.
-	    void Create(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator);
+	    Swapchain() = default;
+        Swapchain(uint32_t queueFamilyIndex, VmaAllocator allocator);
+        virtual ~Swapchain() override;
+
+	    void CreateSwapchain();
 
 	    // Recreate the swapchain (destroys previous images/views/depth and creates new ones).
 	    // Recreate the swapchain: waits for m_Device idle, refreshes surface caps,
 	    // creates a new swapchain and replaces internal resources safely.
         void Recreate(uint32_t queueFamilyIndex, VmaAllocator allocator);
+        void Resize(const uint32_t width, const uint32_t height);
         void AcquireNextImage();
         VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);
-	    void Destroy();
-	
-	    // Accessors
+        void SetVsync(bool enabled);
+        bool GetVsync() const;
+
+        // Accessors
         [[nodiscard]] VkSwapchainKHR Get() const { return m_Swapchain; }
         [[nodiscard]] VkImage GetDepthImage() const { return m_DepthImage; }
 	    [[nodiscard]] VmaAllocation GetDepthAllocation() const { return m_DepthAlloc; }
@@ -68,19 +69,26 @@ namespace SceneryEditorX
 	    [[nodiscard]] uint32_t GetImageIndex() const { return m_ImageIndex; }
         [[nodiscard]] VkSurfaceKHR GetSurface() const { return m_Surface; }
 
-		std::vector<VkImage> &Images() { return m_Images; }
-        std::vector<VkImageView> &ImageViews() { return m_ImageViews; }
+        std::array<VkImage, 2> &GetImages() { return m_Images; }
+        std::array<VkImageView, 2> &GetImageViews() { return m_ImageViews; }
 
 	private:
         Ref<Device> m_Device = nullptr;
         VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-	    VkSwapchainKHR m_Swapchain{ VK_NULL_HANDLE };
+	    VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;
+		bool m_IsDirty = false;
 		uint32_t m_ImageIndex = 0;
-        std::array<Ref<FrameSync>, 2> m_Acquired_Semaphore;
-        std::array<Ref<FrameSync>, 2> m_Complete_Semaphore;
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
+        uint32_t m_SemaphoreIndex = 0;
+        VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
-	    std::vector<VkImage> m_Images;
-	    std::vector<VkImageView> m_ImageViews;
+        static Scope<FrameSync> s_FrameSync;
+        std::array<Ref<FrameSync>, 2> m_AcquiredSemaphore;
+        std::array<Ref<FrameSync>, 2> m_CompleteSemaphore;
+		std::array<VkImage, 2> m_Images;
+		std::array<VkImageView, 2> m_ImageViews;
+
 	    VkImage m_DepthImage{ VK_NULL_HANDLE };
 	    VmaAllocation m_DepthAlloc{ VK_NULL_HANDLE };
 	    VkImageView m_DepthView{ VK_NULL_HANDLE };

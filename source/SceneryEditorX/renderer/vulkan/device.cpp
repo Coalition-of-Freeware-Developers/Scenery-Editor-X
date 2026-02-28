@@ -995,7 +995,20 @@ namespace SceneryEditorX
             outDeviceInfo.type = DeviceType::MaxEnum;
             outDeviceInfo.vendorId = 0;
             outDeviceInfo.memory = 0;
+            outDeviceInfo.guid = 0;
             outDeviceInfo.data = nullptr;
+            outDeviceInfo.apiVersion[0] = '\0';
+            outDeviceInfo.driverVersion[0] = '\0';
+            outDeviceInfo.name[0] = '\0';
+            outDeviceInfo.vendorName[0] = '\0';
+            outDeviceInfo.surfaceCaps = {};
+            outDeviceInfo.s_SupportedFeatures = {};
+            IsAmd(outDeviceInfo);
+            IsArm(outDeviceInfo);
+            IsIntel(outDeviceInfo);
+            IsNvidia(outDeviceInfo);
+            IsQualcomm(outDeviceInfo);
+            IsBelowMinimumRequirements(outDeviceInfo);
             return false;
         }
 

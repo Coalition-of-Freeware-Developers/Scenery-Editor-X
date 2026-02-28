@@ -44,6 +44,7 @@ namespace SceneryEditorX
 {
     // Static member definitions
 	Window::EventCallbackFn Window::s_EventCallback = nullptr;
+	Window Window::m_Window;
     SDL_Window *s_Window = nullptr;
 	SDL_DisplayID *s_Displays = nullptr;
 
@@ -517,7 +518,7 @@ namespace SceneryEditorX
 
         return nullptr;
     }
-	
+
     /**
 	 * @brief Sets the window title
 	 * @param title The new title for the window

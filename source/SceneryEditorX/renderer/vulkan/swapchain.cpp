@@ -31,7 +31,12 @@
 #include "swapchain.h"
 #include "render_context.h"
 #include "renderer.h"
+#include "SceneryEditorX/core/events/event_system.h"
+#include "SceneryEditorX/core/time/fps_timer.h"
+#include "SceneryEditorX/core/time/timer.h"
+#include "SceneryEditorX/core/window/monitor_data.h"
 #include "SceneryEditorX/core/window/window.h"
+#include <tlhelp32.h>
 #include <utility>
 #include <vector>
 #include <SDL3/SDL_vulkan.h>
@@ -43,6 +48,11 @@
 namespace SceneryEditorX
 {
 
+/**
+     * @brief Get the string representation of a Vulkan format.
+     * @param format The Vulkan format.
+     * @return The string representation of the format.
+     */
     static const char* FormatToString(const VkFormat format)
 	{
 		switch (format)
@@ -318,6 +328,11 @@ namespace SceneryEditorX
 		}
     }
 
+    /**
+     * @brief Get the string representation of a Vulkan color space.
+     * @param colorSpace The Vulkan color space.
+     * @return The string representation of the color space.
+     */
     static const char *ColorSpaceToString(const VkColorSpaceKHR colorSpace)
     {
         switch (colorSpace)
@@ -345,15 +360,217 @@ namespace SceneryEditorX
         return "Unknown Color Space";
     }
 
+    /**
+     * @brief Get the surface capabilities for the given surface.
+     * @param surface The Vulkan surface.
+     * @return The surface capabilities.
+     */
+    static VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(const VkSurfaceKHR surface)
+    {
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+		VkSurfaceCapabilitiesKHR caps{};
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice(), surface, &caps);
+		SEDX_CORE_TRACE_TAG("Swapchain", "Surface capabilities: minImageCount={}, maxImageCount={}, currentExtent=({}, {})",
+			caps.minImageCount, caps.maxImageCount, caps.currentExtent.width, caps.currentExtent.height);
+        return caps;
+    }
+
+    /**
+     * @brief Get the appropriate color space for the given format.
+     * @param format The Vulkan format.
+     * @return The corresponding color space.
+     */
+    static VkColorSpaceKHR GetColorSpace(const VkFormat format)
+    {
+        VkColorSpaceKHR colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;                                           // SDR
+        colorSpace = format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 ? VK_COLOR_SPACE_HDR10_ST2084_EXT : colorSpace; // HDR
+        return colorSpace;
+    }
+
+    /**
+     * @brief Get the supported surface formats for the given surface.
+     * @param surface The Vulkan surface.
+     * @return A vector of supported surface formats.
+     */
+    static std::vector<VkSurfaceFormatKHR> GetSupportedSurfaceFormats(const VkSurfaceKHR surface)
+    {
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        uint32_t formatCount;
+        SEDX_VK_RESULT_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice(), surface, &formatCount, nullptr));
+
+        std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
+        SEDX_VK_RESULT_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice(), surface, &formatCount, surfaceFormats.data()));
+
+        return surfaceFormats;
+    }
+
+    /**
+     * @brief Get the supported present modes for the given surface.
+     * @param surface The Vulkan surface.
+     * @return A vector of supported present modes.
+     */
+    static std::vector<VkPresentModeKHR> GetSupportedPresentModes(const VkSurfaceKHR surface)
+    {
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetPhysicalDevice(), surface, &presentModeCount, nullptr);
+
+        std::vector<VkPresentModeKHR> surfacePresentModes(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetPhysicalDevice(), surface, &presentModeCount, surfacePresentModes.data());
+        return surfacePresentModes;
+    }
+
+    /**
+      * @brief Get the appropriate present mode for the given surface and requested mode.
+      * @param surface The Vulkan surface.
+      * @param mode The requested present mode.
+      * @return The supported present mode.
+      */
+     static VkPresentModeKHR GetPresentMode(const VkSurfaceKHR surface, const VkPresentModeKHR mode)
+     {
+         VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+         if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+         {
+             presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+         }
+         else if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+         {
+             presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+         }
+
+         // return the present mode as is if the surface supports it
+         std::vector<VkPresentModeKHR> surface_present_modes = GetSupportedPresentModes(surface);
+         for (const VkPresentModeKHR supported_present_mode : surface_present_modes)
+         {
+             if (presentMode == supported_present_mode)
+             {
+                 return presentMode;
+             }
+         }
+
+         // At this point we call back to VK_PRESENT_MODE_FIFO_KHR, which as per spec is always present
+         SEDX_CORE_WARN_TAG("Swapchain", "Requested present mode is not supported. Falling back to VK_PRESENT_MODE_FIFO_KHR");
+         return VK_PRESENT_MODE_FIFO_KHR;
+     }
+
+     /**
+     * @brief Check if the given format and color space are supported by the surface.
+     * @param surface The Vulkan surface.
+     * @param format The Vulkan format.
+     * @param colorSpace The Vulkan color space.
+     * @return True if the format and color space are supported, false otherwise.
+     */
+	static bool IsFormatandColorSpaceSupported(const VkSurfaceKHR surface, VkFormat format, const VkColorSpaceKHR colorSpace)
+	{
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		std::vector<VkSurfaceFormatKHR> supportedFormats = GetSupportedSurfaceFormats(surface);
+
+		// Detect NVIDIA by querying the active VkPhysicalDevice properties instead of trying
+		// to instantiate the internal HWDeviceInfo (incomplete here).
+		bool isNvidia = false;
+        if (VkPhysicalDevice phys = device->GetPhysicalDevice(); phys != VK_NULL_HANDLE)
+		{
+		    VkPhysicalDeviceProperties props{};
+		    vkGetPhysicalDeviceProperties(phys, &props);
+
+		    // Vendor ID 0x10DE identifies NVIDIA; also check the device name for robustness.
+		    isNvidia = (props.vendorID == 0x10DE) ||
+		               (strstr(props.deviceName, "Nvidia") != nullptr) ||
+		               (strstr(props.deviceName, "nvidia") != nullptr);
+		}
+		else
+		{
+		    SEDX_CORE_WARN_TAG("Swapchain", "Physical device handle is null while checking vendor");
+		}
+
+		// NV historically exposes BGR ordering in some presentation formats on Windows.
+		if (format == VK_FORMAT_R8G8B8A8_UNORM && isNvidia)
+		{
+		    format = VK_FORMAT_B8G8R8A8_UNORM;
+		}
+
+		for (const VkSurfaceFormatKHR& supportedFormat : supportedFormats)
+		{
+		    bool supportFormat     = supportedFormat.format == format;
+		    bool supportColorSpace = supportedFormat.colorSpace == colorSpace;
+
+		    if (supportFormat && supportColorSpace)
+		    {
+		        return true;
+		    }
+		}
+
+		return false;
+	}
+
+    /**
+     * @brief Get the supported composite alpha flags for the given surface.
+     * @param surface The Vulkan surface.
+     * @return The supported composite alpha flags.
+     */
+    static VkCompositeAlphaFlagBitsKHR GetCompositeAlphaFlags(const VkSurfaceKHR surface)
+    {
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+		std::vector<VkCompositeAlphaFlagBitsKHR> compositeAlphaFlags =
+		{
+		    VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+		    VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+		    VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+		    VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+		};
+
+		
+		// get physical device surface capabilities
+		VkSurfaceCapabilitiesKHR surfaceCapabilities;
+		SEDX_VK_RESULT_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice(), surface, &surfaceCapabilities));
+
+		// simply select the first composite alpha format available
+		for (VkCompositeAlphaFlagBitsKHR& compositeAlpha : compositeAlphaFlags)
+		{
+		    if (surfaceCapabilities.supportedCompositeAlpha & compositeAlpha)
+		    {
+		        return compositeAlpha;
+		    };
+		}
+
+		return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    }
+
+    /**
+     * @brief Set the HDR specifications for the given swapchain.
+     * @param swapchain The Vulkan swapchain.
+     */
+    static void SetHDRSpecs(const VkSwapchainKHR &swapchain)
+    {
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        VkHdrMetadataEXT hdrMetadata          = {};
+        hdrMetadata.sType                     = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
+        hdrMetadata.displayPrimaryRed.x       = 0.708f;
+        hdrMetadata.displayPrimaryRed.y       = 0.292f;
+        hdrMetadata.displayPrimaryGreen.x     = 0.170f;
+        hdrMetadata.displayPrimaryGreen.y     = 0.797f;
+        hdrMetadata.displayPrimaryBlue.x      = 0.131f;
+        hdrMetadata.displayPrimaryBlue.y      = 0.046f;
+        hdrMetadata.whitePoint.x              = 0.3127f;
+        hdrMetadata.whitePoint.y              = 0.3290f;
+        const float nitsToLumin                = 10000.0f;
+        hdrMetadata.maxLuminance              = MonitorData::GetLuminanceMax() * nitsToLumin;
+        hdrMetadata.minLuminance              = 0.001f * nitsToLumin;
+        hdrMetadata.maxContentLightLevel      = 2000.0f;
+        hdrMetadata.maxFrameAverageLightLevel = 500.0f;
+
+        PFN_vkSetHdrMetadataEXT pfnVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetDeviceProcAddr(device->GetLogicalDevice(), "vkSetHdrMetadataEXT");
+        SEDX_CORE_ASSERT(pfnVkSetHdrMetadataEXT != nullptr);
+        pfnVkSetHdrMetadataEXT(device->GetLogicalDevice(), 1, &swapchain, &hdrMetadata);
+    }
 
     // -------------------------------------------------------
 
-    Swapchain::Swapchain()
+    Swapchain::Swapchain(uint32_t queueFamilyIndex, VmaAllocator allocator)
     {
        m_Device = RenderContext::Get()->GetDevice();
 
-       SDL_Window *sdlWindow = Window::GetWindow();
-       if (!sdlWindow)
+       if (SDL_Window *sdlWindow = Window::GetWindow(); !sdlWindow)
        {
            SEDX_CORE_ERROR_TAG("Swapchain", "SDL window is null — cannot create Vulkan surface");
            return;
@@ -367,24 +584,21 @@ namespace SceneryEditorX
        }
 
 	   if (RenderContext::IsInitialized())
-		{
-		    m_Surface = RenderContext::GetSurface(); // <-- missing assignment
-		}
-		else
-		{
-		    SEDX_CORE_ERROR_TAG("Swapchain", "RenderContext not initialized — cannot obtain surface");
-		    return;
-		}
+	   {
+	       m_Surface = RenderContext::GetSurface(); // <-- missing assignment
+	   }
+	   else
+	   {
+	       SEDX_CORE_ERROR_TAG("Swapchain", "RenderContext not initialized — cannot obtain surface");
+	       return;
+	   }
 
 	   SEDX_CORE_ASSERT(m_Surface != VK_NULL_HANDLE, "Vulkan surface creation failed");
        SEDX_CORE_TRACE_TAG("Swapchain", "Vulkan surface created successfully");
-    }
 
-    void Swapchain::Create(VkSurfaceKHR surface, uint32_t queueFamilyIndex, VmaAllocator allocator)
-	{
 		// Query surface formats and pick a reasonable default.
 		uint32_t formatCount = 0;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device->GetPhysicalDevice(), surface, &formatCount, nullptr);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device->GetPhysicalDevice(), m_Surface, &formatCount, nullptr);
 		if (formatCount == 0)
 		{
 			SEDX_CORE_ERROR_TAG("Swapchain", "No surface formats available");
@@ -392,7 +606,7 @@ namespace SceneryEditorX
 		}
 
 		std::vector<VkSurfaceFormatKHR> formats(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device->GetPhysicalDevice(), surface, &formatCount, formats.data());
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_Device->GetPhysicalDevice(), m_Surface, &formatCount, formats.data());
 		VkSurfaceFormatKHR surfaceFormat = formats[0];
         SEDX_CORE_TRACE_TAG("Swapchain", "Available surface formats: {}", formatCount);
         SEDX_CORE_TRACE_TAG("Swapchain", "Preferred format: {}.{} ({} formats available)",
@@ -405,83 +619,167 @@ namespace SceneryEditorX
 			    surfaceFormat = f; break;
 			}
 		}
-	
-		VkSurfaceCapabilitiesKHR caps{};
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Device->GetPhysicalDevice(), surface, &caps);
-		SEDX_CORE_TRACE_TAG("Swapchain", "Surface capabilities: minImageCount={}, maxImageCount={}, currentExtent=({}, {})",
-			caps.minImageCount, caps.maxImageCount, caps.currentExtent.width, caps.currentExtent.height);
 
 		// Verify the selected queue family supports presentation to this surface.
 		VkBool32 presentSupported = VK_FALSE;
-		vkGetPhysicalDeviceSurfaceSupportKHR(m_Device->GetPhysicalDevice(), queueFamilyIndex, surface, &presentSupported);
+		vkGetPhysicalDeviceSurfaceSupportKHR(m_Device->GetPhysicalDevice(), queueFamilyIndex, m_Surface, &presentSupported);
 		if (!presentSupported)
 		{
 			SEDX_CORE_ERROR_TAG("Swapchain", "Selected queue family does not support presentation");
 			return;
 		}
-	
+    }
+
+    Swapchain::~Swapchain()
+    {
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+
+		if (m_DepthView != VK_NULL_HANDLE)
+		{
+            QueueManager::AddDeletionQueue(ResourceType::ImageView, m_DepthView);
+            m_DepthView = VK_NULL_HANDLE;
+		}
+
+		if (m_DepthImage != VK_NULL_HANDLE)
+		{
+            QueueManager::AddDeletionQueue(ResourceType::Image, m_DepthImage);
+            m_DepthImage = VK_NULL_HANDLE;
+		}
+
+		for (auto &imgView : m_ImageViews)
+		{
+		    if (imgView != VK_NULL_HANDLE)
+		    {
+				QueueManager::AddDeletionQueue(ResourceType::ImageView, imgView);
+                imgView = VK_NULL_HANDLE;
+		    }
+		}
+
+		if (m_Swapchain != VK_NULL_HANDLE)
+		{
+		    vkDestroySwapchainKHR(device->GetLogicalDevice(), m_Swapchain, nullptr);
+		    m_Swapchain = VK_NULL_HANDLE;
+		}
+
+        if (m_Swapchain)
+		{
+			vkDestroySurfaceKHR(RenderContext::Get()->GetInstance(), m_Surface, nullptr);
+			m_Surface = VK_NULL_HANDLE;
+        }
+    }
+
+    void Swapchain::CreateSwapchain()
+	{
+        SEDX_CORE_ASSERT(m_Surface != VK_NULL_HANDLE, "Cannot create swapchain without a valid surface");
+
+		VkSurfaceCapabilitiesKHR capabilities = GetSurfaceCapabilities(m_Surface);
+
+        // skip if window is minimized
+        if (capabilities.currentExtent.width == 0 || capabilities.currentExtent.height == 0)
+        {
+            SEDX_CORE_WARN_TAG("Swapchain","Window is minimized, swapchain creation skipped");
+            return;
+        }
+    
+        // Check surface supports the requested format and color space, fall back to SDR if not supported
+        VkColorSpaceKHR colorSpace = GetColorSpace(m_ImageFormat);
+		if (!IsFormatandColorSpaceSupported(m_Surface, m_ImageFormat, colorSpace))
+		{
+			SEDX_CORE_WARN_TAG("Swapchain", "Preferred format {} with color space {} not supported, falling back to SDR",
+								FormatToString(m_ImageFormat), ColorSpaceToString(colorSpace));
+			colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+		}
+
+		QueueManager::WaitIdleAll();
+
+        // clamp size
+        m_Width  = std::ranges::clamp(m_Width,  capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        m_Height = std::ranges::clamp(m_Height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+    
 		// (no debug prints)
-		VkExtent2D extent = caps.currentExtent;
+		VkExtent2D extent = capabilities.currentExtent;
 		if (std::cmp_equal(extent.width, -1))
 		{
 		    extent = {.width = 640, .height = 480};
 		}
 	
-		uint32_t imageCount = caps.minImageCount + 1;
-		if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount)
+		uint32_t imageCount = capabilities.minImageCount + 1;
+		if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
 		{
-		    imageCount = caps.maxImageCount;
+		    imageCount = capabilities.maxImageCount;
 		}
 	
-		VkSwapchainCreateInfoKHR ci{};
+		VkSwapchainCreateInfoKHR ci = {};
 		ci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		ci.surface = surface;
+		ci.surface = m_Surface;
 		ci.minImageCount = imageCount;
-		ci.imageFormat = surfaceFormat.format;
-		ci.imageColorSpace = surfaceFormat.colorSpace;
+		ci.imageFormat = m_ImageFormat;
+		ci.imageColorSpace = colorSpace;
 		ci.imageExtent = extent;
 		ci.imageArrayLayers = 1;
 		ci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		ci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		ci.preTransform = caps.currentTransform;
-		ci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		ci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+		ci.preTransform = capabilities.currentTransform;
+		ci.compositeAlpha = GetCompositeAlphaFlags(m_Surface);
+		ci.presentMode = GetPresentMode(m_Surface, m_PresentMode);
 		ci.clipped = VK_TRUE;
+		ci.oldSwapchain = m_Swapchain;
 
-		/** 
-		 * If we already have a swapchain, pass it as 'oldSwapchain' to the
-		 * create info so the implementation can recycle resources safely.
-		 */
-		VkSwapchainKHR oldSwap = m_Swapchain;
-		if (oldSwap != VK_NULL_HANDLE)
-		{
-			ci.oldSwapchain = oldSwap;
-		}
+        SEDX_VK_RESULT_ASSERT(vkCreateSwapchainKHR(m_Device->GetLogicalDevice(), &ci, nullptr, &m_Swapchain), "Failed to create swapchain");
 	
-		VkSwapchainKHR newSwap = VK_NULL_HANDLE;
-        VkResult result = vkCreateSwapchainKHR(m_Device->GetLogicalDevice(), &ci, nullptr, &newSwap);
-        SEDX_VK_RESULT_ASSERT(result, "Failed to create swapchain")
-	
+        // Destroy old swapchain if it existed
+        if (ci.oldSwapchain != VK_NULL_HANDLE)
+        {
+            vkDestroySwapchainKHR(m_Device->GetLogicalDevice(), ci.oldSwapchain, nullptr);
+        }
+
 		// Fetch images for the new swapchain first
 		uint32_t imgCount = 0;
-		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), newSwap, &imgCount, nullptr);
-		std::vector<VkImage> newImages(imgCount);
-		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), newSwap, &imgCount, newImages.data());
+		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), m_Swapchain, &imgCount, nullptr);
+		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), m_Swapchain, &imgCount, m_Images.data());
 	
 		// Create image views for the new images
-		std::vector<VkImageView> newImageViews(imgCount, VK_NULL_HANDLE);
-		for (uint32_t i = 0; i < imgCount; ++i)
+		for (uint32_t i = 0; i < imageCount; ++i)
 		{
-			VkImageViewCreateInfo viewCI{};
+            if (m_ImageViews[i])
+			{
+                QueueManager::AddDeletionQueue(ResourceType::ImageView, m_ImageViews[i]);
+            }
+
+			VkImageViewCreateInfo viewCI = {};
 			viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			viewCI.image = newImages[i];
+			viewCI.image = m_Images[i];
 			viewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			viewCI.format = surfaceFormat.format;
+			viewCI.format = m_ImageFormat;
 			viewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            viewCI.subresourceRange.baseMipLevel = 0;
+		    viewCI.subresourceRange.baseArrayLayer = 0;
 			viewCI.subresourceRange.levelCount = 1;
 			viewCI.subresourceRange.layerCount = 1;
-			SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &newImageViews[i]), "Failed to create image view")
+		    viewCI.components = {
+				.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+				.a = VK_COMPONENT_SWIZZLE_IDENTITY,
+            };
+			SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &viewCI, nullptr, &m_ImageViews[i]), "Failed to create image view")
 		}
+
+        // sync primitives - per-image semaphores to avoid reuse conflicts
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_AcquiredSemaphore.size()); i++)
+        {
+            m_AcquiredSemaphore[i] = CreateRef<FrameSync>(SyncType::Semaphore);
+            m_CompleteSemaphore[i] = CreateRef<FrameSync>(SyncType::Semaphore);
+        }
+
+        if (m_ImageFormat == VK_FORMAT_A2B10G10R10_UNORM_PACK32)
+        {
+            SetHDRSpecs(m_Swapchain);
+        }
+
+        m_ImageIndex    = 0;
+        m_SemaphoreIndex  = 0;
+        m_ImageAcquired = false;
 	
 		// Create a new depth image for the new extent
 		VkImage newDepthImage = VK_NULL_HANDLE;
@@ -504,7 +802,7 @@ namespace SceneryEditorX
 		VmaAllocationCreateInfo allocCI{};
         allocCI.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 		allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-        SEDX_VK_RESULT_ASSERT(vmaCreateImage(allocator, &depthImageCI, &allocCI, &newDepthImage, &newDepthAlloc, nullptr), "Failed to create depth image")
+        SEDX_VK_RESULT_ASSERT(vmaCreateImage(MemoryAllocator::GetAllocator(), &depthImageCI, &allocCI, &newDepthImage, &newDepthAlloc, nullptr), "Failed to create depth image")
 
 		VkImageViewCreateInfo depthViewCI{};
 		depthViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -515,52 +813,12 @@ namespace SceneryEditorX
 		depthViewCI.subresourceRange.levelCount = 1;
 		depthViewCI.subresourceRange.layerCount = 1;
 		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &depthViewCI, nullptr, &newDepthView), "Failed to create depth image view")
-	
-		/**
-		 * At this point the new swapchain and its images/views/depth exist. 
-		 * Now we can safely destroy old resources (if any) and update our members.
-		 */
-		if (oldSwap != VK_NULL_HANDLE)
-		{
-			// Destroy old image views
-			for (auto &iv : m_ImageViews)
-			{
-			    if (iv != VK_NULL_HANDLE) vkDestroyImageView(m_Device->GetLogicalDevice(), iv, nullptr);
-			}
 
-			// Destroy old depth resources
-			if (m_DepthView != VK_NULL_HANDLE)
-			{
-			    vkDestroyImageView(m_Device->GetLogicalDevice(), m_DepthView, nullptr); m_DepthView = VK_NULL_HANDLE;
-			}
-
-			if (m_DepthImage != VK_NULL_HANDLE)
-			{
-			    vmaDestroyImage(MemoryAllocator::GetAllocator(), m_DepthImage, m_DepthAlloc); m_DepthImage = VK_NULL_HANDLE; m_DepthAlloc = VK_NULL_HANDLE;
-			}
-
-			// Destroy old swapchain handle
-			if (m_Swapchain != VK_NULL_HANDLE)
-			{
-			    vkDestroySwapchainKHR(m_Device->GetLogicalDevice(), m_Swapchain, nullptr);
-			}
-		}
-	
-		// Tick internal state to the newly created resources
-		m_Swapchain = newSwap;
-		m_Images = std::move(newImages);
-		m_ImageViews = std::move(newImageViews);
-		m_ImageFormat = surfaceFormat.format;
-		m_Extent = extent;
-		m_DepthImage = newDepthImage;
-		m_DepthAlloc = newDepthAlloc;
-		m_DepthView = newDepthView;
-	
 		// Creation Succeeded
         m_ImageIndex = 0;
         m_ImageAcquired = false;
 		SEDX_CORE_TRACE_TAG("Swapchain", "Swapchain created successfully with {} images (format: {}, extent: {}x{})",
-                            imgCount, FormatToString(surfaceFormat.format),
+                            imgCount, FormatToString(m_ImageFormat),
                             extent.width, extent.height);
 	}
 
@@ -579,8 +837,22 @@ namespace SceneryEditorX
 		VkSurfaceCapabilitiesKHR caps{};
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice(), m_Surface, &caps);
 		(void)caps; // currently unused here but helpful for future policies
-		Create(m_Surface, queueFamilyIndex, allocator);
+		CreateSwapchain();
 	}
+
+    void Swapchain::Resize(const uint32_t width, const uint32_t height)
+    {
+        SDL_Window *window = Window::Get().GetWindow();
+        SEDX_CORE_ASSERT(window != nullptr, "Cannot resize swapchain without a valid SDL window");
+
+        if (m_Width == width && m_Height == height)
+            return;
+
+        m_Width  = width;
+        m_Height = height;
+
+		CreateSwapchain();
+    }
 
     void Swapchain::AcquireNextImage()
     {
@@ -599,7 +871,7 @@ namespace SceneryEditorX
         {
             // use per-image FrameSync objects indexed by the current semaphore_index
             // this avoids reusing a semaphore that may still be in use by presentation
-            FrameSync *frameSync = m_Acquired_Semaphore[m_ImageIndex].Get();
+            FrameSync *frameSync = m_AcquiredSemaphore[m_ImageIndex].Get();
             SEDX_CORE_ASSERT(frameSync != nullptr, "FrameSync for acquired semaphore is null");
 
             // ensure the semaphore is free; wait for any command list that used this semaphore
@@ -636,17 +908,30 @@ namespace SceneryEditorX
 
     VkResult Swapchain::Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore)
     {
-        VkSwapchainKHR swapchain = m_Swapchain;
+        // only present if we successfully acquired an image
+        if (!m_ImageAcquired)
+            return VK_ERROR_OUT_OF_DATE_KHR;
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = (waitSemaphore != VK_NULL_HANDLE) ? 1u : 0u;
         presentInfo.pWaitSemaphores = (waitSemaphore != VK_NULL_HANDLE) ? &waitSemaphore : nullptr;
         presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &swapchain;
+        presentInfo.pSwapchains = &m_Swapchain;
         presentInfo.pImageIndices = &imageIndex;
 
         VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+		
+        // clear acquisition state after presentation
+        m_ImageAcquired = false;
+
+        // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
+        if (m_IsDirty)
+        {
+            CreateSwapchain();
+            m_IsDirty = false;
+        }
+
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
         {
 			Recreate(m_Device->GetQueueManager()->GetFamilyIndexByType(Graphics), MemoryAllocator::GetAllocator());
@@ -658,38 +943,21 @@ namespace SceneryEditorX
         return result;
     }
 
-    void Swapchain::Destroy()
-	{
-        Ref<Device> device = RenderContext::Get()->GetDevice(); // Avoid passing VkDevice and just fetch it from the RenderContext singleton
-		if (m_DepthView != VK_NULL_HANDLE)
-		{
-		    vkDestroyImageView(device->GetLogicalDevice(), m_DepthView, nullptr); m_DepthView = VK_NULL_HANDLE;
-		}
+    void Swapchain::SetVsync(const bool enabled)
+    {
+        if ((m_PresentMode == VK_PRESENT_MODE_FIFO_KHR) != enabled)
+        {
+            m_PresentMode = enabled ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
+            m_IsDirty     = true;
+            FPSTimer::OnVSyncToggled(enabled);
+        }
+    }
 
-		if (m_DepthImage != VK_NULL_HANDLE)
-		{
-		    vmaDestroyImage(MemoryAllocator::GetAllocator(), m_DepthImage, m_DepthAlloc); m_DepthImage = VK_NULL_HANDLE; m_DepthAlloc = VK_NULL_HANDLE;
-		}
-
-		for (auto &iv : m_ImageViews)
-		{
-		    if (iv != VK_NULL_HANDLE)
-		    {
-		        vkDestroyImageView(device->GetLogicalDevice(), iv, nullptr);
-		    }
-		}
-
-		m_ImageViews.clear();
-		m_Images.clear();
-
-		if (m_Swapchain != VK_NULL_HANDLE)
-		{
-		    vkDestroySwapchainKHR(device->GetLogicalDevice(), m_Swapchain, nullptr);
-		    m_Swapchain = VK_NULL_HANDLE;
-		}
-
-	}
-
+    bool Swapchain::GetVsync() const
+    {
+        // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
+        return m_PresentMode == VK_PRESENT_MODE_FIFO_KHR;
+    }
 }
 
 // -------------------------------------------------------
