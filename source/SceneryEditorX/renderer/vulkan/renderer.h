@@ -69,16 +69,6 @@ namespace SceneryEditorX
         /// Lifecycle Methods - Called by Application                                                                     ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		/**
-		 * @brief Create models and upload to GPU. This is separate from shader creation to allow for better error handling and resource management.
-		 */
-        static void CreateModels();
-
-        /**
-         * @brief Create shader modules and pipelines.
-         */
-        static void CreateShaders();
-
         /**
          * @brief Initialize the renderer subsystem.
          * 
@@ -205,6 +195,16 @@ namespace SceneryEditorX
          * @return VkCommandBuffer for recording draw commands.
          */
         static VkCommandBuffer GetCurrentCommandBuffer();
+		
+		/**
+		 * @brief Create models and upload to GPU. This is separate from shader creation to allow for better error handling and resource management.
+		 */
+        static void CreateModels();
+
+        /**
+         * @brief Create shader modules and pipelines.
+         */
+        static void CreateShaders();
 
     private:
 

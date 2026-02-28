@@ -127,6 +127,7 @@ namespace SceneryEditorX
         {
             vkDestroyCommandPool(m_Device->GetLogicalDevice(), m_CmdPool, nullptr);
             m_CmdPool = VK_NULL_HANDLE;
+            SEDX_CORE_TRACE_TAG("CommandPool", "Command pool destroyed");
         }
     }
 

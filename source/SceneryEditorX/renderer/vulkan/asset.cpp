@@ -39,11 +39,13 @@ namespace SceneryEditorX
 
 	Asset::Asset()
 	{
+        SEDX_CORE_TRACE_TAG("Asset", "Creating Asset instance");
         m_Device = RenderContext::Get()->GetDevice();
 	}
 
     Asset::~Asset()
     {
+        SEDX_CORE_TRACE_TAG("Asset", "Destroying Asset instance");
         m_Textures.clear(); // TextureHandle destructor will release image/sampler/views if not already destroyed
         m_Device.Reset(); // Release reference to device (if any) before destroying resources
     }
@@ -74,6 +76,7 @@ namespace SceneryEditorX
 	
 	    // Create descriptor set for these textures
 	    m_DescriptorOwned = DescriptorSet(imageInfos);
+	    SEDX_CORE_TRACE_TAG("Asset", "Loaded Asset with model and textures");
 	    return true;
 	}
 	
@@ -88,6 +91,7 @@ namespace SceneryEditorX
 	    m_Textures.clear();
 	    m_DescriptorOwned.Destroy();			// Destroy descriptor resources
 	    m_Model.Destroy();						// Destroy model buffer
+	    SEDX_CORE_TRACE_TAG("Asset", "Destroyed Asset instance");
 	}
 
 }

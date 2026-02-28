@@ -44,6 +44,8 @@ namespace SceneryEditorX
 	        m_AssetSets.pop_back();
 	        return false;
 	    }
+
+        SEDX_CORE_TRACE_TAG("AssetManager", "Loaded asset: {} ({} textures)", modelFile, textureFiles.size());
 	    return true;
 	}
 

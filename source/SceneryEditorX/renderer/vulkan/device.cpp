@@ -38,11 +38,13 @@
 #include <volk/volk.h>
 
 // -----------------------------------------------------------------
-
 // ReSharper disable CppInconsistentNaming
 
 namespace SceneryEditorX
 {
+	
+    #pragma region Static Properties
+
 	struct DeviceFeatures
 	{
 	    VkPhysicalDeviceFeatures2 s_Features = {};
@@ -808,6 +810,8 @@ namespace SceneryEditorX
             return memory > other.memory;
         }
     };
+
+    #pragma endregion
 
     // -----------------------------------------------------------------
 

@@ -47,8 +47,10 @@
 
 namespace SceneryEditorX
 {
+	
+    #pragma region Static Properties
 
-/**
+    /**
      * @brief Get the string representation of a Vulkan format.
      * @param format The Vulkan format.
      * @return The string representation of the format.
@@ -564,6 +566,8 @@ namespace SceneryEditorX
         pfnVkSetHdrMetadataEXT(device->GetLogicalDevice(), 1, &swapchain, &hdrMetadata);
     }
 
+    #pragma endregion
+
     // -------------------------------------------------------
 
     Swapchain::Swapchain(uint32_t queueFamilyIndex, VmaAllocator allocator)
@@ -943,6 +947,8 @@ namespace SceneryEditorX
         return result;
     }
 
+    #pragma region VSync Functions
+
     void Swapchain::SetVsync(const bool enabled)
     {
         if ((m_PresentMode == VK_PRESENT_MODE_FIFO_KHR) != enabled)
@@ -958,6 +964,9 @@ namespace SceneryEditorX
         // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
         return m_PresentMode == VK_PRESENT_MODE_FIFO_KHR;
     }
+
+    #pragma endregion
+
 }
 
 // -------------------------------------------------------

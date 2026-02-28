@@ -48,6 +48,8 @@
 namespace SceneryEditorX
 {
 
+#pragma region Static Renderer Properties
+
     struct RendererProperties
     {
         VkDescriptorSet activeRendererDescriptorSet = nullptr;
@@ -62,10 +64,8 @@ namespace SceneryEditorX
         int32_t selectedDrawCall = -1;
         int32_t drawCallCount = 0;
     };
-
-    // -------------------------------------------------------
-    // Static Member Definitions
-    // -------------------------------------------------------
+	
+    // --------------------------------------------------------------
 
     RendererProperties *Renderer::s_Data = nullptr;
     static Ref<Swapchain> s_Swapchain = nullptr;
@@ -98,12 +98,10 @@ namespace SceneryEditorX
 
     static std::vector<Ref<Semaphore>> s_RenderSemaphoreRefs;
     static std::vector<VkSemaphore> s_RenderSemaphoreHandles;
+	
+#pragma endregion
 
-
-    // -------------------------------------------------------
-    // Lifecycle Methods
-    // -------------------------------------------------------
-
+#pragma region Lifecycle Methods
     void Renderer::Init()
     {
         //SEDX_TRACK_CALL("Renderer::Init");
@@ -141,7 +139,6 @@ namespace SceneryEditorX
             RenderDoc::OnPreDeviceCreation();
         }
         */
-
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// SwapChain                                                                                                     ///
@@ -196,7 +193,7 @@ namespace SceneryEditorX
         }
         else
         {
-            SEDX_CORE_WARN_TAG("Renderer", "Surface not available - swapchain creation deferred");
+            SEDX_CORE_WARN_TAG("Renderer", "Surface not available, swapchain creation deferred");
             return;
         }
 
@@ -205,6 +202,7 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
         s_AssetManager = CreateScope<AssetManager>();
+        SEDX_CORE_TRACE_TAG("Renderer", "Created AssetManager");
 
         CreateFrameResources();
         CreateModels();
@@ -273,9 +271,9 @@ namespace SceneryEditorX
         }
     }
 
-    // -------------------------------------------------------
-    // Frame Resources
-    // -------------------------------------------------------
+#pragma endregion
+
+#pragma region Frame Rendering Methods
 
     void Renderer::CreateFrameResources()
     {
@@ -351,6 +349,7 @@ namespace SceneryEditorX
             static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
 
         s_FrameSync->SetUserCmdList(nullptr);
+        SEDX_CORE_TRACE_TAG("Renderer", " Frame resources created");
     }
 
     void Renderer::DestroyFrameResources()
@@ -368,6 +367,7 @@ namespace SceneryEditorX
         }
         s_PresentSemaphoreHandles.clear();
         s_PresentSemaphoreRefs.clear();
+        SEDX_CORE_TRACE_TAG("Renderer", " Destroyed present semaphores");
 
         for (auto &semRef : s_RenderSemaphoreRefs)
         {
@@ -379,6 +379,7 @@ namespace SceneryEditorX
         }
         s_RenderSemaphoreHandles.clear();
         s_RenderSemaphoreRefs.clear();
+        SEDX_CORE_TRACE_TAG("Renderer", " Destroyed render semaphores");
 
         for (auto &fRef : s_FenceRefs)
         {
@@ -390,29 +391,31 @@ namespace SceneryEditorX
         }
         s_FenceHandles.clear();
         s_FenceRefs.clear();
+        SEDX_CORE_TRACE_TAG("Renderer", " Destroyed fences");
 
         // Command buffers are freed when command pool is destroyed
         s_CommandBuffers.fill(VK_NULL_HANDLE);
+        SEDX_CORE_TRACE_TAG("Renderer", " Freed command buffers ({} buffers)", MAX_FRAMES_IN_FLIGHT);
 
         // Destroy command pool
         if (s_CommandPool)
         {
             s_CommandPool->Destroy();
             s_CommandPool.reset();
+            SEDX_CORE_TRACE_TAG("Renderer", " Destroyed command pool");
         }
 
         // Reset simple FrameSync wrapper
         s_FrameSync.reset();
+        SEDX_CORE_TRACE_TAG("Renderer", " Destroyed frame sync objects");
 
         SEDX_CORE_TRACE_TAG("Renderer", " Frame resources destroyed");
     }
 
-    // -------------------------------------------------------
-    // Frame Rendering Methods
-    // -------------------------------------------------------
-
     bool Renderer::BeginFrame()
     {
+        SEDX_CORE_TRACE_TAG("Renderer", "Beginning frame {}", s_FrameNumber);
+
         // Check if we can render
         if (!s_ResourcesInitialized)
         {
@@ -426,19 +429,20 @@ namespace SceneryEditorX
 
         if (Window::IsMinimized() || !isValidResolution)
         {
+			SEDX_CORE_TRACE_TAG("Renderer", "Window is minimized or resolution is invalid ({}x{})", s_RendererResolution.x, s_RendererResolution.y);
             return false;
         }
 
         // Check swapchain validity with detailed diagnostics
         if (!s_Swapchain)
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain is null - was Init() called successfully?");
+            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain is null, was Init() called successfully?");
             return false;
         }
 
         if (s_Swapchain->GetImages().empty())
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "BeginFrame: Swapchain has no images - VkSwapchainKHR handle: {}, surface valid: {}",
+            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain has no images, VkSwapchainKHR handle: {}, surface valid: {}",
                                 static_cast<void *>(s_Swapchain->Get()), s_Swapchain->GetSurface() != VK_NULL_HANDLE);
 
             // Attempt to recreate swapchain if surface is available and window is visible
@@ -454,11 +458,13 @@ namespace SceneryEditorX
                 }
                 else
                 {
+					SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreation failed or returned no images after recreation attempt");
                     return false;
                 }
             }
             else
             {
+				SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreation failed or returned no images");
                 return false;
             }
         }
@@ -466,11 +472,14 @@ namespace SceneryEditorX
         // Wait for the fence of the current frame-in-flight BEFORE acquiring the image
         if (!s_FenceHandles.empty())
         {
+            SEDX_CORE_TRACE_TAG("Renderer", "Waiting for fence of frame {} (fence handle: {})",
+                                s_CurrentFrameIndex, static_cast<void *>(s_FenceHandles[s_CurrentFrameIndex]));
             if (s_CurrentFrameIndex < s_FenceHandles.size() && s_FenceHandles[s_CurrentFrameIndex] != VK_NULL_HANDLE)
             {
                 VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
                 vkWaitForFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
                 vkResetFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex]);
+                SEDX_CORE_TRACE_TAG("Renderer", "Fence wait and reset complete for frame {}", s_CurrentFrameIndex);
             }
         }
 
@@ -484,12 +493,14 @@ namespace SceneryEditorX
                 return false;
             }
             s_SwapchainImageIndex = acquiredIndex;
+            SEDX_CORE_TRACE_TAG("Renderer", "Acquired swapchain image index: {}", s_SwapchainImageIndex);
         }
 
         // Begin command buffer recording
         if (VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex]; cb != VK_NULL_HANDLE)
         {
             vkResetCommandBuffer(cb, 0);
+			SEDX_CORE_TRACE_TAG("Renderer", "Command buffer reset for frame {}", s_CurrentFrameIndex);
 
             VkCommandBufferBeginInfo beginInfo{};
             beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -499,12 +510,15 @@ namespace SceneryEditorX
 			SEDX_VK_RESULT_ASSERT(result, "vkBeginCommandBuffer failed");
         }
 
+		SEDX_CORE_TRACE_TAG("Renderer", "Command buffer recording begun for frame {}", s_CurrentFrameIndex);
         s_FrameInProgress = true;
         return true;
     }
 
     void Renderer::EndFrame()
     {
+        SEDX_CORE_TRACE_TAG("Renderer", "Ending frame {}", s_FrameNumber);
+
         if (!s_FrameInProgress)
         {
             SEDX_CORE_WARN_TAG("Renderer", "EndFrame called but no frame in progress");
@@ -553,15 +567,18 @@ namespace SceneryEditorX
 
     void Renderer::SubmitAndPresent()
     {
+        SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer and presenting frame {}", s_FrameNumber);
+
         VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
         if (cb == VK_NULL_HANDLE)
         {
+			SEDX_CORE_TRACE_TAG("Renderer", "No command buffer available for frame {}", s_FrameNumber);
             return;
         }
 
         if (s_PresentSemaphoreHandles.empty() || s_RenderSemaphoreHandles.empty() || s_FenceHandles.empty())
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "Cannot submit - synchronization primitives not created or empty.");
+            SEDX_CORE_ERROR_TAG("Renderer", "Cannot submit, synchronization primitives not created or empty.");
             return;
         }
 
@@ -605,6 +622,10 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Renderer", "Swapchain image index {} out of bounds for render semaphores (size {})", s_SwapchainImageIndex, s_RenderSemaphoreHandles.size());
             return;
         }
+		SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
+            s_FrameNumber,
+            static_cast<void *>(s_PresentSemaphoreHandles[s_CurrentFrameIndex]),
+            static_cast<void *>(s_RenderSemaphoreHandles[s_SwapchainImageIndex]));
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -628,6 +649,7 @@ namespace SceneryEditorX
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &swapchainHandle;
         presentInfo.pImageIndices = &s_SwapchainImageIndex;
+		SEDX_CORE_TRACE_TAG("Renderer", "Presenting swapchain image index {} for frame {}", s_SwapchainImageIndex, s_FrameNumber);
 
         VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
         if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
@@ -646,10 +668,13 @@ namespace SceneryEditorX
         // Advance to next frame-in-flight
         s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
         s_FrameNumber++;
+
+		SEDX_CORE_TRACE_TAG("Renderer", "Frame {} submitted and presented, advancing to frame index {}", s_FrameNumber, s_CurrentFrameIndex);
     }
 
     void Renderer::DrawFrame(CommandList *cmdList, CommandList *computeCmdList)
     {
+        SEDX_CORE_TRACE_TAG("Renderer", "DrawFrame called for frame {}", s_FrameNumber);
         // This method will be called by modules to record their draw commands
         // For now, placeholder implementation
         
@@ -658,137 +683,146 @@ namespace SceneryEditorX
         {
             return;
         }
+        SEDX_CORE_TRACE_TAG("Renderer", "Recording draw commands using command buffer for frame {}", s_FrameNumber);
 
         // Record render commands
         RecordRenderCommands(cb, s_SwapchainImageIndex);
+        SEDX_CORE_TRACE_TAG("Renderer", "Draw commands recorded for frame {}", s_FrameNumber);
     }
 
-    void Renderer::RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex)
+#pragma endregion
+
+#pragma region Render Context Management
+
+    Ref<RenderContext> Renderer::GetContext()
     {
-        if (!s_Swapchain)
+        return RenderContext::Get();
+    }
+
+    uint32_t Renderer::GetCurrentFrameIndex()
+    {
+        return s_CurrentFrameIndex;
+    }
+
+    uint64_t Renderer::GetFrameNumber()
+    {
+        return s_FrameNumber;
+    }
+
+#pragma endregion
+
+#pragma region Swapchain Management 
+    Swapchain *Renderer::GetSwapChain()
+    {
+        return s_Swapchain.Get();
+    }
+
+    uint32_t Renderer::GetSwapchainImageIndex()
+    {
+        return s_SwapchainImageIndex;
+    }
+#pragma endregion
+
+#pragma region Viewport & Image Management
+
+    const Viewport &Renderer::GetViewport()
+    {
+        return s_Viewport;
+    }
+
+    void Renderer::SetViewport(float width, float height)
+    {
+        constexpr float epsilon = 1e-5f;
+
+        // Check if absolute value is greater than epsilon (instead of != 0)
+        SEDX_CORE_ASSERT(std::abs(width) > epsilon, "Width can't be zero");
+        SEDX_CORE_ASSERT(std::abs(height) > epsilon, "Height can't be zero");
+
+        // Check if the difference is greater than epsilon (instead of !=)
+        if (std::abs(s_Viewport.width - width) > epsilon || std::abs(s_Viewport.height - height) > epsilon)
+        {
+            s_Viewport.width = width;
+            s_Viewport.height = height;
+            s_OrthoProjection_Dirty = true;
+        }
+
+        SEDX_CORE_TRACE_TAG("Renderer", "Viewport set to {}x{}", width, height);
+    }
+
+    const Vec2 &Renderer::GetRendererResolution()
+    {
+        return s_RendererResolution;
+    }
+
+    void Renderer::SetRendererResolution(uint32_t width, uint32_t height, const bool recreateResources)
+    {
+
+        // Check if the difference is smaller than epsilon (safe ==)
+        if (constexpr float epsilon = 1e-5f; std::abs(s_RendererResolution.x - static_cast<float>(width)) < epsilon &&
+                                             std::abs(s_RendererResolution.y - static_cast<float>(height)) < epsilon)
+            return;
+
+        s_RendererResolution.x = static_cast<float>(width);
+        s_RendererResolution.y = static_cast<float>(height);
+
+        if (recreateResources && s_ResourcesInitialized)
+        {
+            // Wait for GPU to finish before recreating resources
+            if (RenderContext::Get()->GetDevice())
+            {
+                RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
+            }
+
+            CreateRenderTargets(true, false, true);
+        }
+
+        SEDX_CORE_TRACE_TAG("Renderer", "Render resolution set to {}x{}", width, height);
+    }
+
+    const Vec2 &Renderer::GetOutputResolution()
+    {
+        return s_OutputResolution;
+    }
+
+    void Renderer::SetOutputResolution(uint32_t width, uint32_t height, bool recreateResources)
+    {
+
+        // Check if the difference is smaller than epsilon (safe ==)
+        if (constexpr float epsilon = 1e-5f; std::abs(s_OutputResolution.x - static_cast<float>(width)) < epsilon &&
+                                             std::abs(s_OutputResolution.y - static_cast<float>(height)) < epsilon)
         {
             return;
         }
 
-        auto& swapchainImages = s_Swapchain->GetImages();
-        auto& swapchainImageViews = s_Swapchain->GetImageViews();
-        VkImageView depthImageView = s_Swapchain->GetDepthView();
+        s_OutputResolution.x = static_cast<float>(width);
+        s_OutputResolution.y = static_cast<float>(height);
 
-        if (imageIndex >= swapchainImages.size() || imageIndex >= swapchainImageViews.size())
+        if (recreateResources && s_ResourcesInitialized)
         {
-            return;
+            CreateRenderTargets(false, true, false);
         }
 
-        // Transition images to attachment optimal
-        std::array<VkImageMemoryBarrier2, 2> outputBarriers{
-            VkImageMemoryBarrier2{
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .srcAccessMask = 0,
-                .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                .image = swapchainImages[imageIndex],
-                .subresourceRange{
-                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .levelCount = 1,
-                    .layerCount = 1
-                }
-            },
-            VkImageMemoryBarrier2{
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                .image = s_Swapchain->GetDepthImage(),
-                .subresourceRange{
-                    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-                    .levelCount = 1,
-                    .layerCount = 1
-                }
-            }
-        };
+        SEDX_CORE_TRACE_TAG("Renderer", "Output resolution set to {}x{}", width, height);
+    }
 
-        VkDependencyInfo barrierDependencyInfo{};
-        barrierDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        barrierDependencyInfo.imageMemoryBarrierCount = 2;
-        barrierDependencyInfo.pImageMemoryBarriers = outputBarriers.data();
+#pragma endregion
 
-        vkCmdPipelineBarrier2(cb, &barrierDependencyInfo);
+#pragma region Command Buffer Access 
 
-		// -----------------------------------------------------------------
-
-        // Begin dynamic rendering
-        VkRenderingAttachmentInfo colorAttachmentInfo{
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = swapchainImageViews[imageIndex],
-            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue{.color{{0.0f, 0.0f, 0.0f, 1.0f}}}
-        };
-
-        VkRenderingAttachmentInfo depthAttachmentInfo{
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = depthImageView,
-            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .clearValue = {.depthStencil = {1.0f, 0}}
-        };
-
-        VkExtent2D extent = s_Swapchain->GetExtent();
-        VkRenderingInfo renderingInfo{
-            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-            .renderArea{
-                .extent{
-                    .width = extent.width,
-                    .height = extent.height
-                }
-            },
-            .layerCount = 1,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &colorAttachmentInfo,
-            .pDepthAttachment = &depthAttachmentInfo
-        };
-
-        vkCmdBeginRendering(cb, &renderingInfo);
-
-        // Set viewport and scissor
-        VkViewport vp{
-            .width = static_cast<float>(extent.width),
-            .height = static_cast<float>(extent.height),
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f
-        };
-        vkCmdSetViewport(cb, 0, 1, &vp);
-
-        VkRect2D scissor{
-            .extent{
-                .width = extent.width,
-                .height = extent.height
-            }
-        };
-        vkCmdSetScissor(cb, 0, 1, &scissor);
-
-        // TODO: Bind pipeline and draw renderables
-        // This is where module-specific draw commands would be recorded
-
-        vkCmdEndRendering(cb);
+    VkCommandBuffer Renderer::GetCurrentCommandBuffer()
+    {
+        return s_CommandBuffers[s_CurrentFrameIndex];
     }
 
     void Renderer::CreateModels()
     {
+        SEDX_CORE_TRACE_TAG("Renderer", "Creating models and loading assets");
         VmaAllocationCreateInfo bufferAllocCI{};
         bufferAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
                               VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
                               VMA_ALLOCATION_CREATE_MAPPED_BIT;
         bufferAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
-		//bufferAllocCI.pool = VK_NULL_HANDLE; // Only set if using a custom pool
+        //bufferAllocCI.pool = VK_NULL_HANDLE; // Only set if using a custom pool
 
         VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
 
@@ -811,18 +845,31 @@ namespace SceneryEditorX
         // Only proceed if file exists
         if (!std::filesystem::exists(modelPath))
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "Model file not found at expected path: {}", std::filesystem::absolute(modelPath).string());
+            SEDX_CORE_ERROR_TAG("Renderer",
+                                "Model file not found at expected path: {}",
+                                std::filesystem::absolute(modelPath).string());
             return; // Skip model loading instead of asserting
         }
 
         // Dereference the pointer to access the Ref, then call GetQueue()
-        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(), (*queuePtr)->GetQueue(), modelPath.string(), texFiles, bufferAllocCI));
+        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator,
+                                                  s_CommandPool->GetPool(),
+                                                  (*queuePtr)->GetQueue(),
+                                                  modelPath.string(),
+                                                  texFiles,
+                                                  bufferAllocCI));
 
         const Asset &asset = s_AssetManager->GetAsset(0);
         VkBuffer vBuffer = asset.GetModelBuffer();
         VkDeviceSize vBufSize = asset.GetModelVertexSize();
         VkDeviceSize iBufSize = asset.GetModelIndexSize();
         VkDeviceSize indexCount = asset.GetModelIndexCount();
+        SEDX_CORE_TRACE_TAG("Renderer",
+                            "Loaded model asset: vertex buffer {}, vertex size {}, index size {}, index count {}",
+                            static_cast<void *>(vBuffer),
+                            vBufSize,
+                            iBufSize,
+                            indexCount);
 
         // Create uniform buffers as static resource (per-frame) managed by UniformBufferSet RAII helper
         //s_UniformBuffers = CreateScope<UniformBufferSet>(allocator);
@@ -830,20 +877,15 @@ namespace SceneryEditorX
 
     void Renderer::CreateShaders()
     {
+        SEDX_CORE_TRACE_TAG("Renderer", "Creating shaders and initializing Slang shader compiler");
         // Initialize Slang shader compiler
         Slang::ComPtr<slang::IGlobalSession> slangGlobalSession;
         slang::createGlobalSession(slangGlobalSession.writeRef());
-        auto slangTargets{
-            std::to_array<slang::TargetDesc>({{
-                .format = SLANG_SPIRV, 
-                .profile = slangGlobalSession->findProfile("spirv_1_4")
-            }})
-        };
-        auto slangOptions{
-            std::to_array<slang::CompilerOptionEntry>({{
-                .name = slang::CompilerOptionName::EmitSpirvDirectly,
-				.value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}})
-        };
+        auto slangTargets{std::to_array<slang::TargetDesc>(
+            {{.format = SLANG_SPIRV, .profile = slangGlobalSession->findProfile("spirv_1_4")}})};
+        auto slangOptions{std::to_array<slang::CompilerOptionEntry>(
+            {{.name = slang::CompilerOptionName::EmitSpirvDirectly,
+              .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}})};
 
         slang::SessionDesc slangSessionDesc = {};
         slangSessionDesc.targets = slangTargets.data();
@@ -856,151 +898,49 @@ namespace SceneryEditorX
         Slang::ComPtr<slang::ISession> slangSession;
         Slang::ComPtr<slang::IBlob> diagnosticsBlob; // Blob to capture any diagnostics from shader compilation
         slangGlobalSession->createSession(slangSessionDesc, slangSession.writeRef());
-        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle", "resources/shaders/shader.slang", diagnosticsBlob, diagnosticsBlob.writeRef())};
-		if (!slangModule)
-		{
-		    SEDX_CORE_ERROR_TAG("Renderer", "Failed to load shader module from source: resources/shaders/shader.slang");
-		    if (diagnosticsBlob)
-		    {
-		        const char* errorMessage = static_cast<const char*>(diagnosticsBlob->getBufferPointer());
-		        SEDX_CORE_ERROR_TAG("Renderer", "Slang diagnostics: {}", errorMessage);
-		    }
-		    else
-		    {
-		        SEDX_CORE_ERROR_TAG("Renderer", "No diagnostics available from Slang.");
-		    }
-		    return;
-		}
+        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle",
+                                                                                     "resources/shaders/shader.slang",
+                                                                                     diagnosticsBlob,
+                                                                                     diagnosticsBlob.writeRef())};
+        if (!slangModule)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Failed to load shader module from source: resources/shaders/shader.slang");
+            if (diagnosticsBlob)
+            {
+                const char *errorMessage = static_cast<const char *>(diagnosticsBlob->getBufferPointer());
+                SEDX_CORE_ERROR_TAG("Renderer", "Slang diagnostics: {}", errorMessage);
+            }
+            else
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "No diagnostics available from Slang.");
+            }
+            return;
+        }
         Slang::ComPtr<ISlangBlob> spirv;
         slangModule->getTargetCode(0, spirv.writeRef());
 
         // Create ShaderManager owning shader modules for the pipeline stages.
         //ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
-
     }
 
-    // -------------------------------------------------------
-    // Accessors
-    // -------------------------------------------------------
+#pragma endregion
 
-    Ref<RenderContext> Renderer::GetContext()
-    {
-        return RenderContext::Get();
-    }
-
-    uint32_t Renderer::GetCurrentFrameIndex()
-    {
-        return s_CurrentFrameIndex;
-    }
-
-    uint64_t Renderer::GetFrameNumber()
-    {
-        return s_FrameNumber;
-    }
-
-    Swapchain* Renderer::GetSwapChain()
-    {
-        return s_Swapchain.Get();
-    }
-
-    uint32_t Renderer::GetSwapchainImageIndex()
-    {
-        return s_SwapchainImageIndex;
-    }
-
-    VkCommandBuffer Renderer::GetCurrentCommandBuffer()
-    {
-        return s_CommandBuffers[s_CurrentFrameIndex];
-    }
-
-    const Viewport& Renderer::GetViewport()
-    {
-        return s_Viewport;
-    }
-
-    void Renderer::SetViewport(float width, float height)
-    {
-        constexpr float epsilon = 1e-5f;
-
-        // Check if absolute value is greater than epsilon (instead of != 0)
-        SEDX_CORE_ASSERT(std::abs(width) > epsilon, "Width can't be zero");
-        SEDX_CORE_ASSERT(std::abs(height) > epsilon, "Height can't be zero");
-
-		// Check if the difference is greater than epsilon (instead of !=)
-		if (std::abs(s_Viewport.width - width) > epsilon ||  std::abs(s_Viewport.height - height) > epsilon)
-		{
-		    s_Viewport.width = width;
-		    s_Viewport.height = height;
-		    s_OrthoProjection_Dirty = true;
-		}
-    }
-
-    const Vec2& Renderer::GetRendererResolution()
-    {
-        return s_RendererResolution;
-    }
-
-    void Renderer::SetRendererResolution(uint32_t width, uint32_t height, const bool recreateResources)
-    {
-        
-       // Check if the difference is smaller than epsilon (safe ==)
-       if (constexpr float epsilon = 1e-5f;
-           std::abs(s_RendererResolution.x - static_cast<float>(width)) < epsilon && 
-           std::abs(s_RendererResolution.y - static_cast<float>(height)) < epsilon)
-           return;
-
-        s_RendererResolution.x = static_cast<float>(width);
-        s_RendererResolution.y = static_cast<float>(height);
-
-        if (recreateResources && s_ResourcesInitialized)
-        {
-            // Wait for GPU to finish before recreating resources
-            if (RenderContext::Get()->GetDevice())
-            {
-                RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
-            }
-
-            CreateRenderTargets(true, false, true);
-        }
-
-        SEDX_CORE_TRACE_TAG("Renderer", "Render resolution set to {}x{}", width, height);
-    }
-
-    const Vec2& Renderer::GetOutputResolution()
-    {
-        return s_OutputResolution;
-    }
-
-    void Renderer::SetOutputResolution(uint32_t width, uint32_t height, bool recreateResources)
-    {
-
-        // Check if the difference is smaller than epsilon (safe ==)
-        if (constexpr float epsilon = 1e-5f; std::abs(s_OutputResolution.x - static_cast<float>(width)) < epsilon && 
-            std::abs(s_OutputResolution.y - static_cast<float>(height)) < epsilon)
-        {
-            return;
-        }
-
-        s_OutputResolution.x = static_cast<float>(width);
-        s_OutputResolution.y = static_cast<float>(height);
-
-        if (recreateResources && s_ResourcesInitialized)
-        {
-            CreateRenderTargets(false, true, false);
-        }
-
-        SEDX_CORE_TRACE_TAG("Renderer", "Output resolution set to {}x{}", width, height);
-    }
+#pragma region Private Rendering Methods
 
     void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
     {
+        SEDX_CORE_TRACE_TAG("Renderer",
+                            "Creating render targets (createRender: {}, createOutput: {}, createDynamic: {})",
+                            createRender,
+                            createOutput,
+                            createDynamic);
+
         uint32_t renderWidth = static_cast<uint32_t>(GetRendererResolution().x);
         uint32_t renderHeight = static_cast<uint32_t>(GetRendererResolution().y);
         uint32_t outputWidth = static_cast<uint32_t>(GetOutputResolution().x);
         uint32_t outputHeight = static_cast<uint32_t>(GetOutputResolution().y);
 
-        auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t smallestDimension) 
-        {
+        auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t smallestDimension) {
             uint32_t maxDimension = std::max(width, height);
             uint32_t mipCount = 1;
 
@@ -1022,6 +962,115 @@ namespace SceneryEditorX
             // TODO: Create output targets
         }
     }
+
+    void Renderer::RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex)
+    {
+        SEDX_CORE_TRACE_TAG("Renderer", "Recording render commands for image index {}", imageIndex);
+        if (!s_Swapchain)
+        {
+            SEDX_CORE_TRACE_TAG("Renderer", "Swapchain is null, cannot record render commands");
+            return;
+        }
+
+        auto &swapchainImages = s_Swapchain->GetImages();
+        auto &swapchainImageViews = s_Swapchain->GetImageViews();
+        VkImageView depthImageView = s_Swapchain->GetDepthView();
+
+        if (imageIndex >= swapchainImages.size() || imageIndex >= swapchainImageViews.size())
+        {
+            SEDX_CORE_TRACE_TAG("Renderer", "Invalid image index: {}", imageIndex);
+            return;
+        }
+
+        // Transition images to attachment optimal
+        std::array<VkImageMemoryBarrier2, 2> outputBarriers{
+            VkImageMemoryBarrier2{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .srcAccessMask = 0,
+                .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                .image = swapchainImages[imageIndex],
+                .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}},
+            VkImageMemoryBarrier2{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                .srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                .image = s_Swapchain->GetDepthImage(),
+                .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+                                  .levelCount = 1,
+                                  .layerCount = 1}}};
+        SEDX_CORE_TRACE_TAG("Renderer",
+                            "Transitioning swapchain image {} and depth image to attachment optimal layout",
+                            imageIndex);
+
+        VkDependencyInfo barrierDependencyInfo{};
+        barrierDependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        barrierDependencyInfo.imageMemoryBarrierCount = 2;
+        barrierDependencyInfo.pImageMemoryBarriers = outputBarriers.data();
+        SEDX_CORE_TRACE_TAG("Renderer", "Issuing pipeline barrier for image layout transitions to attachment optimal");
+
+        vkCmdPipelineBarrier2(cb, &barrierDependencyInfo);
+
+        // -----------------------------------------------------------------
+
+        // Begin dynamic rendering
+        VkRenderingAttachmentInfo colorAttachmentInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                                                      .imageView = swapchainImageViews[imageIndex],
+                                                      .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                                                      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                                                      .clearValue{.color{{0.0f, 0.0f, 0.0f, 1.0f}}}};
+        SEDX_CORE_TRACE_TAG("Renderer", "Configured color attachment for dynamic rendering");
+
+        VkRenderingAttachmentInfo depthAttachmentInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                                                      .imageView = depthImageView,
+                                                      .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                                                      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                      .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                      .clearValue = {.depthStencil = {1.0f, 0}}};
+        SEDX_CORE_TRACE_TAG("Renderer", "Configured depth attachment for dynamic rendering");
+
+        VkExtent2D extent = s_Swapchain->GetExtent();
+        VkRenderingInfo renderingInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+                                      .renderArea{.extent{.width = extent.width, .height = extent.height}},
+                                      .layerCount = 1,
+                                      .colorAttachmentCount = 1,
+                                      .pColorAttachments = &colorAttachmentInfo,
+                                      .pDepthAttachment = &depthAttachmentInfo};
+
+        SEDX_CORE_TRACE_TAG("Renderer", "Beginning dynamic rendering with extent {}x{}", extent.width, extent.height);
+
+        vkCmdBeginRendering(cb, &renderingInfo);
+
+        SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering begun, recording draw commands");
+
+        // Set viewport and scissor
+        VkViewport vp{.width = static_cast<float>(extent.width),
+                      .height = static_cast<float>(extent.height),
+                      .minDepth = 0.0f,
+                      .maxDepth = 1.0f};
+        vkCmdSetViewport(cb, 0, 1, &vp);
+        SEDX_CORE_TRACE_TAG("Renderer", "Viewport set to {}x{}", vp.width, vp.height);
+
+        VkRect2D scissor{.extent{.width = extent.width, .height = extent.height}};
+        vkCmdSetScissor(cb, 0, 1, &scissor);
+        SEDX_CORE_TRACE_TAG("Renderer", "Scissor set to {}x{}", scissor.extent.width, scissor.extent.height);
+
+        // TODO: Bind pipeline and draw renderables
+        // This is where module-specific draw commands would be recorded
+
+        vkCmdEndRendering(cb);
+        SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering ended");
+    }
+
+#pragma endregion
 
 } // namespace SceneryEditorX
 
