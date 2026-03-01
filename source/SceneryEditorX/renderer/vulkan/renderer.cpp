@@ -40,7 +40,6 @@
 #include <array>
 #include <SDL3/SDL.h>
 #include <glm/glm.hpp>
-#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // --------------------------------------------------------------
@@ -70,11 +69,17 @@ namespace SceneryEditorX
     RendererProperties *Renderer::s_Data = nullptr;
     static Ref<Swapchain> s_Swapchain = nullptr;
     std::atomic<bool> Renderer::s_ResourcesInitialized = false;
-    CommandList *Renderer::s_CurrentCmdList = nullptr;
-
+    uint32_t Renderer::m_ResourceIndex = 0;
     Scope<AssetManager> Renderer::s_AssetManager = nullptr;
     Scope<FrameSync> Renderer::s_FrameSync = nullptr;
     Scope<CommandPool> Renderer::s_CommandPool = nullptr;
+
+    // Bindless draw data
+    //std::array<Sb_DrawData, renderer_max_draw_calls> Renderer::m_DrawData_CPU;
+    uint32_t Renderer::m_DrawDataCount = 0;
+
+    CommandList* Renderer::m_CmdList_Present  = nullptr;
+    CommandList* Renderer::m_CmdList_Compute  = nullptr;
 
     std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::s_CommandBuffers = {};
     uint32_t Renderer::s_CurrentFrameIndex = 0;
@@ -122,7 +127,7 @@ namespace SceneryEditorX
 
         if (!RenderContext::IsInitialized())
         {
-            SEDX_CORE_FATAL_TAG("Renderer", "RenderContext failed to initialize — cannot proceed with renderer setup");
+            SEDX_CORE_FATAL_TAG("Renderer", "RenderContext failed to initialize, cannot proceed with renderer setup");
             return;
         }
 
@@ -231,11 +236,11 @@ namespace SceneryEditorX
     {
         SEDX_CORE_INFO_TAG("Renderer", "=== Shutting Down Renderer ===");
 
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+
         // Wait for all GPU work to complete
-        if (RenderContext::Get())
-        {
-            RenderContext::Get()->GetDevice()->GetQueueManager()->WaitIdleAll();
-        }
+        device->GetQueueManager()->WaitIdleAll();
+        
 
         // Destroy frame resources
         DestroyFrameResources();
@@ -258,13 +263,60 @@ namespace SceneryEditorX
 
     void Renderer::Tick()
     {
-		s_Swapchain->AcquireNextImage();
-        // Memory allocator housekeeping
-        if (RenderContext::Get() && RenderContext::Get()->GetDevice()->GetMemoryAllocator())
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+
+        s_Swapchain->AcquireNextImage();
+        device->GetMemoryAllocator()->Tick(s_FrameNumber);
+        bool can_render = !Window::IsMinimized() && s_ResourcesInitialized;
+
+        // prevent write-after-present hazards when idle (skip first frame, nothing to wait for)
+        if (!can_render && s_FrameNumber > 0)
         {
-            RenderContext::Get()->GetDevice()->GetMemoryAllocator()->Tick(s_FrameNumber);
+            Ref<Queue> *queue = QueueManager::GetQueue(QueueType::Graphics);
+            queue->Get()->WaitIdle(this);
         }
-    }
+
+        {
+            m_CmdList_Present = QueueManager::GetQueue(QueueType::Graphics)->NextCommandList();
+            m_CmdList_Present->Begin();
+        }
+
+        m_CmdList_Compute = nullptr;
+        if (can_render)
+        {
+            m_CmdList_Compute = QueueManager::GetQueue(QueueType::Compute)->NextCommandList();
+            m_CmdList_Compute->Begin();
+        }
+
+        m_DrawDataCount = 0;
+
+        if (can_render)
+        {
+        }
+
+        // rotate per-frame buffers to avoid cpu-gpu races
+        RotateFrameBuffers();
+
+        UpdateDrawCalls(m_CmdList_Present);
+
+        // periodic resource cleanup
+        {
+            m_ResourceIndex++;
+            bool isSyncPoint = m_ResourceIndex == static_cast<uint32_t>(100);
+            if (isSyncPoint)
+            {
+                m_ResourceIndex = 0;
+
+                if (QueueManager::NeedToParseDeletionQueue())
+                {
+                    QueueManager::WaitIdleAll();
+                    QueueManager::ParseDeletionQueue();
+                }
+
+                GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
+            }
+        }
+    }   
 
 #pragma endregion
 

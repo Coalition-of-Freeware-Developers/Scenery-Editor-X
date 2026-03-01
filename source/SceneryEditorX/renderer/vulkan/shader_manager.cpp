@@ -30,7 +30,6 @@
  */
 #include "shader_manager.h"
 #include <utility>
-#include <tracy/Tracy.hpp>
 #include <shaderc/shaderc.hpp>
 
 // -------------------------------------------------------

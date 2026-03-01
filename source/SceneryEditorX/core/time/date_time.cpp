@@ -32,7 +32,6 @@
 #include "date_time.h"
 #include <chrono>
 #include <ctime>
-#include <tracy/Tracy.hpp>
 
 // -----------------------------------------------------
 

@@ -34,7 +34,6 @@
 #include <SDL3/SDL_video.h>
 #include <SceneryEditorX/logging/logging.hpp>
 #include <fmt/format.h>
-#include <tracy/Tracy.hpp>
 
 // --------------------------------------------
 

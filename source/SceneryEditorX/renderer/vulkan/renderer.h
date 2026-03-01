@@ -239,8 +239,16 @@ namespace SceneryEditorX
 
         static RendererProperties *s_Data;
         static std::atomic<bool> s_ResourcesInitialized;
-        static CommandList *s_CurrentCmdList;
+        CommandList *m_CurrentCmdList;
+
+		// CPU-Side draw data staging
+		//static std::array<Sb_DrawData, renderer_max_draw_calls> m_DrawData_CPU;
+        static uint32_t m_DrawDataCount;
+
+        static CommandList *m_CmdList_Compute;
+        static CommandList *m_CmdList_Present;
         static Scope<AssetManager> s_AssetManager;
+        static uint32_t m_ResourceIndex;
 
         // Frame synchronization
         static Scope<FrameSync> s_FrameSync;

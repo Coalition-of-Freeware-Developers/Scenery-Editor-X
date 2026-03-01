@@ -39,7 +39,6 @@
 #include <SceneryEditorX/scene/material.h>
 #include <SceneryEditorX/scene/model_asset.h>
 #include <SceneryEditorX/utils/string_utils.h>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

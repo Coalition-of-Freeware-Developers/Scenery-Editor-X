@@ -32,7 +32,6 @@
 #include "key_codes.h"
 #include <SDL3/SDL.h>
 #include <SceneryEditorX/core/window/window.h>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

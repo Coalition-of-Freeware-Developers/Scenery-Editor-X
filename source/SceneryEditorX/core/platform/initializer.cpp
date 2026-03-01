@@ -33,7 +33,6 @@
 #include <SceneryEditorX/core/base.h>
 #include <SceneryEditorX/core/memory/memory.h>
 #include <SceneryEditorX/logging/logging.hpp>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

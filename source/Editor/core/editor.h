@@ -60,20 +60,20 @@ namespace SceneryEditorX
 	 * UI system, asset management, and viewport rendering. It handles initialization,
 	 * main loop execution, frame rendering, and resource management.
 	 */
-    class Editor : public Application
+    class Editor
     {
     public:
         explicit Editor(const PlatformContext& context);
         explicit Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences);
-        virtual ~Editor() override;
+        virtual ~Editor();
 
-        void Run() override;
-        void Tick() override;
-        void Stop() override;
+        void Run();
+        void Tick();
+        void Stop();
 
-        void OnRender() override;
-        void OnUpdate() override;
-        void OnShutdown() override;
+        void OnRender();
+        void OnUpdate();
+        void OnShutdown();
         void InitEditor();
 
         void OnEvent(Event &event);
@@ -104,10 +104,9 @@ namespace SceneryEditorX
     private:
         static void ProcessClArgs();
         static void UpdateWindowTitle(const std::string &sceneName);
-        void OnInit() override;
+        void OnInit();
 
         Ref<UserPreferences> m_UserPreferences;
-        Ref<RenderContext> renderContext;
 
         static Renderer s_GfxEngine; // Graphics engine instance
 		std::vector<Ref<UI_Panel>> m_Panels;

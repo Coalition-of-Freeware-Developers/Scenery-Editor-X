@@ -40,7 +40,6 @@
 #include <iomanip>
 #include <locale>
 #include <sstream>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

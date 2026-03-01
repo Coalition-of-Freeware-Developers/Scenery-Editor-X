@@ -33,7 +33,6 @@
 #include "SceneryEditorX/core/application/application_data.h"
 #include <filesystem>
 #include <libconfig.h++>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

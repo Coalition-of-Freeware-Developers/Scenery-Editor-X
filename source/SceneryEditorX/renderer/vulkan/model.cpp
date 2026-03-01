@@ -34,7 +34,6 @@
 #include "model.h"
 #include "device.h"
 #include <tiny_obj_loader.h>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

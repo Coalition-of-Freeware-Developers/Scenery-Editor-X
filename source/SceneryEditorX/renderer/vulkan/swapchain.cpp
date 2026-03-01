@@ -40,7 +40,6 @@
 #include <utility>
 #include <vector>
 #include <SDL3/SDL_vulkan.h>
-#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -------------------------------------------------------
@@ -594,7 +593,6 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Swapchain", "Vulkan surface created successfully");
 
 		CreateSwapchain();
-
     }
 
     Swapchain::~Swapchain()

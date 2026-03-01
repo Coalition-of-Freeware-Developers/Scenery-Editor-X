@@ -87,7 +87,7 @@ namespace SceneryEditorX
 	class ResourceCache
 	{
 	public:
-	    static void Initialize();
+	    static void Init();
 	    static void Shutdown();
 	
 	    // default resources

@@ -35,7 +35,6 @@
 #include "swapchain.h"
 #include "SceneryEditorX/core/window/window.h"
 #include <algorithm>
-#include <tracy/Tracy.hpp>
 #include <volk/volk.h>
 
 // -----------------------------------------------------------------

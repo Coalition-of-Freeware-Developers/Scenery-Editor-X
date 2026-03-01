@@ -24,7 +24,7 @@ FUNCTION(SEDX_GROUP_TARGETS)
         ENDIF()
     ENDFOREACH()
 
-	FOREACH(T IN ITEMS SDL3 SDL3-static SDL3_test)
+	FOREACH(T IN ITEMS SDL3 SDL3-static SDL3_test SDL3-shared SDL_uclibc)
         IF(TARGET ${T})
             SET_PROPERTY(TARGET ${T} PROPERTY FOLDER "Dependency/SDL3")
         ENDIF()

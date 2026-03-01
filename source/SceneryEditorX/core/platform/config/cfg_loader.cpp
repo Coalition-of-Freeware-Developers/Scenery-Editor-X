@@ -30,7 +30,6 @@
  */
 #include "cfg_loader.h"
 #include <fstream>
-#include <tracy/Tracy.hpp>
 
 // ---------------------------------------------------------
 

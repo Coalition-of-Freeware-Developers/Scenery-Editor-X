@@ -30,7 +30,6 @@
  */
 #include "resource_cache.h"
 #include "SceneryEditorX/core/platform/filesystem/file_manager.hpp"
-#include <tracy/Tracy.hpp>
 
 // -----------------------------------------------------------
 
@@ -46,7 +45,7 @@ namespace SceneryEditorX
 		//std::unordered_map<IconType, Ref<Texture>> m_default_icons;
 	} // namespace
 	
-	void ResourceCache::Initialize()
+	void ResourceCache::Init()
 	{
 	    // create project directory
 	    SetProjectDirectory("project\\");

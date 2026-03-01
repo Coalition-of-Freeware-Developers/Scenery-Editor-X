@@ -45,7 +45,7 @@ namespace SceneryEditorX
     class RenderContext : public RefCounted
 	{
     public:
-        RenderContext();
+        RenderContext() = default;
         virtual ~RenderContext() override;
 
         RenderContext(const RenderContext &) = delete;

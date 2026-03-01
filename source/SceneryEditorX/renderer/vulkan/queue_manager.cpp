@@ -32,7 +32,6 @@
 #include "device.h"
 #include "render_context.h"
 #include <algorithm>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

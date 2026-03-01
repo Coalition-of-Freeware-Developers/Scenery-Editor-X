@@ -47,7 +47,7 @@ namespace SceneryEditorX
     public:
 		FPSTimer() = default;
 
-        static void Initialize();
+        static void Init();
 		static void PostTick();
 
         static float GetFpsLimit();

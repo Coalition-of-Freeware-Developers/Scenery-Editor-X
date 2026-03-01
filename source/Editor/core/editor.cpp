@@ -42,7 +42,6 @@
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
-#include <tracy/Tracy.hpp>
 
 // ---------------------------------------------------------
 
@@ -101,17 +100,6 @@ namespace SceneryEditorX
 
     }
 
-    /**
-	 * -------------------------------------------------------
-	 * Editor static Variables
-	 * -------------------------------------------------------
-	 */
-
-    // Unique pointer to the application window
-    static Scope<Window> g_Window;
-
-    // -------------------------------------------------------
-
     /*
     Editor::Editor(const std::vector<std::string> &args) : Application(args)
     {
@@ -140,7 +128,7 @@ namespace SceneryEditorX
     }
     */
 
-    Editor::Editor(const PlatformContext& context) : Application(context)
+    Editor::Editor(const PlatformContext& context)
     {
         s_ClArguments = context.GetCommandLineArgs();
         ProcessClArgs(); // Process command line arguments to set internal flags before initialization
@@ -150,10 +138,8 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext ===");
         SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
         SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
-        
-        renderContext = RenderContext::Get();
 
-        // TODO: Move project loading to a separate function
+	    // TODO: Move project loading to a separate function
         // activeProject->ReadProjCache();
         // assetManager.LoadProject(cacheData.projectPath, cacheData.binPath);
         // m_UserPreferences->GetRecentProjects();
@@ -161,7 +147,6 @@ namespace SceneryEditorX
         // camera = assetManager.GetMainCamera(scene);
 
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
-		Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -169,7 +154,7 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
     }
 
-    Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : Application(context), m_UserPreferences(userPreferences)
+    Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : m_UserPreferences(userPreferences)
     {
         s_ClArguments = context.GetCommandLineArgs();
         ProcessClArgs(); // Process command line arguments to set internal flags before initialization
@@ -179,8 +164,6 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("Editor", "=== Initializing Editor with PlatformContext and UserPreferences ===");
         SEDX_CORE_INFO_TAG("Editor", "Working Directory: {}", context.GetWorkingDirectory());
         SEDX_CORE_INFO_TAG("Editor", "Temp Directory: {}", context.GetTempDirectory());
-        
-        renderContext = RenderContext::Get();
 
         // TODO: Move project loading to a separate function
         // activeProject->ReadProjCache();
@@ -194,8 +177,6 @@ namespace SceneryEditorX
         {
             SEDX_CORE_WARN_TAG("Editor", "Main window is not visible after creation.");
         }
-
-        Renderer::Init();
 
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -212,8 +193,6 @@ namespace SceneryEditorX
             ImGui::DestroyContext();
         }
 
-		Renderer::Shutdown();
-        renderContext.Reset();
     }
 
     void Editor::Run()
@@ -221,7 +200,6 @@ namespace SceneryEditorX
         SEDX_CORE_INFO_TAG("Editor", "=== Starting Editor Main Loop ===");
 
         // Call base class Run() which contains the main application loop
-        Application::Run();
 
         SEDX_CORE_INFO_TAG("Editor", "=== Editor Main Loop Ended ===");
     }
@@ -244,33 +222,30 @@ namespace SceneryEditorX
             UpdateCurrentProject();
         }
 
-        Renderer::Tick();
-        Application::Tick();
     }
 
     void Editor::Stop()
     {
-        Application::Stop();
+
     }
 
     void Editor::OnRender()
     {
-        Application::OnRender();
+
     }
 
     void Editor::OnUpdate()
     {
-        Application::OnUpdate();
+
     }
 
     void Editor::OnShutdown()
     {
-        Application::OnShutdown();
+
     }
 
     void Editor::InitEditor()
     {
-        Renderer::Init();
 
         /*SEDX_CORE_INFO_TAG("EDITOR", "Setting up ImGui docking layout");
 
@@ -333,6 +308,7 @@ namespace SceneryEditorX
 
         ImGui::End();*/
     }
+
     void Editor::OnEvent(Event &event)
     {
     }

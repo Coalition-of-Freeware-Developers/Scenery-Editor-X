@@ -30,12 +30,14 @@
  */
 #include "application.h"
 #include "SceneryEditorX/core/input/input.h"
+#include "SceneryEditorX/core/resource/resource_cache.h"
+#include "SceneryEditorX/core/threading/thread_pool.h"
+#include "SceneryEditorX/core/time/fps_timer.h"
 #include "SceneryEditorX/logging/logging.hpp"
 #include "SceneryEditorX/renderer/vulkan/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/swapchain.h"
 #include "SceneryEditorX/ui/ui_layer.h"
 #include <imgui_impl_sdl3.h>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 
@@ -92,9 +94,15 @@ namespace SceneryEditorX
 		
 		// Set event callback before renderer init (so it can handle any initialization events)
 		m_Window->SetEventCallback([this](Event &e) { OnEvent(e); });
+		m_IsMinimized = false;
+
+        FPSTimer::Init();
+        ThreadPool::Init();
+		ResourceCache::Init();
+        RenderContext::Init();
+		Renderer::Init();
 
 		m_IsRunning = true;
-		m_IsMinimized = false;
     }
 
     // -------------------------------------------------------
@@ -170,6 +178,12 @@ namespace SceneryEditorX
     Application::~Application()
     {
 
+		ThreadPool::Shutdown();
+        ResourceCache::Shutdown();
+        ResourceCache::UnloadDefaultResources();
+		Renderer::Shutdown();
+
+
         /** 
          * Let RAII handle Window destruction, or explicitly reset the RefCounter once
          * to avoid double-destruction. Do NOT call the destructor directly.
@@ -179,6 +193,7 @@ namespace SceneryEditorX
             m_Window->Destroy();
             m_Window.reset();
         }
+
     }
 
     void Application::Tick()
@@ -187,6 +202,8 @@ namespace SceneryEditorX
 
         // Per-frame housekeeping
         Window::Tick();
+        Renderer::Tick();
+        FPSTimer::PostTick();
     }
 
     void Application::Run()

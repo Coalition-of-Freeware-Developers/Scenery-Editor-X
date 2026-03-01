@@ -33,7 +33,6 @@
 #include <fstream>
 #include <libconfig.h++>
 #include <regex>
-#include <tracy/Tracy.hpp>
 
 // -------------------------------------------------------
 

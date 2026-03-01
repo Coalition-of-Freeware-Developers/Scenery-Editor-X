@@ -57,7 +57,7 @@ namespace SceneryEditorX
 
     } // namespace
 
-    void FPSTimer::Initialize()
+    void FPSTimer::Init()
     {
         s_FPS_Limit      = static_cast<float>(MonitorData::GetRefreshRate());
         s_last_TickTime = std::chrono::steady_clock::now();
