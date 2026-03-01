@@ -57,7 +57,6 @@ namespace SceneryEditorX
         static Ref<RenderContext> Get();
         static bool IsInitialized();
         static VkInstance GetInstance();
-        static VkSurfaceKHR GetSurface();
 
         Ref<Device> GetDevice() { return m_Device; }
         const Ref<Device> &GetLogicalDevice() { return m_Device; }

@@ -33,8 +33,8 @@
 #include "SceneryEditorX/core/window/window.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include <SDL3/SDL_vulkan.h>
-#include <volk/volk.h>
 #include <tracy/Tracy.hpp>
+#include <volk/volk.h>
 #ifdef SEDX_PLATFORM_WINDOWS
     #include <Windows.h>
 #endif
@@ -50,7 +50,6 @@ namespace SceneryEditorX
     constexpr uint32_t TimeStampPerPool = 64;
 
     static bool s_IsInitialized = false;
-	static VkSurfaceKHR s_Surface = VK_NULL_HANDLE;
 
     // -------------------------------------------------------
 	
@@ -253,21 +252,12 @@ namespace SceneryEditorX
                     SEDX_CORE_ERROR_TAG("Render Context", "Khronos validation layer not available!");
             }*/
 
-			SDL_Window *sdlWindow = Window::GetWindow();
-			if (!sdlWindow)
+			s_Instance->m_Device = CreateRef<Device>(s_Instance->m_Instance);
+			if (!s_Instance->m_Device || s_Instance->m_Device->GetLogicalDevice() == VK_NULL_HANDLE)
 			{
-			    SEDX_CORE_ERROR_TAG("Swapchain", "SDL3 window is null, cannot create Vulkan surface");
+			    SEDX_CORE_ERROR_TAG("RenderContext", "Failed to create valid Vulkan device!");
 			    return;
 			}
-
-			SEDX_CORE_ASSERT(SDL_Vulkan_CreateSurface(sdlWindow, s_Instance->m_Instance, nullptr, &s_Surface), "Failed to create Vulkan surface for SDL window");
-
-            s_Instance->m_Device = CreateRef<Device>(s_Instance->m_Instance);
-            if (!s_Instance->m_Device || s_Instance->m_Device->GetLogicalDevice() == VK_NULL_HANDLE)
-            {
-                SEDX_CORE_ERROR_TAG("RenderContext", "Failed to create valid Vulkan device!");
-                return;
-            }
 
             s_IsInitialized = true;
         }
@@ -306,12 +296,6 @@ namespace SceneryEditorX
         }
 
         return rc->m_Instance;
-    }
-
-    VkSurfaceKHR RenderContext::GetSurface()
-    {
-        SEDX_CORE_ASSERT(s_Surface != VK_NULL_HANDLE, "GetSurface() called before Vulkan surface creation");
-        return s_Surface;
     }
 
 } // namespace SceneryEditorX

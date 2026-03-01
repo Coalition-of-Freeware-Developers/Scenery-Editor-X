@@ -60,8 +60,153 @@ ENDIF()
 INCLUDE("${CMAKE_SOURCE_DIR}/cmake/assets.cmake")
 
 ############################################
+# Global debug postfix configuration
+############################################
+SET(CMAKE_DEBUG_POSTFIX "_d" CACHE STRING "Debug library postfix")
+SET(CMAKE_EXECUTABLE_DEBUG_POSTFIX "_debug" CACHE STRING "Debug executable postfix")
+
+############################################
+# Helper function to apply debug postfix to targets
+############################################
+FUNCTION(sedx_apply_debug_postfix TARGET_NAME)
+	IF(TARGET ${TARGET_NAME})
+		GET_TARGET_PROPERTY(_target_type ${TARGET_NAME} TYPE)
+		GET_TARGET_PROPERTY(_aliased ${TARGET_NAME} ALIASED_TARGET)
+
+		# Skip ALIAS targets
+		IF(_aliased)
+			RETURN()
+		ENDIF()
+
+		# Apply appropriate postfix based on target type
+		IF(_target_type STREQUAL "EXECUTABLE")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				DEBUG_POSTFIX "${CMAKE_EXECUTABLE_DEBUG_POSTFIX}"
+			)
+		ELSEIF(_target_type MATCHES "LIBRARY")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}"
+			)
+		ENDIF()
+	ENDIF()
+ENDFUNCTION()
+
+############################################
+# Helper to configure PDB output for targets
+############################################
+FUNCTION(sedx_configure_pdb_output TARGET_NAME)
+	IF(NOT MSVC)
+		RETURN()
+	ENDIF()
+
+	IF(TARGET ${TARGET_NAME})
+		GET_TARGET_PROPERTY(_aliased ${TARGET_NAME} ALIASED_TARGET)
+
+		# Skip ALIAS targets
+		IF(_aliased)
+			RETURN()
+		ENDIF()
+
+		# Get target type
+		GET_TARGET_PROPERTY(_target_type ${TARGET_NAME} TYPE)
+
+		# Skip INTERFACE libraries
+		IF(_target_type STREQUAL "INTERFACE_LIBRARY")
+			RETURN()
+		ENDIF()
+
+		# Skip UNKNOWN libraries
+		IF(_target_type STREQUAL "UNKNOWN_LIBRARY")
+			RETURN()
+		ENDIF()
+
+		# Check if target is IMPORTED
+		GET_TARGET_PROPERTY(_is_imported ${TARGET_NAME} IMPORTED)
+
+		IF(_is_imported)
+			RETURN()
+		ENDIF()
+
+		# Set PDB output directory for this target
+		SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+			PDB_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/pdb"
+			PDB_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/pdb"
+			PDB_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/pdb"
+			COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/pdb"
+			COMPILE_PDB_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}/pdb"
+			COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/pdb"
+		)
+
+		# Set PDB name with appropriate postfix
+		IF(_target_type STREQUAL "EXECUTABLE")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_EXECUTABLE_DEBUG_POSTFIX}>"
+				COMPILE_PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_EXECUTABLE_DEBUG_POSTFIX}>"
+			)
+		ELSEIF(_target_type MATCHES "LIBRARY")
+			SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+				PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_DEBUG_POSTFIX}>"
+				COMPILE_PDB_NAME "${TARGET_NAME}$<$<CONFIG:Debug>:${CMAKE_DEBUG_POSTFIX}>"
+			)
+		ENDIF()
+	ENDIF()
+ENDFUNCTION()
+
+############################################
 # Build options (dependency toggles, features)
 ############################################
+
+# Helper to apply per-target output directories (multi-config aware)
+FUNCTION(SEDX_APPLY_OUTPUT_DIRS)
+    # Accept optional arguments: <LIBS_DIR> <BIN_DIR>
+    # ARGV0/ARGV1 may be empty if caller passed undefined variables, so handle safely.
+    IF(ARGC GREATER 0)
+        SET(_libs_dir "${ARGV0}")
+    ELSE()
+        SET(_libs_dir "${CMAKE_SOURCE_DIR}/lib")
+    ENDIF()
+
+    IF(ARGC GREATER 1)
+        SET(_bin_dir "${ARGV1}")
+    ELSE()
+        SET(_bin_dir "${CMAKE_SOURCE_DIR}/bin")
+    ENDIF()
+
+    # Provide sensible defaults when caller passes empty strings
+    IF(NOT _libs_dir OR "${_libs_dir}" STREQUAL "")
+        SET(_libs_dir "${CMAKE_SOURCE_DIR}/lib")
+    ENDIF()
+    IF(NOT _bin_dir OR "${_bin_dir}" STREQUAL "")
+        SET(_bin_dir "${CMAKE_SOURCE_DIR}/bin")
+    ENDIF()
+
+    # Prefer per-config subfolders to keep Debug/Release separate when using multi-config generators
+    FOREACH(_t IN ITEMS ${SEDX_OUTPUT_TARGETS})
+        IF(TARGET ${_t})
+            # Standard properties (single-config fallback)
+            SET_TARGET_PROPERTIES(${_t} PROPERTIES
+                ARCHIVE_OUTPUT_DIRECTORY "${_libs_dir}"
+                LIBRARY_OUTPUT_DIRECTORY "${_libs_dir}"
+                RUNTIME_OUTPUT_DIRECTORY "${_bin_dir}"
+            )
+
+            # Per-config (multi-config generators) output directories
+            SET_TARGET_PROPERTIES(${_t} PROPERTIES
+                ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${_libs_dir}
+                ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${_libs_dir}
+                LIBRARY_OUTPUT_DIRECTORY_DEBUG ${_libs_dir}
+                LIBRARY_OUTPUT_DIRECTORY_RELEASE ${_libs_dir}
+                RUNTIME_OUTPUT_DIRECTORY_DEBUG ${_bin_dir}
+                RUNTIME_OUTPUT_DIRECTORY_RELEASE ${_bin_dir}
+            )
+
+            # Apply debug postfix and PDB configuration for each target
+            sedx_apply_debug_postfix(${_t})
+            sedx_configure_pdb_output(${_t})
+        ENDIF()
+    ENDFOREACH()
+ENDFUNCTION()
+
 
 OPTION(SEDX_ENABLE_TESTS              	"Build test targets" OFF)
 OPTION(SEDX_ENABLE_DOXYGEN            	"Build Doxygen documentation" OFF)

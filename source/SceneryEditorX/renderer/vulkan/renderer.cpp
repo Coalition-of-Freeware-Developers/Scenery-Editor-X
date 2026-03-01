@@ -122,11 +122,6 @@ namespace SceneryEditorX
 
         if (!RenderContext::IsInitialized())
         {
-            RenderContext::Init();
-        }
-
-        if (!RenderContext::IsInitialized())
-        {
             SEDX_CORE_FATAL_TAG("Renderer", "RenderContext failed to initialize — cannot proceed with renderer setup");
             return;
         }
@@ -155,7 +150,7 @@ namespace SceneryEditorX
             // Verify surface was created
             if (s_Swapchain->GetSurface() == VK_NULL_HANDLE)
             {
-                SEDX_CORE_ERROR_TAG("Renderer", "Failed to create Vulkan surface - surface is still VK_NULL_HANDLE");
+                SEDX_CORE_ERROR_TAG("Renderer", "Failed to create Vulkan surface, surface is still VK_NULL_HANDLE");
                 return;
             }
 
@@ -449,9 +444,7 @@ namespace SceneryEditorX
             if (s_Swapchain->GetSurface() != VK_NULL_HANDLE)
             {
                 SEDX_CORE_WARN_TAG("Renderer", "Attempting to recreate swapchain...");
-                uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
-                VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
-                s_Swapchain->Recreate(queueFamily, allocator);
+                s_Swapchain->Recreate();
                 if (s_Swapchain != nullptr && !s_Swapchain->GetImages().empty())
                 {
                     SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images", s_Swapchain->GetImages().size());
@@ -655,9 +648,7 @@ namespace SceneryEditorX
         if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
         {
             // Swapchain needs recreation (e.g., window resize)
-            uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
-            VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
-            s_Swapchain->Recreate(queueFamily, allocator);
+            s_Swapchain->Recreate();
             SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
         }
         else if (presentResult != VK_SUCCESS)

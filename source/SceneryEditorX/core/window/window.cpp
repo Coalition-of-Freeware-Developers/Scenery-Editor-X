@@ -399,7 +399,7 @@ namespace SceneryEditorX
 
 	    s_Window = SDL_CreateWindow(name, width, height, flags);
 		SEDX_CORE_TRACE_TAG("Window", "Window created with flags: {}", flags);
-		SEDX_CORE_TRACE_TAG("Window", "Window created with dimensions: {}x{}", width, height);
+		SEDX_CORE_TRACE_TAG("Window", "Window created with dimensions: {}px x {}px", width, height);
 	    if (!s_Window)
 	    {
             SEDX_CORE_ERROR_TAG("Window", "Failed to create window: {}", SDL_GetError());

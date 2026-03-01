@@ -42,8 +42,7 @@ namespace SceneryEditorX
     class Swapchain : public RefCounted
 	{
 	public:
-	    Swapchain() = default;
-        Swapchain(uint32_t queueFamilyIndex, VmaAllocator allocator);
+        Swapchain();
         virtual ~Swapchain() override;
 
 	    void CreateSwapchain();
@@ -51,7 +50,7 @@ namespace SceneryEditorX
 	    // Recreate the swapchain (destroys previous images/views/depth and creates new ones).
 	    // Recreate the swapchain: waits for m_Device idle, refreshes surface caps,
 	    // creates a new swapchain and replaces internal resources safely.
-        void Recreate(uint32_t queueFamilyIndex, VmaAllocator allocator);
+        void Recreate();
         void Resize(const uint32_t width, const uint32_t height);
         void AcquireNextImage();
         VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore waitSemaphore);

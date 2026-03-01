@@ -32,6 +32,7 @@
 #include "enums.h"
 #include "memory_allocator.h"
 #include "render_context.h"
+#include "swapchain.h"
 #include "SceneryEditorX/core/window/window.h"
 #include <algorithm>
 #include <tracy/Tracy.hpp>
@@ -181,14 +182,16 @@ namespace SceneryEditorX
      * @param physicalDevice Vulkan physical device handle
      * @return VkSurfaceCapabilitiesKHR structure containing the surface capabilities
      */
+    /*
     static VkSurfaceCapabilitiesKHR GetSurfaceCapabilities(const VkPhysicalDevice physicalDevice)
 	{
-        VkSurfaceKHR surface = RenderContext::Get()->GetSurface();
+        Swapchain *swapchain = RenderContext::Get()->swapchain;
 		VkSurfaceCapabilitiesKHR surfaceCaps{};
-		VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCaps);
+		VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, swapchain->GetSurface(), &surfaceCaps);
 		SEDX_VK_RESULT_ASSERT(result, "Failed to get physical device surface capabilities");
 		return surfaceCaps;
     }
+    */
 
     /**
      * @brief Check if a given physical device supports presentation to a specific surface.
@@ -196,14 +199,16 @@ namespace SceneryEditorX
      * @param queueFamilyIndex Index of the queue family to check
      * @return true if the surface is supported, false otherwise
      */
+    /*
     static bool GetSurfaceSupport(const VkPhysicalDevice physicalDevice, const uint32_t queueFamilyIndex)
 	{
-		VkSurfaceKHR surface = RenderContext::Get()->GetSurface();
+        Swapchain *swapchain = RenderContext::Get()->swapchain;
 		VkBool32 supported = VK_FALSE;
-		VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, &supported);
+		VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, swapchain->GetSurface(), &supported);
 		SEDX_VK_RESULT_ASSERT(result, "Failed to query physical device surface support");
 		return supported == VK_TRUE;
     }
+    */
 
     /**
      * @brief Convert a Vulkan physical device type enum to the internal DeviceType enum used by the engine. This is used when populating GPU information during device enumeration.
@@ -572,7 +577,7 @@ namespace SceneryEditorX
 
         // -----------------------------------------------------------------
 
-		deviceInfo.surfaceCaps = GetSurfaceCapabilities(physicalDevice);
+		//deviceInfo.surfaceCaps = GetSurfaceCapabilities(physicalDevice);
         deviceInfo.s_SupportedFeatures = DetectGPUFeatures(physicalDevice);
 
 
