@@ -106,6 +106,73 @@ namespace SceneryEditorX::IO
         return std::filesystem::exists(std::filesystem::path(filepath));
     }
 
+	FileStatus FileSystem::TryOpenFile(const std::filesystem::path &filePath)
+	{
+		if (filePath.empty())
+			return FileStatus::Invalid;
+
+		if (!Exists(filePath))
+			return FileStatus::NotFound;
+
+	#ifdef SEDX_PLATFORM_WINDOWS
+		const HANDLE handle = CreateFileW(
+			filePath.wstring().c_str(),
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+			nullptr,
+			OPEN_EXISTING,
+			FILE_ATTRIBUTE_NORMAL,
+			nullptr
+		);
+
+		if (handle != INVALID_HANDLE_VALUE)
+		{
+			CloseHandle(handle);
+			return FileStatus::Success;
+		}
+
+		switch (GetLastError())
+		{
+		case ERROR_SHARING_VIOLATION:
+			return FileStatus::Locked;
+		case ERROR_ACCESS_DENIED:
+			return FileStatus::AccessDenied;
+		case ERROR_FILE_NOT_FOUND:
+		case ERROR_PATH_NOT_FOUND:
+			return FileStatus::NotFound;
+		default:
+			return FileStatus::UnknownError;
+		}
+	#else
+		std::ifstream file(filePath, std::ios::binary);
+		if (file.is_open())
+		{
+			file.close();
+			return FileStatus::Success;
+		}
+
+		return FileStatus::UnknownError;
+	#endif
+	}
+
+	bool FileSystem::Move(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath)
+	{
+		if (!Exists(oldFilepath) || Exists(newFilepath))
+			return false;
+
+		std::error_code ec;
+		std::filesystem::rename(oldFilepath, newFilepath, ec);
+		if (!ec)
+			return true;
+
+		std::filesystem::copy_file(oldFilepath, newFilepath, std::filesystem::copy_options::none, ec);
+		if (ec)
+			return false;
+
+		std::filesystem::remove(oldFilepath, ec);
+		return !ec;
+	}
+
     bool FileSystem::Copy(const std::filesystem::path &oldFilepath, const std::filesystem::path &newFilepath)
     {
 		if (Exists(newFilepath))

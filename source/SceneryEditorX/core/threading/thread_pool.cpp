@@ -29,7 +29,13 @@
  * -------------------------------------------------------
  */
 #include "thread_pool.h"
+#include <algorithm>
+#include <chrono>
+#include <condition_variable>
 #include <deque>
+#include <mutex>
+#include <thread>
+#include <vector>
 
 // -------------------------------------------------------
 
@@ -53,34 +59,57 @@ namespace SceneryEditorX
 		
 		// Misc
 		static bool isStopping = false;
+
+        void WorkerLoop()
+        {
+            while (true)
+            {
+                Task task;
+                {
+                    std::unique_lock<std::mutex> lock(mutex_tasks);
+                    conditionVar.wait(lock, [] { return isStopping || !tasks.empty(); });
+
+                    if (isStopping && tasks.empty())
+                    {
+                        return;
+                    }
+
+                    task = std::move(tasks.front());
+                    tasks.pop_front();
+                }
+
+                workingThreadCount.fetch_add(1, std::memory_order_relaxed);
+                try
+                {
+                    task();
+                }
+                catch (...)
+                {
+                    // Mute exceptions from tasks to avoid crashing the thread pool
+                }
+                workingThreadCount.fetch_sub(1, std::memory_order_relaxed);
+            }
+        }
 	}
 
 	void ThreadPool::Init()
 	{
-		while (true)
+        if (!threads.empty())
+        {
+            return;
+        }
+
+        {
+            std::unique_lock<std::mutex> lock(mutex_tasks);
+            isStopping = false;
+        }
+
+        threadCount = std::max(1u, std::thread::hardware_concurrency());
+        threads.reserve(threadCount);
+
+        for (uint32_t i = 0; i < threadCount; ++i)
 		{
-            Task task;
-		    {
-				std::unique_lock<std::mutex> lock(mutex_tasks);
-				conditionVar.wait(lock, [] { return isStopping || !tasks.empty(); });
-
-				if (isStopping && tasks.empty()) return;
-
-				Task currentTask = std::move(tasks.front());
-				tasks.pop_front();
-		    }
-
-		    workingThreadCount.fetch_add(1, std::memory_order::memory_order_relaxed);
-            try
-            {
-                task();
-            }
-            catch (...)
-            {
-                // Mute exceptions from tasks to avoid crashing the thread pool
-            }
-            workingThreadCount.fetch_sub(1, std::memory_order::memory_order_relaxed);
-
+          threads.emplace_back(&WorkerLoop);
 		}
 	}
 
@@ -197,9 +226,17 @@ namespace SceneryEditorX
             tasks.clear();
         }
 
-        // Wait until there are no working threads
-        while (AreTasksRunning())
+      // Wait until there are no queued tasks and no active workers
+        while (true)
         {
+         {
+                std::unique_lock<std::mutex> lock(mutex_tasks);
+                if (tasks.empty() && !AreTasksRunning())
+                {
+                    break;
+                }
+            }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
     }

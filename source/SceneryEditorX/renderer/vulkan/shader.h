@@ -43,7 +43,6 @@ namespace SceneryEditorX
         Shader() = default;
         virtual ~Shader() override;
 
-		/*
 		void CreateDescriptorSetLayouts();
 		void AddShaderStage(Stage stage, const std::string& filepath);
 		Ref<ShaderStage> GetShaderStage(Stage stage);
@@ -60,16 +59,16 @@ namespace SceneryEditorX
 
 	    const std::vector<ShaderInput> GetInputs(uint32_t set) { return m_Input[set]; }
 	    uint32_t GetNumberOfSets() { return (uint32_t)m_DescriptorSetLayouts.size(); }
-	    */
+
 
 	private:
 
-		/*
+
 		std::unordered_map<Stage, Ref<ShaderStage>> m_Stages;
 		std::map<uint32_t, std::vector<ShaderInput>> m_Input;
 		std::set<uint32_t> m_BindlessSets;
 		std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
-		*/
+
 
 	};
 

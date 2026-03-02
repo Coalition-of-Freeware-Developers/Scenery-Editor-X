@@ -45,10 +45,7 @@ namespace SceneryEditorX
 
 	Fence::~Fence()
 	{
-        if (!m_Fence)
-            return;
-
-		m_Fence = VK_NULL_HANDLE;
+       Destroy();
 	}
 
 	void Fence::CreateSyncObject()
@@ -56,6 +53,7 @@ namespace SceneryEditorX
         Ref<Device> device = RenderContext::Get()->GetDevice();
 	    VkFenceCreateInfo fenceInfo = {};
 	    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	    SEDX_VK_RESULT_ASSERT(vkCreateFence(device->GetLogicalDevice(), &fenceInfo, nullptr, &m_Fence), "Failed to create fence");
 	}
@@ -79,8 +77,14 @@ namespace SceneryEditorX
 
     void Fence::Destroy()
 	{
+        if (m_Fence == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
 	    QueueManager::AddDeletionQueue(ResourceType::Fence, m_Fence);
 	    SEDX_CORE_TRACE_TAG("Fence", "Fence {} scheduled for destruction", m_ObjectName);
+        m_Fence = VK_NULL_HANDLE;
 	}
 
     void Fence::Reset(const VkFence &fence)

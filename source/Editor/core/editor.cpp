@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include <Editor/core/editor.h>
+#include "editor_layer.h"
 #include "Editor/projects/project.h"
 #include <ImGuizmo.h>
 #include <imgui.h>
@@ -128,7 +129,7 @@ namespace SceneryEditorX
     }
     */
 
-    Editor::Editor(const PlatformContext& context)
+    Editor::Editor(const PlatformContext &context) : Application(context)
     {
         s_ClArguments = context.GetCommandLineArgs();
         ProcessClArgs(); // Process command line arguments to set internal flags before initialization
@@ -148,13 +149,14 @@ namespace SceneryEditorX
 
         // m_TitleBarActiveColor = m_TitleBarTargetColor = Colors::Theme::titlebarGreen;
 
+	    PushLayer(new SceneryEditorX::EditorLayer());
+
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        
         SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
     }
 
-    Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : m_UserPreferences(userPreferences)
+    Editor::Editor(const PlatformContext& context, const Ref<UserPreferences> &userPreferences) : Application(context), m_UserPreferences(userPreferences)
     {
         s_ClArguments = context.GetCommandLineArgs();
         ProcessClArgs(); // Process command line arguments to set internal flags before initialization
@@ -178,9 +180,10 @@ namespace SceneryEditorX
             SEDX_CORE_WARN_TAG("Editor", "Main window is not visible after creation.");
         }
 
+	    PushLayer(new SceneryEditorX::EditorLayer());
+
         const auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        
         SEDX_CORE_INFO_TAG("Editor", "Editor initialization complete ({} ms)", duration);
     }
 
@@ -199,7 +202,7 @@ namespace SceneryEditorX
     {
         SEDX_CORE_INFO_TAG("Editor", "=== Starting Editor Main Loop ===");
 
-        // Call base class Run() which contains the main application loop
+        Application::Run();
 
         SEDX_CORE_INFO_TAG("Editor", "=== Editor Main Loop Ended ===");
     }
@@ -216,17 +219,17 @@ namespace SceneryEditorX
         }
         */
         
-        // Tick project systems
+        /*// Tick project systems
         if (Project::GetActive())
         {
             UpdateCurrentProject();
-        }
+        }*/
 
     }
 
     void Editor::Stop()
     {
-
+        Application::Stop();
     }
 
     void Editor::OnRender()
@@ -241,7 +244,7 @@ namespace SceneryEditorX
 
     void Editor::OnShutdown()
     {
-
+        Application::OnShutdown();
     }
 
     void Editor::InitEditor()
@@ -467,63 +470,6 @@ namespace SceneryEditorX
 			UI_ShowWelcomePopup();
     }
      */
-
-    void Editor::OpenProject()
-    {
-    }
-
-    void Editor::OpenProject(const std::filesystem::path &filepath)
-    {
-    }
-
-    void Editor::CreateProject(const std::filesystem::path &projectPath)
-    {
-    }
-
-    void Editor::EmptyProject()
-    {
-    }
-
-    void Editor::UpdateCurrentProject()
-    {
-    }
-
-    void Editor::SaveProject()
-    {
-    }
-
-    void Editor::CloseProject(bool unloadProject)
-    {
-    }
-
-    void Editor::NewScene(const std::string &name)
-    {
-    }
-
-    bool Editor::OpenScene()
-    {
-        return false;
-    }
-
-    bool Editor::OpenScene(const std::filesystem::path &filepath, const bool checkAutoSave)
-    {
-        return false;
-    }
-
-    void Editor::SaveScene()
-    {
-
-    }
-
-    void Editor::SaveSceneAuto()
-    {
-
-    }
-
-    void Editor::SaveSceneAs()
-    {
-
-    }
 
     void Editor::ProcessClArgs()
     {

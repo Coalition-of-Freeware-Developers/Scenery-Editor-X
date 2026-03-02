@@ -23,7 +23,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * m_Device.h
+ * device.h
  * -------------------------------------------------------
  * Created: 09/02/2026
  * -------------------------------------------------------
@@ -32,7 +32,6 @@
 #include "graphics_checks.h"
 #include "memory_allocator.h"
 #include "queue_manager.h"
-
 #include <volk/volk.h>
 
 // -----------------------------------------------------------------
@@ -93,8 +92,9 @@ namespace SceneryEditorX
 
         [[nodiscard]] VkInstance GetInstance() const { return m_Instance; }
         [[nodiscard]] VkSurfaceKHR GetWindowSurface() const { return m_WindowSurface; }
-        [[nodiscard]] VkPhysicalDeviceLimits GetDeviceLimits() const { return m_PhysDeviceProp.properties.limits; }
-        [[nodiscard]] VkPhysicalDeviceProperties GetDeviceProperties() const { return m_PhysDeviceProp.properties; }
+        [[nodiscard]] const VkPhysicalDeviceLimits& GetDeviceLimits() const { return m_PhysDeviceProp.properties.limits; }
+        [[nodiscard]] const VkPhysicalDeviceProperties& GetDeviceProperties() const { return m_PhysDeviceProp.properties; }
+        [[nodiscard]] const VkPhysicalDeviceMemoryProperties2& GetDeviceMemoryProperties() const { return m_PhysDeviceMemProp; }
 
         static uint32_t GetPhysicalDeviceCount();
         static uintptr_t GetPhysicalDeviceHandle(const uint32_t index);
@@ -121,7 +121,7 @@ namespace SceneryEditorX
 	     * @brief Get the Vulkan logical device handle
 	     * @return VkDevice handle or VK_NULL_HANDLE if no device is available
 	     */
-        VkDevice GetDevice() { return Get() ? Get()->GetLogicalDevice() : VK_NULL_HANDLE; }
+        [[nodiscard]] VkDevice GetDevice() const { return m_LogicalDevice; }
 
         /**
 	     * @brief Get a snapshot of internal static capabilities populated during device setup
@@ -139,7 +139,7 @@ namespace SceneryEditorX
 		 * @brief Get the MemoryAllocator instance for this device
 		 * @return Reference to the MemoryAllocator
 		 */
-		Ref<MemoryAllocator> GetMemoryAllocator() { return m_MemAllocator; }
+		MemoryAllocator& GetMemoryAllocator() { return m_MemAllocator; }
 
         /**
          * @brief Retrieve hardware device specifications by index.
@@ -169,7 +169,7 @@ namespace SceneryEditorX
     private:
         std::string m_GPUName;
         Ref<QueueManager> m_QueueManager;
-        Ref<MemoryAllocator> m_MemAllocator;
+        MemoryAllocator m_MemAllocator;
         QueueManager::QueueFamilyIndices m_FamilyIndices;
 
         Ref<Device> m_Device;

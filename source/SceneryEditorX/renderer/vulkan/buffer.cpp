@@ -37,37 +37,46 @@
 
 namespace SceneryEditorX
 {
-	Buffer::Buffer(const VmaAllocator allocator, const VkDeviceSize size, const VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo) :  m_Allocator(allocator)
-	{
-        VkBufferCreateInfo bufferCI{}; 
-	    bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferCI.size = size;
-	    bufferCI.usage = usage;
 
-	    vmaCreateBuffer(m_Allocator, &bufferCI, &allocInfo, &m_Buffer, &m_Allocation, nullptr);
-	}
+	Buffer::Buffer(const VmaAllocator allocator, const VkDeviceSize size, const VkBufferUsageFlags usage, const VmaAllocationCreateInfo& allocInfo)
+	    : m_Allocator(allocator ? allocator : MemoryAllocator::GetAllocator())
+	{
+	    VkBufferCreateInfo bufferCI{};
+	    bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	    bufferCI.size = size;
+	    bufferCI.usage = usage;
+	    bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	
+	    const VkResult result = MemoryAllocator::CreateBuffer(bufferCI, allocInfo, m_Buffer, m_Allocation);
+	    if (result != VK_SUCCESS)
+	    {
+	        m_Buffer = VK_NULL_HANDLE;
+	        m_Allocation = VK_NULL_HANDLE;
+	    }
+	}
+
 	Buffer::~Buffer()
 	{
-        SEDX_CORE_ASSERT(m_Buffer == VK_NULL_HANDLE && m_Allocation == VK_NULL_HANDLE,
-                         "Buffer destructor called without freeing resources. This may indicate a memory leak. Call "
-                         "FreeBuffer() or Destroy() before destruction.");
-	    Destroy();
+	    if (m_Buffer != VK_NULL_HANDLE || m_Allocation != VK_NULL_HANDLE)
+	    {
+	        SEDX_CORE_WARN_TAG("Buffer", "Destroying leaked buffer in destructor");
+	        Destroy();
+	    }
 	}
-	
-	Buffer::Buffer(Buffer&& other) noexcept : m_Buffer(other.m_Buffer), m_Allocation(other.m_Allocation), m_Allocator(other.m_Allocator), 
-                                              m_MappedData(other.m_MappedData), m_DeviceAddress(other.m_DeviceAddress)
+
+	Buffer::Buffer(Buffer &&other) noexcept : m_Buffer(other.m_Buffer), m_Allocation(other.m_Allocation), 
+    m_Allocator(other.m_Allocator), m_MappedData(other.m_MappedData), m_DeviceAddress(other.m_DeviceAddress)
 	{
 	    other.m_Buffer = VK_NULL_HANDLE;
 	    other.m_Allocation = VK_NULL_HANDLE;
 	    other.m_MappedData = nullptr;
 	    other.m_DeviceAddress = 0;
 	}
-	
-	Buffer& Buffer::operator=(Buffer&& other) noexcept
+		
+    Buffer &Buffer::operator=(Buffer &&other) noexcept
 	{
 	    if (this != &other)
-		{
+	    {
 	        Destroy();
 	        m_Allocator = other.m_Allocator;
 	        m_Buffer = other.m_Buffer;
@@ -82,119 +91,118 @@ namespace SceneryEditorX
 	    }
 	    return *this;
 	}
-	
+		
 	void* Buffer::Map()
 	{
-	    if (!m_MappedData && m_Allocation != VK_NULL_HANDLE)
-		{
-	        vmaMapMemory(m_Allocator, m_Allocation, &m_MappedData);
+	    if (m_Allocation == VK_NULL_HANDLE || m_Allocator == VK_NULL_HANDLE)
+	        return nullptr;
+	
+	    if (!m_MappedData)
+	    {
+	        const VkResult result = vmaMapMemory(m_Allocator, m_Allocation, &m_MappedData);
+	        if (result != VK_SUCCESS)
+	        {
+	            SEDX_CORE_ERROR_TAG("Buffer", "vmaMapMemory failed with VkResult={}", static_cast<int32_t>(result));
+	            m_MappedData = nullptr;
+	        }
 	    }
+	
 	    return m_MappedData;
 	}
-	
+		
 	void Buffer::Unmap()
 	{
+	    if (m_Allocation == VK_NULL_HANDLE || m_Allocator == VK_NULL_HANDLE)
+	    {
+	        SEDX_CORE_WARN_TAG("Buffer", "Unmap called on invalid allocation/allocator");
+	        m_MappedData = nullptr;
+	        return;
+	    }
+	
+	    if (!m_MappedData)
+	    {
+	        // Already unmapped (or never mapped) — no-op
+	        return;
+	    }
+	
+	    vmaUnmapMemory(m_Allocator, m_Allocation);
+	    m_MappedData = nullptr;
+	}
+		
+    VkDeviceAddress Buffer::DeviceAddress()
+	{
+	    const Ref<Device> device = RenderContext::Get()->GetDevice();
+	    if (m_DeviceAddress == 0 && m_Buffer != VK_NULL_HANDLE && device->GetLogicalDevice() != VK_NULL_HANDLE)
+	    {
+	        VkBufferDeviceAddressInfo buffDeviceAddInfo{};
+	        buffDeviceAddInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+	        buffDeviceAddInfo.buffer = m_Buffer;
+	
+	        m_DeviceAddress = vkGetBufferDeviceAddress(device->GetLogicalDevice(), &buffDeviceAddInfo);
+	    }
+	
+	    return m_DeviceAddress;
+	}
+	
+	void Buffer::FreeBuffer(VkBuffer buffer, VmaAllocation allocation)
+	{
+	    if (buffer == VK_NULL_HANDLE)
+	    {
+	        SEDX_CORE_WARN_TAG("Buffer", "FreeBuffer called with null buffer");
+	        return;
+	    }
+	
+	    if (allocation == VK_NULL_HANDLE)
+	    {
+	        SEDX_CORE_ERROR_TAG("Buffer", "No VMA allocation found for buffer {} - cannot free", ToString(buffer));
+	        return;
+	    }
+	
+	    MemoryAllocator::DestroyBuffer(buffer, allocation);
+	    MemoryAllocator::FreeAllocation(allocation);
+	
+	    SEDX_CORE_TRACE_TAG("Buffer", "Freed buffer {}", ToString(buffer));
+	}
+	
+    void Buffer::FreeImageBuffer(VkImage image, VmaAllocation allocation)
+	{
+	    if (image == VK_NULL_HANDLE)
+	    {
+	        SEDX_CORE_WARN_TAG("Buffer", "FreeImageBuffer called with null buffer");
+	        return;
+	    }
+	
+	    if (allocation == VK_NULL_HANDLE)
+	    {
+	        SEDX_CORE_ERROR_TAG("Buffer", "No VMA allocation provided for image {} - cannot free", ToString(image));
+	        return;
+	    }
+	
+	    MemoryAllocator::DestroyImage(image, allocation);
+	    MemoryAllocator::FreeAllocation(allocation);
+	    SEDX_CORE_TRACE_TAG("Buffer", "Freed image {}", ToString(image));
+	}
+	
+	void Buffer::Destroy()
+	{
+	    if (m_Buffer == VK_NULL_HANDLE)
+	        return;
+	
 	    if (m_MappedData && m_Allocation != VK_NULL_HANDLE)
-		{
+	    {
 	        vmaUnmapMemory(m_Allocator, m_Allocation);
 	        m_MappedData = nullptr;
 	    }
-	}
 	
-	VkDeviceAddress Buffer::DeviceAddress()
-	{        
-	    const Ref<Device> device = RenderContext::Get()->GetDevice();
-	    if (m_DeviceAddress == 0 && m_Buffer != VK_NULL_HANDLE && device->GetLogicalDevice() != VK_NULL_HANDLE)
-		{
-            VkBufferDeviceAddressInfo buffDeviceAddInfo{};
-	        buffDeviceAddInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-	        buffDeviceAddInfo.buffer = m_Buffer;
-
-	        m_DeviceAddress = vkGetBufferDeviceAddress(device->GetLogicalDevice(), &buffDeviceAddInfo);
-	    }
-
-	    return m_DeviceAddress;
-	}
-
-    void Buffer::FreeImageBuffer(void* &buffer)
-    {
-	    if (buffer == nullptr || buffer == VK_NULL_HANDLE)
+	    if (m_Allocation != VK_NULL_HANDLE)
 	    {
-	        SEDX_CORE_WARN_TAG("Buffer", "FreeBuffer called with null buffer");
-	        return;
+	        MemoryAllocator::DestroyBuffer(m_Buffer, m_Allocation);
+	        MemoryAllocator::FreeAllocation(m_Allocation);
 	    }
 	
-	    // Get global allocator and the allocation associated with this resource
-	    VmaAllocator allocator = MemoryAllocator::GetAllocator();
-	    VmaAllocation allocation = MemoryAllocator::GetAllocation(buffer);
-	
-	    if (allocation == VK_NULL_HANDLE)
-	    {
-	        SEDX_CORE_ERROR_TAG("Buffer", "No VMA allocation found for buffer {} - cannot free", ToString(buffer));
-	        return;
-	    }
-	    // Destroy the image using the allocator retrieved from MemoryAllocator
-	    VkImage buf = static_cast<VkImage>(buffer);
-	    vmaDestroyImage(allocator, buf, allocation);
-
-	    // Remove allocation tracking and clear the caller's reference
-	    MemoryAllocator::FreeAllocation(buffer);
-	    buffer = nullptr;
-		SEDX_CORE_TRACE_TAG("Buffer", "Freed buffer {}", ToString(buf));
-    }
-
-    void Buffer::FreeBuffer(void *&buffer)
-	{
-	    if (buffer == nullptr || buffer == VK_NULL_HANDLE)
-	    {
-	        SEDX_CORE_WARN_TAG("Buffer", "FreeBuffer called with null buffer");
-	        return;
-	    }
-	
-	    // Get global allocator and the allocation associated with this resource
-	    VmaAllocator allocator = MemoryAllocator::GetAllocator();
-	    VmaAllocation allocation = MemoryAllocator::GetAllocation(buffer);
-	
-	    if (allocation == VK_NULL_HANDLE)
-	    {
-	        SEDX_CORE_ERROR_TAG("Buffer", "No VMA allocation found for buffer {} - cannot free", ToString(buffer));
-	        return;
-	    }
-	
-	    // Destroy the buffer using the allocator retrieved from MemoryAllocator
-	    VkBuffer buf = reinterpret_cast<VkBuffer>(buffer);
-	    vmaDestroyBuffer(allocator, buf, allocation);
-	
-	    // Remove allocation tracking and clear the caller's reference
-	    MemoryAllocator::FreeAllocation(buffer);
-	    buffer = nullptr;
-	
-	    SEDX_CORE_TRACE_TAG("Buffer", "Freed buffer {}", ToString(buf));
-	}
-
-    void Buffer::Destroy()
-	{
-	    if (m_Buffer != VK_NULL_HANDLE)
-		{
-	        if (m_MappedData && m_Allocation != VK_NULL_HANDLE)
-			{
-	            vmaUnmapMemory(m_Allocator, m_Allocation);
-	            m_MappedData = nullptr;
-	        }
-
-	        if (m_Allocation != VK_NULL_HANDLE)
-			{
-	            vmaDestroyBuffer(m_Allocator, m_Buffer, m_Allocation);
-	        } 
-	        else 
-	        {
-	            vmaDestroyBuffer(m_Allocator, m_Buffer, m_Allocation);
-	        }
-
-	        m_Buffer = VK_NULL_HANDLE;
-	        m_Allocation = VK_NULL_HANDLE;
-	        m_DeviceAddress = 0;
-	    }
+	    m_Buffer = VK_NULL_HANDLE;
+	    m_Allocation = VK_NULL_HANDLE;
+	    m_DeviceAddress = 0;
 	}
 	
 }

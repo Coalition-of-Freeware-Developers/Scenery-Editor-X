@@ -49,7 +49,7 @@ namespace SceneryEditorX
 	    {
 	        VkDevice device{ VK_NULL_HANDLE };
 	        VkPipelineLayout layout{ VK_NULL_HANDLE };
-	        //const ShaderManager* shaderManager{ nullptr };
+	        const ShaderManager* shaderManager{ nullptr };
 	        VkVertexInputBindingDescription vertexBinding{};
 	        std::vector<VkVertexInputAttributeDescription> vertexAttributes{};
 	        VkFormat colorFormat{ VK_FORMAT_UNDEFINED };

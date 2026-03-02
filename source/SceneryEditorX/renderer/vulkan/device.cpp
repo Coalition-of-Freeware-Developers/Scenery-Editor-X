@@ -869,7 +869,7 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(m_QueueManager, "Failed to create QueueManager");
 
         // Initialize memory allocator
-        m_MemAllocator = CreateRef<MemoryAllocator>(this);
+        MemoryAllocator::Init(this);
         SEDX_CORE_TRACE_TAG("Device", "Device initialization complete");
     }
 

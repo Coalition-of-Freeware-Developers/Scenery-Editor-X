@@ -46,7 +46,7 @@ namespace SceneryEditorX
     {
 	public:
         FrameSync(const SyncType type);
-        ~FrameSync() = default;
+        ~FrameSync() override;
         static void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
 
         uint64_t GetNextSignalValue() { return ++m_Value; }

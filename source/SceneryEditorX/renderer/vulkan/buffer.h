@@ -53,10 +53,10 @@ namespace SceneryEditorX
 	    void Unmap();
 	    VkDeviceAddress DeviceAddress();
 	
-	    [[nodiscard]] bool Valid() const { return m_Buffer != VK_NULL_HANDLE; }
-	
-        static void FreeBuffer(void* &buffer); // Free the buffer and its associated VMA allocation, nullifying the buffer reference to prevent dangling.
-        static void FreeImageBuffer(void* &buffer); // Free an image buffer and its associated VMA allocation, nullifying the reference to prevent dangling.
+        [[nodiscard]] bool Valid() const { return m_Buffer != VK_NULL_HANDLE; }
+
+		static void FreeBuffer(VkBuffer buffer, VmaAllocation allocation);
+		static void FreeImageBuffer(VkImage image, VmaAllocation allocation);
 	    void Destroy(); // Explicitly free underlying VMA resources before m_Allocator destruction
 	
 	private:

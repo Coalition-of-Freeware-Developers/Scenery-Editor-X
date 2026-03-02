@@ -28,14 +28,13 @@
  * Created: 09/02/2026
  * -------------------------------------------------------
  */
-//#include "pipeline.h"
-//#include <iostream>
-//#include <vector>
-//#include <volk/volk.h>
+#include "pipeline.h"
+#include <iostream>
+#include <vector>
+#include <volk/volk.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
 
@@ -134,6 +133,5 @@ namespace SceneryEditorX
 	}
 
 }
-*/
 
 // -------------------------------------------------------

@@ -30,6 +30,7 @@
  */
 #include "resource_cache.h"
 #include "SceneryEditorX/core/platform/filesystem/file_manager.hpp"
+#include <cstring>
 
 // -----------------------------------------------------------
 
@@ -58,6 +59,14 @@ namespace SceneryEditorX
 	    AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
 	    AddResourceDirectory(ResourceDirectory::Shaders, data_dir + "shaders");
 	    AddResourceDirectory(ResourceDirectory::Textures, data_dir + "textures");
+	}
+
+	void ResourceCache::Shutdown()
+	{
+	}
+
+	void ResourceCache::UnloadDefaultResources()
+	{
 	}
 	
 	/*
@@ -196,18 +205,19 @@ namespace SceneryEditorX
 	}
 	*/
 	
-	/*
-	void ResourceCache::SetProjectDirectory(const char *directory)
+  void ResourceCache::SetProjectDirectory(const char *directory)
 	{
-	    if (!IO::FileSystem::Exists(directory))
-	    {
-            IO::FileSystem::CreateDirectory(directory);
-	    }
-	
-	    strcpy_s(m_project_directory, sizeof(m_project_directory), directory);
-	    m_project_directory[sizeof(m_project_directory) - 1] = '\0'; // ensure null-termination
+		if (directory == nullptr || directory[0] == '\0')
+		{
+			s_Project_Directory[0] = '\0';
+			return;
+		}
+
+		IO::FileSystem::CreateDir(std::filesystem::path(directory));
+
+		std::strncpy(s_Project_Directory, directory, sizeof(s_Project_Directory) - 1);
+		s_Project_Directory[sizeof(s_Project_Directory) - 1] = '\0';
 	}
-	*/
 
     std::string ResourceCache::GetProjectDirectoryAbsolute()
 	{

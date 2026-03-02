@@ -29,29 +29,55 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "SceneryEditorX/core/resource/iobject.h"
+#include "SceneryEditorX/renderer/gpu_stats.h"
 #include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+	struct AllocInfo;
 	class Device;
 
-	class MemoryAllocator : public RefCounted
+	class MemoryAllocator : public IObject
 	{
 	public:
-	    MemoryAllocator(Device *device);
-        virtual ~MemoryAllocator() override;
+        MemoryAllocator() = default;
+	    MemoryAllocator(const char* name);
+        ~MemoryAllocator();
+
+		static void Init(Ref<Device> device);
         static void Tick(uint64_t frameCount);
+        static void SaveAllocation(VmaAllocation allocation, AllocInfo allocInfo);
+        static void FreeAllocation(VmaAllocation allocation);
+        static void Shutdown();
 
-        static void SaveAllocation(void* resource, VmaAllocation allocation);
-        static void FreeAllocation(void *resource);
+	    VmaAllocation AllocateBuffer(VkBufferCreateInfo bufferCI, VmaMemoryUsage usage, VkBuffer& buffOut);
+		VmaAllocation AllocateImage(VkImageCreateInfo imgCI, VmaMemoryUsage usage, VkImage& imgOut, VkDeviceSize* allocSize = nullptr);
+	    static VkResult CreateBuffer(const VkBufferCreateInfo& bufferCI, const VmaAllocationCreateInfo& allocInfo, VkBuffer& outBuffer,
+                                 VmaAllocation& outAllocation, VmaAllocationInfo* outAllocationInfo = nullptr);
 
-        static VmaAllocation GetAllocation(void *resource);
+        static void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
+        static void DestroyImage(VkImage image, VmaAllocation allocation);
+
+        static VmaAllocation GetAllocation(VmaAllocation allocation);
         static VmaAllocator GetAllocator();
         static uint64_t GetAllocatedMemory();
         static uint64_t GetAvailableMemory();
 
+	    template<typename T>
+		T* MapMemory(VmaAllocation allocation)
+		{
+			T* mappedMemory;
+			vmaMapMemory(GetAllocator(), allocation, (void**)&mappedMemory);
+			return mappedMemory;
+		}
+
+        static void UnmapMemory(VmaAllocation allocation);
+
+		static void DumpStats();
+        static GPUMemoryStats GetMemoryStats();
     private:
         Ref<Device> m_Device;
 	};

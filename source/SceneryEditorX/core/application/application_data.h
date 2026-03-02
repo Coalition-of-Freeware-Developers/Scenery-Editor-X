@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "SceneryEditorX/core/threading/render_thread.h"
 #include <filesystem>
 #include <string>
 
@@ -65,6 +66,7 @@ namespace SceneryEditorX
 		 */
 	    static inline uint32_t version = SEDX_VERSION;
 
+		ThreadingPolicy CoreThreadingPolicy = ThreadingPolicy::MultiThreaded;
         bool Fullscreen = false;
 	    bool NoTitlebar = false;
 		bool VSync = false;

@@ -41,6 +41,7 @@
 #define VMA_IMPLEMENTATION
 #define VMA_STATIC_VULKAN_FUNCTIONS  0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#include "SceneryEditorX/utils/string_utils.h"
 #include <vma/vk_mem_alloc.h>
 #include <volk/volk.h>
 
@@ -48,17 +49,55 @@
 
 namespace SceneryEditorX
 {
+	struct SEDX_AllocatorData
+	{
+		VmaAllocator allocator;
+		uint64_t totalAllocatedBytes = 0;
+		
+		uint64_t memoryUsage = 0; // all heaps
+	};
 
-    static VmaAllocator s_Allocator;
+    enum class AllocationType : uint8_t
+	{
+		None = 0, 
+        Buffer = 1, 
+        Image = 2
+	};
+
+	struct AllocInfo
+	{
+		uint64_t allocatedSize = 0;
+		AllocationType type = AllocationType::None;
+	};
+
+    static SEDX_AllocatorData *s_AllocatorData;
+	static std::map<VmaAllocation, AllocInfo> s_AllocationMap;
     static std::mutex s_MutexAllocator;
-    static std::unordered_map<void *, VmaAllocation> s_Allocations;
 
     // -------------------------------------------------------
 
-    MemoryAllocator::MemoryAllocator(Device *device)
+    MemoryAllocator::MemoryAllocator(const char* name)
+    {
+        m_ObjectName = name;
+
+    }
+
+    MemoryAllocator::~MemoryAllocator()
+    {
+        SEDX_CORE_ASSERT(s_AllocatorData != nullptr, "Allocator data is null");
+        SEDX_CORE_ASSERT(s_AllocationMap.empty(), "There are still allocations");
+        vmaDestroyAllocator(s_AllocatorData->allocator);
+        s_AllocatorData = nullptr;
+        m_Device.Reset();
+    }
+
+    void MemoryAllocator::Init(Ref<Device> device)
     {
         SEDX_CORE_ASSERT(device != nullptr, "Device cannot be null");
-        m_Device = device;
+        SEDX_CORE_ASSERT(device->GetLogicalDevice() != VK_NULL_HANDLE, "Logical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
+        SEDX_CORE_ASSERT(device->GetPhysicalDevice() != VK_NULL_HANDLE, "Physical device cannot be VK_NULL_HANDLE when initializing VMA allocator");
+		s_AllocatorData = new SEDX_AllocatorData();
+
         // Zero-initialize and provide the two root function pointers.
         // With VMA_DYNAMIC_VULKAN_FUNCTIONS=1, VMA will use these to
         // resolve all other Vulkan function pointers at runtime.
@@ -66,28 +105,16 @@ namespace SceneryEditorX
         vkFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
         vkFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 
-        VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.physicalDevice = device->GetPhysicalDevice();
-        allocatorInfo.device = device->GetLogicalDevice();
-        allocatorInfo.instance = RenderContext::GetInstance();
-        allocatorInfo.vulkanApiVersion = device->GetDeviceProperties().apiVersion;
-        allocatorInfo.pVulkanFunctions = &vkFunctions;
-        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-        if (device->GetDeviceStatics().isRayTracingSupported)
-        {
-            allocatorInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-        }
-
-        SEDX_VK_RESULT_ASSERT(vmaCreateAllocator(&allocatorInfo, &s_Allocator));
-    }
-
-    MemoryAllocator::~MemoryAllocator()
-    {
-        SEDX_CORE_ASSERT(s_Allocator != nullptr);
-        SEDX_CORE_ASSERT(s_Allocations.empty(), "There are still allocations");
-        vmaDestroyAllocator(s_Allocator);
-        s_Allocator = nullptr;
-        m_Device.Reset();
+        // Initialize VulkanMemoryAllocator
+		VmaAllocatorCreateInfo allocatorInfo = {};
+		allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+		allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+		allocatorInfo.physicalDevice = device->GetPhysicalDevice();
+		allocatorInfo.device = device->GetLogicalDevice();
+		allocatorInfo.instance = RenderContext::GetInstance();
+		allocatorInfo.pVulkanFunctions = &vkFunctions;
+		
+		SEDX_VK_RESULT_ASSERT(vmaCreateAllocator(&allocatorInfo, &s_AllocatorData->allocator));
     }
 
     /**
@@ -110,8 +137,8 @@ namespace SceneryEditorX
 
     #ifdef SEDX_DEBUG
 
-        // Add null check for s_Allocator
-        if (s_Allocator == nullptr)
+        // Add null check for s_AllocatorData
+        if (s_AllocatorData == nullptr || s_AllocatorData->allocator == nullptr)
         {
             SEDX_CORE_WARN_TAG("MemoryAllocator", "VMA allocator not initialized");
             return;
@@ -121,29 +148,178 @@ namespace SceneryEditorX
         vmaSetCurrentFrameIndex(GetAllocator(), static_cast<uint32_t>(frameCount));
     }
 
-	void MemoryAllocator::SaveAllocation(void *resource, VmaAllocation allocation)
+	void MemoryAllocator::SaveAllocation(VmaAllocation allocation, AllocInfo allocInfo)
 	{
-        SEDX_CORE_ASSERT(resource != nullptr);
+        SEDX_CORE_ASSERT(allocation != nullptr, "Allocation is null");
         std::scoped_lock lock(s_MutexAllocator);
-        s_Allocations.emplace(resource, allocation);
+        s_AllocationMap.emplace(allocation, allocInfo);
 	}
 
-	void MemoryAllocator::FreeAllocation(void *resource)
+	void MemoryAllocator::FreeAllocation(VmaAllocation allocation)
 	{
         std::scoped_lock lock(s_MutexAllocator);
-        s_Allocations.erase(resource);
+        s_AllocationMap.erase(allocation);
 	}
 
-	VmaAllocation MemoryAllocator::GetAllocation(void *resource)
+    void MemoryAllocator::Shutdown()
+    {
+        vmaDestroyAllocator(s_AllocatorData->allocator);
+
+		delete s_AllocatorData;
+		s_AllocatorData = nullptr;
+    }
+
+    VmaAllocation MemoryAllocator::AllocateBuffer(VkBufferCreateInfo bufferCI, VmaMemoryUsage usage, VkBuffer &buffOut)
+    {
+        SEDX_CORE_VERIFY(bufferCI.size > 0);
+
+        VmaAllocationCreateInfo allocCreateInfo = {};
+		allocCreateInfo.usage = usage;
+
+		VmaAllocation allocation;
+        vmaCreateBuffer(s_AllocatorData->allocator, &bufferCI, &allocCreateInfo, &buffOut, &allocation, nullptr);
+		if (allocation == nullptr)
+		{
+			SEDX_CORE_ERROR_TAG("Renderer", "Failed to allocate GPU buffer!");
+			SEDX_CORE_ERROR("  Requested size: {}", Utils::BytesToString(bufferCI.size));
+			auto stats = GetMemoryStats();
+			SEDX_CORE_ERROR("  GPU mem usage: {}/{}", Utils::BytesToString(stats.used), Utils::BytesToString(stats.totalAvailable));
+		}
+
+		// TODO: Tracking
+		VmaAllocationInfo allocInfo{};
+		vmaGetAllocationInfo(s_AllocatorData->allocator, allocation, &allocInfo);
+		SEDX_CORE_TRACE("VulkanAllocator ({0}): allocating buffer; size = {1}", m_ObjectName, Utils::BytesToString(allocInfo.size));
+
+		{
+			s_AllocatorData->totalAllocatedBytes += allocInfo.size;
+			SEDX_CORE_TRACE("VulkanAllocator ({0}): total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
+		}
+
+    #if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+		auto& allocTrack = s_AllocationMap[allocation];
+		allocTrack.allocatedSize = allocInfo.size;
+		allocTrack.type = AllocationType::Buffer;
+		s_AllocatorData->memoryUsage += allocInfo.size;
+    #endif
+
+		return allocation;
+    }
+
+    VmaAllocation MemoryAllocator::AllocateImage(VkImageCreateInfo imgCI, VmaMemoryUsage usage, VkImage &imgOut, VkDeviceSize *allocSize)
+    {
+        VmaAllocationCreateInfo allocCreateInfo = {};
+		allocCreateInfo.usage = usage;
+
+		VmaAllocation allocation;
+		vmaCreateImage(s_AllocatorData->allocator, &imgCI, &allocCreateInfo, &imgOut, &allocation, nullptr);
+		if (allocation == nullptr)
+		{
+			SEDX_CORE_ERROR_TAG("MemoryAllocator", "Failed to allocate GPU image!");
+			SEDX_CORE_ERROR("  Requested size: {}x{}x{}", imgCI.extent.width, imgCI.extent.height, imgCI.extent.depth);
+			SEDX_CORE_ERROR("  Mips: {}", imgCI.mipLevels);
+			SEDX_CORE_ERROR("  Layers: {}", imgCI.arrayLayers);
+			auto stats = GetMemoryStats();
+			SEDX_CORE_ERROR("  GPU mem usage: {}/{}", Utils::BytesToString(stats.used), Utils::BytesToString(stats.totalAvailable));
+		}
+
+		// TODO: Tracking
+		VmaAllocationInfo allocInfo;
+		vmaGetAllocationInfo(s_AllocatorData->allocator, allocation, &allocInfo);
+		if (allocSize)
+		{
+		    *allocSize = allocInfo.size;
+		}
+		SEDX_CORE_TRACE("VulkanAllocator ({0}): allocating image; size = {1}", m_ObjectName, Utils::BytesToString(allocInfo.size));
+
+		{
+			s_AllocatorData->totalAllocatedBytes += allocInfo.size;
+			SEDX_CORE_TRACE("VulkanAllocator ({0}): total allocated since start is {1}", m_ObjectName, Utils::BytesToString(s_AllocatorData->totalAllocatedBytes));
+		}
+
+    #if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+		auto& allocTrack = s_AllocationMap[allocation];
+		allocTrack.allocatedSize = allocInfo.size;
+		allocTrack.type = AllocationType::Image;
+		s_AllocatorData->memoryUsage += allocInfo.size;
+    #endif
+
+		return allocation;
+    }
+
+	VkResult MemoryAllocator::CreateBuffer(const VkBufferCreateInfo& bufferCI,
+	                                       const VmaAllocationCreateInfo& allocInfo,
+	                                       VkBuffer& outBuffer,
+	                                       VmaAllocation& outAllocation,
+	                                       VmaAllocationInfo* outAllocationInfo)
+	{
+	    SEDX_CORE_ASSERT(s_AllocatorData && s_AllocatorData->allocator, "VMA allocator is not initialized");
+	    SEDX_CORE_ASSERT(bufferCI.size > 0, "Buffer size must be > 0");
+	
+	    outBuffer = VK_NULL_HANDLE;
+	    outAllocation = VK_NULL_HANDLE;
+	
+	    const VkResult result = vmaCreateBuffer(s_AllocatorData->allocator, &bufferCI, &allocInfo, &outBuffer, &outAllocation, outAllocationInfo);
+	    if (result != VK_SUCCESS)
+	    {
+	        SEDX_CORE_ERROR_TAG("MemoryAllocator", "vmaCreateBuffer failed (size={}, usage={}, result={})",
+	                            bufferCI.size, static_cast<uint32_t>(bufferCI.usage), static_cast<int32_t>(result));
+	        return result;
+	    }
+	
+	    return VK_SUCCESS;
+	}
+
+    void MemoryAllocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
+    {
+        SEDX_CORE_ASSERT(buffer, "Buffer is null");
+		SEDX_CORE_ASSERT(allocation, "Allocation is null");
+		vmaDestroyBuffer(s_AllocatorData->allocator, buffer, allocation);
+
+    #if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+		auto it = s_AllocationMap.find(allocation);
+		if (it != s_AllocationMap.end())
+		{
+			s_AllocatorData->memoryUsage -= it->second.allocatedSize;
+			s_AllocationMap.erase(it);
+		}
+		else
+		{
+			SEDX_CORE_ERROR("Could not find GPU memory allocation: {}", (void*)allocation);
+		}
+    #endif
+    }
+
+    void MemoryAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
+    {
+        SEDX_CORE_ASSERT(image);
+		SEDX_CORE_ASSERT(allocation);
+		vmaDestroyImage(s_AllocatorData->allocator, image, allocation);
+
+#if SEDX_GPU_TRACK_MEMORY_ALLOCATION
+		auto it = s_AllocationMap.find(allocation);
+		if (it != s_AllocationMap.end())
+		{
+			s_AllocatorData->memoryUsage -= it->second.allocatedSize;
+			s_AllocationMap.erase(it);
+		}
+		else
+		{
+			SEDX_CORE_ERROR("Could not find GPU memory allocation: {}", (void*)allocation);
+		}
+#endif
+    }
+
+    VmaAllocation MemoryAllocator::GetAllocation(const VmaAllocation allocation)
     {
         std::scoped_lock lock(s_MutexAllocator);
-        auto it = s_Allocations.find(resource);
-        return it != s_Allocations.end() ? it->second : nullptr;
+        auto it = s_AllocationMap.find(allocation);
+      return it != s_AllocationMap.end() ? it->first : nullptr;
 	}
 
     VmaAllocator MemoryAllocator::GetAllocator()
     {
-        return s_Allocator;
+        return s_AllocatorData->allocator;
     }
 
     uint64_t MemoryAllocator::GetAllocatedMemory()
@@ -155,7 +331,7 @@ namespace SceneryEditorX
         vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(device->GetPhysicalDevice()), &memoryProperties);
     
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
-        vmaGetHeapBudgets(s_Allocator, budgets);
+        vmaGetHeapBudgets(s_AllocatorData->allocator, budgets);
     
         for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
         {
@@ -178,7 +354,7 @@ namespace SceneryEditorX
         vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(device->GetPhysicalDevice()), &memoryProperties);
     
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
-        vmaGetHeapBudgets(s_Allocator, budgets);
+        vmaGetHeapBudgets(s_AllocatorData->allocator, budgets);
     
         for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
         {
@@ -190,6 +366,71 @@ namespace SceneryEditorX
         }
     
         return bytes / (1024ull * 1024ull);
+    }
+
+    void MemoryAllocator::UnmapMemory(VmaAllocation allocation)
+    {
+        vmaUnmapMemory(s_AllocatorData->allocator, allocation);
+    }
+
+    void MemoryAllocator::DumpStats()
+    {
+        const auto& memoryProps = RenderContext::Get()->GetDevice()->GetDeviceMemoryProperties();
+		std::vector<VmaBudget> budgets(memoryProps.memoryProperties.memoryHeapCount);
+		vmaGetHeapBudgets(s_AllocatorData->allocator, budgets.data());
+
+		SEDX_CORE_WARN("=== VMA Heap Budgets ===");
+		SEDX_CORE_WARN("===================================");
+        for (VmaBudget& b : budgets)
+		{
+			SEDX_CORE_WARN("VmaBudget.allocationBytes = {0}", Utils::BytesToString(b.statistics.allocationBytes));
+			SEDX_CORE_WARN("VmaBudget.blockBytes = {0}", Utils::BytesToString(b.statistics.blockBytes));
+			SEDX_CORE_WARN("VmaBudget.usage = {0}", Utils::BytesToString(b.usage));
+			SEDX_CORE_WARN("VmaBudget.budget = {0}", Utils::BytesToString(b.budget));
+		}
+        SEDX_CORE_WARN("===================================");
+    }
+
+    GPUMemoryStats MemoryAllocator::GetMemoryStats()
+    {
+        const auto& memoryProps = RenderContext::Get()->GetDevice()->GetDeviceMemoryProperties();
+		std::vector<VmaBudget> budgets(memoryProps.memoryProperties.memoryHeapCount);
+		vmaGetHeapBudgets(s_AllocatorData->allocator, budgets.data());
+		
+		uint64_t budget = 0;
+		for (VmaBudget& b : budgets)
+		{
+		    budget += b.budget;
+		}
+
+		GPUMemoryStats result;
+		for (const auto& [k, v] : s_AllocationMap)
+		{
+			if (v.type == AllocationType::Buffer)
+			{
+				result.bufferAllocationCount++;
+				result.bufferAllocationSize += v.allocatedSize;
+			}
+			else if (v.type == AllocationType::Image)
+			{
+				result.imageAllocationCount++;
+				result.imageAllocationSize += v.allocatedSize;
+			}
+		}
+
+		result.allocationCount = s_AllocationMap.size();
+		result.used = s_AllocatorData->memoryUsage;
+		result.totalAvailable = budget;
+		return result;
+#if 0
+		VmaTotalStatistics stats;
+		vmaCalculateStatistics(s_AllocatorData->allocator, &stats);
+
+		uint64_t usedMemory = stats.total.usedBytes;
+		uint64_t freeMemory = stats.total.unusedBytes;
+
+		return { usedMemory, freeMemory };
+#endif
     }
 
 } // namespace SceneryEditorX

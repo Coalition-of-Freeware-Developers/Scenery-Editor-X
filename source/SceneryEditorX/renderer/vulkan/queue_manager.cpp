@@ -37,11 +37,17 @@
 
 namespace SceneryEditorX
 {
+	struct DeletionQueueEntry
+	{
+		void *resource = nullptr;
+		VmaAllocation allocation = VK_NULL_HANDLE;
+	};
 	
-	static std::array<Ref<Queue>, static_cast<uint32_t>(QueueType::Unknown)> s_Regular; // graphics, compute, and copy
+    static constexpr uint32_t kQueueTypeSlots = static_cast<uint32_t>(QueueType::Present) + 1;
+	static std::array<Ref<Queue>, kQueueTypeSlots> s_Regular; // indexed by QueueType value
     static std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
     static std::mutex s_MutexDeletionQueue; // Mutex for thread-safe deletion queue access
-    static std::unordered_map<ResourceType, std::vector<void *>> s_DeletionQueue;
+    static std::unordered_map<ResourceType, std::vector<DeletionQueueEntry>> s_DeletionQueue;
 	
 	// -------------------------------------------------------
 	
@@ -243,13 +249,19 @@ namespace SceneryEditorX
 	    SEDX_CORE_TRACE_TAG("QueueManager", "Detected Queue Families - Graphics: {}, Compute: {}, Transfer: {}, Present: {}",
 	                       m_FamilyIndices.graphics, m_FamilyIndices.compute, m_FamilyIndices.transfer, m_FamilyIndices.present);
 	
-	    // Reserve space for all queue types up to QueueType::Unknown
-	    m_GPUQueues.resize(static_cast<size_t>(QueueType::Unknown));
-	
-	    // Initialize queues for each type
-	    for (size_t i = 0; i < m_GPUQueues.size(); ++i)
+       // Reserve slots indexed by QueueType numeric value.
+		m_GPUQueues.resize(kQueueTypeSlots);
+
+		// Initialize only valid allocatable queue types.
+		constexpr std::array<QueueType, 4> queueTypes = {
+			QueueType::Graphics,
+			QueueType::Compute,
+			QueueType::Transfer,
+			QueueType::Present,
+		};
+		for (const QueueType type : queueTypes)
 	    {
-	        QueueType type = static_cast<QueueType>(i);
+         const uint32_t i = static_cast<uint32_t>(type);
 	        const char *queueName = nullptr;
 	
 	        switch (type)
@@ -296,34 +308,35 @@ namespace SceneryEditorX
 	
 	    // Validate queue type
 	    const uint32_t typeIndex = static_cast<uint32_t>(type);
-	    if (typeIndex >= static_cast<uint32_t>(QueueType::Unknown))
+     if (typeIndex >= m_GPUQueues.size())
 	    {
 	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type requested: {}", QueueToString(static_cast<QueueType>(typeIndex)));
+           return;
 	    }
 	
-			// Thread-safe allocation
-			std::scoped_lock lock(s_MutexAllocation);
+		// Thread-safe allocation
+		std::scoped_lock lock(s_MutexAllocation);
 
-			// Check if queue already exists for this type
-			if (m_GPUQueues[typeIndex])
-			{
-				SEDX_CORE_TRACE_TAG("QueueManager", "Returning existing queue for type {}", QueueToString(static_cast<QueueType>(typeIndex)));
-				return;
-			}
-			// Determine queue name
-			const char *queueName = name ? name : "Unnamed Queue";
+		// Check if queue already exists for this type
+		if (m_GPUQueues[typeIndex])
+		{
+			SEDX_CORE_TRACE_TAG("QueueManager", "Returning existing queue for type {}", QueueToString(static_cast<QueueType>(typeIndex)));
+			return;
+		}
+		// Determine queue name
+		const char *queueName = name ? name : "Unnamed Queue";
 
-			// Create new queue instance
-			Ref<Queue> queue = CreateRef<Queue>(m_Device, type, queueName);  // Pass m_Device
+		// Create new queue instance
+		Ref<Queue> queue = CreateRef<Queue>(m_Device, type, queueName);  // Pass m_Device
 
-			// Initialize the queue - retrieves VkQueue handle from device
-			queue->Init();
+		// Initialize the queue - retrieves VkQueue handle from device
+		queue->Init();
 
-			// Store the queue
-			m_GPUQueues[typeIndex] = queue;
-			s_Regular[typeIndex] = queue;
+		// Store the queue
+		m_GPUQueues[typeIndex] = queue;
+		s_Regular[typeIndex] = queue;
 
-			//SEDX_CORE_TRACE_TAG("QueueManager", "Allocated {} with {} pre-allocated command lists", queueName, queue->GetPreAllocatedCmdLists());
+		//SEDX_CORE_TRACE_TAG("QueueManager", "Allocated {} with {} pre-allocated command lists", queueName, queue->GetPreAllocatedCmdLists());
 	}
 	
 	void QueueManager::FreeQueue(Ref<Queue> queue)
@@ -340,7 +353,7 @@ namespace SceneryEditorX
 	    const uint32_t typeIndex = static_cast<uint32_t>(type);
 	
 	    // Validate queue type
-	    if (typeIndex >= static_cast<uint32_t>(QueueType::Unknown))
+     if (typeIndex >= m_GPUQueues.size())
 	    {
 	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type for free: {}", QueueToString(static_cast<QueueType>(typeIndex)));
 	        return;
@@ -513,6 +526,11 @@ namespace SceneryEditorX
 	}
 	
 	void QueueManager::AddDeletionQueue(ResourceType type, void *resource)
+    {
+		AddDeletionQueue(type, resource, VK_NULL_HANDLE);
+	}
+
+	void QueueManager::AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation)
 	{
 	    if (!resource)
 	    {
@@ -521,7 +539,7 @@ namespace SceneryEditorX
 	    }
 	
 	    std::scoped_lock guard(s_MutexDeletionQueue);
-	    s_DeletionQueue[type].emplace_back(resource);
+       s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation});
 	    SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));
 	}
 	
@@ -533,11 +551,12 @@ namespace SceneryEditorX
 	    for (auto &it : s_DeletionQueue)
 	    {
 	        ResourceType type = it.first;
-	        for (auto resource : it.second)
+         for (const auto &entry : it.second)
 	        {
+               void *resource = entry.resource;
 	            switch (type)
 	            {
-	            case ResourceType::Image: Buffer::FreeImageBuffer(resource);
+                case ResourceType::Image: Buffer::FreeImageBuffer(static_cast<VkImage>(resource), entry.allocation);
 	                break;
 	            case ResourceType::ImageView:
 	                vkDestroyImageView(device->GetDevice(), static_cast<VkImageView>(resource), nullptr);
@@ -545,7 +564,7 @@ namespace SceneryEditorX
 	            case ResourceType::Sampler:
 	                vkDestroySampler(device->GetDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
 	                break;
-	            case ResourceType::Buffer: Buffer::FreeBuffer(resource);
+                case ResourceType::Buffer: Buffer::FreeBuffer(static_cast<VkBuffer>(resource), entry.allocation);
 	                break;
 	            case ResourceType::Shader:
 	                vkDestroyShaderModule(device->GetDevice(), static_cast<VkShaderModule>(resource), nullptr);

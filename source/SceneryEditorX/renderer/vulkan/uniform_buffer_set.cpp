@@ -29,14 +29,14 @@
  * -------------------------------------------------------
  */
 #include "uniform_buffer_set.h"
+#include "device.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/*
-	UniformBufferSet::UniformBufferSet(VmaAllocator allocator) : m_Device(VK_NULL_HANDLE), m_Allocator(allocator)
+    UniformBufferSet::UniformBufferSet(VmaAllocator allocator) : m_Allocator(allocator)
 	{
 	    Create();
 	}
@@ -49,16 +49,21 @@ namespace SceneryEditorX
             Destroy();
         }
     }
-    */
 
-    /*
     void UniformBufferSet::Create()
     {
-        if (!m_Allocator || m_Device == VK_NULL_HANDLE)
+        if (!m_Allocator || !m_Device)
             return;
+
+        m_Destroyed = false;
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
         {
+            if (m_Buffers[i].allocation != VK_NULL_HANDLE)
+            {
+                continue;
+            }
+
             VkBufferCreateInfo uBufferCI{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                                          .size = sizeof(ShaderData),
                                          .usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
@@ -81,7 +86,11 @@ namespace SceneryEditorX
                 continue;
             }
 
-            vmaMapMemory(m_Allocator, m_Buffers[i].allocation, &m_Buffers[i].mapped);
+            if (VkResult mapResult = vmaMapMemory(m_Allocator, m_Buffers[i].allocation, &m_Buffers[i].mapped); mapResult != VK_SUCCESS)
+            {
+                SEDX_CORE_WARN_TAG("UniformBufferSet", "vmaMapMemory failed: {}", mapResult);
+                continue;
+            }
             VkBufferDeviceAddressInfo uBufferBdaInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
                                                      .buffer = m_Buffers[i].buffer};
 
@@ -100,7 +109,10 @@ namespace SceneryEditorX
         {
             if (m_Buffers[i].allocation != VK_NULL_HANDLE)
             {
-                vmaUnmapMemory(m_Allocator, m_Buffers[i].allocation);
+                if (m_Buffers[i].mapped)
+                {
+                    vmaUnmapMemory(m_Allocator, m_Buffers[i].allocation);
+                }
                 vmaDestroyBuffer(m_Allocator, m_Buffers[i].buffer, m_Buffers[i].allocation);
 
                 m_Buffers[i].buffer = VK_NULL_HANDLE;
@@ -112,8 +124,7 @@ namespace SceneryEditorX
 
         m_Destroyed = true;
     }
-    */
 
-    };
+};
 
 // -------------------------------------------------------

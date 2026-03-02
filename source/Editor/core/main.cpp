@@ -142,7 +142,7 @@ namespace SceneryEditorX
 
 // -------------------------------------------------------
 
-SceneryEditorX::Application *SceneryEditorX::CreateApplication(const PlatformContext& context)
+Application* SceneryEditorX::CreateApplication(const PlatformContext& context)
 {
     // Return a new instance of the editor application using PlatformContext
     return new Editor(context);

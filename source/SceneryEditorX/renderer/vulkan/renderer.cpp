@@ -34,7 +34,6 @@
 #include "swapchain.h"
 #include "uniform_buffer_set.h"
 #include "SceneryEditorX/core/application/application.h"
-#include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include "slang/slang-com-ptr.h"
 #include "slang/slang.h"
 #include <array>
@@ -66,20 +65,25 @@ namespace SceneryEditorX
 	
     // --------------------------------------------------------------
 
+	// Render Resources
+    std::array<Ref<Image>, static_cast<uint32_t>(RendererRenderTarget::max_enum)> s_RenderTargets;
+
+    
+
     RendererProperties *Renderer::s_Data = nullptr;
     static Ref<Swapchain> s_Swapchain = nullptr;
     std::atomic<bool> Renderer::s_ResourcesInitialized = false;
     uint32_t Renderer::m_ResourceIndex = 0;
     Scope<AssetManager> Renderer::s_AssetManager = nullptr;
-    Scope<FrameSync> Renderer::s_FrameSync = nullptr;
-    Scope<CommandPool> Renderer::s_CommandPool = nullptr;
 
     // Bindless draw data
     //std::array<Sb_DrawData, renderer_max_draw_calls> Renderer::m_DrawData_CPU;
     uint32_t Renderer::m_DrawDataCount = 0;
+    CommandList *Renderer::m_CmdList_Compute = nullptr;
+    CommandList *Renderer::m_CmdList_Present = nullptr;
 
-    CommandList* Renderer::m_CmdList_Present  = nullptr;
-    CommandList* Renderer::m_CmdList_Compute  = nullptr;
+    Scope<FrameSync> Renderer::s_FrameSync = nullptr;
+    Scope<CommandPool> Renderer::s_CommandPool = nullptr;
 
     std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> Renderer::s_CommandBuffers = {};
     uint32_t Renderer::s_CurrentFrameIndex = 0;
@@ -92,7 +96,7 @@ namespace SceneryEditorX
     static xMath::Vec2 s_OutputResolution(0.0f, 0.0f);
     static Viewport s_Viewport = Viewport(0, 0, 0, 0);
     static bool s_OrthoProjection_Dirty = true;
-    //static Scope<UniformBufferSet> s_UniformBuffers = nullptr;
+    static Scope<UniformBufferSet> s_UniformBuffers = nullptr;
     static VkSurfaceCapabilitiesKHR s_SurfaceCaps = {};
 
     static std::vector<Ref<Fence>> s_FenceRefs;
@@ -174,18 +178,12 @@ namespace SceneryEditorX
         SetRendererResolution(1920, 1080, false);
         SetViewport(static_cast<float>(width), static_cast<float>(height));
 
+        /*
         // Create the swapchain now that render context is initialized
         if (RenderContext::Get() && s_Swapchain->GetSurface() != VK_NULL_HANDLE)
         {
-            uint32_t queueFamily = RenderContext::Get()->GetDevice()->GetQueueManager()->GetFamilyIndexByType(Graphics);
-            VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
-
             s_Swapchain->CreateSwapchain();
-            if (s_Swapchain == nullptr)
-            {
-
-            }
-            else
+            if (s_Swapchain->Get() == VK_NULL_HANDLE)
             {
                 SEDX_CORE_ERROR_TAG("Renderer", "Failed to create swapchain");
                 return;
@@ -196,6 +194,7 @@ namespace SceneryEditorX
             SEDX_CORE_WARN_TAG("Renderer", "Surface not available, swapchain creation deferred");
             return;
         }
+        */
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Frame Resources                                                                                               ///
@@ -221,7 +220,7 @@ namespace SceneryEditorX
                                .indexCount = asset.GetModelIndexCount()});
 
         RenderContext::Get()->renderables = &renderables;
-        //RenderContext::Get()->s_ShaderDataBuffers = s_UniformBuffers ? &s_UniformBuffers->Buffers() : nullptr;
+        RenderContext::Get()->s_ShaderDataBuffers = s_UniformBuffers ? &s_UniformBuffers->Buffers() : nullptr;
         RenderContext::Get()->s_CommandBuffers = &s_CommandBuffers;
         // Provide pointers to the internal handle vectors so other subsystems can read them (null-safe)
         RenderContext::Get()->s_Fences = s_FenceHandles.empty() ? nullptr : &s_FenceHandles;
@@ -264,28 +263,37 @@ namespace SceneryEditorX
     void Renderer::Tick()
     {
         Ref<Device> device = RenderContext::Get()->GetDevice();
+        SEDX_CORE_ASSERT(device.IsValid(), "Device is not valid in Renderer::Tick");
+
+        Ref<QueueManager> queueManager = device->GetQueueManager();
+        SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager is not valid in Renderer::Tick");
 
         s_Swapchain->AcquireNextImage();
-        device->GetMemoryAllocator()->Tick(s_FrameNumber);
+        device->GetMemoryAllocator().Tick(s_FrameNumber);
         bool can_render = !Window::IsMinimized() && s_ResourcesInitialized;
 
         // prevent write-after-present hazards when idle (skip first frame, nothing to wait for)
         if (!can_render && s_FrameNumber > 0)
         {
-            Ref<Queue> *queue = QueueManager::GetQueue(QueueType::Graphics);
-            queue->Get()->WaitIdle(this);
+            if (Ref<Queue> *queue = queueManager->GetQueue(QueueType::Graphics); queue && *queue)
+            {
+                Queue::WaitIdle(*queue->Get());
+            }
         }
 
-        {
-            m_CmdList_Present = QueueManager::GetQueue(QueueType::Graphics)->NextCommandList();
-            m_CmdList_Present->Begin();
-        }
+        m_CmdList_Present = queueManager->NextCommandList();
+        SEDX_CORE_ASSERT(m_CmdList_Present != nullptr, "Failed to acquire present command list");
+        m_CmdList_Present->Begin();
 
         m_CmdList_Compute = nullptr;
         if (can_render)
         {
-            m_CmdList_Compute = QueueManager::GetQueue(QueueType::Compute)->NextCommandList();
-            m_CmdList_Compute->Begin();
+            m_CmdList_Compute = queueManager->NextCommandList();
+            SEDX_CORE_ASSERT(m_CmdList_Compute != nullptr, "Failed to acquire compute command list");
+            if (m_CmdList_Compute)
+            {
+                m_CmdList_Compute->Begin();
+            }
         }
 
         m_DrawDataCount = 0;
@@ -295,9 +303,9 @@ namespace SceneryEditorX
         }
 
         // rotate per-frame buffers to avoid cpu-gpu races
-        RotateFrameBuffers();
+        //RotateFrameBuffers();
 
-        UpdateDrawCalls(m_CmdList_Present);
+        /*UpdateDrawCalls(m_CmdList_Present);
 
         // periodic resource cleanup
         {
@@ -315,7 +323,7 @@ namespace SceneryEditorX
 
                 GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
             }
-        }
+        }*/
     }   
 
 #pragma endregion
@@ -349,7 +357,6 @@ namespace SceneryEditorX
         s_RenderSemaphoreRefs.clear();
         s_RenderSemaphoreHandles.clear();
 
-        /*
         // Create fences (one per frame in flight)
         s_FenceRefs.reserve(MAX_FRAMES_IN_FLIGHT);
         s_FenceHandles.reserve(MAX_FRAMES_IN_FLIGHT);
@@ -373,9 +380,9 @@ namespace SceneryEditorX
             s_PresentSemaphoreHandles.push_back(sem->GetSemaphore());
             Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "PresentSemaphore");
         }
-        */
 
-        /*
+        const uint32_t swapchainImageCount = static_cast<uint32_t>(s_Swapchain->GetImages().size());
+
         // Create render semaphores (one per swapchain image)
         s_RenderSemaphoreRefs.reserve(swapchainImageCount);
         s_RenderSemaphoreHandles.reserve(swapchainImageCount);
@@ -387,7 +394,6 @@ namespace SceneryEditorX
             s_RenderSemaphoreHandles.push_back(sem->GetSemaphore());
             Debugging::SetResourceName(sem.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
         }
-        */
 
         s_FrameSync = CreateScope<FrameSync>(SyncType::Fence); // keep a simple FrameSync in case other systems expect it
         SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})",
@@ -455,6 +461,23 @@ namespace SceneryEditorX
         // Reset simple FrameSync wrapper
         s_FrameSync.reset();
         SEDX_CORE_TRACE_TAG("Renderer", " Destroyed frame sync objects");
+
+        if (s_UniformBuffers)
+        {
+            s_UniformBuffers->Destroy();
+            s_UniformBuffers.reset();
+            SEDX_CORE_TRACE_TAG("Renderer", " Destroyed uniform buffer set");
+        }
+
+        if (Ref<RenderContext> context = RenderContext::Get(); context)
+        {
+            context->s_ShaderDataBuffers = nullptr;
+            context->s_CommandBuffers = nullptr;
+            context->s_Fences = nullptr;
+            context->s_PresentSemaphores = nullptr;
+            context->s_RenderSemaphores = nullptr;
+            context->renderables = nullptr;
+        }
 
         SEDX_CORE_TRACE_TAG("Renderer", " Frame resources destroyed");
     }
@@ -737,7 +760,7 @@ namespace SceneryEditorX
 
 #pragma region Render Context Management
 
-    Ref<RenderContext> Renderer::GetContext()
+    Ref<RenderContext> Renderer::GetRenderContext()
     {
         return RenderContext::Get();
     }
@@ -751,6 +774,39 @@ namespace SceneryEditorX
     {
         return s_FrameNumber;
     }
+
+    void Renderer::RenderThreadFunc(RenderThread *renderThread)
+    {
+        while (renderThread->IsRunning())
+		{
+			WaitAndRender(renderThread);
+		}
+    }
+	
+	void Renderer::WaitAndRender(RenderThread* renderThread)
+	{
+		auto& performanceTimers = Application::Get().m_PerformanceTimers;
+
+		// Wait for kick, then set render thread to busy
+		{
+			Timer waitTimer;
+			renderThread->WaitAndSet(RenderThread::State::Kick, RenderThread::State::Busy);
+			performanceTimers.RenderThreadWaitTime = waitTimer.ElapsedMillis();
+		}
+
+        Timer workTimer;
+
+        if (BeginFrame())
+        {
+            EndFrame();
+            SubmitAndPresent();
+        }
+		
+		// Rendering has completed, set state to idle
+		renderThread->Set(RenderThread::State::Idle);
+
+		performanceTimers.RenderThreadWorkTime = workTimer.ElapsedMillis();
+	}
 
 #pragma endregion
 
@@ -867,7 +923,7 @@ namespace SceneryEditorX
         bufferAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
         //bufferAllocCI.pool = VK_NULL_HANDLE; // Only set if using a custom pool
 
-        VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator()->GetAllocator();
+        VmaAllocator allocator = RenderContext::Get()->GetDevice()->GetMemoryAllocator().GetAllocator();
 
         // GetQueue() returns Ref<Queue>*, so we need to get the pointer first
         Ref<Queue> *queuePtr = RenderContext::Get()->GetDevice()->GetQueueManager()->GetQueue(Graphics);
@@ -915,7 +971,12 @@ namespace SceneryEditorX
                             indexCount);
 
         // Create uniform buffers as static resource (per-frame) managed by UniformBufferSet RAII helper
-        //s_UniformBuffers = CreateScope<UniformBufferSet>(allocator);
+        s_UniformBuffers = CreateScope<UniformBufferSet>(allocator);
+        if (s_UniformBuffers)
+        {
+            s_UniformBuffers->SetDevice(RenderContext::Get()->GetDevice());
+            s_UniformBuffers->Create();
+        }
     }
 
     void Renderer::CreateShaders()
@@ -963,7 +1024,12 @@ namespace SceneryEditorX
         slangModule->getTargetCode(0, spirv.writeRef());
 
         // Create ShaderManager owning shader modules for the pipeline stages.
-        //ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
+        ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
+    }
+
+    GPUMemoryStats Renderer::GetGPUMemoryStats()
+    {
+        return MemoryAllocator::GetMemoryStats();
     }
 
 #pragma endregion
@@ -995,6 +1061,8 @@ namespace SceneryEditorX
             return mipCount;
         };
 
+        #define render_target(x) render_targets[static_cast<uint8_t>(x)]
+
         if (createRender)
         {
             // TODO: Create render targets
@@ -1018,10 +1086,17 @@ namespace SceneryEditorX
         auto &swapchainImages = s_Swapchain->GetImages();
         auto &swapchainImageViews = s_Swapchain->GetImageViews();
         VkImageView depthImageView = s_Swapchain->GetDepthView();
+        VkImage depthImage = s_Swapchain->GetDepthImage();
 
         if (imageIndex >= swapchainImages.size() || imageIndex >= swapchainImageViews.size())
         {
             SEDX_CORE_TRACE_TAG("Renderer", "Invalid image index: {}", imageIndex);
+            return;
+        }
+
+        if (depthImage == VK_NULL_HANDLE || depthImageView == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Depth attachment is invalid (image: {}, view: {}), skipping render command recording", static_cast<void*>(depthImage), static_cast<void*>(depthImageView));
             return;
         }
 
@@ -1045,7 +1120,7 @@ namespace SceneryEditorX
                 .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                 .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                .image = s_Swapchain->GetDepthImage(),
+                .image = depthImage,
                 .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
                                   .levelCount = 1,
                                   .layerCount = 1}}};

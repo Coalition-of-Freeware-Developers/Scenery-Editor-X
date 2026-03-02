@@ -35,7 +35,9 @@
 #include "frame_sync.h"
 #include "render_context.h"
 #include "viewport.h"
+#include "SceneryEditorX/core/threading/render_thread.h"
 #include "SceneryEditorX/core/window/window.h"
+#include "SceneryEditorX/renderer/gpu_stats.h"
 #include <array>
 
 // -------------------------------------------------------
@@ -93,6 +95,27 @@ namespace SceneryEditorX
          */
         static void Tick();
 
+        /**
+         * @brief Submit a function to be executed on the render thread.
+         * @tparam FuncT The type of the function to submit.
+         * @param func The function to submit.
+         */
+        template<typename FuncT>
+		static void Submit(FuncT&& func)
+		{
+			auto renderCmd = [](void* ptr) {
+				auto pFunc = (FuncT*)ptr;
+				(*pFunc)();
+
+				// NOTE: Instead of destroying we could try and enforce all items to be trivally destructible
+				// however some items like uniforms which contain std::strings still exist for now
+				// static_assert(std::is_trivially_destructible_v<FuncT>, "FuncT must be trivially destructible");
+				pFunc->~FuncT();
+			};
+         auto storageBuffer = QueueManager::AllocateQueue(renderCmd, sizeof(func));
+			new (storageBuffer) FuncT(std::forward<FuncT>(func));
+		}
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Frame Rendering Methods - Called each frame in sequence                                                       ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +164,7 @@ namespace SceneryEditorX
          * @brief Retrieve the global render context instance.
          * @return Shared reference to RenderContext.
          */
-        static Ref<RenderContext> GetContext();
+        static Ref<RenderContext> GetRenderContext();
 
         /**
          * @brief Get the current frame-in-flight index (ring buffer slot).
@@ -154,6 +177,18 @@ namespace SceneryEditorX
          * @return Total frame count.
          */
         static uint64_t GetFrameNumber();
+
+        /**
+		 * @brief Function executed by the render thread.
+		 * @param renderThread Pointer to the RenderThread instance.
+		 */
+		static void RenderThreadFunc(RenderThread* renderThread);
+
+        /**
+         * @brief Wait for the render thread to complete its work and then render the next frame.
+         * @param renderThread Pointer to the RenderThread instance.
+         */
+        static void WaitAndRender(RenderThread *renderThread);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Swapchain Management                                                                                          ///
@@ -201,10 +236,16 @@ namespace SceneryEditorX
 		 */
         static void CreateModels();
 
-        /**
-         * @brief Create shader modules and pipelines.
-         */
+        /* @brief Create shader modules and pipelines. */
         static void CreateShaders();
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// Util Functions																								  ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		/* @brief Retrieve current GPU memory usage statistics. */
+        static GPUMemoryStats GetGPUMemoryStats();
+
 
     private:
 

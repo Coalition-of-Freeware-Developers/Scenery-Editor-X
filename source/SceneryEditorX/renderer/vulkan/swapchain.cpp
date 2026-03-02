@@ -601,21 +601,22 @@ namespace SceneryEditorX
 
 		if (m_DepthView != VK_NULL_HANDLE)
 		{
-            QueueManager::AddDeletionQueue(ResourceType::ImageView, m_DepthView);
+            QueueManager::AddDeletionQueue(ResourceType::ImageView, reinterpret_cast<void*>(m_DepthView));
             m_DepthView = VK_NULL_HANDLE;
 		}
 
 		if (m_DepthImage != VK_NULL_HANDLE)
 		{
-            QueueManager::AddDeletionQueue(ResourceType::Image, m_DepthImage);
+            QueueManager::AddDeletionQueue(ResourceType::Image, reinterpret_cast<void*>(m_DepthImage), m_DepthAlloc);
             m_DepthImage = VK_NULL_HANDLE;
+            m_DepthAlloc = VK_NULL_HANDLE;
 		}
 
 		for (auto &imgView : m_ImageViews)
 		{
 		    if (imgView != VK_NULL_HANDLE)
 		    {
-				QueueManager::AddDeletionQueue(ResourceType::ImageView, imgView);
+               QueueManager::AddDeletionQueue(ResourceType::ImageView, reinterpret_cast<void*>(imgView));
                 imgView = VK_NULL_HANDLE;
 		    }
 		}
@@ -626,7 +627,7 @@ namespace SceneryEditorX
 		    m_Swapchain = VK_NULL_HANDLE;
 		}
 
-        if (m_Swapchain)
+        if (m_Surface != VK_NULL_HANDLE)
 		{
 			vkDestroySurfaceKHR(RenderContext::Get()->GetInstance(), m_Surface, nullptr);
 			m_Surface = VK_NULL_HANDLE;
@@ -698,18 +699,29 @@ namespace SceneryEditorX
             vkDestroySwapchainKHR(m_Device->GetLogicalDevice(), ci.oldSwapchain, nullptr);
         }
 
-		// Fetch images for the new swapchain first
-		uint32_t imgCount = 0;
-		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), m_Swapchain, &imgCount, nullptr);
-		vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), m_Swapchain, &imgCount, m_Images.data());
-	
-		// Create image views for the new images
-		for (uint32_t i = 0; i < imageCount; ++i)
-		{
-            if (m_ImageViews[i])
-			{
-                QueueManager::AddDeletionQueue(ResourceType::ImageView, m_ImageViews[i]);
+     // Fetch images for the new swapchain first
+        uint32_t imgCount = 0;
+        vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), m_Swapchain, &imgCount, nullptr);
+        SEDX_CORE_ASSERT(imgCount > 0, "Swapchain created with zero images");
+
+        for (VkImageView view : m_ImageViews)
+        {
+            if (view != VK_NULL_HANDLE)
+            {
+                QueueManager::AddDeletionQueue(ResourceType::ImageView, reinterpret_cast<void*>(view));
             }
+        }
+
+        m_Images.resize(imgCount);
+        m_ImageViews.assign(imgCount, VK_NULL_HANDLE);
+        m_AcquiredSemaphore.resize(imgCount);
+        m_CompleteSemaphore.resize(imgCount);
+
+        vkGetSwapchainImagesKHR(m_Device->GetLogicalDevice(), m_Swapchain, &imgCount, m_Images.data());
+
+        // Create image views for the new images
+        for (uint32_t i = 0; i < imgCount; ++i)
+        {
 
 			VkImageViewCreateInfo viewCI = {};
 			viewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -731,7 +743,7 @@ namespace SceneryEditorX
 		}
 
         // sync primitives - per-image semaphores to avoid reuse conflicts
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_AcquiredSemaphore.size()); i++)
+        for (uint32_t i = 0; i < imgCount; i++)
         {
             m_AcquiredSemaphore[i] = CreateRef<FrameSync>(SyncType::Semaphore);
             m_CompleteSemaphore[i] = CreateRef<FrameSync>(SyncType::Semaphore);
@@ -750,6 +762,19 @@ namespace SceneryEditorX
 		VkImage newDepthImage = VK_NULL_HANDLE;
 		VmaAllocation newDepthAlloc = VK_NULL_HANDLE;
 		VkImageView newDepthView = VK_NULL_HANDLE;
+
+        if (m_DepthView != VK_NULL_HANDLE)
+        {
+            QueueManager::AddDeletionQueue(ResourceType::ImageView, reinterpret_cast<void*>(m_DepthView));
+            m_DepthView = VK_NULL_HANDLE;
+        }
+
+        if (m_DepthImage != VK_NULL_HANDLE)
+        {
+            QueueManager::AddDeletionQueue(ResourceType::Image, reinterpret_cast<void*>(m_DepthImage), m_DepthAlloc);
+            m_DepthImage = VK_NULL_HANDLE;
+            m_DepthAlloc = VK_NULL_HANDLE;
+        }
 
 		VkImageCreateInfo depthImageCI{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -779,7 +804,12 @@ namespace SceneryEditorX
 		depthViewCI.subresourceRange.layerCount = 1;
 		SEDX_VK_RESULT_ASSERT(vkCreateImageView(m_Device->GetLogicalDevice(), &depthViewCI, nullptr, &newDepthView), "Failed to create depth image view")
 
+        m_DepthImage = newDepthImage;
+        m_DepthAlloc = newDepthAlloc;
+        m_DepthView = newDepthView;
+
 		// Creation Succeeded
+        m_Extent = extent;
         m_ImageIndex = 0;
         m_ImageAcquired = false;
 		SEDX_CORE_TRACE_TAG("Swapchain", "Swapchain created successfully with {} images (format: {}, extent: {}x{})",

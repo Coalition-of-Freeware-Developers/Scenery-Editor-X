@@ -29,6 +29,10 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <array>
+#include <limits>
+#include <string>
+#include <vma/vk_mem_alloc.h>
 
 // -----------------------------------------------------------------
 
@@ -50,6 +54,19 @@ namespace SceneryEditorX
 
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
     constexpr uint32_t MIP_LIST = std::numeric_limits<uint32_t>::max();
+
+    struct ShaderData
+    {
+        std::array<float, 16> viewProjection{};
+    };
+
+    struct ShaderDataBuffer
+    {
+        VkBuffer buffer = VK_NULL_HANDLE;
+        VmaAllocation allocation = VK_NULL_HANDLE;
+        void *mapped = nullptr;
+        VkDeviceAddress deviceAddress = 0;
+    };
 
 }
 

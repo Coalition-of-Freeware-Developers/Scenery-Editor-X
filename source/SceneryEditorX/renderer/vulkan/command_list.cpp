@@ -30,7 +30,7 @@
  */
 #include "command_list.h"
 #include "buffer.h"
-#include "renderer.h"
+#include <volk/volk.h>
 
 // -------------------------------------------------------
 
@@ -61,40 +61,21 @@ namespace SceneryEditorX
 
     void CommandList::SetVertexBuffer(const Buffer *vertexBuffer,  Buffer* instance)
     {
-        /*
         SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set vertex buffer.");
+        SEDX_CORE_ASSERT(m_CmdBuffer != VK_NULL_HANDLE, "Command List has no active VkCommandBuffer");
+        SEDX_CORE_ASSERT(vertexBuffer != nullptr, "Vertex buffer must be valid");
+        SEDX_CORE_ASSERT(instance != nullptr, "Instance buffer must be valid");
 
-		if (!instance)
-		{
-            instance = Renderer::GetBuffer(Buffer::Instance);
-		}
-
-        // prepare buffers and offsets arrays
         VkBuffer vertex_buffers[2] = {
-
-            static_cast<VkBuffer>(vertexBuffer->GetResource()),  // slot 0: vertex buffer
-            static_cast<VkBuffer>(instance->GetResource()) // slot 1: instance buffer
+            vertexBuffer->Get(),
+            instance->Get(),
         };
-        SEDX_CORE_ASSERT(vertex_buffers[0] != nullptr && vertex_buffers[1] != nullptr);
+        SEDX_CORE_ASSERT(vertex_buffers[0] != VK_NULL_HANDLE && vertex_buffers[1] != VK_NULL_HANDLE,
+            "Vertex and instance buffers must be valid Vulkan handles");
 
         VkDeviceSize offsets[2] = {0, 0};
 
-        // check if vertex buffer id has changed to trigger binding
-        if (m_buffer_id_vertex != vertexBuffer->GetObjectId() || m_buffer_id_instance != instance->GetObjectId())
-        {
-            vkCmdBindVertexBuffers(static_cast<VkCommandBuffer>(m_rhi_resource), // commandbuffer
-                                   0,                                            // firstbinding
-                                   2,                                            // bindingcount
-                                   vertex_buffers,                               // pbuffers
-                                   offsets                                       // poffsets
-            );
-
-            // track currently bound buffers
-            m_buffer_id_vertex = vertexBuffer->GetObjectId();
-            m_buffer_id_instance = instance->GetObjectId();
-        }
-        */
-
+        vkCmdBindVertexBuffers(m_CmdBuffer, 0, 2, vertex_buffers, offsets);
     }
 
     void CommandList::Draw(const uint32_t vertexCount, const uint32_t vertexOffset)

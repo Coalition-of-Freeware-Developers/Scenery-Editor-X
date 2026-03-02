@@ -53,6 +53,21 @@ namespace SceneryEditorX
         }
     }
 
+    FrameSync::~FrameSync()
+    {
+        if (m_Fence)
+        {
+            m_Fence->Destroy();
+            m_Fence.Reset();
+        }
+
+        if (m_RenderSemaphore)
+        {
+            m_RenderSemaphore->Destroy();
+            m_RenderSemaphore.Reset();
+        }
+    }
+
 	void FrameSync::Create(const uint32_t framesInFlight, const uint32_t swapchainImageCount)
 	{
 	    // Intentionally minimal for now; keep placeholder for future allocation strategy.

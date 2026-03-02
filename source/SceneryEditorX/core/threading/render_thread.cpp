@@ -28,7 +28,7 @@
  * -------------------------------------------------------
  * Created: 21/12/2025
  * -------------------------------------------------------
- #1#
+ */
 #include "render_thread.h"
 #include <SceneryEditorX/renderer/vulkan/renderer.h>
 
@@ -138,10 +138,9 @@ namespace SceneryEditorX
         LeaveCriticalSection(&m_Data->m_CriticalSection);
     }
 
-    void RenderThread::NextFrame()
+    void RenderThread::Tick()
     {
         ++m_AppThreadFrame;
-        Renderer::Tick(m_AppThreadFrame);
     }
 
     void RenderThread::BlockUntilRenderComplete()
@@ -166,18 +165,18 @@ namespace SceneryEditorX
 
     void RenderThread::Pump()
     {
-        NextFrame();
+        Tick();
         Kick();
         BlockUntilRenderComplete();
     }
 
     bool RenderThread::IsCurrentThreadRT()
     {
-        //SEDX_CORE_VERIFY(s_RenderThreadID != std::thread::id());
+        SEDX_CORE_VERIFY(s_RenderThreadID != std::thread::id());
         return s_RenderThreadID == std::this_thread::get_id();
     }
 
 } // namespace SceneryEditorX
 
 // -------------------------------------------------------
-*/
+

@@ -32,6 +32,7 @@
 #include "command_list.h"
 #include "queue.h"
 #include <limits>
+#include <vma/vk_mem_alloc.h>
 
 // -------------------------------------------------------
 
@@ -181,8 +182,16 @@ namespace SceneryEditorX
 		 * @brief Add a resource to the deletion queue for deferred destruction.
 		 * @param type The type of resource to delete.
 		 * @param resource Pointer to the resource to delete.
+        */
+		static void AddDeletionQueue(ResourceType type, void *resource);
+
+		/**
+		 * @brief Add a resource and optional allocation metadata to the deletion queue.
+		 * @param type The type of resource to delete.
+		 * @param resource Pointer to the resource to delete.
+		 * @param allocation The VMA allocation associated with the resource.
 		 */
-	    static void AddDeletionQueue(ResourceType type, void *resource);
+		static void AddDeletionQueue(ResourceType type, void *resource, VmaAllocation allocation);
 	
 	    /**
 	     * @brief Parse and process the deletion queue, destroying resources as needed.

@@ -67,22 +67,26 @@
 		#if !defined(SEDX_NO_LOGGING)
 			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
 			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") ", ##__VA_ARGS__)
+           #define SEDX_ASSERT_REPORT_FAILURE_INTERNAL(expr) ::SceneryEditorX::Log::ReportAssertionFailure(#expr, __FILE__, __LINE__, "No additional assertion message")
 		#else
 			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
 			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
+          #define SEDX_ASSERT_REPORT_FAILURE_INTERNAL(expr) true
 		#endif
 	#else
 		#if !defined(SEDX_NO_LOGGING)
 			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...)  ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Core, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
 			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ::SceneryEditorX::Log::PrintAssertMessage(::SceneryEditorX::Log::Type::Editor, "Assertion Failed (" __FILE__ ":" SEDX_STRINGIFY(__LINE__) ") " __VA_OPT__(, ) __VA_ARGS__)
+            #define SEDX_ASSERT_REPORT_FAILURE_INTERNAL(expr) ::SceneryEditorX::Log::ReportAssertionFailure(#expr, __FILE__, __LINE__, "No additional assertion message")
 		#else
 			#define SEDX_CORE_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
 			#define SEDX_ASSERT_MESSAGE_INTERNAL(...) ((void)0)
+            #define SEDX_ASSERT_REPORT_FAILURE_INTERNAL(expr) true
 		#endif
 	#endif
 
-#define SEDX_CORE_ASSERT(condition, ...) do { if (!(condition)) { SEDX_CORE_ASSERT_MESSAGE_INTERNAL(__VA_ARGS__); SEDX_DEBUG_BREAK; } } while (0)
-	#define SEDX_ASSERT(condition, ...) do { if (!(condition)) { SEDX_ASSERT_MESSAGE_INTERNAL(__VA_ARGS__); SEDX_DEBUG_BREAK; } } while (0)
+   #define SEDX_CORE_ASSERT(condition, ...) do { if (!(condition)) { SEDX_CORE_ASSERT_MESSAGE_INTERNAL(__VA_ARGS__); if (SEDX_ASSERT_REPORT_FAILURE_INTERNAL(condition)) { SEDX_DEBUG_BREAK; } } } while (0)
+    #define SEDX_ASSERT(condition, ...) do { if (!(condition)) { SEDX_ASSERT_MESSAGE_INTERNAL(__VA_ARGS__); if (SEDX_ASSERT_REPORT_FAILURE_INTERNAL(condition)) { SEDX_DEBUG_BREAK; } } } while (0)
 #else
 	#define SEDX_CORE_ASSERT(condition, ...) ((void)(condition))
 	#define SEDX_ASSERT(condition, ...) ((void)(condition))

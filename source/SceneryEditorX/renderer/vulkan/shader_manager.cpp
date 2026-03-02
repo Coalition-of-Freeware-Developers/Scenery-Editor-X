@@ -29,117 +29,180 @@
  * -------------------------------------------------------
  */
 #include "shader_manager.h"
+#include "render_context.h"
+#include <array>
+#include <filesystem>
 #include <utility>
-#include <shaderc/shaderc.hpp>
+#include <slang/slang-com-ptr.h>
+#include <slang/slang.h>
+#include <spirv_cross/spirv_cross.hpp>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	/*
-	ShaderManager::ShaderManager(const void* spirvCode, size_t codeSize)
+	std::unordered_map<std::string, Ref<Shader>> ShaderManager::m_Shaders;
+
+	static VkShaderModule CreateShaderModule(const void* spirvCode, size_t codeSize)
 	{
-	    // Use the same module for vertex and fragment stages by default.
-	    m_Stages.reserve(2);
-	    m_Modules.reserve(2);
-	    m_Stages.push_back(VK_SHADER_STAGE_VERTEX_BIT);
-	    m_Modules.emplace_back(spirvCode, codeSize);
-	    m_Stages.push_back(VK_SHADER_STAGE_FRAGMENT_BIT);
-	    m_Modules.emplace_back(spirvCode, codeSize);
+		const Ref<Device> device = RenderContext::Get()->GetDevice();
+		SEDX_CORE_ASSERT(device.IsValid(), "Invalid device while creating shader module");
+		SEDX_CORE_ASSERT(spirvCode != nullptr && codeSize > 0, "Invalid SPIR-V input for shader module creation");
+
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = codeSize;
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(spirvCode);
+
+		VkShaderModule module = VK_NULL_HANDLE;
+		SEDX_VK_RESULT_ASSERT(vkCreateShaderModule(device->GetLogicalDevice(), &createInfo, nullptr, &module),
+			"Failed to create shader module");
+		return module;
 	}
+
+    ShaderManager::ShaderManager(const void *spirvCode, size_t codeSize)
+    {
+        // Use the same module for vertex and fragment stages by default.
+        m_Stages.reserve(2);
+        m_Modules.reserve(2);
+        m_Stages.push_back(VK_SHADER_STAGE_VERTEX_BIT);
+        m_Modules.push_back(CreateShaderModule(spirvCode, codeSize));
+        m_Stages.push_back(VK_SHADER_STAGE_FRAGMENT_BIT);
+        m_Modules.push_back(CreateShaderModule(spirvCode, codeSize));
+    }
+
+    ShaderManager::ShaderManager(
+        const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void *, size_t>>> &stages)
+    {
+        m_Stages.reserve(stages.size());
+        m_Modules.reserve(stages.size());
+        for (const auto &s : stages)
+        {
+            m_Stages.push_back(s.first);
+            m_Modules.push_back(CreateShaderModule(s.second.first, s.second.second));
+        }
+    }
+
+    ShaderManager::~ShaderManager()
+    {
+        const Ref<Device> device = RenderContext::Get()->GetDevice();
+        if (!device.IsValid())
+        {
+            return;
+        }
+
+        for (VkShaderModule module : m_Modules)
+        {
+            if (module != VK_NULL_HANDLE)
+            {
+                vkDestroyShaderModule(device->GetLogicalDevice(), module, nullptr);
+            }
+        }
+        m_Modules.clear();
+    }
 	
-	ShaderManager::ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void*, size_t>>>& stages)
-	{
-	    m_Stages.reserve(stages.size());
-	    m_Modules.reserve(stages.size());
-	    for (const auto& s : stages)
-		{
-	        m_Stages.push_back(s.first);
-	        m_Modules.emplace_back(s.second.first, s.second.second);
-	    }
-	}
+	Ref<Shader> &ShaderManager::CreateShader(const std::string &name)
+    {
+        if (m_Shaders.contains(name))
+        {
+            return m_Shaders[name];
+        }
+
+        m_Shaders[name] = CreateRef<Shader>();
+        return m_Shaders[name];
+    }
 	
-	Ref<Shader>& ShaderManager::CreateShader(const std::string& name)
-	{
-		if (m_Shaders.find(name) != m_Shaders.end())
-			return m_Shaders[name];
-	
-		m_Shaders[name] = std::make_shared<VulkanShader>();
-		return m_Shaders[name];
-	}
+	Ref<Shader> &ShaderManager::GetShader(const std::string &name)
+    {
+        SEDX_CORE_ASSERT(m_Shaders.contains(name), "Shader %s is not present", name.c_str());
+        return m_Shaders[name];
+    }
 	
 	void ShaderManager::Clear()
-	{
-		m_Shaders.clear();
-	}
-	
-	Ref<Shader>& ShaderManager::GetShader(const std::string& name)
-	{
-		SEDX_CORE_ASSERT(m_Shaders.contains(name) == false, "Shader %s is not present", name.c_str());
-		return m_Shaders[name];
-	}
+    {
+        m_Shaders.clear();
+    }
 
-    static shaderc_shader_kind GetShadercKind(Stage stage)
-	{
-		switch (stage)
-		{
-			case Stage::Vertex:					return shaderc_glsl_vertex_shader;
-			case Stage::TessellationControl:	return shaderc_glsl_tess_control_shader;
-			case Stage::TessellationEvaluation: return shaderc_glsl_tess_evaluation_shader;
-			case Stage::Fragment:				return shaderc_glsl_fragment_shader;
-			case Stage::Compute:				return shaderc_glsl_compute_shader;
-			case Stage::Geometry:				return shaderc_glsl_geometry_shader;
-			case Stage::None:					SEDX_CORE_ASSERT(false, "Invalid shader stage");
-		}
-	
-		return shaderc_vertex_shader;
-	}
-	
-	static std::string ReadFile(const std::string& filepath)
-	{
-		std::ifstream file(filepath);
-		SEDX_CORE_ASSERT(!file.good(), "File %s doesn't exist.", filepath.c_str());
-	
-		file.seekg(0, std::ios::end);
-		size_t size = file.tellg();
-		std::string buffer(size, ' ');
-		file.seekg(0);
-		file.read(buffer.data(), size);
-	
-		return buffer;
-	}
 
-    static std::vector<uint32_t> ShaderCompiler::CompileVulkanShader(Stage stage, const std::string& filepath, bool optimize)
+} // namespace SceneryEditorX
+
+#pragma region Slang Compilation and Reflection
+
+namespace ShaderCompiler
+{
+	std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize)
 	{
-		shaderc::Compiler compiler;
-		shaderc::CompileOptions options;
-	
-		shaderc_util::FileFinder fileFinder;
-		options.SetIncluder(std::make_unique<glslc::FileIncluder>(&fileFinder));
-	
-		std::string sourceCode = ReadFile(filepath);
-	
-		if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_performance); 
-		options.SetOptimizationLevel(shaderc_optimization_level_zero);
-		options.SetGenerateDebugInfo();
-	
-		size_t begString = filepath.find_last_of('/');
-		std::string shaderName = filepath.substr(begString + 1);
-	
-		shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(sourceCode, GetShadercKind(stage), shaderName.c_str(), options);
-	
-		if (module.GetCompilationStatus() != shaderc_compilation_status_success)
+     (void)stage;
+		(void)optimize;
+
+		Slang::ComPtr<slang::IGlobalSession> globalSession;
+		if (SLANG_FAILED(slang::createGlobalSession(globalSession.writeRef())))
 		{
-			std::cerr << module.GetErrorMessage();
+          SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang global session");
 			return std::vector<uint32_t>();
 		}
-	
-		return { module.cbegin(), module.cend() };
+
+		auto targets = std::to_array<slang::TargetDesc>({
+			{.format = SLANG_SPIRV, .profile = globalSession->findProfile("spirv_1_4")}
+		});
+
+		auto options = std::to_array<slang::CompilerOptionEntry>({
+			{.name = slang::CompilerOptionName::EmitSpirvDirectly,
+			 .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}}
+		});
+
+		slang::SessionDesc sessionDesc{};
+		sessionDesc.targets = targets.data();
+		sessionDesc.targetCount = static_cast<SlangInt>(targets.size());
+		sessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+		sessionDesc.compilerOptionEntries = options.data();
+		sessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
+
+		Slang::ComPtr<slang::ISession> session;
+		if (SLANG_FAILED(globalSession->createSession(sessionDesc, session.writeRef())))
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to create Slang session");
+			return std::vector<uint32_t>();
+		}
+
+        Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+		const std::filesystem::path shaderPath(filepath);
+		const std::string moduleName = shaderPath.stem().string();
+
+        Slang::ComPtr<slang::IModule> module{session->loadModuleFromSource(moduleName.c_str(), filepath.c_str(), nullptr, diagnosticsBlob.writeRef())};
+		if (!module)
+		{
+			if (diagnosticsBlob)
+			{
+               SEDX_CORE_ERROR_TAG("Shader", "Slang compilation failed: {}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
+			}
+			return std::vector<uint32_t>();
+		}
+
+		Slang::ComPtr<ISlangBlob> spirv;
+		if (SLANG_FAILED(module->getTargetCode(0, spirv.writeRef())) || !spirv)
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Failed to retrieve SPIR-V from Slang module: {}", filepath);
+			return std::vector<uint32_t>();
+		}
+
+		const size_t byteSize = spirv->getBufferSize();
+		if (byteSize == 0 || (byteSize % sizeof(uint32_t)) != 0)
+		{
+			SEDX_CORE_ERROR_TAG("Shader", "Invalid SPIR-V blob size from Slang for {}", filepath);
+			return std::vector<uint32_t>();
+		}
+
+		std::vector<uint32_t> byteCode(byteSize / sizeof(uint32_t));
+		std::memcpy(byteCode.data(), spirv->getBufferPointer(), byteSize);
+		return byteCode;
 	}
 	
-	std::vector<ShaderInput> ShaderCompiler::Reflect(ShaderStage stage, const std::vector<uint32_t>& shaderBytecode)
+    std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode)
 	{
-		std::vector<ShaderInput> shaderInput;
+
+        /*
+        std::vector<SceneryEditorX::ShaderInput> shaderInput;
 	
 		spirv_cross::Compiler compiler(shaderBytecode);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
@@ -147,13 +210,13 @@ namespace SceneryEditorX
 		// Uniform buffers
 		for (const spirv_cross::Resource& uniformBuffer : resources.uniform_buffers)
 		{
-			ShaderInput uniformBufferInput = {};
-			uniformBufferInput.Stage = stage;
-			uniformBufferInput.DebugName = uniformBuffer.name;
-			uniformBufferInput.Set = compiler.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
-			uniformBufferInput.Binding = compiler.get_decoration(uniformBuffer.id, spv::DecorationBinding);
-			uniformBufferInput.Count = compiler.get_type(uniformBuffer.type_id).array[0] == 0 ? 1 : compiler.get_type(uniformBuffer.type_id).array[0];
-			uniformBufferInput.Type = ShaderInputType::UNIFORM_BUFFER;
+            SceneryEditorX::ShaderInput uniformBufferInput = {};
+            uniformBufferInput.stage = stage;
+			uniformBufferInput.debugName = uniformBuffer.name;
+			uniformBufferInput.set = compiler.get_decoration(uniformBuffer.id, spv::DecorationDescriptorSet);
+			uniformBufferInput.binding = compiler.get_decoration(uniformBuffer.id, spv::DecorationBinding);
+			uniformBufferInput.count = compiler.get_type(uniformBuffer.type_id).array[0] == 0 ? 1 : compiler.get_type(uniformBuffer.type_id).array[0];
+            uniformBufferInput.type = SceneryEditorX::ShaderInputType::UniformBuffer;
 	
 			shaderInput.push_back(uniformBufferInput);
 		}
@@ -161,13 +224,13 @@ namespace SceneryEditorX
 		// Samplers
 		for (const spirv_cross::Resource& sampler : resources.sampled_images)
 		{
-			ShaderInput sampleImageInput = {};
-			sampleImageInput.Stage = stage;
-			sampleImageInput.DebugName = sampler.name;
-			sampleImageInput.Set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
-			sampleImageInput.Binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			sampleImageInput.Count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
-			sampleImageInput.Type = ShaderInputType::COMBINED_IMAGE_SAMPLER;
+            SceneryEditorX::ShaderInput sampleImageInput = {};
+            sampleImageInput.stage = stage;
+			sampleImageInput.debugName = sampler.name;
+			sampleImageInput.set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
+			sampleImageInput.binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
+			sampleImageInput.count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
+            sampleImageInput.type = SceneryEditorX::ShaderInputType::CombinedImageSampler;
 	
 			shaderInput.push_back(sampleImageInput);
 		}
@@ -176,60 +239,67 @@ namespace SceneryEditorX
 		{
 			const spirv_cross::SPIRType& spirType = compiler.get_type(texture.type_id);
 	
-			ShaderInput sampleImageInput = {};
-			sampleImageInput.Stage = stage;
-			sampleImageInput.DebugName = texture.name;
-			sampleImageInput.Set = compiler.get_decoration(texture.id, spv::DecorationDescriptorSet);
-			sampleImageInput.Binding = compiler.get_decoration(texture.id, spv::DecorationBinding);
-			sampleImageInput.Count = spirType.array.empty() ? 1 : spirType.array[0];
-			sampleImageInput.Type = ShaderInputType::TEXTURE;
+            SceneryEditorX::ShaderInput sampleImageInput = {};
+            sampleImageInput.stage = stage;
+			sampleImageInput.debugName = texture.name;
+			sampleImageInput.set = compiler.get_decoration(texture.id, spv::DecorationDescriptorSet);
+			sampleImageInput.binding = compiler.get_decoration(texture.id, spv::DecorationBinding);
+			sampleImageInput.count = spirType.array.empty() ? 1 : spirType.array[0];
+            sampleImageInput.type = SceneryEditorX::ShaderInputType::Texture;
 	
 			shaderInput.push_back(sampleImageInput);
 		}
 	
 		for (const spirv_cross::Resource& sampler : resources.separate_samplers)
 		{
-			ShaderInput sampleImageInput = {};
-			sampleImageInput.Stage = stage;
-			sampleImageInput.DebugName = sampler.name;
-			sampleImageInput.Set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
-			sampleImageInput.Binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			sampleImageInput.Count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
-			sampleImageInput.Type = ShaderInputType::SAMPLER;
+            SceneryEditorX::ShaderInput sampleImageInput = {};
+            sampleImageInput.stage = stage;
+			sampleImageInput.debugName = sampler.name;
+			sampleImageInput.set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
+			sampleImageInput.binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
+			sampleImageInput.count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
+            sampleImageInput.type = SceneryEditorX::ShaderInputType::Sampler;
 	
 			shaderInput.push_back(sampleImageInput);
 		}
 	
 		for (const spirv_cross::Resource& sampler : resources.storage_images)
 		{
-			ShaderInput sampleImageInput = {};
-			sampleImageInput.Stage = stage;
-			sampleImageInput.DebugName = sampler.name;
-			sampleImageInput.Set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
-			sampleImageInput.Binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
-			sampleImageInput.Count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
-			sampleImageInput.Type = ShaderInputType::STORAGE_IMAGE;
+            SceneryEditorX::ShaderInput sampleImageInput = {};
+            sampleImageInput.stage = stage;
+			sampleImageInput.debugName = sampler.name;
+			sampleImageInput.set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
+			sampleImageInput.binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
+			sampleImageInput.count = compiler.get_type(sampler.type_id).array[0] == 0 ? 1 : compiler.get_type(sampler.type_id).array[0];
+            sampleImageInput.type = SceneryEditorX::ShaderInputType::StorageImage;
 	
 			shaderInput.push_back(sampleImageInput);
 		}
 	
 		for (const spirv_cross::Resource& storageBuffer : resources.storage_buffers)
 		{
-			ShaderInput storageBufferInput = {};
-			storageBufferInput.Stage = stage;
-			storageBufferInput.DebugName = storageBuffer.name;
-			storageBufferInput.Set = compiler.get_decoration(storageBuffer.id, spv::DecorationDescriptorSet);
-			storageBufferInput.Binding = compiler.get_decoration(storageBuffer.id, spv::DecorationBinding);
-			storageBufferInput.Count = compiler.get_type(storageBuffer.type_id).array[0] == 0 ? 1 : compiler.get_type(storageBuffer.type_id).array[0];
-			storageBufferInput.Type = ShaderInputType::STORAGE_BUFFER;
+            SceneryEditorX::ShaderInput storageBufferInput = {};
+            storageBufferInput.stage = stage;
+			storageBufferInput.debugName = storageBuffer.name;
+			storageBufferInput.set = compiler.get_decoration(storageBuffer.id, spv::DecorationDescriptorSet);
+			storageBufferInput.binding = compiler.get_decoration(storageBuffer.id, spv::DecorationBinding);
+			storageBufferInput.count = compiler.get_type(storageBuffer.type_id).array[0] == 0 ? 1 : compiler.get_type(storageBuffer.type_id).array[0];
+            storageBufferInput.type = SceneryEditorX::ShaderInputType::StorageBuffer;
 	
 			shaderInput.push_back(storageBufferInput);
 		}
 	
-		return shaderInput;
-	}
-	*/
+        return shaderInput;
+        */
 
-} // namespace SceneryEditorX
+	    (void)stage;
+		(void)shaderBytecode;
+		SEDX_CORE_WARN_TAG("Shader", "SPIR-V reflection disabled: SPIRV-Cross backend not linked.");
+		return {};
+	}
+
+}
+
+#pragma endregion
 
 // -------------------------------------------------------

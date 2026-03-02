@@ -61,7 +61,7 @@ namespace SceneryEditorX
         Ref<Device> device = RenderContext::Get()->GetDevice();
         SEDX_CORE_ASSERT(device.IsValid(), "Device must be valid to destroy assets");
 
-        VmaAllocator allocator = device->GetMemoryAllocator()->GetAllocator();
+        VmaAllocator allocator = device->GetMemoryAllocator().GetAllocator();
 
         for (auto &asset : m_AssetSets)
         {

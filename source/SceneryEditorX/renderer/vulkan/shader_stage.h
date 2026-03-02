@@ -37,7 +37,6 @@
 namespace SceneryEditorX
 {
 
-    /*
     class ShaderStage : public RefCounted
 	{
 	public:
@@ -57,7 +56,6 @@ namespace SceneryEditorX
 		VkShaderModule m_ShaderModule;
 		std::vector<ShaderInput> m_Input;
 	};
-	*/
 
 }
 

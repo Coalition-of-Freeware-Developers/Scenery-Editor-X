@@ -34,19 +34,19 @@
 
 // -------------------------------------------------------
 
-/*
+
 namespace ShaderCompiler
 {
-	static std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
-	static std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode);
+    std::vector<uint32_t> CompileVulkanShader(SceneryEditorX::Stage stage, const std::string& filepath, bool optimize = false);
+	std::vector<SceneryEditorX::ShaderInput> Reflect(SceneryEditorX::Stage stage, const std::vector<uint32_t>& shaderBytecode);
 }
-*/
+
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	/*
+
 	// Small manager that owns one or more Shader objects along with their
 	// corresponding shader stage flags. This allows Pipeline to accept a single
 	// object that may contain multiple stages (vertex, fragment, etc.).
@@ -58,7 +58,7 @@ namespace SceneryEditorX
 	    // stages (matches the original sample behavior).
 	    ShaderManager(const void* spirvCode, size_t codeSize);
 	    ShaderManager(const std::vector<std::pair<VkShaderStageFlagBits, std::pair<const void*, size_t>>>& stages);
-	    ~ShaderManager() = default;
+        ~ShaderManager();
 
 	    static Ref<Shader>& CreateShader(const std::string& name);
 	    static Ref<Shader>& GetShader(const std::string& name);
@@ -67,14 +67,14 @@ namespace SceneryEditorX
 
 	    size_t StageCount() const { return m_Stages.size(); }
 	    VkShaderStageFlagBits StageAt(size_t i) const { return m_Stages[i]; }
-	    //VkShaderModule ModuleAt(size_t i) const { return m_Modules[i].GetShaderModule(); }
+        VkShaderModule ModuleAt(size_t i) const { return m_Modules[i]; }
 	
 	private:
-	    std::vector<Shader> m_Modules{};
+        std::vector<VkShaderModule> m_Modules{};
         std::vector<VkShaderStageFlagBits> m_Stages{};
 	    static std::unordered_map<std::string, Ref<Shader>> m_Shaders;
 	};
-	*/
+
 
 }
 

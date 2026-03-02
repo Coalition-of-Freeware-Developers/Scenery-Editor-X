@@ -35,6 +35,7 @@
 #include "SceneryEditorX/core/layers/layer_stack.h"
 #include "SceneryEditorX/core/platform/platform_context.h"
 #include "SceneryEditorX/core/platform/settings/settings.h"
+#include "SceneryEditorX/core/threading/render_thread.h"
 #include "SceneryEditorX/core/time/time.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/core/window/window.h"
@@ -101,7 +102,7 @@ namespace SceneryEditorX
 
         // -------------------------------------------------------
 
-        static Application &Get() { return *appInstance; }
+        static Application &Get() { return *s_AppInstance; }
 	    static const char* GetConfigurationName();
         static const char *GetPlatformName();
         static std::thread::id GetMainThreadID();
@@ -179,13 +180,13 @@ namespace SceneryEditorX
 
         const PlatformContext* m_PlatformContext = nullptr;
         ApplicationSettings m_Settings = ApplicationSettings(std::filesystem::path("settings.cfg"));
-        static Application *appInstance;
+        static Application *s_AppInstance;
         PerformanceProfiler *m_Profiler = nullptr; // TODO: Should be null in Dist
         std::unordered_map<const char *, PerformanceProfiler::PerFrameData> m_ProfilerPreviousFrameData;
         std::deque<std::pair<bool, std::function<void()>>> m_EventQueue;
         std::mutex m_EventQueueMutex;
         std::vector<EventCallbackFn> m_EventCallbacks;
-
+		RenderThread m_RenderThread;
 		uint32_t m_CurrentFrameIndex = 0;
     protected:
         inline static bool m_IsRunningTime = false;

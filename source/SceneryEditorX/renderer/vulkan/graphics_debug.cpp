@@ -29,8 +29,6 @@
  * -------------------------------------------------------
  */
 #include "graphics_debug.h"
-
-#include "command_list.h"
 #include "render_context.h"
 #include <utility>
 #include <vulkan/vulkan_core.h>

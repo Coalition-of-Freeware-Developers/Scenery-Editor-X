@@ -64,7 +64,8 @@ namespace SceneryEditorX
 		void Wait(State waitForState);
 		void WaitAndSet(State waitForState, State setToState);
 		void Set(State setToState);
-		void NextFrame();
+
+		void Tick();
 		void BlockUntilRenderComplete();
 		void Kick();
 		void Pump();

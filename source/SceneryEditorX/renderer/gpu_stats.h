@@ -23,48 +23,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * uniform_buffer_set.h
+ * gpu_stats.h
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 01/03/2026
  * -------------------------------------------------------
  */
 #pragma once
-#include "render_data.h"
-#include <array>
-#include <vma/vk_mem_alloc.h>
+#include <stdint.h>
 
-// -------------------------------------------------------
-
+// -----------------------------------------------------------------
 
 namespace SceneryEditorX
 {
-	class Device;
-	
-	// Manages a set of per-frame uniform buffers (ShaderDataBuffer). Uses VMA to
-	// allocate buffers that are host-visible and retrieves m_Device addresses for
-	// shader m_Device address push-constant usage.
-	class UniformBufferSet
+    struct GPUMemoryStats
 	{
-	public:
-	    UniformBufferSet() = default;
-	    UniformBufferSet(VmaAllocator allocator);
-        ~UniformBufferSet();
+		uint64_t used = 0;
+		uint64_t totalAvailable = 0;
+		uint64_t allocationCount = 0;
 
-		void SetDevice(const Ref<Device> &device) { m_Device = device; }
+		uint64_t bufferAllocationSize = 0;
+		uint64_t bufferAllocationCount = 0;
 
-        void Create();
-	    void Destroy();
-	
-	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> &Buffers() { return m_Buffers; }
-	
-	private:
-        Ref<Device> m_Device;
-	    VmaAllocator m_Allocator;
-	    std::array<ShaderDataBuffer, MAX_FRAMES_IN_FLIGHT> m_Buffers{};
-	    bool m_Destroyed = false;
+		uint64_t imageAllocationSize = 0;
+		uint64_t imageAllocationCount = 0;
 	};
-	
-} // namespace SceneryEditorX
+}
 
-
-// -------------------------------------------------------
+// -----------------------------------------------------------------

@@ -68,8 +68,8 @@ namespace SceneryEditorX
 	    [[nodiscard]] uint32_t GetImageIndex() const { return m_ImageIndex; }
         [[nodiscard]] VkSurfaceKHR GetSurface() const { return m_Surface; }
 
-        std::array<VkImage, 2> &GetImages() { return m_Images; }
-        std::array<VkImageView, 2> &GetImageViews() { return m_ImageViews; }
+        std::vector<VkImage> &GetImages() { return m_Images; }
+        std::vector<VkImageView> &GetImageViews() { return m_ImageViews; }
 
 	private:
         Ref<Device> m_Device = nullptr;
@@ -83,10 +83,10 @@ namespace SceneryEditorX
         VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
         static Scope<FrameSync> s_FrameSync;
-        std::array<Ref<FrameSync>, 2> m_AcquiredSemaphore;
-        std::array<Ref<FrameSync>, 2> m_CompleteSemaphore;
-		std::array<VkImage, 2> m_Images;
-		std::array<VkImageView, 2> m_ImageViews;
+        std::vector<Ref<FrameSync>> m_AcquiredSemaphore;
+        std::vector<Ref<FrameSync>> m_CompleteSemaphore;
+        std::vector<VkImage> m_Images;
+        std::vector<VkImageView> m_ImageViews;
 
 	    VkImage m_DepthImage{ VK_NULL_HANDLE };
 	    VmaAllocation m_DepthAlloc{ VK_NULL_HANDLE };

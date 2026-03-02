@@ -38,7 +38,6 @@
 namespace SceneryEditorX
 {
 
-    /*
 	Shader::~Shader()
 	{        
 	    const Ref<Device> device = RenderContext::Get()->GetDevice();
@@ -170,7 +169,6 @@ namespace SceneryEditorX
 	
 		return bindings;
 	}
-	*/
 
 }
 

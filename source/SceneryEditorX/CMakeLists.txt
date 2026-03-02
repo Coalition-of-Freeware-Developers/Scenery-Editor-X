@@ -60,6 +60,7 @@ SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.editorconfig
 	${CMAKE_SOURCE_DIR}/SceneryEditorX.licenseheader
 )
+SET (RENDERER_BASE_FOLDER renderer)
 
 ADD_EXECUTABLE(glslang::validator IMPORTED)
 FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQUIRED)
@@ -135,6 +136,9 @@ ADD_LIBRARY(AppCore
 	core/platform/platform_context.h
 
 	# --------------------------------
+	${RENDERER_BASE_FOLDER}/render_rhi.cpp
+	${RENDERER_BASE_FOLDER}/render_rhi.h
+	${RENDERER_BASE_FOLDER}/gpu_stats.h
 
 
 	# --------------------------------
@@ -254,6 +258,11 @@ SOURCE_GROUP("Core/Platform/Linux" FILES
 SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
+SOURCE_GROUP("Renderer" FILES
+	${RENDERER_BASE_FOLDER}/render_rhi.cpp
+	${RENDERER_BASE_FOLDER}/render_rhi.h
+	${RENDERER_BASE_FOLDER}/gpu_stats.h
+)
 SOURCE_GROUP("Renderer/Vulkan" FILES
 	${RENDERER_VULKAN}
 )
@@ -319,9 +328,7 @@ SOURCE_GROUP("Utilities" FILES
 	utils/repeat_call_tracker.h
 	utils/repeat_call_tracker.cpp
 )
-SOURCE_GROUP("Utilities/Reflection" FILES
-	${REFLECTION_FILES}
-)
+SOURCE_GROUP("Utilities/Reflection" FILES ${REFLECTION_FILES})
 SOURCE_GROUP("UI" FILES
 	ui/colors.h
 	ui/fonts.h
@@ -345,19 +352,13 @@ SOURCE_GROUP("UI" FILES
 	ui/ui_widgets.cpp
 	ui/ui_widgets.h
 )
-SOURCE_GROUP("UI/Panels" FILES
-	${UI_PANELS}
-)
-SOURCE_GROUP("UI/Actions" FILES
-	${UI_ACTIONS}
-)
+SOURCE_GROUP("UI/Panels" FILES ${UI_PANELS})
+SOURCE_GROUP("UI/Actions" FILES ${UI_ACTIONS})
 SOURCE_GROUP("Resources" FILES
     ${RESOURCE_FILE}
 	cpp.hint
 )
-SOURCE_GROUP("Resources/Shaders" FILES
-	${SHADER_FILES}
-)
+SOURCE_GROUP("Resources/Shaders" FILES ${SHADER_FILES})
 SOURCE_GROUP("Resources/Icons" FILES
     ${ICON_FILES}
 )

@@ -319,6 +319,36 @@ namespace SceneryEditorX
 	    }
 	}
 
+    bool Log::ReportAssertionFailure(const char* expr, const char* file, int line, const std::string& message) {
+
+        std::string logMsg = std::format("Assertion Failed: {}\nExpression: {}\nFile: {}\nLine: {}", message, expr, file, line);
+
+        if (m_CoreLogger)
+		{
+            m_CoreLogger->critical(logMsg);
+            m_CoreLogger->flush(); // Force the logger to write to the file/console immediately
+        }
+
+        // 3. UI/User Decision (The "Ignore" logic)
+        // For a Windows-based app use a Message Box:
+        #ifdef _WIN32
+            int result = MessageBoxA(NULL, logMsg.c_str(), "Assertion Failed", 
+                                     MB_ABORTRETRYIGNORE | MB_ICONERROR | MB_TASKMODAL);
+            
+            if (result == IDIGNORE)
+			{
+                return false; // User clicked "Ignore" - continue execution
+            }
+            if (result == IDABORT)
+			{
+                exit(1); // Exit completely
+            }
+            return true; // IDRETRY - this triggers the __debugbreak()
+        #else
+            return true; // Default to break in non-windows environments
+        #endif
+    }
+
     /*
 	void Log::LogVulkanResult(VkResult result, const std::string &operation)
 	{

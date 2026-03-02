@@ -45,24 +45,21 @@ namespace SceneryEditorX
 
 	Semaphore::~Semaphore()
 	{
-	    if (!m_Semaphore)
-            return;
-
-		m_Semaphore = VK_NULL_HANDLE;
+       Destroy();
 	}
 
 	void Semaphore::CreateSyncObject()
 	{
-        SEDX_CORE_ASSERT(m_Semaphore == nullptr);
+       SEDX_CORE_ASSERT(m_Semaphore == VK_NULL_HANDLE);
 	    Ref<Device> device = RenderContext::Get()->GetDevice();
 
-        VkSemaphoreTypeCreateInfo typeInfo;
+        VkSemaphoreTypeCreateInfo typeInfo{};
         typeInfo.sType				= VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
         typeInfo.pNext				= nullptr;
         typeInfo.semaphoreType		= VK_SEMAPHORE_TYPE_TIMELINE;
         typeInfo.initialValue		= 0;
 
-        VkSemaphoreCreateInfo semaphoreCreateInfo;
+        VkSemaphoreCreateInfo semaphoreCreateInfo{};
         semaphoreCreateInfo.sType	= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         semaphoreCreateInfo.pNext	= m_Type == SyncType::SemaphoreTimeline ? &typeInfo : nullptr;
         semaphoreCreateInfo.flags	= 0;
@@ -114,8 +111,14 @@ namespace SceneryEditorX
 
 	void Semaphore::Destroy()
 	{
+       if (m_Semaphore == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
 	    QueueManager::AddDeletionQueue(ResourceType::Semaphore, m_Semaphore);
         SEDX_CORE_TRACE_TAG("Semaphore", "Semaphore {} scheduled for destruction", m_ObjectName);
+       m_Semaphore = VK_NULL_HANDLE;
 	}
 
 	uint64_t Semaphore::GetValue(const VkSemaphore &semaphore)

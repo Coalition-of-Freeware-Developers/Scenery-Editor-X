@@ -162,7 +162,17 @@ namespace SceneryEditorX
 		 */
 	    static void LogVulkanDebug(const std::string &message);
 
-	    /**
+        /**
+         * @brief Reports an assertion failure.
+         * @param expr The expression that failed.
+         * @param file The file in which the assertion failed.
+         * @param line The line number at which the assertion failed.
+         * @param message The message associated with the assertion failure.
+         * @return True if the assertion failure was reported successfully, false otherwise.
+         */
+        static bool ReportAssertionFailure(const char *expr, const char *file, int line, const std::string &message);
+
+        /**
 		 * @brief Gets the logger instance.
 		 * @return A shared pointer to the logger instance.
 		 *

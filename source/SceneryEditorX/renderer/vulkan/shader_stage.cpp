@@ -43,7 +43,7 @@ namespace SceneryEditorX
 	
     // -------------------------------------------------------
 
-	/*
+
 	static std::vector<uint32_t> ReadCachedShaderData(const std::string& filepath)
 	{
 		FILE* f;
@@ -169,7 +169,7 @@ namespace SceneryEditorX
 	
 		return createInfo;
 	}
-	*/
+
 	
 }
 

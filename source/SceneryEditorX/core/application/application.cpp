@@ -34,10 +34,10 @@
 #include "SceneryEditorX/core/threading/thread_pool.h"
 #include "SceneryEditorX/core/time/fps_timer.h"
 #include "SceneryEditorX/logging/logging.hpp"
+#include "SceneryEditorX/project/project.h"
 #include "SceneryEditorX/renderer/vulkan/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/swapchain.h"
 #include "SceneryEditorX/ui/ui_layer.h"
-#include <imgui_impl_sdl3.h>
 
 // -------------------------------------------------------
 
@@ -47,7 +47,7 @@ bool appRunning = true; // Global variable to control the application loop
 
 namespace SceneryEditorX
 {
-    Application *Application::appInstance = nullptr;
+    Application *Application::s_AppInstance = nullptr;
     static std::thread::id s_MainThreadID;
 
     // -------------------------------------------------------
@@ -101,15 +101,16 @@ namespace SceneryEditorX
 		ResourceCache::Init();
         RenderContext::Init();
 		Renderer::Init();
+        m_RenderThread.Run();
 
 		m_IsRunning = true;
     }
 
     // -------------------------------------------------------
 
-    Application::Application(const PlatformContext& context) : m_PlatformContext(&context)
+    Application::Application(const PlatformContext& context) : m_PlatformContext(&context), m_RenderThread(ThreadingPolicy::MultiThreaded)
     {
-        appInstance = this;
+        s_AppInstance = this;
         s_MainThreadID = std::this_thread::get_id();
 
         // Set working directory to application root (2 levels up from bin/Debug)
@@ -133,19 +134,19 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
         AppData specification;
-        
+        specification.CoreThreadingPolicy = ThreadingPolicy::MultiThreaded;
         // Apply platform context settings to app data
         if (!context.GetWorkingDirectory().empty())
         {
             specification.WorkingDirectory = context.GetWorkingDirectory();
         }
-        
+
         InitializeApplication(specification);
     }
 
-    Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context)
+    Application::Application(const PlatformContext& context, const AppData& appData) : m_PlatformContext(&context), m_RenderThread(appData.CoreThreadingPolicy)
     {
-        appInstance = this;
+        s_AppInstance = this;
         s_MainThreadID = std::this_thread::get_id();
 
         // Set working directory to application root (2 levels up from bin/Debug)
@@ -165,34 +166,44 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE("  Command Line Args: {}", context.GetCommandLineArgs().size());
 
         AppData specification = appData;
-        
+
         // Apply platform context settings if not already set in appData
         if (specification.WorkingDirectory.empty() && !context.GetWorkingDirectory().empty())
         {
             specification.WorkingDirectory = context.GetWorkingDirectory();
         }
-        
+
         InitializeApplication(specification);
     }
 
     Application::~Application()
     {
+        m_Window->SetEventCallback([](Event& e) {});
+		m_RenderThread.Terminate();
 
 		ThreadPool::Shutdown();
         ResourceCache::Shutdown();
         ResourceCache::UnloadDefaultResources();
-		Renderer::Shutdown();
 
+        for (size_t i = 0; i < m_ModuleStage.Size(); ++i)
+        {
+            Layer *layer = m_ModuleStage[i];
+            layer->OnDetach();
+            delete layer;
+        }
+        //Project::SetActive(nullptr);
+        Renderer::Shutdown();
 
+        /*
         /** 
          * Let RAII handle Window destruction, or explicitly reset the RefCounter once
          * to avoid double-destruction. Do NOT call the destructor directly.
-         */
+         #1#
         if (m_Window)
         {
             m_Window->Destroy();
             m_Window.reset();
-        }
+        }*/
 
     }
 
@@ -202,7 +213,7 @@ namespace SceneryEditorX
 
         // Per-frame housekeeping
         Window::Tick();
-        Renderer::Tick();
+        m_RenderThread.Tick();
         FPSTimer::PostTick();
     }
 
@@ -210,55 +221,51 @@ namespace SceneryEditorX
     {
         OnInit(); // Call user-defined initialization function
 
+        static uint64_t frameCount = 0;
+
         // Main application loop
         while (m_IsRunning && !m_Window->GetShouldClose())
         {
-            static uint64_t frameCount = 0;
+            // Wait for render thread to finish frame
+			{
+				Timer timer;
+
+				m_RenderThread.BlockUntilRenderComplete();
+
+				m_PerformanceTimers.MainThreadWaitTime = timer.ElapsedMillis();
+			}
+
+            Timer cpuTimer;
+
+            float time = GetTime();
+            m_FrameTime = time - m_LastFrameTime;
+            m_DeltaTime = xMath::Min<float>(static_cast<float>(m_FrameTime), 0.0333f);
+            m_LastFrameTime = time;
 
             // Poll events
             ProcessEvents();
 
-            // Skip rendering if minimized
-            if (m_IsMinimized || Window::IsMinimized())
+            for (size_t i = 0; i < m_ModuleStage.Size(); ++i)
             {
-                continue;
+                m_ModuleStage[i]->Tick(m_DeltaTime);
             }
 
-            // Begin frame rendering
-            if (!Renderer::BeginFrame())
-            {
-                // Frame acquisition failed (e.g., swapchain out of date)
-                continue;
-            }
-
-            // Call application/editor update
-            Tick();
-
-            // ImGui frame
-            //ImGui_ImplSDL3_NewFrame();
-            //ImGui::NewFrame();
-
-            // Call user rendering (panels, viewports, etc.)
+            OnUpdate();
             OnRender();
 
-            // Finalize ImGui rendering
-            //ImGui::Render();
-            
-            // Handle multi-viewport windows
-            /*
-            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
-                ImGui::UpdatePlatformWindows();
-                ImGui::RenderPlatformWindowsDefault();
-            }
-            */
+            Tick();
+            Input::ClearReleasedKeys();
 
-            // End frame and submit
-            Renderer::EndFrame();
-            Renderer::SubmitAndPresent();
+            // Start rendering previous frame
+            m_RenderThread.Kick();
+
+            m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % 2;
+            m_PerformanceTimers.MainThreadWorkTime = cpuTimer.ElapsedMillis();
 
             frameCount++;
         }
+
+        m_RenderThread.BlockUntilRenderComplete();
 
         //SEDX_CORE_INFO_TAG("Application", "=== Exiting Application Main Loop (frames rendered: {}) ===", frameCount);
         OnShutdown();
@@ -318,26 +325,30 @@ namespace SceneryEditorX
 		Input::TransitionPressedButtons();
         Window::ProcessEvents();
 
-		/*
-		 * NOTE: we have no control over what func() does.  holding this lock while calling func() is a bad idea:
-		 * 1) func() might be slow (means we hold the lock for ages)
-		 * 2) func() might result in events getting queued, in which case we have a deadlock
+        /*
+         * Process custom event queue up until we encounter an event that is not yet synced.
+         * If the application queues such events, it is the application's responsibility to call
+         * SyncEvents() at the appropriate time.
          */
-		std::scoped_lock lock(m_EventQueueMutex);
+        while (true)
+        {
+            std::function<void()> func;
+            {
+                std::scoped_lock lock(m_EventQueueMutex);
+                if (m_EventQueue.empty() || !m_EventQueue.front().first)
+                {
+                    break;
+                }
 
-		/*
-		 * Process custom event queue, up until we encounter an event that is not yet synced
-		 * If application queues such events, then it is the application's responsibility to call
-		 * SyncEvents() at the appropriate time.
-         */
-		while (!m_EventQueue.empty())
-		{
-			const auto& [synced, func] = m_EventQueue.front();
-			if (!synced) break;
+                func = std::move(m_EventQueue.front().second);
+                m_EventQueue.pop_front();
+            }
 
-            func();
-			m_EventQueue.pop_front();
-		}
+            if (func)
+            {
+                func();
+            }
+        }
 	}
 
 	void Application::OnEvent(Event& event)
