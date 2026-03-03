@@ -36,13 +36,11 @@
 namespace SceneryEditorX
 {
     class CommandList;
-	    
-    // -----------------------------------------------------------------
 
-	struct LayerSettingsData
+    struct LayerSettingsData
 	{
-	    VkLayerSettingsCreateInfoEXT createInfo;
-	    std::vector<VkLayerSettingEXT> settings;
+        VkLayerSettingsCreateInfoEXT createInfo; // create info struct for passing to vkCreateInstance or vkCreateDevice
+	    std::vector<VkLayerSettingEXT> settings; // persistent storage for VkLayerSettingEXT, which must remain valid while the layer is active
 	};
 
     // -----------------------------------------------------------------
@@ -50,10 +48,66 @@ namespace SceneryEditorX
     class Debugging
     {
     public:
+        /**
+         * @brief Sets whether Vulkan validation layer integration is enabled.
+         * @param enabled True to enable validation-layer wiring, false to disable it.
+         */
+        static void SetValidationLayerEnabled(bool enabled);
+
+        /**
+         * @brief Returns the Vulkan validation layer name used by the renderer.
+         * @return The validation layer name string.
+         */
+        static const char *GetValidationLayerName();
+
+        /**
+         * @brief Checks whether the requested validation layer is available on this system.
+         * @return True if the validation layer can be enabled.
+         */
+        static bool IsValidationLayerSupported();
+
+        /**
+         * @brief Initializes Vulkan debug callbacks and object-label function pointers.
+         * @param instance The active Vulkan instance.
+         */
+        static void Initialize(VkInstance instance);
+
+        /**
+         * @brief Shuts down Vulkan debug callbacks.
+         * @param instance The active Vulkan instance.
+         */
+        static void Shutdown(VkInstance instance);
+
+        /**
+         * @brief Sets a human-readable name for a GPU resource to improve debugging and profiling readability. 
+         * This function is a no-op if validation layers are not enabled, as the necessary function pointers are not initialized.
+         * @param resource The resource to set the name for
+         * @param type The type of the resource (e.g. buffer, image, etc.)
+         * @param name The name to assign to the resource, which will appear in validation messages and GPU debuggers like RenderDoc. 
+         * Should be a string literal or persistently allocated string.
+         */
         static void SetResourceName(void *resource, ResourceType type, const char *name);
+
+        /**
+         * @brief Retrieves the current layer settings for the Vulkan validation layers.
+         * @return A LayerSettingsData structure containing the settings for the validation layers.
+         */
         static LayerSettingsData GetLayerSettings();
 
+        /**
+         * @brief Inserts a GPU marker into the command list for debugging and profiling purposes. 
+         * This function is a no-op if validation layers are not enabled, as the necessary function pointers are not initialized.
+         * @param cmdList The command list to insert the marker into
+         * @param name The name of the marker, which will appear in validation messages and GPU debuggers like RenderDoc
+         * @param color The color of the marker, which will appear in GPU debuggers like RenderDoc
+         */
         static void BeginMarker(const CommandList *cmdList, const char *name, const xMath::Vec4 &color);
+
+        /**
+         * @brief Ends a previously started GPU marker in the command list.
+         * This function is a no-op if validation layers are not enabled, as the necessary function pointers are not initialized.
+         * @param cmdList The command list to end the marker in
+         */
         static void EndMarker(const CommandList *cmdList);
 
         static bool IsValidationLayerEnabled()       { return m_ValidationLayer; }

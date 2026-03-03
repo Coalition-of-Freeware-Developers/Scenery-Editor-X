@@ -99,12 +99,8 @@ namespace SceneryEditorX
 	
 	    if (!m_MappedData)
 	    {
-	        const VkResult result = vmaMapMemory(m_Allocator, m_Allocation, &m_MappedData);
-	        if (result != VK_SUCCESS)
-	        {
-	            SEDX_CORE_ERROR_TAG("Buffer", "vmaMapMemory failed with VkResult={}", static_cast<int32_t>(result));
-	            m_MappedData = nullptr;
-	        }
+			SEDX_VK_RESULT_ASSERT(vmaMapMemory(m_Allocator, m_Allocation, &m_MappedData), "Failed to map buffer memory");
+	        m_MappedData = nullptr;
 	    }
 	
 	    return m_MappedData;
@@ -146,17 +142,8 @@ namespace SceneryEditorX
 	
 	void Buffer::FreeBuffer(VkBuffer buffer, VmaAllocation allocation)
 	{
-	    if (buffer == VK_NULL_HANDLE)
-	    {
-	        SEDX_CORE_WARN_TAG("Buffer", "FreeBuffer called with null buffer");
-	        return;
-	    }
-	
-	    if (allocation == VK_NULL_HANDLE)
-	    {
-	        SEDX_CORE_ERROR_TAG("Buffer", "No VMA allocation found for buffer {} - cannot free", ToString(buffer));
-	        return;
-	    }
+        SEDX_CORE_ASSERT(buffer != VK_NULL_HANDLE, "FreeBuffer called with null buffer");
+        SEDX_CORE_ASSERT(allocation != VK_NULL_HANDLE, "FreeBuffer called with null allocation");
 	
 	    MemoryAllocator::DestroyBuffer(buffer, allocation);
 	    MemoryAllocator::FreeAllocation(allocation);
@@ -166,17 +153,8 @@ namespace SceneryEditorX
 	
     void Buffer::FreeImageBuffer(VkImage image, VmaAllocation allocation)
 	{
-	    if (image == VK_NULL_HANDLE)
-	    {
-	        SEDX_CORE_WARN_TAG("Buffer", "FreeImageBuffer called with null buffer");
-	        return;
-	    }
-	
-	    if (allocation == VK_NULL_HANDLE)
-	    {
-	        SEDX_CORE_ERROR_TAG("Buffer", "No VMA allocation provided for image {} - cannot free", ToString(image));
-	        return;
-	    }
+        SEDX_CORE_ASSERT(image != VK_NULL_HANDLE, "FreeImageBuffer called with null image");
+        SEDX_CORE_ASSERT(allocation != VK_NULL_HANDLE, "FreeImageBuffer called with null allocation");
 	
 	    MemoryAllocator::DestroyImage(image, allocation);
 	    MemoryAllocator::FreeAllocation(allocation);

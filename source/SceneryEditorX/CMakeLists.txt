@@ -136,10 +136,12 @@ ADD_LIBRARY(AppCore
 	core/platform/platform_context.h
 
 	# --------------------------------
+	${RENDERER_BASE_FOLDER}/gpu_stats.h
 	${RENDERER_BASE_FOLDER}/render_rhi.cpp
 	${RENDERER_BASE_FOLDER}/render_rhi.h
-	${RENDERER_BASE_FOLDER}/gpu_stats.h
-
+	${RENDERER_BASE_FOLDER}/renderer_passes.cpp
+	${RENDERER_BASE_FOLDER}/renderer_primitives.cpp
+	${RENDERER_BASE_FOLDER}/renderer_resources.cpp
 
 	# --------------------------------
 	utils/container_utils.h
@@ -259,9 +261,12 @@ SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
 SOURCE_GROUP("Renderer" FILES
+	${RENDERER_BASE_FOLDER}/gpu_stats.h
 	${RENDERER_BASE_FOLDER}/render_rhi.cpp
 	${RENDERER_BASE_FOLDER}/render_rhi.h
-	${RENDERER_BASE_FOLDER}/gpu_stats.h
+	${RENDERER_BASE_FOLDER}/renderer_passes.cpp
+	${RENDERER_BASE_FOLDER}/renderer_primitives.cpp
+	${RENDERER_BASE_FOLDER}/renderer_resources.cpp
 )
 SOURCE_GROUP("Renderer/Vulkan" FILES
 	${RENDERER_VULKAN}

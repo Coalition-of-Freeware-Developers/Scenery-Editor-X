@@ -66,6 +66,12 @@ namespace SceneryEditorX
         static uint64_t GetAllocatedMemory();
         static uint64_t GetAvailableMemory();
 
+        /**
+	     * @brief Maps the memory of a given allocation to a pointer of type T.
+	     * @tparam T The type to map the memory to.
+	     * @param allocation The VMA allocation to map.
+	     * @return A pointer to the mapped memory of type T.
+	     */
 	    template<typename T>
 		T* MapMemory(VmaAllocation allocation)
 		{

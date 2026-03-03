@@ -31,8 +31,6 @@
 #include "descriptor_set.h"
 #include "descriptor.h"
 #include "render_context.h"
-#include <iostream>
-#include <vector>
 #include <volk/volk.h>
 
 // -------------------------------------------------------

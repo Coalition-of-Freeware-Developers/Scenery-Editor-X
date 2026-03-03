@@ -319,7 +319,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-    bool Log::ReportAssertionFailure(const char* expr, const char* file, int line, const std::string& message) {
+    bool Log::ReportAssertion(const char* expr, const char* file, int line, const std::string& message) {
 
         std::string logMsg = std::format("Assertion Failed: {}\nExpression: {}\nFile: {}\nLine: {}", message, expr, file, line);
 
@@ -331,7 +331,7 @@ namespace SceneryEditorX
 
         // 3. UI/User Decision (The "Ignore" logic)
         // For a Windows-based app use a Message Box:
-        #ifdef _WIN32
+        #ifdef SEDX_PLATFORM_WINDOWS
             int result = MessageBoxA(NULL, logMsg.c_str(), "Assertion Failed", 
                                      MB_ABORTRETRYIGNORE | MB_ICONERROR | MB_TASKMODAL);
             
@@ -344,8 +344,10 @@ namespace SceneryEditorX
                 exit(1); // Exit completely
             }
             return true; // IDRETRY - this triggers the __debugbreak()
+        #elif defined(SEDX_PLATFORM_LINUX)
+            return true; // Default to break on Linux (no standard message box, and typically running in a terminal where user can see the log)
         #else
-            return true; // Default to break in non-windows environments
+            return true; // Default to break for unknown platforms
         #endif
     }
 

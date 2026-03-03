@@ -50,8 +50,6 @@ namespace SceneryEditorX
 	    UniformBufferSet(VmaAllocator allocator);
         ~UniformBufferSet();
 
-		void SetDevice(const Ref<Device> &device) { m_Device = device; }
-
         void Create();
 	    void Destroy();
 	

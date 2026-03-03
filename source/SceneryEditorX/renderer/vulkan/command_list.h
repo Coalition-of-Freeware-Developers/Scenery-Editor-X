@@ -29,12 +29,16 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include "barriers.h"
 #include "buffer.h"
 #include "command_pool.h"
 #include "frame_sync.h"
+#include "image.h"
 #include "pipeline.h"
 #include "queue.h"
 #include "viewport.h"
+
+#include <colors.h>
 
 // -------------------------------------------------------
 
@@ -56,8 +60,34 @@ namespace SceneryEditorX
         void Begin();
         void Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal = nullptr);
         void WaitForExecution(const bool logWaitTime = false);
-        void SetVertexBuffer(const Buffer *vertexBuffer, Buffer *instance);
+        void ClearTexture(Image *img, const Color &color, float clearDepth, uint32_t clearStencil);
+        void SetVertexBuffer(const Buffer *vertexBuffer, const Buffer *instance);
         //void SetPipelineState(PipelineState &pso);
+
+		Ref<CommandList> Get() { return {this}; }
+        VkCommandBuffer GetCommandBuffer() const { return m_CmdBuffer; }
+
+        void EndRenderPass();
+        static void RemoveLayout(void* image);
+        static Layout::ImageLayout GetImageLayout(void* image, uint32_t mipIndex);
+
+        // Buffer
+        void UpdateBuffer(Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
+
+        // Barriers - unified interface
+        void InsertBarrier(const Barrier& barrier);
+        void FlushBarriers();
+
+        // Barriers - convenience overloads
+        void InsertBarrier(Image* texture, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
+        void InsertBarrier(Image* texture, BarrierType syncType);
+        void InsertBarrier(Buffer* buffer);
+        void InsertBarrier(void* image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
+
+		// Immediate Execution
+        static CommandList* BeginImmediateExecution(const QueueType type);
+        static void EndImmediateExecution(CommandList* cmdList);
+        static void ShutdownImmediateExecution();
 
         const CommandState GetState() const { return m_State; }
 
@@ -68,12 +98,20 @@ namespace SceneryEditorX
         void SetScissor(const xMath::Rectangle &scissorRect) const;
         void SetCullMode(const VkCullModeFlags cullMode);
 
+        Ref<Queue> GetQueue() const { return m_Queue; }
+        void CopyImageToBuffer(Image* src, Buffer* dst);
+        void CopyBufferToBuffer(void* src, Buffer* dst, uint64_t size);
+        void CopyBufferToBuffer(Buffer* src, Buffer* dst, uint64_t size);
+
     private:
+        void BeginRenderPass();
         Queue *m_Queue;
         Pipeline m_Pipeline;
         VkCommandBuffer m_CmdBuffer;
+        Ref<FrameSync> m_SubmitSync = nullptr;
 		std::atomic<CommandState> m_State = CommandState::Idle;
 		VkCullModeFlags m_CullMode = VK_CULL_MODE_BACK_BIT;
+		bool m_RenderPassActive = false;
     };
 
 } // namespace SceneryEditorX

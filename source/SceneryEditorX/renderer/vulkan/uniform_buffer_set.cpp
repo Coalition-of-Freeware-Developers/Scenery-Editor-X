@@ -29,7 +29,7 @@
  * -------------------------------------------------------
  */
 #include "uniform_buffer_set.h"
-#include "device.h"
+#include "render_context.h"
 
 // -------------------------------------------------------
 
@@ -38,6 +38,9 @@ namespace SceneryEditorX
 
     UniformBufferSet::UniformBufferSet(VmaAllocator allocator) : m_Allocator(allocator)
 	{
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        m_Device = device;
+
 	    Create();
 	}
 
@@ -48,6 +51,9 @@ namespace SceneryEditorX
         {
             Destroy();
         }
+
+        m_Device.Reset();
+        m_Device = nullptr;
     }
 
     void UniformBufferSet::Create()
@@ -64,27 +70,20 @@ namespace SceneryEditorX
                 continue;
             }
 
-            VkBufferCreateInfo uBufferCI{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                                         .size = sizeof(ShaderData),
-                                         .usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT};
+            VkBufferCreateInfo uBufferCI = {};
+            uBufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            uBufferCI.size = sizeof(ShaderData);
+            uBufferCI.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
-            VmaAllocationCreateInfo uBufferAllocCI{.flags =
-                                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
-                                                       VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                                                   .usage = VMA_MEMORY_USAGE_AUTO};
+            VmaAllocationCreateInfo uBufferAllocCI = {};
+            uBufferAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                                   VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
+                                   VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            uBufferAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
 
-            if (VkResult r = vmaCreateBuffer(m_Allocator,
-                                             &uBufferCI,
-                                             &uBufferAllocCI,
+			SEDX_VK_RESULT_ASSERT(vmaCreateBuffer(m_Allocator, &uBufferCI, &uBufferAllocCI,
                                              &m_Buffers[i].buffer,
-                                             &m_Buffers[i].allocation,
-                                             nullptr);
-                r != VK_SUCCESS)
-            {
-                SEDX_CORE_WARN_TAG("UniformBufferSet", "vmaCreateBuffer failed: {}", r);
-                continue;
-            }
+                                             &m_Buffers[i].allocation, nullptr), "vmaCreateBuffer failed: {}")
 
             if (VkResult mapResult = vmaMapMemory(m_Allocator, m_Buffers[i].allocation, &m_Buffers[i].mapped); mapResult != VK_SUCCESS)
             {

@@ -31,9 +31,6 @@
 #pragma once
 #include "device.h"
 #include "render_data.h"
-#include <array>
-#include <vector>
-#include <vma/vk_mem_alloc.h>
 
 // --------------------------------------------------------------
 

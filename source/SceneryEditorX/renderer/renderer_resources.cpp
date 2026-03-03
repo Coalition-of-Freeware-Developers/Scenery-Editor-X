@@ -23,63 +23,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * owned_pipeline.h
+ * renderer_resources.cpp
  * -------------------------------------------------------
- * Created: 09/02/2026
+ * Created: 02/03/2026
  * -------------------------------------------------------
  */
-#pragma once
-#include <volk/volk.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-/**
-	 * @brief A simple RAII wrapper for Vulkan pipelines and their associated pipeline layouts. This class manages the lifetime of a VkPipeline and VkPipelineLayout, ensuring that they are properly destroyed when no longer needed. The Destroy method allows for explicit cleanup, 
-	 * which is preferred to ensure deterministic ordering during teardown.
-	 */
-	class OwnedPipeline 
-    {
-	public:
-	    OwnedPipeline() = default;
-	    OwnedPipeline(VkDevice device, VkPipeline pipeline, VkPipelineLayout layout) : m_Device(device), m_Pipeline(pipeline), m_Layout(layout) {}
-	
-	    ~OwnedPipeline()
-	    {
-	        if (!m_Destroyed)
-			{
-	            // best-effort cleanup; explicit destroy(m_Device) preferred
-	        }
-	    }
-	
-	    void Destroy(VkDevice device)
-	    {
-	        if (!m_Destroyed) {
-	            if (m_Pipeline != VK_NULL_HANDLE)
-				{
-	                vkDestroyPipeline(device, m_Pipeline, nullptr);
-	                m_Pipeline = VK_NULL_HANDLE;
-	            }
-	            if (m_Layout != VK_NULL_HANDLE)
-				{
-	                vkDestroyPipelineLayout(device, m_Layout, nullptr);
-	                m_Layout = VK_NULL_HANDLE;
-	            }
-	            m_Destroyed = true;
-	        }
-	    }
-	
-	    VkPipeline GetPipeline() const { return m_Pipeline; }
-	    VkPipelineLayout GetLayout() const { return m_Layout; }
-	
-	private:
-	    VkDevice m_Device;
-	    VkPipeline m_Pipeline{ VK_NULL_HANDLE };
-	    VkPipelineLayout m_Layout{ VK_NULL_HANDLE };
-	    bool m_Destroyed = false;
-	};
 
 }
 

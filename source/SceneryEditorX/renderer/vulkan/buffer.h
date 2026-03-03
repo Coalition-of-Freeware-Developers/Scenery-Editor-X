@@ -30,12 +30,13 @@
  */
 #pragma once
 #include "memory_allocator.h"
+#include <SceneryEditorX/utils/inheritance.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    class Buffer : public RefCounted
+    class Buffer : public SharedObject
 	{
 	public:
 	    Buffer() = default;

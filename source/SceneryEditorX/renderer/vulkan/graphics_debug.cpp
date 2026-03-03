@@ -74,34 +74,36 @@ namespace SceneryEditorX
 
 		static std::vector<VkLayerSettingEXT> s_SettingsStorage; // persistent storage for VkLayerSettingEXT
 
+        static bool IsLayerSupported()
+        {
+            uint32_t layerCount = 0;
+            vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+            if (layerCount == 0)
+            {
+                return false;
+            }
+
+            std::vector<VkLayerProperties> layers(layerCount);
+            vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+
+            for (const VkLayerProperties &layer : layers)
+            {
+                if (strcmp(s_LayerName, layer.layerName) == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
     // -----------------------------------------------------------------
 
         static std::vector<VkLayerSettingEXT> &GetSettings()
 		{
-		    SEDX_CORE_ASSERT(Debugging::IsValidationLayerEnabled());
-
-		    // check layer availability
-		    {
-		        uint32_t layerCount;
-		        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-                std::vector<VkLayerProperties> layers(layerCount);
-		        vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
-
-		        bool validationLayerUnavailable = true;
-		        for (const VkLayerProperties &layer : layers)
-		        {
-		            if (strcmp(s_LayerName, layer.layerName) == 0)
-		            {
-		                validationLayerUnavailable = false;
-		                break;
-		            }
-		        }
-
-		        SEDX_CORE_ASSERT(!validationLayerUnavailable,
-		                      "Please install the Vulkan SDK, ensure correct environment variables and restart your "
-		                      "machine: https://vulkan.lunarg.com/sdk/home");
-		    }
+		    SEDX_CORE_ASSERT(Debugging::IsValidationLayerEnabled(), "Validation layer is not enabled");
+            SEDX_CORE_ASSERT(IsLayerSupported(), "Please install the Vulkan SDK, ensure correct environment variables and restart your machine: https://vulkan.lunarg.com/sdk/home");
 
 		    // fill static settings
 		    s_SettingsStorage = {
@@ -183,21 +185,21 @@ namespace SceneryEditorX
 
         if (/*(msgSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msgSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
         {
-            SEDX_CORE_INFO("{}", msg);
+            SEDX_CORE_INFO_TAG("Validation Layer", "{}", msg);
         }
         else if (msgSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         {
-            SEDX_CORE_WARN("{}", msg);
+            SEDX_CORE_WARN_TAG("Validation Layer", "{}", msg);
         }
         else if (msgSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
         {
-            SEDX_CORE_ERROR("{}", msg);
+            SEDX_CORE_ERROR_TAG("Validation Layer", "{}", msg);
         }
 
         return VK_FALSE;
     }
 
-    static void EnableValidationLayer()
+    static void EnableValidationLayer(const VkInstance instance)
 	{
 		if (s_CreateDebugMessenger)
 		{
@@ -207,16 +209,25 @@ namespace SceneryEditorX
             createInfo.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
             createInfo.pfnUserCallback                    = VulkanLog;
 
-			s_CreateDebugMessenger(RenderContext::Get()->GetInstance(), &createInfo, nullptr, &s_Messenger);
+            VkResult result = s_CreateDebugMessenger(instance, &createInfo, nullptr, &s_Messenger);
+            if (result == VK_SUCCESS)
+            {
+                SEDX_CORE_INFO_TAG("Validation Layer", "Validation messenger initialized");
+            }
+            else
+            {
+                SEDX_CORE_WARN_TAG("Validation Layer", "Failed to create validation messenger (VkResult={})", static_cast<int>(result));
+            }
 		}
     }
 
-    static void Shutdown(VkInstance instance)
+    static void DestroyDebugMessenger(VkInstance instance)
     {
-        if (!s_DestroyDebugMessenger)
+        if (!s_DestroyDebugMessenger || s_Messenger == VK_NULL_HANDLE)
             return;
 
         s_DestroyDebugMessenger(instance, s_Messenger, nullptr);
+       s_Messenger = VK_NULL_HANDLE;
     }
 
 	static VkObjectType GetVulkanObjectType(const ResourceType type)
@@ -277,23 +288,70 @@ namespace SceneryEditorX
 
 	LayerSettingsData Debugging::GetLayerSettings()
 	{
-	    LayerSettingsData data;
+	    LayerSettingsData data{};
 	    
 	    if (IsValidationLayerEnabled())
 	    {
-	        data.settings = ValidationLayer::GetSettings();
-	        
-	        data.createInfo.sType = VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
-	        data.createInfo.pNext = nullptr;
-	        data.createInfo.pSettings = data.settings.data();
-	        data.createInfo.settingCount = static_cast<uint32_t>(data.settings.size());
+	        data.settings					= ValidationLayer::GetSettings();
+	        data.createInfo.sType			= VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT;
+	        data.createInfo.pNext			= nullptr;
+	        data.createInfo.pSettings		= data.settings.data();
+	        data.createInfo.settingCount	= static_cast<uint32_t>(data.settings.size());
 	    }
 	    
 	    return data;
 	}
 
+    void Debugging::SetValidationLayerEnabled(const bool enabled)
+    {
+        m_ValidationLayer = enabled;
+    }
+
+    const char *Debugging::GetValidationLayerName()
+    {
+        return ValidationLayer::s_LayerName;
+    }
+
+    bool Debugging::IsValidationLayerSupported()
+    {
+        return ValidationLayer::IsLayerSupported();
+    }
+
+    void Debugging::Initialize(const VkInstance instance)
+    {
+        if (!IsValidationLayerEnabled())
+        {
+            return;
+        }
+
+        s_CreateDebugMessenger = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
+        s_DestroyDebugMessenger = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
+        s_SetDebugObjectTag = reinterpret_cast<PFN_vkSetDebugUtilsObjectTagEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectTagEXT"));
+        s_SetDebugObjectName = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetInstanceProcAddr(instance, "vkSetDebugUtilsObjectNameEXT"));
+        s_MarkerBegin = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
+        s_MarkerEnd = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
+
+        if (!s_CreateDebugMessenger || !s_DestroyDebugMessenger)
+        {
+            SEDX_CORE_WARN_TAG("Validation Layer", "Debug utils extension is unavailable. Validation callbacks are disabled.");
+            return;
+        }
+
+        EnableValidationLayer(instance);
+    }
+
+    void Debugging::Shutdown(const VkInstance instance)
+    {
+        DestroyDebugMessenger(instance);
+    }
+
     void Debugging::BeginMarker(const CommandList *cmdList, const char *name, const xMath::Vec4 &color)
     {
+        if (!IsGpuMarkingEnabled() || s_MarkerBegin == nullptr || cmdList == nullptr)
+        {
+            return;
+        }
+
         VkDebugUtilsLabelEXT label = {};
         label.sType                = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
         label.pNext                = nullptr;
@@ -303,12 +361,17 @@ namespace SceneryEditorX
         label.color[2]             = color.z;
         label.color[3]             = color.w;
 
-        //s_MarkerBegin(cmdList->GetCmdBuffer(), &label);
+        s_MarkerBegin(cmdList->GetCommandBuffer(), &label);
     }
 
     void Debugging::EndMarker(const CommandList *cmdList)
     {
-        //s_MarkerEnd(cmdList->GetCmdBuffer());
+        if (!IsGpuMarkingEnabled() || s_MarkerEnd == nullptr || cmdList == nullptr)
+        {
+            return;
+        }
+
+        s_MarkerEnd(cmdList->GetCommandBuffer());
     }
 
 } // namespace SceneryEditorX

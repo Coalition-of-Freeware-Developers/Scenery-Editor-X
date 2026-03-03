@@ -79,7 +79,7 @@ namespace SceneryEditorX
     MemoryAllocator::MemoryAllocator(const char* name)
     {
         m_ObjectName = name;
-
+        SEDX_CORE_TRACE_TAG("MemoryAllocator","Allocation {0}: created", m_ObjectName);
     }
 
     MemoryAllocator::~MemoryAllocator()
@@ -89,6 +89,7 @@ namespace SceneryEditorX
         vmaDestroyAllocator(s_AllocatorData->allocator);
         s_AllocatorData = nullptr;
         m_Device.Reset();
+        SEDX_CORE_TRACE_TAG("MemoryAllocator","Allocation {0}: destroyed", m_ObjectName);
     }
 
     void MemoryAllocator::Init(Ref<Device> device)
@@ -115,6 +116,7 @@ namespace SceneryEditorX
 		allocatorInfo.pVulkanFunctions = &vkFunctions;
 		
 		SEDX_VK_RESULT_ASSERT(vmaCreateAllocator(&allocatorInfo, &s_AllocatorData->allocator));
+        SEDX_CORE_TRACE_TAG("MemoryAllocator", "VMA allocator created");
     }
 
     /**
@@ -153,12 +155,14 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(allocation != nullptr, "Allocation is null");
         std::scoped_lock lock(s_MutexAllocator);
         s_AllocationMap.emplace(allocation, allocInfo);
+        SEDX_CORE_TRACE_TAG("MemoryAllocator", "Allocation saved; total allocations: {0}", s_AllocationMap.size());
 	}
 
 	void MemoryAllocator::FreeAllocation(VmaAllocation allocation)
 	{
         std::scoped_lock lock(s_MutexAllocator);
         s_AllocationMap.erase(allocation);
+        SEDX_CORE_TRACE_TAG("MemoryAllocator", "Allocation freed; remaining allocations: {0}", s_AllocationMap.size());
 	}
 
     void MemoryAllocator::Shutdown()
@@ -167,6 +171,7 @@ namespace SceneryEditorX
 
 		delete s_AllocatorData;
 		s_AllocatorData = nullptr;
+        SEDX_CORE_TRACE_TAG("MemoryAllocator", "VMA allocator destroyed");
     }
 
     VmaAllocation MemoryAllocator::AllocateBuffer(VkBufferCreateInfo bufferCI, VmaMemoryUsage usage, VkBuffer &buffOut)
@@ -247,11 +252,8 @@ namespace SceneryEditorX
 		return allocation;
     }
 
-	VkResult MemoryAllocator::CreateBuffer(const VkBufferCreateInfo& bufferCI,
-	                                       const VmaAllocationCreateInfo& allocInfo,
-	                                       VkBuffer& outBuffer,
-	                                       VmaAllocation& outAllocation,
-	                                       VmaAllocationInfo* outAllocationInfo)
+	VkResult MemoryAllocator::CreateBuffer(const VkBufferCreateInfo& bufferCI, const VmaAllocationCreateInfo& allocInfo,
+	                                       VkBuffer& outBuffer, VmaAllocation& outAllocation, VmaAllocationInfo* outAllocationInfo)
 	{
 	    SEDX_CORE_ASSERT(s_AllocatorData && s_AllocatorData->allocator, "VMA allocator is not initialized");
 	    SEDX_CORE_ASSERT(bufferCI.size > 0, "Buffer size must be > 0");
@@ -266,7 +268,8 @@ namespace SceneryEditorX
 	                            bufferCI.size, static_cast<uint32_t>(bufferCI.usage), static_cast<int32_t>(result));
 	        return result;
 	    }
-	
+	    
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "Allocating buffer size = {0}", Utils::BytesToString(bufferCI.size));
 	    return VK_SUCCESS;
 	}
 
@@ -288,6 +291,7 @@ namespace SceneryEditorX
 			SEDX_CORE_ERROR("Could not find GPU memory allocation: {}", (void*)allocation);
 		}
     #endif
+        SEDX_CORE_TRACE_TAG("MemoryAllocator", "Buffer destroyed");
     }
 
     void MemoryAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
@@ -308,12 +312,15 @@ namespace SceneryEditorX
 			SEDX_CORE_ERROR("Could not find GPU memory allocation: {}", (void*)allocation);
 		}
 #endif
+        SEDX_CORE_TRACE_TAG("MemoryAllocator", "Image destroyed");
     }
 
     VmaAllocation MemoryAllocator::GetAllocation(const VmaAllocation allocation)
     {
         std::scoped_lock lock(s_MutexAllocator);
         auto it = s_AllocationMap.find(allocation);
+        SEDX_CORE_ASSERT(it != s_AllocationMap.end(), "Allocation not found in map");
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetAllocation called for allocation {0}; found: {1}", (void*)allocation, it != s_AllocationMap.end());
       return it != s_AllocationMap.end() ? it->first : nullptr;
 	}
 
@@ -342,6 +349,7 @@ namespace SceneryEditorX
             }
         }
     
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetAllocatedMemory: {0} bytes", bytes);
         return bytes / (1024ull * 1024ull);
     }
 
@@ -365,12 +373,14 @@ namespace SceneryEditorX
             }
         }
     
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetAvailableMemory: {0} bytes", bytes);
         return bytes / (1024ull * 1024ull);
     }
 
     void MemoryAllocator::UnmapMemory(VmaAllocation allocation)
     {
         vmaUnmapMemory(s_AllocatorData->allocator, allocation);
+        SEDX_CORE_TRACE_TAG("MemoryAllocator", "Memory unmapped for allocation {0}", (void *)allocation);
     }
 
     void MemoryAllocator::DumpStats()
@@ -396,7 +406,8 @@ namespace SceneryEditorX
         const auto& memoryProps = RenderContext::Get()->GetDevice()->GetDeviceMemoryProperties();
 		std::vector<VmaBudget> budgets(memoryProps.memoryProperties.memoryHeapCount);
 		vmaGetHeapBudgets(s_AllocatorData->allocator, budgets.data());
-		
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetMemoryStats: total budget across all heaps is {0} bytes", Utils::BytesToString(budgets[0].budget));
+
 		uint64_t budget = 0;
 		for (VmaBudget& b : budgets)
 		{
@@ -421,6 +432,8 @@ namespace SceneryEditorX
 		result.allocationCount = s_AllocationMap.size();
 		result.used = s_AllocatorData->memoryUsage;
 		result.totalAvailable = budget;
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetMemoryStats: total used memory is {0} bytes", Utils::BytesToString(result.used));
+		SEDX_CORE_TRACE_TAG("MemoryAllocator", "GetMemoryStats: total available memory is {0} bytes", Utils::BytesToString(result.totalAvailable));
 		return result;
 #if 0
 		VmaTotalStatistics stats;

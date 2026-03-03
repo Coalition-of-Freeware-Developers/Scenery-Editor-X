@@ -55,6 +55,17 @@ namespace SceneryEditorX
 	 *
 	 * If you need to know more about Vulkan Queues look at the Vulkan documentation:
 	 * @see https://docs.vulkan.org/guide/latest/queues.html
+	 *
+	 * @code
+	 * Ref<QueueManager> queueManager = device->GetQueueManager();
+	 * queueManager->AllocateQueue(QueueType::Graphics, 2, "Main Graphics Queue");
+	 * Ref<Queue> graphicsQueue = queueManager->GetQueue(QueueType::Graphics);
+	 * graphicsQueue->Submit(...);
+	 * queueManager->FreeQueue(graphicsQueue);
+	 * @endcode
+	 *
+	 * Note: QueueManager does not currently support multiple queues of the same type, but this could be added in the future if needed. 
+	 * The current design assumes one queue per type (graphics, compute, transfer, present) for simplicity.
 	 */
 	class QueueManager : public RefCounted
 	{

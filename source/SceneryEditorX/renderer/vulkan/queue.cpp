@@ -400,7 +400,7 @@ namespace SceneryEditorX
 	        {
 	            switch (resourceType)
 	            {
-	            case ResourceType::Image: /*MemoryAllocator::DestroyMemoryTexture(resource);*/
+	            case ResourceType::Image: MemoryAllocator::DestroyImage(static_cast<VkImage>(resource), nullptr);
 	                break;
 	            case ResourceType::ImageView:
                     vkDestroyImageView(device->GetLogicalDevice(), static_cast<VkImageView>(resource), nullptr);
@@ -408,7 +408,7 @@ namespace SceneryEditorX
 	            case ResourceType::Sampler:
                     vkDestroySampler(device->GetLogicalDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
 	                break;
-	            case ResourceType::Buffer: /*MemoryAllocator::DestroyMemoryBuffer(resource); */
+	            case ResourceType::Buffer: MemoryAllocator::DestroyBuffer(static_cast<VkBuffer>(resource), nullptr); 
 	                break;
 	            case ResourceType::Shader:
                     vkDestroyShaderModule(device->GetLogicalDevice(), static_cast<VkShaderModule>(resource), nullptr);

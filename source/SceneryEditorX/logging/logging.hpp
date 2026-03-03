@@ -170,7 +170,7 @@ namespace SceneryEditorX
          * @param message The message associated with the assertion failure.
          * @return True if the assertion failure was reported successfully, false otherwise.
          */
-        static bool ReportAssertionFailure(const char *expr, const char *file, int line, const std::string &message);
+        static bool ReportAssertion(const char *expr, const char *file, int line, const std::string &message);
 
         /**
 		 * @brief Gets the logger instance.

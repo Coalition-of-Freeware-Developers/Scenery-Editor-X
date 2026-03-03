@@ -29,14 +29,12 @@
  * -------------------------------------------------------
  */
 #include "render_context.h"
+#include "graphics_debug.h"
 #include "SceneryEditorX/core/application/application_data.h"
 #include "SceneryEditorX/core/window/window.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
 #include <SDL3/SDL_vulkan.h>
 #include <volk/volk.h>
-#ifdef SEDX_PLATFORM_WINDOWS
-    #include <Windows.h>
-#endif
 
 // -------------------------------------------------------
 
@@ -75,6 +73,7 @@ namespace SceneryEditorX
 
         if (m_Instance != VK_NULL_HANDLE)
         {
+         Debugging::Shutdown(m_Instance);
             vkDestroyInstance(m_Instance, nullptr);
             m_Instance = VK_NULL_HANDLE;
         }
@@ -120,6 +119,18 @@ namespace SceneryEditorX
         {
             SEDX_CORE_TRACE("Initializing RenderContext");
 
+        #ifdef SEDX_DEBUG
+            Debugging::SetValidationLayerEnabled(true);
+        #else
+            Debugging::SetValidationLayerEnabled(false);
+        #endif
+
+            if (Debugging::IsValidationLayerEnabled() && !Debugging::IsValidationLayerSupported())
+            {
+                SEDX_CORE_WARN_TAG("Validation Layer", "Requested validation layer '{}' is not available. Continuing without validation.", Debugging::GetValidationLayerName());
+                Debugging::SetValidationLayerEnabled(false);
+            }
+
             // Create the singleton instance if it doesn't exist
             if (!s_Instance)
             {
@@ -155,19 +166,39 @@ namespace SceneryEditorX
              * and VK_KHR_win32_surface. If you later add runtime queries for
              * required extensions, prefer those instead of hard-coding.
              */
-            const char *extensions[] = {VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
-                                        VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
-                                        VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME,
-                                        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-                                        VK_KHR_SURFACE_EXTENSION_NAME,
-            #ifdef SEDX_PLATFORM_WINDOWS
-                                        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-            #elif defined(SEDX_PLATFORM_LINUX)
-                                        VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
-            #elif defined(SEDX_PLATFORM_MACOS)
-                                        VK_EXT_METAL_SURFACE_EXTENSION_NAME,
-            #endif
-            };
+            std::vector<const char *> instanceExtensions = {VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
+                                                            VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+                                                            VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME,
+                                                            VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+                                                            VK_KHR_SURFACE_EXTENSION_NAME};
+
+		#ifdef SEDX_PLATFORM_WINDOWS
+            instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+		#elif defined(SEDX_PLATFORM_LINUX)
+            instanceExtensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+		#elif defined(SEDX_PLATFORM_MACOS)
+            instanceExtensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+		#endif
+
+            std::vector<const char *> instanceLayers;
+            LayerSettingsData layerSettings{};
+            if (Debugging::IsValidationLayerEnabled())
+            {
+                instanceLayers.push_back(Debugging::GetValidationLayerName());
+		#ifdef VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+                instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		#endif
+		#ifdef VK_EXT_LAYER_SETTINGS_EXTENSION_NAME
+                instanceExtensions.push_back(VK_EXT_LAYER_SETTINGS_EXTENSION_NAME);
+                layerSettings = Debugging::GetLayerSettings();
+                createInfo.pNext = &layerSettings.createInfo;
+		#endif
+                SEDX_CORE_INFO_TAG("Validation Layer", "Enabled '{}' integration", Debugging::GetValidationLayerName());
+            }
+            else
+            {
+                SEDX_CORE_INFO_TAG("Validation Layer", "Validation layer integration is disabled");
+            }
 
             const char *deviceExtensions[] = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -186,14 +217,17 @@ namespace SceneryEditorX
                 VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME,
             };
 
-            createInfo.enabledExtensionCount = sizeof(extensions) / sizeof(extensions[0]);
-            createInfo.ppEnabledExtensionNames = extensions;
+            createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
+            createInfo.ppEnabledExtensionNames = instanceExtensions.data();
+            createInfo.enabledLayerCount = static_cast<uint32_t>(instanceLayers.size());
+            createInfo.ppEnabledLayerNames = instanceLayers.data();
 
             VkResult result = vkCreateInstance(&createInfo, nullptr, &s_Instance->m_Instance);
             SEDX_VK_RESULT_ASSERT(result, "Failed to create Vulkan instance")
 
             // Initialize volk instance-level function pointers
             volkLoadInstance(s_Instance->m_Instance);
+            Debugging::Initialize(s_Instance->m_Instance);
 
             /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             /// Instance Extensions and Validation Layers

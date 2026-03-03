@@ -197,7 +197,6 @@ namespace SceneryEditorX
         MaxEnum
     };
 
-
     /**
      * @enum RendererRenderTarget
      * @brief Enumeration of renderer render targets.
@@ -275,6 +274,33 @@ namespace SceneryEditorX
         debug_output,
         max_enum
     };
+
+    namespace Layout
+    {
+        enum ImageLayout : uint8_t
+		{
+            Undefined = 0,
+		    General,
+			ColorAttachment,
+			DepthStencilAttachment,
+			DepthStencilRead,
+			ShaderRead,
+			TransferSrc,
+			TransferDst,
+			DepthReadStencilAttachment,
+			DepthAttachmentStencilRead,
+			FragmentShadingRate,
+			DepthAttachment,
+			DepthRead,
+			StencilAttachment,
+			StencilRead,
+			Read,
+			Attachment,
+			Present,
+		    MaxEnum
+		};
+    }
+
 
 } // namespace SceneryEditorX
 

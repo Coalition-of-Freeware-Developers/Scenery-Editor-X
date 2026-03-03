@@ -68,7 +68,6 @@ namespace SceneryEditorX
 	// Render Resources
     std::array<Ref<Image>, static_cast<uint32_t>(RendererRenderTarget::max_enum)> s_RenderTargets;
 
-    
 
     RendererProperties *Renderer::s_Data = nullptr;
     static Ref<Swapchain> s_Swapchain = nullptr;
@@ -944,37 +943,26 @@ namespace SceneryEditorX
         // Only proceed if file exists
         if (!std::filesystem::exists(modelPath))
         {
-            SEDX_CORE_ERROR_TAG("Renderer",
-                                "Model file not found at expected path: {}",
-                                std::filesystem::absolute(modelPath).string());
+            SEDX_CORE_ERROR_TAG("Renderer", "Model file not found at expected path: {}", std::filesystem::absolute(modelPath).string());
             return; // Skip model loading instead of asserting
         }
 
         // Dereference the pointer to access the Ref, then call GetQueue()
-        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator,
-                                                  s_CommandPool->GetPool(),
-                                                  (*queuePtr)->GetQueue(),
-                                                  modelPath.string(),
-                                                  texFiles,
-                                                  bufferAllocCI));
+        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(), (*queuePtr)->GetQueue(),
+                                                  modelPath.string(), texFiles, bufferAllocCI));
 
         const Asset &asset = s_AssetManager->GetAsset(0);
         VkBuffer vBuffer = asset.GetModelBuffer();
         VkDeviceSize vBufSize = asset.GetModelVertexSize();
         VkDeviceSize iBufSize = asset.GetModelIndexSize();
         VkDeviceSize indexCount = asset.GetModelIndexCount();
-        SEDX_CORE_TRACE_TAG("Renderer",
-                            "Loaded model asset: vertex buffer {}, vertex size {}, index size {}, index count {}",
-                            static_cast<void *>(vBuffer),
-                            vBufSize,
-                            iBufSize,
-                            indexCount);
+        SEDX_CORE_TRACE_TAG("Renderer", "Loaded model asset: vertex buffer {}, vertex size {}, index size {}, index count {}",
+                            static_cast<void *>(vBuffer), vBufSize, iBufSize, indexCount);
 
         // Create uniform buffers as static resource (per-frame) managed by UniformBufferSet RAII helper
         s_UniformBuffers = CreateScope<UniformBufferSet>(allocator);
         if (s_UniformBuffers)
         {
-            s_UniformBuffers->SetDevice(RenderContext::Get()->GetDevice());
             s_UniformBuffers->Create();
         }
     }
@@ -1002,10 +990,8 @@ namespace SceneryEditorX
         Slang::ComPtr<slang::ISession> slangSession;
         Slang::ComPtr<slang::IBlob> diagnosticsBlob; // Blob to capture any diagnostics from shader compilation
         slangGlobalSession->createSession(slangSessionDesc, slangSession.writeRef());
-        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle",
-                                                                                     "resources/shaders/shader.slang",
-                                                                                     diagnosticsBlob,
-                                                                                     diagnosticsBlob.writeRef())};
+        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle", "resources/shaders/shader.slang",
+                                                                                     diagnosticsBlob, diagnosticsBlob.writeRef())};
         if (!slangModule)
         {
             SEDX_CORE_ERROR_TAG("Renderer", "Failed to load shader module from source: resources/shaders/shader.slang");
@@ -1027,27 +1013,24 @@ namespace SceneryEditorX
         ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
     }
 
+#pragma endregion
+	
     GPUMemoryStats Renderer::GetGPUMemoryStats()
     {
         return MemoryAllocator::GetMemoryStats();
     }
 
-#pragma endregion
-
 #pragma region Private Rendering Methods
 
     void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
     {
-        SEDX_CORE_TRACE_TAG("Renderer",
-                            "Creating render targets (createRender: {}, createOutput: {}, createDynamic: {})",
-                            createRender,
-                            createOutput,
-                            createDynamic);
+        SEDX_CORE_TRACE_TAG("Renderer", "Creating render targets (createRender: {}, createOutput: {}, createDynamic: {})",
+                            createRender, createOutput, createDynamic);
 
-        uint32_t renderWidth = static_cast<uint32_t>(GetRendererResolution().x);
-        uint32_t renderHeight = static_cast<uint32_t>(GetRendererResolution().y);
-        uint32_t outputWidth = static_cast<uint32_t>(GetOutputResolution().x);
-        uint32_t outputHeight = static_cast<uint32_t>(GetOutputResolution().y);
+        uint32_t renderWidth	= static_cast<uint32_t>(GetRendererResolution().x);
+        uint32_t renderHeight	= static_cast<uint32_t>(GetRendererResolution().y);
+        uint32_t outputWidth	= static_cast<uint32_t>(GetOutputResolution().x);
+        uint32_t outputHeight	= static_cast<uint32_t>(GetOutputResolution().y);
 
         auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t smallestDimension) {
             uint32_t maxDimension = std::max(width, height);
@@ -1061,7 +1044,7 @@ namespace SceneryEditorX
             return mipCount;
         };
 
-        #define render_target(x) render_targets[static_cast<uint8_t>(x)]
+        #define RENDER_TARGET(x) render_targets[static_cast<uint8_t>(x)]
 
         if (createRender)
         {
@@ -1170,10 +1153,12 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering begun, recording draw commands");
 
         // Set viewport and scissor
-        VkViewport vp{.width = static_cast<float>(extent.width),
-                      .height = static_cast<float>(extent.height),
-                      .minDepth = 0.0f,
-                      .maxDepth = 1.0f};
+        VkViewport vp{};
+        vp.width = static_cast<float>(extent.width);
+        vp.height = static_cast<float>(extent.height);
+        vp.minDepth = 0.0f;
+        vp.maxDepth = 1.0f;
+
         vkCmdSetViewport(cb, 0, 1, &vp);
         SEDX_CORE_TRACE_TAG("Renderer", "Viewport set to {}x{}", vp.width, vp.height);
 

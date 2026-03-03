@@ -23,17 +23,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * render_passes.cpp
+ * renderer_primitives.cpp
  * -------------------------------------------------------
- * Created: 13/02/2026
+ * Created: 02/03/2026
  * -------------------------------------------------------
  */
-
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
+
 
 }
 

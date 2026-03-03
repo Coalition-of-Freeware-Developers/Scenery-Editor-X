@@ -33,8 +33,8 @@
 //#include "SceneryEditorX/asset/managers/asset_manager.h"
 //#include "SceneryEditorX/asset/managers/editor_asset_manager.h"
 #include "project_settings.h"
-#include <SceneryEditorX/logging/asserts.h>
 #include <SceneryEditorX/core/platform/config/editor_config.hpp>
+#include <SceneryEditorX/logging/asserts.h>
 
 // -------------------------------------------------------
 
@@ -52,13 +52,13 @@ namespace SceneryEditorX
 
         static std::filesystem::path GetAssetRegistryPath()
 		{
-            SEDX_CORE_ASSERT(activeProject);
+            SEDX_CORE_ASSERT(activeProject, "No active project set");
             return std::filesystem::path(activeProject->GetConfig().projectPath) / activeProject->GetConfig().assetRegistry;
 		}
 
         static std::filesystem::path GetActiveAssetDirectory()
 		{
-            SEDX_CORE_ASSERT(activeProject);
+            SEDX_CORE_ASSERT(activeProject, "No active project set");
             return activeProject->GetAssetDirectory();
 		}
 
@@ -78,20 +78,20 @@ namespace SceneryEditorX
 
 		static const std::string &GetProjectName()
         {
-            SEDX_CORE_ASSERT(activeProject);
+            SEDX_CORE_ASSERT(activeProject, "No active project set");
             return activeProject->GetConfig().name;
         }
 
 		static std::filesystem::path GetProjectDirectory()
 		{
-            SEDX_CORE_ASSERT(activeProject);
+            SEDX_CORE_ASSERT(activeProject, "No active project set");
             return activeProject->GetConfig().projectPath;
 		}
 
 	    static std::filesystem::path GetCacheDirectory()
 		{
-            SEDX_CORE_ASSERT(activeProject);
-            return std::filesystem::path(activeProject->GetConfig().projectPath) / "cache";
+            SEDX_CORE_ASSERT(activeProject, "No active project set");
+            return std::filesystem::path(activeProject->GetConfig().projectPath) / "../cache";
 		}
 
 	private:
