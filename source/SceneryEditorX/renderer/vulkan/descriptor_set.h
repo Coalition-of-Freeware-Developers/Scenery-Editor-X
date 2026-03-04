@@ -46,6 +46,12 @@ namespace SceneryEditorX
 	public:
 		DescriptorSet() = default;
 		DescriptorSet(const std::vector<::VkDescriptorImageInfo>& textureDescriptors);
+
+		DescriptorSet(const DescriptorSet&) = delete;
+		DescriptorSet& operator=(const DescriptorSet&) = delete;
+		DescriptorSet(DescriptorSet&& other) noexcept;
+		DescriptorSet& operator=(DescriptorSet&& other) noexcept;
+
 		~DescriptorSet();
 
         void Destroy();

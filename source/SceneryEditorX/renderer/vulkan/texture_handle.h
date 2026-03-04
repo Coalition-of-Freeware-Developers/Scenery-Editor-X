@@ -30,7 +30,7 @@
  */
 #pragma once
 #include "render_context.h"
-#include "texture.h"
+#include "texture_image.h"
 #include <string>
 #include <vma/vk_mem_alloc.h>
 

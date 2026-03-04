@@ -137,6 +137,45 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(m_Set != VK_NULL_HANDLE, "DescriptorSet: failed to allocate descriptor set");
     }
 
+	DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept
+	{
+		m_Device = other.m_Device;
+		m_Layout = other.m_Layout;
+		m_DescriptorPool = other.m_DescriptorPool;
+		m_Set = other.m_Set;
+		m_Destroyed = other.m_Destroyed;
+
+		other.m_Device = nullptr;
+		other.m_Layout = VK_NULL_HANDLE;
+		other.m_DescriptorPool = VK_NULL_HANDLE;
+		other.m_Set = VK_NULL_HANDLE;
+		other.m_Destroyed = true;
+	}
+
+	DescriptorSet& DescriptorSet::operator=(DescriptorSet&& other) noexcept
+	{
+		if (this == &other)
+		{
+			return *this;
+		}
+
+		Destroy();
+
+		m_Device = other.m_Device;
+		m_Layout = other.m_Layout;
+		m_DescriptorPool = other.m_DescriptorPool;
+		m_Set = other.m_Set;
+		m_Destroyed = other.m_Destroyed;
+
+		other.m_Device = nullptr;
+		other.m_Layout = VK_NULL_HANDLE;
+		other.m_DescriptorPool = VK_NULL_HANDLE;
+		other.m_Set = VK_NULL_HANDLE;
+		other.m_Destroyed = true;
+
+		return *this;
+	}
+
     DescriptorSet::~DescriptorSet()
     {
         if (!m_Destroyed)

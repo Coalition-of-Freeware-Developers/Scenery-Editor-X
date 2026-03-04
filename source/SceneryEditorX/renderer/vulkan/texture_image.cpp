@@ -39,7 +39,36 @@
 namespace SceneryEditorX
 {
 
-	Texture TextureImage::Load(VmaAllocator allocator, VkCommandPool oneTimeCmdPool, VkQueue queue, const std::string& path)
+	TextureImage::TextureImage(const std::string &filePath) : InheritanceBundle<RefCounted, IResource>(ResourceType::Texture2D)
+	{
+		LoadFromFile(filePath);
+	}
+	
+	TextureImage::TextureImage() : InheritanceBundle<RefCounted, IResource>(ResourceType::Texture2D)
+	{
+	}
+
+    TextureImage::~TextureImage()
+	{
+
+	}
+
+    void TextureImage::SaveToFile(const std::string &filePath)
+    {
+        InheritanceBundle<RefCounted, IResource>::SaveToFile(filePath);
+    }
+
+    void TextureImage::LoadFromFile(const std::string &filePath)
+    {
+        InheritanceBundle<RefCounted, IResource>::LoadFromFile(filePath);
+    }
+
+    bool TextureImage::CanSaveToFile() const
+    {
+	    return true;
+    }
+
+    Texture TextureImage::Load(VmaAllocator allocator, VkCommandPool oneTimeCmdPool, VkQueue queue, const std::string& path)
     {
 		Texture out{};
 	
@@ -99,7 +128,7 @@ namespace SceneryEditorX
 		imgSrcBufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
 		VmaAllocationCreateInfo imgSrcAllocCI{};
-		imgSrcAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        imgSrcAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 		imgSrcAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
 
 		if (vmaCreateBuffer(allocator, &imgSrcBufferCI, &imgSrcAllocCI, &imgSrcBuffer, &imgSrcAllocation, nullptr) != VK_SUCCESS)

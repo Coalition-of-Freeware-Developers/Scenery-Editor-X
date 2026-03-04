@@ -37,8 +37,8 @@ namespace SceneryProject
 {
 	struct CacheData
 	{
-	    char projectPath[1024] = "../projects/default.edX";
-	    char binPath[1024] = "../projects/default.bin";
+	    char projectPath[1024] = "../../project/default.edX";
+	    char binPath[1024] = "../../project/default.bin";
 	};
 }
 

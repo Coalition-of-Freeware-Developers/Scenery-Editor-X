@@ -205,38 +205,47 @@ namespace SceneryEditorX
 	
 	    const auto invalidIndex = (std::numeric_limits<uint32_t>::max)();
 	    const std::array<uint32_t, 3> requestedFamilies = {indices.graphics, indices.compute, indices.transfer};
-	    SEDX_CORE_TRACE_TAG("QueueManager",
-	                        "Building Queue Create Infos for families \n"
+	    SEDX_CORE_TRACE_TAG("QueueManager", "Building Queue Create Infos for families \n"
 	                        " - Graphics: {} \n"
-	                        " - Compute: {} \n "
+	                        " - Compute: {} \n"
 	                        " - Transfer: {}",
-	                        indices.graphics,
-	                        indices.compute,
-	                        indices.transfer);
+	                        indices.graphics, indices.compute, indices.transfer);
 	
-	    auto has_family = [&](uint32_t family) {
-	        return std::ranges::any_of(queueInfo, [family](const VkDeviceQueueCreateInfo &info) {
-	            return info.queueFamilyIndex == family;
-	        });
-	    };
-	
-	    for (uint32_t family : requestedFamilies)
-	    {
-	        if (family == invalidIndex || has_family(family))
-	        {
-	            continue;
-	        }
-	
-	        priority.emplace_back(1.0f);
-	
-	        VkDeviceQueueCreateInfo createInfo{};
-	        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	        createInfo.queueFamilyIndex = family;
-	        createInfo.queueCount = 1;
-	        createInfo.pQueuePriorities = &priority.back();
-	        queueInfo.emplace_back(createInfo);
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Added QueueCreateInfo for family index {}", family);
-	    }
+        std::array<uint32_t, 3> uniqueFamilies = {};
+		uint32_t uniqueFamilyCount = 0;
+
+		auto has_family = [&](uint32_t family) {
+			return std::ranges::any_of(uniqueFamilies.begin(), uniqueFamilies.begin() + uniqueFamilyCount, [family](uint32_t existingFamily) {
+				return existingFamily == family;
+			});
+		};
+
+		for (uint32_t family : requestedFamilies)
+		{
+			if (family == invalidIndex || has_family(family))
+			{
+				continue;
+			}
+
+			uniqueFamilies[uniqueFamilyCount++] = family;
+		}
+
+		queueInfo.resize(uniqueFamilyCount);
+		priority.resize(uniqueFamilyCount, 1.0f);
+
+		for (uint32_t i = 0; i < uniqueFamilyCount; ++i)
+		{
+			const uint32_t family = uniqueFamilies[i];
+
+			VkDeviceQueueCreateInfo createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			createInfo.queueFamilyIndex = family;
+			createInfo.queueCount = 1;
+			createInfo.pQueuePriorities = &priority[i];
+			queueInfo[i] = createInfo;
+
+			SEDX_CORE_TRACE_TAG("QueueManager", "Added QueueCreateInfo for family index {}", family);
+		}
 	}
 	
 	QueueManager::QueueManager(const Ref<Device> &device, const QueueConfig &config) : m_Device(device), m_Config(config)

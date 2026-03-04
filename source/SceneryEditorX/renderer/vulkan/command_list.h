@@ -29,15 +29,12 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "barriers.h"
 #include "buffer.h"
 #include "command_pool.h"
 #include "frame_sync.h"
-#include "image.h"
 #include "pipeline.h"
 #include "queue.h"
 #include "viewport.h"
-
 #include <colors.h>
 
 // -------------------------------------------------------
@@ -51,16 +48,20 @@ namespace SceneryEditorX
 	    Submitted
 	};
 
-    class CommandList : public RefCounted
+    class CommandList : public SharedResource
     {
     public:
-        CommandList(Queue* queue, CommandPool cmdPool, const char* name);
+        CommandList(Queue* queue, const CommandPool &cmdPool, const char* name);
         virtual ~CommandList() override;
 
         void Begin();
         void Submit(FrameSync *semaphoreWait, const bool isImmediate, FrameSync *semaphoreSignal = nullptr);
         void WaitForExecution(const bool logWaitTime = false);
-        void ClearTexture(Image *img, const Color &color, float clearDepth, uint32_t clearStencil);
+
+        void ClearDepth(void *img, float clearDepth);
+        void ClearStencil(void *img, uint32_t clearStencil);
+        void ClearTexture(void* img, const Color &color);
+
         void SetVertexBuffer(const Buffer *vertexBuffer, const Buffer *instance);
         //void SetPipelineState(PipelineState &pso);
 
@@ -75,12 +76,12 @@ namespace SceneryEditorX
         void UpdateBuffer(Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
 
         // Barriers - unified interface
-        void InsertBarrier(const Barrier& barrier);
-        void FlushBarriers();
+        //void InsertBarrier(const Barrier& barrier);
+        //void FlushBarriers();
 
         // Barriers - convenience overloads
-        void InsertBarrier(Image* texture, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
-        void InsertBarrier(Image* texture, BarrierType syncType);
+        void InsertBarrier(void* img, Layout::ImageLayout layout, uint32_t mip = ALL_MIPS, uint32_t mipRange = 0);
+        //void InsertBarrier(void* texture, BarrierType syncType);
         void InsertBarrier(Buffer* buffer);
         void InsertBarrier(void* image, VkFormat format, uint32_t mipIndex, uint32_t mipRange, uint32_t arrayLength, Layout::ImageLayout layout);
 
@@ -93,18 +94,20 @@ namespace SceneryEditorX
 
 		void Draw(const uint32_t vertexCount, const uint32_t vertexOffset = 0);
         void DrawIndexed(uint32_t indexCount, uint32_t instCount, uint32_t indexOffset, uint32_t vertexOffset, uint32_t instIndex);
+        void Dispatch(uint32_t x, uint32_t y, uint32_t z);
 
         void SetViewport(const Viewport& viewport) const;
         void SetScissor(const xMath::Rectangle &scissorRect) const;
         void SetCullMode(const VkCullModeFlags cullMode);
 
         Ref<Queue> GetQueue() const { return m_Queue; }
-        void CopyImageToBuffer(Image* src, Buffer* dst);
+        //void CopyImageToBuffer(Image* src, Buffer* dst);
         void CopyBufferToBuffer(void* src, Buffer* dst, uint64_t size);
         void CopyBufferToBuffer(Buffer* src, Buffer* dst, uint64_t size);
 
     private:
         void BeginRenderPass();
+
         Queue *m_Queue;
         Pipeline m_Pipeline;
         VkCommandBuffer m_CmdBuffer;

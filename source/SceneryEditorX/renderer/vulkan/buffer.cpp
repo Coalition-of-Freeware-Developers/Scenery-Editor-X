@@ -97,11 +97,21 @@ namespace SceneryEditorX
 	    if (m_Allocation == VK_NULL_HANDLE || m_Allocator == VK_NULL_HANDLE)
 	        return nullptr;
 	
-	    if (!m_MappedData)
-	    {
-			SEDX_VK_RESULT_ASSERT(vmaMapMemory(m_Allocator, m_Allocation, &m_MappedData), "Failed to map buffer memory");
-	        m_MappedData = nullptr;
-	    }
+      if (!m_MappedData)
+		{
+			VmaAllocationInfo allocationInfo{};
+			vmaGetAllocationInfo(m_Allocator, m_Allocation, &allocationInfo);
+
+			if (allocationInfo.pMappedData)
+			{
+				m_MappedData = allocationInfo.pMappedData;
+				return m_MappedData;
+			}
+
+			void* mappedData = nullptr;
+			SEDX_VK_RESULT_ASSERT(vmaMapMemory(m_Allocator, m_Allocation, &mappedData), "Failed to map buffer memory");
+			m_MappedData = mappedData;
+		}
 	
 	    return m_MappedData;
 	}
@@ -115,11 +125,14 @@ namespace SceneryEditorX
 	        return;
 	    }
 	
-	    if (!m_MappedData)
-	    {
-	        // Already unmapped (or never mapped) — no-op
-	        return;
-	    }
+      VmaAllocationInfo allocationInfo{};
+		vmaGetAllocationInfo(m_Allocator, m_Allocation, &allocationInfo);
+
+		if (!m_MappedData && !allocationInfo.pMappedData)
+		{
+			// Already unmapped (or never mapped) — no-op
+			return;
+		}
 	
 	    vmaUnmapMemory(m_Allocator, m_Allocation);
 	    m_MappedData = nullptr;
@@ -146,7 +159,6 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(allocation != VK_NULL_HANDLE, "FreeBuffer called with null allocation");
 	
 	    MemoryAllocator::DestroyBuffer(buffer, allocation);
-	    MemoryAllocator::FreeAllocation(allocation);
 	
 	    SEDX_CORE_TRACE_TAG("Buffer", "Freed buffer {}", ToString(buffer));
 	}
@@ -163,19 +175,25 @@ namespace SceneryEditorX
 	
 	void Buffer::Destroy()
 	{
-	    if (m_Buffer == VK_NULL_HANDLE)
+     if (m_Buffer == VK_NULL_HANDLE && m_Allocation == VK_NULL_HANDLE)
 	        return;
 	
-	    if (m_MappedData && m_Allocation != VK_NULL_HANDLE)
+     if (m_Allocation != VK_NULL_HANDLE && m_Allocator != VK_NULL_HANDLE)
 	    {
-	        vmaUnmapMemory(m_Allocator, m_Allocation);
-	        m_MappedData = nullptr;
+          VmaAllocationInfo allocationInfo{};
+			vmaGetAllocationInfo(m_Allocator, m_Allocation, &allocationInfo);
+
+			if (m_MappedData || allocationInfo.pMappedData)
+			{
+				vmaUnmapMemory(m_Allocator, m_Allocation);
+			}
 	    }
+
+		m_MappedData = nullptr;
 	
-	    if (m_Allocation != VK_NULL_HANDLE)
+     if (m_Buffer != VK_NULL_HANDLE || m_Allocation != VK_NULL_HANDLE)
 	    {
 	        MemoryAllocator::DestroyBuffer(m_Buffer, m_Allocation);
-	        MemoryAllocator::FreeAllocation(m_Allocation);
 	    }
 	
 	    m_Buffer = VK_NULL_HANDLE;

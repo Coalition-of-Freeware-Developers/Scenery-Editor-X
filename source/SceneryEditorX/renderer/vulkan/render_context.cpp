@@ -119,11 +119,17 @@ namespace SceneryEditorX
         {
             SEDX_CORE_TRACE("Initializing RenderContext");
 
-        #ifdef SEDX_DEBUG
-            Debugging::SetValidationLayerEnabled(true);
-        #else
-            Debugging::SetValidationLayerEnabled(false);
-        #endif
+		    VkResult volkRes = volkInitialize();
+		    if (volkRes != VK_SUCCESS) {
+		        SEDX_CORE_ERROR_TAG("RenderContext", "volkInitialize failed: {}", (int)volkRes);
+		        return;
+		    }
+		
+		#ifdef SEDX_DEBUG
+		    Debugging::SetValidationLayerEnabled(true);
+		#else
+		    Debugging::SetValidationLayerEnabled(false);
+		#endif
 
             if (Debugging::IsValidationLayerEnabled() && !Debugging::IsValidationLayerSupported())
             {
@@ -143,9 +149,6 @@ namespace SceneryEditorX
 
             AppData appData;
             //uint32_t apiVersion = GetVulkanAPIVersion(); // Get the users highest available version
-
-            // Initialize volk loader then create an instance via the RAII wrapper.
-            volkInitialize();
 
             VkApplicationInfo appInfo{};
             appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;

@@ -66,7 +66,7 @@ namespace SceneryEditorX
     // --------------------------------------------------------------
 
 	// Render Resources
-    std::array<Ref<Image>, static_cast<uint32_t>(RendererRenderTarget::max_enum)> s_RenderTargets;
+    //std::array<Ref<Image>, static_cast<uint32_t>(RendererRenderTarget::max_enum)> s_RenderTargets;
 
 
     RendererProperties *Renderer::s_Data = nullptr;
@@ -106,6 +106,27 @@ namespace SceneryEditorX
 
     static std::vector<Ref<Semaphore>> s_RenderSemaphoreRefs;
     static std::vector<VkSemaphore> s_RenderSemaphoreHandles;
+
+    static std::filesystem::path ResolveResourcePath(const std::filesystem::path& relativePath)
+    {
+        const std::filesystem::path cwd = std::filesystem::current_path();
+        const std::array<std::filesystem::path, 4> candidates = {
+            cwd / relativePath,
+            cwd / ".." / relativePath,
+            cwd / ".." / ".." / relativePath,
+            cwd / ".." / ".." / ".." / relativePath,
+        };
+
+        for (const auto& candidate : candidates)
+        {
+            if (std::filesystem::exists(candidate))
+            {
+                return std::filesystem::weakly_canonical(candidate);
+            }
+        }
+
+        return candidates[0];
+    }
 	
 #pragma endregion
 
@@ -267,7 +288,6 @@ namespace SceneryEditorX
         Ref<QueueManager> queueManager = device->GetQueueManager();
         SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager is not valid in Renderer::Tick");
 
-        s_Swapchain->AcquireNextImage();
         device->GetMemoryAllocator().Tick(s_FrameNumber);
         bool can_render = !Window::IsMinimized() && s_ResourcesInitialized;
 
@@ -550,16 +570,40 @@ namespace SceneryEditorX
             }
         }
 
-        // Validate the acquired image index to detect acquisition failure (AcquireNextImage is void)
+        if (s_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
         {
-            uint32_t acquiredIndex = s_Swapchain->GetImageIndex();
-            if (acquiredIndex >= s_Swapchain->GetImages().size())
+            SEDX_CORE_ERROR_TAG("Renderer", "Current frame index {} out of bounds for present semaphores (size {})", s_CurrentFrameIndex, s_PresentSemaphoreHandles.size());
+            return false;
+        }
+
+        // Acquire image and signal the exact semaphore that submit waits on for this frame.
+        {
+            VkResult acquireResult = vkAcquireNextImageKHR(
+                RenderContext::Get()->GetDevice()->GetLogicalDevice(),
+                s_Swapchain->Get(),
+                UINT64_MAX,
+                s_PresentSemaphoreHandles[s_CurrentFrameIndex],
+                VK_NULL_HANDLE,
+                &s_SwapchainImageIndex);
+
+            if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
             {
-                // Acquisition failed (minimized, out-of-date handled internally)
-                SEDX_CORE_WARN_TAG("Renderer", "AcquireNextImage failed or returned invalid index: {}", acquiredIndex);
+                s_Swapchain->Recreate();
                 return false;
             }
-            s_SwapchainImageIndex = acquiredIndex;
+
+            if (acquireResult != VK_SUCCESS)
+            {
+                SEDX_CORE_WARN_TAG("Renderer", "vkAcquireNextImageKHR failed with result: {}", static_cast<int>(acquireResult));
+                return false;
+            }
+
+            if (s_SwapchainImageIndex >= s_Swapchain->GetImages().size())
+            {
+                SEDX_CORE_WARN_TAG("Renderer", "AcquireNextImage returned invalid index: {}", s_SwapchainImageIndex);
+                return false;
+            }
+
             SEDX_CORE_TRACE_TAG("Renderer", "Acquired swapchain image index: {}", s_SwapchainImageIndex);
         }
 
@@ -676,7 +720,7 @@ namespace SceneryEditorX
         }
 
         // Submit command buffer
-        VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
         // Ensure indices are valid
         if (s_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
@@ -917,8 +961,7 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Renderer", "Creating models and loading assets");
         VmaAllocationCreateInfo bufferAllocCI{};
         bufferAllocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                              VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT |
-                              VMA_ALLOCATION_CREATE_MAPPED_BIT;
+                              VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
         bufferAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
         //bufferAllocCI.pool = VK_NULL_HANDLE; // Only set if using a custom pool
 
@@ -932,13 +975,15 @@ namespace SceneryEditorX
         SEDX_CORE_ERROR_TAG("Renderer", "Current working directory: {}", cwd.string());
 
         // DIAGNOSTIC: Check if model file exists
-        std::filesystem::path modelPath = "resources/models/suzanne.obj";
+        std::filesystem::path modelPath = ResolveResourcePath("resources/models/suzanne.obj");
         SEDX_CORE_TRACE_TAG("Renderer", "Looking for model at: {}", std::filesystem::absolute(modelPath).string());
         SEDX_CORE_TRACE_TAG("Renderer", "Model file exists: {}", std::filesystem::exists(modelPath));
 
-        std::vector<std::string> texFiles = {"resources/textures/suzanne0.ktx",
-                                             "resources/textures/suzanne1.ktx",
-                                             "resources/textures/suzanne2.ktx"};
+        std::vector<std::string> texFiles = {
+            ResolveResourcePath("resources/textures/suzanne0.ktx").string(),
+            ResolveResourcePath("resources/textures/suzanne1.ktx").string(),
+            ResolveResourcePath("resources/textures/suzanne2.ktx").string()
+        };
 
         // Only proceed if file exists
         if (!std::filesystem::exists(modelPath))
@@ -948,8 +993,13 @@ namespace SceneryEditorX
         }
 
         // Dereference the pointer to access the Ref, then call GetQueue()
-        SEDX_CORE_ASSERT(s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(), (*queuePtr)->GetQueue(),
-                                                  modelPath.string(), texFiles, bufferAllocCI));
+        const bool assetAdded = s_AssetManager->AddAsset(allocator, s_CommandPool->GetPool(), (*queuePtr)->GetQueue(),
+                                                         modelPath.string(), texFiles, bufferAllocCI);
+        if (!assetAdded || s_AssetManager->Count() == 0)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Failed to load model asset: {}", modelPath.string());
+            return;
+        }
 
         const Asset &asset = s_AssetManager->GetAsset(0);
         VkBuffer vBuffer = asset.GetModelBuffer();
@@ -990,11 +1040,14 @@ namespace SceneryEditorX
         Slang::ComPtr<slang::ISession> slangSession;
         Slang::ComPtr<slang::IBlob> diagnosticsBlob; // Blob to capture any diagnostics from shader compilation
         slangGlobalSession->createSession(slangSessionDesc, slangSession.writeRef());
-        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle", "resources/shaders/shader.slang",
+        const std::filesystem::path shaderPath = ResolveResourcePath("resources/shaders/shader.slang");
+        const std::string shaderPathString = shaderPath.string();
+
+        Slang::ComPtr<slang::IModule> slangModule{slangSession->loadModuleFromSource("triangle", shaderPathString.c_str(),
                                                                                      diagnosticsBlob, diagnosticsBlob.writeRef())};
         if (!slangModule)
         {
-            SEDX_CORE_ERROR_TAG("Renderer", "Failed to load shader module from source: resources/shaders/shader.slang");
+            SEDX_CORE_ERROR_TAG("Renderer", "Failed to load shader module from source: {}", shaderPathString);
             if (diagnosticsBlob)
             {
                 const char *errorMessage = static_cast<const char *>(diagnosticsBlob->getBufferPointer());
@@ -1083,15 +1136,21 @@ namespace SceneryEditorX
             return;
         }
 
-        // Transition images to attachment optimal
+        // Transition images to attachment optimal.
+        // Use UNDEFINED as old layout to make the frame start robust across swapchain recreation.
+        // We clear color/depth every frame, so previous contents are not needed.
+        const VkImageLayout colorOldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        const VkPipelineStageFlags2 colorSrcStage = VK_PIPELINE_STAGE_2_NONE;
+        const VkAccessFlags2 colorSrcAccess = 0;
+
         std::array<VkImageMemoryBarrier2, 2> outputBarriers{
             VkImageMemoryBarrier2{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .srcAccessMask = 0,
+                .srcStageMask = colorSrcStage,
+                .srcAccessMask = colorSrcAccess,
                 .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .oldLayout = colorOldLayout,
                 .newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
                 .image = swapchainImages[imageIndex],
                 .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}},
@@ -1171,6 +1230,7 @@ namespace SceneryEditorX
 
         vkCmdEndRendering(cb);
         SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering ended");
+
     }
 
 #pragma endregion

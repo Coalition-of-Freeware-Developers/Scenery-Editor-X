@@ -81,17 +81,21 @@ namespace SceneryEditorX
                                    VMA_ALLOCATION_CREATE_MAPPED_BIT;
             uBufferAllocCI.usage = VMA_MEMORY_USAGE_AUTO;
 
-			SEDX_VK_RESULT_ASSERT(vmaCreateBuffer(m_Allocator, &uBufferCI, &uBufferAllocCI,
-                                             &m_Buffers[i].buffer,
-                                             &m_Buffers[i].allocation, nullptr), "vmaCreateBuffer failed: {}")
+			if (VkResult result = vmaCreateBuffer(m_Allocator, &uBufferCI, &uBufferAllocCI, &m_Buffers[i].buffer, &m_Buffers[i].allocation, nullptr); result != VK_SUCCESS)
+			{
+				SEDX_CORE_WARN_TAG("UniformBufferSet", "vmaCreateBuffer failed: {}", result);
+				continue;
+			}
 
             if (VkResult mapResult = vmaMapMemory(m_Allocator, m_Buffers[i].allocation, &m_Buffers[i].mapped); mapResult != VK_SUCCESS)
             {
                 SEDX_CORE_WARN_TAG("UniformBufferSet", "vmaMapMemory failed: {}", mapResult);
                 continue;
             }
-            VkBufferDeviceAddressInfo uBufferBdaInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-                                                     .buffer = m_Buffers[i].buffer};
+
+            VkBufferDeviceAddressInfo uBufferBdaInfo{};
+            uBufferBdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+            uBufferBdaInfo.buffer = m_Buffers[i].buffer;
 
             m_Buffers[i].deviceAddress = vkGetBufferDeviceAddress(m_Device->GetLogicalDevice(), &uBufferBdaInfo);
         }
@@ -100,9 +104,7 @@ namespace SceneryEditorX
     void UniformBufferSet::Destroy()
     {
         if (m_Destroyed)
-        {
             return;
-        }
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
         {
