@@ -38,7 +38,7 @@
 #include <SceneryEditorX/core/platform/settings/user_settings.h>
 #include <SceneryEditorX/core/window/window.h>
 #include <SceneryEditorX/renderer/vulkan/render_context.h>
-#include <SceneryEditorX/renderer/vulkan/renderer.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <SceneryEditorX/ui/ui.h>
 #include <SceneryEditorX/ui/ui_context.h>
 

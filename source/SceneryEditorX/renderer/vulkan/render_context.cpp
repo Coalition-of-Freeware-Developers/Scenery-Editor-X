@@ -29,10 +29,10 @@
  * -------------------------------------------------------
  */
 #include "render_context.h"
-#include "graphics_debug.h"
 #include "SceneryEditorX/core/application/application_data.h"
 #include "SceneryEditorX/core/window/window.h"
 #include "SceneryEditorX/utils/repeat_call_tracker.h"
+#include "debug/graphics_debug.h"
 #include <SDL3/SDL_vulkan.h>
 #include <volk/volk.h>
 

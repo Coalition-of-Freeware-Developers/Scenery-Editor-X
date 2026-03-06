@@ -30,7 +30,6 @@
  */
 #pragma once
 #include <imgui/imgui.h>
-#include "SceneryEditorX/asset/asset.h"
 
 // ---------------------------------------------------------
 
@@ -39,7 +38,8 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-	class Node : public Object
+	/*
+	class Node : public IObject
 	{
 	public:
 
@@ -54,11 +54,11 @@ namespace SceneryEditorX
 	    Vec3 rotation = Vec3(0.0f);
 	    Vec3 scale = Vec3(1.0f);
         UUID ID;
-        std::string State;
-        ImColor Color;
-        ImVec2 Size;
-        uint16_t Inputs;
-        uint16_t Outputs;
+        std::string state;
+        ImColor color;
+        ImVec2 size;
+        uint16_t inputs;
+        uint16_t outputs;
 
         // -------------------------------------------------------
 	
@@ -95,7 +95,7 @@ namespace SceneryEditorX
 	            const Ref<Node> oldParent = child->parent;
 	            const auto it = std::ranges::find_if(oldParent->children, [&](auto &n)
 	            {
-	                return child->uuid == n->uuid;
+	                return child->ID == n->ID;
 	            });
 	            SEDX_ASSERT(it != oldParent->children.end(), "Child not found in children vector");
 	            oldParent->children.erase(it);
@@ -119,12 +119,13 @@ namespace SceneryEditorX
 	    Mat4 GetWorldTransform() const;
 	    Vec3 GetWorldPosition() const;
         Mat4 GetParentTransform() const;
-	    Vec3 GetWorldFront() const;
-        //static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
+	    Vec3 GetWorldFront() const; 
+        static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
 
 	private:
 		friend class AssetManager;
 	};
+	*/
 
     // -------------------------------------------------------
 

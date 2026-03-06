@@ -32,7 +32,7 @@
 #include <filesystem>
 #include <map>
 #include <string>
-#include <../dependency/libconfig/lib/libconfig.h++>
+#include <libconfig/lib/libconfig.h++>
 #include "SceneryEditorX/core/application/application_data.h"
 #include "SceneryEditorX/utils/pointers.h"
 

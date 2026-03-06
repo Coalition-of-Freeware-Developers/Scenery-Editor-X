@@ -29,10 +29,9 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "graphics_checks.h"
 #include "memory_allocator.h"
 #include "queue_manager.h"
-#include <volk/volk.h>
+#include "debug/graphics_checks.h"
 
 // -----------------------------------------------------------------
 

@@ -55,7 +55,7 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    class CameraNode : public Node
+    class CameraNode /*: public Node*/
     {
 	public:
         CameraNode();

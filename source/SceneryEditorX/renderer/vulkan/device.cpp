@@ -31,7 +31,6 @@
 #include "device.h"
 #include "enums.h"
 #include "memory_allocator.h"
-#include "render_context.h"
 #include "swapchain.h"
 #include "SceneryEditorX/core/window/window.h"
 #include <algorithm>
@@ -1035,7 +1034,7 @@ namespace SceneryEditorX
         // Build queue create infos from detected family indices
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::vector<float> queuePriorities;
-        QueueManager::BuildQueueCreateInfos(m_FamilyIndices, queueCreateInfos, queuePriorities);
+        QueueManager::BuildQueueInfo(m_FamilyIndices, queueCreateInfos, queuePriorities);
 
         VkDeviceCreateInfo deviceCreateInfo{};
         deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

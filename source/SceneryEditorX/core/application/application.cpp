@@ -35,7 +35,7 @@
 #include "SceneryEditorX/core/time/fps_timer.h"
 #include "SceneryEditorX/logging/logging.hpp"
 #include "SceneryEditorX/project/project.h"
-#include "SceneryEditorX/renderer/vulkan/renderer.h"
+#include "SceneryEditorX/renderer/renderer.h"
 #include "SceneryEditorX/renderer/vulkan/swapchain.h"
 #include "SceneryEditorX/ui/ui_layer.h"
 

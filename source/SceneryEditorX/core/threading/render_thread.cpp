@@ -30,7 +30,7 @@
  * -------------------------------------------------------
  */
 #include "render_thread.h"
-#include <SceneryEditorX/renderer/vulkan/renderer.h>
+#include <SceneryEditorX/renderer/renderer.h>
 
 // -------------------------------------------------------
 

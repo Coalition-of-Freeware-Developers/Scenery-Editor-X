@@ -58,7 +58,7 @@ namespace SceneryEditorX
 		 * @return true if the flag was dirty before the reset operation.
 		 * @return false if the flag was not dirty.
 		 */
-		SEDX_FORCE_INLINE bool CheckAndResetIfDirty() noexcept
+		SEDX_FORCE_INLINE bool Check() noexcept
 		{
 			if (m_Flag)
 			{
@@ -71,7 +71,7 @@ namespace SceneryEditorX
 		/**
 		 * @brief Checks if the flag is currently in a dirty state.
 		 *
-		 * Unlike CheckAndResetIfDirty(), this method does not modify the flag's state.
+		 * Unlike Check(), this method does not modify the flag's state.
 		 *
 		 * @return true if the flag is dirty.
 		 * @return false if the flag is not dirty.

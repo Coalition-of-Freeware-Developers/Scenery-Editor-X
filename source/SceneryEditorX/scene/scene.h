@@ -29,8 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
+#include <vector>
 //#include <entt/src/entt/entt.hpp>
-//#include "camera.h"
 //#include "entity.h"
 //#include "SceneryEditorX/asset/asset.h"
 //#include "SceneryEditorX/asset/asset_types.h"
@@ -38,10 +38,28 @@
 
 // -------------------------------------------------------
 
-/*
+
 namespace SceneryEditorX
 {
+	class Camera;
+	class Entity;
+	class Light;
 
+	class Scene
+	{
+	public:
+		static void Init();
+		static void Shutdown();
+		static void Tick();
+
+		static Camera* GetCamera();
+		static Light*  GetDirectionalLight() { return nullptr; }
+		static std::vector<Entity*> GetEntities() { return {}; }
+
+	private:
+
+	};
+/*
 	class Environment : public Asset
 	{
 	public:
@@ -327,9 +345,9 @@ namespace SceneryEditorX
         std::string sceneName;
         bool isLoaded = false;
 	};
-	#1#
+*/
 	
 }
-*/
+
 
 // ---------------------------------------------------------

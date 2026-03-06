@@ -268,7 +268,9 @@ namespace SceneryEditorX
     void ApplicationSettings::GetOption(const std::string &key, std::string &value)
     {
         if (const auto it = settings.find(key); it != settings.end())
+        {
             value = it->second;
+        }
     }
 
     bool ApplicationSettings::HasOption(const std::string &key) const

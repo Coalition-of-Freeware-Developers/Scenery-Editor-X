@@ -47,6 +47,7 @@ namespace SceneryEditorX
 	    bufferCI.usage = usage;
 	    bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	
+
 	    const VkResult result = MemoryAllocator::CreateBuffer(bufferCI, allocInfo, m_Buffer, m_Allocation);
 	    if (result != VK_SUCCESS)
 	    {

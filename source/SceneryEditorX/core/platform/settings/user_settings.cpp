@@ -300,13 +300,13 @@ namespace SceneryEditorX
 
 	UserPreferences::UserPreferences() : m_ConfigPath("config/user_preferences.cfg")
 	{
-	    InitializeSettings();
+	    Init();
 	    LoadPreferences();
 	}
 
 	UserPreferences::UserPreferences(std::filesystem::path configPath) : m_ConfigPath(std::move(configPath))
 	{
-	    InitializeSettings();
+	    Init();
 	    LoadPreferences();
 	}
 
@@ -432,7 +432,7 @@ namespace SceneryEditorX
 	    }
 	}
 
-	void UserPreferences::InitializeSettings()
+	void UserPreferences::Init()
 	{
 	    try
 	    {

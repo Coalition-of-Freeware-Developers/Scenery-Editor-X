@@ -30,7 +30,6 @@
  */
 #pragma once
 //#include <SceneryEditorX/asset/object.h>
-#include <SceneryEditorX/renderer/render_reference.h>
 #include <xMath/includes/colors.h>
 
 // -------------------------------------------------------

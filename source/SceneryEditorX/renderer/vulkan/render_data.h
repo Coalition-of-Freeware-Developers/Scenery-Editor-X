@@ -59,13 +59,11 @@ namespace SceneryEditorX
 
 #pragma region Renderer Limits
 
-    constexpr uint8_t  MAX_RENDER_TARGET_COUNT			= 8;
     constexpr uint8_t  MAX_CONSTANT_BUFFER_COUNT		= 8;
     constexpr uint32_t MAX_ARRAY_SIZE					= 16384;
 
     constexpr uint32_t MIP_LIST							= std::numeric_limits<uint32_t>::max();
     constexpr uint32_t ALL_MIPS							= std::numeric_limits<uint32_t>::max();
-    constexpr uint32_t MAX_MIP_COUNT					= 13;
 
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT		= 2;
     static constexpr uint32_t MAX_BUFFER_UPDATE_SIZE	= 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes

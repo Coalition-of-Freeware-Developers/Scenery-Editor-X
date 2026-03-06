@@ -34,6 +34,27 @@
 
 namespace SceneryEditorX
 {
+
+    //Entity* s_Camera              = nullptr;
+
+	void Scene::Init()
+	{
+	}
+
+	void Scene::Shutdown()
+	{
+	}
+
+	void Scene::Tick()
+	{
+	}
+
+	Camera *Scene::GetCamera()
+	{
+	    return nullptr;
+	    /*return s_Camera ? s_Camera->GetComponent<Camera>() : nullptr;*/
+	}
+
     /*
     SceneAsset::SceneAsset()
     {
@@ -119,20 +140,16 @@ namespace SceneryEditorX
             nodes.erase(it);
         }
     }
-    */
 
-    /*
     Scene::Scene(const std::string &name, bool isEditorScene, bool initialize) : m_SceneID()
     {
     }
-    */
 
-    /*
     Scene::~Scene()
     {
     }
     */
 
-}
+} // namespace SceneryEditorX
 
 // ---------------------------------------------------------

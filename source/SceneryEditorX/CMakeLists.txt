@@ -6,61 +6,74 @@ MESSAGE(STATUS "=================================================")
 MESSAGE(STATUS "Generating Application Core")
 
 # --------------------------------
-FILE(GLOB ASSET_ANIMATION_FILES asset/animation/*.h asset/animation/*.hpp asset/animation/*.cpp)
-FILE(GLOB ASSET_IMPORTER_FILES asset/importers/*.h asset/importers/*.hpp asset/importers/*.cpp)
-FILE(GLOB ASSET_EXPORTER_FILES asset/exporters/*.h asset/exporters/*.hpp asset/exporters/*.cpp)
-FILE(GLOB ASSET_MANAGER_FILES asset/managers/*.h asset/managers/*.hpp asset/managers/*.cpp)
-FILE(GLOB ASSET_MATERIAL_FILES asset/material/*.h asset/material/*.hpp asset/material/*.cpp)
-FILE(GLOB ASSET_MESH_FILES asset/mesh/*.h asset/mesh/*.hpp asset/mesh/*.cpp)
-FILE(GLOB ASSET_REGISTRY_FILES asset/registry/*.h asset/registry/*.hpp asset/registry/*.cpp)
+FILE(GLOB ASSET_ANIMATION_FILES "asset/animation/*.h" "asset/animation/*.hpp" "asset/animation/*.cpp")
+FILE(GLOB ASSET_IMPORTER_FILES "asset/importers/*.h" "asset/importers/*.hpp" "asset/importers/*.cpp")
+FILE(GLOB ASSET_EXPORTER_FILES "asset/exporters/*.h" "asset/exporters/*.hpp" "asset/exporters/*.cpp")
+FILE(GLOB ASSET_MANAGER_FILES "asset/managers/*.h" "asset/managers/*.hpp" "asset/managers/*.cpp")
+FILE(GLOB ASSET_MATERIAL_FILES "asset/material/*.h" "asset/material/*.hpp" "asset/material/*.cpp")
+FILE(GLOB ASSET_MESH_FILES "asset/mesh/*.h" "asset/mesh/*.hpp" "asset/mesh/*.cpp")
+FILE(GLOB ASSET_REGISTRY_FILES "asset/registry/*.h" "asset/registry/*.hpp" "asset/registry/*.cpp")
 
-FILE(GLOB CORE_APP core/application/*.h core/application/*.hpp core/application/*.cpp)
-FILE(GLOB CORE_EVENTS core/events/*.h core/events/*.hpp core/events/*.cpp)
-FILE(GLOB CORE_IDENTIFIERS core/identifiers/*.h core/identifiers/*.hpp core/identifiers/*.cpp)
-FILE(GLOB CORE_INPUT core/input/*.h core/input/*.hpp core/input/*.cpp)
-FILE(GLOB CORE_MEMORY core/memory/*.h core/memory/*.hpp core/memory/*.cpp)
-FILE(GLOB CORE_LAYERS core/layers/*.h core/layers/*.hpp core/layers/*.cpp)
-FILE(GLOB CORE_THREADING core/threading/*.h core/threading/*.hpp core/threading/*.cpp)
-FILE(GLOB CORE_TIME core/time/*.h core/time/*.hpp core/time/*.cpp)
-FILE(GLOB CORE_RESOURCE core/resource/*.cpp core/resource/*.h)
-FILE(GLOB CORE_WINDOW core/window/*.h core/window/*.hpp core/window/*.cpp)
-FILE(GLOB CORE_PLATFORM_CONFIG_FILES core/platform/config/*.h core/platform/config/*.hpp core/platform/config/*.cpp)
-FILE(GLOB CORE_PLATFORM_FILESYSTEM core/platform/filesystem/*.h core/platform/filesystem/*.hpp core/platform/filesystem/*.cpp)
-FILE(GLOB CORE_PLATFORM_SETTINGS core/platform/settings/*.h core/platform/settings/*.hpp core/platform/settings/*.cpp)
+FILE(GLOB CORE_APP "core/application/*.h" "core/application/*.hpp" "core/application/*.cpp")
+FILE(GLOB CORE_EVENTS "core/events/*.h" "core/events/*.hpp" "core/events/*.cpp")
+FILE(GLOB CORE_IDENTIFIERS "core/identifiers/*.h" "core/identifiers/*.hpp" "core/identifiers/*.cpp")
+FILE(GLOB CORE_INPUT "core/input/*.h" "core/input/*.hpp" "core/input/*.cpp")
+FILE(GLOB CORE_MEMORY "core/memory/*.h" "core/memory/*.hpp" "core/memory/*.cpp")
+FILE(GLOB CORE_LAYERS "core/layers/*.h" "core/layers/*.hpp" "core/layers/*.cpp")
+FILE(GLOB CORE_THREADING "core/threading/*.h" "core/threading/*.hpp" "core/threading/*.cpp")
+FILE(GLOB CORE_TIME "core/time/*.h" "core/time/*.hpp" "core/time/*.cpp")
+FILE(GLOB CORE_RESOURCE "core/resource/*.cpp" "core/resource/*.h")
+FILE(GLOB CORE_WINDOW "core/window/*.h" "core/window/*.hpp" "core/window/*.cpp")
+FILE(GLOB CORE_PLATFORM_CONFIG_FILES "core/platform/config/*.h" "core/platform/config/*.hpp" "core/platform/config/*.cpp")
+FILE(GLOB CORE_PLATFORM_FILESYSTEM "core/platform/filesystem/*.h" "core/platform/filesystem/*.hpp" "core/platform/filesystem/*.cpp")
+FILE(GLOB CORE_PLATFORM_SETTINGS "core/platform/settings/*.h" "core/platform/settings/*.hpp" "core/platform/settings/*.cpp")
+FILE(GLOB CORE_WINDOWS_PLATFORM "core/platform/windows/*.h" "core/platform/windows/*.hpp" "core/platform/windows/*.cpp")
+FILE(GLOB CORE_MAC_PLATFORM "core/platform/mac/*.h" "core/platform/mac/*.hpp" "core/platform/mac/*.cpp")
+FILE(GLOB CORE_LINUX_PLATFORM "core/platform/linux/*.h" "core/platform/linux/*.hpp" "core/platform/linux/*.cpp")
 
-FILE(GLOB CORE_WINDOWS_PLATFORM core/platform/windows/*.h core/platform/windows/*.hpp core/platform/windows/*.cpp)
-FILE(GLOB CORE_MAC_PLATFORM core/platform/mac/*.h core/platform/mac/*.hpp core/platform/mac/*.cpp)
-FILE(GLOB CORE_LINUX_PLATFORM core/platform/linux/*.h core/platform/linux/*.hpp core/platform/linux/*.cpp)
+# --------------------------------
 
-FILE(GLOB RENDERER_VULKAN renderer/vulkan/*.h renderer/vulkan/*.hpp renderer/vulkan/*.cpp)
-FILE(GLOB RENDERER_KOSMICKRISP renderer/kosmickrisp/*.h renderer/kosmickrisp/*.hpp renderer/kosmickrisp/*.cpp)
+FILE(GLOB RENDERER_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/*.h" "renderer/*.hpp" "renderer/*.cpp")
 
-FILE(GLOB LOGGER logging/*.cpp logging/*.h logging/*.hpp)
-FILE(GLOB PROJECT project/*.cpp project/*.h project/*.hpp)
-FILE(GLOB DEBUG_RENDERER_FILES renderer/debug/*.cpp renderer/debug/*.h renderer/debug/*.hpp)
-FILE(GLOB REFLECTION_FILES utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
-FILE(GLOB SCENE scene/*.cpp scene/*.h scene/*.hpp)
-FILE(GLOB SHADER_FILES shaders/*.glsl shaders/*.frag shaders/*.vert shaders/*.comp shaders/*.geom shaders/*.tesc shaders/*.tese)
-FILE(GLOB SERIALIZER_FILES serialization/*.h serialization/*.cpp serialization/*.hpp)
-FILE(GLOB SCENE_FILES scene/*.cpp scene/*.h scene/*.hpp)
+# --------------------------------
 
-FILE(GLOB UTILS_REFLECTION utils/reflection/*.cpp utils/reflection/*.h utils/reflection/*.hpp)
-FILE(GLOB UTILS_CONVERSIONS utils/conversions/*.cpp utils/conversions/*.h utils/conversions/*.hpp)
-FILE(GLOB UTILS_FILESTREAM utils/filestreaming/*.cpp utils/filestreaming/*.h utils/filestreaming/*.hpp)
+FILE(GLOB RENDERER_VULKAN LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/vulkan/*.h" "renderer/vulkan/*.hpp" "renderer/vulkan/*.cpp")
+FILE(GLOB RENDERER_ASSET_FILES "renderer/vulkan/asset/*.h" "renderer/vulkan/asset/*.hpp" "renderer/vulkan/asset/*.cpp")
+FILE(GLOB RENDERER_DEBUG_FILES "renderer/vulkan/debug/*.h" "renderer/vulkan/debug/*.hpp" "renderer/vulkan/debug/*.cpp")
+FILE(GLOB RENDERER_PIPELINE_FILES "renderer/vulkan/pipeline/*.h" "renderer/vulkan/pipeline/*.hpp" "renderer/vulkan/pipeline/*.cpp")
+FILE(GLOB RENDERER_SHADER_FILES "renderer/vulkan/shader/*.h" "renderer/vulkan/shader/*.hpp" "renderer/vulkan/shader/*.cpp")
+FILE(GLOB RENDERER_SYNC_FILES "renderer/vulkan/sync/*.h" "renderer/vulkan/sync/*.hpp" "renderer/vulkan/sync/*.cpp")
 
-#FILE(GLOB VULKAN_RENDER_PASS renderer/render_pass/*.cpp renderer/render_pass/*.h renderer/render_pass/*.hpp)
-#FILE(GLOB VULKAN_SHADER_CODE renderer/shaders/*.cpp renderer/shaders/*.h renderer/shaders/*.hpp)
+# --------------------------------
 
-#FILE(GLOB UI_ACTIONS ui/actions/*.cpp ui/actions/*.h ui/actions/*.hpp)
-#FILE(GLOB UI_PANELS ui/panels/*.cpp ui/panels/*.h ui/panels/*.hpp)
-#FILE(GLOB FONT_CODE renderer/fonts/*.h renderer/fonts/*.hpp renderer/fonts/*.cpp)
+FILE(GLOB RENDERER_KOSMICKRISP LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/kosmickrisp/*.h" "renderer/kosmickrisp/*.hpp" "renderer/kosmickrisp/*.cpp")
 
+# TODO: Add file groups for the renderer files, such as render passes, shaders, etc.
+
+# --------------------------------
+
+FILE(GLOB LOGGER "logging/*.cpp" "logging/*.h" "logging/*.hpp")
+FILE(GLOB PROJECT "project/*.cpp" "project/*.h" "project/*.hpp")
+FILE(GLOB REFLECTION_FILES "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
+FILE(GLOB SCENE "scene/*.cpp" "scene/*.h" "scene/*.hpp")
+FILE(GLOB SHADER_FILES "shaders/*.glsl" "shaders/*.frag" "shaders/*.vert" "shaders/*.comp" "shaders/*.geom" "shaders/*.tesc" "shaders/*.tese")
+FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serialization/*.hpp")
+FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
+
+FILE(GLOB UTILS_REFLECTION "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
+FILE(GLOB UTILS_CONVERSIONS "utils/conversions/*.cpp" "utils/conversions/*.h" "utils/conversions/*.hpp")
+FILE(GLOB UTILS_FILESTREAM "utils/filestreaming/*.cpp" "utils/filestreaming/*.h" "utils/filestreaming/*.hpp")
+#FILE(GLOB VULKAN_RENDER_PASS "renderer/render_pass/*.cpp" "renderer/render_pass/*.h" "renderer/render_pass/*.hpp")
+#FILE(GLOB VULKAN_SHADER_CODE "renderer/shaders/*.cpp" "renderer/shaders/*.h" "renderer/shaders/*.hpp")
+
+#FILE(GLOB UI_ACTIONS "ui/actions/*.cpp" "ui/actions/*.h" "ui/actions/*.hpp")
+#FILE(GLOB UI_PANELS "ui/panels/*.cpp" "ui/panels/*.h" "ui/panels/*.hpp")
+#FILE(GLOB FONT_CODE "renderer/fonts/*.h" "renderer/fonts/*.hpp" "renderer/fonts/*.cpp")
 SET (PROJECT_CONFIG_FILES
 	${CMAKE_SOURCE_DIR}/.clang-format
 	${CMAKE_SOURCE_DIR}/.editorconfig
 	${CMAKE_SOURCE_DIR}/SceneryEditorX.licenseheader
 )
-SET (RENDERER_BASE_FOLDER renderer)
 
 ADD_EXECUTABLE(glslang::validator IMPORTED)
 FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQUIRED)
@@ -94,7 +107,13 @@ ADD_LIBRARY(AppCore
 	${CORE_WINDOWS_PLATFORM}
 	${CORE_MAC_PLATFORM}
 	${CORE_LINUX_PLATFORM}
+	${RENDERER_FILES}
 	${RENDERER_VULKAN}
+	${RENDERER_ASSET_FILES}
+	${RENDERER_DEBUG_FILES}
+	${RENDERER_PIPELINE_FILES}
+	${RENDERER_SHADER_FILES}
+	${RENDERER_SYNC_FILES}
 	${RENDERER_KOSMICKRISP}
 	${SCENE}
 	${PROJECT_CONFIG_FILES}
@@ -134,14 +153,6 @@ ADD_LIBRARY(AppCore
 	core/platform/initializer.h
 	core/platform/entrypoint.h
 	core/platform/platform_context.h
-
-	# --------------------------------
-	${RENDERER_BASE_FOLDER}/gpu_stats.h
-	${RENDERER_BASE_FOLDER}/render_rhi.cpp
-	${RENDERER_BASE_FOLDER}/render_rhi.h
-	${RENDERER_BASE_FOLDER}/renderer_passes.cpp
-	${RENDERER_BASE_FOLDER}/renderer_primitives.cpp
-	${RENDERER_BASE_FOLDER}/renderer_resources.cpp
 
 	# --------------------------------
 	utils/container_utils.h
@@ -261,21 +272,28 @@ SOURCE_GROUP("Serialization" FILES
 	${SERIALIZER_FILES}
 )
 SOURCE_GROUP("Renderer" FILES
-	${RENDERER_BASE_FOLDER}/gpu_stats.h
-	${RENDERER_BASE_FOLDER}/render_rhi.cpp
-	${RENDERER_BASE_FOLDER}/render_rhi.h
-	${RENDERER_BASE_FOLDER}/renderer_passes.cpp
-	${RENDERER_BASE_FOLDER}/renderer_primitives.cpp
-	${RENDERER_BASE_FOLDER}/renderer_resources.cpp
+	${RENDERER_FILES}
 )
 SOURCE_GROUP("Renderer/Vulkan" FILES
 	${RENDERER_VULKAN}
 )
+SOURCE_GROUP("Renderer/Vulkan/Asset" FILES
+	${RENDERER_ASSET_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Debug" FILES
+	${RENDERER_DEBUG_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Pipeline" FILES
+	${RENDERER_PIPELINE_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Shader" FILES
+	${RENDERER_SHADER_FILES}
+)
+SOURCE_GROUP("Renderer/Vulkan/Synchronization" FILES
+	${RENDERER_SYNC_FILES}
+)
 SOURCE_GROUP("Renderer/Kosmickrisp" FILES
 	${RENDERER_KOSMICKRISP}
-)
-SOURCE_GROUP("Renderer/Debug" FILES
-	${DEBUG_RENDERER_FILES}
 )
 SOURCE_GROUP("Utilities" FILES
 	utils/container_utils.h
@@ -428,9 +446,7 @@ TARGET_LINK_LIBRARIES(AppCore
 		xMath::xMath
 		TracyClient
 		msdfgen::msdfgen
-)
-
-# --------------------------------
+)# --------------------------------
 
 TARGET_COMPILE_DEFINITIONS(AppCore
 	PUBLIC

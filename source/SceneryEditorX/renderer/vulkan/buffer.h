@@ -59,13 +59,16 @@ namespace SceneryEditorX
 		static void FreeBuffer(VkBuffer buffer, VmaAllocation allocation);
 		static void FreeImageBuffer(VkImage image, VmaAllocation allocation);
 	    void Destroy(); // Explicitly free underlying VMA resources before m_Allocator destruction
-	
+        uint32_t GetStride() const          { return m_stride; }
+
 	private:
 	    VkBuffer m_Buffer{ VK_NULL_HANDLE };
 	    VmaAllocation m_Allocation{ VK_NULL_HANDLE };
         VmaAllocator m_Allocator{VK_NULL_HANDLE};
 	    void* m_MappedData{ nullptr };
 	    VkDeviceAddress m_DeviceAddress{ 0 };
+        uint32_t m_stride_unaligned    = 0;
+        uint32_t m_stride              = 0;
 	};
 
 }

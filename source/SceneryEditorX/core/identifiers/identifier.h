@@ -35,24 +35,44 @@
 
 namespace SceneryEditorX
 {
+/**
+     * @class Identifier
+     * @brief A unique identifier class that encapsulates a hash and an optional debug name.
+     *
+     * The Identifier class provides a way to uniquely identify objects using a hash value.
+     * It also optionally stores a debug name for easier identification during development.
+     */
     class Identifier
 	{
 	public:
 		constexpr Identifier() = default;
 
-        explicit constexpr Identifier(const std::string_view name) noexcept : m_Hash(Hash::CreateFNV1A(name.data())), dbgName(name) {}
+        /**
+         * @brief Constructs an Identifier with a debug name.
+         * @param name The debug name for the identifier.
+         */
+        explicit constexpr Identifier(const char* name) noexcept : m_Hash(Hash::CreateFNV1A(name)), m_Name(name) {}
+
+        /**
+         * @brief Constructs an Identifier with a hash value.
+         * @param hash The hash value for the identifier.
+         */
         explicit constexpr Identifier(Hash hash) noexcept : m_Hash(std::move(hash)) {}
 
 		constexpr bool operator==(const Identifier& other) const noexcept { return m_Hash == other.m_Hash; }
 		constexpr bool operator!=(const Identifier& other) const noexcept { return m_Hash != other.m_Hash; }
 
+        /**
+         * @brief Converts the Identifier to its underlying hash value.
+         * @return The hash value of the identifier.
+         */
         explicit constexpr operator Hash() const noexcept { return m_Hash; }
-        [[nodiscard]] constexpr std::string_view GetDBGName() const { return dbgName; }
+        [[nodiscard]] constexpr const char* GetDebugName() const { return m_Name; }
 
 	private:
-		friend Hash<Identifier>;
+		friend Hash<Identifier>; // Allow the Hash struct to access the private m_Hash member for hashing.
 		Hash m_Hash;
-		std::string_view dbgName;
+		const char* m_Name = nullptr;
 	};
 
 }

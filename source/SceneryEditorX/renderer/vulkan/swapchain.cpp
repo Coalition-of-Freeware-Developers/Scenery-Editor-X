@@ -30,12 +30,12 @@
  */
 #include "swapchain.h"
 #include "render_context.h"
-#include "renderer.h"
 #include "SceneryEditorX/core/events/event_system.h"
 #include "SceneryEditorX/core/time/fps_timer.h"
 #include "SceneryEditorX/core/time/timer.h"
 #include "SceneryEditorX/core/window/monitor_data.h"
 #include "SceneryEditorX/core/window/window.h"
+#include "SceneryEditorX/renderer/renderer.h"
 #include <tlhelp32.h>
 #include <utility>
 #include <vector>

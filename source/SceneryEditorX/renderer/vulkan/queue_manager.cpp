@@ -198,7 +198,7 @@ namespace SceneryEditorX
 	    return indices;
 	}
 	
-	void QueueManager::BuildQueueCreateInfos(const QueueFamilyIndices &indices, std::vector<VkDeviceQueueCreateInfo> &queueInfo, std::vector<float> &priority)
+	void QueueManager::BuildQueueInfo(const QueueFamilyIndices &indices, std::vector<VkDeviceQueueCreateInfo> &queueInfo, std::vector<float> &priority)
 	{
 	    queueInfo.clear();
 	    priority.clear();

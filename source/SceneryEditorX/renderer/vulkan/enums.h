@@ -197,84 +197,6 @@ namespace SceneryEditorX
         MaxEnum
     };
 
-    /**
-     * @enum RendererRenderTarget
-     * @brief Enumeration of renderer render targets.
-     *
-     * This enum provides a type-safe way to identify and reference
-     * the different render targets used in the rendering system.
-     *
-     * @note - The values in this enum are designed to be compatible with Vulkan's render target types.
-     */
-    enum class RendererRenderTarget : uint8_t
-    {
-        gbuffer_color,
-        gbuffer_normal,
-        gbuffer_material,
-        gbuffer_velocity,
-        gbuffer_depth,
-        gbuffer_depth_occluders,
-        gbuffer_depth_occluders_hiz,
-        gbuffer_depth_opaque_output,
-        lut_brdf_specular,
-        lut_atmosphere_scatter,
-        lut_atmosphere_transmittance,
-        lut_atmosphere_multiscatter,
-        light_diffuse,
-        light_specular,
-        light_volumetric,
-        frame_render,
-        frame_render_opaque,
-        frame_output,
-        frame_output_2,
-        ssao,
-        reflections,
-        gbuffer_reflections_position,
-        gbuffer_reflections_normal,
-        gbuffer_reflections_albedo,
-        sss,
-        skysphere,
-        bloom,
-        blur,
-        outline,
-        shading_rate,
-        shadow_atlas,
-        auto_exposure,
-        auto_exposure_previous,
-        // restir reservoir buffers (current frame)
-        restir_reservoir0,
-        restir_reservoir1,
-        restir_reservoir2,
-        restir_reservoir3,
-        restir_reservoir4,
-        // restir reservoir buffers (previous frame for temporal)
-        restir_reservoir_prev0,
-        restir_reservoir_prev1,
-        restir_reservoir_prev2,
-        restir_reservoir_prev3,
-        restir_reservoir_prev4,
-        // restir reservoir buffers (spatial ping-pong)
-        restir_reservoir_spatial0,
-        restir_reservoir_spatial1,
-        restir_reservoir_spatial2,
-        restir_reservoir_spatial3,
-        restir_reservoir_spatial4,
-        // volumetric clouds
-        cloud_noise_shape,
-        cloud_noise_detail,
-        cloud_shadow,
-        // nrd denoiser textures
-        nrd_viewz,
-        nrd_normal_roughness,
-        nrd_diff_radiance_hitdist,
-        nrd_spec_radiance_hitdist,
-        nrd_out_diff_radiance_hitdist,
-        nrd_out_spec_radiance_hitdist,
-        // debug
-        debug_output,
-        max_enum
-    };
-
     namespace Layout
     {
         enum ImageLayout : uint8_t
@@ -301,6 +223,26 @@ namespace SceneryEditorX
 		};
     }
 
+	enum class CullMode : uint8_t
+	{
+		None,
+		Front,
+		Back,
+		All,
+		MaxEnum
+    };
+
+    enum class ImageType : uint8_t
+    {
+		Type1D,
+        Type1DArray,
+        Type2D,
+        Type2DArray,
+        Type3D,
+        TypeCube,
+		TypeCubeArray,
+        MaxEnum
+    };
 
 } // namespace SceneryEditorX
 

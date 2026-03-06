@@ -30,7 +30,6 @@
  */
 #include "descriptor.h"
 #include "render_context.h"
-#include <iostream>
 #include <vector>
 #include <volk/volk.h>
 

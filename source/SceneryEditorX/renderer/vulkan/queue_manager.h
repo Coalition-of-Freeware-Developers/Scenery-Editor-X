@@ -38,7 +38,8 @@
 
 namespace SceneryEditorX
 {
-	class Device;
+    class CommandList;
+    class Device;
 	
 	/**
 	 * @class QueueManager
@@ -108,7 +109,7 @@ namespace SceneryEditorX
 	     * @param queueInfo Vector to store the created VkDeviceQueueCreateInfo structures.
 	     * @param priority Vector to store the queue priorities.
 	     */
-	    static void BuildQueueCreateInfos(const QueueFamilyIndices &indices, std::vector<VkDeviceQueueCreateInfo> &queueInfo, std::vector<float> &priority);
+	    static void BuildQueueInfo(const QueueFamilyIndices &indices, std::vector<VkDeviceQueueCreateInfo> &queueInfo, std::vector<float> &priority);
 	
 	    /**
 	     * @brief Construct a new Queue Manager object with the given configuration.

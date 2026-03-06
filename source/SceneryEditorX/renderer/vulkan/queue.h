@@ -53,12 +53,19 @@ namespace SceneryEditorX
 	    Queue(const Ref<Device>& device, const QueueType type, const char *name);
 	    virtual ~Queue() override;
 	
-	    void Init();
-	    void Destroy();
-	    VkQueue GetQueue() const { return m_Queue.handle; }
-	    QueueType GetType() const { return m_Type; }
-	
-	    static uint32_t AcquireNextImage();
+		void Init();
+		void Destroy();
+		VkQueue GetQueue() const { return m_Queue.handle; }
+		QueueType GetType() const { return m_Type; }
+
+		/**
+		 * @brief Submit pre-built synchronization work to this queue's underlying VkQueue using VkSubmitInfo2.
+		 * @param submitInfo Fully populated VkSubmitInfo2 describing wait/signal semaphores and command buffers.
+		 * @param fence Optional fence to signal when the batch is complete (VK_NULL_HANDLE for fire-and-forget).
+		 */
+		void Submit(const VkSubmitInfo2& submitInfo, VkFence fence = VK_NULL_HANDLE);
+
+		static uint32_t AcquireNextImage();
 	    static void SubmitSync(VkCommandBuffer cmdBuffer);
 	    static void SubmitAsync(VkCommandBuffer cmdBuffer);
 	    static void Present(uint32_t imageIdx);

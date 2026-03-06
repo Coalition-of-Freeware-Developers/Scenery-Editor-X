@@ -39,11 +39,11 @@
 
 namespace SceneryEditorX
 {
-	/// Forward declarations
+	// Forward declarations
 	class ApplicationSettings;
 
 	// ----------------------------------------------------
-	/// Date/Time Formatting Utilities
+	// Date/Time Formatting Utilities
 	// ----------------------------------------------------
 
 	/**
@@ -188,22 +188,19 @@ namespace SceneryEditorX
 		[[nodiscard]] const std::filesystem::path& GetConfigPath() const { return m_ConfigPath; }
 
 	private:
-		/// User preference data
+		// User preference data
 		bool m_ShowWelcomeScreen = true;
 		std::string m_StartupProject;
 		std::map<time_t, RecentProject, std::greater<>> m_RecentProjects;
 
-		/// Configuration management
+		// Configuration management
 		std::filesystem::path m_ConfigPath;
 		Ref<ApplicationSettings> m_Settings;
 
-        /// Maximum number of recent projects to keep
+        // Maximum number of recent projects to keep
 		static constexpr size_t MAX_RECENT_PROJECTS = 10;
 
-		/**
-		 * @brief Initializes the settings system.
-		 */
-		void InitializeSettings();
+		void Init();
 
 		/**
 		 * @brief Loads recent projects from settings.

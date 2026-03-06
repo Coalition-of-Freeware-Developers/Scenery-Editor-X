@@ -69,7 +69,7 @@ namespace SceneryEditorX
 	     * @return true if the flag was dirty before this call (indicating data needs processing).
 	     * @return false if the flag was already clean.
 	     */
-	    SEDX_FORCE_INLINE bool CheckAndResetIfDirty() { return !m_Flag.test_and_set(); }
+	    SEDX_FORCE_INLINE bool Check() { return !m_Flag.test_and_set(); }
 
 	    /**
 	     * @brief Constructs an AtomicFlag in clean state.
