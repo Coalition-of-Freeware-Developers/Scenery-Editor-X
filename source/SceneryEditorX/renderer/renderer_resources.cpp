@@ -73,6 +73,7 @@ namespace SceneryEditorX
 	// Static members defined here (declared in renderer.h)
 	PushConstantBuffer Renderer::m_pcb_pass_cpu;
 	uint32_t           Renderer::m_draw_call_count          = 0;
+	bool               Renderer::m_BindlessSamplers_Dirty   = false;
 	uint32_t           Renderer::m_draw_calls_prepass_count = 0;
 	uint32_t           Renderer::m_indirect_draw_count      = 0;
 	bool               Renderer::m_transparents_present     = false;
@@ -248,7 +249,7 @@ namespace SceneryEditorX
         uint32_t flags  = UnorderedAccessView | ShaderViews | BlitClear;
         
         // (SSAO) Screen-space ambient occlusion - optional since it can be expensive and not noticeable in many scenes
-        bool needSSAO = false; /* TODO: Have the option settable in user settings */;
+        bool needSSAO = false; /* TODO: Have the option settable in user settings */
         if (needSSAO && !s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)])
         {
              s_RenderTargets[static_cast<uint8_t>(Renderer_RenderTarget::ssao)] = CreateRef<ImageResource>(ImgResourceSpec{ImageType::Type2D, width, height, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT, flags | QueueShare, "ssao"});

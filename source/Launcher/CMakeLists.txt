@@ -88,6 +88,7 @@ TARGET_LINK_LIBRARIES(Launcher
         SDL3::SDL3
         dxgi
         d3d12
+		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
         Shell32.lib
 		xMath::xMath
 )

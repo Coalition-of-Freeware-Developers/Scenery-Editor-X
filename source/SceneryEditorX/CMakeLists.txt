@@ -56,7 +56,8 @@ FILE(GLOB LOGGER "logging/*.cpp" "logging/*.h" "logging/*.hpp")
 FILE(GLOB PROJECT "project/*.cpp" "project/*.h" "project/*.hpp")
 FILE(GLOB REFLECTION_FILES "utils/reflection/*.cpp" "utils/reflection/*.h" "utils/reflection/*.hpp")
 FILE(GLOB SCENE "scene/*.cpp" "scene/*.h" "scene/*.hpp")
-FILE(GLOB SHADER_FILES "shaders/*.glsl" "shaders/*.frag" "shaders/*.vert" "shaders/*.comp" "shaders/*.geom" "shaders/*.tesc" "shaders/*.tese")
+FILE(GLOB SLANG_SHADERS LIST_DIRECTORIES false CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/shaders/*.slang")
+FILE(GLOB SHADER_FILES "shaders/*.slang" "shaders/*.glsl" "shaders/*.frag" "shaders/*.vert" "shaders/*.comp" "shaders/*.geom" "shaders/*.tesc" "shaders/*.tese")
 FILE(GLOB SERIALIZER_FILES "serialization/*.h" "serialization/*.cpp" "serialization/*.hpp")
 FILE(GLOB SCENE_FILES "scene/*.cpp" "scene/*.h" "scene/*.hpp")
 
@@ -80,7 +81,6 @@ FIND_PROGRAM(GLSLANG_VALIDATOR "glslangValidator" HINTS $ENV{VULKAN_SDK}/bin REQ
 SET_PROPERTY(TARGET glslang::validator PROPERTY IMPORTED_LOCATION "${GLSLANG_VALIDATOR}")
 
 # --------------------------------
-
 ADD_LIBRARY(AppCore
 	${ASSET_ANIMATION_FILES}
 	${ASSET_IMPORTER_FILES}
@@ -120,7 +120,7 @@ ADD_LIBRARY(AppCore
 	${SERIALIZER_FILES}
 	${SCENE_FILES}
 	${REFLECTION_FILES}
-	${SHADER_FILES}
+	${SLANG_SHADERS}
 
 	# ${DEBUG_RENDERER_FILES}
 
@@ -381,7 +381,7 @@ SOURCE_GROUP("Resources" FILES
     ${RESOURCE_FILE}
 	cpp.hint
 )
-SOURCE_GROUP("Resources/Shaders" FILES ${SHADER_FILES})
+SOURCE_GROUP("Resources/Shaders" FILES ${SLANG_SHADERS})
 SOURCE_GROUP("Resources/Icons" FILES
     ${ICON_FILES}
 )
@@ -392,6 +392,9 @@ SOURCE_GROUP("Resources/Fonts" FILES
 # --------------------------------
 # SHADERS
 # --------------------------------
+
+# TODO: Needs to be updated to use the SLang compiler instead of glslang.
+
 IF(WIN32)
     cmake_path(SET GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 ELSE()
@@ -444,9 +447,11 @@ TARGET_LINK_LIBRARIES(AppCore
 		${Slang_LIBRARY}
 		Shell32.lib
 		xMath::xMath
-		TracyClient
+		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 		msdfgen::msdfgen
-)# --------------------------------
+)
+
+# --------------------------------
 
 TARGET_COMPILE_DEFINITIONS(AppCore
 	PUBLIC

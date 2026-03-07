@@ -37,21 +37,33 @@
 namespace SceneryEditorX
 {
 
-	FrameSync::FrameSync(const SyncType type) : m_Type(type)
+	FrameSync::FrameSync(const SyncType type, const VkDevice device) : m_Type(type)
 	{
 		if (m_Type == SyncType::Fence)
 		{
 			m_Fence = CreateRef<Fence>();
-			m_Fence->CreateSyncObject();
-			Debugging::SetResourceName(m_Fence.Get()->GetFence(), ResourceType::Fence, "Fence");
+			if (device != VK_NULL_HANDLE)
+			{
+			    m_Fence->CreateSyncObject(device);
+			}
+			else
+			{
+				m_Fence->CreateSyncObject();
+				Debugging::SetResourceName(m_Fence.Get()->GetFence(), ResourceType::Fence, "Fence");
+			}
 		}
 		else
 		{
 			// Pass the concrete SyncType (Semaphore or SemaphoreTimeline) so that
 			// Semaphore::CreateSyncObject creates the correct Vulkan semaphore type.
 			m_RenderSemaphore = CreateRef<Semaphore>(m_Type);
-			m_RenderSemaphore->CreateSyncObject();
-			Debugging::SetResourceName(m_RenderSemaphore.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
+			if (device != VK_NULL_HANDLE)
+				m_RenderSemaphore->CreateSyncObject(device);
+			else
+			{
+				m_RenderSemaphore->CreateSyncObject();
+				Debugging::SetResourceName(m_RenderSemaphore.Get()->GetSemaphore(), ResourceType::Semaphore, "RenderSemaphore");
+			}
 		}
 	}
 

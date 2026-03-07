@@ -29,6 +29,7 @@
  * -------------------------------------------------------
  */
 #include "queue.h"
+#include "render_context.h"
 #include "swapchain.h"
 #include "SceneryEditorX/renderer/renderer.h"
 
@@ -402,68 +403,65 @@ namespace SceneryEditorX
 	
 	void Queue::ParseDeletionQueue()
 	{
-	    std::scoped_lock guard(mutexDeletionQueue);
-	
-		Ref<Device> device;
-	    for (auto &it : deletionQueue)
-	    {
-	        ResourceType resourceType = it.first;
-	        for (auto resource : it.second)
-	        {
-	            switch (resourceType)
-	            {
-	            case ResourceType::Image: MemoryAllocator::DestroyImage(static_cast<VkImage>(resource), nullptr);
-	                break;
-	            case ResourceType::ImageView:
-                    vkDestroyImageView(device->GetLogicalDevice(), static_cast<VkImageView>(resource), nullptr);
-	                break;
-	            case ResourceType::Sampler:
-                    vkDestroySampler(device->GetLogicalDevice(), reinterpret_cast<VkSampler>(resource), nullptr);
-	                break;
-	            case ResourceType::Buffer: MemoryAllocator::DestroyBuffer(static_cast<VkBuffer>(resource), nullptr); 
-	                break;
-	            case ResourceType::Shader:
-                    vkDestroyShaderModule(device->GetLogicalDevice(), static_cast<VkShaderModule>(resource), nullptr);
-	                break;
-	            case ResourceType::Semaphore:
-                    vkDestroySemaphore(device->GetLogicalDevice(), static_cast<VkSemaphore>(resource), nullptr);
-	                break;
-	            case ResourceType::Fence:
-                    vkDestroyFence(device->GetLogicalDevice(), static_cast<VkFence>(resource), nullptr);
-	                break;
-	            case ResourceType::DescriptorSetLayout:
-                    vkDestroyDescriptorSetLayout(device->GetLogicalDevice(), static_cast<VkDescriptorSetLayout>(resource), nullptr);
-	                break;
-	            case ResourceType::QueryPool:
-	                vkDestroyQueryPool(device->GetLogicalDevice(), static_cast<VkQueryPool>(resource), nullptr);
-	                break;
-	            case ResourceType::Pipeline:
-                    vkDestroyPipeline(device->GetLogicalDevice(), static_cast<VkPipeline>(resource), nullptr);
-	                break;
-	            case ResourceType::PipelineLayout:
-                    vkDestroyPipelineLayout(device->GetLogicalDevice(), static_cast<VkPipelineLayout>(resource), nullptr);
-	                break;
-	            case ResourceType::AccelerationStructure:
-                    vkDestroyAccelerationStructureKHR(device->GetLogicalDevice(), static_cast<VkAccelerationStructureKHR>(resource), nullptr);
-	                break;
-	            default:
-	                SEDX_CORE_ASSERT(false, "Unknown resource");
-	                break;
-	            }
-	
-	            /*// Delete descriptor sets which are now invalid (because they are referring to a deleted resource)
-		                if (resourceType == ResourceType::ImageView || resourceType == ResourceType::Buffer)
-		                {
-		                    for (auto it = Descriptor::sets.begin(); it != Descriptor::sets.end();)
-		                    {
-		                        if (it->second.IsReferingToResource(resource)) { it = Descriptor::sets.erase(it); }
-		                        else { ++it; }
-		                    }
-		                }*/
-	        }
-	    }
+		std::scoped_lock guard(mutexDeletionQueue);
 
-	    deletionQueue.clear();
+		if (deletionQueue.empty())
+			return;
+
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		SEDX_CORE_ASSERT(device, "ParseDeletionQueue called without a valid device — cannot destroy GPU resources");
+		VkDevice vkDevice = device->GetLogicalDevice();
+		SEDX_CORE_ASSERT(vkDevice != VK_NULL_HANDLE, "Logical device is null in ParseDeletionQueue");
+
+		for (auto &it : deletionQueue)
+		{
+			ResourceType resourceType = it.first;
+			for (auto resource : it.second)
+			{
+				switch (resourceType)
+				{
+				case ResourceType::Image: MemoryAllocator::DestroyImage(static_cast<VkImage>(resource), nullptr);
+					break;
+				case ResourceType::ImageView:
+					vkDestroyImageView(vkDevice, static_cast<VkImageView>(resource), nullptr);
+					break;
+				case ResourceType::Sampler:
+					vkDestroySampler(vkDevice, reinterpret_cast<VkSampler>(resource), nullptr);
+					break;
+				case ResourceType::Buffer: MemoryAllocator::DestroyBuffer(static_cast<VkBuffer>(resource), nullptr); 
+					break;
+				case ResourceType::Shader:
+					vkDestroyShaderModule(vkDevice, static_cast<VkShaderModule>(resource), nullptr);
+					break;
+				case ResourceType::Semaphore:
+					vkDestroySemaphore(vkDevice, static_cast<VkSemaphore>(resource), nullptr);
+					break;
+				case ResourceType::Fence:
+					vkDestroyFence(vkDevice, static_cast<VkFence>(resource), nullptr);
+					break;
+				case ResourceType::DescriptorSetLayout:
+					vkDestroyDescriptorSetLayout(vkDevice, static_cast<VkDescriptorSetLayout>(resource), nullptr);
+					break;
+				case ResourceType::QueryPool:
+					vkDestroyQueryPool(vkDevice, static_cast<VkQueryPool>(resource), nullptr);
+					break;
+				case ResourceType::Pipeline:
+					vkDestroyPipeline(vkDevice, static_cast<VkPipeline>(resource), nullptr);
+					break;
+				case ResourceType::PipelineLayout:
+					vkDestroyPipelineLayout(vkDevice, static_cast<VkPipelineLayout>(resource), nullptr);
+					break;
+				case ResourceType::AccelerationStructure:
+					vkDestroyAccelerationStructureKHR(vkDevice, static_cast<VkAccelerationStructureKHR>(resource), nullptr);
+					break;
+				default:
+					SEDX_CORE_ASSERT(false, "Unknown resource");
+					break;
+				}
+			}
+		}
+
+		deletionQueue.clear();
 	}
 	
 	bool Queue::ParseDeletionQueueNeedsTo()

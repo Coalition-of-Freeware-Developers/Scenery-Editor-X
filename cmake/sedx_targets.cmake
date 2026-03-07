@@ -63,7 +63,7 @@ SET(SEDX_OUTPUT_TARGETS
 
 	# Libraries
 	nlohmann_json json-cpp-gen imgui xMath libconfig libconfig++ ktx SDL3_test SDL3 SDL3 SDL3-static
-	Catch2 Catch2WithMain uninstall TracyClient
+	Catch2 Catch2WithMain uninstall $<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 )
 
 FOREACH(TARGET IN ITEMS ${SEDX_OUTPUT_TARGETS})

@@ -34,15 +34,15 @@
 
 // -------------------------------------------------------
 
-#ifdef SEDX_DEBUG && SEDX_PROFILING_ENABLED
+#ifdef SEDX_DEBUG && SEDX_ENABLE_PROFILING
     #define TRACY_ENABLE
     #define SEDX_PROFILING_ENABLED 1
 #else SEDX_RELEASE
     #define SEDX_PROFILING_ENABLED 0
 #endif
 
-#if SEDX_PROFILING_ENABLED
-    //#include "tracy/Tracy.hpp"
+#if SEDX_ENABLE_PROFILING
+    #include "tracy/Tracy.hpp"
 
     // -------------------------------------------------------
 

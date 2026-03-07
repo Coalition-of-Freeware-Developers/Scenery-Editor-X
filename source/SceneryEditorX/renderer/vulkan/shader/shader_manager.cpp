@@ -69,6 +69,10 @@ namespace SceneryEditorX
         m_Modules.push_back(CreateShaderModule(spirvCode, codeSize));
         m_Stages.push_back(VK_SHADER_STAGE_FRAGMENT_BIT);
         m_Modules.push_back(CreateShaderModule(spirvCode, codeSize));
+
+	   // Mark as compiled only if all modules were created successfully
+	   const bool allValid = std::ranges::all_of(m_Modules, [](VkShaderModule m) { return m != VK_NULL_HANDLE; });
+	   m_CompilationState = allValid ? ShaderCompiler::State::Succeeded : ShaderCompiler::State::Failed;
     }
 
     ShaderManager::ShaderManager(
@@ -81,6 +85,10 @@ namespace SceneryEditorX
             m_Stages.push_back(s.first);
             m_Modules.push_back(CreateShaderModule(s.second.first, s.second.second));
         }
+
+	   // Mark as compiled only if all modules were created successfully
+	   const bool allValid = !m_Modules.empty() && std::ranges::all_of(m_Modules, [](VkShaderModule m) { return m != VK_NULL_HANDLE; });
+	   m_CompilationState = allValid ? ShaderCompiler::State::Succeeded : ShaderCompiler::State::Failed;
     }
 
     ShaderManager::~ShaderManager()

@@ -42,11 +42,20 @@ namespace SceneryEditorX
 	
     // -------------------------------------------------------
 
-    class FrameSync : public RefCounted
-    {
+	class FrameSync : public RefCounted
+	{
 	public:
-        FrameSync(const SyncType type);
-        ~FrameSync() override;
+		/**
+		 * @brief Constructs a FrameSync object of the specified synchronization type.
+		 *
+		 * @param type   The type of synchronization primitive to create.
+		 * @param device Optional explicit VkDevice for early-initialization contexts (e.g. during
+		 *               Device::Device() before RenderContext::m_Device is assigned). Pass
+		 *               VK_NULL_HANDLE (default) to have the constructor fetch the device from
+		 *               RenderContext — only valid after RenderContext::Init() completes.
+		 */
+		explicit FrameSync(SyncType type, VkDevice device = VK_NULL_HANDLE);
+		~FrameSync() override;
         static void Create(uint32_t framesInFlight, uint32_t swapchainImageCount);
 
         uint64_t GetNextSignalValue() { return ++m_Value; }

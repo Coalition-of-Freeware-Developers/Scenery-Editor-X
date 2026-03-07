@@ -50,12 +50,23 @@ namespace SceneryEditorX
 
 	void Fence::CreateSyncObject()
 	{
-        Ref<Device> device = RenderContext::Get()->GetDevice();
-	    VkFenceCreateInfo fenceInfo = {};
-	    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		Ref<Device> device = RenderContext::Get()->GetDevice();
+		VkFenceCreateInfo fenceInfo = {};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	    SEDX_VK_RESULT_ASSERT(vkCreateFence(device->GetLogicalDevice(), &fenceInfo, nullptr, &m_Fence), "Failed to create fence");
+		SEDX_VK_RESULT_ASSERT(vkCreateFence(device->GetLogicalDevice(), &fenceInfo, nullptr, &m_Fence), "Failed to create fence");
+	}
+
+	void Fence::CreateSyncObject(const VkDevice device)
+	{
+		SEDX_CORE_ASSERT(device != VK_NULL_HANDLE, "Fence::CreateSyncObject(VkDevice): device must be valid");
+		VkFenceCreateInfo fenceInfo = {};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		SEDX_VK_RESULT_ASSERT(vkCreateFence(device, &fenceInfo, nullptr, &m_Fence), "Failed to create fence");
+		Debugging::SetResourceName(device, m_Fence, ResourceType::Fence, m_ObjectName.c_str());
 	}
 
 	void Fence::Wait(const uint64_t timeout, const VkFence &fence)

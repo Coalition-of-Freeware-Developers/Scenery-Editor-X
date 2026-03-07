@@ -49,6 +49,7 @@ namespace SceneryEditorX
 {
     struct RendererProperties;
     class Swapchain;
+    class ShaderManager;
 
     /**
      * @brief Static renderer class managing Vulkan rendering lifecycle.
@@ -158,6 +159,13 @@ namespace SceneryEditorX
          * @param computeCmdList Compute command list (optional, may be nullptr)
          */
         static void DrawFrame(CommandList *cmdList, CommandList *computeCmdList);
+
+        /**
+         * @brief Blit a texture to the back buffer.
+         * @param cmdList Graphics command list for 3D rendering
+         * @param texture Texture to blit
+         */
+        static void BlitToBackBuffer(CommandList *cmdList, ImageResource *texture);
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Render Context Management                                                                                     ///
@@ -428,6 +436,28 @@ namespace SceneryEditorX
          */
         static void SetCommonTextures(CommandList *cmdList);
 
+        /**
+         * @brief Writes per-frame data (camera matrices, lighting info, etc.) into the GPU frame-constant buffer.
+         * @param cmdList 
+         */
+        static void UpdateFrameConstantBuffer(CommandList *cmdList);
+
+        /**
+         * @brief Writes per-draw transform and material data into the GPU draw-data buffer.
+         * @param transform Current frame transform matrix
+         * @param prevTransform Previous frame transform matrix
+         * @param matIdx Material index
+         * @param isTransparent Flag indicating if the draw call is transparent
+         * @return Index of the written draw-data slot (passed as push constant draw_index).
+         */
+        static uint32_t WriteDrawData(const xMath::Matrix &transform, const xMath::Matrix &prevTransform, uint32_t matIdx, uint32_t isTransparent);
+
+        /**
+         * @brief 
+         * @param cmdList 
+         */
+        static void UpdateDrawCalls(CommandList *cmdList);
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Static State                                                                                                  ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -504,6 +534,15 @@ namespace SceneryEditorX
 		static uint64_t s_FrameNumber;           // Total frames rendered
 		static uint32_t s_SwapchainImageIndex;   // Current swapchain image
 		static bool s_FrameInProgress;           // True between BeginFrame and EndFrame
+
+		// Basic forward-rendering pipeline (active until the full deferred pipeline is wired up)
+		static VkPipeline s_BasicPipeline;
+		static VkPipelineLayout s_BasicPipelineLayout;
+		static Scope<ShaderManager> s_BasicShaderManager;
+		static std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> s_BasicShaderDataBuffers;
+		static std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> s_BasicShaderDataAllocations;
+		static std::array<void*,           MAX_FRAMES_IN_FLIGHT> s_BasicShaderDataMapped;
+		static std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> s_BasicShaderDataAddresses;
 	};
 
 

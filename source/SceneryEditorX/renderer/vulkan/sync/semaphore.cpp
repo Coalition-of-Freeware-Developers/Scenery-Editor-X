@@ -55,26 +55,48 @@ namespace SceneryEditorX
 
 	void Semaphore::CreateSyncObject()
 	{
-       SEDX_CORE_ASSERT(m_Semaphore == VK_NULL_HANDLE);
-	    Ref<Device> device = RenderContext::Get()->GetDevice();
+	   SEDX_CORE_ASSERT(m_Semaphore == VK_NULL_HANDLE);
+		Ref<Device> device = RenderContext::Get()->GetDevice();
 
-        VkSemaphoreTypeCreateInfo typeInfo{};
-        typeInfo.sType				= VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-        typeInfo.pNext				= nullptr;
-        typeInfo.semaphoreType		= VK_SEMAPHORE_TYPE_TIMELINE;
-        typeInfo.initialValue		= 0;
+		VkSemaphoreTypeCreateInfo typeInfo{};
+		typeInfo.sType				= VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+		typeInfo.pNext				= nullptr;
+		typeInfo.semaphoreType		= VK_SEMAPHORE_TYPE_TIMELINE;
+		typeInfo.initialValue		= 0;
 
-        VkSemaphoreCreateInfo semaphoreCreateInfo{};
-        semaphoreCreateInfo.sType	= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        semaphoreCreateInfo.pNext	= m_Type == SyncType::SemaphoreTimeline ? &typeInfo : nullptr;
-        semaphoreCreateInfo.flags	= 0;
+		VkSemaphoreCreateInfo semaphoreCreateInfo{};
+		semaphoreCreateInfo.sType	= VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		semaphoreCreateInfo.pNext	= m_Type == SyncType::SemaphoreTimeline ? &typeInfo : nullptr;
+		semaphoreCreateInfo.flags	= 0;
 
-        SEDX_VK_RESULT_ASSERT(vkCreateSemaphore(device->GetLogicalDevice(), &semaphoreCreateInfo, nullptr, &m_Semaphore),
+		SEDX_VK_RESULT_ASSERT(vkCreateSemaphore(device->GetLogicalDevice(), &semaphoreCreateInfo, nullptr, &m_Semaphore),
 			"Failed to create semaphore");
 
 		Debugging::SetResourceName(m_Semaphore, ResourceType::Semaphore, m_ObjectName.c_str());
-	    SEDX_CORE_TRACE_TAG("Semaphore", "Semaphore {} scheduled for destruction", m_ObjectName);
-    }
+		SEDX_CORE_TRACE_TAG("Semaphore", "Semaphore {} scheduled for destruction", m_ObjectName);
+	}
+
+	void Semaphore::CreateSyncObject(const VkDevice device)
+	{
+		SEDX_CORE_ASSERT(device != VK_NULL_HANDLE, "Semaphore::CreateSyncObject(VkDevice): device must be valid");
+		SEDX_CORE_ASSERT(m_Semaphore == VK_NULL_HANDLE, "Semaphore already created");
+
+		VkSemaphoreTypeCreateInfo typeInfo{};
+		typeInfo.sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+		typeInfo.pNext         = nullptr;
+		typeInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+		typeInfo.initialValue  = 0;
+
+		VkSemaphoreCreateInfo semaphoreCreateInfo{};
+		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		semaphoreCreateInfo.pNext = m_Type == SyncType::SemaphoreTimeline ? &typeInfo : nullptr;
+		semaphoreCreateInfo.flags = 0;
+
+		SEDX_VK_RESULT_ASSERT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &m_Semaphore),
+			"Failed to create semaphore");
+
+		Debugging::SetResourceName(device, m_Semaphore, ResourceType::Semaphore, m_ObjectName.c_str());
+	}
 
 	void Semaphore::Wait(const uint64_t timeout)
 	{

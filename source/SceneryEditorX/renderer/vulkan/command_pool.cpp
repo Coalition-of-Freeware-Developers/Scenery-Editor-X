@@ -51,6 +51,34 @@ namespace SceneryEditorX
 		}
     }
 
+    CommandPool::CommandPool(const Ref<Device>& device, uint32_t queueFamilyIndex, CommandPoolType pool)
+    {
+        m_Device = device;
+        m_PoolType = pool;
+
+        // Validate that device is properly initialized
+        SEDX_CORE_ASSERT(m_Device.IsValid(), "Device reference is null");
+        SEDX_CORE_ASSERT(m_Device->GetLogicalDevice() != VK_NULL_HANDLE, "Logical device is null - Device::Create() was not called or failed");
+
+        // Validate that volk has loaded device-level functions
+        SEDX_CORE_ASSERT(vkCreateCommandPool != nullptr, "vkCreateCommandPool is null - volkLoadDevice() was not called after device creation");
+
+        VkCommandPoolCreateInfo ci{};
+        ci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        ci.queueFamilyIndex = queueFamilyIndex;
+        ci.flags = GetPoolFlags(m_PoolType);
+
+        if (VkResult r = vkCreateCommandPool(m_Device->GetLogicalDevice(), &ci, nullptr, &m_CmdPool); r != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("CommandPool", "Failed to create command pool: VkResult = {}", static_cast<int>(r));
+            m_CmdPool = VK_NULL_HANDLE;
+        }
+        else
+        {
+            SEDX_CORE_TRACE_TAG("CommandPool", "Command pool created successfully (queue family: {}, type: {})", queueFamilyIndex, static_cast<int>(pool));
+        }
+    }
+
     CommandPool::CommandPool(uint32_t queueFamilyIndex, CommandPoolType pool)
     {
         m_Device = RenderContext::Get()->GetDevice();

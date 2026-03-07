@@ -237,10 +237,14 @@ namespace SceneryEditorX
     {
         m_Queue = queue;
 
+        // Use the device from the supplied CommandPool — safe during Device::Device()
+        // construction because the pool holds an explicit Ref<Device>. Using
+        // RenderContext::Get()->GetDevice() here crashes: RenderContext::m_Device is
+        // not yet assigned when this ctor is called from inside Device::Device().
+        Ref<Device> device = cmdPool.GetDevice();
+
         // Command Buffer
         {
-            Ref<Device> device = RenderContext::Get()->GetDevice();
-            // define
             VkCommandBufferAllocateInfo allocateInfo = {};
             allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
             allocateInfo.commandPool = cmdPool.GetPool();
@@ -250,14 +254,20 @@ namespace SceneryEditorX
             // allocate
             SEDX_VK_RESULT_ASSERT(vkAllocateCommandBuffers(device->GetLogicalDevice(), &allocateInfo, &m_CmdBuffer), "Failed to allocate command buffers");
 
-            // name
-            Debugging::SetResourceName(m_CmdBuffer, ResourceType::CommandList, name);
+            // name — pass the logical device explicitly so naming works even during Device construction
+            // before RenderContext::m_Device has been assigned.
+            Debugging::SetResourceName(device->GetLogicalDevice(), m_CmdBuffer, ResourceType::CommandList, name);
             m_ObjectName = name;
         }
 
-		m_RenderingCompleteSemaphore = CreateRef<FrameSync>(SyncType::Semaphore);
-		m_RenderingCompleteTimeline  = CreateRef<FrameSync>(SyncType::SemaphoreTimeline);
-		m_SubmitSync                 = CreateRef<FrameSync>(SyncType::Fence);
+		// Thread the logical device down to FrameSync/Fence/Semaphore so that their
+		// CreateSyncObject calls do not touch RenderContext::Get()->GetDevice() — which is
+		// null when this constructor is reached from inside Device::Device().
+		const VkDevice vkDevice = device ? device->GetLogicalDevice() : VK_NULL_HANDLE;
+
+		m_RenderingCompleteSemaphore = CreateRef<FrameSync>(SyncType::Semaphore, vkDevice);
+		m_RenderingCompleteTimeline  = CreateRef<FrameSync>(SyncType::SemaphoreTimeline, vkDevice);
+		m_SubmitSync                 = CreateRef<FrameSync>(SyncType::Fence, vkDevice);
 
 		// TODO: Initialize Vulkan query pools for GPU timestamping and occlusion queries, setting up the necessary resources and filling them with initial data.
 

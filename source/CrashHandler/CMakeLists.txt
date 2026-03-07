@@ -67,6 +67,8 @@ TARGET_LINK_LIBRARIES(CrashHandler
         dxgi
         d3d12
         Shell32.lib
+		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
+
 )
 
 # --------------------------------

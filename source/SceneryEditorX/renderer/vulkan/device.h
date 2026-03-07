@@ -95,22 +95,16 @@ namespace SceneryEditorX
         [[nodiscard]] const VkPhysicalDeviceProperties& GetDeviceProperties() const { return m_PhysDeviceProp.properties; }
         [[nodiscard]] const VkPhysicalDeviceMemoryProperties2& GetDeviceMemoryProperties() const { return m_PhysDeviceMemProp; }
 
-        static uint32_t GetPhysicalDeviceCount();
-        static uintptr_t GetPhysicalDeviceHandle(const uint32_t index);
+		static uint32_t GetPhysicalDeviceCount();
+		static uintptr_t GetPhysicalDeviceHandle(const uint32_t index);
 
-        /**
-	     * @brief Get the global Device instance
-	     * @return a reference count (increments ref count)
-	     */
-        Ref<Device> Get() { return m_Device; }
-
-        /**
+		/**
 		 * @brief Get the Vulkan logical device handle associated with this Device instance
 		 * @return VkDevice handle of the logical device, or VK_NULL_HANDLE if not initialized
 		 */
 		[[nodiscard]] VkDevice GetLogicalDevice() const { return m_LogicalDevice; }
 
-        /**
+		/**
 		 * @brief Get the Vulkan physical device handle associated with this Device instance
 		 * @return VkPhysicalDevice handle of the physical device, or VK_NULL_HANDLE if not initialized
 		 */
@@ -165,14 +159,13 @@ namespace SceneryEditorX
         static bool IsDeviceLost()  { return m_DeviceLost; }
         static void SetDeviceLost() { m_DeviceLost = true; }
 
-    private:
-        std::string m_GPUName;
-        Ref<QueueManager> m_QueueManager;
-        MemoryAllocator m_MemAllocator;
-        QueueManager::QueueFamilyIndices m_FamilyIndices;
+	private:
+		std::string m_GPUName;
+		Ref<QueueManager> m_QueueManager;
+		MemoryAllocator m_MemAllocator;
+		QueueManager::QueueFamilyIndices m_FamilyIndices;
 
-        Ref<Device> m_Device;
-        VkDevice m_LogicalDevice = VK_NULL_HANDLE;
+		VkDevice m_LogicalDevice = VK_NULL_HANDLE;
         static VkPhysicalDevice m_PhysicalDevice;
         static uint32_t m_PhysicalDeviceIndex;
         static bool m_DeviceLost;

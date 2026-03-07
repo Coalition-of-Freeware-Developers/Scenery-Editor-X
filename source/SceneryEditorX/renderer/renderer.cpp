@@ -29,12 +29,15 @@
  * -------------------------------------------------------
  */
 #include "renderer.h"
+
+#include "SceneryEditorX/scene/scene.h"
 #include "slang/slang-com-ptr.h"
 #include "slang/slang.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
 #include "vulkan/asset/asset_manager.h"
 #include "vulkan/debug/graphics_debug.h"
+#include "vulkan/pipeline/pipeline.h"
 #include "vulkan/shader/shader_manager.h"
 #include <array>
 #include <SDL3/SDL.h>
@@ -113,6 +116,15 @@ namespace SceneryEditorX
     uint32_t Renderer::s_SwapchainImageIndex = 0;
     bool Renderer::s_FrameInProgress = false;
 
+    // Basic forward pipeline
+    VkPipeline        Renderer::s_BasicPipeline        = VK_NULL_HANDLE;
+    VkPipelineLayout  Renderer::s_BasicPipelineLayout  = VK_NULL_HANDLE;
+    Scope<ShaderManager> Renderer::s_BasicShaderManager = nullptr;
+    std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> Renderer::s_BasicShaderDataBuffers     = {};
+    std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> Renderer::s_BasicShaderDataAllocations = {};
+    std::array<void*,           MAX_FRAMES_IN_FLIGHT> Renderer::s_BasicShaderDataMapped      = {};
+    std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> Renderer::s_BasicShaderDataAddresses   = {};
+
     // Resolution & viewport (internal state)
     static xMath::Vec2 s_RendererResolution(0.0f, 0.0f);
     static xMath::Vec2 s_OutputResolution(0.0f, 0.0f);
@@ -125,7 +137,8 @@ namespace SceneryEditorX
     static float s_FarPlane  = 1.0f;
 	static bool s_DirtyOrthographicProjection   = true;
 	const uint8_t SWAPCHAIN_BUFFER_COUNT = 2;
-    const uint32_t RESOLUTION_SHADOW_MIN = 128;
+	const uint32_t RESOLUTION_SHADOW_MIN = 128;
+	constexpr uint32_t renderer_resource_frame_lifetime = MAX_FRAMES_IN_FLIGHT;
 
     static std::vector<Ref<Fence>> s_FenceRefs;
     static std::vector<VkFence> s_FenceHandles;
@@ -288,7 +301,35 @@ namespace SceneryEditorX
 
         // Wait for all GPU work to complete
         device->GetQueueManager()->WaitIdleAll();
-        
+
+        // Destroy basic forward pipeline resources
+        {
+            VkDevice dev = device->GetLogicalDevice();
+            if (s_BasicPipeline != VK_NULL_HANDLE)
+            {
+                vkDestroyPipeline(dev, s_BasicPipeline, nullptr);
+                s_BasicPipeline = VK_NULL_HANDLE;
+            }
+            if (s_BasicPipelineLayout != VK_NULL_HANDLE)
+            {
+                vkDestroyPipelineLayout(dev, s_BasicPipelineLayout, nullptr);
+                s_BasicPipelineLayout = VK_NULL_HANDLE;
+            }
+            s_BasicShaderManager.reset();
+
+            VmaAllocator vma = device->GetMemoryAllocator().GetAllocator();
+            for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+            {
+                if (s_BasicShaderDataAllocations[i] != VK_NULL_HANDLE)
+                {
+                    vmaDestroyBuffer(vma, s_BasicShaderDataBuffers[i], s_BasicShaderDataAllocations[i]);
+                    s_BasicShaderDataBuffers[i]     = VK_NULL_HANDLE;
+                    s_BasicShaderDataAllocations[i] = VK_NULL_HANDLE;
+                    s_BasicShaderDataMapped[i]      = nullptr;
+                    s_BasicShaderDataAddresses[i]   = 0;
+                }
+            }
+        }
 
         // Destroy frame resources
         DestroyFrameResources();
@@ -348,30 +389,167 @@ namespace SceneryEditorX
 
         if (can_render)
         {
-        }
+			bool isLoading = false;
 
-        // rotate per-frame buffers to avoid cpu-gpu races
-        //RotateFrameBuffers();
+            UpdateDrawCalls(m_CmdList_Present);
 
-        /*UpdateDrawCalls(m_CmdList_Present);
-
-        // periodic resource cleanup
-        {
-            m_ResourceIndex++;
-            bool isSyncPoint = m_ResourceIndex == static_cast<uint32_t>(100);
-            if (isSyncPoint)
+            // periodic resource cleanup
             {
-                m_ResourceIndex = 0;
-
-                if (QueueManager::NeedToParseDeletionQueue())
+                m_ResourceIndex++;
+                if (bool isSyncPoint = m_ResourceIndex == renderer_resource_frame_lifetime)
                 {
-                    QueueManager::WaitIdleAll();
-                    QueueManager::ParseDeletionQueue();
+                    m_ResourceIndex = 0;
+
+                    if (QueueManager::NeedToParseDeletionQueue())
+                    {
+                        QueueManager::WaitIdleAll();
+                        QueueManager::ParseDeletionQueue();
+                    }
+
+                    // TODO: GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset(); // ResetOffset not yet implemented on Buffer
+                }
+            }
+
+			/*
+            // bindless resource updates
+            if (!isLoading)
+            {
+                bool initialize = GetFrameNumber() == 0;
+
+                // lights
+                if (initialize || Scene::HaveLightsChangedThisFrame())
+                {
+                    UpdateShadowAtlas();
+                    UpdateLights(m_CmdList_Present);
+                    RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
                 }
 
-                GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
-            }
-        }*/
+                // materials
+                if (initialize || Scene::HaveMaterialsChangedThisFrame())
+                {
+                    UpdateMaterials(m_CmdList_Present);
+                    RHI_Device::UpdateBindlessMaterials(&m_Bindless_Textures, GetBuffer(Renderer_Buffer::MaterialParameters));
+                }
+
+                // samplers
+                if (m_BindlessSamplers_Dirty)
+                {
+                    RHI_Device::UpdateBindlessSamplers(&Renderer::GetSamplers());
+                    m_BindlessSamplers_Dirty = false;
+                }
+
+                // aabbs (always, they change with entity transforms)
+                {
+                    UpdateBoundingBoxes(m_CmdList_Present);
+
+                    static bool aabbs_descriptor_set = false;
+                    if (!aabbs_descriptor_set)
+                    {
+                        RHI_Device::UpdateBindlessAABBs(GetBuffer(Renderer_Buffer::AABBs));
+                        aabbs_descriptor_set = true;
+                    }
+                }
+
+                // draw data
+                {
+                    if (m_DrawDataCount > 0)
+                    {
+                        Buffer *buffer = GetBuffer(Renderer_Buffer::DrawData);
+                        uint32_t frame_byte_offset = m_frame_resource_index * renderer_max_draw_calls *
+                                                     static_cast<uint32_t>(sizeof(Sb_DrawData));
+                        uint32_t upload_size = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_DrawDataCount;
+                        m_CmdList_Present->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
+                    }
+
+                    // the descriptor points to a single large buffer that holds all frames' draw data
+                    // at different offsets, so it only needs to be set once; this eliminates the race
+                    // where vkUpdateDescriptorSets (host-side, instantly visible under UPDATE_AFTER_BIND)
+                    // would change the buffer pointer while the previous frame's phase 3 transparent pass
+                    // was still reading from it on the gpu
+                    static bool draw_data_descriptor_set = false;
+                    if (!draw_data_descriptor_set)
+                    {
+                        RHI_Device::UpdateBindlessDrawData(GetBuffer(Renderer_Buffer::DrawData));
+                        draw_data_descriptor_set = true;
+                    }
+                }
+
+                // geometry buffers (vertex pulling via bindless structured buffers)
+                {
+                    static Buffer *last_vertex_buffer = nullptr;
+                    Buffer *current_vertex = GeometryBuffer::GetVertexBuffer();
+                    if (current_vertex && current_vertex != last_vertex_buffer)
+                    {
+                        RHI_Device::UpdateBindlessGeometryVertices(current_vertex);
+                        last_vertex_buffer = current_vertex;
+                    }
+
+                    static Buffer *last_index_buffer = nullptr;
+                    Buffer *current_index = GeometryBuffer::GetIndexBuffer();
+                    if (current_index && current_index != last_index_buffer)
+                    {
+                        RHI_Device::UpdateBindlessGeometryIndices(current_index);
+                        last_index_buffer = current_index;
+                    }
+                }
+
+                // dummy instance buffer (vertex pulling identity instances)
+                {
+                    static bool instances_descriptor_set = false;
+                    if (!instances_descriptor_set)
+                    {
+                        Device::UpdateBindlessInstances(GetBuffer(Renderer_Buffer::DummyInstance));
+                        instances_descriptor_set = true;
+                    }
+                }
+
+                // indirect draw buffers
+                if (m_indirect_draw_count > 0)
+                {
+                    Buffer *args_buffer = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
+                    args_buffer->ResetOffset();
+                    args_buffer->Update(m_CmdList_Present, &m_indirect_draw_args[0],
+                                        args_buffer->GetStride() * m_indirect_draw_count);
+
+                    Buffer *data_buffer = GetBuffer(Renderer_Buffer::IndirectDrawData);
+                    data_buffer->ResetOffset();
+                    data_buffer->Update(m_CmdList_Present, &m_indirect_draw_data[0],
+                                        data_buffer->GetStride() * m_indirect_draw_count);
+
+                    // reset count, the cull shader atomically increments it
+                    uint32_t zero = 0;
+                    Buffer *count_buffer = GetBuffer(Renderer_Buffer::IndirectDrawCount);
+                    count_buffer->ResetOffset();
+                    count_buffer->Update(m_CmdList_Present, &zero, sizeof(uint32_t));
+                }
+            }*/
+        }
+
+		/*
+		UpdateFrameConstantBuffer(m_CmdList_Present);
+		UpdatePersistentLines();
+		AddLinesToBeRendered();
+		
+		if (can_render)
+		{
+		    BlitToBackBuffer(m_CmdList_Present, GetRenderTarget(Renderer_RenderTarget::frame_output));
+		}
+
+        SubmitAndPresent();
+
+		m_lines_vertices.clear();
+		m_icons.clear();
+
+		// only count frames that actually rendered
+		if (can_render)
+		{
+		    s_FrameNumber++;
+		    if (s_FrameNumber == 1)
+		    {
+		        Event(EventType::AppTick);
+		    }
+		}
+		*/
     }   
 
 #pragma endregion
@@ -812,6 +990,10 @@ namespace SceneryEditorX
 
     void Renderer::DrawFrame(CommandList *cmdList, CommandList *computeCmdList)
     {
+        /* 
+         * TODO: This method is currently not used, but will be the main entry point for recording 
+         * draw calls once the renderer is fully modularized and other systems are integrated to call it.
+         */
         SEDX_CORE_TRACE_TAG("Renderer", "DrawFrame called for frame {}", s_FrameNumber);
         // This method will be called by modules to record their draw commands
         // For now, placeholder implementation
@@ -826,6 +1008,13 @@ namespace SceneryEditorX
         // Record render commands
         RecordRenderCommands(cb, s_SwapchainImageIndex);
         SEDX_CORE_TRACE_TAG("Renderer", "Draw commands recorded for frame {}", s_FrameNumber);
+    }
+
+    void Renderer::BlitToBackBuffer(CommandList* cmdList, ImageResource* texture)
+    {
+        // TODO: Implement blit-to-swapchain once Swapchain exposes an ImageResource interface
+        (void)cmdList;
+        (void)texture;
     }
 
 #pragma endregion
@@ -870,6 +1059,7 @@ namespace SceneryEditorX
 
         if (BeginFrame())
         {
+            Tick();
             EndFrame();
             SubmitAndPresent();
         }
@@ -1092,8 +1282,153 @@ namespace SceneryEditorX
         Slang::ComPtr<ISlangBlob> spirv;
         slangModule->getTargetCode(0, spirv.writeRef());
 
-        // Create ShaderManager owning shader modules for the pipeline stages.
-        ShaderManager shaderManager(spirv->getBufferPointer(), spirv->getBufferSize());
+        // Persist shader modules as a static member so they outlive this function.
+        s_BasicShaderManager = CreateScope<ShaderManager>(spirv->getBufferPointer(), spirv->getBufferSize());
+        if (!s_BasicShaderManager || !s_BasicShaderManager->IsCompiled())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Shader compilation produced no modules");
+            return;
+        }
+
+        if (!s_AssetManager || s_AssetManager->Count() == 0)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "No assets loaded; pipeline creation deferred");
+            return;
+        }
+
+        const Asset& asset = s_AssetManager->GetAsset(0);
+        VkDevice dev = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+
+        // The Slang shader uses `uniform ShaderData *shaderData` (pointer), which Slang
+        // compiles to a push-constant block holding an 8-byte buffer device address.
+        VkPushConstantRange pushConst{};
+        pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        pushConst.offset     = 0;
+        pushConst.size       = sizeof(VkDeviceAddress);
+
+        // Set 0 = texture sampler array (populated by Asset)
+        VkDescriptorSetLayout textureLayout = asset.GetDescriptorLayout();
+        VkPipelineLayoutCreateInfo layoutCI{};
+        layoutCI.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        layoutCI.setLayoutCount         = 1;
+        layoutCI.pSetLayouts            = &textureLayout;
+        layoutCI.pushConstantRangeCount = 1;
+        layoutCI.pPushConstantRanges    = &pushConst;
+
+        SEDX_VK_RESULT_ASSERT(vkCreatePipelineLayout(dev, &layoutCI, nullptr, &s_BasicPipelineLayout),
+                              "Failed to create basic pipeline layout");
+
+        Pipeline::GraphicsCreateInfo pipeCI{};
+        pipeCI.device           = dev;
+        pipeCI.layout           = s_BasicPipelineLayout;
+        pipeCI.shaderManager    = s_BasicShaderManager.get();
+        pipeCI.vertexBinding    = Asset::GetVertexBindingDescription();
+        pipeCI.vertexAttributes = Asset::GetVertexAttributeDescriptions();
+        pipeCI.colorFormat      = s_Swapchain->GetImageFormat();
+        pipeCI.depthFormat      = s_Swapchain->GetDepthFormat();
+
+        s_BasicPipeline = Pipeline::CreateGraphics(pipeCI);
+        if (s_BasicPipeline == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Pipeline::CreateGraphics failed");
+            return;
+        }
+        SEDX_CORE_INFO_TAG("Renderer", "Basic graphics pipeline created successfully");
+
+        // Per-frame shader-data buffers (device-addressable, host-visible, mapped).
+        // Layout must match the Slang shader's ShaderData struct exactly.
+        struct BasicShaderData
+        {
+            Mat4 projection;
+            Mat4 view;
+            Mat4 model[3];
+            Vec4 lightPos;
+            uint32_t  selected;
+            uint32_t  _pad[3];
+        };
+
+        VmaAllocator vma = RenderContext::Get()->GetDevice()->GetMemoryAllocator().GetAllocator();
+        const float aspect = static_cast<float>(s_Swapchain->GetExtent().width) /
+                             static_cast<float>(s_Swapchain->GetExtent().height);
+
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            VkBufferCreateInfo uboCI{};
+            uboCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            uboCI.size  = sizeof(BasicShaderData);
+            uboCI.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
+            VmaAllocationCreateInfo allocCI{};
+            allocCI.usage = VMA_MEMORY_USAGE_AUTO;
+            allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                            VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+            VmaAllocationInfo allocInfo{};
+            if (vmaCreateBuffer(vma, &uboCI, &allocCI,
+                                &s_BasicShaderDataBuffers[i],
+                                &s_BasicShaderDataAllocations[i],
+                                &allocInfo) != VK_SUCCESS)
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "Failed to create shader-data buffer {}", i);
+                continue;
+            }
+            s_BasicShaderDataMapped[i] = allocInfo.pMappedData;
+
+            VkBufferDeviceAddressInfo bdaInfo{};
+            bdaInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+            bdaInfo.buffer = s_BasicShaderDataBuffers[i];
+            s_BasicShaderDataAddresses[i] = vkGetBufferDeviceAddress(dev, &bdaInfo);
+
+            // Initial transforms: three Suzanne instances spread on the X axis.
+            // Matrices built manually to avoid depending on GLM's compiled helper library.
+            BasicShaderData sd{};
+
+            // Perspective matrix (column-major, right-handed, Vulkan ZO, Y flipped)
+            {
+                constexpr float pi      = 3.14159265358979323846f;
+                const float     tanHalf = std::tan((pi / 4.0f) * 0.5f); // tan(45°/2)
+                const float     invTan  = 1.0f / tanHalf;
+                const float     zNear   = 0.1f;
+                const float     zFar    = 100.0f;
+                Mat4& p            = sd.projection;
+                p                       = Mat4(0.0f);
+                p[0][0]                 =  invTan / aspect;
+                p[1][1]                 = -invTan;          // Vulkan: Y points down
+                p[2][2]                 =  zFar / (zNear - zFar);
+                p[2][3]                 = -1.0f;
+                p[3][2]                 = -(zFar * zNear) / (zFar - zNear);
+            }
+
+            // LookAt matrix (eye at (0,0,-5), centre (0,0,0), up (0,1,0))
+            {
+                const Vec3 eye    = { 0.0f,  0.0f, -5.0f };
+                const Vec3 center = { 0.0f,  0.0f,  0.0f };
+                const Vec3 up     = { 0.0f,  1.0f,  0.0f };
+                const Vec3 fwd    = xMath::Normalize(center - eye);
+                const Vec3 right  = xMath::Normalize(xMath::Cross(fwd, up));
+                const Vec3 newUp  = xMath::Cross(right, fwd);
+                Mat4& v           = sd.view;
+                v                      = Mat4(1.0f);
+                v[0][0] =  right.x;  v[1][0] =  right.y;  v[2][0] =  right.z;
+                v[0][1] =  newUp.x;  v[1][1] =  newUp.y;  v[2][1] =  newUp.z;
+                v[0][2] = -fwd.x;    v[1][2] = -fwd.y;    v[2][2] = -fwd.z;
+                v[3][0] = -xMath::Dot(right, eye);
+                v[3][1] = -xMath::Dot(newUp, eye);
+                v[3][2] =  xMath::Dot(fwd,   eye);
+            }
+
+            // Identity for model[0], translations for model[1] and model[2]
+            sd.model[0]      = Mat4(1.0f);
+            sd.model[1]      = Mat4(1.0f); sd.model[1][3] = Vec4(-3.0f, 0.0f, 0.0f, 1.0f);
+            sd.model[2]      = Mat4(1.0f); sd.model[2][3] = Vec4( 3.0f, 0.0f, 0.0f, 1.0f);
+            sd.lightPos      = Vec4(0.0f, 5.0f, 5.0f, 1.0f);
+            sd.selected      = 0;
+
+            if (s_BasicShaderDataMapped[i])
+            {
+                std::memcpy(s_BasicShaderDataMapped[i], &sd, sizeof(sd));
+            }
+        }
     }
 
 #pragma endregion
@@ -1104,41 +1439,6 @@ namespace SceneryEditorX
     }
 
 #pragma region Private Rendering Methods
-
-    void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
-    {
-        SEDX_CORE_TRACE_TAG("Renderer", "Creating render targets (createRender: {}, createOutput: {}, createDynamic: {})",
-                            createRender, createOutput, createDynamic);
-
-        uint32_t renderWidth	= static_cast<uint32_t>(GetRendererResolution().x);
-        uint32_t renderHeight	= static_cast<uint32_t>(GetRendererResolution().y);
-        uint32_t outputWidth	= static_cast<uint32_t>(GetOutputResolution().x);
-        uint32_t outputHeight	= static_cast<uint32_t>(GetOutputResolution().y);
-
-        auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t smallestDimension) {
-            uint32_t maxDimension = std::max(width, height);
-            uint32_t mipCount = 1;
-
-            while (maxDimension >= smallestDimension)
-            {
-                maxDimension /= 2;
-                mipCount++;
-            }
-            return mipCount;
-        };
-
-        #define RENDER_TARGET(x) render_targets[static_cast<uint8_t>(x)]
-
-        if (createRender)
-        {
-            // TODO: Create render targets
-        }
-
-        if (createOutput)
-        {
-            // TODO: Create output targets
-        }
-    }
 
     void Renderer::RecordRenderCommands(VkCommandBuffer cb, uint32_t imageIndex)
     {
@@ -1255,13 +1555,418 @@ namespace SceneryEditorX
         vkCmdSetScissor(cb, 0, 1, &scissor);
         SEDX_CORE_TRACE_TAG("Renderer", "Scissor set to {}x{}", scissor.extent.width, scissor.extent.height);
 
-        // TODO: Bind pipeline and draw renderables
-        // This is where module-specific draw commands would be recorded
+        // Bind the basic pipeline and draw every loaded asset
+        // Per-frame shader-data update: rewrite model matrices with a Y-axis rotation
+        // driven by the frame counter. This fixes the static view bug by refreshing
+        // the buffer each frame and produces visible animation to confirm the update path works.
+        if (s_BasicShaderDataMapped[s_CurrentFrameIndex])
+        {
+            struct BasicShaderData
+            {
+                Mat4     projection;
+                Mat4     view;
+                Mat4     model[3];
+                Vec4     lightPos;
+                uint32_t selected;
+                uint32_t _pad[3];
+            };
+
+            auto* pSd = static_cast<BasicShaderData*>(s_BasicShaderDataMapped[s_CurrentFrameIndex]);
+
+            // Y-axis rotation (column-major [col][row]):
+            //   | cosA   0   sinA  0 |
+            //   |    0   1      0  0 |
+            //   | -sinA  0   cosA  0 |
+            //   |    0   0      0  1 |
+            const float angle = static_cast<float>(s_FrameNumber) * 0.005f;
+            const float cosA  = std::cos(angle);
+            const float sinA  = std::sin(angle);
+            Mat4 rot(1.0f);
+            rot[0][0] =  cosA;  rot[2][0] = sinA;
+            rot[0][2] = -sinA;  rot[2][2] = cosA;
+
+            pSd->model[0] = rot;
+
+            Mat4 t1(1.0f); t1[3] = Vec4(-3.0f, 0.0f, 0.0f, 1.0f);
+            pSd->model[1] = t1 * rot;
+
+            Mat4 t2(1.0f); t2[3] = Vec4( 3.0f, 0.0f, 0.0f, 1.0f);
+            pSd->model[2] = t2 * rot;
+        }
+
+        if (s_BasicPipeline != VK_NULL_HANDLE && s_AssetManager   && s_AssetManager->Count() > 0 &&
+            s_BasicShaderDataAddresses[s_CurrentFrameIndex] != 0)
+        {
+            const Asset& asset = s_AssetManager->GetAsset(0);
+
+            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_BasicPipeline);
+
+            VkDescriptorSet descSet = asset.GetDescriptorSet();
+            vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    s_BasicPipelineLayout,
+                                    0, 1, &descSet,
+                                    0, nullptr);
+
+            // Push the device address of this frame's shader-data buffer.
+            VkDeviceAddress addr = s_BasicShaderDataAddresses[s_CurrentFrameIndex];
+            vkCmdPushConstants(cb, s_BasicPipelineLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT,
+                               0, sizeof(VkDeviceAddress), &addr);
+
+            // The Model packs vertices then indices into a single VkBuffer.
+            VkBuffer     vertBuf    = asset.GetModelBuffer();
+            VkDeviceSize vertOffset = 0;
+            vkCmdBindVertexBuffers(cb, 0, 1, &vertBuf, &vertOffset);
+            vkCmdBindIndexBuffer(cb, vertBuf, asset.GetModelVertexSize(), VK_INDEX_TYPE_UINT16);
+
+            // Draw 3 instances (one per model[0..2] in the shader's ShaderData).
+            vkCmdDrawIndexed(cb, asset.GetModelIndexCount(), 3, 0, 0, 0);
+        }
 
         vkCmdEndRendering(cb);
         SEDX_CORE_TRACE_TAG("Renderer", "Dynamic rendering ended");
 
     }
+
+    void Renderer::SetCommonTextures(CommandList* cmdList)
+    {
+        // gbuffer
+        cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+        cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+        cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+        cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
+        cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+
+        // ssao (white = no occlusion when disabled)
+        ImageResource* texSsao = GetRenderTarget(Renderer_RenderTarget::ssao);
+        cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
+    }
+
+    void Renderer::UpdateDrawCalls(CommandList* cmdList)
+    {
+        // TODO: Implement draw call collection and sorting when the scene and material systems are integrated
+        (void)cmdList;
+    }
+
+    /*
+    void Renderer::UpdateFrameConstantBuffer(CommandList* cmdList)
+    {
+        // matrices
+        {
+            if (Camera* camera = Scene::GetCamera())
+            {
+                if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
+                {
+                    near_plane                    = camera->GetNearPlane();
+                    far_plane                     = camera->GetFarPlane();
+                    dirty_orthographic_projection = true;
+                }
+
+                m_cb_frame_cpu.view_previous       = m_cb_frame_cpu.view;
+                m_cb_frame_cpu.view                = camera->GetViewMatrix();
+                m_cb_frame_cpu.view_inv            = Matrix::Invert(m_cb_frame_cpu.view);
+                m_cb_frame_cpu.projection_previous = m_cb_frame_cpu.projection;
+                m_cb_frame_cpu.projection          = camera->GetProjectionMatrix();
+                m_cb_frame_cpu.projection_inv      = Matrix::Invert(m_cb_frame_cpu.projection);
+            }
+
+            if (dirty_orthographic_projection)
+            { 
+                // near = 0 for ortho (avoids NaN in [3,2] element)
+                Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
+                m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
+                dirty_orthographic_projection        = false;
+            }
+        }
+
+        // taa jitter
+        Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+        {
+            if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+            {
+                RHI_VendorTechnology::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
+            }
+            else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+            {
+                RHI_VendorTechnology::XeSS_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
+            }
+            else
+            {
+                jitter_offset = Vector2::Zero;
+            }
+        }
+
+        m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
+        m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+        m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
+        if (Camera* camera = Scene::GetCamera())
+        {
+            m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
+            m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
+            m_cb_frame_cpu.camera_near                         = camera->GetNearPlane();
+            m_cb_frame_cpu.camera_far                          = camera->GetFarPlane();
+            m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
+            m_cb_frame_cpu.camera_position                     = camera->GetEntity()->GetPosition();
+            m_cb_frame_cpu.camera_forward                      = camera->GetEntity()->GetForward();
+            m_cb_frame_cpu.camera_right                        = camera->GetEntity()->GetRight();
+            m_cb_frame_cpu.camera_fov                          = camera->GetFovHorizontalRad();
+            m_cb_frame_cpu.camera_aperture                     = camera->GetAperture();
+            m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
+                ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
+        }
+        m_cb_frame_cpu.resolution_output   = m_resolution_output;
+        m_cb_frame_cpu.resolution_render   = m_resolution_render;
+        m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
+        m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
+        m_cb_frame_cpu.time                = Timer::GetTimeSec();
+        m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
+        m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
+        m_cb_frame_cpu.resolution_scale    = cvar_resolution_scale.GetValue();
+        m_cb_frame_cpu.hdr_enabled         = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
+        m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
+        m_cb_frame_cpu.gamma               = cvar_gamma.GetValue();
+        m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+
+        m_cb_frame_cpu.cloud_coverage = cvar_cloud_coverage.GetValue();
+        m_cb_frame_cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
+        // feature bits (must match common_resources.hlsl)
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
+        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>(),     1 << 2);
+        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),              1 << 3);
+
+        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmdList, &m_cb_frame_cpu);
+    }
+    */
+
+    /*
+    uint32_t Renderer::WriteDrawData(const xMath::Matrix& transform, const xMath::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent)
+    {
+        SEDX_CORE_ASSERT(m_DrawDataCount < renderer_max_draw_calls);
+        uint32_t index = m_DrawDataCount++;
+
+        Sb_DrawData& entry       = m_draw_data_cpu[index];
+        entry.transform          = transform;
+        entry.transform_previous = transform_previous;
+        entry.material_index     = material_index;
+        entry.is_transparent     = is_transparent;
+        entry.aabb_index         = 0;
+        entry.padding            = 0;
+
+        // the draw data buffer is a single large allocation partitioned into per-frame regions;
+        // each frame writes to its own region so there is no write-after-read race with the gpu
+        uint32_t global_index = m_frame_resource_index * renderer_max_draw_calls + index;
+
+        Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
+        if (void* mapped = buffer->GetMappedData())
+        {
+            void* dst = static_cast<char*>(mapped) + global_index * sizeof(Sb_DrawData);
+            memcpy(dst, &entry, sizeof(Sb_DrawData));
+        }
+
+        return global_index;
+    }
+    */
+
+    /*
+    void Renderer::UpdateDrawCalls(CommandList* cmdList)
+    {
+        m_draw_call_count          = 0;
+        m_draw_calls_prepass_count = 0;
+        m_DrawDataCount          = 0;
+        m_transparents_present     = false;
+        /*if (ProgressTracker::IsLoading())
+            return;#1#
+
+        // collect draw calls
+        {
+            for (Entity* entity : Scene::GetEntities())
+            {
+                if (!entity->GetActive())
+                    continue;
+
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                {
+                    Material* material = renderable->GetMaterial();
+                    if (!material)
+                        continue;
+
+                    if (material->IsTransparent())
+                    {
+                        m_transparents_present = true;
+                    }
+
+                    uint32_t draw_data_index = WriteDrawData(
+                        entity->GetMatrix(),
+                        entity->GetMatrixPrevious(),
+                        material->GetIndex(),
+                        material->IsTransparent() ? 1 : 0
+                    );
+
+                    Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
+                    draw_call.renderable         = renderable;
+                    draw_call.distance_squared   = renderable->GetDistanceSquared();
+                    draw_call.lod_index          = renderable->GetLodIndex();
+                    draw_call.is_occluder        = false;
+                    draw_call.camera_visible     = renderable->IsVisible();
+                    draw_call.instance_index     = 0;
+                    draw_call.instance_count     = renderable->GetInstanceCount();
+                    draw_call.draw_data_index    = draw_data_index;
+                }
+            }
+
+            // sort: opaque before transparent, then material, then distance
+            sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+            {
+                bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+                bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+                if (a_transparent != b_transparent)
+                {
+                    return !a_transparent;
+                }
+
+                uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
+                uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
+                if (a_material_id != b_material_id)
+                {
+                    return a_material_id < b_material_id;
+                }
+
+                if (!a_transparent)
+                {
+                    return a.distance_squared < b.distance_squared;
+                }
+                else
+                {
+                    return a.distance_squared > b.distance_squared;
+                }
+            });
+        }
+
+        // prepass: visible opaques, sorted by alpha test then distance
+        {
+            for (uint32_t i = 0; i < m_draw_call_count; ++i)
+            {
+                const Renderer_DrawCall& dc = m_draw_calls[i];
+                if (!dc.renderable->GetMaterial()->IsTransparent() && dc.camera_visible)
+                {
+                    m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
+                }
+            }
+
+            sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+            {
+                bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
+                bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+                if (a_alpha != b_alpha)
+                {
+                    return !a_alpha;
+                }
+                return a.distance_squared < b.distance_squared;
+            });
+        }
+
+        // indirect draw buffers (gpu-driven path)
+        {
+            m_indirect_draw_count = 0;
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& dc = m_draw_calls[i];
+                Renderable* renderable      = dc.renderable;
+                Material* material          = renderable->GetMaterial();
+
+                if (!material || material->IsTransparent())
+                    continue;
+                if (IsCpuDrivenDraw(dc, material))
+                    continue;
+
+                uint32_t idx = m_indirect_draw_count++;
+                if (idx >= MAX_ARRAY_SIZE)
+                    break;
+
+                Sb_IndirectDrawArgs& args = m_indirect_draw_args[idx];
+                args.index_count          = renderable->GetIndexCount(dc.lod_index);
+                args.instance_count       = dc.instance_count;
+                args.first_index          = renderable->GetIndexOffset(dc.lod_index);
+                args.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(dc.lod_index));
+                args.first_instance       = dc.instance_index;
+
+                // per-draw data (aabb_index includes the frame offset into the shared aabb buffer)
+                uint32_t aabb_frame_offset = m_frame_resource_index * MAX_ARRAY_SIZE;
+                Sb_DrawData& data       = m_indirect_draw_data[idx];
+                Entity* entity          = renderable->GetEntity();
+                data.transform          = entity->GetMatrix();
+                data.transform_previous = entity->GetMatrixPrevious();
+                data.material_index     = material->GetIndex();
+                data.is_transparent     = 0;
+                data.aabb_index         = aabb_frame_offset + m_draw_calls_prepass_count + idx;
+                data.padding            = 0;
+            }
+        }
+
+        // select occluders (top N by screen area, with temporal hysteresis)
+        {
+            static std::unordered_set<Renderable*> previous_occluders;
+
+            auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
+            {
+                float area = 0.0f;
+                if (Camera* camera = Scene::GetCamera())
+                {
+                    xMath::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
+                    area = xMath::Clamp(rect_screen.width * rect_screen.height, 0.0f, std::numeric_limits<float>::max());
+                }
+                return area;
+            };
+
+            struct DrawCallArea
+            {
+                uint32_t index;
+                float area;
+            };
+            static std::vector<DrawCallArea> areas;
+            areas.clear();
+            areas.reserve(m_draw_calls_prepass_count);
+
+            for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
+            {
+                Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
+                Renderable* renderable = draw_call.renderable;
+                Material* material = renderable->GetMaterial();
+
+                if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
+                    continue;
+
+                float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
+
+                // temporal hysteresis: bonus for previous occluders
+                if (previous_occluders.find(renderable) != previous_occluders.end())
+                {
+                    screen_area *= 1.5f;
+                }
+
+                areas.push_back({ i, screen_area });
+            }
+
+            std::ranges::sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
+            {
+                return a.area > b.area;
+            });
+
+            const uint32_t max_occluders = 64;
+            uint32_t occluder_count = xMath::Min(max_occluders, static_cast<uint32_t>(areas.size()));
+
+            previous_occluders.clear();
+            for (uint32_t i = 0; i < occluder_count; i++)
+            {
+                m_draw_calls_prepass[areas[i].index].is_occluder = true;
+                previous_occluders.insert(m_draw_calls_prepass[areas[i].index].renderable);
+            }
+        }
+    }
+    */
 
 #pragma endregion
 

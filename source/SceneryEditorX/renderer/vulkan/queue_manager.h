@@ -223,8 +223,9 @@ namespace SceneryEditorX
         CommandList *NextCommandList();
 
     private:
-	    Ref<Device> m_Device = nullptr;
-	    QueueConfig m_Config;
+		Ref<Device> m_Device = nullptr;
+		QueueConfig m_Config;
+		CommandPool m_CmdPool;  // Declared before m_CmdLists so the pool outlives the command lists during destruction.
 		std::array<Ref<CommandList>, 2> m_CmdLists = { nullptr };
 	    QueueFamilyIndices m_FamilyIndices;
 	    std::atomic<uint32_t> m_Index = 0;

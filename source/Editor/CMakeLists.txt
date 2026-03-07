@@ -122,7 +122,7 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
         GPUOpen::VulkanMemoryAllocator
         CURL::libcurl
         Vulkan::Vulkan
-		TracyClient
+		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 		ktx
 		imgui
 		libconfig

@@ -32,6 +32,7 @@
 #include "device.h"
 #include "render_context.h"
 #include <algorithm>
+#include <string>
 
 // -------------------------------------------------------
 
@@ -43,6 +44,8 @@ namespace SceneryEditorX
 		VmaAllocation allocation = VK_NULL_HANDLE;
 	};
 	
+#pragma region Static Members
+
     static constexpr uint32_t kQueueTypeSlots = static_cast<uint32_t>(QueueType::Present) + 1;
 	static std::array<Ref<Queue>, kQueueTypeSlots> s_Regular; // indexed by QueueType value
     static std::mutex s_MutexAllocation;    // Mutex for thread-safe resource allocation
@@ -147,6 +150,8 @@ namespace SceneryEditorX
             return "Invalid";
         }
     }
+
+#pragma endregion
 
 	// ---------------------------------------------------------
 	
@@ -297,18 +302,45 @@ namespace SceneryEditorX
 	        SEDX_CORE_ASSERT(m_GPUQueues[i], "Failed to create Queue of type {}", QueueToString(static_cast<QueueType>(i)));
 	
 	
-	        SEDX_CORE_TRACE_TAG("QueueManager", "Created {} (family index: {})", queueName, QueueToString(static_cast<QueueType>(GetFamilyIndexByType(type))));
-	    }
-	
-	    SEDX_CORE_TRACE_TAG("QueueManager", " Queue Manager initialization complete");
+			SEDX_CORE_TRACE_TAG("QueueManager", "Created {} (family index: {})", queueName, QueueToString(static_cast<QueueType>(GetFamilyIndexByType(type))));
+		}
+
+		// Initialize the command pool for the graphics queue family
+		SEDX_CORE_ASSERT(m_FamilyIndices.graphics != (std::numeric_limits<uint32_t>::max)(),
+						 "Graphics queue family index is invalid; cannot create command pool");
+		m_CmdPool = CommandPool(m_Device, m_FamilyIndices.graphics, CommandPoolType::Resettable);
+		SEDX_CORE_TRACE_TAG("QueueManager", "Command pool created for graphics queue family {}", m_FamilyIndices.graphics);
+
+		// Populate m_CmdLists - this is what NextCommandList() cycles through
+		Ref<Queue>* graphicsQueue = GetQueue(QueueType::Graphics);
+		SEDX_CORE_ASSERT(graphicsQueue && *graphicsQueue, "Graphics queue must be valid before creating command lists");
+
+		for (size_t i = 0; i < m_CmdLists.size(); ++i)
+		{
+			const std::string name = "CmdList_" + std::to_string(i);
+			m_CmdLists[i] = CreateRef<CommandList>(graphicsQueue->Get(), m_CmdPool, name.c_str());
+			SEDX_CORE_ASSERT(m_CmdLists[i], "Failed to create CommandList at index {}", i);
+			SEDX_CORE_TRACE_TAG("QueueManager", "Created {}", name);
+		}
+
+		SEDX_CORE_TRACE_TAG("QueueManager", "Queue Manager initialization complete");
 	}
 	
 	QueueManager::~QueueManager()
 	{
-	    WaitIdleAll(); // Ensure all queues are idle before destruction
-	
-	    m_Device.Reset();
-	    m_Device = nullptr;
+		WaitIdleAll(); // Ensure all queues are idle before destruction
+
+		// Explicitly release command lists before destroying the pool and device.
+		// Member destruction order (reverse-declaration) also guarantees this, but
+		// being explicit here keeps the intent clear and avoids fragile ordering.
+		for (auto &cmdList : m_CmdLists)
+		{
+			cmdList.Reset();
+		}
+		m_CmdPool.Destroy();
+
+		m_Device.Reset();
+		m_Device = nullptr;
 	}
 	
 	void QueueManager::AllocateQueue(QueueType type, uint32_t preAllocCmdList, const char *name)
@@ -317,7 +349,7 @@ namespace SceneryEditorX
 	
 	    // Validate queue type
 	    const uint32_t typeIndex = static_cast<uint32_t>(type);
-     if (typeIndex >= m_GPUQueues.size())
+        if (typeIndex >= m_GPUQueues.size())
 	    {
 	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type requested: {}", QueueToString(static_cast<QueueType>(typeIndex)));
            return;
@@ -362,7 +394,7 @@ namespace SceneryEditorX
 	    const uint32_t typeIndex = static_cast<uint32_t>(type);
 	
 	    // Validate queue type
-     if (typeIndex >= m_GPUQueues.size())
+        if (typeIndex >= m_GPUQueues.size())
 	    {
 	        SEDX_CORE_ERROR_TAG("QueueManager", "Invalid queue type for free: {}", QueueToString(static_cast<QueueType>(typeIndex)));
 	        return;
@@ -548,7 +580,7 @@ namespace SceneryEditorX
 	    }
 	
 	    std::scoped_lock guard(s_MutexDeletionQueue);
-       s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation});
+        s_DeletionQueue[type].emplace_back(DeletionQueueEntry{resource, allocation});
 	    SEDX_CORE_TRACE_TAG("QueueManager", "Added resource of type {} to deletion queue", static_cast<uint32_t>(type));
 	}
 	
@@ -560,9 +592,9 @@ namespace SceneryEditorX
 	    for (auto &it : s_DeletionQueue)
 	    {
 	        ResourceType type = it.first;
-         for (const auto &entry : it.second)
+            for (const auto &entry : it.second)
 	        {
-               void *resource = entry.resource;
+                void *resource = entry.resource;
 	            switch (type)
 	            {
                 case ResourceType::Image: Buffer::FreeImageBuffer(static_cast<VkImage>(resource), entry.allocation);
@@ -676,6 +708,8 @@ namespace SceneryEditorX
     {
         m_Index = (m_Index + 1) % static_cast<uint32_t>(m_CmdLists.size());
         auto& cmdList = m_CmdLists[m_Index];
+
+        SEDX_CORE_ASSERT(cmdList, "CommandList at index {} is null, m_CmdLists was not initialized", m_Index.load());
 
         // submit any pending work (toggling between fullscreen and windowed mode can leave work)
         if (cmdList->GetState() == CommandState::Recording)

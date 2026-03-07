@@ -42,9 +42,9 @@
 
 namespace SceneryEditorX
 {
-class DescriptorSet;
-class ImageResource;
-struct Texture;
+	class DescriptorSet;
+	class ImageResource;
+	struct Texture;
 
     enum class CommandState : uint8_t
 	{

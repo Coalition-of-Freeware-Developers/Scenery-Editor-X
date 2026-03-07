@@ -78,7 +78,7 @@ namespace SceneryEditorX
         Pass_CloudNoise(graphicsPresent);
 
         // skysphere (re-render on light/coverage changes, converge over several frames)
-        bool cloudsVisible = 0.45f > 0.0f;
+        bool cloudsVisible = cvar_cloud_coverage.GetValue() > 0.0f;
         
         /*
         {
@@ -282,7 +282,7 @@ namespace SceneryEditorX
 
                 const uint32_t resolutionX = tex_skysphere->GetWidth() >> mip_level;
                 const uint32_t resolutionY = tex_skysphere->GetHeight() >> mip_level;
-                cmdList->Dispatch(tex_skysphere);
+                cmdList->Dispatch(resolutionX, resolutionY, 1);
                 cmdList->InsertBarrier(tex_skysphere, BarrierType::EnsureWriteThenRead);
             }
         }
@@ -627,7 +627,7 @@ namespace SceneryEditorX
                             draw_call.instance_count
                         );
 
-                        pso.clear_depth = depth_load;
+                        pso.clear_depth = rhi_depth_load;
                     }
                 }
             }
@@ -773,8 +773,8 @@ namespace SceneryEditorX
                     m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
                     cmdList->PushConstants(m_pcb_pass_cpu);
 
-                    cmdList->SetBufferVertex(renderable->GetVertexBuffer());
-                    cmdList->SetBufferIndex(renderable->GetIndexBuffer());
+                    cmdList->SetVertexBuffer(renderable->GetVertexBuffer(), nullptr);
+                    cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
 
                     cmdList->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),
@@ -843,7 +843,7 @@ namespace SceneryEditorX
 
             cmdList->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             cmdList->SetTexture(Renderer_BindingsUav::tex_sss, tex_sss);
-            static float array_slice_index = 0.0f;
+            float array_slice_index = 0.0f;
             for (Entity* entity : Scene::GetEntities())
             {
                 Light* light = entity->GetComponent<Light>();
@@ -1065,11 +1065,11 @@ namespace SceneryEditorX
 
     void Renderer::Pass_CloudShadow(CommandList* cmdList)
     {
-        ImageResource* tex_cloud_shadow = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
-        ImageResource* tex_cloud_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-        ImageResource* tex_cloud_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
+        ImageResource* texCloudShadow = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
+        ImageResource* texCloudShape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        ImageResource* texCloudDetail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
 
-        if (!tex_cloud_shadow || !tex_cloud_shape)
+        if (!texCloudShadow || !texCloudShape)
             return;
 
         {
@@ -1078,14 +1078,14 @@ namespace SceneryEditorX
             pso.shaders[static_cast<uint32_t>(Stage::Compute)] = GetShader(Renderer_Shader::cloud_shadow_c);
             cmdList->SetPipelineState(pso);
 
-            cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, tex_cloud_shape);
-            if (tex_cloud_detail)
-                cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_cloud_detail);
+            cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, texCloudShape);
+            if (texCloudDetail)
+                cmdList->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, texCloudDetail);
 
-            cmdList->SetTexture(Renderer_BindingsUav::tex, tex_cloud_shadow);
-            cmdList->Dispatch(tex_cloud_shadow);
+            cmdList->SetTexture(Renderer_BindingsUav::tex, texCloudShadow);
+            cmdList->Dispatch(texCloudShadow);
 
-            tex_cloud_shadow->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+            texCloudShadow->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
         }
     }
 
@@ -1098,8 +1098,8 @@ namespace SceneryEditorX
 
     void Renderer::Pass_ShadowMaps(CommandList* cmdList)
     {
-        ImageResource* tex_shadow_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
-        if (!tex_shadow_atlas)
+        ImageResource* texShadowAtlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
+        if (!texShadowAtlas)
             return;
 
         for (Entity* entity : Scene::GetEntities())
@@ -1113,13 +1113,13 @@ namespace SceneryEditorX
                 : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
 
             PipelineState pso;
-            pso.name                           = "shadow_map";
-            pso.shaders[static_cast<uint32_t>(Stage::Vertex)]   = GetShader(Renderer_Shader::depth_light_v);
+            pso.name = "shadow_map";
+            pso.shaders[static_cast<uint32_t>(Stage::Vertex)]    = GetShader(Renderer_Shader::depth_light_v);
             pso.shaders[static_cast<uint32_t>(Stage::Fragment)]  = GetShader(Renderer_Shader::depth_light_alpha_color_p);
             pso.rasterizer_state               = rs;
             pso.blend_state                    = GetBlendState(Renderer_BlendState::Off);
             pso.depth_stencil_state            = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-            pso.render_target_depth_texture    = tex_shadow_atlas;
+            pso.render_target_depth_texture    = texShadowAtlas;
             pso.clear_depth                    = 0.0f; // reverse-z: far = 0
 
             cmdList->SetPipelineState(pso);
@@ -1141,15 +1141,15 @@ namespace SceneryEditorX
                 cmdList->SetIndexBuffer(renderable->GetIndexBuffer());
                 cmdList->DrawIndexed(
                     renderable->GetIndexCount(draw_call.lod_index),
-                    draw_call.instance_count,
                     renderable->GetIndexOffset(draw_call.lod_index),
                     renderable->GetVertexOffset(draw_call.lod_index),
-                    draw_call.instance_index
+                    draw_call.instance_index,
+                    draw_call.instance_count
                 );
             }
         }
 
-        tex_shadow_atlas->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+        texShadowAtlas->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
     }
 
     // -------------------------------------------------------
@@ -1160,8 +1160,8 @@ namespace SceneryEditorX
 
     void Renderer::Pass_Light(CommandList* cmdList, const bool isTransparentPass)
     {
-        ImageResource* tex_diffuse  = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
-        ImageResource* tex_specular = GetRenderTarget(Renderer_RenderTarget::light_specular);
+        ImageResource* texDiffuse  = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        ImageResource* texSpecular = GetRenderTarget(Renderer_RenderTarget::light_specular);
 
         {
             PipelineState pso;
@@ -1179,20 +1179,20 @@ namespace SceneryEditorX
             cmdList->SetTexture(Renderer_BindingsSrv::tex,  GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
 
             // Screen-space ambient occlusion (optional)
-            if (ImageResource* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao))
-                cmdList->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao);
+            if (ImageResource* texSsao = GetRenderTarget(Renderer_RenderTarget::ssao))
+                cmdList->SetTexture(Renderer_BindingsSrv::ssao, texSsao);
 
             // Screen-space shadows
             cmdList->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::sss));
 
             // Outputs
-            cmdList->SetTexture(Renderer_BindingsUav::tex,  tex_diffuse);
-            cmdList->SetTexture(Renderer_BindingsUav::tex2, tex_specular);
+            cmdList->SetTexture(Renderer_BindingsUav::tex,  texDiffuse);
+            cmdList->SetTexture(Renderer_BindingsUav::tex2, texSpecular);
 
             m_pcb_pass_cpu.is_transparent = isTransparentPass ? 1u : 0u;
             cmdList->PushConstants(m_pcb_pass_cpu);
 
-            cmdList->Dispatch(tex_diffuse);
+            cmdList->Dispatch(texDiffuse);
         }
     }
 
@@ -1203,9 +1203,9 @@ namespace SceneryEditorX
 
     void Renderer::Pass_Light_Composition(CommandList* cmdList, const bool isTransparentPass)
     {
-        ImageResource* tex_frame_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        ImageResource* tex_diffuse      = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
-        ImageResource* tex_specular     = GetRenderTarget(Renderer_RenderTarget::light_specular);
+        ImageResource* texFrameRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        ImageResource* texDiffuse      = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        ImageResource* texSpecular     = GetRenderTarget(Renderer_RenderTarget::light_specular);
 
         {
             PipelineState pso;
@@ -1216,14 +1216,14 @@ namespace SceneryEditorX
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-            cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_diffuse);
-            cmdList->SetTexture(Renderer_BindingsSrv::tex2,             tex_specular);
-            cmdList->SetTexture(Renderer_BindingsUav::tex,              tex_frame_render);
+            cmdList->SetTexture(Renderer_BindingsSrv::tex,              texDiffuse);
+            cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texSpecular);
+            cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 
             m_pcb_pass_cpu.is_transparent = isTransparentPass ? 1u : 0u;
             cmdList->PushConstants(m_pcb_pass_cpu);
 
-            cmdList->Dispatch(tex_frame_render);
+            cmdList->Dispatch(texFrameRender);
         }
     }
 
@@ -1234,10 +1234,10 @@ namespace SceneryEditorX
 
     void Renderer::Pass_Light_ImageBased(CommandList* cmdList)
     {
-        ImageResource* tex_skysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        ImageResource* tex_lut_brdf     = GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular);
-        ImageResource* tex_frame_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        if (!tex_skysphere || !tex_lut_brdf)
+        ImageResource* texSkysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        ImageResource* texLutBrdf     = GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular);
+        ImageResource* texFrameRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        if (!texSkysphere || !texLutBrdf)
             return;
 
         {
@@ -1250,11 +1250,11 @@ namespace SceneryEditorX
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-            cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_skysphere);
-            cmdList->SetTexture(Renderer_BindingsSrv::tex2,             tex_lut_brdf);
-            cmdList->SetTexture(Renderer_BindingsUav::tex,              tex_frame_render);
+            cmdList->SetTexture(Renderer_BindingsSrv::tex,              texSkysphere);
+            cmdList->SetTexture(Renderer_BindingsSrv::tex2,             texLutBrdf);
+            cmdList->SetTexture(Renderer_BindingsUav::tex,              texFrameRender);
 
-            cmdList->Dispatch(tex_frame_render);
+            cmdList->Dispatch(texFrameRender);
         }
     }
 
@@ -1266,15 +1266,15 @@ namespace SceneryEditorX
 
     void Renderer::Pass_Light_Reflections(CommandList* cmdList)
     {
-        ImageResource* tex_reflections  = GetRenderTarget(Renderer_RenderTarget::reflections);
-        ImageResource* tex_frame_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        if (!tex_reflections)
+        ImageResource* texReflections  = GetRenderTarget(Renderer_RenderTarget::reflections);
+        ImageResource* texFrameRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        if (!texReflections)
             return;
 
         // Guard: clear reflections if the feature was just toggled off
         if (m_PassState.m_ClearedReflections)
         {
-            cmdList->ClearTexture(tex_reflections, Color::Black());
+            cmdList->ClearTexture(texReflections, Color::Black());
             m_PassState.m_ClearedReflections = false;
         }
 
@@ -1288,17 +1288,16 @@ namespace SceneryEditorX
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             cmdList->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
-            cmdList->SetTexture(Renderer_BindingsSrv::tex,              tex_frame_render);
-            cmdList->SetTexture(Renderer_BindingsUav::tex,              tex_reflections);
+            cmdList->SetTexture(Renderer_BindingsSrv::tex,              texFrameRender);
+            cmdList->SetTexture(Renderer_BindingsUav::tex,              texReflections);
 
-            cmdList->Dispatch(tex_reflections);
+            cmdList->Dispatch(texReflections);
         }
 
-        tex_reflections->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+        texReflections->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
 
         // Composite reflections into the frame buffer using the blit pass
-        Pass_Compute(cmdList, "reflections_composite", Renderer_Shader::blit_c,
-                     tex_reflections, tex_frame_render, nullptr);
+        Pass_Compute(cmdList, "reflections_composite", Renderer_Shader::blit_c, texReflections, texFrameRender, nullptr);
     }
 
     // -------------------------------------------------------
@@ -1555,18 +1554,6 @@ namespace SceneryEditorX
 
             // TODO: Issue font glyph draw calls from the text/font subsystem once it is wired in.
         }
-    }
-
-    // -------------------------------------------------------
-    // SetCommonTextures
-    // Binds the per-frame shared resources that every pass can optionally sample.
-    // -------------------------------------------------------
-
-    void Renderer::SetCommonTextures(CommandList* cmdList)
-    {
-        // TODO: Bind Perlin noise, blue noise, and other shared per-frame textures
-        // once the StandardTexture registry is connected to the Renderer.
-        (void)cmdList;
     }
 
 } // namespace SceneryEditorX

@@ -41,15 +41,16 @@ namespace SceneryEditorX
     {
         Transient,  // Command buffers allocated from this pool will be short-lived and reset or freed in a relatively short timeframe.
         Resettable, // Command buffers allocated from this pool can be individually reset to the initial state.
-        Protected,   // Command buffers allocated from this pool can be submitted to protected queues and may contain protected commands.
+        Protected,  // Command buffers allocated from this pool can be submitted to protected queues and may contain protected commands.
 		MaxEnum
     };
 
 	class CommandPool 
 	{
 	public:
-        CommandPool() = default;
-        CommandPool(uint32_t queueFamilyIndex, CommandPoolType pool = CommandPoolType::MaxEnum); // creates a command pool for the current m_Device and given queue family.
+		CommandPool() = default;
+		CommandPool(uint32_t queueFamilyIndex, CommandPoolType pool = CommandPoolType::MaxEnum); // creates a command pool by fetching the device from RenderContext (only valid after RenderContext is fully initialized).
+		CommandPool(const Ref<Device>& device, uint32_t queueFamilyIndex, CommandPoolType pool = CommandPoolType::MaxEnum); // creates a command pool using an explicitly supplied device (safe to use during Device construction).
 	    ~CommandPool();
 	
 	    // Non-copyable
@@ -63,6 +64,12 @@ namespace SceneryEditorX
 	    // Allocate `count` primary command buffers from the owned pool.
 	    std::vector<VkCommandBuffer> Allocate(uint32_t count) const;
         [[nodiscard]] VkCommandPool GetPool() const { return m_CmdPool; }
+
+		/**
+		 * @brief Get the device this command pool was created with.
+		 * @return Reference to the owning Device. Safe to call during Device construction.
+		 */
+		[[nodiscard]] Ref<Device> GetDevice() const { return m_Device; }
 	
 	    void Destroy(); // Explicitly destroy the command pool before m_Device destruction
 	

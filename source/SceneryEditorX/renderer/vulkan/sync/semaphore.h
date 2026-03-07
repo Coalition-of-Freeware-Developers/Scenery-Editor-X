@@ -54,6 +54,15 @@ namespace SceneryEditorX
         virtual ~Semaphore() override;
 
         void CreateSyncObject() override;
+        /**
+         * @brief Creates the underlying VkSemaphore using an explicitly supplied device handle.
+         *
+         * Use this overload during early initialization (e.g. inside constructors that run before
+         * RenderContext::m_Device is assigned) to avoid the null-device crash that the no-arg
+         * overload would trigger via RenderContext::Get()->GetDevice().
+         * @param device Valid VkDevice handle.
+         */
+        void CreateSyncObject(VkDevice device);
         void Wait(const uint64_t timeout) override;
         static void Signal(const uint64_t value, const VkSemaphore &semaphore);
         bool IsSignaled() override;
