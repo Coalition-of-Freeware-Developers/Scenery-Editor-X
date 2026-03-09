@@ -75,14 +75,10 @@ namespace SceneryEditorX
 
     // ----------------------------------------------------------
 
-
     ApplicationSettings::ApplicationSettings(std::filesystem::path filepath) : filePath(std::move(filepath))
     {
-        cfg.setOptions(
-            Config::OptionAutoConvert |
-            Config::OptionOpenBraceOnSeparateLine |
-            Config::OptionFsync |
-            Config::OptionAllowOverrides);
+        cfg.setOptions(Config::OptionAutoConvert | Config::OptionOpenBraceOnSeparateLine | Config::OptionFsync |
+                       Config::OptionAllowOverrides);
         cfg.setTabWidth(2);
 
         if (!ReadSettings())
@@ -97,12 +93,12 @@ namespace SceneryEditorX
             else
                 SEDX_CORE_WARN_TAG("SETTINGS", "X-Plane 12 installation not found");
 
-            /// Save the initial configuration
+            // Save the initial configuration
             WriteSettings();
         }
         else
         {
-            /// Validate X-Plane paths from loaded configuration
+            // Validate X-Plane paths from loaded configuration
             if (!ValidateXPlanePaths())
             {
                 SEDX_CORE_WARN_TAG("SETTINGS", "X-Plane paths in configuration are invalid, attempting detection");
@@ -128,7 +124,7 @@ namespace SceneryEditorX
             cfg.readFile(filePath.string().c_str());
             SEDX_CORE_TRACE_TAG("SETTINGS", "Reading settings from: {}", filePath.string());
 
-			/*
+            /*
 			try
             {
                 if (const Setting &root = cfg.getRoot(); root.exists("application"))
@@ -141,37 +137,46 @@ namespace SceneryEditorX
             }
 			*/
 
-            /// Load X-Plane stats
+            // Load X-Plane stats
             if (cfg.exists("x_plane"))
             {
                 const Setting &xp = cfg.lookup("x_plane");
 
                 if (xp.exists("version"))
+                {
                     xPlaneStats.xPlaneVersion = static_cast<const char *>(xp["version"]);
+                }
 
                 if (xp.exists("path"))
+                {
                     xPlaneStats.xPlanePath = static_cast<const char *>(xp["path"]);
+                }
 
                 if (xp.exists("bin_path"))
+                {
                     xPlaneStats.xPlaneBinPath = static_cast<const char *>(xp["bin_path"]);
+                }
 
                 if (xp.exists("resources_path"))
+                {
                     xPlaneStats.xPlaneResourcesPath = static_cast<const char *>(xp["resources_path"]);
+                }
 
                 if (xp.exists("is_steam"))
+                {
                     xp.lookupValue("is_steam", xPlaneStats.isSteam);
+                }
             }
 
-            /// Load Application stats
+            // Load Application stats
             if (cfg.exists("application"))
             {
                 SEDX_CORE_TRACE_TAG("SETTINGS", "Loading SceneryEditorX settings");
-                if (const Setting &app = cfg.lookup("application");
-                    app.exists("no_titlebar"))
+                if (const Setting &app = cfg.lookup("application"); app.exists("no_titlebar"))
                     app.lookupValue("no_titlebar", appStats.NoTitlebar);
             }
 
-            /// Populate the settings map for quick access
+            // Populate the settings map for quick access
             LoadSettingsToMap();
             configInitialized = true;
 
@@ -184,7 +189,7 @@ namespace SceneryEditorX
         }
         catch (const ParseException &pex)
         {
-            SEDX_CORE_ERROR_TAG("SETTINGS","Parse error at {}:{} - {}", pex.getFile(), pex.getLine(), pex.getError());
+            SEDX_CORE_ERROR_TAG("SETTINGS", "Parse error at {}:{} - {}", pex.getFile(), pex.getLine(), pex.getError());
             return false;
         }
         catch (const ConfigException &confex)
@@ -198,17 +203,17 @@ namespace SceneryEditorX
     {
         try
         {
-            /// Ensure all required sections exist before writing.
+            // Ensure all required sections exist before writing.
             EnsureRequiredSections();
 
-            /// Update the config from our data structures.
+            // Update the config from our data structures.
             UpdateConfigFromData();
 
-            /// Write config to file.
+            // Write config to file.
             cfg.writeFile(filePath.string().c_str());
             SEDX_CORE_TRACE_TAG("SETTINGS", "Settings successfully written to: {}", filePath.string());
 
-            /// Update the settings map
+            // Update the settings map
             LoadSettingsToMap();
         }
         catch (const FileIOException &fioex)
@@ -225,10 +230,10 @@ namespace SceneryEditorX
     {
         settings[key] = value;
 
-        /// Try to update the config directly
+        // Try to update the config directly
         try
         {
-            /// Split the key by dots to navigate the config hierarchy
+            // Split the key by dots to navigate the config hierarchy
             std::string section = key;
             std::string name = key;
             if (const size_t pos = key.find_last_of('.'); pos != std::string::npos)
@@ -236,17 +241,19 @@ namespace SceneryEditorX
                 section = key.substr(0, pos);
                 name = key.substr(pos + 1);
 
-                /// Ensure the section exists
+                // Ensure the section exists
                 try
-				{
+                {
                     Setting &setting = cfg.lookup(section);
                     if (setting.exists(name))
+                    {
                         setting.remove(name);
+                    }
 
                     setting.add(name, Setting::TypeString) = value;
                 }
                 catch (const SettingNotFoundException &)
-				{
+                {
                     CreateSettingPath(key, value);
                 }
             }
@@ -254,7 +261,9 @@ namespace SceneryEditorX
             {
                 /// It's a root setting
                 if (cfg.getRoot().exists(key))
+                {
                     cfg.getRoot().remove(key);
+                }
 
                 cfg.getRoot().add(key, Setting::TypeString) = value;
             }
@@ -282,10 +291,10 @@ namespace SceneryEditorX
     {
         settings.erase(key);
 
-        /// Try to remove from the config directly.
+        // Try to remove from the config directly.
         try
         {
-            /// Split the key by dots to navigate the config hierarchy.
+            // Split the key by dots to navigate the config hierarchy.
             std::string section = key;
             std::string name = key;
 
@@ -294,15 +303,19 @@ namespace SceneryEditorX
                 section = key.substr(0, pos);
                 name = key.substr(pos + 1);
 
-                /// Try to look up the setting
+                // Try to look up the setting
                 if (Setting &setting = cfg.lookup(section); setting.exists(name))
+                {
                     setting.remove(name);
+                }
             }
             else
             {
                 /// It's a root setting
                 if (cfg.getRoot().exists(key))
+                {
                     cfg.getRoot().remove(key);
+                }
             }
         }
         catch (...)
@@ -321,7 +334,7 @@ namespace SceneryEditorX
                 const std::string name = path.substr(pos + 1);
 
                 try
-				{
+                {
                     Setting &setting = cfg.lookup(section);
                     if (setting.exists(name))
                         setting.remove(name);
@@ -339,8 +352,7 @@ namespace SceneryEditorX
                 cfg.getRoot().add(path, Setting::TypeInt) = value;
             }
 
-            /// Update settings map
-            settings[path] = ToString(value);
+            settings[path] = ToString(value); // Update settings map
         }
         catch (const SettingException &e)
         {
@@ -359,14 +371,14 @@ namespace SceneryEditorX
                 const std::string name = path.substr(pos + 1);
 
                 try
-				{
+                {
                     Setting &setting = cfg.lookup(section);
                     if (setting.exists(name))
                         setting.remove(name);
                     setting.add(name, Setting::TypeFloat) = value;
                 }
                 catch (const SettingNotFoundException &)
-				{
+                {
                     CreateSettingPath(path, value);
                 }
             }
@@ -377,8 +389,7 @@ namespace SceneryEditorX
                 cfg.getRoot().add(path, Setting::TypeFloat) = value;
             }
 
-            /// Update settings map
-            settings[path] = ToString(value);
+            settings[path] = ToString(value); // Update settings map
         }
         catch (const SettingException &e)
         {
@@ -397,14 +408,14 @@ namespace SceneryEditorX
                 const std::string name = path.substr(pos + 1);
 
                 try
-				{
+                {
                     Setting &setting = cfg.lookup(section);
                     if (setting.exists(name))
                         setting.remove(name);
                     setting.add(name, Setting::TypeBoolean) = value;
                 }
                 catch (const SettingNotFoundException &)
-				{
+                {
                     CreateSettingPath(path, value);
                 }
             }
@@ -415,8 +426,7 @@ namespace SceneryEditorX
                 cfg.getRoot().add(path, Setting::TypeBoolean) = value;
             }
 
-            /// Update settings map
-            settings[path] = value ? "true" : "false";
+            settings[path] = value ? "true" : "false"; // Update settings map
         }
         catch (const SettingException &e)
         {
@@ -435,14 +445,14 @@ namespace SceneryEditorX
                 const std::string name = path.substr(pos + 1);
 
                 try
-				{
+                {
                     Setting &setting = cfg.lookup(section);
                     if (setting.exists(name))
                         setting.remove(name);
                     setting.add(name, Setting::TypeString) = value;
                 }
                 catch (const SettingNotFoundException &)
-				{
+                {
                     CreateSettingPath(path, value);
                 }
             }
@@ -453,8 +463,7 @@ namespace SceneryEditorX
                 cfg.getRoot().add(path, Setting::TypeString) = value;
             }
 
-            /// Update settings map
-            settings[path] = value;
+            settings[path] = value; // Update settings map
         }
         catch (const SettingException &e)
         {
@@ -472,7 +481,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            /// Fallthrough to default
+            // TODO: Better handling instead of just a fallthrough to default
         }
         return defaultValue;
     }
@@ -486,7 +495,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            /// Fallthrough to default
+            // TODO: Better handling instead of just a fallthrough to default
         }
         return defaultValue;
     }
@@ -500,7 +509,7 @@ namespace SceneryEditorX
         }
         catch (...)
         {
-            /// Fallthrough to default
+            // TODO: Better handling instead of just a fallthrough to default
         }
         return defaultValue;
     }
@@ -521,7 +530,7 @@ namespace SceneryEditorX
 
     bool ApplicationSettings::DetectXPlanePath()
     {
-        /// First try to find X-Plane through Steam
+        // First try to find X-Plane through Steam
         SEDX_CORE_TRACE_TAG("SETTINGS", "Attempting to detect X-Plane 12 via Steam...");
         if (const auto steamPath = SteamGameFinder::FindXPlane12())
         {
@@ -533,47 +542,45 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("SETTINGS", "X-Plane 12 not found via Steam, checking common installation paths...");
         xPlaneStats.isSteam = false;
 
-        /// If not found via Steam, try some common installation paths
+        // If not found via Steam, try some common installation paths
         std::vector<std::string> commonPaths;
 
-    #ifdef SEDX_PLATFORM_WINDOWS
-        /// Common Windows installation paths
-        /// Add more potential drive letters
+#ifdef SEDX_PLATFORM_WINDOWS
+        // Common Windows installation paths
+        // Add more potential drive letters
         const std::vector<std::string> driveLetters = {"C:", "D:", "E:", "F:", "G:", "H:"};
-        const std::vector<std::string> pathPatterns = {
-            "\\X-Plane 12",
-            "\\Program Files\\X-Plane 12",
-            "\\Program Files (x86)\\X-Plane 12",
-            "\\Games\\X-Plane 12",
-            "\\Flight Simulator\\X-Plane 12"
-        };
+        const std::vector<std::string> pathPatterns = {"\\X-Plane 12",
+                                                       "\\Program Files\\X-Plane 12",
+                                                       "\\Program Files (x86)\\X-Plane 12",
+                                                       "\\Games\\X-Plane 12",
+                                                       "\\Flight Simulator\\X-Plane 12"};
 
         /// Build combinations of drives and paths
-        for (const auto& drive : driveLetters)
-            for (const auto& pattern : pathPatterns)
+        for (const auto &drive : driveLetters)
+            for (const auto &pattern : pathPatterns)
                 commonPaths.push_back(drive + pattern);
 
-    #elif defined(SEDX_PLATFORM_MACOS)
+#elif defined(SEDX_PLATFORM_MACOS)
         /// macOS paths
-        const char* homeDir = getenv("HOME");
+        const char *homeDir = getenv("HOME");
         if (homeDir)
         {
             commonPaths.push_back(std::string(homeDir) + "/X-Plane 12");
             commonPaths.push_back(std::string(homeDir) + "/Applications/X-Plane 12");
         }
         commonPaths.push_back("/Applications/X-Plane 12");
-    #elif defined(SEDX_PLATFORM_LINUX)
+#elif defined(SEDX_PLATFORM_LINUX)
         /// Linux paths
-        const char* homeDir = getenv("HOME");
+        const char *homeDir = getenv("HOME");
         if (homeDir)
         {
             commonPaths.push_back(std::string(homeDir) + "/X-Plane 12");
             commonPaths.push_back(std::string(homeDir) + "/Games/X-Plane 12");
         }
         commonPaths.push_back("/opt/X-Plane 12");
-    #endif
+#endif
 
-        for (const auto& path : commonPaths)
+        for (const auto &path : commonPaths)
         {
             SEDX_CORE_TRACE_TAG("Settings", "Checking potential X-Plane path: {}", path);
             if (SteamGameFinder::ValidateXPlanePath(path))
@@ -695,12 +702,15 @@ namespace SceneryEditorX
         std::string pathStr = basePath.string();
         std::ranges::transform(pathStr, pathStr.begin(), [](const unsigned char c) { return std::tolower(c); });
 
-        xPlaneStats.isSteam = pathStr.find("steamapps") != std::string::npos ||
-                              (pathStr.find("steam") != std::string::npos && pathStr.find("common") != std::string::npos);
+        xPlaneStats.isSteam =
+            pathStr.find("steamapps") != std::string::npos ||
+            (pathStr.find("steam") != std::string::npos && pathStr.find("common") != std::string::npos);
 
-        SEDX_CORE_TRACE_TAG("SETTINGS", "Updated derived paths - Bin: {}, Resources: {}, Steam: {}",
-                          xPlaneStats.xPlaneBinPath, xPlaneStats.xPlaneResourcesPath,
-                          xPlaneStats.isSteam ? "true" : "false");
+        SEDX_CORE_TRACE_TAG("SETTINGS",
+                            "Updated derived paths - Bin: {}, Resources: {}, Steam: {}",
+                            xPlaneStats.xPlaneBinPath,
+                            xPlaneStats.xPlaneResourcesPath,
+                            xPlaneStats.isSteam ? "true" : "false");
     }
 
     void ApplicationSettings::InitMinConfig()
@@ -745,84 +755,6 @@ namespace SceneryEditorX
         catch (const ConfigException &e)
         {
             SEDX_CORE_WARN_TAG("SETTINGS", "Error initializing minimal config: {}", e.what());
-        }
-    }
-
-    void ApplicationSettings::EnsureRequiredSections()
-    {
-        /// Ensure application section exists
-        if (!cfg.exists("application"))
-		{
-            Setting &root = cfg.getRoot();
-            root.add("application", Setting::TypeGroup);
-            Setting &app = cfg.lookup("application");
-            app.add("version", Setting::TypeString) = AppData::versionString;
-            app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
-        }
-
-        /// Ensure x_plane section exists
-        if (!cfg.exists("x_plane"))
-		{
-            Setting &root = cfg.getRoot();
-            root.add("x_plane", Setting::TypeGroup);
-            Setting &xp = cfg.lookup("x_plane");
-
-            xp.add("version", Setting::TypeString) = xPlaneStats.xPlaneVersion;
-            xp.add("path", Setting::TypeString) = xPlaneStats.xPlanePath;
-            xp.add("bin_path", Setting::TypeString) = xPlaneStats.xPlaneBinPath;
-            xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
-            xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
-        }
-
-        /// Ensure ui section exists
-        if (!cfg.exists("ui"))
-		{
-            Setting &root = cfg.getRoot();
-            root.add("ui", Setting::TypeGroup);
-
-            /// Only add default values if not already set
-            if (!HasOption("ui.theme"))
-                AddStringOption("ui.theme", "dark");
-            if (!HasOption("ui.font_size"))
-                AddIntOption("ui.font_size", 12);
-            if (!HasOption("ui.language"))
-                AddStringOption("ui.language", "english");
-        }
-
-        /// Ensure project section exists
-        if (!cfg.exists("project"))
-		{
-            Setting &root = cfg.getRoot();
-            root.add("project", Setting::TypeGroup);
-
-            /// Only add default values if not already set
-            if (!HasOption("project.auto_save"))
-                AddBoolOption("project.auto_save", true);
-            if (!HasOption("project.auto_save_interval"))
-                AddIntOption("project.auto_save_interval", 5);
-            if (!HasOption("project.backup_count"))
-                AddIntOption("project.backup_count", 3);
-            if (!HasOption("project.default_project_dir"))
-			{
-                /// Set default project directory
-                std::string defaultDir = "~/Documents/SceneryEditorX";
-
-                /// Replace ~ with actual home directory
-                if (defaultDir.starts_with("~"))
-				{
-                    const char* homeDir = nullptr;
-                    #ifdef _WIN32
-                    homeDir = getenv("USERPROFILE");
-                    #else
-                    homeDir = getenv("HOME");
-                    #endif
-
-                    if (homeDir)
-                        defaultDir.replace(0, 1, homeDir);
-                }
-
-                AddStringOption("project.default_project_dir", defaultDir);
-            }
         }
     }
 
@@ -885,8 +817,7 @@ namespace SceneryEditorX
 
         /// Recursive function to traverse config settings
         std::function<void(const Setting &, const std::string &)> traverseSettings;
-        traverseSettings = [&](const Setting &setting, const std::string &prefix)
-        {
+        traverseSettings = [&](const Setting &setting, const std::string &prefix) {
             for (int i = 0; i < setting.getLength(); ++i)
             {
                 const Setting &child = setting[i];
@@ -931,6 +862,84 @@ namespace SceneryEditorX
         };
 
         traverseSettings(cfg.getRoot(), "");
+    }
+
+    void ApplicationSettings::EnsureRequiredSections()
+    {
+        /// Ensure application section exists
+        if (!cfg.exists("application"))
+        {
+            Setting &root = cfg.getRoot();
+            root.add("application", Setting::TypeGroup);
+            Setting &app = cfg.lookup("application");
+            app.add("version", Setting::TypeString) = AppData::versionString;
+            app.add("no_titlebar", Setting::TypeBoolean) = appStats.NoTitlebar;
+        }
+
+        /// Ensure x_plane section exists
+        if (!cfg.exists("x_plane"))
+        {
+            Setting &root = cfg.getRoot();
+            root.add("x_plane", Setting::TypeGroup);
+            Setting &xp = cfg.lookup("x_plane");
+
+            xp.add("version", Setting::TypeString) = xPlaneStats.xPlaneVersion;
+            xp.add("path", Setting::TypeString) = xPlaneStats.xPlanePath;
+            xp.add("bin_path", Setting::TypeString) = xPlaneStats.xPlaneBinPath;
+            xp.add("resources_path", Setting::TypeString) = xPlaneStats.xPlaneResourcesPath;
+            xp.add("is_steam", Setting::TypeBoolean) = xPlaneStats.isSteam;
+        }
+
+        /// Ensure ui section exists
+        if (!cfg.exists("ui"))
+        {
+            Setting &root = cfg.getRoot();
+            root.add("ui", Setting::TypeGroup);
+
+            /// Only add default values if not already set
+            if (!HasOption("ui.theme"))
+                AddStringOption("ui.theme", "dark");
+            if (!HasOption("ui.font_size"))
+                AddIntOption("ui.font_size", 12);
+            if (!HasOption("ui.language"))
+                AddStringOption("ui.language", "english");
+        }
+
+        /// Ensure project section exists
+        if (!cfg.exists("project"))
+        {
+            Setting &root = cfg.getRoot();
+            root.add("project", Setting::TypeGroup);
+
+            /// Only add default values if not already set
+            if (!HasOption("project.auto_save"))
+                AddBoolOption("project.auto_save", true);
+            if (!HasOption("project.auto_save_interval"))
+                AddIntOption("project.auto_save_interval", 5);
+            if (!HasOption("project.backup_count"))
+                AddIntOption("project.backup_count", 3);
+            if (!HasOption("project.default_project_dir"))
+            {
+                /// Set default project directory
+                std::string defaultDir = "~/Documents/SceneryEditorX";
+
+                /// Replace ~ with actual home directory
+                if (defaultDir.starts_with("~"))
+                {
+                    const char *homeDir = nullptr;
+#ifdef _WIN32
+                    homeDir = getenv("USERPROFILE");
+#else
+                    homeDir = getenv("HOME");
+#endif
+
+                    if (homeDir)
+                        defaultDir.replace(0, 1, homeDir);
+                }
+
+                AddStringOption("project.default_project_dir", defaultDir);
+            }
+        }
     }
 
     template <typename T>

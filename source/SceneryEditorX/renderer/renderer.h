@@ -36,7 +36,6 @@
 #include "vulkan/render_context.h"
 #include "vulkan/sampler.h"
 #include "vulkan/viewport.h"
-#include "vulkan/asset/asset_manager.h"
 #include "vulkan/sync/frame_sync.h"
 #include <array>
 #include <SceneryEditorX/core/threading/render_thread.h>
@@ -47,9 +46,11 @@
 
 namespace SceneryEditorX
 {
+    class AssetManager;
     struct RendererProperties;
     class Swapchain;
     class ShaderManager;
+    class Camera;
 
     /**
      * @brief Static renderer class managing Vulkan rendering lifecycle.
@@ -255,7 +256,19 @@ namespace SceneryEditorX
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		/* @brief Retrieve current GPU memory usage statistics. */
-        static GPUMemoryStats GetGPUMemoryStats();
+		static GPUMemoryStats GetGPUMemoryStats();
+
+		/**
+		 * @brief Set the active camera used to drive view / projection for every frame.
+		 * @param camera Raw pointer to a Camera instance; the Renderer does not take ownership.
+		 *               Pass nullptr to revert to the identity-matrix fallback.
+		 */
+		static void SetCamera(Camera* camera);
+
+		/**
+		 * @brief Returns the currently active camera, or nullptr if none has been set.
+		 */
+		static Camera* GetCamera();
 
 
     private:
@@ -311,7 +324,13 @@ namespace SceneryEditorX
          */
         static Shader *GetShader(Renderer_Shader type);
 
-		/**
+        /**
+         * @brief Marks a shader as available, creating it if it doesn't already exist.
+         * @param type The type of shader to mark as available.
+         */
+        static void SetShaderAvailable(Renderer_Shader type);
+
+        /**
 		 * @brief Creates all Vulkan samplers used by the renderer.
 		 *
 		 * Non-anisotropic samplers are created once on first call and guarded by Ref validity.
@@ -543,6 +562,20 @@ namespace SceneryEditorX
 		static std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> s_BasicShaderDataAllocations;
 		static std::array<void*,           MAX_FRAMES_IN_FLIGHT> s_BasicShaderDataMapped;
 		static std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> s_BasicShaderDataAddresses;
+
+		// Active camera providing view / projection for every frame
+		static Camera* s_Camera;
+
+		// Per-frame camera uniform buffers (host-visible, mapped), matching CameraShaderData
+		static VkDescriptorSetLayout                          s_CameraDescriptorSetLayout;
+		static VkDescriptorPool                               s_CameraDescriptorPool;
+		static std::array<VkDescriptorSet,  MAX_FRAMES_IN_FLIGHT> s_CameraDescriptorSets;
+		static std::array<VkBuffer,         MAX_FRAMES_IN_FLIGHT> s_CameraUboBuffers;
+		static std::array<VmaAllocation,    MAX_FRAMES_IN_FLIGHT> s_CameraUboAllocations;
+		static std::array<void*,            MAX_FRAMES_IN_FLIGHT> s_CameraUboMapped;
+
+		/// @brief Creates per-frame camera UBOs, descriptor pool and sets. Called by CreateShaders.
+		static void CreateCameraResources();
 	};
 
 

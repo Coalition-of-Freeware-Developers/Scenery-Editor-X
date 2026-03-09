@@ -1,8 +1,8 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,71 +23,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * entity.cpp
+ * blit.slang
  * -------------------------------------------------------
- * Created: 11/8/2025
+ * Created: 06/03/2026
  * -------------------------------------------------------
  */
-#include "entity.h"
-#include "scene.h"
+import common;
+import resources;
+import constants;
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
+[shader("compute")]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id: SV_DispatchThreadID)
 {
-    /*
-    Entity Entity::GetParent() const
-	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
-	}
-	*/
-
-	bool Entity::IsAncestorOf(Entity entity) const
-	{
-	    const auto &children = Children();
-	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
-	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
-	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
-	
-	    return false;
-	}
-
-	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
-
-	/*
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
-
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
-
-    Entity::operator bool() const { return IsValid(); }
-
+    tex_uav[thread_id.xy] = tex.Load(int3(thread_id.xy, 0));
 }
-
-// -------------------------------------------------------

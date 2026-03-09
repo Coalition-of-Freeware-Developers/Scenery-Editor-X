@@ -13,6 +13,7 @@ FILE(GLOB ASSET_MANAGER_FILES "asset/managers/*.h" "asset/managers/*.hpp" "asset
 FILE(GLOB ASSET_MATERIAL_FILES "asset/material/*.h" "asset/material/*.hpp" "asset/material/*.cpp")
 FILE(GLOB ASSET_MESH_FILES "asset/mesh/*.h" "asset/mesh/*.hpp" "asset/mesh/*.cpp")
 FILE(GLOB ASSET_REGISTRY_FILES "asset/registry/*.h" "asset/registry/*.hpp" "asset/registry/*.cpp")
+FILE(GLOB ASSET_DIR "asset/*.h" "asset/*.hpp" "asset/*.cpp")
 
 FILE(GLOB CORE_APP "core/application/*.h" "core/application/*.hpp" "core/application/*.cpp")
 FILE(GLOB CORE_EVENTS "core/events/*.h" "core/events/*.hpp" "core/events/*.cpp")
@@ -38,7 +39,6 @@ FILE(GLOB RENDERER_FILES LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/*.h"
 # --------------------------------
 
 FILE(GLOB RENDERER_VULKAN LIST_DIRECTORIES false CONFIGURE_DEPENDS "renderer/vulkan/*.h" "renderer/vulkan/*.hpp" "renderer/vulkan/*.cpp")
-FILE(GLOB RENDERER_ASSET_FILES "renderer/vulkan/asset/*.h" "renderer/vulkan/asset/*.hpp" "renderer/vulkan/asset/*.cpp")
 FILE(GLOB RENDERER_DEBUG_FILES "renderer/vulkan/debug/*.h" "renderer/vulkan/debug/*.hpp" "renderer/vulkan/debug/*.cpp")
 FILE(GLOB RENDERER_PIPELINE_FILES "renderer/vulkan/pipeline/*.h" "renderer/vulkan/pipeline/*.hpp" "renderer/vulkan/pipeline/*.cpp")
 FILE(GLOB RENDERER_SHADER_FILES "renderer/vulkan/shader/*.h" "renderer/vulkan/shader/*.hpp" "renderer/vulkan/shader/*.cpp")
@@ -89,6 +89,7 @@ ADD_LIBRARY(AppCore
 	${ASSET_MANAGER_FILES}
 	${ASSET_MESH_FILES}
 	${ASSET_REGISTRY_FILES}
+	${ASSET_DIR}
 	${CORE_APP}
 	${CORE_EVENTS}
 	${CORE_IDENTIFIERS}
@@ -109,7 +110,6 @@ ADD_LIBRARY(AppCore
 	${CORE_LINUX_PLATFORM}
 	${RENDERER_FILES}
 	${RENDERER_VULKAN}
-	${RENDERER_ASSET_FILES}
 	${RENDERER_DEBUG_FILES}
 	${RENDERER_PIPELINE_FILES}
 	${RENDERER_SHADER_FILES}
@@ -132,19 +132,6 @@ ADD_LIBRARY(AppCore
 	${UTILS_REFLECTION}
 	${UTILS_CONVERSIONS}
 	${UTILS_FILESTREAM}
-
-	# --------------------------------
-	# asset/asset.cpp
-	# asset/asset.h
-	# asset/asset_extensions.h
-	# asset/asset_metadata.h
-	# asset/asset_pack_header.h
-	# asset/asset_types.h
-	# asset/ecs.cpp
-	# asset/ecs.h
-	# asset/mesh_file.h
-	# asset/object.cpp
-	# asset/object.h
 
 	# --------------------------------
 	core/base.h
@@ -174,17 +161,7 @@ ADD_LIBRARY(AppCore
 
 # --------------------------------
 SOURCE_GROUP("Asset" FILES
-	asset/asset.cpp
-	asset/asset.h
-	asset/asset_extensions.h
-	asset/asset_metadata.h
-	asset/asset_pack_header.h
-	asset/asset_types.h
-	asset/ecs.cpp
-	asset/ecs.h
-	asset/mesh_file.h
-	asset/object.cpp
-	asset/object.h
+	${ASSET_DIR}
 )
 SOURCE_GROUP("Asset/Animation" FILES
 	${ASSET_ANIMATION_FILES}

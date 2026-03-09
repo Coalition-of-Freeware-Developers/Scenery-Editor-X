@@ -29,16 +29,23 @@
  * -------------------------------------------------------
  */
 #include "scene.h"
+#include "SceneryEditorX/renderer/renderer.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    //Entity* s_Camera              = nullptr;
+    //Entity* s_Camera = nullptr;
+
+	Scene::Scene(std::string name, bool initialize) : m_Name(std::move(name))
+	{
+        m_SceneID = UUID();
+	}
 
 	void Scene::Init()
 	{
+
 	}
 
 	void Scene::Shutdown()
@@ -51,8 +58,7 @@ namespace SceneryEditorX
 
 	Camera *Scene::GetCamera()
 	{
-	    return nullptr;
-	    /*return s_Camera ? s_Camera->GetComponent<Camera>() : nullptr;*/
+     return Renderer::GetCamera();
 	}
 
     /*

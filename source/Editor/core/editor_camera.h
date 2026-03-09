@@ -29,18 +29,17 @@
  * -------------------------------------------------------
  */
 #pragma once
-//#include <SceneryEditorX/core/events/event_system.h>
-//#include <SceneryEditorX/core/events/mouse_events.h>
-//#include <SceneryEditorX/core/time/time.h>
-//#include <SceneryEditorX/renderer/camera.h>
-//#include <SceneryEditorX/scene/camera.h>
+#include <SceneryEditorX/core/events/event_system.h>
+#include <SceneryEditorX/core/events/mouse_events.h>
+#include <SceneryEditorX/core/time/time.h>
+#include <SceneryEditorX/renderer/renderer_declarations.h>
+#include <SceneryEditorX/scene/camera.h>
 
 /// -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    /*
     class EditorCamera : public Camera
     {
     public:
@@ -52,12 +51,12 @@ namespace SceneryEditorX
         void OnEvent(Event &event);
 
 		[[nodiscard]] bool IsActive() const {return m_IsActive; }
-        void SetActive(bool active) { m_IsActive = active; }
+        void SetActive(const bool active) { m_IsActive = active; }
 
 		[[nodiscard]] CameraMode GetCurrentMode() const { return m_CameraMode; }
 		[[nodiscard]] const Vec3 &GetFocalPoint() const { return m_FocalPoint; }
 
-        float GetDistance() const { return m_Distance; }
+        [[nodiscard]] float GetDistance() const { return m_Distance; }
         void SetDistance(float distance) { m_Distance = distance; }
 
         void SetViewportBounds(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
@@ -70,7 +69,9 @@ namespace SceneryEditorX
 				float width = static_cast<float>(right - left);
 				float height = static_cast<float>(bottom - top);
 				if (width > 0.0f && height > 0.0f)
-                    SetPerspectiveProjectionMatrix(m_VerticalFOV, width, height, m_NearClip, m_FarClip);
+				{
+				    SetPerspectiveProjectionMatrix(m_VerticalFOV, width, height, m_NearClip, m_FarClip);
+				}
             }
 
 			m_ViewportLeft = left;
@@ -115,7 +116,7 @@ namespace SceneryEditorX
         Vec3 m_Direction;
         Vec3 m_FocalPoint;
 
-        /// Perspective projection params
+        // Perspective projection params
         float m_VerticalFOV;
         float m_AspectRatio;
         float m_NearClip;
@@ -152,7 +153,6 @@ namespace SceneryEditorX
         friend class Editor;
         friend class Viewport;
     };
-    */
 
 }
 

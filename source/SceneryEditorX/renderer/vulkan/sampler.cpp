@@ -30,8 +30,8 @@
  */
 #include "sampler.h"
 #include "render_context.h"
-#include <volk/volk.h>
 #include <limits>
+#include <volk/volk.h>
 
 // -----------------------------------------------------------------
 

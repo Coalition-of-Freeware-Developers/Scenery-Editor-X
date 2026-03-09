@@ -29,65 +29,60 @@
  * -------------------------------------------------------
  */
 #pragma once
-//#include <cmath>
-//#include <string>
-//#include <utility>
-//#include <vector>
-//#include <Math/includes/xmath.hpp>
+#include <xMath/includes/xmath.hpp>
 //#include "material.h"
-//#include "SceneryEditorX/core/identifiers/uuid.h"
+#include <SceneryEditorX/core/identifiers/uuid.h>
 
 // -------------------------------------------------------
 
-/*
 namespace SceneryEditorX
 {
 
 	struct IDComponent
 	{
-        UUID ID = UUID(0);
+        UUID id = UUID();
 	};
 
     // -------------------------------------------------------
 
 	struct TagComponent
 	{
-		std::string Tag;
+		std::string tag;
 
 		TagComponent() = default;
 		TagComponent(const TagComponent& other) = default;
-		TagComponent(std::string tag) : Tag(std::move(tag)) {}
+		TagComponent(std::string tag) : tag(std::move(tag)) {}
 
-		operator std::string& () { return Tag; }
-		operator const std::string& () const { return Tag; }
+		operator std::string& () { return tag; }
+		operator const std::string& () const { return tag; }
 	};
 
     // -------------------------------------------------------
 
     struct RelationshipComponent
     {
-        UUID ParentHandle = UUID(0);
-        std::vector<UUID> Children;
+        UUID parentHandle;
+        std::vector<UUID> children;
 
         RelationshipComponent() = default;
         RelationshipComponent(const RelationshipComponent &other) = default;
-        RelationshipComponent(const UUID &parent) : ParentHandle(parent) { }
+        RelationshipComponent(UUID parent) : parentHandle(std::move(parent)) { }
     };
 
     // -------------------------------------------------------
 
     struct PrefabComponent
     {
-        UUID PrefabID = UUID(0);
-        UUID EntityID = UUID(0);
+        UUID prefabId;
+        UUID entityId;
     };
 
     // -------------------------------------------------------
 
     struct TransformComponent
     {
-        Vec3 Translation = {0.0f, 0.0f, 0.0f};
-        Vec3 Scale = {1.0f, 1.0f, 1.0f};
+        Vec3 translation = {0.0f, 0.0f, 0.0f};
+        Vec3 scale = {1.0f, 1.0f, 1.0f};
 
     private:
 		/**
@@ -108,43 +103,41 @@ namespace SceneryEditorX
          * Accordingly, we store Euler for "editor" stuff that humans work with,
          * and quats for everything else.  The two are maintained in-sync via the SetRotation()
          * methods.
-		 #1#
-        Vec3 RotationEuler = {0.0f, 0.0f, 0.0f};
-        Quat Rotation = {1.0f, 0.0f, 0.0f, 0.0f};
+		 */
+        Vec3 m_RotationEuler = {0.0f, 0.0f, 0.0f};
+        Quat m_Rotation = {1.0f, 0.0f, 0.0f, 0.0f};
 
     public:
         TransformComponent() = default;
         TransformComponent(const TransformComponent &other) = default;
-        TransformComponent(const Vec3 &translation) : Translation(translation) {}
+        TransformComponent(const Vec3 &translation) : translation(translation) {}
 
         [[nodiscard]] Mat4 GetTransform() const
         {
             // M = T * R * S
-            return Mat4::Translate(Translation) * Rotation.ToMatrix() * Mat4::Scale(Scale);
+            return Mat4::Translate(translation) * m_Rotation.ToMatrix() * Mat4::Scale(scale);
         }
 
         void SetTransform(const Mat4 &transform)
         {
-            Transforms::Decompose(transform, Translation, Rotation, Scale);
-            // Store editor euler in radians
-            RotationEuler = Rotation.ToEulerRadians();
+            Transforms::Decompose(transform, translation, m_Rotation, scale);
+            m_RotationEuler = m_Rotation.ToEulerRadians(); // Store editor euler in radians
         }
 
-        [[nodiscard]] Vec3 GetRotationEuler() const { return RotationEuler; }
+        [[nodiscard]] Vec3 GetRotationEuler() const { return m_RotationEuler; }
 
         void SetRotationEuler(const Vec3 &euler)
         {
-            RotationEuler = euler;
-            // euler is in radians
-            Rotation = Quat::EulerRadians(RotationEuler);
+            m_RotationEuler = euler; // euler is in radians
+            m_Rotation = Quat::EulerRadians(m_RotationEuler);
         }
 
-        [[nodiscard]] Quat GetRotation() const { return Rotation; }
+        [[nodiscard]] Quat GetRotation() const { return m_Rotation; }
 
         void SetRotation(const Quat &quat)
         {
-            /// wrap given euler angles to range [-pi, pi]
-            auto wrapToPi = [](Vec3 v)
+            // wrap given euler angles to range [-pi, pi]
+            auto wrap_to_pi = [](Vec3 v)
             {
                 auto wrap = [](float a)
                 {
@@ -156,57 +149,61 @@ namespace SceneryEditorX
                 return Vec3(wrap(v.x), wrap(v.y), wrap(v.z));
             };
 
-            auto originalEuler = RotationEuler;
-            Rotation = quat;
-            RotationEuler = Rotation.ToEulerRadians();
+            auto originalEuler = m_RotationEuler;
+            m_Rotation = quat;
+            m_RotationEuler = m_Rotation.ToEulerRadians();
 
-            // A given quaternion can be represented by many Euler angle triplets (technically infinitely many),
-            // and our ToEulerRadians() returns one canonical solution which may not match the previous user-facing angles.
-            // Evaluate a small set of equivalent alternatives and pick the one closest to the original to avoid visual 180° flips.
+            /**
+             * A given quaternion can be represented by many Euler angle triplets (technically infinitely many),
+             * and our ToEulerRadians() returns one canonical solution which may not match the previous user-facing angles.
+             * Evaluate a small set of equivalent alternatives and pick the one closest to the original to avoid visual 180° flips.
+             */
+            Vec3 alternate1 = {m_RotationEuler.x - PI,
+                               PI - m_RotationEuler.y,
+                               m_RotationEuler.z - PI};
+            Vec3 alternate2 = {m_RotationEuler.x + PI,
+                               PI - m_RotationEuler.y,
+                               m_RotationEuler.z - PI};
+            Vec3 alternate3 = {m_RotationEuler.x + PI,
+                               PI - m_RotationEuler.y,
+                               m_RotationEuler.z + PI};
+            Vec3 alternate4 = {m_RotationEuler.x - PI,
+                               PI - m_RotationEuler.y,
+                               m_RotationEuler.z + PI};
 
-            Vec3 alternate1 = {RotationEuler.x - PI,
-                               PI - RotationEuler.y,
-                               RotationEuler.z - PI};
-            Vec3 alternate2 = {RotationEuler.x + PI,
-                               PI - RotationEuler.y,
-                               RotationEuler.z - PI};
-            Vec3 alternate3 = {RotationEuler.x + PI,
-                               PI - RotationEuler.y,
-                               RotationEuler.z + PI};
-            Vec3 alternate4 = {RotationEuler.x - PI,
-                               PI - RotationEuler.y,
-                               RotationEuler.z + PI};
-
-            /// We pick the alternative that is closest to the original value.
-            float distance0 = Length2(wrapToPi(RotationEuler - originalEuler));
-            float distance1 = Length2(wrapToPi(alternate1 - originalEuler));
-            float distance2 = Length2(wrapToPi(alternate2 - originalEuler));
-            float distance3 = Length2(wrapToPi(alternate3 - originalEuler));
-            float distance4 = Length2(wrapToPi(alternate4 - originalEuler));
+            // We pick the alternative that is closest to the original value.
+            float distance0 = Length2(wrap_to_pi(m_RotationEuler - originalEuler));
+            float distance1 = Length2(wrap_to_pi(alternate1 - originalEuler));
+            float distance2 = Length2(wrap_to_pi(alternate2 - originalEuler));
+            float distance3 = Length2(wrap_to_pi(alternate3 - originalEuler));
+            float distance4 = Length2(wrap_to_pi(alternate4 - originalEuler));
 
             float best = distance0;
             if (distance1 < best)
             {
                 best = distance1;
-                RotationEuler = alternate1;
+                m_RotationEuler = alternate1;
             }
+
             if (distance2 < best)
             {
                 best = distance2;
-                RotationEuler = alternate2;
+                m_RotationEuler = alternate2;
             }
+
             if (distance3 < best)
             {
                 best = distance3;
-                RotationEuler = alternate3;
+                m_RotationEuler = alternate3;
             }
+
             if (distance4 < best)
             {
                 best = distance4;
-                RotationEuler = alternate4;
+                m_RotationEuler = alternate4;
             }
 
-            RotationEuler = wrapToPi(RotationEuler);
+            m_RotationEuler = wrap_to_pi(m_RotationEuler);
         }
 
         //friend class SceneSerializer;
@@ -214,185 +211,185 @@ namespace SceneryEditorX
 
     // -------------------------------------------------------
 
-    /// Entity with this component is the "root" of a dynamic mesh
+    /*
+    // Entity with this component is the "root" of a dynamic mesh
     struct MeshComponent
     {
-        AssetHandle Mesh;
+        AssetHandle mesh;
     };
+    */
 
-    /// Tags entities that are part of a dynamic mesh hierarchy
+    // Tags entities that are part of a dynamic mesh hierarchy
     struct MeshTagComponent
     {
-        UUID MeshEntity;
+        UUID meshEntity;
     };
 
-    /// The actual (sub)meshes of a dynamic mesh
+    /*
+    // The actual (sub)meshes of a dynamic mesh
     struct SubmeshComponent
     {
-        AssetHandle Mesh;
-        // ReSharper disable once CppRedundantQualifier
-        Ref<SceneryEditorX::MaterialTable> MaterialTable = CreateRef<SceneryEditorX::MaterialTable>();
-        std::vector<UUID> BoneEntityIds; /// TODO: BoneEntityIds should be a separate component (not all meshes need this).  If mesh is rigged, these are the entities whose transforms will be used to "skin" the rig.
-        uint32_t SubmeshIndex = 0;
-        bool Visible = true;
+        AssetHandle mesh;
+        Ref<SceneryEditorX::MaterialTable> materialTable = CreateRef<SceneryEditorX::MaterialTable>();
+        std::vector<UUID> boneEntityIds; // TODO: BoneEntityIds should be a separate component (not all meshes need this).  If mesh is rigged, these are the entities whose transforms will be used to "skin" the rig.
+        uint32_t submeshIndex = 0;
+        bool visible = true;
 
         SubmeshComponent() = default;
-        SubmeshComponent(const SubmeshComponent &other) : Mesh(other.Mesh), MaterialTable(CreateRef<SceneryEditorX::MaterialTable>(other.MaterialTable)),
-        BoneEntityIds(other.BoneEntityIds), SubmeshIndex(other.SubmeshIndex), Visible(other.Visible)
-        {
-        }
+        SubmeshComponent(const SubmeshComponent &other) : mesh(other.mesh), materialTable(CreateRef<SceneryEditorX::MaterialTable>(other.materialTable)),
+        boneEntityIds(other.boneEntityIds), submeshIndex(other.submeshIndex), visible(other.visible) {}
 
-        SubmeshComponent(const AssetHandle &mesh, uint32_t submeshIndex = 0) : Mesh(mesh), SubmeshIndex(submeshIndex)
-        {
-        }
+        SubmeshComponent(const AssetHandle &mesh, uint32_t submeshIndex = 0) : mesh(mesh), submeshIndex(submeshIndex) {}
     };
+    */
 
     // -------------------------------------------------------
 
+    /*
     struct StaticMeshComponent
     {
-        AssetHandle StaticMesh;
-        // ReSharper disable once CppRedundantQualifier
-        Ref<SceneryEditorX::MaterialTable> MaterialTable = CreateRef<SceneryEditorX::MaterialTable>();
-        bool Visible = true;
+        AssetHandle staticMesh;
+        Ref<SceneryEditorX::MaterialTable> materialTable = CreateRef<SceneryEditorX::MaterialTable>();
+        bool visible = true;
 
         StaticMeshComponent() = default;
-        StaticMeshComponent(const StaticMeshComponent &other) : StaticMesh(other.StaticMesh), MaterialTable(CreateRef<SceneryEditorX::MaterialTable>(other.MaterialTable)), Visible(other.Visible)
-        {
-        }
-
-        StaticMeshComponent(const AssetHandle &staticMesh) : StaticMesh(staticMesh)
-        {
-        }
+        StaticMeshComponent(const StaticMeshComponent &other) : staticMesh(other.staticMesh), materialTable(CreateRef<SceneryEditorX::MaterialTable>(other.materialTable)), visible(other.visible){}
+        StaticMeshComponent(const AssetHandle &staticMesh) : staticMesh(staticMesh) {}
     };
+    */
 
     // -------------------------------------------------------
 
     /*
     struct AnimationComponent
     {
-        AssetHandle AnimationGraphHandle;
-        std::vector<UUID> BoneEntityIds; /// AnimationGraph refers to a skeleton.  Skeleton has a collection of bones.  Each bone affects the transform of an entity. These are those entities.
-        Mat3 RootBoneTransform; /// Transform of the animated root bone relative to the entity that this AnimationComponent belongs to.  This is used to rotate/scale root motion before applying it to the entity.
-        Ref<AnimationGraph::AnimationGraph> AnimationGraph;
+        AssetHandle animationGraphHandle;
+        std::vector<UUID> boneEntityIds; /// AnimationGraph refers to a skeleton.  Skeleton has a collection of bones.  Each bone affects the transform of an entity. These are those entities.
+        Mat3 rootBoneTransform; /// Transform of the animated root bone relative to the entity that this AnimationComponent belongs to.  This is used to rotate/scale root motion before applying it to the entity.
+        Ref<AnimationGraph::AnimationGraph> animationGraph;
 
-        /// Note: generally if you copy an AnimationComponent, then you will need to:
-        /// A) Reset the bone entity ids (e.g.to point to copied entities that the copied component belongs to).  See Scene::DuplicateEntity()
-        /// B) Create a new independent AnimationGraph instance.  See Scene::DuplicateEntity()
+        // Note: generally if you copy an AnimationComponent, then you will need to:
+        // A) Reset the bone entity ids (e.g.to point to copied entities that the copied component belongs to).  See Scene::DuplicateEntity()
+        // B) Create a new independent AnimationGraph instance.  See Scene::DuplicateEntity()
     };
-    #1#
+    */
 
     // -------------------------------------------------------
 
+    /*
     struct SpriteRendererComponent
     {
-        Vec4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
-        AssetHandle Texture = UUID(0);
-        float TilingFactor = 1.0f;
-        Vec2 UVStart{0.0f, 0.0f};
-        Vec2 UVEnd{1.0f, 1.0f};
-        bool ScreenSpace = false;
+        Vec4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+        AssetHandle texture;
+        float tilingFactor = 1.0f;
+        Vec2 uvStart{0.0f, 0.0f};
+        Vec2 uvEnd{1.0f, 1.0f};
+        bool screenSpace = false;
 
         SpriteRendererComponent() = default;
         SpriteRendererComponent(const SpriteRendererComponent &other) = default;
     };
+    */
 
     // -------------------------------------------------------
 
+    /*
     struct TextComponent
     {
-        std::string TextString;
-        size_t TextHash = 0;
+        std::string textString;
+        size_t textHash = 0;
 
-        /// Font
-        AssetHandle FontHandle;
-        Vec4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
-        float LineSpacing = 0.0f;
-        float Kerning = 0.0f;
+        // Font
+        AssetHandle fontHandle;
+        Vec4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+        float lineSpacing = 0.0f;
+        float kerning = 0.0f;
 
-        /// Layout
-        float MaxWidth = 10.0f;
+        // Layout
+        float maxWidth = 10.0f;
 
-        bool ScreenSpace = false;
-        bool DropShadow = false;
-        float ShadowDistance = 0.0f;
-        Vec4 ShadowColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        bool screenSpace = false;
+        bool dropShadow = false;
+        float shadowDistance = 0.0f;
+        Vec4 shadowColor = {0.0f, 0.0f, 0.0f, 1.0f};
 
         TextComponent() = default;
         TextComponent(const TextComponent &other) = default;
     };
+    */
 
     // -------------------------------------------------------
 
     struct DirectionalLightComponent
     {
-        Vec3 Radiance = {1.0f, 1.0f, 1.0f};
-        float Intensity = 1.0f;
-        float LightSize = 0.5f; /// For PCSS
-        float ShadowAmount = 1.0f;
+        Vec3 radiance = {1.0f, 1.0f, 1.0f};
+        float intensity = 1.0f;
+        float lightSize = 0.5f; // For PCSS
+        float shadowAmount = 1.0f;
 
-        bool CastShadows = true;
-        bool SoftShadows = true;
+        bool castShadows = true;
+        bool softShadows = true;
     };
 
     // -------------------------------------------------------
 
     struct PointLightComponent
     {
-        Vec3 Radiance = {1.0f, 1.0f, 1.0f};
-        float Radius = 10.f;
-        float Falloff = 1.f;
-        float MinRadius = 1.f;
-        float Intensity = 1.0f;
-        float LightSize = 0.5f; /// For PCSS
+        Vec3 radiance = {1.0f, 1.0f, 1.0f};
+        float radius = 10.f;
+        float falloff = 1.f;
+        float minRadius = 1.f;
+        float intensity = 1.0f;
+        float lightSize = 0.5f; // For PCSS
 
-        bool CastsShadows = true;
-        bool SoftShadows = true;
+        bool castsShadows = true;
+        bool softShadows = true;
     };
 
     // -------------------------------------------------------
 
     struct SpotLightComponent
     {
-        Vec3 Radiance{1.0f};
-        float Range = 10.0f;
-        float Angle = 60.0f;
-        float Falloff = 1.0f;
-        float Intensity = 1.0f;
-        float AngleAttenuation = 5.0f;
+        Vec3 radiance{1.0f};
+        float range = 10.0f;
+        float angle = 60.0f;
+        float falloff = 1.0f;
+        float intensity = 1.0f;
+        float angleAttenuation = 5.0f;
 
-        bool SoftShadows = false;
-        bool CastsShadows = false;
+        bool softShadows = false;
+        bool castsShadows = false;
     };
 
     // -------------------------------------------------------
 
+    /*
     struct SkyLightComponent
     {
-        AssetHandle SceneEnvironment;
-        float Intensity = 1.0f;
-        float Lod = 0.0f;
-        bool DynamicSky = false;
-        Vec3 TurbidityAzimuthInclination = {2.0, 0.0, 0.0};
+        AssetHandle sceneEnvironment;
+        float intensity = 1.0f;
+        float lod = 0.0f;
+        bool dynamicSky = false;
+        Vec3 turbidityAzimuthInclination = {2.0, 0.0, 0.0};
     };
+    */
 
     // -------------------------------------------------------
 
+    /*
     struct TileRendererComponent
     {
-        AssetHandle StaticMesh;
-        uint32_t Width = 128;
-        uint32_t Height = 128;
+        AssetHandle staticMesh;
+        uint32_t width  = 128;
+        uint32_t height = 128;
 
-        // ReSharper disable once CppRedundantQualifier
-        std::vector<Ref<MaterialTable>> Materials{1};	/// Width * Height material IDs
-        std::vector<uint8_t> MaterialIDs{1};				/// Width * Height material IDs
+        std::vector<Ref<MaterialTable>> materials{1};	// Width * Height material IDs
+        std::vector<uint8_t> materialIDs{1};			// Width * Height material IDs
 
-        // ReSharper disable once CppRedundantQualifier
-        TileRendererComponent() { Materials[0] = CreateRef<MaterialTable>(); }
+        TileRendererComponent() { materials[0] = CreateRef<MaterialTable>(); }
     };
+    */
 
 }
-*/
 
 // -------------------------------------------------------

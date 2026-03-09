@@ -66,66 +66,65 @@ namespace SceneryEditorX
 
 		enum class ShadowQualitySetting : uint8_t
 		{
-		    None = 0,
-		    Low = 1,
-		    High = 2
+		    None	= BIT(0),
+		    Low		= BIT(1),
+		    High	= BIT(2)
 		};
 
 		enum class ShadowResolutionSetting : uint8_t
 		{
-		    None = 0,
-		    Low = 1,
-		    Medium = 2,
-		    High = 3
+		    None	= BIT(0),
+		    Low		= BIT(1),
+		    Medium	= BIT(2),
+		    High	= BIT(3)
 		};
 
 		enum class AmbientOcclusionTypeSetting : uint8_t
 		{
-		    None = 0,
-		    GTAO = 1
+		    None	= BIT(0),
+		    GTAO	= BIT(1)
 		};
 
 		enum class AmbientOcclusionQualitySetting : uint8_t
 		{
-		    None = 0,
-		    High = 1,
-		    Ultra = 2
+		    None	= BIT(0),
+		    High	= BIT(1),
+		    Ultra	= BIT(2)
 		};
 
 		enum class SSRQualitySetting : uint8_t
 		{
-		    Off = 0,
-		    Medium = 1,
-		    High = 2
+		    Off		= BIT(0),
+		    Medium	= BIT(1),
+		    High	= BIT(2)
 		};
 
 		struct RendererTieringSettings
 		{
-		    float RendererScale = 1.0f;
-		    bool Windowed = false;
-		    bool VSync = true;
+		    float rendererScale = 1.0f;
+		    bool windowed		= false;
+		    bool vSync			= true;
+		    bool enableBloom	= true;
 
 		    // Shadows
-		    bool EnableShadows = true;
-		    ShadowQualitySetting ShadowQuality = ShadowQualitySetting::High;
-		    ShadowResolutionSetting ShadowResolution = ShadowResolutionSetting::High;
+		    bool enableShadows = true;
+		    ShadowQualitySetting shadowQuality = ShadowQualitySetting::High;
+		    ShadowResolutionSetting shadowResolution = ShadowResolutionSetting::High;
 
 		    // Ambient Occlusion
-		    bool EnableAO = true;
-		    AmbientOcclusionTypeSetting AOType = AmbientOcclusionTypeSetting::GTAO;
-		    AmbientOcclusionQualitySetting AOQuality = AmbientOcclusionQualitySetting::Ultra;
+		    bool enableAO = true;
+		    AmbientOcclusionTypeSetting type = AmbientOcclusionTypeSetting::GTAO;
+		    AmbientOcclusionQualitySetting quality = AmbientOcclusionQualitySetting::Ultra;
 		    SSRQualitySetting SSRQuality = SSRQualitySetting::Off;
-
-		    bool EnableBloom = true;
 		};
 
 		inline const char* ShadowQualitySettingToString(const ShadowQualitySetting shadowQualitySetting)
 		{
 		    switch (shadowQualitySetting)
 		    {
-		    case ShadowQualitySetting::None: return "None";
-		    case ShadowQualitySetting::Low:  return "Low";
-		    case ShadowQualitySetting::High: return "High";
+				case ShadowQualitySetting::None: return "None";
+				case ShadowQualitySetting::Low:  return "Low";
+				case ShadowQualitySetting::High: return "High";
 		    }
 
 		    return nullptr;
@@ -144,10 +143,10 @@ namespace SceneryEditorX
 		{
 		    switch (shadowResolutionSetting)
 		    {
-		    case ShadowResolutionSetting::None:   return "None";
-		    case ShadowResolutionSetting::Low:    return "Low";
-		    case ShadowResolutionSetting::Medium: return "Medium";
-		    case ShadowResolutionSetting::High:   return "High";
+				case ShadowResolutionSetting::None:   return "None";
+				case ShadowResolutionSetting::Low:    return "Low";
+				case ShadowResolutionSetting::Medium: return "Medium";
+				case ShadowResolutionSetting::High:   return "High";
 		    }
 
 		    return nullptr;
@@ -167,9 +166,9 @@ namespace SceneryEditorX
 		{
 		    switch (ambientOcclusionQualitySetting)
 		    {
-		    case AmbientOcclusionQualitySetting::None:   return "None";
-		    case AmbientOcclusionQualitySetting::High:   return "High";
-		    case AmbientOcclusionQualitySetting::Ultra:  return "Ultra";
+				case AmbientOcclusionQualitySetting::None:   return "None";
+				case AmbientOcclusionQualitySetting::High:   return "High";
+				case AmbientOcclusionQualitySetting::Ultra:  return "Ultra";
 		    }
 
 		    return nullptr;

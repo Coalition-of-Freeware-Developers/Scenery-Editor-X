@@ -28,27 +28,26 @@
  * Created: 11/8/2025
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #pragma once
-//#include <Math/includes/xmath.hpp>
 //#include <entt/src/entt/entt.hpp>
-//#include "components.h"
+#include "components.h"
 
 // -------------------------------------------------------
 
-/*
+
 namespace SceneryEditorX
 {
-	class Scene;
+    class Scene;
 
 	class Entity
 	{
 	public:
 		Entity() = default;
-		Entity(entt::entity handle, Scene* scene) : m_EntityHandle(handle), m_Scene(scene) {}
+		Entity(/*entt::entity handle,*/ Scene* scene) : /*m_EntityHandle(handle),*/ m_Scene(scene) {}
+		~Entity() = default;
 
-		~Entity() {}
-
-		bool IsValid() const;
+        [[nodiscard]] bool IsValid() const;
 
 		template<typename T, typename... Args>
 		T& AddComponent(Args&&... args);
@@ -59,11 +58,11 @@ namespace SceneryEditorX
 		template<typename T>
 		const T& GetComponent() const;
 
-		/// returns nullptr if entity does not have the requested component type
+		// returns nullptr if entity does not have the requested component type
 		template<typename T>
 		T* TryGetComponent();
 
-		/// returns nullptr if entity does not have the requested component type
+		// returns nullptr if entity does not have the requested component type
 		template<typename T>
 		const T* TryGetComponent() const;
 
@@ -71,13 +70,13 @@ namespace SceneryEditorX
 		bool HasComponent();
 
 		template<typename... T>
-		bool HasComponent() const;
+        [[nodiscard]] bool HasComponent() const;
 
 		template<typename...T>
 		bool HasAny();
 
 		template<typename...T>
-		bool HasAny() const;
+        [[nodiscard]] bool HasAny() const;
 
 		template<typename T>
 		void RemoveComponent();
@@ -87,21 +86,21 @@ namespace SceneryEditorX
 
 		std::string& Name()
 		{
-		    return HasComponent<TagComponent>() ? GetComponent<TagComponent>().Tag : NoName;
+		    return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
 		}
 
-		const std::string& Name() const
+        [[nodiscard]] const std::string& Name() const
 		{
-		    return HasComponent<TagComponent>() ? GetComponent<TagComponent>().Tag : NoName;
+		    return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
 		}
 
-		operator uint32_t () const { return (uint32_t)m_EntityHandle; }
-		operator entt::entity () const { return m_EntityHandle; }
+		//operator uint32_t () const { return (uint32_t)m_EntityHandle; }
+		//operator entt::entity () const { return m_EntityHandle; }
 		operator bool () const;
 
 		bool operator==(const Entity& other) const
 		{
-			return m_EntityHandle == other.m_EntityHandle && m_Scene == other.m_Scene;
+			return GetUUID() == other.GetUUID() && m_Scene == other.m_Scene;
 		}
 
 		bool operator!=(const Entity& other) const
@@ -109,33 +108,39 @@ namespace SceneryEditorX
 			return !(*this == other);
 		}
 
-		Entity GetParent() const;
+        [[nodiscard]] Entity GetParent() const;
 
 		void SetParent(Entity parent)
 		{
 			Entity currentParent = GetParent();
 			if (currentParent == parent)
-				return;
+			{
+			    return;
+			}
 
-			/// If changing parent, remove child from existing parent
+			// If changing parent, remove child from existing parent
 			if (currentParent)
-				currentParent.RemoveChild(*this);
+			{
+			    currentParent.RemoveChild(*this);
+			}
 
-			/// Setting to null is okay
+			// Setting to null is okay
 			SetParentUUID(parent.GetUUID());
 
 			if (parent)
 			{
 				auto& parentChildren = parent.Children();
                 if (UUID uuid = GetUUID(); std::ranges::find(parentChildren, uuid) == parentChildren.end())
-					parentChildren.emplace_back(GetUUID());
+                {
+                    parentChildren.emplace_back(GetUUID());
+                }
 			}
 		}
 
-		void SetParentUUID(UUID parent) { GetComponent<RelationshipComponent>().ParentHandle = parent; }
-		UUID GetParentUUID() const { return GetComponent<RelationshipComponent>().ParentHandle; }
-		std::vector<UUID>& Children() { return GetComponent<RelationshipComponent>().Children; }
-		const std::vector<UUID>& Children() const { return GetComponent<RelationshipComponent>().Children; }
+		void SetParentUUID(UUID parent) { GetComponent<RelationshipComponent>().parentHandle = std::move(parent); }
+		[[nodiscard]] UUID GetParentUUID() const { return GetComponent<RelationshipComponent>().parentHandle; }
+		std::vector<UUID>& Children() { return GetComponent<RelationshipComponent>().children; }
+		[[nodiscard]] const std::vector<UUID>& Children() const { return GetComponent<RelationshipComponent>().children; }
 
 		bool RemoveChild(Entity child)
 		{
@@ -150,22 +155,22 @@ namespace SceneryEditorX
 			return false;
 		}
 
-		bool IsAncestorOf(Entity entity) const;
-		bool IsDescendantOf(Entity entity) const { return entity.IsAncestorOf(*this); }
+		[[nodiscard]] bool IsAncestorOf(Entity entity) const;
+		[[nodiscard]] bool IsDescendantOf(Entity entity) const { return entity.IsAncestorOf(*this); }
 
 		TransformComponent& Transform() { return GetComponent<TransformComponent>(); }
-		const Mat4& Transform() const { return GetComponent<TransformComponent>().GetTransform(); }
+		[[nodiscard]] const Mat4& Transform() const { return GetComponent<TransformComponent>().GetTransform(); }
 
-		UUID GetUUID() const { return GetComponent<IDComponent>().ID; }
-		UUID GetSceneUUID() const;
+		[[nodiscard]] UUID GetUUID() const { return GetComponent<IDComponent>().id; }
+        [[nodiscard]] UUID GetSceneUUID() const;
 
 	private:
 		Entity(const std::string& name);
 
-		entt::entity m_EntityHandle{ entt::null };
+		//entt::entity m_EntityHandle{ entt::null };
 		Scene *m_Scene = nullptr;
 
-		inline static std::string NoName = "Unnamed";
+		inline static std::string m_NoName = "Unnamed";
 
 		friend class Prefab;
 		friend class Scene;
@@ -174,6 +179,6 @@ namespace SceneryEditorX
 	};
 
 }
-*/
+
 
 // -------------------------------------------------------

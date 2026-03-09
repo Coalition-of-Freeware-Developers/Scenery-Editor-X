@@ -28,87 +28,70 @@
  * Created: 16/4/2025
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #pragma once
-#include <imgui/imgui.h>
+#include <SceneryEditorX/core/identifiers/uuid.h>
+#include <SceneryEditorX/utils/inheritance.h>
 
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-    // -------------------------------------------------------
-
-	/*
-	class Node : public IObject
+	class Node : public SharedObject
 	{
 	public:
-
-        Node();
+        Node() = default;
+        virtual ~Node() override = default;
         //virtual void Serialize(Serializer &ser);
 
-		// -------------------------------------------------------
+		template <typename T>
+		void GetAll(std::vector<Ref<T>> &all)
+		{
+			for (auto &node : m_Children)
+			{
+				if (auto typed = std::dynamic_pointer_cast<T>(node))
+					all.emplace_back(typed);
 
-        Ref<Node> parent;
-	    std::vector<Ref<Node>> children;
-	    Vec3 position = Vec3(0.0f);
-	    Vec3 rotation = Vec3(0.0f);
-	    Vec3 scale = Vec3(1.0f);
-        UUID ID;
-        std::string state;
-        ImColor color;
-        ImVec2 size;
-        uint16_t inputs;
-        uint16_t outputs;
+				node->GetAll(all);
+			}
+		}
 
-        // -------------------------------------------------------
-	
-	    template <typename T>
-	    void GetAll(ObjectType type, std::vector<Ref<T>> &all)
-	    {
-	        for (auto &node : children)
-	        {
-	            if (node->type == type)
-                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
+		template <typename T>
+		std::vector<Ref<T>> GetAll()
+		{
+			std::vector<Ref<T>> all;
+			for (auto &node : m_Children)
+			{
+				if (auto typed = std::dynamic_pointer_cast<T>(node))
+					all.emplace_back(typed);
 
-				node->GetAll(type, all);
-	        }
-	    }
-	
-	    template <typename T>
-	    std::vector<Ref<T>> GetAll(ObjectType type)
-	    {
-	        std::vector<Ref<T>> all;
-	        for (auto &node : children)
-	        {
-	            if (node->type == type)
-                    all.emplace_back(std::dynamic_pointer_cast<T>(node));
-
-				node->GetAll(type, all);
-	        }
-	        return all;
-	    }
+				node->GetAll(all);
+			}
+			return all;
+		}
 	
 	    static void SetParent(const Ref<Node> &child, const Ref<Node> &parent)
 	    {
-	        if (child->parent)
+	        if (child->m_Parent)
 	        {
-	            const Ref<Node> oldParent = child->parent;
-	            const auto it = std::ranges::find_if(oldParent->children, [&](auto &n)
-	            {
-	                return child->ID == n->ID;
-	            });
-	            SEDX_ASSERT(it != oldParent->children.end(), "Child not found in children vector");
-	            oldParent->children.erase(it);
+	            const Ref<Node> oldParent = child->m_Parent;
+				const auto it = std::ranges::find_if(oldParent->m_Children, [&](auto &n)
+				{
+					return child->m_ID == n->m_ID;
+				});
+	            SEDX_ASSERT(it != oldParent->m_Children.end(), "Child not found in children vector");
+	            oldParent->m_Children.erase(it);
 	        }
-	        child->parent = parent;
-	        parent->children.push_back(child);
+	        child->m_Parent = parent;
+	        parent->m_Children.push_back(child);
 	    }
 	
 	    static void UpdateChildrenParent(const Ref<Node> &node)
 	    {
-	        for (auto &child : node->children)
+	        for (auto &child : node->m_Children)
 	        {
-	            child->parent = node;
+	            child->m_Parent = node;
 	            UpdateChildrenParent(child);
 	        }
 	    }
@@ -122,12 +105,19 @@ namespace SceneryEditorX
 	    Vec3 GetWorldFront() const; 
         static Mat4 ComposeTransform(const Vec3 &pos, const Vec3 &rot, const Vec3 &scl, const Mat4 &parent = Mat4(1));
 
+	protected:
+	    std::vector<Ref<Node>> m_Children;
+	    std::string m_State;
+
+	    Vec3 position = Vec3(0.0f);
+	    Vec3 rotation = Vec3(0.0f);
+	    Vec3 scale = Vec3(1.0f);
+
 	private:
+	    Ref<Node> m_Parent;
+	    UUID m_ID;
 		friend class AssetManager;
 	};
-	*/
-
-    // -------------------------------------------------------
 
 }
 

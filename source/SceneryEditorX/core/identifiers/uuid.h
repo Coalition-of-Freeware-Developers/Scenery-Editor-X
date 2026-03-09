@@ -70,6 +70,7 @@
  * -------------------------------------------------------
  */
 // ReSharper disable CppInconsistentNaming
+// ReSharper disable GrammarMistakeInComment
 #pragma once
 #include <array>
 #include <functional>
@@ -432,7 +433,7 @@ namespace SceneryEditorX
 		 * std::string encoded = id.ToBase64();
 		 * @endcode
 		 */
-		std::string ToBase64() const;
+        [[nodiscard]] std::string ToBase64() const;
 
 		/**
 		 * @brief Creates a UUID128 from a Base64 encoded string.
@@ -640,6 +641,22 @@ namespace SceneryEditorX
 		 * @endcode
 		 */
 		bool operator!=(const UUID& other) const { return m_UUID != other.m_UUID; }
+
+        /* @brief Disable copy assignment to prevent accidental copying */
+	    UUID &operator=(const UUID &) = delete;
+
+        /**
+         * @brief Move constructor for efficient transfer of ownership.
+         * @param other The UUID to move from
+         */
+        UUID(UUID &&other) noexcept;
+
+        /**
+         * @brief Move assignment operator for efficient transfer of ownership.
+         * @param other The UUID to move from
+         * @return Reference to the current UUID instance
+         */
+        UUID &operator=(UUID &&other) noexcept;
 
 	private:
 		friend struct std::hash<UUID>;  // Allow hash specialization access

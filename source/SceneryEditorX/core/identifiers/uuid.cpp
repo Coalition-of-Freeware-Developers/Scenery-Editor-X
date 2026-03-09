@@ -229,6 +229,21 @@ namespace SceneryEditorX
 	}
 	*/
 
+    UUID::UUID(UUID &&other) noexcept : m_UUID(other.m_UUID)
+    {
+        other.m_UUID = 0; // Reset the moved-from object to a default state
+    }
+
+    UUID &UUID::operator=(UUID &&other) noexcept
+    {
+        if (this != &other)
+        {
+            m_UUID = other.m_UUID;
+            other.m_UUID = 0; // Reset the moved-from object to a default state
+        }
+        return *this;
+    }
+
 	// -------------------------------------------------------
 	// UUID (64-bit) Implementation
 	// -------------------------------------------------------
@@ -243,7 +258,7 @@ namespace SceneryEditorX
 	// UUID32 (32-bit) Implementation
 	// -------------------------------------------------------
 
-	UUID32::UUID32() : m_UUID(s_UniformDistribution32(s_Engine32)) {}
+    UUID32::UUID32() : m_UUID(s_UniformDistribution32(s_Engine32)) {}
 
 	UUID32::UUID32(const uint32_t uuid) : m_UUID(uuid) {}
 

@@ -72,6 +72,7 @@ namespace SceneryEditorX
         Count		= 3,  // Total number of queue families
         Present		= 4,  // Present queue family for presenting rendered images to the display surface
         Unknown		= static_cast<uint8_t>(-1),
+        MaxEnum		= 255
     };
 
     /**     

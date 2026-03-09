@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,46 +23,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * fps_timer.h
+ * transforms.slang
  * -------------------------------------------------------
- * Created: 28/02/2026
+ * Created: 07/03/2026
  * -------------------------------------------------------
  */
-#pragma once
+import resources;
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
+float3 world_to_view(float3 x, bool is_position = true)
 {
-    enum class FrameLimits
-    {
-        Unlocked		= BIT(0),
-        Fixed			= BIT(1),
-        FixedToMonitor	= BIT(2)
-    };
-
-    // TODO: Investigate if making this an inheritance from the Timer classes is beneficial.
-    class FPSTimer
-    {
-    public:
-		FPSTimer() = default;
-
-        static void Init();
-		static void PostTick();
-
-        static float GetFpsLimit();
-		static FrameLimits GetFpsLimitType();
-        static void OnVSyncToggled(const bool enabled);
-        static void SetFpsLimit(float fpsIn);
-
-        static double GetTimeMs();
-        static double GetTimeSec();
-        static double GetDeltaTimeMs();
-        static double GetDeltaTimeSec();
-        static double GetDeltaTimeSmoothedMs();
-        static double GetDeltaTimeSmoothedSec();
-    };
-
+    return mul(float4(x, (float)is_position), buffer_frame.view).xyz;
 }
 
-// -------------------------------------------------------
+float3 world_to_ndc(float3 x, bool is_position = true)
+{
+    float4 ndc = mul(float4(x, (float)is_position), buffer_frame.view_projection);
+    return ndc.xyz / ndc.w;
+}
+
+float3 world_to_ndc(float3 x, float4x4 transform) // shadow mapping
+{
+    float4 ndc = mul(float4(x, 1.0f), transform);
+    return ndc.xyz / ndc.w;
+}
+
+float3 view_to_ndc(float3 x, bool is_position = true)
+{
+    float4 ndc = mul(float4(x, (float)is_position), buffer_frame.projection);
+    return ndc.xyz / ndc.w;
+}
+
+float2 world_to_uv(float3 x, bool is_position = true)
+{
+    float4 uv = mul(float4(x, (float)is_position), buffer_frame.view_projection);
+    return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float3 view_to_world(float3 x, bool is_position = true)
+{
+    return mul(float4(x, (float)is_position), buffer_frame.view_inverted).xyz;
+}
+
+float2 view_to_uv(float3 x, bool is_position = true)
+{
+    float4 uv = mul(float4(x, (float)is_position), buffer_frame.projection);
+    return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float2 ndc_to_uv(float2 x)
+{
+    return x * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float2 ndc_to_uv(float3 x)
+{
+    return x.xy * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float2 uv_to_ndc(float2 uv)
+{
+    return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f); // flip y for dx style
+}

@@ -1094,7 +1094,7 @@ namespace SceneryEditorX::IO
 	        }
 	        if (node.camera >= 0)
 			{
-	            // todo: load camera
+	            // TODO: Load Camera node data
 	        }
 	        if (node.light >= 0)
 			{

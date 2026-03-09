@@ -94,7 +94,7 @@ namespace SceneryEditorX
         Ref<UserPreferences> m_UserPreferences;
 
         static Renderer s_GfxEngine; // Graphics engine instance
-		std::vector<Ref<UI_Panel>> m_Panels;
+		//std::vector<Ref<UI_Panel>> m_Panels;
         bool m_ShowStatisticsPanel = false;
         // std::vector<Ref<Viewport>> m_EditorViewports;
         // Ref<::Project::DefaultProject> activeProject;

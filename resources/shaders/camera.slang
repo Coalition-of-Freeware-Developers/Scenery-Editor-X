@@ -1,8 +1,8 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,71 +23,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * entity.cpp
+ * camera.slang
  * -------------------------------------------------------
- * Created: 11/8/2025
+ * Created: 07/03/2026
  * -------------------------------------------------------
  */
-#include "entity.h"
-#include "scene.h"
+import common;
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
+struct CameraBufferData
 {
-    /*
-    Entity Entity::GetParent() const
-	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
-	}
-	*/
+    float4x4 view;
+    float4x4 projection;
+    float4x4 viewProjection;
+    float4x4 inverseViewProjection;
+    float3 positionWorld;
+    float padding;
+};
 
-	bool Entity::IsAncestorOf(Entity entity) const
-	{
-	    const auto &children = Children();
-	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
-	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
-	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
-	
-	    return false;
-	}
+// Bind this data via a Vulkan Uniform Buffer (UBO) at set 1, binding 0.
+// Set 0 is reserved for bindless texture arrays.
+[[vk::binding(0, 1)]]
+cbuffer CameraBuffer : register(b0)
+{
+    CameraBufferData camera;
+};
 
-	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
+// GPU-Offloaded Operations
 
-	/*
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
-
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
-
-    Entity::operator bool() const { return IsValid(); }
-
+// 1. Offload all vertex clip-space transformations
+float4 transform_to_clip_space(float3 world_position)
+{
+    return mul(camera.viewProjection, float4(world_position, 1.0f));
 }
 
-// -------------------------------------------------------
+// 2. Offload camera direction calculations for lighting/BRDF
+float3 get_view_direction(float3 world_position)
+{
+    return normalize(camera.positionWorld - world_position);
+}
+
+// 3. Offload world-space reconstruction (useful for deferred rendering/post-processing)
+float3 reconstruct_world_position(float2 uv, float depth)
+{
+    float4 clip_space = float4(uv * 2.0f - 1.0f, depth, 1.0f);
+
+    clip_space.y = -clip_space.y; // Vulkan uses top-left origin, so flip Y if necessary depending on viewport setup
+
+    float4 world_space = mul(camera.inverseViewProjection, clip_space);
+    return (world_space.xyz / world_space.w);
+}

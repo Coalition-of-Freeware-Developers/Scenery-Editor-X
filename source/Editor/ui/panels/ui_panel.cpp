@@ -34,6 +34,7 @@
 
 /// -------------------------------------------------------
 
+/*
 UI_Panel::UI_Panel(Editor *editor)
 {
     m_Editor = editor;
@@ -105,6 +106,7 @@ void UI_Panel::OnPreBegin()
 {
     // Default no-op. Add style setup or state prep here if needed.
 }
+*/
 
 
 /// -------------------------------------------------------

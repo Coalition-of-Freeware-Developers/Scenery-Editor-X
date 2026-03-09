@@ -28,8 +28,11 @@
  * Created: 11/4/2025
  * -------------------------------------------------------
  */
+// ReSharper disable CppInconsistentNaming
 #pragma once
+#include "camera.h"
 #include <vector>
+#include <SceneryEditorX/core/identifiers/uuid.h>
 //#include <entt/src/entt/entt.hpp>
 //#include "entity.h"
 //#include "SceneryEditorX/asset/asset.h"
@@ -41,13 +44,13 @@
 
 namespace SceneryEditorX
 {
-	class Camera;
 	class Entity;
 	class Light;
 
 	class Scene
 	{
 	public:
+	    explicit Scene(std::string name = "UntitledProject", bool initialize = true);
 		static void Init();
 		static void Shutdown();
 		static void Tick();
@@ -57,9 +60,19 @@ namespace SceneryEditorX
 		static std::vector<Entity*> GetEntities() { return {}; }
 
 	private:
+	    UUID m_SceneID;
+	    std::string m_Name;
+        std::string m_ScenePath;
 
+	    bool m_IsLoaded = false;
+        bool m_IsEditorScene = false;
+        uint32_t m_ViewportTop = 0;
+        uint32_t m_ViewportLeft = 0;
+        uint32_t m_ViewportRight = 0;
+        uint32_t m_ViewportBottom = 0;
 	};
-/*
+
+    /*
 	class Environment : public Asset
 	{
 	public:
@@ -73,7 +86,9 @@ namespace SceneryEditorX
 		virtual ObjectType GetAssetType() const override { return GetStaticType(); }
 
 	};
+    */
 
+    /*
     class Scene : public Asset
     {
     public:
@@ -291,7 +306,7 @@ namespace SceneryEditorX
 		template<typename T>
 		Ref<T> GetAsset(uint32_t id)
 	    {
-		    // todo: search recursively
+		    // TODO: Search recursively
 		    for (auto& node : nodes)
 			{
 		        if (node->uuid == id)

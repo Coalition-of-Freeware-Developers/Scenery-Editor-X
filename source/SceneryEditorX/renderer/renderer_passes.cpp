@@ -28,9 +28,9 @@
  * Created: 13/02/2026
  * -------------------------------------------------------
  */
+#include "bend_sss_cpu.h"
 #include "renderer.h"
 #include "renderer_declarations.h"
-#include "bend_sss_cpu.h"
 #include "SceneryEditorX/scene/lights.h"
 #include "vulkan/enums.h"
 #include "vulkan/render_context.h"
@@ -47,7 +47,7 @@ namespace SceneryEditorX
 
     // Console variable stubs – replace with real CVar system when available
     static CVar cvar_wireframe            { 0.0f };
-    static CVar cvar_grid                 { 0.0f };
+    static CVar cvar_grid                 { 1.0f };
     static CVar cvar_resolution_scale     { 1.0f };
     static CVar cvar_variable_rate_shading{ 0.0f };
     static CVar cvar_hiz_occlusion        { 1.0f };
@@ -58,14 +58,69 @@ namespace SceneryEditorX
 
     void Renderer::ProduceFrame(CommandList* graphicsPresent, CommandList* compute)
     {
-        for (const auto& shader : GetShaders())
-        {
-            if (!shader)
-                return;
-        }
-
         ImageResource* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         ImageResource* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+
+        const bool hasRtRender = rt_render && rt_render->Get() && *rt_render->Get() != VK_NULL_HANDLE;
+        const bool hasRtOutput = rt_output && rt_output->Get() && *rt_output->Get() != VK_NULL_HANDLE;
+
+        if (!hasRtRender || !hasRtOutput)
+            return;
+
+        const auto hasShader = [](const Renderer_Shader shader)
+        {
+            return GetShader(shader) != nullptr;
+        };
+
+        // Temporary bootstrap path while the full deferred shader table is still being wired.
+        // This avoids a hard early-return and allows at least camera/grid visibility during integration.
+        const bool deferredReady = false; // Force bootstrap path during integration.
+
+        if (!deferredReady)
+        {
+            // Diagnostic clear so we can verify pass output is actually presented.
+            graphicsPresent->ClearTexture(rt_render, Color(0.8f, 0.1f, 0.1f, 1.0f));
+
+            const bool hasGridShaders = hasShader(Renderer_Shader::grid_v) && hasShader(Renderer_Shader::grid_p);
+            const bool hasBlitShader  = false; // Temporarily disabled until CommandList pipeline binding is fully wired.
+            static bool s_LoggedBootstrapState = false;
+            if (!s_LoggedBootstrapState)
+            {
+                SEDX_CORE_WARN_TAG("Renderer", "Bootstrap state: grid shaders={}, blit shader={}", hasGridShaders, hasBlitShader);
+                s_LoggedBootstrapState = true;
+            }
+
+            if (Scene::GetCamera() && hasGridShaders)
+            {
+                ImageResource* depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+                rt_render->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, ALL_MIPS, 0);
+                depthTarget->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
+                Pass_Grid(graphicsPresent, rt_render);
+                depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
+                rt_render->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, ALL_MIPS, 0);
+            }
+
+            if (hasBlitShader)
+            {
+                Pass_Blit(graphicsPresent, rt_render, rt_output);
+            }
+            else
+            {
+                graphicsPresent->Blit(rt_render, rt_output, false);
+            }
+            Pass_Text(graphicsPresent, rt_output);
+
+            rt_output->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
+
+            // Bootstrap path still needs to submit the graphics command list so
+            // `frame_output` is actually produced before swapchain presentation.
+            // Do NOT submit the unused compute list here; that can create timeline/cmd reuse hazards.
+            if (graphicsPresent && graphicsPresent->GetState() == CommandState::Recording)
+            {
+                graphicsPresent->Submit(nullptr, false);
+            }
+            return;
+        }
 
         // brdf lut (once)
         if (!m_PassState.m_BRDF_LutProduced)
@@ -151,7 +206,17 @@ namespace SceneryEditorX
             uint64_t gfxPhase1TimelineValue = graphicsPresent->GetLastTimelineSignalValue();
             FrameSync* gfxTimeline    = graphicsPresent->GetTimelineSemaphore();
 
-            // async compute: overlaps with shadow rasterization
+            // async compute: overlaps with shadow rasterization.
+            // Queue ownership transfers between graphics/compute image usage are not fully wired yet,
+            // so only use async compute when both command lists target the same queue family.
+            uint64_t computeTimelineValue = gfxPhase1TimelineValue;
+            FrameSync* computeTimeline = gfxTimeline;
+
+            const bool canUseAsyncCompute =
+                compute && compute->GetQueue() && graphicsPresent->GetQueue() &&
+                (compute->GetQueue()->GetFamilyIndex() == graphicsPresent->GetQueue()->GetFamilyIndex());
+
+            if (canUseAsyncCompute)
             {
                 /*if (cloudsVisible)
                 {
@@ -163,9 +228,18 @@ namespace SceneryEditorX
 
                 // submit compute, wait on phase 1
                 compute->Submit(nullptr, false, nullptr, gfxTimeline, gfxPhase1TimelineValue);
+                computeTimelineValue = compute->GetLastTimelineSignalValue();
+                computeTimeline = compute->GetTimelineSemaphore();
             }
-            uint64_t computeTimelineValue = compute->GetLastTimelineSignalValue();
-            FrameSync* computeTimeline = compute->GetTimelineSemaphore();
+            else
+            {
+                static bool warnedNoOwnershipSync = false;
+                if (!warnedNoOwnershipSync)
+                {
+                    SEDX_CORE_WARN_TAG("Renderer", "Async compute disabled: queue-family ownership/layout sync is not fully implemented yet");
+                    warnedNoOwnershipSync = true;
+                }
+            }
 
             // graphics phase 2: shadow maps
             Ref<QueueManager> queueManager = RenderContext::Get()->GetDevice()->GetQueueManager();
@@ -206,6 +280,14 @@ namespace SceneryEditorX
             Pass_Light_Reflections(graphicsPresent);
             
             Pass_TransparencyReflectionRefraction(graphicsPresent);
+
+            // Infinite editor grid: depth-test against render-resolution depth
+            {
+                ImageResource* depthTarget = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+                depthTarget->SetLayout(Layout::ImageLayout::Attachment, graphicsPresent, 0, 0);
+                Pass_Grid(graphicsPresent, GetRenderTarget(Renderer_RenderTarget::frame_render));
+                depthTarget->SetLayout(Layout::ImageLayout::ShaderRead, graphicsPresent, 0, 0);
+            }
             Pass_AA_Upscale(graphicsPresent);
             Pass_PostProcess(graphicsPresent);
         }
@@ -344,30 +426,28 @@ namespace SceneryEditorX
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
         pso.render_target_color_textures[0]  = out;
-        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
+        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         cmdList->SetPipelineState(pso);
 
-        // follow camera in Scene-unit increments so the grid appears stationary
-        {
-            const float gridSpacing     = 1.0f;
-            Camera* cam = Scene::GetCamera();
-            const Vec3 cameraPos        = cam ? cam->GetEntity()->GetPosition() : Vec3{};
-            const Vec3 translation      = Vec3(
-                floor(cameraPos.x / gridSpacing) * gridSpacing,
-                0.0f,
-                floor(cameraPos.z / gridSpacing) * gridSpacing
-            );
+        // TODO: Re-enable per-camera grid transform once pass draw-data and push constants
+        // are fully wired. For now, keep the pass minimal to unblock visibility work.
 
-            Matrix grid_transform       = Matrix{}.CreateScale(Vec3(1000.0f, 1.0f, 1000.0f)) * Matrix{}.CreateTranslation(translation);
-            m_pcb_pass_cpu.draw_index = WriteDrawData(grid_transform);
-            cmdList->PushConstants(m_pcb_pass_cpu);
+        Mesh* quad = GetStandardMesh(MeshType::Quad);
+        if (!quad || !quad->GetVertexBuffer() || !quad->GetIndexBuffer())
+        {
+            static bool warnedOnce = false;
+            if (!warnedOnce)
+            {
+                SEDX_CORE_WARN_TAG("Render Pass", "Pass_Grid skipped: quad mesh is not available");
+                warnedOnce = true;
+            }
+            return;
         }
 
         cmdList->SetCullMode(CullMode::Back);
-        cmdList->SetVertexBuffer(GetStandardMesh(MeshType::Quad)->GetVertexBuffer(), nullptr);
-        cmdList->SetIndexBuffer(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
-        cmdList->DrawIndexed(6, 1, GetStandardMesh(MeshType::Quad)->GetGlobalIndexOffset(), GetStandardMesh(MeshType::Quad)->GetGlobalVertexOffset());
-
+        cmdList->SetVertexBuffer(quad->GetVertexBuffer(), nullptr);
+        cmdList->SetIndexBuffer(quad->GetIndexBuffer());
+        cmdList->DrawIndexed(6, 1, quad->GetGlobalIndexOffset(), quad->GetGlobalVertexOffset());
     }
 
     void Renderer::Pass_Depth_Prepass(CommandList *cmdList)
@@ -645,6 +725,11 @@ namespace SceneryEditorX
     {
         // compute blit: vulkan can't blit depth to float, amd uav requires float
         Shader* shader_c = GetShader(Renderer_Shader::blit_c);
+
+        // Ensure explicit image layout transitions even if descriptor-layout binding
+        // is not yet fully wired for the compute pass.
+        in->SetLayout(Layout::ImageLayout::ShaderRead, cmdList, 0, 0);
+        out->SetLayout(Layout::ImageLayout::General, cmdList, 0, 0);
 
         {
             PipelineState pso;

@@ -29,10 +29,8 @@
  * -------------------------------------------------------
  */
 #pragma once
-#include "device.h"
 #include "command_list.h"
-
-
+#include "device.h"
 #include <SceneryEditorX/utils/inheritance.h>
 
 // -------------------------------------------------------
@@ -76,7 +74,7 @@ namespace SceneryEditorX
 		ImageResource(const ImgResourceSpec &spec);
 		ImageResource();
         void SetLayout(Layout::ImageLayout newLayout, CommandList *cmdList, uint32_t mipIndex, uint32_t mipRange);
-        virtual ~ImageResource() override = default;
+        virtual ~ImageResource() override;
 
         uint32_t GetWidth() const           { return m_Spec.width; }
         void SetWidth(const uint32_t width) { m_Spec.width = width; }
@@ -87,7 +85,7 @@ namespace SceneryEditorX
         uint32_t GetArrayLength() const { return (m_Spec.type == ImageType::Type3D) ? 1 : m_Depth; }
         ImgResourceSpec GetImageSpec() const { return m_Spec; }
 
-		        /**
+        /**
          * @brief Stores the raw byte data for a single mip level.
          */
         struct MipBytes
@@ -103,7 +101,7 @@ namespace SceneryEditorX
             std::vector<MipBytes> mips;
         };
 
-void AllocateMip(uint32_t index = 0);
+        void AllocateMip(uint32_t index = 0);
 
         /**
          * @brief Returns true if the resource was created with per-mip image views.
@@ -116,6 +114,14 @@ void AllocateMip(uint32_t index = 0);
          * The pointer is stable for the lifetime of this object.
          */
         [[nodiscard]] VkImage* Get() { return &m_Image; }
+        [[nodiscard]] VkImageView GetImageView(uint32_t mip = 0) const
+        {
+            if (m_ImageViews.empty())
+                return VK_NULL_HANDLE;
+
+            const size_t idx = std::min<size_t>(mip, m_ImageViews.size() - 1);
+            return m_ImageViews[idx];
+        }
 
         // Format type
         bool IsDepthFormat() const;
@@ -137,6 +143,7 @@ void AllocateMip(uint32_t index = 0);
 		VkImage m_Image = VK_NULL_HANDLE;
 		std::vector<VkImageView> m_ImageViews;
         std::vector<Slice> m_slices;
+        VmaAllocation m_Allocation = nullptr;
         VkDeviceMemory m_DeviceMemory = nullptr;
         VkFormat m_CompressionFormat = VK_FORMAT_UNDEFINED;
 	};

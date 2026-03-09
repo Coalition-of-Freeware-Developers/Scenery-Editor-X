@@ -29,20 +29,21 @@
  * -------------------------------------------------------
  */
 #include "renderer.h"
-
+#include "SceneryEditorX/scene/camera.h"
 #include "SceneryEditorX/scene/scene.h"
 #include "slang/slang-com-ptr.h"
 #include "slang/slang.h"
 #include "vulkan/swapchain.h"
 #include "vulkan/uniform_buffer_set.h"
-#include "vulkan/asset/asset_manager.h"
 #include "vulkan/debug/graphics_debug.h"
 #include "vulkan/pipeline/pipeline.h"
 #include "vulkan/shader/shader_manager.h"
 #include <array>
 #include <SDL3/SDL.h>
+#include <SceneryEditorX/asset/asset_manager.h>
 #include <SceneryEditorX/core/application/application.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <volk/volk.h>
 
 // --------------------------------------------------------------
@@ -100,6 +101,7 @@ namespace SceneryEditorX
     static Ref<Swapchain> s_Swapchain = nullptr;
     std::atomic<bool> Renderer::s_ResourcesInitialized = false;
     uint32_t Renderer::m_ResourceIndex = 0;
+    Renderer::PassState Renderer::m_PassState = {};
     Scope<AssetManager> Renderer::s_AssetManager = nullptr;
 
     // Bindless draw data
@@ -124,6 +126,14 @@ namespace SceneryEditorX
     std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> Renderer::s_BasicShaderDataAllocations = {};
     std::array<void*,           MAX_FRAMES_IN_FLIGHT> Renderer::s_BasicShaderDataMapped      = {};
     std::array<VkDeviceAddress, MAX_FRAMES_IN_FLIGHT> Renderer::s_BasicShaderDataAddresses   = {};
+
+    Camera*              Renderer::s_Camera                    = nullptr;
+    VkDescriptorSetLayout Renderer::s_CameraDescriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorPool      Renderer::s_CameraDescriptorPool      = VK_NULL_HANDLE;
+    std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> Renderer::s_CameraDescriptorSets = {};
+    std::array<VkBuffer,        MAX_FRAMES_IN_FLIGHT> Renderer::s_CameraUboBuffers      = {};
+    std::array<VmaAllocation,   MAX_FRAMES_IN_FLIGHT> Renderer::s_CameraUboAllocations  = {};
+    std::array<void*,           MAX_FRAMES_IN_FLIGHT> Renderer::s_CameraUboMapped        = {};
 
     // Resolution & viewport (internal state)
     static xMath::Vec2 s_RendererResolution(0.0f, 0.0f);
@@ -210,9 +220,10 @@ namespace SceneryEditorX
         /// SwapChain                                                                                                     ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         if (!Window::IsVisible())
-		{
-            SEDX_CORE_ERROR_TAG("Swapchain", "Window is not visible or is minimized/hidden. Swapchain creation aborted.");
-            return;
+        {
+            // On startup the window can be temporarily hidden/minimized while platform
+            // initialization completes. Don't abort renderer initialization permanently.
+            SEDX_CORE_WARN_TAG("Swapchain", "Window is not visible yet; attempting swapchain setup anyway");
         }
 
         s_Swapchain = CreateRef<Swapchain>();
@@ -240,24 +251,6 @@ namespace SceneryEditorX
         SetRendererResolution(1920, 1080, false);
         SetViewport(static_cast<float>(width), static_cast<float>(height));
 
-        /*
-        // Create the swapchain now that render context is initialized
-        if (RenderContext::Get() && s_Swapchain->GetSurface() != VK_NULL_HANDLE)
-        {
-            s_Swapchain->CreateSwapchain();
-            if (s_Swapchain->Get() == VK_NULL_HANDLE)
-            {
-                SEDX_CORE_ERROR_TAG("Renderer", "Failed to create swapchain");
-                return;
-            }
-        }
-        else
-        {
-            SEDX_CORE_WARN_TAG("Renderer", "Surface not available, swapchain creation deferred");
-            return;
-        }
-        */
-
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// Frame Resources                                                                                               ///
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +259,9 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Renderer", "Created AssetManager");
 
         CreateFrameResources();
+        CreateRenderTargets(true, true, true);
         CreateModels();
+		GeometryBuffer::Initialize();
         CreateShaders();
 
         // Query surface capabilities
@@ -328,13 +323,37 @@ namespace SceneryEditorX
                     s_BasicShaderDataMapped[i]      = nullptr;
                     s_BasicShaderDataAddresses[i]   = 0;
                 }
+
+                if (s_CameraUboAllocations[i] != VK_NULL_HANDLE)
+                {
+                    vmaDestroyBuffer(vma, s_CameraUboBuffers[i], s_CameraUboAllocations[i]);
+                    s_CameraUboBuffers[i]     = VK_NULL_HANDLE;
+                    s_CameraUboAllocations[i] = VK_NULL_HANDLE;
+                    s_CameraUboMapped[i]      = nullptr;
+                }
+            }
+
+            if (s_CameraDescriptorPool != VK_NULL_HANDLE)
+            {
+                vkDestroyDescriptorPool(dev, s_CameraDescriptorPool, nullptr);
+                s_CameraDescriptorPool = VK_NULL_HANDLE;
+                s_CameraDescriptorSets.fill(VK_NULL_HANDLE);
+            }
+            if (s_CameraDescriptorSetLayout != VK_NULL_HANDLE)
+            {
+                vkDestroyDescriptorSetLayout(dev, s_CameraDescriptorSetLayout, nullptr);
+                s_CameraDescriptorSetLayout = VK_NULL_HANDLE;
             }
         }
 
         // Destroy frame resources
+		GeometryBuffer::Shutdown();
         DestroyFrameResources();
-        s_AssetManager->DestroyAll();
-        s_AssetManager.reset();
+		if (s_AssetManager)
+		{
+		    s_AssetManager->DestroyAll();
+		    s_AssetManager.reset();
+		}
 
         // Destroy swapchain
         if (s_Swapchain)
@@ -352,6 +371,12 @@ namespace SceneryEditorX
 
     void Renderer::Tick()
     {
+        // Tick the active camera so its matrices are always up-to-date before draw calls
+        if (s_Camera)
+        {
+            s_Camera->Tick();
+        }
+
         Ref<Device> device = RenderContext::Get()->GetDevice();
         SEDX_CORE_ASSERT(device.IsValid(), "Device is not valid in Renderer::Tick");
 
@@ -359,10 +384,10 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager is not valid in Renderer::Tick");
 
         device->GetMemoryAllocator().Tick(s_FrameNumber);
-        bool can_render = !Window::IsMinimized() && s_ResourcesInitialized;
+        bool canRender = !Window::IsMinimized() && s_ResourcesInitialized;
 
         // prevent write-after-present hazards when idle (skip first frame, nothing to wait for)
-        if (!can_render && s_FrameNumber > 0)
+        if (!canRender && s_FrameNumber > 0)
         {
             if (Ref<Queue> *queue = queueManager->GetQueue(QueueType::Graphics); queue && *queue)
             {
@@ -375,7 +400,12 @@ namespace SceneryEditorX
         m_CmdList_Present->Begin();
 
         m_CmdList_Compute = nullptr;
-        if (can_render)
+
+        // Bootstrap mode currently runs the graphics-only path in ProduceFrame().
+        // Don't acquire/record compute command lists until the deferred compute passes
+        // (and their synchronization) are fully wired.
+        const bool needsComputeCommandList = false;
+        if (canRender && needsComputeCommandList)
         {
             m_CmdList_Compute = queueManager->NextCommandList();
             SEDX_CORE_ASSERT(m_CmdList_Compute != nullptr, "Failed to acquire compute command list");
@@ -387,11 +417,36 @@ namespace SceneryEditorX
 
         m_DrawDataCount = 0;
 
-        if (can_render)
+        if (canRender)
         {
 			bool isLoading = false;
-
             UpdateDrawCalls(m_CmdList_Present);
+
+            // Wire the modern pass-based renderer into the active frame loop.
+            // This keeps the existing legacy path intact while enabling
+            // `Pass_Depth_Prepass()` and `Pass_Grid()` execution.
+            if (m_CmdList_Present && (m_CmdList_Compute || !needsComputeCommandList))
+            {
+                ImageResource* rtRender = GetRenderTarget(Renderer_RenderTarget::frame_render);
+                ImageResource* rtOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
+
+                const bool hasRtRender = rtRender && rtRender->Get() && *rtRender->Get() != VK_NULL_HANDLE;
+                const bool hasRtOutput = rtOutput && rtOutput->Get() && *rtOutput->Get() != VK_NULL_HANDLE;
+
+                if (hasRtRender && hasRtOutput)
+                {
+                    ProduceFrame(m_CmdList_Present, m_CmdList_Compute);
+                }
+                else
+                {
+                    static bool s_LoggedMissingPassTargets = false;
+                    if (!s_LoggedMissingPassTargets)
+                    {
+                        SEDX_CORE_WARN_TAG("Renderer", "Pass-based renderer disabled: frame render targets are not GPU-initialized yet");
+                        s_LoggedMissingPassTargets = true;
+                    }
+                }
+            }
 
             // periodic resource cleanup
             {
@@ -556,6 +611,323 @@ namespace SceneryEditorX
 
 #pragma region Frame Rendering Methods
 
+    bool Renderer::BeginFrame()
+    {
+        SEDX_CORE_TRACE_TAG("Renderer", "Beginning frame {}", s_FrameNumber);
+
+        // Check if we can render
+        if (!s_ResourcesInitialized)
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "BeginFrame called but renderer not initialized");
+            return false;
+        }
+
+        // Skip if window is minimized
+        const uint32_t minRenderDimension = 64;
+        bool isValidResolution = s_RendererResolution.x >= minRenderDimension && s_RendererResolution.y >= minRenderDimension;
+
+        if (Window::IsMinimized() || !isValidResolution)
+        {
+            SEDX_CORE_TRACE_TAG("Renderer", "Window is minimized or resolution is invalid ({}x{})", s_RendererResolution.x, s_RendererResolution.y);
+            return false;
+        }
+
+        // Check swapchain validity with detailed diagnostics
+        if (!s_Swapchain)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain is null, was Init() called successfully?");
+            return false;
+        }
+
+        if (s_Swapchain->GetImages().empty())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain has no images, VkSwapchainKHR handle: {}, surface valid: {}",
+                                static_cast<void *>(s_Swapchain->Get()), s_Swapchain->GetSurface() != VK_NULL_HANDLE);
+
+            // Attempt to recreate swapchain if surface is available and window is visible
+            if (s_Swapchain->GetSurface() != VK_NULL_HANDLE)
+            {
+                SEDX_CORE_WARN_TAG("Renderer", "Attempting to recreate swapchain...");
+                s_Swapchain->Recreate();
+                if (s_Swapchain != nullptr && !s_Swapchain->GetImages().empty())
+                {
+                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images",
+                                        s_Swapchain->GetImages().size());
+                }
+                else
+                {
+                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreation failed or returned no images after recreation attempt");
+                    return false;
+                }
+            }
+            else
+            {
+                SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreation failed or returned no images");
+                return false;
+            }
+        }
+
+        // Wait for the fence of the current frame-in-flight BEFORE acquiring the image
+        if (!s_FenceHandles.empty())
+        {
+            SEDX_CORE_TRACE_TAG("Renderer", "Waiting for fence of frame {} (fence handle: {})",
+                                s_CurrentFrameIndex, static_cast<void *>(s_FenceHandles[s_CurrentFrameIndex]));
+            if (s_CurrentFrameIndex < s_FenceHandles.size() && s_FenceHandles[s_CurrentFrameIndex] != VK_NULL_HANDLE)
+            {
+                VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+                vkWaitForFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
+                vkResetFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex]);
+                SEDX_CORE_TRACE_TAG("Renderer", "Fence wait and reset complete for frame {}", s_CurrentFrameIndex);
+            }
+        }
+
+        if (s_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Current frame index {} out of bounds for present semaphores (size {})",
+                                s_CurrentFrameIndex, s_PresentSemaphoreHandles.size());
+            return false;
+        }
+
+        // Acquire image and signal the exact semaphore that submit waits on for this frame.
+        {
+            VkResult acquireResult = vkAcquireNextImageKHR(RenderContext::Get()->GetDevice()->GetLogicalDevice(),
+                                                           s_Swapchain->Get(),
+                                                           UINT64_MAX,
+                                                           s_PresentSemaphoreHandles[s_CurrentFrameIndex],
+                                                           VK_NULL_HANDLE,
+                                                           &s_SwapchainImageIndex);
+
+            if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
+            {
+                s_Swapchain->Recreate();
+                return false;
+            }
+
+            if (acquireResult != VK_SUCCESS)
+            {
+                SEDX_CORE_WARN_TAG("Renderer",
+                                   "vkAcquireNextImageKHR failed with result: {}",
+                                   static_cast<int>(acquireResult));
+                return false;
+            }
+
+            if (s_SwapchainImageIndex >= s_Swapchain->GetImages().size())
+            {
+                SEDX_CORE_WARN_TAG("Renderer", "AcquireNextImage returned invalid index: {}", s_SwapchainImageIndex);
+                return false;
+            }
+
+            SEDX_CORE_TRACE_TAG("Renderer", "Acquired swapchain image index: {}", s_SwapchainImageIndex);
+        }
+
+        // Begin command buffer recording
+        if (VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex]; cb != VK_NULL_HANDLE)
+        {
+            vkResetCommandBuffer(cb, 0);
+            SEDX_CORE_TRACE_TAG("Renderer", "Command buffer reset for frame {}", s_CurrentFrameIndex);
+
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+            VkResult result = vkBeginCommandBuffer(cb, &beginInfo);
+            SEDX_VK_RESULT_ASSERT(result, "vkBeginCommandBuffer failed");
+        }
+
+        SEDX_CORE_TRACE_TAG("Renderer", "Command buffer recording begun for frame {}", s_CurrentFrameIndex);
+        s_FrameInProgress = true;
+        return true;
+    }
+
+    void Renderer::EndFrame()
+    {
+        SEDX_CORE_TRACE_TAG("Renderer", "Ending frame {}", s_FrameNumber);
+
+        if (!s_FrameInProgress)
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "EndFrame called but no frame in progress");
+            return;
+        }
+
+        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
+        if (cb != VK_NULL_HANDLE)
+        {
+            // Record the actual render commands for this frame
+            RecordRenderCommands(cb, s_SwapchainImageIndex);
+
+            // Transition swapchain image to present layout
+            if (s_Swapchain)
+            {
+                auto &swapchainImages = s_Swapchain->GetImages();
+                if (s_SwapchainImageIndex < swapchainImages.size())
+                {
+                    VkImageMemoryBarrier2 barrierPresent{
+                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        .dstAccessMask = 0,
+                        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        .image = swapchainImages[s_SwapchainImageIndex],
+                        .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
+
+                    VkDependencyInfo dependencyInfo{};
+                    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                    dependencyInfo.imageMemoryBarrierCount = 1;
+                    dependencyInfo.pImageMemoryBarriers = &barrierPresent;
+
+                    vkCmdPipelineBarrier2(cb, &dependencyInfo);
+                }
+            }
+
+            // End command buffer recording
+            VkResult result = vkEndCommandBuffer(cb);
+            SEDX_VK_RESULT_ASSERT(result, "vkEndCommandBuffer failed");
+        }
+
+        s_FrameInProgress = false;
+    }
+
+    void Renderer::SubmitAndPresent()
+    {
+        SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer and presenting frame {}", s_FrameNumber);
+
+        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
+        if (cb == VK_NULL_HANDLE)
+        {
+            SEDX_CORE_TRACE_TAG("Renderer", "No command buffer available for frame {}", s_FrameNumber);
+            return;
+        }
+
+        if (s_PresentSemaphoreHandles.empty() || s_RenderSemaphoreHandles.empty() || s_FenceHandles.empty())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Cannot submit, synchronization primitives not created or empty.");
+            return;
+        }
+
+        // Get graphics queue from context
+        VkQueue graphicsQueue = VK_NULL_HANDLE;
+
+        Ref<Device> device = RenderContext::Get()->GetDevice();
+        SEDX_CORE_VERIFY(device.IsValid(), "Device is not valid during submit");
+
+        if (device.IsValid())
+        {
+            Ref<QueueManager> queueManager = device->GetQueueManager();
+            SEDX_CORE_VERIFY(queueManager.IsValid(), "QueueManager is not valid during submit");
+
+            if (queueManager.IsValid())
+            {
+                if (Ref<Queue> *queueRef = queueManager->GetQueue(Graphics); queueRef && *queueRef)
+                {
+                    graphicsQueue = (*queueRef)->GetQueue();
+                }
+            }
+        }
+
+        SEDX_CORE_VERIFY(graphicsQueue != VK_NULL_HANDLE, "No graphics queue available for submission");
+        if (graphicsQueue == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        // Submit command buffer
+        VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+        // Ensure indices are valid
+        if (s_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Current frame index {} out of bounds for present semaphores (size {})",
+                                s_CurrentFrameIndex, s_PresentSemaphoreHandles.size());
+            return;
+        }
+        if (s_SwapchainImageIndex >= s_RenderSemaphoreHandles.size())
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain image index {} out of bounds for render semaphores (size {})",
+                                s_SwapchainImageIndex, s_RenderSemaphoreHandles.size());
+            return;
+        }
+        SEDX_CORE_TRACE_TAG(
+            "Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
+            s_FrameNumber,
+            static_cast<void *>(s_PresentSemaphoreHandles[s_CurrentFrameIndex]),
+            static_cast<void *>(s_RenderSemaphoreHandles[s_SwapchainImageIndex]));
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &s_PresentSemaphoreHandles[s_CurrentFrameIndex];
+        submitInfo.pWaitDstStageMask = &waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cb;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &s_RenderSemaphoreHandles[s_SwapchainImageIndex];
+
+        VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, s_FenceHandles[s_CurrentFrameIndex]);
+        SEDX_VK_RESULT_ASSERT(submitResult, "vkQueueSubmit failed");
+
+        // Present the rendered image
+        VkSwapchainKHR swapchainHandle = s_Swapchain->Get();
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &s_RenderSemaphoreHandles[s_SwapchainImageIndex];
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &swapchainHandle;
+        presentInfo.pImageIndices = &s_SwapchainImageIndex;
+        SEDX_CORE_TRACE_TAG("Renderer", "Presenting swapchain image index {} for frame {}",
+                            s_SwapchainImageIndex, s_FrameNumber);
+
+        VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
+        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
+        {
+            // Swapchain needs recreation (e.g., window resize)
+            s_Swapchain->Recreate();
+            SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
+        }
+        else if (presentResult != VK_SUCCESS)
+        {
+            SEDX_CORE_ERROR_TAG("Renderer", "vkQueuePresentKHR failed: {}", static_cast<int>(presentResult));
+        }
+
+        // Advance to next frame-in-flight
+        s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+        s_FrameNumber++;
+
+        SEDX_CORE_TRACE_TAG("Renderer", "Frame {} submitted and presented, advancing to frame index {}",
+                            s_FrameNumber, s_CurrentFrameIndex);
+    }
+
+    void Renderer::DrawFrame(CommandList *cmdList, CommandList *computeCmdList)
+    {
+        /* 
+         * TODO: This method is currently not used, but will be the main entry point for recording 
+         * draw calls once the renderer is fully modularized and other systems are integrated to call it.
+         */
+        SEDX_CORE_TRACE_TAG("Renderer", "DrawFrame called for frame {}", s_FrameNumber);
+        // This method will be called by modules to record their draw commands
+        // For now, placeholder implementation
+
+        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
+        if (cb == VK_NULL_HANDLE || !s_Swapchain)
+        {
+            return;
+        }
+        SEDX_CORE_TRACE_TAG("Renderer", "Recording draw commands using command buffer for frame {}", s_FrameNumber);
+
+        // Record render commands
+        RecordRenderCommands(cb, s_SwapchainImageIndex);
+        SEDX_CORE_TRACE_TAG("Renderer", "Draw commands recorded for frame {}", s_FrameNumber);
+    }
+
+    void Renderer::BlitToBackBuffer(CommandList *cmdList, ImageResource *texture)
+    {
+        // TODO: Implement blit-to-swapchain once Swapchain exposes an ImageResource interface
+        (void)cmdList;
+        (void)texture;
+    }
+
     void Renderer::CreateFrameResources()
     {
         SEDX_CORE_TRACE_TAG("Renderer", "Creating frame resources for {} frames in flight", MAX_FRAMES_IN_FLIGHT);
@@ -623,9 +995,9 @@ namespace SceneryEditorX
 
         s_FrameSync = CreateScope<FrameSync>(SyncType::Fence); // keep a simple FrameSync in case other systems expect it
         SEDX_CORE_TRACE_TAG("Renderer", "Created frame sync objects (fences: {}, present semaphores: {}, render semaphores: {})",
-            static_cast<uint32_t>(s_FenceHandles.size()),
-            static_cast<uint32_t>(s_PresentSemaphoreHandles.size()),
-            static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
+                            static_cast<uint32_t>(s_FenceHandles.size()),
+                            static_cast<uint32_t>(s_PresentSemaphoreHandles.size()),
+                            static_cast<uint32_t>(s_RenderSemaphoreHandles.size()));
 
         s_FrameSync->SetUserCmdList(nullptr);
         SEDX_CORE_TRACE_TAG("Renderer", " Frame resources created");
@@ -708,315 +1080,6 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Renderer", " Frame resources destroyed");
     }
 
-    bool Renderer::BeginFrame()
-    {
-        SEDX_CORE_TRACE_TAG("Renderer", "Beginning frame {}", s_FrameNumber);
-
-        // Check if we can render
-        if (!s_ResourcesInitialized)
-        {
-            SEDX_CORE_WARN_TAG("Renderer", "BeginFrame called but renderer not initialized");
-            return false;
-        }
-
-        // Skip if window is minimized
-        const uint32_t minRenderDimension = 64;
-        bool isValidResolution = s_RendererResolution.x >= minRenderDimension && s_RendererResolution.y >= minRenderDimension;
-
-        if (Window::IsMinimized() || !isValidResolution)
-        {
-			SEDX_CORE_TRACE_TAG("Renderer", "Window is minimized or resolution is invalid ({}x{})", s_RendererResolution.x, s_RendererResolution.y);
-            return false;
-        }
-
-        // Check swapchain validity with detailed diagnostics
-        if (!s_Swapchain)
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain is null, was Init() called successfully?");
-            return false;
-        }
-
-        if (s_Swapchain->GetImages().empty())
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain has no images, VkSwapchainKHR handle: {}, surface valid: {}",
-                                static_cast<void *>(s_Swapchain->Get()), s_Swapchain->GetSurface() != VK_NULL_HANDLE);
-
-            // Attempt to recreate swapchain if surface is available and window is visible
-            if (s_Swapchain->GetSurface() != VK_NULL_HANDLE)
-            {
-                SEDX_CORE_WARN_TAG("Renderer", "Attempting to recreate swapchain...");
-                s_Swapchain->Recreate();
-                if (s_Swapchain != nullptr && !s_Swapchain->GetImages().empty())
-                {
-                    SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated successfully with {} images", s_Swapchain->GetImages().size());
-                }
-                else
-                {
-					SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreation failed or returned no images after recreation attempt");
-                    return false;
-                }
-            }
-            else
-            {
-				SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreation failed or returned no images");
-                return false;
-            }
-        }
-
-        // Wait for the fence of the current frame-in-flight BEFORE acquiring the image
-        if (!s_FenceHandles.empty())
-        {
-            SEDX_CORE_TRACE_TAG("Renderer", "Waiting for fence of frame {} (fence handle: {})",
-                                s_CurrentFrameIndex, static_cast<void *>(s_FenceHandles[s_CurrentFrameIndex]));
-            if (s_CurrentFrameIndex < s_FenceHandles.size() && s_FenceHandles[s_CurrentFrameIndex] != VK_NULL_HANDLE)
-            {
-                VkDevice device = RenderContext::Get()->GetDevice()->GetLogicalDevice();
-                vkWaitForFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
-                vkResetFences(device, 1, &s_FenceHandles[s_CurrentFrameIndex]);
-                SEDX_CORE_TRACE_TAG("Renderer", "Fence wait and reset complete for frame {}", s_CurrentFrameIndex);
-            }
-        }
-
-        if (s_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "Current frame index {} out of bounds for present semaphores (size {})", s_CurrentFrameIndex, s_PresentSemaphoreHandles.size());
-            return false;
-        }
-
-        // Acquire image and signal the exact semaphore that submit waits on for this frame.
-        {
-            VkResult acquireResult = vkAcquireNextImageKHR(
-                RenderContext::Get()->GetDevice()->GetLogicalDevice(),
-                s_Swapchain->Get(),
-                UINT64_MAX,
-                s_PresentSemaphoreHandles[s_CurrentFrameIndex],
-                VK_NULL_HANDLE,
-                &s_SwapchainImageIndex);
-
-            if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
-            {
-                s_Swapchain->Recreate();
-                return false;
-            }
-
-            if (acquireResult != VK_SUCCESS)
-            {
-                SEDX_CORE_WARN_TAG("Renderer", "vkAcquireNextImageKHR failed with result: {}", static_cast<int>(acquireResult));
-                return false;
-            }
-
-            if (s_SwapchainImageIndex >= s_Swapchain->GetImages().size())
-            {
-                SEDX_CORE_WARN_TAG("Renderer", "AcquireNextImage returned invalid index: {}", s_SwapchainImageIndex);
-                return false;
-            }
-
-            SEDX_CORE_TRACE_TAG("Renderer", "Acquired swapchain image index: {}", s_SwapchainImageIndex);
-        }
-
-        // Begin command buffer recording
-        if (VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex]; cb != VK_NULL_HANDLE)
-        {
-            vkResetCommandBuffer(cb, 0);
-			SEDX_CORE_TRACE_TAG("Renderer", "Command buffer reset for frame {}", s_CurrentFrameIndex);
-
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-            VkResult result = vkBeginCommandBuffer(cb, &beginInfo);
-			SEDX_VK_RESULT_ASSERT(result, "vkBeginCommandBuffer failed");
-        }
-
-		SEDX_CORE_TRACE_TAG("Renderer", "Command buffer recording begun for frame {}", s_CurrentFrameIndex);
-        s_FrameInProgress = true;
-        return true;
-    }
-
-    void Renderer::EndFrame()
-    {
-        SEDX_CORE_TRACE_TAG("Renderer", "Ending frame {}", s_FrameNumber);
-
-        if (!s_FrameInProgress)
-        {
-            SEDX_CORE_WARN_TAG("Renderer", "EndFrame called but no frame in progress");
-            return;
-        }
-
-        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
-        if (cb != VK_NULL_HANDLE)
-        {
-            // Record the actual render commands for this frame
-            RecordRenderCommands(cb, s_SwapchainImageIndex);
-
-            // Transition swapchain image to present layout
-            if (s_Swapchain)
-            {
-                auto &swapchainImages = s_Swapchain->GetImages();
-                if (s_SwapchainImageIndex < swapchainImages.size())
-                {
-                    VkImageMemoryBarrier2 barrierPresent{
-                        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        .dstAccessMask = 0,
-                        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                        .image = swapchainImages[s_SwapchainImageIndex],
-                        .subresourceRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
-
-                    VkDependencyInfo dependencyInfo{};
-                    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-                    dependencyInfo.imageMemoryBarrierCount = 1;
-                    dependencyInfo.pImageMemoryBarriers = &barrierPresent;
-
-                    vkCmdPipelineBarrier2(cb, &dependencyInfo);
-                }
-            }
-
-            // End command buffer recording
-            VkResult result = vkEndCommandBuffer(cb);
-			SEDX_VK_RESULT_ASSERT(result, "vkEndCommandBuffer failed");
-        }
-
-        s_FrameInProgress = false;
-    }
-
-    void Renderer::SubmitAndPresent()
-    {
-        SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer and presenting frame {}", s_FrameNumber);
-
-        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
-        if (cb == VK_NULL_HANDLE)
-        {
-			SEDX_CORE_TRACE_TAG("Renderer", "No command buffer available for frame {}", s_FrameNumber);
-            return;
-        }
-
-        if (s_PresentSemaphoreHandles.empty() || s_RenderSemaphoreHandles.empty() || s_FenceHandles.empty())
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "Cannot submit, synchronization primitives not created or empty.");
-            return;
-        }
-
-        // Get graphics queue from context
-        VkQueue graphicsQueue = VK_NULL_HANDLE;
-
-        Ref<Device> device = RenderContext::Get()->GetDevice();
-        SEDX_CORE_VERIFY(device.IsValid(), "Device is not valid during submit");
-
-        if (device.IsValid())
-        {
-            Ref<QueueManager> queueManager = device->GetQueueManager();
-            SEDX_CORE_VERIFY(queueManager.IsValid(), "QueueManager is not valid during submit");
-
-            if (queueManager.IsValid())
-            {
-                if (Ref<Queue> *queueRef = queueManager->GetQueue(Graphics); queueRef && *queueRef)
-                {
-                    graphicsQueue = (*queueRef)->GetQueue();
-                }
-            }
-        }
-    
-        SEDX_CORE_VERIFY(graphicsQueue != VK_NULL_HANDLE, "No graphics queue available for submission");
-        if (graphicsQueue == VK_NULL_HANDLE)
-        {
-            return;
-        }
-
-        // Submit command buffer
-        VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
-        // Ensure indices are valid
-        if (s_CurrentFrameIndex >= s_PresentSemaphoreHandles.size())
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "Current frame index {} out of bounds for present semaphores (size {})", s_CurrentFrameIndex, s_PresentSemaphoreHandles.size());
-            return;
-        }
-        if (s_SwapchainImageIndex >= s_RenderSemaphoreHandles.size())
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "Swapchain image index {} out of bounds for render semaphores (size {})", s_SwapchainImageIndex, s_RenderSemaphoreHandles.size());
-            return;
-        }
-		SEDX_CORE_TRACE_TAG("Renderer", "Submitting command buffer for frame {}, waiting on present semaphore {}, signaling render semaphore {}",
-            s_FrameNumber,
-            static_cast<void *>(s_PresentSemaphoreHandles[s_CurrentFrameIndex]),
-            static_cast<void *>(s_RenderSemaphoreHandles[s_SwapchainImageIndex]));
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &s_PresentSemaphoreHandles[s_CurrentFrameIndex];
-        submitInfo.pWaitDstStageMask = &waitStages;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cb;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &s_RenderSemaphoreHandles[s_SwapchainImageIndex];
-
-        VkResult submitResult = vkQueueSubmit(graphicsQueue, 1, &submitInfo, s_FenceHandles[s_CurrentFrameIndex]);
-		SEDX_VK_RESULT_ASSERT(submitResult, "vkQueueSubmit failed");
-
-        // Present the rendered image
-        VkSwapchainKHR swapchainHandle = s_Swapchain->Get();
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &s_RenderSemaphoreHandles[s_SwapchainImageIndex];
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &swapchainHandle;
-        presentInfo.pImageIndices = &s_SwapchainImageIndex;
-		SEDX_CORE_TRACE_TAG("Renderer", "Presenting swapchain image index {} for frame {}", s_SwapchainImageIndex, s_FrameNumber);
-
-        VkResult presentResult = vkQueuePresentKHR(graphicsQueue, &presentInfo);
-        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR)
-        {
-            // Swapchain needs recreation (e.g., window resize)
-            s_Swapchain->Recreate();
-            SEDX_CORE_TRACE_TAG("Renderer", "Swapchain recreated after present (result: {})", static_cast<int>(presentResult));
-        }
-        else if (presentResult != VK_SUCCESS)
-        {
-            SEDX_CORE_ERROR_TAG("Renderer", "vkQueuePresentKHR failed: {}", static_cast<int>(presentResult));
-        }
-
-        // Advance to next frame-in-flight
-        s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-        s_FrameNumber++;
-
-		SEDX_CORE_TRACE_TAG("Renderer", "Frame {} submitted and presented, advancing to frame index {}", s_FrameNumber, s_CurrentFrameIndex);
-    }
-
-    void Renderer::DrawFrame(CommandList *cmdList, CommandList *computeCmdList)
-    {
-        /* 
-         * TODO: This method is currently not used, but will be the main entry point for recording 
-         * draw calls once the renderer is fully modularized and other systems are integrated to call it.
-         */
-        SEDX_CORE_TRACE_TAG("Renderer", "DrawFrame called for frame {}", s_FrameNumber);
-        // This method will be called by modules to record their draw commands
-        // For now, placeholder implementation
-        
-        VkCommandBuffer cb = s_CommandBuffers[s_CurrentFrameIndex];
-        if (cb == VK_NULL_HANDLE || !s_Swapchain)
-        {
-            return;
-        }
-        SEDX_CORE_TRACE_TAG("Renderer", "Recording draw commands using command buffer for frame {}", s_FrameNumber);
-
-        // Record render commands
-        RecordRenderCommands(cb, s_SwapchainImageIndex);
-        SEDX_CORE_TRACE_TAG("Renderer", "Draw commands recorded for frame {}", s_FrameNumber);
-    }
-
-    void Renderer::BlitToBackBuffer(CommandList* cmdList, ImageResource* texture)
-    {
-        // TODO: Implement blit-to-swapchain once Swapchain exposes an ImageResource interface
-        (void)cmdList;
-        (void)texture;
-    }
-
 #pragma endregion
 
 #pragma region Render Context Management
@@ -1055,7 +1118,7 @@ namespace SceneryEditorX
 			performanceTimers.RenderThreadWaitTime = waitTimer.ElapsedMillis();
 		}
 
-        Timer workTimer;
+        Timer workTimer; // Measure the time spent doing rendering work this frame (between kick and completion)
 
         if (BeginFrame())
         {
@@ -1171,6 +1234,120 @@ namespace SceneryEditorX
 
 #pragma region Command Buffer Access 
 
+    void Renderer::SetCamera(Camera* camera)
+    {
+        s_Camera = camera;
+        SEDX_CORE_INFO_TAG("Renderer", "Active camera {}", camera ? "set" : "cleared");
+    }
+
+    Camera* Renderer::GetCamera()
+    {
+        return s_Camera;
+    }
+
+    void Renderer::CreateCameraResources()
+    {
+        VkDevice dev = RenderContext::Get()->GetDevice()->GetLogicalDevice();
+        VmaAllocator vma = RenderContext::Get()->GetDevice()->GetMemoryAllocator().GetAllocator();
+
+        // --- Descriptor set layout: one UBO binding at set 1, binding 0 ---
+        VkDescriptorSetLayoutBinding uboBinding{};
+        uboBinding.binding         = 0;
+        uboBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboBinding.descriptorCount = 1;
+        uboBinding.stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        VkDescriptorSetLayoutCreateInfo dslCI{};
+        dslCI.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        dslCI.bindingCount = 1;
+        dslCI.pBindings    = &uboBinding;
+
+        SEDX_VK_RESULT_ASSERT(vkCreateDescriptorSetLayout(dev, &dslCI, nullptr, &s_CameraDescriptorSetLayout),
+                              "Failed to create camera descriptor set layout");
+
+        // --- Per-frame UBO buffers ---
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            VkBufferCreateInfo bufCI{};
+            bufCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bufCI.size  = sizeof(CameraShaderData);
+            bufCI.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+            VmaAllocationCreateInfo allocCI{};
+            allocCI.usage = VMA_MEMORY_USAGE_AUTO;
+            allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                            VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+            VmaAllocationInfo allocInfo{};
+            if (vmaCreateBuffer(vma, &bufCI, &allocCI,
+                                &s_CameraUboBuffers[i],
+                                &s_CameraUboAllocations[i],
+                                &allocInfo) != VK_SUCCESS)
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "Failed to create camera UBO buffer {}", i);
+                continue;
+            }
+            s_CameraUboMapped[i] = allocInfo.pMappedData;
+
+            // Write identity matrices as initial data so the first frame is stable
+            CameraShaderData defaultData{};
+            defaultData.view                 = Mat4(1.0f);
+            defaultData.projection           = Mat4(1.0f);
+            defaultData.viewProjection       = Mat4(1.0f);
+            defaultData.inverseViewProjection = Mat4(1.0f);
+            defaultData.positionWorld        = Vec3(0.0f, 0.0f, -5.0f);
+            if (s_CameraUboMapped[i])
+                std::memcpy(s_CameraUboMapped[i], &defaultData, sizeof(CameraShaderData));
+        }
+
+        // --- Descriptor pool and sets ---
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
+
+        VkDescriptorPoolCreateInfo poolCI{};
+        poolCI.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolCI.maxSets       = MAX_FRAMES_IN_FLIGHT;
+        poolCI.poolSizeCount = 1;
+        poolCI.pPoolSizes    = &poolSize;
+
+        SEDX_VK_RESULT_ASSERT(vkCreateDescriptorPool(dev, &poolCI, nullptr, &s_CameraDescriptorPool),
+                              "Failed to create camera descriptor pool");
+
+        std::array<VkDescriptorSetLayout, MAX_FRAMES_IN_FLIGHT> layouts;
+        layouts.fill(s_CameraDescriptorSetLayout);
+
+        VkDescriptorSetAllocateInfo dsAllocInfo{};
+        dsAllocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        dsAllocInfo.descriptorPool     = s_CameraDescriptorPool;
+        dsAllocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
+        dsAllocInfo.pSetLayouts        = layouts.data();
+
+        SEDX_VK_RESULT_ASSERT(vkAllocateDescriptorSets(dev, &dsAllocInfo, s_CameraDescriptorSets.data()),
+                              "Failed to allocate camera descriptor sets");
+
+        // Point each descriptor set at its per-frame UBO
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            VkDescriptorBufferInfo bufInfo{};
+            bufInfo.buffer = s_CameraUboBuffers[i];
+            bufInfo.offset = 0;
+            bufInfo.range  = sizeof(CameraShaderData);
+
+            VkWriteDescriptorSet write{};
+            write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet          = s_CameraDescriptorSets[i];
+            write.dstBinding      = 0;
+            write.dstArrayElement = 0;
+            write.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            write.descriptorCount = 1;
+            write.pBufferInfo     = &bufInfo;
+            vkUpdateDescriptorSets(dev, 1, &write, 0, nullptr);
+        }
+
+        SEDX_CORE_INFO_TAG("Renderer", "Camera UBO resources created ({} frames)", MAX_FRAMES_IN_FLIGHT);
+    }
+
     VkCommandBuffer Renderer::GetCurrentCommandBuffer()
     {
         return s_CommandBuffers[s_CurrentFrameIndex];
@@ -1252,7 +1429,8 @@ namespace SceneryEditorX
         slang::SessionDesc slangSessionDesc = {};
         slangSessionDesc.targets = slangTargets.data();
         slangSessionDesc.targetCount = static_cast<SlangInt>(slangTargets.size());
-        slangSessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+        // Keep row-major matrix layout to match existing CPU-side xMath uploads.
+        slangSessionDesc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_ROW_MAJOR;
         slangSessionDesc.compilerOptionEntries = slangOptions.data();
         slangSessionDesc.compilerOptionEntryCount = static_cast<uint32_t>(slangOptions.size());
 
@@ -1279,6 +1457,64 @@ namespace SceneryEditorX
             }
             return;
         }
+
+        // Compile the editor grid shader module so it is available for the
+        // pass-based renderer integration (`Pass_Grid`).
+        {
+            const std::filesystem::path gridShaderPath = ResolveResourcePath("resources/shaders/grid.slang");
+            const std::string gridShaderPathString = gridShaderPath.string();
+
+            Slang::ComPtr<slang::IBlob> gridDiagnosticsBlob;
+            Slang::ComPtr<slang::IModule> gridModule{
+                slangSession->loadModuleFromSource("grid", gridShaderPathString.c_str(),
+                                                   gridDiagnosticsBlob, gridDiagnosticsBlob.writeRef())
+            };
+
+            if (!gridModule)
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "Failed to load grid shader module from source: {}", gridShaderPathString);
+                if (gridDiagnosticsBlob)
+                {
+                    const char* errorMessage = static_cast<const char*>(gridDiagnosticsBlob->getBufferPointer());
+                    SEDX_CORE_ERROR_TAG("Renderer", "Grid shader diagnostics: {}", errorMessage);
+                }
+            }
+            else
+            {
+                SEDX_CORE_INFO_TAG("Renderer", "Grid shader module compiled: {}", gridShaderPathString);
+                // Mark grid shaders as available for pass bootstrap gating.
+                SetShaderAvailable(Renderer_Shader::grid_v);
+                SetShaderAvailable(Renderer_Shader::grid_p);
+            }
+        }
+
+        // Compile blit module and mark availability (actual compute path is still gated
+        // until CommandList pipeline/descriptor wiring is completed).
+        {
+            const std::filesystem::path blitShaderPath = ResolveResourcePath("resources/shaders/blit.slang");
+            const std::string blitShaderPathString = blitShaderPath.string();
+
+            Slang::ComPtr<slang::IBlob> blitDiagnosticsBlob;
+            Slang::ComPtr<slang::IModule> blitModule{slangSession->loadModuleFromSource("blit", blitShaderPathString.c_str(),
+                                                   blitDiagnosticsBlob, blitDiagnosticsBlob.writeRef())
+            };
+
+            if (!blitModule)
+            {
+                SEDX_CORE_ERROR_TAG("Renderer", "Failed to load blit shader module from source: {}", blitShaderPathString);
+                if (blitDiagnosticsBlob)
+                {
+                    const char* errorMessage = static_cast<const char*>(blitDiagnosticsBlob->getBufferPointer());
+                    SEDX_CORE_ERROR_TAG("Renderer", "Blit shader diagnostics: {}", errorMessage);
+                }
+            }
+            else
+            {
+                SEDX_CORE_INFO_TAG("Renderer", "Blit shader module compiled: {}", blitShaderPathString);
+                SetShaderAvailable(Renderer_Shader::blit_c);
+            }
+        }
+
         Slang::ComPtr<ISlangBlob> spirv;
         slangModule->getTargetCode(0, spirv.writeRef());
 
@@ -1307,11 +1543,15 @@ namespace SceneryEditorX
         pushConst.size       = sizeof(VkDeviceAddress);
 
         // Set 0 = texture sampler array (populated by Asset)
+        // Set 1 = camera UBO  (CameraShaderData, matches CameraBufferData in camera.slang)
+        CreateCameraResources();
+
         VkDescriptorSetLayout textureLayout = asset.GetDescriptorLayout();
+        const std::array<VkDescriptorSetLayout, 2> setLayouts = {textureLayout, s_CameraDescriptorSetLayout};
         VkPipelineLayoutCreateInfo layoutCI{};
         layoutCI.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        layoutCI.setLayoutCount         = 1;
-        layoutCI.pSetLayouts            = &textureLayout;
+        layoutCI.setLayoutCount         = static_cast<uint32_t>(setLayouts.size());
+        layoutCI.pSetLayouts            = setLayouts.data();
         layoutCI.pushConstantRangeCount = 1;
         layoutCI.pPushConstantRanges    = &pushConst;
 
@@ -1333,30 +1573,34 @@ namespace SceneryEditorX
             SEDX_CORE_ERROR_TAG("Renderer", "Pipeline::CreateGraphics failed");
             return;
         }
+
+        if (Ref<RenderContext> context = RenderContext::Get(); context)
+        {
+            context->pipeline = s_BasicPipeline;
+            context->pipelineLayout = s_BasicPipelineLayout;
+        }
+
         SEDX_CORE_INFO_TAG("Renderer", "Basic graphics pipeline created successfully");
 
         // Per-frame shader-data buffers (device-addressable, host-visible, mapped).
-        // Layout must match the Slang shader's ShaderData struct exactly.
+        // Layout must match the Slang shader's ShaderData struct:
+        //   model[3], lightPos, selected  — projection/view are now in the camera UBO.
         struct BasicShaderData
         {
-            Mat4 projection;
-            Mat4 view;
-            Mat4 model[3];
-            Vec4 lightPos;
-            uint32_t  selected;
-            uint32_t  _pad[3];
+            Mat4     model[3];
+            Vec4     lightPos;
+            uint32_t selected;
+            uint32_t _pad[3];
         };
 
         VmaAllocator vma = RenderContext::Get()->GetDevice()->GetMemoryAllocator().GetAllocator();
-        const float aspect = static_cast<float>(s_Swapchain->GetExtent().width) /
-                             static_cast<float>(s_Swapchain->GetExtent().height);
 
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
         {
             VkBufferCreateInfo uboCI{};
             uboCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
             uboCI.size  = sizeof(BasicShaderData);
-            uboCI.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            uboCI.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
             VmaAllocationCreateInfo allocCI{};
             allocCI.usage = VMA_MEMORY_USAGE_AUTO;
@@ -1380,47 +1624,12 @@ namespace SceneryEditorX
             s_BasicShaderDataAddresses[i] = vkGetBufferDeviceAddress(dev, &bdaInfo);
 
             // Initial transforms: three Suzanne instances spread on the X axis.
-            // Matrices built manually to avoid depending on GLM's compiled helper library.
             BasicShaderData sd{};
-
-            // Perspective matrix (column-major, right-handed, Vulkan ZO, Y flipped)
-            {
-                constexpr float pi      = 3.14159265358979323846f;
-                const float     tanHalf = std::tan((pi / 4.0f) * 0.5f); // tan(45°/2)
-                const float     invTan  = 1.0f / tanHalf;
-                const float     zNear   = 0.1f;
-                const float     zFar    = 100.0f;
-                Mat4& p            = sd.projection;
-                p                       = Mat4(0.0f);
-                p[0][0]                 =  invTan / aspect;
-                p[1][1]                 = -invTan;          // Vulkan: Y points down
-                p[2][2]                 =  zFar / (zNear - zFar);
-                p[2][3]                 = -1.0f;
-                p[3][2]                 = -(zFar * zNear) / (zFar - zNear);
-            }
-
-            // LookAt matrix (eye at (0,0,-5), centre (0,0,0), up (0,1,0))
-            {
-                const Vec3 eye    = { 0.0f,  0.0f, -5.0f };
-                const Vec3 center = { 0.0f,  0.0f,  0.0f };
-                const Vec3 up     = { 0.0f,  1.0f,  0.0f };
-                const Vec3 fwd    = xMath::Normalize(center - eye);
-                const Vec3 right  = xMath::Normalize(xMath::Cross(fwd, up));
-                const Vec3 newUp  = xMath::Cross(right, fwd);
-                Mat4& v           = sd.view;
-                v                      = Mat4(1.0f);
-                v[0][0] =  right.x;  v[1][0] =  right.y;  v[2][0] =  right.z;
-                v[0][1] =  newUp.x;  v[1][1] =  newUp.y;  v[2][1] =  newUp.z;
-                v[0][2] = -fwd.x;    v[1][2] = -fwd.y;    v[2][2] = -fwd.z;
-                v[3][0] = -xMath::Dot(right, eye);
-                v[3][1] = -xMath::Dot(newUp, eye);
-                v[3][2] =  xMath::Dot(fwd,   eye);
-            }
 
             // Identity for model[0], translations for model[1] and model[2]
             sd.model[0]      = Mat4(1.0f);
-            sd.model[1]      = Mat4(1.0f); sd.model[1][3] = Vec4(-3.0f, 0.0f, 0.0f, 1.0f);
-            sd.model[2]      = Mat4(1.0f); sd.model[2][3] = Vec4( 3.0f, 0.0f, 0.0f, 1.0f);
+            sd.model[1]      = Mat4::Translate(Vec3(-3.0f, 0.0f, 0.0f));
+            sd.model[2]      = Mat4::Translate(Vec3( 3.0f, 0.0f, 0.0f));
             sd.lightPos      = Vec4(0.0f, 5.0f, 5.0f, 1.0f);
             sd.selected      = 0;
 
@@ -1457,6 +1666,107 @@ namespace SceneryEditorX
         if (imageIndex >= swapchainImages.size() || imageIndex >= swapchainImageViews.size())
         {
             SEDX_CORE_TRACE_TAG("Renderer", "Invalid image index: {}", imageIndex);
+            return;
+        }
+
+        // If pass-render output exists, present that texture to the swapchain first.
+        // This allows the pass-based pipeline (including editor grid) to appear in-window.
+        if (ImageResource* frameOutput = GetRenderTarget(Renderer_RenderTarget::frame_output);
+            frameOutput && frameOutput->Get() && *frameOutput->Get() != VK_NULL_HANDLE)
+        {
+            VkImageMemoryBarrier2 barriers[2]{};
+
+            barriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            barriers[0].srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            barriers[0].srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+            barriers[0].dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+            barriers[0].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+            barriers[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            barriers[0].image = *frameOutput->Get();
+            barriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            barriers[0].subresourceRange.levelCount = 1;
+            barriers[0].subresourceRange.layerCount = 1;
+
+            barriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            barriers[1].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+            barriers[1].srcAccessMask = 0;
+            barriers[1].dstStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+            barriers[1].dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            barriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            barriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barriers[1].image = swapchainImages[imageIndex];
+            barriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            barriers[1].subresourceRange.levelCount = 1;
+            barriers[1].subresourceRange.layerCount = 1;
+
+            VkDependencyInfo depInfo{};
+            depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            depInfo.imageMemoryBarrierCount = 2;
+            depInfo.pImageMemoryBarriers = barriers;
+            vkCmdPipelineBarrier2(cb, &depInfo);
+
+            VkImageBlit blit{};
+            blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.srcSubresource.mipLevel = 0;
+            blit.srcSubresource.baseArrayLayer = 0;
+            blit.srcSubresource.layerCount = 1;
+            blit.srcOffsets[0] = { 0, 0, 0 };
+            blit.srcOffsets[1] = {
+                static_cast<int32_t>(frameOutput->GetWidth()),
+                static_cast<int32_t>(frameOutput->GetHeight()),
+                1
+            };
+
+            VkExtent2D extent = s_Swapchain->GetExtent();
+            blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.dstSubresource.mipLevel = 0;
+            blit.dstSubresource.baseArrayLayer = 0;
+            blit.dstSubresource.layerCount = 1;
+            blit.dstOffsets[0] = { 0, 0, 0 };
+            blit.dstOffsets[1] = { static_cast<int32_t>(extent.width), static_cast<int32_t>(extent.height), 1 };
+
+            vkCmdBlitImage(
+                cb,
+                *frameOutput->Get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1, &blit,
+                VK_FILTER_LINEAR);
+
+            VkImageMemoryBarrier2 postBlit[2]{};
+
+            // Restore pass output image layout for subsequent pass sampling/writes.
+            postBlit[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            postBlit[0].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+            postBlit[0].srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+            postBlit[0].dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            postBlit[0].dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+            postBlit[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            postBlit[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            postBlit[0].image = *frameOutput->Get();
+            postBlit[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            postBlit[0].subresourceRange.levelCount = 1;
+            postBlit[0].subresourceRange.layerCount = 1;
+
+            // Keep existing EndFrame present barrier contract (COLOR_ATTACHMENT_OPTIMAL -> PRESENT).
+            postBlit[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            postBlit[1].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+            postBlit[1].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            postBlit[1].dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            postBlit[1].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            postBlit[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            postBlit[1].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            postBlit[1].image = swapchainImages[imageIndex];
+            postBlit[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            postBlit[1].subresourceRange.levelCount = 1;
+            postBlit[1].subresourceRange.layerCount = 1;
+
+            VkDependencyInfo depPostBlit{};
+            depPostBlit.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            depPostBlit.imageMemoryBarrierCount = 2;
+            depPostBlit.pImageMemoryBarriers = postBlit;
+            vkCmdPipelineBarrier2(cb, &depPostBlit);
+
             return;
         }
 
@@ -1556,15 +1866,46 @@ namespace SceneryEditorX
         SEDX_CORE_TRACE_TAG("Renderer", "Scissor set to {}x{}", scissor.extent.width, scissor.extent.height);
 
         // Bind the basic pipeline and draw every loaded asset
-        // Per-frame shader-data update: rewrite model matrices with a Y-axis rotation
-        // driven by the frame counter. This fixes the static view bug by refreshing
-        // the buffer each frame and produces visible animation to confirm the update path works.
+        // Upload camera UBO for this frame (view/projection offloaded to camera.slang UBO at set 1)
+        {
+            CameraShaderData cameraData{};
+            if (s_Camera)
+            {
+                cameraData = s_Camera->GetShaderData();
+            }
+            else
+            {
+                // Fallback: static look-at from (0,0,-5) looking at origin
+                const Vec3 eyeDef    = {0.0f, 0.0f, -5.0f};
+                const Vec3 center    = {0.0f, 0.0f,  0.0f};
+                const Vec3 up        = {0.0f, 1.0f,  0.0f};
+                Mat4& v              = cameraData.view;
+                v                    = Mat4::LookAt(eyeDef, center, up);
+
+                // Reverse-Z perspective (45° FOV, aspect from swapchain)
+                const float aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+                constexpr float zNear   = 0.1f;
+                constexpr float zFar    = 100.0f;
+                Mat4& p  = cameraData.projection;
+                p        = Mat4::PerspectiveProjection(aspect, 45.0f, zNear, zFar);
+
+                cameraData.viewProjection        = cameraData.projection * cameraData.view;
+                cameraData.inverseViewProjection = cameraData.viewProjection.GetInverse();
+                cameraData.positionWorld         = eyeDef;
+            }
+
+            if (s_CameraUboMapped[s_CurrentFrameIndex])
+            {
+                std::memcpy(s_CameraUboMapped[s_CurrentFrameIndex], &cameraData, sizeof(CameraShaderData));
+            }
+        }
+
+        // Per-frame shader-data update: rotate model matrices driven by the frame counter.
+        // Projection/view are now owned by the camera UBO; only model/light/selected live here.
         if (s_BasicShaderDataMapped[s_CurrentFrameIndex])
         {
             struct BasicShaderData
             {
-                Mat4     projection;
-                Mat4     view;
                 Mat4     model[3];
                 Vec4     lightPos;
                 uint32_t selected;
@@ -1573,25 +1914,12 @@ namespace SceneryEditorX
 
             auto* pSd = static_cast<BasicShaderData*>(s_BasicShaderDataMapped[s_CurrentFrameIndex]);
 
-            // Y-axis rotation (column-major [col][row]):
-            //   | cosA   0   sinA  0 |
-            //   |    0   1      0  0 |
-            //   | -sinA  0   cosA  0 |
-            //   |    0   0      0  1 |
-            const float angle = static_cast<float>(s_FrameNumber) * 0.005f;
-            const float cosA  = std::cos(angle);
-            const float sinA  = std::sin(angle);
-            Mat4 rot(1.0f);
-            rot[0][0] =  cosA;  rot[2][0] = sinA;
-            rot[0][2] = -sinA;  rot[2][2] = cosA;
+            // Static model placements — no rotation.
+            // Model transforms will be driven by the scene/ECS once wired up.
+            pSd->model[0] = Mat4(1.0f);
 
-            pSd->model[0] = rot;
-
-            Mat4 t1(1.0f); t1[3] = Vec4(-3.0f, 0.0f, 0.0f, 1.0f);
-            pSd->model[1] = t1 * rot;
-
-            Mat4 t2(1.0f); t2[3] = Vec4( 3.0f, 0.0f, 0.0f, 1.0f);
-            pSd->model[2] = t2 * rot;
+            pSd->model[1] = Mat4::Translate(Vec3(-3.0f, 0.0f, 0.0f));
+            pSd->model[2] = Mat4::Translate(Vec3( 3.0f, 0.0f, 0.0f));
         }
 
         if (s_BasicPipeline != VK_NULL_HANDLE && s_AssetManager   && s_AssetManager->Count() > 0 &&
@@ -1601,11 +1929,21 @@ namespace SceneryEditorX
 
             vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s_BasicPipeline);
 
+            // Set 0: texture array
             VkDescriptorSet descSet = asset.GetDescriptorSet();
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     s_BasicPipelineLayout,
                                     0, 1, &descSet,
                                     0, nullptr);
+
+            // Set 1: camera UBO (view / projection)
+            if (s_CameraDescriptorSets[s_CurrentFrameIndex] != VK_NULL_HANDLE)
+            {
+                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        s_BasicPipelineLayout,
+                                        1, 1, &s_CameraDescriptorSets[s_CurrentFrameIndex],
+                                        0, nullptr);
+            }
 
             // Push the device address of this frame's shader-data buffer.
             VkDeviceAddress addr = s_BasicShaderDataAddresses[s_CurrentFrameIndex];

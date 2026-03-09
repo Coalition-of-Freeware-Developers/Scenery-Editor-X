@@ -31,10 +31,10 @@
 #pragma once
 #include <imgui/imgui.h>
 
-/// -------------------------------------------------------
+// -------------------------------------------------------
 
-/// TODO: 1) Add more colors and options here.
-///		 2) Connect with user customization and config file.
+/* TODO: Add more colors and options here. */
+/* TODO: Connect with user customization and config file. */
 
 namespace Colors::Theme
 {

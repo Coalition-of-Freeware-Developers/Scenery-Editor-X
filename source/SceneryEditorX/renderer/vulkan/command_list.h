@@ -66,6 +66,7 @@ namespace SceneryEditorX
 		void ClearDepth(void *img, float clearDepth);
 		void ClearStencil(void *img, uint32_t clearStencil);
 		void ClearTexture(void* img, const Color &color);
+		void ClearTexture(ImageResource* img, const Color &color);
 
 		// Pipeline state
 		void SetPipelineState(const PipelineState& pso);
@@ -133,7 +134,7 @@ namespace SceneryEditorX
 		 * @brief Returns the timeline semaphore value that was last signaled by this command list's most recent submit.
 		 * Used by dependent submissions on other queues to build timeline wait info.
 		 */
-		[[nodiscard]] uint64_t GetLastTimelineSignalValue() const { return m_RenderingCompleteTimeline ? m_RenderingCompleteTimeline->GetValue() : 0; }
+		[[nodiscard]] uint64_t GetLastTimelineSignalValue() const { return m_LastTimelineSignalValue; }
 
 		/**
 		 * @brief Returns a raw pointer to the timeline FrameSync owned by this command list.
@@ -151,6 +152,8 @@ namespace SceneryEditorX
 		Ref<FrameSync> m_RenderingCompleteSemaphore;
 		Ref<FrameSync> m_RenderingCompleteTimeline;
 		Ref<FrameSync> m_SubmitSync;
+		uint64_t m_LastTimelineSignalValue = 0;
+		uint64_t m_NextTimelineSignalValue = 1;
 
 		uint64_t m_BufferID_Vertex   = 0;
 		uint64_t m_BufferID_Instance = 0;

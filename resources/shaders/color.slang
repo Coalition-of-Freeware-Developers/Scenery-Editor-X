@@ -1,8 +1,8 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,71 +23,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * entity.cpp
+ * color.slang
  * -------------------------------------------------------
- * Created: 11/8/2025
+ * Created: 06/03/2026
  * -------------------------------------------------------
  */
-#include "entity.h"
-#include "scene.h"
+import resources;
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
+float get_gamma()
 {
-    /*
-    Entity Entity::GetParent() const
-	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
-	}
-	*/
-
-	bool Entity::IsAncestorOf(Entity entity) const
-	{
-	    const auto &children = Children();
-	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
-	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
-	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
-	
-	    return false;
-	}
-
-	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
-
-	/*
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
-
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
-
-    Entity::operator bool() const { return IsValid(); }
-
+    float gamma = 2.2f; // around 2.2 for SDR
+    return buffer_frame.hdr_enabled ? 2.4f : gamma;
 }
 
-// -------------------------------------------------------
+float3 srgb_to_linear(float3 color)
+{
+    float3 linear_low = color / 12.92;
+    float3 linear_high = pow((color + 0.055) / 1.055, get_gamma());
+    float3 is_high = step(0.0404482362771082, color);
+    return lerp(linear_low, linear_high, is_high);
+}
+
+float3 linear_to_srgb(float3 color)
+{
+    float3 srgb_low = color * 12.92;
+    float3 srgb_high = 1.055 * pow(color, 1.0 / get_gamma()) - 0.055;
+    float3 is_high = step(0.00313066844250063, color);
+    return lerp(srgb_low, srgb_high, is_high);
+}

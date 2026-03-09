@@ -1,8 +1,8 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,71 +23,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * entity.cpp
+ * luminance.slang
  * -------------------------------------------------------
- * Created: 11/8/2025
+ * Created: 07/03/2026
  * -------------------------------------------------------
  */
-#include "entity.h"
-#include "scene.h"
+import constants;
 
-// -------------------------------------------------------
+static const float3 srgb_color_space_coefficient = float3(0.299f, 0.587f, 0.114f);
 
-namespace SceneryEditorX
+float luminance(float3 color)
 {
-    /*
-    Entity Entity::GetParent() const
-	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
-	}
-	*/
-
-	bool Entity::IsAncestorOf(Entity entity) const
-	{
-	    const auto &children = Children();
-	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
-	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
-	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
-	
-	    return false;
-	}
-
-	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
-
-	/*
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
-
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
-
-    Entity::operator bool() const { return IsValid(); }
-
+    return max(dot(color, srgb_color_space_coefficient), FLT_MIN);
 }
 
-// -------------------------------------------------------
+float luminance(float4 color)
+{
+    return max(dot(color.rgb, srgb_color_space_coefficient), FLT_MIN);
+}
+

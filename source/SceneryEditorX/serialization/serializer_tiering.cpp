@@ -79,27 +79,27 @@ namespace SceneryEditorX
             Setting& rendererGroup = tieringGroup.add("Renderer", Setting::TypeGroup);
 
             // Basic renderer settings
-            rendererGroup.add("RendererScale", Setting::TypeFloat) = tieringSettings.RendererTS.RendererScale;
-            rendererGroup.add("Windowed", Setting::TypeBoolean) = tieringSettings.RendererTS.Windowed;
-            rendererGroup.add("VSync", Setting::TypeBoolean) = tieringSettings.RendererTS.VSync;
+            rendererGroup.add("RendererScale", Setting::TypeFloat) = tieringSettings.RendererTS.rendererScale;
+            rendererGroup.add("Windowed", Setting::TypeBoolean) = tieringSettings.RendererTS.windowed;
+            rendererGroup.add("VSync", Setting::TypeBoolean) = tieringSettings.RendererTS.vSync;
 
             // Shadow settings subgroup
             Setting& shadowGroup = rendererGroup.add("Shadows", Setting::TypeGroup);
-            shadowGroup.add("EnableShadows", Setting::TypeBoolean) = tieringSettings.RendererTS.EnableShadows;
-            shadowGroup.add("Quality", Setting::TypeString) = ShadowQualitySettingToString(tieringSettings.RendererTS.ShadowQuality);
-            shadowGroup.add("Resolution", Setting::TypeString) = ShadowResolutionSettingToString(tieringSettings.RendererTS.ShadowResolution);
+            shadowGroup.add("EnableShadows", Setting::TypeBoolean) = tieringSettings.RendererTS.enableShadows;
+            shadowGroup.add("Quality", Setting::TypeString) = ShadowQualitySettingToString(tieringSettings.RendererTS.shadowQuality);
+            shadowGroup.add("Resolution", Setting::TypeString) = ShadowResolutionSettingToString(tieringSettings.RendererTS.shadowResolution);
 
             // Ambient Occlusion settings subgroup
             Setting& aoGroup = rendererGroup.add("AmbientOcclusion", Setting::TypeGroup);
-            aoGroup.add("EnableAO", Setting::TypeBoolean) = tieringSettings.RendererTS.EnableAO;
-            aoGroup.add("Type", Setting::TypeString) = (tieringSettings.RendererTS.AOType == AmbientOcclusionTypeSetting::GTAO) ? "GTAO" : "None";
-            aoGroup.add("Quality", Setting::TypeString) = AmbientOcclusionQualitySettingToString(tieringSettings.RendererTS.AOQuality);
+            aoGroup.add("EnableAO", Setting::TypeBoolean) = tieringSettings.RendererTS.enableAO;
+            aoGroup.add("Type", Setting::TypeString) = (tieringSettings.RendererTS.type == AmbientOcclusionTypeSetting::GTAO) ? "GTAO" : "None";
+            aoGroup.add("Quality", Setting::TypeString) = AmbientOcclusionQualitySettingToString(tieringSettings.RendererTS.quality);
 
             // Screen Space Reflections settings
             rendererGroup.add("SSRQuality", Setting::TypeString) = SSRQualitySettingToString(tieringSettings.RendererTS.SSRQuality);
 
             // Post-processing effects
-            rendererGroup.add("EnableBloom", Setting::TypeBoolean) = tieringSettings.RendererTS.EnableBloom;
+            rendererGroup.add("EnableBloom", Setting::TypeBoolean) = tieringSettings.RendererTS.enableBloom;
 
             // Ensure directory exists and write file
             CreateDirectoriesIfNeeded(filepath);
@@ -160,13 +160,13 @@ namespace SceneryEditorX
 
                 // Basic renderer settings with defaults
                 if (renderer.exists("RendererScale"))
-                    outTieringSettings.RendererTS.RendererScale = static_cast<float>(renderer["RendererScale"]);
+                    outTieringSettings.RendererTS.rendererScale = static_cast<float>(renderer["RendererScale"]);
 
                 if (renderer.exists("Windowed"))
-                    outTieringSettings.RendererTS.Windowed = static_cast<bool>(renderer["Windowed"]);
+                    outTieringSettings.RendererTS.windowed = static_cast<bool>(renderer["Windowed"]);
 
                 if (renderer.exists("VSync"))
-                    outTieringSettings.RendererTS.VSync = static_cast<bool>(renderer["VSync"]);
+                    outTieringSettings.RendererTS.vSync = static_cast<bool>(renderer["VSync"]);
 
                 // Shadow settings
                 if (renderer.exists("Shadows"))
@@ -174,18 +174,18 @@ namespace SceneryEditorX
                     const Setting& shadows = renderer["Shadows"];
 
                     if (shadows.exists("EnableShadows"))
-                        outTieringSettings.RendererTS.EnableShadows = static_cast<bool>(shadows["EnableShadows"]);
+                        outTieringSettings.RendererTS.enableShadows = static_cast<bool>(shadows["EnableShadows"]);
 
                     if (shadows.exists("Quality"))
                     {
                         std::string qualityStr = static_cast<const char*>(shadows["Quality"]);
-                        outTieringSettings.RendererTS.ShadowQuality = ShadowQualitySettingFromString(qualityStr);
+                        outTieringSettings.RendererTS.shadowQuality = ShadowQualitySettingFromString(qualityStr);
                     }
 
                     if (shadows.exists("Resolution"))
                     {
                         std::string resolutionStr = static_cast<const char*>(shadows["Resolution"]);
-                        outTieringSettings.RendererTS.ShadowResolution = ShadowResolutionSettingFromString(resolutionStr);
+                        outTieringSettings.RendererTS.shadowResolution = ShadowResolutionSettingFromString(resolutionStr);
                     }
                 }
 
@@ -195,19 +195,19 @@ namespace SceneryEditorX
                     const Setting& ao = renderer["AmbientOcclusion"];
 
                     if (ao.exists("EnableAO"))
-                        outTieringSettings.RendererTS.EnableAO = static_cast<bool>(ao["EnableAO"]);
+                        outTieringSettings.RendererTS.enableAO = static_cast<bool>(ao["EnableAO"]);
 
                     if (ao.exists("Type"))
                     {
                         std::string typeStr = static_cast<const char*>(ao["Type"]);
-                        outTieringSettings.RendererTS.AOType = (typeStr == "GTAO") ?
+                        outTieringSettings.RendererTS.type = (typeStr == "GTAO") ?
                             AmbientOcclusionTypeSetting::GTAO : AmbientOcclusionTypeSetting::None;
                     }
 
                     if (ao.exists("Quality"))
                     {
                         std::string qualityStr = static_cast<const char*>(ao["Quality"]);
-                        outTieringSettings.RendererTS.AOQuality = AmbientOcclusionQualitySettingFromString(qualityStr);
+                        outTieringSettings.RendererTS.quality = AmbientOcclusionQualitySettingFromString(qualityStr);
                     }
                 }
 
@@ -220,45 +220,45 @@ namespace SceneryEditorX
 
                 // Post-processing effects
                 if (renderer.exists("EnableBloom"))
-                    outTieringSettings.RendererTS.EnableBloom = static_cast<bool>(renderer["EnableBloom"]);
+                    outTieringSettings.RendererTS.enableBloom = static_cast<bool>(renderer["EnableBloom"]);
             }
 
             // Legacy compatibility: Check for old flat structure
             if (tieringSettings.exists("RendererScale"))
-                outTieringSettings.RendererTS.RendererScale = static_cast<float>(tieringSettings["RendererScale"]);
+                outTieringSettings.RendererTS.rendererScale = static_cast<float>(tieringSettings["RendererScale"]);
 
             if (tieringSettings.exists("Windowed"))
-                outTieringSettings.RendererTS.Windowed = static_cast<bool>(tieringSettings["Windowed"]);
+                outTieringSettings.RendererTS.windowed = static_cast<bool>(tieringSettings["Windowed"]);
 
             if (tieringSettings.exists("VSync"))
-                outTieringSettings.RendererTS.VSync = static_cast<bool>(tieringSettings["VSync"]);
+                outTieringSettings.RendererTS.vSync = static_cast<bool>(tieringSettings["VSync"]);
 
             // Legacy shadow settings
             if (tieringSettings.exists("ShadowQuality"))
             {
                 std::string qualityStr = static_cast<const char*>(tieringSettings["ShadowQuality"]);
-                outTieringSettings.RendererTS.ShadowQuality = ShadowQualitySettingFromString(qualityStr);
+                outTieringSettings.RendererTS.shadowQuality = ShadowQualitySettingFromString(qualityStr);
             }
 
             if (tieringSettings.exists("ShadowResolution"))
             {
                 std::string resolutionStr = static_cast<const char*>(tieringSettings["ShadowResolution"]);
-                outTieringSettings.RendererTS.ShadowResolution = ShadowResolutionSettingFromString(resolutionStr);
+                outTieringSettings.RendererTS.shadowResolution = ShadowResolutionSettingFromString(resolutionStr);
             }
 
             // Legacy AO settings (old format support)
             if (tieringSettings.exists("AmbientOcclusionQuality"))
             {
                 std::string aoQualityStr = static_cast<const char*>(tieringSettings["AmbientOcclusionQuality"]);
-                outTieringSettings.RendererTS.AOQuality = AmbientOcclusionQualitySettingFromString(aoQualityStr);
+                outTieringSettings.RendererTS.quality = AmbientOcclusionQualitySettingFromString(aoQualityStr);
             }
             else if (tieringSettings.exists("AmbientOcclusion"))
             {
                 // Very old format compatibility
                 bool enableAO = static_cast<bool>(tieringSettings["AmbientOcclusion"]);
-                outTieringSettings.RendererTS.AOQuality = enableAO ?
+                outTieringSettings.RendererTS.quality = enableAO ?
                     AmbientOcclusionQualitySetting::High : AmbientOcclusionQualitySetting::None;
-                outTieringSettings.RendererTS.EnableAO = enableAO;
+                outTieringSettings.RendererTS.enableAO = enableAO;
             }
 
             if (tieringSettings.exists("SSRQuality"))

@@ -31,11 +31,8 @@
 #pragma once
 #include <array>
 #include <map>
-#include <vulkan/vulkan.h>
-#include <xMath/includes/matrix.h>
-#include <xMath/includes/vector.h>
-#include <xMath/includes/colors.h>
 #include <SceneryEditorX/scene/lights.h>
+#include <xMath/includes/xmath.hpp>
 
 // -------------------------------------------------------
 
@@ -655,18 +652,6 @@ namespace SceneryEditorX
     class Entity;
 
     /**
-     * @class Camera
-     * @brief Stub camera class providing the interface consumed by renderer passes.
-     */
-    class Camera
-    {
-    public:
-        virtual ~Camera() = default;
-        virtual Entity*        GetEntity() const             { return nullptr; }
-        virtual xMath::Matrix  GetViewProjectionMatrix() const { return xMath::Matrix{}; }
-    };
-
-    /**
      * @class Light
      * @brief Stub light class providing the interface consumed by renderer passes.
      */
@@ -747,7 +732,7 @@ namespace SceneryEditorX
      * @class Renderable
      * @brief Stub renderable class providing the interface consumed by renderer passes.
      */
-    class Renderable
+    class Renderable : public RefCounted
     {
     public:
         virtual ~Renderable() = default;
@@ -775,15 +760,23 @@ namespace SceneryEditorX
         virtual uint32_t  GetGlobalVertexOffset() const { return 0; }
     };
 
-    /**
-     * @struct GeometryBuffer
-     * @brief Stub geometry buffer providing bindless index/vertex buffer access.
-     */
-    struct GeometryBuffer
-    {
-        static Buffer* GetIndexBuffer()  { return nullptr; }
-        static Buffer* GetVertexBuffer() { return nullptr; }
-    };
+     /**
+      * @struct GeometryBuffer
+      * @brief Stub geometry buffer providing bindless index/vertex buffer access.
+      */
+     struct GeometryBuffer
+     {
+		//static Buffer* GetIndexBuffer()  { return nullptr; }
+		//static Buffer* GetVertexBuffer() { return nullptr; }
+		/** @brief Create static geometry resources used by built-in passes (quad VB/IB). */
+		static void Initialize();
+		/** @brief Release static geometry resources created by Initialize(). */
+		static void Shutdown();
+		/** @brief Get the static quad index buffer. */
+		static Buffer* GetIndexBuffer();
+		/** @brief Get the static quad vertex buffer. */
+		static Buffer* GetVertexBuffer();
+     };
 
     // -------------------------------------------------------
     // Renderer_DrawCall: per-draw submission record

@@ -66,7 +66,7 @@ namespace SceneryEditorX
         }
         return {};
     }
-    */
+
 
     /*
     std::filesystem::path Project::GetActiveAssetDirectory()
@@ -101,6 +101,6 @@ namespace SceneryEditorX
         // TODO: Implement project saving
     }
 
-}
+} // namespace SceneryEditorX
 
 // -------------------------------------------------------

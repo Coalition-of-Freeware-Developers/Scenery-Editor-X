@@ -44,7 +44,7 @@ namespace SceneryEditorX
 	{
 	public:
 	    Project();
-	    ~Project();
+        virtual ~Project() override;
 
 	    // -------------------------------------------------------
 

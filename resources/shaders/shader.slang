@@ -5,57 +5,76 @@
  */
 
 struct VSInput {
-    float3 Pos;
-    float3 Normal;
+	float3 Pos;
+	float3 Normal;
 	float2 UV;
 };
 
 Sampler2D textures[];
 
+/**
+ * Camera uniform buffer — set 1, binding 0.
+ * Matches CameraShaderData (C++) and CameraBufferData (camera.slang).
+ * Populated every frame by Renderer::RecordRenderCommands from the active Camera.
+ */
+struct CameraData
+{
+	float4x4 view;
+	float4x4 projection;
+	float4x4 viewProjection;
+	float4x4 inverseViewProjection;
+	float3   positionWorld;
+	float    padding;
+};
+
+[[vk::binding(0, 1)]]
+cbuffer CameraBuffer
+{
+	CameraData camera;
+};
+
 struct ShaderData {
-    float4x4 projection;
-    float4x4 view;
-    float4x4 model[3];
-    float4 lightPos;
-    uint32_t selected;
+	float4x4 model[3];
+	float4 lightPos;
+	uint32_t selected;
 };
 
 struct VSOutput {
-    float4 Pos : SV_POSITION;
-    float3 Normal;
-    float2 UV;
-    float3 Factor;
-    float3 LightVec;
-    float3 ViewVec;
-    uint32_t InstanceIndex;
+	float4 Pos : SV_POSITION;
+	float3 Normal;
+	float2 UV;
+	float3 Factor;
+	float3 LightVec;
+	float3 ViewVec;
+	uint32_t InstanceIndex;
 };
 
 [shader("vertex")]
 VSOutput main(VSInput input, uniform ShaderData *shaderData, uint instanceIndex : SV_VulkanInstanceID) {
-    VSOutput output;
-    float4x4 modelMat = shaderData->model[instanceIndex];
-    output.Normal = mul((float3x3)mul(shaderData->view, modelMat), input.Normal);
-    output.UV = input.UV;
-    output.Pos = mul(shaderData->projection, mul(shaderData->view, mul(modelMat, float4(input.Pos.xyz, 1.0))));
-    output.Factor = (shaderData->selected == instanceIndex ? 3.0f : 1.0f);
-    output.InstanceIndex = instanceIndex;
-    // Calculate view vectors required for lighting
-    float4 fragPos = mul(mul(shaderData->view, modelMat), float4(input.Pos.xyz, 1.0));
-    output.LightVec = shaderData->lightPos.xyz - fragPos.xyz;
-    output.ViewVec = -fragPos.xyz;
-    return output;
+	VSOutput output;
+	// TEMP DEBUG: bypass ShaderData model buffer fetch (device-address path)
+	// to verify whether stretched geometry comes from bad model matrix data.
+	float4x4 modelMat = float4x4(
+		1.0, 0.0, 0.0, 0.0,
+		0.0, 1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0);
+    output.Normal = input.Normal;
+	output.UV = input.UV;
+    // Stable diagnostic baseline: bypass camera/projection completely and render
+	// model directly in clip-space so geometry visibility is guaranteed.
+	float3 debugPos = input.Pos.xyz * 0.35;
+	output.Pos = float4(debugPos.xy, 0.0, 1.0);
+	output.Factor = (shaderData->selected == instanceIndex ? 3.0f : 1.0f);
+	output.InstanceIndex = instanceIndex;
+	output.LightVec = float3(0.0, 0.0, 1.0);
+	output.ViewVec = float3(0.0, 0.0, 1.0);
+	return output;
 }
 
 [shader("fragment")]
 float4 main(VSOutput input) {
-    // Phong lighting
-    float3 N = normalize(input.Normal);
-    float3 L = normalize(input.LightVec);
-    float3 V = normalize(input.ViewVec);
-    float3 R = reflect(-L, N);
-    float3 diffuse = max(dot(N, L), 0.0025);
-    float3 specular = pow(max(dot(R, V), 0.0), 16.0) * 0.75;
-    // Sample from texture
-    float3 color = textures[input.InstanceIndex].Sample(input.UV).rgb * input.Factor;
-    return float4(diffuse * color.rgb + specular, 1.0);
+	// TEMP DEBUG PATH: consume InstanceIndex so vertex->fragment interface matches.
+	float tint = (input.InstanceIndex == 0 ? 1.0 : (input.InstanceIndex == 1 ? 0.8 : 0.6));
+	return float4(0.0, tint, 0.2, 1.0);
 }

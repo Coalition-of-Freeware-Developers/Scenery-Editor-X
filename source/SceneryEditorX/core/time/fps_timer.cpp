@@ -28,6 +28,8 @@
  * Created: 28/02/2026
  * -------------------------------------------------------
  */
+// ReSharper disable IdentifierTypo
+// ReSharper disable CppInconsistentNaming
 #include "fps_timer.h"
 #include "SceneryEditorX/core/window/monitor_data.h"
 
@@ -35,44 +37,32 @@
 
 namespace SceneryEditorX
 {
-    namespace
-    {
+
+#pragma region Static FPSTimer Properties
+
         // accumulation
-        const uint32_t FRAMES_TO_ACCUMULATE = 15;
-        const double WEIGHT_DELTA           = 1.0 / static_cast<float>(FRAMES_TO_ACCUMULATE);
+		constexpr uint32_t FRAMES_TO_ACCUMULATE = 15;
+		constexpr double WEIGHT_DELTA           = 1.0 / static_cast<float>(FRAMES_TO_ACCUMULATE);
 
         // frame time
-        double s_Time_ms              = 0.0f;
-        double s_DeltaT_ms          = 0.0f;
-        double s_DeltaT_Smoothed_ms = 0.0f;
+        static double s_Time_ms					= 0.0f;
+        static double s_DeltaT_ms				= 0.0f;
+        static double s_DeltaT_Smoothed_ms		= 0.0f;
 
         // fps
-        float s_FPS_Min         = 30.0f;
-        float s_FPS_Max         = 10000.0f;
-        float s_FPS_Limit       = s_FPS_Min;
-        float s_FPS_prevlimit	= s_FPS_Limit;
+        static float s_FPS_Min          = 30.0f;
+        static float s_FPS_Max          = 10000.0f;
+        static float s_FPS_Limit        = s_FPS_Min;
+        static float s_FPS_Prevlimit	= s_FPS_Limit;
 
-        std::chrono::steady_clock::time_point s_last_TickTime;
+        static std::chrono::steady_clock::time_point s_last_TickTime;
 
-    } // namespace
+#pragma endregion
 
     void FPSTimer::Init()
-    {
-        s_FPS_Limit      = static_cast<float>(MonitorData::GetRefreshRate());
-        s_last_TickTime = std::chrono::steady_clock::now();
-    }
-
-    void FPSTimer::OnVSyncToggled(const bool enabled)
 	{
-	    if (enabled)
-	    {
-	        s_FPS_prevlimit = s_FPS_Limit;
-	        SetFpsLimit(static_cast<float>(MonitorData::GetRefreshRate()));
-	    }
-	    else
-	    {
-	        SetFpsLimit(s_FPS_prevlimit);
-	    }
+	    s_FPS_Limit = static_cast<float>(MonitorData::GetRefreshRate());
+	    s_last_TickTime = std::chrono::steady_clock::now();
 	}
 
     void FPSTimer::PostTick()
@@ -81,27 +71,55 @@ namespace SceneryEditorX
         if (s_last_TickTime.time_since_epoch() != std::chrono::steady_clock::duration::zero())
         {
             s_DeltaT_ms = static_cast<double>(
-                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - s_last_TickTime).count());
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - s_last_TickTime)
+                    .count());
         }
 
         // fps limit
         double target_ms = 1000.0 / s_FPS_Limit;
         while (s_DeltaT_ms < target_ms)
         {
-            s_DeltaT_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - s_last_TickTime).count();
+            s_DeltaT_ms =
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - s_last_TickTime)
+                    .count();
         }
 
         // compute delta time based timings
-        s_DeltaT_Smoothed_ms  = s_DeltaT_Smoothed_ms * (1.0 - WEIGHT_DELTA) + s_DeltaT_ms * WEIGHT_DELTA;
-        s_Time_ms                += s_DeltaT_ms;
+        s_DeltaT_Smoothed_ms = s_DeltaT_Smoothed_ms * (1.0 - WEIGHT_DELTA) + s_DeltaT_ms * WEIGHT_DELTA;
+        s_Time_ms += s_DeltaT_ms;
 
         // end
         s_last_TickTime = std::chrono::steady_clock::now();
     }
 
-    float FPSTimer::GetFpsLimit()
+    float FPSTimer::GetFpsLimit() { return s_FPS_Limit; }
+
+    FrameLimits FPSTimer::GetFpsLimitType()
     {
-        return s_FPS_Limit;
+        if (s_FPS_Limit == MonitorData::GetRefreshRate())
+        {
+            return FrameLimits::FixedToMonitor;
+        }
+
+        if (s_FPS_Limit == s_FPS_Max)
+        {
+            return FrameLimits::Unlocked;
+        }
+
+        return FrameLimits::Fixed;
+    }
+
+    void FPSTimer::OnVSyncToggled(const bool enabled)
+    {
+        if (enabled)
+        {
+            s_FPS_Prevlimit = s_FPS_Limit;
+            SetFpsLimit(static_cast<float>(MonitorData::GetRefreshRate()));
+        }
+        else
+        {
+            SetFpsLimit(s_FPS_Prevlimit);
+        }
     }
 
     void FPSTimer::SetFpsLimit(float fpsIn)
@@ -115,52 +133,25 @@ namespace SceneryEditorX
         fpsIn = std::ranges::clamp(fpsIn, s_FPS_Min, s_FPS_Max);
 
         if (s_FPS_Limit == fpsIn)
+        {
             return;
+        }
 
         s_FPS_Limit = fpsIn;
         SEDX_CORE_INFO("Set to %.2f FPS", s_FPS_Limit);
     }
 
-    FpsLimitType FPSTimer::GetFpsLimitType()
-    {
-        if (s_FPS_Limit == MonitorData::GetRefreshRate())
-            return FpsLimitType::FixedToMonitor;
+    double FPSTimer::GetTimeMs() { return s_Time_ms; }
 
-        if (s_FPS_Limit == s_FPS_Max)
-            return FpsLimitType::Unlocked;
+    double FPSTimer::GetTimeSec() { return s_Time_ms / 1000.0; }
 
-        return FpsLimitType::Fixed;
-    }
+    double FPSTimer::GetDeltaTimeMs() { return s_DeltaT_ms; }
 
-    double FPSTimer::GetTimeMs()
-    {
-        return s_Time_ms;
-    }
+    double FPSTimer::GetDeltaTimeSec() { return s_DeltaT_ms / 1000.0; }
 
-    double FPSTimer::GetTimeSec()
-    {
-        return s_Time_ms / 1000.0;
-    }
+    double FPSTimer::GetDeltaTimeSmoothedMs() { return s_DeltaT_Smoothed_ms; }
 
-    double FPSTimer::GetDeltaTimeMs()
-    {
-        return s_DeltaT_ms;
-    }
-
-    double FPSTimer::GetDeltaTimeSec()
-    {
-        return s_DeltaT_ms / 1000.0;
-    }
-
-    double FPSTimer::GetDeltaTimeSmoothedMs()
-    {
-        return s_DeltaT_Smoothed_ms;
-    }
-
-    double FPSTimer::GetDeltaTimeSmoothedSec()
-    {
-        return s_DeltaT_Smoothed_ms / 1000.0;
-    }
+    double FPSTimer::GetDeltaTimeSmoothedSec() { return s_DeltaT_Smoothed_ms / 1000.0; }
 
 } // namespace SceneryEditorX
 

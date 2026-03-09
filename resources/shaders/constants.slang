@@ -1,8 +1,8 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,71 +23,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * entity.cpp
+ * constants.slang
  * -------------------------------------------------------
- * Created: 11/8/2025
+ * Created: 07/03/2026
  * -------------------------------------------------------
  */
-#include "entity.h"
-#include "scene.h"
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
-{
-    /*
-    Entity Entity::GetParent() const
-	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
-	}
-	*/
-
-	bool Entity::IsAncestorOf(Entity entity) const
-	{
-	    const auto &children = Children();
-	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
-	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
-	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
-	
-	    return false;
-	}
-
-	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
-
-	/*
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
-
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
-
-    Entity::operator bool() const { return IsValid(); }
-
-}
-
-// -------------------------------------------------------
+static const float PI = 3.14159265f;
+static const float PI2 = 6.28318530f;
+static const float PI4 = 12.5663706f;
+static const float INV_PI = 0.31830988f;
+static const float PI_HALF = PI * 0.5f;
+static const float FLT_MIN = 0.00000001f;
+static const float FLT_MAX_16 = 32767.0f;
+static const float FLT_MAX_16U = 65504.0f;
+static const float RPC_9 = 0.11111111111f;
+static const float RPC_16 = 0.0625f;
+static const float RPC_32 = 0.03125f;
+static const uint THREAD_GROUP_COUNT_X = 8;
+static const uint THREAD_GROUP_COUNT_Y = 8;
+static const uint THREAD_GROUP_COUNT = 64;
+static const float DEG_TO_RAD = PI / 180.0f;

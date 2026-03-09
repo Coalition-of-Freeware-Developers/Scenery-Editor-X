@@ -33,22 +33,32 @@
 #include "image_resource.h"
 #include "render_context.h"
 #include "swapchain.h"
-#include "asset/texture_image.h"
 #include "debug/graphics_debug.h"
-#include "SceneryEditorX/renderer/renderer.h"
+#include <array>
 #include <chrono>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <SceneryEditorX/asset/texture_image.h>
+#include <SceneryEditorX/renderer/renderer.h>
 #include <volk/volk.h>
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
-    /// Per-image layout tracking: key = &VkImage (stable address), value = current layout.
-    /// Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
+    struct ImmediateExecutionState
+    {
+        std::unique_ptr<CommandPool> pool;
+        Ref<CommandList> cmdList;
+        std::mutex mutex;
+    };
+
+    // Per-image layout tracking: key = &VkImage (stable address), value = current layout.
+    // Protected by s_ImageLayoutsMutex for safe concurrent reads from multiple threads.
     static std::unordered_map<void*, Layout::ImageLayout> s_ImageLayouts;
     static std::mutex s_ImageLayoutsMutex;
+    static std::array<ImmediateExecutionState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
 
     #pragma region Static Command Actions
 
@@ -280,7 +290,7 @@ namespace SceneryEditorX
 
 	Layout::ImageLayout CommandList::GetImageLayout(void *image, uint32_t mipIndex)
 	{
-		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+        std::scoped_lock lock(s_ImageLayoutsMutex);
 		const auto it = s_ImageLayouts.find(image);
 		if (it != s_ImageLayouts.end())
 			return it->second;
@@ -289,12 +299,94 @@ namespace SceneryEditorX
 
 	void CommandList::RemoveLayout(void *image)
 	{
-		std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+        std::scoped_lock lock(s_ImageLayoutsMutex);
 		s_ImageLayouts.erase(image);
 	}
+
+    /**
+     * @brief Begin immediate command recording on the queue matching @p type.
+     *
+     * This uses QueueManager's reusable command list pool and starts recording
+     * immediately. The returned command list must be completed with
+     * EndImmediateExecution().
+     */
+    CommandList* CommandList::BeginImmediateExecution(const QueueType type)
+    {
+        Ref<RenderContext> context = RenderContext::Get();
+        SEDX_CORE_ASSERT(context.IsValid(), "RenderContext must be valid for immediate execution");
+
+        Ref<Device> device = context->GetDevice();
+        SEDX_CORE_ASSERT(device.IsValid(), "Device must be valid for immediate execution");
+
+        Ref<QueueManager> queueManager = device->GetQueueManager();
+        SEDX_CORE_ASSERT(queueManager.IsValid(), "QueueManager must be valid for immediate execution");
+
+     struct ImmediateState
+        {
+            std::unique_ptr<CommandPool> pool;
+            Ref<CommandList> cmdList;
+            std::mutex mutex;
+        };
+        static std::array<ImmediateState, static_cast<size_t>(QueueType::MaxEnum)> s_ImmediateStates;
+
+        if (Ref<Queue>* queueRef = queueManager->GetQueue(type); queueRef && *queueRef)
+        {
+            ImmediateState& state = s_ImmediateStates[static_cast<size_t>(type)];
+            std::scoped_lock lock(state.mutex);
+
+            if (!state.pool)
+            {
+                const uint32_t family = queueManager->GetFamilyIndexByType(type);
+                state.pool = std::make_unique<CommandPool>(device, family, CommandPoolType::Resettable);
+            }
+
+            if (!state.cmdList)
+            {
+                state.cmdList = CreateRef<CommandList>((*queueRef).Get(), *state.pool, "ImmediateCommandList");
+            }
+
+            if (state.cmdList->GetState() != CommandState::Idle)
+            {
+                state.cmdList->WaitForExecution();
+            }
+
+            state.cmdList->Begin();
+            return state.cmdList.Get();
+        }
+
+        SEDX_CORE_ERROR_TAG("CommandList", "Immediate execution queue not available for type {}", static_cast<uint32_t>(type));
+        return nullptr;
+    }
+
+    /**
+     * @brief Submit and wait for completion of an immediate command list.
+     */
+    void CommandList::EndImmediateExecution(CommandList* cmdList)
+    {
+        SEDX_CORE_ASSERT(cmdList != nullptr, "Immediate command list cannot be null");
+        cmdList->Submit(nullptr, true);
+        cmdList->WaitForExecution();
+    }
+
+    void CommandList::ShutdownImmediateExecution()
+    {
+        for (auto& state : s_ImmediateStates)
+        {
+            std::scoped_lock lock(state.mutex);
+            state.cmdList.Reset();
+            state.pool.reset();
+        }
+    }
 	
 	void CommandList::Begin()
 	{
+		// Dedicated command list lifecycle: if the list is still pending from a previous
+		// submit, wait for completion before re-recording.
+		if (m_State == CommandState::Submitted)
+		{
+			WaitForExecution();
+		}
+
 		SEDX_CORE_ASSERT(m_State == CommandState::Idle, "Command list must be in idle state to begin recording.");
 
 		// ONE_TIME_SUBMIT hints to the driver that this recording will be submitted exactly once
@@ -304,7 +396,7 @@ namespace SceneryEditorX
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		SEDX_CORE_ASSERT(vkBeginCommandBuffer(m_CmdBuffer, &beginInfo) == VK_SUCCESS, "Failed to begin command buffer");
 
-		m_State           = CommandState::Recording;
+		m_State            = CommandState::Recording;
 		m_RenderPassActive = false;
 
 		// Set common dynamic state for graphics queues so every pass starts from a known baseline.
@@ -380,9 +472,9 @@ namespace SceneryEditorX
 		// -------------------------------------------------------
 		std::vector<VkSemaphoreSubmitInfo> signalInfos;
 
-		// Always advance and signal the command list's own timeline semaphore so that
-		// dependent queues can wait on this submission's completion.
-		const uint64_t nextTimelineValue = m_RenderingCompleteTimeline->GetNextSignalValue();
+		// Always signal this command list's timeline semaphore with an explicitly tracked
+		// strictly increasing value.
+		const uint64_t nextTimelineValue = m_NextTimelineSignalValue++;
 		{
 			VkSemaphoreSubmitInfo info{};
 			info.sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -431,6 +523,7 @@ namespace SceneryEditorX
 			Fence::Reset(fence);
 
 		m_Queue->Submit(submitInfo, fence);
+		m_LastTimelineSignalValue = nextTimelineValue;
 
 		// Record which command list produced the binary wait semaphore's signal
 		if (semaphoreWait)
@@ -455,7 +548,7 @@ namespace SceneryEditorX
 		SEDX_CORE_ASSERT(m_RenderingCompleteTimeline != nullptr, "Timeline semaphore must be initialized");
 
 		const VkSemaphore semaphore = m_RenderingCompleteTimeline->GetVkSemaphore();
-		const uint64_t    waitValue = m_RenderingCompleteTimeline->GetValue();
+		const uint64_t    waitValue = m_LastTimelineSignalValue;
 
 		if (semaphore == VK_NULL_HANDLE || waitValue == 0)
 			return;
@@ -561,6 +654,13 @@ namespace SceneryEditorX
         vkCmdClearColorImage(m_CmdBuffer, vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
     }
 
+    void CommandList::ClearTexture(ImageResource* img, const Color &color)
+    {
+        SEDX_CORE_ASSERT(img != nullptr, "ImageResource must be valid");
+        SEDX_CORE_ASSERT(img->Get() != nullptr && *img->Get() != VK_NULL_HANDLE, "ImageResource must contain a valid VkImage");
+        ClearTexture(static_cast<void*>(img->Get()), color);
+    }
+
     void CommandList::SetIndexBuffer(const Buffer *indexBuffer)
     {
         SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command List must be in Recording state to set index buffer.");
@@ -651,7 +751,7 @@ namespace SceneryEditorX
         vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
 
         {
-            std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+            std::scoped_lock lock(s_ImageLayoutsMutex);
             s_ImageLayouts[img] = layout;
         }
     }
@@ -724,7 +824,7 @@ namespace SceneryEditorX
         vkCmdPipelineBarrier2(m_CmdBuffer, &depInfo);
 
         {
-            std::lock_guard<std::mutex> lock(s_ImageLayoutsMutex);
+            std::scoped_lock lock(s_ImageLayoutsMutex);
             s_ImageLayouts[image] = layout;
         }
     }
@@ -936,13 +1036,61 @@ namespace SceneryEditorX
         vkCmdCopyBuffer(m_CmdBuffer, src->Get(), dst->Get(), 1, &region);
     }
 
-    void CommandList::SetPipelineState(const PipelineState& /*pso*/)
+    void CommandList::SetPipelineState(const PipelineState& pso)
     {
         SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to set pipeline state");
-        // TODO: Resolve or create a cached VkPipeline from the PipelineState descriptor,
-        //       begin the dynamic render pass, and bind the pipeline.
-        // This stub exists so that all render-pass code that calls SetPipelineState compiles.
-        SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: stub — VkPipeline creation not yet wired");
+
+        // Compute path is still TODO.
+        if (pso.shaders.contains(static_cast<uint32_t>(Stage::Compute)))
+        {
+            static bool warnedCompute = false;
+            if (!warnedCompute)
+            {
+                SEDX_CORE_WARN_TAG("CommandList", "SetPipelineState: compute pipeline binding not yet wired");
+                warnedCompute = true;
+            }
+            return;
+        }
+
+        ImageResource* colorTarget = pso.render_target_color_textures[0];
+        if (!colorTarget)
+            return;
+
+        // Transition attachments and begin dynamic rendering if needed.
+        colorTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
+        VkRenderingAttachmentInfo colorAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+        colorAttachment.imageView = colorTarget->GetImageView();
+        colorAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+        VkRenderingAttachmentInfo depthAttachment{ VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+        if (ImageResource* depthTarget = pso.render_target_depth_texture)
+        {
+            depthTarget->SetLayout(Layout::ImageLayout::Attachment, this, ALL_MIPS, 0);
+            depthAttachment.imageView = depthTarget->GetImageView();
+            depthAttachment.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+            depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        }
+
+        if (!m_RenderPassActive)
+        {
+            VkRenderingInfo renderingInfo{ VK_STRUCTURE_TYPE_RENDERING_INFO };
+            renderingInfo.renderArea.offset = { 0, 0 };
+            renderingInfo.renderArea.extent = { colorTarget->GetWidth(), colorTarget->GetHeight() };
+            renderingInfo.layerCount = 1;
+            renderingInfo.colorAttachmentCount = 1;
+            renderingInfo.pColorAttachments = &colorAttachment;
+            renderingInfo.pDepthAttachment = (depthAttachment.imageView != VK_NULL_HANDLE) ? &depthAttachment : nullptr;
+            vkCmdBeginRendering(m_CmdBuffer, &renderingInfo);
+            m_RenderPassActive = true;
+        }
+
+        if (Ref<RenderContext> context = RenderContext::Get(); context && context->pipeline != VK_NULL_HANDLE)
+        {
+            vkCmdBindPipeline(m_CmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context->pipeline);
+        }
     }
 
     void CommandList::PushConstants(const PushConstantBuffer& data)
@@ -1021,9 +1169,11 @@ namespace SceneryEditorX
         SEDX_CORE_ASSERT(m_State == CommandState::Recording, "Command list must be in recording state to blit");
         SEDX_CORE_ASSERT(src != nullptr && dst != nullptr, "Source and destination images must be valid for blit");
 
-        // Transition source to TransferSrc and destination to TransferDst
-        InsertBarrier(src->Get(), src->GetImageSpec().format, 0, 1, 0, Layout::ImageLayout::TransferSrc);
-        InsertBarrier(dst->Get(), dst->GetImageSpec().format, 0, 1, 0, Layout::ImageLayout::TransferDst);
+        // Transition full mip ranges to keep layout tracking consistent with Vulkan state.
+        // The layout tracker is currently image-wide (not per-mip), so transitioning only mip 0
+        // can lead to validation mismatches on higher mips.
+        InsertBarrier(src->Get(), src->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferSrc);
+        InsertBarrier(dst->Get(), dst->GetImageSpec().format, 0, 0, 0, Layout::ImageLayout::TransferDst);
 
         VkImageBlit region{};
         region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;

@@ -31,8 +31,10 @@
 #include "renderer.h"
 #include "renderer_declarations.h"
 #include "SceneryEditorX/core/platform/settings/settings.h"
+#include "vulkan/buffer.h"
 #include "vulkan/image_resource.h"
 #include "vulkan/sampler.h"
+#include <cstring>
 
 // -------------------------------------------------------
 
@@ -79,8 +81,91 @@ namespace SceneryEditorX
 	bool               Renderer::m_transparents_present     = false;
 	bool               Renderer::m_is_hiz_suppressed        = false;
 
+    namespace
+    {
+        struct QuadVertex
+        {
+            xMath::Vec3 position;
+            xMath::Vec2 uv;
+        };
+
+        static Ref<Buffer> s_GeometryQuadVertexBuffer = nullptr;
+        static Ref<Buffer> s_GeometryQuadIndexBuffer  = nullptr;
+    }
+
 #pragma endregion
 
+    void GeometryBuffer::Initialize()
+    {
+        if (s_GeometryQuadVertexBuffer && s_GeometryQuadIndexBuffer)
+            return;
+
+        const Ref<Device> device = RenderContext::Get()->GetDevice();
+        SEDX_CORE_ASSERT(device.IsValid(), "GeometryBuffer::Initialize requires a valid device");
+
+        constexpr std::array<QuadVertex, 4> quadVertices = {
+            QuadVertex{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
+            QuadVertex{{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
+            QuadVertex{{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}},
+            QuadVertex{{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}},
+        };
+
+        constexpr std::array<uint16_t, 6> quadIndices = { 0, 1, 2, 2, 3, 0 };
+
+        VmaAllocationCreateInfo allocInfo{};
+        allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+        allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                          VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+        const VmaAllocator allocator = device->GetMemoryAllocator().GetAllocator();
+
+        s_GeometryQuadVertexBuffer = CreateRef<Buffer>(
+            allocator,
+            sizeof(quadVertices),
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            allocInfo
+        );
+        s_GeometryQuadIndexBuffer = CreateRef<Buffer>(
+            allocator,
+            sizeof(quadIndices),
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            allocInfo
+        );
+
+        SEDX_CORE_ASSERT(s_GeometryQuadVertexBuffer && s_GeometryQuadVertexBuffer->Valid(),
+                         "Failed to create static quad vertex buffer");
+        SEDX_CORE_ASSERT(s_GeometryQuadIndexBuffer && s_GeometryQuadIndexBuffer->Valid(),
+                         "Failed to create static quad index buffer");
+
+        void* vbData = s_GeometryQuadVertexBuffer->Map();
+        void* ibData = s_GeometryQuadIndexBuffer->Map();
+        SEDX_CORE_ASSERT(vbData != nullptr, "Failed to map static quad vertex buffer");
+        SEDX_CORE_ASSERT(ibData != nullptr, "Failed to map static quad index buffer");
+
+        std::memcpy(vbData, quadVertices.data(), sizeof(quadVertices));
+        std::memcpy(ibData, quadIndices.data(), sizeof(quadIndices));
+
+        s_GeometryQuadVertexBuffer->Unmap();
+        s_GeometryQuadIndexBuffer->Unmap();
+
+        SEDX_CORE_INFO_TAG("Renderer", "GeometryBuffer initialized (static quad VB/IB)");
+    }
+
+    void GeometryBuffer::Shutdown()
+    {
+        s_GeometryQuadVertexBuffer.Reset();
+        s_GeometryQuadIndexBuffer.Reset();
+    }
+
+    Buffer* GeometryBuffer::GetIndexBuffer()
+    {
+        return s_GeometryQuadIndexBuffer.Get();
+    }
+
+    Buffer* GeometryBuffer::GetVertexBuffer()
+    {
+        return s_GeometryQuadVertexBuffer.Get();
+    }
 
     void Renderer::CreateRenderTargets(const bool createRender, const bool createOutput, const bool createDynamic)
     {
@@ -327,6 +412,15 @@ namespace SceneryEditorX
         return s_Shaders[static_cast<uint8_t>(type)].Get();
     }
 
+    void Renderer::SetShaderAvailable(const Renderer_Shader type)
+    {
+        const uint8_t index = static_cast<uint8_t>(type);
+        if (!s_Shaders[index])
+        {
+            s_Shaders[index] = CreateRef<Shader>();
+        }
+    }
+
 #pragma region Samplers
 
     void Renderer::CreateSamplers()
@@ -490,8 +584,31 @@ namespace SceneryEditorX
 
     Mesh* Renderer::GetStandardMesh(const MeshType /*type*/)
     {
-        // TODO: Return the pre-built standard mesh for the given type once the mesh registry is wired in.
-        SEDX_CORE_WARN_TAG("Renderer", "GetStandardMesh: stub — mesh registry not yet connected");
+        class StandardQuadMesh final : public Mesh
+        {
+        public:
+            Buffer* GetVertexBuffer() const override { return GeometryBuffer::GetVertexBuffer(); }
+            Buffer* GetIndexBuffer() const override  { return GeometryBuffer::GetIndexBuffer(); }
+            uint32_t GetGlobalIndexOffset() const override { return 0; }
+            uint32_t GetGlobalVertexOffset() const override { return 0; }
+        };
+
+        static StandardQuadMesh s_QuadMesh;
+        Buffer* vb = s_QuadMesh.GetVertexBuffer();
+        Buffer* ib = s_QuadMesh.GetIndexBuffer();
+
+        if (vb && ib)
+        {
+            return &s_QuadMesh;
+        }
+
+        static bool warned = false;
+        if (!warned)
+        {
+            SEDX_CORE_WARN_TAG("Renderer", "GetStandardMesh: quad mesh unavailable (geometry buffer not ready)");
+            warned = true;
+        }
+
         return nullptr;
     }
 

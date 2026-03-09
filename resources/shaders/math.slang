@@ -1,8 +1,8 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,71 +23,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * entity.cpp
+ * math.slang
  * -------------------------------------------------------
- * Created: 11/8/2025
+ * Created: 07/03/2026
  * -------------------------------------------------------
  */
-#include "entity.h"
-#include "scene.h"
+import constants;
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
+float fast_sqrt(float x)
 {
-    /*
-    Entity Entity::GetParent() const
-	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
-	}
-	*/
-
-	bool Entity::IsAncestorOf(Entity entity) const
-	{
-	    const auto &children = Children();
-	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
-	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
-	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
-	
-	    return false;
-	}
-
-	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
-
-	/*
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
-
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
-
-    Entity::operator bool() const { return IsValid(); }
-
+    return (float)(asfloat(0x1fbd1df5 + (asint(x) >> 1)));
 }
 
-// -------------------------------------------------------
+float fast_length(float3 v)
+{
+    float length_squared = dot(v, v);
+    return fast_sqrt(length_squared);
+}
+
+float fast_sin(float x)
+{
+    const float B = 4 / PI;
+    const float C = -4 / PI2;
+    const float P = 0.225;
+
+    float y = B * x + C * x * abs(x);
+    y = P * (y * abs(y) - y) + y;
+
+    return y;
+}
+
+float fast_cos(float x)
+{
+    return abs(abs(x) / PI2 % 4 - 2) - 1;
+}
+
+float fast_acos(float in_x)
+{
+    float x = abs(in_x);
+    float res = -0.156583f * x + PI_HALF;
+    res *= fast_sqrt(1.0f - x);
+    return (in_x >= 0) ? res : PI - res;
+}

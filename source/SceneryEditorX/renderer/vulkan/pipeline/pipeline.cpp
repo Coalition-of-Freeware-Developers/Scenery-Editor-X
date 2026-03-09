@@ -74,13 +74,10 @@ namespace SceneryEditorX
 	    // Rasterization
 	    VkPipelineRasterizationStateCreateInfo rasterizationState{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 	    rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-	    rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
-    // VK_FRONT_FACE_CLOCKWISE is required because the projection matrix negates
-	// the Y component (p[1][1] = -invTan) to correct Vulkan's Y-down NDC convention.
-	// That Y-flip reverses every triangle's winding order in clip space, so what was
-	// CCW in view space becomes CW after the flip. CLOCKWISE tells the rasterizer to
-	// treat those post-flip CW triangles as front faces.
-	    rasterizationState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        // Temporary debug-friendly rasterization defaults:
+		// disable culling so winding/order mismatches cannot make the entire frame black.
+		rasterizationState.cullMode = VK_CULL_MODE_NONE;
+		rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	    rasterizationState.lineWidth = 1.0f;
 	
 	    // Multisample

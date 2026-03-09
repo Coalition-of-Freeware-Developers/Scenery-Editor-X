@@ -1,8 +1,8 @@
-﻿/**
+/**
  * -------------------------------------------------------
  * Scenery Editor X
  * -------------------------------------------------------
- * Copyright (c) 2026 Thomas Ray 
+ * Copyright (c) 2026 Thomas Ray
  * Copyright (c) 2026 Coalition of Freeware Developers
  * -------------------------------------------------------
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -23,71 +23,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * entity.cpp
+ * depth.slang
  * -------------------------------------------------------
- * Created: 11/8/2025
+ * Created: 07/03/2026
  * -------------------------------------------------------
  */
-#include "entity.h"
-#include "scene.h"
+import resources;
 
-// -------------------------------------------------------
-
-namespace SceneryEditorX
+float get_depth(const uint2 position)
 {
-    /*
-    Entity Entity::GetParent() const
-	{
-	    return m_Scene->TryGetEntityWithUUID(GetParentUUID());
-	}
-	*/
-
-	bool Entity::IsAncestorOf(Entity entity) const
-	{
-	    const auto &children = Children();
-	
-	    if (children.empty())
-	    {
-	        return false;
-	    }
-	
-	    for (const UUID &child : children)
-	    {
-	        if (child == entity.GetUUID())
-	        {
-	            return true;
-	        }
-	    }
-	
-	    /*
-	    for (UUID child : children)
-	    {
-	        if (m_Scene->GetEntityWithUUID(child).IsAncestorOf(entity))
-	        {
-	            return true;
-	        }
-	    }
-	    */
-	
-	    return false;
-	}
-
-	//UUID Entity::GetSceneUUID() const { return m_Scene->m_SceneID; }
-
-	/*
-	bool Entity::IsValid() const
-    {
-        return (m_EntityHandle != entt::null) && m_Scene && m_Scene->m_Registry.valid(m_EntityHandle);
-    }
-    */
-
-    bool Entity::IsValid() const
-    {
-        return false;
-    }
-
-    Entity::operator bool() const { return IsValid(); }
-
+    return tex_depth[position].r;
 }
 
-// -------------------------------------------------------
+float get_depth(const float2 uv)
+{
+    return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
+}
+
+float linearize_depth(const float z)
+{
+    float near = buffer_frame.camera_near;
+    float far = buffer_frame.camera_far;
+    float z_b = z;
+    float z_n = 2.0f * z_b - 1.0f;
+    return 2.0f * far * near / (near + far - z_n * (near - far));
+}
+
+float get_linear_depth(const uint2 pos)
+{
+    return linearize_depth(get_depth(pos));
+}
+
+float get_linear_depth(const float2 uv)
+{
+    return linearize_depth(get_depth(uv));
+}
+

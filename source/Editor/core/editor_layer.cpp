@@ -30,6 +30,8 @@
  */
 #include "editor_layer.h"
 
+#include <SceneryEditorX/renderer/renderer.h>
+
 // ---------------------------------------------------------
 
 namespace SceneryEditorX
@@ -42,16 +44,22 @@ namespace SceneryEditorX
 	void EditorLayer::OnAttach()
 	{
 	    Layer::OnAttach();
+	    m_Camera.Init();
+	    Renderer::SetCamera(&m_Camera);
+	    SEDX_CORE_INFO_TAG("EditorLayer", "Camera initialized and registered with renderer");
 	}
 
 	void EditorLayer::OnDetach()
 	{
+	    Renderer::SetCamera(nullptr);
 	    Layer::OnDetach();
 	}
 
 	void EditorLayer::Tick(DeltaTime dt)
 	{
 	    Layer::Tick(dt);
+        // Camera tick is driven by Renderer::Tick() to keep matrix updates aligned
+		// with the active render frame and avoid double-processing input.
 	}
 
 	void EditorLayer::OnUIRender()

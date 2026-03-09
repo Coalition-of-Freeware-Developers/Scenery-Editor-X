@@ -47,6 +47,7 @@ constexpr float DEFAULT_PANEL_PROPERTY = -1.0f;
 
 /// -------------------------------------------------------
 
+/*
 class UI_Panel : public RefCounted
 {
 public:
@@ -92,11 +93,13 @@ protected:
     float m_height		= 0;
     float m_alpha		= -1.0f;
 
+    /*
     // Vec2 initializations requires explicit constructor calls
     Vec2 initialSize = DEFAULT_PANEL_PROPERTY;
     Vec2 padding     = DEFAULT_PANEL_PROPERTY;
     Vec2 minSize     = DEFAULT_PANEL_PROPERTY;
     Vec2 maxSize     = FLT_MAX;
+    #1#
 
     std::string m_title = "Panel";
     Editor *m_Editor = nullptr;
@@ -105,5 +108,6 @@ protected:
 private:
     uint8_t varPushCount = 0;
 };
+*/
 
 /// -------------------------------------------------------

@@ -30,10 +30,10 @@
  */
 #pragma once
 #include "key_codes.h"
-#include <SDL3/SDL.h>
 #include <map>
 #include <optional>
 #include <utility>
+#include <SDL3/SDL.h>
 
 // -------------------------------------------------------
 
@@ -42,13 +42,13 @@ namespace SceneryEditorX
 
 	enum class KeyMods : int  // NOLINT(performance-enum-size)
 	{
-		None = 0,
-		Shift = BIT(0),
-		Ctrl = BIT(1),
-		Alt = BIT(2),
-		Super = BIT(3),
+		None	 = 0,
+		Shift	 = BIT(0),
+		Ctrl	 = BIT(1),
+		Alt		 = BIT(2),
+		Super	 = BIT(3),
 		CapsLock = BIT(4),
-		NumLock = BIT(5)
+		NumLock  = BIT(5)
 	};
 
 	// Bitwise operators for KeyMods enum

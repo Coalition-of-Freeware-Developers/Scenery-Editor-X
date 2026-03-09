@@ -32,6 +32,7 @@
 #include <SceneryEditorX/core/events/key_events.h>
 #include <SceneryEditorX/core/events/mouse_events.h>
 #include <SceneryEditorX/core/layers/layer.h>
+#include <SceneryEditorX/scene/camera.h>
 
 // ---------------------------------------------------------
 
@@ -41,8 +42,8 @@ namespace SceneryEditorX
 	{
     public:
         ~EditorLayer();
-        void OnAttach() override;
-        void OnDetach() override;
+		void OnAttach() override;
+		void OnDetach() override;
         void Tick(DeltaTime dt) override;
         void OnUIRender() override;
         void OnEvent(Event &event) override;
@@ -104,6 +105,8 @@ namespace SceneryEditorX
         void RegenerateProjectScriptSolution(const std::filesystem::path &projectPath);
         void ReloadCSharp();
         void FocusLogPanel();
+
+		Camera m_Camera;
 
         uint32_t m_TitleBarTargetColor;
         uint32_t m_TitleBarActiveColor;
