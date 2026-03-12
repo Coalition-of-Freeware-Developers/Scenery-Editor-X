@@ -13,7 +13,9 @@ FILE(GLOB ASSET_MANAGER_FILES "asset/managers/*.h" "asset/managers/*.hpp" "asset
 FILE(GLOB ASSET_MATERIAL_FILES "asset/material/*.h" "asset/material/*.hpp" "asset/material/*.cpp")
 FILE(GLOB ASSET_MESH_FILES "asset/mesh/*.h" "asset/mesh/*.hpp" "asset/mesh/*.cpp")
 FILE(GLOB ASSET_REGISTRY_FILES "asset/registry/*.h" "asset/registry/*.hpp" "asset/registry/*.cpp")
-FILE(GLOB ASSET_DIR "asset/*.h" "asset/*.hpp" "asset/*.cpp")
+FILE(GLOB ASSET_DIR LIST_DIRECTORIES false CONFIGURE_DEPENDS "asset/*.h" "asset/*.hpp" "asset/*.cpp")
+FILE(GLOB ASSET_BITMAP_FILES "asset/bitmap/*.h" "asset/bitmap/*.hpp" "asset/bitmap/*.cpp")
+FILE(GLOB ASSET_MODEL_FILES "asset/model/*.h" "asset/model/*.hpp" "asset/model/*.cpp")
 
 FILE(GLOB CORE_BASE_ROOT LIST_DIRECTORIES false CONFIGURE_DEPENDS "core/*.h" "core/*.hpp" "core/*.cpp")
 FILE(GLOB CORE_APP "core/application/*.h" "core/application/*.hpp" "core/application/*.cpp")
