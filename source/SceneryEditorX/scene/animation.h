@@ -39,20 +39,20 @@ namespace SceneryEditorX
 	class Animation : public Asset
 	{
 	public:
-	    Animation();
-	    virtual ~Animation() override;
+		Animation();
+		virtual ~Animation() override;
 	
-	    // -------------------------------------------------------
+		// -------------------------------------------------------
 	
-	    virtual void Load(const std::string &path) override;
-	    virtual void Unload() override;
-	    virtual bool IsLoaded() const;
-	    virtual const std::string &GetPath() const;
-	    virtual const std::string &GetName() const;
-	    virtual void SetName(const std::string &name) override;
+		virtual void Load(const std::string &path) override;
+		virtual void Unload() override;
+		virtual bool IsLoaded() const;
+		virtual const std::string &GetPath() const;
+		virtual const std::string &GetName() const;
+		virtual void SetName(const std::string &name) override;
 
-    private:
-        friend class AssetManager;
+	private:
+		friend class AssetManager;
 	};
 
 }

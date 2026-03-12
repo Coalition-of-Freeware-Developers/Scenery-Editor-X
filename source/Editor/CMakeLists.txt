@@ -36,9 +36,9 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 	${UI_PANELS}
 	${UI_RESOURCES}
 	${ICON_FILES}
-    ${FONT_FILES}
+	${FONT_FILES}
 	${PROJECT_CONFIG_FILES}
-    # --------------------------------
+	# --------------------------------
 	${UI_FILES}/ui.cpp
 	${UI_FILES}/ui.h
 	${UI_FILES}/ui_context.cpp
@@ -47,7 +47,7 @@ ADD_EXECUTABLE(SceneryEditorX WIN32
 	${UI_FILES}/ui_manager.h
 	# --------------------------------
 	${RESOURCE_FILE}
-    SceneryEditorX.rc
+	SceneryEditorX.rc
 )
 
 # --------------------------------
@@ -82,14 +82,14 @@ SOURCE_GROUP("Settings" FILES
 	${SETTINGS}
 )
 SOURCE_GROUP("Resource" FILES
-    ${RESOURCE_FILE}
-    SceneryEditorX.rc
+	${RESOURCE_FILE}
+	SceneryEditorX.rc
 )
 SOURCE_GROUP("Resource/Icons" FILES
-    ${ICON_FILES}
+	${ICON_FILES}
 )
 SOURCE_GROUP("Resource/Fonts" FILES
-    ${FONT_FILES}
+	${FONT_FILES}
 )
 
 # --------------------------------
@@ -115,23 +115,23 @@ TARGET_INCLUDE_DIRECTORIES(SceneryEditorX
 # --------------------------------
 
 TARGET_LINK_LIBRARIES(SceneryEditorX
-    PRIVATE
+	PRIVATE
 		AppCore
 		nlohmann_json::nlohmann_json
-        spdlog::spdlog_header_only
-        GPUOpen::VulkanMemoryAllocator
-        CURL::libcurl
-        Vulkan::Vulkan
+		spdlog::spdlog_header_only
+		GPUOpen::VulkanMemoryAllocator
+		CURL::libcurl
+		Vulkan::Vulkan
 		$<$<AND:$<CONFIG:Debug>,$<BOOL:${TRACY_ENABLE}>>:TracyClient>
 		ktx
 		imgui
 		libconfig
 		libconfig++
 		XPSceneryLib::XPSceneryLib
-    	SDL3::SDL3
-        dxgi
-        d3d12
-        Shell32.lib
+		SDL3::SDL3
+		dxgi
+		d3d12
+		Shell32.lib
 		xMath::xMath
 		edX
 )
@@ -139,48 +139,48 @@ TARGET_LINK_LIBRARIES(SceneryEditorX
 # --------------------------------
 
 TARGET_COMPILE_DEFINITIONS(SceneryEditorX
-    PUBLIC
-        EDITOR
-        $<$<CONFIG:Debug>:SEDX_DEBUG>
-        $<$<CONFIG:Release>:SEDX_RELEASE>
+	PUBLIC
+		EDITOR
+		$<$<CONFIG:Debug>:SEDX_DEBUG>
+		$<$<CONFIG:Release>:SEDX_RELEASE>
 		SPDLOG_USE_STD_FORMAT
-        VK_USE_PLATFORM_WIN32_KHR
-        CURL_STATICLIB
+		VK_USE_PLATFORM_WIN32_KHR
+		CURL_STATICLIB
 )
 
 # ---------------------------------
 IF(SEDX_ENABLE_VERSION_INCREMENT STREQUAL "ON")
 	IF (WIN32)
-	    FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
+		FIND_PACKAGE(Python3 COMPONENTS Interpreter REQUIRED)
 
-	    # Script path
-	    SET(SEDX_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_sedx_build.py)
+		# Script path
+		SET(SEDX_VERSION_SCRIPT ${CMAKE_SOURCE_DIR}/scripts/increment_sedx_build.py)
 
-	    IF (MSVC)
-	        # PRE_BUILD supported by Visual Studio
-	        ADD_CUSTOM_COMMAND(
-	            TARGET SceneryEditorX
-	            PRE_BUILD
-	            COMMAND ${Python3_EXECUTABLE} ${SEDX_VERSION_SCRIPT}
-	            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	            COMMENT "Incrementing Scenery Editor X build number (resource.h)"
-	            VERBATIM
-	        )
-	    ELSE()
-	        # Fallback for other Windows generators
-	        ADD_CUSTOM_TARGET(IncrementSceneryEditorXVersion
-	            COMMAND ${Python3_EXECUTABLE} ${SEDX_VERSION_SCRIPT}
-	            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	            COMMENT "Incrementing Scenery Editor X build number (resource.h)"
-	            VERBATIM
-	            BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
-	        )
-	        ADD_DEPENDENCIES(SceneryEditorX IncrementSceneryEditorXVersion)
-	    ENDIF()
+		IF (MSVC)
+			# PRE_BUILD supported by Visual Studio
+			ADD_CUSTOM_COMMAND(
+				TARGET SceneryEditorX
+				PRE_BUILD
+				COMMAND ${Python3_EXECUTABLE} ${SEDX_VERSION_SCRIPT}
+				WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+				COMMENT "Incrementing Scenery Editor X build number (resource.h)"
+				VERBATIM
+			)
+		ELSE()
+			# Fallback for other Windows generators
+			ADD_CUSTOM_TARGET(IncrementSceneryEditorXVersion
+				COMMAND ${Python3_EXECUTABLE} ${SEDX_VERSION_SCRIPT}
+				WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+				COMMENT "Incrementing Scenery Editor X build number (resource.h)"
+				VERBATIM
+				BYPRODUCTS ${CMAKE_SOURCE_DIR}/source/resource.h
+			)
+			ADD_DEPENDENCIES(SceneryEditorX IncrementSceneryEditorXVersion)
+		ENDIF()
 	ELSE()
-	    IF (WIN32)
-	        MESSAGE(STATUS "Version increment disabled for QuickDebug configuration")
-	    ENDIF()
+		IF (WIN32)
+			MESSAGE(STATUS "Version increment disabled for QuickDebug configuration")
+		ENDIF()
 	ENDIF()
 ENDIF()
 # --------------------------------

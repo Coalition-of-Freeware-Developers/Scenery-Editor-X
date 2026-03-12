@@ -32,22 +32,30 @@
 #pragma once
 //#include <entt/src/entt/entt.hpp>
 #include "components.h"
+#include <SceneryEditorX/utils/inheritance.h>
 
 // -------------------------------------------------------
 
 
 namespace SceneryEditorX
 {
-    class Scene;
+	class Scene;
 
-	class Entity
+	class Entity : public SharedObject
 	{
 	public:
-		Entity() = default;
-		Entity(/*entt::entity handle,*/ Scene* scene) : /*m_EntityHandle(handle),*/ m_Scene(scene) {}
-		~Entity() = default;
+		Entity();
+		//Entity(/*entt::entity handle,*/ Scene* scene) : /*m_EntityHandle(handle),*/ m_Scene(scene) {}
+		~Entity();
 
-        [[nodiscard]] bool IsValid() const;
+		void Start();
+		void Stop();
+		void Tick();
+
+		bool GetActive();
+		void SetActive(const bool active);
+
+		[[nodiscard]] bool IsValid() const;
 
 		template<typename T, typename... Args>
 		T& AddComponent(Args&&... args);
@@ -57,7 +65,52 @@ namespace SceneryEditorX
 
 		template<typename T>
 		const T& GetComponent() const;
+		
+        Component* GetComponentByType(ComponentType Type) const;
+        Component* AddComponentByType(ComponentType Type);
+        void RemoveComponentByType(ComponentType Type);
 
+        // adds a component of type T
+        template <class T>
+        T* AddComponent()
+        {
+            const ComponentType type = Component::TypeToEnum<T>();
+
+            // early exit if the component exists
+            if (T* component = GetComponent<T>())
+                return component;
+
+            // create a new component
+            std::shared_ptr<T> component = std::make_shared<T>(this);
+
+            // save new component
+            m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
+
+            // initialize component
+            component->SetType(type);
+            component->Initialize();
+
+            return component.get();
+        }
+
+        // adds a component of ComponentType
+        Component* AddComponent(ComponentType type);
+
+		// returns a component of type T
+		template <class T>
+		T* GetComponent()
+		{
+			const ComponentType component_type = Component::TypeToEnum<T>();
+			return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
+		}
+
+		// removes a component
+		template <class T>
+		void RemoveComponent()
+		{
+			const ComponentType component_type = Component::TypeToEnum<T>();
+			m_components[static_cast<uint32_t>(component_type)] = nullptr;
+		}
 		// returns nullptr if entity does not have the requested component type
 		template<typename T>
 		T* TryGetComponent();
@@ -70,13 +123,13 @@ namespace SceneryEditorX
 		bool HasComponent();
 
 		template<typename... T>
-        [[nodiscard]] bool HasComponent() const;
+		[[nodiscard]] bool HasComponent() const;
 
 		template<typename...T>
 		bool HasAny();
 
 		template<typename...T>
-        [[nodiscard]] bool HasAny() const;
+		[[nodiscard]] bool HasAny() const;
 
 		template<typename T>
 		void RemoveComponent();
@@ -86,12 +139,12 @@ namespace SceneryEditorX
 
 		std::string& Name()
 		{
-		    return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
+			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
 		}
 
-        [[nodiscard]] const std::string& Name() const
+		[[nodiscard]] const std::string& Name() const
 		{
-		    return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
+			return HasComponent<TagComponent>() ? GetComponent<TagComponent>().tag : m_NoName;
 		}
 
 		//operator uint32_t () const { return (uint32_t)m_EntityHandle; }
@@ -108,20 +161,20 @@ namespace SceneryEditorX
 			return !(*this == other);
 		}
 
-        [[nodiscard]] Entity GetParent() const;
+		[[nodiscard]] Entity GetParent() const;
 
 		void SetParent(Entity parent)
 		{
 			Entity currentParent = GetParent();
 			if (currentParent == parent)
 			{
-			    return;
+				return;
 			}
 
 			// If changing parent, remove child from existing parent
 			if (currentParent)
 			{
-			    currentParent.RemoveChild(*this);
+				currentParent.RemoveChild(*this);
 			}
 
 			// Setting to null is okay
@@ -130,10 +183,10 @@ namespace SceneryEditorX
 			if (parent)
 			{
 				auto& parentChildren = parent.Children();
-                if (UUID uuid = GetUUID(); std::ranges::find(parentChildren, uuid) == parentChildren.end())
-                {
-                    parentChildren.emplace_back(GetUUID());
-                }
+				if (UUID uuid = GetUUID(); std::ranges::find(parentChildren, uuid) == parentChildren.end())
+				{
+					parentChildren.emplace_back(GetUUID());
+				}
 			}
 		}
 
@@ -146,7 +199,7 @@ namespace SceneryEditorX
 		{
 			UUID childId = child.GetUUID();
 			std::vector<UUID>& children = Children();
-            if (auto it = std::ranges::find(children, childId); it != children.end())
+			if (auto it = std::ranges::find(children, childId); it != children.end())
 			{
 				children.erase(it);
 				return true;
@@ -162,7 +215,7 @@ namespace SceneryEditorX
 		[[nodiscard]] const Mat4& Transform() const { return GetComponent<TransformComponent>().GetTransform(); }
 
 		[[nodiscard]] UUID GetUUID() const { return GetComponent<IDComponent>().id; }
-        [[nodiscard]] UUID GetSceneUUID() const;
+		[[nodiscard]] UUID GetSceneUUID() const;
 
 	private:
 		Entity(const std::string& name);

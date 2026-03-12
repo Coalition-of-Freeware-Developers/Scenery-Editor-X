@@ -36,11 +36,11 @@ namespace SceneryEditorX
 {
 	enum class AssetFlag : uint16_t
 	{
-		None = 0,
+		None	= 0,
 		Missing = BIT(0),
 		Invalid = BIT(1)
 	};
-
+	
 	enum class AssetType : uint16_t
 	{
 		None = 0,
@@ -56,6 +56,7 @@ namespace SceneryEditorX
 		MeshCollider,
 		Skeleton,
 		Animation,
+		MaxEnum
 	};
 
 	namespace Utils 

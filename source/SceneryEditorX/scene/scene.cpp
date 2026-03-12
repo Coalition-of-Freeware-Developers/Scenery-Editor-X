@@ -36,11 +36,11 @@
 namespace SceneryEditorX
 {
 
-    //Entity* s_Camera = nullptr;
+	//Entity* s_Camera = nullptr;
 
 	Scene::Scene(std::string name, bool initialize) : m_Name(std::move(name))
 	{
-        m_SceneID = UUID();
+		m_SceneID = UUID();
 	}
 
 	void Scene::Init()
@@ -58,103 +58,103 @@ namespace SceneryEditorX
 
 	Camera *Scene::GetCamera()
 	{
-     return Renderer::GetCamera();
+		return Renderer::GetCamera();
 	}
 
-    /*
-    SceneAsset::SceneAsset()
-    {
-        type = ObjectType::SceneAsset;
-        sceneName = "New Scene";
-    }
+	/*
+	SceneAsset::SceneAsset()
+	{
+		type = ObjectType::SceneAsset;
+		sceneName = "New Scene";
+	}
 
-    void SceneAsset::Serialize(Serializer &s)
-    {
-        s("uuid", uuid);
-        s("name", name);
-        s("type", (uint8_t&)type);
-        s("path", scenePath);
-        s("ambientLightColor", ambientLightColor);
-        s("ambientLight", ambientLight);
-        s("aoSamples", aoSamples);
-        s("lightSamples", lightSamples);
-        s("aoMin", aoMin);
-        s("aoMax", aoMax);
-        s("exposure", exposure);
-        //s("shadowType", (uint8_t&)shadowType);
-        s("shadowResolution", shadowResolution);
-        s("camSpeed", camSpeed);
-        s("zoomSpeed", zoomSpeed);
-        s("rotationSpeed", rotationSpeed);
-        s("autoOrbit", autoOrbit);
-        s.Node("mainCamera", mainCamera, this);
-        s.VectorRef("nodes", nodes);
-    }
+	void SceneAsset::Serialize(Serializer &s)
+	{
+		s("uuid", uuid);
+		s("name", name);
+		s("type", (uint8_t&)type);
+		s("path", scenePath);
+		s("ambientLightColor", ambientLightColor);
+		s("ambientLight", ambientLight);
+		s("aoSamples", aoSamples);
+		s("lightSamples", lightSamples);
+		s("aoMin", aoMin);
+		s("aoMax", aoMax);
+		s("exposure", exposure);
+		//s("shadowType", (uint8_t&)shadowType);
+		s("shadowResolution", shadowResolution);
+		s("camSpeed", camSpeed);
+		s("zoomSpeed", zoomSpeed);
+		s("rotationSpeed", rotationSpeed);
+		s("autoOrbit", autoOrbit);
+		s.Node("mainCamera", mainCamera, this);
+		s.VectorRef("nodes", nodes);
+	}
 
-    void SceneAsset::Load(const std::string &path)
-    {
-        scenePath = path;
-        isLoaded = true;
-    }
+	void SceneAsset::Load(const std::string &path)
+	{
+		scenePath = path;
+		isLoaded = true;
+	}
 
-    void SceneAsset::Unload()
-    {
-        nodes.clear();
-        mainCamera = nullptr;
-        isLoaded = false;
-    }
+	void SceneAsset::Unload()
+	{
+		nodes.clear();
+		mainCamera = nullptr;
+		isLoaded = false;
+	}
 
-    bool SceneAsset::IsLoaded() const
-    {
-        return isLoaded;
-    }
+	bool SceneAsset::IsLoaded() const
+	{
+		return isLoaded;
+	}
 
-    const std::string &SceneAsset::GetPath() const
-    {
-        return scenePath;
-    }
+	const std::string &SceneAsset::GetPath() const
+	{
+		return scenePath;
+	}
 
-    const std::string &SceneAsset::GetName() const
-    {
-        return sceneName;
-    }
+	const std::string &SceneAsset::GetName() const
+	{
+		return sceneName;
+	}
 
-    void SceneAsset::SetName(const std::string &name)
-    {
-        sceneName = name;
-        this->name = name;
-    }
+	void SceneAsset::SetName(const std::string &name)
+	{
+		sceneName = name;
+		this->name = name;
+	}
 
-    void SceneAsset::DeleteRecursive(const Ref<Node> &node)
-    {
-        /// Remove all children recursively
-        for (int i = static_cast<int>(node->children.size()) - 1; i >= 0; i--)
-        {
-            DeleteRecursive(node->children[i]);
-        }
-        
-        /// Remove the node from its parent's children list
-        if (node->parent)
-        {
-            auto &children = node->parent->children;
-            children.erase(std::ranges::remove(children, node).begin(), children.end());
-        }
-        
-        /// Remove from the scene's nodes list if it's a top-level node
-        if (const auto it = std::ranges::find(nodes, node); it != nodes.end())
-        {
-            nodes.erase(it);
-        }
-    }
+	void SceneAsset::DeleteRecursive(const Ref<Node> &node)
+	{
+		/// Remove all children recursively
+		for (int i = static_cast<int>(node->children.size()) - 1; i >= 0; i--)
+		{
+			DeleteRecursive(node->children[i]);
+		}
+		
+		/// Remove the node from its parent's children list
+		if (node->parent)
+		{
+			auto &children = node->parent->children;
+			children.erase(std::ranges::remove(children, node).begin(), children.end());
+		}
+		
+		/// Remove from the scene's nodes list if it's a top-level node
+		if (const auto it = std::ranges::find(nodes, node); it != nodes.end())
+		{
+			nodes.erase(it);
+		}
+	}
 
-    Scene::Scene(const std::string &name, bool isEditorScene, bool initialize) : m_SceneID()
-    {
-    }
+	Scene::Scene(const std::string &name, bool isEditorScene, bool initialize) : m_SceneID()
+	{
+	}
 
-    Scene::~Scene()
-    {
-    }
-    */
+	Scene::~Scene()
+	{
+	}
+	*/
 
 } // namespace SceneryEditorX
 

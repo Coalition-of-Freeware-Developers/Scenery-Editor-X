@@ -23,64 +23,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * -------------------------------------------------------
- * asset_metadata.h
+ * component.cpp
  * -------------------------------------------------------
- * Created: 10/03/2026
+ * Created: 11/03/2026
  * -------------------------------------------------------
  */
-#pragma once
-#include "asset.h"
+#include "component.h"
 
 // -------------------------------------------------------
 
 namespace SceneryEditorX
 {
 
-	/**
-	 * @enum AssetStatus
-	 * @brief Represents the status of an asset, indicating whether it is ready, invalid, or currently loading.
-	 */
-	enum class AssetStatus : uint8_t
-	{
-		None	= 0,
-		Ready	= 1, 
-		Invalid = 2, 
-		Loading = 3
-	};
-
-	/**
-	 * @struct AssetMetadata
-	 * @brief Metadata for an asset, including its handle, type, file path, status, and other relevant information.
-	 */
-	struct AssetMetadata
-	{
-		AssetHandle handle;
-		AssetType type;
-		std::filesystem::path filePath;
-
-		AssetStatus status = AssetStatus::None;
-
-		uint64_t fileLastWriteTime = 0; // TODO: this is the last write time of the file WE LOADED
-		bool isDataLoaded = false;
-
-		[[nodiscard]] bool IsValid() const { return handle != 0; }
-
-		// UUID copy-assignment is deleted, so provide an explicit operator= that
-		// copy-constructs a temporary UUID then move-assigns it.
-		AssetMetadata& operator=(const AssetMetadata& other)
-		{
-			if (this != &other)
-			{
-				handle            = AssetHandle(other.handle);
-				type              = other.type;
-				filePath          = other.filePath;
-				status            = other.status;
-				fileLastWriteTime = other.fileLastWriteTime;
-				isDataLoaded      = other.isDataLoaded;
-			}
-			return *this;
-		}
-	};
+    Component::Component(Entity* entity)
+    {
+        m_EntityPtr = entity;
+        m_Enabled    = true;
+    }
 
 }
 
